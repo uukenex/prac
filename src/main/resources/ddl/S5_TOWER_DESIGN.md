@@ -3150,3 +3150,25 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     DAO 메서드 불필요).
   - 묶음 사이는 빈 줄로 구분(위치 / PP+최고동료 / 전투력+누적통계, 3묶음).
   - DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정.
+
+- **[2026-09-18] 동료 선택권 중복판정 누락 버그 수정 + 기존 중복 캐릭터 소급 병합**: "업적보상
+  으로 캐릭선택권을 주는 케이스가있는데, 그렇게 받은 캐릭터가 한계돌파가 안되고 별도캐릭터로
+  들어온다는 문의" 신고.
+  - **원인**: 가챠(`pullCompanionCore`, 2026-09-14 재설계)는 같은 (직업,이름) 동료를 또
+    뽑으면 새로 만들지 않고 기존 개체의 LIMIT_BREAK를 올리는데, `redeemCompanionChoiceTicket`
+    (업적/구간탐사 보상으로 받는 ★N 동료 선택권 사용)은 이 중복판정 자체가 없어서 랜덤으로
+    뽑힌 이름이 이미 보유 중인 동료와 겹쳐도 무조건 새 `TBOT_S5_USER_COMPANION` 행을
+    `insert`했다. 당시 주석에 "[알려진 단순화] 선택권은 무상이라 중복이어도 손해가 아니라서
+    생략"이라 적혀 있었는데, 실제로는 "완전히 별개의 동료가 하나 더 생겨서 한계돌파가 전혀
+    안 됨"이라는 눈에 보이는 버그였다.
+  - **재발방지**: `findOwnedCompanion(userName, job, name)` 공용 헬퍼를 신설해서
+    `pullCompanionCore`(가챠)와 `redeemCompanionChoiceTicket`(선택권) 둘 다 이걸로 중복
+    판정을 하도록 통일. 선택권도 이제 중복이면 가챠와 동일하게 LIMIT_BREAK+1(최대 6),
+    이미 만렙이면 `COMPANION_DUPE_REFUND` PP 환급으로 처리.
+  - **기존 라이브 데이터 소급 병합**(`S5_COMPANION_DUPE_MERGE_RETRO.sql`): 4명 유저 7건의
+    중복 캐릭터 확인. 6건은 단순 케이스(중복 행에 장비/파티편성 없음 -- 오래된 원본을 남기고
+    LIMIT_BREAK 합산 또는 만렙이면 PP환급). 1건(키리레이나/바드 WARRIOR 코타로)은 예외 --
+    버그로 생긴 중복 행 쪽이 오히려 파티3번에 편성되고 장비 6개가 장착된 실사용 개체였어서,
+    반대로 그 행을 남기고 미사용 원본(LIMIT_BREAK 2 보유)을 병합(LIMIT_BREAK 0→3)했다.
+    삭제 전 `TBOT_S5_USER_EQUIP.EQUIPPED_COMPANION_ID`/`TBOT_S5_USER_PROGRESS.
+    WARD_COMPANION_ID` 참조 여부를 전부 확인해서 고아 참조가 안 남게 함.

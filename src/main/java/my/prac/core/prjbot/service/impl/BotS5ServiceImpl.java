@@ -5173,6 +5173,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 나왔든 같은 성급이면 같은 PP를 돌려받고, 성급이 높을수록 더 많이 받는다.
     private static final int[] COMPANION_DUPE_REFUND = { 20, 80, 400, 2000, 8000, 30000 }; // index = grade-1
 
+    /** 이 유저가 이미 보유한 (직업,이름) 동료 개체를 반환(없으면 null). 뽑기/선택권 공용 중복판정. */
+    private HashMap<String, Object> findOwnedCompanion(String userName, String job, String name) {
+        for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
+            if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
+                return owned;
+            }
+        }
+        return null;
+    }
+
     /** 동료 뽑기 1회의 핵심 로직(무료판정/비용차감/추첨/insert)만 수행. 실패 시 result에 error만 채워 반환. */
     private HashMap<String, Object> pullCompanionCore(String userName, HashMap<String, Object> gacha,
             HashMap<String, Object> p, int ownedSoFar) {
@@ -5214,13 +5224,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 중복이 뜨면 PP 환급 대신 그 보유 동료 개체의 LIMIT_BREAK를 1단계 올린다(단계당
         // 전체 스탯 +10%, computeEffectiveStat 참고). 이미 6단계(만렙)면 더 올릴 자리가
         // 없으니 그때만 기존처럼 PP로 환급(COMPANION_DUPE_REFUND 고정표, 성급 기준).
-        HashMap<String, Object> ownedDupe = null;
-        for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
-            if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
-                ownedDupe = owned;
-                break;
-            }
-        }
+        HashMap<String, Object> ownedDupe = findOwnedCompanion(userName, job, name);
         if (ownedDupe != null) {
             int curLimitBreak = intVal(ownedDupe.get("LIMIT_BREAK"), 0);
             result.put("ok", true);
@@ -6276,8 +6280,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     /**
      * ★N 동료 선택권 사용(웹 UI 전용). 등급(3/4/5, 구간에 따라 지급된 것 그대로)/직업이
      * 확정이라 가챠와 달리 실패가 없다.
-     * [알려진 단순화] 가챠의 "중복 동료 20% PP 환급"은 여기선 적용 안 함 -- 선택권 자체가
-     * 무상 보상이라 이미 원가가 0이고, 중복이어도 이름만 다시 랜덤일 뿐 손해가 아니라서 생략.
+     * [2026-09-18 수정] "업적보상 캐릭선택권으로 받은 캐릭터가 한계돌파가 안되고 별도
+     * 캐릭터로 들어온다" 문의 -- 예전엔 "[알려진 단순화] 선택권은 무상 보상이라 중복이어도
+     * 이름만 다시 랜덤일 뿐 손해가 아니라서 생략"이라며 가챠의 중복판정(findOwnedCompanion)을
+     * 아예 안 태웠는데, 실제로는 이미 보유한 (직업,이름)과 겹치면 완전히 별개의 동료 개체가
+     * 하나 더 생겨서(같은 이름 카드가 파티/합성 목록에 2장) 유저 입장에선 "왜 한계돌파가
+     * 안 되고 복제됐지" 하는 명백한 버그로 보였다. 가챠와 동일하게 중복이면 그 개체의
+     * LIMIT_BREAK를 올리고(최대치면 PP 환급)로 통일.
      */
     @Override
     @Transactional
@@ -6292,6 +6301,32 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         String[] namePool = NAME_POOL_BY_JOB_GRADE.get(job)[grade - 1];
         String name = namePool[RND.nextInt(namePool.length)];
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put(field, have - 1);
+
+        HashMap<String, Object> ownedDupe = findOwnedCompanion(userName, job, name);
+        if (ownedDupe != null) {
+            int curLimitBreak = intVal(ownedDupe.get("LIMIT_BREAK"), 0);
+            dao.updateUserProgress(up);
+            if (curLimitBreak < LIMIT_BREAK_MAX) {
+                int newLimitBreak = curLimitBreak + 1;
+                HashMap<String, Object> lbUp = new HashMap<>();
+                lbUp.put("companionId", intVal(ownedDupe.get("COMPANION_ID"), 0));
+                lbUp.put("limitBreak", newLimitBreak);
+                dao.updateCompanionLimitBreak(lbUp);
+                return "🔺 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 선택권 사용)" + NL
+                        + "한계돌파+" + newLimitBreak + " 달성! (전체 스탯 +" + Math.round(limitBreakPct(newLimitBreak) * 100) + "%)"
+                        + " (남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
+            }
+            PP dupeBonus = PP.fromPP(COMPANION_DUPE_REFUND[grade - 1]);
+            addPp(userName, p, dupeBonus);
+            return "🔁 이미 보유한 " + JOB_NAME.get(job) + "(" + name + ")와 중복! (★" + grade + " 선택권 사용)" + NL
+                    + "한계돌파가 이미 최대(+" + LIMIT_BREAK_MAX + ")라 " + dupeBonus.format() + " PP로 환급되었습니다."
+                    + " (남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
+        }
+
         int[] stat = calcBaseStat(job, grade);
         String imageUrl = fetchRandomNekoImage();
 
@@ -6305,10 +6340,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         c.put("curHpExt", "");
         c.put("partySlot", null);
         dao.insertCompanion(c);
-
-        HashMap<String, Object> up = new HashMap<>();
-        up.put("userName", userName);
-        up.put(field, have - 1);
         dao.updateUserProgress(up);
 
         return "🎉 " + JOB_NAME.get(job) + "(" + name + ") ★" + grade + " 동료를 획득했습니다! (선택권 사용, 남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
