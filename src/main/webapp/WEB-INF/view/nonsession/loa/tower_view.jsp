@@ -291,8 +291,40 @@
     .party-card .cname{ font-size:12px; font-weight:800; }
     .party-card .role{ font-size:10px; color:var(--ink-soft); }
     .hpbar-track{ height:6px; border-radius:4px; background:#EFE7D2; overflow:hidden; margin-top:4px; }
-    .hpbar-fill{ height:100%; background:linear-gradient(90deg,#5FBE85,#2F8F5C); }
+    .hpbar-fill{ height:100%; background:linear-gradient(90deg,#5FBE85,#2F8F5C); transition:width .4s ease; }
     .hp-num{ font-size:9px; color:var(--ink-soft); margin-top:2px; }
+
+    /* [2026-09-17] "전투 화면을 포켓몬 배틀 화면처럼" 요청 -- 전투 중엔 칸그리드(#towerViewport)
+       대신 이 화면을 보여준다. 서버는 한 번의 /주사위 요청에 전투 전체를 계산해서 텍스트
+       메시지 하나로만 돌려주므로(턴별 구조화 데이터 없음), 진짜 턴 단위 타격 모션 대신
+       "때리기 전 HP" -> "때린 후 HP"를 간단한 스냅샷 연출로 보여준다: 주사위 버튼을 누르면
+       동료 전원이 짧게 앞으로 튀고(파티가 실제로 매턴 다같이 공격하는 것과 동일), 몬스터가
+       흔들리면서 HP바가 새 값으로 줄어들고, 반격을 맞은 동료도 흔들리며 자기 HP바가 준다.
+       HP바 자체의 부드러운 감소는 위 .hpbar-fill의 transition:width만으로 공짜로 얻는다 --
+       DOM 엘리먼트를 갱신할 때마다 새로 만들지 않고 width만 바꾸는 게 핵심(updateBattleParty/
+       updateBattleScreen 참고). 몬스터는 이미지 에셋이 전혀 없어(DB에 스프라이트 컬럼 자체가
+       없음) monsterEmoji()로 몬스터ID 기반 이모지를 고정 배정해 자리만 채운다. */
+    .battle-screen{ background:linear-gradient(180deg,#E9F1E1,#F8F4E4); border:1.5px solid var(--line);
+                     border-radius:14px; padding:14px; margin-top:2px; }
+    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-bottom:20px; }
+    .bs-monster-sprite{ font-size:48px; line-height:1; }
+    .bs-monster-sprite.hit{ animation:bsShake .35s; }
+    .bs-monster-info{ min-width:150px; max-width:220px; text-align:right; }
+    .bs-monster-info .bs-name{ font-size:13px; font-weight:800; margin-bottom:3px; }
+    .bs-monster-info .hpbar-track{ height:9px; }
+    .bs-party-row{ display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
+    .bs-companion{ width:66px; text-align:center; }
+    .bs-companion.shake{ animation:bsShake .35s; }
+    .bs-companion .bs-avatar{ width:46px; height:46px; border-radius:50%; object-fit:cover; object-position:50% 15%;
+                                border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.15); }
+    .bs-companion .avatar-emoji{ width:46px; height:46px; border-radius:50%; display:flex; align-items:center;
+                                   justify-content:center; font-size:22px; background:#fff; border:2px solid #fff;
+                                   box-shadow:0 1px 3px rgba(0,0,0,.15); }
+    .bs-companion .bs-cname{ font-size:9px; margin-top:3px; color:var(--ink-soft); }
+    .bs-companion .hpbar-track{ height:5px; margin-top:2px; }
+    .bs-atk-pulse .bs-avatar, .bs-atk-pulse .avatar-emoji{ animation:bsLunge .28s; }
+    @keyframes bsShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
+    @keyframes bsLunge{ 0%{ transform:translateY(0); } 40%{ transform:translateY(-9px); } 100%{ transform:translateY(0); } }
     /* [2026-09-14] "전체보기 카드에도 공격력/방어력을 HP처럼 표기해달라" 요청 -- hp-num과
        동일한 스타일 공유. */
     .atk-num, .def-num{ font-size:9px; color:var(--ink-soft); margin-top:1px; }
@@ -494,6 +526,19 @@
           <button type="button" class="board-roll-btn" id="boardRollBtn" onclick="TW.action('DICE','')">
             <span class="broll-icn">🎲</span>주사위
           </button>
+        </div>
+        <!-- [2026-09-17] 전투 중엔 이 화면이 뜨고 아래 .tower-viewport-wrap(칸그리드)는
+             숨겨진다(updateBattleScreen 참고). -->
+        <div id="battleScreen" class="battle-screen" style="display:none;">
+          <div class="bs-monster-row">
+            <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
+            <div class="bs-monster-info">
+              <div class="bs-name" id="bsMonsterName">몬스터</div>
+              <div class="hpbar-track"><div class="hpbar-fill" id="bsMonsterHpFill" style="width:100%"></div></div>
+              <div class="hp-num" id="bsMonsterHpNum"></div>
+            </div>
+          </div>
+          <div class="bs-party-row" id="bsPartyRow"></div>
         </div>
         <div class="tower-viewport-wrap">
           <div class="tower-viewport" id="towerViewport">
@@ -719,6 +764,109 @@ var TW = (function () {
     return v + e;
   }
 
+  // ===== [2026-09-17] 전투화면(포켓몬 배틀 스타일) =====
+  // 몬스터 이미지 에셋이 전혀 없어서(DB에 스프라이트 컬럼 자체가 없음) 몬스터ID를 해시해
+  // 고정된 이모지 하나를 배정한다 -- 같은 몬스터는 항상 같은 이모지로 보이되, 실제 그림은 아님.
+  var MONSTER_EMOJI_POOL = ['👹', '👺', '🐉', '🦂', '🕷️', '🦇', '🐺', '🧟', '🦑', '🐍', '🦖', '👻', '💀', '🦁', '🐲'];
+  function monsterEmoji(monsterId) {
+    var n = Number(monsterId) || 0;
+    return MONSTER_EMOJI_POOL[n % MONSTER_EMOJI_POOL.length];
+  }
+
+  // battle.monsterBaseHp: 지금 몬스터를 "처음 본 순간"의 HP를 100%로 삼는 기준선(서버가 몬스터
+  // 최대HP를 안 내려주므로 -- 하드코어 스케일링 등으로 몬스터마다 최대치가 달라 고정 상수도 못
+  // 씀). battle.monsterHp/companionHp는 "지난 갱신에서 봤던 HP"로, 이번에 그보다 줄었으면 그
+  // 대상만 흔들림 애니메이션을 준다(누가 맞았는지 서버가 알려주지 않으니 HP 감소로 추론).
+  var battle = { monsterId: null, monsterBaseHp: null, monsterHp: null, companionHp: {} };
+
+  function updateBattleScreen(p) {
+    var screen = document.getElementById('battleScreen');
+    var boardWrap = document.querySelector('.tower-viewport-wrap');
+    var trackControls = document.querySelector('.board-track-controls');
+    var inCombat = p.STATUS === 'IN_COMBAT';
+    screen.style.display = inCombat ? '' : 'none';
+    boardWrap.style.display = inCombat ? 'none' : '';
+    if (trackControls) trackControls.style.display = inCombat ? 'none' : '';
+    if (!inCombat) { battle.monsterId = null; return; }
+
+    if (battle.monsterId !== p.CUR_MONSTER_ID) {
+      // 새 몬스터와 조우(직전까지 다른 몬스터였거나, 전투에 막 진입) -- 기준선/스프라이트 리셋.
+      battle.monsterId = p.CUR_MONSTER_ID;
+      battle.monsterBaseHp = p.CUR_MONSTER_HP_VALUE || 1;
+      battle.monsterHp = null;
+      document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
+      document.getElementById('bsMonsterName').textContent =
+          (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
+    }
+
+    var pct = battle.monsterBaseHp > 0
+        ? Math.max(0, Math.min(100, (p.CUR_MONSTER_HP_VALUE || 0) / battle.monsterBaseHp * 100)) : 100;
+    document.getElementById('bsMonsterHpFill').style.width = pct + '%';
+    document.getElementById('bsMonsterHpNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
+
+    var sprite = document.getElementById('bsMonsterSprite');
+    if (battle.monsterHp != null && (p.CUR_MONSTER_HP_VALUE || 0) < battle.monsterHp) {
+      sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit');
+    }
+    battle.monsterHp = p.CUR_MONSTER_HP_VALUE || 0;
+
+    updateBattleParty();
+  }
+
+  // 파티(동료) 쪽 배틀 화면 갱신 -- loadStatus(몬스터 HP)와 loadPartyAndEquip(동료 HP) 둘 중
+  // 나중에 끝나는 쪽에서 최신 데이터로 다시 그려지도록 양쪽 다 이 함수를 부른다(요청 2개가
+  // 서로 다른 fetch라 어느 쪽이 먼저 끝날지 보장이 없음). 전투 중이 아니면 조용히 무시.
+  function updateBattleParty() {
+    var screen = document.getElementById('battleScreen');
+    if (!screen || screen.style.display === 'none') return;
+    var row = document.getElementById('bsPartyRow');
+    var companions = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
+    var ids = companions.map(function (c) { return c.COMPANION_ID; }).join(',');
+    if (row.dataset.ids !== ids) {
+      // 파티 구성 자체가 바뀐 경우(전투 진입 직후 최초 렌더 포함)만 다시 그린다 -- 매 갱신마다
+      // innerHTML로 새로 만들면 엘리먼트가 새 걸로 바뀌어서 width transition이 끊겨 보인다.
+      row.dataset.ids = ids;
+      row.innerHTML = '';
+      companions.forEach(function (c) {
+        var box = document.createElement('div');
+        box.className = 'bs-companion';
+        box.dataset.cid = c.COMPANION_ID;
+        box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
+        var meta = document.createElement('div');
+        meta.innerHTML = '<div class="bs-cname">' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
+            + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
+        box.appendChild(meta);
+        row.appendChild(box);
+      });
+    }
+    companions.forEach(function (c) {
+      var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
+      if (!box) return;
+      var maxHp = c.EFF_HP || 1;
+      var curHp = c.CUR_HP_VALUE || 0;
+      var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
+      box.querySelector('.hpbar-fill').style.width = pct + '%';
+      var prevHp = battle.companionHp[c.COMPANION_ID];
+      if (prevHp != null && curHp < prevHp) {
+        box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+      }
+      battle.companionHp[c.COMPANION_ID] = curHp;
+    });
+  }
+
+  // 주사위(공격) 버튼을 눌렀을 때 파티 전원이 짧게 앞으로 튀는 연출 -- 실제로 몇 명이 몇 번
+  // 공격했는지는 서버 텍스트 메시지 안에만 있고 구조화되어 있지 않아, "파티가 매턴 전원 동시
+  // 공격한다"는 실제 전투 규칙 그대로 전원 동시 연출로 단순화했다.
+  function playBattleAttackMotion() {
+    var row = document.getElementById('bsPartyRow');
+    if (!row) return;
+    row.querySelectorAll('.bs-companion').forEach(function (box) {
+      box.classList.remove('bs-atk-pulse'); void box.offsetWidth; box.classList.add('bs-atk-pulse');
+    });
+  }
+
+  var monsterNameCache = ''; // updateBattleScreen()이 loadStatus() 밖에서도 이름을 쓸 수 있게 캐시
+
   function toast(msg) {
     var el = document.getElementById('msgToast');
     var text = formatMsg(msg);
@@ -795,6 +943,8 @@ var TW = (function () {
           huntCard.style.display = 'none';
         }
 
+        monsterNameCache = data.monsterName || '';
+        updateBattleScreen(p);
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderDiceOverlay(data.dice || []);
         renderDiceEnhanceRow(data.diceEnhance);
@@ -2084,6 +2234,7 @@ var TW = (function () {
       renderPartySlots();
       renderPartyGrid();
       renderEquipList();
+      updateBattleParty(); // 전투화면이 떠 있으면(다른 fetch보다 이게 늦게 끝난 경우) 최신 HP로 갱신
 
       // 선택 팝업이 열려있으면(드물게 액션 응답 전에 다시 열렸을 경우 대비) 최신 데이터로
       // 다시 그려준다. 보통은 고르자마자 닫히므로(closePicker) 실행되지 않는다.
@@ -2308,6 +2459,14 @@ var TW = (function () {
         + '&param1=' + encodeURIComponent(param1 || '') + '&param2=' + encodeURIComponent(param2 || '');
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       toast(data.message || data.error || '완료');
+      if (type === 'DICE') {
+        // [2026-09-17] 전투화면이 동료 HP를 보여주려면 최신 파티 데이터가 필요한데, '편성' 탭이
+        // 열려있지 않으면 refreshActivePanel()이 파티를 안 불러온다 -- 공격(DICE)만은 탭
+        // 상태와 무관하게 항상 파티도 같이 새로고침. 공격 모션은 응답을 기다릴 것 없이 버튼을
+        // 누른 즉시 재생(연출일 뿐이라 실제 판정 결과와 정확히 동기화될 필요는 없음).
+        playBattleAttackMotion();
+        loadPartyAndEquip();
+      }
       loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });
   }

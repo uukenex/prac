@@ -86,6 +86,19 @@ public class Season5ViewController {
         }
         result.put("progress", progress);
 
+        // [2026-09-17] "전투 화면을 포켓몬 배틀 화면처럼" 요청 -- 전투 중인 몬스터의 이름을
+        // 보여주려면 최소한 이름 한 글자는 필요한데, progress row(CUR_MONSTER_HP_VALUE 등)엔
+        // 몬스터 이름이 없다. 최대HP는 몬스터마다 하드코어 스케일링 등으로 달라질 수 있어
+        // 클라이언트가 "이 몬스터를 처음 본 순간의 HP"를 자체적으로 100% 기준선으로 잡아
+        // 쓰므로 여기선 이름만 추가로 내려준다(전투 진행/판정 로직은 전혀 건드리지 않음).
+        if ("IN_COMBAT".equals(String.valueOf(progress.get("STATUS")))) {
+            int floorNow = toInt(progress.get("CUR_FLOOR"));
+            int blockNo = (floorNow / 10) + 1;
+            boolean isBossFloor = (floorNow % 10 == 9);
+            HashMap<String, Object> mon = s5Dao.selectMonster(blockNo, isBossFloor ? "Y" : "N");
+            if (mon != null) result.put("monsterName", mon.get("MONSTER_NAME"));
+        }
+
         int floor = toInt(progress.get("CUR_FLOOR"));
         if (floor % 10 >= 1 && floor % 10 <= 8) {
             result.put("floorInfo", s5Dao.selectFloorInfo(floor));
