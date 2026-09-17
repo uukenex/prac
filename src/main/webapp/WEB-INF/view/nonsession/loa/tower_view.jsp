@@ -452,16 +452,15 @@
     .msg-row-time{ font-size:10px; color:var(--ink-soft); white-space:nowrap; }
     .msg-row-res{ white-space:pre-line; color:var(--ink-soft); line-height:1.5; }
 
-    .msg-toast{ position:fixed; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:#fff;
-                padding:12px 18px; border-radius:12px; font-size:12px; line-height:1.6; max-width:min(92vw,420px);
-                text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none; white-space:pre-line; }
     /* [2026-09-17] "핸드폰으로 할때 토스트되는 전투메시지가 화면을 너무 가려, 구석에 나오면
-       좋겠다" 요청 -- 좁은 화면에서만 중앙 하단(넓게 깔림) 대신 우상단 구석에 작게 뜨도록
-       바꾼다(데스크톱은 기존 그대로 유지, 화면이 넓어 가릴 일이 적음). */
-    @media (max-width:480px){
-      .msg-toast{ left:auto; right:10px; bottom:auto; top:10px; transform:none;
-                  max-width:min(62vw,260px); font-size:11px; padding:9px 12px; opacity:.96; }
-    }
+       좋겠다" 요청 -- 처음엔 모바일(480px 이하)에서만 우상단 구석으로 옮겼는데, [후속]
+       "데스크탑도 구석에 뜨도록해줘" 요청으로 화면 크기 무관하게 항상 우상단 구석에 작게
+       뜨도록 통일(중앙 하단에 넓게 깔리던 기존 방식은 완전히 제거). */
+    .msg-toast{ position:fixed; left:auto; right:10px; bottom:auto; top:10px; transform:none;
+                background:var(--ink); color:#fff; padding:9px 12px; border-radius:12px;
+                font-size:11px; line-height:1.6; max-width:min(62vw,300px);
+                text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none;
+                white-space:pre-line; opacity:.96; }
 
     .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
