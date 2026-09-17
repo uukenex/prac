@@ -366,6 +366,17 @@
     @keyframes bsShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
     @keyframes bsLunge{ 0%{ transform:translateY(0); } 40%{ transform:translateY(-9px); } 100%{ transform:translateY(0); } }
 
+    /* [2026-09-17 4차] "위아래 높이가 작으면 왼쪽/오른쪽 이렇게만 해줘, 잘리는게 보기싫어"
+       요청 -- 세로 공간이 좁을 때(fitBattleScreenHeight가 판단, JS에서 .compact 토글) 기존
+       세로 배치(위 몬스터/아래 파티, column+space-between)를 유지하면 둘 다 밀려 잘려
+       보이므로, row-reverse로 가로 배치로 전환한다. DOM 순서가 몬스터→파티라 row-reverse를
+       쓰면 몬스터가 오른쪽/파티가 왼쪽에 오는 기존 배치(왼쪽아래 플레이어/오른쪽위 몬스터)가
+       그대로 유지된다(뒤집히지 않음). 각 행 내부(.bs-monster-row/.bs-party-row) 구조는
+       그대로 두고 세로로 쌓아서 좁은 가로폭 안에서도 한눈에 들어오게 한다. */
+    .battle-screen.compact{ flex-direction:row-reverse; align-items:center; justify-content:space-between; gap:10px; }
+    .battle-screen.compact .bs-monster-row{ flex-direction:column; align-items:flex-end; gap:6px; }
+    .battle-screen.compact .bs-party-row{ flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:8px; }
+
     /* [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 전투화면/보드
        어느 쪽이든 상관없이 위에 살짝 떴다 사라지는 뱃지(showVictoryFlash 참고). 뷰포트 기준
        고정 위치라 카드 안 레이아웃(position:relative 필요 여부)과 무관하게 항상 동작한다. */
@@ -464,9 +475,11 @@
 
     /* [2026-09-17] "핸드폰으로 할때 토스트되는 전투메시지가 화면을 너무 가려, 구석에 나오면
        좋겠다" 요청 -- 처음엔 모바일(480px 이하)에서만 우상단 구석으로 옮겼는데, [후속]
-       "데스크탑도 구석에 뜨도록해줘" 요청으로 화면 크기 무관하게 항상 우상단 구석에 작게
-       뜨도록 통일(중앙 하단에 넓게 깔리던 기존 방식은 완전히 제거). */
-    .msg-toast{ position:fixed; left:auto; right:10px; bottom:auto; top:10px; transform:none;
+       "데스크탑도 구석에 뜨도록해줘" 요청으로 화면 크기 무관하게 항상 구석에 작게 뜨도록
+       통일(중앙 하단에 넓게 깔리던 기존 방식은 완전히 제거). [2026-09-17 3차] "우상단이
+       주사위 버튼(sticky .dice-controls)을 가려서 못 누른다" 신고로 좌측 하단으로 재배치
+       (하단 고정 네비 .dock 위로 여유를 둠).*/
+    .msg-toast{ position:fixed; left:10px; right:auto; bottom:110px; top:auto; transform:none;
                 background:var(--ink); color:#fff; padding:9px 12px; border-radius:12px;
                 font-size:11px; line-height:1.6; max-width:min(62vw,300px);
                 text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none;
@@ -856,6 +869,13 @@ var TW = (function () {
   // 놓여서 "떠있는" 것처럼 보였다. CSS만으로는 "이 박스가 페이지에서 실제로 어디서
   // 시작하는지"를 알 방법이 없어서(헤더 길이가 공지 배너 유무 등으로 가변적), 보여줄 때마다
   // JS로 실측해서 남은 세로공간에 맞춰 높이를 직접 계산한다.
+  // [2026-09-17 4차] "위아래 높이가 작으면 왼쪽/오른쪽 이렇게만 해줘, 잘리는게 보기싫어"
+  // 요청 -- 세로 공간이 좁을 때(available이 작을 때) 몬스터/파티를 위아래로 쌓으면(기존
+  // column+space-between) 둘 다 밀려서 잘려 보일 수 있다. 대신 가로(row)로 나란히 배치하면
+  // 각자 한 줄 높이(~50~70px)만 있으면 되므로 세로 여유가 적어도 안 잘린다 -- .compact
+  // 클래스를 켜면 row-reverse로 전환해서 기존과 동일하게 "왼쪽 파티/오른쪽 몬스터" 배치를
+  // 유지한 채 방향만 세로->가로로 바꾼다(CSS .battle-screen.compact 규칙 참고).
+  var BATTLE_COMPACT_THRESHOLD = 300;
   function fitBattleScreenHeight() {
     var el = document.getElementById('battleScreen');
     var dock = document.querySelector('.dock');
@@ -863,6 +883,7 @@ var TW = (function () {
     var top = el.getBoundingClientRect().top;
     var dockH = dock ? dock.getBoundingClientRect().height : 0;
     var available = window.innerHeight - top - dockH - 12; // 12px 여유
+    el.classList.toggle('compact', available < BATTLE_COMPACT_THRESHOLD);
     el.style.height = Math.max(260, Math.min(480, available)) + 'px';
   }
   window.addEventListener('resize', fitBattleScreenHeight);
