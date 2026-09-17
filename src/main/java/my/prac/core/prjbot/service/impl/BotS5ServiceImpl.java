@@ -2955,7 +2955,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (reviver79 != null) {
                 int reviverGrade = intVal(reviver79.get("GRADE"), 1);
-                int reviveChance = reviverGrade >= 6 ? 40 : 25;
+                int reviveChance = reviverGrade >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
                 if (RND.nextInt(100) < reviveChance) {
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
@@ -3034,7 +3034,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     }
                     if (reviverIv != null) {
                         int reviverGrade2 = intVal(reviverIv.get("GRADE"), 1);
-                        int reviveChance2 = reviverGrade2 >= 6 ? 40 : 25;
+                        int reviveChance2 = reviverGrade2 >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                         double revivePct2 = reviverGrade2 >= 6 ? 0.5 : 0.3;
                         if (RND.nextInt(100) < reviveChance2) {
                             List<HashMap<String, Object>> ivEquips = dao.selectEquipByCompanion(intVal(instaVictim.get("COMPANION_ID"), 0));
@@ -3086,7 +3086,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (over50 && !c.equals(target) && RND.nextInt(100) < guardChance) {
                 target = c;
                 guarded = true;
-                warriorGuardMitigationPct = wGrade >= 6 ? 20 : 0; // ★6: 도발 성공 시 받는 피해 추가 20%↓
+                warriorGuardMitigationPct = wGrade >= 5 ? 20 : 0; // [2026-09-17] ★5/★6: 도발 성공 시 받는 피해 추가 20%↓(기존 ★6 전용에서 ★5도 포함)
             }
             if (!warriorSynergy) break; // 시너지 아니면 예전처럼 첫 전사만 판정
         }
@@ -3403,7 +3403,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 통째로 무효화한다(실드/전사 감소보다 우선 -- 아예 안 맞은 셈이라 뒤 계산 자체를 건너뜀).
         boolean rogueEvaded = false;
         if ("ROGUE".equals(tJob) && tGrade >= 5) {
-            int evadeChance = tGrade >= 6 ? 45 : 30;
+            int evadeChance = tGrade >= 6 ? 25 : 20; // [2026-09-17] 밸런스 조정: 기존 45/30 -> 25/20
             if (RND.nextInt(100) < evadeChance) rogueEvaded = true;
         }
 
@@ -3497,7 +3497,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (reviver != null) {
                 int reviverGrade = intVal(reviver.get("GRADE"), 1);
-                int reviveChance = reviverGrade >= 6 ? 40 : 25;
+                int reviveChance = reviverGrade >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
                 if (RND.nextInt(100) < reviveChance) {
                     targetHpAfter = PP.fromPP(Math.max(1, (int) Math.round(tEff[0] * revivePct)));
