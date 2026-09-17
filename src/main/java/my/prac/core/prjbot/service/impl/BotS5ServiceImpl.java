@@ -731,9 +731,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * [2026-09-16 신설] 50층 이상 층에서 이번 방문 중 처음으로 탐사율 50%를 넘긴 순간(이
-     * 층의 계단 해금 조건과 동일 시점) 악세뽑기권 1장을 지급한다. ACH_ID 500+floor(550~599,
-     * 기존 achId 대역과 안 겹침)로 층당 1회만 지급되게 멱등 처리(grantAchievement).
+     * [2026-09-16 신설] 50층 이상 층에서 이번 방문 중 처음으로 탐사율 50%를 넘긴 순간 악세뽑기권
+     * 1장을 지급한다. ACH_ID 500+floor(550~599, 기존 achId 대역과 안 겹침)로 층당 1회만
+     * 지급되게 멱등 처리(grantAchievement).
+     * [2026-09-17] "계단 해금 조건을 0/10/20/25%로 다양화(50% 없앰)" 요청 이후로는 이 50% 고정
+     * 기준이 더 이상 "이 층 계단 해금 시점"과 같지 않다(stairsUpRequiredPct 참고) -- 이 보상은
+     * 계단과 무관하게 독립적으로 "탐사율 50% 달성"이라는 별개의 이정표를 기준으로 계속 동작한다.
      * @return 지급 안내 문구, 조건 미충족/이미 지급됨이면 null.
      */
     private String checkExploreHalfReward(String userName, HashMap<String, Object> p, int floor, int visited, int tileCount) {
@@ -779,7 +782,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 계단을 위/아래 방향으로 분리(요청) -- 기본은 층마다 딱 2칸(각 방향 1개씩) 고정.
         // [2026-09-16] "50층 이상은 올라가는 계단 4개, 내려가는 계단 4개로" 요청으로 50층+는
         // 방향당 4개씩(총 8칸)으로 늘림 -- 아래 STAIRS_UP 해금 조건이 "특정 계단칸 하나"가 아니라
-        // 층 전체 탐사율(50%↑) 기준으로 바뀌어서, 계단이 여러 칸이어도 조건 판정은 모두 동일.
+        // 층 전체 탐사율 기준으로 판정된다. [2026-09-17] 처음엔 4칸 전부 동일 기준(50%)이었지만,
+        // "0/10/20/25%로 각각 다르게" 요청으로 지금은 칸마다 요구치가 다르다(stairsUpRequiredPct).
         int stairsPerDirection = floor >= 50 ? 4 : 1;
         for (int i = 0; i < stairsPerDirection; i++) {
             types.add("STAIRS_UP");
@@ -839,6 +843,27 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         return tiles;
+    }
+
+    // [2026-09-17] "50층+ 올라가는 계단 4개가 전부 50%였는데 0/10/20/25%로 각각 다르게,
+    // 50%는 없도록" 요청 -- 값 자체를 배열 하나로 관리(재배포 없이 바꾸려면 나중에 config화
+    // 가능하나, 당장은 4개 고정이라 상수로 충분).
+    private static final int[] STAIRS_UP_REQUIRE_PCT = { 0, 10, 20, 25 };
+
+    /** 이 (유저,층) 보드에서 tileNo가 몇 번째 STAIRS_UP 칸인지(TILE_NO 오름차순)를 찾아 그
+     *  순서에 배정된 요구 탐사율(%)을 반환한다. 같은 층 안에서도 어느 계단을 밟았느냐에 따라
+     *  요구치가 다르다(0/10/20/25%). 보드가 규격과 다르게 생성돼 STAIRS_UP이 4개보다 많으면
+     *  넘치는 칸은 마지막 값(25%)으로 방어. */
+    private int stairsUpRequiredPct(String userName, int floor, int tileNo) {
+        List<HashMap<String, Object>> board = dao.selectUserTileMaster(userName, floor);
+        int rank = 0;
+        for (HashMap<String, Object> t : board) {
+            if (!"STAIRS_UP".equals(strVal(t.get("TILE_TYPE"), ""))) continue;
+            if (intVal(t.get("TILE_NO"), -1) == tileNo) break;
+            rank++;
+        }
+        int idx = Math.min(rank, STAIRS_UP_REQUIRE_PCT.length - 1);
+        return STAIRS_UP_REQUIRE_PCT[idx];
     }
 
     /**
@@ -2023,13 +2048,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int nextFloor = floor + 1;
                 // [2026-09-16] "50층 이상 올라가는 조건을 탐사율 50%이상으로(기존 중간보스처치)"
                 // 요청 -- 81층+ 전용이던 "중간보스 1회 처치" 게이트(MIDBOSS_KILLED_YN)를 완전히
-                // 대체해서, 50층 이상은 이 층 탐사율(visited/tileCount)이 50%를 넘어야 계단이
-                // 열린다. 계단을 밟아도 즉시 층이동하지 않는 기존 동작은 그대로(자격만 부여).
+                // 대체해서, 50층 이상은 이 층 탐사율(visited/tileCount)이 일정% 이상이어야
+                // 계단이 열린다. 계단을 밟아도 즉시 층이동하지 않는 기존 동작은 그대로(자격만 부여).
+                // [2026-09-17 후속] "계단 4개가 전부 50%였는데 0/10/20/25%로 각각 다르게,
+                // 50%는 없도록" 요청 -- 층마다 4개인 STAIRS_UP 칸을 TILE_NO 순서대로 정렬해
+                // 그 순서에 0/10/20/25%를 배정한다(stairsUpRequiredPct 참고). 즉 같은 층 안에서도
+                // 어느 계단을 밟았느냐에 따라 요구 탐사율이 다르다.
                 boolean exploreGateFloor = floor >= 50;
                 int explorePct = tileCount > 0 ? (visited * 100 / tileCount) : 0;
-                if (exploreGateFloor && explorePct < 50) {
+                int requiredPct = exploreGateFloor ? stairsUpRequiredPct(userName, floor, newTile) : 0;
+                if (exploreGateFloor && explorePct < requiredPct) {
                     sb.append("🪜⬆️❓ 위로 향하는 계단을 발견했지만... 무언가 강력한 기운이 막고 있다!").append(NL)
-                      .append("이 층을 50% 이상 탐사해야 계단이 열립니다. (현재 ").append(explorePct).append("%)");
+                      .append("이 층을 ").append(requiredPct).append("% 이상 탐사해야 계단이 열립니다. (현재 ").append(explorePct).append("%)");
                     break;
                 }
                 HashMap<String, Object> up = new HashMap<>();

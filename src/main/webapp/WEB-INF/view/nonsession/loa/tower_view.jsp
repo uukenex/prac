@@ -1794,8 +1794,17 @@ var TW = (function () {
   // 축소/캐싱해둔 걸 내려주는 /api/tower-avatar 프록시를 거치게 바꿨다(BotS5ServiceImpl.
   // getCompanionAvatarThumbnail 참고) -- 원본 대비 수십~수백 배 작은 파일이라 모바일에서도
   // 훨씬 안정적으로 뜨고, 브라우저 캐시도 7일 걸려있어 재접속 시 재다운로드도 없다.
+  // [2026-09-17 버그 수정] "은용 유저가 세라 IMAGE_URL을 DB로 직접 바꿨는데 동료편성
+  // 화면(원본 IMAGE_URL을 그대로 쓰는 상세카드)에는 바로 반영되는데 다른 화면(이 프록시를
+  // 쓰는 카드들)은 옛날 이미지가 계속 나온다" 신고 -- 원인은 이 프록시 응답에 걸어둔
+  // 7일 브라우저 캐시(Season5ViewController.apiTowerAvatar)가 companionId만으로 캐시
+  // 키를 삼아서, 서버 쪽 IMAGE_URL이 바뀌어도 브라우저는 예전에 캐시해둔 companionId=N
+  // 응답을 계속 재사용했기 때문(서버 자체 썸네일 캐시는 URL별로 따로 관리돼서 문제 없었음
+  // -- 순수 브라우저 캐시 문제). c.IMAGE_URL을 캐시버스터로 같이 붙여서, IMAGE_URL이 바뀌면
+  // 요청 URL 자체가 달라져 브라우저가 자동으로 새로 받아오게 한다(서버는 이 파라미터를 아예
+  // 안 읽으므로 별도 서버 수정 불필요).
   function buildAvatarEl(c, sizeClass, clickable) {
-    var img = c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID) : '';
+    var img = c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID + '&u=' + encodeURIComponent(c.IMAGE_URL)) : '';
     var emoji = JOB_EMOJI[c.CLASS] || '👤';
     var onClick = clickable ? function (ev) { ev.stopPropagation(); showCompanionDetail(c.COMPANION_ID); } : null;
     var el = document.createElement(img ? 'img' : 'div');
