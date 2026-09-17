@@ -455,6 +455,13 @@
     .msg-toast{ position:fixed; left:50%; bottom:96px; transform:translateX(-50%); background:var(--ink); color:#fff;
                 padding:12px 18px; border-radius:12px; font-size:12px; line-height:1.6; max-width:min(92vw,420px);
                 text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none; white-space:pre-line; }
+    /* [2026-09-17] "핸드폰으로 할때 토스트되는 전투메시지가 화면을 너무 가려, 구석에 나오면
+       좋겠다" 요청 -- 좁은 화면에서만 중앙 하단(넓게 깔림) 대신 우상단 구석에 작게 뜨도록
+       바꾼다(데스크톱은 기존 그대로 유지, 화면이 넓어 가릴 일이 적음). */
+    @media (max-width:480px){
+      .msg-toast{ left:auto; right:10px; bottom:auto; top:10px; transform:none;
+                  max-width:min(62vw,260px); font-size:11px; padding:9px 12px; opacity:.96; }
+    }
 
     .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
@@ -913,7 +920,8 @@ var TW = (function () {
         box.dataset.cid = c.COMPANION_ID;
         box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
         var meta = document.createElement('div');
-        meta.innerHTML = '<div class="bs-cname">' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
+        // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
+        meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
             + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
         box.appendChild(meta);
         row.appendChild(box);
@@ -1787,6 +1795,16 @@ var TW = (function () {
   function equipIcon(equipClass, part) {
     return GROUP_EMOJI[equipClass] || PART_EMOJI[part] || '🎽';
   }
+  // [2026-09-17] "갑주(전사&도적용) 이런식으로 타직업들도 표기해줘" 요청 -- 그룹 헤더에
+  // "이 그룹을 누가 쓸 수 있는지"를 직업명으로 풀어서 보여준다. WEAPON_CLASS_JOBS를 그대로
+  // 재사용해서 서버 쪽 착용 판정과 항상 같은 직업 목록을 보여주도록(따로 하드코딩 안 함).
+  // COMMON(악세서리 공용)은 5직업 전부라 나열하면 너무 길어지고 "공용"이란 라벨 자체가
+  // 이미 뜻을 담고 있어서 접미사를 안 붙인다.
+  function equipGroupJobSuffix(equipClass) {
+    var jobs = WEAPON_CLASS_JOBS[equipClass];
+    if (!jobs || equipClass === 'COMMON') return '';
+    return '(' + jobs.map(function (j) { return JOB_KR[j] || j; }).join('&') + '용)';
+  }
 
   // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-card 헤더 공용.
   // 이미지 로드 실패(외부 API 차단 등) 시 직업 이모지로 폴백하는 로직을 한 곳에 모음.
@@ -2347,7 +2365,7 @@ var TW = (function () {
       var title = document.createElement('div');
       title.className = 'equip-group-title';
       var groupLabel = job === 'COMMON' ? '공용 악세서리' : (WEAPON_CLASS_NAME[job] || JOB_KR[job] || job);
-      title.textContent = groupLabel + ' (' + list.length + ')';
+      title.textContent = groupLabel + equipGroupJobSuffix(job) + ' (' + list.length + ')';
       box.appendChild(title);
 
       var grid = document.createElement('div');
