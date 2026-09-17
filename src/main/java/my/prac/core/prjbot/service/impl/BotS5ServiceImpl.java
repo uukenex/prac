@@ -1673,6 +1673,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         int m = floor % 10;
+        // [2026-09-17] "파티 전멸 후에도 다음 주사위를 쓸 수 있던데" 신고 -- 마을(m==0)에서는
+        // 계속 움직일 수 있어야 하므로(회복이 마을에서만 일어남) 사냥터/보스층에서만 막는다.
+        if (m != 0 && isPartyWiped(userName)) {
+            return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. 마을로 돌아가야 부활합니다. (/층변경 0 또는 /탑내려가기)";
+        }
         if (m == 0) {
             if (floor == 0) {
                 // 튜토리얼 진행 중(0층 마을) — 다음 단계를 순서대로 안내
@@ -2088,6 +2093,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (c.get("PARTY_SLOT") != null) cnt++;
         }
         return cnt;
+    }
+
+    /** [2026-09-17] "파티 전멸 후에도 다음 주사위를 계속 쓸 수 있다" 신고 -- 테스트계정 전용
+     *  우회가 아니라 실제 모든 계정에 있던 빈틈이었다. 전멸 시 STATUS는 NORMAL로 돌아가는데
+     *  (마을로 이동은 계속 할 수 있어야 해서), startCombat()엔 파티 생존 여부를 전혀 확인하지
+     *  않는다 -- 그래서 전멸한 채로 사냥터를 계속 돌아다니면 COMBAT/ELITE/보스 칸에서 새
+     *  전투가 또 시작되고, 양쪽 다 공격 가능한 인원이 0명이라 0dmg만 오가며 의미 없이
+     *  반복됐다. 파티 전원(편성된 동료 기준) HP가 0이면 true. */
+    private boolean isPartyWiped(String userName) {
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) party.add(c);
+        }
+        if (party.isEmpty()) return false; // 편성 자체가 없으면 이건 다른 안내(파티편성 필요)로 처리됨
+        for (HashMap<String, Object> c : party) {
+            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            if (PP.toBaseValue(hp) > 0) return false;
+        }
+        return true;
     }
 
     private String handleSpecialTile(String userName, int floor, int visited) {
