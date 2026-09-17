@@ -138,6 +138,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         return JOB_NAME.getOrDefault(equipClass, equipClass);
     }
 
+    /** [2026-09-17] "★6무기 라고만 되어있는데 ★6검/지팡이/활로 각각 명칭 넣어달라" 요청 -- 무기는
+     *  equipClassLabel 하나로 이미 종류가 드러나므로("검") partNameOf("무기")를 또 안 붙인다(안
+     *  그러면 "검 무기"처럼 겹쳐 보임). 헬멧/갑옷/악세서리는 기존처럼 "직업 부위"(예: "전사 투구"). */
+    private String equipFullLabel(String equipClass, String part) {
+        if ("WEAPON".equals(part)) return equipClassLabel(equipClass, part);
+        return equipClassLabel(equipClass, part) + " " + partNameOf(part);
+    }
+
     // 동료 뽑을 때 붙는 이름 -- 직업별×등급별로 관리(도감/애착 형성을 위해 의도적으로 좁힘).
     // [설계 변경] 원래는 직업당 3종을 등급(GRADE) 구분 없이 통으로 공유해서, 다른 등급끼리도 같은
     // 이름이 겹쳐 뽑힐 수 있었다(예: ★2 소라와 ★3 소라가 동시에 존재 가능) -- 이게 중복(dupe) 판정을
@@ -5373,7 +5381,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         String equipClass = (String) r.get("job"); // WEAPON이면 이미 무기군(SWORD/STAFF/BOW)으로 변환된 값
         String part = (String) r.get("part");
         int grade = intVal(r.get("grade"), 1);
-        return "🎁 " + equipClassLabel(equipClass, part) + "용 " + partNameOf(part) + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
+        // 무기는 "검용 무기"처럼 겹쳐 보이지 않게 부위명(partNameOf)을 생략(equipClassLabel만으로
+        // 이미 종류가 드러남), 헬멧/갑옷은 기존 "전사용 투구" 문구 그대로 유지.
+        String itemLabel = "WEAPON".equals(part) ? (equipClassLabel(equipClass, part) + "용")
+                : (equipClassLabel(equipClass, part) + "용 " + partNameOf(part));
+        return "🎁 " + itemLabel + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
     }
 
     @Override
@@ -5991,8 +6003,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> e : unequipped) {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
-                sb.append(idx++).append(". ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
-                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                sb.append(idx++).append(". ").append(equipFullLabel(strVal(e.get("CLASS"), ""), part))
+                  .append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
         }
@@ -6002,8 +6014,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
                 Object cid = e.get("EQUIPPED_COMPANION_ID");
-                sb.append("- ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
-                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                sb.append("- ").append(equipFullLabel(strVal(e.get("CLASS"), ""), part))
+                  .append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")")
                   .append(" → ").append(companionLabel.getOrDefault(((Number) cid).intValue(), "?"))
                   .append(NL);
@@ -6035,8 +6047,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> e : unequipped) {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
-                sb.append(idx++).append(". ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
-                  .append(" ").append(partNameOf(part)).append(" ★").append(grade)
+                sb.append(idx++).append(". ").append(equipFullLabel(strVal(e.get("CLASS"), ""), part))
+                  .append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
         }
@@ -6114,7 +6126,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 겸용하게 되면서 "검(아츠시)에게..." 같은 오표시가 날 수 있었다).
         String targetJob = JOB_NAME.getOrDefault(strVal(targetCompanion.get("CLASS"), ""), "?");
         String targetName = strVal(targetCompanion.get("NAME"), targetJob);
-        return "🎽 " + targetJob + "(" + targetName + ")에게 " + partNameOf(part) + " ★" + grade
+        // 무기는 "무기 ★4"보다 "검 ★4"처럼 구체적으로 -- equipClass(장비 쪽 CLASS)를 그대로 쓴다.
+        String itemLabel = "WEAPON".equals(part) ? equipClassLabel(equipClass, part) : partNameOf(part);
+        return "🎽 " + targetJob + "(" + targetName + ")에게 " + itemLabel + " ★" + grade
                 + " (" + equipBonusText(part, grade) + ") 장착 완료!";
     }
 
@@ -6167,7 +6181,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateEquipEquippedCompanion(unwear);
         String part = strVal(found.get("PART"), "");
         int grade = intVal(found.get("GRADE"), 1);
-        return "🧺 " + partNameOf(part) + " ★" + grade + " 을(를) 해제했습니다. (미착용 목록으로 이동)";
+        String itemLabel = "WEAPON".equals(part) ? equipClassLabel(strVal(found.get("CLASS"), ""), part) : partNameOf(part);
+        return "🧺 " + itemLabel + " ★" + grade + " 을(를) 해제했습니다. (미착용 목록으로 이동)";
     }
 
     /** 선택권 등급(3/4/5)에 대응하는 진행상태 컬럼/필드 접미사("" 또는 "G4"/"G5"). */
@@ -6282,7 +6297,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         grantAchievement(userName, 12);
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
-        return "✨ 합성 성공! " + equipClassLabel(clazz, part) + " " + partNameOf(part) + " ★" + (grade + 1)
+        return "✨ 합성 성공! " + equipFullLabel(clazz, part) + " ★" + (grade + 1)
                 + " (" + equipBonusText(part, grade + 1) + ") 획득!";
     }
 
@@ -6322,10 +6337,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> virtualCredit = new LinkedHashMap<>(); // key -> 합성으로 생겼지만 아직 미확정인 수량
         int totalSynthCount = 0;
 
+        // [2026-09-17] "5성이상은 일괄합성이 안되도록 해줘" 요청 -- 상한을 5에서 4로 낮춰서
+        // ★5 재료(3개 이상 있어도)는 이 반복문이 아예 쳐다보지 않는다. ★4까지 조합해 ★5를
+        // "만드는" 것까지는 그대로 되지만(정상적인 성장 경로), 그렇게 만들어졌거나 원래 갖고
+        // 있던 ★5를 또 3개씩 모아 ★6으로 자동 소모하는 것만 막는다(개별 "합성" 버튼으로
+        // 직접 누르는 수동 합성은 equipSynthesis()가 따로 처리하므로 영향 없음 -- 요청이
+        // "일괄합성"만 콕 집어 말했으므로 수동은 그대로 둠).
         for (String cp : classPartCombos) {
             String[] cpArr = cp.split("\\|", 2);
             String clazz = cpArr[0], part = cpArr[1];
-            for (int grade = 1; grade <= 5; grade++) {
+            for (int grade = 1; grade <= 4; grade++) {
                 String key = clazz + "|" + part + "|" + grade;
                 List<Integer> realIds = realIdsByKey.getOrDefault(key, Collections.emptyList());
                 int realPos = 0; // realIds 중 아직 소모(삭제 예약)하지 않은 다음 인덱스
@@ -6368,7 +6389,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 e.put("equippedCompanionId", null);
                 dao.insertEquip(e);
             }
-            resultLines.add(equipClassLabel(clazz, part) + " " + partNameOf(part) + " ★" + grade
+            resultLines.add(equipFullLabel(clazz, part) + " ★" + grade
                     + " (" + equipBonusText(part, grade) + ") x" + qty);
         }
 

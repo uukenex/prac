@@ -2278,8 +2278,12 @@ var TW = (function () {
         var synthBtn = canSynth(e)
             ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
             : '';
+        // [2026-09-17] "★6무기 라고만 되어있는데 ★6검/지팡이/활로 각각 표시해달라" 요청 --
+        // 그룹 헤더(검/지팡이/활)는 이미 구분되지만 카드 자체는 부위명(무기)만 찍혀서 어떤
+        // 무기군인지 카드 하나만 보고는 알 수 없었다. 무기일 때만 부위명 대신 무기군 이름으로.
+        var eqLabel = e.PART === 'WEAPON' ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART);
         card.innerHTML = '<div class="eq-part">' + (PART_EMOJI[e.PART] || '🎽') + '</div>'
-            + '<div class="eq-grade">' + (PART_KR[e.PART] || e.PART) + ' ★' + e.GRADE + '</div>'
+            + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + '</div>'
             + '<div class="btn-group">'
             + '<button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>'
             + synthBtn
