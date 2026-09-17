@@ -5809,6 +5809,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         return AUTO_HUNT_KILLS_PER_HOUR;
     }
 
+    @Override
+    public String currentFloorMonsterName(int floor) {
+        boolean isBossFloor = floor % 10 == 9;
+        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N");
+        if (mon == null) return null;
+        return floorMonsterName(floor, mon);
+    }
+
     /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */
     private int statCapFor(int unlockedBlock) {
         return 5 + 5 * (unlockedBlock / 10);

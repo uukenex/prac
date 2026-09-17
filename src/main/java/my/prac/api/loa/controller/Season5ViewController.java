@@ -91,12 +91,18 @@ public class Season5ViewController {
         // 몬스터 이름이 없다. 최대HP는 몬스터마다 하드코어 스케일링 등으로 달라질 수 있어
         // 클라이언트가 "이 몬스터를 처음 본 순간의 HP"를 자체적으로 100% 기준선으로 잡아
         // 쓰므로 여기선 이름만 추가로 내려준다(전투 진행/판정 로직은 전혀 건드리지 않음).
+        // [2026-09-17 버그수정] "전투화면 몬스터 이름/텍스트 전투로그가 서로 다르다" 신고 --
+        // 처음엔 여기서 TBOT_S5_MONSTER_INFO.MONSTER_NAME을 직접 읽었는데, 사냥터(비보스)
+        // 몬스터는 실제 전투 로그가 그 DB 이름을 안 쓰고 층 위치 기준 순환 이름 목록
+        // (BotS5ServiceImpl.FLOOR_MONSTER_NAME/floorMonsterName)을 쓴다는 걸 놓쳤다 --
+        // DB 이름을 그대로 내려주다 보니 실제로는 "어둠 숲도둑 고블린"과 싸우고 있는데
+        // 화면엔 그 블록 DB상 이름("뒤틀린 차원 촉수괴" 등, 보스 이름 대역과 겹쳐 있던 값)이
+        // 뜨는 불일치가 났다. 전투 로그와 항상 같은 이름이 나오도록 그 로직을 그대로 쓰는
+        // s5Service.currentFloorMonsterName()으로 교체(보스는 원래도 DB 이름 그대로라 결과 동일).
         if ("IN_COMBAT".equals(String.valueOf(progress.get("STATUS")))) {
             int floorNow = toInt(progress.get("CUR_FLOOR"));
-            int blockNo = (floorNow / 10) + 1;
-            boolean isBossFloor = (floorNow % 10 == 9);
-            HashMap<String, Object> mon = s5Dao.selectMonster(blockNo, isBossFloor ? "Y" : "N");
-            if (mon != null) result.put("monsterName", mon.get("MONSTER_NAME"));
+            String monsterName = s5Service.currentFloorMonsterName(floorNow);
+            if (monsterName != null) result.put("monsterName", monsterName);
         }
 
         int floor = toInt(progress.get("CUR_FLOOR"));

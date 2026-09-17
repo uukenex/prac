@@ -147,6 +147,16 @@ public interface BotS5Service {
     /** 자동사냥 시간당 처치 수(config, /갱신으로 조절됨) — Season5ViewController의 PP/시간 추정치가 참조 */
     int autoHuntKillsPerHour();
 
+    /** [2026-09-17] 웹 SPA 전투화면(포켓몬 배틀 스타일)에서 몬스터 이름을 보여주기 위한 조회용.
+     *  주의: 사냥터(비보스) 몬스터는 TBOT_S5_MONSTER_INFO.MONSTER_NAME을 화면에 그대로 쓰지
+     *  않는다 -- 실제 전투 로그(eliteMonsterName/floorMonsterName)는 층 위치 기준으로 순환
+     *  배정되는 별도 이름 목록(FLOOR_MONSTER_NAME)을 쓰므로, DB 컬럼을 그대로 읽으면(예전
+     *  Season5ViewController가 이렇게 했다가 실사례로 "뒤틀린 차원 촉수괴"(그 블록 DB상
+     *  이름) vs "어둠 숲도둑 고블린"(실제 전투 로그 이름)처럼 완전히 다른 이름/몬스터로
+     *  보이는 불일치가 났었음) 전투 로그와 다른 이름이 나온다. 보스는 DB 이름을 그대로
+     *  쓰므로(floorMonsterName 참고) 결과가 같다. 몬스터가 없으면 null. */
+    String currentFloorMonsterName(int floor);
+
     /** /스탯구매 — 인자 없으면 현재 레벨/다음 비용, type 있으면 해당 스탯 구매(ATK/MINATK/HP) */
     String statShop(String userName, String type);
 
