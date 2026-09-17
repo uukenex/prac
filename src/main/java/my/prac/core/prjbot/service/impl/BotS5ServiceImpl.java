@@ -2544,6 +2544,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
+            // [2026-09-17] "도사는 서포터로 만들자, 현행 데미지의 6분의1수준으로 낮춰서 딜은
+            // 그대로 들어가도록(완전히 0은 아님), 실드는 변경없음" 요청 -- 실드는 이 dmg와
+            // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
+            // 계산되므로 이 줄과 무관하게 그대로 유지된다.
+            if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
