@@ -1778,6 +1778,15 @@ var TW = (function () {
     if (WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
     return JOB_KR[equipClass] || equipClass;
   }
+  // [2026-09-17] "무기 아이콘을 지팡이는 지팡이로, 활은 활로, 갑옷도 적당한 거 있으면"
+  // 요청 -- 지금까진 PART 하나로만 아이콘을 정해서(무기는 전부 ⚔️) 검/지팡이/활이 다
+  // 똑같은 검 아이콘으로 보였다. 그룹(검/지팡이/활/갑주/로브/재킷)별로 실제 어울리는
+  // 이모지를 따로 두고, 매핑에 없으면(투구/악세서리, 또는 마이그레이션 전 구 데이터)
+  // 기존 PART_EMOJI로 그대로 폴백한다.
+  var GROUP_EMOJI = { SWORD: '⚔️', STAFF: '🪄', BOW: '🏹', PLATE: '🛡️', ROBE: '👘', JACKET: '🧥' };
+  function equipIcon(equipClass, part) {
+    return GROUP_EMOJI[equipClass] || PART_EMOJI[part] || '🎽';
+  }
 
   // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-card 헤더 공용.
   // 이미지 로드 실패(외부 API 차단 등) 시 직업 이모지로 폴백하는 로직을 한 곳에 모음.
@@ -1918,7 +1927,7 @@ var TW = (function () {
     if (cur) {
       var curRow = document.createElement('div');
       curRow.className = 'sheet-row current readonly';
-      curRow.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + cur.GRADE + ' 장착중</span>';
+      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + ' 장착중</span>';
       var unwearBtn = document.createElement('button');
       unwearBtn.type = 'button';
       unwearBtn.className = 'mini-btn';
@@ -1944,7 +1953,7 @@ var TW = (function () {
       candidates2.forEach(function (e) {
         var row = document.createElement('div');
         row.className = 'sheet-row';
-        row.innerHTML = '<span class="sr-main">' + PART_EMOJI[part] + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
+        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
         row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
         body.appendChild(row);
       });
@@ -2173,7 +2182,7 @@ var TW = (function () {
         var found = mine.filter(function (e) { return e.PART === part; })[0];
         var equipSlotEl = document.createElement('div');
         equipSlotEl.className = 'ps-equip-slot';
-        equipSlotEl.innerHTML = '<div class="ps-equip-icon">' + (PART_EMOJI[part] || '🎽') + '</div>'
+        equipSlotEl.innerHTML = '<div class="ps-equip-icon">' + (found ? equipIcon(found.CLASS, part) : (PART_EMOJI[part] || '🎽')) + '</div>'
             + '<div class="ps-equip-grade">' + (found ? '★' + found.GRADE : '비어있음') + '</div>';
         var changeEqBtn = document.createElement('button');
         changeEqBtn.type = 'button';
@@ -2369,7 +2378,7 @@ var TW = (function () {
               : '';
           actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
         }
-        card.innerHTML = '<div class="eq-part">' + (PART_EMOJI[e.PART] || '🎽') + '</div>'
+        card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + '</div>'
             + actionsHtml;
         grid.appendChild(card);
