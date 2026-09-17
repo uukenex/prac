@@ -3172,3 +3172,13 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     반대로 그 행을 남기고 미사용 원본(LIMIT_BREAK 2 보유)을 병합(LIMIT_BREAK 0→3)했다.
     삭제 전 `TBOT_S5_USER_EQUIP.EQUIPPED_COMPANION_ID`/`TBOT_S5_USER_PROGRESS.
     WARD_COMPANION_ID` 참조 여부를 전부 확인해서 고아 참조가 안 남게 함.
+  - **[실행 사고] SQL*Plus `;` 뒤 한줄주석 함정**: 처음 `-S`(silent) 옵션으로 스크립트를
+    실행했을 때, `UPDATE ...; -- 주석` 처럼 세미콜론 바로 뒤에 같은 줄로 붙인 주석 5개가
+    전부 `ORA-00911(invalid character)`로 조용히 실패(DELETE/PP환급은 정상 반영, COMMIT도
+    "정상 완료"로 찍혀서 겉보기엔 다 된 것처럼 보였음) -- LIMIT_BREAK를 재조회해서 옛날 값
+    그대로인 걸로 뒤늦게 발견. 5건을 한 건씩 개별 실행+즉시 SELECT 검증으로 복구 완료(최종
+    검증: 7건 전부 목표값 일치, 중복 그룹 0건). 마이그레이션 파일도 주석을 전부 별도 줄로
+    옮기고, 이미 적용 완료라 재실행 시 최근 정상 진행분(추가 PP/한계돌파)을 되돌릴 위험이
+    있어 전체 DML을 주석처리(역사 기록용)로 남겨둠. **교훈: SQL*Plus에서 `;` 직후 같은 줄에
+    `--` 주석 금지, `-S` silent 모드는 에러도 함께 숨기므로 여러 문장을 한 번에 실행할 땐
+    꼭 각 단계 결과를 별도 SELECT로 재검증할 것.**
