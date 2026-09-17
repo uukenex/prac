@@ -1081,22 +1081,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         int floor = intVal(p.get("CUR_FLOOR"), 0);
-        String status = strVal(p.get("STATUS"), "NORMAL");
         PP pp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
 
-        // [2026-09-10] "비슷한 항목끼리 붙이고 이모지도 넣어달라" 요청 -- 예전엔 라벨:값 줄이
-        // 항목마다 하나씩 쭉 나열돼서 한눈에 구획이 안 보였다. 위치/보드, PP, 전투 준비(주사위+
-        // 동료), 자동사냥/처치, 누적 네 묶음으로 나누고 각 묶음 첫 줄에 이모지를 붙였다.
+        // [2026-09-17 전면 개편] "탑정보 스타일을 바꾸고싶어" 요청 -- 실시간 진행상황 위주
+        // (상태/사용주사위/보드위치/자동사냥 상세/이번층 처치진행)에서 누적 프로필 요약
+        // 위주(업적/완전탐사/보유 동료·장비·악세서리 개수)로 개편. 자동사냥 상세 줄은 이
+        // 개편 취지(실시간 상태 정보 축소)에 맞춰 요청 예시에서 빠져있어 함께 제거했다 --
+        // 필요하면 언제든 되돌릴 수 있음. 묶음 사이는 빈 줄로 구분(위치/PP+동료/통계 3묶음).
         StringBuilder sb = new StringBuilder();
         sb.append(target).append(isOther ? "님의 탑 현황" : "님").append("," + NL);
 
         // ── 위치 ──
-        sb.append("🗼 ").append(floor).append("층 (").append(floorKindLabel(floor)).append(") · 상태 ").append(status).append(NL);
-        if (floor % 10 >= 1 && floor % 10 <= 8) {
+        int fpos = floor % 10;
+        boolean isHuntFloor = fpos >= 1 && fpos <= 8;
+        sb.append("🗼 ").append(floor).append("층");
+        if (isHuntFloor) sb.append(" (권장전투력 ").append(floorMonsterCombatPower(floor)).append(")");
+        else sb.append(" (").append(floorKindLabel(floor)).append(")");
+        sb.append(NL);
+        if (isHuntFloor) {
             HashMap<String, Object> fi = dao.selectFloorInfo(floor);
-            HashMap<String, Object> ufp = dao.selectUserFloorProgress(target, floor);
             int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
-            int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
             // "보드위치에 현재탐사율/최고탐사율도 보여달라" 요청으로 추가 -- 이번 원정에서 실제로
             // 발견(방문)한 칸 수 기준 현재탐사율과, 마을 복귀로 리셋되어도 남아있는 역대 최고기록을
             // 같이 보여준다(둘 다 %, 분모가 0이면 0%로 방어).
@@ -1107,20 +1111,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             int bestTileCount = best == null ? 0 : intVal(best.get("TILE_COUNT"), 0);
             int bestPct = bestTileCount > 0 ? (bestVisited * 100 / bestTileCount) : Math.max(curPct, 0);
             boolean fullyExplored = best != null && "Y".equals(strVal(best.get("FULLY_EXPLORED_YN"), "N"));
-            sb.append("🗺️ 보드 ").append(curTile).append("/").append(tileCount)
-              .append(" · 탐사율 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
+            sb.append("🗺️ 탐사율 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
               .append(fullyExplored ? " ✅완전탐사" : "").append(NL);
         }
+        sb.append(NL);
 
-        // ── PP ──
+        // ── PP + 최고 동료 ──
         PP totalEarned = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
         sb.append("💰 보유 ").append(pp.format()).append(" PP · 누적획득 ").append(totalEarned.format()).append(" PP").append(NL);
-
-        // ── 전투 준비(주사위 + 최고티어 동료 3명) ──
-        sb.append("🎲 사용 주사위: ").append(strVal(p.get("DICE_GRADE"), "DICE_6")).append(NL);
         // [2026-09-10] "최고티어 동료 3명의 등급/직업도 표기해달라" 요청 -- 파티 편성 여부와
-        // 무관하게 "보유한 동료 중" 등급이 가장 높은 3명을 뽑아서 "★등급직업(이름)" 형태로
-        // 보여준다(전투 로그의 jobTag()와 동일 표기, 익숙하게).
+        // 무관하게 "보유한 동료 중" 등급이 가장 높은 3명을 뽑아서 "★등급직업" 형태로 보여준다.
+        // [2026-09-17] "이름은 빼고 성급/직업만, 쉼표로만 구분해줘" 요청으로 이름 표기 제거.
         List<HashMap<String, Object>> allCompanions = dao.selectUserCompanions(target);
         if (!allCompanions.isEmpty()) {
             List<HashMap<String, Object>> topThree = new ArrayList<>(allCompanions);
@@ -1128,65 +1129,48 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (topThree.size() > 3) topThree = topThree.subList(0, 3);
             List<String> tags = new ArrayList<>();
             for (HashMap<String, Object> c : topThree) {
-                tags.add(jobTag(intVal(c.get("GRADE"), 1), strVal(c.get("CLASS"), "WARRIOR"), strVal(c.get("NAME"), "?")));
+                tags.add("★" + intVal(c.get("GRADE"), 1) + JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "동료"));
             }
-            sb.append("🏆 최고티어 동료: ").append(String.join(", ", tags)).append(NL);
+            sb.append("🏆 최고 동료: ").append(String.join(",", tags)).append(NL);
         }
+        sb.append(NL);
 
-        // ── 전투력 ──
+        // ── 전투력 + 누적 통계 ──
         // [2026-09-15 신설] "전투력을 수치화 시켜고, 그 수치를 보여주고, 층별 전투력을
         // 나타내 주고, 현재 몇층이 괜찮은 사냥터인지 추천해달라" 요청.
         long myPower = partyCombatPower(target);
-        sb.append("⚡ 전투력: ").append(myPower).append(" (파티 편성 동료 기준)").append(NL);
         if (myPower <= 0) {
-            sb.append("(파티에 동료를 편성하면 전투력이 계산됩니다)").append(NL);
+            sb.append("⚡ 종합전투력: 0 (파티에 동료를 편성하면 계산됩니다)").append(NL);
         } else {
+            sb.append("⚡ 종합전투력: ").append(myPower);
             int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
             if (maxReached < 1) {
-                sb.append("(아직 사냥터에 진입하지 않아 층별 비교는 생략합니다)").append(NL);
+                sb.append("(아직 사냥터 미진입)");
             } else {
-                // [2026-09-16] "너무 길다, 구간별 표를 없애고 지금 있는 층 전투력만 한 줄로
-                // 보여달라" 요청 -- 기존 10구간 표 대신 지금 있는 층(floor) 하나만.
-                int fpos = floor % 10;
-                if (fpos >= 1 && fpos <= 8) {
-                    sb.append("📊 ").append(floor).append("층 전투력 ").append(floorMonsterCombatPower(floor)).append(NL);
-                }
                 // [2026-09-16] "이미 밟아본 층 말고 진짜 전투력 기준으로 추천, 괄호 설명은
                 // 빼달라" 요청 -- 상한을 MAX_FLOOR_REACHED 대신 UNLOCKED_BLOCK(지금 당장
                 // /탑올라가기+층변경으로 이동 가능한 전체 범위)로 바꿔서 계산(recommendHuntFloor
-                // 주석 참고), 문구도 짧게.
+                // 주석 참고).
                 int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
                 int recommended = recommendHuntFloor(myPower, unlockedBlock);
-                if (recommended > 0) {
-                    sb.append("🎯 추천 사냥터: ").append(recommended).append("층").append(NL);
-                } else {
-                    sb.append("⚠️ 지금 전투력으로는 1층 사냥도 버거울 수 있어요 -- 동료 성장/장비 투자를 추천합니다.").append(NL);
-                }
+                if (recommended > 0) sb.append("(🎯추천: ").append(recommended).append("층)");
+                else sb.append("(⚠️ 1층 사냥도 버거울 수 있어요)");
             }
-        }
-
-        // ── 자동사냥 / 처치 ──
-        boolean autoHuntOn = "Y".equals(strVal(p.get("AUTO_HUNT_YN"), "N"));
-        sb.append("🔥 자동사냥: ").append(autoHuntOn ? "ON" : "OFF");
-        if (autoHuntOn) {
-            HashMap<String, Object> log = dao.selectAutoHuntLog(target);
-            int huntFloor = log == null ? floor : intVal(log.get("FLOOR"), floor);
-            HashMap<String, Object> mon = dao.selectMonster(blockNo(huntFloor), "N");
-            if (mon != null) {
-                PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-                PP perHour = perKill.multiply(AUTO_HUNT_KILLS_PER_HOUR * floorPpMultiplier(huntFloor) * autoHuntFloorBonusMultiplier(huntFloor));
-                sb.append(" (").append(huntFloor).append("층 기준, 미접속 시 시간당 약 ").append(perHour.format()).append(" PP)");
-            }
-        }
-        sb.append(NL);
-        // "자동사냥이 지금 층 기준으로 도는지" 헷갈린다는 신고로 추가 -- 이 층에서 몇 마리째인지
-        // 보여줘서 10마리를 다 채워야 켜진다는 걸 명확히 한다. 단, 이미 켜져 있으면 이 카운터는
-        // 더 이상 안 오르고(위 resolveCombatTurn 참고) 의미도 없으므로 표시 자체를 생략한다
-        // (계속 표시하면 "숫자가 이상하게 안 늘어난다"는 오해를 삼).
-        if (!autoHuntOn && floor % 10 >= 1 && floor % 10 <= 8) {
-            sb.append("⚔️ 이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
+            sb.append(NL);
         }
         sb.append("📊 누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
+        sb.append("🏅 업적: ").append(dao.selectUserAchievements(target).size()).append("개").append(NL);
+        sb.append("🗺️ 완전탐사: ").append(dao.countFullyExploredFloors(target)).append("개 층").append(NL);
+        sb.append("👥 동료 보유: ").append(allCompanions.size()).append("명").append(NL);
+        // 장비/악세서리 보유 개수 -- 부위(PART)로 구분(무기/투구/갑옷=장비, 목걸이/반지/팔찌=악세서리).
+        int equipCount = 0, accessoryCount = 0;
+        for (HashMap<String, Object> e : dao.selectUserEquip(target)) {
+            String part = strVal(e.get("PART"), "");
+            if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) accessoryCount++;
+            else equipCount++;
+        }
+        sb.append("🎽 장비 보유: ").append(equipCount).append("개").append(NL);
+        sb.append("💍 악세서리 보유: ").append(accessoryCount).append("개").append(NL);
 
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
