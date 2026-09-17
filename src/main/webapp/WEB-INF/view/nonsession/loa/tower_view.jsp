@@ -1719,6 +1719,21 @@ var TW = (function () {
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
   var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
 
+  // [2026-09-17] 무기 통합(BotS5ServiceImpl의 WEAPON_CLASS_JOBS/JOB_TO_WEAPON_CLASS/
+  // WEAPON_CLASS_NAME/weaponAllowedJobs/equipClassLabel과 반드시 동일하게 유지) -- 검(전사/
+  // 도적)/지팡이(도사/마법사)/활(궁수) 3종. 마이그레이션 전 구 데이터(무기 CLASS가 아직
+  // 직업명 그대로인 경우)도 함께 지원해야 해서 weaponAllowedJobs는 신규값이 아니면 그 값
+  // 자신 하나짜리 집합으로 취급한다(서버 로직과 동일).
+  var WEAPON_CLASS_JOBS = { SWORD: ['WARRIOR', 'ROGUE'], STAFF: ['MAGE', 'PRIEST'], BOW: ['ARCHER'] };
+  var WEAPON_CLASS_NAME = { SWORD: '검', STAFF: '지팡이', BOW: '활' };
+  function weaponAllowedJobs(equipClass) {
+    return WEAPON_CLASS_JOBS[equipClass] || [equipClass];
+  }
+  function equipClassLabel(equipClass, part) {
+    if (part === 'WEAPON' && WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
+    return JOB_KR[equipClass] || equipClass;
+  }
+
   // [2026-09-06] 동료 초상화 엘리먼트 -- party-card/party-slot-card 헤더 공용.
   // 이미지 로드 실패(외부 API 차단 등) 시 직업 이모지로 폴백하는 로직을 한 곳에 모음.
   // clickable이면 탭 시 상세(showCompanionDetail) 카드가 뜬다(그 외 클릭은 부모에게 위임).
@@ -1834,7 +1849,8 @@ var TW = (function () {
     var unequipped = lastParty.unequipped || [];
 
     // 부위+그 동료 직업에 맞는 장비만 고를 수 있다(요청대로 서로 다른 직업 장비는 애초에
-    // 후보에 나오지 않음, equipWear의 직업 제약과 동일 조건).
+    // 후보에 나오지 않음, equipWear의 직업 제약과 동일 조건). [2026-09-17] 무기 통합 후엔
+    // e.CLASS가 SWORD 등 무기군일 수 있어 단순 동등비교 대신 weaponAllowedJobs로 판정한다.
     var occupant = companions.filter(function (c) { return c.PARTY_SLOT === pickerState.slot; })[0];
     if (!occupant) { closePicker(); return; }
     var part = pickerState.part;
@@ -1863,7 +1879,7 @@ var TW = (function () {
     label.textContent = '장착 가능한 미착용 장비';
     body.appendChild(label);
 
-    var candidates2 = unequipped.filter(function (e) { return e.PART === part && e.CLASS === occupant.CLASS; })
+    var candidates2 = unequipped.filter(function (e) { return e.PART === part && weaponAllowedJobs(e.CLASS).indexOf(occupant.CLASS) !== -1; })
         .sort(function (a, b) { return b.GRADE - a.GRADE; });
     if (candidates2.length === 0) {
       var noEquip = document.createElement('div');
@@ -2201,8 +2217,11 @@ var TW = (function () {
     filterBox.appendChild(buildJobFilterRow(equipFilter.job, function (job) { equipFilter.job = job; renderEquipList(); }));
     filterBox.appendChild(buildPartFilterRow(equipFilter.part, function (part) { equipFilter.part = part; renderEquipList(); }));
 
+    // [2026-09-17] 무기 통합 후 e.CLASS가 SWORD 등 무기군일 수 있어, 필터 칩(전사/도적/...)을
+    // 눌렀을 때 그 직업이 쓸 수 있는 무기(예: 전사 -> 검)도 같이 걸리도록 단순 동등비교 대신
+    // weaponAllowedJobs로 판정한다(HELMET/ARMOR 등은 CLASS가 그대로 직업명이라 결과 동일).
     var filtered = unequipped.filter(function (e) {
-      if (equipFilter.job && e.CLASS !== equipFilter.job) return false;
+      if (equipFilter.job && weaponAllowedJobs(e.CLASS).indexOf(equipFilter.job) === -1) return false;
       if (equipFilter.part && e.PART !== equipFilter.part) return false;
       return true;
     });
@@ -2220,9 +2239,13 @@ var TW = (function () {
     // idx(N번)는 서버(BotS5Service.equipWear/equipSynthesis)가 계산하는 "미착용 장비 번호"와
     // 반드시 같은 순서여야 하므로, 필터링/그룹핑은 화면 표시용일 뿐 idx 자체(e.__idx, 이미
     // loadPartyAndEquip에서 필터 전 원본 순서로 매겨둠)는 그대로 쓴다.
+    // [2026-09-17] 무기 통합 후 그룹 키(e.CLASS)가 직업명(WARRIOR 등)일 수도, 무기군(SWORD 등)
+    // 일 수도 있다 -- JOB_ORDER만 순회하면 무기 그룹이 어디에도 안 잡혀서 목록에서 통째로
+    // 사라지므로, 무기군 3종을 순서 뒤에 이어붙인다.
     var grouped = {};
     filtered.forEach(function (e) { (grouped[e.CLASS] = grouped[e.CLASS] || []).push(e); });
-    var jobsInOrder = JOB_ORDER.filter(function (job) { return grouped[job]; });
+    var GROUP_ORDER = JOB_ORDER.concat(['SWORD', 'STAFF', 'BOW']);
+    var jobsInOrder = GROUP_ORDER.filter(function (job) { return grouped[job]; });
 
     var box = document.getElementById('equipListBox');
     box.innerHTML = '';
@@ -2241,7 +2264,7 @@ var TW = (function () {
       });
       var title = document.createElement('div');
       title.className = 'equip-group-title';
-      title.textContent = (JOB_KR[job] || job) + ' (' + list.length + ')';
+      title.textContent = (WEAPON_CLASS_NAME[job] || JOB_KR[job] || job) + ' (' + list.length + ')';
       box.appendChild(title);
 
       var grid = document.createElement('div');

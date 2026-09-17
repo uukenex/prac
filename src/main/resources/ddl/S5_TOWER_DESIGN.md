@@ -2982,3 +2982,41 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     - 마법사(스턴 성공 시 ★5/★6 모두 다음턴까지 1턴 추가 지속)는 기존 설계 그대로 유지
       확인(변경 요청이 "1턴간지속"으로 현재 스펙과 동일해 코드 변경 없음).
   - DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정.
+
+- **[2026-09-17] 장비 분류 통합(무기류) -- 검/지팡이/활 3종으로**: "장비 분류 통합시키고싶어.
+  먼저 무기류를 먼저 할건데, 검/지팡이/활 로 3종류로 구분지을거야(현재는 직업별5종). 검은
+  전사/도적, 지팡이는 도사/마법사, 활은 궁수가 쓸 수 있게." 요청.
+  - **CLASS 컬럼 재해석(스키마 변경 없음)**: `TBOT_S5_USER_EQUIP.CLASS`는 VARCHAR2(10)에
+    CHECK/FK가 전혀 없는 자유 문자열이라(악세서리 도입 때 `PART`에 새 값 3개를 무스키마로
+    추가했던 것과 동일 패턴), `PART='WEAPON'` 행만 새 값(`SWORD`/`STAFF`/`BOW`)을 쓰도록
+    바꾼다. `HELMET`/`ARMOR`/악세서리는 그대로 기존 직업 1:1 유지(이번 범위 아님).
+  - **핵심 헬퍼 2개 신설**(`BotS5ServiceImpl.java`): `weaponAllowedJobs(equipClass)` --
+    무기군 값(SWORD 등)이면 그 그룹의 직업 집합을, 구 데이터(직업명 그대로)면 그 자신
+    1개짜리 집합을 반환(신/구 데이터 모두 지원). `equipClassLabel(equipClass, part)` --
+    무기면 "검"/"지팡이"/"활", 그 외엔 기존처럼 직업명. `equipWear()`의 착용 판정을
+    `equipClass.equals(companion.CLASS)`에서 `weaponAllowedJobs(equipClass).contains(...)`
+    로 교체하고, `equipList`/`equipWearUsage`/`equipSynthesis`/`equipSynthesisAll`/
+    `redeemWeaponChoiceTicket`/`gachaEquip`의 표시 텍스트도 전부 `equipClassLabel`로 교체.
+  - **버그 발견 겸 수정**: `equipWear()` 성공 메시지가 "누구에게 장착했는지"를 표시할 때
+    원래 `JOB_NAME.get(equipClass)`(장비 쪽 CLASS)를 썼는데, 무기 통합 후엔 장비 CLASS가
+    "SWORD" 등이라 "검(아츠시)에게 장착완료" 같은 오표시가 날 뻔했음 -- 실제 장착 대상
+    동료 본인의 CLASS로 고쳤다.
+  - **뽑기(가챠) 드랍률 설계 결정**: `pullEquipCore()`는 기존처럼 5직업 균등으로 job을
+    굴린 뒤, `PART=='WEAPON'`일 때만 그 직업이 속한 무기군으로 변환해 저장(HELMET/ARMOR는
+    그대로 직업명). 결과적으로 검/지팡이 드랍률은 각각 2/5(옛 전사+도적, 옛 도사+마법사가
+    합쳐짐), 활은 그대로 1/5 -- "직업별 드랍 확률 총량은 그대로 두고 착용 가능 범위만
+    넓힌다"는 원칙으로, 3종을 굳이 1/3씩 균등하게 재조정하지는 않았다(궁수 드랍률을
+    깎지 않기 위함). 균등 재조정을 원하면 별도 요청 필요.
+  - **웹뷰도 동일하게 동기화**(`tower_view.jsp`): `WEAPON_CLASS_JOBS`/`WEAPON_CLASS_NAME`/
+    `weaponAllowedJobs`/`equipClassLabel`을 서버와 동일한 매핑으로 JS에도 추가. 장비
+    선택 팝업(`openEquipPicker`)의 착용 가능 후보 필터, 미착용 장비 목록의 직업 필터 칩,
+    그룹 헤더(`JOB_ORDER`만 순회하던 걸 `SWORD/STAFF/BOW`까지 포함하도록 확장 -- 안 그러면
+    통합된 무기 항목이 목록에서 통째로 안 보이는 버그가 났을 것) 세 곳을 서버 로직과
+    맞춰 고쳤다.
+  - **마이그레이션(`S5_WEAPON_CLASS_CONSOLIDATION.sql`, 아직 미적용)**: 기존
+    `PART='WEAPON'` 행의 CLASS를 WARRIOR/ROGUE→SWORD, MAGE/PRIEST→STAFF, ARCHER→BOW로
+    일괄 변경(ASCII만 있어 HEXTORAW 불필요, 재실행해도 안전 -- 이미 새 값인 행은 WHERE
+    조건에 안 걸림). **실행 시점이 중요**: 위 코드가 신/구 CLASS 값을 전부 이해하도록
+    짜여 있어서, "새 코드 배포 → 배포 확인 → 그 다음에 이 SQL 실행" 순서가 안전하다.
+    반대로 하면(SQL을 구코드가 떠 있는 상태에서 먼저 실행) 구코드는 여전히 엄격한
+    동등비교만 하므로 새 코드가 뜨기 전까지 기존 무기 전부가 "장착 불가" 상태가 된다.

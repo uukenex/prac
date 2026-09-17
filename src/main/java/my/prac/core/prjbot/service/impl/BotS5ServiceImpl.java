@@ -94,6 +94,50 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("ARCHER", "궁수");  put("PRIEST", "도사");
     }};
 
+    // [2026-09-17] "장비 분류 통합, 먼저 무기류 -- 검(전사/도적)/지팡이(도사/마법사)/활(궁수)
+    // 3종으로" 요청 -- 기존엔 TBOT_S5_USER_EQUIP.CLASS가 companion CLASS와 1:1(전사무기는
+    // 전사만, 도적무기는 도적만)이었는데, PART='WEAPON'인 행만 이 3개 그룹 값(SWORD/STAFF/BOW)
+    // 을 쓰도록 통합한다(HELMET/ARMOR/악세서리는 그대로 5직업 1:1 유지, 이번 요청 범위 아님).
+    // CLASS 컬럼 자체는 VARCHAR2(10)로 제약(CHECK/FK) 없이 자유 문자열이라 ALTER TABLE 불필요
+    // (S5_ACCESSORY_GACHA.sql이 PART에 새 값 추가할 때 썼던 것과 동일한 무스키마 확장 패턴).
+    //
+    // [마이그레이션 순서 중요] 기존 라이브 데이터엔 PART='WEAPON'인 행의 CLASS가 아직 전부
+    // 예전 직업명(WARRIOR/ROGUE/MAGE/PRIEST/ARCHER)으로 남아있다. 이 코드가 배포된 "직후"에도
+    // (마이그레이션 SQL을 아직 안 돌린 시점에도) 기존 무기가 계속 착용 가능해야 하므로,
+    // weaponAllowedJobs()가 신규값(SWORD/STAFF/BOW)과 구값(직업명, 자기 자신 1명짜리 그룹으로
+    // 취급) 둘 다 이해하도록 짰다 -- "코드 먼저 배포(구/신 데이터 둘 다 호환) -> 그 다음에
+    // 마이그레이션 SQL 실행"이 안전한 순서고, 반대로(마이그레이션 먼저) 하면 새 코드가 배포되기
+    // 전까지 모든 기존 무기가 "전용 아님" 오류로 착용 불가능해지는 사고가 난다.
+    private static final HashMap<String, java.util.Set<String>> WEAPON_CLASS_JOBS = new HashMap<String, java.util.Set<String>>() {{
+        put("SWORD", new java.util.HashSet<>(java.util.Arrays.asList("WARRIOR", "ROGUE")));
+        put("STAFF", new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST")));
+        put("BOW",   new java.util.HashSet<>(java.util.Arrays.asList("ARCHER")));
+    }};
+    private static final HashMap<String, String> JOB_TO_WEAPON_CLASS = new HashMap<String, String>() {{
+        put("WARRIOR", "SWORD"); put("ROGUE", "SWORD");
+        put("MAGE", "STAFF");    put("PRIEST", "STAFF");
+        put("ARCHER", "BOW");
+    }};
+    private static final HashMap<String, String> WEAPON_CLASS_NAME = new HashMap<String, String>() {{
+        put("SWORD", "검"); put("STAFF", "지팡이"); put("BOW", "활");
+    }};
+    private static final String[] WEAPON_CLASS_KEYS = { "SWORD", "STAFF", "BOW" };
+
+    /** equip의 CLASS 원본값(신규 SWORD/STAFF/BOW 또는 구 직업명 둘 다)을 받아 "착용 가능한
+     *  동료 직업 집합"으로 정규화한다 -- 마이그레이션 전후 데이터가 섞여 있어도 항상 정답을 낸다. */
+    private java.util.Set<String> weaponAllowedJobs(String equipClass) {
+        java.util.Set<String> group = WEAPON_CLASS_JOBS.get(equipClass);
+        if (group != null) return group;
+        return java.util.Collections.singleton(equipClass); // 구 데이터(직업명 그대로) -- 그 직업 1명짜리 그룹
+    }
+
+    /** 장비 CLASS 표시용 라벨 -- 무기(PART=WEAPON)면서 신규값(SWORD/STAFF/BOW)이면 "검"/"지팡이"/
+     *  "활", 그 외(헬멧/갑옷/악세서리, 또는 마이그레이션 전 구 데이터)는 기존처럼 직업명. */
+    private String equipClassLabel(String equipClass, String part) {
+        if ("WEAPON".equals(part) && WEAPON_CLASS_NAME.containsKey(equipClass)) return WEAPON_CLASS_NAME.get(equipClass);
+        return JOB_NAME.getOrDefault(equipClass, equipClass);
+    }
+
     // 동료 뽑을 때 붙는 이름 -- 직업별×등급별로 관리(도감/애착 형성을 위해 의도적으로 좁힘).
     // [설계 변경] 원래는 직업당 3종을 등급(GRADE) 구분 없이 통으로 공유해서, 다른 등급끼리도 같은
     // 이름이 겹쳐 뽑힐 수 있었다(예: ★2 소라와 ★3 소라가 동시에 존재 가능) -- 이게 중복(dupe) 판정을
@@ -5289,10 +5333,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = JOB_KEYS[RND.nextInt(JOB_KEYS.length)];
         String[] parts = { "HELMET", "WEAPON", "ARMOR" };
         String part = parts[RND.nextInt(parts.length)];
+        // [2026-09-17] 무기 통합 -- job 롤은 기존 그대로 5직업 균등(HELMET/ARMOR엔 영향 없음),
+        // WEAPON일 때만 그 직업이 속한 무기군(검/지팡이/활)으로 변환해서 저장한다. 예전엔
+        // 전사무기 1/5 + 도적무기 1/5로 따로 나뉘던 게 이제 "검" 하나로 합쳐져 2/5가 되고(궁수
+        // 활은 그대로 1/5) -- 직업별 드랍 확률 총량 자체는 그대로 유지되고 착용 가능 범위만
+        // 넓어지는 것뿐이라 경제(획득 총량)에 영향 없음.
+        String equipClassToStore = "WEAPON".equals(part) ? JOB_TO_WEAPON_CLASS.getOrDefault(job, job) : job;
 
         HashMap<String, Object> e = new HashMap<>();
         e.put("userName", userName);
-        e.put("class", job);
+        e.put("class", equipClassToStore);
         e.put("part", part);
         e.put("grade", grade);
         e.put("equippedCompanionId", null);
@@ -5301,7 +5351,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (grade == 6) grantAchievement(userName, 22);
 
         result.put("ok", true);
-        result.put("job", job);
+        result.put("job", equipClassToStore); // WEAPON이면 무기군(SWORD/STAFF/BOW), 그 외엔 원래 직업명 그대로
         result.put("part", part);
         result.put("grade", grade);
         return result;
@@ -5320,10 +5370,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> r = pullEquipCore(userName, gacha, p, gachaId);
         if (r.get("error") != null) return (String) r.get("error");
 
-        String job = (String) r.get("job");
+        String equipClass = (String) r.get("job"); // WEAPON이면 이미 무기군(SWORD/STAFF/BOW)으로 변환된 값
         String part = (String) r.get("part");
         int grade = intVal(r.get("grade"), 1);
-        return "🎁 " + JOB_NAME.get(job) + "용 " + partNameOf(part) + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
+        return "🎁 " + equipClassLabel(equipClass, part) + "용 " + partNameOf(part) + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
     }
 
     @Override
@@ -5941,7 +5991,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> e : unequipped) {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
-                sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                sb.append(idx++).append(". ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
                   .append(" ").append(partNameOf(part)).append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
@@ -5952,7 +6002,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
                 Object cid = e.get("EQUIPPED_COMPANION_ID");
-                sb.append("- ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                sb.append("- ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
                   .append(" ").append(partNameOf(part)).append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")")
                   .append(" → ").append(companionLabel.getOrDefault(((Number) cid).intValue(), "?"))
@@ -5985,7 +6035,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> e : unequipped) {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
-                sb.append(idx++).append(". ").append(JOB_NAME.getOrDefault(strVal(e.get("CLASS"), ""), "?"))
+                sb.append(idx++).append(". ").append(equipClassLabel(strVal(e.get("CLASS"), ""), part))
                   .append(" ").append(partNameOf(part)).append(" ★").append(grade)
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
@@ -6024,17 +6074,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> party = new ArrayList<>();
         for (HashMap<String, Object> c : companions) if (c.get("PARTY_SLOT") != null) party.add(c);
 
+        // [2026-09-17] 무기(PART=WEAPON)는 CLASS가 직업 1:1이 아니라 무기군(SWORD/STAFF/BOW)일
+        // 수 있어서, weaponAllowedJobs()로 "이 CLASS 값을 착용 가능한 직업 집합"을 구해 그 집합에
+        // 포함되는지로 판정한다(헬멧/갑옷/악세서리는 그 CLASS가 곧 직업명 그대로라 singleton
+        // 집합이 되어 기존과 동일한 1:1 동작 -- weaponAllowedJobs()가 구/신 데이터 모두 처리).
+        java.util.Set<String> allowedJobs = weaponAllowedJobs(equipClass);
         HashMap<String, Object> targetCompanion = null;
         if (companionIdx != null) {
             if (companionIdx < 1 || companionIdx > party.size()) return "잘못된 동료 번호입니다. /파티편성을 확인하세요.";
             targetCompanion = party.get(companionIdx - 1);
         } else {
             for (HashMap<String, Object> c : party) {
-                if (equipClass.equals(strVal(c.get("CLASS"), ""))) { targetCompanion = c; break; }
+                if (allowedJobs.contains(strVal(c.get("CLASS"), ""))) { targetCompanion = c; break; }
             }
         }
-        if (targetCompanion == null) return "장착할 동료를 찾지 못했습니다 (같은 직업의 파티원이 필요합니다).";
-        if (!equipClass.equals(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + JOB_NAME.get(equipClass) + " 전용입니다.";
+        if (targetCompanion == null) return "장착할 동료를 찾지 못했습니다 (착용 가능한 직업의 파티원이 필요합니다).";
+        if (!allowedJobs.contains(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + equipClassLabel(equipClass, part) + " 전용입니다.";
 
         int companionId = intVal(targetCompanion.get("COMPANION_ID"), 0);
         // 같은 부위에 이미 장착된 게 있으면 해제
@@ -6053,7 +6108,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateEquipEquippedCompanion(wear);
 
         int grade = intVal(equip.get("GRADE"), 1);
-        String targetJob = JOB_NAME.getOrDefault(equipClass, "?");
+        // [2026-09-17 버그수정] 여기서 표시할 "누구에게 장착했는지"는 equipClass(장비 쪽,
+        // 무기 통합 후 SWORD 등일 수 있음)가 아니라 실제 대상 동료 본인의 직업이어야 한다
+        // (예전엔 equipClass==동료 직업이 항상 1:1이라 안 갈렸지만, 검/지팡이가 두 직업을
+        // 겸용하게 되면서 "검(아츠시)에게..." 같은 오표시가 날 수 있었다).
+        String targetJob = JOB_NAME.getOrDefault(strVal(targetCompanion.get("CLASS"), ""), "?");
         String targetName = strVal(targetCompanion.get("NAME"), targetJob);
         return "🎽 " + targetJob + "(" + targetName + ")에게 " + partNameOf(part) + " ★" + grade
                 + " (" + equipBonusText(part, grade) + ") 장착 완료!";
@@ -6168,10 +6227,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         int have = intVal(p.get(column), 0);
         if (have <= 0) return "보유한 ★" + grade + " 무기 선택권이 없습니다.";
         if (!JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
+        // [2026-09-17] 무기 통합 -- 플레이어는 그대로 직업을 고르지만(기존 UX 유지), 실제로
+        // 저장되는 CLASS는 그 직업이 속한 무기군(검/지팡이/활)이다. 예를 들어 전사를 골라도
+        // 도적을 골라도 결과는 똑같이 CLASS=SWORD로 저장되어 둘 다 착용 가능한 검 1자루가 된다.
+        String weaponClass = JOB_TO_WEAPON_CLASS.getOrDefault(job, job);
 
         HashMap<String, Object> e = new HashMap<>();
         e.put("userName", userName);
-        e.put("class", job);
+        e.put("class", weaponClass);
         e.put("part", "WEAPON");
         e.put("grade", grade);
         e.put("equippedCompanionId", null);
@@ -6182,7 +6245,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put(field, have - 1);
         dao.updateUserProgress(up);
 
-        return "🎉 " + JOB_NAME.get(job) + "용 무기 ★" + grade + " (" + equipBonusText("WEAPON", grade) + ") 획득! (선택권 사용, 남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
+        return "🎉 " + equipClassLabel(weaponClass, "WEAPON") + " ★" + grade + " (" + equipBonusText("WEAPON", grade) + ") 획득! (선택권 사용, 남은 ★" + grade + " 선택권 " + (have - 1) + "장)";
     }
 
     @Override
@@ -6219,7 +6282,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         grantAchievement(userName, 12);
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
-        return "✨ 합성 성공! " + JOB_NAME.get(clazz) + " " + partNameOf(part) + " ★" + (grade + 1)
+        return "✨ 합성 성공! " + equipClassLabel(clazz, part) + " " + partNameOf(part) + " ★" + (grade + 1)
                 + " (" + equipBonusText(part, grade + 1) + ") 획득!";
     }
 
@@ -6305,7 +6368,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 e.put("equippedCompanionId", null);
                 dao.insertEquip(e);
             }
-            resultLines.add(JOB_NAME.get(clazz) + " " + partNameOf(part) + " ★" + grade
+            resultLines.add(equipClassLabel(clazz, part) + " " + partNameOf(part) + " ★" + grade
                     + " (" + equipBonusText(part, grade) + ") x" + qty);
         }
 
