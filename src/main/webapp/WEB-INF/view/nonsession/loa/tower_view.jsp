@@ -115,7 +115,17 @@
        오른쪽에서 두 줄 높이를 다 차지하게" 요청 -- 컨트롤 박스를 좌(최대+최소 두 줄, 세로로
        쌓임, 폭 동일)/우(굴리기 버튼, align-items:stretch로 좌측 전체 높이만큼 늘어남) 2단
        레이아웃으로 재구성. */
-    .dice-controls{ display:flex; align-items:stretch; gap:8px; margin:8px 0 10px; }
+    /* [2026-09-17] "주사위선택/주사위사용 버튼이 위쪽에 있어서 스크롤내리면 잘 안보여, 화면
+       상단에 계속 플로팅 되어있게 해달라" 요청 -- 문서(페이지) 스크롤 기준 position:sticky.
+       예전에 칸그리드 안(#towerViewport의 overflow-y:auto 안, 게다가 매번 다시 그려지는
+       .tower-track 자식)에서 sticky를 썼다가 실기기에서 안 붙는 문제로 position:absolute로
+       바꾼 적이 있는데(board-track-controls 주석 참고), 이번엔 그 두 함정(중첩 스크롤 컨테이너
+       안 / 매 렌더마다 파괴-재생성되는 엘리먼트)이 둘 다 해당 없다 -- .dice-controls는 정적
+       엘리먼트(자식 내용만 innerHTML로 갱신됨)고, 기준 스크롤도 그냥 문서 자체라 sticky가
+       안정적으로 동작한다. */
+    .dice-controls{ display:flex; align-items:stretch; gap:8px; margin:8px 0 10px;
+                     position:sticky; top:0; z-index:15; background:var(--parchment-deep);
+                     padding:8px; border-radius:0 0 14px 14px; box-shadow:0 4px 10px -4px rgba(0,0,0,.25); }
     .dice-controls-rows{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-width:0; }
     /* [2026-09-05] 사용중인 주사위는 더 크게/진하게 돋보이도록 표시, 한 줄로만 나열
        (줄바꿈 없음, 넘치면 가로 스크롤). */
