@@ -135,9 +135,13 @@ public class Season5ViewController {
             PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), extObj == null ? "" : extObj.toString());
             int pos = floor % 10;
             double floorMult = (pos < 1 || pos > 8) ? 1.0 : (1.0 + 0.1 * (pos - 1)); // BotS5ServiceImpl.floorPpMultiplier와 동일 공식
+            // [2026-09-17] BotS5ServiceImpl.autoHuntFloorBonusMultiplier와 동일 공식(60층 미만
+            // x5, 60~69층 x3, 그 외 x1) -- "저층 자동사냥 보상 늘려달라" 요청, 실제 정산 배율과
+            // 이 미리보기가 따로 놀지 않도록 반드시 같이 맞춰야 함.
+            double lowFloorBonus = floor < 60 ? 5.0 : (floor < 70 ? 3.0 : 1.0);
             // [2026-09-05 버그 수정] 하드코딩 6이 AUTO_HUNT_KILLS_PER_HOUR config화 때 여기는
             // 안 고쳐져서 실제 정산 속도와 이 예상치가 따로 놀 뻔했음 -- 같은 값을 쓰도록 통일.
-            info.put("ppPerHourFormatted", perKill.multiply(s5Service.autoHuntKillsPerHour() * floorMult).format());
+            info.put("ppPerHourFormatted", perKill.multiply(s5Service.autoHuntKillsPerHour() * floorMult * lowFloorBonus).format());
         }
 
         // 정산 대기 중인(=아직 PP로 못 받은) 시간만 보여줘야 하므로 START_DATE(자동사냥이 최초 켜진 시점,

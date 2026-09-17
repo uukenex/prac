@@ -304,9 +304,19 @@
        DOM 엘리먼트를 갱신할 때마다 새로 만들지 않고 width만 바꾸는 게 핵심(updateBattleParty/
        updateBattleScreen 참고). 몬스터는 이미지 에셋이 전혀 없어(DB에 스프라이트 컬럼 자체가
        없음) monsterEmoji()로 몬스터ID 기반 이모지를 고정 배정해 자리만 채운다. */
+    /* [2026-09-17 2차] "전투시 UI창 크기가 맵뷰 UI창과 동일사이즈면 좋겠어" 요청 -- .tower-viewport
+       와 똑같이 height:min(480px, 60vh)로 고정해서 맵뷰↔전투화면 전환 시 카드 높이가 안 흔들린다.
+       내용은 flex column + space-between으로 위(몬스터)/아래(파티) 끝에 붙이고 남는 세로공간은
+       가운데 여백으로 자연스럽게 흡수한다. */
     .battle-screen{ background:linear-gradient(180deg,#E9F1E1,#F8F4E4); border:1.5px solid var(--line);
-                     border-radius:14px; padding:14px; margin-top:2px; }
-    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-bottom:20px; }
+                     border-radius:14px; padding:16px; margin-top:2px; box-sizing:border-box;
+                     height:min(480px, 60vh); display:flex; flex-direction:column; justify-content:space-between;
+                     opacity:1; transition:opacity .28s ease; }
+    /* [2026-09-17 2차] "전투진입시 포켓몬처럼 스르르르 페이드아웃/페이드인" 요청 -- 맵뷰<->전투화면
+       전환(진입/이탈)에만 opacity 크로스페이드를 건다(crossfadeBoardView 참고). 전투 중 HP
+       갱신처럼 화면을 안 바꾸는 경우는 이 transition과 무관. */
+    .tower-viewport-wrap{ transition:opacity .28s ease; }
+    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; }
     .bs-monster-sprite{ font-size:48px; line-height:1; }
     .bs-monster-sprite.hit{ animation:bsShake .35s; }
     .bs-monster-info{ min-width:150px; max-width:220px; text-align:right; }
@@ -325,6 +335,18 @@
     .bs-atk-pulse .bs-avatar, .bs-atk-pulse .avatar-emoji{ animation:bsLunge .28s; }
     @keyframes bsShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
     @keyframes bsLunge{ 0%{ transform:translateY(0); } 40%{ transform:translateY(-9px); } 100%{ transform:translateY(0); } }
+
+    /* [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 전투화면/보드
+       어느 쪽이든 상관없이 위에 살짝 떴다 사라지는 뱃지(showVictoryFlash 참고). 뷰포트 기준
+       고정 위치라 카드 안 레이아웃(position:relative 필요 여부)과 무관하게 항상 동작한다. */
+    .victory-flash{ position:fixed; top:38%; left:50%; transform:translate(-50%,-50%); z-index:9999;
+                      pointer-events:none; opacity:0; transition:opacity .3s ease; }
+    .victory-flash.show{ opacity:1; }
+    .victory-flash .vf-badge{ background:linear-gradient(135deg,#FFF3D6,#FFE7A8); border:2px solid var(--gold);
+                                border-radius:16px; padding:16px 32px; font-size:20px; font-weight:800;
+                                color:#6B4A12; box-shadow:0 8px 28px rgba(0,0,0,.2); white-space:nowrap;
+                                animation:vfPop .45s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes vfPop{ 0%{ transform:scale(.5); opacity:0; } 60%{ transform:scale(1.12); opacity:1; } 100%{ transform:scale(1); } }
     /* [2026-09-14] "전체보기 카드에도 공격력/방어력을 HP처럼 표기해달라" 요청 -- hp-num과
        동일한 스타일 공유. */
     .atk-num, .def-num{ font-size:9px; color:var(--ink-soft); margin-top:1px; }
@@ -650,6 +672,7 @@
 </div>
 
 <div class="msg-toast" id="msgToast"></div>
+<div class="victory-flash" id="victoryFlash"><div class="vf-badge">🎉 전투 승리!</div></div>
 
 <div class="detail-overlay" id="detailOverlay" onclick="if(event.target===this) TW.closeDetail();">
   <div class="detail-card">
@@ -777,16 +800,41 @@ var TW = (function () {
   // 최대HP를 안 내려주므로 -- 하드코어 스케일링 등으로 몬스터마다 최대치가 달라 고정 상수도 못
   // 씀). battle.monsterHp/companionHp는 "지난 갱신에서 봤던 HP"로, 이번에 그보다 줄었으면 그
   // 대상만 흔들림 애니메이션을 준다(누가 맞았는지 서버가 알려주지 않으니 HP 감소로 추론).
-  var battle = { monsterId: null, monsterBaseHp: null, monsterHp: null, companionHp: {} };
+  var battle = { monsterId: null, monsterBaseHp: null, monsterHp: null, companionHp: {}, wasInCombat: false };
 
-  function updateBattleScreen(p) {
+  // [2026-09-17 2차] "전투진입시 포켓몬처럼 스르르르 페이드아웃/페이드인" 요청 -- 맵뷰<->전투화면
+  // 전환(진입/이탈) "그 순간"에만 크로스페이드를 건다. 전투 중 매 HP 갱신마다 다시 부르면
+  // 화면이 계속 깜빡이므로, updateBattleScreen()이 실제 전환(inCombat 값이 지난번과 달라짐)일
+  // 때만 이 함수를 부른다.
+  function crossfadeBoardView(showBattle) {
     var screen = document.getElementById('battleScreen');
     var boardWrap = document.querySelector('.tower-viewport-wrap');
     var trackControls = document.querySelector('.board-track-controls');
+    var showEl = showBattle ? screen : boardWrap;
+    var hideEl = showBattle ? boardWrap : screen;
+    if (trackControls) trackControls.style.display = showBattle ? 'none' : '';
+    if (hideEl.style.display === 'none') {
+      // 이미 숨겨져 있었으면(최초 페이지 로드 등) 페이드 없이 바로 보여준다.
+      showEl.style.display = '';
+      showEl.style.opacity = '1';
+      return;
+    }
+    hideEl.style.opacity = '0';
+    setTimeout(function () {
+      hideEl.style.display = 'none';
+      showEl.style.display = '';
+      showEl.style.opacity = '0';
+      void showEl.offsetWidth; // 강제 리플로우 -- 이게 없으면 opacity 0->1 전환이 안 먹힘
+      showEl.style.opacity = '1';
+    }, 260);
+  }
+
+  function updateBattleScreen(p) {
     var inCombat = p.STATUS === 'IN_COMBAT';
-    screen.style.display = inCombat ? '' : 'none';
-    boardWrap.style.display = inCombat ? 'none' : '';
-    if (trackControls) trackControls.style.display = inCombat ? 'none' : '';
+    if (inCombat !== battle.wasInCombat) {
+      crossfadeBoardView(inCombat);
+      battle.wasInCombat = inCombat;
+    }
     if (!inCombat) { battle.monsterId = null; return; }
 
     if (battle.monsterId !== p.CUR_MONSTER_ID) {
@@ -866,6 +914,20 @@ var TW = (function () {
   }
 
   var monsterNameCache = ''; // updateBattleScreen()이 loadStatus() 밖에서도 이름을 쓸 수 있게 캐시
+
+  // [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 서버는 전투 승리
+  // 텍스트에 항상 " 처치! 🎉"를 포함한다(BotS5ServiceImpl.resolveCombatTurn의 monsterDead
+  // 처리부, 단일/dual 전부 이 문구를 거침 -- 파티 전멸 감지에 "파티 전멸" 문자열을 쓰는 것과
+  // 동일한 패턴). 승리 직후 STATUS가 바로 NORMAL로 바뀌어 전투화면이 곧 사라지므로, 이 뱃지는
+  // 뷰포트 기준 고정 위치(.victory-flash가 position:fixed)라 전투화면이 사라져도 독립적으로
+  // 잠깐 떴다 사라진다.
+  function showVictoryFlash() {
+    var el = document.getElementById('victoryFlash');
+    if (!el) return;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(showVictoryFlash._t);
+    showVictoryFlash._t = setTimeout(function () { el.classList.remove('show'); }, 1500);
+  }
 
   function toast(msg) {
     var el = document.getElementById('msgToast');
@@ -2466,6 +2528,7 @@ var TW = (function () {
         // 누른 즉시 재생(연출일 뿐이라 실제 판정 결과와 정확히 동기화될 필요는 없음).
         playBattleAttackMotion();
         loadPartyAndEquip();
+        if ((data.message || '').indexOf('처치! 🎉') !== -1) showVictoryFlash();
       }
       loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });

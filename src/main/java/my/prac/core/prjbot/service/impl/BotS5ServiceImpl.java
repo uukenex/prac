@@ -875,6 +875,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         return 1.0 + 0.1 * (pos - 1);
     }
 
+    /** [2026-09-17] "자동사냥 60층 아래구간에서 5배수정도 늘려줘, 70층아래는 3배수로 해줘"
+     * 요청 -- 저층 자동사냥(미접속 정산) 보상만 구간별로 추가 배율을 얹는다. 수동 전투(처치
+     * 보상/스틸/보물상자 등)는 전부 floorPpMultiplier만 그대로 쓰고 이 배율과 무관 -- settleAutoHunt()
+     * 와 /탑현황의 "시간당 예상 PP" 미리보기(둘 다 이 클래스 안), 그리고 웹뷰 tower-status API의
+     * 예상 PP 미리보기(Season5ViewController.buildAutoHuntInfo, 이 메서드와 동일 공식을 유지해야
+     * 함)에서만 곱해진다. 60층 미만은 5배, 60~69층은 3배, 70층 이상은 보정 없음(1배). */
+    private double autoHuntFloorBonusMultiplier(int floor) {
+        if (floor < 60) return 5.0;
+        if (floor < 70) return 3.0;
+        return 1.0;
+    }
+
     private int intVal(Object o, int def) {
         if (o == null) return def;
         return ((Number) o).intValue();
@@ -986,7 +998,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int bestTileCount = best == null ? 0 : intVal(best.get("TILE_COUNT"), 0);
             int bestPct = bestTileCount > 0 ? (bestVisited * 100 / bestTileCount) : Math.max(curPct, 0);
             boolean fullyExplored = best != null && "Y".equals(strVal(best.get("FULLY_EXPLORED_YN"), "N"));
-            sb.append("　🗺️ 보드 ").append(curTile).append("/").append(tileCount)
+            sb.append("🗺️ 보드 ").append(curTile).append("/").append(tileCount)
               .append(" · 탐사율 현재 ").append(curPct).append("% / 최고 ").append(bestPct).append("%")
               .append(fullyExplored ? " ✅완전탐사" : "").append(NL);
         }
@@ -1018,17 +1030,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         long myPower = partyCombatPower(target);
         sb.append("⚡ 전투력: ").append(myPower).append(" (파티 편성 동료 기준)").append(NL);
         if (myPower <= 0) {
-            sb.append("　(파티에 동료를 편성하면 전투력이 계산됩니다)").append(NL);
+            sb.append("(파티에 동료를 편성하면 전투력이 계산됩니다)").append(NL);
         } else {
             int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
             if (maxReached < 1) {
-                sb.append("　(아직 사냥터에 진입하지 않아 층별 비교는 생략합니다)").append(NL);
+                sb.append("(아직 사냥터에 진입하지 않아 층별 비교는 생략합니다)").append(NL);
             } else {
                 // [2026-09-16] "너무 길다, 구간별 표를 없애고 지금 있는 층 전투력만 한 줄로
                 // 보여달라" 요청 -- 기존 10구간 표 대신 지금 있는 층(floor) 하나만.
                 int fpos = floor % 10;
                 if (fpos >= 1 && fpos <= 8) {
-                    sb.append("　📊 ").append(floor).append("층 전투력 ").append(floorMonsterCombatPower(floor)).append(NL);
+                    sb.append("📊 ").append(floor).append("층 전투력 ").append(floorMonsterCombatPower(floor)).append(NL);
                 }
                 // [2026-09-16] "이미 밟아본 층 말고 진짜 전투력 기준으로 추천, 괄호 설명은
                 // 빼달라" 요청 -- 상한을 MAX_FLOOR_REACHED 대신 UNLOCKED_BLOCK(지금 당장
@@ -1037,9 +1049,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
                 int recommended = recommendHuntFloor(myPower, unlockedBlock);
                 if (recommended > 0) {
-                    sb.append("　🎯 추천 사냥터: ").append(recommended).append("층").append(NL);
+                    sb.append("🎯 추천 사냥터: ").append(recommended).append("층").append(NL);
                 } else {
-                    sb.append("　⚠️ 지금 전투력으로는 1층 사냥도 버거울 수 있어요 -- 동료 성장/장비 투자를 추천합니다.").append(NL);
+                    sb.append("⚠️ 지금 전투력으로는 1층 사냥도 버거울 수 있어요 -- 동료 성장/장비 투자를 추천합니다.").append(NL);
                 }
             }
         }
@@ -1053,7 +1065,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> mon = dao.selectMonster(blockNo(huntFloor), "N");
             if (mon != null) {
                 PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-                PP perHour = perKill.multiply(AUTO_HUNT_KILLS_PER_HOUR * floorPpMultiplier(huntFloor));
+                PP perHour = perKill.multiply(AUTO_HUNT_KILLS_PER_HOUR * floorPpMultiplier(huntFloor) * autoHuntFloorBonusMultiplier(huntFloor));
                 sb.append(" (").append(huntFloor).append("층 기준, 미접속 시 시간당 약 ").append(perHour.format()).append(" PP)");
             }
         }
@@ -1063,7 +1075,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 더 이상 안 오르고(위 resolveCombatTurn 참고) 의미도 없으므로 표시 자체를 생략한다
         // (계속 표시하면 "숫자가 이상하게 안 늘어난다"는 오해를 삼).
         if (!autoHuntOn && floor % 10 >= 1 && floor % 10 <= 8) {
-            sb.append("　⚔️ 이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
+            sb.append("⚔️ 이 층 처치: ").append(intVal(p.get("KILL_COUNT_CUR"), 0)).append("/10 (자동사냥 적용까지)").append(NL);
         }
         sb.append("📊 누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
 
@@ -3810,7 +3822,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (kills <= 0) return null;
 
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-        PP reward = perKill.multiply(kills * floorPpMultiplier(floor));
+        PP reward = perKill.multiply(kills * floorPpMultiplier(floor) * autoHuntFloorBonusMultiplier(floor));
         addPp(userName, p, reward);
 
         // [2026-09-08] "자동사냥으로 몇 회 처치, 관련 업적에 추가해달라" 요청 -- 자동사냥으로만
