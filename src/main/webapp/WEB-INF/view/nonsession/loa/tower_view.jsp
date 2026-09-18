@@ -2296,7 +2296,16 @@ var TW = (function () {
       // occIdx 변수를 공유하고 있었다(루프가 다 돈 뒤 클릭 시점엔 항상 마지막 슬롯 값).
       // 다른 버튼들처럼 즉시실행함수로 캡처해서 슬롯마다 자기 값을 갖게 한다.
       (function (idx) { unassignBtn.onclick = function () { action('PARTY_TOGGLE', String(idx)); }; })(occIdx);
+      // [2026-09-18] "동료 1명에 대해 장착할수있는 장비 일괄 장착 기능" 요청 -- 6부위 각각
+      // 미착용 후보 중 최고 등급을 한 번에 장착(서버 equipBestAll이 이미 착용보다 등급 낮으면
+      // 스킵). 다른 버튼들과 같은 즉시실행함수 캡처 패턴으로 occIdx 클로저 버그 재발 방지.
+      var bestAllBtn = document.createElement('button');
+      bestAllBtn.type = 'button';
+      bestAllBtn.className = 'ps-btn';
+      bestAllBtn.textContent = '일괄장착';
+      (function (idx) { bestAllBtn.onclick = function () { action('EQUIP_BEST_ALL', String(idx)); }; })(occIdx);
       actions.appendChild(changeBtn);
+      actions.appendChild(bestAllBtn);
       actions.appendChild(unassignBtn);
       card.appendChild(actions);
 

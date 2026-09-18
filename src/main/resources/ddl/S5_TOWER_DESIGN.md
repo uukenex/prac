@@ -3365,3 +3365,12 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     전체 해제 -- `equipUnwearAll`/`partyToggle`/`partyDragSwap`/`partyUnassignAll` 4곳이 전부
     이 공용 함수를 공유해서 여기 한 곳만 고치면 다 적용됨, 시그니처를 `int companionId` ->
     `HashMap companion`으로 변경).
+
+- **[2026-09-18] 웹 전용 "일괄장착" 버튼**: "동료 1명에 대해 장착할수있는 장비 일괄 장착
+  기능이 생기면 좋겠어" 요청. 신규 `equipBestAll(userName, companionIdx)` -- 6부위
+  (무기/투구/갑옷/목걸이/반지/팔찌) 각각 이 동료 직업이 착용 가능한 미착용 장비 중 최고
+  등급을 찾아, **지금 착용 중인 것보다 등급이 높을 때만** 교체(같거나 낮은 부위는 그대로
+  둬서 불필요한 DB 갱신/장비 뒤섞임 방지). HP 비율 유지는 `equipWear`와 동일하게 전체
+  교체 전/후 EFF_HP를 한 번만 비교(부위 여러 개가 동시에 바뀌어도 재계산 1회).
+  웹 액션 `EQUIP_BEST_ALL`(채팅 명령어 없음, `Season5ViewController`), 파티 슬롯 카드에
+  "일괄장착" 버튼 추가(동료변경/일괄장착/해제 순서).

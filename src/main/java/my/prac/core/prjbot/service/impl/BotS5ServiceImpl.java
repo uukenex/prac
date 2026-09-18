@@ -6459,6 +6459,78 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "🧺 " + job + "(" + name + ")의 장비 " + unequipped + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
 
+    private static final String[] EQUIP_ALL_PARTS = { "WEAPON", "HELMET", "ARMOR", "NECKLACE", "RING", "BRACELET" };
+
+    /** [2026-09-18] "동료 1명에 대해 장착할수있는 장비 일괄 장착 기능" 요청 -- 6부위 각각
+     *  이 동료 직업이 쓸 수 있는 미착용 장비 중 최고 등급을 찾아, 지금 착용 중인 것보다
+     *  등급이 높을 때만 교체한다(같거나 낮으면 그 부위는 건드리지 않음 -- 굳이 같은 등급으로
+     *  바꿔치기해서 DB만 흔들 이유가 없음). HP 비율 유지는 equipWear와 동일하게 전/후
+     *  EFF_HP를 한 번만 비교(부위 여러 개가 한꺼번에 바뀌어도 재계산은 마지막에 1회). */
+    @Override
+    @Transactional
+    public String equipBestAll(String userName, int companionIdx) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 장비를 변경할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") != null) party.add(c);
+        }
+        if (companionIdx < 1 || companionIdx > party.size()) return "잘못된 동료 번호입니다. /파티편성을 확인하세요.";
+        HashMap<String, Object> target = party.get(companionIdx - 1);
+        String job = strVal(target.get("CLASS"), "");
+        int companionId = intVal(target.get("COMPANION_ID"), 0);
+        String targetJob = JOB_NAME.getOrDefault(job, "?");
+        String targetName = strVal(target.get("NAME"), targetJob);
+
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int oldMaxHp = effMaxHpOf(target, userStat);
+
+        HashMap<String, Integer> curGradeByPart = new HashMap<>();
+        for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
+            curGradeByPart.put(strVal(e.get("PART"), ""), intVal(e.get("GRADE"), 0));
+        }
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+
+        List<String> upgraded = new ArrayList<>();
+        for (String part : EQUIP_ALL_PARTS) {
+            HashMap<String, Object> best = null;
+            for (HashMap<String, Object> e : unequipped) {
+                if (!part.equals(strVal(e.get("PART"), ""))) continue;
+                if (!weaponAllowedJobs(strVal(e.get("CLASS"), "")).contains(job)) continue;
+                if (best == null || intVal(e.get("GRADE"), 0) > intVal(best.get("GRADE"), 0)) best = e;
+            }
+            if (best == null) continue;
+            int bestGrade = intVal(best.get("GRADE"), 0);
+            if (bestGrade <= curGradeByPart.getOrDefault(part, 0)) continue; // 이미 같거나 더 좋음
+
+            for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
+                if (!part.equals(strVal(e.get("PART"), ""))) continue;
+                HashMap<String, Object> unwear = new HashMap<>();
+                unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
+                unwear.put("equippedCompanionId", null);
+                dao.updateEquipEquippedCompanion(unwear);
+            }
+            HashMap<String, Object> wear = new HashMap<>();
+            wear.put("equipId", intVal(best.get("EQUIP_ID"), 0));
+            wear.put("equippedCompanionId", companionId);
+            dao.updateEquipEquippedCompanion(wear);
+            String bestClass = strVal(best.get("CLASS"), "");
+            boolean grouped = WEAPON_CLASS_NAME.containsKey(bestClass) || "COMMON".equals(bestClass);
+            String itemLabel = grouped ? equipClassLabel(bestClass, part) : partNameOf(part);
+            upgraded.add(itemLabel + " ★" + bestGrade);
+        }
+
+        rescaleHpForEquipChange(target, userStat, oldMaxHp);
+
+        if (upgraded.isEmpty()) return targetJob + "(" + targetName + ")에게 장착할 더 나은 장비가 없습니다.";
+        return "🎽 " + targetJob + "(" + targetName + ") 일괄장착 완료! " + String.join(", ", upgraded);
+    }
+
     /**
      * 웹 SPA 전용: 파티 슬롯 시트에서 장비 부위 하나만 콕 집어 해제("장비도 해제하는 기능 넣어줘"
      * 요청, 2026-09-06) -- equipUnwearAll처럼 그 동료 전체가 아니라 이 장비 하나만. 다른 웹

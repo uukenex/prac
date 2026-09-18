@@ -196,6 +196,11 @@ public interface BotS5Service {
      *  연쇄적으로 계속 상위 등급까지 합성됨(예: ★1 9개 → ★2 3개 → ★3 1개). */
     String equipSynthesisAll(String userName);
 
+    /** 웹 SPA 전용: M번째 파티원에게 6부위(무기/투구/갑옷/목걸이/반지/팔찌) 각각 착용 가능한
+     *  미착용 장비 중 최고 등급을 한 번에 장착("일괄장착" 요청, 채팅 명령어 없음). 현재 착용보다
+     *  등급이 높은 부위만 교체하고, 이미 최고 등급이거나 후보가 없는 부위는 건드리지 않는다. */
+    String equipBestAll(String userName, int companionIdx);
+
     /** /전설제작 — 전설의조각 10개를 소모해 ★7 전설장비 랜덤제작 시도(성공률 30%). 정식 오픈
      *  전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
     String craftLegendary(String userName);

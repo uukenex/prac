@@ -464,6 +464,9 @@ public class Season5ViewController {
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
                     break;
+                case "EQUIP_BEST_ALL":
+                    message = s5Service.equipBestAll(userName, Integer.parseInt(param1));
+                    break;
                 case "EQUIP_UNWEAR_ONE":
                     message = s5Service.equipUnwearOne(userName, Integer.parseInt(param1));
                     break;
