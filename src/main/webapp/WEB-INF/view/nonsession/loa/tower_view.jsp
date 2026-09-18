@@ -1101,7 +1101,7 @@ var TW = (function () {
 
   var TILE_CLASS = { COMBAT: 'combat', TREASURE: 'treasure', PP: 'pp', TRAP: 'trap', SPECIAL: 'special',
                       STAIRS_UP: 'stairs-up', STAIRS_DOWN: 'stairs-down', ELITE: 'elite' };
-  var TILE_KR    = { COMBAT: '전투', TREASURE: '보물상자', PP: '럭키', TRAP: '함정', SPECIAL: '특수',
+  var TILE_KR    = { COMBAT: '전투', TREASURE: '보물상자', PP: '럭키', TRAP: '함정', SPECIAL: '무너진사원',
                       STAIRS_UP: '계단↑', STAIRS_DOWN: '계단↓', ELITE: '강화몬스터' };
   function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 

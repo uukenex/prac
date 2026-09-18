@@ -329,7 +329,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 방향(위/아래)을 따라 갈리므로 changeFloor() 참고.
     private static final HashMap<String, String> TILE_LABEL = new HashMap<String, String>() {{
         put("COMBAT", "⚔️ 전투");  put("PP", "🍀 럭키");     put("TREASURE", "💎 보물상자");
-        put("TRAP",   "🕳️ 함정");  put("SPECIAL", "✨ 특수");
+        put("TRAP",   "🕳️ 함정");  put("SPECIAL", "🏚️ 무너진 사원"); // [2026-09-18] 舊 "✨ 특수"(워프포인트)
         put("STAIRS_UP", "🪜⬆️ 계단(위)"); put("STAIRS_DOWN", "🪜⬇️ 계단(아래)");
         put("ELITE",  "💪 강화몬스터");
     }};
@@ -811,11 +811,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             types.add("STAIRS_UP");
             types.add("STAIRS_DOWN");
         }
-        // "51층부터 워프포인트(특수칸) 기믹" 요청 -- 특수칸이 체크포인트 역할을 하므로 51층부턴
-        // 넉넉하게 배치(2026-09-08엔 4개, 2026-09-09에 6개로 증량). [2026-09-09 후속] "더블주사위
-        // 기믹은 51층부터만 되면 되고, 50층 이하는 특수칸 자체가 없어도 된다" 요청으로 50층
-        // 이하는 특수칸을 아예 안 놓는다(0개) -- handleSpecialTile()의 더블주사위 지급도 별도로
-        // floor>=51로 가드해뒀지만, 애초에 특수칸이 안 나오면 그 코드에 도달할 일도 없다.
+        // "51층부터 특수칸(舊 워프포인트, 현 무너진 사원)" 요청 -- 51층부턴 넉넉하게 배치
+        // (2026-09-08엔 4개, 2026-09-09에 6개로 증량). [2026-09-09 후속] "50층 이하는 특수칸
+        // 자체가 없어도 된다" 요청으로 50층 이하는 특수칸을 아예 안 놓는다(0개) --
+        // handleSpecialTile()도 floor>=51 전용 효과들이라 애초에 특수칸이 안 나오면 그 코드에
+        // 도달할 일도 없다. [2026-09-18] 탐사율 체크포인트는 더 이상 이 칸에 안 묶이고
+        // rollDiceInternal에서 15%p 단위로 자동 저장된다(markSpecialTileCheckpoint 참고).
         int specialCount = floor >= 51 ? 6 : 0;
         for (int i = 0; i < specialCount; i++) types.add("SPECIAL");
         types.add("TREASURE");
@@ -848,10 +849,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         params.put("tiles", batch);
         dao.insertUserTileMasterBatch(params);
 
-        // "51층부터 마을 가도 탐사율이 초기화 안 되게(워프포인트/체크포인트 개념)" 요청 -- 51층
-        // 이상에서 특수칸(워프포인트)을 밟으면 그 시점 탐사 칸수를 체크포인트로 저장해두고
-        // (markSpecialTileCheckpoint 참고), 마을 복귀 등으로 보드가 새로 생성될 때 그 체크포인트
-        // 만큼을 "이미 발견한 칸"으로 미리 채워 넣어서 탐사율이 체크포인트 지점까지는 유지되게
+        // "51층부터 마을 가도 탐사율이 초기화 안 되게(체크포인트 개념)" 요청 -- 51층 이상은
+        // 탐사율이 15%p 단위 구간을 새로 넘을 때마다 자동으로 체크포인트를 저장해두고
+        // (rollDiceInternal, markSpecialTileCheckpoint 참고 -- [2026-09-18] 예전엔 특수칸
+        // "워프포인트"를 직접 밟아야만 저장됐는데, "워프포인트를 없애고 15%마다 자동저장"
+        // 요청으로 자동화함), 마을 복귀 등으로 보드가 새로 생성될 때 그 체크포인트만큼을
+        // "이미 발견한 칸"으로 미리 채워 넣어서 탐사율이 체크포인트 지점까지는 유지되게
         // 한다(그 이후 발견분만 사라짐). 방금 막 생성된 프레시 보드이므로 어떤 특정 칸을 발견한
         // 것으로 칠지는 의미가 없어 그냥 1번~N번을 채운다.
         if (floor >= 51) {
@@ -889,7 +892,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * "특수칸을 워프포인트로" 요청 -- 51층 이상에서 특수칸을 밟은 시점의 탐사 칸수를 체크포인트로
+     * [2026-09-18] "워프포인트를 없애고 15%마다 탐사율 자동저장" 요청 -- 51층 이상에서 탐사율이
+     * 새 15%p 구간을 넘을 때마다(rollDiceInternal에서 호출) 그 시점 탐사 칸수를 체크포인트로
      * 저장(최고치만 갱신, GREATEST). 이후 마을 복귀 등으로 보드가 리셋돼도 ensureUserBoard()가
      * 이 값만큼은 "이미 발견한 칸"으로 되살려준다.
      */
@@ -1775,6 +1779,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.insertTileVisit(userName, floor, newTile);
         int visited = dao.countTileVisits(userName, floor);
 
+        // [2026-09-18] "워프포인트를 없애고, 15%마다 탐사율자동저장하게 로직화" 요청 -- 특수칸
+        // (구 워프포인트)을 직접 밟아야만 저장되던 체크포인트를, 탐사율이 새 15%p 구간을 넘을
+        // 때마다 자동으로 저장하도록 바꿨다. 매 이동마다 DB에 또 쓰지 않도록, 저장된 체크포인트가
+        // 속한 15%p 구간(tier)보다 지금이 더 높은 구간일 때만 실제로 갱신한다.
+        if (floor >= 51 && tileCount > 0) {
+            int tierNow = (visited * 100 / tileCount) / 15;
+            if (tierNow > 0) {
+                HashMap<String, Object> floorBest = dao.selectUserFloorBest(userName, floor);
+                int savedCheckpoint = floorBest == null ? 0 : intVal(floorBest.get("CHECKPOINT_VISITED_COUNT"), 0);
+                int tierSaved = (savedCheckpoint * 100 / tileCount) / 15;
+                if (tierNow > tierSaved) markSpecialTileCheckpoint(userName, floor, visited);
+            }
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님," + NL);
         sb.append(doubleDice ? "🎲🎲 주사위 " : "🎲 주사위 ").append(rollLabel).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
@@ -2098,7 +2116,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 break;
             }
             case "SPECIAL":
-                sb.append(handleSpecialTile(userName, floor, visited));
+                sb.append(handleSpecialTile(userName, p, floor, visited));
                 break;
             case "ELITE":
                 sb.append(NL).append(startCombat(userName, p, floor, false, true, false)); // 강화몹: 보스 아님, 강화만
@@ -2173,11 +2191,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         return true;
     }
 
-    private String handleSpecialTile(String userName, int floor, int visited) {
+    /** [2026-09-18] "워프포인트를 없애고... 기존 워프포인트는 무너진사원이라고 바꿔주고"
+     *  요청으로 전면 재설계. 탐사율 체크포인트는 더 이상 이 칸을 밟아야만 저장되지 않고
+     *  rollDiceInternal에서 15%p 단위로 자동 저장되므로(markSpecialTileCheckpoint 자동 호출
+     *  지점 참고), 이 칸 자체는 순수하게 4갈래 확률표 하나로 재구성:
+     *  5% 전설의조각, 15% PP 획득, 50% 전투(몬스터 조우), 나머지 30% 축복(공격력 30%
+     *  강화 1턴). floor<51은 애초에 ensureUserBoard()가 SPECIAL 칸을 안 놓아서 이 분기에
+     *  거의 안 들어오지만, 혹시 남아있는 옛 보드 대비 방어적으로 "아무 일도 없었다"만 보여줌. */
+    private String handleSpecialTile(String userName, HashMap<String, Object> p, int floor, int visited) {
         dao.upsertSpecialVisitIncrement(userName);
         HashMap<String, Object> v = dao.selectUserSpecialVisit(userName);
         int cnt = v == null ? 1 : intVal(v.get("VISIT_COUNT"), 1);
-        StringBuilder sb = new StringBuilder("✨ 수상한 기운이 감돌았다... (특수칸 누적 방문 ").append(cnt).append("회)");
+        StringBuilder sb = new StringBuilder("🏚️ 무너진 사원을 발견했다... (누적 방문 ").append(cnt).append("회)");
         int[] thresholds = { 10, 50, 100 };
         int[] achIds = { 17, 18, 19 };
         for (int i = 0; i < thresholds.length; i++) {
@@ -2186,36 +2211,39 @@ public class BotS5ServiceImpl implements BotS5Service {
                 sb.append(NL).append("🏆 히든 업적 달성!");
             }
         }
-        // [2026-09-10 버그 수정] "워프발견/더블주사위/아무일도 3개 멘트가 동시에 나온다"
-        // 신고 -- 원래는 floor>=51이면 워프+더블주사위가 항상 둘 다 붙어서, "이번엔 별다른
-        // 일이 없었다"는 기본 문구까지 늘 셋이 함께 나왔다(자기모순적이기도 했음: "아무 일도
-        // 없었다" 바로 밑에 "워프포인트 발견!"이 붙는 식). 이제 floor>=51에서만 셋 중
-        // 정확히 하나를 가중치 랜덤으로 골라서 그것만 보여준다 -- 워프포인트가 이 칸의
-        // 원래 취지(체크포인트)라 가장 비중 높게(50%) 두고, 더블주사위(25%)/아무일도
-        // 없음(25%)을 섞어서 매번 같지 않게 함("몇몇개 넣어달라" 요청). floor<51은 애초에
-        // ensureUserBoard()가 SPECIAL 칸을 안 놓아서 이 분기에 거의 안 들어오지만, 혹시
-        // 남아있는 옛 보드 대비 그냥 "아무 일도 없었다"만 보여줌. 비중은 잠정치, 조정 가능.
-        if (floor >= 51) {
-            int roll = RND.nextInt(100);
-            if (roll < 50) {
-                markSpecialTileCheckpoint(userName, floor, visited);
-                sb.append(NL).append("🌀 워프포인트를 발견했다! 지금까지의 탐사 기록(").append(visited).append("칸)이 저장되었다.");
-            } else if (roll < 75) {
-                // [2026-09-09] "특수칸에서 다음 한 턴은 주사위를 두 개 굴리게 해달라(좋을 수도
-                // 나쁠 수도 있는 느낌으로)" 요청 -- DOUBLE_DICE_YN 1회성 플래그.
-                // [2026-09-10] "1턴간 이동만 아니라 공격에도 적용된다고 표시해달라" 요청 --
-                // 실제로도 이동 굴림뿐 아니라 전투 공격 턴에서도 소모되도록 확장됨
-                // (rollDiceInternal/resolveCombatTurn 둘 다 참고), 문구도 그에 맞게 수정.
-                HashMap<String, Object> up = new HashMap<>();
-                up.put("userName", userName);
-                up.put("doubleDiceYn", "Y");
-                dao.updateUserProgress(up);
-                sb.append(NL).append("🎲🎲 기이한 기운이 주사위에 스며들었다! 다음 행동(이동 또는 전투 공격) 1회 동안 주사위를 두 번 굴립니다. (좋을 수도, 안 좋을 수도 있습니다)");
-            } else {
-                sb.append(NL).append("...이번엔 별다른 일이 일어나지 않았다.");
-            }
-        } else {
+        if (floor < 51) {
             sb.append(NL).append("...이번엔 별다른 일이 일어나지 않았다.");
+            return sb.toString();
+        }
+        int roll = RND.nextInt(100);
+        if (roll < 5) {
+            int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + 1;
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("legendFragment", newFragment);
+            dao.updateUserProgress(up);
+            p.put("LEGEND_FRAGMENT", newFragment);
+            sb.append(NL).append("🧩 폐허 잔해 속에서 전설의조각을 발견했다! (보유 ").append(newFragment).append("개)");
+        } else if (roll < 20) {
+            HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+            PP reward = mon == null ? PP.of(10, "")
+                    : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(3 * floorPpMultiplier(floor));
+            addPp(userName, p, reward);
+            PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
+            sb.append(NL).append("💰 폐허 속에 묻혀있던 ").append(reward.format()).append(" PP를 발견했다! (보유 ").append(curPp.format()).append(" PP)");
+        } else if (roll < 70) {
+            boolean midBossEncounter = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
+            sb.append(NL).append("😱 사원 안쪽에 숨어있던 몬스터가 튀어나왔다!").append(NL)
+              .append(startCombat(userName, p, floor, false, false, midBossEncounter));
+        } else {
+            // 축복: 기존 럭키칸 ATK_UP_30과 동일 컬럼(LUCKY_TURN_LEFT/LUCKY_EFFECT)을 그대로
+            // 재사용하되, 지속시간만 "1턴"(HP_DOUBLE_1T와 동일한 1턴 한정 패턴)으로 짧게 둔다.
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("luckyTurnLeft", 1);
+            up.put("luckyEffect", "ATK_UP_30");
+            dao.updateUserProgress(up);
+            sb.append(NL).append("✨ 무너진 사원의 축복을 받았다! 다음 1번의 이동/전투 동안 파티 전원의 공격력이 30% 강화됩니다.");
         }
         return sb.toString();
     }
