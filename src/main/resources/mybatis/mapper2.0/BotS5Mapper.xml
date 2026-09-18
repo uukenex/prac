@@ -30,7 +30,7 @@
                CUR_BOSS_MINION_CIDS, CUR_MONSTER2_HP_VALUE, CUR_MONSTER_REVIVED_YN, WARD_COMPANION_ID,
                <!-- [버그 수정, 2026-09-18] 오늘 추가한 컬럼들이 이 명시적 컬럼목록 SELECT에 빠져있어서
                     (SELECT * 가 아님을 놓침) DB엔 정상 저장돼도 다음 요청부터 다시 읽어올 때 항상 null로
-                    보이던 문제 -- 조각/보스처치제한(전설제작), 도적스킬도용 회피, 함정 기습 전부 이
+                    보이던 문제. 조각/보스처치제한(전설제작), 도적스킬도용 회피, 함정 기습 전부 이
                     누락 때문에 "저장은 되는데 다음 턴엔 기본값으로 리셋된 것처럼" 동작했을 것. -->
                LEGEND_FRAGMENT, BOSS_KILL_COUNT_TODAY, BOSS_KILL_DATE, MONSTER_EVADE_PCT, TRAP_AMBUSH_YN
         FROM TBOT_S5_USER_PROGRESS
@@ -141,7 +141,7 @@
             <if test="curMonsterEliteYn != null">CUR_MONSTER_ELITE_YN = #{curMonsterEliteYn},</if>
             <if test="curMonsterMidbossYn != null">CUR_MONSTER_MIDBOSS_YN = #{curMonsterMidbossYn},</if>
             <if test="curMonsterDualYn != null">CUR_MONSTER_DUAL_YN = #{curMonsterDualYn},</if>
-            <!-- [2026-09-18] 함정(MOVE 효과)으로 떠밀려 시작된 전투 표시 -- startCombat()에서
+            <!-- [2026-09-18] 함정(MOVE 효과)으로 떠밀려 시작된 전투 표시. startCombat()에서
                  항상 명시 세팅, resolveCombatTurn()의 1턴째 기습 조건에서 읽는다. -->
             <if test="trapAmbushYn != null">TRAP_AMBUSH_YN = #{trapAmbushYn},</if>
             <if test="curCombatTurn != null">CUR_COMBAT_TURN = #{curCombatTurn},</if>
