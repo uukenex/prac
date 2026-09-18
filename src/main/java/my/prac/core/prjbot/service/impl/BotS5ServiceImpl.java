@@ -2952,18 +2952,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> promoteUp = new HashMap<>();
                 promoteUp.put("userName", userName);
                 promoteUp.put("clearMonster2", true); // II번은 이제 활성화됐으니 "대기 중" 슬롯 비움
-                // [버그 수정, 2026-09-18] "I번 처치 후에도 두 마리 다 반격한다" 신고 -- 여기서
-                // CUR_MONSTER_DUAL_YN을 그대로 'Y'로 남겨뒀던 게 원인. 그러면 다음 턴엔
-                // dualMonster1KilledInLoop/dualMonster2KilledInLoop가 이번 턴 한정 로컬
-                // 변수라 둘 다 false로 리셋되는데 dualMonster만 여전히 true라서, 반격 대상
-                // 선정(targets 리스트, 3506번줄쯤 "dualMonster면 2명 타격")이 죽은 I번 슬롯까지
-                // 계속 포함시켜 살아있는 II번 하나뿐인데 항상 두 슬롯이 반격하는 걸로 나타났다.
-                // I번이 죽고 II번이 승격된 순간부터는 그냥 "몬스터 한 마리" 상태이므로 여기서
-                // 바로 꺼준다.
-                promoteUp.put("curMonsterDualYn", "N");
+                // [2026-09-18] CUR_MONSTER_DUAL_YN은 일부러 'Y'로 그대로 둔다 -- "I번 처치 후에도
+                // 두 마리 다 반격한다" 버그를 처음엔 여기서 'N'으로 꺼서 고쳤었는데, 그러면
+                // dualHpMult(처치보상 2배)도 함께 꺼져서 I번+II번을 따로따로 죽인 원정에서
+                // PP가 1마리분만 지급되는 회귀 버그가 생겼다("2마리인데 1마리치만 들어온다"
+                // 신고로 발견). 보상 배율은 그대로 두고, 반격 문제는 대신 아래 targets 선정에서
+                // CUR_MONSTER2_HP_VALUE(실제 II번 생존 여부)를 직접 확인하는 쪽으로 옮겨 고쳤다.
                 dao.updateUserProgress(promoteUp);
                 p.put("CUR_MONSTER2_HP_VALUE", null);
-                p.put("CUR_MONSTER_DUAL_YN", "N");
             }
         } else {
             monsterHpAfter = monsterHp.subtract(PP.fromPP(totalDamage));
@@ -3558,9 +3554,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 요청 -- 99층은 기존 2인타격(블록4+)을 대신해 3인타격을 쓴다.
         boolean tripleTargetFloor = isBossRow && floor == 99;
         boolean doubleTarget = isBossRow && blockNo(floor) >= 4 && !tripleTargetFloor;
+        // [버그 수정, 2026-09-18] "I번 처치 후에도 두 마리 다 반격한다" 신고 -- dualMonster
+        // 플래그(CUR_MONSTER_DUAL_YN)는 I번이 죽고 II번이 승격된 뒤에도 그대로 'Y'로 남는다
+        // (처치보상 2배 계산이 이 플래그에 의존해서 일부러 안 끔, 위 promoteUp 주석 참고).
+        // 그래서 반격 대상 선정은 이 플래그만 보지 말고 "II번이 실제로 아직 살아있는지"
+        // (CUR_MONSTER2_HP_VALUE 존재 여부)까지 같이 확인해야 한다 -- 승격 후에는 이 값이
+        // null이라 dualBothAlive가 false가 되어 자연스럽게 1명만 반격 대상이 된다.
+        boolean dualBothAlive = dualMonster && p.get("CUR_MONSTER2_HP_VALUE") != null;
         List<HashMap<String, Object>> targets = new ArrayList<>();
         targets.add(target);
-        if (doubleTarget || dualMonster || tripleTargetFloor) {
+        if (doubleTarget || dualBothAlive || tripleTargetFloor) {
             List<HashMap<String, Object>> remaining = new ArrayList<>(alive);
             remaining.remove(target);
             if (!remaining.isEmpty()) targets.add(remaining.get(RND.nextInt(remaining.size())));
