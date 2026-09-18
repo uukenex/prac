@@ -222,6 +222,13 @@
     .ps-name{ font-size:16px; font-weight:800; color:var(--ink); }
     .ps-role{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
     .ps-hp{ font-size:11px; color:var(--ink-soft); margin-top:4px; }
+    /* [2026-09-18] "체력이 0이 된 동료는 전투불능 표시를 하고싶어" 요청 -- HP<=0인 동료를
+       보여주는 자리마다 공통으로 쓰는 톤(빨강 텍스트 + 살짝 흐려진 초상화). */
+    .ps-hp.incapacitated{ color:var(--combat); font-weight:800; }
+    .party-slot-card.incapacitated .ps-avatar, .party-card.incapacitated .avatar,
+    .bs-companion.incapacitated .bs-avatar, .bs-companion.incapacitated .avatar-emoji{
+      filter:grayscale(70%); opacity:.65; }
+    .incapacitated-badge{ color:var(--combat); font-weight:800; font-size:10px; }
     .ps-actions{ display:flex; gap:8px; margin-bottom:12px; }
     .ps-btn{ flex:1; background:#fff; border:1.5px solid var(--line); border-radius:10px; font-size:12px;
              font-weight:700; padding:9px; cursor:pointer; color:var(--ink); }
@@ -841,6 +848,13 @@ var TW = (function () {
     return v + e;
   }
 
+  // [2026-09-18] "체력이 0이 된 동료는 전투불능 표시를 하고싶어" 요청 -- HP 단위(EXT)가
+  // 붙어도(a/b 등) 0 자체는 항상 EXT 없는 순수 0으로 저장되므로(PP.toBaseValue와 동일 전제)
+  // value만 보면 충분하다.
+  function isIncapacitated(hpValue) {
+    return (Number(hpValue) || 0) <= 0;
+  }
+
   // ===== [2026-09-17] 전투화면(포켓몬 배틀 스타일) =====
   // 몬스터 이미지 에셋이 전혀 없어서(DB에 스프라이트 컬럼 자체가 없음) 몬스터ID를 해시해
   // 고정된 이모지 하나를 배정한다 -- 같은 몬스터는 항상 같은 이모지로 보이되, 실제 그림은 아님.
@@ -973,7 +987,10 @@ var TW = (function () {
         box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
         var meta = document.createElement('div');
         // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
+        // [2026-09-18] "체력이 0이된 동료는 전투불능 표시를 하고싶어" 요청 -- 이름 줄
+        // 아래에 상태 배지 자리를 하나 만들어두고(bs-status), 갱신 루프에서 채운다.
         meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
+            + '<div class="bs-status incapacitated-badge" style="display:none">💀 전투불능</div>'
             + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
         box.appendChild(meta);
         row.appendChild(box);
@@ -986,6 +1003,10 @@ var TW = (function () {
       var curHp = c.CUR_HP_VALUE || 0;
       var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
       box.querySelector('.hpbar-fill').style.width = pct + '%';
+      var down = isIncapacitated(curHp);
+      box.classList.toggle('incapacitated', down);
+      var statusEl = box.querySelector('.bs-status');
+      if (statusEl) statusEl.style.display = down ? '' : 'none';
       var prevHp = battle.companionHp[c.COMPANION_ID];
       if (prevHp != null && curHp < prevHp) {
         box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
@@ -2192,8 +2213,9 @@ var TW = (function () {
     companions.forEach(function (c) { if (c.PARTY_SLOT) bySlot[c.PARTY_SLOT] = c; });
     for (var s = 1; s <= 3; s++) {
       var occ = bySlot[s];
+      var occDown = occ && isIncapacitated(occ.CUR_HP_VALUE);
       var card = document.createElement('div');
-      card.className = 'party-slot-card' + (occ ? ' filled' : ' empty');
+      card.className = 'party-slot-card' + (occ ? ' filled' : ' empty') + (occDown ? ' incapacitated' : '');
 
       if (!occ) {
         card.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div><div class="ps-empty-msg">빈 슬롯</div>';
@@ -2222,7 +2244,8 @@ var TW = (function () {
           + '<div class="ps-name">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
           + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE
           + (occLb > 0 ? ' (+' + occLb + ')' : '') + '</div>'
-          + '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>';
+          + (occDown ? '<div class="ps-hp incapacitated">💀 전투불능 (HP 0)</div>'
+                     : '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>');
       header.appendChild(info);
       card.appendChild(header);
 
@@ -2300,8 +2323,9 @@ var TW = (function () {
       var c = entry.c, idx = entry.idx;
       var hidden = c.HIDDEN_YN === 'Y';
       var inParty = !!c.PARTY_SLOT;
+      var cDown = isIncapacitated(c.CUR_HP_VALUE);
       var div = document.createElement('div');
-      div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '') + (picking ? ' pickable' : '');
+      div.className = 'party-card' + (inParty ? ' inparty' : '') + (hidden ? ' hidden' : '') + (picking ? ' pickable' : '') + (cDown ? ' incapacitated' : '');
       var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
       // [2026-09-14] 동료 전체 목록/선택 카드에도 한계돌파 단계 표기.
       var cLb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
@@ -2314,6 +2338,7 @@ var TW = (function () {
       div.innerHTML = '<div class="cname">' + name + '</div>'
           + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
           + (cLb > 0 ? ' (+' + cLb + ')' : '') + '</div>'
+          + (cDown ? '<div class="incapacitated-badge">💀 전투불능</div>' : '')
           + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
           + '<div class="hp-num">💗' + fmtStatWithBonus(c.EFF_HP, c.EFF_HP_BASE) + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>'
           + '<div class="atk-num">⚔️' + fmtStatWithBonus(c.EFF_ATK, c.EFF_ATK_BASE) + '</div>'
