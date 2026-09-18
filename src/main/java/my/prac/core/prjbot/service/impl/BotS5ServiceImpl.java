@@ -4024,6 +4024,34 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateCompanionHp(up);
     }
 
+    /** 이 동료의 현재 장비 기준 유효 최대체력(EFF_HP). 장비 변경 전/후 비교용. */
+    private int effMaxHpOf(HashMap<String, Object> companion, HashMap<String, Object> userStat) {
+        String job = strVal(companion.get("CLASS"), "WARRIOR");
+        int grade = intVal(companion.get("GRADE"), 1);
+        List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(companion.get("COMPANION_ID"), 0));
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(companion.get("LIMIT_BREAK"), 0));
+        return eff[0];
+    }
+
+    /** [2026-09-18] "장비장착/해제로 HP 변동분이 생길때, 비율 그대로 유지한채로 가져가게 해줘"
+     *  요청 -- 장비 변경으로 EFF_HP(최대체력)가 바뀌어도 현재 체력을 절대값 그대로 두지 않고,
+     *  "직전 최대체력 대비 비율"을 새 최대체력에 그대로 적용해서 재계산한다(예: 50%로 싸우던
+     *  중 헬멧을 바꿔 최대체력이 늘거나 줄어도 그대로 50%). 호출부는 장비 변경 "전"에
+     *  effMaxHpOf()로 oldMaxHp를 구해뒀다가, 변경 "후" 이 메서드를 호출한다. 전투불가(0)
+     *  상태는 0%×새 최대체력도 0이라 자연히 그대로 유지된다. */
+    private void rescaleHpForEquipChange(HashMap<String, Object> companion, HashMap<String, Object> userStat, int oldMaxHp) {
+        if (oldMaxHp <= 0) return;
+        int newMaxHp = effMaxHpOf(companion, userStat);
+        if (newMaxHp == oldMaxHp) return;
+        PP curHp = PP.of(((Number) companion.get("CUR_HP_VALUE")).doubleValue(), strVal(companion.get("CUR_HP_EXT"), ""));
+        long curHpBase = PP.toBaseValue(curHp);
+        if (curHpBase <= 0) return; // 전투불가는 비율도 0 -- 그대로 둠
+        long newHpBase = Math.round(curHpBase * (newMaxHp / (double) oldMaxHp));
+        if (newHpBase > newMaxHp) newHpBase = newMaxHp; // 반올림 오차 방어
+        if (newHpBase < 1) newHpBase = 1; // 원래 0 초과였으므로 반올림으로 0이 되는 것 방지
+        writeCompanionHp(companion, PP.fromPP(newHpBase));
+    }
+
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
         HashMap<String, Object> normal = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
         if (normal != null && intVal(normal.get("MONSTER_ID"), -1) == monsterId) return normal;
@@ -4555,14 +4583,21 @@ public class BotS5ServiceImpl implements BotS5Service {
       * (2026-09-06)으로 신설. 착용 중이던 장비를 전부 미착용 상태로 되돌린다(장비 자체가
       * 사라지진 않고 미착용 목록으로 돌아갈 뿐). equipUnwearAll(/장비해제)과 partyToggle/
       * partyUnassignAll(파티 해제) 양쪽에서 공유. */
-    private int unequipAllForCompanion(int companionId) {
+    private int unequipAllForCompanion(HashMap<String, Object> companion) {
+        int companionId = intVal(companion.get("COMPANION_ID"), 0);
         List<HashMap<String, Object>> equipped = dao.selectEquipByCompanion(companionId);
+        if (equipped.isEmpty()) return 0;
+        // [2026-09-18] 장비 해제로 EFF_HP가 바뀌어도 비율 유지(rescaleHpForEquipChange 참고) --
+        // 해제 "전" 최대체력을 먼저 구해둔다.
+        HashMap<String, Object> userStat = dao.selectUserStat(strVal(companion.get("USER_NAME"), ""));
+        int oldMaxHp = effMaxHpOf(companion, userStat);
         for (HashMap<String, Object> e : equipped) {
             HashMap<String, Object> unwear = new HashMap<>();
             unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
             unwear.put("equippedCompanionId", null);
             dao.updateEquipEquippedCompanion(unwear);
         }
+        rescaleHpForEquipChange(companion, userStat, oldMaxHp);
         return equipped.size();
     }
 
@@ -4583,7 +4618,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (inParty) {
             int companionId = intVal(target.get("COMPANION_ID"), 0);
-            int unequipped = unequipAllForCompanion(companionId);
+            int unequipped = unequipAllForCompanion(target);
             HashMap<String, Object> up = new HashMap<>();
             up.put("companionId", companionId);
             up.put("partySlot", null);
@@ -4678,7 +4713,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // 미편성 동료로 교체 -- 기존 자리는 사라지므로 쫓겨나는 동료는 완전히 파티 밖으로,
         // 장비도 함께 해제.
-        int evictedUnequipped = unequipAllForCompanion(intVal(occupant.get("COMPANION_ID"), 0));
+        int evictedUnequipped = unequipAllForCompanion(occupant);
         HashMap<String, Object> up2 = new HashMap<>();
         up2.put("companionId", intVal(occupant.get("COMPANION_ID"), 0));
         up2.put("partySlot", null);
@@ -4702,7 +4737,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> c : companions) {
             if (c.get("PARTY_SLOT") != null) {
                 int companionId = intVal(c.get("COMPANION_ID"), 0);
-                unequippedTotal += unequipAllForCompanion(companionId);
+                unequippedTotal += unequipAllForCompanion(c);
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("companionId", companionId);
                 up.put("partySlot", null);
@@ -6368,6 +6403,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!allowedJobs.contains(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + equipClassLabel(equipClass, part) + " 전용입니다.";
 
         int companionId = intVal(targetCompanion.get("COMPANION_ID"), 0);
+        // [2026-09-18] 장착으로 EFF_HP가 바뀌어도 비율 유지(rescaleHpForEquipChange 참고) --
+        // 장착 "전" 최대체력을 먼저 구해둔다.
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int oldMaxHp = effMaxHpOf(targetCompanion, userStat);
         // 같은 부위에 이미 장착된 게 있으면 해제
         for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
             if (part.equals(strVal(e.get("PART"), ""))) {
@@ -6382,6 +6421,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         wear.put("equipId", intVal(equip.get("EQUIP_ID"), 0));
         wear.put("equippedCompanionId", companionId);
         dao.updateEquipEquippedCompanion(wear);
+        rescaleHpForEquipChange(targetCompanion, userStat, oldMaxHp);
 
         int grade = intVal(equip.get("GRADE"), 1);
         // [2026-09-17 버그수정] 여기서 표시할 "누구에게 장착했는지"는 equipClass(장비 쪽,
@@ -6411,11 +6451,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (companionIdx < 1 || companionIdx > party.size()) return "잘못된 동료 번호입니다. /파티편성을 확인하세요.";
         HashMap<String, Object> target = party.get(companionIdx - 1);
-        int companionId = intVal(target.get("COMPANION_ID"), 0);
 
         String job = JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "?");
         String name = strVal(target.get("NAME"), job);
-        int unequipped = unequipAllForCompanion(companionId);
+        int unequipped = unequipAllForCompanion(target);
         if (unequipped == 0) return job + "(" + name + ")은(는) 착용 중인 장비가 없습니다.";
         return "🧺 " + job + "(" + name + ")의 장비 " + unequipped + "개를 전부 해제했습니다. (/장비목록의 [미착용]으로 이동)";
     }
@@ -6440,10 +6479,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (found == null || found.get("EQUIPPED_COMPANION_ID") == null) {
             return "이미 해제되었거나 존재하지 않는 장비입니다.";
         }
+        // [2026-09-18] 해제로 EFF_HP가 바뀌어도 비율 유지(rescaleHpForEquipChange 참고) --
+        // 이 장비를 착용 중인 동료를 찾아 해제 "전" 최대체력을 먼저 구해둔다.
+        int ownerCompanionId = intVal(found.get("EQUIPPED_COMPANION_ID"), 0);
+        HashMap<String, Object> owner = null;
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (intVal(c.get("COMPANION_ID"), -1) == ownerCompanionId) { owner = c; break; }
+        }
+        HashMap<String, Object> ownerUserStat = owner == null ? null : dao.selectUserStat(userName);
+        int ownerOldMaxHp = owner == null ? 0 : effMaxHpOf(owner, ownerUserStat);
+
         HashMap<String, Object> unwear = new HashMap<>();
         unwear.put("equipId", equipId);
         unwear.put("equippedCompanionId", null);
         dao.updateEquipEquippedCompanion(unwear);
+        if (owner != null) rescaleHpForEquipChange(owner, ownerUserStat, ownerOldMaxHp);
         String part = strVal(found.get("PART"), "");
         int grade = intVal(found.get("GRADE"), 1);
         String foundClass = strVal(found.get("CLASS"), "");

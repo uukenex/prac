@@ -3349,3 +3349,19 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
   `TRAP_EFFECT`(같은 VARCHAR2(10))는 현재 값 중 가장 긴 게 정확히 10자(`RESET_TILE`/
   `SKILL_LOCK`)라 지금은 안전하지만 여유가 전혀 없다 -- 앞으로 이 컬럼에 새 값 추가할 땐
   길이부터 확인할 것.
+
+- **[2026-09-18] 장비 장착/해제 시 HP 비율 유지**: "장비장착/해제로 인한 HP 변동분이 생길때,
+  비율 그대로 유지한채로 가져가게 해줘" 요청. 기존엔 헬멧/악세서리 등으로 EFF_HP(최대체력)가
+  바뀌어도 CUR_HP_VALUE는 절대값 그대로라, 예를 들어 50% 체력으로 싸우던 중 헬멧을 바꿔
+  최대체력이 늘거나 줄면 실제 비율이 왜곡되고(해제 시엔 심하면 현재체력이 새 최대체력을
+  초과) HP바가 이상하게 보일 수 있었다.
+  - `effMaxHpOf(companion, userStat)`: 현재 장비 기준 EFF_HP만 뽑아주는 헬퍼(장비 변경 전/후
+    비교용).
+  - `rescaleHpForEquipChange(companion, userStat, oldMaxHp)`: 변경 후 새 EFF_HP를 다시
+    구해서, `새HP = 이전HP × (새최대체력/이전최대체력)`로 재계산·저장(반올림 오차만
+    클램프, 전투불가 0은 0%×무엇이든 0이라 자연히 그대로 유지).
+  - 적용 지점 4곳: `equipWear`(장착, 같은 부위 자동 교체 포함 -- 전/후 비교 1번만), `equipUnwearOne`
+    (부위 1개 해제, EQUIPPED_COMPANION_ID로 착용 동료 역참조), `unequipAllForCompanion`(부위
+    전체 해제 -- `equipUnwearAll`/`partyToggle`/`partyDragSwap`/`partyUnassignAll` 4곳이 전부
+    이 공용 함수를 공유해서 여기 한 곳만 고치면 다 적용됨, 시그니처를 `int companionId` ->
+    `HashMap companion`으로 변경).
