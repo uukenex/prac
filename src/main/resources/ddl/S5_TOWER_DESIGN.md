@@ -3329,3 +3329,15 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     겪는다. 71층+이면서 함정발이면("이미 선공몬스터인 구간에서 또 함정으로 기습") 그
     전투 내내(기습 + 이후 매 턴 몬스터 반격) 몬스터 공격력 10% 추가 배율
     (`trapAmbushDmgMult`) 적용. `S5_TRAP_MOVE_AMBUSH.sql`(신규, 적용 완료).
+
+- **[2026-09-18][긴급 라이브 장애] `ORA-12899: value too large for column LUCKY_EFFECT`**:
+  실제 유저가 플레이 중 서버 예외로 확인. 원인은 520번째 줄 기록("효과 세기 확장은 컬럼
+  크기 변경 없이 문자열 값만 늘어난 것이라 추가 DB 작업 불필요")이 **틀렸던 것** --
+  `LUCKY_EFFECT VARCHAR2(10)`인데 이후 51층+ 전용으로 추가된 `SHIELD_ON_ATK`(13자)/
+  `HP_DOUBLE_1T`(12자)는 애초에 10자를 넘어서 들어갈 수가 없었다. 그동안 이 두 값이 우연히
+  한 번도 실제로 안 뽑혀서 발견이 늦었을 뿐(RND 선택 풀 안에 있었지만 낮은 확률). 실제
+  에러(`actual: 12`)는 `HP_DOUBLE_1T`가 뽑힌 순간 발생. `LUCKY_EFFECT`를 `VARCHAR2(20)`으로
+  확장(`S5_LUCKY_EFFECT_WIDEN.sql`, 신규, 적용 완료) -- 코드 값은 그대로라 Java 쪽 변경 없음.
+  `TRAP_EFFECT`(같은 VARCHAR2(10))는 현재 값 중 가장 긴 게 정확히 10자(`RESET_TILE`/
+  `SKILL_LOCK`)라 지금은 안전하지만 여유가 전혀 없다 -- 앞으로 이 컬럼에 새 값 추가할 땐
+  길이부터 확인할 것.
