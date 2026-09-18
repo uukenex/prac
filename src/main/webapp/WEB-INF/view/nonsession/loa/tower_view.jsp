@@ -72,7 +72,13 @@
        고정되면 #towerViewport 내부를 아무리 스크롤해도(내부 콘텐츠만 움직임) 버튼은 항상
        화면상 같은 자리에 떠 있는다(진짜 "플로팅"). */
     .tower-viewport-wrap{ position:relative; }
+    /* [2026-09-18] "스크롤내리면 맵뷰가 길어진다" 신고 -- 모바일에서 스크롤하면 브라우저
+       주소창이 접히면서 일반 vh가 순간순간 커지는 게 원인(모바일 브라우저의 vh는 "지금
+       보이는" 뷰포트가 아니라 상황에 따라 값이 바뀜). svh(small viewport height)는 주소창이
+       펼쳐진 최소 크기 기준으로 고정돼서 스크롤해도 절대 안 늘어난다 -- svh 미지원 브라우저는
+       바로 아래 줄이 무효 선언으로 무시되고 그 위 vh 값이 그대로 폴백으로 남는다. */
     .tower-viewport{ position:relative; overflow-y:auto; overflow-x:hidden; width:100%; height:min(480px, 60vh);
+                      height:min(480px, 60svh);
                       border-radius:14px; background:var(--parchment-deep);
                       border:1.5px dashed var(--line); padding:10px; box-sizing:border-box; }
     .tower-track{ position:relative; width:100%; height:100%; }
@@ -327,7 +333,8 @@
        가운데 여백으로 자연스럽게 흡수한다. */
     .battle-screen{ border:1.5px solid var(--line);
                      border-radius:14px; padding:16px; margin-top:2px; box-sizing:border-box;
-                     height:min(480px, 60vh); display:flex; flex-direction:column; justify-content:space-between;
+                     height:min(480px, 60vh); height:min(480px, 60svh); /* [2026-09-18] .tower-viewport와 동일 이유(svh 폴백) */
+                     display:flex; flex-direction:column; justify-content:space-between;
                      opacity:1; transition:opacity .28s ease, background-position 0s;
                      position:relative; overflow:hidden; }
     /* [2026-09-17 2차] "전투시 뒤 배경도 애니메이션 틱한 배경, 랜덤배경 생기면 좋겠어" 요청 --
@@ -852,6 +859,17 @@ var TW = (function () {
     return v + e;
   }
 
+  // [2026-09-18] "동료 체력이 1a 넘으면 표기가 이상해진다" 버그 수정용 -- PP.java의
+  // toBaseValue()와 동일하게 단위(''=0, 'a'=1, 'b'=2, ...)를 10000의 거듭제곱으로 환산해
+  // 실제 크기를 비교 가능한 숫자로 되돌린다. HP바 % 계산처럼 "단위 없는 숫자"(EFF_HP 등)와
+  // 직접 비교/연산해야 할 때는 fmtPP(표시용) 대신 이 함수를 써야 한다.
+  function ppToBase(value, ext) {
+    var v = (value == null) ? 0 : Number(value);
+    var e = (ext == null || ext === '') ? '' : String(ext);
+    var idx = e === '' ? 0 : (e.charCodeAt(0) - 'a'.charCodeAt(0) + 1);
+    return v * Math.pow(10000, idx);
+  }
+
   // [2026-09-18] "체력이 0이 된 동료는 전투불능 표시를 하고싶어" 요청 -- HP 단위(EXT)가
   // 붙어도(a/b 등) 0 자체는 항상 EXT 없는 순수 0으로 저장되므로(PP.toBaseValue와 동일 전제)
   // value만 보면 충분하다.
@@ -942,7 +960,10 @@ var TW = (function () {
     if (battle.monsterId !== p.CUR_MONSTER_ID) {
       // 새 몬스터와 조우(직전까지 다른 몬스터였거나, 전투에 막 진입) -- 기준선/스프라이트 리셋.
       battle.monsterId = p.CUR_MONSTER_ID;
-      battle.monsterBaseHp = p.CUR_MONSTER_HP_VALUE || 1;
+      // [버그 수정] CUR_MONSTER_HP_VALUE도 PP 단위 표기라 그대로 쓰면 전투 중 단위(EXT)가
+      // 바뀔 때(예: 22.50a -> 7370, 단위가 a에서 없음으로 내려감) 기준선과 안 맞아 HP바가
+      // 깨진다 -- ppToBase로 실제 값으로 환산해서 기준선을 잡는다.
+      battle.monsterBaseHp = ppToBase(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT) || 1;
       battle.monsterHp = null;
       document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
       document.getElementById('bsMonsterName').textContent =
@@ -956,16 +977,17 @@ var TW = (function () {
       screenEl.className = screenEl.className.replace(/\bbs-bg-\d\b/, '').trim() + ' ' + nextBg;
     }
 
+    var curMonsterHpBase = ppToBase(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
     var pct = battle.monsterBaseHp > 0
-        ? Math.max(0, Math.min(100, (p.CUR_MONSTER_HP_VALUE || 0) / battle.monsterBaseHp * 100)) : 100;
+        ? Math.max(0, Math.min(100, curMonsterHpBase / battle.monsterBaseHp * 100)) : 100;
     document.getElementById('bsMonsterHpFill').style.width = pct + '%';
     document.getElementById('bsMonsterHpNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
 
     var sprite = document.getElementById('bsMonsterSprite');
-    if (battle.monsterHp != null && (p.CUR_MONSTER_HP_VALUE || 0) < battle.monsterHp) {
+    if (battle.monsterHp != null && curMonsterHpBase < battle.monsterHp) {
       sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit');
     }
-    battle.monsterHp = p.CUR_MONSTER_HP_VALUE || 0;
+    battle.monsterHp = curMonsterHpBase;
 
     updateBattleParty();
   }
@@ -1004,7 +1026,9 @@ var TW = (function () {
       var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
       if (!box) return;
       var maxHp = c.EFF_HP || 1;
-      var curHp = c.CUR_HP_VALUE || 0;
+      // [버그 수정] CUR_HP_VALUE는 PP 단위 표기(예: EXT='a'면 실제로 x10000)라 EFF_HP 같은
+      // 단위 없는 숫자와 그대로 나누면 HP가 1a(=10000) 넘는 순간 비율이 거의 0으로 깨졌다.
+      var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
       var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
       box.querySelector('.hpbar-fill').style.width = pct + '%';
       var down = isIncapacitated(curHp);
