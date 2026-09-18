@@ -4565,26 +4565,35 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "보유한 동료가 없습니다.";
         }
         StringBuilder sb = new StringBuilder(userName).append("님의 동료 목록," + NL);
+        // [2026-09-19] "정렬이 뒤죽박죽이야, 성급 desc로 목록 뿌려줘, HP는 표기 안해도 될것같아"
+        // 요청 -- 번호(idx)는 /파티편성 N, /동료가리기 N 등이 selectUserCompanions()의 원래
+        // 순서(PARTY_SLOT, COMPANION_ID)로 그대로 위치 참조하므로 절대 바꾸면 안 된다(바꾸면
+        // 여기 화면에서 본 번호로 다른 명령을 입력했을 때 엉뚱한 동료가 걸림). 그래서 idx
+        // 자체는 기존과 동일하게 매기고, 화면에 "보여주는 줄 순서"만 성급 내림차순(동점이면
+        // 한계돌파 내림차순)으로 재배열한다. HP는 요청대로 표시에서 제거.
         int idx = 1;
         int hiddenCount = 0;
+        List<int[]> order = new ArrayList<>(); // [grade, limitBreak, lines 안에서의 위치]
+        List<String> lines = new ArrayList<>();
         for (HashMap<String, Object> c : companions) {
             // 숨김 처리된 동료는 번호(인덱스)만 소비하고 텍스트 목록엔 표시하지 않는다.
-            // (인덱스는 항상 전체 목록 기준 위치라서 /파티편성 N, /동료가리기 N 모두 같은 번호를 가리킴)
             if ("Y".equals(strVal(c.get("HIDDEN_YN"), "N"))) { idx++; hiddenCount++; continue; }
             String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "?");
             String name = strVal(c.get("NAME"), job); // 이름 없는 옛 데이터는 직업명으로 대체 표시
             int grade = intVal(c.get("GRADE"), 1);
             int limitBreak = intVal(c.get("LIMIT_BREAK"), 0);
-            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             Object slot = c.get("PARTY_SLOT");
             // [2026-09-14] "동료편성 화면 및 텍스트에 (+3)이런식으로 표기해줘" 요청 -- 한계돌파
             // 단계가 있을 때만 등급 뒤에 붙인다.
-            sb.append(idx++).append(". ").append(name).append(" (").append(job).append(" ★").append(grade)
-              .append(limitBreak > 0 ? " (+" + limitBreak + ")" : "").append(")")
-              .append(" HP ").append(hp.format())
-              .append(slot != null ? " [파티 " + slot + "번]" : " [대기]")
-              .append(NL);
+            String line = idx + ". " + name + " (" + job + " ★" + grade
+                    + (limitBreak > 0 ? " (+" + limitBreak + ")" : "") + ")"
+                    + (slot != null ? " [파티 " + slot + "번]" : " [대기]");
+            order.add(new int[]{ grade, limitBreak, lines.size() });
+            lines.add(line);
+            idx++;
         }
+        order.sort((a, b) -> a[0] != b[0] ? b[0] - a[0] : b[1] - a[1]); // 성급desc, 동점이면 한계돌파desc
+        for (int[] o : order) sb.append(lines.get(o[2])).append(NL);
         if (hiddenCount > 0) sb.append("(숨긴 동료 ").append(hiddenCount).append("마리는 표시 생략, 웹에서 확인)").append(NL);
         sb.append("/파티편성 N 으로 편성/해제 (최대 3명), /동료가리기 N 으로 목록 숨김/해제");
         return sb.toString();

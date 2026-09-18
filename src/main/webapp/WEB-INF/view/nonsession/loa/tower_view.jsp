@@ -132,6 +132,13 @@
     .dice-controls{ display:flex; align-items:stretch; gap:8px; margin:8px 0 10px;
                      position:sticky; top:0; z-index:15; background:var(--parchment-deep);
                      padding:8px; border-radius:0 0 14px 14px; box-shadow:0 4px 10px -4px rgba(0,0,0,.25); }
+    /* [2026-09-19] "전투시 주사위로 몬스터가 가려져" 신고 -- sticky는 이 박스 바로 아래
+       #battleScreen(고정 높이, 자체 스크롤 없음)까지 페이지가 스크롤되면 그 위를 덮어버린다
+       (원래 sticky는 세로로 긴 .tower-viewport가 자체 overflow-y:auto라 페이지 자체는
+       스크롤될 일이 거의 없다는 전제로 넣은 것 -- .battle-screen엔 그 전제가 안 맞음).
+       전투 중엔(updateBattleScreen이 붙이는 .dc-in-battle) 그냥 일반 흐름으로 되돌려서
+       몬스터 줄 위에 뜨는 일 자체를 없앤다. */
+    .dice-controls.dc-in-battle{ position:static; box-shadow:none; }
     .dice-controls-rows{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-width:0; }
     /* [2026-09-05] 사용중인 주사위는 더 크게/진하게 돋보이도록 표시, 한 줄로만 나열
        (줄바꿈 없음, 넘치면 가로 스크롤). */
@@ -493,9 +500,16 @@
        통일(중앙 하단에 넓게 깔리던 기존 방식은 완전히 제거). [2026-09-17 3차] "우상단이
        주사위 버튼(sticky .dice-controls)을 가려서 못 누른다" 신고로 좌측 하단으로 재배치
        (하단 고정 네비 .dock 위로 여유를 둠).*/
+    /* [2026-09-19] "전투시 텍스트로 동료쪽이 가려져(모바일은 더 크게)" 신고 -- 이 토스트가
+       매 DICE 응답의 전체 텍스트를 그대로 보여주는데(다중타격/보호막 등 줄이 많으면 10줄
+       넘게 늘어남) 높이 제한이 전혀 없어서, 길어질수록 .battle-screen 하단의 파티 줄을
+       그만큼 더 많이 덮었다. max-height+내부 스크롤로 상한을 둬서 아무리 길어도 화면을
+       덮는 범위 자체는 고정폭 이상으로 안 커지게 함(중요한 앞부분 줄은 그대로 보이고,
+       나머지는 안에서 스크롤). */
     .msg-toast{ position:fixed; left:10px; right:auto; bottom:110px; top:auto; transform:none;
                 background:var(--ink); color:#fff; padding:9px 12px; border-radius:12px;
                 font-size:11px; line-height:1.6; max-width:min(62vw,300px);
+                max-height:150px; overflow-y:auto;
                 text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none;
                 white-space:pre-line; opacity:.96; }
 
@@ -951,6 +965,11 @@ var TW = (function () {
 
   function updateBattleScreen(p) {
     var inCombat = p.STATUS === 'IN_COMBAT';
+    // [2026-09-19] 전투 중엔 위 .dice-controls의 sticky를 꺼서 #battleScreen 상단(몬스터 줄)을
+    // 덮지 않게 한다(CSS .dice-controls.dc-in-battle 주석 참고). 매 갱신마다 불러도
+    // classList.toggle은 상태가 같으면 사실상 no-op이라 부담 없음.
+    var diceControlsEl = document.querySelector('.dice-controls');
+    if (diceControlsEl) diceControlsEl.classList.toggle('dc-in-battle', inCombat);
     if (inCombat !== battle.wasInCombat) {
       crossfadeBoardView(inCombat);
       battle.wasInCombat = inCombat;
