@@ -141,6 +141,9 @@
             <if test="curMonsterRevivedYn != null">CUR_MONSTER_REVIVED_YN = #{curMonsterRevivedYn},</if>
             <if test="monsterDefBuffPct != null">MONSTER_DEF_BUFF_PCT = #{monsterDefBuffPct},</if>
             <if test="monsterShieldValue != null">MONSTER_SHIELD_VALUE = #{monsterShieldValue},</if>
+            <!-- [2026-09-18] 도적 스킬 도용 -> PP 대신 회피 훔치기로 변경(다음 파티 공격을
+                 일정 확률로 통째로 무효화, MONSTER_DEF_BUFF_PCT와 동일한 1회성 소모 패턴). -->
+            <if test="monsterEvadePct != null">MONSTER_EVADE_PCT = #{monsterEvadePct},</if>
             <if test="bossImmuneCid != null">BOSS_IMMUNE_CID = #{bossImmuneCid},</if>
             <if test="bossStunCid != null">BOSS_STUN_CID = #{bossStunCid},</if>
             <if test="clearBossStun != null">BOSS_STUN_CID = NULL,</if>

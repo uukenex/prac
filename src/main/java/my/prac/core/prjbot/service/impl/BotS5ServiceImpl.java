@@ -2851,6 +2851,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("🌑 보스가 은신 상태로 이번 턴 파티의 공격을 전부 회피했다!").append(NL);
         }
 
+        // [2026-09-18] "도적스킬 훔칠 때 PP 대신 회피를 훔치게 해달라" 요청 -- 지난 턴에
+        // 미드보스/층구간보스가 도적 스킬을 훔쳤으면(아래 스킬도용 파트에서 MONSTER_EVADE_PCT를
+        // 세팅) 이번 파티 공격 전체를 그 확률로 회피(79층 은신 회피와 동일한 "전체 무효화"
+        // 방식, 확률만 다름). 79층 은신으로 이미 totalDamage=0이어도 중복 계산은 무해.
+        int monsterEvadePct = intVal(p.get("MONSTER_EVADE_PCT"), 0);
+        if (monsterEvadePct > 0 && totalDamage > 0 && RND.nextInt(100) < monsterEvadePct) {
+            totalDamage = 0;
+            sb.append("🌀 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 몸놀림을 흉내내 이번 턴 파티의 공격을 전부 회피했다!").append(NL);
+        }
+
         // 중간보스가 지난 턴에 도사 스킬을 훔쳐 자신에게 보호막을 둘렀으면(아래 미드보스
         // 파트 참고), 이번 파티 공격에서 그만큼 먼저 흡수하고 소모한다(1회성).
         int monsterShieldValue = intVal(p.get("MONSTER_SHIELD_VALUE"), 0);
@@ -2895,8 +2905,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> promoteUp = new HashMap<>();
                 promoteUp.put("userName", userName);
                 promoteUp.put("clearMonster2", true); // II번은 이제 활성화됐으니 "대기 중" 슬롯 비움
+                // [버그 수정, 2026-09-18] "I번 처치 후에도 두 마리 다 반격한다" 신고 -- 여기서
+                // CUR_MONSTER_DUAL_YN을 그대로 'Y'로 남겨뒀던 게 원인. 그러면 다음 턴엔
+                // dualMonster1KilledInLoop/dualMonster2KilledInLoop가 이번 턴 한정 로컬
+                // 변수라 둘 다 false로 리셋되는데 dualMonster만 여전히 true라서, 반격 대상
+                // 선정(targets 리스트, 3506번줄쯤 "dualMonster면 2명 타격")이 죽은 I번 슬롯까지
+                // 계속 포함시켜 살아있는 II번 하나뿐인데 항상 두 슬롯이 반격하는 걸로 나타났다.
+                // I번이 죽고 II번이 승격된 순간부터는 그냥 "몬스터 한 마리" 상태이므로 여기서
+                // 바로 꺼준다.
+                promoteUp.put("curMonsterDualYn", "N");
                 dao.updateUserProgress(promoteUp);
                 p.put("CUR_MONSTER2_HP_VALUE", null);
+                p.put("CUR_MONSTER_DUAL_YN", "N");
             }
         } else {
             monsterHpAfter = monsterHp.subtract(PP.fromPP(totalDamage));
@@ -3122,6 +3142,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 아래 미드보스 파트에서 이번 턴에 새로 훔쳤으면 별도 update로 다시 채워 넣는다.
         up.put("monsterDefBuffPct", 0);
         up.put("monsterShieldValue", 0);
+        up.put("monsterEvadePct", 0);
         dao.updateUserProgress(up);
         // [세 구간 분리 요청] 파티 공격 결과(1구간)와 몬스터 상태·반격(2구간) 사이에 빈 줄을 넣는다.
         sb.append(NL);
@@ -3328,7 +3349,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 똑같이 보이지만(startCombat 참고), 매 턴 지금 파티에 있는 직업 중 하나의 "기본 스킬"을
         // 하나 훔쳐서 자신이 사용한다(여러 직업이 섞여 있으면 매 턴 그 중 하나를 무작위로).
         // 전사는 도발(타겟팅) 자체가 자신에게 의미가 없으니 대신 방어력을 올리고, 도사는
-        // 스스로에게 보호막을, 도적은 PP를 훔치고, 궁수는(크리티컬은 제외) 이번 반격 피해를
+        // 스스로에게 보호막을, 도적은 [2026-09-18] PP 대신 다음 파티 공격 회피 확률을 훔치고
+        // (MONSTER_EVADE_PCT), 궁수는(크리티컬은 제외) 이번 반격 피해를
         // 늘리고, 마법사는 동료 한 명을 기절시킨다.
         // [2026-09-14 수정] "스킬 뺏을 때 반격도 같이해줘, 지금은 스킬뺏는 액션만 해서 너무
         // 약하다" 요청 -- 원래 마법사 기절만 "반격 턴을 통째로 소모"(return으로 아래 반격
@@ -3386,19 +3408,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.updateUserProgress(stealShUp);
                     sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 기술을 흉내내 스스로에게 보호막(").append(stealShieldAmt).append(")을 둘렀다!").append(NL);
                 } else if ("ROGUE".equals(stolenJob)) {
-                    PP curPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    // [2026-09-15] "뺏는양을 50%줄여달라" 요청으로 2.5% -> 1.25%.
-                    PP stolenPp = curPpNow.multiplyRate(0.0125);
-                    PP afterPp = curPpNow.subtract(stolenPp);
-                    if (PP.toBaseValue(afterPp) < 0) afterPp = PP.fromPP(0);
-                    HashMap<String, Object> stealPpUp = new HashMap<>();
-                    stealPpUp.put("userName", userName);
-                    stealPpUp.put("ppValue", afterPp.getValue());
-                    stealPpUp.put("ppExt", afterPp.getUnit());
-                    dao.updateUserProgress(stealPpUp);
-                    p.put("PP_VALUE", afterPp.getValue());
-                    p.put("PP_EXT", afterPp.getUnit());
-                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 기술을 흉내내 PP를 훔쳐갔다! -").append(stolenPp.format()).append("PP").append(NL);
+                    // [2026-09-18] "도적스킬 뺏을때 PP뺏는걸 없애고 회피하는걸 뺏어줘" 요청 --
+                    // PP 드레인 대신 다음 파티 공격을 15%(미드보스, 층구간보스는 25%) 확률로
+                    // 통째로 회피하는 효과로 교체(위 monsterEvadePct 체크에서 소모).
+                    HashMap<String, Object> stealEvadeUp = new HashMap<>();
+                    stealEvadeUp.put("userName", userName);
+                    stealEvadeUp.put("monsterEvadePct", 15);
+                    dao.updateUserProgress(stealEvadeUp);
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 기술을 흉내내 몸놀림이 가벼워졌다! (다음 파티 공격 15% 확률로 회피)").append(NL);
                 } else if ("ARCHER".equals(stolenJob)) {
                     midBossArcherDmgUp = true;
                     sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 기술을 흉내내 이번 공격의 피해가 늘어난다!").append(NL);
@@ -3450,19 +3467,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.updateUserProgress(bStealShUp);
                     sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도사의 스킬을 빼앗았다! 스스로에게 보호막(").append(bStealShieldAmt).append(")을 둘렀다!").append(NL);
                 } else if ("ROGUE".equals(bossStolenJob)) {
-                    PP bCurPpNow = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                    // [2026-09-15] "뺏는양을 50%줄여달라" 요청으로 5% -> 2.5%.
-                    PP bStolenPp = bCurPpNow.multiplyRate(0.025);
-                    PP bAfterPp = bCurPpNow.subtract(bStolenPp);
-                    if (PP.toBaseValue(bAfterPp) < 0) bAfterPp = PP.fromPP(0);
-                    HashMap<String, Object> bStealPpUp = new HashMap<>();
-                    bStealPpUp.put("userName", userName);
-                    bStealPpUp.put("ppValue", bAfterPp.getValue());
-                    bStealPpUp.put("ppExt", bAfterPp.getUnit());
-                    dao.updateUserProgress(bStealPpUp);
-                    p.put("PP_VALUE", bAfterPp.getValue());
-                    p.put("PP_EXT", bAfterPp.getUnit());
-                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 스킬을 빼앗았다! PP를 훔쳐갔다! -").append(bStolenPp.format()).append("PP").append(NL);
+                    // [2026-09-18] 미드보스와 동일 취지, 층구간보스는 기존처럼 수치를 세게(25%).
+                    HashMap<String, Object> bStealEvadeUp = new HashMap<>();
+                    bStealEvadeUp.put("userName", userName);
+                    bStealEvadeUp.put("monsterEvadePct", 25);
+                    dao.updateUserProgress(bStealEvadeUp);
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 스킬을 빼앗았다! 몸놀림이 가벼워졌다! (다음 파티 공격 25% 확률로 회피)").append(NL);
                 } else if ("ARCHER".equals(bossStolenJob)) {
                     bossArcherDmgUp = true;
                     sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 스킬을 빼앗았다! 이번 공격의 피해가 크게 늘어난다!").append(NL);
