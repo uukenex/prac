@@ -783,8 +783,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-16] "50층 이상은 올라가는 계단 4개, 내려가는 계단 4개로" 요청으로 50층+는
         // 방향당 4개씩(총 8칸)으로 늘림 -- 아래 STAIRS_UP 해금 조건이 "특정 계단칸 하나"가 아니라
         // 층 전체 탐사율 기준으로 판정된다. [2026-09-17] 처음엔 4칸 전부 동일 기준(50%)이었지만,
-        // "0/10/20/25%로 각각 다르게" 요청으로 지금은 칸마다 요구치가 다르다(stairsUpRequiredPct).
-        int stairsPerDirection = floor >= 50 ? 4 : 1;
+        // "0/10/20/25%로 각각 다르게" 요청으로 지금은 칸마다 요구치가 다르다(stairsUpRequiredPct
+        // -- 4칸보다 적어도 앞쪽 값부터 순서대로 쓰므로 아래 81층+ 2칸 케이스도 자동으로 0%/10%가
+        // 적용되어 별도 처리 불필요). [2026-09-18] "81층부터는 계단을 위/아래 각 2개로" 요청으로
+        // 81층+(아직 CONTENT_LOCKED_FLOOR=81로 비공개, 실사용자 영향 없음)는 방향당 2개로 축소
+        // (칸 수 자체도 81층+는 100칸으로 줄어들어서 -- 200칸대 보드에 8+8개는 상대적으로 계단
+        // 비중이 낮았지만 100칸이면 과해지는 것도 함께 고려).
+        int stairsPerDirection = floor >= 81 ? 2 : (floor >= 50 ? 4 : 1);
         for (int i = 0; i < stairsPerDirection; i++) {
             types.add("STAIRS_UP");
             types.add("STAIRS_DOWN");
