@@ -694,7 +694,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 6턴마다 반복) 추가. 통계 상한/뽑기 등급(GACHA_MASTER UNLOCK_FLOOR 0/30/60/80, 80이
     // 이미 있어 블록8 신규 티어 없음)은 이미 일반화돼 있어 그대로 통과.
     // (이전엔 61~70만 검증 후 71로 올렸었음.)
-    private static final int CONTENT_LOCKED_FLOOR = 81;
+    // [2026-09-18] "81층 열어줘 90층까지 가능하도록" 요청 -- 블록9(81~90)만 먼저 오픈,
+    // 블록10(91~98/99보스)은 아직 잠금 유지(단계적 오픈). 블록9 밸런스(TILE_COUNT 100,
+    // 몬스터 방어력 x3.5, ATK 78층과 동일 비율)는 이미 이번 세션에 사전 조정 완료.
+    private static final int CONTENT_LOCKED_FLOOR = 91;
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -799,9 +802,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "0/10/20/25%로 각각 다르게" 요청으로 지금은 칸마다 요구치가 다르다(stairsUpRequiredPct
         // -- 4칸보다 적어도 앞쪽 값부터 순서대로 쓰므로 아래 81층+ 2칸 케이스도 자동으로 0%/10%가
         // 적용되어 별도 처리 불필요). [2026-09-18] "81층부터는 계단을 위/아래 각 2개로" 요청으로
-        // 81층+(아직 CONTENT_LOCKED_FLOOR=81로 비공개, 실사용자 영향 없음)는 방향당 2개로 축소
-        // (칸 수 자체도 81층+는 100칸으로 줄어들어서 -- 200칸대 보드에 8+8개는 상대적으로 계단
-        // 비중이 낮았지만 100칸이면 과해지는 것도 함께 고려).
+        // 81층+는 방향당 2개로 축소(칸 수 자체도 81층+는 100칸으로 줄어들어서 -- 200칸대
+        // 보드에 8+8개는 상대적으로 계단 비중이 낮았지만 100칸이면 과해지는 것도 함께 고려).
+        // 같은 날 후속 요청으로 블록9(81~90)는 실제로 오픈됨(CONTENT_LOCKED_FLOOR=91),
+        // 블록10(91층+)은 계속 비공개.
         int stairsPerDirection = floor >= 81 ? 2 : (floor >= 50 ? 4 : 1);
         for (int i = 0; i < stairsPerDirection; i++) {
             types.add("STAIRS_UP");
@@ -4097,10 +4101,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (target == floor) {
             return "이미 " + floor + "층에 있습니다."; // "같은 층으로 이동은 막아달라" 요청
         }
-        // [2026-09-07, 당분간] 61층 이상은 콘텐츠 준비 전이라 진입 자체를 차단(마을 접근 등
-        // 다른 제약보다 우선 확인). maxReached로 이미 자격이 있어도 예외 없이 막는다.
+        // [2026-09-07, 당분간] CONTENT_LOCKED_FLOOR 이상은 콘텐츠 준비 전이라 진입 자체를
+        // 차단(마을 접근 등 다른 제약보다 우선 확인). maxReached로 이미 자격이 있어도 예외
+        // 없이 막는다. [2026-09-18] 81~90(블록9) 오픈으로 잠금선을 91로 상향.
         if (target >= CONTENT_LOCKED_FLOOR) {
-            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (61층 이상, 추후 오픈 예정)";
+            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (" + CONTENT_LOCKED_FLOOR + "층 이상, 추후 오픈 예정)";
         }
         int villageFloor = floorBlockBase(floor);
         boolean alwaysFree = (target == villageFloor) || (target == villageFloor + 1); // 마을↔첫 사냥터층은 항상 자유 이동
