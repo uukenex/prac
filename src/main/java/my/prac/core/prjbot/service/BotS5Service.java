@@ -196,6 +196,10 @@ public interface BotS5Service {
      *  연쇄적으로 계속 상위 등급까지 합성됨(예: ★1 9개 → ★2 3개 → ★3 1개). */
     String equipSynthesisAll(String userName);
 
+    /** /전설제작 — 전설의조각 10개를 소모해 ★7 전설장비 랜덤제작 시도(성공률 30%). 정식 오픈
+     *  전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
+    String craftLegendary(String userName);
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

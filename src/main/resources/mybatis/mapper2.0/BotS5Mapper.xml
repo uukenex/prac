@@ -149,6 +149,9 @@
             <if test="nextCooldownSec != null">NEXT_COOLDOWN_SEC = #{nextCooldownSec},</if>
             <if test="diceRollCountToday != null">DICE_ROLL_COUNT_TODAY = #{diceRollCountToday},</if>
             <if test="touchDiceRollDate != null">DICE_ROLL_DATE = SYSDATE,</if>
+            <if test="legendFragment != null">LEGEND_FRAGMENT = #{legendFragment},</if>
+            <if test="bossKillCountToday != null">BOSS_KILL_COUNT_TODAY = #{bossKillCountToday},</if>
+            <if test="touchBossKillDate != null">BOSS_KILL_DATE = SYSDATE,</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}
@@ -452,13 +455,24 @@
     </select>
 
     <insert id="insertEquip" parameterType="hashmap">
-        INSERT INTO TBOT_S5_USER_EQUIP (EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID)
-        VALUES (SEQ_S5_EQUIP_ID.NEXTVAL, #{userName}, #{class}, #{part}, #{grade}, #{equippedCompanionId, jdbcType=NUMERIC})
+        INSERT INTO TBOT_S5_USER_EQUIP (EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID, LEGENDARY_ID)
+        VALUES (SEQ_S5_EQUIP_ID.NEXTVAL, #{userName}, #{class}, #{part}, #{grade}, #{equippedCompanionId, jdbcType=NUMERIC}, #{legendaryId, jdbcType=NUMERIC})
     </insert>
 
     <delete id="deleteEquip">
         DELETE FROM TBOT_S5_USER_EQUIP WHERE EQUIP_ID = #{equipId}
     </delete>
+
+    <!-- ==================== 전설장비(★7) ==================== -->
+    <select id="selectLegendaryMasterList" resultType="hashmap">
+        SELECT LEGENDARY_ID, CLASS, PART, ITEM_NAME, EFFECT_TYPE, EFFECT_PARAM1, EFFECT_PARAM2, FLAVOR_TEXT
+        FROM TBOT_S5_LEGENDARY_MASTER
+    </select>
+
+    <select id="selectLegendaryMaster" resultType="hashmap">
+        SELECT LEGENDARY_ID, CLASS, PART, ITEM_NAME, EFFECT_TYPE, EFFECT_PARAM1, EFFECT_PARAM2, FLAVOR_TEXT
+        FROM TBOT_S5_LEGENDARY_MASTER WHERE LEGENDARY_ID = #{legendaryId}
+    </select>
 
     <update id="updateEquipEquippedCompanion" parameterType="hashmap">
         UPDATE TBOT_S5_USER_EQUIP

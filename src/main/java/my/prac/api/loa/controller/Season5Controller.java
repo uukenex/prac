@@ -288,6 +288,11 @@ public class Season5Controller {
         return s5Service.equipSynthesisAll(userNameOf(map));
     }
 
+    /** [2026-09-18] /전설제작 -- 전설의조각 10개 소모, ★7 전설장비 랜덤제작(성공률 30%). */
+    public String craftLegendary(HashMap<String, Object> map) {
+        return s5Service.craftLegendary(userNameOf(map));
+    }
+
     /** /탑랭킹 — 서버 전체 익명 기록판을 보여주되, 요청한 본인 기록엔 (me)를 붙여준다. */
     public String ranking(HashMap<String, Object> map) {
         return s5Service.ranking(userNameOf(map));

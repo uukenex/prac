@@ -3220,3 +3220,57 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     DEF 3300, 98층 니드호그 DEF 7500)는 그대로. `S5_BLOCK9_10_TUNING.sql`(같은 파일, 실
     DB 적용 완료, 재실행 시 3.5배가 중복 적용되므로 재실행 금지).
   - `BotS5ServiceImpl.java`(계단 개수 로직) + `S5_BLOCK9_10_TUNING.sql`(신규, 적용 완료).
+
+- **[2026-09-18] 81층+(블록9/10) 몬스터 공격력 성장 비율 조정**: "81층 이후몬스터의 공격력은
+  78층과 동일한 비율로 오르도록 변경해줘" 요청. 블록별 기본 ATK 조회 결과 블록6→7→8은
+  1.70x/2.00x로 매끄럽게 증가하는데 블록8→9는 9.58x(일반)/19.8x(보스)로 튀는 이상치였음
+  (HP도 같은 구간에서 8.65x로 튀지만 DEF처럼 별도 의도적 조정 대상이 아니라 이번엔 건드리지
+  않음 -- 사용자가 "공격력"만 명시). 7→8 구간의 2.00x를 8→9, 9→10에도 동일 적용:
+  블록9 일반 639→1278, 블록9 보스(89층) 800→1600, 블록10 일반 1278→2556, 블록10 보스(99층)
+  1600→3200. `S5_BLOCK9_10_ATK_RATIO.sql`(신규, 실 DB 적용 완료 -- 81층+는 여전히
+  CONTENT_LOCKED_FLOOR라 라이브 영향 없음).
+  - (같은 메시지의 확인 질문) "방어력은 주사위를 굴린후의 차감이니?" → 맞음.
+    `dmg = eff[1]*roll - effMonsterDef` (코드 변경 없음, 응답으로만 확인).
+
+- **[2026-09-18] 전설의조각 / ★7 전설장비 시스템 신설**: "50층 이상의 보스층에서 보스처치시
+  전설의조각 획득(확률적, 59층~99층 5%→25%), 보스는 하루 3번만 처치 가능. 조각 10개로
+  전설제작(랜덤, 성공률 30%). 최상급장비상자(GACHA_ID=8, 전설의 장비 상자)에서도 조각
+  1~3개. ★7 전설장비는 무기/갑옷/투구/악세서리 각각 고유 이름+고유 전투효과(예: 송곳 -
+  적 방어력을 훔쳐 굴림 후 공격력에 가산)" 요청. 같은 날 후속 메시지로 스코프 축소:
+  "아이템은 송곳만 예시로 만들고 나머지는 내가 만들거야" (로스터는 데이터 기반이라 이후
+  `TBOT_S5_LEGENDARY_MASTER`에 INSERT만 하면 코드 변경 없이 추가됨), "일반사용자에겐
+  아직 제작부분은 오픈하지 말고, 보스처치시 최대1개획득할수있게해줘" (드랍 개수 최대
+  2개→1개로 축소, `/전설제작`은 `NO_COOLDOWN_YN` 관리자/테스트 계정만 사용 가능하도록
+  코드에서 차단 -- 정식 오픈은 추후 별도 작업).
+  - **보스 하루 3회 제한**: 사용자 확인상 "9층부터 모든 보스층" 공통 카운터(하루 총
+    3회, 어느 보스층이든). `TBOT_S5_USER_PROGRESS.BOSS_KILL_COUNT_TODAY`/`BOSS_KILL_DATE`
+    (DICE_ROLL_COUNT_TODAY와 동일한 "조회 시점 날짜비교" 패턴). 게이트 위치는 주사위 자체가
+    아니라 `resolveCombatTurn()`의 `monsterDead` 확정 직후(99층 보스 1회부활 로직과 동일
+    위치) -- HP를 되돌리지 않고 1로 묶어 "오늘은 못 죽임"으로 처리. 관리자 테스트 계정
+    (`NO_COOLDOWN_YN`)은 면제.
+  - **전설의조각 드랍**: 보스 처치(위 제한을 실제로 통과해 `monsterDead==true`가 확정된
+    경우만) 시 59/69/79/89/99층 순서대로 5/10/15/20/25% 확률로 1개. 50층 미만 보스는
+    대상 아님.
+  - **최상급장비상자 보너스**: `pullEquipCore()`에서 `GACHA_ID==8`("전설의 장비 상자")일
+    때만 매 뽑기마다 조각 1~3개 추가 지급(1회뽑기/10연속뽑기 모두 반영).
+  - **★7 기본 스탯**: `EQUIP_BONUS` 배열에 7번째 행 추가(★6 대비 약 1.8배) --
+    `computeEffectiveStat()`이 `EQUIP_BONUS[grade-1]`로 그대로 인덱싱해서 자동 적용,
+    별도 분기 불필요.
+  - **전설 고유효과(데이터 기반)**: `TBOT_S5_LEGENDARY_MASTER`(LEGENDARY_ID/CLASS/PART/
+    ITEM_NAME/EFFECT_TYPE/EFFECT_PARAM1/EFFECT_PARAM2/FLAVOR_TEXT) 신설,
+    `TBOT_S5_USER_EQUIP.LEGENDARY_ID`(nullable)로 어떤 장비 개체가 어느 전설템인지 연결.
+    현재 구현된 효과 타입은 `DEF_STEAL` 하나뿐(예시 "송곳": SWORD/WEAPON, PARAM1=50 --
+    적 방어력의 50%를 훔쳐 파티 공격 루프에서 `dmg`(이미 굴림 반영값)에 가산). 나머지
+    효과 타입은 사용자가 아이템을 추가하면서 필요한 만큼 구현 예정.
+  - **전설제작**: `craftLegendary()` 신설 -- 조각 10개 소모(성공/실패 무관), 30% 성공 시
+    `TBOT_S5_LEGENDARY_MASTER` 전체에서 균등 랜덤 1개를 뽑아 GRADE=7 장비로 지급. 명령어
+    `/전설제작`(`LoaChatController`→`Season5Controller.craftLegendary`), 웹 액션
+    `CRAFT_LEGENDARY`(`Season5ViewController`) 모두 배선했지만 서비스 메서드 진입점에서
+    `NO_COOLDOWN_YN` 아니면 즉시 차단 -- 정식 오픈 전까지 테스트 계정만 사용 가능.
+  - **DB 마이그레이션 함정 재발**: `S5_BLOCK9_10_ATK_RATIO.sql` 최초 작성 시
+    `UPDATE ...; -- comment`(세미콜론 뒤 같은 줄 주석)을 그대로 다시 써서 조용히 0 rows
+    updated로 실패(CLAUDE.md에 이미 문서화된 함정인데 재발 -- 주석은 항상 별도 줄로).
+  - `BotS5ServiceImpl.java`/`BotS5Service.java`/`BotS5Dao.java`/`BotS5Mapper.xml`/
+    `LoaChatController.java`/`Season5Controller.java`/`Season5ViewController.java` +
+    `S5_LEGENDARY.sql`(신규, 적용 완료). 웹 UI(조각 수 표시/전설제작 버튼)는 정식 오픈
+    시점에 추가 예정, 이번 작업 범위 아님.

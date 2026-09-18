@@ -275,6 +275,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
+    // [2026-09-18] ★7(전설) 추가 -- computeEffectiveStat()이 EQUIP_BONUS[grade-1]로 그대로
+    // 인덱싱하므로 행 하나만 늘리면 별도 분기 없이 자동 적용됨. ★6 대비 약 1.8배 수준.
     private static final double[][] EQUIP_BONUS = {
         { 30, 0.05,   5, 0.05,   3, 0.05 },
         { 45, 0.07,   8, 0.07,   5, 0.07 },
@@ -282,7 +284,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         { 150, 0.15, 25, 0.15,  15, 0.15 },
         { 350, 0.22, 60, 0.22,  35, 0.22 },
         { 800, 0.35, 150, 0.35, 80, 0.35 },
+        { 1450, 0.45, 270, 0.45, 145, 0.45 },
     };
+
+    // [2026-09-18] "50층 이상 보스층 처치 시 확률로 전설의조각 드랍, 조각 10개로 전설제작"
+    // 요청 -- 보스층(59/69/79/89/99) 순서대로 드랍확률 5%→25%로 균등증가(5%p씩). "최대
+    // 2개"였다가 같은 날 후속 메시지("일반사용자에겐 제작은 아직 오픈하지 말고, 보스처치시
+    // 최대1개")로 최대 1개로 축소.
+    private static final int[] LEGEND_FRAGMENT_BOSS_FLOOR = { 59, 69, 79, 89, 99 };
+    private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
+    private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
+    private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
+    private static final int BOSS_DAILY_KILL_LIMIT = 3;   // 보스 하루 처치 제한(모든 보스층 공통 카운터)
 
     // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK] -- [2026-09-05] DICE_4 신설, 언제든(0층부터)
     // 쓸 수 있는 탐사용 저분산 주사위로 DICE_6과 같은 해금 단계(0)에 추가.
@@ -1654,6 +1667,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         return null;
     }
 
+    // [2026-09-18] "보스는 하루 3번만 처치할수있도록" 요청(모든 보스층 공통, 9층부터) --
+    // DICE_ROLL_DATE/COUNT_TODAY와 같은 "조회 시점에 날짜만 비교" 패턴이지만, 게이트 위치는
+    // 주사위 자체가 아니라 "몬스터가 실제로 죽는 시점"(resolveCombatTurn의 monsterDead 확정
+    // 직후, 99층 보스 1회부활 로직과 동일 위치)이다 -- 보스전 진행 중 갑자기 주사위를 못
+    // 굴리게 되는 어색함을 피하고, 그 대신 "오늘의 마지막 일격이 안 먹힌다"는 형태로 처리.
+    /** 오늘 보스 처치 횟수(날짜 바뀌면 0으로 간주, 조회만 하고 DB는 안 건드림). */
+    private int bossKillCountToday(HashMap<String, Object> p) {
+        java.util.Date killDate = (java.util.Date) p.get("BOSS_KILL_DATE");
+        boolean sameDay = killDate != null
+                && new java.sql.Date(killDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
+        return sameDay ? intVal(p.get("BOSS_KILL_COUNT_TODAY"), 0) : 0;
+    }
+
+    /** 보스 처치가 실제로 확정된 시점에 카운터 +1(날짜 바뀌었으면 1로 리셋). */
+    private void bumpBossKillCountToday(String userName, HashMap<String, Object> p) {
+        int newCount = bossKillCountToday(p) + 1;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("bossKillCountToday", newCount);
+        up.put("touchBossKillDate", true);
+        dao.updateUserProgress(up);
+        p.put("BOSS_KILL_COUNT_TODAY", newCount);
+        p.put("BOSS_KILL_DATE", new java.util.Date());
+    }
+
     private String rollDiceInternal(String userName, HashMap<String, Object> p, String status) {
         int floor = intVal(p.get("CUR_FLOOR"), 0);
 
@@ -2688,6 +2726,26 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
+
+            // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
+            // 현재 구현된 효과는 DEF_STEAL(예시: 송곳)뿐. "적의 방어력을 훔쳐 주사위 굴린 후
+            // 자신의 공격력수치에 더한다"는 사용자 예시 그대로, dmg(이미 굴림 결과 반영값)에
+            // 그대로 가산하는 별개 항으로 처리(크리티컬 배율 등과 무관하게 순수 가산).
+            String legendaryWeaponTag = null;
+            for (HashMap<String, Object> e : equips) {
+                if (!"WEAPON".equals(strVal(e.get("PART"), ""))) continue;
+                Object legId = e.get("LEGENDARY_ID");
+                if (legId == null) break;
+                HashMap<String, Object> leg = dao.selectLegendaryMaster(intVal(legId, 0));
+                if (leg != null && "DEF_STEAL".equals(strVal(leg.get("EFFECT_TYPE"), ""))) {
+                    int stolen = (int) Math.round(effMonsterDef * (intVal(leg.get("EFFECT_PARAM1"), 0) / 100.0));
+                    if (stolen > 0) {
+                        dmg += stolen;
+                        legendaryWeaponTag = strVal(leg.get("ITEM_NAME"), "") + "+" + stolen;
+                    }
+                }
+                break; // WEAPON 슬롯은 1개뿐
+            }
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
@@ -2699,6 +2757,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
+            if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 흡수)");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -2857,6 +2916,19 @@ public class BotS5ServiceImpl implements BotS5Service {
               .append("이(가) 쓰러졌지만 곧바로 200% 체력으로 부활한다!").append(NL);
         }
 
+        // [2026-09-18] "보스는 하루 3번만 처치할수있도록" 요청 -- 모든 보스층(9층부터) 공통
+        // 카운터. 99층 부활 로직과 같은 위치(몬스터가 죽는 시점)에서 가로채되, HP를 되돌리지
+        // 않고 딱 1로만 묶어둔다("이번엔 못 죽임"). 관리자 테스트 계정은 쿨타임/일일한도와
+        // 동일한 이유로 면제.
+        if (monsterDead && "Y".equals(strVal(mon.get("BOSS_YN"), "N"))
+                && !"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))
+                && bossKillCountToday(p) >= BOSS_DAILY_KILL_LIMIT) {
+            monsterDead = false;
+            monsterHpAfter = PP.fromPP(1);
+            sb.append(NL).append("⏳ 오늘 보스 처치 횟수(").append(BOSS_DAILY_KILL_LIMIT).append("/").append(BOSS_DAILY_KILL_LIMIT)
+              .append(")를 모두 사용했습니다! 내일 다시 도전해주세요.").append(NL);
+        }
+
         if (monsterDead) {
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
@@ -2910,6 +2982,24 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 새로 값을 쓰는 곳은 없음.
 
             if (isBoss) {
+                bumpBossKillCountToday(userName, p);
+
+                // [2026-09-18] "50층 이상의 보스층에서 보스처치시 확률적으로 전설의조각 획득"
+                // 요청 -- 59/69/79/89/99층 순서대로 5%→25%(균등 증가), 성공 시 1개.
+                for (int i = 0; i < LEGEND_FRAGMENT_BOSS_FLOOR.length; i++) {
+                    if (floor != LEGEND_FRAGMENT_BOSS_FLOOR[i]) continue;
+                    if (RND.nextInt(100) < LEGEND_FRAGMENT_DROP_PCT[i]) {
+                        int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + 1;
+                        HashMap<String, Object> fragUp = new HashMap<>();
+                        fragUp.put("userName", userName);
+                        fragUp.put("legendFragment", newFragment);
+                        dao.updateUserProgress(fragUp);
+                        p.put("LEGEND_FRAGMENT", newFragment);
+                        sb.append("🧩 전설의조각 획득! (보유 ").append(newFragment).append("개)").append(NL);
+                    }
+                    break;
+                }
+
                 int prevBlockBase = floorBlockBase(floor);
                 int nextFloor = prevBlockBase + 10;
 
@@ -5437,6 +5527,19 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         if (grade == 6) grantAchievement(userName, 22);
 
+        // [2026-09-18] "최상급장비상자에서 조각이 1~3개정도 나오게 해줘" 요청 -- GACHA_ID=8
+        // ("전설의 장비 상자", 80층 해금 최상급 티어)에서만 매 뽑기마다 조각 1~3개 보너스 지급.
+        if (intVal(gacha.get("GACHA_ID"), 0) == 8) {
+            int fragmentGranted = 1 + RND.nextInt(3);
+            int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + fragmentGranted;
+            HashMap<String, Object> fragUp = new HashMap<>();
+            fragUp.put("userName", userName);
+            fragUp.put("legendFragment", newFragment);
+            dao.updateUserProgress(fragUp);
+            p.put("LEGEND_FRAGMENT", newFragment);
+            result.put("fragmentGranted", fragmentGranted);
+        }
+
         result.put("ok", true);
         result.put("job", equipClassToStore); // 그룹값(SWORD/PLATE/HELM 등)으로 변환된 값
         result.put("part", part);
@@ -5464,7 +5567,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 으로 이미 종류가 드러남), 마이그레이션 전 구 데이터는 기존 "전사용 투구" 문구 유지.
         String itemLabel = WEAPON_CLASS_NAME.containsKey(equipClass) ? (equipClassLabel(equipClass, part) + "용")
                 : (equipClassLabel(equipClass, part) + "용 " + partNameOf(part));
-        return "🎁 " + itemLabel + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
+        String result = "🎁 " + itemLabel + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
+        if (r.get("fragmentGranted") != null) {
+            result += NL + "🧩 전설의조각 " + r.get("fragmentGranted") + "개도 함께 획득!";
+        }
+        return result;
     }
 
     @Override
@@ -5480,6 +5587,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int[] gradeCount = new int[7];
         int success = 0;
+        int fragmentTotal = 0;
         String stopReason = null;
         for (int i = 0; i < 10; i++) {
             HashMap<String, Object> r = pullEquipCore(userName, gacha, p, gachaId);
@@ -5489,12 +5597,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             success++;
             gradeCount[intVal(r.get("grade"), 1)]++;
+            if (r.get("fragmentGranted") != null) fragmentTotal += intVal(r.get("fragmentGranted"), 0);
         }
 
         StringBuilder sb = new StringBuilder("🎰 10연속 장비뽑기 (").append(success).append("/10)").append(NL);
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
         }
+        if (fragmentTotal > 0) sb.append(NL).append("🧩 전설의조각 ").append(fragmentTotal).append("개 획득!");
         if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
         sb.append(NL).append("👉 파티/장비 탭에서 확인하세요");
         return sb.toString();
@@ -6418,6 +6528,67 @@ public class BotS5ServiceImpl implements BotS5Service {
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
         return "✨ 합성 성공! " + equipFullLabel(clazz, part) + " ★" + (grade + 1)
                 + " (" + equipBonusText(part, grade + 1) + ") 획득!";
+    }
+
+    // [2026-09-18] "조각 10개를 모으면 전설제작 할수있고, 전설 제작 성공률은 30%.
+    // 랜덤제작만 만들고싶어" 요청. 같은 날 후속 메시지("일반사용자에겐 아직 제작부분은
+    // 오픈하지 말고")로 실제 오픈 전까지는 NO_COOLDOWN_YN(기존 관리자/테스트 계정 플래그)
+    // 보유 계정만 사용 가능하도록 막아둔다 -- 조각 드랍/보유는 이미 일반 유저에게도 보이므로
+    // 제작 커맨드/버튼 자체는 그대로 두되 진입 시점에 여기서 차단.
+    @Override
+    @Transactional
+    public String craftLegendary(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
+            return "🔒 전설제작은 아직 준비 중인 기능입니다.";
+        }
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 전설제작을 할 수 없습니다.";
+        }
+        int fragment = intVal(p.get("LEGEND_FRAGMENT"), 0);
+        if (fragment < LEGEND_CRAFT_COST) {
+            return "전설의조각이 부족합니다. (보유 " + fragment + "개 / 필요 " + LEGEND_CRAFT_COST + "개)";
+        }
+
+        int remaining = fragment - LEGEND_CRAFT_COST;
+        HashMap<String, Object> fragUp = new HashMap<>();
+        fragUp.put("userName", userName);
+        fragUp.put("legendFragment", remaining);
+        dao.updateUserProgress(fragUp);
+        p.put("LEGEND_FRAGMENT", remaining);
+
+        boolean success = RND.nextInt(100) < LEGEND_CRAFT_SUCCESS_PCT;
+        if (!success) {
+            return "💨 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
+        }
+
+        List<HashMap<String, Object>> roster = dao.selectLegendaryMasterList();
+        if (roster.isEmpty()) {
+            // 방어적 처리 -- 로스터가 비어있으면(운영 중 등록 누락 등) 조각만 환불한다.
+            HashMap<String, Object> refundUp = new HashMap<>();
+            refundUp.put("userName", userName);
+            refundUp.put("legendFragment", fragment);
+            dao.updateUserProgress(refundUp);
+            p.put("LEGEND_FRAGMENT", fragment);
+            return "아직 등록된 전설장비가 없습니다. 조각은 환불되었습니다.";
+        }
+        HashMap<String, Object> picked = roster.get(RND.nextInt(roster.size()));
+        String clazz = strVal(picked.get("CLASS"), "");
+        String part = strVal(picked.get("PART"), "");
+        int legendaryId = intVal(picked.get("LEGENDARY_ID"), 0);
+        String itemName = strVal(picked.get("ITEM_NAME"), "");
+
+        HashMap<String, Object> e = new HashMap<>();
+        e.put("userName", userName);
+        e.put("class", clazz);
+        e.put("part", part);
+        e.put("grade", 7);
+        e.put("equippedCompanionId", null);
+        e.put("legendaryId", legendaryId);
+        dao.insertEquip(e);
+
+        return "✨✨ 전설제작 성공! [" + itemName + "] ★7 " + equipClassLabel(clazz, part)
+                + " 획득! (" + strVal(picked.get("FLAVOR_TEXT"), "") + ")";
     }
 
     /** [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 전체를 훑어서

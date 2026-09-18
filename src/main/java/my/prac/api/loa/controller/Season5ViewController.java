@@ -458,6 +458,9 @@ public class Season5ViewController {
                 case "EQUIP_SYNTH_ALL":
                     message = s5Service.equipSynthesisAll(userName);
                     break;
+                case "CRAFT_LEGENDARY":
+                    message = s5Service.craftLegendary(userName);
+                    break;
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
                     break;

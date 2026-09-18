@@ -97,6 +97,10 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectSameEquipForSynthesis(@Param("userName") String userName,
             @Param("clazz") String clazz, @Param("part") String part, @Param("grade") int grade);
 
+    // ── 전설장비(★7) ──
+    List<HashMap<String, Object>> selectLegendaryMasterList();
+    HashMap<String, Object> selectLegendaryMaster(@Param("legendaryId") int legendaryId);
+
     // ── 스탯 구매 ──
     HashMap<String, Object> selectUserStat(@Param("userName") String userName);
     int upsertUserStat(HashMap<String, Object> map);

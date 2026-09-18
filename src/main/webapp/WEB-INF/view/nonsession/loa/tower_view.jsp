@@ -808,6 +808,10 @@
     <div class="sheet-title-row">
       <div class="sheet-title">미착용 장비</div>
       <button class="synth-all-btn" onclick="TW.action('EQUIP_SYNTH_ALL','')">⚗️ 일괄합성</button>
+      <!-- [2026-09-18] "조각 10개 -> 전설제작(성공률 30%)" 요청 -- 정식 오픈 전까지는
+           서버(craftLegendary)가 NO_COOLDOWN_YN 계정만 허용하고 나머지는 안내 메시지만
+           반환하므로, 버튼 자체는 누구에게나 보이되 실제 동작은 서버가 게이트한다. -->
+      <button class="synth-all-btn" onclick="TW.action('CRAFT_LEGENDARY','')">✨ 전설제작(<span id="legendFragmentVal">0</span>/10)</button>
     </div>
     <div id="equipListFilters"></div>
     <div id="equipListBox"></div>
@@ -1096,6 +1100,9 @@ var TW = (function () {
         document.getElementById('whoFloor').textContent = p.CUR_FLOOR + '층 · 상태 ' + p.STATUS
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
+        state.progress = p; // [2026-09-18] 전설의조각 보유량 등, 다른 렌더 함수(renderEquipList)에서도 참조
+        var legendFragmentEl = document.getElementById('legendFragmentVal');
+        if (legendFragmentEl) legendFragmentEl.textContent = p.LEGEND_FRAGMENT || 0;
 
         // '편성' 탭(파티 슬롯 토글/장비 장착·합성)과 '상점' 탭(뽑기) 전부 전투 중만 아니면
         // 어디서든 가능하므로 탭 자체를 막지 않는다. inVillage는 아래 주사위 버튼(보드가

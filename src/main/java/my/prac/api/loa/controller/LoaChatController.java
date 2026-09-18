@@ -707,6 +707,9 @@ public class LoaChatController {
 			case "/장비일괄합성":
 				val = s5.equipSynthesisAll(reqMap);
 				break;
+			case "/전설제작":
+				val = s5.craftLegendary(reqMap);
+				break;
 			case "/장비해제":
 			case "/탑해제":
 			case "/ㅈㅂㅎㅈ":
