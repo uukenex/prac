@@ -3304,3 +3304,28 @@ S4의 `TBOT_S4_ACHIEVEMENT`/`TBOT_S4_USER_ACH` 패턴을 확장 계승. S5에서
     신규 컬럼 `TBOT_S5_USER_PROGRESS.MONSTER_EVADE_PCT`(`MONSTER_DEF_BUFF_PCT`와 동일한
     "훔치면 세팅 -> 다음 턴 소모 후 0으로 리셋" 패턴), `S5_MONSTER_STEAL_EVADE.sql`(신규,
     적용 완료).
+  - **[버그 수정] `selectUserProgress`가 `SELECT *`가 아니라 명시적 컬럼목록이었다**: 오늘
+    추가한 `LEGEND_FRAGMENT`/`BOSS_KILL_COUNT_TODAY`/`BOSS_KILL_DATE`/`MONSTER_EVADE_PCT`가
+    전부 이 목록에서 빠져있어서, DB엔 정상 저장돼도 그다음 요청에서 `p.get(...)`이 항상
+    null(기본값)로 읽혔을 것 -- 전설제작 조각 카운트/보스 하루제한/도적스킬 회피훔치기가
+    사실상 매 요청마다 "0부터 다시 시작"하는 것처럼 보였을 가능성이 크다. `BotS5Mapper.xml`의
+    `selectUserProgress` SELECT 목록에 4개 컬럼 모두 추가해서 수정(오늘 트랩 기능 작업 중
+    `TRAP_AMBUSH_YN`을 넣으려다 이 목록 자체가 명시적이라는 걸 알아채고 함께 고침).
+
+- **[2026-09-18] 함정 신규효과 MOVE(-4~+1 이동) + 함정발 전투 기습**: "함정칸 밟으면
+  -4~1칸으로 이동하게 만드는 트랩도 만들어주고, 함정칸으로인해 전투가 발생하면 한대맞고
+  시작하도록 해줘 (일정층수 이상 선공몬스터한테는 그 전투에 몬스터 데미지가 10%증가한다)"
+  요청.
+  - **MOVE**: 기존 TRAP 효과 풀(ATK_DOWN/DEF_DOWN, 51층+는 RESET_TILE/SKILL_LOCK도)에 전
+    층 공통으로 추가. -4~+1(6가지, 뒤로 밀리는 쪽이 더 넓음) 즉시 이동 -- RESET_TILE(처음
+    계단으로 복귀)과 같은 "위치만 옮기고 도착 칸 자체 효과는 트리거하지 않는" 단순화된
+    설계(연쇄 재귀 방지). 단, 도착 칸이 COMBAT이면 예외적으로 그 자리에서 바로
+    `startCombat()`을 호출해 전투를 시작한다(51층+면 중간보스 조우 확률도 정상 COMBAT칸과
+    동일하게 적용).
+  - **함정발 전투 기습**: `startCombat()`에 `trapAmbush` 파라미터 신설, 새 컬럼
+    `TBOT_S5_USER_PROGRESS.TRAP_AMBUSH_YN`으로 다음 `resolveCombatTurn()` 호출까지 전달.
+    기존 "71층+ 몬스터 선공"(1턴째 파티 공격 전 몬스터가 먼저 한 대) 조건을
+    `floor>=71 || trapAmbushYn`으로 확장해서 층수 무관하게 함정발 전투는 항상 기습을
+    겪는다. 71층+이면서 함정발이면("이미 선공몬스터인 구간에서 또 함정으로 기습") 그
+    전투 내내(기습 + 이후 매 턴 몬스터 반격) 몬스터 공격력 10% 추가 배율
+    (`trapAmbushDmgMult`) 적용. `S5_TRAP_MOVE_AMBUSH.sql`(신규, 적용 완료).

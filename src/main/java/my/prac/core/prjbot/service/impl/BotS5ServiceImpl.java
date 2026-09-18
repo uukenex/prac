@@ -1980,13 +1980,41 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [2026-09-06, 51층+ 전용] RESET_TILE(처음 계단칸으로 돌아가기)/SKILL_LOCK(스킬
                 // 사용금지 1턴) 2종 추가 -- 51층 미만에서는 나오지 않는다.
                 // [2026-09-15] PP_LOSS(즉시 5% PP 손실) 효과 삭제 요청으로 제거.
+                // [2026-09-18] "함정칸 밟으면 -4~1칸으로 이동하게 만드는 트랩도 만들어줘" 요청 --
+                // MOVE 신설(전 층 공통, RESET_TILE처럼 즉시발동형 위치이동). -4~+1(6가지, 뒤로
+                // 밀리는 쪽이 더 넓은 범위)만큼 보드를 이동시키고, 그 결과 칸이 COMBAT이면 그
+                // 자리에서 바로 전투가 시작된다("함정으로 전투가 발생하면 한대맞고 시작"). 그 외
+                // 칸(TRAP/TREASURE/계단 등)에 떨어지면 RESET_TILE과 동일하게 위치만 옮기고 그
+                // 칸 자체의 효과는 트리거하지 않는다(연쇄 재귀 방지, 의도적 단순화).
                 List<String> effectList = new ArrayList<>();
-                effectList.add("ATK_DOWN"); effectList.add("DEF_DOWN");
+                effectList.add("ATK_DOWN"); effectList.add("DEF_DOWN"); effectList.add("MOVE");
                 if (blockNo(floor) >= 6) { effectList.add("RESET_TILE"); effectList.add("SKILL_LOCK"); }
                 String effect = effectList.get(RND.nextInt(effectList.size()));
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
-                if ("RESET_TILE".equals(effect)) {
+                if ("MOVE".equals(effect)) {
+                    int moveDelta = -4 + RND.nextInt(6); // -4..+1
+                    int movedTile = (((newTile - 1 + moveDelta) % tileCount) + tileCount) % tileCount + 1;
+                    HashMap<String, Object> moveUp = new HashMap<>();
+                    moveUp.put("userName", userName);
+                    moveUp.put("floor", floor);
+                    moveUp.put("curTile", movedTile);
+                    dao.upsertUserFloorProgress(moveUp);
+                    sb.append("🕳️ 함정에 걸렸다! 바닥이 무너지며 ").append(Math.abs(moveDelta)).append("칸 ")
+                      .append(moveDelta <= 0 ? "뒤로" : "앞으로").append(" 밀려났다! (").append(movedTile).append("번 칸)");
+                    String movedTileType = "COMBAT";
+                    for (HashMap<String, Object> t : tiles) {
+                        if (intVal(t.get("TILE_NO"), -1) == movedTile) {
+                            movedTileType = strVal(t.get("TILE_TYPE"), "COMBAT");
+                            break;
+                        }
+                    }
+                    if ("COMBAT".equals(movedTileType)) {
+                        boolean movedMidBoss = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
+                        sb.append(NL).append(NL).append("😱 밀려난 자리에서 몬스터와 부딪혔다!").append(NL)
+                          .append(startCombat(userName, p, floor, false, false, movedMidBoss, true));
+                    }
+                } else if ("RESET_TILE".equals(effect)) {
                     // 즉시 발동형 1회성 효과 -- TRAP_TURN_LEFT는 건드리지
                     // 않는다. entryTile은 이 층에 도착했을 때 밟은 첫 계단 칸(changeFloor 참고).
                     int entryTile = ufp == null ? 0 : intVal(ufp.get("ENTRY_TILE"), 0);
@@ -2325,6 +2353,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss) {
+        return startCombat(userName, p, floor, boss, elite, midBoss, false);
+    }
+
+    /** [2026-09-18] trapAmbush -- 함정칸(MOVE 효과)으로 떠밀려 우연히 COMBAT칸에 떨어져 시작된
+     *  전투. resolveCombatTurn()의 "1턴째 기습" 조건에 플로어 무관하게 걸리게 하고, 71층+에서는
+     *  선공몬스터 특성과 겹쳐 그 전투 내내 몬스터 공격력 10% 증가까지 함께 적용된다. */
+    private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss, boolean trapAmbush) {
         HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), boss ? "Y" : "N"), floor);
         if (mon == null) {
             // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
@@ -2365,6 +2400,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterEliteYn", elite ? "Y" : "N");
         up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
         up.put("curMonsterDualYn", dualMonster ? "Y" : "N");
+        up.put("trapAmbushYn", trapAmbush ? "Y" : "N"); // 항상 명시 세팅(직전 전투가 함정기습이었던 잔여값 방지)
         up.put("curCombatTurn", 0); // 새 전투 시작 -- 69층 보스 등 턴제한 타이머를 0부터 다시 셈
         // [2026-09-14] "99층 보스는 죽으면 200% 체력으로 한 번 부활" 요청 -- 새 전투 시작
         // 시점엔 항상 아직 부활을 안 쓴 상태로 초기화(clearMonster에서도 'N'으로 정리되지만,
@@ -2396,6 +2432,9 @@ public class BotS5ServiceImpl implements BotS5Service {
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
           .append(" ❤️ ").append(fullHp.format()).append(dualMonster ? " x2" : "").append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
+        // [2026-09-18] 함정으로 떠밀려 시작된 전투 -- 다음 /주사위(공격)에서 몬스터가 먼저
+        // 기습한다(71층+면 그 기습을 포함해 전투 내내 몬스터 공격력도 10% 증가).
+        if (trapAmbush) sb.append("😱 불시의 조우라 다음 공격 전에 몬스터가 먼저 기습합니다!").append(NL);
         // [2026-09-12] "I번부터 죽여야 II번이 나온다" 요청으로 문구 갱신 -- 예전엔 체력을
         // 미리 합쳐서 하나처럼 보였는데, 이제 I번을 완전히 처치해야 II번이 등장한다.
         // [2026-09-14] 89층은 "보스" 문구로 갈라서 안내(몬스터 두 마리와 동일 인프라지만
@@ -2576,7 +2615,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 처리)는 전투 1턴째에 한해 파티가 공격하기 전에 몬스터가 은신에서 튀어나와 먼저
         // 한 대 때린다. 이 공격은 반격 인프라(개인 방어력만 반영)를 그대로 재사용하되,
         // 아직 파티가 행동하기 전이라 보호막/도발 등은 적용되지 않는다(말 그대로 기습).
-        if (floor >= 71 && curCombatTurn == 1 && !"Y".equals(strVal(mon.get("BOSS_YN"), "N"))) {
+        // [2026-09-18] "함정칸으로 전투가 발생하면 한대맞고 시작하게, 일정층수 이상
+        // 선공몬스터한테는 그 전투에 몬스터 데미지가 10%증가" 요청 -- 함정(MOVE)으로 떠밀려
+        // 시작된 전투(TRAP_AMBUSH_YN)는 층수 무관하게 이 기습을 강제로 겪고, 그 층이 이미
+        // 자연 선공몬스터 구간(71층+)과 겹치면 "그 전투" 내내(기습+이후 매 턴 반격) 몬스터
+        // 공격력이 10% 더 오른다(trapAmbushDmgMult, 아래 일반 반격 파트에서도 재사용).
+        boolean trapAmbushYn = "Y".equals(strVal(p.get("TRAP_AMBUSH_YN"), "N"));
+        boolean naturalAmbushFloor = floor >= 71;
+        double trapAmbushDmgMult = (trapAmbushYn && naturalAmbushFloor) ? 1.1 : 1.0;
+        if ((naturalAmbushFloor || trapAmbushYn) && curCombatTurn == 1 && !"Y".equals(strVal(mon.get("BOSS_YN"), "N"))) {
             List<HashMap<String, Object>> ambushAlive = new ArrayList<>();
             for (HashMap<String, Object> c : party) {
                 PP ahp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -2589,7 +2636,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String amName = strVal(amTarget.get("NAME"), JOB_NAME.getOrDefault(amJob, "동료"));
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
                 int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
-                int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult);
+                int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult);
                 int amRoll = rollFace(1, diceMax);
                 int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
                 PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
@@ -3604,7 +3651,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
-        int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (enraged ? BOSS_ENRAGE_ATK_MULT : 1.0));
+        int monsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (enraged ? BOSS_ENRAGE_ATK_MULT : 1.0) * trapAmbushDmgMult);
         // [2026-09-14][정정] "공격력을 1.6배 정도 올려달라" 요청 -- 처음엔 미드보스에 붙였는데,
         // "미드보스 말고 층구간 보스(층 끝 진짜 보스)가 강해져야 한다"는 재요청으로 isBossRow
         // 기준으로 옮김. eliteMult(HP/DEF에도 같이 쓰이는 배율)는 그대로 두고 공격력에만
