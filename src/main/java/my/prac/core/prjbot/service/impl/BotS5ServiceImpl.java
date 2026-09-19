@@ -629,6 +629,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         return face;
     }
 
+    /** [2026-09-19] "51층+ 몬스터도 주사위를 굴리는데 반격은 자기만의 무작위 면수(51~70층
+     *  6~12, 71층+ 8~20)를 쓰는데, 은신 기습(첫턴 선공)만 이 로직 이전에 짜여서 플레이어가
+     *  낀 주사위(diceMax, 최대 20이지만 등급이 낮으면 그보다 작음)를 그대로 재사용하고
+     *  있었다" 버그 -- 51층 미만은 원래도 몬스터가 플레이어 주사위를 공유하던 구간이라
+     *  그대로 두고, 51층 이상만 이 헬퍼로 통일해서 기습/반격이 항상 같은 규칙을 쓰게 한다. */
+    private int monsterOwnDiceMax(int floor, int fallbackDiceMax) {
+        if (floor < 51) return fallbackDiceMax;
+        return (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
+    }
+
     /** 위 rollFace()의 diceMin 인자용 -- 유저가 지금 "선택"해둔 최소 눈금 조정치
      *  (DICE_MIN_ADJUST, -1..+6)를 반영한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
      *  최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림(rollFace(1, monsterDiceMax))
@@ -702,6 +712,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
     private static final int MIDBOSS_CHANCE_PCT = 20;
+
+    // [2026-09-19] "선공몬스터 기습이 너무 세다(★6 체력1만인데 기습이 4만), 한방에 죽지
+    // 않도록, 한방에 죽을 체력한도를 정해서 넘으면 분산피해로 바꿔달라" 요청 -- 이 비율을
+    // 넘는 단일 대상 기습 피해는 파티 전체(생존자)에게 나눠서 적용하고, 나눠 받은 몫도 각자
+    // 이 비율을 넘지 못하게 한 번 더 자른다(그래도 남는 초과분은 그냥 버림 -- "안 죽게"가
+    // 목적이라 총 피해량 보존보다 생존을 우선). 대상 스탯은 최대체력(EFF_HP) 기준.
+    private static final double AMBUSH_ONESHOT_CAP_PCT = 0.5;
 
     // [2026-09-09] "69층 보스는 10턴내 처치 옵션(폭주 타이머)을 추가해달라" 요청 -- 보스가
     // 있는 층(X9) -> 그 보스를 몇 턴 안에 처치해야 하는지. 넘기면 BOSS_ENRAGE_ATK_MULT배로
@@ -2665,31 +2682,75 @@ public class BotS5ServiceImpl implements BotS5Service {
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
                 int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult);
-                int amRoll = rollFace(1, diceMax);
+                // [2026-09-19] "51층+ 몬스터는 자기만의 무작위 면수를 쓴다"는 규칙(반격과 동일,
+                // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
+                // (diceMax, 최대 20)를 그대로 재사용해서 플레이어가 강한 주사위를 낄수록
+                // 몬스터 기습도 덩달아 세지는 부작용이 있었다.
+                int amRoll = rollFace(1, monsterOwnDiceMax(floor, diceMax));
                 int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
-                PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
-                // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어) -- 이 동료가 방어
-                // 대상이면 이번 기습 피해를 아예 0으로 막는다(치명타 여부 무관, resolveCombatTurn의
-                // 반격 피해 적용부와 동일 정책).
-                int amWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                boolean amWarded = amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0);
-                if (amWarded) {
-                    amDmg = 0;
-                    HashMap<String, Object> amWardClearUp = new HashMap<>();
-                    amWardClearUp.put("userName", userName);
-                    amWardClearUp.put("wardCompanionId", 0);
-                    dao.updateUserProgress(amWardClearUp);
-                    p.put("WARD_COMPANION_ID", 0);
-                }
-                PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
-                if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
-                if (amWarded) {
-                    sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(amGrade, amJob, amName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
+                // [2026-09-19] "★6 체력1만인데 기습이 4만, 한방에 죽지 않게, 한방에 죽을 체력
+                // 한도를 정해서 넘으면 분산피해로" 요청 -- 이 원본(raw) 피해가 대상 최대체력의
+                // AMBUSH_ONESHOT_CAP_PCT를 넘으면, 한 명에게 몰아주지 않고 이번 기습에서
+                // 살아있던 전원에게 나눠서 적용한다(각자 몫도 자기 최대체력의 같은 비율을 넘지
+                // 못하게 한 번 더 자름 -- 총 피해량 보존보다 "안 죽는다"가 우선이라 남는
+                // 초과분은 버림). 럭키칸 면역(WARD_COMPANION_ID)은 "다음 피해 1회"가 누구한테
+                // 오든 막아주는 개인 보호막이라, 분산 시에도 받는 사람 기준으로 각자 판정한다.
+                if (amDmg > Math.round(amEff[0] * AMBUSH_ONESHOT_CAP_PCT)) {
+                    sb.append("💥 위력이 너무 강해 파티 전체에 충격이 분산됐다!").append(NL);
+                    int share = Math.max(1, amDmg / ambushAlive.size());
+                    for (HashMap<String, Object> c : ambushAlive) {
+                        String cJob = strVal(c.get("CLASS"), "WARRIOR");
+                        int cGrade = intVal(c.get("GRADE"), 1);
+                        String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(cJob, "동료"));
+                        int[] cEff = c == amTarget ? amEff : computeEffectiveStat(cJob, cGrade,
+                                dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0)), userStat, intVal(c.get("LIMIT_BREAK"), 0));
+                        int cDmg = Math.min(share, (int) Math.round(cEff[0] * AMBUSH_ONESHOT_CAP_PCT));
+                        int cWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+                        boolean cWarded = cWardCid > 0 && cWardCid == intVal(c.get("COMPANION_ID"), 0);
+                        if (cWarded) {
+                            cDmg = 0;
+                            HashMap<String, Object> cWardClearUp = new HashMap<>();
+                            cWardClearUp.put("userName", userName);
+                            cWardClearUp.put("wardCompanionId", 0);
+                            dao.updateUserProgress(cWardClearUp);
+                            p.put("WARD_COMPANION_ID", 0);
+                        }
+                        PP cHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                        PP cHpAfter = cHp.subtract(PP.fromPP(cDmg));
+                        if (PP.toBaseValue(cHpAfter) < 0) cHpAfter = PP.fromPP(0);
+                        if (cWarded) {
+                            sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(cGrade, cJob, cName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
+                        }
+                        sb.append(jobTag(cGrade, cJob, cName)).append("에게 ").append(cDmg).append("dmg (💗")
+                          .append(cHpAfter.format()).append("/").append(cEff[0]).append(")").append(NL);
+                        writeCompanionHp(c, cHpAfter);
+                    }
+                    sb.append(NL);
+                } else {
+                    PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
+                    // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어) -- 이 동료가 방어
+                    // 대상이면 이번 기습 피해를 아예 0으로 막는다(치명타 여부 무관, resolveCombatTurn의
+                    // 반격 피해 적용부와 동일 정책).
+                    int amWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+                    boolean amWarded = amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0);
+                    if (amWarded) {
+                        amDmg = 0;
+                        HashMap<String, Object> amWardClearUp = new HashMap<>();
+                        amWardClearUp.put("userName", userName);
+                        amWardClearUp.put("wardCompanionId", 0);
+                        dao.updateUserProgress(amWardClearUp);
+                        p.put("WARD_COMPANION_ID", 0);
+                    }
+                    PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
+                    if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
+                    if (amWarded) {
+                        sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(amGrade, amJob, amName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
+                    }
+                    sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
+                      .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
+                    writeCompanionHp(amTarget, amHpAfter);
                 }
-                sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
-                  .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
-                writeCompanionHp(amTarget, amHpAfter);
             }
         }
 
@@ -3622,10 +3683,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 몬스터 자신만의 무작위 면수 주사위를 매 턴 새로 굴려서 플레이어 장비와 무관하게
         // 반격 변동폭을 키운다(한 턴 안에서 여러 대상을 때리는 다중 타겟 보스는 같은 턴 동안
         // 같은 면수를 공유, 대상별 눈금만 각자 새로 굴림).
-        int monsterDiceMax = diceMax;
-        if (floor >= 51) {
-            monsterDiceMax = (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
-        }
+        int monsterDiceMax = monsterOwnDiceMax(floor, diceMax); // [2026-09-19] 기습과 동일 헬퍼로 통일
         // [2026-09-14][정정] "주사위 범위를 올려달라(ex 6~20이었다면 8~20으로)" 요청 --
         // 처음엔 미드보스(스킬 뺏는 몹, COMBAT칸에 몰래 섞여 나오는 평범한 몬스터 위장)에
         // 붙였는데, "미드보스 말고 층구간 보스(층 끝의 진짜 보스)가 강해져야 한다"는 재요청으로
