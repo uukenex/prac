@@ -1695,28 +1695,18 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
-    // [2026-09-16] "한도를 다 소진하면 시간당 100회씩 회복시켜달라" 요청.
-    // [2026-09-16 재수정] "마지막 굴림 이후 경과시간" 방식은 계속 활발히 굴리는 동안엔
-    // DICE_ROLL_DATE가 매번 "방금"으로 갱신돼서 회복이 사실상 적용 안 되는 문제가 있었다
-    // -- "그냥 매시 정각마다 100회씩 채워주자"로 변경. DICE_ROLL_COUNT_TODAY를 더 이상
-    // "회복 반영해서 깎은 값"이 아니라 "오늘 실제 굴린 누적 횟수(순수 raw, 절대 안 깎임)"로
-    // 저장하고, 한도 체크 시점마다 "오늘 자정 이후 지난 정각(1시/2시/.../23시) 개수 * 100"을
-    // 그 raw 값에서 매번 새로 빼서 유효 사용량을 구한다. raw를 절대 안 줄이기 때문에(매번
-    // curCount+1이 아니라 storedRaw+1을 저장) 같은 시간대 안에서 여러 번 굴려도 회복량이
-    // 중복 반영되지 않는다. 한도(1200 등)는 그대로 -- 정각마다 100씩 여유가 생기는 구조라
-    // 하루 총 실제 가능 굴림 수는 자정 이후 지난 시간에 비례해 한도보다 늘어날 수 있다(의도).
-    private static final int DICE_REGEN_PER_HOUR = 100;
-
+    // [2026-09-16] "한도를 다 소진하면 시간당 100회씩 회복시켜달라" 요청으로 매시 정각마다
+    // DICE_REGEN_PER_HOUR(100)씩 회복되는 구조를 만들었었다.
+    // [2026-09-20 철회] "회복을 없애달라" 요청으로 시간당 회복 전체를 제거 -- 이제
+    // DICE_ROLL_COUNT_TODAY(오늘 실제 굴린 누적 raw 횟수)를 그대로 사용량으로 쓰고, 자정이
+    // 지나 날짜가 바뀌어야만(sameDay=false) 0으로 리셋된다. 순수 "하루 한도"로 되돌아감.
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
         boolean sameDay = rollDate != null
                 && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
         int storedRaw = sameDay ? rawUsedToday : 0;
-        // 자정(00:00) 이후 지난 정각 개수 = 현재 시(0~23) -- 1시/2시/.../23시마다 100씩 회복.
-        int hourOfDay = java.time.LocalTime.now().getHour();
-        int regen = hourOfDay * DICE_REGEN_PER_HOUR;
-        int curCount = Math.max(0, storedRaw - regen);
+        int curCount = storedRaw;
         boolean isWeb = "WEB".equals(channel);
         int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
         if (curCount >= channelLimit) {
@@ -1724,14 +1714,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
                 if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
                     return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
-                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요! "
-                            + "(매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복됩니다)";
+                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요!";
                 }
                 return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. "
-                        + "매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
+                        + "내일 다시 시도해주세요.";
             }
             return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. "
-                    + "매시 정각마다 " + DICE_REGEN_PER_HOUR + "회씩 회복되니 잠시 후 다시 시도하거나, 내일 다시 시도해주세요.";
+                    + "내일 다시 시도해주세요.";
         }
         int newRaw = storedRaw + 1;
         HashMap<String, Object> up = new HashMap<>();
