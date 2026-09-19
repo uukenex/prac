@@ -641,7 +641,13 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** [2026-09-19] 은신 기습(선공) 피해를 한 대상에게 적용 -- 럭키칸 피해면역
      *  (WARD_COMPANION_ID) 체크, HP 차감, 로그 한 줄까지 한 곳에서 처리한다(단일 타격/
-     *  90%↑ 분산타격 두 경로가 공유). */
+     *  90%↑ 분산타격 두 경로가 공유).
+     *  [2026-09-20 정정] "기습으로 사망하지않게 동료 최대체력의 90%까지만 데미지가 들어가도록"
+     *  요청 -- 09-19엔 "MAX_AMBUSH_DMG(2만) 넘으면 두 명에게 분산"까지만 하고 분산된 값도
+     *  재클램프하지 않아서, 분산 몫(예: 1만)이 여전히 그 동료의 최대체력을 넘어 실제로
+     *  즉사하는 사례가 보고됐다("즉사 가능성 자체는 남겨둔다"던 이전 방침을 이번 요청으로
+     *  뒤집음). 이제 최종 적용 데미지를 대상 본인의 유효 최대체력 90%로 하드 클램프해서
+     *  단일/분산 두 경로 모두 기습만으로는 절대 죽지 않게 한다. */
     private void applyAmbushHit(String userName, HashMap<String, Object> p, HashMap<String, Object> userStat,
             StringBuilder sb, HashMap<String, Object> target, int dmg) {
         String job = strVal(target.get("CLASS"), "WARRIOR");
@@ -649,6 +655,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
+        int hardCap = (int) Math.floor(eff[0] * AMBUSH_DEATH_GUARD_PCT);
+        if (dmg > hardCap) dmg = Math.max(1, hardCap);
         int wardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
         boolean warded = wardCid > 0 && wardCid == intVal(target.get("COMPANION_ID"), 0);
         if (warded) {
@@ -747,13 +755,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-19] "선공몬스터 기습이 너무 세다(★6 체력1만인데 기습이 4만)" 신고 -- 처음엔
     // "최대체력 50% 초과분은 파티 전체로 분산+각자 재클램프"로 즉사 자체를 원천 차단했는데,
     // 곧바로 "즉사할 수도 있게 해야지, 다만 지금처럼 100% 확정 즉사는 과하다" 재요청으로
-    // 정책을 바꿈: 즉사 가능성 자체는 남기되(주사위 운이 아주 나쁘면 여전히 죽을 수 있음),
-    // (1) 실드까지 감안한 체감 최대치를 MAX_AMBUSH_DMG로 못박고, (2) 그 값이 대상 최대체력의
-    // AMBUSH_SPLIT_THRESHOLD_PCT(90%)를 넘을 만큼 크면 한 명에게 몰아치지 않고 두 명에게
-    // 절반씩 나눠 때려서(다중공격) "확정 원샷킬"만 피한다 -- 나눠 맞은 쪽도 체력이 낮으면
-    // 여전히 죽을 수 있어 즉사 가능성 자체는 유지된다.
+    // 정책을 바꿈: (1) 실드까지 감안한 체감 최대치를 MAX_AMBUSH_DMG로 못박고, (2) 그 값이
+    // 대상 최대체력의 AMBUSH_SPLIT_THRESHOLD_PCT(90%)를 넘을 만큼 크면 한 명에게 몰아치지
+    // 않고 두 명에게 절반씩 나눠 때린다(다중공격).
+    // [2026-09-20 정정] 위 분산 로직만으로는 분산된 몫(예: 2만의 절반=1만)이 그 동료 자신의
+    // 최대체력보다 커서 실제로 죽는 사례가 나와("기습으로 사망하지않게 최대체력 90%까지만
+    // 데미지가 들어가도록") 방침을 다시 바꿈: 이제 기습은 즉사 가능성을 완전히 없앤다 --
+    // applyAmbushHit()에서 최종 적용치를 대상 본인 최대체력의 AMBUSH_DEATH_GUARD_PCT(90%)로
+    // 하드 클램프(단일/분산 두 경로 공통 적용). MAX_AMBUSH_DMG/AMBUSH_SPLIT_THRESHOLD_PCT는
+    // "몰아치기 방지"(다중공격 연출) 목적으로는 계속 쓰지만, 즉사 방지 보장은 이제 이
+    // 클램프가 전담한다.
     private static final int MAX_AMBUSH_DMG = 20000;
     private static final double AMBUSH_SPLIT_THRESHOLD_PCT = 0.9;
+    private static final double AMBUSH_DEATH_GUARD_PCT = 0.9;
+    // [2026-09-20] "데미지가 낮을 때도 많아야 한다, 평소공격력의 50%로" 요청 -- 기습 굴림의
+    // 기준 공격력을 몬스터 평소 공격력(ATK_VALUE 기반 정상 공식)의 이 비율만큼만 쓴다.
+    private static final double AMBUSH_ATK_PCT = 0.5;
 
     // [2026-09-09] "69층 보스는 10턴내 처치 옵션(폭주 타이머)을 추가해달라" 요청 -- 보스가
     // 있는 층(X9) -> 그 보스를 몇 턴 안에 처치해야 하는지. 넘기면 BOSS_ENRAGE_ATK_MULT배로
@@ -2711,10 +2728,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-19 정정] "내 설계는... 50층이상은 몬스터가 1.1배데미지를 갖는다 였던거
         // 같아" -- 처음 구현 때 "일정층수 이상"을 자연 선공몬스터 구간(71층+, naturalAmbushFloor)
         // 기준으로 잘못 재활용했었다. 원래 의도한 기준은 50층+라 별도 상수로 분리.
+        // [2026-09-20 확장] "데미지가 낮을 때도 많아야 한다, 평소공격력의 50%로 때리게 해달라
+        // (보스포함)" 요청 -- (1) 기습의 기준 공격력 자체를 ATK_VALUE의 절반으로 낮춰서
+        // MAX_AMBUSH_DMG 상한에 거의 항상 붙던 것과 달리 주사위 결과에 따라 낮은 데미지도
+        // 흔히 나오게 하고, (2) 원래 보스는 이 기습에서 통째로 제외돼 있었는데 "보스포함"
+        // 요청에 맞춰 79/89층 전용 은신 즉사(boss79Ambush, 아래 별도 처리) 대상만 계속
+        // 제외하고 그 외 보스(51~78/80~88/90+층 보스행)는 이 기습을 함께 겪도록 열었다.
         boolean trapAmbushYn = "Y".equals(strVal(p.get("TRAP_AMBUSH_YN"), "N"));
         boolean naturalAmbushFloor = floor >= 71;
         double trapAmbushDmgMult = (trapAmbushYn && floor >= 50) ? 1.1 : 1.0;
-        if ((naturalAmbushFloor || trapAmbushYn) && curCombatTurn == 1 && !"Y".equals(strVal(mon.get("BOSS_YN"), "N"))) {
+        boolean specialBossAmbushFloor = (floor == 79 || floor == 89) && "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        if ((naturalAmbushFloor || trapAmbushYn) && curCombatTurn == 1 && !specialBossAmbushFloor) {
             List<HashMap<String, Object>> ambushAlive = new ArrayList<>();
             for (HashMap<String, Object> c : party) {
                 PP ahp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
@@ -2725,7 +2749,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
                 int[] amEff = computeEffectiveStat(strVal(amTarget.get("CLASS"), "WARRIOR"), intVal(amTarget.get("GRADE"), 1),
                         amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
-                int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult);
+                int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult * AMBUSH_ATK_PCT);
                 // [2026-09-19] "51층+ 몬스터는 자기만의 무작위 면수를 쓴다"는 규칙(반격과 동일,
                 // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
                 // (diceMax, 최대 20)를 그대로 재사용해서 플레이어가 강한 주사위를 낄수록
@@ -2737,9 +2761,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 감안한 체감 최대치를 MAX_AMBUSH_DMG(2만)로 못박는다.
                 amDmg = Math.min(amDmg, MAX_AMBUSH_DMG);
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
-                // 대상 최대체력의 90% 이상이면(사실상 빈사~즉사권) 한 명에게 몰아치지 않고
-                // 가능하면 두 명에게 절반씩 나눠 때린다(다중공격) -- 나눠 맞은 쪽도 체력이
-                // 낮으면 여전히 죽을 수 있어 "즉사 가능성 자체"는 남아있다.
+                // 대상 최대체력의 90% 이상이면(사실상 빈사권) 한 명에게 몰아치지 않고 가능하면
+                // 두 명에게 절반씩 나눠 때린다(다중공격 연출). [2026-09-20] 실제 즉사 방지는
+                // applyAmbushHit()의 최종 하드 클램프(AMBUSH_DEATH_GUARD_PCT)가 담당하므로,
+                // 여기서 분산 여부와 무관하게 기습만으로는 죽지 않는다.
                 if (amDmg >= Math.round(amEff[0] * AMBUSH_SPLIT_THRESHOLD_PCT) && ambushAlive.size() > 1) {
                     List<HashMap<String, Object>> remaining = new ArrayList<>(ambushAlive);
                     remaining.remove(amTarget);
