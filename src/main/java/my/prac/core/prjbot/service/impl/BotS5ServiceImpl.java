@@ -639,6 +639,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
     }
 
+    /** [2026-09-19] 은신 기습(선공) 피해를 한 대상에게 적용 -- 럭키칸 피해면역
+     *  (WARD_COMPANION_ID) 체크, HP 차감, 로그 한 줄까지 한 곳에서 처리한다(단일 타격/
+     *  90%↑ 분산타격 두 경로가 공유). */
+    private void applyAmbushHit(String userName, HashMap<String, Object> p, HashMap<String, Object> userStat,
+            StringBuilder sb, HashMap<String, Object> target, int dmg) {
+        String job = strVal(target.get("CLASS"), "WARRIOR");
+        int grade = intVal(target.get("GRADE"), 1);
+        String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
+        List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
+        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
+        int wardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+        boolean warded = wardCid > 0 && wardCid == intVal(target.get("COMPANION_ID"), 0);
+        if (warded) {
+            dmg = 0;
+            HashMap<String, Object> wardClearUp = new HashMap<>();
+            wardClearUp.put("userName", userName);
+            wardClearUp.put("wardCompanionId", 0);
+            dao.updateUserProgress(wardClearUp);
+            p.put("WARD_COMPANION_ID", 0);
+        }
+        PP hp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
+        PP hpAfter = hp.subtract(PP.fromPP(dmg));
+        if (PP.toBaseValue(hpAfter) < 0) hpAfter = PP.fromPP(0);
+        if (warded) {
+            sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(grade, job, name)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
+        }
+        sb.append(jobTag(grade, job, name)).append("에게 ").append(dmg).append("dmg (💗")
+          .append(hpAfter.format()).append("/").append(eff[0]).append(")").append(NL);
+        writeCompanionHp(target, hpAfter);
+    }
+
     /** 위 rollFace()의 diceMin 인자용 -- 유저가 지금 "선택"해둔 최소 눈금 조정치
      *  (DICE_MIN_ADJUST, -1..+6)를 반영한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
      *  최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림(rollFace(1, monsterDiceMax))
@@ -713,12 +744,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
     private static final int MIDBOSS_CHANCE_PCT = 20;
 
-    // [2026-09-19] "선공몬스터 기습이 너무 세다(★6 체력1만인데 기습이 4만), 한방에 죽지
-    // 않도록, 한방에 죽을 체력한도를 정해서 넘으면 분산피해로 바꿔달라" 요청 -- 이 비율을
-    // 넘는 단일 대상 기습 피해는 파티 전체(생존자)에게 나눠서 적용하고, 나눠 받은 몫도 각자
-    // 이 비율을 넘지 못하게 한 번 더 자른다(그래도 남는 초과분은 그냥 버림 -- "안 죽게"가
-    // 목적이라 총 피해량 보존보다 생존을 우선). 대상 스탯은 최대체력(EFF_HP) 기준.
-    private static final double AMBUSH_ONESHOT_CAP_PCT = 0.5;
+    // [2026-09-19] "선공몬스터 기습이 너무 세다(★6 체력1만인데 기습이 4만)" 신고 -- 처음엔
+    // "최대체력 50% 초과분은 파티 전체로 분산+각자 재클램프"로 즉사 자체를 원천 차단했는데,
+    // 곧바로 "즉사할 수도 있게 해야지, 다만 지금처럼 100% 확정 즉사는 과하다" 재요청으로
+    // 정책을 바꿈: 즉사 가능성 자체는 남기되(주사위 운이 아주 나쁘면 여전히 죽을 수 있음),
+    // (1) 실드까지 감안한 체감 최대치를 MAX_AMBUSH_DMG로 못박고, (2) 그 값이 대상 최대체력의
+    // AMBUSH_SPLIT_THRESHOLD_PCT(90%)를 넘을 만큼 크면 한 명에게 몰아치지 않고 두 명에게
+    // 절반씩 나눠 때려서(다중공격) "확정 원샷킬"만 피한다 -- 나눠 맞은 쪽도 체력이 낮으면
+    // 여전히 죽을 수 있어 즉사 가능성 자체는 유지된다.
+    private static final int MAX_AMBUSH_DMG = 20000;
+    private static final double AMBUSH_SPLIT_THRESHOLD_PCT = 0.9;
 
     // [2026-09-09] "69층 보스는 10턴내 처치 옵션(폭주 타이머)을 추가해달라" 요청 -- 보스가
     // 있는 층(X9) -> 그 보스를 몇 턴 안에 처치해야 하는지. 넘기면 BOSS_ENRAGE_ATK_MULT배로
@@ -2676,11 +2711,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (!ambushAlive.isEmpty()) {
                 HashMap<String, Object> amTarget = ambushAlive.get(RND.nextInt(ambushAlive.size()));
-                String amJob = strVal(amTarget.get("CLASS"), "WARRIOR");
-                int amGrade = intVal(amTarget.get("GRADE"), 1);
-                String amName = strVal(amTarget.get("NAME"), JOB_NAME.getOrDefault(amJob, "동료"));
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
-                int[] amEff = computeEffectiveStat(amJob, amGrade, amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
+                int[] amEff = computeEffectiveStat(strVal(amTarget.get("CLASS"), "WARRIOR"), intVal(amTarget.get("GRADE"), 1),
+                        amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult);
                 // [2026-09-19] "51층+ 몬스터는 자기만의 무작위 면수를 쓴다"는 규칙(반격과 동일,
                 // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
@@ -2688,69 +2721,26 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 몬스터 기습도 덩달아 세지는 부작용이 있었다.
                 int amRoll = rollFace(1, monsterOwnDiceMax(floor, diceMax));
                 int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
+                // [2026-09-19] "★6 체력1만인데 기습이 4만" 신고 -- 재요청("즉사할 수도 있게는
+                // 해야지, 다만 100% 확정 즉사는 과함")에 맞춰 즉사 자체는 막지 않되, 실드까지
+                // 감안한 체감 최대치를 MAX_AMBUSH_DMG(2만)로 못박는다.
+                amDmg = Math.min(amDmg, MAX_AMBUSH_DMG);
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
-                // [2026-09-19] "★6 체력1만인데 기습이 4만, 한방에 죽지 않게, 한방에 죽을 체력
-                // 한도를 정해서 넘으면 분산피해로" 요청 -- 이 원본(raw) 피해가 대상 최대체력의
-                // AMBUSH_ONESHOT_CAP_PCT를 넘으면, 한 명에게 몰아주지 않고 이번 기습에서
-                // 살아있던 전원에게 나눠서 적용한다(각자 몫도 자기 최대체력의 같은 비율을 넘지
-                // 못하게 한 번 더 자름 -- 총 피해량 보존보다 "안 죽는다"가 우선이라 남는
-                // 초과분은 버림). 럭키칸 면역(WARD_COMPANION_ID)은 "다음 피해 1회"가 누구한테
-                // 오든 막아주는 개인 보호막이라, 분산 시에도 받는 사람 기준으로 각자 판정한다.
-                if (amDmg > Math.round(amEff[0] * AMBUSH_ONESHOT_CAP_PCT)) {
-                    sb.append("💥 위력이 너무 강해 파티 전체에 충격이 분산됐다!").append(NL);
-                    int share = Math.max(1, amDmg / ambushAlive.size());
-                    for (HashMap<String, Object> c : ambushAlive) {
-                        String cJob = strVal(c.get("CLASS"), "WARRIOR");
-                        int cGrade = intVal(c.get("GRADE"), 1);
-                        String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(cJob, "동료"));
-                        int[] cEff = c == amTarget ? amEff : computeEffectiveStat(cJob, cGrade,
-                                dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0)), userStat, intVal(c.get("LIMIT_BREAK"), 0));
-                        int cDmg = Math.min(share, (int) Math.round(cEff[0] * AMBUSH_ONESHOT_CAP_PCT));
-                        int cWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                        boolean cWarded = cWardCid > 0 && cWardCid == intVal(c.get("COMPANION_ID"), 0);
-                        if (cWarded) {
-                            cDmg = 0;
-                            HashMap<String, Object> cWardClearUp = new HashMap<>();
-                            cWardClearUp.put("userName", userName);
-                            cWardClearUp.put("wardCompanionId", 0);
-                            dao.updateUserProgress(cWardClearUp);
-                            p.put("WARD_COMPANION_ID", 0);
-                        }
-                        PP cHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
-                        PP cHpAfter = cHp.subtract(PP.fromPP(cDmg));
-                        if (PP.toBaseValue(cHpAfter) < 0) cHpAfter = PP.fromPP(0);
-                        if (cWarded) {
-                            sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(cGrade, cJob, cName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
-                        }
-                        sb.append(jobTag(cGrade, cJob, cName)).append("에게 ").append(cDmg).append("dmg (💗")
-                          .append(cHpAfter.format()).append("/").append(cEff[0]).append(")").append(NL);
-                        writeCompanionHp(c, cHpAfter);
-                    }
-                    sb.append(NL);
+                // 대상 최대체력의 90% 이상이면(사실상 빈사~즉사권) 한 명에게 몰아치지 않고
+                // 가능하면 두 명에게 절반씩 나눠 때린다(다중공격) -- 나눠 맞은 쪽도 체력이
+                // 낮으면 여전히 죽을 수 있어 "즉사 가능성 자체"는 남아있다.
+                if (amDmg >= Math.round(amEff[0] * AMBUSH_SPLIT_THRESHOLD_PCT) && ambushAlive.size() > 1) {
+                    List<HashMap<String, Object>> remaining = new ArrayList<>(ambushAlive);
+                    remaining.remove(amTarget);
+                    HashMap<String, Object> amTarget2 = remaining.get(RND.nextInt(remaining.size()));
+                    int half = Math.max(1, amDmg / 2);
+                    sb.append("💥 위력이 너무 강해 두 곳으로 갈라져 꽂혔다!").append(NL);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget, half);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget2, half);
                 } else {
-                    PP amHp = PP.of(((Number) amTarget.get("CUR_HP_VALUE")).doubleValue(), strVal(amTarget.get("CUR_HP_EXT"), ""));
-                    // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어) -- 이 동료가 방어
-                    // 대상이면 이번 기습 피해를 아예 0으로 막는다(치명타 여부 무관, resolveCombatTurn의
-                    // 반격 피해 적용부와 동일 정책).
-                    int amWardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
-                    boolean amWarded = amWardCid > 0 && amWardCid == intVal(amTarget.get("COMPANION_ID"), 0);
-                    if (amWarded) {
-                        amDmg = 0;
-                        HashMap<String, Object> amWardClearUp = new HashMap<>();
-                        amWardClearUp.put("userName", userName);
-                        amWardClearUp.put("wardCompanionId", 0);
-                        dao.updateUserProgress(amWardClearUp);
-                        p.put("WARD_COMPANION_ID", 0);
-                    }
-                    PP amHpAfter = amHp.subtract(PP.fromPP(amDmg));
-                    if (PP.toBaseValue(amHpAfter) < 0) amHpAfter = PP.fromPP(0);
-                    if (amWarded) {
-                        sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(amGrade, amJob, amName)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
-                    }
-                    sb.append(jobTag(amGrade, amJob, amName)).append("에게 ").append(amDmg).append("dmg (💗")
-                      .append(amHpAfter.format()).append("/").append(amEff[0]).append(")").append(NL).append(NL);
-                    writeCompanionHp(amTarget, amHpAfter);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget, amDmg);
                 }
+                sb.append(NL);
             }
         }
 
