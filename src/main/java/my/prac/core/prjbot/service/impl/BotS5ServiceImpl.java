@@ -2070,6 +2070,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                     moveUp.put("floor", floor);
                     moveUp.put("curTile", movedTile);
                     dao.upsertUserFloorProgress(moveUp);
+                    // [2026-09-19] "함정칸으로 후진되었을 때 탐사한 것으로 쳐달라" 요청 --
+                    // 그동안 원래 밟았던 newTile 방문만 기록되고, 실제로 밀려나 도착한
+                    // movedTile은 전혀 기록되지 않아 탐사율이 안 올라갔다.
+                    dao.insertTileVisit(userName, floor, movedTile);
                     sb.append("🕳️ 함정에 걸렸다! 바닥이 무너지며 ").append(Math.abs(moveDelta)).append("칸 ")
                       .append(moveDelta <= 0 ? "뒤로" : "앞으로").append(" 밀려났다! (").append(movedTile).append("번 칸)");
                     String movedTileType = "COMBAT";
@@ -2079,7 +2083,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                             break;
                         }
                     }
-                    if ("COMBAT".equals(movedTileType)) {
+                    // [2026-09-19 정정] "지금은 전투도 안하고 탐사도안돼, 내설계는
+                    // 전투(선공을 받는다, 50층이상은 몬스터가 1.1배데미지)였던거같아" 요청 --
+                    // 뒤로 밀려난 경우(moveDelta<0)는 도착 칸의 실제 타입과 무관하게 항상
+                    // 전투가 시작되도록 변경(원래는 우연히 COMBAT 타입 칸에 떨어졌을 때만
+                    // 싸웠는데, 칸 타입 비율상 대부분은 아무 일도 안 일어나는 것처럼 보였다).
+                    // 앞으로 밀려난 경우(moveDelta>=0)는 기존처럼 그 칸이 진짜 COMBAT일 때만.
+                    if (moveDelta < 0 || "COMBAT".equals(movedTileType)) {
                         boolean movedMidBoss = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
                         sb.append(NL).append(NL).append("😱 밀려난 자리에서 몬스터와 부딪혔다!").append(NL)
                           .append(startCombat(userName, p, floor, false, false, movedMidBoss, true));
@@ -2697,12 +2707,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 아직 파티가 행동하기 전이라 보호막/도발 등은 적용되지 않는다(말 그대로 기습).
         // [2026-09-18] "함정칸으로 전투가 발생하면 한대맞고 시작하게, 일정층수 이상
         // 선공몬스터한테는 그 전투에 몬스터 데미지가 10%증가" 요청 -- 함정(MOVE)으로 떠밀려
-        // 시작된 전투(TRAP_AMBUSH_YN)는 층수 무관하게 이 기습을 강제로 겪고, 그 층이 이미
-        // 자연 선공몬스터 구간(71층+)과 겹치면 "그 전투" 내내(기습+이후 매 턴 반격) 몬스터
-        // 공격력이 10% 더 오른다(trapAmbushDmgMult, 아래 일반 반격 파트에서도 재사용).
+        // 시작된 전투(TRAP_AMBUSH_YN)는 층수 무관하게 이 기습을 강제로 겪는다.
+        // [2026-09-19 정정] "내 설계는... 50층이상은 몬스터가 1.1배데미지를 갖는다 였던거
+        // 같아" -- 처음 구현 때 "일정층수 이상"을 자연 선공몬스터 구간(71층+, naturalAmbushFloor)
+        // 기준으로 잘못 재활용했었다. 원래 의도한 기준은 50층+라 별도 상수로 분리.
         boolean trapAmbushYn = "Y".equals(strVal(p.get("TRAP_AMBUSH_YN"), "N"));
         boolean naturalAmbushFloor = floor >= 71;
-        double trapAmbushDmgMult = (trapAmbushYn && naturalAmbushFloor) ? 1.1 : 1.0;
+        double trapAmbushDmgMult = (trapAmbushYn && floor >= 50) ? 1.1 : 1.0;
         if ((naturalAmbushFloor || trapAmbushYn) && curCombatTurn == 1 && !"Y".equals(strVal(mon.get("BOSS_YN"), "N"))) {
             List<HashMap<String, Object>> ambushAlive = new ArrayList<>();
             for (HashMap<String, Object> c : party) {
