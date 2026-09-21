@@ -1354,8 +1354,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         int fpos = floor % 10;
         boolean isHuntFloor = fpos >= 1 && fpos <= 8;
         sb.append("🗼 ").append(floor).append("층");
-        if (isHuntFloor) sb.append(" (권장전투력 ").append(floorMonsterCombatPower(floor)).append(")");
-        else sb.append(" (").append(floorKindLabel(floor)).append(")");
+        // [2026-09-21] "88층 권장전투력(99813)보다 종합전투력(111008)이 더 큰데, 추천 사냥터는
+        // 오히려 더 낮은 78층으로 나온다 -- 모순 아니냐" 신고. 실제로는 모순이 아니라, 여기
+        // 라벨이 그 층 몬스터의 "원본" 전투력(1배)이고, 추천(recommendHuntFloor)은 안전마진
+        // SAFE_HUNT_RATIO(1.3배) 이상을 요구해서 기준 자체가 서로 달랐다(88층: 99813 vs
+        // 안전기준 129757 > 111008이라 88층은 추천에서 빠짐). "권장전투력"이라는 이름이
+        // 마치 "이 값만 넘으면 여기서 사냥해도 안전하다"처럼 읽혀서 오해를 낳았으므로,
+        // 라벨을 "몬스터 전투력"(원본, 안전마진 미포함)으로 바꾸고 안전기준(margin 적용값)도
+        // 같이 보여줘서 두 수치가 왜 다른 결론을 내는지 한눈에 보이게 한다.
+        if (isHuntFloor) {
+            long monPower = floorMonsterCombatPower(floor);
+            long safeThreshold = Math.round(monPower * SAFE_HUNT_RATIO);
+            sb.append(" (몬스터 전투력 ").append(monPower).append(", 안전기준 ").append(safeThreshold).append(")");
+        } else sb.append(" (").append(floorKindLabel(floor)).append(")");
         sb.append(NL);
         if (isHuntFloor) {
             HashMap<String, Object> fi = dao.selectFloorInfo(floor);
