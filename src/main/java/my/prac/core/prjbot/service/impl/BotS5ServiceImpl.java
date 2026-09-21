@@ -875,7 +875,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-18] "81층 열어줘 90층까지 가능하도록" 요청 -- 블록9(81~90)만 먼저 오픈,
     // 블록10(91~98/99보스)은 아직 잠금 유지(단계적 오픈). 블록9 밸런스(TILE_COUNT 100,
     // 몬스터 방어력 x3.5, ATK 78층과 동일 비율)는 이미 이번 세션에 사전 조정 완료.
-    private static final int CONTENT_LOCKED_FLOOR = 91;
+    // [2026-09-21] "91층 이후도 밸런스 완성되었으면 100층까지 갈수있도록 열어주자" 요청 --
+    // 블록10(91~99, V2 밸런스가 이미 floor>50 전체에 적용 중이라 별도 수치 작업 불필요,
+    // TBOT_S5_FLOOR_INFO.TILE_COUNT/TBOT_S5_MONSTER_INFO 이름·PP도 91~98/99보스 모두 09-18에
+    // 블록9와 함께 미리 채워져 있었음, 확인 완료)까지 오픈. 실제 콘텐츠는 99층(보스)이 끝이라
+    // "100층"은 열리는 게 아니라 여전히 다음 잠금선(그 이상은 콘텐츠 자체가 없음)으로 남는다.
+    private static final int CONTENT_LOCKED_FLOOR = 100;
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -1072,6 +1077,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 50%는 없도록" 요청 -- 값 자체를 배열 하나로 관리(재배포 없이 바꾸려면 나중에 config화
     // 가능하나, 당장은 4개 고정이라 상수로 충분).
     private static final int[] STAIRS_UP_REQUIRE_PCT = { 0, 10, 20, 25 };
+
+    // [2026-09-21] "91층부턴 탐사율90%이상에만 올라갈수있도록 해줘" 요청 -- 50~90층대의 계단별
+    // 0/10/20/25% 단계표 대신, 91층 이상은 어느 계단을 밟든 균일하게 90%를 요구한다(resolveTile
+    // STAIRS_UP 분기 참고).
+    private static final int STAIRS_UP_REQUIRE_PCT_ENDGAME = 90;
+    private static final int STAIRS_UP_ENDGAME_FLOOR = 91;
 
     /** 이 (유저,층) 보드에서 tileNo가 몇 번째 STAIRS_UP 칸인지(TILE_NO 오름차순)를 찾아 그
      *  순서에 배정된 요구 탐사율(%)을 반환한다. 같은 층 안에서도 어느 계단을 밟았느냐에 따라
@@ -2367,7 +2378,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 어느 계단을 밟았느냐에 따라 요구 탐사율이 다르다.
                 boolean exploreGateFloor = floor >= 50;
                 int explorePct = tileCount > 0 ? (visited * 100 / tileCount) : 0;
-                int requiredPct = exploreGateFloor ? stairsUpRequiredPct(userName, floor, newTile) : 0;
+                int requiredPct = !exploreGateFloor ? 0
+                        : (floor >= STAIRS_UP_ENDGAME_FLOOR ? STAIRS_UP_REQUIRE_PCT_ENDGAME
+                                : stairsUpRequiredPct(userName, floor, newTile));
                 if (exploreGateFloor && explorePct < requiredPct) {
                     sb.append("🪜⬆️❓ 위로 향하는 계단을 발견했지만... 무언가 강력한 기운이 막고 있다!").append(NL)
                       .append("이 층을 ").append(requiredPct).append("% 이상 탐사해야 계단이 열립니다. (현재 ").append(explorePct).append("%)");
