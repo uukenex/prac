@@ -571,7 +571,10 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  apiTowerStatus가 조용히 initUser로 빈 계정을 새로 만들어버려서(Season5ViewController
      *  참고) 발생 -- 매일 새벽 4시에 "가입 후 하루가 지나도 한 번도 이동하지 않은(CUR_FLOOR=0)"
      *  계정을 정리. 실제로 플레이를 시작하면 최초 이동/전투에서 바로 CUR_FLOOR이 0을 벗어나므로
-     *  이 조건에 걸리는 계정은 전부 미사용 계정이다. */
+     *  이 조건에 걸리는 계정은 전부 미사용 계정이다.
+     *  [버그수정] @Scheduled 메서드는 JDK 동적 프록시가 호출할 수 있게 인터페이스(BotS5Service)에도
+     *  반드시 선언돼 있어야 한다 -- 누락 시 컨텍스트 부팅 자체가 실패한다(라이브에서 실제로 겪음). */
+    @Override
     @Scheduled(cron = "0 0 4 * * *")
     public void cleanupJunkZeroFloorUsers() {
         try {
