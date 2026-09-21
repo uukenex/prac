@@ -501,30 +501,26 @@
     .shop-row.dice-locked{ opacity:.45; }
     .shop-row.dice-current{ border-color:var(--gold); background:var(--gold-soft); }
 
-    /* [2026-09-21] 전설제작 카드 -- 상점 탭. 카드 안에는 "지금 선택된 아이템" 한 줄만 보이고
-       (눌러서 팝업으로 목록 선택, 전체동료리스트와 동일한 패턴), "제작하기"를 누르면 잠깐
-       "제작 중..." 연출 후 성공/실패 결과를 보여준다. */
+    /* [2026-09-21] 전설제작/전설해체 카드 -- 상점 탭. 각 카드는 버튼 하나뿐이고(제작하기/
+       해체하기), 실제 선택+실행은 전부 팝업(전체동료보기와 동일한 .detail-overlay 패턴)
+       안에서 끝난다("버튼을누르면 팝업에서 눌러서 처리할수있게해줘" 요청). 제작 팝업은
+       항목을 누르는 순간 그 자리에서 "제작 중..." 연출 후 성공/실패 결과까지 보여준다. */
     .legend-frag-badge{ font-size:12px; font-weight:800; color:var(--gold); background:var(--gold-soft);
                           border-radius:999px; padding:4px 10px; }
-    .legend-selected-row, .legend-roster-item{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line);
+    .legend-craft-btn{ width:100%; background:var(--gold); color:#fff; border:none; border-radius:10px;
+                         padding:11px; font-size:13px; font-weight:800; cursor:pointer; margin-top:2px; }
+    .legend-craft-btn:disabled{ opacity:.4; cursor:not-allowed; }
+    .legend-roster-item{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line);
                            border-radius:12px; padding:10px 12px; margin-bottom:6px; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
-    .legend-roster-item.selected{ border-color:var(--gold); background:var(--gold-soft); }
+    .legend-roster-item:hover{ border-color:var(--gold); }
     .lri-icon{ font-size:22px; flex-shrink:0; }
     .lri-body{ flex:1; min-width:0; }
     .lri-name{ font-size:13px; font-weight:800; }
     .lri-meta{ font-size:10px; color:var(--ink-soft); margin-top:1px; }
     .lri-flavor{ font-size:10px; color:var(--ink-soft); margin-top:3px; line-height:1.4; }
-    .lri-check{ font-size:16px; color:var(--gold); flex-shrink:0; visibility:hidden; }
-    .legend-roster-item.selected .lri-check{ visibility:visible; }
     .lri-arrow{ font-size:20px; color:var(--ink-soft); flex-shrink:0; }
     .legend-disenchant-item-btn{ flex-shrink:0; background:var(--gold); color:#fff; border:none; border-radius:10px;
                                    padding:8px 12px; font-size:11px; font-weight:800; cursor:pointer; }
-    .legend-btn-row{ display:flex; gap:8px; margin-top:4px; }
-    .legend-craft-btn{ flex:1; background:var(--gold); color:#fff; border:none; border-radius:10px;
-                         padding:11px; font-size:13px; font-weight:800; cursor:pointer; }
-    .legend-craft-btn:disabled{ opacity:.4; cursor:not-allowed; }
-    .legend-disenchant-btn{ flex-shrink:0; background:#fff; color:var(--ink-soft); border:1.5px solid var(--line);
-                              border-radius:10px; padding:11px 12px; font-size:12px; font-weight:700; cursor:pointer; }
     .legend-craft-anim{ text-align:center; font-size:13px; font-weight:700; color:var(--gold); padding:14px 0; }
     .legend-craft-spinner{ display:inline-block; animation:legendSpin 1s linear infinite; margin-right:4px; }
     @keyframes legendSpin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.3); } 100%{ transform:rotate(360deg) scale(1); } }
@@ -886,11 +882,13 @@
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
     </div>
-    <!-- [2026-09-21] "전설제작 ui도 상점내에 만들어주고" 요청, 이어서 "전설제작 리스트로 쭉
-         나오는게 아니고, 전체동료리스트처럼 팝업을띄워서 거기서 선택" 요청으로 인라인 목록
-         대신 팝업(#legendRosterOverlay, 기존 allCompanionsOverlay와 동일한 패턴) 선택 방식으로
-         변경. "장비제작소 안에 장비해체 버튼을 누르면 어떤장비 해체할지 띄우는방식" 요청도
-         같은 팝업 패턴(#legendDisenchantOverlay)으로. 정식 오픈 전까지는 서버(craftLegendary)가
+    <!-- [2026-09-21] "전설제작 ui도 상점내에 만들어주고" 요청 -> "전설제작 리스트로 쭉 나오는게
+         아니고, 전체동료리스트처럼 팝업을띄워서 거기서 선택" 요청 -> "전설제작 아래에 전설해체를
+         따로 만들어줘. 전설제작/전설해체 모두 제작하기/해체하기 버튼 하나만 넣어주고 버튼을
+         누르면 팝업에서 눌러서 처리할수있게해줘(팝업은전체동료보기와 동일한 ui로)" 요청으로
+         최종 정리 -- 카드 각각 버튼 하나만, 실제 선택+실행(제작/해체)은 전부 팝업
+         (#legendRosterOverlay/#legendDisenchantOverlay, allCompanionsOverlay와 동일한
+         .detail-overlay 패턴) 안에서 끝난다. 정식 오픈 전까지는 서버(craftLegendary)가
          NO_COOLDOWN_YN 계정만 허용하고 나머지는 안내 메시지만 반환하므로, 카드 자체는 누구
          에게나 보이되 실제 동작은 서버가 게이트한다. -->
     <div class="card" style="margin-top:10px;">
@@ -898,15 +896,11 @@
         <div class="card-title">✨ 전설제작</div>
         <div class="legend-frag-badge">🧩 <span id="legendCraftFragVal">0</span>/10</div>
       </div>
-      <div class="legend-selected-row" id="legendSelectedRow" onclick="TW.openLegendRoster()"></div>
-      <div class="legend-btn-row">
-        <button type="button" class="legend-craft-btn" id="legendCraftBtn" disabled onclick="TW.craftLegendarySelected()">제작하기 (성공률 30%)</button>
-        <button type="button" class="legend-disenchant-btn" onclick="TW.openLegendDisenchant()">🔨 장비해체</button>
-      </div>
-      <div class="legend-craft-anim" id="legendCraftAnim" style="display:none;">
-        <span class="legend-craft-spinner">✨</span> 제작 중...
-      </div>
-      <div class="legend-craft-result" id="legendCraftResult" style="display:none;"></div>
+      <button type="button" class="legend-craft-btn" onclick="TW.openLegendRoster()">제작하기</button>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">🔨 전설해체</div>
+      <button type="button" class="legend-craft-btn" onclick="TW.openLegendDisenchant()">해체하기</button>
     </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
@@ -1035,8 +1029,15 @@
 <div class="detail-overlay" id="legendRosterOverlay" onclick="if(event.target===this) TW.closeLegendRoster();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeLegendRoster()">✕</button>
-    <div class="sheet-title">제작할 전설장비 선택</div>
+    <div class="sheet-title">제작할 전설장비 선택 (성공률 30%)</div>
+    <!-- [2026-09-21] "버튼을 누르면 팝업에서 눌러서 처리할수있게해줘" 요청 -- 항목을 누르면
+         그 자리에서 바로 제작을 시도한다(목록 -> 제작중 연출 -> 성공/실패 결과 전부 이 팝업
+         안에서 끝남, 팝업을 닫아야 메인 카드로 돌아옴). -->
     <div id="legendRosterOverlayList"></div>
+    <div class="legend-craft-anim" id="legendCraftAnim" style="display:none;">
+      <span class="legend-craft-spinner">✨</span> 제작 중...
+    </div>
+    <div class="legend-craft-result" id="legendCraftResult" style="display:none;"></div>
   </div>
 </div>
 
@@ -3112,14 +3113,14 @@ var TW = (function () {
 
   // [2026-09-21] "전설제작 ui도 상점내에 만들어주고... 전설제작창에서 여러아이템 중
   // 선택하여 제작버튼을 누르면 성공&실패 가 몇초뒤 만들어지는 ui액션이 잠깐나왔다가
-  // 결과가 나오게 해줘" 요청 -- 로스터(/api/tower-legendary-roster)는 유저 무관 고정 목록이라
-  // 한 번만 fetch해서 캐시. 카드 클릭으로 제작 대상 선택(라디오처럼, 로스터가 하나뿐이어도
-  // 앞으로 늘어날 걸 감안한 구조) 후 "제작하기" 버튼으로 실행.
-  // [2026-09-21 재설계] "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트처럼 팝업을띄워서
-  // 거기서 선택해서 제작하기(성공률30%) 이런식으로 멘트 보이게도 해줘" 요청 -- 카드에는 지금
-  // 선택된 아이템 한 줄 요약만 보이고, 눌러야 풀 목록 팝업(#legendRosterOverlay)이 뜬다.
+  // 결과가 나오게 해줘" -> "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트처럼
+  // 팝업을띄워서 거기서 선택" -> "전설제작 아래에 전설해체를 따로 만들어줘. 전설제작/전설해체
+  // 모두 제작하기/해체하기 버튼 하나만 넣어주고 버튼을누르면 팝업에서 눌러서 처리할수있게
+  // 해줘(팝업은전체동료보기와 동일한 ui로)" 순서로 요청이 다듬어짐 -- 최종 형태: 상점 카드는
+  // 버튼 하나("제작하기"/"해체하기")만 있고, 누르면 팝업이 뜨고, 그 팝업 **안에서** 항목을
+  // 누르는 즉시 실행(제작은 연출+결과까지 팝업 안에서 끝남, 해체는 즉시 실행). 로스터
+  // (/api/tower-legendary-roster)는 유저 무관 고정 목록이라 한 번만 fetch해서 캐시.
   var legendaryRosterCache = null;
-  var legendCraftSelectedId = null;
   var LEGEND_EFFECT_LABEL = {
     DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; }
   };
@@ -3136,68 +3137,85 @@ var TW = (function () {
         + '</div>';
   }
 
-  // 상점 카드에 보이는 "지금 선택된 아이템" 한 줄 + 제작 버튼 활성화 여부.
-  function renderLegendSelectedRow() {
-    var fragVal = document.getElementById('legendCraftFragVal');
-    if (fragVal) fragVal.textContent = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
-
-    var row = document.getElementById('legendSelectedRow');
-    var btn = document.getElementById('legendCraftBtn');
-    if (!row) return;
-    var roster = legendaryRosterCache || [];
-    var selected = roster.filter(function (it) { return it.LEGENDARY_ID === legendCraftSelectedId; })[0];
-    if (!selected) {
-      row.innerHTML = '<div class="lri-body"><div class="lri-name">제작할 전설장비를 선택하세요</div></div><div class="lri-arrow">›</div>';
-      if (btn) btn.disabled = true;
-      return;
-    }
-    row.innerHTML = legendItemSummaryHtml(selected) + '<div class="lri-arrow">›</div>';
-    if (btn) btn.disabled = false;
-  }
-
   function ensureLegendaryRosterLoaded(cb) {
     if (legendaryRosterCache) { cb(legendaryRosterCache); return; }
     fetch(base + '/api/tower-legendary-roster')
       .then(function (r) { return r.json(); })
       .then(function (data) {
         legendaryRosterCache = data.roster || [];
-        if (legendCraftSelectedId == null && legendaryRosterCache.length > 0) {
-          legendCraftSelectedId = legendaryRosterCache[0].LEGENDARY_ID;
-        }
         cb(legendaryRosterCache);
       })
       .catch(function () { cb([]); });
   }
 
-  // 상점 탭이 처음 그려질 때(또는 새로고침될 때) 호출 -- 로스터를 미리 받아두고 선택 요약을 갱신.
+  // 상점 탭이 처음 그려질 때(또는 새로고침될 때) 호출 -- 조각 보유량 배지만 갱신하고
+  // 로스터는 미리 캐시해둔다(팝업을 처음 열 때 기다리지 않도록).
   function renderLegendaryCraftCard() {
-    ensureLegendaryRosterLoaded(function () { renderLegendSelectedRow(); });
+    var fragVal = document.getElementById('legendCraftFragVal');
+    if (fragVal) fragVal.textContent = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
+    ensureLegendaryRosterLoaded(function () {});
   }
 
   function openLegendRoster() {
     document.getElementById('legendRosterOverlay').classList.add('open');
-    ensureLegendaryRosterLoaded(function (roster) {
-      var list = document.getElementById('legendRosterOverlayList');
-      if (!roster.length) {
-        list.innerHTML = '<div class="sheet-empty">아직 등록된 전설장비가 없습니다.</div>';
-        return;
-      }
-      list.innerHTML = '';
-      roster.forEach(function (item) {
-        var el = document.createElement('div');
-        el.className = 'legend-roster-item' + (item.LEGENDARY_ID === legendCraftSelectedId ? ' selected' : '');
-        el.innerHTML = legendItemSummaryHtml(item) + '<div class="lri-check">✅</div>';
-        el.onclick = function () {
-          legendCraftSelectedId = item.LEGENDARY_ID;
-          renderLegendSelectedRow();
-          closeLegendRoster();
-        };
-        list.appendChild(el);
-      });
+    document.getElementById('legendCraftAnim').style.display = 'none';
+    document.getElementById('legendCraftResult').style.display = 'none';
+    ensureLegendaryRosterLoaded(function (roster) { renderLegendRosterList(roster); });
+  }
+  function renderLegendRosterList(roster) {
+    var list = document.getElementById('legendRosterOverlayList');
+    list.style.display = '';
+    if (!roster.length) {
+      list.innerHTML = '<div class="sheet-empty">아직 등록된 전설장비가 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    roster.forEach(function (item) {
+      var el = document.createElement('div');
+      el.className = 'legend-roster-item';
+      el.innerHTML = legendItemSummaryHtml(item) + '<div class="lri-arrow">›</div>';
+      el.onclick = function () { attemptCraft(item); };
+      list.appendChild(el);
     });
   }
   function closeLegendRoster() {
     document.getElementById('legendRosterOverlay').classList.remove('open');
+  }
+
+  // 팝업 안에서 항목을 누른 즉시 실행 -- 목록을 감추고 "제작 중..." 연출(최소
+  // LEGEND_CRAFT_ANIM_MS 유지) 후 성공/실패 결과를 같은 팝업 안에 보여준다.
+  var LEGEND_CRAFT_ANIM_MS = 1800;
+  function attemptCraft(item) {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    var list = document.getElementById('legendRosterOverlayList');
+    var anim = document.getElementById('legendCraftAnim');
+    var result = document.getElementById('legendCraftResult');
+    list.style.display = 'none';
+    result.style.display = 'none';
+    anim.style.display = '';
+
+    var startedAt = Date.now();
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=CRAFT_LEGENDARY&param1='
+        + encodeURIComponent(item.LEGENDARY_ID) + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var elapsed = Date.now() - startedAt;
+      var wait = Math.max(0, LEGEND_CRAFT_ANIM_MS - elapsed);
+      setTimeout(function () {
+        anim.style.display = 'none';
+        var msg = data.message || data.error || '완료';
+        var success = msg.indexOf('제작 성공') !== -1;
+        var fail = msg.indexOf('제작 실패') !== -1;
+        result.className = 'legend-craft-result' + (success ? ' success' : fail ? ' fail' : '');
+        result.textContent = msg;
+        result.style.display = '';
+        loadStatus(); // 조각 보유량(LEGEND_FRAGMENT) 갱신
+      }, wait);
+    }).catch(function () {
+      anim.style.display = 'none';
+      list.style.display = '';
+      toast('요청 실패');
+    });
   }
 
   // [2026-09-21] "장비제작소 안에 장비해체 버튼을 누르면 어떤장비해체할지 띄우는방식으로
@@ -3230,44 +3248,6 @@ var TW = (function () {
   }
   function closeLegendDisenchant() {
     document.getElementById('legendDisenchantOverlay').classList.remove('open');
-  }
-
-  // 제작 버튼 -- 몇 초짜리 "제작 중" 연출을 먼저 보여주고, 그 사이 실제 서버 요청을 보낸 뒤
-  // 응답이 오면(그리고 연출 최소시간도 지났으면) 성공/실패 결과 카드로 바꾼다.
-  var LEGEND_CRAFT_ANIM_MS = 1800;
-  function craftLegendarySelected() {
-    if (legendCraftSelectedId == null) return;
-    var u = userName();
-    if (!u) { toast('유저명을 입력하세요'); return; }
-    var btn = document.getElementById('legendCraftBtn');
-    var anim = document.getElementById('legendCraftAnim');
-    var result = document.getElementById('legendCraftResult');
-    btn.disabled = true;
-    result.style.display = 'none';
-    anim.style.display = '';
-
-    var startedAt = Date.now();
-    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=CRAFT_LEGENDARY&param1='
-        + encodeURIComponent(legendCraftSelectedId) + '&param2=';
-    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
-      var elapsed = Date.now() - startedAt;
-      var wait = Math.max(0, LEGEND_CRAFT_ANIM_MS - elapsed);
-      setTimeout(function () {
-        anim.style.display = 'none';
-        btn.disabled = false;
-        var msg = data.message || data.error || '완료';
-        var success = msg.indexOf('제작 성공') !== -1;
-        var fail = msg.indexOf('제작 실패') !== -1;
-        result.className = 'legend-craft-result' + (success ? ' success' : fail ? ' fail' : '');
-        result.textContent = msg;
-        result.style.display = '';
-        loadStatus(); // 조각 보유량(LEGEND_FRAGMENT) 갱신
-      }, wait);
-    }).catch(function () {
-      anim.style.display = 'none';
-      btn.disabled = false;
-      toast('요청 실패');
-    });
   }
 
   function loadAchievements() {
@@ -3464,7 +3444,7 @@ var TW = (function () {
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
            scrollToHere: scrollToHere, scrollToTop: scrollToTop, scrollToBottom: scrollToBottom,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate,
-           setBattleScreenVersion: setBattleScreenVersion, craftLegendarySelected: craftLegendarySelected,
+           setBattleScreenVersion: setBattleScreenVersion,
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
            openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant };
 })();
