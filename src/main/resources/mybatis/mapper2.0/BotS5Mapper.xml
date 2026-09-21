@@ -32,7 +32,11 @@
                     (SELECT * 가 아님을 놓침) DB엔 정상 저장돼도 다음 요청부터 다시 읽어올 때 항상 null로
                     보이던 문제. 조각/보스처치제한(전설제작), 도적스킬도용 회피, 함정 기습 전부 이
                     누락 때문에 "저장은 되는데 다음 턴엔 기본값으로 리셋된 것처럼" 동작했을 것. -->
-               LEGEND_FRAGMENT, BOSS_KILL_COUNT_TODAY, BOSS_KILL_DATE, MONSTER_EVADE_PCT, TRAP_AMBUSH_YN
+               LEGEND_FRAGMENT, BOSS_KILL_COUNT_TODAY, BOSS_KILL_DATE, MONSTER_EVADE_PCT, TRAP_AMBUSH_YN,
+               <!-- [버그 수정, 2026-09-21] 바로 위 09-18 주석과 똑같은 함정을 또 밟음 -- 이 SELECT가
+                    SELECT *가 아니라서 새로 추가한 컬럼은 여기 안 넣으면 저장은 되는데 다음 조회부터
+                    항상 null(V1/V2 전환이 "저장은 되는데 화면은 계속 V2"로 보이던 원인). -->
+               BATTLE_SCREEN_VERSION
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>

@@ -1738,9 +1738,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 2026-09-21에 "주사위 전체"에서 "보드 이동"만으로 대상 축소) -- 쿨타임 통과 후,
         // 실제로 이번 액션이 "이동 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌 시도는
         // 카운트 안 함). 전투 중(IN_COMBAT)인 굴림은 애초에 이동이 아니라 공격 턴이므로 이
-        // 체크 자체를 건너뛴다 -- 전투는 하루 한도와 무관하게 계속 진행할 수 있음. 관리자
-        // 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로 이 제한도 면제.
-        if (!"IN_COMBAT".equals(status) && !"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
+        // 체크 자체를 건너뛴다 -- 전투는 하루 한도와 무관하게 계속 진행할 수 있음.
+        // [2026-09-21] "오늘이동주사위 계산이 안되는거같아" 확인 -- 관리자 테스트 계정
+        // (NO_COOLDOWN_YN)은 카운터 자체를 건드리지 않고 건너뛰어서, 그 계정으로는 웹 UI의
+        // 이동한도 표시가 항상 0/400으로 보여 "계산이 안 된다"로 오인되기 쉬웠다. 차단(한도
+        // 초과 메시지)만 면제하고 카운트 자체는 그대로 올리도록 checkAndBumpDailyDiceLimit
+        // 내부에서 분리(관찰/테스트 가능하게, 쿨타임과 달리 이동횟수 카운팅 자체를 숨길
+        // 이유는 없음).
+        if (!"IN_COMBAT".equals(status)) {
             String limitMsg = checkAndBumpDailyDiceLimit(userName, p, channel);
             if (limitMsg != null) return prependAutoHunt(autoHuntMsg, limitMsg);
         }
@@ -1831,7 +1836,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         int curCount = storedRaw;
         boolean isWeb = "WEB".equals(channel);
         int channelLimit = isWeb ? DAILY_MOVE_LIMIT : (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
-        if (curCount >= channelLimit) {
+        // [2026-09-21] 관리자 테스트 계정(NO_COOLDOWN_YN)은 차단(한도 초과 메시지)만 면제 --
+        // 카운트 자체는 일반 유저와 동일하게 계속 올라가야 웹 UI의 이동한도 표시(moveLimitInfo)가
+        // 테스트 중에도 정상 동작하는지 관찰할 수 있다(전에는 이 함수 호출 자체를 건너뛰어서
+        // 관리자 계정은 항상 0/400으로 보였음 -- "계산이 안 된다"로 오인된 원인).
+        boolean noCooldown = "Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"));
+        if (!noCooldown && curCount >= channelLimit) {
             if (isWeb) {
                 // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
                 if (curCount < DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) {
