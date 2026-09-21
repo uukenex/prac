@@ -3978,3 +3978,31 @@ UI 갱신 -> 서버 저장 -> loadStatus()가 서버의 진짜 값으로 재동�
   `ApplicationConfig`에 `@EnableScheduling` 최초 추가(기존엔 스케줄 잡이 하나도 없었음).
 - 변경 파일: `tower_view.jsp`(버튼 비활성화), `BotS5ServiceImpl.java`/`BotS5DAO.java`/
   `BotS5Mapper.xml`(정리 스케줄러+DAO), `ApplicationConfig.java`(`@EnableScheduling`).
+
+### [2026-09-21 후속10] ★7 전설장비 고유이름 표시 + 전투v2 파티로스터(최대3명) 복원
+
+"★7송곳을 만들었는데, 검으로만 나와. 7성급 아이템은 고유이름이 보이도록 전체화면에
+작업해줘" / "전투v2 화면에서, 동료가한명만 보인다고 해. 최대3명까지 다 나오게 해줘" 두 건.
+
+- **★7 고유이름 미표시 원인**: `selectUserEquip`(장비목록 전체화면이 쓰는 쿼리)이
+  `LEGENDARY_ID`를 애초에 SELECT하지 않고 있었음 -- 09-18/09-21에 이미 두 번 겪은 "명시적
+  컬럼목록 SELECT에 새 컬럼 누락" 트랩을 세 번째로 또 밟은 것. 그래서 프론트는 어떤 장비가
+  ★7 전설인지조차 구분할 수 없어 항상 부위 일반명(검/지팡이 등)만 보여줬다. 고치면서
+  `TBOT_S5_LEGENDARY_MASTER`를 LEFT JOIN해 `LEGENDARY_ITEM_NAME`까지 같이 내려주도록
+  확장(프론트 추가 조회 없이 바로 표시 가능). 프론트는 `legendaryTag(e)` 헬퍼로 장비목록
+  카드/장착 선택 팝업/동료 상세창 네 군데 모두에 고유이름을 붙임.
+- **숨은 2차 버그 발견**: 같은 방식으로 확인해보니 `selectEquipByCompanion`(실제 전투 로직
+  `resolveCombatTurn`이 쓰는 쿼리)도 `LEGENDARY_ID`가 빠져 있었다. 즉 ★7 송곳을 만들어
+  실제로 착용해도, 전투 중 무기 슬롯의 `LEGENDARY_ID`를 항상 null로 읽어서 DEF_STEAL
+  효과(방어력 무시+가산)가 실전투에서 단 한 번도 발동할 수 없는 상태였음 -- 표시 문제와는
+  별개로 발견한, 더 심각한 기능 버그. 같이 수정.
+- **V2 파티로스터 없음**: V2 배틀화면은 재설계 과정에서 "대표 1명(파티 슬롯1번)만 보여주는
+  duel-row" 구조로 굳어져서, 원래 파티 전원 HP 목록(`.bs-party-row`)이 V1에만 남아있었다.
+  V2 마크업에도 `#bsPartyRowV2`를 추가하고, `updateBattlePartyV1()`이 V1/V2 두 줄 다 같은
+  파티 데이터로 채우도록 확장(구성원 3명까지 아바타+이름+HP바 전부 표시). 두 줄을 동시에
+  갱신하면서 "맞았을 때 흔들림" 연출용 이전 HP 비교가 두 번째 줄에서 항상 무효화되는 문제가
+  있어, HP 감소 여부를 루프 밖에서 한 번만 계산해 두 줄에 동일하게 적용하도록 정리.
+  `playBattleAttackMotion`(주사위 공격시 펄스 연출)도 V2에서 파티로스터+대표아바타 둘 다
+  펄스하도록 확장.
+- 변경 파일: `BotS5Mapper.xml`(selectUserEquip/selectEquipByCompanion), `tower_view.jsp`
+  (표시 로직 + V2 파티로스터 마크업/JS).
