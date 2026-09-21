@@ -4029,3 +4029,17 @@ UI 갱신 -> 서버 저장 -> loadStatus()가 서버의 진짜 값으로 재동�
   `STAIRS_UP_ENDGAME_FLOOR`).
 - 변경 파일: `BotS5ServiceImpl.java`만(순수 상수/분기 변경, DB 마이그레이션 불필요 -- 필요한
   데이터가 이미 라이브에 있었음).
+
+### [2026-09-21 긴급수정] cleanupJunkZeroFloorUsers 인터페이스 누락으로 서버 기동 실패
+
+후속9에서 추가한 `@Scheduled` 정리 메서드(`cleanupJunkZeroFloorUsers`)를 `BotS5ServiceImpl`
+에만 추가하고 `BotS5Service` 인터페이스엔 빠뜨렸다. 이 빈은 `@EnableTransactionManagement`
+기본 설정(JDK 동적 프록시, 인터페이스 기반)으로 노출되는데, `ScheduledAnnotationBeanPostProcessor`
+가 컨텍스트 부팅 중 이 메서드를 프록시로 호출하려다가 프록시의 인터페이스에 그 메서드가
+없어서 `IllegalStateException("Need to invoke method ... but not found in any
+interface(s) of the exposed proxy type")`로 컨텍스트 초기화 자체가 실패 -- `ContextLoaderListener`
+예외로 이어져 배포 전체가 실패했고(라이브 로그로 확인), 결과적으로 전 사이트가 빈 404만
+응답했다(Cloudflare가 origin에 연결 자체를 못 함). `BotS5Service`에 메서드 선언을 추가해서
+해결(`@Scheduled`/`@Async` 등 리플렉션으로 프록시를 통해 호출되는 애노테이션 메서드는
+반드시 인터페이스에도 선언돼 있어야 한다 -- 새로운 교훈, 재발 방지 차 기록).
+- 변경 파일: `BotS5Service.java`(인터페이스 선언 추가), `BotS5ServiceImpl.java`(`@Override` 추가).
