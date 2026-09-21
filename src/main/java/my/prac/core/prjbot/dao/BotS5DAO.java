@@ -14,6 +14,7 @@ public interface BotS5DAO {
     HashMap<String, Object> selectUserProgress(@Param("userName") String userName);
     int insertUserProgress(HashMap<String, Object> map);
     int updateUserProgress(HashMap<String, Object> map);
+    int deleteJunkZeroFloorUsers();
 
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);

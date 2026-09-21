@@ -23,6 +23,7 @@ import org.springframework.jdbc.datasource.lookup.DataSourceLookupFailureExcepti
 import org.springframework.jdbc.datasource.lookup.JndiDataSourceLookup;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 //Spring core에 대한 설정
 @Configuration
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @MapperScan({ "my.prac" })
 @Import({ TransactionConfig.class })
 @EnableTransactionManagement
+@EnableScheduling
 public class ApplicationConfig {
 	static Logger logger = LoggerFactory.getLogger(ApplicationConfig.class);
 

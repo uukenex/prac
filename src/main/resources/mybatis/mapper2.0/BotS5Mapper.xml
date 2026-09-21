@@ -49,6 +49,18 @@
             (#{userName}, 0, 0, 0, '', 'NORMAL', 'DICE_6', 1)
     </insert>
 
+    <!-- [2026-09-21] 웹뷰(tower-view/tower-status)가 못 알아보는 userName으로 호출되면
+         apiTowerStatus가 조용히 신규 계정을 만들어버려(Season5ViewController.apiTowerStatus,
+         resolveUserName 실패 시 initUser 폴백) CUR_FLOOR=0짜리 빈 계정이 계속 쌓임(오타 URL,
+         만료/오공유된 링크, 미리보기 크롤러 등). 진짜 플레이는 최초 1회라도 이동/전투를 거치면
+         CUR_FLOOR이 0에서 벗어나므로, "가입 후 하루가 지나도 CUR_FLOOR=0"이면 안전하게 정리
+         대상으로 판단(방금 막 만들어진 계정을 레이스로 지우지 않도록 REG_DATE 하루 여유를 둠). -->
+    <delete id="deleteJunkZeroFloorUsers">
+        DELETE FROM TBOT_S5_USER_PROGRESS
+        WHERE CUR_FLOOR = 0
+          AND REG_DATE &lt; SYSDATE - 1
+    </delete>
+
     <!-- map에 담긴 키만 동적으로 SET (부분 업데이트) -->
     <update id="updateUserProgress" parameterType="hashmap">
         UPDATE TBOT_S5_USER_PROGRESS

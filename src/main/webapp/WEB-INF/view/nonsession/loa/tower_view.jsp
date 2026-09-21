@@ -896,7 +896,9 @@
         <div class="card-title">✨ 전설제작</div>
         <div class="legend-frag-badge">🧩 <span id="legendCraftFragVal">0</span>/10</div>
       </div>
-      <button type="button" class="legend-craft-btn" onclick="TW.openLegendRoster()">제작하기</button>
+      <!-- [2026-09-21] "10개가 있어야 누를수있게 해줘" 요청 -- 조각 10개 미만이면 버튼 자체를
+           비활성화(renderLegendaryCraftCard가 매번 상태조회 후 토글). -->
+      <button type="button" class="legend-craft-btn" id="legendCraftBtn" disabled onclick="TW.openLegendRoster()">제작하기</button>
     </div>
     <div class="card" style="margin-top:10px;">
       <div class="card-title">🔨 전설해체</div>
@@ -3148,11 +3150,16 @@ var TW = (function () {
       .catch(function () { cb([]); });
   }
 
-  // 상점 탭이 처음 그려질 때(또는 새로고침될 때) 호출 -- 조각 보유량 배지만 갱신하고
-  // 로스터는 미리 캐시해둔다(팝업을 처음 열 때 기다리지 않도록).
+  // 상점 탭이 처음 그려질 때(또는 새로고침될 때) 호출 -- 조각 보유량 배지 갱신 + 10개
+  // 미만이면 "제작하기" 버튼 자체를 비활성화("10개가 있어야 누를수있게 해줘" 요청). 로스터는
+  // 미리 캐시해둔다(팝업을 처음 열 때 기다리지 않도록).
+  var LEGEND_CRAFT_COST_UI = 10;
   function renderLegendaryCraftCard() {
+    var frag = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
     var fragVal = document.getElementById('legendCraftFragVal');
-    if (fragVal) fragVal.textContent = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
+    if (fragVal) fragVal.textContent = frag;
+    var btn = document.getElementById('legendCraftBtn');
+    if (btn) btn.disabled = frag < LEGEND_CRAFT_COST_UI;
     ensureLegendaryRosterLoaded(function () {});
   }
 

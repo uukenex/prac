@@ -35,6 +35,7 @@ import javax.imageio.stream.ImageOutputStream;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -561,6 +562,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             LIMIT_BREAK_V2 = lb;
         } catch (Exception ignore) {
             LIMIT_BREAK_V2 = null;
+        }
+    }
+
+    /** [2026-09-21] "tbot_s5_user_progress에 cur_floor 0인 계정이 자꾸 생겨. 주기적으로
+     *  지워줘" 요청 -- 원인은 웹뷰(/loa/tower-view, /loa/api/tower-status)가 모르는 userName
+     *  으로 호출되면(오타 URL, 만료된 링크, 미리보기 크롤러 등) resolveUserName이 실패하고
+     *  apiTowerStatus가 조용히 initUser로 빈 계정을 새로 만들어버려서(Season5ViewController
+     *  참고) 발생 -- 매일 새벽 4시에 "가입 후 하루가 지나도 한 번도 이동하지 않은(CUR_FLOOR=0)"
+     *  계정을 정리. 실제로 플레이를 시작하면 최초 이동/전투에서 바로 CUR_FLOOR이 0을 벗어나므로
+     *  이 조건에 걸리는 계정은 전부 미사용 계정이다. */
+    @Scheduled(cron = "0 0 4 * * *")
+    public void cleanupJunkZeroFloorUsers() {
+        try {
+            int deleted = dao.deleteJunkZeroFloorUsers();
+            if (deleted > 0) {
+                System.out.println("[S5 정리] CUR_FLOOR=0 미사용 계정 " + deleted + "건 삭제");
+            }
+        } catch (Exception e) {
+            System.out.println("[S5 정리] CUR_FLOOR=0 계정 정리 실패: " + e.getMessage());
         }
     }
 
