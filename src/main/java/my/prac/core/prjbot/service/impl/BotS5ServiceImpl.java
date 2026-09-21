@@ -812,10 +812,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 로직보다 먼저 처리한다. V2 비활성/미로드/그 층 데이터 없음이면 기존 V1 로직으로 폴백.
         int[] v2 = BALANCE_V2_ENABLED ? MONSTER_V2.get(floor) : null;
         if (v2 != null) {
+            // [2026-09-21] "저층(5층) 밸런스가 이상하다, 체력이 너무 높다" 실측 신고 -- V2
+            // 선형식은 실측 캘리브레이션이 있던 11~89층 유저 데이터를 기준으로 만들어졌고
+            // 1~10층은 "음수 방지"를 위해 그 직선을 단순 역산 외삽한 값이라(검증된 적 없음)
+            // 초반 파티(★1~2, 장비 거의 없음) 기준으로는 지나치게 높았다. 11층(실측 구간
+            // 시작점)에서 100%로 매끄럽게 이어지도록, 1층=15%에서 11층=100%까지 선형 완화를
+            // 적용한다(HARDCORE_FLOOR_SCALE_MIN과 동일한 "저층 램프업" 아이디어). 11층 이상은
+            // 원래 실측 기반 값 그대로. 0.15 시작점은 잠정치 -- 추가 실측 피드백에 따라 조정.
+            double dampen = floor <= 10 ? (0.15 + 0.85 * (floor - 1) / 10.0) : 1.0;
             HashMap<String, Object> overlaid = new HashMap<>(mon);
-            overlaid.put("HP_VALUE", v2[0]);
-            overlaid.put("ATK_VALUE", v2[1]);
-            overlaid.put("DEF_VALUE", v2[2]);
+            overlaid.put("HP_VALUE", (int) Math.round(v2[0] * dampen));
+            overlaid.put("ATK_VALUE", (int) Math.round(v2[1] * dampen));
+            overlaid.put("DEF_VALUE", (int) Math.round(v2[2] * dampen));
             return overlaid;
         }
         if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return mon; // 보스는 스케일 대상 아님
@@ -6993,6 +7001,20 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         return "✨✨ 전설제작 성공! [" + itemName + "] ★7 " + equipClassLabel(clazz, part)
                 + " 획득! (" + strVal(picked.get("FLAVOR_TEXT"), "") + ")";
+    }
+
+    // [2026-09-21] "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 띄워주도록 하자. 전투화면
+    // v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청 -- 전투화면 UI 버전(포켓몬 스타일
+    // 구버전=V1, 삼국지 대전화면 신버전=V2) 선호를 유저별로 저장(TBOT_S5_USER_PROGRESS.
+    // BATTLE_SCREEN_VERSION, 기본값 V2).
+    @Override
+    public String setBattleScreenVersion(String userName, String version) {
+        String v = "V1".equalsIgnoreCase(version) ? "V1" : "V2"; // V1이 아니면 전부 V2로 정규화
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("battleScreenVersion", v);
+        dao.updateUserProgress(up);
+        return "🖼️ 전투화면을 " + v + "로 변경했습니다.";
     }
 
     /** [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 전체를 훑어서

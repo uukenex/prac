@@ -3734,3 +3734,39 @@ row도 같은 이름으로 UPDATE, 이전 값은 1000/200이었음). 컬럼(`DIC
   다뤄서 내부 마크업 변경과 무관하게 그대로 재사용.
 - 변경 파일: `tower_view.jsp`(마크업/CSS/JS), `Season5ViewController.java`(monsterAtk/Def
   응답 필드), `BotS5Service.java`/`BotS5ServiceImpl.java`(currentFloorMonsterAtkDef 신설).
+
+### [2026-09-21 후속] 실사용 피드백: 전투화면 V1/V2 선택제 + 저층 밸런스 완화
+
+라이브에서 실제로 써본 뒤 세 가지 피드백: "왼쪽아래 아이콘은 없어도 될거같아. 위쪽 캐릭터에
+체력바를 넣어주면 될거같아", "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 띄워주도록
+하자. 전투화면 v1,v2는 db에저장해서 선택한걸 저장하도록 해줘", "지금 저층 밸런스가
+이상한것같아. 5층인데 체력이 너무높은것같아".
+
+**전투화면 V2 UI 조정**: 하단 `bsPartyRow`(파티 전원 미니 로스터)를 제거하고, 대신 중앙 대치
+장면의 파티 대표 아바타 밑에 그 캐릭터 본인의 HP바(`bsLeadHpFill`/`bsLeadHpNum`)를 추가.
+전체 파티 합산 HP는 상단 세력비교바가 이미 보여주므로 정보 손실 없음(1인 파티인 경우 사실상
+같은 값).
+
+**V1/V2 선택제**: 구버전(포켓몬 스타일)을 완전히 지우는 대신 `#battleScreenV1`로 복원해
+`#battleScreenV2`(신버전)와 나란히 두고, `TBOT_S5_USER_PROGRESS.BATTLE_SCREEN_VERSION`
+(신규 컬럼, 기본값 'V2')에 저장된 유저별 선호에 따라 하나만 표시. `#battleScreen`(배경/
+파티클/크기, bg 사이클링, 크로스페이드)은 공용으로 유지하고 안쪽 두 래퍼만 토글하는 구조라
+`fitBattleScreenHeight`/`crossfadeBoardView`는 손대지 않음. 전환은 전투화면 우측 상단의
+작은 "V1"/"V2" 토글 버튼(`bsVersionToggle`) 클릭 한 번, 서버에 즉시 저장(`craftLegendary`
+류와 동일하게 `setBattleScreenVersion()` 신설, 웹 액션 `SET_BATTLE_SCREEN_VERSION` +
+채팅 명령 `/전투화면 v1|v2` 둘 다 배선). `updateBattleScreen()`을 공용 전처리(크로스페이드/
+새 몬스터 조우 판정) + `renderBattleV1`/`renderBattleV2` 버전별 렌더링으로 분리하고,
+`updateBattleParty()`는 `updateBattlePartyV1()`로 이름을 좁힘(V2는 하단 로스터가 없어져
+이 함수를 안 씀). `playBattleAttackMotion()`(주사위 눌렀을 때 캐릭터가 튀는 연출)도 버전별로
+분기(V1은 기존 파티 로스터 전체, V2는 대표 아바타 하나).
+- `S5_BATTLE_SCREEN_VERSION.sql`(신규, 적용 완료) -- 컬럼 추가만이라 기존 유저는 전부 V2로
+  시작(원하면 언제든 V1으로 전환 가능).
+
+**저층(1~10층) 밸런스 완화**: V2 선형식은 실측 캘리브레이션이 있던 11~89층 데이터 기준이고
+1~10층은 "음수값 방지"를 위한 단순 역산 외삽(검증된 적 없음)이었다 -- 5층 HP가
+420+1304*4=5636으로, 초반(★1~2, 장비 거의 없음) 파티 기준 압도적으로 높았던 게 실측으로
+확인됨. `applyHardcoreFloorScale()`의 V2 오버레이 지점에 "1층=15% ~ 11층=100%" 선형 완화
+배율(`dampen`)을 추가해, 11층(실측 구간 시작점)에서 매끄럽게 100%로 이어지도록 함. 11층
+이상은 원래 값 그대로(실측 기반이라 안 건드림). 0.15 시작점은 잠정치 -- "아직도 세다/약하다"
+피드백이 오면 이 상수만 조정.
+- `BotS5ServiceImpl.java`의 `applyHardcoreFloorScale()`만 수정, DB/새 테이블 변경 없음.

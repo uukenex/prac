@@ -467,6 +467,9 @@ public class Season5ViewController {
                 case "CRAFT_LEGENDARY":
                     message = s5Service.craftLegendary(userName);
                     break;
+                case "SET_BATTLE_SCREEN_VERSION":
+                    message = s5Service.setBattleScreenVersion(userName, param1);
+                    break;
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));
                     break;

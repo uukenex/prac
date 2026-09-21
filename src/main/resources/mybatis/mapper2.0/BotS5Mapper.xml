@@ -163,6 +163,7 @@
             <if test="legendFragment != null">LEGEND_FRAGMENT = #{legendFragment},</if>
             <if test="bossKillCountToday != null">BOSS_KILL_COUNT_TODAY = #{bossKillCountToday},</if>
             <if test="touchBossKillDate != null">BOSS_KILL_DATE = SYSDATE,</if>
+            <if test="battleScreenVersion != null">BATTLE_SCREEN_VERSION = #{battleScreenVersion},</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}

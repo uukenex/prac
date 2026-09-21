@@ -293,6 +293,13 @@ public class Season5Controller {
         return s5Service.craftLegendary(userNameOf(map));
     }
 
+    /** [2026-09-21] /전투화면 v1|v2 -- 전투화면 UI 버전 선호 저장. */
+    public String setBattleScreenVersion(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /전투화면 v1 또는 /전투화면 v2";
+        return s5Service.setBattleScreenVersion(userNameOf(map), param1);
+    }
+
     /** /탑랭킹 — 서버 전체 익명 기록판을 보여주되, 요청한 본인 기록엔 (me)를 붙여준다. */
     public String ranking(HashMap<String, Object> map) {
         return s5Service.ranking(userNameOf(map));

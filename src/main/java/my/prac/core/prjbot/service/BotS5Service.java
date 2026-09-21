@@ -209,6 +209,10 @@ public interface BotS5Service {
      *  전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
     String craftLegendary(String userName);
 
+    /** [2026-09-21] 전투화면 UI 버전(V1=포켓몬 스타일 구버전, V2=삼국지 대전화면 신버전)
+     *  선호 저장. version이 "V1"이 아니면 전부 V2로 정규화. */
+    String setBattleScreenVersion(String userName, String version);
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 
