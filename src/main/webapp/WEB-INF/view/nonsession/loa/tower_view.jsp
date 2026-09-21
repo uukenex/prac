@@ -393,8 +393,15 @@
     .bs-power-num-monster{ color:#B8412F; }
     .bs-power-track{ flex:1; height:14px; border-radius:7px; overflow:hidden; display:flex;
                        position:relative; border:1.5px solid var(--line); background:#EFE7D2; }
-    .bs-power-fill-party{ background:linear-gradient(90deg,#5B9BD5,#2F6FA8); transition:width .4s ease; }
-    .bs-power-fill-monster{ background:linear-gradient(90deg,#D5695B,#B8412F); transition:width .4s ease; margin-left:auto; }
+    /* [2026-09-21] 좌/우 절반을 고정폭(50%)으로 나눠서 각자 안에서 채워지게 한다("상단
+       체력바를 절반씩 영역을 차지하면 좋겠어" 요청) -- 파티(왼쪽)는 왼쪽 끝에 붙어 안쪽으로
+       차오르고, 몬스터(오른쪽)는 오른쪽 끝에 붙어 안쪽으로 차오른다(justify-content로 제어,
+       fill 자체는 항상 width:100%을 목표로 하되 setHpBarFill이 실제 폭을 pct%로 줄임).
+       색은 fill 요소에 공용 setHpBarFill()이 HP_GRADIENT(초록→노랑→빨강)를 입힌다. */
+    .bs-power-half{ width:50%; height:100%; overflow:hidden; display:flex; }
+    .bs-power-half-party{ justify-content:flex-start; }
+    .bs-power-half-monster{ justify-content:flex-end; }
+    .bs-power-fill{ height:100%; transition:width .4s ease; }
     .bs-power-vs{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
                    font-size:9px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); letter-spacing:.5px; }
     .bs-duel-row{ display:flex; align-items:center; justify-content:space-around; }
@@ -719,11 +726,15 @@
           <!-- ===== V2(삼국지 대전화면 스타일, 기본값) ===== -->
           <div id="battleScreenV2">
             <div class="bs-top">
+              <!-- [2026-09-21] "상단 체력바를 절반씩 영역을 차지하면 좋겠어" 요청 -- 예전엔
+                   두 fill의 width가 서로 다른 값(각자 %)이라 트랙 안에서 비율이 안 맞았는데,
+                   이제 좌/우 절반(.bs-power-half)을 고정폭으로 나누고 그 안에서 각자 채워지게
+                   바꿨다(파티는 왼쪽에서, 몬스터는 오른쪽에서 안쪽/바깥쪽으로 자연스럽게). -->
               <div class="bs-power-bar">
                 <div class="bs-power-num bs-power-num-party" id="bsPartyPowerNum">0</div>
                 <div class="bs-power-track">
-                  <div class="bs-power-fill-party" id="bsPowerFillParty" style="width:50%"></div>
-                  <div class="bs-power-fill-monster" id="bsPowerFillMonster" style="width:50%"></div>
+                  <div class="bs-power-half bs-power-half-party"><div class="bs-power-fill" id="bsPowerFillParty" style="width:100%"></div></div>
+                  <div class="bs-power-half bs-power-half-monster"><div class="bs-power-fill" id="bsPowerFillMonster" style="width:100%"></div></div>
                   <div class="bs-power-vs">VS</div>
                 </div>
                 <div class="bs-power-num bs-power-num-monster" id="bsMonsterPowerNum">0</div>
@@ -1019,6 +1030,35 @@ var TW = (function () {
     return (Number(hpValue) || 0) <= 0;
   }
 
+  // [2026-09-21] "60%이하체력이되면 노랑색, 30%이하가되면 빨간색으로 체력바 색을 바꿔주고,
+  // 중간은 그라데이션효과가 있음 좋겠어" 요청 -- 현재 pct 기준으로 빨강(0~30%)/노랑(60%)/
+  // 초록(100%) 사이를 선형보간한 "단일 색"을 구하고(hpColor), 그 색과 살짝 어두운 톤 두
+  // 스톱으로 입체감 있는 그라데이션을 만든다(기존 기본 .hpbar-fill의 연두->진초록 톤과
+  // 같은 방식). 막대 폭 전체를 0~100% 구간으로 늘려 자르는 방식(가장자리 정렬에 따라 안쪽/
+  // 바깥쪽 색이 뒤바뀌는 문제가 있었음) 대신, "지금 이 순간의 색 하나"를 계산해서 그대로
+  // 칠하는 방식이라 좌/우 어느 쪽에서 채워지든 항상 같은 결과가 나온다. pct가 60%/30%
+  // 경계를 지날 때도 hpColor가 연속함수라 뚝뚝 끊기지 않고 매끄럽게 변한다. 모든 HP바
+  // (전투화면 몬스터/파티대표/V1 파티목록 등)가 공용으로 쓴다.
+  function lerpColor(a, b, t) {
+    return [ a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t ];
+  }
+  function hpColor(pct) {
+    var RED = [226, 75, 74], YELLOW = [239, 159, 39], GREEN = [95, 190, 133];
+    var c = pct <= 30 ? RED
+        : pct <= 60 ? lerpColor(RED, YELLOW, (pct - 30) / 30)
+        : lerpColor(YELLOW, GREEN, Math.min(1, (pct - 60) / 40));
+    return c.map(function (v) { return Math.round(v); });
+  }
+  function setHpBarFill(el, pct) {
+    if (!el) return;
+    pct = Math.max(0, Math.min(100, pct));
+    el.style.width = pct + '%';
+    var c = hpColor(pct);
+    var dark = c.map(function (v) { return Math.round(v * 0.72); });
+    el.style.background = 'linear-gradient(90deg, rgb(' + c.join(',') + '), rgb(' + dark.join(',') + '))';
+    el.style.transition = 'width .4s ease, background .4s ease';
+  }
+
   // ===== [2026-09-17] 전투화면(포켓몬 배틀 스타일) =====
   // 몬스터 이미지 에셋이 전혀 없어서(DB에 스프라이트 컬럼 자체가 없음) 몬스터ID를 해시해
   // 고정된 이모지 하나를 배정한다 -- 같은 몬스터는 항상 같은 이모지로 보이되, 실제 그림은 아님.
@@ -1143,7 +1183,7 @@ var TW = (function () {
     document.getElementById('bsMonsterSpriteV1').textContent = monsterEmoji(p.CUR_MONSTER_ID);
     document.getElementById('bsMonsterNameV1').textContent =
         (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
-    document.getElementById('bsMonsterHpFillV1').style.width = monsterPct + '%';
+    setHpBarFill(document.getElementById('bsMonsterHpFillV1'), monsterPct);
     document.getElementById('bsMonsterHpNumV1').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
     var sprite = document.getElementById('bsMonsterSpriteV1');
     if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
@@ -1154,7 +1194,7 @@ var TW = (function () {
     document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
     document.getElementById('bsMonsterName').textContent =
         (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
-    document.getElementById('bsPowerFillMonster').style.width = monsterPct + '%';
+    setHpBarFill(document.getElementById('bsPowerFillMonster'), monsterPct);
     document.getElementById('bsMonsterPowerNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
     var sprite = document.getElementById('bsMonsterSprite');
     if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
@@ -1168,7 +1208,7 @@ var TW = (function () {
       partyMaxSum += (c.EFF_HP || 0);
     });
     var partyPct = partyMaxSum > 0 ? Math.max(0, Math.min(100, partyCurSum / partyMaxSum * 100)) : 100;
-    document.getElementById('bsPowerFillParty').style.width = partyPct + '%';
+    setHpBarFill(document.getElementById('bsPowerFillParty'), partyPct);
     document.getElementById('bsPartyPowerNum').textContent = Math.round(partyCurSum).toLocaleString();
 
     // [2026-09-21] 중앙 대치 장면 왼쪽 -- 파티 "대표"(생존자 중 1번 슬롯 우선, 없으면 첫
@@ -1192,7 +1232,7 @@ var TW = (function () {
       document.getElementById('bsLeadGuard').textContent = lead.EFF_DEF || '-';
       var leadMaxHp = lead.EFF_HP || 1;
       var leadCurHp = ppToBase(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
-      document.getElementById('bsLeadHpFill').style.width = Math.max(0, Math.min(100, leadCurHp / leadMaxHp * 100)) + '%';
+      setHpBarFill(document.getElementById('bsLeadHpFill'), leadCurHp / leadMaxHp * 100);
       document.getElementById('bsLeadHpNum').textContent = fmtPP(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
     } else {
       leadSlot.dataset.cid = '';
@@ -1201,7 +1241,7 @@ var TW = (function () {
       document.getElementById('bsLeadLevel').textContent = '-';
       document.getElementById('bsLeadPower').textContent = '-';
       document.getElementById('bsLeadGuard').textContent = '-';
-      document.getElementById('bsLeadHpFill').style.width = '0%';
+      setHpBarFill(document.getElementById('bsLeadHpFill'), 0);
       document.getElementById('bsLeadHpNum').textContent = '';
     }
     document.getElementById('bsMonsterLevel').textContent = p.CUR_FLOOR || '-';
@@ -1271,7 +1311,7 @@ var TW = (function () {
       // 단위 없는 숫자와 그대로 나누면 HP가 1a(=10000) 넘는 순간 비율이 거의 0으로 깨졌다.
       var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
       var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
-      box.querySelector('.hpbar-fill').style.width = pct + '%';
+      setHpBarFill(box.querySelector('.hpbar-fill'), pct);
       var down = isIncapacitated(curHp);
       box.classList.toggle('incapacitated', down);
       var statusEl = box.querySelector('.bs-status');
