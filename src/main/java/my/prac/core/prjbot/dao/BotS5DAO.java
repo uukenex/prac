@@ -112,6 +112,12 @@ public interface BotS5DAO {
     // ── 서버 설정값(config) ──
     List<HashMap<String, Object>> selectAllConfig();
 
+    // ── 밸런스 V2(2026-09-21 선형 재설계, TBOT_S5_MONSTER_INFO 등 구 테이블 대체용 오버레이 데이터) ──
+    List<HashMap<String, Object>> selectMonsterInfoV2List();
+    List<HashMap<String, Object>> selectGradeBaseV2List();
+    List<HashMap<String, Object>> selectEquipBonusV2List();
+    List<HashMap<String, Object>> selectLimitBreakV2List();
+
     // ── 웹 SPA 업데이트 공지/새로고침 유도 ──
     HashMap<String, Object> selectNotice();
     void updateNotice(HashMap<String, Object> map);

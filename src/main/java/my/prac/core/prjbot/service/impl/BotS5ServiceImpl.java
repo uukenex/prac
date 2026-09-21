@@ -346,17 +346,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static volatile long COMBAT_COOLDOWN_SEC     = 15;
     private static volatile long COMBAT_END_COOLDOWN_SEC = 100;
 
-    // 하루 주사위(이동+전투 통합) 굴림 횟수 제한. 위 쿨타임들과 같은 이유로 DB(TBOT_S5_CONFIG)
-    // config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
-    private static volatile int DAILY_DICE_LIMIT = 750;
+    // [2026-09-21] "주사위 굴림수 기준 하루 1200(1000+200) 제한을, 주사위(=전투 턴)는 빼고
+    // 타일 이동수 기준 400(+카톡보너스 100=500)으로 바꿔달라" 요청 -- 이름을
+    // DAILY_DICE_LIMIT/KAKAO_BONUS_DICE에서 DAILY_MOVE_LIMIT/KAKAO_BONUS_MOVE로 바꾸고,
+    // 카운트 대상도 "모든 굴림"에서 "전투 중이 아닌 굴림(=보드 이동)"만으로 좁힘
+    // (checkAndBumpDailyDiceLimit 호출부, rollDice() 참고 -- IN_COMBAT이면 이 체크 자체를
+    // 건너뛰어 전투 턴은 무제한). 컬럼(DICE_ROLL_COUNT_TODAY/DICE_ROLL_DATE)은 그대로 재사용
+    // (의미만 "이동만 카운트"로 좁혀짐, 마이그레이션 불필요). 위 쿨타임들과 같은 이유로
+    // DB(TBOT_S5_CONFIG) config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
+    private static volatile int DAILY_MOVE_LIMIT = 400;
 
-    // [2026-09-07] "웹/카톡 같이 쓰게 해달라, 카톡은 200회 더 주자" 요청 -- 채널(WEB/CHAT)
-    // 무관하게 공유하는 총 굴림 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은 DAILY_DICE_LIMIT
-    // 까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값까지 계속 가능하다. 예) 기본 1000 +
-    // 200 = 카톡 1200. 채널을 섞어 쓰든(웹 600+카톡 400) 한쪽만 쓰든(웹만 1000, 또는 카톡만
-    // 1200) 결과는 항상 "총합이 웹 한도를 넘으면 웹 차단, 카톡 한도를 넘으면 둘 다 차단"으로
-    // 동일하다 -- checkAndBumpDailyDiceLimit 참고.
-    private static volatile int KAKAO_BONUS_DICE = 200;
+    // 채널(WEB/CHAT) 무관하게 공유하는 총 이동 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은
+    // DAILY_MOVE_LIMIT까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값(400+100=500)까지
+    // 계속 가능하다. 채널을 섞어 쓰든 한쪽만 쓰든 결과는 항상 "총합이 웹 한도를 넘으면 웹
+    // 차단, 카톡 한도를 넘으면 둘 다 차단"으로 동일하다 -- checkAndBumpDailyDiceLimit 참고.
+    private static volatile int KAKAO_BONUS_MOVE = 100;
 
     // 자동사냥(미접속 정산) 속도/상한. "재배포 없이 밸런스 조절하게 해달라" 요청으로 config화.
     //   - AUTO_HUNT_KILLS_PER_HOUR : 미접속 시간당 처치 수(분당 환산해 10분당 1마리처럼 사용)
@@ -388,10 +392,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                         COMBAT_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("COMBAT_END_COOLDOWN_SEC".equals(key)) {
                         COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
-                    } else if ("DAILY_DICE_LIMIT".equals(key)) {
-                        DAILY_DICE_LIMIT = Integer.parseInt(val);
-                    } else if ("KAKAO_BONUS_DICE".equals(key)) {
-                        KAKAO_BONUS_DICE = Integer.parseInt(val);
+                    } else if ("DAILY_MOVE_LIMIT".equals(key)) {
+                        DAILY_MOVE_LIMIT = Integer.parseInt(val);
+                    } else if ("KAKAO_BONUS_MOVE".equals(key)) {
+                        KAKAO_BONUS_MOVE = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_KILLS_PER_HOUR".equals(key)) {
                         AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
@@ -419,9 +423,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public String refreshConfig() {
         loadConfig();
+        loadBalanceV2();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 웹 " + DAILY_DICE_LIMIT
-                + "회·카톡 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "회 / 자동사냥 시간당 "
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 이동 한도 웹 " + DAILY_MOVE_LIMIT
+                + "회·카톡 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "회 / 자동사냥 시간당 "
                 + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
     }
 
@@ -454,7 +459,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 스탯 계산
     // ================================================================
     private int[] calcBaseStat(String job, int grade) {
-        int[] base = GRADE_BASE[grade - 1];
+        int[][] gradeBase = GRADE_BASE_V2;
+        int[] base = (BALANCE_V2_ENABLED && gradeBase != null && grade - 1 < gradeBase.length && gradeBase[grade - 1] != null)
+                ? gradeBase[grade - 1] : GRADE_BASE[grade - 1];
         double[] mult = JOB_MULT.get(job);
         int hp  = (int) Math.round(base[0] * mult[0]);
         int atk = (int) Math.round(base[1] * mult[1]);
@@ -477,9 +484,84 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final double[] LIMIT_BREAK_PCT = { 0, 0.30, 0.60, 0.90, 1.20, 1.50, 1.80 };
     private static final int LIMIT_BREAK_MAX = 6;
 
+    // ================================================================
+    // 밸런스 V2(2026-09-21, "전투가 너무 빨리 끝난다, 1~100층을 계단식 아닌 완전 선형구조로"
+    // 요청) -- TBOT_S5_MONSTER_INFO_V2/GRADE_BASE_V2/EQUIP_BONUS_V2/LIMIT_BREAK_V2 4테이블을
+    // 서버 기동 시(loadBalanceV2, @PostConstruct) 메모리로 읽어들여 기존 하드코딩 상수/구
+    // 테이블을 "오버레이"로 대체한다. BALANCE_V2_ENABLED 하나로 전체 스위치 -- 문제가 생기면
+    // false로 바꾸고 재배포하면 기존(V1) 수치로 즉시 롤백된다. 테이블 로딩 실패 시(서버 기동
+    // 시점에 DB 미접속 등) 각 맵/배열이 비어있는 채로 남고, 아래 조회 지점들이 그 경우 자동으로
+    // 기존 V1 값으로 폴백한다(loadConfig와 동일한 방어적 설계 원칙).
+    // ================================================================
+    private static final boolean BALANCE_V2_ENABLED = true;
+    private static volatile Map<Integer, int[]> MONSTER_V2 = new HashMap<>(); // floor -> [hp, atk, def]
+    private static volatile int[][] GRADE_BASE_V2 = null;     // [grade-1][hp, atk, def]
+    private static volatile double[][] EQUIP_BONUS_V2 = null; // [grade-1][helmFlat, helmPct, wepFlat, wepPct, armFlat, armPct]
+    private static volatile double[] LIMIT_BREAK_V2 = null;   // [level]
+
+    /** 서버 기동 시(및 /갱신 시) 밸런스 V2 4테이블을 메모리로 로드. 실패해도 V1으로 계속 동작. */
+    @PostConstruct
+    public void loadBalanceV2() {
+        try {
+            Map<Integer, int[]> monsterMap = new HashMap<>();
+            for (HashMap<String, Object> row : dao.selectMonsterInfoV2List()) {
+                int floor = intVal(row.get("FLOOR"), -1);
+                if (floor < 0) continue;
+                monsterMap.put(floor, new int[]{
+                        intVal(row.get("HP_VALUE"), 0), intVal(row.get("ATK_VALUE"), 0), intVal(row.get("DEF_VALUE"), 0)
+                });
+            }
+            MONSTER_V2 = monsterMap;
+        } catch (Exception ignore) {
+            // 로드 실패 -- MONSTER_V2는 이전 값(또는 초기 빈 맵) 유지, 조회부에서 V1 폴백
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectGradeBaseV2List();
+            int[][] grade = new int[rows.size()][3];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("GRADE"), 0) - 1;
+                if (idx < 0 || idx >= grade.length) continue;
+                grade[idx] = new int[]{ intVal(row.get("HP_VALUE"), 0), intVal(row.get("ATK_VALUE"), 0), intVal(row.get("DEF_VALUE"), 0) };
+            }
+            GRADE_BASE_V2 = grade;
+        } catch (Exception ignore) {
+            GRADE_BASE_V2 = null;
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectEquipBonusV2List();
+            double[][] equip = new double[rows.size()][6];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("GRADE"), 0) - 1;
+                if (idx < 0 || idx >= equip.length) continue;
+                equip[idx] = new double[]{
+                        ((Number) row.get("HELM_FLAT")).doubleValue(), ((Number) row.get("HELM_PCT")).doubleValue(),
+                        ((Number) row.get("WEAPON_FLAT")).doubleValue(), ((Number) row.get("WEAPON_PCT")).doubleValue(),
+                        ((Number) row.get("ARMOR_FLAT")).doubleValue(), ((Number) row.get("ARMOR_PCT")).doubleValue()
+                };
+            }
+            EQUIP_BONUS_V2 = equip;
+        } catch (Exception ignore) {
+            EQUIP_BONUS_V2 = null;
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectLimitBreakV2List();
+            double[] lb = new double[rows.size()];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("LB_LEVEL"), -1);
+                if (idx < 0 || idx >= lb.length) continue;
+                lb[idx] = ((Number) row.get("PCT")).doubleValue();
+            }
+            LIMIT_BREAK_V2 = lb;
+        } catch (Exception ignore) {
+            LIMIT_BREAK_V2 = null;
+        }
+    }
+
     /** 한계돌파 N단계의 스탯 배율(%) -- 위 LIMIT_BREAK_PCT 표 참고, 범위 밖이면 클램프. */
     private double limitBreakPct(int limitBreak) {
         int lv = Math.max(0, Math.min(limitBreak, LIMIT_BREAK_MAX));
+        double[] v2 = LIMIT_BREAK_V2;
+        if (BALANCE_V2_ENABLED && v2 != null && lv < v2.length) return v2[lv];
         return LIMIT_BREAK_PCT[lv];
     }
 
@@ -491,7 +573,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (equips != null) {
             for (HashMap<String, Object> e : equips) {
                 int eg = intVal(e.get("GRADE"), 1);
-                double[] b = EQUIP_BONUS[eg - 1];
+                double[][] equipV2 = EQUIP_BONUS_V2;
+                double[] b = (BALANCE_V2_ENABLED && equipV2 != null && eg - 1 < equipV2.length && equipV2[eg - 1] != null)
+                        ? equipV2[eg - 1] : EQUIP_BONUS[eg - 1];
                 String part = strVal(e.get("PART"), "");
                 if ("HELMET".equals(part)) hp += b[0] + base[0] * b[1];
                 else if ("WEAPON".equals(part)) atk += b[2] + base[1] * b[3];
@@ -722,6 +806,18 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
         if (mon == null) return null;
+        // [2026-09-21] 밸런스 V2 오버레이 -- 이름/MONSTER_ID/PP_PER_KILL 등은 V1 조회 결과
+        // (mon)를 그대로 두고 HP/ATK/DEF만 V2 선형식 값으로 교체한다. 보스/블록 구분 없이
+        // V2가 그 층을 다루면 무조건 우선 적용되므로, 아래 V1 전용(블록≥6, 보스 제외) 스케일
+        // 로직보다 먼저 처리한다. V2 비활성/미로드/그 층 데이터 없음이면 기존 V1 로직으로 폴백.
+        int[] v2 = BALANCE_V2_ENABLED ? MONSTER_V2.get(floor) : null;
+        if (v2 != null) {
+            HashMap<String, Object> overlaid = new HashMap<>(mon);
+            overlaid.put("HP_VALUE", v2[0]);
+            overlaid.put("ATK_VALUE", v2[1]);
+            overlaid.put("DEF_VALUE", v2[2]);
+            return overlaid;
+        }
         if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return mon; // 보스는 스케일 대상 아님
         if (blockNo(floor) < 6) return mon;
         int pos = floor % 10; // 1~8=사냥터층(이 스케일 대상), 0=마을/9=보스는 몬스터 조회 자체를 안 함
@@ -1632,11 +1728,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         String macroPatternMsg = checkMacroPattern(userName, p);
         if (macroPatternMsg != null) return prependAutoHunt(autoHuntMsg, macroPatternMsg);
 
-        // 하루 굴림 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장) -- 쿨타임
-        // 통과 후, 실제로 이번 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌
-        // 시도는 카운트 안 함). 관리자 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로
-        // 이 제한도 면제.
-        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
+        // 하루 이동 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장,
+        // 2026-09-21에 "주사위 전체"에서 "보드 이동"만으로 대상 축소) -- 쿨타임 통과 후,
+        // 실제로 이번 액션이 "이동 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌 시도는
+        // 카운트 안 함). 전투 중(IN_COMBAT)인 굴림은 애초에 이동이 아니라 공격 턴이므로 이
+        // 체크 자체를 건너뛴다 -- 전투는 하루 한도와 무관하게 계속 진행할 수 있음. 관리자
+        // 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로 이 제한도 면제.
+        if (!"IN_COMBAT".equals(status) && !"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
             String limitMsg = checkAndBumpDailyDiceLimit(userName, p, channel);
             if (limitMsg != null) return prependAutoHunt(autoHuntMsg, limitMsg);
         }
@@ -1684,22 +1782,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY, 채널 무관 공유 카운터)를 확인하고, 한도
-     * 안이면 카운트를 올린 뒤 null을 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가
-     * 바뀌었거나 최초 굴림) 카운트를 1로 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에
+     * 하루 "이동" 횟수(DICE_ROLL_COUNT_TODAY 컬럼 재사용, 채널 무관 공유 카운터)를 확인하고,
+     * 한도 안이면 카운트를 올린 뒤 null을 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가
+     * 바뀌었거나 최초 이동) 카운트를 1로 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에
      * 날짜만 비교"하는 방식이라 자정에 뭔가 돌려줄 필요가 없다. 한도를 넘으면 카운트는 그대로
      * 두고 안내 메시지만 반환.
-     * [2026-09-07] "웹/카톡 같이 쓰게, 카톡은 200회 더" 요청으로 channel별 한도 분리 --
-     * WEB은 DAILY_DICE_LIMIT까지, CHAT(카카오톡)은 거기에 KAKAO_BONUS_DICE를 더한 값까지.
+     * [2026-09-21] "주사위 굴림수(1200=1000+200) 기준이던 하루 한도를, 전투 턴은 빼고 보드
+     * 이동만 400(+카톡보너스 100=500)회로 바꿔달라" 요청 -- 이 함수 자체는 채널별 한도
+     * 분리(WEB은 DAILY_MOVE_LIMIT까지, CHAT은 거기에 KAKAO_BONUS_MOVE를 더한 값까지) 로직은
+     * 그대로 두고, **호출 여부**만 바뀌었다: 이제 rollDice()가 STATUS!='IN_COMBAT'일 때만
+     * 이 함수를 부른다(전투 턴은 호출 자체가 없어 무제한) -- 즉 이 함수에 들어온 시점에서
+     * "이동"이라는 게 이미 확정된 상태라 함수 내부 로직은 카운팅 대상 이름만 이동으로 바뀐 것.
      * 카운터 자체는 채널 구분 없이 하나 그대로 써서, 어느 채널로 얼마씩 섞어 쓰든 "총합이
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
-    // [2026-09-16] "한도를 다 소진하면 시간당 100회씩 회복시켜달라" 요청으로 매시 정각마다
-    // DICE_REGEN_PER_HOUR(100)씩 회복되는 구조를 만들었었다.
-    // [2026-09-20 철회] "회복을 없애달라" 요청으로 시간당 회복 전체를 제거 -- 이제
-    // DICE_ROLL_COUNT_TODAY(오늘 실제 굴린 누적 raw 횟수)를 그대로 사용량으로 쓰고, 자정이
-    // 지나 날짜가 바뀌어야만(sameDay=false) 0으로 리셋된다. 순수 "하루 한도"로 되돌아감.
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
@@ -1708,19 +1805,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         int storedRaw = sameDay ? rawUsedToday : 0;
         int curCount = storedRaw;
         boolean isWeb = "WEB".equals(channel);
-        int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
+        int channelLimit = isWeb ? DAILY_MOVE_LIMIT : (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
         if (curCount >= channelLimit) {
             if (isWeb) {
                 // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
-                if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
-                    return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
-                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요!";
+                if (curCount < DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) {
+                    return "🚶 오늘 웹에서 이동을 " + DAILY_MOVE_LIMIT + "번 모두 했습니다. "
+                            + "카카오톡에서는 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE - curCount) + "번 더 진행할 수 있어요! (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
                 }
-                return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. "
-                        + "내일 다시 시도해주세요.";
+                return "🚶 오늘 이동을 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "번 모두 했습니다. "
+                        + "내일 다시 시도해주세요. (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
             }
-            return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. "
-                    + "내일 다시 시도해주세요.";
+            return "🚶 오늘 카카오톡 한도(" + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "번)까지 모두 이동했습니다. "
+                    + "내일 다시 시도해주세요. (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
         }
         int newRaw = storedRaw + 1;
         HashMap<String, Object> up = new HashMap<>();
@@ -6128,6 +6225,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N");
         if (mon == null) return null;
         return floorMonsterName(floor, mon);
+    }
+
+    /** [2026-09-21] 전투화면 재설계(스탯표 POWER/GUARD)용 -- 이 층 몬스터의 실제 전투 ATK/DEF
+     *  (V2 오버레이/하드코어 스케일 전부 반영된 값). null이면 [atk, def] 순서. */
+    @Override
+    public int[] currentFloorMonsterAtkDef(int floor) {
+        boolean isBossFloor = floor % 10 == 9;
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N"), floor);
+        if (mon == null) return null;
+        return new int[]{ (int) Math.round(((Number) mon.get("ATK_VALUE")).doubleValue()), (int) Math.round(((Number) mon.get("DEF_VALUE")).doubleValue()) };
     }
 
     /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */

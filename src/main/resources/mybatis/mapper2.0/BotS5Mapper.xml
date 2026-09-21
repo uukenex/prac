@@ -535,6 +535,21 @@
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
     </select>
 
+    <!-- ==================== 밸런스 V2(2026-09-21) ==================== -->
+    <select id="selectMonsterInfoV2List" resultType="hashmap">
+        SELECT FLOOR, BOSS_YN, HP_VALUE, ATK_VALUE, DEF_VALUE FROM TBOT_S5_MONSTER_INFO_V2
+    </select>
+    <select id="selectGradeBaseV2List" resultType="hashmap">
+        SELECT GRADE, HP_VALUE, ATK_VALUE, DEF_VALUE FROM TBOT_S5_GRADE_BASE_V2 ORDER BY GRADE
+    </select>
+    <select id="selectEquipBonusV2List" resultType="hashmap">
+        SELECT GRADE, HELM_FLAT, HELM_PCT, WEAPON_FLAT, WEAPON_PCT, ARMOR_FLAT, ARMOR_PCT
+        FROM TBOT_S5_EQUIP_BONUS_V2 ORDER BY GRADE
+    </select>
+    <select id="selectLimitBreakV2List" resultType="hashmap">
+        SELECT LB_LEVEL, PCT FROM TBOT_S5_LIMIT_BREAK_V2 ORDER BY LB_LEVEL
+    </select>
+
     <!-- 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07). TO_NCHAR 없으면 조회 시점에 다시
          깨진다(지난 메시지 이모지 4차 수정과 같은 원인). 반드시 TO_NCHAR로 조회할 것. -->
     <select id="selectNotice" resultType="hashmap">

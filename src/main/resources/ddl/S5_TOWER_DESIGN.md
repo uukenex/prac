@@ -3679,3 +3679,58 @@ DB에 실행 안 함), **자바 코드는 전혀 건드리지 않았다** -- 즉
   DEF=파티원 평균 데미지의 35%, 몬스터ATK=동료 평균체력의 15%(일반)/20%(보스), 보스
   DEF/ATK 기울기=일반의 1.2배. 실측 플레이테스트 결과에 따라 조정 예정.
 - 관련 계획 문서: `.claude/plans/linear-mapping-wall.md`.
+
+### [2026-09-21] 실적용 + 전투화면 재설계 + 하루한도(주사위→타일이동) 전환
+
+"v2로 진행되면서 전투화면도 내가 올린 사진처럼 바꾸자. 진행해줘. 그리고 현재 주사위1200번이
+하루제한인데, 주사위 기준말고, 타일 이동수 400회로 제한치를 바꾸자 (카톡+100, 총 500회)"
+요청으로 위 미포함 항목들을 실행.
+
+**V2 라이브 적용**: `S5_BALANCE_V2_LINEAR.sql` 실행 중 `TBOT_S5_LIMIT_BREAK_V2`의 `LEVEL`
+컬럼이 Oracle 예약어라 CREATE(ORA-00904)/INSERT(ORA-00928) 전부 실패 -- `LB_LEVEL`로 컬럼명
+변경 후 재적용, 나머지 3테이블(90+6+7행)은 최초 실행에 정상 반영됨. 코드 전환은
+**오버레이 방식**으로 최소 침습 적용:
+- `BotS5ServiceImpl`에 `loadBalanceV2()`(`@PostConstruct`, `loadConfig()`와 동일 위치/패턴)
+  신설 -- V2 4테이블을 `MONSTER_V2`(Map<floor,[hp,atk,def]>)/`GRADE_BASE_V2`/
+  `EQUIP_BONUS_V2`/`LIMIT_BREAK_V2` static 필드로 로드. `BALANCE_V2_ENABLED=true` 플래그
+  하나로 전체 스위치(문제 생기면 false로 즉시 롤백). `/갱신`(`refreshConfig()`)도 같이
+  재로드하도록 연결.
+- `calcBaseStat`/`limitBreakPct`/`computeEffectiveStat`(EQUIP_BONUS 조회부)는 V2 배열이
+  있으면 그걸, 없으면 기존 V1 상수로 폴백하는 한 줄씩만 추가.
+- `applyHardcoreFloorScale(mon, floor)` 맨 앞에 V2 오버레이 삽입 -- `MONSTER_V2`에 그 층
+  데이터가 있으면(보스/블록 무관, 1~99층 전부 해당) HP/ATK/DEF만 V2 값으로 바꿔치기하고
+  이름/MONSTER_ID/PP_PER_KILL 등은 기존 V1 조회 결과 그대로 반환(몬스터 정체성·이름
+  순환·79/89/99층 특수 기믹 등 층번호에 직접 건 기존 로직을 하나도 안 건드림). 이 함수를
+  호출하는 3곳(startCombat류)만 자동으로 V2를 타게 되고, 나머지 7개 `dao.selectMonster`
+  직접호출부(보물상자/럭키칸/자동사냥정산/낚시연동 등)는 전부 PP_PER_KILL 또는
+  MONSTER_NAME만 쓰고 HP/ATK/DEF는 안 써서 그대로 둬도 무방(확인 완료).
+- 전투화면 스탯표(POWER/GUARD, 아래 참고)에 몬스터 ATK/DEF가 필요해 `currentFloorMonsterAtkDef
+  (floor)` 신설(기존 `currentFloorMonsterName`과 동일 패턴), `/api/tower-status` 응답에
+  `monsterAtk`/`monsterDef` 필드 추가.
+- 라운드-수 목표(4~5/10+) 재검증·미세조정은 이번 실적용 이후 실측 피드백으로 후속 진행.
+
+**하루 한도: 주사위(전체) → 타일이동(전투 제외) 전환**: `DAILY_DICE_LIMIT`/`KAKAO_BONUS_DICE`
+→ `DAILY_MOVE_LIMIT`(400)/`KAKAO_BONUS_MOVE`(100)로 이름/기본값 변경(라이브 `TBOT_S5_CONFIG`
+row도 같은 이름으로 UPDATE, 이전 값은 1000/200이었음). 컬럼(`DICE_ROLL_COUNT_TODAY`/
+`DICE_ROLL_DATE`)은 그대로 재사용. `rollDice()`에서 `checkAndBumpDailyDiceLimit` 호출을
+`STATUS != 'IN_COMBAT'` 조건으로 감싸서, 전투 턴(공격)은 이 한도와 완전히 무관하게 무제한
+진행되고 보드 이동만 카운트된다("회"라는 표현이 "매 이동-액션 1회" 카운팅을 그대로 유지한
+채 대상만 좁히는 것과 정확히 맞아떨어짐 -- 주사위 눈금 합산이 아님).
+
+**전투화면 삼국지풍 재설계**: 사용자 첨부 스샷(관우 vs 조조군 1:1 대전화면: 상단 병력수
+비교바/중앙 대치 장면/좌우 LEVEL·POWER·GUARD·HIT% 스탯표/하단 초상화+對 VS)을 파티(최대
+3명) vs 몬스터 1마리 구조에 맞게 절충 적용 -- 좌측 "1명"은 파티 대표(생존자 중 1번 슬롯
+우선, 없으면 첫 생존자)로 매핑:
+- `.bs-power-bar`(신규): 좌우 큰 숫자(파티 합산 HP base / 몬스터 HP) + 그 비율만큼 채워지는
+  2색(파랑/빨강) 바. 기존 `bsMonsterHpFill`/`bsMonsterHpNum`을 이 바의 우측 절반으로 흡수.
+- `.bs-duel-row`(신규): 좌측 파티 대표 아바타(`buildAvatarEl` 재사용)+이름, 우측 기존
+  몬스터 이모지 스프라이트(`monsterEmoji`)+이름, 가운데 "對" 배지.
+- `.bs-stat-table`(신규): LEVEL(파티=대표★성급, 몬스터=현재 층수)/POWER(=ATK)/GUARD(=DEF)
+  좌우 대칭, HIT%는 이 게임 전투식상 회피 개념이 없어(도적 회피 스킬은 별개) 항상
+  100%/100%로 고정 표기(장식이 아니라 사실).
+- 하단 `bsPartyRow`(파티 전원 HP 목록, 레퍼런스엔 없지만 필수 정보라 유지)는 그대로.
+- 기존 `.compact`(좁은 세로공간 반응형) CSS는 `.bs-monster-row`→`.bs-top` 셀렉터로 교체해
+  호환 유지, `fitBattleScreenHeight()`/`crossfadeBoardView()` JS는 외부 컨테이너 높이만
+  다뤄서 내부 마크업 변경과 무관하게 그대로 재사용.
+- 변경 파일: `tower_view.jsp`(마크업/CSS/JS), `Season5ViewController.java`(monsterAtk/Def
+  응답 필드), `BotS5Service.java`/`BotS5ServiceImpl.java`(currentFloorMonsterAtkDef 신설).

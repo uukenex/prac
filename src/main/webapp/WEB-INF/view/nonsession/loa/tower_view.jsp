@@ -362,17 +362,49 @@
     .bs-particle-b{ width:50px; height:50px; background:#fff; bottom:12%; right:20%; animation:bsFloatB 19s ease-in-out infinite; }
     @keyframes bsFloatA{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(24px,-16px); } }
     @keyframes bsFloatB{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-20px,14px); } }
-    .bs-monster-row, .bs-party-row{ position:relative; z-index:1; }
+    .bs-top, .bs-party-row{ position:relative; z-index:1; }
     /* [2026-09-17 2차] "전투진입시 포켓몬처럼 스르르르 페이드아웃/페이드인" 요청 -- 맵뷰<->전투화면
        전환(진입/이탈)에만 opacity 크로스페이드를 건다(crossfadeBoardView 참고). 전투 중 HP
        갱신처럼 화면을 안 바꾸는 경우는 이 transition과 무관. */
     .tower-viewport-wrap{ transition:opacity .28s ease; }
-    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; }
-    .bs-monster-sprite{ font-size:48px; line-height:1; }
+
+    /* [2026-09-21] 삼국지 대전화면 재설계 -- ①세력비교바 ②중앙 대치 장면 ③좌우 스탯표.
+       사용자 첨부 레퍼런스(관우 vs 조조군 1:1 대전 화면)의 구성요소를 파티vs몬스터 구조에
+       맞게 절충 적용(파티 쪽은 파티슬롯1번/최고성급 생존자를 "대표"로 매핑). */
+    .bs-top{ display:flex; flex-direction:column; gap:8px; }
+    .bs-power-bar{ display:flex; align-items:center; gap:8px; }
+    .bs-power-num{ font-size:20px; font-weight:900; min-width:44px; text-align:center; }
+    .bs-power-num-party{ color:#2F6FA8; }
+    .bs-power-num-monster{ color:#B8412F; }
+    .bs-power-track{ flex:1; height:14px; border-radius:7px; overflow:hidden; display:flex;
+                       position:relative; border:1.5px solid var(--line); background:#EFE7D2; }
+    .bs-power-fill-party{ background:linear-gradient(90deg,#5B9BD5,#2F6FA8); transition:width .4s ease; }
+    .bs-power-fill-monster{ background:linear-gradient(90deg,#D5695B,#B8412F); transition:width .4s ease; margin-left:auto; }
+    .bs-power-vs{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+                   font-size:9px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); letter-spacing:.5px; }
+    .bs-duel-row{ display:flex; align-items:center; justify-content:space-around; }
+    .bs-duel-side{ display:flex; flex-direction:column; align-items:center; gap:4px; width:88px; }
+    .bs-duel-avatar-slot .bs-duel-avatar{ width:56px; height:56px; border-radius:50%; object-fit:cover; object-position:50% 15%;
+                                            border:2.5px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    .bs-duel-avatar-slot .avatar-emoji{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center;
+                                          justify-content:center; font-size:26px; background:#fff; border:2.5px solid #fff;
+                                          box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    .bs-monster-sprite{ font-size:52px; line-height:1; }
     .bs-monster-sprite.hit{ animation:bsShake .35s; }
-    .bs-monster-info{ min-width:150px; max-width:220px; text-align:right; }
-    .bs-monster-info .bs-name{ font-size:13px; font-weight:800; margin-bottom:3px; }
-    .bs-monster-info .hpbar-track{ height:9px; }
+    .bs-duel-name{ font-size:11px; font-weight:800; text-align:center; }
+    .bs-duel-vs-badge{ font-size:15px; font-weight:900; color:var(--gold); border:2px solid var(--gold);
+                         border-radius:8px; padding:2px 8px; background:var(--gold-soft); flex-shrink:0; }
+    .bs-stat-table{ display:flex; align-items:stretch; justify-content:space-between; gap:6px;
+                      background:rgba(255,255,255,.55); border:1px solid var(--line); border-radius:10px; padding:6px 10px; }
+    .bs-stat-col{ display:grid; grid-template-columns:auto auto; gap:1px 6px; align-content:center; font-size:10px; }
+    .bs-stat-col-right{ text-align:right; grid-template-columns:auto auto; direction:rtl; }
+    .bs-stat-col-right > *{ direction:ltr; }
+    .bs-stat-hdr{ color:var(--ink-soft); font-weight:700; }
+    .bs-stat-val{ font-weight:800; }
+    .bs-stat-hit{ grid-column:1 / span 2; font-size:9px; color:var(--ink-soft); margin-top:2px; font-weight:700; }
+    .bs-stat-mid{ flex-shrink:0; font-size:9px; font-weight:800; color:var(--ink-soft); text-align:center;
+                   align-self:center; line-height:1.3; border-left:1px dashed var(--line); border-right:1px dashed var(--line); padding:0 8px; }
+
     .bs-party-row{ display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
     .bs-companion{ width:66px; text-align:center; }
     .bs-companion.shake{ animation:bsShake .35s; }
@@ -394,8 +426,10 @@
        쓰면 몬스터가 오른쪽/파티가 왼쪽에 오는 기존 배치(왼쪽아래 플레이어/오른쪽위 몬스터)가
        그대로 유지된다(뒤집히지 않음). 각 행 내부(.bs-monster-row/.bs-party-row) 구조는
        그대로 두고 세로로 쌓아서 좁은 가로폭 안에서도 한눈에 들어오게 한다. */
-    .battle-screen.compact{ flex-direction:row-reverse; align-items:center; justify-content:space-between; gap:10px; }
-    .battle-screen.compact .bs-monster-row{ flex-direction:column; align-items:flex-end; gap:6px; }
+    .battle-screen.compact{ flex-direction:row-reverse; align-items:center; justify-content:space-between; gap:10px; overflow-y:auto; }
+    .battle-screen.compact .bs-top{ width:100%; }
+    .battle-screen.compact .bs-power-num{ font-size:14px; min-width:32px; }
+    .battle-screen.compact .bs-duel-side{ width:64px; }
     .battle-screen.compact .bs-party-row{ flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:8px; }
 
     /* [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 전투화면/보드
@@ -630,16 +664,48 @@
           </button>
         </div>
         <!-- [2026-09-17] 전투 중엔 이 화면이 뜨고 아래 .tower-viewport-wrap(칸그리드)는
-             숨겨진다(updateBattleScreen 참고). -->
+             숨겨진다(updateBattleScreen 참고).
+             [2026-09-21] "전투화면을 삼국지 대전화면 스타일로" 요청 -- 상단 세력비교바(①)/
+             중앙 대치 장면(②)/좌우 스탯표(③)/하단 파티현황 구조로 재설계(bs-top으로 묶어
+             기존 .compact 반응형 로직과 호환). updateBattleScreen() 참고. -->
         <div id="battleScreen" class="battle-screen bs-bg-0" style="display:none;">
           <div class="bs-particle bs-particle-a"></div>
           <div class="bs-particle bs-particle-b"></div>
-          <div class="bs-monster-row">
-            <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
-            <div class="bs-monster-info">
-              <div class="bs-name" id="bsMonsterName">몬스터</div>
-              <div class="hpbar-track"><div class="hpbar-fill" id="bsMonsterHpFill" style="width:100%"></div></div>
-              <div class="hp-num" id="bsMonsterHpNum"></div>
+          <div class="bs-top">
+            <div class="bs-power-bar">
+              <div class="bs-power-num bs-power-num-party" id="bsPartyPowerNum">0</div>
+              <div class="bs-power-track">
+                <div class="bs-power-fill-party" id="bsPowerFillParty" style="width:50%"></div>
+                <div class="bs-power-fill-monster" id="bsPowerFillMonster" style="width:50%"></div>
+                <div class="bs-power-vs">VS</div>
+              </div>
+              <div class="bs-power-num bs-power-num-monster" id="bsMonsterPowerNum">0</div>
+            </div>
+            <div class="bs-duel-row">
+              <div class="bs-duel-side">
+                <div class="bs-duel-avatar-slot" id="bsLeadAvatarSlot"></div>
+                <div class="bs-duel-name" id="bsLeadName">파티</div>
+              </div>
+              <div class="bs-duel-vs-badge">對</div>
+              <div class="bs-duel-side">
+                <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
+                <div class="bs-duel-name" id="bsMonsterName">몬스터</div>
+              </div>
+            </div>
+            <div class="bs-stat-table">
+              <div class="bs-stat-col bs-stat-col-left">
+                <div class="bs-stat-hdr">LEVEL</div><div class="bs-stat-val" id="bsLeadLevel">-</div>
+                <div class="bs-stat-hdr">POWER</div><div class="bs-stat-val" id="bsLeadPower">-</div>
+                <div class="bs-stat-hdr">GUARD</div><div class="bs-stat-val" id="bsLeadGuard">-</div>
+                <div class="bs-stat-hit">HIT 100%</div>
+              </div>
+              <div class="bs-stat-mid">반격<br>방어</div>
+              <div class="bs-stat-col bs-stat-col-right">
+                <div class="bs-stat-hdr">LEVEL</div><div class="bs-stat-val" id="bsMonsterLevel">-</div>
+                <div class="bs-stat-hdr">POWER</div><div class="bs-stat-val" id="bsMonsterPower">-</div>
+                <div class="bs-stat-hdr">GUARD</div><div class="bs-stat-val" id="bsMonsterGuard">-</div>
+                <div class="bs-stat-hit">HIT 100%</div>
+              </div>
             </div>
           </div>
           <div class="bs-party-row" id="bsPartyRow"></div>
@@ -997,16 +1063,57 @@ var TW = (function () {
     }
 
     var curMonsterHpBase = ppToBase(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
-    var pct = battle.monsterBaseHp > 0
+    var monsterPct = battle.monsterBaseHp > 0
         ? Math.max(0, Math.min(100, curMonsterHpBase / battle.monsterBaseHp * 100)) : 100;
-    document.getElementById('bsMonsterHpFill').style.width = pct + '%';
-    document.getElementById('bsMonsterHpNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
+    document.getElementById('bsPowerFillMonster').style.width = monsterPct + '%';
+    document.getElementById('bsMonsterPowerNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
 
     var sprite = document.getElementById('bsMonsterSprite');
     if (battle.monsterHp != null && curMonsterHpBase < battle.monsterHp) {
       sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit');
     }
     battle.monsterHp = curMonsterHpBase;
+
+    // [2026-09-21] 세력비교바 왼쪽(파티) -- 편성된(PARTY_SLOT 있는) 동료 전원의 현재/최대
+    // HP를 ppToBase로 환산해 합산(단위 다른 동료가 섞여도 base 단위로는 정확히 비교 가능).
+    var partyMembers = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
+    var partyCurSum = 0, partyMaxSum = 0;
+    partyMembers.forEach(function (c) {
+      partyCurSum += ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
+      partyMaxSum += (c.EFF_HP || 0);
+    });
+    var partyPct = partyMaxSum > 0 ? Math.max(0, Math.min(100, partyCurSum / partyMaxSum * 100)) : 100;
+    document.getElementById('bsPowerFillParty').style.width = partyPct + '%';
+    document.getElementById('bsPartyPowerNum').textContent = Math.round(partyCurSum).toLocaleString();
+
+    // [2026-09-21] 중앙 대치 장면 왼쪽 -- 파티 "대표"(1번 슬롯 생존자 우선, 없으면 첫 생존자,
+    // 그마저 없으면 1번 슬롯 그대로)와 좌우 스탯표(LEVEL=★성급/POWER=공격력/GUARD=방어력).
+    // 오른쪽(몬스터)은 apiTowerStatus가 함께 내려준 monsterAtk/monsterDef 캐시 사용.
+    var lead = partyMembers.filter(function (c) { return !isIncapacitated(c.CUR_HP_VALUE); })[0]
+        || partyMembers.filter(function (c) { return c.PARTY_SLOT === 1; })[0]
+        || partyMembers[0];
+    var leadSlot = document.getElementById('bsLeadAvatarSlot');
+    if (lead) {
+      if (leadSlot.dataset.cid !== String(lead.COMPANION_ID)) {
+        leadSlot.dataset.cid = String(lead.COMPANION_ID);
+        leadSlot.innerHTML = '';
+        leadSlot.appendChild(buildAvatarEl(lead, 'bs-duel-avatar', false));
+      }
+      document.getElementById('bsLeadName').textContent = lead.NAME || JOB_KR[lead.CLASS] || '파티';
+      document.getElementById('bsLeadLevel').textContent = '★' + (lead.GRADE || 1);
+      document.getElementById('bsLeadPower').textContent = lead.EFF_ATK || '-';
+      document.getElementById('bsLeadGuard').textContent = lead.EFF_DEF || '-';
+    } else {
+      leadSlot.dataset.cid = '';
+      leadSlot.innerHTML = '';
+      document.getElementById('bsLeadName').textContent = '파티';
+      document.getElementById('bsLeadLevel').textContent = '-';
+      document.getElementById('bsLeadPower').textContent = '-';
+      document.getElementById('bsLeadGuard').textContent = '-';
+    }
+    document.getElementById('bsMonsterLevel').textContent = p.CUR_FLOOR || '-';
+    document.getElementById('bsMonsterPower').textContent = (monsterAtkCache != null) ? monsterAtkCache : '-';
+    document.getElementById('bsMonsterGuard').textContent = (monsterDefCache != null) ? monsterDefCache : '-';
 
     updateBattleParty();
   }
@@ -1074,6 +1181,7 @@ var TW = (function () {
   }
 
   var monsterNameCache = ''; // updateBattleScreen()이 loadStatus() 밖에서도 이름을 쓸 수 있게 캐시
+  var monsterAtkCache = null, monsterDefCache = null; // [2026-09-21] 전투화면 스탯표(POWER/GUARD)용 캐시
 
   // [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 서버는 전투 승리
   // 텍스트에 항상 " 처치! 🎉"를 포함한다(BotS5ServiceImpl.resolveCombatTurn의 monsterDead
@@ -1169,6 +1277,8 @@ var TW = (function () {
         }
 
         monsterNameCache = data.monsterName || '';
+        monsterAtkCache = (data.monsterAtk != null) ? data.monsterAtk : null;
+        monsterDefCache = (data.monsterDef != null) ? data.monsterDef : null;
         updateBattleScreen(p);
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderDiceOverlay(data.dice || []);

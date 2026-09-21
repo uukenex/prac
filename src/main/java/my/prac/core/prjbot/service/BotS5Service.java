@@ -157,6 +157,10 @@ public interface BotS5Service {
      *  쓰므로(floorMonsterName 참고) 결과가 같다. 몬스터가 없으면 null. */
     String currentFloorMonsterName(int floor);
 
+    /** [2026-09-21] 전투화면 스탯표(POWER/GUARD)용 -- 이 층 몬스터의 실제 전투 ATK/DEF(V2
+     *  오버레이/하드코어 스케일 반영). [atk, def] 순서, 몬스터 없으면 null. */
+    int[] currentFloorMonsterAtkDef(int floor);
+
     /** /스탯구매 — 인자 없으면 현재 레벨/다음 비용, type 있으면 해당 스탯 구매(ATK/MINATK/HP) */
     String statShop(String userName, String type);
 

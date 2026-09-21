@@ -103,6 +103,12 @@ public class Season5ViewController {
             int floorNow = toInt(progress.get("CUR_FLOOR"));
             String monsterName = s5Service.currentFloorMonsterName(floorNow);
             if (monsterName != null) result.put("monsterName", monsterName);
+            // [2026-09-21] 전투화면 재설계(스탯표 POWER/GUARD) -- 몬스터 ATK/DEF도 함께 전달.
+            int[] atkDef = s5Service.currentFloorMonsterAtkDef(floorNow);
+            if (atkDef != null) {
+                result.put("monsterAtk", atkDef[0]);
+                result.put("monsterDef", atkDef[1]);
+            }
         }
 
         int floor = toInt(progress.get("CUR_FLOOR"));
