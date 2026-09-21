@@ -3951,3 +3951,30 @@ UI 갱신 -> 서버 저장 -> loadStatus()가 서버의 진짜 값으로 재동�
 - `S5_EQUIP_BONUS_V2_G7_EQUALIZE.sql`(신규, 적용 완료) -- `TBOT_S5_EQUIP_BONUS_V2`의
   GRADE=7 행을 GRADE=6 행 값으로 UPDATE.
 - 변경 파일: `BotS5ServiceImpl.java`, `S5_EQUIP_BONUS_V2_G7_EQUALIZE.sql`(신규, 적용 완료).
+
+### [2026-09-21 후속9] 전설제작 조각10개 미만 버튼 비활성화 + CUR_FLOOR=0 미사용계정 정리
+
+"전설제작이 지금 실제로 안되고있는거같아. 10개가 있어야 누를수있게 해줘." /
+"tbot_s5_user_progress 에 cur_floor 0인 계정이 자꾸 생겨. 주기적으로 지워줘." 두 건.
+
+- **전설제작 조각부족 신고**: 실제로 테스트했던 계정(`일어난다람쥐/카단`)은 `STATUS=
+  IN_COMBAT` + `LEGEND_FRAGMENT=0` 상태였고, `CRAFT_LEGENDARY` 액션은 "전투 중에는
+  전설제작을 할 수 없습니다" 메시지를 정상 반환함(설계대로 동작, 버그 아님) --
+  `/api/tower-legendary-roster`도 정상, JSP의 관련 참조(`legendCraftBtn`/`attemptCraft`/
+  `openLegendRoster` 등)도 몇 차례 리디자인을 거쳤지만 깨진 곳 없음. 다만 "조각이 부족한데
+  버튼이 눌려서 헷갈린다"는 UX 피해를 막기 위해 조각 10개 미만이면 `#legendCraftBtn`
+  자체를 `disabled` 처리(`renderLegendaryCraftCard`가 상태 조회마다 토글).
+- **CUR_FLOOR=0 계정 원인 확인**: `SELECT COUNT(*) WHERE CUR_FLOOR=0`이 시점에 따라 0이었다
+  다시 생기는 걸 보고 실시간으로 재현 확인 -- `Season5ViewController.apiTowerStatus`가
+  모르는 `userName`으로 호출되면(오타 URL/만료된 공유 링크/링크 미리보기 크롤러 등)
+  `resolveUserName`(정확일치 → LIKE 부분일치)이 둘 다 실패할 때 조용히 `initUser`로 빈
+  계정을 만들어버리는 기존 폴백 때문(이 폴백 자체는 2026-09-18 이전에 "완전 새 계정
+  생성을 막고 부분일치부터 시도"로 한 차례 완화된 적 있으나, 부분일치도 실패하는 완전
+  새로운 오타/크롤러 문자열엔 여전히 뚫림). 생성 경로를 더 건드리는 건 신규 유저 온보딩과
+  얽혀 있어 리스크가 크므로, 이번엔 "요청받은 대로" 정리만 자동화: 매일 새벽 4시
+  `TBOT_S5_USER_PROGRESS`에서 `CUR_FLOOR=0 AND REG_DATE < SYSDATE-1`(가입 후 하루가
+  지나도 한 번도 이동하지 않은 계정 -- 실제 플레이는 최초 이동/전투에서 바로 CUR_FLOOR이
+  0을 벗어나므로 이 조건은 100% 미사용 계정)인 행을 삭제하는 `@Scheduled` 잡 추가.
+  `ApplicationConfig`에 `@EnableScheduling` 최초 추가(기존엔 스케줄 잡이 하나도 없었음).
+- 변경 파일: `tower_view.jsp`(버튼 비활성화), `BotS5ServiceImpl.java`/`BotS5DAO.java`/
+  `BotS5Mapper.xml`(정리 스케줄러+DAO), `ApplicationConfig.java`(`@EnableScheduling`).
