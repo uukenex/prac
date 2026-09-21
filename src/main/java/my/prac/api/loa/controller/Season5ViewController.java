@@ -195,6 +195,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-09-21] 전설제작 UI(상점 탭)용 -- 제작 가능한 ★7 전설장비 로스터. 유저 무관 공용 목록. */
+    @GetMapping("/api/tower-legendary-roster")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerLegendaryRoster() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("roster", s5Service.legendaryRoster());
+        return ResponseEntity.ok(result);
+    }
+
     /**
      * 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07) -- userName은 선택(로그인 여부와 무관하게
      * 공지 자체는 항상 공개). userName이 있으면 그 유저가 이미 "다시 보지 않기"로 닫은 버전인지
@@ -467,7 +476,10 @@ public class Season5ViewController {
                     message = s5Service.equipSynthesisAll(userName);
                     break;
                 case "CRAFT_LEGENDARY":
-                    message = s5Service.craftLegendary(userName);
+                    message = s5Service.craftLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "DISENCHANT_LEGENDARY":
+                    message = s5Service.disenchantLegendary(userName, Integer.parseInt(param1));
                     break;
                 case "SET_BATTLE_SCREEN_VERSION":
                     message = s5Service.setBattleScreenVersion(userName, param1);

@@ -710,6 +710,9 @@ public class LoaChatController {
 			case "/전설제작":
 				val = s5.craftLegendary(reqMap);
 				break;
+			case "/전설분해":
+				val = s5.disenchantLegendary(reqMap);
+				break;
 			case "/전투화면":
 				val = s5.setBattleScreenVersion(reqMap);
 				break;

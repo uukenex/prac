@@ -288,9 +288,27 @@ public class Season5Controller {
         return s5Service.equipSynthesisAll(userNameOf(map));
     }
 
-    /** [2026-09-18] /전설제작 -- 전설의조각 10개 소모, ★7 전설장비 랜덤제작(성공률 30%). */
+    /** [2026-09-18] /전설제작 N -- 전설의조각 10개 소모, N번 전설장비 제작 시도(성공률 30%).
+     *  [2026-09-21] 결과 랜덤에서 "대상 지정, 성공확률만 랜덤"으로 변경되며 N(legendaryId) 필수. */
     public String craftLegendary(HashMap<String, Object> map) {
-        return s5Service.craftLegendary(userNameOf(map));
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /전설제작 N (N=전설장비 번호, 상점 탭에서 확인)";
+        try {
+            return s5Service.craftLegendary(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
+    /** [2026-09-21] /전설분해 N -- 미착용 ★7 전설장비 N번을 분해해서 조각 9개로 환급. */
+    public String disenchantLegendary(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return "사용법: /전설분해 N (N=미착용 장비 번호)";
+        try {
+            return s5Service.disenchantLegendary(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
     }
 
     /** [2026-09-21] /전투화면 v1|v2 -- 전투화면 UI 버전 선호 저장. */

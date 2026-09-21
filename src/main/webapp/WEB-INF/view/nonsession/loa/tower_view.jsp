@@ -501,6 +501,30 @@
     .shop-row.dice-locked{ opacity:.45; }
     .shop-row.dice-current{ border-color:var(--gold); background:var(--gold-soft); }
 
+    /* [2026-09-21] 전설제작 카드 -- 상점 탭. 여러 전설장비 중 하나를 골라(라디오처럼) 선택,
+       "제작하기"를 누르면 잠깐 "제작 중..." 연출 후 성공/실패 결과를 보여준다. */
+    .legend-frag-badge{ font-size:12px; font-weight:800; color:var(--gold); background:var(--gold-soft);
+                          border-radius:999px; padding:4px 10px; }
+    .legend-roster-item{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line);
+                           border-radius:12px; padding:10px 12px; margin-bottom:6px; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+    .legend-roster-item.selected{ border-color:var(--gold); background:var(--gold-soft); }
+    .legend-roster-item .lri-icon{ font-size:22px; flex-shrink:0; }
+    .legend-roster-item .lri-body{ flex:1; min-width:0; }
+    .legend-roster-item .lri-name{ font-size:13px; font-weight:800; }
+    .legend-roster-item .lri-meta{ font-size:10px; color:var(--ink-soft); margin-top:1px; }
+    .legend-roster-item .lri-flavor{ font-size:10px; color:var(--ink-soft); margin-top:3px; line-height:1.4; }
+    .legend-roster-item .lri-check{ font-size:16px; color:var(--gold); flex-shrink:0; visibility:hidden; }
+    .legend-roster-item.selected .lri-check{ visibility:visible; }
+    .legend-craft-btn{ width:100%; background:var(--gold); color:#fff; border:none; border-radius:10px;
+                         padding:11px; font-size:13px; font-weight:800; cursor:pointer; margin-top:4px; }
+    .legend-craft-btn:disabled{ opacity:.4; cursor:not-allowed; }
+    .legend-craft-anim{ text-align:center; font-size:13px; font-weight:700; color:var(--gold); padding:14px 0; }
+    .legend-craft-spinner{ display:inline-block; animation:legendSpin 1s linear infinite; margin-right:4px; }
+    @keyframes legendSpin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.3); } 100%{ transform:rotate(360deg) scale(1); } }
+    .legend-craft-result{ text-align:center; font-size:13px; font-weight:700; padding:14px 10px; border-radius:12px; margin-top:4px; }
+    .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
+    .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
+
     /* 미착용 장비 목록(합성/자동장착용 버튼은 그대로, 드래그는 폐지). 직업별로 묶고 그 안에서
        성급 내림차순 정렬, 카드 한 칸이 화면 폭을 다 먹던 걸 party-grid처럼 여러 칸으로
        배치되는 작은 카드로 줄임(개수 많아지면 스캔하기 쉽게). .equip-group-title은 선택
@@ -854,6 +878,22 @@
     <div class="card" style="margin-top:10px;">
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
+    </div>
+    <!-- [2026-09-21] "전설제작 ui도 상점내에 만들어주고" 요청 -- 조각 보유량/제작 대상 선택
+         (여러 아이템 중 선택, renderLegendaryCraftCard)/제작-분해 버튼. 정식 오픈 전까지는
+         서버(craftLegendary)가 NO_COOLDOWN_YN 계정만 허용하고 나머지는 안내 메시지만
+         반환하므로, 카드 자체는 누구에게나 보이되 실제 동작은 서버가 게이트한다. -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title-row">
+        <div class="card-title">✨ 전설제작</div>
+        <div class="legend-frag-badge">🧩 <span id="legendCraftFragVal">0</span>/10</div>
+      </div>
+      <div id="legendRosterList"></div>
+      <button type="button" class="legend-craft-btn" id="legendCraftBtn" disabled onclick="TW.craftLegendarySelected()">제작하기</button>
+      <div class="legend-craft-anim" id="legendCraftAnim" style="display:none;">
+        <span class="legend-craft-spinner">✨</span> 제작 중...
+      </div>
+      <div class="legend-craft-result" id="legendCraftResult" style="display:none;"></div>
     </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
@@ -2828,7 +2868,13 @@ var TW = (function () {
           var synthBtn = canSynth(e)
               ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
               : '';
-          actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
+          // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
+          // ★7 전설장비(미착용)만 "분해" 버튼 노출(합성 버튼은 애초에 ★6 미만만 대상이라
+          // canSynth가 자동으로 false).
+          var disenchantBtn = e.GRADE === 7
+              ? '<button onclick="TW.disenchantLegendary(\'' + idx + '\')">🧩분해(9)</button>'
+              : '';
+          actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + disenchantBtn + '</div>';
         }
         card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + '</div>'
@@ -3031,7 +3077,115 @@ var TW = (function () {
           note.textContent = '📈 다음 상한 ' + st.nextCap + '은 ' + st.nextVillageFloor + '층 마을 도달 시 열립니다(그 앞 보스 처치 필요).';
           statBox.appendChild(note);
         }
+        renderLegendaryCraftCard();
       });
+  }
+
+  // [2026-09-21] "전설제작 ui도 상점내에 만들어주고... 전설제작창에서 여러아이템 중
+  // 선택하여 제작버튼을 누르면 성공&실패 가 몇초뒤 만들어지는 ui액션이 잠깐나왔다가
+  // 결과가 나오게 해줘" 요청 -- 로스터(/api/tower-legendary-roster)는 유저 무관 고정 목록이라
+  // 한 번만 fetch해서 캐시. 카드 클릭으로 제작 대상 선택(라디오처럼, 로스터가 하나뿐이어도
+  // 앞으로 늘어날 걸 감안한 구조) 후 "제작하기" 버튼으로 실행.
+  var legendaryRosterCache = null;
+  var legendCraftSelectedId = null;
+  var LEGEND_EFFECT_LABEL = {
+    DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; }
+  };
+
+  function renderLegendaryCraftCard() {
+    var fragVal = document.getElementById('legendCraftFragVal');
+    if (fragVal) fragVal.textContent = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
+
+    var list = document.getElementById('legendRosterList');
+    if (!list) return;
+    if (legendaryRosterCache) {
+      renderLegendRosterList(legendaryRosterCache);
+      return;
+    }
+    fetch(base + '/api/tower-legendary-roster')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        legendaryRosterCache = data.roster || [];
+        if (legendCraftSelectedId == null && legendaryRosterCache.length > 0) {
+          legendCraftSelectedId = legendaryRosterCache[0].LEGENDARY_ID;
+        }
+        renderLegendRosterList(legendaryRosterCache);
+      })
+      .catch(function () { list.innerHTML = '<div class="sheet-empty">전설장비 목록을 불러오지 못했습니다.</div>'; });
+  }
+
+  function renderLegendRosterList(roster) {
+    var list = document.getElementById('legendRosterList');
+    var btn = document.getElementById('legendCraftBtn');
+    if (!roster.length) {
+      list.innerHTML = '<div class="sheet-empty">아직 등록된 전설장비가 없습니다.</div>';
+      if (btn) btn.disabled = true;
+      return;
+    }
+    list.innerHTML = '';
+    roster.forEach(function (item) {
+      var el = document.createElement('div');
+      el.className = 'legend-roster-item' + (item.LEGENDARY_ID === legendCraftSelectedId ? ' selected' : '');
+      var effectFn = LEGEND_EFFECT_LABEL[item.EFFECT_TYPE];
+      var effectLabel = effectFn ? effectFn(item.EFFECT_PARAM1) : (item.EFFECT_TYPE || '');
+      var groupLabel = WEAPON_CLASS_NAME[item.CLASS] || (item.CLASS === 'COMMON' ? '공용' : item.CLASS);
+      el.innerHTML = '<div class="lri-icon">' + equipIcon(item.CLASS, item.PART) + '</div>'
+          + '<div class="lri-body">'
+          + '<div class="lri-name">★7 ' + groupLabel + ' — ' + item.ITEM_NAME + '</div>'
+          + '<div class="lri-meta">' + effectLabel + '</div>'
+          + (item.FLAVOR_TEXT ? '<div class="lri-flavor">' + item.FLAVOR_TEXT + '</div>' : '')
+          + '</div><div class="lri-check">✅</div>';
+      el.onclick = function () {
+        legendCraftSelectedId = item.LEGENDARY_ID;
+        renderLegendRosterList(roster);
+      };
+      list.appendChild(el);
+    });
+    if (btn) btn.disabled = false;
+  }
+
+  // [2026-09-21] 미착용 장비 목록의 "🧩분해(9)" 버튼 -- ★7 전설장비를 삭제하고 조각 9개로
+  // 환급(action() 공용 헬퍼가 loadStatus()까지 알아서 다시 불러온다).
+  function disenchantLegendaryEquip(idx) {
+    action('DISENCHANT_LEGENDARY', String(idx));
+  }
+
+  // 제작 버튼 -- 몇 초짜리 "제작 중" 연출을 먼저 보여주고, 그 사이 실제 서버 요청을 보낸 뒤
+  // 응답이 오면(그리고 연출 최소시간도 지났으면) 성공/실패 결과 카드로 바꾼다.
+  var LEGEND_CRAFT_ANIM_MS = 1800;
+  function craftLegendarySelected() {
+    if (legendCraftSelectedId == null) return;
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    var btn = document.getElementById('legendCraftBtn');
+    var anim = document.getElementById('legendCraftAnim');
+    var result = document.getElementById('legendCraftResult');
+    btn.disabled = true;
+    result.style.display = 'none';
+    anim.style.display = '';
+
+    var startedAt = Date.now();
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=CRAFT_LEGENDARY&param1='
+        + encodeURIComponent(legendCraftSelectedId) + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var elapsed = Date.now() - startedAt;
+      var wait = Math.max(0, LEGEND_CRAFT_ANIM_MS - elapsed);
+      setTimeout(function () {
+        anim.style.display = 'none';
+        btn.disabled = false;
+        var msg = data.message || data.error || '완료';
+        var success = msg.indexOf('제작 성공') !== -1;
+        var fail = msg.indexOf('제작 실패') !== -1;
+        result.className = 'legend-craft-result' + (success ? ' success' : fail ? ' fail' : '');
+        result.textContent = msg;
+        result.style.display = '';
+        loadStatus(); // 조각 보유량(LEGEND_FRAGMENT) 갱신
+      }, wait);
+    }).catch(function () {
+      anim.style.display = 'none';
+      btn.disabled = false;
+      toast('요청 실패');
+    });
   }
 
   function loadAchievements() {
@@ -3228,7 +3382,8 @@ var TW = (function () {
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
            scrollToHere: scrollToHere, scrollToTop: scrollToTop, scrollToBottom: scrollToBottom,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate,
-           setBattleScreenVersion: setBattleScreenVersion };
+           setBattleScreenVersion: setBattleScreenVersion, craftLegendarySelected: craftLegendarySelected,
+           disenchantLegendary: disenchantLegendaryEquip };
 })();
 </script>
 </body>

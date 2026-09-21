@@ -3859,3 +3859,41 @@ UI 갱신 -> 서버 저장 -> loadStatus()가 서버의 진짜 값으로 재동�
   전투화면 몬스터(V1/V2)/파티대표(V2)/V1 파티목록 HP바 전부에 적용(항상 100%인 "보유동료
   목록"의 장식용 바는 대상 아님).
 - 변경 파일: `tower_view.jsp`만(순수 프론트엔드, DB/Java 변경 없음).
+
+### [2026-09-21 후속5] 전설제작 UI(상점 탭) + 분해(9조각 환급) + 송곳 효과 재정정
+
+"전설제작 ui도 상점내에 만들어주고, 전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도
+해줘. 현재는 7성 전설무기(검류,전사,도적 착용가능)인 "송곳"(방어력을 무시하고, 방어력만큼
+내데미지에 더한다) 를 제작할수있게 만들어줘. 전설제작창에서 여러아이템 중 선택하여 제작버튼을
+누르면 성공&실패 가 몇초뒤 만들어지는 ui액션이 잠깐나왔다가 결과가 나오게 해줘." 요청.
+
+**제작 방식 재설계**: 기존(2026-09-18) "성공 시 로스터 전체에서 결과가 랜덤"이던 걸 "제작
+대상을 직접 골라서 시도, 성공/실패만 확률(30%)"로 변경(로스터가 늘어날수록 "원하는 종류인지도
+랜덤"이면 UX가 나빠짐) -- `craftLegendary(userName)` → `craftLegendary(userName, legendaryId)`.
+- `legendaryRoster()` 신설(`/api/tower-legendary-roster`, 유저 무관 공용 목록) -- 상점 탭
+  전설제작 카드가 이걸로 선택 가능한 카드 목록을 그림(현재 송곳 1종, 로스터가 늘어도 코드
+  변경 없이 자동으로 카드가 늘어남).
+- 상점 탭에 새 카드(`renderLegendaryCraftCard`) -- 조각 보유량 배지, 아이템 선택 카드(클릭 시
+  `.selected` 강조), "제작하기" 버튼. 버튼을 누르면 `LEGEND_CRAFT_ANIM_MS`(1.8초) 동안
+  "✨ 제작 중..." 스피너를 먼저 보여주고(서버 응답이 그보다 빨리 와도 최소 이 시간은 채움,
+  느려도 응답 올 때까지 기다림), 그 다음 성공(금색)/실패(회색) 결과 카드로 전환.
+
+**전설 분해 (9조각 환급)**: `disenchantLegendary(userName, equipIdx)` 신설 -- 제작 비용(10개)
+보다 1개 적은 9개만 돌려줘서 완전한 무손실 순환을 막는 조각 싱크(`LEGEND_DISENCHANT_REFUND`).
+`equipSynthesis()`와 동일한 "미착용 장비 목록 N번" 인덱스 체계 재사용. 미착용 장비 목록에서
+★7 카드에만 "🧩분해(9)" 버튼 노출.
+
+**송곳 효과 재정정**: 2026-09-18 최초 구현은 "방어력의 50%를 훔쳐 가산"(EFFECT_PARAM1=50,
+이미 `- DEF`가 반영된 dmg에 부분 가산)이었는데, "방어력을 무시하고, 방어력만큼 내데미지에
+더한다"로 재확인 -- **DEF 차감 자체를 아예 안 하고(무시) 그만큼을 고스란히 보너스로 더함**
+(PARAM1=100 기준 `dmg = ATK×굴림 + DEF`, 방어력이 페널티가 아니라 순수 이득이 됨). 기존
+"이미 계산된 dmg에 사후 가산" 방식은 `ATK×굴림 < DEF`일 때 원래 식이 1로 바닥 클램프된 뒤에
+가산이 붙어 부정확해지는 문제가 있어(정확히 이 무기가 가장 필요한 상황에서 오차 발생),
+`resolveCombatTurn()`에서 이 무기가 있으면 아예 별도 분기로 `dmg = max(1, ATK×굴림) + DEF×
+(PARAM1/100)`을 직접 계산하도록 재작성. `S5_LEGENDARY_SONGOT_FIX.sql`(적용 완료, EFFECT_PARAM1
+50→100 + 플레이버 텍스트도 "무시+가산" 표현으로 수정).
+- 변경 파일: `BotS5ServiceImpl.java`(craftLegendary 재설계/legendaryRoster/
+  disenchantLegendary/DEF_STEAL 재계산), `BotS5Service.java`, `Season5Controller.java`/
+  `LoaChatController.java`(/전설제작 N, /전설분해 N), `Season5ViewController.java`
+  (roster API, DISENCHANT_LEGENDARY 액션), `tower_view.jsp`(상점 탭 카드), `S5_LEGENDARY_
+  SONGOT_FIX.sql`(신규, 적용 완료).

@@ -205,9 +205,17 @@ public interface BotS5Service {
      *  등급이 높은 부위만 교체하고, 이미 최고 등급이거나 후보가 없는 부위는 건드리지 않는다. */
     String equipBestAll(String userName, int companionIdx);
 
-    /** /전설제작 — 전설의조각 10개를 소모해 ★7 전설장비 랜덤제작 시도(성공률 30%). 정식 오픈
-     *  전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
-    String craftLegendary(String userName);
+    /** [2026-09-21] 전설제작 UI(상점 탭)용 -- 제작 가능한 ★7 전설장비 로스터 전체
+     *  (LEGENDARY_ID/CLASS/PART/ITEM_NAME/EFFECT_TYPE/EFFECT_PARAM1/EFFECT_PARAM2/FLAVOR_TEXT). */
+    List<HashMap<String, Object>> legendaryRoster();
+
+    /** /전설제작 — 전설의조각 10개를 소모해 지정한 legendaryId의 ★7 전설장비 제작 시도
+     *  (성공률 30%, 실패해도 조각은 소모됨). 정식 오픈 전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
+    String craftLegendary(String userName, int legendaryId);
+
+    /** [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" -- 보유한
+     *  ★7 전설장비(미착용 목록 N번)를 분해해서 조각 9개로 환급. */
+    String disenchantLegendary(String userName, int equipIdx);
 
     /** [2026-09-21] 전투화면 UI 버전(V1=포켓몬 스타일 구버전, V2=삼국지 대전화면 신버전)
      *  선호 저장. version이 "V1"이 아니면 전부 V2로 정규화. */

@@ -295,6 +295,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
     private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
     private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
+    // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
+    // 제작 비용(10개)보다 1개 적게(9개) 돌려줘서 무손실 순환을 막는 조각 싱크.
+    private static final int LEGEND_DISENCHANT_REFUND = 9;
     private static final int BOSS_DAILY_KILL_LIMIT = 3;   // 보스 하루 처치 제한(모든 보스층 공통 카운터)
 
     // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK] -- [2026-09-05] DICE_4 신설, 언제든(0층부터)
@@ -3005,7 +3008,30 @@ public class BotS5ServiceImpl implements BotS5Service {
                 roll = rollFace(diceMinFor(p), diceMax);
                 rollLabel = String.valueOf(roll);
             }
-            int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
+            // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
+            // 현재 구현된 효과는 DEF_STEAL(예시: 송곳)뿐. WEAPON 슬롯에 전설장비가 있으면
+            // 기본 데미지식 자체를 바꿔치기한다(사후 가산이 아님 -- effMonsterDef가 ATK*roll보다
+            // 커서 원래 식이 1로 바닥 클램프되는 경우 사후 가산은 부정확해짐).
+            HashMap<String, Object> legWeapon = null;
+            for (HashMap<String, Object> e : equips) {
+                if (!"WEAPON".equals(strVal(e.get("PART"), ""))) continue;
+                Object legId = e.get("LEGENDARY_ID");
+                if (legId != null) legWeapon = dao.selectLegendaryMaster(intVal(legId, 0));
+                break; // WEAPON 슬롯은 1개뿐
+            }
+            int dmg;
+            String legendaryWeaponTag = null;
+            // [2026-09-21 재설계] "송곳: 방어력을 무시하고, 방어력만큼 내데미지에 더한다" --
+            // 처음엔 "훔친 만큼만 가산"(부분 관통)이었는데, 사용자가 "무시 + 그만큼 가산"으로
+            // 명확히 정정 -- effMonsterDef를 아예 빼지 않고(무시) PARAM1%만큼 그대로 더한다.
+            // PARAM1=100이면 dmg = ATK*roll + DEF(방어력이 페널티가 아니라 순수 보너스가 됨).
+            if (legWeapon != null && "DEF_STEAL".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
+                int bonus = (int) Math.round(effMonsterDef * (intVal(legWeapon.get("EFFECT_PARAM1"), 0) / 100.0));
+                dmg = Math.max(1, eff[1] * roll) + bonus;
+                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + bonus;
+            } else {
+                dmg = Math.max(1, eff[1] * roll - effMonsterDef);
+            }
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
             // [2026-09-17] "도사는 서포터로 만들자, 현행 데미지의 6분의1수준으로 낮춰서 딜은
@@ -3013,26 +3039,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
-
-            // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
-            // 현재 구현된 효과는 DEF_STEAL(예시: 송곳)뿐. "적의 방어력을 훔쳐 주사위 굴린 후
-            // 자신의 공격력수치에 더한다"는 사용자 예시 그대로, dmg(이미 굴림 결과 반영값)에
-            // 그대로 가산하는 별개 항으로 처리(크리티컬 배율 등과 무관하게 순수 가산).
-            String legendaryWeaponTag = null;
-            for (HashMap<String, Object> e : equips) {
-                if (!"WEAPON".equals(strVal(e.get("PART"), ""))) continue;
-                Object legId = e.get("LEGENDARY_ID");
-                if (legId == null) break;
-                HashMap<String, Object> leg = dao.selectLegendaryMaster(intVal(legId, 0));
-                if (leg != null && "DEF_STEAL".equals(strVal(leg.get("EFFECT_TYPE"), ""))) {
-                    int stolen = (int) Math.round(effMonsterDef * (intVal(leg.get("EFFECT_PARAM1"), 0) / 100.0));
-                    if (stolen > 0) {
-                        dmg += stolen;
-                        legendaryWeaponTag = strVal(leg.get("ITEM_NAME"), "") + "+" + stolen;
-                    }
-                }
-                break; // WEAPON 슬롯은 1개뿐
-            }
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
@@ -3044,7 +3050,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
-            if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 흡수)");
+            if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -6970,13 +6976,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // [2026-09-18] "조각 10개를 모으면 전설제작 할수있고, 전설 제작 성공률은 30%.
-    // 랜덤제작만 만들고싶어" 요청. 같은 날 후속 메시지("일반사용자에겐 아직 제작부분은
-    // 오픈하지 말고")로 실제 오픈 전까지는 NO_COOLDOWN_YN(기존 관리자/테스트 계정 플래그)
-    // 보유 계정만 사용 가능하도록 막아둔다 -- 조각 드랍/보유는 이미 일반 유저에게도 보이므로
-    // 제작 커맨드/버튼 자체는 그대로 두되 진입 시점에 여기서 차단.
+    // 랜덤제작만 만들고싶어" 요청 -- 그때는 성공 시 로스터 전체에서 무작위 1개였다.
+    // [2026-09-21 재설계] "전설제작창에서 여러아이템 중 선택하여 제작버튼을 누르면..." 요청으로
+    // "결과 랜덤"에서 "제작 대상을 직접 고르고, 그 대상에 대해 성공/실패만 확률로" 방식으로
+    // 변경(로스터가 늘어날수록 "원하는 종류인지도 랜덤"이면 UX가 나빠지므로). 같은 날 후속
+    // 메시지("일반사용자에겐 아직 제작부분은 오픈하지 말고")로 실제 오픈 전까지는
+    // NO_COOLDOWN_YN(기존 관리자/테스트 계정 플래그) 보유 계정만 사용 가능하도록 막아둔다 --
+    // 조각 드랍/보유는 이미 일반 유저에게도 보이므로 제작 UI/커맨드 자체는 그대로 두되 진입
+    // 시점에 여기서 차단.
+    @Override
+    public List<HashMap<String, Object>> legendaryRoster() {
+        return dao.selectLegendaryMasterList();
+    }
+
     @Override
     @Transactional
-    public String craftLegendary(String userName) {
+    public String craftLegendary(String userName, int legendaryId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
             return "🔒 전설제작은 아직 준비 중인 기능입니다.";
@@ -6984,6 +6999,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 전설제작을 할 수 없습니다.";
         }
+        HashMap<String, Object> target = dao.selectLegendaryMaster(legendaryId);
+        if (target == null) return "존재하지 않는 전설장비입니다.";
         int fragment = intVal(p.get("LEGEND_FRAGMENT"), 0);
         if (fragment < LEGEND_CRAFT_COST) {
             return "전설의조각이 부족합니다. (보유 " + fragment + "개 / 필요 " + LEGEND_CRAFT_COST + "개)";
@@ -6997,26 +7014,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         p.put("LEGEND_FRAGMENT", remaining);
 
         boolean success = RND.nextInt(100) < LEGEND_CRAFT_SUCCESS_PCT;
+        String itemName = strVal(target.get("ITEM_NAME"), "");
         if (!success) {
-            return "💨 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
+            return "💨 [" + itemName + "] 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
         }
 
-        List<HashMap<String, Object>> roster = dao.selectLegendaryMasterList();
-        if (roster.isEmpty()) {
-            // 방어적 처리 -- 로스터가 비어있으면(운영 중 등록 누락 등) 조각만 환불한다.
-            HashMap<String, Object> refundUp = new HashMap<>();
-            refundUp.put("userName", userName);
-            refundUp.put("legendFragment", fragment);
-            dao.updateUserProgress(refundUp);
-            p.put("LEGEND_FRAGMENT", fragment);
-            return "아직 등록된 전설장비가 없습니다. 조각은 환불되었습니다.";
-        }
-        HashMap<String, Object> picked = roster.get(RND.nextInt(roster.size()));
-        String clazz = strVal(picked.get("CLASS"), "");
-        String part = strVal(picked.get("PART"), "");
-        int legendaryId = intVal(picked.get("LEGENDARY_ID"), 0);
-        String itemName = strVal(picked.get("ITEM_NAME"), "");
-
+        String clazz = strVal(target.get("CLASS"), "");
+        String part = strVal(target.get("PART"), "");
         HashMap<String, Object> e = new HashMap<>();
         e.put("userName", userName);
         e.put("class", clazz);
@@ -7027,7 +7031,42 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.insertEquip(e);
 
         return "✨✨ 전설제작 성공! [" + itemName + "] ★7 " + equipClassLabel(clazz, part)
-                + " 획득! (" + strVal(picked.get("FLAVOR_TEXT"), "") + ")";
+                + " 획득! (" + strVal(target.get("FLAVOR_TEXT"), "") + ")";
+    }
+
+    // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 -- 제작
+    // 비용(10개)보다 1개 적게 돌려줘서(9개) 완전한 무손실 순환(만들고 부수고 다시 만들고...)은
+    // 안 되게 하는 조각 싱크. equipSynthesis()와 동일하게 "미착용 장비 목록(N번)" 인덱스로
+    // 대상을 지정한다.
+    @Override
+    @Transactional
+    public String disenchantLegendary(String userName, int equipIdx) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 분해할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
+        HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
+        if (intVal(equip.get("GRADE"), 1) != 7) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
+
+        dao.deleteEquip(intVal(equip.get("EQUIP_ID"), 0));
+        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("legendFragment", newFragment);
+        dao.updateUserProgress(up);
+
+        Object legIdObj = equip.get("LEGENDARY_ID");
+        String itemName = "전설장비";
+        if (legIdObj != null) {
+            HashMap<String, Object> meta = dao.selectLegendaryMaster(intVal(legIdObj, 0));
+            if (meta != null) itemName = strVal(meta.get("ITEM_NAME"), itemName);
+        }
+        return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + LEGEND_DISENCHANT_REFUND + "개 획득 (보유 " + newFragment + "개)";
     }
 
     // [2026-09-21] "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 띄워주도록 하자. 전투화면
