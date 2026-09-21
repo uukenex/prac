@@ -2973,6 +2973,12 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // ── 파티 선공: 생존한 동료 전원이 각자 1회씩 공격 (직업별 특수효과 포함) ──
         long totalDamage = 0;
+        // [2026-09-21] "방어로 인한 차감분을 확실히 표시해달라" 요청 -- 개별 줄은 방어력
+        // 적용 "전" 원본 데미지(ATK*굴림)를 보여주고, 실제 방어 차감은 합산 데미지 한 줄에서
+        // "총딜 - 차감 = 실제딜" 형태로 한 번에 보여준다(파티원별로 방어 무시/크리티컬/
+        // 사제 감소 등 보정이 제각각이라 "원본합-실제합"의 차이를 그대로 차감량으로 써서
+        // 항상 산수가 맞게 함 -- totalDamage 참고).
+        long totalRawDamage = 0;
         boolean stunned = false;
         int shieldPool = 0;
         // [2026-09-05] ★5/★6 마법사 "2턴 스턴" -- 지난 턴에 걸어둔 배너(MONSTER_STUNNED_YN)가
@@ -3084,6 +3090,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             int dmg;
             String legendaryWeaponTag = null;
+            // [2026-09-21] 표기 개편용 -- 방어력 적용 "전" 원본 데미지(주사위 눈만 반영,
+            // ATK*굴림). 방어 무시/가산인 DEF_STEAL도 "방어가 없었다면 얼마였을지" 기준을
+            // 그대로 맞추기 위해 항상 이 식으로 계산해둔다(실제 dmg 계산식과는 별개).
+            int rawDmg = eff[1] * roll;
             // [2026-09-21 재설계] "송곳: 방어력을 무시하고, 방어력만큼 내데미지에 더한다" --
             // 처음엔 "훔친 만큼만 가산"(부분 관통)이었는데, 사용자가 "무시 + 그만큼 가산"으로
             // 명확히 정정 -- effMonsterDef를 아예 빼지 않고(무시) PARAM1%만큼 그대로 더한다.
@@ -3103,6 +3113,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
             totalDamage += dmg;
+            totalRawDamage += rawDmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
@@ -3110,8 +3121,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 구간의 HP와 바로 비교되게 함.
             // [2026-09-05 멘트 개편] "이름+HP"와 "주사위/데미지"를 한 줄에 몰아넣지 말고 줄을
             // 나눠달라는 요청 -- 이름+HP 줄, 그 아래 굴림 결과 줄로 분리.
+            // [2026-09-21] "4굴려서 나온 데미지 표기"를 원해서 이 줄은 방어 적용 전 원본
+            // (rawDmg)을 보여주고, 방어 차감은 아래 "총 N dmg로 공격!" 다음 줄에서 한 번에.
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
-              .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
+              .append("🎲").append(rollLabel).append("→").append(rawDmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
             if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
 
@@ -3187,7 +3200,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // "파티 합공 총 데미지도 보여달라" 요청 -- 개별 줄만으로는 한 번에 얼마나 몰아쳤는지
         // 암산해야 해서, 공격 줄들 바로 아래에 합계를 한 줄 더 보여준다.
-        if (totalDamage > 0) sb.append("총 ").append(totalDamage).append("dmg로 공격!").append(NL);
+        // [2026-09-21] "방어로인한 데미지차감분을 확실히 표시해줘" 요청 -- 위 개별 줄들이
+        // 이제 방어 적용 전(raw) 값이라, 여기 합계도 raw 합계로 보여주고 바로 다음 줄에
+        // "원본 - 방어차감 = 실제딜" 산수를 명시한다. 차감량은 파티원별 방어무시(궁수)/
+        // 크리티컬/사제감소/전설무기 가산이 제각각이라 "raw합 - 실제합"으로 역산해서 늘
+        // 산수가 맞게 한다(개별 몬스터DEF를 그대로 인원수만큼 곱하면 이 보정들과 안 맞음).
+        // 차감량이 음수면(전설무기 방어무시+가산 등으로 실제딜이 raw보다 큼) "가산"으로 표기.
+        if (totalRawDamage > 0) {
+            sb.append("총 ").append(totalRawDamage).append("dmg로 공격!").append(NL);
+            long mitigated = totalRawDamage - totalDamage;
+            if (mitigated > 0) {
+                sb.append(totalRawDamage).append("dmg - 🛡️방어 ").append(mitigated).append("dmg = ")
+                  .append(totalDamage).append("dmg").append(NL);
+            } else if (mitigated < 0) {
+                sb.append(totalRawDamage).append("dmg + 방어무시 가산 ").append(-mitigated).append("dmg = ")
+                  .append(totalDamage).append("dmg").append(NL);
+            }
+        }
 
         // [2026-09-13] "79층 보스는 첫타 은신으로 회피 후 동료 한 명을 처치하고 시작, 이후
         // 6턴마다 반복" 요청 -- 1턴째와 6의 배수 턴엔 이번 턴 파티 공격 전체가 회피되어(피해
@@ -3496,8 +3525,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(NL);
         // [2026-09-05 멘트 개편] "HP" 텍스트 대신 이모지로, 파티(💗)와 구분되게 몬스터는
         // 노란색 하트(💛)를 쓴다.
+        // [2026-09-21] "남은hp와 차감hp를 잘보이도록" 요청 -- 이번 턴 실제로 깎인 양을
+        // monsterHp(턴 시작 시점 스냅샷)와의 차이로 역산해서 같이 보여준다(dual몬스터/보호막
+        // 흡수 등 경로가 복잡해도 "시작-끝" 차이라 항상 정확함).
+        PP monsterDealt = monsterHp.subtract(monsterHpAfter);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 💛")
-          .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format()).append(NL);
+          .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+        if (PP.toBaseValue(monsterDealt) > 0) sb.append(" (-").append(monsterDealt.format()).append(")");
+        sb.append(NL);
 
         if (stunned) {
             sb.append("몬스터 스턴! 반격 못함");
