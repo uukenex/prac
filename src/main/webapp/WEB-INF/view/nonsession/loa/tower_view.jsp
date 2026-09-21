@@ -795,6 +795,11 @@
                 </div>
               </div>
             </div>
+            <!-- [2026-09-21] "동료가 한명만 보인다고 해. 최대3명까지 다 나오게 해줘" 요청 --
+                 원래 V2엔 이 줄이 없어서(대표 1명만 duel-row에 표시) 파티 전원 상태를 볼 수
+                 없었다. V1과 동일한 .bs-party-row를 재사용(updateBattlePartyV1이 이제 V1/V2
+                 두 줄 다 채움). -->
+            <div class="bs-party-row" id="bsPartyRowV2"></div>
           </div>
 
           <!-- ===== V1(구버전, 포켓몬 스타일) ===== -->
@@ -1351,69 +1356,83 @@ var TW = (function () {
   // 중 나중에 끝나는 쪽에서 최신 데이터로 다시 그려지도록 양쪽 다 이 함수를 부른다(요청 2개가
   // 서로 다른 fetch라 어느 쪽이 먼저 끝날지 보장이 없음). 전투 중이 아니거나 V2 표시 중이면
   // 조용히 무시.
+  // [2026-09-21] V1/V2 둘 다 같은 파티 로스터 줄(.bs-party-row)을 쓴다(V2는 원래 이 줄이
+  // 없어서 "동료가 한명만 보인다" 신고를 받았다) -- 화면 전환과 무관하게 두 줄 다 채워두고
+  // 실제 표시 여부는 각 #battleScreenV1/V2의 display 토글에 맡긴다.
   function updateBattlePartyV1() {
-    var screen = document.getElementById('battleScreenV1');
-    if (!screen || screen.style.display === 'none') return;
-    var row = document.getElementById('bsPartyRowV1');
     var companions = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
-    var ids = companions.map(function (c) { return c.COMPANION_ID; }).join(',');
-    if (row.dataset.ids !== ids) {
-      // 파티 구성 자체가 바뀐 경우(전투 진입 직후 최초 렌더 포함)만 다시 그린다 -- 매 갱신마다
-      // innerHTML로 새로 만들면 엘리먼트가 새 걸로 바뀌어서 width transition이 끊겨 보인다.
-      row.dataset.ids = ids;
-      row.innerHTML = '';
-      companions.forEach(function (c) {
-        var box = document.createElement('div');
-        box.className = 'bs-companion';
-        box.dataset.cid = c.COMPANION_ID;
-        box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
-        var meta = document.createElement('div');
-        // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
-        // [2026-09-18] "체력이 0이된 동료는 전투불능 표시를 하고싶어" 요청 -- 이름 줄
-        // 아래에 상태 배지 자리를 하나 만들어두고(bs-status), 갱신 루프에서 채운다.
-        meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
-            + '<div class="bs-status incapacitated-badge" style="display:none">💀 전투불능</div>'
-            + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
-        box.appendChild(meta);
-        row.appendChild(box);
-      });
-    }
+    // [버그 방지] 두 줄(V1/V2)을 순서대로 갱신하면서 매번 battle.companionHp를 바로 덮어쓰면,
+    // 두 번째 줄을 처리할 때는 이미 prevHp===curHp가 되어 있어 "맞았을 때 흔들림" 연출이 V1
+    // 쪽 줄에서만 뜨고 V2 쪽은 영영 안 뜬다 -- 그래서 감소 여부만 먼저 한 번에 계산해두고,
+    // battle.companionHp 갱신도 두 줄을 모두 그린 다음 마지막에 한 번만 한다.
+    var hpDropped = {};
+    var newHp = {};
     companions.forEach(function (c) {
-      var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
-      if (!box) return;
-      var maxHp = c.EFF_HP || 1;
-      // [버그 수정] CUR_HP_VALUE는 PP 단위 표기(예: EXT='a'면 실제로 x10000)라 EFF_HP 같은
-      // 단위 없는 숫자와 그대로 나누면 HP가 1a(=10000) 넘는 순간 비율이 거의 0으로 깨졌다.
       var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
-      var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
-      setHpBarFill(box.querySelector('.hpbar-fill'), pct);
-      var down = isIncapacitated(curHp);
-      box.classList.toggle('incapacitated', down);
-      var statusEl = box.querySelector('.bs-status');
-      if (statusEl) statusEl.style.display = down ? '' : 'none';
       var prevHp = battle.companionHp[c.COMPANION_ID];
-      if (prevHp != null && curHp < prevHp) {
-        box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
-      }
-      battle.companionHp[c.COMPANION_ID] = curHp;
+      hpDropped[c.COMPANION_ID] = prevHp != null && curHp < prevHp;
+      newHp[c.COMPANION_ID] = curHp;
     });
+    ['bsPartyRowV1', 'bsPartyRowV2'].forEach(function (rowId) {
+      var row = document.getElementById(rowId);
+      if (!row) return;
+      var ids = companions.map(function (c) { return c.COMPANION_ID; }).join(',');
+      if (row.dataset.ids !== ids) {
+        // 파티 구성 자체가 바뀐 경우(전투 진입 직후 최초 렌더 포함)만 다시 그린다 -- 매 갱신마다
+        // innerHTML로 새로 만들면 엘리먼트가 새 걸로 바뀌어서 width transition이 끊겨 보인다.
+        row.dataset.ids = ids;
+        row.innerHTML = '';
+        companions.forEach(function (c) {
+          var box = document.createElement('div');
+          box.className = 'bs-companion';
+          box.dataset.cid = c.COMPANION_ID;
+          box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
+          var meta = document.createElement('div');
+          // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
+          // [2026-09-18] "체력이 0이된 동료는 전투불능 표시를 하고싶어" 요청 -- 이름 줄
+          // 아래에 상태 배지 자리를 하나 만들어두고(bs-status), 갱신 루프에서 채운다.
+          meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
+              + '<div class="bs-status incapacitated-badge" style="display:none">💀 전투불능</div>'
+              + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
+          box.appendChild(meta);
+          row.appendChild(box);
+        });
+      }
+      companions.forEach(function (c) {
+        var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
+        if (!box) return;
+        var maxHp = c.EFF_HP || 1;
+        var curHp = newHp[c.COMPANION_ID];
+        var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
+        setHpBarFill(box.querySelector('.hpbar-fill'), pct);
+        var down = isIncapacitated(curHp);
+        box.classList.toggle('incapacitated', down);
+        var statusEl = box.querySelector('.bs-status');
+        if (statusEl) statusEl.style.display = down ? '' : 'none';
+        if (hpDropped[c.COMPANION_ID]) {
+          box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+        }
+      });
+    });
+    companions.forEach(function (c) { battle.companionHp[c.COMPANION_ID] = newHp[c.COMPANION_ID]; });
   }
 
   // 주사위(공격) 버튼을 눌렀을 때 파티 전원이 짧게 앞으로 튀는 연출 -- 실제로 몇 명이 몇 번
   // 공격했는지는 서버 텍스트 메시지 안에만 있고 구조화되어 있지 않아, "파티가 매턴 전원 동시
   // 공격한다"는 실제 전투 규칙 그대로 전원 동시 연출로 단순화했다.
-  // [2026-09-21] V2는 하단 파티목록이 없어져 대표 아바타(bsLeadAvatarSlot) 하나만 펄스.
+  // [2026-09-21] V2도 이제 파티 로스터 줄(bsPartyRowV2)이 있으므로 V1과 동일하게 펄스시키고,
+  // V2 대표 아바타(bsLeadAvatarSlot)도 함께 펄스한다.
   function playBattleAttackMotion() {
-    if (state.battleScreenVersion === 'V1') {
-      var row = document.getElementById('bsPartyRowV1');
-      if (!row) return;
+    var rowId = state.battleScreenVersion === 'V1' ? 'bsPartyRowV1' : 'bsPartyRowV2';
+    var row = document.getElementById(rowId);
+    if (row) {
       row.querySelectorAll('.bs-companion').forEach(function (box) {
         box.classList.remove('bs-atk-pulse'); void box.offsetWidth; box.classList.add('bs-atk-pulse');
       });
-    } else {
+    }
+    if (state.battleScreenVersion !== 'V1') {
       var slot = document.getElementById('bsLeadAvatarSlot');
-      if (!slot) return;
-      slot.classList.remove('bs-atk-pulse'); void slot.offsetWidth; slot.classList.add('bs-atk-pulse');
+      if (slot) { slot.classList.remove('bs-atk-pulse'); void slot.offsetWidth; slot.classList.add('bs-atk-pulse'); }
     }
   }
 
@@ -2282,6 +2301,13 @@ var TW = (function () {
     if (WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
     return JOB_KR[equipClass] || equipClass;
   }
+  // [2026-09-21] "★7송곳을 만들었는데 검으로만 나와" 신고 -- selectUserEquip이
+  // LEGENDARY_ID를 아예 안 내려주고 있어서(버그 수정, BotS5Mapper.xml) 프론트가 부위 기반
+  // 일반 이름(검/지팡이 등)만 표시할 수밖에 없었다. 이제 LEGENDARY_ITEM_NAME이 내려오므로
+  // ★7 장비는 이 고유이름을 우선 표시한다.
+  function legendaryTag(e) {
+    return e && e.LEGENDARY_ITEM_NAME ? (' ✨' + e.LEGENDARY_ITEM_NAME) : '';
+  }
   // [2026-09-17] "무기 아이콘을 지팡이는 지팡이로, 활은 활로, 갑옷도 적당한 거 있으면"
   // 요청 -- 지금까진 PART 하나로만 아이콘을 정해서(무기는 전부 ⚔️) 검/지팡이/활이 다
   // 똑같은 검 아이콘으로 보였다. 그룹(검/지팡이/활/갑주/로브/재킷)별로 실제 어울리는
@@ -2441,7 +2467,7 @@ var TW = (function () {
     if (cur) {
       var curRow = document.createElement('div');
       curRow.className = 'sheet-row current readonly';
-      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + ' 장착중</span>';
+      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + legendaryTag(cur) + ' 장착중</span>';
       var unwearBtn = document.createElement('button');
       unwearBtn.type = 'button';
       unwearBtn.className = 'mini-btn';
@@ -2467,7 +2493,7 @@ var TW = (function () {
       candidates2.forEach(function (e) {
         var row = document.createElement('div');
         row.className = 'sheet-row';
-        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
+        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + '</span><span class="sr-sub">탭해서 장착</span>';
         row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
         body.appendChild(row);
       });
@@ -2552,7 +2578,7 @@ var TW = (function () {
       var found = mine.filter(function (e) { return e.PART === part; })[0];
       var row = document.createElement('div');
       row.className = 'detail-equip-row';
-      row.innerHTML = '<span>' + PART_KR[part] + '</span><span>' + (found ? '★' + found.GRADE : '미착용') + '</span>';
+      row.innerHTML = '<span>' + PART_KR[part] + '</span><span>' + (found ? ('★' + found.GRADE + legendaryTag(found)) : '미착용') + '</span>';
       eqBox.appendChild(row);
     });
 
@@ -2889,7 +2915,9 @@ var TW = (function () {
         // 공용 등)일 때만 그 이름을, 아직 마이그레이션 전(구 데이터, class=직업명)이면 기존
         // 처럼 부위명 그대로.
         var isGroupedClass = !!WEAPON_CLASS_NAME[e.CLASS] || e.CLASS === 'COMMON';
-        var eqLabel = isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART);
+        // [2026-09-21] ★7 전설장비는 부위 일반명 대신 고유이름을 보여준다.
+        var eqLabel = e.LEGENDARY_ITEM_NAME ? ('✨ ' + e.LEGENDARY_ITEM_NAME)
+            : (isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART));
         var actionsHtml;
         if (e.__wearerName) {
           // [2026-09-17 2차] "장착되어있는장비도 표기해주고 누구 장착중 이렇게 나왔으면
