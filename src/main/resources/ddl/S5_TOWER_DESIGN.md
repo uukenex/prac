@@ -4145,3 +4145,46 @@ interface(s) of the exposed proxy type")`로 컨텍스트 초기화 자체가 �
   안 건드림, 순수 DOM 순서만 이동) -- 이제 파티 로스터가 화면 상단에 먼저 나오고 그 아래
   VS 대전 영역이 이어진다.
 - DB 마이그레이션 없음. `tower_view.jsp`만 수정.
+
+## [2026-09-21] 루트(`/`) 접속 오류 진단 + `index.jsp` 미사용 taglib 정리
+
+**신고**: "지금 내사이트가 https 가 안돼." curl/PowerShell로 직접 재현해서 확인.
+
+- **HTTPS/Cloudflare 문제 아님 -- 확인 완료**: `https://rgb-tns.dev-apc.com/loa/manual`,
+  `/loa/tower-view?userName=test` 둘 다 TLS 정상 협상 + `200 OK` + 정상 본문(각각 15.8KB,
+  237KB) 확인. Cloudflare 프록시/인증서는 정상 동작 중.
+- **루트 경로(`/`, welcome-file=`index.jsp`)만 깨져 있었음**: `https://rgb-tns.dev-apc.com/`
+  요청 시 HTTP/HTTPS 둘 다 동일하게 `HTTP/1.1 600 <none>`(비표준 상태코드)에 본문 0바이트
+  (청크 인코딩상 빈 청크만) 응답. 단, `Set-Cookie: JSESSIONID=...`가 매 요청 새로 발급되는
+  걸 보면 Cloudflare 에러 페이지가 아니라 **오리진(Tomcat/Spring)이 요청을 받아 세션까지
+  만들고도 응답을 비정상 종료**하고 있었음 -- 클라이언트(curl/WinHTTP)가 그 깨진 상태줄을
+  "600 <none>"으로 표시.
+- **의심 원인 -- `index.jsp`의 미사용 taglib 선언**: `index.jsp`가 `<%@ taglib prefix="c"
+  uri=".../jstl/core" %>`, `<%@ taglib prefix="spring" uri=".../spring/tags"%>`를 선언해
+  뒀는데, 실제 페이지 본문에서 `c:`/`spring:` 태그는 **단 한 곳도(전부 `<%--...--%>` 주석
+  안의 죽은 예시 코드로만)** 쓰이지 않고 있었다. JSP는 taglib 선언 자체를 번역(컴파일)
+  시점에 즉시 해석하므로, 실제 사용 여부와 무관하게 해당 TLD 해석에 문제가 있으면(라이브
+  배포본의 WEB-INF/lib 구성이 pom.xml과 어긋났거나 하는 등) 페이지 전체가 깨질 수 있다.
+  같은 날 다른 컴퓨터 세션에서 있었던 스케줄러발 전 사이트 다운 사고 이후 재배포가 여러 번
+  있었던 것도 정황상 의심 요인 -- **확정 진단은 아님**(라이브 서버 catalina.out/
+  localhost.&lt;날짜&gt;.log 접근 권한이 이 세션엔 없어 실제 스택트레이스는 못 봄).
+- 안 쓰는 두 taglib 선언을 제거(코드상 죽은 참조 정리 + 가능한 실패 요인 하나 제거).
+  **이 커밋을 배포한 뒤에도 여전히 `/`가 깨지면, taglib 문제가 아니라는 뜻이니 라이브
+  서버 로그(`catalina.out`/`localhost.<날짜>.log`)에서 그 시각 스택트레이스 확인 필요.**
+- 변경 파일: `index.jsp`.
+
+## [2026-09-21] 최상급장비상자 전설의조각 100% 확정 지급 → 확률 지급으로 정정
+
+**신고**: "최상급장비보물상자에서 전설의조각이 너무잘나오는거같아. 확률에 맞게나오도록 해줘."
+
+- 09-18에 "최상급장비상자에서 조각이 1~3개정도 나오게 해줘" 요청으로 GACHA_ID=8("전설의
+  장비 상자") 뽑기마다 **100% 확정으로 조각 1~3개**를 얹어줬는데, 반복 구매가 가능한
+  상자라 너무 후하다는 후속 신고.
+- 새 상수 `LEGEND_FRAGMENT_BOX_DROP_PCT = 15`(%) 추가, 조각 지급 자체를
+  `RND.nextInt(100) < LEGEND_FRAGMENT_BOX_DROP_PCT` 확률 게이트 뒤로 이동(보스층 드랍
+  방식과 동일 패턴). 발동 시 수량(1~3개)은 기존 그대로. 보스층 최고 확률(25%, 99층)보다
+  낮게 잡음 -- 상자는 하루 제한 없이 반복 시도 가능해서 보스킬(하루 3회 제한)보다 훨씬
+  자주 굴릴 수 있기 때문.
+- 10연차(`gachaEquipTen`)도 내부적으로 1회 뽑기 로직(`pullEquipCore`)을 10번 호출하는
+  구조라 자동으로 매 뽑기 개별 확률 적용됨(코드 추가 수정 불필요).
+- DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정(`pullEquipCore`).

@@ -300,6 +300,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
     private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
     private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
+    // [2026-09-21] "최상급장비상자에서 조각이 너무 잘 나온다, 확률에 맞게 나오도록" 요청 --
+    // 원래 100% 확정 지급이던 걸 보스층 드랍(5~25%)과 같은 방식의 확률 지급으로 전환.
+    // 보스층 최고 확률(25%, 99층)보다 살짝 낮은 수준으로 잡음 -- 상자는 반복 구매/오픈이
+    // 가능해 보스킬(하루 3회 제한)보다 훨씬 자주 시도할 수 있으므로.
+    private static final int LEGEND_FRAGMENT_BOX_DROP_PCT = 15;
     // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
     // 제작 비용(10개)보다 1개 적게(9개) 돌려줘서 무손실 순환을 막는 조각 싱크.
     private static final int LEGEND_DISENCHANT_REFUND = 9;
@@ -5988,8 +5993,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (grade == 6) grantAchievement(userName, 22);
 
         // [2026-09-18] "최상급장비상자에서 조각이 1~3개정도 나오게 해줘" 요청 -- GACHA_ID=8
-        // ("전설의 장비 상자", 80층 해금 최상급 티어)에서만 매 뽑기마다 조각 1~3개 보너스 지급.
-        if (intVal(gacha.get("GACHA_ID"), 0) == 8) {
+        // ("전설의 장비 상자", 80층 해금 최상급 티어)에서 조각 1~3개 보너스 지급.
+        // [2026-09-21 정정] "전설의조각이 너무잘나오는거같아, 확률에 맞게나오도록 해줘" 신고 --
+        // 처음엔 매 뽑기마다 100% 확정 지급이라 상자를 열 때마다 조각이 계속 쌓여서 너무
+        // 후했다. 보스층 드랍(LEGEND_FRAGMENT_DROP_PCT, 5~25%)과 같은 확률 방식으로 바꿔서
+        // LEGEND_FRAGMENT_BOX_DROP_PCT(15%) 확률로만 발동하게 하고, 발동 시 수량(1~3개)은
+        // 기존 그대로 유지.
+        if (intVal(gacha.get("GACHA_ID"), 0) == 8 && RND.nextInt(100) < LEGEND_FRAGMENT_BOX_DROP_PCT) {
             int fragmentGranted = 1 + RND.nextInt(3);
             int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + fragmentGranted;
             HashMap<String, Object> fragUp = new HashMap<>();
