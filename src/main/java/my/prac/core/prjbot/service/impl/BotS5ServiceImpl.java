@@ -720,17 +720,37 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 적용되도록 blockNo>=6 전체에 일반화해둠(요청은 6블록 한정이었지만 동일 설계 원칙).
     private static final double HARDCORE_FLOOR_SCALE_MIN = 0.5;
 
+    // [2026-09-21] "60층 미만은 방어력 0, 60층 이후는 방어력을 선형구조로(61층≈100,
+    // 99층은 지금 그대로)" 요청 -- 몬스터 DEF만 따로 떼어서 블록 단위 저장값 대신 이
+    // 층 기반 공식으로 완전히 대체한다(HP/ATK는 기존 방식 그대로 유지, 이 요청 범위 밖).
+    // 99층(블록10 보스, "종말의 마룡왕 니드호그") 현재 라이브 DEF=7500을 그대로 상한
+    // 앵커로 고정 -- 나중에 그 값 자체가 바뀌면 이 상수도 같이 맞춰야 함.
+    private static final int DEF_RAMP_START_FLOOR = 61;
+    private static final int DEF_RAMP_END_FLOOR = 99;
+    private static final double DEF_RAMP_START_VAL = 100;
+    private static final double DEF_RAMP_END_VAL = 7500;
+
+    private double monsterDefForFloor(int floor) {
+        if (floor < DEF_RAMP_START_FLOOR) return 0; // 60층 미만(및 60층 자체=마을) 전부 0
+        if (floor >= DEF_RAMP_END_FLOOR) return DEF_RAMP_END_VAL; // 99층 이상(콘텐츠상 사실상 99뿐)은 상한 고정
+        double t = (floor - DEF_RAMP_START_FLOOR) / (double) (DEF_RAMP_END_FLOOR - DEF_RAMP_START_FLOOR);
+        return DEF_RAMP_START_VAL + t * (DEF_RAMP_END_VAL - DEF_RAMP_START_VAL);
+    }
+
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
         if (mon == null) return null;
-        if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return mon; // 보스는 스케일 대상 아님
-        if (blockNo(floor) < 6) return mon;
-        int pos = floor % 10; // 1~8=사냥터층(이 스케일 대상), 0=마을/9=보스는 몬스터 조회 자체를 안 함
-        if (pos < 1 || pos > 8) return mon;
-        double mult = HARDCORE_FLOOR_SCALE_MIN + (1.0 - HARDCORE_FLOOR_SCALE_MIN) * (pos - 1) / 7.0;
         HashMap<String, Object> scaled = new HashMap<>(mon);
-        scaled.put("HP_VALUE", ((Number) mon.get("HP_VALUE")).doubleValue() * mult);
-        scaled.put("ATK_VALUE", ((Number) mon.get("ATK_VALUE")).doubleValue() * mult);
-        scaled.put("DEF_VALUE", ((Number) mon.get("DEF_VALUE")).doubleValue() * mult);
+        // HP/ATK 스케일링(기존 그대로) -- 보스는 대상 아님, 51층 미만도 대상 아님.
+        if (!"Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 6) {
+            int pos = floor % 10; // 1~8=사냥터층(이 스케일 대상), 0=마을/9=보스는 몬스터 조회 자체를 안 함
+            if (pos >= 1 && pos <= 8) {
+                double mult = HARDCORE_FLOOR_SCALE_MIN + (1.0 - HARDCORE_FLOOR_SCALE_MIN) * (pos - 1) / 7.0;
+                scaled.put("HP_VALUE", ((Number) mon.get("HP_VALUE")).doubleValue() * mult);
+                scaled.put("ATK_VALUE", ((Number) mon.get("ATK_VALUE")).doubleValue() * mult);
+            }
+        }
+        // DEF는 위 블록 스케일과 무관하게 층 기반 공식으로 완전히 대체(보스 포함 전부).
+        scaled.put("DEF_VALUE", monsterDefForFloor(floor));
         return scaled;
     }
 
@@ -4156,7 +4176,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
         HashMap<String, Object> normal = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
         if (normal != null && intVal(normal.get("MONSTER_ID"), -1) == monsterId) return normal;
-        HashMap<String, Object> boss = dao.selectMonster(blockNo(floor), "Y");
+        // [2026-09-21] 이전엔 여기서 applyHardcoreFloorScale을 안 거쳐서(보스는 HP/ATK 스케일
+        // 대상이 아니라 안 써도 무방했음) 새로 생긴 층 기반 DEF 재정의(monsterDefForFloor)도
+        // 같이 빠졌었다. 보스도 반드시 거치게 통일.
+        HashMap<String, Object> boss = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "Y"), floor);
         if (boss != null && intVal(boss.get("MONSTER_ID"), -1) == monsterId) return boss;
         return null;
     }
@@ -6830,15 +6853,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-18] "조각 10개를 모으면 전설제작 할수있고, 전설 제작 성공률은 30%.
     // 랜덤제작만 만들고싶어" 요청. 같은 날 후속 메시지("일반사용자에겐 아직 제작부분은
     // 오픈하지 말고")로 실제 오픈 전까지는 NO_COOLDOWN_YN(기존 관리자/테스트 계정 플래그)
-    // 보유 계정만 사용 가능하도록 막아둔다 -- 조각 드랍/보유는 이미 일반 유저에게도 보이므로
-    // 제작 커맨드/버튼 자체는 그대로 두되 진입 시점에 여기서 차단.
+    // 보유 계정만 사용 가능하도록 막아뒀었다(조각 드랍/보유는 이미 일반 유저에게도 보였음).
+    // [2026-09-21] "전설제작 오픈해줘(일어난다람쥐/카단은 성공했으나 도륙이냥/달소는
+    // 진행불가함)" 요청 -- 일어난다람쥐/카단이 성공했던 건 NO_COOLDOWN_YN='Y'인
+    // 관리자/테스트 계정이었기 때문이고, 도륙이냥/달소는 조각을 다 모으고도 이 게이트에
+    // 막혀 있었다. 전체 오픈으로 이 차단을 제거.
     @Override
     @Transactional
     public String craftLegendary(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
-        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
-            return "🔒 전설제작은 아직 준비 중인 기능입니다.";
-        }
         if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 전설제작을 할 수 없습니다.";
         }
