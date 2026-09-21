@@ -1395,6 +1395,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append("🎽 장비 보유: ").append(equipCount).append("개").append(NL);
         sb.append("💍 악세서리 보유: ").append(accessoryCount).append("개").append(NL);
+        // [2026-09-21] "/ㅌㅈㅂ에 악세사리보유 아래에 전설조각 몇개인지도 표기해줘" 요청.
+        sb.append("🧩 전설의 조각: ").append(intVal(p.get("LEGEND_FRAGMENT"), 0)).append("개").append(NL);
 
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
