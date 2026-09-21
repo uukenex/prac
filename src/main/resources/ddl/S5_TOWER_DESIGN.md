@@ -4131,3 +4131,17 @@ interface(s) of the exposed proxy type")`로 컨텍스트 초기화 자체가 �
 - `SAFE_HUNT_RATIO`(1.3배) 자체나 추천 알고리즘은 이번 요청 범위 밖이라 안 건드림 -- 표시만
   일관되게 정정.
 - DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정(`towerStatus`).
+
+## [2026-09-21] V2 전투화면 -- 파티 로스터를 화면 상단으로 이동
+
+**요청**: "v2전투화면에 캐릭터가 위쪽에 동료들이나와야하는데, 아래쪽에 동료들이나와. 위에나오게
+고쳐줘."
+
+- `#battleScreenV2` 안에서 `.bs-party-row`(파티 로스터, 최대 3명)가 `.bs-top`(VS 대전
+  영역 -- 파워바/파티vs몬스터 듀얼 카드/스탯표) **뒤**에 있어서 화면 맨 아래, 몬스터보다도
+  밑에 렌더링되고 있었다.
+- `tower_view.jsp`에서 `<div class="bs-party-row" id="bsPartyRowV2">` 마크업을
+  `.bs-top`보다 **앞**으로 옮김(id/내용/이를 채우는 JS(`updateBattlePartyV1`)는 전혀
+  안 건드림, 순수 DOM 순서만 이동) -- 이제 파티 로스터가 화면 상단에 먼저 나오고 그 아래
+  VS 대전 영역이 이어진다.
+- DB 마이그레이션 없음. `tower_view.jsp`만 수정.
