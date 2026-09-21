@@ -1255,6 +1255,11 @@ var TW = (function () {
     var monsterHit = battle.monsterHp != null && curMonsterHpBase < battle.monsterHp;
     battle.monsterHp = curMonsterHpBase;
 
+    // [버그 수정, 2026-09-21] updateBattlePartyV1()이 V1/V2 두 파티로스터 줄을 함께 채우도록
+    // 바뀌었는데, 정작 이 함수는 renderBattleV1() 안에서만 호출되고 있었다 -- V2로 렌더링될
+    // 땐 renderBattleV1이 아예 안 불리니 bsPartyRowV2가 한 번도 채워지지 않아 "동료가 대표
+    // 1명만 보인다" 신고가 고쳐지지 않았음. 버전과 무관하게 항상 한 번 호출하도록 여기로 이동.
+    updateBattlePartyV1();
     if (isV1) renderBattleV1(p, curMonsterHpBase, monsterPct, monsterHit);
     else renderBattleV2(p, curMonsterHpBase, monsterPct, monsterHit);
   }
@@ -1267,7 +1272,6 @@ var TW = (function () {
     document.getElementById('bsMonsterHpNumV1').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
     var sprite = document.getElementById('bsMonsterSpriteV1');
     if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
-    updateBattlePartyV1();
   }
 
   function renderBattleV2(p, curMonsterHpBase, monsterPct, monsterHit) {
@@ -2976,9 +2980,11 @@ var TW = (function () {
       renderEquipList();
       // 전투화면이 떠 있으면(다른 fetch보다 이게 늦게 끝난 경우) 최신 HP로 갱신. V2는 대표
       // 캐릭터 HP바가 파티 데이터에 걸려있어 state.progress(가장 최근 상태 캐시)로 재렌더.
-      if (state.battleScreenVersion === 'V1') {
-        updateBattlePartyV1();
-      } else if (state.progress && state.progress.STATUS === 'IN_COMBAT') {
+      // [버그 수정, 2026-09-21] 파티로스터(updateBattlePartyV1)는 V1/V2 공용이라 버전과 무관하게
+      // 항상 갱신해야 한다 -- V1일 때만 불렀더니 V2에서 "동료가 대표 1명만 보인다" 신고가
+      // 여기서도 재발했다(updateBattleScreen 쪽 동일 버그와 같은 원인, 별도 호출 경로).
+      updateBattlePartyV1();
+      if (state.battleScreenVersion !== 'V1' && state.progress && state.progress.STATUS === 'IN_COMBAT') {
         var pr = state.progress;
         var curBase = ppToBase(pr.CUR_MONSTER_HP_VALUE, pr.CUR_MONSTER_HP_EXT);
         var pct = battle.monsterBaseHp > 0 ? Math.max(0, Math.min(100, curBase / battle.monsterBaseHp * 100)) : 100;
