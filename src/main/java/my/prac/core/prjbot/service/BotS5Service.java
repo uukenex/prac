@@ -213,6 +213,9 @@ public interface BotS5Service {
      *  선호 저장. version이 "V1"이 아니면 전부 V2로 정규화. */
     String setBattleScreenVersion(String userName, String version);
 
+    /** [2026-09-21] 웹 UI 이동한도 표시용 -- {used, webLimit, totalLimit(카톡 보너스 포함)}. */
+    HashMap<String, Object> moveLimitInfo(String userName);
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

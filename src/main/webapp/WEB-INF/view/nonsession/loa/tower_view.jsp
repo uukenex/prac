@@ -140,6 +140,8 @@
        몬스터 줄 위에 뜨는 일 자체를 없앤다. */
     .dice-controls.dc-in-battle{ position:static; box-shadow:none; }
     .dice-controls-rows{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-width:0; }
+    .move-limit-badge{ font-size:11px; color:var(--ink-soft); font-weight:700; }
+    .move-limit-badge.move-limit-full{ color:var(--gold); }
     /* [2026-09-05] 사용중인 주사위는 더 크게/진하게 돋보이도록 표시, 한 줄로만 나열
        (줄바꿈 없음, 넘치면 가로 스크롤). */
     .dice-overlay{ width:100%; box-sizing:border-box;
@@ -375,9 +377,11 @@
        (세력비교바+대치장면+스탯표 한 묶음)이라 그럴 필요 없음. */
     #battleScreenV1{ position:relative; z-index:1; display:flex; flex-direction:column; justify-content:space-between; flex:1; min-height:0; }
     #battleScreenV2{ position:relative; z-index:1; }
-    .bs-version-toggle{ position:absolute; top:8px; right:8px; z-index:2; border:1.5px solid var(--line);
-                          background:rgba(255,255,255,.75); border-radius:8px; padding:3px 8px; font-size:10px;
-                          font-weight:800; color:var(--ink-soft); cursor:pointer; }
+    .bs-version-btns{ position:absolute; top:8px; right:8px; z-index:2; display:flex; gap:4px; }
+    .bs-version-btn{ border:1.5px solid var(--line); background:rgba(255,255,255,.75); border-radius:8px;
+                       padding:5px 11px; font-size:11px; font-weight:800; color:var(--ink-soft); cursor:pointer;
+                       min-width:30px; }
+    .bs-version-btn.active{ background:var(--gold); border-color:var(--gold); color:#fff; }
 
     /* [2026-09-21] 삼국지 대전화면 재설계 -- ①세력비교바 ②중앙 대치 장면 ③좌우 스탯표.
        사용자 첨부 레퍼런스(관우 vs 조조군 1:1 대전 화면)의 구성요소를 파티vs몬스터 구조에
@@ -673,6 +677,9 @@
              .tower-viewport가 항상 이 박스 아래로 밀려나서 칸그리드를 절대 가리지 않는다. -->
         <div class="dice-controls">
           <div class="dice-controls-rows">
+            <!-- [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 오늘 이동
+                 사용량/한도(전투 턴은 이 한도와 무관하므로 여기 안 포함). renderMoveLimit 참고. -->
+            <div class="move-limit-badge" id="moveLimitBadge" style="display:none;"></div>
             <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기로 옮김 -- 해금된 것만 버튼으로
                  눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고. -->
             <div class="dice-overlay" id="diceOverlay"></div>
@@ -702,7 +709,12 @@
         <div id="battleScreen" class="battle-screen bs-bg-0" style="display:none;">
           <div class="bs-particle bs-particle-a"></div>
           <div class="bs-particle bs-particle-b"></div>
-          <button type="button" class="bs-version-toggle" id="bsVersionToggle" onclick="TW.toggleBattleScreenVersion()" title="전투화면 버전 전환">V2</button>
+          <!-- [2026-09-21] "v1,v2 버전 클릭이 잘안되, 두개다 버튼만들어서 눌려있는걸 표기해줘"
+               요청 -- 토글 버튼 하나 대신 V1/V2 각각 버튼을 두고 현재 선택된 쪽에 .active. -->
+          <div class="bs-version-btns">
+            <button type="button" class="bs-version-btn" id="bsVersionBtnV1" onclick="TW.setBattleScreenVersion('V1')">V1</button>
+            <button type="button" class="bs-version-btn" id="bsVersionBtnV2" onclick="TW.setBattleScreenVersion('V2')">V2</button>
+          </div>
 
           <!-- ===== V2(삼국지 대전화면 스타일, 기본값) ===== -->
           <div id="battleScreenV2">
@@ -1097,11 +1109,8 @@ var TW = (function () {
     if (!inCombat) { battle.monsterId = null; return; }
 
     state.battleScreenVersion = (p.BATTLE_SCREEN_VERSION === 'V1') ? 'V1' : 'V2';
+    applyBattleScreenVersionUI(state.battleScreenVersion);
     var isV1 = state.battleScreenVersion === 'V1';
-    document.getElementById('battleScreenV1').style.display = isV1 ? '' : 'none';
-    document.getElementById('battleScreenV2').style.display = isV1 ? 'none' : '';
-    var toggleBtn = document.getElementById('bsVersionToggle');
-    if (toggleBtn) toggleBtn.textContent = isV1 ? 'V1' : 'V2';
 
     if (battle.monsterId !== p.CUR_MONSTER_ID) {
       // 새 몬스터와 조우(직전까지 다른 몬스터였거나, 전투에 막 진입) -- 기준선/스프라이트 리셋.
@@ -1200,17 +1209,27 @@ var TW = (function () {
     document.getElementById('bsMonsterGuard').textContent = (monsterDefCache != null) ? monsterDefCache : '-';
   }
 
-  // [2026-09-21] "전투화면 v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청 -- 버튼 하나로
-  // 토글, 서버(setBattleScreenVersion)에 저장 후 다음 조회부터 그 버전으로 뜸(낙관적으로 즉시
-  // 화면도 바꿔서 반응성 확보).
-  function toggleBattleScreenVersion() {
-    var next = state.battleScreenVersion === 'V1' ? 'V2' : 'V1';
-    state.battleScreenVersion = next;
-    document.getElementById('battleScreenV1').style.display = next === 'V1' ? '' : 'none';
-    document.getElementById('battleScreenV2').style.display = next === 'V1' ? 'none' : '';
-    var toggleBtn = document.getElementById('bsVersionToggle');
-    if (toggleBtn) toggleBtn.textContent = next;
-    action('SET_BATTLE_SCREEN_VERSION', next);
+  // V1/V2 콘텐츠 표시 전환 + 두 버튼의 active 상태 반영(공용 헬퍼).
+  function applyBattleScreenVersionUI(v) {
+    var isV1 = v === 'V1';
+    document.getElementById('battleScreenV1').style.display = isV1 ? '' : 'none';
+    document.getElementById('battleScreenV2').style.display = isV1 ? 'none' : '';
+    var btnV1 = document.getElementById('bsVersionBtnV1');
+    var btnV2 = document.getElementById('bsVersionBtnV2');
+    if (btnV1) btnV1.classList.toggle('active', isV1);
+    if (btnV2) btnV2.classList.toggle('active', !isV1);
+  }
+
+  // [2026-09-21] "전투화면 v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청, 이어서
+  // "토글 버튼 클릭이 잘 안된다, 두개다 버튼 만들어서 눌려있는걸 표기해줘" 요청 -- 버튼 하나로
+  // 토글하던 걸 V1/V2 각각 버튼으로 바꾸고(터치 타겟도 키움), 고른 버전을 서버(
+  // setBattleScreenVersion)에 저장 후 다음 조회부터 그 버전으로 뜸(낙관적으로 즉시 화면도
+  // 바꿔서 반응성 확보).
+  function setBattleScreenVersion(v) {
+    if (state.battleScreenVersion === v) return; // 이미 선택된 버전이면 아무 것도 안 함
+    state.battleScreenVersion = v;
+    applyBattleScreenVersionUI(v);
+    action('SET_BATTLE_SCREEN_VERSION', v);
   }
 
   // 파티(동료) 쪽 배틀 화면(V1) 갱신 -- loadStatus(몬스터 HP)와 loadPartyAndEquip(동료 HP) 둘
@@ -1386,6 +1405,7 @@ var TW = (function () {
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderDiceOverlay(data.dice || []);
         renderDiceEnhanceRow(data.diceEnhance);
+        renderMoveLimit(data.moveLimit);
         renderTowerNav(p, data.floorBest);
         // [버그 수정] "조회"는 상단 상태/보드만 다시 불러오고 파티·상점·업적 탭은 그대로 둬서,
         // 파티 탭 등을 보고 있는 채로 다른 닉네임을 검색하면 방금 조회한 유저 이름이 위에는
@@ -1983,7 +2003,18 @@ var TW = (function () {
     // [2026-09-14 3차 수정] 맨 위로/내 위치/맨 아래로 버튼은 이제 .tower-viewport-wrap에
     // 정적 마크업으로 한 번만 있고(HTML 참고) track.innerHTML=''로도 안 지워지므로, 여기서
     // 매 렌더마다 다시 그려 넣던 코드는 삭제(위 CSS .board-track-controls 주석 참고).
+
+    // [2026-09-21] "pc,모바일 둘다 내위치근처에서부터 보여주면좋을거같아(지금은 맵상단부터
+    // 보여주고 시작하고있어)" 요청 -- 이 층 보드를 처음 보여줄 때(층이 바뀌었을 때)만
+    // scrollToHere()를 자동 호출한다. 상태조회는 몇 초마다 계속 도는데 그때마다 부르면
+    // 유저가 다른 곳을 보고 있어도 계속 내 위치로 스크롤이 튕겨서, "층이 바뀐 시점"으로만
+    // 한정(같은 층에서의 반복 갱신은 스크롤 위치를 건드리지 않음).
+    if (lastAutoScrollFloor !== floor) {
+      lastAutoScrollFloor = floor;
+      scrollToHere();
+    }
   }
+  var lastAutoScrollFloor = null;
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
   // 등급끼리는 버튼 한 번으로(자동구매형태, 별도 확인창 없음) 바로 교체하고 굴릴 수 있게 함.
@@ -2028,6 +2059,20 @@ var TW = (function () {
   // 적용 중인 값, -1..+6)를 유일한 기준으로 "선택됨" 표시를 하고, 이미 구매(owned)해뒀지만
   // 지금 선택은 아닌 단계 + 0(항상 무료)은 눌러서 DICE_MIN_SELECT로 즉시 무료 전환한다
   // (신규 구매가 아니라 "이미 산 것들 중 뭘 켤지" 전환).
+  // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 오늘 이동
+  // 사용량/한도를 dice-controls 상단에 작은 줄로 표시. 웹 한도 다 쓰면 카톡보너스 포함 총
+  // 한도까지 안내(카톡 없이 웹만 쓰는 유저 입장에선 "얼마 안 남았다"는 것만 알면 충분).
+  function renderMoveLimit(ml) {
+    var el = document.getElementById('moveLimitBadge');
+    if (!el) return;
+    if (!ml || ml.webLimit == null) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    var used = ml.used || 0;
+    var full = used >= ml.webLimit;
+    el.textContent = '🚶 오늘 이동 ' + used + '/' + ml.webLimit + (full && ml.totalLimit > ml.webLimit ? ' (카톡보너스 포함 ' + ml.totalLimit + ')' : '');
+    el.classList.toggle('move-limit-full', full);
+  }
+
   function renderDiceEnhanceRow(de) {
     var box = document.getElementById('diceEnhanceOverlay');
     box.innerHTML = '';
@@ -3131,11 +3176,10 @@ var TW = (function () {
     checkAppVersion();
     setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
 
-    // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청 -- 스크롤바 드래그/터치 스와이프/
-    // 맨 위로/맨 아래로 버튼은 그대로 되지만, 휠 이벤트만 막는다. { passive:false }라야
-    // preventDefault()가 실제로 스크롤을 취소한다.
-    var twViewport = document.getElementById('towerViewport');
-    if (twViewport) twViewport.addEventListener('wheel', function (e) { e.preventDefault(); }, { passive: false });
+    // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청으로 휠 이벤트를 막았었는데,
+    // [2026-09-21 철회] "pc버전에선 스크롤이 마우스로 잘 안되고" 요청으로 다시 허용(마우스휠
+    // 스크롤 차단 코드 제거, 스크롤바 드래그/터치 스와이프/맨위-내위치-맨아래 버튼은 원래도
+    // 계속 됐음).
   });
 
   return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
@@ -3144,7 +3188,7 @@ var TW = (function () {
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
            scrollToHere: scrollToHere, scrollToTop: scrollToTop, scrollToBottom: scrollToBottom,
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate,
-           toggleBattleScreenVersion: toggleBattleScreenVersion };
+           setBattleScreenVersion: setBattleScreenVersion };
 })();
 </script>
 </body>

@@ -807,23 +807,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
         if (mon == null) return null;
         // [2026-09-21] 밸런스 V2 오버레이 -- 이름/MONSTER_ID/PP_PER_KILL 등은 V1 조회 결과
-        // (mon)를 그대로 두고 HP/ATK/DEF만 V2 선형식 값으로 교체한다. 보스/블록 구분 없이
-        // V2가 그 층을 다루면 무조건 우선 적용되므로, 아래 V1 전용(블록≥6, 보스 제외) 스케일
-        // 로직보다 먼저 처리한다. V2 비활성/미로드/그 층 데이터 없음이면 기존 V1 로직으로 폴백.
-        int[] v2 = BALANCE_V2_ENABLED ? MONSTER_V2.get(floor) : null;
+        // (mon)를 그대로 두고 HP/ATK/DEF만 V2 선형식 값으로 교체한다. V2가 그 층을 다루면
+        // 무조건 우선 적용되므로, 아래 V1 전용(블록≥6, 보스 제외) 스케일 로직보다 먼저 처리.
+        // [2026-09-21 재수정] "몬스터스펙은 바뀌기이전 50층까지는 난이도가 괜찮았다, 50층
+        // 이후로 선형구조로 해달라" 요청(실측 버그 신고 포함 -- ★2 전사가 7층 몬스터에게
+        // 주사위 8이 떠도 2dmg만 들어가는 등, 1~10층 저층완화(dampen)를 넣어도 DEF가 여전히
+        // 초반 파티 ATK 대비 압도적으로 높았음) -- V2 자체가 실측 캘리브레이션이 있던 11~89층
+        // 기준으로 설계돼 1~50층은 애초에 검증된 적 없는 외삽 구간이었다. 저층 완화 미봉책
+        // 대신 **50층 이하는 V2를 아예 적용하지 않고 원래 V1 그대로**(블록1~5는 무보정 고정값,
+        // 이미 "괜찮았다"고 확인된 값) 돌아가게 하고, V2는 51층 이상에서만 적용한다.
+        int[] v2 = (BALANCE_V2_ENABLED && floor > 50) ? MONSTER_V2.get(floor) : null;
         if (v2 != null) {
-            // [2026-09-21] "저층(5층) 밸런스가 이상하다, 체력이 너무 높다" 실측 신고 -- V2
-            // 선형식은 실측 캘리브레이션이 있던 11~89층 유저 데이터를 기준으로 만들어졌고
-            // 1~10층은 "음수 방지"를 위해 그 직선을 단순 역산 외삽한 값이라(검증된 적 없음)
-            // 초반 파티(★1~2, 장비 거의 없음) 기준으로는 지나치게 높았다. 11층(실측 구간
-            // 시작점)에서 100%로 매끄럽게 이어지도록, 1층=15%에서 11층=100%까지 선형 완화를
-            // 적용한다(HARDCORE_FLOOR_SCALE_MIN과 동일한 "저층 램프업" 아이디어). 11층 이상은
-            // 원래 실측 기반 값 그대로. 0.15 시작점은 잠정치 -- 추가 실측 피드백에 따라 조정.
-            double dampen = floor <= 10 ? (0.15 + 0.85 * (floor - 1) / 10.0) : 1.0;
             HashMap<String, Object> overlaid = new HashMap<>(mon);
-            overlaid.put("HP_VALUE", (int) Math.round(v2[0] * dampen));
-            overlaid.put("ATK_VALUE", (int) Math.round(v2[1] * dampen));
-            overlaid.put("DEF_VALUE", (int) Math.round(v2[2] * dampen));
+            overlaid.put("HP_VALUE", v2[0]);
+            overlaid.put("ATK_VALUE", v2[1]);
+            overlaid.put("DEF_VALUE", v2[2]);
             return overlaid;
         }
         if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return mon; // 보스는 스케일 대상 아님
@@ -1805,6 +1803,25 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
+    // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 웹 UI(보드 카드
+    // 근처)에 오늘 이동 사용량/한도를 보여주기 위한 조회 전용 접근자. 실제 차감/한도체크는
+    // checkAndBumpDailyDiceLimit()가 그대로 담당, 이 메서드는 그 안의 "오늘 사용량" 계산
+    // 로직만 재사용해서 읽기만 한다.
+    @Override
+    public HashMap<String, Object> moveLimitInfo(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
+        int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
+        boolean sameDay = rollDate != null
+                && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
+        int used = sameDay ? rawUsedToday : 0;
+        HashMap<String, Object> info = new HashMap<>();
+        info.put("used", used);
+        info.put("webLimit", DAILY_MOVE_LIMIT);
+        info.put("totalLimit", DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
+        return info;
+    }
+
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);

@@ -127,6 +127,8 @@ public class Season5ViewController {
         // 옮기면서, 상태 조회(가장 자주 도는 호출)에 얹어 매번 최신 해금/사용중 정보를 준다.
         result.put("dice", s5Service.diceListInfo(userName));
         result.put("diceEnhance", s5Service.diceEnhanceInfo(userName));
+        // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청.
+        result.put("moveLimit", s5Service.moveLimitInfo(userName));
         return ResponseEntity.ok(result);
     }
 
