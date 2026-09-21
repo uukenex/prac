@@ -3897,3 +3897,24 @@ UI 갱신 -> 서버 저장 -> loadStatus()가 서버의 진짜 값으로 재동�
   `LoaChatController.java`(/전설제작 N, /전설분해 N), `Season5ViewController.java`
   (roster API, DISENCHANT_LEGENDARY 액션), `tower_view.jsp`(상점 탭 카드), `S5_LEGENDARY_
   SONGOT_FIX.sql`(신규, 적용 완료).
+
+### [2026-09-21 후속6] 전설제작/해체를 팝업 선택 방식으로 재설계
+
+같은 날 후속 메시지 두 개: "장비목록에서 말고, 장비제작소 안에 장비해체 버튼을 누르면
+어떤장비해체할지 띄우는방식으로하자", "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트
+처럼 팝업을띄워서 거기서 선택해서 제작하기 (성공률30%) 이런식으로 멘트 보이게도 해줘".
+
+- **제작**: 상점 카드 안에 로스터를 쭉 나열하던 것(`#legendRosterList`)을 "지금 선택된 아이템
+  한 줄 요약"(`#legendSelectedRow`, 클릭하면 팝업)으로 축소. 팝업(`#legendRosterOverlay`)은
+  `allCompanionsOverlay`/`allEquipOverlay`와 동일한 `.detail-overlay` 패턴 재사용 -- 항목을
+  누르면 선택되고 팝업이 바로 닫히며 카드 요약이 갱신됨. 제작 버튼 문구에 성공률 명시:
+  "제작하기 (성공률 30%)".
+- **해체**: 미착용 장비 카드마다 있던 개별 "🧩분해(9)" 버튼을 제거하고, 전설제작 카드의
+  "🔨 장비해체" 버튼 -> 팝업(`#legendDisenchantOverlay`, 보유 ★7 미착용 장비만 필터링해서
+  나열, 항목별 "해체" 버튼)으로 통합. 기존 `allEquipOverlay` 헤더에 있던 임시 전설제작
+  버튼(레거시, param1 없이 호출해 이제는 오류가 났을 것)도 이 김에 제거.
+- `renderLegendaryCraftCard`(로스터 프리페치+요약 갱신)/`ensureLegendaryRosterLoaded`(캐시
+  공용)/`openLegendRoster`·`closeLegendRoster`/`openLegendDisenchant`·`closeLegendDisenchant`
+  신설, `renderLegendRosterList`는 팝업 내용 렌더링으로 대체(`legendItemSummaryHtml` 공용
+  헬퍼로 카드 요약과 팝업 항목이 같은 마크업 재사용).
+- 변경 파일: `tower_view.jsp`만(순수 프론트엔드, 서버 API는 이전 커밋 그대로 재사용).
