@@ -103,6 +103,12 @@ public class Season5ViewController {
             int floorNow = toInt(progress.get("CUR_FLOOR"));
             String monsterName = s5Service.currentFloorMonsterName(floorNow);
             if (monsterName != null) result.put("monsterName", monsterName);
+            // [2026-09-21] 전투화면 재설계(스탯표 POWER/GUARD) -- 몬스터 ATK/DEF도 함께 전달.
+            int[] atkDef = s5Service.currentFloorMonsterAtkDef(floorNow);
+            if (atkDef != null) {
+                result.put("monsterAtk", atkDef[0]);
+                result.put("monsterDef", atkDef[1]);
+            }
         }
 
         int floor = toInt(progress.get("CUR_FLOOR"));
@@ -121,6 +127,8 @@ public class Season5ViewController {
         // 옮기면서, 상태 조회(가장 자주 도는 호출)에 얹어 매번 최신 해금/사용중 정보를 준다.
         result.put("dice", s5Service.diceListInfo(userName));
         result.put("diceEnhance", s5Service.diceEnhanceInfo(userName));
+        // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청.
+        result.put("moveLimit", s5Service.moveLimitInfo(userName));
         return ResponseEntity.ok(result);
     }
 
@@ -184,6 +192,15 @@ public class Season5ViewController {
                 ? new ArrayList<>() : s5Dao.selectUserEquip(userName);
         HashMap<String, Object> result = new HashMap<>();
         result.put("equips", equips);
+        return ResponseEntity.ok(result);
+    }
+
+    /** [2026-09-21] 전설제작 UI(상점 탭)용 -- 제작 가능한 ★7 전설장비 로스터. 유저 무관 공용 목록. */
+    @GetMapping("/api/tower-legendary-roster")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerLegendaryRoster() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("roster", s5Service.legendaryRoster());
         return ResponseEntity.ok(result);
     }
 
@@ -459,7 +476,13 @@ public class Season5ViewController {
                     message = s5Service.equipSynthesisAll(userName);
                     break;
                 case "CRAFT_LEGENDARY":
-                    message = s5Service.craftLegendary(userName);
+                    message = s5Service.craftLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "DISENCHANT_LEGENDARY":
+                    message = s5Service.disenchantLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "SET_BATTLE_SCREEN_VERSION":
+                    message = s5Service.setBattleScreenVersion(userName, param1);
                     break;
                 case "EQUIP_UNWEAR_ALL":
                     message = s5Service.equipUnwearAll(userName, Integer.parseInt(param1));

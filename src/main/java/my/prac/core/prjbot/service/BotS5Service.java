@@ -157,6 +157,10 @@ public interface BotS5Service {
      *  쓰므로(floorMonsterName 참고) 결과가 같다. 몬스터가 없으면 null. */
     String currentFloorMonsterName(int floor);
 
+    /** [2026-09-21] 전투화면 스탯표(POWER/GUARD)용 -- 이 층 몬스터의 실제 전투 ATK/DEF(V2
+     *  오버레이/하드코어 스케일 반영). [atk, def] 순서, 몬스터 없으면 null. */
+    int[] currentFloorMonsterAtkDef(int floor);
+
     /** /스탯구매 — 인자 없으면 현재 레벨/다음 비용, type 있으면 해당 스탯 구매(ATK/MINATK/HP) */
     String statShop(String userName, String type);
 
@@ -201,9 +205,32 @@ public interface BotS5Service {
      *  등급이 높은 부위만 교체하고, 이미 최고 등급이거나 후보가 없는 부위는 건드리지 않는다. */
     String equipBestAll(String userName, int companionIdx);
 
-    /** /전설제작 — 전설의조각 10개를 소모해 ★7 전설장비 랜덤제작 시도(성공률 30%). 정식 오픈
-     *  전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
-    String craftLegendary(String userName);
+    /** [2026-09-21] 전설제작 UI(상점 탭)용 -- 제작 가능한 ★7 전설장비 로스터 전체
+     *  (LEGENDARY_ID/CLASS/PART/ITEM_NAME/EFFECT_TYPE/EFFECT_PARAM1/EFFECT_PARAM2/FLAVOR_TEXT). */
+    List<HashMap<String, Object>> legendaryRoster();
+
+    /** /전설제작 — 전설의조각 10개를 소모해 지정한 legendaryId의 ★7 전설장비 제작 시도
+     *  (성공률 30%, 실패해도 조각은 소모됨). 정식 오픈 전까지는 NO_COOLDOWN_YN 계정만 사용 가능. */
+    String craftLegendary(String userName, int legendaryId);
+
+    /** [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" -- 보유한
+     *  ★7 전설장비(미착용 목록 N번)를 분해해서 조각 9개로 환급. */
+    String disenchantLegendary(String userName, int equipIdx);
+
+    /** [2026-09-21] 전투화면 UI 버전(V1=포켓몬 스타일 구버전, V2=삼국지 대전화면 신버전)
+     *  선호 저장. version이 "V1"이 아니면 전부 V2로 정규화. */
+    String setBattleScreenVersion(String userName, String version);
+
+    /** [2026-09-21] 웹 UI 이동한도 표시용 -- {used, webLimit, totalLimit(카톡 보너스 포함)}. */
+    HashMap<String, Object> moveLimitInfo(String userName);
+
+    /** [2026-09-21 버그수정] @Scheduled 메서드는 반드시 인터페이스에 선언돼야 한다 -- 이 빈은
+     *  JDK 동적 프록시(인터페이스 기반)로 노출되는데, 구현체에만 있고 인터페이스에 없는
+     *  메서드를 스케줄러가 프록시로 호출하려다 "Need to invoke method ... but not found in
+     *  any interface(s) of the exposed proxy type"로 컨텍스트 부팅 자체가 실패했다(라이브
+     *  확인, ContextLoaderListener 예외로 전체 배포 실패 -> 전 사이트 404). CUR_FLOOR=0 미사용
+     *  계정을 매일 새벽 4시 정리(BotS5ServiceImpl.cleanupJunkZeroFloorUsers 참고). */
+    void cleanupJunkZeroFloorUsers();
 
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);

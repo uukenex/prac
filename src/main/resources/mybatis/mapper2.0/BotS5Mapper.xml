@@ -32,7 +32,11 @@
                     (SELECT * 가 아님을 놓침) DB엔 정상 저장돼도 다음 요청부터 다시 읽어올 때 항상 null로
                     보이던 문제. 조각/보스처치제한(전설제작), 도적스킬도용 회피, 함정 기습 전부 이
                     누락 때문에 "저장은 되는데 다음 턴엔 기본값으로 리셋된 것처럼" 동작했을 것. -->
-               LEGEND_FRAGMENT, BOSS_KILL_COUNT_TODAY, BOSS_KILL_DATE, MONSTER_EVADE_PCT, TRAP_AMBUSH_YN
+               LEGEND_FRAGMENT, BOSS_KILL_COUNT_TODAY, BOSS_KILL_DATE, MONSTER_EVADE_PCT, TRAP_AMBUSH_YN,
+               <!-- [버그 수정, 2026-09-21] 바로 위 09-18 주석과 똑같은 함정을 또 밟음(이 SELECT가
+                    SELECT *가 아니라서, 새로 추가한 컬럼은 여기 안 넣으면 저장은 되는데 다음 조회부터
+                    항상 null로 돌아옴). V1/V2 전환이 "저장은 되는데 화면은 계속 V2"로 보이던 원인. -->
+               BATTLE_SCREEN_VERSION
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -44,6 +48,18 @@
         VALUES
             (#{userName}, 0, 0, 0, '', 'NORMAL', 'DICE_6', 1)
     </insert>
+
+    <!-- [2026-09-21] 웹뷰(tower-view/tower-status)가 못 알아보는 userName으로 호출되면
+         apiTowerStatus가 조용히 신규 계정을 만들어버려(Season5ViewController.apiTowerStatus,
+         resolveUserName 실패 시 initUser 폴백) CUR_FLOOR=0짜리 빈 계정이 계속 쌓임(오타 URL,
+         만료/오공유된 링크, 미리보기 크롤러 등). 진짜 플레이는 최초 1회라도 이동/전투를 거치면
+         CUR_FLOOR이 0에서 벗어나므로, "가입 후 하루가 지나도 CUR_FLOOR=0"이면 안전하게 정리
+         대상으로 판단(방금 막 만들어진 계정을 레이스로 지우지 않도록 REG_DATE 하루 여유를 둠). -->
+    <delete id="deleteJunkZeroFloorUsers">
+        DELETE FROM TBOT_S5_USER_PROGRESS
+        WHERE CUR_FLOOR = 0
+          AND REG_DATE &lt; SYSDATE - 1
+    </delete>
 
     <!-- map에 담긴 키만 동적으로 SET (부분 업데이트) -->
     <update id="updateUserProgress" parameterType="hashmap">
@@ -163,6 +179,7 @@
             <if test="legendFragment != null">LEGEND_FRAGMENT = #{legendFragment},</if>
             <if test="bossKillCountToday != null">BOSS_KILL_COUNT_TODAY = #{bossKillCountToday},</if>
             <if test="touchBossKillDate != null">BOSS_KILL_DATE = SYSDATE,</if>
+            <if test="battleScreenVersion != null">BATTLE_SCREEN_VERSION = #{battleScreenVersion},</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}
@@ -448,15 +465,26 @@
     </select>
 
     <!-- ==================== 장비 ==================== -->
+    <!-- [버그 수정, 2026-09-21] 09-18/09-21에 두 번 겪은 "명시적 컬럼목록 SELECT에 새 컬럼
+         누락" 트랩을 여기서도 밟고 있었음(LEGENDARY_ID가 애초에 이 SELECT에 없어서 프론트가
+         ★7 장비인지조차 알 수 없었고, "검으로만 나와" 신고로 확인됨). LEGENDARY_MASTER를 LEFT
+         JOIN해 고유이름(LEGENDARY_ITEM_NAME)까지 같이 내려준다(프론트에서 추가 조회 없이 바로
+         표시 가능하도록). -->
     <select id="selectUserEquip" resultType="hashmap">
-        SELECT EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID
-        FROM TBOT_S5_USER_EQUIP
-        WHERE USER_NAME = #{userName}
-        ORDER BY EQUIPPED_COMPANION_ID NULLS FIRST, GRADE DESC, EQUIP_ID
+        SELECT e.EQUIP_ID, e.USER_NAME, e.CLASS, e.PART, e.GRADE, e.EQUIPPED_COMPANION_ID,
+               e.LEGENDARY_ID, lm.ITEM_NAME AS LEGENDARY_ITEM_NAME
+        FROM TBOT_S5_USER_EQUIP e
+        LEFT JOIN TBOT_S5_LEGENDARY_MASTER lm ON lm.LEGENDARY_ID = e.LEGENDARY_ID
+        WHERE e.USER_NAME = #{userName}
+        ORDER BY e.EQUIPPED_COMPANION_ID NULLS FIRST, e.GRADE DESC, e.EQUIP_ID
     </select>
 
+    <!-- [버그 수정, 2026-09-21] 이 SELECT도 LEGENDARY_ID가 빠져 있어서 resolveCombatTurn의
+         WEAPON 슬롯 전설효과 판정(legWeapon 조회, `e.get("LEGENDARY_ID")`)이 항상 null을
+         보고 있었음(★7 송곳을 만들어 착용해도 DEF_STEAL 효과가 실전투에서 한 번도 발동하지
+         않았을 것. "검으로만 나와" 신고와 별개로 발견). -->
     <select id="selectEquipByCompanion" resultType="hashmap">
-        SELECT EQUIP_ID, PART, GRADE FROM TBOT_S5_USER_EQUIP WHERE EQUIPPED_COMPANION_ID = #{companionId}
+        SELECT EQUIP_ID, PART, GRADE, LEGENDARY_ID FROM TBOT_S5_USER_EQUIP WHERE EQUIPPED_COMPANION_ID = #{companionId}
     </select>
 
     <!-- [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비" 개수 통계에서는 그 3종 제외
@@ -533,6 +561,21 @@
     <!-- ==================== 서버 설정값(config) ==================== -->
     <select id="selectAllConfig" resultType="hashmap">
         SELECT CONFIG_KEY, CONFIG_VALUE FROM TBOT_S5_CONFIG
+    </select>
+
+    <!-- ==================== 밸런스 V2(2026-09-21) ==================== -->
+    <select id="selectMonsterInfoV2List" resultType="hashmap">
+        SELECT FLOOR, BOSS_YN, HP_VALUE, ATK_VALUE, DEF_VALUE FROM TBOT_S5_MONSTER_INFO_V2
+    </select>
+    <select id="selectGradeBaseV2List" resultType="hashmap">
+        SELECT GRADE, HP_VALUE, ATK_VALUE, DEF_VALUE FROM TBOT_S5_GRADE_BASE_V2 ORDER BY GRADE
+    </select>
+    <select id="selectEquipBonusV2List" resultType="hashmap">
+        SELECT GRADE, HELM_FLAT, HELM_PCT, WEAPON_FLAT, WEAPON_PCT, ARMOR_FLAT, ARMOR_PCT
+        FROM TBOT_S5_EQUIP_BONUS_V2 ORDER BY GRADE
+    </select>
+    <select id="selectLimitBreakV2List" resultType="hashmap">
+        SELECT LB_LEVEL, PCT FROM TBOT_S5_LIMIT_BREAK_V2 ORDER BY LB_LEVEL
     </select>
 
     <!-- 웹 SPA 업데이트 공지/새로고침 유도(2026-09-07). TO_NCHAR 없으면 조회 시점에 다시

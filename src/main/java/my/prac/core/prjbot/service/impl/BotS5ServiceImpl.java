@@ -35,6 +35,7 @@ import javax.imageio.stream.ImageOutputStream;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -276,7 +277,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // 장비 등급별 보너스 [투구고정,투구%, 무기고정,무기%, 갑옷고정,갑옷%], index0=★1
     // [2026-09-18] ★7(전설) 추가 -- computeEffectiveStat()이 EQUIP_BONUS[grade-1]로 그대로
-    // 인덱싱하므로 행 하나만 늘리면 별도 분기 없이 자동 적용됨. ★6 대비 약 1.8배 수준.
+    // 인덱싱하므로 행 하나만 늘리면 별도 분기 없이 자동 적용됨.
+    // [2026-09-21 재조정] "7성장비는 6성과 능력치는 동일하도록해줘. 특수능력만 추가되는걸로
+    // 하자" 요청 -- ★7은 스탯 보너스를 ★6과 완전히 동일하게 두고, 전설 고유효과(DEF_STEAL
+    // 등, TBOT_S5_LEGENDARY_MASTER)만으로 차별화한다. 원래 있던 "★6 대비 약 1.8배" 수치는
+    // 제거.
     private static final double[][] EQUIP_BONUS = {
         { 30, 0.05,   5, 0.05,   3, 0.05 },
         { 45, 0.07,   8, 0.07,   5, 0.07 },
@@ -284,7 +289,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         { 150, 0.15, 25, 0.15,  15, 0.15 },
         { 350, 0.22, 60, 0.22,  35, 0.22 },
         { 800, 0.35, 150, 0.35, 80, 0.35 },
-        { 1450, 0.45, 270, 0.45, 145, 0.45 },
+        { 800, 0.35, 150, 0.35, 80, 0.35 },
     };
 
     // [2026-09-18] "50층 이상 보스층 처치 시 확률로 전설의조각 드랍, 조각 10개로 전설제작"
@@ -295,6 +300,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
     private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
     private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
+    // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
+    // 제작 비용(10개)보다 1개 적게(9개) 돌려줘서 무손실 순환을 막는 조각 싱크.
+    private static final int LEGEND_DISENCHANT_REFUND = 9;
     private static final int BOSS_DAILY_KILL_LIMIT = 3;   // 보스 하루 처치 제한(모든 보스층 공통 카운터)
 
     // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK] -- [2026-09-05] DICE_4 신설, 언제든(0층부터)
@@ -346,17 +354,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static volatile long COMBAT_COOLDOWN_SEC     = 15;
     private static volatile long COMBAT_END_COOLDOWN_SEC = 100;
 
-    // 하루 주사위(이동+전투 통합) 굴림 횟수 제한. 위 쿨타임들과 같은 이유로 DB(TBOT_S5_CONFIG)
-    // config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
-    private static volatile int DAILY_DICE_LIMIT = 750;
+    // [2026-09-21] "주사위 굴림수 기준 하루 1200(1000+200) 제한을, 주사위(=전투 턴)는 빼고
+    // 타일 이동수 기준 400(+카톡보너스 100=500)으로 바꿔달라" 요청 -- 이름을
+    // DAILY_DICE_LIMIT/KAKAO_BONUS_DICE에서 DAILY_MOVE_LIMIT/KAKAO_BONUS_MOVE로 바꾸고,
+    // 카운트 대상도 "모든 굴림"에서 "전투 중이 아닌 굴림(=보드 이동)"만으로 좁힘
+    // (checkAndBumpDailyDiceLimit 호출부, rollDice() 참고 -- IN_COMBAT이면 이 체크 자체를
+    // 건너뛰어 전투 턴은 무제한). 컬럼(DICE_ROLL_COUNT_TODAY/DICE_ROLL_DATE)은 그대로 재사용
+    // (의미만 "이동만 카운트"로 좁혀짐, 마이그레이션 불필요). 위 쿨타임들과 같은 이유로
+    // DB(TBOT_S5_CONFIG) config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
+    private static volatile int DAILY_MOVE_LIMIT = 400;
 
-    // [2026-09-07] "웹/카톡 같이 쓰게 해달라, 카톡은 200회 더 주자" 요청 -- 채널(WEB/CHAT)
-    // 무관하게 공유하는 총 굴림 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은 DAILY_DICE_LIMIT
-    // 까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값까지 계속 가능하다. 예) 기본 1000 +
-    // 200 = 카톡 1200. 채널을 섞어 쓰든(웹 600+카톡 400) 한쪽만 쓰든(웹만 1000, 또는 카톡만
-    // 1200) 결과는 항상 "총합이 웹 한도를 넘으면 웹 차단, 카톡 한도를 넘으면 둘 다 차단"으로
-    // 동일하다 -- checkAndBumpDailyDiceLimit 참고.
-    private static volatile int KAKAO_BONUS_DICE = 200;
+    // 채널(WEB/CHAT) 무관하게 공유하는 총 이동 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은
+    // DAILY_MOVE_LIMIT까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값(400+100=500)까지
+    // 계속 가능하다. 채널을 섞어 쓰든 한쪽만 쓰든 결과는 항상 "총합이 웹 한도를 넘으면 웹
+    // 차단, 카톡 한도를 넘으면 둘 다 차단"으로 동일하다 -- checkAndBumpDailyDiceLimit 참고.
+    private static volatile int KAKAO_BONUS_MOVE = 100;
 
     // 자동사냥(미접속 정산) 속도/상한. "재배포 없이 밸런스 조절하게 해달라" 요청으로 config화.
     //   - AUTO_HUNT_KILLS_PER_HOUR : 미접속 시간당 처치 수(분당 환산해 10분당 1마리처럼 사용)
@@ -388,10 +400,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                         COMBAT_COOLDOWN_SEC = Long.parseLong(val);
                     } else if ("COMBAT_END_COOLDOWN_SEC".equals(key)) {
                         COMBAT_END_COOLDOWN_SEC = Long.parseLong(val);
-                    } else if ("DAILY_DICE_LIMIT".equals(key)) {
-                        DAILY_DICE_LIMIT = Integer.parseInt(val);
-                    } else if ("KAKAO_BONUS_DICE".equals(key)) {
-                        KAKAO_BONUS_DICE = Integer.parseInt(val);
+                    } else if ("DAILY_MOVE_LIMIT".equals(key)) {
+                        DAILY_MOVE_LIMIT = Integer.parseInt(val);
+                    } else if ("KAKAO_BONUS_MOVE".equals(key)) {
+                        KAKAO_BONUS_MOVE = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_KILLS_PER_HOUR".equals(key)) {
                         AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
@@ -419,9 +431,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public String refreshConfig() {
         loadConfig();
+        loadBalanceV2();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 주사위 한도 웹 " + DAILY_DICE_LIMIT
-                + "회·카톡 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "회 / 자동사냥 시간당 "
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 이동 한도 웹 " + DAILY_MOVE_LIMIT
+                + "회·카톡 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "회 / 자동사냥 시간당 "
                 + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
     }
 
@@ -454,7 +467,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 스탯 계산
     // ================================================================
     private int[] calcBaseStat(String job, int grade) {
-        int[] base = GRADE_BASE[grade - 1];
+        int[][] gradeBase = GRADE_BASE_V2;
+        int[] base = (BALANCE_V2_ENABLED && gradeBase != null && grade - 1 < gradeBase.length && gradeBase[grade - 1] != null)
+                ? gradeBase[grade - 1] : GRADE_BASE[grade - 1];
         double[] mult = JOB_MULT.get(job);
         int hp  = (int) Math.round(base[0] * mult[0]);
         int atk = (int) Math.round(base[1] * mult[1]);
@@ -477,9 +492,106 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final double[] LIMIT_BREAK_PCT = { 0, 0.30, 0.60, 0.90, 1.20, 1.50, 1.80 };
     private static final int LIMIT_BREAK_MAX = 6;
 
+    // ================================================================
+    // 밸런스 V2(2026-09-21, "전투가 너무 빨리 끝난다, 1~100층을 계단식 아닌 완전 선형구조로"
+    // 요청) -- TBOT_S5_MONSTER_INFO_V2/GRADE_BASE_V2/EQUIP_BONUS_V2/LIMIT_BREAK_V2 4테이블을
+    // 서버 기동 시(loadBalanceV2, @PostConstruct) 메모리로 읽어들여 기존 하드코딩 상수/구
+    // 테이블을 "오버레이"로 대체한다. BALANCE_V2_ENABLED 하나로 전체 스위치 -- 문제가 생기면
+    // false로 바꾸고 재배포하면 기존(V1) 수치로 즉시 롤백된다. 테이블 로딩 실패 시(서버 기동
+    // 시점에 DB 미접속 등) 각 맵/배열이 비어있는 채로 남고, 아래 조회 지점들이 그 경우 자동으로
+    // 기존 V1 값으로 폴백한다(loadConfig와 동일한 방어적 설계 원칙).
+    // ================================================================
+    private static final boolean BALANCE_V2_ENABLED = true;
+    private static volatile Map<Integer, int[]> MONSTER_V2 = new HashMap<>(); // floor -> [hp, atk, def]
+    private static volatile int[][] GRADE_BASE_V2 = null;     // [grade-1][hp, atk, def]
+    private static volatile double[][] EQUIP_BONUS_V2 = null; // [grade-1][helmFlat, helmPct, wepFlat, wepPct, armFlat, armPct]
+    private static volatile double[] LIMIT_BREAK_V2 = null;   // [level]
+
+    /** 서버 기동 시(및 /갱신 시) 밸런스 V2 4테이블을 메모리로 로드. 실패해도 V1으로 계속 동작. */
+    @PostConstruct
+    public void loadBalanceV2() {
+        try {
+            Map<Integer, int[]> monsterMap = new HashMap<>();
+            for (HashMap<String, Object> row : dao.selectMonsterInfoV2List()) {
+                int floor = intVal(row.get("FLOOR"), -1);
+                if (floor < 0) continue;
+                monsterMap.put(floor, new int[]{
+                        intVal(row.get("HP_VALUE"), 0), intVal(row.get("ATK_VALUE"), 0), intVal(row.get("DEF_VALUE"), 0)
+                });
+            }
+            MONSTER_V2 = monsterMap;
+        } catch (Exception ignore) {
+            // 로드 실패 -- MONSTER_V2는 이전 값(또는 초기 빈 맵) 유지, 조회부에서 V1 폴백
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectGradeBaseV2List();
+            int[][] grade = new int[rows.size()][3];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("GRADE"), 0) - 1;
+                if (idx < 0 || idx >= grade.length) continue;
+                grade[idx] = new int[]{ intVal(row.get("HP_VALUE"), 0), intVal(row.get("ATK_VALUE"), 0), intVal(row.get("DEF_VALUE"), 0) };
+            }
+            GRADE_BASE_V2 = grade;
+        } catch (Exception ignore) {
+            GRADE_BASE_V2 = null;
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectEquipBonusV2List();
+            double[][] equip = new double[rows.size()][6];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("GRADE"), 0) - 1;
+                if (idx < 0 || idx >= equip.length) continue;
+                equip[idx] = new double[]{
+                        ((Number) row.get("HELM_FLAT")).doubleValue(), ((Number) row.get("HELM_PCT")).doubleValue(),
+                        ((Number) row.get("WEAPON_FLAT")).doubleValue(), ((Number) row.get("WEAPON_PCT")).doubleValue(),
+                        ((Number) row.get("ARMOR_FLAT")).doubleValue(), ((Number) row.get("ARMOR_PCT")).doubleValue()
+                };
+            }
+            EQUIP_BONUS_V2 = equip;
+        } catch (Exception ignore) {
+            EQUIP_BONUS_V2 = null;
+        }
+        try {
+            List<HashMap<String, Object>> rows = dao.selectLimitBreakV2List();
+            double[] lb = new double[rows.size()];
+            for (HashMap<String, Object> row : rows) {
+                int idx = intVal(row.get("LB_LEVEL"), -1);
+                if (idx < 0 || idx >= lb.length) continue;
+                lb[idx] = ((Number) row.get("PCT")).doubleValue();
+            }
+            LIMIT_BREAK_V2 = lb;
+        } catch (Exception ignore) {
+            LIMIT_BREAK_V2 = null;
+        }
+    }
+
+    /** [2026-09-21] "tbot_s5_user_progress에 cur_floor 0인 계정이 자꾸 생겨. 주기적으로
+     *  지워줘" 요청 -- 원인은 웹뷰(/loa/tower-view, /loa/api/tower-status)가 모르는 userName
+     *  으로 호출되면(오타 URL, 만료된 링크, 미리보기 크롤러 등) resolveUserName이 실패하고
+     *  apiTowerStatus가 조용히 initUser로 빈 계정을 새로 만들어버려서(Season5ViewController
+     *  참고) 발생 -- 매일 새벽 4시에 "가입 후 하루가 지나도 한 번도 이동하지 않은(CUR_FLOOR=0)"
+     *  계정을 정리. 실제로 플레이를 시작하면 최초 이동/전투에서 바로 CUR_FLOOR이 0을 벗어나므로
+     *  이 조건에 걸리는 계정은 전부 미사용 계정이다.
+     *  [버그수정] @Scheduled 메서드는 JDK 동적 프록시가 호출할 수 있게 인터페이스(BotS5Service)에도
+     *  반드시 선언돼 있어야 한다 -- 누락 시 컨텍스트 부팅 자체가 실패한다(라이브에서 실제로 겪음). */
+    @Override
+    @Scheduled(cron = "0 0 4 * * *")
+    public void cleanupJunkZeroFloorUsers() {
+        try {
+            int deleted = dao.deleteJunkZeroFloorUsers();
+            if (deleted > 0) {
+                System.out.println("[S5 정리] CUR_FLOOR=0 미사용 계정 " + deleted + "건 삭제");
+            }
+        } catch (Exception e) {
+            System.out.println("[S5 정리] CUR_FLOOR=0 계정 정리 실패: " + e.getMessage());
+        }
+    }
+
     /** 한계돌파 N단계의 스탯 배율(%) -- 위 LIMIT_BREAK_PCT 표 참고, 범위 밖이면 클램프. */
     private double limitBreakPct(int limitBreak) {
         int lv = Math.max(0, Math.min(limitBreak, LIMIT_BREAK_MAX));
+        double[] v2 = LIMIT_BREAK_V2;
+        if (BALANCE_V2_ENABLED && v2 != null && lv < v2.length) return v2[lv];
         return LIMIT_BREAK_PCT[lv];
     }
 
@@ -491,7 +603,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (equips != null) {
             for (HashMap<String, Object> e : equips) {
                 int eg = intVal(e.get("GRADE"), 1);
-                double[] b = EQUIP_BONUS[eg - 1];
+                double[][] equipV2 = EQUIP_BONUS_V2;
+                double[] b = (BALANCE_V2_ENABLED && equipV2 != null && eg - 1 < equipV2.length && equipV2[eg - 1] != null)
+                        ? equipV2[eg - 1] : EQUIP_BONUS[eg - 1];
                 String part = strVal(e.get("PART"), "");
                 if ("HELMET".equals(part)) hp += b[0] + base[0] * b[1];
                 else if ("WEAPON".equals(part)) atk += b[2] + base[1] * b[3];
@@ -721,14 +835,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final double HARDCORE_FLOOR_SCALE_MIN = 0.5;
 
     // [2026-09-21] "60층 미만은 방어력 0, 60층 이후는 방어력을 선형구조로(61층≈100,
-    // 99층은 지금 그대로)" 요청 -- 몬스터 DEF만 따로 떼어서 블록 단위 저장값 대신 이
-    // 층 기반 공식으로 완전히 대체한다(HP/ATK는 기존 방식 그대로 유지, 이 요청 범위 밖).
-    // 99층(블록10 보스, "종말의 마룡왕 니드호그") 현재 라이브 DEF=7500을 그대로 상한
-    // 앵커로 고정 -- 나중에 그 값 자체가 바뀌면 이 상수도 같이 맞춰야 함.
+    // 99층은 지금 그대로)" 요청 -- 몬스터 DEF만 따로 떼어서 저장값(V1 블록 단위든 V2
+    // 선형식이든) 대신 이 층 기반 공식으로 완전히 대체한다(HP/ATK는 기존 방식/V2 그대로
+    // 유지, 이 요청 범위 밖). 99층(블록10 보스)은 51층+ 구간이라 이미 밸런스 V2가 적용
+    // 중이었고, 그 V2 테이블(TBOT_S5_MONSTER_INFO_V2)의 99층 DEF 실측치가 6096이라
+    // 이 값을 "지금 그대로"의 상한 앵커로 고정 -- V2 테이블이 나중에 다시 바뀌면 이
+    // 상수도 같이 맞춰야 함.
     private static final int DEF_RAMP_START_FLOOR = 61;
     private static final int DEF_RAMP_END_FLOOR = 99;
     private static final double DEF_RAMP_START_VAL = 100;
-    private static final double DEF_RAMP_END_VAL = 7500;
+    private static final double DEF_RAMP_END_VAL = 6096;
 
     private double monsterDefForFloor(int floor) {
         if (floor < DEF_RAMP_START_FLOOR) return 0; // 60층 미만(및 60층 자체=마을) 전부 0
@@ -739,9 +855,26 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
         if (mon == null) return null;
+        // [2026-09-21] 밸런스 V2 오버레이 -- 이름/MONSTER_ID/PP_PER_KILL 등은 V1 조회 결과
+        // (mon)를 그대로 두고 HP/ATK만 V2 선형식 값으로 교체한다(DEF는 아래 monsterDefForFloor로
+        // 항상 다시 덮어쓰므로 V2 쪽 DEF는 더 이상 안 씀 -- 09-21 후속 요청 "60층 미만은 방어력
+        // 0, 60층 이후는 선형"이 V1/V2 구분 없이 DEF 전체에 적용되는 지시라 V2가 이겼든 V1이
+        // 이겼든 DEF만큼은 항상 이 새 공식이 최종적으로 이김). V2가 그 층을 다루면 HP/ATK는
+        // 무조건 우선 적용되므로, 아래 V1 전용(블록≥6, 보스 제외) 스케일 로직보다 먼저 처리.
+        // [2026-09-21 재수정] "몬스터스펙은 바뀌기이전 50층까지는 난이도가 괜찮았다, 50층
+        // 이후로 선형구조로 해달라" 요청(실측 버그 신고 포함 -- ★2 전사가 7층 몬스터에게
+        // 주사위 8이 떠도 2dmg만 들어가는 등, 1~10층 저층완화(dampen)를 넣어도 DEF가 여전히
+        // 초반 파티 ATK 대비 압도적으로 높았음) -- V2 자체가 실측 캘리브레이션이 있던 11~89층
+        // 기준으로 설계돼 1~50층은 애초에 검증된 적 없는 외삽 구간이었다. 저층 완화 미봉책
+        // 대신 **50층 이하는 V2를 아예 적용하지 않고 원래 V1 그대로**(블록1~5는 무보정 고정값,
+        // 이미 "괜찮았다"고 확인된 값) 돌아가게 하고, V2는 51층 이상에서만 적용한다.
+        int[] v2 = (BALANCE_V2_ENABLED && floor > 50) ? MONSTER_V2.get(floor) : null;
         HashMap<String, Object> scaled = new HashMap<>(mon);
-        // HP/ATK 스케일링(기존 그대로) -- 보스는 대상 아님, 51층 미만도 대상 아님.
-        if (!"Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 6) {
+        if (v2 != null) {
+            scaled.put("HP_VALUE", v2[0]);
+            scaled.put("ATK_VALUE", v2[1]);
+        } else if (!"Y".equals(strVal(mon.get("BOSS_YN"), "N")) && blockNo(floor) >= 6) {
+            // V1 전용(51~99층, 보스 제외) 블록 내 50%→100% 선형 보간 -- 기존 그대로.
             int pos = floor % 10; // 1~8=사냥터층(이 스케일 대상), 0=마을/9=보스는 몬스터 조회 자체를 안 함
             if (pos >= 1 && pos <= 8) {
                 double mult = HARDCORE_FLOOR_SCALE_MIN + (1.0 - HARDCORE_FLOOR_SCALE_MIN) * (pos - 1) / 7.0;
@@ -749,7 +882,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 scaled.put("ATK_VALUE", ((Number) mon.get("ATK_VALUE")).doubleValue() * mult);
             }
         }
-        // DEF는 위 블록 스케일과 무관하게 층 기반 공식으로 완전히 대체(보스 포함 전부).
+        // DEF는 위 HP/ATK 경로(V1/V2)와 무관하게 층 기반 공식으로 완전히 대체(보스 포함 전부).
         scaled.put("DEF_VALUE", monsterDefForFloor(floor));
         return scaled;
     }
@@ -766,7 +899,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-09-18] "81층 열어줘 90층까지 가능하도록" 요청 -- 블록9(81~90)만 먼저 오픈,
     // 블록10(91~98/99보스)은 아직 잠금 유지(단계적 오픈). 블록9 밸런스(TILE_COUNT 100,
     // 몬스터 방어력 x3.5, ATK 78층과 동일 비율)는 이미 이번 세션에 사전 조정 완료.
-    private static final int CONTENT_LOCKED_FLOOR = 91;
+    // [2026-09-21] "91층 이후도 밸런스 완성되었으면 100층까지 갈수있도록 열어주자" 요청 --
+    // 블록10(91~99, V2 밸런스가 이미 floor>50 전체에 적용 중이라 별도 수치 작업 불필요,
+    // TBOT_S5_FLOOR_INFO.TILE_COUNT/TBOT_S5_MONSTER_INFO 이름·PP도 91~98/99보스 모두 09-18에
+    // 블록9와 함께 미리 채워져 있었음, 확인 완료)까지 오픈. 실제 콘텐츠는 99층(보스)이 끝이라
+    // "100층"은 열리는 게 아니라 여전히 다음 잠금선(그 이상은 콘텐츠 자체가 없음)으로 남는다.
+    private static final int CONTENT_LOCKED_FLOOR = 100;
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -963,6 +1101,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 50%는 없도록" 요청 -- 값 자체를 배열 하나로 관리(재배포 없이 바꾸려면 나중에 config화
     // 가능하나, 당장은 4개 고정이라 상수로 충분).
     private static final int[] STAIRS_UP_REQUIRE_PCT = { 0, 10, 20, 25 };
+
+    // [2026-09-21] "91층부턴 탐사율90%이상에만 올라갈수있도록 해줘" 요청 -- 50~90층대의 계단별
+    // 0/10/20/25% 단계표 대신, 91층 이상은 어느 계단을 밟든 균일하게 90%를 요구한다(resolveTile
+    // STAIRS_UP 분기 참고).
+    private static final int STAIRS_UP_REQUIRE_PCT_ENDGAME = 90;
+    private static final int STAIRS_UP_ENDGAME_FLOOR = 91;
 
     /** 이 (유저,층) 보드에서 tileNo가 몇 번째 STAIRS_UP 칸인지(TILE_NO 오름차순)를 찾아 그
      *  순서에 배정된 요구 탐사율(%)을 반환한다. 같은 층 안에서도 어느 계단을 밟았느냐에 따라
@@ -1286,6 +1430,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append("🎽 장비 보유: ").append(equipCount).append("개").append(NL);
         sb.append("💍 악세서리 보유: ").append(accessoryCount).append("개").append(NL);
+        // [2026-09-21] "/ㅌㅈㅂ에 악세사리보유 아래에 전설조각 몇개인지도 표기해줘" 요청.
+        sb.append("🧩 전설의 조각: ").append(intVal(p.get("LEGEND_FRAGMENT"), 0)).append("개").append(NL);
 
         sb.append(NL).append("🖥️ 웹으로 보기: ").append(towerViewLink(target)).append(NL);
         sb.append("👉 전체 명령어는 /탑도움말 을 입력해 확인하세요.");
@@ -1652,11 +1798,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         String macroPatternMsg = checkMacroPattern(userName, p);
         if (macroPatternMsg != null) return prependAutoHunt(autoHuntMsg, macroPatternMsg);
 
-        // 하루 굴림 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장) -- 쿨타임
-        // 통과 후, 실제로 이번 액션이 "굴림 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌
-        // 시도는 카운트 안 함). 관리자 테스트 계정(NO_COOLDOWN_YN)은 쿨타임과 동일한 이유로
-        // 이 제한도 면제.
-        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) {
+        // 하루 이동 횟수 제한("하루 N번까지만" 요청, 2026-09-07에 채널별 한도로 확장,
+        // 2026-09-21에 "주사위 전체"에서 "보드 이동"만으로 대상 축소) -- 쿨타임 통과 후,
+        // 실제로 이번 액션이 "이동 1회"로 카운트되기 직전에 확인한다(쿨타임에 막힌 시도는
+        // 카운트 안 함). 전투 중(IN_COMBAT)인 굴림은 애초에 이동이 아니라 공격 턴이므로 이
+        // 체크 자체를 건너뛴다 -- 전투는 하루 한도와 무관하게 계속 진행할 수 있음.
+        // [2026-09-21] "오늘이동주사위 계산이 안되는거같아" 확인 -- 관리자 테스트 계정
+        // (NO_COOLDOWN_YN)은 카운터 자체를 건드리지 않고 건너뛰어서, 그 계정으로는 웹 UI의
+        // 이동한도 표시가 항상 0/400으로 보여 "계산이 안 된다"로 오인되기 쉬웠다. 차단(한도
+        // 초과 메시지)만 면제하고 카운트 자체는 그대로 올리도록 checkAndBumpDailyDiceLimit
+        // 내부에서 분리(관찰/테스트 가능하게, 쿨타임과 달리 이동횟수 카운팅 자체를 숨길
+        // 이유는 없음).
+        if (!"IN_COMBAT".equals(status)) {
             String limitMsg = checkAndBumpDailyDiceLimit(userName, p, channel);
             if (limitMsg != null) return prependAutoHunt(autoHuntMsg, limitMsg);
         }
@@ -1704,22 +1857,40 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * 하루 주사위 굴림 횟수(DICE_ROLL_COUNT_TODAY, 채널 무관 공유 카운터)를 확인하고, 한도
-     * 안이면 카운트를 올린 뒤 null을 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가
-     * 바뀌었거나 최초 굴림) 카운트를 1로 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에
+     * 하루 "이동" 횟수(DICE_ROLL_COUNT_TODAY 컬럼 재사용, 채널 무관 공유 카운터)를 확인하고,
+     * 한도 안이면 카운트를 올린 뒤 null을 반환한다(통과). DICE_ROLL_DATE가 오늘이 아니면(=날짜가
+     * 바뀌었거나 최초 이동) 카운트를 1로 리셋 -- 별도 배치/스케줄러 없이 "확인하는 시점에
      * 날짜만 비교"하는 방식이라 자정에 뭔가 돌려줄 필요가 없다. 한도를 넘으면 카운트는 그대로
      * 두고 안내 메시지만 반환.
-     * [2026-09-07] "웹/카톡 같이 쓰게, 카톡은 200회 더" 요청으로 channel별 한도 분리 --
-     * WEB은 DAILY_DICE_LIMIT까지, CHAT(카카오톡)은 거기에 KAKAO_BONUS_DICE를 더한 값까지.
+     * [2026-09-21] "주사위 굴림수(1200=1000+200) 기준이던 하루 한도를, 전투 턴은 빼고 보드
+     * 이동만 400(+카톡보너스 100=500)회로 바꿔달라" 요청 -- 이 함수 자체는 채널별 한도
+     * 분리(WEB은 DAILY_MOVE_LIMIT까지, CHAT은 거기에 KAKAO_BONUS_MOVE를 더한 값까지) 로직은
+     * 그대로 두고, **호출 여부**만 바뀌었다: 이제 rollDice()가 STATUS!='IN_COMBAT'일 때만
+     * 이 함수를 부른다(전투 턴은 호출 자체가 없어 무제한) -- 즉 이 함수에 들어온 시점에서
+     * "이동"이라는 게 이미 확정된 상태라 함수 내부 로직은 카운팅 대상 이름만 이동으로 바뀐 것.
      * 카운터 자체는 채널 구분 없이 하나 그대로 써서, 어느 채널로 얼마씩 섞어 쓰든 "총합이
      * 웹 한도를 넘으면 웹만 차단, 카톡 한도까지 넘으면 전부 차단"이 자연스럽게 성립한다.
      * (SimpleDateFormat은 스레드 안전하지 않아 static 캐시로 못 쓰므로 java.time으로 비교한다.)
      */
-    // [2026-09-16] "한도를 다 소진하면 시간당 100회씩 회복시켜달라" 요청으로 매시 정각마다
-    // DICE_REGEN_PER_HOUR(100)씩 회복되는 구조를 만들었었다.
-    // [2026-09-20 철회] "회복을 없애달라" 요청으로 시간당 회복 전체를 제거 -- 이제
-    // DICE_ROLL_COUNT_TODAY(오늘 실제 굴린 누적 raw 횟수)를 그대로 사용량으로 쓰고, 자정이
-    // 지나 날짜가 바뀌어야만(sameDay=false) 0으로 리셋된다. 순수 "하루 한도"로 되돌아감.
+    // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 웹 UI(보드 카드
+    // 근처)에 오늘 이동 사용량/한도를 보여주기 위한 조회 전용 접근자. 실제 차감/한도체크는
+    // checkAndBumpDailyDiceLimit()가 그대로 담당, 이 메서드는 그 안의 "오늘 사용량" 계산
+    // 로직만 재사용해서 읽기만 한다.
+    @Override
+    public HashMap<String, Object> moveLimitInfo(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
+        int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
+        boolean sameDay = rollDate != null
+                && new java.sql.Date(rollDate.getTime()).toLocalDate().equals(java.time.LocalDate.now());
+        int used = sameDay ? rawUsedToday : 0;
+        HashMap<String, Object> info = new HashMap<>();
+        info.put("used", used);
+        info.put("webLimit", DAILY_MOVE_LIMIT);
+        info.put("totalLimit", DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
+        return info;
+    }
+
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
@@ -1728,19 +1899,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         int storedRaw = sameDay ? rawUsedToday : 0;
         int curCount = storedRaw;
         boolean isWeb = "WEB".equals(channel);
-        int channelLimit = isWeb ? DAILY_DICE_LIMIT : (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE);
-        if (curCount >= channelLimit) {
+        int channelLimit = isWeb ? DAILY_MOVE_LIMIT : (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
+        // [2026-09-21] 관리자 테스트 계정(NO_COOLDOWN_YN)은 차단(한도 초과 메시지)만 면제 --
+        // 카운트 자체는 일반 유저와 동일하게 계속 올라가야 웹 UI의 이동한도 표시(moveLimitInfo)가
+        // 테스트 중에도 정상 동작하는지 관찰할 수 있다(전에는 이 함수 호출 자체를 건너뛰어서
+        // 관리자 계정은 항상 0/400으로 보였음 -- "계산이 안 된다"로 오인된 원인).
+        boolean noCooldown = "Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"));
+        if (!noCooldown && curCount >= channelLimit) {
             if (isWeb) {
                 // 웹은 막혔지만 카톡 쪽 보너스가 아직 안 찼으면 그쪽으로 안내.
-                if (curCount < DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) {
-                    return "🎲 오늘 웹에서 주사위를 " + DAILY_DICE_LIMIT + "번 모두 굴렸습니다. "
-                            + "카카오톡에서는 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE - curCount) + "번 더 진행할 수 있어요!";
+                if (curCount < DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) {
+                    return "🚶 오늘 웹에서 이동을 " + DAILY_MOVE_LIMIT + "번 모두 했습니다. "
+                            + "카카오톡에서는 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE - curCount) + "번 더 진행할 수 있어요! (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
                 }
-                return "🎲 오늘 주사위를 " + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번 모두 굴렸습니다. "
-                        + "내일 다시 시도해주세요.";
+                return "🚶 오늘 이동을 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "번 모두 했습니다. "
+                        + "내일 다시 시도해주세요. (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
             }
-            return "🎲 오늘 카카오톡 한도(" + (DAILY_DICE_LIMIT + KAKAO_BONUS_DICE) + "번)까지 모두 굴렸습니다. "
-                    + "내일 다시 시도해주세요.";
+            return "🚶 오늘 카카오톡 한도(" + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "번)까지 모두 이동했습니다. "
+                    + "내일 다시 시도해주세요. (전투 중엔 이 제한과 무관하게 계속 싸울 수 있습니다)";
         }
         int newRaw = storedRaw + 1;
         HashMap<String, Object> up = new HashMap<>();
@@ -2226,7 +2402,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 어느 계단을 밟았느냐에 따라 요구 탐사율이 다르다.
                 boolean exploreGateFloor = floor >= 50;
                 int explorePct = tileCount > 0 ? (visited * 100 / tileCount) : 0;
-                int requiredPct = exploreGateFloor ? stairsUpRequiredPct(userName, floor, newTile) : 0;
+                int requiredPct = !exploreGateFloor ? 0
+                        : (floor >= STAIRS_UP_ENDGAME_FLOOR ? STAIRS_UP_REQUIRE_PCT_ENDGAME
+                                : stairsUpRequiredPct(userName, floor, newTile));
                 if (exploreGateFloor && explorePct < requiredPct) {
                     sb.append("🪜⬆️❓ 위로 향하는 계단을 발견했지만... 무언가 강력한 기운이 막고 있다!").append(NL)
                       .append("이 층을 ").append(requiredPct).append("% 이상 탐사해야 계단이 열립니다. (현재 ").append(explorePct).append("%)");
@@ -2893,7 +3071,30 @@ public class BotS5ServiceImpl implements BotS5Service {
                 roll = rollFace(diceMinFor(p), diceMax);
                 rollLabel = String.valueOf(roll);
             }
-            int dmg = Math.max(1, eff[1] * roll - effMonsterDef);
+            // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
+            // 현재 구현된 효과는 DEF_STEAL(예시: 송곳)뿐. WEAPON 슬롯에 전설장비가 있으면
+            // 기본 데미지식 자체를 바꿔치기한다(사후 가산이 아님 -- effMonsterDef가 ATK*roll보다
+            // 커서 원래 식이 1로 바닥 클램프되는 경우 사후 가산은 부정확해짐).
+            HashMap<String, Object> legWeapon = null;
+            for (HashMap<String, Object> e : equips) {
+                if (!"WEAPON".equals(strVal(e.get("PART"), ""))) continue;
+                Object legId = e.get("LEGENDARY_ID");
+                if (legId != null) legWeapon = dao.selectLegendaryMaster(intVal(legId, 0));
+                break; // WEAPON 슬롯은 1개뿐
+            }
+            int dmg;
+            String legendaryWeaponTag = null;
+            // [2026-09-21 재설계] "송곳: 방어력을 무시하고, 방어력만큼 내데미지에 더한다" --
+            // 처음엔 "훔친 만큼만 가산"(부분 관통)이었는데, 사용자가 "무시 + 그만큼 가산"으로
+            // 명확히 정정 -- effMonsterDef를 아예 빼지 않고(무시) PARAM1%만큼 그대로 더한다.
+            // PARAM1=100이면 dmg = ATK*roll + DEF(방어력이 페널티가 아니라 순수 보너스가 됨).
+            if (legWeapon != null && "DEF_STEAL".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
+                int bonus = (int) Math.round(effMonsterDef * (intVal(legWeapon.get("EFFECT_PARAM1"), 0) / 100.0));
+                dmg = Math.max(1, eff[1] * roll) + bonus;
+                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + bonus;
+            } else {
+                dmg = Math.max(1, eff[1] * roll - effMonsterDef);
+            }
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
             // [2026-09-17] "도사는 서포터로 만들자, 현행 데미지의 6분의1수준으로 낮춰서 딜은
@@ -2901,26 +3102,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
-
-            // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
-            // 현재 구현된 효과는 DEF_STEAL(예시: 송곳)뿐. "적의 방어력을 훔쳐 주사위 굴린 후
-            // 자신의 공격력수치에 더한다"는 사용자 예시 그대로, dmg(이미 굴림 결과 반영값)에
-            // 그대로 가산하는 별개 항으로 처리(크리티컬 배율 등과 무관하게 순수 가산).
-            String legendaryWeaponTag = null;
-            for (HashMap<String, Object> e : equips) {
-                if (!"WEAPON".equals(strVal(e.get("PART"), ""))) continue;
-                Object legId = e.get("LEGENDARY_ID");
-                if (legId == null) break;
-                HashMap<String, Object> leg = dao.selectLegendaryMaster(intVal(legId, 0));
-                if (leg != null && "DEF_STEAL".equals(strVal(leg.get("EFFECT_TYPE"), ""))) {
-                    int stolen = (int) Math.round(effMonsterDef * (intVal(leg.get("EFFECT_PARAM1"), 0) / 100.0));
-                    if (stolen > 0) {
-                        dmg += stolen;
-                        legendaryWeaponTag = strVal(leg.get("ITEM_NAME"), "") + "+" + stolen;
-                    }
-                }
-                break; // WEAPON 슬롯은 1개뿐
-            }
             totalDamage += dmg;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
@@ -2932,7 +3113,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(dmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
-            if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 흡수)");
+            if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -6153,6 +6334,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         return floorMonsterName(floor, mon);
     }
 
+    /** [2026-09-21] 전투화면 재설계(스탯표 POWER/GUARD)용 -- 이 층 몬스터의 실제 전투 ATK/DEF
+     *  (V2 오버레이/하드코어 스케일 전부 반영된 값). null이면 [atk, def] 순서. */
+    @Override
+    public int[] currentFloorMonsterAtkDef(int floor) {
+        boolean isBossFloor = floor % 10 == 9;
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N"), floor);
+        if (mon == null) return null;
+        return new int[]{ (int) Math.round(((Number) mon.get("ATK_VALUE")).doubleValue()), (int) Math.round(((Number) mon.get("DEF_VALUE")).doubleValue()) };
+    }
+
     /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */
     private int statCapFor(int unlockedBlock) {
         return 5 + 5 * (unlockedBlock / 10);
@@ -6851,20 +7042,31 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // [2026-09-18] "조각 10개를 모으면 전설제작 할수있고, 전설 제작 성공률은 30%.
-    // 랜덤제작만 만들고싶어" 요청. 같은 날 후속 메시지("일반사용자에겐 아직 제작부분은
-    // 오픈하지 말고")로 실제 오픈 전까지는 NO_COOLDOWN_YN(기존 관리자/테스트 계정 플래그)
-    // 보유 계정만 사용 가능하도록 막아뒀었다(조각 드랍/보유는 이미 일반 유저에게도 보였음).
-    // [2026-09-21] "전설제작 오픈해줘(일어난다람쥐/카단은 성공했으나 도륙이냥/달소는
-    // 진행불가함)" 요청 -- 일어난다람쥐/카단이 성공했던 건 NO_COOLDOWN_YN='Y'인
-    // 관리자/테스트 계정이었기 때문이고, 도륙이냥/달소는 조각을 다 모으고도 이 게이트에
-    // 막혀 있었다. 전체 오픈으로 이 차단을 제거.
+    // 랜덤제작만 만들고싶어" 요청 -- 그때는 성공 시 로스터 전체에서 무작위 1개였다.
+    // [2026-09-21 재설계] "전설제작창에서 여러아이템 중 선택하여 제작버튼을 누르면..." 요청으로
+    // "결과 랜덤"에서 "제작 대상을 직접 고르고, 그 대상에 대해 성공/실패만 확률로" 방식으로
+    // 변경(로스터가 늘어날수록 "원하는 종류인지도 랜덤"이면 UX가 나빠지므로). 같은 날 후속
+    // 메시지("일반사용자에겐 아직 제작부분은 오픈하지 말고")로 한동안 NO_COOLDOWN_YN(기존
+    // 관리자/테스트 계정 플래그) 보유 계정만 사용 가능하도록 막아뒀었다(조각 드랍/보유는
+    // 이미 일반 유저에게도 보였음).
+    // [2026-09-21 후속] "전설제작 오픈해줘(일어난다람쥐/카단은 성공했으나 도륙이냥/달소는
+    // 진행불가함)" 요청 -- 일어난다람쥐/카단이 성공했던 건 NO_COOLDOWN_YN='Y'인 관리자/
+    // 테스트 계정이었기 때문이고, 도륙이냥/달소는 조각을 다 모으고도 이 게이트에 막혀
+    // "🔒 전설제작은 아직 준비 중인 기능입니다"만 보고 있었다. 전체 오픈으로 이 차단을 제거.
+    @Override
+    public List<HashMap<String, Object>> legendaryRoster() {
+        return dao.selectLegendaryMasterList();
+    }
+
     @Override
     @Transactional
-    public String craftLegendary(String userName) {
+    public String craftLegendary(String userName, int legendaryId) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 전설제작을 할 수 없습니다.";
         }
+        HashMap<String, Object> target = dao.selectLegendaryMaster(legendaryId);
+        if (target == null) return "존재하지 않는 전설장비입니다.";
         int fragment = intVal(p.get("LEGEND_FRAGMENT"), 0);
         if (fragment < LEGEND_CRAFT_COST) {
             return "전설의조각이 부족합니다. (보유 " + fragment + "개 / 필요 " + LEGEND_CRAFT_COST + "개)";
@@ -6878,26 +7080,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         p.put("LEGEND_FRAGMENT", remaining);
 
         boolean success = RND.nextInt(100) < LEGEND_CRAFT_SUCCESS_PCT;
+        String itemName = strVal(target.get("ITEM_NAME"), "");
         if (!success) {
-            return "💨 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
+            return "💨 [" + itemName + "] 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
         }
 
-        List<HashMap<String, Object>> roster = dao.selectLegendaryMasterList();
-        if (roster.isEmpty()) {
-            // 방어적 처리 -- 로스터가 비어있으면(운영 중 등록 누락 등) 조각만 환불한다.
-            HashMap<String, Object> refundUp = new HashMap<>();
-            refundUp.put("userName", userName);
-            refundUp.put("legendFragment", fragment);
-            dao.updateUserProgress(refundUp);
-            p.put("LEGEND_FRAGMENT", fragment);
-            return "아직 등록된 전설장비가 없습니다. 조각은 환불되었습니다.";
-        }
-        HashMap<String, Object> picked = roster.get(RND.nextInt(roster.size()));
-        String clazz = strVal(picked.get("CLASS"), "");
-        String part = strVal(picked.get("PART"), "");
-        int legendaryId = intVal(picked.get("LEGENDARY_ID"), 0);
-        String itemName = strVal(picked.get("ITEM_NAME"), "");
-
+        String clazz = strVal(target.get("CLASS"), "");
+        String part = strVal(target.get("PART"), "");
         HashMap<String, Object> e = new HashMap<>();
         e.put("userName", userName);
         e.put("class", clazz);
@@ -6908,7 +7097,56 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.insertEquip(e);
 
         return "✨✨ 전설제작 성공! [" + itemName + "] ★7 " + equipClassLabel(clazz, part)
-                + " 획득! (" + strVal(picked.get("FLAVOR_TEXT"), "") + ")";
+                + " 획득! (" + strVal(target.get("FLAVOR_TEXT"), "") + ")";
+    }
+
+    // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 -- 제작
+    // 비용(10개)보다 1개 적게 돌려줘서(9개) 완전한 무손실 순환(만들고 부수고 다시 만들고...)은
+    // 안 되게 하는 조각 싱크. equipSynthesis()와 동일하게 "미착용 장비 목록(N번)" 인덱스로
+    // 대상을 지정한다.
+    @Override
+    @Transactional
+    public String disenchantLegendary(String userName, int equipIdx) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 분해할 수 없습니다.";
+        }
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
+        HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
+        if (intVal(equip.get("GRADE"), 1) != 7) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
+
+        dao.deleteEquip(intVal(equip.get("EQUIP_ID"), 0));
+        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND;
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("legendFragment", newFragment);
+        dao.updateUserProgress(up);
+
+        Object legIdObj = equip.get("LEGENDARY_ID");
+        String itemName = "전설장비";
+        if (legIdObj != null) {
+            HashMap<String, Object> meta = dao.selectLegendaryMaster(intVal(legIdObj, 0));
+            if (meta != null) itemName = strVal(meta.get("ITEM_NAME"), itemName);
+        }
+        return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + LEGEND_DISENCHANT_REFUND + "개 획득 (보유 " + newFragment + "개)";
+    }
+
+    // [2026-09-21] "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 띄워주도록 하자. 전투화면
+    // v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청 -- 전투화면 UI 버전(포켓몬 스타일
+    // 구버전=V1, 삼국지 대전화면 신버전=V2) 선호를 유저별로 저장(TBOT_S5_USER_PROGRESS.
+    // BATTLE_SCREEN_VERSION, 기본값 V2).
+    @Override
+    public String setBattleScreenVersion(String userName, String version) {
+        String v = "V1".equalsIgnoreCase(version) ? "V1" : "V2"; // V1이 아니면 전부 V2로 정규화
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("battleScreenVersion", v);
+        dao.updateUserProgress(up);
+        return "🖼️ 전투화면을 " + v + "로 변경했습니다.";
     }
 
     /** [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 전체를 훑어서

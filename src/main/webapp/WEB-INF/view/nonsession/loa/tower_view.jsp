@@ -140,6 +140,8 @@
        몬스터 줄 위에 뜨는 일 자체를 없앤다. */
     .dice-controls.dc-in-battle{ position:static; box-shadow:none; }
     .dice-controls-rows{ display:flex; flex-direction:column; gap:6px; flex:1 1 auto; min-width:0; }
+    .move-limit-badge{ font-size:11px; color:var(--ink-soft); font-weight:700; }
+    .move-limit-badge.move-limit-full{ color:var(--gold); }
     /* [2026-09-05] 사용중인 주사위는 더 크게/진하게 돋보이도록 표시, 한 줄로만 나열
        (줄바꿈 없음, 넘치면 가로 스크롤). */
     .dice-overlay{ width:100%; box-sizing:border-box;
@@ -362,17 +364,83 @@
     .bs-particle-b{ width:50px; height:50px; background:#fff; bottom:12%; right:20%; animation:bsFloatB 19s ease-in-out infinite; }
     @keyframes bsFloatA{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(24px,-16px); } }
     @keyframes bsFloatB{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-20px,14px); } }
-    .bs-monster-row, .bs-party-row{ position:relative; z-index:1; }
+    .bs-top, .bs-party-row{ position:relative; z-index:1; }
     /* [2026-09-17 2차] "전투진입시 포켓몬처럼 스르르르 페이드아웃/페이드인" 요청 -- 맵뷰<->전투화면
        전환(진입/이탈)에만 opacity 크로스페이드를 건다(crossfadeBoardView 참고). 전투 중 HP
        갱신처럼 화면을 안 바꾸는 경우는 이 transition과 무관. */
     .tower-viewport-wrap{ transition:opacity .28s ease; }
-    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; }
-    .bs-monster-sprite{ font-size:48px; line-height:1; }
+
+    /* [2026-09-21] V1/V2 버전 전환 -- #battleScreen(바깥, 배경/파티클/크기 담당)은 그대로 두고
+       안쪽 두 래퍼(#battleScreenV2가 기본 표시, #battleScreenV1은 구버전) 중 하나만 보인다.
+       V1은 옛 구조(위 몬스터줄/아래 파티줄을 space-between으로 위아래 끝에 붙임) 그대로
+       재현해야 해서 flex:1로 카드 전체 높이를 채우게 한다. V2는 콘텐츠가 이미 자체 완결형
+       (세력비교바+대치장면+스탯표 한 묶음)이라 그럴 필요 없음. */
+    #battleScreenV1{ position:relative; z-index:1; display:flex; flex-direction:column; justify-content:space-between; flex:1; min-height:0; }
+    #battleScreenV2{ position:relative; z-index:1; }
+    .bs-version-btns{ position:absolute; top:8px; right:8px; z-index:2; display:flex; gap:4px; }
+    .bs-version-btn{ border:1.5px solid var(--line); background:rgba(255,255,255,.75); border-radius:8px;
+                       padding:5px 11px; font-size:11px; font-weight:800; color:var(--ink-soft); cursor:pointer;
+                       min-width:30px; }
+    .bs-version-btn.active{ background:var(--gold); border-color:var(--gold); color:#fff; }
+
+    /* [2026-09-21] 삼국지 대전화면 재설계 -- ①세력비교바 ②중앙 대치 장면 ③좌우 스탯표.
+       사용자 첨부 레퍼런스(관우 vs 조조군 1:1 대전 화면)의 구성요소를 파티vs몬스터 구조에
+       맞게 절충 적용(파티 쪽은 파티슬롯1번/최고성급 생존자를 "대표"로 매핑). */
+    .bs-top{ display:flex; flex-direction:column; gap:8px; }
+    .bs-power-bar{ display:flex; align-items:center; gap:8px; }
+    .bs-power-num{ font-size:20px; font-weight:900; min-width:44px; text-align:center; }
+    .bs-power-num-party{ color:#2F6FA8; }
+    .bs-power-num-monster{ color:#B8412F; }
+    .bs-power-track{ flex:1; height:14px; border-radius:7px; overflow:hidden; display:flex;
+                       position:relative; border:1.5px solid var(--line); background:#EFE7D2; }
+    /* [2026-09-21] 좌/우 절반을 고정폭(50%)으로 나눠서 각자 안에서 채워지게 한다("상단
+       체력바를 절반씩 영역을 차지하면 좋겠어" 요청) -- 파티(왼쪽)는 왼쪽 끝에 붙어 안쪽으로
+       차오르고, 몬스터(오른쪽)는 오른쪽 끝에 붙어 안쪽으로 차오른다(justify-content로 제어,
+       fill 자체는 항상 width:100%을 목표로 하되 setHpBarFill이 실제 폭을 pct%로 줄임).
+       색은 fill 요소에 공용 setHpBarFill()이 HP_GRADIENT(초록→노랑→빨강)를 입힌다. */
+    .bs-power-half{ width:50%; height:100%; overflow:hidden; display:flex; }
+    .bs-power-half-party{ justify-content:flex-start; }
+    .bs-power-half-monster{ justify-content:flex-end; }
+    .bs-power-fill{ height:100%; transition:width .4s ease; }
+    .bs-power-vs{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+                   font-size:9px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); letter-spacing:.5px; }
+    .bs-duel-row{ display:flex; align-items:center; justify-content:space-around; }
+    .bs-duel-side{ display:flex; flex-direction:column; align-items:center; gap:4px; width:88px; }
+    .bs-duel-avatar-slot .bs-duel-avatar{ width:56px; height:56px; border-radius:50%; object-fit:cover; object-position:50% 15%;
+                                            border:2.5px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    .bs-duel-avatar-slot .avatar-emoji{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center;
+                                          justify-content:center; font-size:26px; background:#fff; border:2.5px solid #fff;
+                                          box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    .bs-monster-sprite{ font-size:52px; line-height:1; }
     .bs-monster-sprite.hit{ animation:bsShake .35s; }
+    .bs-duel-name{ font-size:11px; font-weight:800; text-align:center; }
+    /* [2026-09-21] "왼쪽아래 아이콘(구 파티 목록)은 없어도 될거같아, 위쪽 캐릭터에 체력바를
+       넣어주면 될거같아" 요청 -- V2에서 하단 bs-party-row를 없애는 대신 파티 대표 캐릭터
+       본인의 HP바를 duel-side 안에 작게 넣는다(전체 합산 세력비교바와는 별개로, "이 캐릭터"
+       개인 HP). */
+    .bs-duel-hpbar{ width:70px; height:5px; margin-top:0; }
+    .bs-duel-side .hp-num{ font-size:9px; color:var(--ink-soft); }
+
+    /* ===== V1(구버전, 포켓몬 스타일) -- 2026-09-17 원본 CSS 복원 ===== */
+    .bs-monster-row{ display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+    .bs-monster-sprite-v1{ font-size:48px; line-height:1; }
+    .bs-monster-sprite-v1.hit{ animation:bsShake .35s; }
     .bs-monster-info{ min-width:150px; max-width:220px; text-align:right; }
     .bs-monster-info .bs-name{ font-size:13px; font-weight:800; margin-bottom:3px; }
     .bs-monster-info .hpbar-track{ height:9px; }
+    .bs-duel-vs-badge{ font-size:15px; font-weight:900; color:var(--gold); border:2px solid var(--gold);
+                         border-radius:8px; padding:2px 8px; background:var(--gold-soft); flex-shrink:0; }
+    .bs-stat-table{ display:flex; align-items:stretch; justify-content:space-between; gap:6px;
+                      background:rgba(255,255,255,.55); border:1px solid var(--line); border-radius:10px; padding:6px 10px; }
+    .bs-stat-col{ display:grid; grid-template-columns:auto auto; gap:1px 6px; align-content:center; font-size:10px; }
+    .bs-stat-col-right{ text-align:right; grid-template-columns:auto auto; direction:rtl; }
+    .bs-stat-col-right > *{ direction:ltr; }
+    .bs-stat-hdr{ color:var(--ink-soft); font-weight:700; }
+    .bs-stat-val{ font-weight:800; }
+    .bs-stat-hit{ grid-column:1 / span 2; font-size:9px; color:var(--ink-soft); margin-top:2px; font-weight:700; }
+    .bs-stat-mid{ flex-shrink:0; font-size:9px; font-weight:800; color:var(--ink-soft); text-align:center;
+                   align-self:center; line-height:1.3; border-left:1px dashed var(--line); border-right:1px dashed var(--line); padding:0 8px; }
+
     .bs-party-row{ display:flex; gap:12px; justify-content:flex-start; flex-wrap:wrap; }
     .bs-companion{ width:66px; text-align:center; }
     .bs-companion.shake{ animation:bsShake .35s; }
@@ -383,7 +451,7 @@
                                    box-shadow:0 1px 3px rgba(0,0,0,.15); }
     .bs-companion .bs-cname{ font-size:9px; margin-top:3px; color:var(--ink-soft); }
     .bs-companion .hpbar-track{ height:5px; margin-top:2px; }
-    .bs-atk-pulse .bs-avatar, .bs-atk-pulse .avatar-emoji{ animation:bsLunge .28s; }
+    .bs-atk-pulse .bs-avatar, .bs-atk-pulse .avatar-emoji, .bs-atk-pulse .bs-duel-avatar{ animation:bsLunge .28s; }
     @keyframes bsShake{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
     @keyframes bsLunge{ 0%{ transform:translateY(0); } 40%{ transform:translateY(-9px); } 100%{ transform:translateY(0); } }
 
@@ -394,7 +462,12 @@
        쓰면 몬스터가 오른쪽/파티가 왼쪽에 오는 기존 배치(왼쪽아래 플레이어/오른쪽위 몬스터)가
        그대로 유지된다(뒤집히지 않음). 각 행 내부(.bs-monster-row/.bs-party-row) 구조는
        그대로 두고 세로로 쌓아서 좁은 가로폭 안에서도 한눈에 들어오게 한다. */
-    .battle-screen.compact{ flex-direction:row-reverse; align-items:center; justify-content:space-between; gap:10px; }
+    .battle-screen.compact{ align-items:center; gap:10px; overflow-y:auto; }
+    .battle-screen.compact .bs-top{ width:100%; }
+    .battle-screen.compact .bs-power-num{ font-size:14px; min-width:32px; }
+    .battle-screen.compact .bs-duel-side{ width:64px; }
+    /* V1(구버전) 전용 -- row-reverse로 가로 배치(몬스터 오른쪽 위/파티 왼쪽 아래 유지) */
+    .battle-screen.compact #battleScreenV1{ flex-direction:row-reverse; justify-content:space-between; }
     .battle-screen.compact .bs-monster-row{ flex-direction:column; align-items:flex-end; gap:6px; }
     .battle-screen.compact .bs-party-row{ flex-direction:column; flex-wrap:nowrap; align-items:flex-start; gap:8px; }
 
@@ -427,6 +500,33 @@
     .shop-row button:disabled{ opacity:.4; cursor:not-allowed; }
     .shop-row.dice-locked{ opacity:.45; }
     .shop-row.dice-current{ border-color:var(--gold); background:var(--gold-soft); }
+
+    /* [2026-09-21] 전설제작/전설해체 카드 -- 상점 탭. 각 카드는 버튼 하나뿐이고(제작하기/
+       해체하기), 실제 선택+실행은 전부 팝업(전체동료보기와 동일한 .detail-overlay 패턴)
+       안에서 끝난다("버튼을누르면 팝업에서 눌러서 처리할수있게해줘" 요청). 제작 팝업은
+       항목을 누르는 순간 그 자리에서 "제작 중..." 연출 후 성공/실패 결과까지 보여준다. */
+    .legend-frag-badge{ font-size:12px; font-weight:800; color:var(--gold); background:var(--gold-soft);
+                          border-radius:999px; padding:4px 10px; }
+    .legend-craft-btn{ width:100%; background:var(--gold); color:#fff; border:none; border-radius:10px;
+                         padding:11px; font-size:13px; font-weight:800; cursor:pointer; margin-top:2px; }
+    .legend-craft-btn:disabled{ opacity:.4; cursor:not-allowed; }
+    .legend-roster-item{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line);
+                           border-radius:12px; padding:10px 12px; margin-bottom:6px; cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+    .legend-roster-item:hover{ border-color:var(--gold); }
+    .lri-icon{ font-size:22px; flex-shrink:0; }
+    .lri-body{ flex:1; min-width:0; }
+    .lri-name{ font-size:13px; font-weight:800; }
+    .lri-meta{ font-size:10px; color:var(--ink-soft); margin-top:1px; }
+    .lri-flavor{ font-size:10px; color:var(--ink-soft); margin-top:3px; line-height:1.4; }
+    .lri-arrow{ font-size:20px; color:var(--ink-soft); flex-shrink:0; }
+    .legend-disenchant-item-btn{ flex-shrink:0; background:var(--gold); color:#fff; border:none; border-radius:10px;
+                                   padding:8px 12px; font-size:11px; font-weight:800; cursor:pointer; }
+    .legend-craft-anim{ text-align:center; font-size:13px; font-weight:700; color:var(--gold); padding:14px 0; }
+    .legend-craft-spinner{ display:inline-block; animation:legendSpin 1s linear infinite; margin-right:4px; }
+    @keyframes legendSpin{ 0%{ transform:rotate(0deg) scale(1); } 50%{ transform:rotate(180deg) scale(1.3); } 100%{ transform:rotate(360deg) scale(1); } }
+    .legend-craft-result{ text-align:center; font-size:13px; font-weight:700; padding:14px 10px; border-radius:12px; margin-top:4px; }
+    .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
+    .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
 
     /* 미착용 장비 목록(합성/자동장착용 버튼은 그대로, 드래그는 폐지). 직업별로 묶고 그 안에서
        성급 내림차순 정렬, 카드 한 칸이 화면 폭을 다 먹던 걸 party-grid처럼 여러 칸으로
@@ -611,6 +711,9 @@
              .tower-viewport가 항상 이 박스 아래로 밀려나서 칸그리드를 절대 가리지 않는다. -->
         <div class="dice-controls">
           <div class="dice-controls-rows">
+            <!-- [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 오늘 이동
+                 사용량/한도(전투 턴은 이 한도와 무관하므로 여기 안 포함). renderMoveLimit 참고. -->
+            <div class="move-limit-badge" id="moveLimitBadge" style="display:none;"></div>
             <!-- [2026-09-05] 주사위 교체를 상점탭에서 여기로 옮김 -- 해금된 것만 버튼으로
                  눌러 즉시 교체(자동구매형태, 별도 확인 없음). renderDiceOverlay 참고. -->
             <div class="dice-overlay" id="diceOverlay"></div>
@@ -630,19 +733,87 @@
           </button>
         </div>
         <!-- [2026-09-17] 전투 중엔 이 화면이 뜨고 아래 .tower-viewport-wrap(칸그리드)는
-             숨겨진다(updateBattleScreen 참고). -->
+             숨겨진다(updateBattleScreen 참고).
+             [2026-09-21] "전투화면을 삼국지 대전화면 스타일로" 요청으로 재설계했다가, 같은 날
+             "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 db에 저장/표시해달라" 요청으로
+             구버전(포켓몬 스타일)을 #battleScreenV1로 되살려 나란히 두고 버전 전환 버튼으로
+             고른다(state.battleScreenVersion, TBOT_S5_USER_PROGRESS.BATTLE_SCREEN_VERSION).
+             배경/파티클/크기(bg 사이클링, fitBattleScreenHeight, crossfadeBoardView)는 바깥
+             #battleScreen 공용, 안쪽 V1/V2 콘텐츠만 토글. updateBattleScreen() 참고. -->
         <div id="battleScreen" class="battle-screen bs-bg-0" style="display:none;">
           <div class="bs-particle bs-particle-a"></div>
           <div class="bs-particle bs-particle-b"></div>
-          <div class="bs-monster-row">
-            <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
-            <div class="bs-monster-info">
-              <div class="bs-name" id="bsMonsterName">몬스터</div>
-              <div class="hpbar-track"><div class="hpbar-fill" id="bsMonsterHpFill" style="width:100%"></div></div>
-              <div class="hp-num" id="bsMonsterHpNum"></div>
-            </div>
+          <!-- [2026-09-21] "v1,v2 버전 클릭이 잘안되, 두개다 버튼만들어서 눌려있는걸 표기해줘"
+               요청 -- 토글 버튼 하나 대신 V1/V2 각각 버튼을 두고 현재 선택된 쪽에 .active. -->
+          <div class="bs-version-btns">
+            <button type="button" class="bs-version-btn" id="bsVersionBtnV1" onclick="TW.setBattleScreenVersion('V1')">V1</button>
+            <button type="button" class="bs-version-btn" id="bsVersionBtnV2" onclick="TW.setBattleScreenVersion('V2')">V2</button>
           </div>
-          <div class="bs-party-row" id="bsPartyRow"></div>
+
+          <!-- ===== V2(삼국지 대전화면 스타일, 기본값) ===== -->
+          <div id="battleScreenV2">
+            <div class="bs-top">
+              <!-- [2026-09-21] "상단 체력바를 절반씩 영역을 차지하면 좋겠어" 요청 -- 예전엔
+                   두 fill의 width가 서로 다른 값(각자 %)이라 트랙 안에서 비율이 안 맞았는데,
+                   이제 좌/우 절반(.bs-power-half)을 고정폭으로 나누고 그 안에서 각자 채워지게
+                   바꿨다(파티는 왼쪽에서, 몬스터는 오른쪽에서 안쪽/바깥쪽으로 자연스럽게). -->
+              <div class="bs-power-bar">
+                <div class="bs-power-num bs-power-num-party" id="bsPartyPowerNum">0</div>
+                <div class="bs-power-track">
+                  <div class="bs-power-half bs-power-half-party"><div class="bs-power-fill" id="bsPowerFillParty" style="width:100%"></div></div>
+                  <div class="bs-power-half bs-power-half-monster"><div class="bs-power-fill" id="bsPowerFillMonster" style="width:100%"></div></div>
+                  <div class="bs-power-vs">VS</div>
+                </div>
+                <div class="bs-power-num bs-power-num-monster" id="bsMonsterPowerNum">0</div>
+              </div>
+              <div class="bs-duel-row">
+                <div class="bs-duel-side">
+                  <div class="bs-duel-avatar-slot" id="bsLeadAvatarSlot"></div>
+                  <div class="bs-duel-name" id="bsLeadName">파티</div>
+                  <div class="hpbar-track bs-duel-hpbar"><div class="hpbar-fill" id="bsLeadHpFill" style="width:100%"></div></div>
+                  <div class="hp-num" id="bsLeadHpNum"></div>
+                </div>
+                <div class="bs-duel-vs-badge">對</div>
+                <div class="bs-duel-side">
+                  <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
+                  <div class="bs-duel-name" id="bsMonsterName">몬스터</div>
+                </div>
+              </div>
+              <div class="bs-stat-table">
+                <div class="bs-stat-col bs-stat-col-left">
+                  <div class="bs-stat-hdr">LEVEL</div><div class="bs-stat-val" id="bsLeadLevel">-</div>
+                  <div class="bs-stat-hdr">POWER</div><div class="bs-stat-val" id="bsLeadPower">-</div>
+                  <div class="bs-stat-hdr">GUARD</div><div class="bs-stat-val" id="bsLeadGuard">-</div>
+                  <div class="bs-stat-hit">HIT 100%</div>
+                </div>
+                <div class="bs-stat-mid">반격<br>방어</div>
+                <div class="bs-stat-col bs-stat-col-right">
+                  <div class="bs-stat-hdr">LEVEL</div><div class="bs-stat-val" id="bsMonsterLevel">-</div>
+                  <div class="bs-stat-hdr">POWER</div><div class="bs-stat-val" id="bsMonsterPower">-</div>
+                  <div class="bs-stat-hdr">GUARD</div><div class="bs-stat-val" id="bsMonsterGuard">-</div>
+                  <div class="bs-stat-hit">HIT 100%</div>
+                </div>
+              </div>
+            </div>
+            <!-- [2026-09-21] "동료가 한명만 보인다고 해. 최대3명까지 다 나오게 해줘" 요청 --
+                 원래 V2엔 이 줄이 없어서(대표 1명만 duel-row에 표시) 파티 전원 상태를 볼 수
+                 없었다. V1과 동일한 .bs-party-row를 재사용(updateBattlePartyV1이 이제 V1/V2
+                 두 줄 다 채움). -->
+            <div class="bs-party-row" id="bsPartyRowV2"></div>
+          </div>
+
+          <!-- ===== V1(구버전, 포켓몬 스타일) ===== -->
+          <div id="battleScreenV1" style="display:none;">
+            <div class="bs-monster-row">
+              <div class="bs-monster-sprite-v1" id="bsMonsterSpriteV1">👹</div>
+              <div class="bs-monster-info">
+                <div class="bs-name" id="bsMonsterNameV1">몬스터</div>
+                <div class="hpbar-track"><div class="hpbar-fill" id="bsMonsterHpFillV1" style="width:100%"></div></div>
+                <div class="hp-num" id="bsMonsterHpNumV1"></div>
+              </div>
+            </div>
+            <div class="bs-party-row" id="bsPartyRowV1"></div>
+          </div>
         </div>
         <div class="tower-viewport-wrap">
           <div class="tower-viewport" id="towerViewport">
@@ -715,6 +886,28 @@
     <div class="card" style="margin-top:10px;">
       <div class="card-title">장비 보물상자</div>
       <div id="equipGachaList"></div>
+    </div>
+    <!-- [2026-09-21] "전설제작 ui도 상점내에 만들어주고" 요청 -> "전설제작 리스트로 쭉 나오는게
+         아니고, 전체동료리스트처럼 팝업을띄워서 거기서 선택" 요청 -> "전설제작 아래에 전설해체를
+         따로 만들어줘. 전설제작/전설해체 모두 제작하기/해체하기 버튼 하나만 넣어주고 버튼을
+         누르면 팝업에서 눌러서 처리할수있게해줘(팝업은전체동료보기와 동일한 ui로)" 요청으로
+         최종 정리 -- 카드 각각 버튼 하나만, 실제 선택+실행(제작/해체)은 전부 팝업
+         (#legendRosterOverlay/#legendDisenchantOverlay, allCompanionsOverlay와 동일한
+         .detail-overlay 패턴) 안에서 끝난다. 정식 오픈 전까지는 서버(craftLegendary)가
+         NO_COOLDOWN_YN 계정만 허용하고 나머지는 안내 메시지만 반환하므로, 카드 자체는 누구
+         에게나 보이되 실제 동작은 서버가 게이트한다. -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title-row">
+        <div class="card-title">✨ 전설제작</div>
+        <div class="legend-frag-badge">🧩 <span id="legendCraftFragVal">0</span>/10</div>
+      </div>
+      <!-- [2026-09-21] "10개가 있어야 누를수있게 해줘" 요청 -- 조각 10개 미만이면 버튼 자체를
+           비활성화(renderLegendaryCraftCard가 매번 상태조회 후 토글). -->
+      <button type="button" class="legend-craft-btn" id="legendCraftBtn" disabled onclick="TW.openLegendRoster()">제작하기</button>
+    </div>
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">🔨 전설해체</div>
+      <button type="button" class="legend-craft-btn" onclick="TW.openLegendDisenchant()">해체하기</button>
     </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
@@ -829,13 +1022,39 @@
     <div class="sheet-title-row">
       <div class="sheet-title">미착용 장비</div>
       <button class="synth-all-btn" onclick="TW.action('EQUIP_SYNTH_ALL','')">⚗️ 일괄합성</button>
-      <!-- [2026-09-18] "조각 10개 -> 전설제작(성공률 30%)" 요청 -- 정식 오픈 전까지는
-           서버(craftLegendary)가 NO_COOLDOWN_YN 계정만 허용하고 나머지는 안내 메시지만
-           반환하므로, 버튼 자체는 누구에게나 보이되 실제 동작은 서버가 게이트한다. -->
-      <button class="synth-all-btn" onclick="TW.action('CRAFT_LEGENDARY','')">✨ 전설제작(<span id="legendFragmentVal">0</span>/10)</button>
     </div>
+    <!-- [2026-09-21] 여기 있던 임시 "전설제작" 버튼은 상점 탭의 전설제작 카드로 완전히
+         대체돼서 제거(craftLegendary가 legendaryId 파라미터를 받도록 바뀌어서 이 빈 버튼은
+         이제 호출하면 오류가 났을 것). -->
     <div id="equipListFilters"></div>
     <div id="equipListBox"></div>
+  </div>
+</div>
+
+<!-- [2026-09-21] "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트처럼 팝업을띄워서
+     거기서 선택" 요청 -- allCompanionsOverlay/allEquipOverlay와 동일한 .detail-overlay 패턴. -->
+<div class="detail-overlay" id="legendRosterOverlay" onclick="if(event.target===this) TW.closeLegendRoster();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeLegendRoster()">✕</button>
+    <div class="sheet-title">제작할 전설장비 선택 (성공률 30%)</div>
+    <!-- [2026-09-21] "버튼을 누르면 팝업에서 눌러서 처리할수있게해줘" 요청 -- 항목을 누르면
+         그 자리에서 바로 제작을 시도한다(목록 -> 제작중 연출 -> 성공/실패 결과 전부 이 팝업
+         안에서 끝남, 팝업을 닫아야 메인 카드로 돌아옴). -->
+    <div id="legendRosterOverlayList"></div>
+    <div class="legend-craft-anim" id="legendCraftAnim" style="display:none;">
+      <span class="legend-craft-spinner">✨</span> 제작 중...
+    </div>
+    <div class="legend-craft-result" id="legendCraftResult" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- [2026-09-21] "장비제작소 안에 장비해체 버튼을 누르면 어떤장비해체할지 띄우는방식으로
+     하자" 요청. -->
+<div class="detail-overlay" id="legendDisenchantOverlay" onclick="if(event.target===this) TW.closeLegendDisenchant();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeLegendDisenchant()">✕</button>
+    <div class="sheet-title">해체할 전설장비 선택 (조각 9개 환급)</div>
+    <div id="legendDisenchantList"></div>
   </div>
 </div>
 
@@ -889,6 +1108,35 @@ var TW = (function () {
   // value만 보면 충분하다.
   function isIncapacitated(hpValue) {
     return (Number(hpValue) || 0) <= 0;
+  }
+
+  // [2026-09-21] "60%이하체력이되면 노랑색, 30%이하가되면 빨간색으로 체력바 색을 바꿔주고,
+  // 중간은 그라데이션효과가 있음 좋겠어" 요청 -- 현재 pct 기준으로 빨강(0~30%)/노랑(60%)/
+  // 초록(100%) 사이를 선형보간한 "단일 색"을 구하고(hpColor), 그 색과 살짝 어두운 톤 두
+  // 스톱으로 입체감 있는 그라데이션을 만든다(기존 기본 .hpbar-fill의 연두->진초록 톤과
+  // 같은 방식). 막대 폭 전체를 0~100% 구간으로 늘려 자르는 방식(가장자리 정렬에 따라 안쪽/
+  // 바깥쪽 색이 뒤바뀌는 문제가 있었음) 대신, "지금 이 순간의 색 하나"를 계산해서 그대로
+  // 칠하는 방식이라 좌/우 어느 쪽에서 채워지든 항상 같은 결과가 나온다. pct가 60%/30%
+  // 경계를 지날 때도 hpColor가 연속함수라 뚝뚝 끊기지 않고 매끄럽게 변한다. 모든 HP바
+  // (전투화면 몬스터/파티대표/V1 파티목록 등)가 공용으로 쓴다.
+  function lerpColor(a, b, t) {
+    return [ a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t ];
+  }
+  function hpColor(pct) {
+    var RED = [226, 75, 74], YELLOW = [239, 159, 39], GREEN = [95, 190, 133];
+    var c = pct <= 30 ? RED
+        : pct <= 60 ? lerpColor(RED, YELLOW, (pct - 30) / 30)
+        : lerpColor(YELLOW, GREEN, Math.min(1, (pct - 60) / 40));
+    return c.map(function (v) { return Math.round(v); });
+  }
+  function setHpBarFill(el, pct) {
+    if (!el) return;
+    pct = Math.max(0, Math.min(100, pct));
+    el.style.width = pct + '%';
+    var c = hpColor(pct);
+    var dark = c.map(function (v) { return Math.round(v * 0.72); });
+    el.style.background = 'linear-gradient(90deg, rgb(' + c.join(',') + '), rgb(' + dark.join(',') + '))';
+    el.style.transition = 'width .4s ease, background .4s ease';
   }
 
   // ===== [2026-09-17] 전투화면(포켓몬 배틀 스타일) =====
@@ -963,6 +1211,10 @@ var TW = (function () {
     }, 260);
   }
 
+  // [2026-09-21] "이전버전은 v1, 지금은v2로, 유저가 선택한걸 db에 저장/표시" 요청 -- 두
+  // 마크업(#battleScreenV1/#battleScreenV2) 중 state.battleScreenVersion에 맞는 쪽만 보여주고
+  // 그 안을 채운다. 공용(배경 사이클링/새 몬스터 조우 판정/크로스페이드)은 여기서 한 번만
+  // 처리하고, 버전별 렌더링은 renderBattleV1/renderBattleV2로 분리.
   function updateBattleScreen(p) {
     var inCombat = p.STATUS === 'IN_COMBAT';
     // [2026-09-19] 전투 중엔 위 .dice-controls의 sticky를 꺼서 #battleScreen 상단(몬스터 줄)을
@@ -976,6 +1228,10 @@ var TW = (function () {
     }
     if (!inCombat) { battle.monsterId = null; return; }
 
+    state.battleScreenVersion = (p.BATTLE_SCREEN_VERSION === 'V1') ? 'V1' : 'V2';
+    applyBattleScreenVersionUI(state.battleScreenVersion);
+    var isV1 = state.battleScreenVersion === 'V1';
+
     if (battle.monsterId !== p.CUR_MONSTER_ID) {
       // 새 몬스터와 조우(직전까지 다른 몬스터였거나, 전투에 막 진입) -- 기준선/스프라이트 리셋.
       battle.monsterId = p.CUR_MONSTER_ID;
@@ -984,9 +1240,6 @@ var TW = (function () {
       // 깨진다 -- ppToBase로 실제 값으로 환산해서 기준선을 잡는다.
       battle.monsterBaseHp = ppToBase(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT) || 1;
       battle.monsterHp = null;
-      document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
-      document.getElementById('bsMonsterName').textContent =
-          (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
       // [2026-09-17 2차] "랜덤배경 생기면 좋겠어" -- 새 몬스터를 만날 때마다 6종 중 하나를
       // 무작위로 배정(직전과 같은 배경이 연달아 나오지 않게 가볍게 피함).
       var screenEl = document.getElementById('battleScreen');
@@ -997,83 +1250,198 @@ var TW = (function () {
     }
 
     var curMonsterHpBase = ppToBase(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
-    var pct = battle.monsterBaseHp > 0
+    var monsterPct = battle.monsterBaseHp > 0
         ? Math.max(0, Math.min(100, curMonsterHpBase / battle.monsterBaseHp * 100)) : 100;
-    document.getElementById('bsMonsterHpFill').style.width = pct + '%';
-    document.getElementById('bsMonsterHpNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
-
-    var sprite = document.getElementById('bsMonsterSprite');
-    if (battle.monsterHp != null && curMonsterHpBase < battle.monsterHp) {
-      sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit');
-    }
+    var monsterHit = battle.monsterHp != null && curMonsterHpBase < battle.monsterHp;
     battle.monsterHp = curMonsterHpBase;
 
-    updateBattleParty();
+    // [버그 수정, 2026-09-21] updateBattlePartyV1()이 V1/V2 두 파티로스터 줄을 함께 채우도록
+    // 바뀌었는데, 정작 이 함수는 renderBattleV1() 안에서만 호출되고 있었다 -- V2로 렌더링될
+    // 땐 renderBattleV1이 아예 안 불리니 bsPartyRowV2가 한 번도 채워지지 않아 "동료가 대표
+    // 1명만 보인다" 신고가 고쳐지지 않았음. 버전과 무관하게 항상 한 번 호출하도록 여기로 이동.
+    updateBattlePartyV1();
+    if (isV1) renderBattleV1(p, curMonsterHpBase, monsterPct, monsterHit);
+    else renderBattleV2(p, curMonsterHpBase, monsterPct, monsterHit);
   }
 
-  // 파티(동료) 쪽 배틀 화면 갱신 -- loadStatus(몬스터 HP)와 loadPartyAndEquip(동료 HP) 둘 중
-  // 나중에 끝나는 쪽에서 최신 데이터로 다시 그려지도록 양쪽 다 이 함수를 부른다(요청 2개가
-  // 서로 다른 fetch라 어느 쪽이 먼저 끝날지 보장이 없음). 전투 중이 아니면 조용히 무시.
-  function updateBattleParty() {
-    var screen = document.getElementById('battleScreen');
-    if (!screen || screen.style.display === 'none') return;
-    var row = document.getElementById('bsPartyRow');
-    var companions = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
-    var ids = companions.map(function (c) { return c.COMPANION_ID; }).join(',');
-    if (row.dataset.ids !== ids) {
-      // 파티 구성 자체가 바뀐 경우(전투 진입 직후 최초 렌더 포함)만 다시 그린다 -- 매 갱신마다
-      // innerHTML로 새로 만들면 엘리먼트가 새 걸로 바뀌어서 width transition이 끊겨 보인다.
-      row.dataset.ids = ids;
-      row.innerHTML = '';
-      companions.forEach(function (c) {
-        var box = document.createElement('div');
-        box.className = 'bs-companion';
-        box.dataset.cid = c.COMPANION_ID;
-        box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
-        var meta = document.createElement('div');
-        // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
-        // [2026-09-18] "체력이 0이된 동료는 전투불능 표시를 하고싶어" 요청 -- 이름 줄
-        // 아래에 상태 배지 자리를 하나 만들어두고(bs-status), 갱신 루프에서 채운다.
-        meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
-            + '<div class="bs-status incapacitated-badge" style="display:none">💀 전투불능</div>'
-            + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
-        box.appendChild(meta);
-        row.appendChild(box);
-      });
-    }
-    companions.forEach(function (c) {
-      var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
-      if (!box) return;
-      var maxHp = c.EFF_HP || 1;
-      // [버그 수정] CUR_HP_VALUE는 PP 단위 표기(예: EXT='a'면 실제로 x10000)라 EFF_HP 같은
-      // 단위 없는 숫자와 그대로 나누면 HP가 1a(=10000) 넘는 순간 비율이 거의 0으로 깨졌다.
-      var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
-      var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
-      box.querySelector('.hpbar-fill').style.width = pct + '%';
-      var down = isIncapacitated(curHp);
-      box.classList.toggle('incapacitated', down);
-      var statusEl = box.querySelector('.bs-status');
-      if (statusEl) statusEl.style.display = down ? '' : 'none';
-      var prevHp = battle.companionHp[c.COMPANION_ID];
-      if (prevHp != null && curHp < prevHp) {
-        box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
-      }
-      battle.companionHp[c.COMPANION_ID] = curHp;
+  function renderBattleV1(p, curMonsterHpBase, monsterPct, monsterHit) {
+    document.getElementById('bsMonsterSpriteV1').textContent = monsterEmoji(p.CUR_MONSTER_ID);
+    document.getElementById('bsMonsterNameV1').textContent =
+        (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
+    setHpBarFill(document.getElementById('bsMonsterHpFillV1'), monsterPct);
+    document.getElementById('bsMonsterHpNumV1').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
+    var sprite = document.getElementById('bsMonsterSpriteV1');
+    if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
+  }
+
+  function renderBattleV2(p, curMonsterHpBase, monsterPct, monsterHit) {
+    document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
+    document.getElementById('bsMonsterName').textContent =
+        (p.CUR_MONSTER_ELITE_YN === 'Y' ? '💪 ' : '') + (monsterNameCache || '몬스터');
+    setHpBarFill(document.getElementById('bsPowerFillMonster'), monsterPct);
+    document.getElementById('bsMonsterPowerNum').textContent = fmtPP(p.CUR_MONSTER_HP_VALUE, p.CUR_MONSTER_HP_EXT);
+    var sprite = document.getElementById('bsMonsterSprite');
+    if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
+
+    // [2026-09-21] 세력비교바 왼쪽(파티) -- 편성된(PARTY_SLOT 있는) 동료 전원의 현재/최대
+    // HP를 ppToBase로 환산해 합산(단위 다른 동료가 섞여도 base 단위로는 정확히 비교 가능).
+    var partyMembers = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
+    var partyCurSum = 0, partyMaxSum = 0;
+    partyMembers.forEach(function (c) {
+      partyCurSum += ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
+      partyMaxSum += (c.EFF_HP || 0);
     });
+    var partyPct = partyMaxSum > 0 ? Math.max(0, Math.min(100, partyCurSum / partyMaxSum * 100)) : 100;
+    setHpBarFill(document.getElementById('bsPowerFillParty'), partyPct);
+    document.getElementById('bsPartyPowerNum').textContent = Math.round(partyCurSum).toLocaleString();
+
+    // [2026-09-21] 중앙 대치 장면 왼쪽 -- 파티 "대표"(생존자 중 1번 슬롯 우선, 없으면 첫
+    // 생존자, 그마저 없으면 1번 슬롯 그대로)와 좌우 스탯표(LEVEL=★성급/POWER=공격력/
+    // GUARD=방어력) + 대표 본인 HP바("왼쪽아래 아이콘은 없어도 될거같아, 위쪽 캐릭터에
+    // 체력바를 넣어주면" 요청으로 하단 파티목록 대신 여기 넣음). 오른쪽(몬스터)은
+    // apiTowerStatus가 함께 내려준 monsterAtk/monsterDef 캐시 사용.
+    var lead = partyMembers.filter(function (c) { return !isIncapacitated(c.CUR_HP_VALUE); })[0]
+        || partyMembers.filter(function (c) { return c.PARTY_SLOT === 1; })[0]
+        || partyMembers[0];
+    var leadSlot = document.getElementById('bsLeadAvatarSlot');
+    if (lead) {
+      if (leadSlot.dataset.cid !== String(lead.COMPANION_ID)) {
+        leadSlot.dataset.cid = String(lead.COMPANION_ID);
+        leadSlot.innerHTML = '';
+        leadSlot.appendChild(buildAvatarEl(lead, 'bs-duel-avatar', false));
+      }
+      document.getElementById('bsLeadName').textContent = lead.NAME || JOB_KR[lead.CLASS] || '파티';
+      document.getElementById('bsLeadLevel').textContent = '★' + (lead.GRADE || 1);
+      document.getElementById('bsLeadPower').textContent = lead.EFF_ATK || '-';
+      document.getElementById('bsLeadGuard').textContent = lead.EFF_DEF || '-';
+      var leadMaxHp = lead.EFF_HP || 1;
+      var leadCurHp = ppToBase(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
+      setHpBarFill(document.getElementById('bsLeadHpFill'), leadCurHp / leadMaxHp * 100);
+      document.getElementById('bsLeadHpNum').textContent = fmtPP(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
+    } else {
+      leadSlot.dataset.cid = '';
+      leadSlot.innerHTML = '';
+      document.getElementById('bsLeadName').textContent = '파티';
+      document.getElementById('bsLeadLevel').textContent = '-';
+      document.getElementById('bsLeadPower').textContent = '-';
+      document.getElementById('bsLeadGuard').textContent = '-';
+      setHpBarFill(document.getElementById('bsLeadHpFill'), 0);
+      document.getElementById('bsLeadHpNum').textContent = '';
+    }
+    document.getElementById('bsMonsterLevel').textContent = p.CUR_FLOOR || '-';
+    document.getElementById('bsMonsterPower').textContent = (monsterAtkCache != null) ? monsterAtkCache : '-';
+    document.getElementById('bsMonsterGuard').textContent = (monsterDefCache != null) ? monsterDefCache : '-';
+  }
+
+  // V1/V2 콘텐츠 표시 전환 + 두 버튼의 active 상태 반영(공용 헬퍼).
+  function applyBattleScreenVersionUI(v) {
+    var isV1 = v === 'V1';
+    document.getElementById('battleScreenV1').style.display = isV1 ? '' : 'none';
+    document.getElementById('battleScreenV2').style.display = isV1 ? 'none' : '';
+    var btnV1 = document.getElementById('bsVersionBtnV1');
+    var btnV2 = document.getElementById('bsVersionBtnV2');
+    if (btnV1) btnV1.classList.toggle('active', isV1);
+    if (btnV2) btnV2.classList.toggle('active', !isV1);
+  }
+
+  // [2026-09-21] "전투화면 v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청, 이어서
+  // "토글 버튼 클릭이 잘 안된다, 두개다 버튼 만들어서 눌려있는걸 표기해줘" 요청 -- 버튼 하나로
+  // 토글하던 걸 V1/V2 각각 버튼으로 바꾸고(터치 타겟도 키움), 고른 버전을 서버(
+  // setBattleScreenVersion)에 저장 후 다음 조회부터 그 버전으로 뜸(낙관적으로 즉시 화면도
+  // 바꿔서 반응성 확보).
+  function setBattleScreenVersion(v) {
+    if (state.battleScreenVersion === v) return; // 이미 선택된 버전이면 아무 것도 안 함
+    state.battleScreenVersion = v;
+    applyBattleScreenVersionUI(v);
+    action('SET_BATTLE_SCREEN_VERSION', v);
+  }
+
+  // 파티(동료) 쪽 배틀 화면(V1) 갱신 -- loadStatus(몬스터 HP)와 loadPartyAndEquip(동료 HP) 둘
+  // 중 나중에 끝나는 쪽에서 최신 데이터로 다시 그려지도록 양쪽 다 이 함수를 부른다(요청 2개가
+  // 서로 다른 fetch라 어느 쪽이 먼저 끝날지 보장이 없음). 전투 중이 아니거나 V2 표시 중이면
+  // 조용히 무시.
+  // [2026-09-21] V1/V2 둘 다 같은 파티 로스터 줄(.bs-party-row)을 쓴다(V2는 원래 이 줄이
+  // 없어서 "동료가 한명만 보인다" 신고를 받았다) -- 화면 전환과 무관하게 두 줄 다 채워두고
+  // 실제 표시 여부는 각 #battleScreenV1/V2의 display 토글에 맡긴다.
+  function updateBattlePartyV1() {
+    var companions = (lastParty.companions || []).filter(function (c) { return c.PARTY_SLOT; });
+    // [버그 방지] 두 줄(V1/V2)을 순서대로 갱신하면서 매번 battle.companionHp를 바로 덮어쓰면,
+    // 두 번째 줄을 처리할 때는 이미 prevHp===curHp가 되어 있어 "맞았을 때 흔들림" 연출이 V1
+    // 쪽 줄에서만 뜨고 V2 쪽은 영영 안 뜬다 -- 그래서 감소 여부만 먼저 한 번에 계산해두고,
+    // battle.companionHp 갱신도 두 줄을 모두 그린 다음 마지막에 한 번만 한다.
+    var hpDropped = {};
+    var newHp = {};
+    companions.forEach(function (c) {
+      var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
+      var prevHp = battle.companionHp[c.COMPANION_ID];
+      hpDropped[c.COMPANION_ID] = prevHp != null && curHp < prevHp;
+      newHp[c.COMPANION_ID] = curHp;
+    });
+    ['bsPartyRowV1', 'bsPartyRowV2'].forEach(function (rowId) {
+      var row = document.getElementById(rowId);
+      if (!row) return;
+      var ids = companions.map(function (c) { return c.COMPANION_ID; }).join(',');
+      if (row.dataset.ids !== ids) {
+        // 파티 구성 자체가 바뀐 경우(전투 진입 직후 최초 렌더 포함)만 다시 그린다 -- 매 갱신마다
+        // innerHTML로 새로 만들면 엘리먼트가 새 걸로 바뀌어서 width transition이 끊겨 보인다.
+        row.dataset.ids = ids;
+        row.innerHTML = '';
+        companions.forEach(function (c) {
+          var box = document.createElement('div');
+          box.className = 'bs-companion';
+          box.dataset.cid = c.COMPANION_ID;
+          box.appendChild(buildAvatarEl(c, 'bs-avatar', false));
+          var meta = document.createElement('div');
+          // [2026-09-17] "전투ui창에 캐릭터이름 옆에 직업아이콘도 만들고싶어" 요청.
+          // [2026-09-18] "체력이 0이된 동료는 전투불능 표시를 하고싶어" 요청 -- 이름 줄
+          // 아래에 상태 배지 자리를 하나 만들어두고(bs-status), 갱신 루프에서 채운다.
+          meta.innerHTML = '<div class="bs-cname">' + (JOB_EMOJI[c.CLASS] || '') + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS) + '</div>'
+              + '<div class="bs-status incapacitated-badge" style="display:none">💀 전투불능</div>'
+              + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>';
+          box.appendChild(meta);
+          row.appendChild(box);
+        });
+      }
+      companions.forEach(function (c) {
+        var box = row.querySelector('.bs-companion[data-cid="' + c.COMPANION_ID + '"]');
+        if (!box) return;
+        var maxHp = c.EFF_HP || 1;
+        var curHp = newHp[c.COMPANION_ID];
+        var pct = Math.max(0, Math.min(100, curHp / maxHp * 100));
+        setHpBarFill(box.querySelector('.hpbar-fill'), pct);
+        var down = isIncapacitated(curHp);
+        box.classList.toggle('incapacitated', down);
+        var statusEl = box.querySelector('.bs-status');
+        if (statusEl) statusEl.style.display = down ? '' : 'none';
+        if (hpDropped[c.COMPANION_ID]) {
+          box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+        }
+      });
+    });
+    companions.forEach(function (c) { battle.companionHp[c.COMPANION_ID] = newHp[c.COMPANION_ID]; });
   }
 
   // 주사위(공격) 버튼을 눌렀을 때 파티 전원이 짧게 앞으로 튀는 연출 -- 실제로 몇 명이 몇 번
   // 공격했는지는 서버 텍스트 메시지 안에만 있고 구조화되어 있지 않아, "파티가 매턴 전원 동시
   // 공격한다"는 실제 전투 규칙 그대로 전원 동시 연출로 단순화했다.
+  // [2026-09-21] V2도 이제 파티 로스터 줄(bsPartyRowV2)이 있으므로 V1과 동일하게 펄스시키고,
+  // V2 대표 아바타(bsLeadAvatarSlot)도 함께 펄스한다.
   function playBattleAttackMotion() {
-    var row = document.getElementById('bsPartyRow');
-    if (!row) return;
-    row.querySelectorAll('.bs-companion').forEach(function (box) {
-      box.classList.remove('bs-atk-pulse'); void box.offsetWidth; box.classList.add('bs-atk-pulse');
-    });
+    var rowId = state.battleScreenVersion === 'V1' ? 'bsPartyRowV1' : 'bsPartyRowV2';
+    var row = document.getElementById(rowId);
+    if (row) {
+      row.querySelectorAll('.bs-companion').forEach(function (box) {
+        box.classList.remove('bs-atk-pulse'); void box.offsetWidth; box.classList.add('bs-atk-pulse');
+      });
+    }
+    if (state.battleScreenVersion !== 'V1') {
+      var slot = document.getElementById('bsLeadAvatarSlot');
+      if (slot) { slot.classList.remove('bs-atk-pulse'); void slot.offsetWidth; slot.classList.add('bs-atk-pulse'); }
+    }
   }
 
   var monsterNameCache = ''; // updateBattleScreen()이 loadStatus() 밖에서도 이름을 쓸 수 있게 캐시
+  var monsterAtkCache = null, monsterDefCache = null; // [2026-09-21] 전투화면 스탯표(POWER/GUARD)용 캐시
 
   // [2026-09-17 2차] "승리시 승리했다고 화면 띄워주면 좋을것같아" 요청 -- 서버는 전투 승리
   // 텍스트에 항상 " 처치! 🎉"를 포함한다(BotS5ServiceImpl.resolveCombatTurn의 monsterDead
@@ -1099,7 +1467,7 @@ var TW = (function () {
     toast._t = setTimeout(function () { el.style.display = 'none'; }, duration);
   }
 
-  var state = { inVillage: false };
+  var state = { inVillage: false, battleScreenVersion: 'V2' };
 
   // 주사위는 마을이 아니면서, 동시에 '탑' 화면을 보고 있을 때만 누를 수 있다.
   // [2026-09-09] 하단 도크 버튼(dbtnDice)을 없애고 보드 카드 안의 #boardRollBtn으로 옮김.
@@ -1169,10 +1537,13 @@ var TW = (function () {
         }
 
         monsterNameCache = data.monsterName || '';
+        monsterAtkCache = (data.monsterAtk != null) ? data.monsterAtk : null;
+        monsterDefCache = (data.monsterDef != null) ? data.monsterDef : null;
         updateBattleScreen(p);
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderDiceOverlay(data.dice || []);
         renderDiceEnhanceRow(data.diceEnhance);
+        renderMoveLimit(data.moveLimit);
         renderTowerNav(p, data.floorBest);
         // [버그 수정] "조회"는 상단 상태/보드만 다시 불러오고 파티·상점·업적 탭은 그대로 둬서,
         // 파티 탭 등을 보고 있는 채로 다른 닉네임을 검색하면 방금 조회한 유저 이름이 위에는
@@ -1770,7 +2141,18 @@ var TW = (function () {
     // [2026-09-14 3차 수정] 맨 위로/내 위치/맨 아래로 버튼은 이제 .tower-viewport-wrap에
     // 정적 마크업으로 한 번만 있고(HTML 참고) track.innerHTML=''로도 안 지워지므로, 여기서
     // 매 렌더마다 다시 그려 넣던 코드는 삭제(위 CSS .board-track-controls 주석 참고).
+
+    // [2026-09-21] "pc,모바일 둘다 내위치근처에서부터 보여주면좋을거같아(지금은 맵상단부터
+    // 보여주고 시작하고있어)" 요청 -- 이 층 보드를 처음 보여줄 때(층이 바뀌었을 때)만
+    // scrollToHere()를 자동 호출한다. 상태조회는 몇 초마다 계속 도는데 그때마다 부르면
+    // 유저가 다른 곳을 보고 있어도 계속 내 위치로 스크롤이 튕겨서, "층이 바뀐 시점"으로만
+    // 한정(같은 층에서의 반복 갱신은 스크롤 위치를 건드리지 않음).
+    if (lastAutoScrollFloor !== floor) {
+      lastAutoScrollFloor = floor;
+      scrollToHere();
+    }
   }
+  var lastAutoScrollFloor = null;
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
   // 등급끼리는 버튼 한 번으로(자동구매형태, 별도 확인창 없음) 바로 교체하고 굴릴 수 있게 함.
@@ -1815,6 +2197,20 @@ var TW = (function () {
   // 적용 중인 값, -1..+6)를 유일한 기준으로 "선택됨" 표시를 하고, 이미 구매(owned)해뒀지만
   // 지금 선택은 아닌 단계 + 0(항상 무료)은 눌러서 DICE_MIN_SELECT로 즉시 무료 전환한다
   // (신규 구매가 아니라 "이미 산 것들 중 뭘 켤지" 전환).
+  // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청 -- 오늘 이동
+  // 사용량/한도를 dice-controls 상단에 작은 줄로 표시. 웹 한도 다 쓰면 카톡보너스 포함 총
+  // 한도까지 안내(카톡 없이 웹만 쓰는 유저 입장에선 "얼마 안 남았다"는 것만 알면 충분).
+  function renderMoveLimit(ml) {
+    var el = document.getElementById('moveLimitBadge');
+    if (!el) return;
+    if (!ml || ml.webLimit == null) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    var used = ml.used || 0;
+    var full = used >= ml.webLimit;
+    el.textContent = '🚶 오늘 이동 ' + used + '/' + ml.webLimit + (full && ml.totalLimit > ml.webLimit ? ' (카톡보너스 포함 ' + ml.totalLimit + ')' : '');
+    el.classList.toggle('move-limit-full', full);
+  }
+
   function renderDiceEnhanceRow(de) {
     var box = document.getElementById('diceEnhanceOverlay');
     box.innerHTML = '';
@@ -1908,6 +2304,13 @@ var TW = (function () {
     if (equipClass === 'COMMON') return '공용' + (PART_KR[part] || part);
     if (WEAPON_CLASS_NAME[equipClass]) return WEAPON_CLASS_NAME[equipClass];
     return JOB_KR[equipClass] || equipClass;
+  }
+  // [2026-09-21] "★7송곳을 만들었는데 검으로만 나와" 신고 -- selectUserEquip이
+  // LEGENDARY_ID를 아예 안 내려주고 있어서(버그 수정, BotS5Mapper.xml) 프론트가 부위 기반
+  // 일반 이름(검/지팡이 등)만 표시할 수밖에 없었다. 이제 LEGENDARY_ITEM_NAME이 내려오므로
+  // ★7 장비는 이 고유이름을 우선 표시한다.
+  function legendaryTag(e) {
+    return e && e.LEGENDARY_ITEM_NAME ? (' ✨' + e.LEGENDARY_ITEM_NAME) : '';
   }
   // [2026-09-17] "무기 아이콘을 지팡이는 지팡이로, 활은 활로, 갑옷도 적당한 거 있으면"
   // 요청 -- 지금까진 PART 하나로만 아이콘을 정해서(무기는 전부 ⚔️) 검/지팡이/활이 다
@@ -2068,7 +2471,7 @@ var TW = (function () {
     if (cur) {
       var curRow = document.createElement('div');
       curRow.className = 'sheet-row current readonly';
-      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + ' 장착중</span>';
+      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + legendaryTag(cur) + ' 장착중</span>';
       var unwearBtn = document.createElement('button');
       unwearBtn.type = 'button';
       unwearBtn.className = 'mini-btn';
@@ -2094,7 +2497,7 @@ var TW = (function () {
       candidates2.forEach(function (e) {
         var row = document.createElement('div');
         row.className = 'sheet-row';
-        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + '</span><span class="sr-sub">탭해서 장착</span>';
+        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + '</span><span class="sr-sub">탭해서 장착</span>';
         row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
         body.appendChild(row);
       });
@@ -2179,7 +2582,7 @@ var TW = (function () {
       var found = mine.filter(function (e) { return e.PART === part; })[0];
       var row = document.createElement('div');
       row.className = 'detail-equip-row';
-      row.innerHTML = '<span>' + PART_KR[part] + '</span><span>' + (found ? '★' + found.GRADE : '미착용') + '</span>';
+      row.innerHTML = '<span>' + PART_KR[part] + '</span><span>' + (found ? ('★' + found.GRADE + legendaryTag(found)) : '미착용') + '</span>';
       eqBox.appendChild(row);
     });
 
@@ -2516,7 +2919,9 @@ var TW = (function () {
         // 공용 등)일 때만 그 이름을, 아직 마이그레이션 전(구 데이터, class=직업명)이면 기존
         // 처럼 부위명 그대로.
         var isGroupedClass = !!WEAPON_CLASS_NAME[e.CLASS] || e.CLASS === 'COMMON';
-        var eqLabel = isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART);
+        // [2026-09-21] ★7 전설장비는 부위 일반명 대신 고유이름을 보여준다.
+        var eqLabel = e.LEGENDARY_ITEM_NAME ? ('✨ ' + e.LEGENDARY_ITEM_NAME)
+            : (isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART));
         var actionsHtml;
         if (e.__wearerName) {
           // [2026-09-17 2차] "장착되어있는장비도 표기해주고 누구 장착중 이렇게 나왔으면
@@ -2530,6 +2935,9 @@ var TW = (function () {
           var synthBtn = canSynth(e)
               ? '<button class="ten" onclick="TW.action(\'EQUIP_SYNTH\',\'' + idx + '\')">합성</button>'
               : '';
+          // [2026-09-21] "장비목록에서 말고, 장비제작소 안에 장비해체 버튼을 누르면 어떤장비
+          // 해체할지 띄우는방식으로하자" 요청으로 여기(장비 카드)의 개별 분해 버튼은 제거하고
+          // 상점 탭 전설제작 카드의 "장비해체" 버튼 -> 선택 팝업으로 옮김(openLegendDisenchant).
           actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
         }
         card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
@@ -2570,7 +2978,18 @@ var TW = (function () {
       renderPartySlots();
       renderPartyGrid();
       renderEquipList();
-      updateBattleParty(); // 전투화면이 떠 있으면(다른 fetch보다 이게 늦게 끝난 경우) 최신 HP로 갱신
+      // 전투화면이 떠 있으면(다른 fetch보다 이게 늦게 끝난 경우) 최신 HP로 갱신. V2는 대표
+      // 캐릭터 HP바가 파티 데이터에 걸려있어 state.progress(가장 최근 상태 캐시)로 재렌더.
+      // [버그 수정, 2026-09-21] 파티로스터(updateBattlePartyV1)는 V1/V2 공용이라 버전과 무관하게
+      // 항상 갱신해야 한다 -- V1일 때만 불렀더니 V2에서 "동료가 대표 1명만 보인다" 신고가
+      // 여기서도 재발했다(updateBattleScreen 쪽 동일 버그와 같은 원인, 별도 호출 경로).
+      updateBattlePartyV1();
+      if (state.battleScreenVersion !== 'V1' && state.progress && state.progress.STATUS === 'IN_COMBAT') {
+        var pr = state.progress;
+        var curBase = ppToBase(pr.CUR_MONSTER_HP_VALUE, pr.CUR_MONSTER_HP_EXT);
+        var pct = battle.monsterBaseHp > 0 ? Math.max(0, Math.min(100, curBase / battle.monsterBaseHp * 100)) : 100;
+        renderBattleV2(pr, curBase, pct, false);
+      }
 
       // 선택 팝업이 열려있으면(드물게 액션 응답 전에 다시 열렸을 경우 대비) 최신 데이터로
       // 다시 그려준다. 보통은 고르자마자 닫히므로(closePicker) 실행되지 않는다.
@@ -2724,7 +3143,152 @@ var TW = (function () {
           note.textContent = '📈 다음 상한 ' + st.nextCap + '은 ' + st.nextVillageFloor + '층 마을 도달 시 열립니다(그 앞 보스 처치 필요).';
           statBox.appendChild(note);
         }
+        renderLegendaryCraftCard();
       });
+  }
+
+  // [2026-09-21] "전설제작 ui도 상점내에 만들어주고... 전설제작창에서 여러아이템 중
+  // 선택하여 제작버튼을 누르면 성공&실패 가 몇초뒤 만들어지는 ui액션이 잠깐나왔다가
+  // 결과가 나오게 해줘" -> "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트처럼
+  // 팝업을띄워서 거기서 선택" -> "전설제작 아래에 전설해체를 따로 만들어줘. 전설제작/전설해체
+  // 모두 제작하기/해체하기 버튼 하나만 넣어주고 버튼을누르면 팝업에서 눌러서 처리할수있게
+  // 해줘(팝업은전체동료보기와 동일한 ui로)" 순서로 요청이 다듬어짐 -- 최종 형태: 상점 카드는
+  // 버튼 하나("제작하기"/"해체하기")만 있고, 누르면 팝업이 뜨고, 그 팝업 **안에서** 항목을
+  // 누르는 즉시 실행(제작은 연출+결과까지 팝업 안에서 끝남, 해체는 즉시 실행). 로스터
+  // (/api/tower-legendary-roster)는 유저 무관 고정 목록이라 한 번만 fetch해서 캐시.
+  var legendaryRosterCache = null;
+  var LEGEND_EFFECT_LABEL = {
+    DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; }
+  };
+
+  function legendItemSummaryHtml(item) {
+    var effectFn = LEGEND_EFFECT_LABEL[item.EFFECT_TYPE];
+    var effectLabel = effectFn ? effectFn(item.EFFECT_PARAM1) : (item.EFFECT_TYPE || '');
+    var groupLabel = WEAPON_CLASS_NAME[item.CLASS] || (item.CLASS === 'COMMON' ? '공용' : item.CLASS);
+    return '<div class="lri-icon">' + equipIcon(item.CLASS, item.PART) + '</div>'
+        + '<div class="lri-body">'
+        + '<div class="lri-name">★7 ' + groupLabel + ' — ' + item.ITEM_NAME + '</div>'
+        + '<div class="lri-meta">' + effectLabel + '</div>'
+        + (item.FLAVOR_TEXT ? '<div class="lri-flavor">' + item.FLAVOR_TEXT + '</div>' : '')
+        + '</div>';
+  }
+
+  function ensureLegendaryRosterLoaded(cb) {
+    if (legendaryRosterCache) { cb(legendaryRosterCache); return; }
+    fetch(base + '/api/tower-legendary-roster')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        legendaryRosterCache = data.roster || [];
+        cb(legendaryRosterCache);
+      })
+      .catch(function () { cb([]); });
+  }
+
+  // 상점 탭이 처음 그려질 때(또는 새로고침될 때) 호출 -- 조각 보유량 배지 갱신 + 10개
+  // 미만이면 "제작하기" 버튼 자체를 비활성화("10개가 있어야 누를수있게 해줘" 요청). 로스터는
+  // 미리 캐시해둔다(팝업을 처음 열 때 기다리지 않도록).
+  var LEGEND_CRAFT_COST_UI = 10;
+  function renderLegendaryCraftCard() {
+    var frag = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
+    var fragVal = document.getElementById('legendCraftFragVal');
+    if (fragVal) fragVal.textContent = frag;
+    var btn = document.getElementById('legendCraftBtn');
+    if (btn) btn.disabled = frag < LEGEND_CRAFT_COST_UI;
+    ensureLegendaryRosterLoaded(function () {});
+  }
+
+  function openLegendRoster() {
+    document.getElementById('legendRosterOverlay').classList.add('open');
+    document.getElementById('legendCraftAnim').style.display = 'none';
+    document.getElementById('legendCraftResult').style.display = 'none';
+    ensureLegendaryRosterLoaded(function (roster) { renderLegendRosterList(roster); });
+  }
+  function renderLegendRosterList(roster) {
+    var list = document.getElementById('legendRosterOverlayList');
+    list.style.display = '';
+    if (!roster.length) {
+      list.innerHTML = '<div class="sheet-empty">아직 등록된 전설장비가 없습니다.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    roster.forEach(function (item) {
+      var el = document.createElement('div');
+      el.className = 'legend-roster-item';
+      el.innerHTML = legendItemSummaryHtml(item) + '<div class="lri-arrow">›</div>';
+      el.onclick = function () { attemptCraft(item); };
+      list.appendChild(el);
+    });
+  }
+  function closeLegendRoster() {
+    document.getElementById('legendRosterOverlay').classList.remove('open');
+  }
+
+  // 팝업 안에서 항목을 누른 즉시 실행 -- 목록을 감추고 "제작 중..." 연출(최소
+  // LEGEND_CRAFT_ANIM_MS 유지) 후 성공/실패 결과를 같은 팝업 안에 보여준다.
+  var LEGEND_CRAFT_ANIM_MS = 1800;
+  function attemptCraft(item) {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    var list = document.getElementById('legendRosterOverlayList');
+    var anim = document.getElementById('legendCraftAnim');
+    var result = document.getElementById('legendCraftResult');
+    list.style.display = 'none';
+    result.style.display = 'none';
+    anim.style.display = '';
+
+    var startedAt = Date.now();
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=CRAFT_LEGENDARY&param1='
+        + encodeURIComponent(item.LEGENDARY_ID) + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var elapsed = Date.now() - startedAt;
+      var wait = Math.max(0, LEGEND_CRAFT_ANIM_MS - elapsed);
+      setTimeout(function () {
+        anim.style.display = 'none';
+        var msg = data.message || data.error || '완료';
+        var success = msg.indexOf('제작 성공') !== -1;
+        var fail = msg.indexOf('제작 실패') !== -1;
+        result.className = 'legend-craft-result' + (success ? ' success' : fail ? ' fail' : '');
+        result.textContent = msg;
+        result.style.display = '';
+        loadStatus(); // 조각 보유량(LEGEND_FRAGMENT) 갱신
+      }, wait);
+    }).catch(function () {
+      anim.style.display = 'none';
+      list.style.display = '';
+      toast('요청 실패');
+    });
+  }
+
+  // [2026-09-21] "장비제작소 안에 장비해체 버튼을 누르면 어떤장비해체할지 띄우는방식으로
+  // 하자" 요청 -- 보유(미착용) ★7 전설장비만 골라서 팝업 목록으로 보여주고, 각 항목의
+  // "해체" 버튼을 누르면 바로 실행(조각 9개 환급).
+  function openLegendDisenchant() {
+    var overlay = document.getElementById('legendDisenchantOverlay');
+    var list = document.getElementById('legendDisenchantList');
+    var legendItems = (lastParty.unequipped || []).filter(function (e) { return e.GRADE === 7; });
+    if (!legendItems.length) {
+      list.innerHTML = '<div class="sheet-empty">해체할 수 있는 ★7 전설장비(미착용)가 없습니다.</div>';
+    } else {
+      list.innerHTML = '';
+      legendItems.forEach(function (e) {
+        var el = document.createElement('div');
+        el.className = 'legend-roster-item';
+        var groupLabel = WEAPON_CLASS_NAME[e.CLASS] || (e.CLASS === 'COMMON' ? '공용' : e.CLASS);
+        el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
+            + '<div class="lri-body"><div class="lri-name">★7 ' + groupLabel + '</div></div>'
+            + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+9)</button>';
+        el.querySelector('.legend-disenchant-item-btn').onclick = function (ev) {
+          ev.stopPropagation();
+          action('DISENCHANT_LEGENDARY', String(e.__idx));
+          closeLegendDisenchant();
+        };
+        list.appendChild(el);
+      });
+    }
+    overlay.classList.add('open');
+  }
+  function closeLegendDisenchant() {
+    document.getElementById('legendDisenchantOverlay').classList.remove('open');
   }
 
   function loadAchievements() {
@@ -2909,11 +3473,10 @@ var TW = (function () {
     checkAppVersion();
     setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
 
-    // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청 -- 스크롤바 드래그/터치 스와이프/
-    // 맨 위로/맨 아래로 버튼은 그대로 되지만, 휠 이벤트만 막는다. { passive:false }라야
-    // preventDefault()가 실제로 스크롤을 취소한다.
-    var twViewport = document.getElementById('towerViewport');
-    if (twViewport) twViewport.addEventListener('wheel', function (e) { e.preventDefault(); }, { passive: false });
+    // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청으로 휠 이벤트를 막았었는데,
+    // [2026-09-21 철회] "pc버전에선 스크롤이 마우스로 잘 안되고" 요청으로 다시 허용(마우스휠
+    // 스크롤 차단 코드 제거, 스크롤바 드래그/터치 스와이프/맨위-내위치-맨아래 버튼은 원래도
+    // 계속 됐음).
   });
 
   return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
@@ -2921,7 +3484,10 @@ var TW = (function () {
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,
            scrollToHere: scrollToHere, scrollToTop: scrollToTop, scrollToBottom: scrollToBottom,
-           reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate };
+           reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate,
+           setBattleScreenVersion: setBattleScreenVersion,
+           openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
+           openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant };
 })();
 </script>
 </body>
