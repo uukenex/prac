@@ -56,6 +56,10 @@ public interface BotDAO {
 	public int countWordHisByUser(Map<String, Object> params);
 	public List<HashMap<String, Object>> selectWordHisByUserPaged(Map<String, Object> params);
 
+	/** [2026-09-22] /tower-battle-log "최근 N시간" 기본 조회(전체 유저 가능, userName 비우면
+	 *  전체). 시간대별 세부 필터(5분~24시간)는 이 결과셋 안에서 프론트가 JS로 처리. */
+	public List<HashMap<String, Object>> selectWordHisRecent(Map<String, Object> params);
+
 	public List<String> selectRoomList1(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList2(HashMap<String, Object> hashMap);
 	

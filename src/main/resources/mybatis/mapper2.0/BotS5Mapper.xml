@@ -41,6 +41,11 @@
         WHERE USER_NAME = #{userName}
     </select>
 
+    <!-- [2026-09-22] /tower-battle-log 페이지 유저 콤보박스용. -->
+    <select id="selectAllS5UserNames" resultType="string">
+        SELECT USER_NAME FROM TBOT_S5_USER_PROGRESS ORDER BY USER_NAME
+    </select>
+
     <!-- MAX_FLOOR_REACHED=1: 0층 마을에서 시작해도 그 구간 첫 사냥터층(1층)은 바로 층변경 가능해야 함 -->
     <insert id="insertUserProgress" parameterType="hashmap">
         INSERT INTO TBOT_S5_USER_PROGRESS

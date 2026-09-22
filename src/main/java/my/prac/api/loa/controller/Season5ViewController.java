@@ -397,6 +397,42 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-09-22] /tower-battle-log 유저 콤보박스용 -- S5 전체 유저 목록("전체" 옵션은
+     *  프론트에서 별도로 얹음, 여긴 실제 유저명만). */
+    @GetMapping("/api/tower-battle-log-users")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerBattleLogUsers() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("userNames", s5Dao.selectAllS5UserNames());
+        return ResponseEntity.ok(result);
+    }
+
+    /** [2026-09-22] "/로그 입력하면 랜딩, 전체유저 디폴트, 최근24시간, 5분/15분/60분/3시간/
+     *  24시간은 DB 재조회 없이 필터링으로" 요청 -- userName이 비어있으면 전체 유저, hours(기본
+     *  24)까지의 로그를 한 번에 내려준다. 이후 시간대 버튼은 프론트가 이 결과 안에서 JS로만
+     *  필터링(추가 API 호출 없음). */
+    @GetMapping("/api/tower-battle-log-recent")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerBattleLogRecent(
+            @RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+        if (hours < 1) hours = 1;
+        if (hours > 24) hours = 24; // 이 페이지가 보장하는 최대 범위(버튼 중 가장 넓은 게 24시간)
+
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("userName", userName.trim());
+        params.put("hours", hours);
+        params.put("maxRows", 1000); // 소규모 유저(21명) 기준 24시간 트래픽 상한 -- 안전장치
+
+        List<HashMap<String, Object>> items = botDao.selectWordHisRecent(params);
+
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("hours", hours);
+        result.put("capped", items.size() >= 1000);
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/api/tower-achievements")
     @ResponseBody
     public ResponseEntity<?> apiTowerAchievements(@RequestParam(value = "userName", defaultValue = "") String userName) {

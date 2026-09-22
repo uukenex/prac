@@ -398,6 +398,24 @@
 		) WHERE RN > #{startRow, jdbcType=INTEGER}
 	</select>
 
+	<!-- [2026-09-22] "/로그 입력하면 랜딩 + 전체유저 디폴트 + 최근24시간" 요청. 위 페이지네이션
+	     조회와 달리 userName이 없으면(전체 유저) 필터 없이, 최근 N시간(기본 24) 이내 것만
+	     한 번에 다 가져온다. 그 이후 시간대별 5분/15분/60분/3시간/24시간 버튼은 이 결과셋
+	     안에서 프론트가 순수 JS로 필터링한다(추가 DB 조회 없음). SYSDATE - hours/24 로
+	     "N시간 전"을 표현(Oracle DATE 산술은 일 단위라 시간은 24로 나눔). -->
+	<select id="selectWordHisRecent" parameterType="hashMap" resultType="hashMap">
+		SELECT * FROM (
+			SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
+			       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
+			  FROM TBOT_WORD_HIS A
+			 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
+			<if test="userName != null and userName != ''">
+			   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+			</if>
+			 ORDER BY A.INSERT_DATE DESC
+		) WHERE ROWNUM &lt;= #{maxRows, jdbcType=INTEGER}
+	</select>
+
 	<select id="selectRoomList1" resultType="String" parameterType="hashMap">
 		/* bot.xml selectRoomList1 */
 		SELECT A.ROOM_NAME

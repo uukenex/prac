@@ -15,6 +15,8 @@ public interface BotS5DAO {
     int insertUserProgress(HashMap<String, Object> map);
     int updateUserProgress(HashMap<String, Object> map);
     int deleteJunkZeroFloorUsers();
+    /** [2026-09-22] /tower-battle-log 페이지 유저 콤보박스용(전체 S5 유저 목록). */
+    List<String> selectAllS5UserNames();
 
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);

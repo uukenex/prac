@@ -646,6 +646,9 @@ public class LoaChatController {
 			case "/탑명령어":
 				val = s5.help(reqMap);
 				break;
+			case "/로그": // [2026-09-22] 유저별 전투/웹 로그 뷰어(별도 페이지) 링크 안내
+				val = s5.battleLogLink(reqMap);
+				break;
 			case "/탑업적":
 			case "/ㅌㅇㅂ":
 			case "/ㅌㅇㅈ":
