@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.dao.BotS5DAO;
 import my.prac.core.prjbot.service.BotS5Service;
 import my.prac.core.prjbot.service.BotService;
@@ -47,12 +48,22 @@ public class Season5ViewController {
     @Resource(name = "core.prjbot.BotService")
     BotService botService;
 
+    @Resource(name = "core.prjbot.BotDAO")
+    BotDAO botDao;
+
     // ─────────────────────────────────────────────
     // JSP 뷰 페이지
     // ─────────────────────────────────────────────
     @GetMapping("/tower-view")
     public String towerViewPage() {
         return "nonsession/loa/tower_view";
+    }
+
+    /** [2026-09-22] "전체 web포함 전투로그를 유저별로 볼수있게 페이지 구성해줘" 요청 -- tower-view
+     *  SPA와는 별도의 독립 페이지(URL/파일 둘 다 분리). 데이터는 /api/tower-battle-log. */
+    @GetMapping("/tower-battle-log")
+    public String battleLogViewPage() {
+        return "nonsession/loa/s5_battle_log_view";
     }
 
     // ─────────────────────────────────────────────
@@ -345,6 +356,44 @@ public class Season5ViewController {
                 ? new ArrayList<>() : s5Dao.selectUserRecentMessages(userName, 10);
         HashMap<String, Object> result = new HashMap<>();
         result.put("messages", messages);
+        return ResponseEntity.ok(result);
+    }
+
+    /** [2026-09-22] /tower-battle-log 전용 페이지네이션 API -- 채팅/웹 구분 없이 그 유저의
+     *  TBOT_WORD_HIS 전체를 최신순으로 페이지 단위로 내려준다(keyword가 있으면 REQ/RES
+     *  부분일치 검색). apiTowerMessages(최신 10개 고정)와 달리 과거 로그까지 전부 훑어볼 수
+     *  있어야 해서 별도 엔드포인트로 분리. */
+    @GetMapping("/api/tower-battle-log")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerBattleLog(
+            @RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "keyword", defaultValue = "") String keyword,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+        HashMap<String, Object> result = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            result.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 50;
+        if (pageSize > 200) pageSize = 200; // 한 페이지 과다 조회 방지(NCLOB 변환 비용)
+
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("userName", userName);
+        params.put("keyword", keyword.trim());
+        params.put("startRow", (page - 1) * pageSize);
+        params.put("endRow", page * pageSize);
+
+        int total = botDao.countWordHisByUser(params);
+        List<HashMap<String, Object>> items = total > (page - 1) * pageSize
+                ? botDao.selectWordHisByUserPaged(params) : new ArrayList<>();
+
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("pageSize", pageSize);
+        result.put("totalPages", (int) Math.ceil(total / (double) pageSize));
         return ResponseEntity.ok(result);
     }
 

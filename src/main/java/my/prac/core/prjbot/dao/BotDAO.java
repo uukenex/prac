@@ -51,7 +51,11 @@ public interface BotDAO {
 	public int selectSupporters(String userId);
 	
 	public int insertBotWordHis(HashMap<String, Object> hashMap);
-	
+
+	/** [2026-09-22] 유저별 전투로그 뷰어(/loa/tower-battle-log)용 페이지네이션 조회. */
+	public int countWordHisByUser(Map<String, Object> params);
+	public List<HashMap<String, Object>> selectWordHisByUserPaged(Map<String, Object> params);
+
 	public List<String> selectRoomList1(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList2(HashMap<String, Object> hashMap);
 	

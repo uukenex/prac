@@ -366,7 +366,38 @@
 			 ,sysdate
 			 ,#{issue_yn, jdbcType=VARCHAR})
 	</insert>
-	
+
+	<!-- [2026-09-22] "전체 web포함 전투로그를 유저별로 볼수있게 페이지 구성해줘" 요청.
+	     별도 관리자용 로그 뷰어 페이지(Season5ViewController /tower-battle-log)용. 채팅/웹
+	     구분 없이 그 유저의 TBOT_WORD_HIS 전체를 최신순으로 페이지네이션 + 키워드(REQ/RES
+	     부분일치) 검색. RES는 NCLOB라 TO_NCHAR로 변환(selectUserRecentMessages와 동일 패턴),
+	     REQ는 NVARCHAR2라 그대로 읽어도 안전. ROWNUM 이중 서브쿼리로 페이지네이션(이 DB가
+	     구버전 Oracle이라 OFFSET/FETCH 대신 이 패턴을 계속 써온 관례를 따름). -->
+	<select id="countWordHisByUser" parameterType="hashMap" resultType="int">
+		SELECT COUNT(*) FROM TBOT_WORD_HIS A
+		 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+		<if test="keyword != null and keyword != ''">
+		   AND (A.REQ LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%'
+		        OR TO_NCHAR(A.RES) LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%')
+		</if>
+	</select>
+
+	<select id="selectWordHisByUserPaged" parameterType="hashMap" resultType="hashMap">
+		SELECT RN, REQ, RES, ROOM_NAME, INSERT_DATE FROM (
+			SELECT ROWNUM RN, T.* FROM (
+				SELECT A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
+				       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
+				  FROM TBOT_WORD_HIS A
+				 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+				<if test="keyword != null and keyword != ''">
+				   AND (A.REQ LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%'
+				        OR TO_NCHAR(A.RES) LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%')
+				</if>
+				 ORDER BY A.INSERT_DATE DESC
+			) T WHERE ROWNUM &lt;= #{endRow, jdbcType=INTEGER}
+		) WHERE RN > #{startRow, jdbcType=INTEGER}
+	</select>
+
 	<select id="selectRoomList1" resultType="String" parameterType="hashMap">
 		/* bot.xml selectRoomList1 */
 		SELECT A.ROOM_NAME
