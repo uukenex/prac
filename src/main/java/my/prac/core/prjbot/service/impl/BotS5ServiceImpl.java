@@ -4096,6 +4096,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 변화 없음.
         monsterAtk = (int) Math.round(monsterAtk * investAtkScale(userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)));
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
+        // [2026-09-22] "플레이어가 공격받을때도 방어력에 의한 차감수치 표기해줘" 요청 -- 파티
+        // 공격 쪽(총 N dmg로 공격! / N - 🛡️방어 M = 실제딜)과 동일한 형식을 반격에도 적용.
+        // 방어 적용 전 원본(origAtkRoll)을 따로 남겨두고, monsterHitDamage()로 방어(및 최소
+        // 관통선)까지 적용한 값과의 차이를 "방어차감"으로 보여준다.
+        int origAtkRoll = monsterAtk * roll;
         int rawDmgToParty = monsterHitDamage(monsterAtk, roll, tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
         // [2026-09-16] "1.1배율로" 요청 -- 미드보스/구간보스 모두 +10%(x1.1)로 통일(과거 x1.15/x1.3 이력 있음).
@@ -4111,7 +4116,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 신고로 대상도 표기.
         // [2026-09-05 멘트 개편] 파티 공격 줄과 형식을 맞춰서(이름+HP 줄 / 굴림 결과 줄 분리),
         // 몬스터 HP 줄 바로 다음에 굴림 결과를 붙이고, "~에게 반격!" 문구는 숫자 없이 별도 줄로.
-        sb.append("🎲").append(roll).append("→ ").append(rawDmgToParty).append("dmg").append(NL);
+        sb.append("🎲").append(roll).append("→ ").append(origAtkRoll).append("dmg").append(NL);
+        // [2026-09-22] 방어차감 산수 -- 미드보스/보스 궁수기술 도용 증폭까지 반영된 최종
+        // rawDmgToParty 기준으로 역산해서(파티 공격 쪽과 동일한 "raw - 실제 = 차감" 방식)
+        // 늘 산수가 맞게 한다. 최소관통선(monsterHitDamage)에 걸리면 차감량이 원본의 50%로
+        // 자동 캡핑된 상태로 보인다.
+        long tMitigated = origAtkRoll - rawDmgToParty;
+        if (tMitigated > 0) {
+            sb.append(origAtkRoll).append("dmg - 🛡️방어 ").append(tMitigated).append("dmg = ")
+              .append(rawDmgToParty).append("dmg").append(NL);
+        } else if (tMitigated < 0) {
+            sb.append(origAtkRoll).append("dmg + 방어무시 가산 ").append(-tMitigated).append("dmg = ")
+              .append(rawDmgToParty).append("dmg").append(NL);
+        }
         sb.append(dualMonster ? eliteMonsterName(floor, mon, elite, ti) : eliteMonsterName(floor, mon, elite))
           .append("의 ").append(jobTag(tGrade, tJob, tName)).append("에게 반격! ").append(NL);
 
