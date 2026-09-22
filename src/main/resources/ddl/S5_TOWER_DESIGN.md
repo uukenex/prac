@@ -4314,3 +4314,37 @@ FACTOR` 설계)을 ATK에도 같이 적용해서 고투자 계정만 타겟으�
   넣으면 어느 클램프 때문에 줄었는지 뒤섞여 보일 수 있음. 이번엔 매 턴 반격(가장 빈번한
   피해 경로)에만 적용.
 - DB 마이그레이션 없음. `BotS5ServiceImpl.java`만 수정(`resolveCombatTurn`의 반격 계산부).
+
+## [2026-09-22] 로그뷰어 페이지 전면 개편 -- /로그 명령어, 유저 콤보박스, 시간대 클라이언트 필터
+
+**요청**: "/tower-battle-log 페이지에 /로그 입력하면 해당페이지 랜딩하게 해줘(쿼리에
+최근24시간 조건도 넣어줘). 유저명은 콤보박스로 선택할수 있게 해줘(s5유저테이블에서
+조회해서) 그리고, 전체유저조회가 디폴트로 해줘. 최근 5분, 15분, 60분, 3시간, 24시간
+버튼으로 제어할수있게해줘. db사용안하고 필터링으로 되게 해줘."
+
+전날 만든 "유저명 입력 + 페이지네이션" 모델을 "전체 유저 기본 + 최근 24시간 벌크 로드 +
+클라이언트 필터" 모델로 재설계.
+
+- **`/로그` 채팅 명령어 신설**(`Season5Controller.battleLogLink`, 관리자 전용/비공개) --
+  `/loa/tower-battle-log` 링크만 안내(DB 조회 불필요, 단순 문자열 반환).
+- **유저 콤보박스**: 텍스트 입력을 `<select>`로 교체. 옵션은 신규
+  `GET /api/tower-battle-log-users` -> `BotS5DAO.selectAllS5UserNames()`
+  (`TBOT_S5_USER_PROGRESS.USER_NAME` 전체)로 채움. 첫 옵션 "전체 유저"(value="")가
+  기본 선택.
+- **최근 24시간 벌크 조회 + 클라이언트 필터**: 신규 `GET /api/tower-battle-log-recent
+  ?userName=&hours=24` -> `BotDAO.selectWordHisRecent()` -- userName이 비어있으면
+  전체 유저, `SYSDATE - hours/24`로 최근 N시간(최대 24)까지 한 번에 반환(최대 1000건
+  안전장치, 소규모 유저 21명 기준 24시간 트래픽엔 여유 있음). 이후 5분/15분/60분/3시간/
+  24시간 버튼과 검색어 입력은 전부 이미 받아온 이 결과셋 안에서 **순수 JS로만 필터링**
+  (`INSERT_DATE` 문자열을 `Date`로 파싱해 `now - 버튼분수 이내`인지 비교) -- 버튼을
+  누르거나 검색어를 입력해도 추가 서버 요청이 전혀 없음. 유저 콤보박스를 바꿀 때만
+  서버에 다시 요청(그 유저의 데이터 자체가 달라지므로).
+- 전체 유저 보기일 땐 각 로그 항목 머리글에 유저명도 함께 표시(특정 유저를 골랐을 땐
+  중복이라 생략).
+- 기존 페이지네이션 API(`/api/tower-battle-log`, 09-22 최초 버전)는 코드상 그대로
+  남겨뒀지만 이 페이지는 더 이상 호출하지 않음(24시간보다 더 과거를 검색해야 할 필요가
+  생기면 재사용 가능).
+- DB 마이그레이션 없음. 변경 파일: `LoaChatController.java`(`/로그` 케이스),
+  `Season5Controller.java`(`battleLogLink`), `Season5ViewController.java`(신규 API
+  2종), `BotDAO.java`/`BotMapper.xml`(`selectWordHisRecent`), `BotS5DAO.java`/
+  `BotS5Mapper.xml`(`selectAllS5UserNames`), `s5_battle_log_view.jsp`(UI 전면 재작성).
