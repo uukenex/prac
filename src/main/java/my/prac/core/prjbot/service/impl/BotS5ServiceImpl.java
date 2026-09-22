@@ -881,15 +881,34 @@ public class BotS5ServiceImpl implements BotS5Service {
     //      저장값 자체는 안 건드려서 언제든 상수만 바꾸면 즉시 롤백 가능).
     //   2) 근본(investAtkScale() 참고): 스탯구매+한계돌파 복합 투자배율이 큰 캐릭터일수록
     //      몬스터 반격도 비례해서 세지도록(로스터리 DEF 건과 동일 설계 원리를 ATK에도 적용).
-    private static final double ATK_BOOST_V1_LEGACY = 1.2;   // 50층 이하(레거시 V1)
+    // [2026-09-22 재조정] 실전 피드백("타락고냥이/바드 유저 몬스터공격시 1씩 닳아, 60~70층
+    // 유저도 기습 데미지가 너무 적어") -- ×1.2로는 50층 이하 절대값이 여전히 부족해서
+    // ×2.0으로 올림. 근본 원인은 그보다 `Math.max(1, ATK*roll - DEF)` 식 자체가 DEF가
+    // 크면(고투자 계정) 원본 공격력과 무관하게 전부 "1"로 바닥날 수 있다는 것 -- 아래
+    // monsterHitDamage()에서 "적어도 원본(ATK*roll)의 일정 비율은 방어를 뚫는다"는 최소
+    // 보장선을 추가로 둠(기습도 같은 함수 재사용, investAtkScale도 함께 적용).
+    private static final double ATK_BOOST_V1_LEGACY = 2.0;   // 50층 이하(레거시 V1)
     private static final double ATK_BOOST_V2_NORMAL = 1.4;   // 51층+ 일반(15%->21% 목표)
     private static final double ATK_BOOST_V2_BOSS = 1.45;    // 51층+ 보스(20%->29% 목표)
+    private static final double MONSTER_DMG_MIN_RATIO = 0.5; // 방어력이 아무리 높아도 원본 공격력의 최소 이 비율은 관통
 
     private double monsterDefForFloor(int floor) {
         if (floor < DEF_RAMP_START_FLOOR) return 0; // 60층 미만(및 60층 자체=마을) 전부 0
         if (floor >= DEF_RAMP_END_FLOOR) return DEF_RAMP_END_VAL; // 99층 이상(콘텐츠상 사실상 99뿐)은 상한 고정
         double t = (floor - DEF_RAMP_START_FLOOR) / (double) (DEF_RAMP_END_FLOOR - DEF_RAMP_START_FLOOR);
         return DEF_RAMP_START_VAL + t * (DEF_RAMP_END_VAL - DEF_RAMP_START_VAL);
+    }
+
+    /** [2026-09-22] 몬스터가 파티원을 때리는 모든 경로(반격/기습)가 공유하는 최종 피해 계산.
+     *  기존엔 `Math.max(1, atk*roll - def)`라 방어력이 크면(고투자 계정) 몬스터 공격력이
+     *  아무리 세져도 결과가 그냥 "1"로 바닥나 버렸다("몬스터공격시 1씩 닳아" 신고) -- 방어력이
+     *  깎을 수 있는 한도를 원본(atk*roll)의 (1-MONSTER_DMG_MIN_RATIO)까지로 캡핑해서,
+     *  "적어도 몬스터기본공격x주사위배율의 절반은 뚫고 들어와야 한다"는 요청대로 최소
+     *  보장선을 원본 공격력에 비례하게 만든다. */
+    private int monsterHitDamage(int monsterAtk, int roll, int targetDef) {
+        int raw = monsterAtk * roll;
+        int minGuaranteed = Math.max(1, (int) Math.round(raw * MONSTER_DMG_MIN_RATIO));
+        return Math.max(minGuaranteed, raw - targetDef);
     }
 
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
@@ -2994,12 +3013,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int[] amEff = computeEffectiveStat(strVal(amTarget.get("CLASS"), "WARRIOR"), intVal(amTarget.get("GRADE"), 1),
                         amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult * AMBUSH_ATK_PCT);
+                // [2026-09-22] "60~70층 유저도 선공(기습)당할때 데미지가 너무 적어" 신고 --
+                // 반격과 동일하게 대상 본인의 투자배율만큼 기습 공격력도 같이 올린다.
+                amMonsterAtk = (int) Math.round(amMonsterAtk * investAtkScale(userStat, intVal(amTarget.get("LIMIT_BREAK"), 0)));
                 // [2026-09-19] "51층+ 몬스터는 자기만의 무작위 면수를 쓴다"는 규칙(반격과 동일,
                 // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
                 // (diceMax, 최대 20)를 그대로 재사용해서 플레이어가 강한 주사위를 낄수록
                 // 몬스터 기습도 덩달아 세지는 부작용이 있었다.
                 int amRoll = rollFace(1, monsterOwnDiceMax(floor, diceMax));
-                int amDmg = Math.max(1, amMonsterAtk * amRoll - amEff[2]);
+                // [2026-09-22] 반격과 동일하게 "적어도 원본 공격력의 절반은 방어를 뚫는다"는
+                // 최소 보장선 적용(monsterHitDamage 참고). MAX_AMBUSH_DMG/사망방지 클램프는
+                // 아래에서 그대로 이어서 적용됨.
+                int amDmg = monsterHitDamage(amMonsterAtk, amRoll, amEff[2]);
                 // [2026-09-19] "★6 체력1만인데 기습이 4만" 신고 -- 재요청("즉사할 수도 있게는
                 // 해야지, 다만 100% 확정 즉사는 과함")에 맞춰 즉사 자체는 막지 않되, 실드까지
                 // 감안한 체감 최대치를 MAX_AMBUSH_DMG(2만)로 못박는다.
@@ -4071,7 +4096,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 변화 없음.
         monsterAtk = (int) Math.round(monsterAtk * investAtkScale(userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)));
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
-        int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
+        int rawDmgToParty = monsterHitDamage(monsterAtk, roll, tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
         // [2026-09-16] "1.1배율로" 요청 -- 미드보스/구간보스 모두 +10%(x1.1)로 통일(과거 x1.15/x1.3 이력 있음).
         if (midBossArcherDmgUp) rawDmgToParty = (int) Math.round(rawDmgToParty * 1.1);
