@@ -600,6 +600,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         return LIMIT_BREAK_PCT[lv];
     }
 
+    // [2026-09-22] "근본" 처방 -- 몬스터 ATK 전체 상향(위 ATK_BOOST_*)만으로는 스탯구매
+    // (체력 Lv당 +3%, 최대 45~50Lv)와 한계돌파(최대 +180%)가 복합된 고투자 캐릭터의 체력이
+    // 그만큼 불어나 있어서 "맞아도 안 아프다"는 체감이 그대로 남는다(로스터리 밸런스 조사
+    // 때 진단한 것과 같은 원인 -- 스탯구매 ×2.35 + 한계돌파 ×2.80 복합 투자배율이 DEF/ATK
+    // 어느 쪽 설계에도 반영이 안 돼 있었음). computeEffectiveStat()의 체력 배율 공식
+    // ((1+HP_PCT_PER_LV*hpLv) * 한계돌파배율)과 완전히 동일한 식으로 "이 캐릭터의 체력이
+    // 투자 전 대비 몇 배 불었는지"(investMult)를 구하고, 그 초과분의 ATK_INVEST_SCALE(50%)
+    // 만큼만 몬스터 공격력에 되돌려준다(100% 전부 되돌리면 투자로 얻는 이득이 전혀 없어지므로
+    // 로스터리 DEF 설계 때와 동일하게 절반만 -- 투자는 여전히 유리하지만 그 유리함의 정도를
+    // 완화). investMult=1(무투자)이면 배율 1(변화 없음). */
+    private static final double ATK_INVEST_SCALE = 0.5;
+
+    private double investAtkScale(HashMap<String, Object> userStat, int limitBreak) {
+        int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
+        double investMult = (1 + HP_PCT_PER_LV * hpLv) * (1 + limitBreakPct(limitBreak));
+        return 1 + ATK_INVEST_SCALE * Math.max(0, investMult - 1);
+    }
+
     /** 등급+직업 베이스 스탯에 장비/스탯구매/한계돌파 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
     private int[] computeEffectiveStat(String job, int grade, List<HashMap<String, Object>> equips, HashMap<String, Object> userStat, int limitBreak) {
         int[] base = calcBaseStat(job, grade);
@@ -851,6 +869,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final double DEF_RAMP_START_VAL = 100;
     private static final double DEF_RAMP_END_VAL = 6096;
 
+    // [2026-09-22] "전체적으로 몬스터공격력이 너무낮아서 긴장감이 없어" 신고 -- 로그 대신
+    // 실측 API(라이브 유저 8명, 24~99층)로 "몬스터 반격 1회가 파티원 HP의 몇%를 깎는지"를
+    // 계산해보니 평균 6~12%(약한 구성은 최대 ~19%)로, V2 설계 당시 목표(일반 15%/보스 20%,
+    // S5_BALANCE_V2_LINEAR.sql 주석)에 못 미치고 있었음(분석 상세: S5_TOWER_DESIGN.md
+    // "몬스터 공격력 적정선 분석"). "즉효+근본 둘 다 적용" 요청으로 두 가지를 함께:
+    //   1) 즉효(이 상수들): ATK_VALUE 자체를 목표치까지 전체 상향(51층+ 일반 15%->21%
+    //      즉 ×1.4, 보스 20%->29% 즉 ×1.45; 50층 이하는 애초에 스케일 대상도 아니었던
+    //      레거시 V1 구간이라 "조금씩"이라는 요청대로 더 작게 ×1.2). DB 마이그레이션 없이
+    //      applyHardcoreFloorScale()에서 조회 시점에 곱연산 적용(DEF 선형화와 동일 패턴 --
+    //      저장값 자체는 안 건드려서 언제든 상수만 바꾸면 즉시 롤백 가능).
+    //   2) 근본(investAtkScale() 참고): 스탯구매+한계돌파 복합 투자배율이 큰 캐릭터일수록
+    //      몬스터 반격도 비례해서 세지도록(로스터리 DEF 건과 동일 설계 원리를 ATK에도 적용).
+    private static final double ATK_BOOST_V1_LEGACY = 1.2;   // 50층 이하(레거시 V1)
+    private static final double ATK_BOOST_V2_NORMAL = 1.4;   // 51층+ 일반(15%->21% 목표)
+    private static final double ATK_BOOST_V2_BOSS = 1.45;    // 51층+ 보스(20%->29% 목표)
+
     private double monsterDefForFloor(int floor) {
         if (floor < DEF_RAMP_START_FLOOR) return 0; // 60층 미만(및 60층 자체=마을) 전부 0
         if (floor >= DEF_RAMP_END_FLOOR) return DEF_RAMP_END_VAL; // 99층 이상(콘텐츠상 사실상 99뿐)은 상한 고정
@@ -887,6 +921,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 scaled.put("ATK_VALUE", ((Number) mon.get("ATK_VALUE")).doubleValue() * mult);
             }
         }
+        // [2026-09-22] ATK 전체 상향(위 ATK_BOOST_* 주석 참고) -- HP/DEF와 무관하게 ATK_VALUE만
+        // 한 번 더 곱연산으로 올린다. V1/V2 어느 경로를 거쳤든 이 시점의 scaled.ATK_VALUE가
+        // "이번 요청 전 최종값"이므로 여기서 곱하면 두 경로 모두에 자동 적용된다.
+        boolean isBossMon = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
+        double atkBoost = floor > 50 ? (isBossMon ? ATK_BOOST_V2_BOSS : ATK_BOOST_V2_NORMAL) : ATK_BOOST_V1_LEGACY;
+        scaled.put("ATK_VALUE", ((Number) scaled.get("ATK_VALUE")).doubleValue() * atkBoost);
+
         // DEF는 위 HP/ATK 경로(V1/V2)와 무관하게 층 기반 공식으로 완전히 대체(보스 포함 전부).
         scaled.put("DEF_VALUE", monsterDefForFloor(floor));
         return scaled;
@@ -4025,6 +4066,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 유지 -- 이 조합이 시뮬레이션상 목표치에 가장 가까웠다(주사위까지 올리면 약 16%로
         // 오히려 목표보다 낮아짐).
         if (isBossRow) monsterAtk = (int) Math.round(monsterAtk * 1.6);
+        // [2026-09-22] "근본" 처방 -- 이 반격을 맞는 대상 본인의 투자배율(스탯구매+한계돌파)에
+        // 비례해서 공격력을 추가로 올린다(investAtkScale 주석 참고). 무투자 캐릭터는 배율 1이라
+        // 변화 없음.
+        monsterAtk = (int) Math.round(monsterAtk * investAtkScale(userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)));
         int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         int rawDmgToParty = Math.max(1, monsterAtk * roll - tEff[2]);
         // 중간보스가 이번 턴 궁수 기술을 훔쳤으면(위 미드보스 파트) 이 반격 피해를 즉시 증폭.
