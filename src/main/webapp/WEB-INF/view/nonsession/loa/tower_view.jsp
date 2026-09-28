@@ -101,6 +101,10 @@
     .tile.combat{ background:var(--combat); } .tile.treasure{ background:var(--treasure); }
     .tile.pp{ background:var(--pp); } .tile.trap{ background:var(--trap); } .tile.special{ background:var(--special); }
     .tile.stairs-up{ background:var(--gold); } .tile.stairs-down{ background:var(--village); } .tile.elite{ background:var(--elite); }
+    /* [2026-09-28] 101층+ 계단 구역 전용 칸 -- 행운(무엇이 나올지 모르는 랜덤칸)은 럭키/함정/특수
+       색을 섞은 그라데이션, 중간보스는 강화몬스터보다 한 톤 짙게 테두리까지 둘러 눈에 띄게. */
+    .tile.random-lucky{ background:linear-gradient(135deg, var(--pp) 0%, var(--special) 50%, var(--trap) 100%); }
+    .tile.midboss{ background:var(--elite); box-shadow:inset 0 0 0 2px var(--ink); font-weight:700; }
     .tile.hidden{ background:#D8CDB4; color:#8a7f68; }
     .tile.done{ opacity:.55; } .tile.here{ outline:2px solid var(--ink); transform:scale(1.15); opacity:1; z-index:2; }
     /* [2026-09-14] "미니맵이 마음에 안 든다, 롤백해달라" 요청으로 09-13에 넣었던
@@ -1486,10 +1490,17 @@ var TW = (function () {
     updateDiceButtonState();
   }
 
+  // [2026-09-28] RANDOM_LUCKY/MIDBOSS는 101층+ 계단 구역 전용 칸(BotS5ServiceImpl.STAIR_ZONE_PATTERN).
   var TILE_CLASS = { COMBAT: 'combat', TREASURE: 'treasure', PP: 'pp', TRAP: 'trap', SPECIAL: 'special',
-                      STAIRS_UP: 'stairs-up', STAIRS_DOWN: 'stairs-down', ELITE: 'elite' };
+                      STAIRS_UP: 'stairs-up', STAIRS_DOWN: 'stairs-down', ELITE: 'elite',
+                      RANDOM_LUCKY: 'random-lucky', MIDBOSS: 'midboss' };
   var TILE_KR    = { COMBAT: '전투', TREASURE: '보물상자', PP: '럭키', TRAP: '함정', SPECIAL: '무너진사원',
-                      STAIRS_UP: '계단↑', STAIRS_DOWN: '계단↓', ELITE: '강화몬스터' };
+                      STAIRS_UP: '계단↑', STAIRS_DOWN: '계단↓', ELITE: '강화몬스터',
+                      RANDOM_LUCKY: '행운', MIDBOSS: '중간보스' };
+  // BotS5ServiceImpl.STAIR_ZONE_START와 같은 값 -- 이 층부터 X0/X9층 규칙 없는 9칸 고정 계단 구역.
+  var STAIR_ZONE_START = 101;
+  var STAIR_ZONE_BASE_CAMP = 100;
+  function isStairZone(floor) { return floor >= STAIR_ZONE_START; }
   function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 
   function loadStatus() {
@@ -1518,7 +1529,7 @@ var TW = (function () {
         // '편성' 탭(파티 슬롯 토글/장비 장착·합성)과 '상점' 탭(뽑기) 전부 전투 중만 아니면
         // 어디서든 가능하므로 탭 자체를 막지 않는다. inVillage는 아래 주사위 버튼(보드가
         // 없는 마을에서는 이동/전투가 의미 없음)에만 쓰인다.
-        state.inVillage = (p.CUR_FLOOR % 10 === 0);
+        state.inVillage = (p.CUR_FLOOR % 10 === 0) && !isStairZone(p.CUR_FLOOR); // 110/120층 등은 계단 구역 일반 층
         updateDiceButtonState();
         renderTickets(p);
 
@@ -1572,6 +1583,8 @@ var TW = (function () {
     var nav = document.getElementById('towerNav');
     nav.innerHTML = '';
     var curFloor = p.CUR_FLOOR;
+    // [2026-09-28] 100층 마을/101층+ 계단 구역은 "X9=보스, X0=마을, 탑올라가기" 블록 그림이 안 맞아 별도로 그린다.
+    if (curFloor >= STAIR_ZONE_BASE_CAMP) { renderStairZoneNav(nav, p); return; }
     var blockBase = curFloor - (curFloor % 10);
     var maxReached = p.MAX_FLOOR_REACHED || 0;
     var bestByFloor = {};
@@ -1633,6 +1646,70 @@ var TW = (function () {
           : function () { toast('탑다운은 지금 있는 구간의 마을에서만 사용할 수 있습니다.'); };
       nav.appendChild(downRow);
     }
+  }
+
+  /** [2026-09-28] 100층 마을 + 101층+ 계단 구역 전용 층이동 그림. 층마다 마을이 없어서
+   *  목록은 "지금 10층 단위의 계단층들 + 맨 아래 100층 마을(부활)" 구성이고, 이동은 층 번호를
+   *  그대로 보낸다(서버 changeFloor가 101 이상 숫자를 "그 층으로 바로 이동"으로 처리 --
+   *  이미 가본 층까지만). 가본 최고층이 목록 밖이면 맨 위에 바로가기 행을 둔다. */
+  var STAIR_ZONE_MAX_FLOOR = 200;
+  function renderStairZoneNav(nav, p) {
+    var curFloor = p.CUR_FLOOR;
+    var maxReached = Math.min(p.MAX_FLOOR_REACHED || 0, STAIR_ZONE_MAX_FLOOR);
+    var blockBase = curFloor - (curFloor % 10);
+    if (maxReached > STAIR_ZONE_START && maxReached !== curFloor
+        && (maxReached < blockBase || maxReached > blockBase + 9)) {
+      var resumeRow = document.createElement('div');
+      resumeRow.className = 'tower-floor boss';
+      resumeRow.innerHTML = '<span class="tf-left"><span class="tf-num">⏩</span><span>' + maxReached
+          + '층</span><span class="tf-kind">가본 최고층으로</span></span>';
+      resumeRow.onclick = function () { confirmMoveAbs(maxReached, '계단층'); };
+      nav.appendChild(resumeRow);
+    }
+    for (var n = 9; n >= 0; n--) {
+      var floor = blockBase + n;
+      if (floor < STAIR_ZONE_START || floor > STAIR_ZONE_MAX_FLOOR) continue;
+      var isHere = (floor === curFloor);
+      var reachable = (floor === STAIR_ZONE_START) || floor <= maxReached;
+      var row = document.createElement('div');
+      row.className = 'tower-floor' + (isHere ? ' here' : '') + (reachable ? '' : ' locked');
+      row.innerHTML = '<span class="tf-left"><span class="tf-num">🪜</span>'
+          + '<span>' + floor + '층</span><span class="tf-kind">계단층</span></span>'
+          + (isHere ? '<span class="tf-explored" style="color:var(--gold);">📍 현재 위치</span>' : '');
+      if (reachable && !isHere) {
+        row.onclick = (function (targetFloor) {
+          return function () { confirmMoveAbs(targetFloor, '계단층'); };
+        })(floor);
+      } else if (!reachable) {
+        row.onclick = function () { toast('아직 가본 적 없는 층입니다. 계단 구역은 한 층씩 직접 올라가야 해요.'); };
+      }
+      nav.appendChild(row);
+    }
+    var atCamp = (curFloor === STAIR_ZONE_BASE_CAMP);
+    var campRow = document.createElement('div');
+    campRow.className = 'tower-floor village' + (atCamp ? ' here' : '');
+    campRow.innerHTML = '<span class="tf-left"><span class="tf-num">0</span>'
+        + '<span>' + STAIR_ZONE_BASE_CAMP + '층</span><span class="tf-kind">마을(부활)</span></span>'
+        + (atCamp ? '<span class="tf-explored" style="color:var(--gold);">📍 현재 위치</span>' : '');
+    if (!atCamp) campRow.onclick = function () { confirmMove(STAIR_ZONE_BASE_CAMP, 0, '마을'); };
+    nav.appendChild(campRow);
+    var downRow = document.createElement('div');
+    downRow.className = 'tower-floor village' + (atCamp ? '' : ' locked');
+    downRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬇️</span>'
+        + '<span>' + (STAIR_ZONE_BASE_CAMP - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
+    downRow.onclick = atCamp
+        ? function () { confirmTowerDown(STAIR_ZONE_BASE_CAMP - 10); }
+        : function () { toast('탑다운은 ' + STAIR_ZONE_BASE_CAMP + '층 마을에서만 사용할 수 있습니다.'); };
+    nav.appendChild(downRow);
+  }
+
+  function confirmMoveAbs(floor, kind) {
+    document.getElementById('confirmMsg').textContent = floor + '층(' + kind + ')으로 정말 이동하시겠습니까?';
+    document.getElementById('confirmYesBtn').onclick = function () {
+      closeConfirm();
+      action('CHANGE_FLOOR', String(floor));
+    };
+    document.getElementById('confirmOverlay').classList.add('open');
   }
 
   function confirmMove(floor, n, kind) {
@@ -2018,6 +2095,7 @@ var TW = (function () {
       }
       return;
     }
+    if (isStairZone(floor)) { renderStairBoard(track, tiles, curTile, floor); return; }
     var n = tiles.length;
     // [2026-09-05] 칸 수(최대 150~200)에 맞춰 트랙을 키우던 방식을 버리고 뷰포트를 고정
     // 크기(overflow:hidden)로 두는 대신 칸 크기(cell)를 칸 수에 맞춰 줄이게 했었다 -- 좌표는
@@ -2153,6 +2231,66 @@ var TW = (function () {
     }
   }
   var lastAutoScrollFloor = null;
+
+  /** [2026-09-28] "맵은 계단식으로 해줘" 요청 -- 101층+ 계단 구역 9칸을 왼쪽 아래(1번 계단)에서
+   *  오른쪽 위(9번 중간보스)로 한 칸씩 올라가는 계단 모양으로 배치한다. 칸 사이 선도 수평(디딤판)
+   *  -> 수직(챌판)으로 꺾어서 실제 계단처럼 보이게 하고, 이미 지나온 칸은 흐리게(.done), 앞으로
+   *  밟을 칸은 또렷하게 둬서 "다음에 뭐가 나오는지" 한눈에 보이게 한다. 좌표는 트랙 기준 %라
+   *  PC/모바일 폭과 무관하게 같은 모양이 나온다. 이동은 서버에서 항상 1칸씩이다. */
+  function renderStairBoard(track, tiles, curTile, floor) {
+    track.style.height = '';
+    var n = tiles.length;
+    var x0 = 10, x1 = 90, y0 = 86, y1 = 16; // 1번 칸(좌하) ~ 마지막 칸(우상), 트랙 기준 %
+    var pts = [];
+    for (var i = 0; i < n; i++) {
+      var t = n > 1 ? i / (n - 1) : 0;
+      pts.push({ x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t });
+    }
+    var d = 'M' + pts[0].x + ',' + pts[0].y;
+    for (var k = 1; k < n; k++) {
+      d += ' L' + pts[k].x + ',' + pts[k - 1].y + ' L' + pts[k].x + ',' + pts[k].y;
+    }
+    var svg = document.createElementNS(trackSvgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
+    var lineEl = document.createElementNS(trackSvgNS, 'path');
+    lineEl.setAttribute('d', d);
+    lineEl.setAttribute('fill', 'none');
+    lineEl.setAttribute('stroke', 'var(--line)');
+    lineEl.setAttribute('stroke-width', '3');
+    lineEl.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.appendChild(lineEl);
+    track.appendChild(svg);
+
+    var vw = Math.max(200, track.clientWidth);
+    var cell = Math.max(30, Math.min(56, Math.round(vw / (n + 2))));
+    var fontSize = Math.max(9, Math.min(13, Math.round(cell / 3.2)));
+    var tnoSize = Math.max(7, Math.round(cell / 5));
+    tiles.forEach(function (tile, idx) {
+      var pt = pts[idx];
+      var div = document.createElement('div');
+      var isHere = (tile.TILE_NO === curTile);
+      var isPassed = tile.TILE_NO < curTile;
+      div.style.left = 'calc(' + pt.x + '% - ' + (cell / 2) + 'px)';
+      div.style.top = 'calc(' + pt.y + '% - ' + (cell / 2) + 'px)';
+      div.style.width = cell + 'px';
+      div.style.height = cell + 'px';
+      div.style.fontSize = fontSize + 'px';
+      div.className = 'tile ' + tileClass(tile.TILE_TYPE) + (isHere ? ' here' : (isPassed ? ' done' : ''));
+      div.innerHTML = '<span class="tno" style="font-size:' + tnoSize + 'px">' + tile.TILE_NO + '</span>'
+          + (TILE_KR[tile.TILE_TYPE] || tile.TILE_TYPE || '?');
+      track.appendChild(div);
+    });
+    var label = document.createElement('div');
+    label.style.cssText = 'position:absolute;right:8px;top:4px;font-size:11px;color:var(--ink-soft);';
+    label.textContent = '⬆️ ' + (floor + 1) + '층으로';
+    track.appendChild(label);
+    if (lastAutoScrollFloor !== floor) {
+      lastAutoScrollFloor = floor;
+      scrollToHere();
+    }
+  }
 
   // [2026-09-05] 주사위 교체 오버레이 -- 상점탭에 있던 걸 보드 칸그리드 위로 옮겨서, 해금된
   // 등급끼리는 버튼 한 번으로(자동구매형태, 별도 확인창 없음) 바로 교체하고 굴릴 수 있게 함.

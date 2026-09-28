@@ -255,6 +255,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     private String floorMonsterName(int floor, HashMap<String, Object> mon) {
         if ("Y".equals(strVal(mon.get("BOSS_YN"), "N"))) return strVal(mon.get("MONSTER_NAME"), "보스");
         int pos = (floor / 10) * 8 + (floor % 10); // 1층=1, 8층=8, 11층=9 ... 순환 일련번호
+        // [2026-09-28] 101층+ 계단 구역은 모든 층이 전투층이라 위 "블록당 8층" 번호로는 X0/X9층이
+        // 앞뒤 층과 이름이 겹친다 -- 98층(=80번) 다음부터 층마다 1씩 이어서 매김.
+        if (floor >= STAIR_ZONE_START) pos = 80 + (floor - STAIR_ZONE_BASE_CAMP);
         if (pos < 1) pos = 1;
         int n = FLOOR_MONSTER_NAME.length;
         String base = FLOOR_MONSTER_NAME[(pos - 1) % n];
@@ -345,6 +348,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("TRAP",   "🕳️ 함정");  put("SPECIAL", "🏚️ 무너진 사원"); // [2026-09-18] 舊 "✨ 특수"(워프포인트)
         put("STAIRS_UP", "🪜⬆️ 계단(위)"); put("STAIRS_DOWN", "🪜⬇️ 계단(아래)");
         put("ELITE",  "💪 강화몬스터");
+        // [2026-09-28] 101층+ 계단 구역 전용 칸(STAIR_ZONE_PATTERN 참고)
+        put("RANDOM_LUCKY", "🎲 행운"); put("MIDBOSS", "👹 중간보스");
     }};
 
     // 쿨타임(초) 3종. DB(TBOT_S5_CONFIG)에서 서버 기동 시(@PostConstruct) 로드해 메모리에
@@ -698,7 +703,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 그 층 "일반" 몬스터(BOSS_YN='N')의 전투력 -- applyHardcoreFloorScale로 51층+ 구간 내
      *  선형 스케일(1번째 사냥터층 50% ~ 8번째 100%)까지 반영한 실제 그 층 기준값. */
     private long floorMonsterCombatPower(int floor) {
-        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), "N"), floor);
         if (mon == null) return 0;
         return combatPower(((Number) mon.get("HP_VALUE")).doubleValue(),
                 ((Number) mon.get("ATK_VALUE")).doubleValue(), ((Number) mon.get("DEF_VALUE")).doubleValue());
@@ -712,12 +717,17 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  상한으로 바꿔서 "지금 당장 이동 가능한 전체 범위"를 기준으로 추천한다.
      *  SAFE_HUNT_RATIO배 이상 여유 있는 "가장 높은" 층을 추천(같은 조건이면 보상이 더 좋은
      *  고층 우선). 만족하는 층이 하나도 없으면(1층조차 버거움) 0 반환. */
-    private int recommendHuntFloor(long myPower, int unlockedBlock) {
+    private int recommendHuntFloor(long myPower, int unlockedBlock, int maxReached) {
         int best = 0;
         int cap = Math.min(unlockedBlock + 9, CONTENT_LOCKED_FLOOR - 1);
+        // [2026-09-28] 계단 구역(101층+)은 블록 해금 대신 "가본 층까지 바로 이동" 규칙이라
+        // 100층 마을을 연 유저는 가본 최고층(또는 첫 층 101)까지를 추천 범위로 본다.
+        if (unlockedBlock >= STAIR_ZONE_BASE_CAMP) {
+            cap = Math.max(cap, Math.min(Math.max(maxReached, STAIR_ZONE_START), STAIR_ZONE_MAX_FLOOR));
+        }
         for (int f = 1; f <= cap; f++) {
             int pos = f % 10;
-            if (pos < 1 || pos > 8) continue; // 사냥터층만 대상(마을/보스 제외)
+            if (!isStairZone(f) && (pos < 1 || pos > 8)) continue; // 사냥터층만 대상(마을/보스 제외, 계단 구역은 전부 전투층)
             long monPower = floorMonsterCombatPower(f);
             if (monPower > 0 && myPower >= monPower * SAFE_HUNT_RATIO) best = f;
         }
@@ -894,9 +904,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private double monsterDefForFloor(int floor) {
         if (floor < DEF_RAMP_START_FLOOR) return 0; // 60층 미만(및 60층 자체=마을) 전부 0
-        if (floor >= DEF_RAMP_END_FLOOR) return DEF_RAMP_END_VAL; // 99층 이상(콘텐츠상 사실상 99뿐)은 상한 고정
-        double t = (floor - DEF_RAMP_START_FLOOR) / (double) (DEF_RAMP_END_FLOOR - DEF_RAMP_START_FLOOR);
-        return DEF_RAMP_START_VAL + t * (DEF_RAMP_END_VAL - DEF_RAMP_START_VAL);
+        double slope = (DEF_RAMP_END_VAL - DEF_RAMP_START_VAL) / (double) (DEF_RAMP_END_FLOOR - DEF_RAMP_START_FLOOR);
+        if (floor <= DEF_RAMP_END_FLOOR) return DEF_RAMP_START_VAL + slope * (floor - DEF_RAMP_START_FLOOR);
+        // [2026-09-28] 101층+ 계단 구역 -- 99층 값에서 이어서 61~99층 기울기의 절반으로 계속 증가.
+        return DEF_RAMP_END_VAL + slope * STAIR_ZONE_SLOPE_FACTOR * (floor - DEF_RAMP_END_FLOOR);
     }
 
     /** [2026-09-22] 몬스터가 파티원을 때리는 모든 경로(반격/기습)가 공유하는 최종 피해 계산.
@@ -969,7 +980,48 @@ public class BotS5ServiceImpl implements BotS5Service {
     // TBOT_S5_FLOOR_INFO.TILE_COUNT/TBOT_S5_MONSTER_INFO 이름·PP도 91~98/99보스 모두 09-18에
     // 블록9와 함께 미리 채워져 있었음, 확인 완료)까지 오픈. 실제 콘텐츠는 99층(보스)이 끝이라
     // "100층"은 열리는 게 아니라 여전히 다음 잠금선(그 이상은 콘텐츠 자체가 없음)으로 남는다.
-    private static final int CONTENT_LOCKED_FLOOR = 100;
+    // [2026-09-28] 101~200층 "계단 구역" 오픈으로 잠금선을 201로 상향(STAIR_ZONE_* 참고).
+    private static final int CONTENT_LOCKED_FLOOR = 201;
+
+    // [2026-09-28] "101층부턴 선형구조로 밸런스를잡아주고, 한층마다 9개의칸으로 구성되도록
+    // 해줘. 계단-전투-전투-행운-중간보스-전투-전투-행운-중간보스 이렇게 틀을 잡아서 구성하고,
+    // 행운칸에는 고대의유적이나 행운/함정 이 다같이 나오는 랜덤칸으로 해줘. 그리고 맵은
+    // 계단식으로 해줘" 요청 -- 101층부터는 1~100층의 "10층 블록(사냥터 8층+보스층+마을)"
+    // 구조를 쓰지 않는 별도 "계단 구역"이다:
+    //  - 층마다 9칸 고정 순서(STAIR_ZONE_PATTERN, 섞지 않음). 주사위로 칸을 건너뛰면 이 순서
+    //    자체가 의미가 없어지므로 이동은 항상 1칸씩(주사위는 전투에서만 굴림), 9번째
+    //    중간보스까지 넘으면 다음 이동에서 바로 한 층 위 1번(계단) 칸으로 올라간다.
+    //  - X9층=보스층, X0층=마을 같은 층번호 규칙이 없다(모든 층이 같은 9칸 구성). 출입용
+    //    마을은 100층 하나뿐(STAIR_ZONE_BASE_CAMP) -- /층변경 0 으로 돌아가 부활, 다시 올 땐
+    //    /층변경 <층번호>로 이미 가본 층까지 바로 이동(매번 101층부터 다시 오르지 않게).
+    //  - "중간보스"는 1~100층처럼 전투칸의 확률 조우가 아니라 전용 칸(MIDBOSS)이라 밟으면
+    //    항상 등장(기존 중간보스 3배 배율 그대로). 일반 전투칸은 한 마리씩(61층+ 2마리 규칙
+    //    미적용 -- 09-20 로드맵 "계단 한 칸 = 몬스터 한 마리"와 일치).
+    //  - 행운칸(RANDOM_LUCKY)은 밟는 순간 고대의 유적(=기존 무너진 사원 효과, 사용자 확인)/
+    //    럭키/함정 중 하나로 1/3씩 결정.
+    //  - 오픈 범위는 우선 101~200층(사용자 확인) -- 몬스터 수치/칸 수는
+    //    S5_STAIR_ZONE_101_200.sql로 채워둠.
+    private static final int STAIR_ZONE_BASE_CAMP = 100;
+    private static final int STAIR_ZONE_START = 101;
+    private static final int STAIR_ZONE_MAX_FLOOR = 200;
+    private static final String[] STAIR_ZONE_PATTERN = {
+        "STAIRS_UP", "COMBAT", "COMBAT", "RANDOM_LUCKY", "MIDBOSS",
+        "COMBAT", "COMBAT", "RANDOM_LUCKY", "MIDBOSS"
+    };
+    // TBOT_S5_MONSTER_INFO(이름/PP_PER_KILL 기준행)가 있는 마지막 블록 -- 101층+는 블록 행이
+    // 따로 없으므로 블록10 행을 기준으로 쓰고, 실제 HP/ATK/DEF는 V2 오버레이가 층별로 덮어쓴다.
+    private static final int MONSTER_MAX_BLOCK = 10;
+    // "기울기를 조금 더 완만하게"(사용자 확인) -- 101층+ HP/ATK/DEF 증가폭 = 1~99층 증가폭의 절반.
+    private static final double STAIR_ZONE_SLOPE_FACTOR = 0.5;
+
+    private boolean isStairZone(int floor) {
+        return floor >= STAIR_ZONE_START;
+    }
+
+    /** selectMonster()용 블록 번호 -- 블록 행이 없는 100층 이상은 마지막 블록(10) 행을 쓴다. */
+    private int monsterBlockNo(int floor) {
+        return Math.min(blockNo(floor), MONSTER_MAX_BLOCK);
+    }
 
     // [2026-09-06] 51층 이후(블록6+) 전투칸에서 중간보스와 마주칠 확률(%). 밸런스 튜닝값이라
     // 필요하면 조정. 잠긴 콘텐츠라 실사용자 영향 없이 먼저 만들어두고 51층 오픈 시 재검토.
@@ -1087,6 +1139,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tileCount = fi == null ? 8 : intVal(fi.get("TILE_COUNT"), 8);
 
         List<String> types = new ArrayList<>();
+        // [2026-09-28] 101층+ 계단 구역 -- 무작위 배치 대신 9칸 고정 순서 그대로(섞지 않음).
+        // 순서 자체가 설계이므로 아래 무작위 생성/셔플 로직을 전부 건너뛴다.
+        boolean stairZone = isStairZone(floor);
+        if (stairZone) {
+            types.addAll(java.util.Arrays.asList(STAIR_ZONE_PATTERN));
+        }
+        if (!stairZone) {
         // 계단을 위/아래 방향으로 분리(요청) -- 기본은 층마다 딱 2칸(각 방향 1개씩) 고정.
         // [2026-09-16] "50층 이상은 올라가는 계단 4개, 내려가는 계단 4개로" 요청으로 50층+는
         // 방향당 4개씩(총 8칸)으로 늘림 -- 아래 STAIRS_UP 해금 조건이 "특정 계단칸 하나"가 아니라
@@ -1121,6 +1180,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (types.size() > tileCount) types = types.subList(0, tileCount); // 초소형 보드 방어
         Collections.shuffle(types, RND);
+        } // !stairZone
 
         List<HashMap<String, Object>> tiles = new ArrayList<>();
         List<Map<String, Object>> batch = new ArrayList<>();
@@ -1149,7 +1209,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // "이미 발견한 칸"으로 미리 채워 넣어서 탐사율이 체크포인트 지점까지는 유지되게
         // 한다(그 이후 발견분만 사라짐). 방금 막 생성된 프레시 보드이므로 어떤 특정 칸을 발견한
         // 것으로 칠지는 의미가 없어 그냥 1번~N번을 채운다.
-        if (floor >= 51) {
+        if (floor >= 51 && !stairZone) { // 계단 구역은 탐사/체크포인트 개념 없음(층 도착 시 항상 1번 칸부터)
             HashMap<String, Object> best = dao.selectUserFloorBest(userName, floor);
             int checkpoint = best == null ? 0 : intVal(best.get("CHECKPOINT_VISITED_COUNT"), 0);
             if (checkpoint > 0) {
@@ -1303,6 +1363,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 사냥터층(구간 내 1~8번째) PP 보상 배율: 1층 1.0배, 2층 1.1배 ... 8층 1.7배로 층마다 조금씩 차이. 보스/마을층은 1.0배. */
     private double floorPpMultiplier(int floor) {
+        // [2026-09-28] 101층+ 계단 구역은 X0/X9 층 규칙이 없으므로 층 번호 기준 선형 증가로 --
+        // 98층(블록10 마지막 사냥터층, 1.7배)에서 이어서 층당 +0.01배(완만하게).
+        if (isStairZone(floor)) return 1.7 + 0.01 * (floor - STAIR_ZONE_BASE_CAMP);
         int pos = floor % 10;
         if (pos < 1 || pos > 8) return 1.0;
         return 1.0 + 0.1 * (pos - 1);
@@ -1417,7 +1480,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         // ── 위치 ──
         int fpos = floor % 10;
-        boolean isHuntFloor = fpos >= 1 && fpos <= 8;
+        boolean stairZoneFloor = isStairZone(floor);
+        boolean isHuntFloor = stairZoneFloor || (fpos >= 1 && fpos <= 8); // 계단 구역은 모든 층이 전투층
         sb.append("🗼 ").append(floor).append("층");
         // [2026-09-21] "88층 권장전투력(99813)보다 종합전투력(111008)이 더 큰데, 추천 사냥터는
         // 오히려 더 낮은 78층으로 나온다 -- 모순 아니냐" 신고. 실제로는 모순이 아니라, 여기
@@ -1433,7 +1497,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append(" (몬스터 전투력 ").append(monPower).append(", 안전기준 ").append(safeThreshold).append(")");
         } else sb.append(" (").append(floorKindLabel(floor)).append(")");
         sb.append(NL);
-        if (isHuntFloor) {
+        if (stairZoneFloor) {
+            // [2026-09-28] 계단 구역은 탐사율 대신 "9칸 중 몇 번째 칸인지"로 진행도를 보여준다.
+            HashMap<String, Object> myUfp = dao.selectUserFloorProgress(target, floor);
+            int stepNow = myUfp == null ? 1 : Math.max(1, intVal(myUfp.get("CUR_TILE"), 1));
+            sb.append("🪜 계단 구역 진행 ").append(stepNow).append("/").append(STAIR_ZONE_PATTERN.length).append("단계").append(NL);
+        } else if (isHuntFloor) {
             HashMap<String, Object> fi = dao.selectFloorInfo(floor);
             int tileCount = fi == null ? 0 : intVal(fi.get("TILE_COUNT"), 0);
             // "보드위치에 현재탐사율/최고탐사율도 보여달라" 요청으로 추가 -- 이번 원정에서 실제로
@@ -1487,7 +1556,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // /탑올라가기+층변경으로 이동 가능한 전체 범위)로 바꿔서 계산(recommendHuntFloor
                 // 주석 참고).
                 int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
-                int recommended = recommendHuntFloor(myPower, unlockedBlock);
+                int recommended = recommendHuntFloor(myPower, unlockedBlock, maxReached);
                 if (recommended > 0) sb.append("(🎯추천: ").append(recommended).append("층)");
                 else sb.append("(⚠️ 1층 사냥도 버거울 수 있어요)");
             }
@@ -1515,6 +1584,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private String floorKindLabel(int floor) {
+        if (isStairZone(floor)) return "계단층";
         int m = floor % 10;
         if (m == 0) return "마을";
         if (m == 9) return "보스층";
@@ -2038,12 +2108,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         int m = floor % 10;
+        // [2026-09-28] 101층+ 계단 구역은 X0=마을/X9=보스층 규칙이 없으므로(모든 층이 9칸 전투층)
+        // 아래 m 기반 분기(마을 안내/보스전 직행)를 전부 건너뛴다.
+        boolean stairZone = isStairZone(floor);
         // [2026-09-17] "파티 전멸 후에도 다음 주사위를 쓸 수 있던데" 신고 -- 마을(m==0)에서는
         // 계속 움직일 수 있어야 하므로(회복이 마을에서만 일어남) 사냥터/보스층에서만 막는다.
-        if (m != 0 && isPartyWiped(userName)) {
+        if ((stairZone || m != 0) && isPartyWiped(userName)) {
+            if (stairZone) {
+                return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP
+                        + "층 마을로 돌아가야 부활합니다. (다시 올 땐 /층변경 " + floor + " 처럼 가본 층으로 바로 이동 가능)";
+            }
             return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. 마을로 돌아가야 부활합니다. (/층변경 0 또는 /탑내려가기)";
         }
-        if (m == 0) {
+        if (!stairZone && m == 0) {
             if (floor == 0) {
                 // 튜토리얼 진행 중(0층 마을) — 다음 단계를 순서대로 안내
                 int companionCount = dao.countUserCompanions(userName);
@@ -2059,9 +2136,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 return userName + "님," + NL + "🏘️ 0층 마을 — 파티 준비 완료!" + NL
                         + "👉 층이동 명령어로 1층 가세요! (/층변경 1)";
             }
+            if (floor == STAIR_ZONE_BASE_CAMP) {
+                return userName + "님," + NL + "🏘️ " + STAIR_ZONE_BASE_CAMP + "층 마을 -- 이 위는 한 층씩 오르는 계단 구역입니다." + NL
+                        + "👉 /층변경 1 로 " + STAIR_ZONE_START + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
+            }
             return userName + "님," + NL + "🏘️ 여기는 마을입니다. 웹 상점(" + TOWER_VIEW_URL + ")을 이용하거나 /층변경 N 으로 사냥터에 진입하세요. (전체 명령어는 /탑도움말)";
         }
-        if (m == 9) {
+        if (!stairZone && m == 9) {
             return startCombat(userName, p, floor, true, false, false);
         }
 
@@ -2072,14 +2153,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> ufp = dao.selectUserFloorProgress(userName, floor);
         int curTile = ufp == null ? 0 : intVal(ufp.get("CUR_TILE"), 0);
 
+        // [2026-09-28] 계단 구역 -- 9번째 칸(마지막 중간보스)까지 끝냈으면 이번 이동은 칸 이동이
+        // 아니라 한 층 위로 오르기. 도착 기록이 없으면(예외 상황) 1번 계단 칸에 서 있는 걸로 본다.
+        if (stairZone) {
+            if (curTile < 1) curTile = 1;
+            if (curTile >= tileCount) return climbStairZone(userName, p, floor);
+        }
+
         int diceMax = diceMax(strVal(p.get("DICE_GRADE"), "DICE_6"));
         // [2026-09-09] 특수칸에서 건 "다음 이동 1회, 주사위 2개" 플래그(handleSpecialTile 참고)
         // 소모 -- 소모는 여기 이동 굴림에서만 하고(전투 공격 굴림엔 관여 안 함), 결과는 두 눈을
         // 더한 값. rollLabel은 화면에 "3+5=8"처럼 두 눈을 그대로 보여주기 위한 표시용 문자열.
-        boolean doubleDice = "Y".equals(strVal(p.get("DOUBLE_DICE_YN"), "N"));
+        // [2026-09-28] 계단 구역은 이동에 주사위를 안 쓰므로(항상 1칸) 더블주사위도 여기서
+        // 소모하지 않는다 -- 다음 전투 공격 턴에서 소모됨(resolveCombatTurn 참고).
+        boolean doubleDice = !stairZone && "Y".equals(strVal(p.get("DOUBLE_DICE_YN"), "N"));
         int roll;
         String rollLabel;
-        if (doubleDice) {
+        if (stairZone) {
+            roll = 1;
+            rollLabel = "1";
+        } else if (doubleDice) {
             int roll1 = rollFace(diceMinFor(p), diceMax);
             int roll2 = rollFace(diceMinFor(p), diceMax);
             roll = roll1 + roll2;
@@ -2113,7 +2206,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // (구 워프포인트)을 직접 밟아야만 저장되던 체크포인트를, 탐사율이 새 15%p 구간을 넘을
         // 때마다 자동으로 저장하도록 바꿨다. 매 이동마다 DB에 또 쓰지 않도록, 저장된 체크포인트가
         // 속한 15%p 구간(tier)보다 지금이 더 높은 구간일 때만 실제로 갱신한다.
-        if (floor >= 51 && tileCount > 0) {
+        // [2026-09-28] 계단 구역은 9칸을 순서대로 밟는 구조라 "탐사"가 매번 자동 100%가 됨 --
+        // 탐사 체크포인트/완전탐사 업적·뽑기권/50% 악세권/구간 선택권 같은 탐사 보상 체계는
+        // 적용하지 않는다(층마다 자동 지급되면 100개 층 x 보상으로 경제가 무너지고, 업적 ID
+        // 대역(100+floor, 500+floor)도 101층+는 등록된 업적이 없는 번호라 부적절).
+        if (!stairZone && floor >= 51 && tileCount > 0) {
             int tierNow = (visited * 100 / tileCount) / 15;
             if (tierNow > 0) {
                 HashMap<String, Object> floorBest = dao.selectUserFloorBest(userName, floor);
@@ -2125,6 +2222,16 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         StringBuilder sb = new StringBuilder();
         sb.append(userName).append("님," + NL);
+        if (stairZone) {
+            sb.append("🪜 한 계단 올랐다! ").append(curTile).append(" → ").append(newTile).append("번 칸")
+              .append(NL).append("🗺️ ").append(floor).append("층 ").append(newTile).append("/").append(tileCount).append("단계");
+            if (newTile < tileCount) {
+                String nextType = STAIR_ZONE_PATTERN[newTile]; // 다음 칸(0-based index = newTile)
+                sb.append(" (다음: ").append(TILE_LABEL.getOrDefault(nextType, nextType)).append(")");
+            } else {
+                sb.append(" (마지막 칸 -- 다음 이동 시 ").append(floor + 1).append("층으로)");
+            }
+        } else {
         sb.append(doubleDice ? "🎲🎲 주사위 " : "🎲 주사위 ").append(rollLabel).append("! ").append(curTile).append(" → ").append(newTile).append("번 칸")
           .append(NL).append("🗺️ 탐사 현황: ").append(floor).append("층 .. ");
         // "25/25 완전탐사면 그냥 탐사완료라고만 띄워달라" 요청
@@ -2133,7 +2240,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         } else {
             sb.append(visited).append("/").append(tileCount).append("칸 발견");
         }
-        if (visited >= tileCount) {
+        } // !stairZone (메시지)
+        if (!stairZone && visited >= tileCount) {
             // 완전탐사 달성 즉시 (user,floor) 역대기록에 반영 -- 마을 복귀 전이라도 영구 보존
             HashMap<String, Object> best = snapshotFloorBest(userName, floor);
             if (grantAchievement(userName, 25)) {
@@ -2145,7 +2253,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (ticketMsg != null) sb.append(NL).append(ticketMsg);
             }
         }
-        String halfExploreReward = checkExploreHalfReward(userName, p, floor, visited, tileCount);
+        String halfExploreReward = stairZone ? null : checkExploreHalfReward(userName, p, floor, visited, tileCount);
         if (halfExploreReward != null) sb.append(NL).append(halfExploreReward);
         sb.append(NL);
 
@@ -2180,12 +2288,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         String effectiveType = revisitOverride ? "COMBAT" : tileType;
 
+        // [2026-09-28] 계단 구역 행운칸 -- "고대의유적이나 행운/함정이 다같이 나오는 랜덤칸"
+        // 요청. 밟는 순간 셋 중 하나(1/3씩)로 정해지고, 효과 자체는 기존 칸 처리를 그대로 탄다
+        // (고대의 유적=SPECIAL(무너진 사원과 동일 효과, 사용자 확인), 럭키=PP, 함정=TRAP).
+        if ("RANDOM_LUCKY".equals(effectiveType)) {
+            String[] luckyPool = { "SPECIAL", "PP", "TRAP" };
+            effectiveType = luckyPool[RND.nextInt(luckyPool.length)];
+            String revealed = "SPECIAL".equals(effectiveType) ? "🏛️ 고대의 유적"
+                    : "PP".equals(effectiveType) ? "🍀 럭키" : "🕳️ 함정";
+            sb.append("...정체는 ").append(revealed).append("!").append(NL);
+        }
+
         switch (effectiveType) {
+            case "MIDBOSS": {
+                // [2026-09-28] 계단 구역 전용 -- 확률 조우가 아니라 이 칸을 밟으면 항상 중간보스
+                // (기존 중간보스와 동일한 3배 배율/스킬 도용 로직을 startCombat에서 그대로 사용).
+                sb.append(NL).append(startCombat(userName, p, floor, false, false, true));
+                break;
+            }
             case "COMBAT": {
                 // [2026-09-06] 51층 이후(블록6+) 전투칸은 일정 확률로 "중간보스"와 마주친다 --
                 // 등장 메시지/맵 표기는 평범한 몬스터와 완전히 동일해서(startCombat 참고) 실제로
                 // 붙어보기 전엔 알 수 없다.
-                boolean midBossEncounter = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
+                // [2026-09-28] 계단 구역은 중간보스가 전용 칸(MIDBOSS)으로 따로 있으므로 전투칸에서는
+                // 확률 조우를 끈다(안 그러면 한 층에 중간보스가 2마리를 넘어 설계 틀이 깨짐).
+                boolean midBossEncounter = !stairZone && blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
                 // [세 구간 분리 요청] 탐사 현황과 몬스터 등장 사이에 빈 줄
                 sb.append(NL).append(startCombat(userName, p, floor, false, false, midBossEncounter));
                 break;
@@ -2194,7 +2321,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 럭키칸(칸 유형 값은 하위호환을 위해 기존 "PP" 그대로 두고 표시만 "🍀 럭키"로 바꿈,
                 // 함정칸처럼 이로운 효과 4종 중 무작위 -- PP 보너스/회복은 즉시 발동, 공격력/방어력
                 // 강화는 이후 3번의 보드 이동 동안 지속되는 파티 전체 버프(위 luckyTurnLeft 참고).
-                HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+                HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
                 PP basePp = mon == null ? PP.of(1, "")
                         : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor));
                 // ATK_UP_10/ATK_UP_30/DEF_UP_10/DEF_UP_30: 접두어로 종류, 끝 숫자로 세기를 구분
@@ -2343,6 +2470,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if ("MOVE".equals(effect)) {
                     int moveDelta = -4 + RND.nextInt(6); // -4..+1
                     int movedTile = (((newTile - 1 + moveDelta) % tileCount) + tileCount) % tileCount + 1;
+                    if (stairZone) {
+                        // [2026-09-28] 계단 구역은 순환 보드가 아니라 1->9 한 방향 계단이라, 끝에서
+                        // 반대쪽 끝으로 넘어가는(순환) 대신 1~9 범위 안에서 멈추게 하고, 안내 문구의
+                        // 칸 수도 실제로 움직인 만큼으로 맞춘다.
+                        movedTile = Math.max(1, Math.min(tileCount, newTile + moveDelta));
+                        moveDelta = movedTile - newTile;
+                    }
                     HashMap<String, Object> moveUp = new HashMap<>();
                     moveUp.put("userName", userName);
                     moveUp.put("floor", floor);
@@ -2367,8 +2501,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // 전투가 시작되도록 변경(원래는 우연히 COMBAT 타입 칸에 떨어졌을 때만
                     // 싸웠는데, 칸 타입 비율상 대부분은 아무 일도 안 일어나는 것처럼 보였다).
                     // 앞으로 밀려난 경우(moveDelta>=0)는 기존처럼 그 칸이 진짜 COMBAT일 때만.
-                    if (moveDelta < 0 || "COMBAT".equals(movedTileType)) {
-                        boolean movedMidBoss = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
+                    // [2026-09-28] 계단 구역은 앞으로 밀려 중간보스 칸(MIDBOSS)에 떨어져도 그 자리에서
+                    // 바로 싸운다(안 그러면 다음 이동에 그 칸을 건너뛰고 지나가버림).
+                    boolean landedOnMidBossTile = stairZone && "MIDBOSS".equals(movedTileType);
+                    if (moveDelta < 0 || "COMBAT".equals(movedTileType) || landedOnMidBossTile) {
+                        boolean movedMidBoss = stairZone ? landedOnMidBossTile
+                                : (blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT);
                         sb.append(NL).append(NL).append("😱 밀려난 자리에서 몬스터와 부딪혔다!").append(NL)
                           .append(startCombat(userName, p, floor, false, false, movedMidBoss, true));
                     }
@@ -2421,7 +2559,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> up = new HashMap<>();
                 up.put("userName", userName);
                 if (pp) {
-                    HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+                    HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
                     PP reward = mon == null ? PP.of(10, "")
                             : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(5 * floorPpMultiplier(floor));
                     addPp(userName, p, reward);
@@ -2544,7 +2682,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertSpecialVisitIncrement(userName);
         HashMap<String, Object> v = dao.selectUserSpecialVisit(userName);
         int cnt = v == null ? 1 : intVal(v.get("VISIT_COUNT"), 1);
-        StringBuilder sb = new StringBuilder("🏚️ 무너진 사원을 발견했다... (누적 방문 ").append(cnt).append("회)");
+        // [2026-09-28] 계단 구역 행운칸에서 나오는 "고대의 유적"은 효과는 무너진 사원과 완전히
+        // 동일(사용자 확인)하고 이름/문구만 다르게 보여준다(방문 누적/히든 업적도 공유).
+        boolean ruins = isStairZone(floor);
+        String siteName = ruins ? "고대의 유적" : "무너진 사원";
+        StringBuilder sb = new StringBuilder(ruins ? "🏛️ " : "🏚️ ").append(siteName).append("을 발견했다... (누적 방문 ").append(cnt).append("회)");
         int[] thresholds = { 10, 50, 100 };
         int[] achIds = { 17, 18, 19 };
         for (int i = 0; i < thresholds.length; i++) {
@@ -2567,15 +2709,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             p.put("LEGEND_FRAGMENT", newFragment);
             sb.append(NL).append("🧩 폐허 잔해 속에서 전설의조각을 발견했다! (보유 ").append(newFragment).append("개)");
         } else if (roll < 20) {
-            HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+            HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
             PP reward = mon == null ? PP.of(10, "")
                     : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(3 * floorPpMultiplier(floor));
             addPp(userName, p, reward);
             PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
             sb.append(NL).append("💰 폐허 속에 묻혀있던 ").append(reward.format()).append(" PP를 발견했다! (보유 ").append(curPp.format()).append(" PP)");
         } else if (roll < 70) {
-            boolean midBossEncounter = blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
-            sb.append(NL).append("😱 사원 안쪽에 숨어있던 몬스터가 튀어나왔다!").append(NL)
+            // 계단 구역은 중간보스가 전용 칸으로 따로 있어서 여기선 확률 조우를 끔(COMBAT 칸과 동일 이유).
+            boolean midBossEncounter = !ruins && blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
+            sb.append(NL).append(ruins ? "😱 유적 안쪽에 숨어있던 몬스터가 튀어나왔다!" : "😱 사원 안쪽에 숨어있던 몬스터가 튀어나왔다!").append(NL)
               .append(startCombat(userName, p, floor, false, false, midBossEncounter));
         } else {
             // 축복: 기존 럭키칸 ATK_UP_30과 동일 컬럼(LUCKY_TURN_LEFT/LUCKY_EFFECT)을 그대로
@@ -2585,7 +2728,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             up.put("luckyTurnLeft", 1);
             up.put("luckyEffect", "ATK_UP_30");
             dao.updateUserProgress(up);
-            sb.append(NL).append("✨ 무너진 사원의 축복을 받았다! 다음 1번의 이동/전투 동안 파티 전원의 공격력이 30% 강화됩니다.");
+            sb.append(NL).append("✨ ").append(siteName).append("의 축복을 받았다! 다음 1번의 이동/전투 동안 파티 전원의 공격력이 30% 강화됩니다.");
         }
         return sb.toString();
     }
@@ -2622,7 +2765,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> p = dao.selectUserProgress(userName);
         if (p == null) return null; // S5(탑) 진행기록이 없는 유저 -- 호출부(S4)가 멘트 자체를 생략
         int floor = intVal(p.get("MAX_FLOOR_REACHED"), 0);
-        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+        HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
         if (mon == null) return null;
         int g = Math.max(1, Math.min(8, fishGrade));
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
@@ -2730,7 +2873,7 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  전투. resolveCombatTurn()의 "1턴째 기습" 조건에 플로어 무관하게 걸리게 하고, 71층+에서는
      *  선공몬스터 특성과 겹쳐 그 전투 내내 몬스터 공격력 10% 증가까지 함께 적용된다. */
     private String startCombat(String userName, HashMap<String, Object> p, int floor, boolean boss, boolean elite, boolean midBoss, boolean trapAmbush) {
-        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), boss ? "Y" : "N"), floor);
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), boss ? "Y" : "N"), floor);
         if (mon == null) {
             // TBOT_S5_MONSTER_INFO에 이 BLOCK_NO×BOSS_YN 조합 데이터가 없는 경우.
             // 원인 확인용: S5_CHECK_MONSTER_DATA.sql
@@ -2758,7 +2901,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 흡혈/스킬도용+반격/공격력1.6배/주사위상향)은 floor만으로 계산되므로 I번이든
         // II번이든 자동으로 그대로 적용된다.
         boolean dualBossFloor = boss && floor == 89;
-        boolean dualMonster = (!boss && !elite && !midBoss && blockNo(floor) >= 7) || dualBossFloor;
+        // [2026-09-28] 101층+ 계단 구역은 전투칸 1개 = 몬스터 1마리(09-20 로드맵 "계단 한 칸 =
+        // 몬스터 한 마리")라 61층+ "두 마리" 규칙을 적용하지 않는다.
+        boolean dualMonster = (!boss && !elite && !midBoss && blockNo(floor) >= 7 && !isStairZone(floor)) || dualBossFloor;
         double dualHpMult = dualMonster ? 2.0 : 1.0; // 처치보상(2마리분) 계산에만 사용, HP엔 미적용
         double perMonsterHp = ((Number) mon.get("HP_VALUE")).doubleValue() * eliteMult;
         HashMap<String, Object> up = new HashMap<>();
@@ -3643,7 +3788,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 절반, 초반 사냥터)에서 연속으로 막히고 있으면 쉬운 아래 구간에서 파밍하고
             // 오라고 힌트를 준다. 2연속부터("여러 번") 매번 다시 보여준다.
             int fm = floor % 10;
-            if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
+            if (isStairZone(floor)) {
+                // [2026-09-28] 계단 구역엔 층마다 마을이 없다 -- 부활은 100층 마을에서만.
+                sb.append(NL).append(NL).append("🪜 /층변경 0 으로 ").append(STAIR_ZONE_BASE_CAMP)
+                  .append("층 마을로 돌아가 부활한 뒤, /층변경 ").append(floor).append(" 으로 이 층부터 다시 도전할 수 있어요.");
+            } else if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
                 sb.append(NL).append(NL)
                   .append("💡 이 구간에서 ").append(wipeStreak).append("연속으로 전멸했어요. 아직 버거우면 ")
                   .append("/탑내려가기(/탑다운)로 10층 아래 마을로 내려가서 스탯/장비를 더 준비한 뒤 다시 도전해보세요.");
@@ -4493,12 +4642,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private HashMap<String, Object> findMonsterById(int floor, int monsterId) {
-        HashMap<String, Object> normal = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "N"), floor);
+        HashMap<String, Object> normal = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), "N"), floor);
         if (normal != null && intVal(normal.get("MONSTER_ID"), -1) == monsterId) return normal;
         // [2026-09-21] 이전엔 여기서 applyHardcoreFloorScale을 안 거쳐서(보스는 HP/ATK 스케일
         // 대상이 아니라 안 써도 무방했음) 새로 생긴 층 기반 DEF 재정의(monsterDefForFloor)도
         // 같이 빠졌었다. 보스도 반드시 거치게 통일.
-        HashMap<String, Object> boss = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), "Y"), floor);
+        HashMap<String, Object> boss = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), "Y"), floor);
         if (boss != null && intVal(boss.get("MONSTER_ID"), -1) == monsterId) return boss;
         return null;
     }
@@ -4567,7 +4716,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         long cappedMin = Math.min(elapsedMin, AUTO_HUNT_MAX_HOURS * 60L);
         int floor = intVal(log.get("FLOOR"), intVal(p.get("CUR_FLOOR"), 1));
-        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), "N");
+        HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
         if (mon == null) return null;
 
         long kills = cappedMin / minPerKill;
@@ -4623,11 +4772,17 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public String changeFloor(String userName, int n) {
         HashMap<String, Object> p = getOrInitProgress(userName);
+        int floor = intVal(p.get("CUR_FLOOR"), 0);
+        boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
+        // [2026-09-28] 101층+ 계단 구역 출입/이동은 10층 블록 규칙(X0=마을, X9=보스, 블록 안
+        // 0~9 이동)과 맞지 않아 별도 처리 -- 100층 마을에서 위로 가거나(1~9 또는 가본 층 번호),
+        // 계단 구역 안에서 움직이는 모든 경우.
+        if (floor >= STAIR_ZONE_BASE_CAMP && (isStairZone(floor) || n != 0)) {
+            return changeFloorStairZone(userName, p, floor, n, wasInCombat);
+        }
         if (n < 0 || n > 9) {
             return "층변경은 0~9 범위만 가능합니다. (같은 10층 구간 내 이동)";
         }
-        int floor = intVal(p.get("CUR_FLOOR"), 0);
-        boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
         int target = floorBlockBase(floor) + n;
         if (target == floor) {
             return "이미 " + floor + "층에 있습니다."; // "같은 층으로 이동은 막아달라" 요청
@@ -4807,6 +4962,91 @@ public class BotS5ServiceImpl implements BotS5Service {
         return changeFloor(userName, fm - 1);
     }
 
+    /** [2026-09-28] 계단 구역(101층+) /층변경 처리. n: 0=100층 마을(베이스캠프, 부활),
+     *  1~9=지금 층의 10층 단위 안 이동(100층 마을에선 101~109), 101 이상=그 층 번호로 바로
+     *  이동(이미 가본 층까지만 -- 전멸 후 매번 101층부터 다시 오르지 않게). 계단 구역 층에
+     *  도착하면 항상 그 층 1번(계단) 칸부터 새로 시작한다(enterStairFloor 참고). */
+    private String changeFloorStairZone(String userName, HashMap<String, Object> p, int floor, int n, boolean wasInCombat) {
+        int target;
+        if (n >= STAIR_ZONE_START) target = n;
+        else if (n == 0) target = STAIR_ZONE_BASE_CAMP;
+        else if (n >= 1 && n <= 9) target = floorBlockBase(floor) + n;
+        else return "층변경은 0~9, 또는 가본 적 있는 " + STAIR_ZONE_START + "층 이상 층 번호로 입력하세요. (예: /층변경 0 = "
+                + STAIR_ZONE_BASE_CAMP + "층 마을, /층변경 " + STAIR_ZONE_START + ")";
+        if (target == floor) return "이미 " + floor + "층에 있습니다.";
+        if (target > STAIR_ZONE_MAX_FLOOR) {
+            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (" + STAIR_ZONE_MAX_FLOOR + "층까지 오픈, 이후 추후 오픈 예정)";
+        }
+        int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+        if (target > STAIR_ZONE_START && target > maxReached) {
+            return "🪜 " + target + "층은 아직 가본 적이 없습니다." + NL
+                    + "계단 구역은 한 층씩 직접 올라가야 합니다. (지금까지 최고 " + Math.max(maxReached, STAIR_ZONE_BASE_CAMP) + "층)";
+        }
+
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("curFloor", target);
+        up.put("killCountCur", 0);
+        int newFleeCount = -1;
+        if (wasInCombat) {
+            up.put("status", "NORMAL");
+            up.put("clearMonster", true);
+            newFleeCount = intVal(p.get("FLEE_COUNT_TOTAL"), 0) + 1;
+            up.put("fleeCountTotal", newFleeCount);
+        }
+        dao.updateUserProgress(up);
+        p.put("CUR_FLOOR", target);
+        if (newFleeCount >= 0) checkFleeAchievements(userName, newFleeCount);
+        grantFloorAchievements(userName, target);
+
+        StringBuilder sb = new StringBuilder(userName).append("님," + NL);
+        if (wasInCombat) sb.append("💨 전투에서 도망쳤습니다!").append(NL);
+        sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
+        if (target == STAIR_ZONE_BASE_CAMP) {
+            int revivedCount = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
+            if (revivedCount > 0) {
+                sb.append(NL).append("✨ 전투불가 상태였던 동료 ").append(revivedCount).append("명이 마을에서 부활했습니다!");
+            }
+        } else {
+            enterStairFloor(userName, target);
+            sb.append(NL).append("🪜 1번 계단 칸에서 시작합니다. (다음: ").append(TILE_LABEL.get(STAIR_ZONE_PATTERN[1])).append(")");
+        }
+        return sb.toString();
+    }
+
+    /** 계단 구역 층에 새로 도착 -- 이전 원정의 위치/방문기록/보드를 지우고 1번(계단) 칸에서 시작. */
+    private void enterStairFloor(String userName, int floor) {
+        dao.deleteUserFloorProgress(userName, floor);
+        dao.deleteTileVisits(userName, floor);
+        dao.deleteUserTileMaster(userName, floor);
+        ensureUserBoard(userName, floor);
+        HashMap<String, Object> ufp = new HashMap<>();
+        ufp.put("userName", userName);
+        ufp.put("floor", floor);
+        ufp.put("curTile", 1);
+        ufp.put("entryTile", 1); // 함정 RESET_TILE(처음 계단칸으로) 복귀 지점
+        dao.upsertUserFloorProgress(ufp);
+        dao.insertTileVisit(userName, floor, 1);
+    }
+
+    /** 계단 구역에서 9번째 칸(마지막 중간보스)까지 끝낸 뒤의 이동 -- 한 층 위 1번 칸으로 오른다. */
+    private String climbStairZone(String userName, HashMap<String, Object> p, int floor) {
+        int next = floor + 1;
+        if (next > STAIR_ZONE_MAX_FLOOR) {
+            return userName + "님," + NL + "🌑 " + floor + "층 위로는 아직 어둠이 득실거립니다. (" + STAIR_ZONE_MAX_FLOOR
+                    + "층까지 오픈, 이후 추후 오픈 예정)" + NL + "👉 /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP + "층 마을로 돌아갈 수 있어요.";
+        }
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("curFloor", next); // MAX_FLOOR_REACHED는 매퍼에서 GREATEST로 함께 갱신됨
+        dao.updateUserProgress(up);
+        p.put("CUR_FLOOR", next);
+        grantFloorAchievements(userName, next);
+        enterStairFloor(userName, next);
+        return userName + "님," + NL + "🪜⬆️ " + floor + "층을 돌파하고 계단을 올라 " + next + "층에 도착했습니다!" + NL
+                + "🗺️ " + next + "층 1/" + STAIR_ZONE_PATTERN.length + "단계 (다음: " + TILE_LABEL.get(STAIR_ZONE_PATTERN[1]) + ")";
+    }
+
     /**
      * /탑내려가기(/탑다운) — 마을에서만 바로 아래 10층 구간 마을로 이동. changeFloor()와 달리
      * 같은 구간을 벗어나는 이동이라 target이 항상 이전에 실제로 밟았던 마을(구간을 순서대로
@@ -4818,6 +5058,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String descendVillage(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int floor = intVal(p.get("CUR_FLOOR"), 0);
+        if (isStairZone(floor)) { // 110/120...층도 계단 구역의 일반 층이지 마을이 아님
+            return "🪜 계단 구역에는 층마다 마을이 없습니다. /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP + "층 마을로 먼저 이동하세요.";
+        }
         if (floor % 10 != 0) {
             return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";
         }
@@ -4852,6 +5095,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String ascendVillage(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int floor = intVal(p.get("CUR_FLOOR"), 0);
+        if (floor >= STAIR_ZONE_BASE_CAMP) {
+            // [2026-09-28] 100층 위는 마을이 없는 계단 구역 -- 탑올라가기 대신 층변경으로 진입.
+            return "🪜 " + STAIR_ZONE_BASE_CAMP + "층 위는 마을 없이 한 층씩 오르는 계단 구역입니다. /층변경 1 로 "
+                    + STAIR_ZONE_START + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
+        }
         if (floor % 10 != 0) {
             return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";
         }
@@ -6013,7 +6261,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private boolean isVillage(HashMap<String, Object> p) {
-        return intVal(p.get("CUR_FLOOR"), 0) % 10 == 0;
+        int floor = intVal(p.get("CUR_FLOOR"), 0);
+        return floor % 10 == 0 && !isStairZone(floor); // 110/120...층은 계단 구역의 일반 층(마을 아님)
     }
 
     @Override
@@ -6471,8 +6720,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     public String currentFloorMonsterName(int floor) {
-        boolean isBossFloor = floor % 10 == 9;
-        HashMap<String, Object> mon = dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N");
+        boolean isBossFloor = !isStairZone(floor) && floor % 10 == 9; // 계단 구역엔 보스층이 없음
+        HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), isBossFloor ? "Y" : "N");
         if (mon == null) return null;
         return floorMonsterName(floor, mon);
     }
@@ -6481,8 +6730,8 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  (V2 오버레이/하드코어 스케일 전부 반영된 값). null이면 [atk, def] 순서. */
     @Override
     public int[] currentFloorMonsterAtkDef(int floor) {
-        boolean isBossFloor = floor % 10 == 9;
-        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(blockNo(floor), isBossFloor ? "Y" : "N"), floor);
+        boolean isBossFloor = !isStairZone(floor) && floor % 10 == 9; // 계단 구역엔 보스층이 없음
+        HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), isBossFloor ? "Y" : "N"), floor);
         if (mon == null) return null;
         return new int[]{ (int) Math.round(((Number) mon.get("ATK_VALUE")).doubleValue()), (int) Math.round(((Number) mon.get("DEF_VALUE")).doubleValue()) };
     }
