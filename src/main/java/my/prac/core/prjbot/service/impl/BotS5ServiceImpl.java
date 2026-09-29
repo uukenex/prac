@@ -3295,6 +3295,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean dualMonster1KilledInLoop = false;
         boolean dualMonster2KilledInLoop = false;
 
+        // [2026-09-29] "몬스터가 회피스킬을 뺏을 때 동료 한 명한테만 회피하도록" 요청 -- 지난 턴에
+        // 도적 스킬(회피)을 훔쳤으면(MONSTER_EVADE_PCT), 그 확률로 이번 턴 "공격하는 동료 중 무작위 한
+        // 명"의 공격만 회피한다(예전엔 파티 공격 전체를 무효화). 대상은 이 루프에서 실제로 공격할 동료
+        // (생존+기절 아님) 중에서 뽑는다.
+        int monsterEvadeCid = -1;
+        int monsterEvadePct = intVal(p.get("MONSTER_EVADE_PCT"), 0);
+        if (monsterEvadePct > 0 && RND.nextInt(100) < monsterEvadePct) {
+            List<Integer> evadeCandidates = new ArrayList<>();
+            for (HashMap<String, Object> c : party) {
+                PP chp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+                if (PP.toBaseValue(chp) <= 0) continue;
+                int cid = intVal(c.get("COMPANION_ID"), -1);
+                if (bossStunCid != 0 && bossStunCid == cid) continue;
+                evadeCandidates.add(cid);
+            }
+            if (!evadeCandidates.isEmpty()) monsterEvadeCid = evadeCandidates.get(RND.nextInt(evadeCandidates.size()));
+        }
+
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
@@ -3396,8 +3414,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
+            boolean evadedHit = intVal(c.get("COMPANION_ID"), -1) == monsterEvadeCid;
+            if (evadedHit) dmg = 0; // 몬스터가 훔친 회피 -- 이 동료의 공격만 무효(총딜/방어차감 산수에서도 제외)
             totalDamage += dmg;
-            totalRawDamage += rawDmg + extraRaw;
+            totalRawDamage += evadedHit ? 0 : rawDmg + extraRaw;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
@@ -3412,6 +3432,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (archerCrit) sb.append(" 💥크리티컬!");
             if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
             if (extraRaw > 0) sb.append(" 🏹").append(strVal(legWeapon.get("ITEM_NAME"), "")).append(" 연사! +").append(extraRaw).append("dmg");
+            if (evadedHit) sb.append(" 🌀").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 몸놀림으로 이 공격을 회피!(0dmg)");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다
@@ -3521,11 +3542,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 미드보스/층구간보스가 도적 스킬을 훔쳤으면(아래 스킬도용 파트에서 MONSTER_EVADE_PCT를
         // 세팅) 이번 파티 공격 전체를 그 확률로 회피(79층 은신 회피와 동일한 "전체 무효화"
         // 방식, 확률만 다름). 79층 은신으로 이미 totalDamage=0이어도 중복 계산은 무해.
-        int monsterEvadePct = intVal(p.get("MONSTER_EVADE_PCT"), 0);
-        if (monsterEvadePct > 0 && totalDamage > 0 && RND.nextInt(100) < monsterEvadePct) {
-            totalDamage = 0;
-            sb.append("🌀 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 몸놀림을 흉내내 이번 턴 파티의 공격을 전부 회피했다!").append(NL);
-        }
+        // [2026-09-29] 회피 판정은 위 파티 공격 루프에서 동료 한 명 단위로 처리(monsterEvadeCid).
 
         // 중간보스가 지난 턴에 도사 스킬을 훔쳐 자신에게 보호막을 둘렀으면(아래 미드보스
         // 파트 참고), 이번 파티 공격에서 그만큼 먼저 흡수하고 소모한다(1회성).
@@ -4118,7 +4135,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     stealEvadeUp.put("userName", userName);
                     stealEvadeUp.put("monsterEvadePct", 15);
                     dao.updateUserProgress(stealEvadeUp);
-                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 기술을 흉내내 몸놀림이 가벼워졌다! (다음 파티 공격 15% 확률로 회피)").append(NL);
+                    sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 기술을 흉내내 몸놀림이 가벼워졌다! (다음 턴 15% 확률로 동료 한 명의 공격을 회피)").append(NL);
                 } else if ("ARCHER".equals(stolenJob)) {
                     midBossArcherDmgUp = true;
                     sb.append("🥷 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 기술을 흉내내 이번 공격의 피해가 늘어난다!").append(NL);
@@ -4175,7 +4192,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     bStealEvadeUp.put("userName", userName);
                     bStealEvadeUp.put("monsterEvadePct", 25);
                     dao.updateUserProgress(bStealEvadeUp);
-                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 스킬을 빼앗았다! 몸놀림이 가벼워졌다! (다음 파티 공격 25% 확률로 회피)").append(NL);
+                    sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 스킬을 빼앗았다! 몸놀림이 가벼워졌다! (다음 턴 25% 확률로 동료 한 명의 공격을 회피)").append(NL);
                 } else if ("ARCHER".equals(bossStolenJob)) {
                     bossArcherDmgUp = true;
                     sb.append("👑 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 궁수의 스킬을 빼앗았다! 이번 공격의 피해가 크게 늘어난다!").append(NL);
