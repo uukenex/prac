@@ -4426,3 +4426,6 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   하나뿐). 아이템 이름 확정 전이라 **DB 행은 아직 없음**(코드만 준비) -- 이름 정해지면
   CLASS=ROBE/PART=ARMOR/EFFECT_TYPE=START_BARRIER 행 추가.
 - 프론트 `LEGEND_EFFECT_LABEL`에 두 효과 설명 추가.
+- (같은 날 후속) 로브 이름 확정 "수수께끼" -> `S5_LEGENDARY_ENIGMA_ROBE.sql`(LEGENDARY_ID=4, ROBE/ARMOR,
+  START_BARRIER) 라이브 적용. 같은 스크립트로 `selectEquipByCompanion`의 마스터 JOIN 쿼리가
+  실제 DB에서 파싱/실행되는지(ORA 오류 없음)도 확인.
