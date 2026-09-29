@@ -316,11 +316,19 @@
             SELECT A.REQ AS REQ,
                    TO_NCHAR(A.RES) AS RES,
                    TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
-              FROM TBOT_WORD_HIS A
+              FROM TBOT_S5_WORD_HIS A
              WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
              ORDER BY A.INSERT_DATE DESC
         ) WHERE ROWNUM &lt;= #{limit, jdbcType=INTEGER}
     </select>
+
+    <!-- [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS)의 보관기간(기본 30일)이 지난 행을
+         배치 단위로 삭제(BotS5ServiceImpl.purgeOldS5WordHis가 0건이 될 때까지 반복 호출, 배치마다 커밋). -->
+    <delete id="deleteOldS5WordHis">
+        DELETE FROM TBOT_S5_WORD_HIS
+         WHERE INSERT_DATE &lt; SYSDATE - #{keepDays, jdbcType=INTEGER}
+           AND ROWNUM &lt;= #{batch, jdbcType=INTEGER}
+    </delete>
 
     <!-- 방문(발견) 기록. 이미 있으면 VISIT_COUNT 증가(재방문 횟수 추적, SPECIAL/SHOP은 2회차부터 전투로 전환) -->
     <insert id="insertTileVisit">

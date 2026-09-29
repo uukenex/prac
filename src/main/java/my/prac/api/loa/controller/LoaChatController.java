@@ -360,6 +360,21 @@ public class LoaChatController {
 		
 	}
 	
+	/**
+	 * [2026-09-30] "시즌5 로그가 들어가는 테이블을 따로 만들어 관리" 요청 -- 아래 시즌5 명령어는 로그를
+	 * TBOT_WORD_HIS 대신 전용 테이블(TBOT_S5_WORD_HIS, 30일 뒤 자동 삭제)에 남긴다. 시즌5 명령을
+	 * 추가하면 여기에도 등록해야 전용 테이블에 쌓인다(빠뜨리면 기존 테이블에 쌓임).
+	 * 값은 switch(param0)의 시즌5 case 라벨과 같다(/ㅈㅅㅇ는 별칭 /주사위,/ㅈ이 정규화된 값).
+	 */
+	private static final java.util.Set<String> S5_LOG_COMMANDS = new java.util.HashSet<String>(java.util.Arrays.asList(
+			"/주사위", "/ㅈㅅㅇ", "/ㅈ", "/층변경", "/층이동", "/계단내려가기", "/계단다운", "/탑내려가기", "/탑다운",
+			"/탑올라가기", "/탑업", "/층내려가기", "/층다운", "/파티편성", "/탑편성", "/탑동료", "/탑파티", "/ㅌㅍㅅ",
+			"/ㅌㄷㄹ", "/ㅌㅍㅌ", "/동료가리기", "/탑현황", "/탑정보", "/ㅌㅎㅎ", "/ㅌㅈㅂ", "/탑도움말", "/탑명령어",
+			"/로그", "/탑업적", "/ㅌㅇㅂ", "/ㅌㅇㅈ", "/탑랭킹", "/ㅌㄹㅋ", "/이벤트지급", "/공지등록", "/탑통계",
+			"/ㅌㅌㄱ", "/동료뽑기", "/동료뽑기10", "/장비뽑기", "/장비뽑기10", "/악세뽑기", "/악세뽑기10",
+			"/주사위구매", "/주사위강화", "/마이너스주사위", "/스탯구매", "/장비목록", "/장비장착", "/장비합성",
+			"/장비일괄합성", "/전설제작", "/전설분해", "/전투화면", "/장비해제", "/탑해제", "/ㅈㅂㅎㅈ", "/ㅌㅎㅈ"));
+
 	public static boolean shouldSkip2() {
 	    LocalTime now = LocalTime.now();
 	    return !now.isBefore(LocalTime.of(21, 45)) && now.isBefore(LocalTime.of(21, 50));
@@ -2926,7 +2941,12 @@ public class LoaChatController {
 				
 				reqMap.put("res", db_input_val);
 				reqMap.put("userName", org_userName);
-				botService.insertBotWordHisTx(reqMap);
+				// [2026-09-30] 시즌5 명령어는 전용 로그 테이블로, 그 외는 기존 TBOT_WORD_HIS로.
+				if (S5_LOG_COMMANDS.contains(param0)) {
+					botService.insertS5WordHisTx(reqMap);
+				} else {
+					botService.insertBotWordHisTx(reqMap);
+				}
 			}
 			
 				

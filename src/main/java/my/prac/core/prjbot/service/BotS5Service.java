@@ -233,6 +233,10 @@ public interface BotS5Service {
      *  계정을 매일 새벽 4시 정리(BotS5ServiceImpl.cleanupJunkZeroFloorUsers 참고). */
     void cleanupJunkZeroFloorUsers();
 
+    /** [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS) 30일 초과분 매일 새벽 4시 30분 삭제.
+     *  @Scheduled 메서드라 위 cleanupJunkZeroFloorUsers와 같은 이유로 인터페이스에도 반드시 선언. */
+    void purgeOldS5WordHis();
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

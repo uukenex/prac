@@ -46,6 +46,8 @@ public interface BotService {
 	public int selectSupporters(String userId);
 	
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap);
+	/** [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS)에 저장. 시즌5가 아닌 로그는 insertBotWordHisTx. */
+	public int insertS5WordHisTx(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList1(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList2(HashMap<String, Object> hashMap);
 	

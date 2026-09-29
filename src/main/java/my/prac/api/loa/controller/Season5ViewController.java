@@ -625,7 +625,7 @@ public class Season5ViewController {
             logMap.put("roomName", "WEB");
             logMap.put("req", "[웹] " + type + (param1.isEmpty() ? "" : " " + param1) + (param2.isEmpty() ? "" : " " + param2));
             logMap.put("res", message);
-            botService.insertBotWordHisTx(logMap);
+            botService.insertS5WordHisTx(logMap); // [2026-09-30] 시즌5 전용 로그 테이블
         } catch (Exception e) {
             // 로그 저장 실패는 무시(채팅 컨트롤러의 기존 관례와 동일)
         }

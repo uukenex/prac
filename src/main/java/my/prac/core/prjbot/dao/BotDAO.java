@@ -52,6 +52,9 @@ public interface BotDAO {
 	
 	public int insertBotWordHis(HashMap<String, Object> hashMap);
 
+	/** [2026-09-30] 시즌5 명령/웹 액션 로그는 TBOT_WORD_HIS가 아니라 이 전용 테이블(TBOT_S5_WORD_HIS)에 쌓는다. */
+	public int insertS5WordHis(HashMap<String, Object> hashMap);
+
 	/** [2026-09-22] 유저별 전투로그 뷰어(/loa/tower-battle-log)용 페이지네이션 조회. */
 	public int countWordHisByUser(Map<String, Object> params);
 	public List<HashMap<String, Object>> selectWordHisByUserPaged(Map<String, Object> params);

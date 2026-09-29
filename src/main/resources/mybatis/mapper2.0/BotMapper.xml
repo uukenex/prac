@@ -367,6 +367,26 @@
 			 ,#{issue_yn, jdbcType=VARCHAR})
 	</insert>
 
+	<!-- [2026-09-30] "시즌5 로그가 들어가는 테이블을 따로 만들어 관리, 삭제주기는 한 달" 요청으로 만든 시즌5
+	     명령/웹 액션 로그 전용 테이블. 컬럼/저장 핸들러는 insertBotWordHis와 동일(이모지 보존 이유 포함),
+	     INSERT_DATE는 컬럼 기본값 대신 sysdate를 명시. 30일 초과분은 BotS5ServiceImpl의 스케줄러가
+	     매일 새벽에 삭제한다. 아래 로그 뷰어 조회 4종도 이 테이블만 본다. -->
+	<insert id="insertS5WordHis" parameterType="hashMap">
+		/* bot.xml insertS5WordHis */
+		INSERT INTO TBOT_S5_WORD_HIS
+			 (REQ
+			 ,RES
+			 ,ROOM_NAME
+			 ,USER_NAME
+			 ,INSERT_DATE)
+		VALUES
+			 (#{req, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+			 ,#{res, jdbcType=NCLOB, typeHandler=my.prac.core.util.NCharClobTypeHandler}
+			 ,#{roomName, jdbcType=VARCHAR}
+			 ,#{userName, jdbcType=VARCHAR}
+			 ,sysdate)
+	</insert>
+
 	<!-- [2026-09-22] "전체 web포함 전투로그를 유저별로 볼수있게 페이지 구성해줘" 요청.
 	     별도 관리자용 로그 뷰어 페이지(Season5ViewController /tower-battle-log)용. 채팅/웹
 	     구분 없이 그 유저의 TBOT_WORD_HIS 전체를 최신순으로 페이지네이션 + 키워드(REQ/RES
@@ -374,7 +394,7 @@
 	     REQ는 NVARCHAR2라 그대로 읽어도 안전. ROWNUM 이중 서브쿼리로 페이지네이션(이 DB가
 	     구버전 Oracle이라 OFFSET/FETCH 대신 이 패턴을 계속 써온 관례를 따름). -->
 	<select id="countWordHisByUser" parameterType="hashMap" resultType="int">
-		SELECT COUNT(*) FROM TBOT_WORD_HIS A
+		SELECT COUNT(*) FROM TBOT_S5_WORD_HIS A
 		 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
 		<if test="keyword != null and keyword != ''">
 		   AND (A.REQ LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%'
@@ -387,7 +407,7 @@
 			SELECT ROWNUM RN, T.* FROM (
 				SELECT A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
 				       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
-				  FROM TBOT_WORD_HIS A
+				  FROM TBOT_S5_WORD_HIS A
 				 WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
 				<if test="keyword != null and keyword != ''">
 				   AND (A.REQ LIKE '%'||#{keyword, jdbcType=VARCHAR}||'%'
@@ -407,7 +427,7 @@
 		SELECT * FROM (
 			SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
 			       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
-			  FROM TBOT_WORD_HIS A
+			  FROM TBOT_S5_WORD_HIS A
 			 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
 			<if test="userName != null and userName != ''">
 			   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
@@ -418,8 +438,8 @@
 
 	<!-- [2026-09-30] "명령어를 최근에 사용한 사람만 따로, 사람당 몇 회, 최근 1시간/24시간/3일" 요청.
 	     로그 본문(RES)은 안 가져오고 유저별 COUNT만 집계(3일치를 한 번 훑어서 1시간/24시간/3일 구간
-	     카운트를 조건부 SUM으로 동시에 뽑고 버튼 전환 시 재조회 없음). S5 유저(TBOT_S5_USER_PROGRESS)만
-	     대상. ROOM_NAME='WEB'이면 웹 액션, 그 외는 채팅 명령. -->
+	     카운트를 조건부 SUM으로 동시에 뽑고 버튼 전환 시 재조회 없음). 시즌5 전용 로그 테이블이라
+	     유저 필터는 불필요. ROOM_NAME='WEB'이면 웹 액션, 그 외는 채팅 명령. -->
 	<select id="selectWordHisUserSummary" parameterType="hashMap" resultType="hashMap">
 		SELECT A.USER_NAME AS USER_NAME,
 		       COUNT(*) AS CNT_3D,
@@ -429,9 +449,8 @@
 		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS WEB_24H,
 		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS WEB_1H,
 		       TO_CHAR(MAX(A.INSERT_DATE), 'YYYY-MM-DD HH24:MI:SS') AS LAST_DATE
-		  FROM TBOT_WORD_HIS A
+		  FROM TBOT_S5_WORD_HIS A
 		 WHERE A.INSERT_DATE >= SYSDATE - 3
-		   AND A.USER_NAME IN (SELECT P.USER_NAME FROM TBOT_S5_USER_PROGRESS P)
 		 GROUP BY A.USER_NAME
 		 ORDER BY MAX(A.INSERT_DATE) DESC
 	</select>

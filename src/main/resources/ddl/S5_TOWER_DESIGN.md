@@ -4545,3 +4545,24 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   것은 `selectMarketCondition`(최근 60일)이라 60일 초과분은 어떤 기능도 읽지 않음 -> 기본 보관기간 90일.
 - `S5_WORD_HIS_CLEANUP.sql`: 대상 행 수 확인 -> 5000행씩 배치 삭제(매번 COMMIT) -> (선택) 백업 테이블/
   SHRINK/통계 갱신. **삭제는 되돌릴 수 없어서 자동 실행하지 않고 사용자가 직접 실행**하도록 스크립트만 제공.
+
+## [2026-09-30] 시즌5 전용 로그 테이블 TBOT_S5_WORD_HIS (30일 보관, 자동 삭제)
+
+**요청**: "시즌5 로그가 들어가는 테이블을 따로 만들어서 관리하자. 삭제주기는 한 달로 해서 지금부터 그쪽에
+쌓자. 기존 테이블은 시즌5가 아닌 것들만 들어가게."
+- **테이블**(`S5_LOG_TABLE.sql`, 라이브 DB 적용 완료): `TBOT_S5_WORD_HIS`(ROOM_NAME, USER_NAME, REQ
+  NVARCHAR2, RES NCLOB, INSERT_DATE) + 인덱스 `(INSERT_DATE)`, `(USER_NAME, INSERT_DATE)`. 저장 핸들러는
+  기존 `insertBotWordHis`와 동일(이모지 보존용 `NCharStringTypeHandler`/`NCharClobTypeHandler`).
+  적용 시 시즌5 유저의 최근 30일 로그 330,329건을 옛 테이블에서 **복사**(원본은 그대로).
+- **쓰기 분기**: 채팅은 `LoaChatController`의 `S5_LOG_COMMANDS`(시즌5 case 라벨 집합)에 든 명령이면
+  `insertS5WordHisTx`, 아니면 기존 `insertBotWordHisTx`. 웹 액션(`Season5ViewController` tower-action)은
+  항상 시즌5라 전부 `insertS5WordHisTx`. **시즌5 명령을 새로 추가하면 `S5_LOG_COMMANDS`에도 등록해야
+  전용 테이블에 쌓임**(빠뜨리면 옛 테이블에 쌓임).
+- **읽기**: 로그 뷰어 조회 4종(`selectWordHisRecent`/`ByUserPaged`/`count`/`selectWordHisUserSummary`)과 웹
+  "메시지" 탭(`selectUserRecentMessages`)이 이 테이블만 봄. 요약 쿼리는 시즌5 전용이라 S5 유저 필터를 뺌.
+- **자동 삭제**: `BotS5ServiceImpl.purgeOldS5WordHis()` -- 매일 04:30, 30일 초과 행을 5000행씩 배치 삭제
+  (`BotS5Mapper.deleteOldS5WordHis`). `@Scheduled`라 `BotS5Service` 인터페이스에도 선언함(과거 전 사이트
+  다운 사고 재발 방지).
+- 옛 `TBOT_WORD_HIS`는 앞으로 시즌5 로그가 안 쌓임(기존 누적분 정리는 `S5_WORD_HIS_CLEANUP.sql`).
+- **배포 주의**: 테이블 생성/복사는 이미 끝났고 앱은 재배포 전까지 옛 테이블에만 씀. 배포 직전에
+  `S5_LOG_TABLE.sql` 2단계 복사를 "마지막 이관 시각 이후"로 한 번 더 돌리면 그 사이 로그를 이어 붙일 수 있음.

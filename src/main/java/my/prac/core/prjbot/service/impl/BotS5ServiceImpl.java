@@ -605,6 +605,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
+    /** [2026-09-30] "시즌5 로그가 들어가는 테이블을 따로 만들어 관리, 삭제주기는 한 달" 요청 --
+     *  TBOT_S5_WORD_HIS에서 30일이 지난 행을 매일 새벽 4시 30분에 5000행씩 지운다(한 번에 대량 삭제로
+     *  언두/락이 커지지 않게 배치마다 별도 호출, 0건이 나오거나 안전 상한에 닿으면 종료).
+     *  @Scheduled 메서드라 BotS5Service 인터페이스에도 선언돼 있어야 한다(위 정리 메서드와 동일 이유). */
+    @Override
+    @Scheduled(cron = "0 30 4 * * *")
+    public void purgeOldS5WordHis() {
+        try {
+            int total = 0;
+            for (int i = 0; i < 400; i++) { // 최대 200만 행까지만 한 번에(무한 루프 방지)
+                int n = dao.deleteOldS5WordHis(S5_WORD_HIS_KEEP_DAYS, 5000);
+                total += n;
+                if (n < 5000) break;
+            }
+            if (total > 0) {
+                System.out.println("[S5 정리] 시즌5 로그 " + S5_WORD_HIS_KEEP_DAYS + "일 초과 " + total + "건 삭제");
+            }
+        } catch (Exception e) {
+            System.out.println("[S5 정리] 시즌5 로그 정리 실패: " + e.getMessage());
+        }
+    }
+
+    /** 시즌5 전용 로그 테이블 보관기간(일). */
+    private static final int S5_WORD_HIS_KEEP_DAYS = 30;
+
     /** 한계돌파 N단계의 스탯 배율(%) -- 위 LIMIT_BREAK_PCT 표 참고, 범위 밖이면 클램프. */
     private double limitBreakPct(int limitBreak) {
         int lv = Math.max(0, Math.min(limitBreak, LIMIT_BREAK_MAX));

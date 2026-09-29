@@ -200,6 +200,10 @@ public class BotServiceImpl implements BotService {
 	public int insertBotWordHisTx(HashMap<String, Object> hashMap) {
 		return botDAO.insertBotWordHis(hashMap);
 	}
+
+	public int insertS5WordHisTx(HashMap<String, Object> hashMap) {
+		return botDAO.insertS5WordHis(hashMap);
+	}
 	
 	public List<String> selectRoomList1(HashMap<String, Object> hashMap){
 		return botDAO.selectRoomList1(hashMap);

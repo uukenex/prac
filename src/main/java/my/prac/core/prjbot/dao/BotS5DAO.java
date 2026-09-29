@@ -54,6 +54,8 @@ public interface BotS5DAO {
 
     // ── 웹 UI: 유저별 지난 메시지(채팅 명령어 요청/응답) 이력 -- 기존 TBOT_WORD_HIS 재사용 ──
     List<HashMap<String, Object>> selectUserRecentMessages(@Param("userName") String userName, @Param("limit") int limit);
+    /** [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS) 보관기간 초과분 배치 삭제(삭제 건수 반환). */
+    int deleteOldS5WordHis(@Param("keepDays") int keepDays, @Param("batch") int batch);
 
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);
