@@ -301,6 +301,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 최대1개")로 최대 1개로 축소.
     private static final int[] LEGEND_FRAGMENT_BOSS_FLOOR = { 59, 69, 79, 89, 99 };
     private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
+    // [2026-09-29] 80층 이상 일반몬스터 0.5%(5/1000), 중간보스 1%(10/1000) 조각 드랍
+    private static final int LEGEND_FRAGMENT_MOB_MIN_FLOOR = 80;
+    private static final int LEGEND_FRAGMENT_MOB_DROP_PERMILLE = 5;
+    private static final int LEGEND_FRAGMENT_MIDBOSS_DROP_PERMILLE = 10;
     private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
     private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
     // [2026-09-21] "최상급장비상자에서 조각이 너무 잘 나온다, 확률에 맞게 나오도록" 요청 --
@@ -1657,7 +1661,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/주사위 (/ㅈㅅㅇ, /ㅈ)").append(NL);
         sb.append("/층변경 N (/층이동 N)").append(NL);
         sb.append("/층내려가기 (/층다운)").append(NL);
-        sb.append("/탑내려가기 (/탑다운)").append(NL);
+        sb.append("/계단내려가기 (/탑내려가기, /계단다운)").append(NL);
         sb.append("/탑올라가기 (/탑업)").append(NL);
         sb.append("/탑현황 [닉네임]").append(NL);
         sb.append("/파티편성 [N]").append(NL);
@@ -1683,7 +1687,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/주사위 : 이동 또는 공격").append(NL);
         sb.append("/층변경 N : 구간 내 N번째 층 이동(0=마을~9=보스)").append(NL);
         sb.append("/층내려가기 : 구간 내 한 층 아래로").append(NL);
-        sb.append("/탑내려가기 · /탑올라가기 : 마을끼리 위/아래 구간 이동(올라가기는 보스 처치 후만)").append(NL);
+        sb.append("/계단내려가기 · /탑올라가기 : 마을끼리 위/아래 구간 이동(올라가기는 보스 처치 후만), 101층+에선 계단내려가기가 그 구간 100층 마을로 바로 이동").append(NL);
         sb.append("/탑현황 [닉네임] : 현황 조회").append(NL);
         sb.append(NL);
 
@@ -2130,9 +2134,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ((stairZone || m != 0) && isPartyWiped(userName)) {
             if (stairZone) {
                 return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. /층변경 0 으로 " + stairCampOf(floor)
-                        + "층 마을로 돌아가야 부활합니다. (다시 올 땐 /층변경 " + floor + " 처럼 가본 층으로 바로 이동 가능)";
+                        + "층 마을로 돌아가야 부활합니다. (/계단내려가기로도 이동, 다시 올 땐 /층변경 " + floor + " 처럼 가본 층으로 바로 이동 가능)";
             }
-            return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. 마을로 돌아가야 부활합니다. (/층변경 0 또는 /탑내려가기)";
+            return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. 마을로 돌아가야 부활합니다. (/층변경 0 또는 /계단내려가기)";
         }
         if (!stairZone && m == 0) {
             if (floor == 0) {
@@ -3663,6 +3667,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 컬럼/markFloorMidbossKilled DAO 메서드 자체는 남겨두되(과거 데이터, DDL 롤백 부담)
             // 새로 값을 쓰는 곳은 없음.
 
+            // [2026-09-29] "80층 이상에서는 일반몬스터는 0.5%, 중간보스는 1%로 전설의조각을 얻게해줘" 요청
+            // -- 보스층 드랍(59/69/79/89/99)과 별개로, 보스가 아닌 처치(일반/엘리트/중간보스)에서도
+            // 80층 이상이면 천분율 확률로 조각 1개.
+            if (!isBoss && floor >= LEGEND_FRAGMENT_MOB_MIN_FLOOR
+                    && RND.nextInt(1000) < (midBoss ? LEGEND_FRAGMENT_MIDBOSS_DROP_PERMILLE : LEGEND_FRAGMENT_MOB_DROP_PERMILLE)) {
+                int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + 1;
+                HashMap<String, Object> fragUp = new HashMap<>();
+                fragUp.put("userName", userName);
+                fragUp.put("legendFragment", newFragment);
+                dao.updateUserProgress(fragUp);
+                p.put("LEGEND_FRAGMENT", newFragment);
+                sb.append("🧩 ").append(midBoss ? "중간보스가" : "몬스터가").append(" 전설의조각을 떨어뜨렸다! (보유 ")
+                  .append(newFragment).append("개)").append(NL);
+            }
+
             if (isBoss) {
                 bumpBossKillCountToday(userName, p);
 
@@ -3859,13 +3878,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             int fm = floor % 10;
             if (isStairZone(floor)) {
                 // [2026-09-28] 계단 구역엔 층마다 마을이 없다 -- 부활은 100층 마을에서만.
-                sb.append(NL).append(NL).append("🪜 /층변경 0 으로 ").append(stairCampOf(floor))
+                sb.append(NL).append(NL).append("🪜 /계단내려가기(또는 /층변경 0) 으로 ").append(stairCampOf(floor))
                   .append("층 마을로 돌아가 부활한 뒤, /층변경 ").append(floor).append(" 으로 이 층부터 다시 도전할 수 있어요.")
                   .append(NL).append("(동료만 바꿔 다시 /주사위를 굴리면 방금 진 칸에서 재도전합니다 -- 다음 칸/층으로 넘어가지 않아요)");
             } else if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
                 sb.append(NL).append(NL)
                   .append("💡 이 구간에서 ").append(wipeStreak).append("연속으로 전멸했어요. 아직 버거우면 ")
-                  .append("/탑내려가기(/탑다운)로 10층 아래 마을로 내려가서 스탯/장비를 더 준비한 뒤 다시 도전해보세요.");
+                  .append("/계단내려가기로 10층 아래 마을로 내려가서 스탯/장비를 더 준비한 뒤 다시 도전해보세요.");
             }
             return sb.toString();
         }
@@ -5027,7 +5046,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         int fm = floor % 10;
         if (fm == 0) {
-            return "🏘️ 이미 이 구간의 마을입니다. 더 아래 구간으로 가려면 /탑내려가기(/탑다운)를 사용하세요.";
+            return "🏘️ 이미 이 구간의 마을입니다. 더 아래 구간으로 가려면 /계단내려가기를 사용하세요.";
         }
         return changeFloor(userName, fm - 1);
     }
@@ -5125,7 +5144,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /**
-     * /탑내려가기(/탑다운) — 마을에서만 바로 아래 10층 구간 마을로 이동. changeFloor()와 달리
+     * /계단내려가기(/탑내려가기, /계단다운, /탑다운) — 100층 이하는 마을에서만 바로 아래 10층 구간
+     * 마을로 이동, 101층+는 계단 구역 어디서든 그 구간 100의 배수 마을로 이동(200층 마을에선 바로
+     * 아래 100층 마을). changeFloor()와 달리
      * 같은 구간을 벗어나는 이동이라 target이 항상 이전에 실제로 밟았던 마을(구간을 순서대로
      * 올라와야만 지금 서 있을 수 있으므로)이라 별도 재진입 자격 확인이 필요 없다. 사냥터층
      * 탐사 초기화(resetBlockExploration)도 여긴 해당 없음(마을→마을 이동은 사냥터층을 아예
@@ -5135,8 +5156,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String descendVillage(String userName) {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int floor = intVal(p.get("CUR_FLOOR"), 0);
-        if (isStairZone(floor)) { // 110/120...층도 계단 구역의 일반 층이지 마을이 아님
-            return "🪜 계단 구역에는 100층마다만 마을이 있습니다. /층변경 0 으로 " + stairCampOf(floor) + "층 마을로 먼저 이동하세요.";
+        if (isStairZone(floor)) {
+            // [2026-09-29] "101~199층에서는 100층 마을로 이동" 요청 -- 계단 구역(110/120...층 포함)
+            // 어디서든 /계단내려가기 = 지금 구간의 마을(100의 배수)로 이동(/층변경 0과 동일, 전투 중이면 도망).
+            boolean wasInCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
+            return changeFloorStairZone(userName, p, floor, 0, wasInCombat);
         }
         if (floor % 10 != 0) {
             return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";

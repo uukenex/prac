@@ -1641,10 +1641,10 @@ var TW = (function () {
       var downRow = document.createElement('div');
       downRow.className = 'tower-floor village' + (canTowerDown ? '' : ' locked');
       downRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬇️</span>'
-          + '<span>' + (blockBase - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
+          + '<span>' + (blockBase - 10) + '층 마을</span><span class="tf-kind">계단내려가기</span></span>';
       downRow.onclick = canTowerDown
           ? function () { confirmTowerDown(blockBase - 10); }
-          : function () { toast('탑다운은 지금 있는 구간의 마을에서만 사용할 수 있습니다.'); };
+          : function () { toast('계단내려가기는 지금 있는 구간의 마을에서만 사용할 수 있습니다.'); };
       nav.appendChild(downRow);
     }
   }
@@ -1696,12 +1696,12 @@ var TW = (function () {
     if (!atCamp) campRow.onclick = function () { confirmMove(campFloor, 0, '마을'); };
     nav.appendChild(campRow);
     var downRow = document.createElement('div');
-    downRow.className = 'tower-floor village' + (atCamp ? '' : ' locked');
+    // [2026-09-29] 계단내려가기: 마을에선 아래 마을로, 계단 구역(101층+)에선 이 구간 100층 마을로.
+    var downTarget = atCamp ? (campFloor > STAIR_ZONE_BASE_CAMP ? campFloor - 100 : campFloor - 10) : campFloor;
+    downRow.className = 'tower-floor village';
     downRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬇️</span>'
-        + '<span>' + (campFloor > STAIR_ZONE_BASE_CAMP ? campFloor - 100 : campFloor - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
-    downRow.onclick = atCamp
-        ? function () { confirmTowerDown(campFloor > STAIR_ZONE_BASE_CAMP ? campFloor - 100 : campFloor - 10); }
-        : function () { toast('탑다운은 ' + campFloor + '층 마을에서만 사용할 수 있습니다.'); };
+        + '<span>' + downTarget + '층 마을</span><span class="tf-kind">계단내려가기</span></span>';
+    downRow.onclick = function () { confirmTowerDown(downTarget); };
     nav.appendChild(downRow);
   }
 
@@ -1724,7 +1724,7 @@ var TW = (function () {
   }
 
   function confirmTowerDown(targetFloor) {
-    document.getElementById('confirmMsg').textContent = '탑다운: ' + targetFloor + '층 마을로 내려가시겠습니까?';
+    document.getElementById('confirmMsg').textContent = '계단내려가기: ' + targetFloor + '층 마을로 내려가시겠습니까?';
     document.getElementById('confirmYesBtn').onclick = function () {
       closeConfirm();
       action('TOWER_DOWN', '');

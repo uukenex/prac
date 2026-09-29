@@ -612,6 +612,8 @@ public class LoaChatController {
 			case "/층이동":
 				val = s5.changeFloor(reqMap);
 				break;
+			case "/계단내려가기":
+			case "/계단다운":
 			case "/탑내려가기":
 			case "/탑다운":
 				val = s5.descendVillage(reqMap);
