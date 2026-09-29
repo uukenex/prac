@@ -5571,6 +5571,16 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 역이용해서 집계한다(selectChannelUsageStats 주석 참고) -- 정확한 실시간 집계가 아니라
      * 대략적인 채널 분포 참고용이라는 걸 명시해서 오해 없게 한다.
      */
+    /** [2026-09-29] "/로그는 관리자만 사용할수 있게 해줘" 요청 -- /이벤트지급·/탑통계와 같은
+     *  EVENT_ADMIN_USERS 권한 체크 재사용. 링크는 절대경로(채팅앱 링크 인식, TOWER_VIEW_URL과 동일 이유). */
+    @Override
+    public String battleLogLink(String userName) {
+        if (!isEventAdmin(userName)) {
+            return "권한이 없습니다.";
+        }
+        return "📜 유저별 전투/웹 로그 뷰어: http://rgb-tns.dev-apc.com/loa/tower-battle-log";
+    }
+
     @Override
     public String towerStats(String userName) {
         if (!isEventAdmin(userName)) {

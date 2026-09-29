@@ -331,6 +331,12 @@ public interface BotS5Service {
     String towerStats(String userName);
 
     /**
+     * /로그(관리자 전용) — 유저별 전투/웹 로그 뷰어 페이지 링크 안내. EVENT_ADMIN_USERS에
+     * 없으면 /이벤트지급·/탑통계와 동일하게 "권한이 없습니다"만 반환.
+     */
+    String battleLogLink(String userName);
+
+    /**
      * 활동 카운터 1증가 + 그 채널 사용 플래그 세팅. statKey는 아래 6개 중 하나만 유효
      * (그 외는 조용히 무시): "DICE_WEB", "DICE_CHAT", "GACHA_WEB", "GACHA_CHAT", "WIPE_WEB",
      * "WIPE_CHAT". 채널이 갈리는 지점(Season5Controller=채팅, Season5ViewController=웹)에서

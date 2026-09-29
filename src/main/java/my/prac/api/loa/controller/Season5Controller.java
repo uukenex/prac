@@ -125,7 +125,7 @@ public class Season5Controller {
      *  별도 페이지(SPA 밖)라 다른 명령어들처럼 s5Service를 거칠 필요 없이 링크 안내만 하면 됨.
      *  절대경로 고정 이유는 BotS5ServiceImpl.TOWER_VIEW_URL과 동일(채팅앱 링크 인식). */
     public String battleLogLink(HashMap<String, Object> map) {
-        return "📜 유저별 전투/웹 로그 뷰어: http://rgb-tns.dev-apc.com/loa/tower-battle-log";
+        return s5Service.battleLogLink(userNameOf(map)); // 관리자 권한 체크는 서비스에서
     }
 
     /** /갱신 — 다른 시즌들의 /갱신과 같이 눌리는 공용 명령어에 얹어서 호출됨(LoaChatController 참고) */
