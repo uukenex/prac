@@ -1324,6 +1324,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int mineFloor = 0, mineKill = 0, mineAch = 0, mineExplored = 0;
         int mineCompanion = 0, mineCompanionGrade = 0, mineEquip = 0, mineEquipGrade = 0;
         int mineAccessory = 0, mineAccessoryGrade = 0;
+        int mineCompanionGradeCount = 0, mineEquipGradeCount = 0, mineAccessoryGradeCount = 0; // 서버 최고 등급을 몇 개 보유했는지
         PP minePp = PP.fromPP(0);
         if (mineP != null) {
             mineFloor = intVal(mineP.get("MAX_FLOOR_REACHED"), 0);
@@ -1332,7 +1333,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             mineExplored = dao.countFullyExploredFloors(userName);
             mineCompanion = dao.countUserCompanions(userName);
             for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-                mineCompanionGrade = Math.max(mineCompanionGrade, intVal(c.get("GRADE"), 0));
+                int cg = intVal(c.get("GRADE"), 0);
+                if (cg > mineCompanionGrade) { mineCompanionGrade = cg; mineCompanionGradeCount = 0; }
+                if (cg == mineCompanionGrade) mineCompanionGradeCount++;
             }
             mineEquip = dao.countUserEquip(userName);
             mineAccessory = dao.countUserAccessory(userName);
@@ -1340,9 +1343,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int eg = intVal(e.get("GRADE"), 0);
                 String part = strVal(e.get("PART"), "");
                 if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) {
-                    mineAccessoryGrade = Math.max(mineAccessoryGrade, eg);
+                    if (eg > mineAccessoryGrade) { mineAccessoryGrade = eg; mineAccessoryGradeCount = 0; }
+                    if (eg == mineAccessoryGrade) mineAccessoryGradeCount++;
                 } else {
-                    mineEquipGrade = Math.max(mineEquipGrade, eg);
+                    if (eg > mineEquipGrade) { mineEquipGrade = eg; mineEquipGradeCount = 0; }
+                    if (eg == mineEquipGrade) mineEquipGradeCount++;
                 }
             }
             minePp = PP.of(numVal(mineP.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(mineP.get("TOTAL_PP_EARNED_EXT"), ""));
@@ -1362,16 +1367,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 최고로 보유한 개수여야 한다" 요청 -- 괄호 안 숫자가 "합산치"가 아니라 "최다 보유자
         // 1명 기준"임을 문구로도 명확히("최다 보유자 N명/개").
         sb.append("✨ 최고 동료 등급: ★").append(maxCompanionGrade).append(" (최다 보유자 ").append(maxCompanionGradeCount).append("명)")
-          .append(meTag(mineCompanionGrade, maxCompanionGrade)).append(NL);
+          .append(meTagGrade(mineCompanionGrade, mineCompanionGradeCount, maxCompanionGrade, maxCompanionGradeCount)).append(NL);
         sb.append("🎽 최다 장비 보유: ").append(maxEquip).append("개").append(meTag(mineEquip, maxEquip)).append(NL);
         sb.append("💎 최고 장비 등급: ★").append(maxEquipGrade).append(" (최다 보유자 ").append(maxEquipGradeCount).append("개)")
-          .append(meTag(mineEquipGrade, maxEquipGrade)).append(NL);
+          .append(meTagGrade(mineEquipGrade, mineEquipGradeCount, maxEquipGrade, maxEquipGradeCount)).append(NL);
         sb.append("💍 최다 악세서리 보유: ").append(maxAccessory).append("개").append(meTag(mineAccessory, maxAccessory)).append(NL);
         sb.append("🔮 최고 악세서리 등급: ★").append(maxAccessoryGrade).append(" (최다 보유자 ").append(maxAccessoryGradeCount).append("개)")
-          .append(meTag(mineAccessoryGrade, maxAccessoryGrade)).append(NL);
+          .append(meTagGrade(mineAccessoryGrade, mineAccessoryGradeCount, maxAccessoryGrade, maxAccessoryGradeCount)).append(NL);
         sb.append("💰 최다 누적 PP: ").append(maxPp.format())
           .append((PP.toBaseValue(maxPp) > 0 && minePp.compare(maxPp) >= 0) ? " (me)" : "");
         return sb.toString();
+    }
+
+    /**
+     * ranking() 전용 -- "최고 등급(최다 보유자 N개)" 줄용. [2026-09-29] "6성 하나만 있어도 (me)가 나온다, 가장
+     * 많이 가진(15개) 사람만 (me)" 신고 -- 등급만 최고 등급이면 붙던 걸, 그 최고 등급을 가장 많이 보유한
+     * 개수(maxCount, 동타 포함)까지 채워야 붙도록 정정.
+     */
+    private String meTagGrade(int mineGrade, int mineCount, int maxGrade, int maxCount) {
+        return (maxGrade > 0 && mineGrade >= maxGrade && mineCount >= maxCount) ? " (me)" : "";
     }
 
     /** ranking() 전용 -- max가 0(아직 아무도 없음)이 아니고 mine이 max 이상(동타 포함)이면 " (me)". */
