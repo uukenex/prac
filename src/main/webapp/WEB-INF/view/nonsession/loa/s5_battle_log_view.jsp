@@ -50,6 +50,18 @@
     .time-btn.active{ background:var(--gold); color:#fff; border-color:var(--gold); }
     .time-btn:active{ transform:scale(.95); }
 
+    .sum-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .sum-title{ font-size:13px; font-weight:800; }
+    .sum-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+    .sum-table th{ text-align:left; font-size:11px; color:var(--ink-soft); font-weight:700; padding:4px 6px; border-bottom:1.5px solid var(--line); }
+    .sum-table td{ padding:7px 6px; border-bottom:1px solid var(--gold-soft); }
+    .sum-table th.num, .sum-table td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+    .sum-row{ cursor:pointer; }
+    .sum-row:hover{ background:var(--gold-soft); }
+    .sum-row.active{ background:var(--pp-soft); }
+    .sum-sub{ color:var(--ink-soft); font-size:11px; }
+    .sum-scroll{ max-height:280px; overflow-y:auto; }
+
     .meta-row{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-soft); flex-wrap:wrap; gap:4px; }
 
     .log-list{ display:flex; flex-direction:column; gap:10px; }
@@ -87,6 +99,19 @@
       </div>
     </div>
 
+    <div class="card">
+      <div class="sum-head">
+        <span class="sum-title">👥 최근 명령어 사용자 (사람당 사용 횟수)</span>
+        <div class="time-row" id="sumRow">
+          <button type="button" class="time-btn" data-h="1">최근 1시간</button>
+          <button type="button" class="time-btn active" data-h="24">최근 24시간</button>
+          <button type="button" class="time-btn" data-h="72">최근 3일</button>
+        </div>
+      </div>
+      <div class="sum-scroll" id="sumBody"><div class="log-empty">불러오는 중...</div></div>
+      <div class="sum-sub" style="margin-top:6px;">사용자 줄을 누르면 그 유저의 로그(최근 24시간)를 아래에 보여줍니다.</div>
+    </div>
+
     <div class="meta-row" id="metaRow" style="display:none;">
       <span id="totalLabel"></span>
       <span id="fetchedLabel"></span>
@@ -103,6 +128,9 @@
     // 전부 이 배열 안에서 필터링만 한다(추가 fetch 없음).
     var allItems = [];
     var state = { userName: '', windowMin: 1440, keyword: '' };
+    // 최근 명령어 사용자 요약(서버에서 3일치를 한 번에 집계해 받아오고, 1시간/24시간/3일 전환은 JS로만).
+    var sumUsers = [];
+    var sumHours = 24;
 
     function qs(id) { return document.getElementById(id); }
 
@@ -131,6 +159,47 @@
         // 아직 없는 option이라 무시되고 "전체 유저"로 되돌아간다 -- 옵션 추가가 끝난 뒤에 세팅.
         if (preselect) sel.value = preselect;
       }).catch(function () { /* 콤보박스 채우기 실패는 조용히 무시(전체 유저 옵션은 이미 있음) */ });
+    }
+
+    function sumKey(h) { return h === 1 ? '1H' : (h === 24 ? '24H' : '3D'); }
+
+    function renderSummary() {
+      var k = sumKey(sumHours);
+      var rows = sumUsers.map(function (u) {
+        var total = Number(u['CNT_' + k] || 0), web = Number(u['WEB_' + k] || 0);
+        return { name: u.USER_NAME, total: total, web: web, chat: total - web, last: u.LAST_DATE };
+      }).filter(function (r) { return r.total > 0; });
+      rows.sort(function (a, b) { return b.total - a.total || (a.last < b.last ? 1 : -1); });
+      var body = qs('sumBody');
+      if (rows.length === 0) { body.innerHTML = '<div class="log-empty">이 기간에 명령어를 사용한 사람이 없습니다.</div>'; return; }
+      var totalAll = rows.reduce(function (s, r) { return s + r.total; }, 0);
+      body.innerHTML = '<table class="sum-table"><thead><tr><th>유저</th><th class="num">합계</th><th class="num">채팅</th><th class="num">웹</th><th>마지막 사용</th></tr></thead><tbody>'
+        + rows.map(function (r) {
+          return '<tr class="sum-row' + (state.userName === r.name ? ' active' : '') + '" data-user="' + escapeHtml(r.name).replace(/"/g, '&quot;') + '">'
+            + '<td>' + escapeHtml(r.name) + '</td><td class="num"><b>' + r.total + '회</b></td>'
+            + '<td class="num">' + r.chat + '</td><td class="num">' + r.web + '</td>'
+            + '<td class="sum-sub">' + escapeHtml((r.last || '').substring(5, 16)) + '</td></tr>';
+        }).join('')
+        + '</tbody></table><div class="sum-sub" style="margin-top:6px;">' + rows.length + '명 · 총 ' + totalAll + '회</div>';
+      Array.prototype.forEach.call(body.querySelectorAll('.sum-row'), function (tr) {
+        tr.addEventListener('click', function () {
+          var name = tr.getAttribute('data-user');
+          state.userName = name;
+          qs('userNameSelect').value = name;
+          renderSummary();
+          fetchFromServer();
+        });
+      });
+    }
+
+    function fetchSummary() {
+      qs('sumBody').innerHTML = '<div class="log-empty">불러오는 중...</div>';
+      fetch(base + '/loa/api/tower-battle-log-summary').then(function (r) { return r.json(); }).then(function (data) {
+        sumUsers = data.users || [];
+        renderSummary();
+      }).catch(function () {
+        qs('sumBody').innerHTML = '<div class="log-empty">요약 조회 중 오류가 발생했습니다.</div>';
+      });
     }
 
     function renderItems() {
@@ -188,14 +257,22 @@
       state.userName = this.value;
       fetchFromServer(); // 유저가 바뀌면 서버 데이터 자체가 달라지므로 이때만 재조회
     });
-    qs('refreshBtn').addEventListener('click', fetchFromServer);
+    qs('refreshBtn').addEventListener('click', function () { fetchFromServer(); fetchSummary(); });
+    Array.prototype.forEach.call(document.querySelectorAll('#sumRow .time-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#sumRow .time-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        sumHours = parseInt(btn.getAttribute('data-h'), 10);
+        renderSummary(); // 이미 받아온 3일치 집계 안에서만 전환(서버 재조회 없음)
+      });
+    });
     qs('keywordInput').addEventListener('input', function () {
       state.keyword = this.value.trim();
       renderItems();
     });
-    Array.prototype.forEach.call(document.querySelectorAll('.time-btn'), function (btn) {
+    Array.prototype.forEach.call(document.querySelectorAll('#timeRow .time-btn'), function (btn) {
       btn.addEventListener('click', function () {
-        document.querySelectorAll('.time-btn').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('#timeRow .time-btn').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         state.windowMin = parseInt(btn.getAttribute('data-min'), 10);
         renderItems(); // 이미 불러온 데이터 안에서만 필터링(서버 재조회 없음)
@@ -210,6 +287,7 @@
 
     loadUserOptions(initialUser);
     fetchFromServer();
+    fetchSummary();
   })();
   </script>
 </body>

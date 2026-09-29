@@ -60,6 +60,10 @@ public interface BotDAO {
 	 *  전체). 시간대별 세부 필터(5분~24시간)는 이 결과셋 안에서 프론트가 JS로 처리. */
 	public List<HashMap<String, Object>> selectWordHisRecent(Map<String, Object> params);
 
+	/** [2026-09-30] /tower-battle-log "최근 명령어 사용자 요약" -- 최근 3일 이내 S5 유저별 명령어 사용 횟수
+	 *  (1시간/24시간/3일 구간별 + 웹 액션 횟수 + 마지막 사용시각)를 한 번의 집계로 반환. */
+	public List<HashMap<String, Object>> selectWordHisUserSummary(Map<String, Object> params);
+
 	public List<String> selectRoomList1(HashMap<String, Object> hashMap);
 	public List<String> selectRoomList2(HashMap<String, Object> hashMap);
 	

@@ -436,6 +436,16 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-09-30] "명령어를 최근에 사용한 사람만 따로, 사람당 몇 회(최근 1시간/24시간/3일)" 요청 --
+     *  로그 본문 없이 유저별 사용 횟수만 집계해서 내려준다(구간 전환은 프론트가 이 결과로 처리). */
+    @GetMapping("/api/tower-battle-log-summary")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerBattleLogSummary() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("users", botDao.selectWordHisUserSummary(new HashMap<String, Object>()));
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/api/tower-achievements")
     @ResponseBody
     public ResponseEntity<?> apiTowerAchievements(@RequestParam(value = "userName", defaultValue = "") String userName) {

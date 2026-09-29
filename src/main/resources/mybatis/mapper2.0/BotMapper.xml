@@ -416,6 +416,26 @@
 		) WHERE ROWNUM &lt;= #{maxRows, jdbcType=INTEGER}
 	</select>
 
+	<!-- [2026-09-30] "명령어를 최근에 사용한 사람만 따로, 사람당 몇 회, 최근 1시간/24시간/3일" 요청.
+	     로그 본문(RES)은 안 가져오고 유저별 COUNT만 집계(3일치를 한 번 훑어서 1시간/24시간/3일 구간
+	     카운트를 조건부 SUM으로 동시에 뽑고 버튼 전환 시 재조회 없음). S5 유저(TBOT_S5_USER_PROGRESS)만
+	     대상. ROOM_NAME='WEB'이면 웹 액션, 그 외는 채팅 명령. -->
+	<select id="selectWordHisUserSummary" parameterType="hashMap" resultType="hashMap">
+		SELECT A.USER_NAME AS USER_NAME,
+		       COUNT(*) AS CNT_3D,
+		       SUM(CASE WHEN A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS CNT_24H,
+		       SUM(CASE WHEN A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS CNT_1H,
+		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' THEN 1 ELSE 0 END) AS WEB_3D,
+		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS WEB_24H,
+		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS WEB_1H,
+		       TO_CHAR(MAX(A.INSERT_DATE), 'YYYY-MM-DD HH24:MI:SS') AS LAST_DATE
+		  FROM TBOT_WORD_HIS A
+		 WHERE A.INSERT_DATE >= SYSDATE - 3
+		   AND A.USER_NAME IN (SELECT P.USER_NAME FROM TBOT_S5_USER_PROGRESS P)
+		 GROUP BY A.USER_NAME
+		 ORDER BY MAX(A.INSERT_DATE) DESC
+	</select>
+
 	<select id="selectRoomList1" resultType="String" parameterType="hashMap">
 		/* bot.xml selectRoomList1 */
 		SELECT A.ROOM_NAME
