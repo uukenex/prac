@@ -1500,7 +1500,8 @@ var TW = (function () {
   // BotS5ServiceImpl.STAIR_ZONE_START와 같은 값 -- 이 층부터 X0/X9층 규칙 없는 9칸 고정 계단 구역.
   var STAIR_ZONE_START = 101;
   var STAIR_ZONE_BASE_CAMP = 100;
-  function isStairZone(floor) { return floor >= STAIR_ZONE_START; }
+  // [2026-09-29] 100의 배수(100/200/...)는 마을 -- BotS5ServiceImpl.isStairZone과 동일 규칙.
+  function isStairZone(floor) { return floor >= STAIR_ZONE_START && floor % 100 !== 0; }
   function tileClass(type) { return TILE_CLASS[type] || 'combat'; }
 
   function loadStatus() {
@@ -1657,18 +1658,19 @@ var TW = (function () {
     var curFloor = p.CUR_FLOOR;
     var maxReached = Math.min(p.MAX_FLOOR_REACHED || 0, STAIR_ZONE_MAX_FLOOR);
     var blockBase = curFloor - (curFloor % 10);
+    var campFloor = Math.max(STAIR_ZONE_BASE_CAMP, Math.floor(curFloor / 100) * 100); // 돌아갈 마을(100의 배수)
     if (maxReached > STAIR_ZONE_START && maxReached !== curFloor
         && (maxReached < blockBase || maxReached > blockBase + 9)) {
       var resumeRow = document.createElement('div');
       resumeRow.className = 'tower-floor boss';
       resumeRow.innerHTML = '<span class="tf-left"><span class="tf-num">⏩</span><span>' + maxReached
           + '층</span><span class="tf-kind">가본 최고층으로</span></span>';
-      resumeRow.onclick = function () { confirmMoveAbs(maxReached, '계단층'); };
+      resumeRow.onclick = function () { confirmMoveAbs(maxReached, isStairZone(maxReached) ? '계단층' : '마을'); };
       nav.appendChild(resumeRow);
     }
     for (var n = 9; n >= 0; n--) {
       var floor = blockBase + n;
-      if (floor < STAIR_ZONE_START || floor > STAIR_ZONE_MAX_FLOOR) continue;
+      if (!isStairZone(floor) || floor > STAIR_ZONE_MAX_FLOOR) continue; // 100의 배수(마을)는 아래 마을 행이 담당
       var isHere = (floor === curFloor);
       var reachable = (floor === STAIR_ZONE_START) || floor <= maxReached;
       var row = document.createElement('div');
@@ -1685,21 +1687,21 @@ var TW = (function () {
       }
       nav.appendChild(row);
     }
-    var atCamp = (curFloor === STAIR_ZONE_BASE_CAMP);
+    var atCamp = (curFloor === campFloor);
     var campRow = document.createElement('div');
     campRow.className = 'tower-floor village' + (atCamp ? ' here' : '');
     campRow.innerHTML = '<span class="tf-left"><span class="tf-num">0</span>'
-        + '<span>' + STAIR_ZONE_BASE_CAMP + '층</span><span class="tf-kind">마을(부활)</span></span>'
+        + '<span>' + campFloor + '층</span><span class="tf-kind">마을(부활)</span></span>'
         + (atCamp ? '<span class="tf-explored" style="color:var(--gold);">📍 현재 위치</span>' : '');
-    if (!atCamp) campRow.onclick = function () { confirmMove(STAIR_ZONE_BASE_CAMP, 0, '마을'); };
+    if (!atCamp) campRow.onclick = function () { confirmMove(campFloor, 0, '마을'); };
     nav.appendChild(campRow);
     var downRow = document.createElement('div');
     downRow.className = 'tower-floor village' + (atCamp ? '' : ' locked');
     downRow.innerHTML = '<span class="tf-left"><span class="tf-num">⬇️</span>'
-        + '<span>' + (STAIR_ZONE_BASE_CAMP - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
+        + '<span>' + (campFloor > STAIR_ZONE_BASE_CAMP ? campFloor - 100 : campFloor - 10) + '층 마을</span><span class="tf-kind">탑다운</span></span>';
     downRow.onclick = atCamp
-        ? function () { confirmTowerDown(STAIR_ZONE_BASE_CAMP - 10); }
-        : function () { toast('탑다운은 ' + STAIR_ZONE_BASE_CAMP + '층 마을에서만 사용할 수 있습니다.'); };
+        ? function () { confirmTowerDown(campFloor > STAIR_ZONE_BASE_CAMP ? campFloor - 100 : campFloor - 10); }
+        : function () { toast('탑다운은 ' + campFloor + '층 마을에서만 사용할 수 있습니다.'); };
     nav.appendChild(downRow);
   }
 

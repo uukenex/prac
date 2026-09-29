@@ -1021,8 +1021,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     // "기울기를 조금 더 완만하게"(사용자 확인) -- 101층+ HP/ATK/DEF 증가폭 = 1~99층 증가폭의 절반.
     private static final double STAIR_ZONE_SLOPE_FACTOR = 0.5;
 
+    // [2026-09-29] "100층 이후는 100층마다 마을이 존재, 나머지는 다 계단식 일반사냥터" 요청 --
+    // 마을은 100/200/300...층(100의 배수), 그 사이 층은 전부 9칸 고정 계단층(109/110층 포함).
     private boolean isStairZone(int floor) {
-        return floor >= STAIR_ZONE_START;
+        return floor >= STAIR_ZONE_START && floor % 100 != 0;
+    }
+
+    /** 계단 구역에서 "돌아갈 마을" -- 지금 층 이하 가장 가까운 100의 배수 마을(101~199층은 100층, 201~299층은 200층). */
+    private int stairCampOf(int floor) {
+        return Math.max(STAIR_ZONE_BASE_CAMP, (floor / 100) * 100);
     }
 
     /** selectMonster()용 블록 번호 -- 블록 행이 없는 100층 이상은 마지막 블록(10) 행을 쓴다. */
@@ -2122,7 +2129,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 계속 움직일 수 있어야 하므로(회복이 마을에서만 일어남) 사냥터/보스층에서만 막는다.
         if ((stairZone || m != 0) && isPartyWiped(userName)) {
             if (stairZone) {
-                return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP
+                return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. /층변경 0 으로 " + stairCampOf(floor)
                         + "층 마을로 돌아가야 부활합니다. (다시 올 땐 /층변경 " + floor + " 처럼 가본 층으로 바로 이동 가능)";
             }
             return userName + "님," + NL + "💀 파티 전원이 전투불가 상태입니다. 마을로 돌아가야 부활합니다. (/층변경 0 또는 /탑내려가기)";
@@ -2143,9 +2150,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 return userName + "님," + NL + "🏘️ 0층 마을 — 파티 준비 완료!" + NL
                         + "👉 층이동 명령어로 1층 가세요! (/층변경 1)";
             }
-            if (floor == STAIR_ZONE_BASE_CAMP) {
-                return userName + "님," + NL + "🏘️ " + STAIR_ZONE_BASE_CAMP + "층 마을 -- 이 위는 한 층씩 오르는 계단 구역입니다." + NL
-                        + "👉 /층변경 1 로 " + STAIR_ZONE_START + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
+            if (floor >= STAIR_ZONE_BASE_CAMP) {
+                return userName + "님," + NL + "🏘️ " + floor + "층 마을 -- 이 위는 한 층씩 오르는 계단 구역입니다." + NL
+                        + "👉 /층변경 1 로 " + (floor + 1) + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
             }
             return userName + "님," + NL + "🏘️ 여기는 마을입니다. 웹 상점(" + TOWER_VIEW_URL + ")을 이용하거나 /층변경 N 으로 사냥터에 진입하세요. (전체 명령어는 /탑도움말)";
         }
@@ -3852,7 +3859,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int fm = floor % 10;
             if (isStairZone(floor)) {
                 // [2026-09-28] 계단 구역엔 층마다 마을이 없다 -- 부활은 100층 마을에서만.
-                sb.append(NL).append(NL).append("🪜 /층변경 0 으로 ").append(STAIR_ZONE_BASE_CAMP)
+                sb.append(NL).append(NL).append("🪜 /층변경 0 으로 ").append(stairCampOf(floor))
                   .append("층 마을로 돌아가 부활한 뒤, /층변경 ").append(floor).append(" 으로 이 층부터 다시 도전할 수 있어요.")
                   .append(NL).append("(동료만 바꿔 다시 /주사위를 굴리면 방금 진 칸에서 재도전합니다 -- 다음 칸/층으로 넘어가지 않아요)");
             } else if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
@@ -5032,10 +5039,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private String changeFloorStairZone(String userName, HashMap<String, Object> p, int floor, int n, boolean wasInCombat) {
         int target;
         if (n >= STAIR_ZONE_START) target = n;
-        else if (n == 0) target = STAIR_ZONE_BASE_CAMP;
+        else if (n == 0) target = stairCampOf(floor);
         else if (n >= 1 && n <= 9) target = floorBlockBase(floor) + n;
         else return "층변경은 0~9, 또는 가본 적 있는 " + STAIR_ZONE_START + "층 이상 층 번호로 입력하세요. (예: /층변경 0 = "
-                + STAIR_ZONE_BASE_CAMP + "층 마을, /층변경 " + STAIR_ZONE_START + ")";
+                + stairCampOf(floor) + "층 마을, /층변경 " + STAIR_ZONE_START + ")";
         if (target == floor) return "이미 " + floor + "층에 있습니다.";
         if (target > STAIR_ZONE_MAX_FLOOR) {
             return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (" + STAIR_ZONE_MAX_FLOOR + "층까지 오픈, 이후 추후 오픈 예정)";
@@ -5065,7 +5072,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
         if (wasInCombat) sb.append("💨 전투에서 도망쳤습니다!").append(NL);
         sb.append(floor).append("층 → ").append(target).append("층(").append(floorKindLabel(target)).append(")으로 이동했습니다.");
-        if (target == STAIR_ZONE_BASE_CAMP) {
+        if (!isStairZone(target)) { // 100의 배수 = 마을(부활)
             int revivedCount = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
             if (revivedCount > 0) {
                 sb.append(NL).append("✨ 전투불가 상태였던 동료 ").append(revivedCount).append("명이 마을에서 부활했습니다!");
@@ -5097,7 +5104,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int next = floor + 1;
         if (next > STAIR_ZONE_MAX_FLOOR) {
             return userName + "님," + NL + "🌑 " + floor + "층 위로는 아직 어둠이 득실거립니다. (" + STAIR_ZONE_MAX_FLOOR
-                    + "층까지 오픈, 이후 추후 오픈 예정)" + NL + "👉 /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP + "층 마을로 돌아갈 수 있어요.";
+                    + "층까지 오픈, 이후 추후 오픈 예정)" + NL + "👉 /층변경 0 으로 " + stairCampOf(floor) + "층 마을로 돌아갈 수 있어요.";
         }
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -5105,6 +5112,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateUserProgress(up);
         p.put("CUR_FLOOR", next);
         grantFloorAchievements(userName, next);
+        if (!isStairZone(next)) {
+            // [2026-09-29] 다음 층이 100의 배수면 마을 -- 보드 없이 도착, 파티 전원 부활.
+            int revived = revivePartyDead(userName, dao.selectUserCompanions(userName), dao.selectUserStat(userName));
+            return userName + "님," + NL + "🪜⬆️ " + floor + "층을 돌파하고 계단을 올라 " + next + "층 마을에 도착했습니다!"
+                    + (revived > 0 ? NL + "✨ 전투불가 상태였던 동료 " + revived + "명이 마을에서 부활했습니다!" : "")
+                    + NL + "👉 /층변경 1 로 " + (next + 1) + "층부터 이어서 오를 수 있어요. (/층변경 0 으로 이 마을 복귀)";
+        }
         enterStairFloor(userName, next);
         return userName + "님," + NL + "🪜⬆️ " + floor + "층을 돌파하고 계단을 올라 " + next + "층에 도착했습니다!" + NL
                 + "🗺️ " + next + "층 1/" + STAIR_ZONE_PATTERN.length + "단계 (다음: " + TILE_LABEL.get(STAIR_ZONE_PATTERN[1]) + ")";
@@ -5122,7 +5136,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> p = getOrInitProgress(userName);
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         if (isStairZone(floor)) { // 110/120...층도 계단 구역의 일반 층이지 마을이 아님
-            return "🪜 계단 구역에는 층마다 마을이 없습니다. /층변경 0 으로 " + STAIR_ZONE_BASE_CAMP + "층 마을로 먼저 이동하세요.";
+            return "🪜 계단 구역에는 100층마다만 마을이 있습니다. /층변경 0 으로 " + stairCampOf(floor) + "층 마을로 먼저 이동하세요.";
         }
         if (floor % 10 != 0) {
             return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";
@@ -5130,7 +5144,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (floor == 0) {
             return "🏘️ 이미 0층 마을입니다. 더 내려갈 곳이 없습니다.";
         }
-        int target = floor - 10;
+        // 200/300...층 마을의 "아래 마을"은 10층 아래(계단층)가 아니라 바로 아래 100층 단위 마을.
+        int target = (floor > STAIR_ZONE_BASE_CAMP && floor % 100 == 0) ? floor - 100 : floor - 10;
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -5160,8 +5175,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int floor = intVal(p.get("CUR_FLOOR"), 0);
         if (floor >= STAIR_ZONE_BASE_CAMP) {
             // [2026-09-28] 100층 위는 마을이 없는 계단 구역 -- 탑올라가기 대신 층변경으로 진입.
-            return "🪜 " + STAIR_ZONE_BASE_CAMP + "층 위는 마을 없이 한 층씩 오르는 계단 구역입니다. /층변경 1 로 "
-                    + STAIR_ZONE_START + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
+            return "🪜 " + floor + "층 위는 100층마다만 마을이 있는 계단 구역입니다. /층변경 1 로 "
+                    + (floor + 1) + "층부터 오르거나, /층변경 <층번호> 로 가본 층까지 바로 이동하세요.";
         }
         if (floor % 10 != 0) {
             return "🏘️ 마을에서만 사용할 수 있습니다. (/층변경 0 으로 먼저 마을로 이동하세요)";

@@ -124,7 +124,7 @@ public class Season5ViewController {
 
         int floor = toInt(progress.get("CUR_FLOOR"));
         // [2026-09-28] 101층+ 계단 구역은 X0/X9층도 전부 9칸 전투층이라 층번호 끝자리와 무관하게 보드를 내려준다.
-        if ((floor % 10 >= 1 && floor % 10 <= 8) || floor >= STAIR_ZONE_START) {
+        if ((floor % 10 >= 1 && floor % 10 <= 8) || isStairZoneFloor(floor)) {
             result.put("floorInfo", s5Dao.selectFloorInfo(floor));
             result.put("tiles", buildTilesWithFogOfWar(userName, floor));
             result.put("myTile", s5Dao.selectUserFloorProgress(userName, floor));
@@ -161,7 +161,7 @@ public class Season5ViewController {
             Object extObj = mon.get("PP_PER_KILL_EXT");
             PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), extObj == null ? "" : extObj.toString());
             int pos = floor % 10;
-            double floorMult = floor >= STAIR_ZONE_START ? (1.7 + 0.01 * (floor - (STAIR_ZONE_START - 1)))
+            double floorMult = isStairZoneFloor(floor) ? (1.7 + 0.01 * (floor - (STAIR_ZONE_START - 1)))
                     : ((pos < 1 || pos > 8) ? 1.0 : (1.0 + 0.1 * (pos - 1))); // BotS5ServiceImpl.floorPpMultiplier와 동일 공식
             // [2026-09-17] BotS5ServiceImpl.autoHuntFloorBonusMultiplier와 동일 공식(60층 미만
             // x5, 60~69층 x3, 그 외 x1) -- "저층 자동사냥 보상 늘려달라" 요청, 실제 정산 배율과
@@ -636,6 +636,11 @@ public class Season5ViewController {
     /** BotS5ServiceImpl.STAIR_ZONE_START와 같은 값 -- 101층부터 9칸 고정 "계단 구역". */
     private static final int STAIR_ZONE_START = 101;
 
+    /** BotS5ServiceImpl.isStairZone과 동일 -- 101층 이상이면서 100의 배수(마을)가 아닌 층. */
+    private static boolean isStairZoneFloor(int floor) {
+        return floor >= STAIR_ZONE_START && floor % 100 != 0;
+    }
+
     private List<HashMap<String, Object>> buildTilesWithFogOfWar(String userName, int floor) {
         Set<Integer> visited = new HashSet<>();
         for (HashMap<String, Object> v : s5Dao.selectVisitedTileNos(userName, floor)) {
@@ -644,7 +649,7 @@ public class Season5ViewController {
         List<HashMap<String, Object>> out = new ArrayList<>();
         // [2026-09-28] 계단 구역은 9칸 순서(계단-전투-전투-행운-중간보스-...)가 공개된 고정 틀이라
         // 안개 처리 없이 전부 보여준다(행운칸이 무엇으로 변할지는 밟을 때 정해지므로 여전히 비밀).
-        boolean stairZone = floor >= STAIR_ZONE_START;
+        boolean stairZone = isStairZoneFloor(floor);
         for (HashMap<String, Object> t : s5Service.ensureUserBoard(userName, floor)) {
             int tileNo = toInt(t.get("TILE_NO"));
             HashMap<String, Object> row = new HashMap<>();
