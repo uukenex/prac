@@ -832,7 +832,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(grade, job, name)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
         }
         sb.append(jobTag(grade, job, name)).append("에게 ").append(dmg).append("dmg (💗")
-          .append(hpAfter.format()).append("/").append(eff[0]).append(")").append(NL);
+          .append(plainNum(hpAfter)).append("/").append(eff[0]).append(")").append(NL);
         writeCompanionHp(target, hpAfter);
     }
 
@@ -1386,6 +1386,16 @@ public class BotS5ServiceImpl implements BotS5Service {
      */
     private String meTagGrade(int mineGrade, int mineCount, int maxGrade, int maxCount) {
         return (maxGrade > 0 && mineGrade >= maxGrade && mineCount >= maxCount) ? " (me)" : "";
+    }
+
+    /**
+     * [2026-09-29] "전투메세지에서 1만이 넘으면 1a로 표시하는데, 체력과 데미지는 a로 안 나오게 통일" 요청 --
+     * 전투 메시지의 HP/피해 표기용. PP.format()은 1만 이상을 "1a" 단위로 줄이므로, 단위 없이 기본 수치
+     * (toBaseValue)를 그대로 숫자로 찍는다(공격 데미지/eff[0] 등 int 값들이 원래 그렇게 찍히던 것과 통일).
+     * PP(재화) 표기는 그대로 format()을 쓴다.
+     */
+    private static String plainNum(PP pp) {
+        return String.valueOf(PP.toBaseValue(pp));
     }
 
     /** ranking() 전용 -- max가 0(아직 아무도 없음)이 아니고 mine이 max 이상(동타 포함)이면 " (me)". */
@@ -3002,7 +3012,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append(floorMonsterName(floor, mon)).append(NL);
         sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
-          .append(" ❤️ ").append(fullHp.format()).append(dualMonster ? " x2" : "").append(NL);
+          .append(" ❤️ ").append(plainNum(fullHp)).append(dualMonster ? " x2" : "").append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
         // [2026-09-18] 함정으로 떠밀려 시작된 전투 -- 다음 /주사위(공격)에서 몬스터가 먼저
         // 기습한다(71층+면 그 기습을 포함해 전투 내내 몬스터 공격력도 10% 증가).
@@ -3441,7 +3451,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 나눠달라는 요청 -- 이름+HP 줄, 그 아래 굴림 결과 줄로 분리.
             // [2026-09-21] "4굴려서 나온 데미지 표기"를 원해서 이 줄은 방어 적용 전 원본
             // (rawDmg)을 보여주고, 방어 차감은 아래 "총 N dmg로 공격!" 다음 줄에서 한 번에.
-            sb.append(jobTag(grade, job, cName)).append(" 💗").append(hp.format()).append("/").append(eff[0]).append(NL)
+            sb.append(jobTag(grade, job, cName)).append(" 💗").append(plainNum(hp)).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(rawDmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
             if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
@@ -3861,8 +3871,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 흡수 등 경로가 복잡해도 "시작-끝" 차이라 항상 정확함).
         PP monsterDealt = monsterHp.subtract(monsterHpAfter);
         sb.append(eliteMonsterName(floor, mon, elite)).append(" 💛")
-          .append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
-        if (PP.toBaseValue(monsterDealt) > 0) sb.append(" (-").append(monsterDealt.format()).append(")");
+          .append(plainNum(monsterHpAfter)).append("/").append(plainNum(monsterMaxHp));
+        if (PP.toBaseValue(monsterDealt) > 0) sb.append(" (-").append(plainNum(monsterDealt)).append(")");
         sb.append(NL);
 
         if (stunned) {
@@ -3950,7 +3960,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
                     vHpAfter = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * revivePct)));
                     sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, vName))
-                      .append(" 부활(HP ").append(vHpAfter.format()).append("/").append(vEff[0]).append(")").append(NL);
+                      .append(" 부활(HP ").append(plainNum(vHpAfter)).append("/").append(vEff[0]).append(")").append(NL);
                 }
             }
             // [2026-09-16] 럭키칸 "피해 1회 면역"(구 즉사방어) 관련 방어 체크를 여기 뒀었는데,
@@ -4029,7 +4039,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                             int[] ivEff = computeEffectiveStat(ivJob, ivGrade, ivEquips, userStat, intVal(instaVictim.get("LIMIT_BREAK"), 0));
                             ivHpAfter = PP.fromPP(Math.max(1, (int) Math.round(ivEff[0] * revivePct2)));
                             sb.append("✨ 도사의 기적! ").append(jobTag(ivGrade, ivJob, ivName))
-                              .append(" 부활(HP ").append(ivHpAfter.format()).append("/").append(ivEff[0]).append(")").append(NL);
+                              .append(" 부활(HP ").append(plainNum(ivHpAfter)).append("/").append(ivEff[0]).append(")").append(NL);
                         }
                     }
                     // [2026-09-16] 이 경로(79/89층 보스 하수인 은신즉사)도 보스전 진입 시 럭키
@@ -4427,7 +4437,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 붙던 🛡️+N 표시를, 실제로 이 실드를 받은(이번 반격의) 대상 본인의 "굴림 결과"
                 // 줄로 옮겨서 붙인다(이름+HP 줄 / 굴림 결과 줄이 분리된 뒤로는 후자에 붙임).
                 // 그 줄은 이 시점에 이미 sb에 적혀 있으므로 자리를 찾아 뒤에 이어붙인다.
-                String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " 💗" + targetHp.format() + "/" + tEff[0];
+                String targetAttackLinePrefix = jobTag(tGrade, tJob, tName) + " 💗" + plainNum(targetHp) + "/" + tEff[0];
                 int nameLineStart = sb.indexOf(targetAttackLinePrefix);
                 if (nameLineStart >= 0) {
                     int nameLineEnd = sb.indexOf(NL, nameLineStart);
@@ -4504,7 +4514,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (RND.nextInt(100) < reviveChance) {
                     targetHpAfter = PP.fromPP(Math.max(1, (int) Math.round(tEff[0] * revivePct)));
                     sb.append("✨ 도사의 기적! ").append(jobTag(tGrade, tJob, tName))
-                      .append(" 부활 (HP ").append(targetHpAfter.format()).append("/").append(tEff[0]).append(")").append(NL);
+                      .append(" 부활 (HP ").append(plainNum(targetHpAfter)).append("/").append(tEff[0]).append(")").append(NL);
                 }
             }
         }
@@ -4557,7 +4567,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             healUp.put("curMonsterHpExt", monsterHpAfter.getUnit());
             dao.updateUserProgress(healUp);
             sb.append(NL).append("🩸 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 흡혈로 ")
-              .append(lifestealHeal).append(" 회복! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+              .append(lifestealHeal).append(" 회복! 💛").append(plainNum(monsterHpAfter)).append("/").append(plainNum(monsterMaxHp));
         }
 
         // [2026-09-10] 도사3인조 보호막 반사 데미지 반영 -- 위 반격 루프에서 누적한 만큼
@@ -4574,7 +4584,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             reflectUp.put("curMonsterHpExt", monsterHpAfter.getUnit());
             dao.updateUserProgress(reflectUp);
             sb.append(NL).append("✨ 보호막이 흡수한 피해의 절반을 반사! ").append(shieldReflectDamage)
-              .append("dmg 추가 피해! 💛").append(monsterHpAfter.format()).append("/").append(monsterMaxHp.format());
+              .append("dmg 추가 피해! 💛").append(plainNum(monsterHpAfter)).append("/").append(plainNum(monsterMaxHp));
         }
 
         // [2026-09-10] 69층 보스 하수인 반격 -- 위(또는 이전 턴)에 죽어서 하수인이 된 동료들이
@@ -4663,7 +4673,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean dead = PP.toBaseValue(hp) <= 0;
             if (i > 0) sb.append(NL);
             sb.append(jobTag(grade, job, cName)).append(" ").append(dead ? "💀" : "💗")
-              .append(hp.format()).append("/").append(eff[0]);
+              .append(plainNum(hp)).append("/").append(eff[0]);
         }
         return sb.toString();
     }
