@@ -3296,7 +3296,8 @@ var TW = (function () {
   // (/api/tower-legendary-roster)는 유저 무관 고정 목록이라 한 번만 fetch해서 캐시.
   var legendaryRosterCache = null;
   var LEGEND_EFFECT_LABEL = {
-    DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; }
+    DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; },
+    DOUBLE_SHOT: function (p1) { return '공격 시 ' + p1 + '% 확률로 같은 눈금으로 한 번 더 연사'; }
   };
 
   function legendItemSummaryHtml(item) {

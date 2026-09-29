@@ -3334,13 +3334,26 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
             if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
+            // [2026-09-29] ★7 전설 활 "바펠세파르 활"(DOUBLE_SHOT) -- EFFECT_PARAM1(%) 확률로 같은
+            // 주사위 눈금으로 한 번 더 쏜다. 추가타도 방어/최소공격력/크리티컬은 독립적으로 다시
+            // 계산해서 원 공격과 동일한 규칙을 따른다(크리 확률도 따로 굴림).
+            int extraDmg = 0, extraRaw = 0;
+            if (legWeapon != null && "DOUBLE_SHOT".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))
+                    && RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM1"), 0)) {
+                extraRaw = eff[1] * roll;
+                extraDmg = Math.max(Math.max(1, extraRaw - effMonsterDef), eff[3]);
+                if ("ARCHER".equals(job) && RND.nextInt(100) < (grade >= 6 ? 50 : (grade >= 5 ? 40 : 30))) {
+                    extraDmg = (int) Math.round(extraDmg * 1.5);
+                }
+                dmg += extraDmg;
+            }
             // [2026-09-17] "도사는 서포터로 만들자, 현행 데미지의 6분의1수준으로 낮춰서 딜은
             // 그대로 들어가도록(완전히 0은 아님), 실드는 변경없음" 요청 -- 실드는 이 dmg와
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
             totalDamage += dmg;
-            totalRawDamage += rawDmg;
+            totalRawDamage += rawDmg + extraRaw;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
@@ -3354,6 +3367,7 @@ public class BotS5ServiceImpl implements BotS5Service {
               .append("🎲").append(rollLabel).append("→").append(rawDmg).append("dmg");
             if (archerCrit) sb.append(" 💥크리티컬!");
             if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
+            if (extraRaw > 0) sb.append(" 🏹").append(strVal(legWeapon.get("ITEM_NAME"), "")).append(" 연사! +").append(extraRaw).append("dmg");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
             // 등급이 높을수록 그 직업 고유 효과가 강해진다. 시너지가 함께 켜져 있으면 둘 다

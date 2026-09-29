@@ -4402,3 +4402,13 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   `CONTENT_LOCKED_FLOOR` 100 -> 201.
 - 남은 과제: 스탯 상한(`statCapFor`)이 UNLOCKED_BLOCK 기준이라 계단 구역에선 더 안 오름,
   201층 이후 확장 시 SQL만 추가하고 `STAIR_ZONE_MAX_FLOOR` 상향.
+
+## [2026-09-29] ★7 전설 두 번째 아이템 "바펠세파르 활" (궁수 전용, 30% 연사)
+
+- `TBOT_S5_LEGENDARY_MASTER` LEGENDARY_ID=2: CLASS=BOW/PART=WEAPON, `EFFECT_TYPE=DOUBLE_SHOT`,
+  `EFFECT_PARAM1=30`(%). `S5_LEGENDARY_BAFELSEPAR.sql` 라이브 적용 완료(CP949 hex, 재조회로
+  이름 바이트 확인). 제작/해체 팝업은 로스터를 DB에서 읽으므로 UI 수정 없이 자동 노출.
+- 코드: 파티 공격 루프에서 착용 무기가 DOUBLE_SHOT이면 확률로 **같은 주사위 눈금**으로 한 번
+  더 공격(방어/최소공격력/크리티컬은 추가타에서 독립적으로 재계산). 로그는 같은 줄에
+  " 🏹바펠세파르 활 연사! +N dmg"(방어 전 원본 기준)로 표기, 총합 산수(raw-방어=실제)에도 포함.
+- 프론트: `LEGEND_EFFECT_LABEL`에 DOUBLE_SHOT 설명 추가.
