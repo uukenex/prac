@@ -310,7 +310,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int LEGEND_FRAGMENT_BOX_DROP_PCT = 15;
     // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
     // 제작 비용(10개)보다 1개 적게(9개) 돌려줘서 무손실 순환을 막는 조각 싱크.
-    private static final int LEGEND_DISENCHANT_REFUND = 9;
+    // [2026-09-29] "조각 15개로 주거나...만드는데도 30%확률이라 혜택을 주고싶어" 요청 -- 환급 9->15
+    // (제작 1회 기대비용 10/0.3=약33개의 절반 이하라 무손실 순환은 여전히 불가), 그리고 연속 실패
+    // 1회당 다음 성공률 +10%p 누적(성공하면 0으로 초기화, 100% 상한 = 연속 7회 실패 시 확정).
+    private static final int LEGEND_DISENCHANT_REFUND = 15;
+    private static final int LEGEND_PITY_STEP_PCT = 10;
     private static final int BOSS_DAILY_KILL_LIMIT = 3;   // 보스 하루 처치 제한(모든 보스층 공통 카운터)
 
     // 주사위 해금 계단 [코드, 해금 UNLOCKED_BLOCK] -- [2026-09-05] DICE_4 신설, 언제든(0층부터)
@@ -7524,10 +7528,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateUserProgress(fragUp);
         p.put("LEGEND_FRAGMENT", remaining);
 
-        boolean success = RND.nextInt(100) < LEGEND_CRAFT_SUCCESS_PCT;
+        int pity = intVal(p.get("LEGEND_PITY"), 0);
+        int chance = Math.min(100, LEGEND_CRAFT_SUCCESS_PCT + pity * LEGEND_PITY_STEP_PCT);
+        boolean success = RND.nextInt(100) < chance;
         String itemName = strVal(target.get("ITEM_NAME"), "");
+        HashMap<String, Object> pityUp = new HashMap<>();
+        pityUp.put("userName", userName);
+        pityUp.put("legendPity", success ? 0 : pity + 1);
+        dao.updateUserProgress(pityUp);
+        p.put("LEGEND_PITY", success ? 0 : pity + 1);
         if (!success) {
-            return "💨 [" + itemName + "] 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 " + remaining + "개)";
+            int nextChance = Math.min(100, LEGEND_CRAFT_SUCCESS_PCT + (pity + 1) * LEGEND_PITY_STEP_PCT);
+            return "💨 [" + itemName + "] 전설제작 실패... 전설의조각 " + LEGEND_CRAFT_COST + "개를 소모했습니다. (보유 "
+                    + remaining + "개) 🍀 연속 실패 보너스로 다음 성공률 " + nextChance + "%";
         }
 
         String clazz = strVal(target.get("CLASS"), "");

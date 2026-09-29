@@ -4429,3 +4429,17 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - (같은 날 후속) 로브 이름 확정 "수수께끼" -> `S5_LEGENDARY_ENIGMA_ROBE.sql`(LEGENDARY_ID=4, ROBE/ARMOR,
   START_BARRIER) 라이브 적용. 같은 스크립트로 `selectEquipByCompanion`의 마스터 JOIN 쿼리가
   실제 DB에서 파싱/실행되는지(ORA 오류 없음)도 확인.
+
+## [2026-09-29] 전설제작 혜택 -- 해체 환급 9->15개 + 연속 실패 보너스(pity)
+
+**요청**: "조각 15개로 주거나...만드는데도 30%확률이라 혜택을 주고싶어" -> 추천안("환급 15개 +
+실패 누적 보너스") 그대로 구현.
+- **환급**: `LEGEND_DISENCHANT_REFUND` 9 -> 15. 제작 1회 기대비용(10/0.3 = 약 33개)의 절반
+  이하라 "만들고 부수고 다시 만들기" 무한 순환은 여전히 불가. UI 문구(팝업 제목/버튼)도 15로.
+- **pity**: 신규 컬럼 `TBOT_S5_USER_PROGRESS.LEGEND_PITY`(연속 실패 횟수, `S5_LEGEND_PITY.sql`
+  라이브 적용). 제작 성공률 = min(100, 30 + pity*10)%. 실패하면 pity+1, 성공하면 0으로
+  초기화(연속 7회 실패 시 100% 확정). 실패 메시지에 "다음 성공률 N%" 표기, 제작 팝업 제목이
+  현재 성공률(연속 실패 보너스 포함)을 동적으로 보여줌.
+- 새 컬럼이라 `selectUserProgress`의 명시적 컬럼 목록에도 추가(과거 3회 겪은 "SELECT에
+  새 컬럼 누락" 트랩 방지) + `updateUserProgress`에 `legendPity` 분기.
+- 전설 교환(다른 전설로 바꾸기)은 아이템이 더 늘어난 뒤로 미룸(합의).

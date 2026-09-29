@@ -1040,7 +1040,7 @@
 <div class="detail-overlay" id="legendRosterOverlay" onclick="if(event.target===this) TW.closeLegendRoster();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeLegendRoster()">✕</button>
-    <div class="sheet-title">제작할 전설장비 선택 (성공률 30%)</div>
+    <div class="sheet-title" id="legendRosterTitle">제작할 전설장비 선택 (성공률 30%)</div>
     <!-- [2026-09-21] "버튼을 누르면 팝업에서 눌러서 처리할수있게해줘" 요청 -- 항목을 누르면
          그 자리에서 바로 제작을 시도한다(목록 -> 제작중 연출 -> 성공/실패 결과 전부 이 팝업
          안에서 끝남, 팝업을 닫아야 메인 카드로 돌아옴). -->
@@ -1057,7 +1057,7 @@
 <div class="detail-overlay" id="legendDisenchantOverlay" onclick="if(event.target===this) TW.closeLegendDisenchant();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeLegendDisenchant()">✕</button>
-    <div class="sheet-title">해체할 전설장비 선택 (조각 9개 환급)</div>
+    <div class="sheet-title">해체할 전설장비 선택 (조각 15개 환급)</div>
     <div id="legendDisenchantList"></div>
   </div>
 </div>
@@ -3339,6 +3339,11 @@ var TW = (function () {
   }
 
   function openLegendRoster() {
+    // 성공률 = 기본 30% + 연속 실패 1회당 10%p(서버 LEGEND_PITY, 100% 상한).
+    var pity = (state.progress && state.progress.LEGEND_PITY) || 0;
+    var chance = Math.min(100, 30 + pity * 10);
+    document.getElementById('legendRosterTitle').textContent = '제작할 전설장비 선택 (성공률 ' + chance + '%'
+        + (pity > 0 ? ', 연속 실패 보너스 +' + (pity * 10) + '%p' : '') + ')';
     document.getElementById('legendRosterOverlay').classList.add('open');
     document.getElementById('legendCraftAnim').style.display = 'none';
     document.getElementById('legendCraftResult').style.display = 'none';
@@ -3417,7 +3422,7 @@ var TW = (function () {
         var groupLabel = WEAPON_CLASS_NAME[e.CLASS] || (e.CLASS === 'COMMON' ? '공용' : e.CLASS);
         el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="lri-body"><div class="lri-name">★7 ' + groupLabel + '</div></div>'
-            + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+9)</button>';
+            + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+15)</button>';
         el.querySelector('.legend-disenchant-item-btn').onclick = function (ev) {
           ev.stopPropagation();
           action('DISENCHANT_LEGENDARY', String(e.__idx));
