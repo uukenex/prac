@@ -635,22 +635,25 @@ public class BotS5ServiceImpl implements BotS5Service {
                 double[] b = (BALANCE_V2_ENABLED && equipV2 != null && eg - 1 < equipV2.length && equipV2[eg - 1] != null)
                         ? equipV2[eg - 1] : EQUIP_BONUS[eg - 1];
                 String part = strVal(e.get("PART"), "");
-                if ("HELMET".equals(part)) hp += b[0] + base[0] * b[1];
-                else if ("WEAPON".equals(part)) atk += b[2] + base[1] * b[3];
-                else if ("ARMOR".equals(part)) def += b[4] + base[2] * b[5];
+                // [2026-09-29] 전설 STAT_MULT 효과(예: 조던 링) -- 그 장비 한 개가 주는 보너스만 N% 배율.
+                double sm = "STAT_MULT".equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))
+                        ? intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 : 1.0;
+                if ("HELMET".equals(part)) hp += (b[0] + base[0] * b[1]) * sm;
+                else if ("WEAPON".equals(part)) atk += (b[2] + base[1] * b[3]) * sm;
+                else if ("ARMOR".equals(part)) def += (b[4] + base[2] * b[5]) * sm;
                 // [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설 -- 장비뽑기 말고 별도 악세뽑기로
                 // 얻는 3종. 기존 부위 둘의 절반씩을 동시에 준다(목걸이=무기+갑옷, 반지=무기+
                 // 투구, 팔찌=갑옷+투구) -- 무기(ATK)/갑옷(DEF)/투구(HP) 보너스 공식을 그대로
                 // 절반만 적용. pullAccessoryCore() 참고.
                 else if ("NECKLACE".equals(part)) { // 무기(ATK)+갑옷(DEF) 절반씩
-                    atk += (b[2] + base[1] * b[3]) / 2.0;
-                    def += (b[4] + base[2] * b[5]) / 2.0;
+                    atk += (b[2] + base[1] * b[3]) / 2.0 * sm;
+                    def += (b[4] + base[2] * b[5]) / 2.0 * sm;
                 } else if ("RING".equals(part)) { // 무기(ATK)+투구(HP) 절반씩
-                    atk += (b[2] + base[1] * b[3]) / 2.0;
-                    hp += (b[0] + base[0] * b[1]) / 2.0;
+                    atk += (b[2] + base[1] * b[3]) / 2.0 * sm;
+                    hp += (b[0] + base[0] * b[1]) / 2.0 * sm;
                 } else if ("BRACELET".equals(part)) { // 갑옷(DEF)+투구(HP) 절반씩
-                    def += (b[4] + base[2] * b[5]) / 2.0;
-                    hp += (b[0] + base[0] * b[1]) / 2.0;
+                    def += (b[4] + base[2] * b[5]) / 2.0 * sm;
+                    hp += (b[0] + base[0] * b[1]) / 2.0 * sm;
                 }
             }
         }
@@ -2936,6 +2939,31 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         PP fullHp = PP.of(perMonsterHp, strVal(mon.get("HP_EXT"), "")).normalize();
         StringBuilder sb = new StringBuilder();
+        // [2026-09-29] ★7 전설 로브 START_BARRIER -- 착용자가 파티에 있으면 전투 시작과 함께
+        // "다음 피해 1회 면역"(WARD_COMPANION_ID, 럭키칸 가호와 같은 컬럼/소모 규칙)을 두르고
+        // 시작한다. 이미 다른 가호가 걸려있으면(컬럼 하나뿐) 덮어쓰지 않는다.
+        String barrierNote = null;
+        if (intVal(p.get("WARD_COMPANION_ID"), 0) <= 0) {
+            for (HashMap<String, Object> bc : dao.selectUserCompanions(userName)) {
+                if (bc.get("PARTY_SLOT") == null) continue;
+                if (PP.toBaseValue(PP.of(((Number) bc.get("CUR_HP_VALUE")).doubleValue(), strVal(bc.get("CUR_HP_EXT"), ""))) <= 0) continue;
+                String barrierItem = null;
+                for (HashMap<String, Object> be : dao.selectEquipByCompanion(intVal(bc.get("COMPANION_ID"), 0))) {
+                    if ("START_BARRIER".equals(strVal(be.get("LEGENDARY_EFFECT_TYPE"), ""))) { barrierItem = strVal(be.get("LEGENDARY_ITEM_NAME"), "전설 로브"); break; }
+                }
+                if (barrierItem == null) continue;
+                int bcid = intVal(bc.get("COMPANION_ID"), 0);
+                HashMap<String, Object> wardUp = new HashMap<>();
+                wardUp.put("userName", userName);
+                wardUp.put("wardCompanionId", bcid);
+                dao.updateUserProgress(wardUp);
+                p.put("WARD_COMPANION_ID", bcid);
+                String bcJob = strVal(bc.get("CLASS"), "WARRIOR");
+                barrierNote = "🛡️✨ " + jobTag(intVal(bc.get("GRADE"), 1), bcJob, strVal(bc.get("NAME"), JOB_NAME.getOrDefault(bcJob, "동료")))
+                        + "의 " + barrierItem + " 발동! 무적 보호막(다음 피해 1회 면역)을 두르고 시작합니다.";
+                break;
+            }
+        }
         // [형식 정리 요청] "OO 등장!"을 한 줄에 다 몰아넣지 않고 "등장!" 알림 / 몬스터 이름 /
         // 능력치를 각각 줄로 나눔("능력치" 라벨·콜론도 빼서 더 짧게). [2026-09-06] 중간보스는
         // "맵에는 일반적인 몬스터로 표시되는데" 요청대로 평범한 등장 메시지("👾 등장!")를 그대로
@@ -2963,6 +2991,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-14] "99층 보스는 죽이면 200% 체력으로 한 번 부활" 사전 안내.
         if (floor == 99 && boss) sb.append("💥 이 보스는 한 번 쓰러뜨려도 200% 체력으로 부활합니다 -- 두 번 처치해야 완전히 끝납니다!").append(NL);
         sb.append(NL);
+        if (barrierNote != null) sb.append(barrierNote).append(NL);
         String buffNote = currentPartyBuffDebuffNote(p);
         if (buffNote != null) sb.append(buffNote).append(NL);
         sb.append("전투를 시작하려면 다시 /주사위 를 입력하세요!");

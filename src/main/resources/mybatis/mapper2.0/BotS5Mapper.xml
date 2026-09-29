@@ -489,7 +489,12 @@
          보고 있었음(★7 송곳을 만들어 착용해도 DEF_STEAL 효과가 실전투에서 한 번도 발동하지
          않았을 것. "검으로만 나와" 신고와 별개로 발견). -->
     <select id="selectEquipByCompanion" resultType="hashmap">
-        SELECT EQUIP_ID, PART, GRADE, LEGENDARY_ID FROM TBOT_S5_USER_EQUIP WHERE EQUIPPED_COMPANION_ID = #{companionId}
+        SELECT e.EQUIP_ID, e.PART, e.GRADE, e.LEGENDARY_ID,
+               lm.EFFECT_TYPE AS LEGENDARY_EFFECT_TYPE, lm.EFFECT_PARAM1 AS LEGENDARY_EFFECT_PARAM1,
+               lm.ITEM_NAME AS LEGENDARY_ITEM_NAME
+        FROM TBOT_S5_USER_EQUIP e
+        LEFT JOIN TBOT_S5_LEGENDARY_MASTER lm ON lm.LEGENDARY_ID = e.LEGENDARY_ID
+        WHERE e.EQUIPPED_COMPANION_ID = #{companionId}
     </select>
 
     <!-- [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비" 개수 통계에서는 그 3종 제외

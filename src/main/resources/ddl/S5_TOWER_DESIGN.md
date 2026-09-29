@@ -4412,3 +4412,17 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   더 공격(방어/최소공격력/크리티컬은 추가타에서 독립적으로 재계산). 로그는 같은 줄에
   " 🏹바펠세파르 활 연사! +N dmg"(방어 전 원본 기준)로 표기, 총합 산수(raw-방어=실제)에도 포함.
 - 프론트: `LEGEND_EFFECT_LABEL`에 DOUBLE_SHOT 설명 추가.
+
+## [2026-09-29] ★7 전설 "조던 링"(공용 반지, 능력치 x2) + 전설 로브 START_BARRIER 효과 구현
+
+- **조던 링**(LEGENDARY_ID=3, COMMON/RING, `STAT_MULT` 200): "공용 유지, 특별능력 없이 기존
+  능력치 x2". 반지가 원래 주는 보너스(무기 ATK 절반 + 투구 HP 절반)를 그 아이템 한 개에 한해
+  2배로. `S5_LEGENDARY_JORDAN_RING.sql` 라이브 적용. 구현: `selectEquipByCompanion`이
+  `TBOT_S5_LEGENDARY_MASTER`를 LEFT JOIN해 `LEGENDARY_EFFECT_TYPE/PARAM1/ITEM_NAME`을 같이
+  내려주고, `computeEffectiveStat`이 STAT_MULT면 그 장비의 보너스에 배율(`sm`)을 곱함.
+- **전설 로브 효과 `START_BARRIER`**(마법사+도사 로브/ARMOR): 착용자가 파티에 살아있으면
+  전투 시작(`startCombat`) 때 그 동료에게 "다음 피해 1회 면역"(`WARD_COMPANION_ID`, 럭키칸
+  가호와 같은 컬럼/소모 규칙)을 걸고 시작. 이미 다른 가호가 걸려있으면 덮어쓰지 않음(컬럼
+  하나뿐). 아이템 이름 확정 전이라 **DB 행은 아직 없음**(코드만 준비) -- 이름 정해지면
+  CLASS=ROBE/PART=ARMOR/EFFECT_TYPE=START_BARRIER 행 추가.
+- 프론트 `LEGEND_EFFECT_LABEL`에 두 효과 설명 추가.
