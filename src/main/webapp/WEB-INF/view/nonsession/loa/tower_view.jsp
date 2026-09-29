@@ -911,7 +911,7 @@
     </div>
     <div class="card" style="margin-top:10px;">
       <div class="card-title">🔨 전설해체</div>
-      <button type="button" class="legend-craft-btn" onclick="TW.openLegendDisenchant()">해체하기</button>
+      <button type="button" class="legend-craft-btn" id="legendDisenchantBtn" disabled onclick="TW.openLegendDisenchant()">해체하기</button>
     </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
@@ -3112,6 +3112,7 @@ var TW = (function () {
       unequipped.forEach(function (e, i) { e.__idx = i + 1; });
       // 캐릭터 상세 카드(showCompanionDetail)와 선택 팝업(renderPicker) 공용 캐시.
       lastParty = { companions: companions, byCompanion: byCompanion, unequipped: unequipped };
+      updateLegendDisenchantBtn();
 
       renderPartySlots();
       renderPartyGrid();
@@ -3329,7 +3330,17 @@ var TW = (function () {
   // 미만이면 "제작하기" 버튼 자체를 비활성화("10개가 있어야 누를수있게 해줘" 요청). 로스터는
   // 미리 캐시해둔다(팝업을 처음 열 때 기다리지 않도록).
   var LEGEND_CRAFT_COST_UI = 10;
+  // [2026-09-29] "전설해체는 해체가능한 전설이 있을때만 버튼이 활성화되게(미착용상태 전설보유)"
+  // 요청 -- 해체 팝업(openLegendDisenchant)과 같은 조건(미착용 ★7)으로 버튼 활성/비활성.
+  // 파티/장비 데이터(lastParty)가 로드되거나 상점 카드가 갱신될 때마다 호출.
+  function updateLegendDisenchantBtn() {
+    var btn = document.getElementById('legendDisenchantBtn');
+    if (!btn) return;
+    btn.disabled = !(lastParty.unequipped || []).some(function (e) { return e.GRADE === 7; });
+  }
+
   function renderLegendaryCraftCard() {
+    updateLegendDisenchantBtn();
     var frag = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
     var fragVal = document.getElementById('legendCraftFragVal');
     if (fragVal) fragVal.textContent = frag;

@@ -4443,3 +4443,5 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 새 컬럼이라 `selectUserProgress`의 명시적 컬럼 목록에도 추가(과거 3회 겪은 "SELECT에
   새 컬럼 누락" 트랩 방지) + `updateUserProgress`에 `legendPity` 분기.
 - 전설 교환(다른 전설로 바꾸기)은 아이템이 더 늘어난 뒤로 미룸(합의).
+- (같은 날 후속) 웹 상점 탭 "전설해체" 버튼은 **미착용 ★7 전설장비를 보유했을 때만 활성화**
+  (`updateLegendDisenchantBtn`, 파티/장비 로드 및 상점 카드 갱신 시 갱신, 기본은 비활성).
