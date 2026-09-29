@@ -423,23 +423,38 @@
 	     한 번에 다 가져온다. 그 이후 시간대별 5분/15분/60분/3시간/24시간 버튼은 이 결과셋
 	     안에서 프론트가 순수 JS로 필터링한다(추가 DB 조회 없음). SYSDATE - hours/24 로
 	     "N시간 전"을 표현(Oracle DATE 산술은 일 단위라 시간은 24로 나눔). -->
+	<!-- [2026-09-30] "/로그로 볼 수 있는 건 시즌5 전용 테이블과 기존 테이블 둘 다" 요청으로 시즌5 전용
+	     테이블(TBOT_S5_WORD_HIS)과 기존 TBOT_WORD_HIS를 UNION ALL로 합쳐서 최신순으로 반환. 기존
+	     테이블은 oldSince(전용 테이블로 복사해 둔 시점) 이후 행만 가져와 복사분이 두 번 보이지 않게 한다. -->
 	<select id="selectWordHisRecent" parameterType="hashMap" resultType="hashMap">
-		SELECT * FROM (
-			SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
-			       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
-			  FROM TBOT_S5_WORD_HIS A
-			 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
-			<if test="userName != null and userName != ''">
-			   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
-			</if>
-			 ORDER BY A.INSERT_DATE DESC
+		SELECT USER_NAME, REQ, RES, ROOM_NAME, INSERT_DATE FROM (
+			SELECT * FROM (
+				SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
+				       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE, A.INSERT_DATE AS SORT_DATE
+				  FROM TBOT_S5_WORD_HIS A
+				 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
+				<if test="userName != null and userName != ''">
+				   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+				</if>
+				UNION ALL
+				SELECT B.USER_NAME AS USER_NAME, B.REQ AS REQ, TO_NCHAR(B.RES) AS RES, B.ROOM_NAME AS ROOM_NAME,
+				       TO_CHAR(B.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE, B.INSERT_DATE AS SORT_DATE
+				  FROM TBOT_WORD_HIS B
+				 WHERE B.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
+				   AND B.INSERT_DATE > TO_DATE(#{oldSince, jdbcType=VARCHAR}, 'YYYY-MM-DD HH24:MI:SS')
+				<if test="userName != null and userName != ''">
+				   AND B.USER_NAME = #{userName, jdbcType=VARCHAR}
+				</if>
+			)
+			 ORDER BY SORT_DATE DESC
 		) WHERE ROWNUM &lt;= #{maxRows, jdbcType=INTEGER}
 	</select>
 
 	<!-- [2026-09-30] "명령어를 최근에 사용한 사람만 따로, 사람당 몇 회, 최근 1시간/24시간/3일" 요청.
 	     로그 본문(RES)은 안 가져오고 유저별 COUNT만 집계(3일치를 한 번 훑어서 1시간/24시간/3일 구간
-	     카운트를 조건부 SUM으로 동시에 뽑고 버튼 전환 시 재조회 없음). 시즌5 전용 로그 테이블이라
-	     유저 필터는 불필요. ROOM_NAME='WEB'이면 웹 액션, 그 외는 채팅 명령. -->
+	     카운트를 조건부 SUM으로 동시에 뽑고 버튼 전환 시 재조회 없음). 시즌5 전용 테이블에 기존
+	     TBOT_WORD_HIS의 시즌5 유저 로그(oldSince 이후분)를 합쳐서 센다. ROOM_NAME='WEB'이면 웹
+	     액션, 그 외는 채팅 명령. -->
 	<select id="selectWordHisUserSummary" parameterType="hashMap" resultType="hashMap">
 		SELECT A.USER_NAME AS USER_NAME,
 		       COUNT(*) AS CNT_3D,
@@ -449,8 +464,17 @@
 		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS WEB_24H,
 		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS WEB_1H,
 		       TO_CHAR(MAX(A.INSERT_DATE), 'YYYY-MM-DD HH24:MI:SS') AS LAST_DATE
-		  FROM TBOT_S5_WORD_HIS A
-		 WHERE A.INSERT_DATE >= SYSDATE - 3
+		  FROM (
+		        SELECT S.USER_NAME AS USER_NAME, S.ROOM_NAME AS ROOM_NAME, S.INSERT_DATE AS INSERT_DATE
+		          FROM TBOT_S5_WORD_HIS S
+		         WHERE S.INSERT_DATE >= SYSDATE - 3
+		        UNION ALL
+		        SELECT B.USER_NAME, B.ROOM_NAME, B.INSERT_DATE
+		          FROM TBOT_WORD_HIS B
+		         WHERE B.INSERT_DATE >= SYSDATE - 3
+		           AND B.INSERT_DATE > TO_DATE(#{oldSince, jdbcType=VARCHAR}, 'YYYY-MM-DD HH24:MI:SS')
+		           AND B.USER_NAME IN (SELECT P.USER_NAME FROM TBOT_S5_USER_PROGRESS P)
+		       ) A
 		 GROUP BY A.USER_NAME
 		 ORDER BY MAX(A.INSERT_DATE) DESC
 	</select>
