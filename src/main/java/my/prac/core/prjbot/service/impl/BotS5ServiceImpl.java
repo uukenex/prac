@@ -3828,6 +3828,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             defeatUp.put("clearMonster", true);
             defeatUp.put("wipeStreakCur", wipeStreak);
             dao.updateUserProgress(defeatUp);
+            // [버그 수정, 2026-09-29] 계단 구역(101층+)에서 전멸(중간보스 등)한 뒤 동료만 바꿔 다시
+            // /주사위를 굴리면, 위치가 여전히 그 칸(예: 9번 칸)이라 "이 칸은 끝냈다"로 취급돼 그대로
+            // 다음 칸/다음 층으로 넘어가 버렸다(보스를 못 이겼는데 102층으로 진행 -- 신고 확인).
+            // 전멸했으면 위치를 한 칸 되돌려서 다음 굴림이 같은 칸의 전투로 재진입하게 한다.
+            if (isStairZone(floor)) {
+                HashMap<String, Object> wipeUfp = dao.selectUserFloorProgress(userName, floor);
+                int wipeTile = wipeUfp == null ? 1 : intVal(wipeUfp.get("CUR_TILE"), 1);
+                if (wipeTile > 1) {
+                    HashMap<String, Object> backUp = new HashMap<>();
+                    backUp.put("userName", userName);
+                    backUp.put("floor", floor);
+                    backUp.put("curTile", wipeTile - 1);
+                    dao.upsertUserFloorProgress(backUp);
+                }
+            }
             // [변경] 예전엔 여기서 바로 풀피로 되돌렸는데, 그러면 안내 문구("마을에서 회복")가
             // 거짓말이 됨. 이제 정말로 마을에 돌아가야(changeFloor) 부활한다.
             sb.append("💀 파티 전멸... 전투에 패배했습니다. 동료들이 전투불가 상태로 남습니다 -- 마을로 돌아가야 부활합니다.");
@@ -3838,7 +3853,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (isStairZone(floor)) {
                 // [2026-09-28] 계단 구역엔 층마다 마을이 없다 -- 부활은 100층 마을에서만.
                 sb.append(NL).append(NL).append("🪜 /층변경 0 으로 ").append(STAIR_ZONE_BASE_CAMP)
-                  .append("층 마을로 돌아가 부활한 뒤, /층변경 ").append(floor).append(" 으로 이 층부터 다시 도전할 수 있어요.");
+                  .append("층 마을로 돌아가 부활한 뒤, /층변경 ").append(floor).append(" 으로 이 층부터 다시 도전할 수 있어요.")
+                  .append(NL).append("(동료만 바꿔 다시 /주사위를 굴리면 방금 진 칸에서 재도전합니다 -- 다음 칸/층으로 넘어가지 않아요)");
             } else if (fm >= 1 && fm <= 4 && wipeStreak >= 2 && floor >= 10) {
                 sb.append(NL).append(NL)
                   .append("💡 이 구간에서 ").append(wipeStreak).append("연속으로 전멸했어요. 아직 버거우면 ")
