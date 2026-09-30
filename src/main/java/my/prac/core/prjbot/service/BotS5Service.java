@@ -237,6 +237,10 @@ public interface BotS5Service {
      *  @Scheduled 메서드라 위 cleanupJunkZeroFloorUsers와 같은 이유로 인터페이스에도 반드시 선언. */
     void purgeOldS5WordHis();
 
+    /** [2026-09-30] 기존 로그 테이블(TBOT_WORD_HIS) 30일 초과분 매일 새벽 4시 40분 삭제. @Scheduled 메서드라
+     *  위 메서드들과 같은 이유로 인터페이스에도 반드시 선언(누락하면 컨텍스트 부팅 실패). */
+    void purgeOldWordHis();
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

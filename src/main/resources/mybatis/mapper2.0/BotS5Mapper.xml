@@ -368,6 +368,14 @@
            AND ROWNUM &lt;= #{batch, jdbcType=INTEGER}
     </delete>
 
+    <!-- [2026-09-30] 기존 로그 테이블(TBOT_WORD_HIS)도 보관기간(30일)이 지난 행을 배치 단위로 삭제
+         (BotS5ServiceImpl.purgeOldWordHis가 0건이 될 때까지 반복 호출, 배치마다 커밋). -->
+    <delete id="deleteOldWordHis">
+        DELETE FROM TBOT_WORD_HIS
+         WHERE INSERT_DATE &lt; SYSDATE - #{keepDays, jdbcType=INTEGER}
+           AND ROWNUM &lt;= #{batch, jdbcType=INTEGER}
+    </delete>
+
     <!-- 방문(발견) 기록. 이미 있으면 VISIT_COUNT 증가(재방문 횟수 추적, SPECIAL/SHOP은 2회차부터 전투로 전환) -->
     <insert id="insertTileVisit">
         MERGE INTO TBOT_S5_USER_TILE_VISIT T

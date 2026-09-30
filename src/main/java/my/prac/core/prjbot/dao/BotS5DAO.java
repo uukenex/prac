@@ -61,6 +61,8 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectUserRecentMessages(@Param("userName") String userName, @Param("limit") int limit);
     /** [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS) 보관기간 초과분 배치 삭제(삭제 건수 반환). */
     int deleteOldS5WordHis(@Param("keepDays") int keepDays, @Param("batch") int batch);
+    /** [2026-09-30] 기존 로그 테이블(TBOT_WORD_HIS) 보관기간 초과분 배치 삭제. */
+    int deleteOldWordHis(@Param("keepDays") int keepDays, @Param("batch") int batch);
 
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);
