@@ -216,6 +216,7 @@ public class NewBoardController {
 		model.addAttribute("room", "share");
 		model.addAttribute("shares", shares);
 		model.addAttribute("totalPage", totalPage);
+		model.addAttribute("page", page); // 인벤 스타일 페이저의 현재 페이지 강조용
 		return "nonsession/newboard/share";
 	}
 
@@ -339,6 +340,7 @@ public class NewBoardController {
 		model.addAttribute("room", "secret");
 		model.addAttribute("comments", comment);
 		model.addAttribute("totalPage", totalPage);
+		model.addAttribute("page", page); // 인벤 스타일 페이저의 현재 페이지 강조용
 		return "session/newboard/secret";
 	}
 

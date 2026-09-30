@@ -1,8 +1,8 @@
 /* ============================================================
    뉴게시판 "인벤(inven) 스타일" 테마 (2026-09-30)
    요청: "newboard/free 전체적인 디자인이 마음에 안 든다. inven 웹사이트처럼 만들어줘."
-   - .nb.inven 으로 스코프돼 있어서 이 클래스를 붙인 페이지(자유게시판 목록/상세/글쓰기/수정)만
-     바뀌고, 공유/비밀게시판은 기존 newboard.css 톤 그대로 유지된다(newboard.css 뒤에 로드).
+   - .nb.inven 으로 스코프돼 있어서 이 클래스를 붙인 페이지(자유/공유/비밀게시판 + 로그인 페이지)만
+     바뀐다(newboard.css 뒤에 로드). 2026-09-30에 공유/비밀/로그인까지 확대 적용.
    - 특징: 짙은 남색 상단바 + 흰색 게시판 박스 + 촘촘한 표(번호/제목/글쓴이/날짜/조회),
      댓글수는 주황 [n], 파란색 액센트, 좁은 화면(<=640px)에선 표가 "제목 + 메타 한 줄"로 접힘.
    ============================================================ */
@@ -169,3 +169,24 @@
   .nb.inven .ib-empty td{display:block; text-align:center; padding:30px 0 !important;}
   .nb.inven .ib-head h1{font-size:16px;}
 }
+
+/* ---------- 로그인 카드(2026-09-30, loginCheck.jsp / login.jsp) ---------- */
+.nb.inven .ib-login{max-width:380px; margin:28px auto 0; background:#fff; border:1px solid var(--iv-line-strong); border-top:3px solid var(--iv-navy); padding:26px 26px 22px;}
+.nb.inven .ib-login h1{font-family:inherit; font-size:20px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px;}
+.nb.inven .ib-login-sub{margin:0 0 18px; font-size:12px; color:var(--iv-ink-faint);}
+.nb.inven .ib-login-field{margin-bottom:12px;}
+.nb.inven .ib-login-field label{display:block; font-size:12px; font-weight:700; color:var(--iv-ink-soft); margin-bottom:4px;}
+.nb.inven .ib-login-field input{width:100%; box-sizing:border-box; border:1px solid var(--iv-line-strong); border-radius:3px; padding:10px 11px; font-family:inherit; font-size:14px; background:#fff;}
+.nb.inven .ib-login-btn{display:block; width:100%; box-sizing:border-box; margin-top:8px; padding:11px 0; border-radius:3px; cursor:pointer; font-family:inherit; font-size:14px; font-weight:700; background:var(--iv-blue); border:1px solid var(--iv-blue); color:#fff;}
+.nb.inven .ib-login-btn:hover{filter:brightness(1.08);}
+.nb.inven .ib-login-btn.sub{background:#fff; color:var(--iv-ink); border-color:var(--iv-line-strong); font-weight:600;}
+.nb.inven .ib-login-btn.sub:hover{background:#f5f7fa; filter:none;}
+.nb.inven .ib-login-find{margin-top:14px; text-align:center; font-size:12px; color:var(--iv-ink-faint);}
+.nb.inven .ib-login-find a{color:var(--iv-ink-soft); text-decoration:none;}
+.nb.inven .ib-login-find a:hover{color:var(--iv-blue); text-decoration:underline;}
+.nb.inven .ib-login-find span{margin:0 8px;}
+@media (max-width:640px){ .nb.inven .ib-login{margin-top:14px; padding:22px 18px 18px;} }
+
+/* 공유게시판 문서 버전 배지 */
+.nb.inven .ib-ver{font-size:12px; font-weight:600; color:var(--iv-ink-faint); margin-left:4px;}
+.nb.inven .ib-title .ib-ver{font-size:11px; color:var(--iv-blue); background:var(--iv-blue-soft); border-radius:2px; padding:0 5px; margin-left:6px;}
