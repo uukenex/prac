@@ -22,6 +22,9 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import my.prac.core.dto.Message;
 import my.prac.core.prjbot.service.BotS4Service;
 import my.prac.core.prjbot.service.BotService;
@@ -32,7 +35,8 @@ import my.prac.core.util.RoomContextService;
 
 /**
  * /챗 AI 처리 흐름:
- *   1. GPT-4o-mini  — 의도 분석 (검색 필요 여부 + 검색어 추출, JSON 반환)
+ *   1. Jev(TypeSafe System One) — 의도 분석 (검색 필요 여부 확률 판단, 수십 ms). 키 없음/장애/타임아웃이면
+ *      GPT-4o-mini(검색 필요 여부 + 검색어 추출, JSON 반환)로 자동 폴백
  *   2. Serper       — 검색 필요 시 웹 검색
  *   3. Gemini       — 페르소나 + 대화 히스토리 + 검색결과 통합해 최종 답변
  */
@@ -78,6 +82,33 @@ public class LoaAiBotController {
 
     @Resource(name = "core.prjbot.BotS4Service")
     BotS4Service botS4Service;
+
+    private static final Logger logger = LoggerFactory.getLogger(LoaAiBotController.class);
+
+    // ── Jev (TypeSafe AI, System One 모델) ─────────────────────────────────
+    // [2026-09-30] "/챗에서 빠른 의미판단" 요청. 글을 쓰는 LLM이 아니라 확률(0~1)만 돌려주는 분류형 모델이라 "검색이
+    // 필요한 질문인가"(Noul) 판단만 맡기고, 검색어는 사용자 메시지 그대로 쓴다(Jev는 문장을 생성하지 못함).
+    // 키는 safety/keys.properties 의 jevKey(없으면 Jev 미사용 = 기존 GPT 경로). TCONFIG USE_JEV=0 이면 즉시 끔.
+    private static final String JEV_URL = "https://api.typesafe.ai/v1/systemone";
+    private static final double JEV_SEARCH_THRESHOLD = 0.5;
+    private static final int JEV_TIMEOUT_MS = 3000; // 빠른 판단이 목적이라 느리면 바로 GPT로 폴백
+    private volatile String jevKeyCached = "";
+    private volatile boolean jevSwitchOn = true;
+    private volatile long jevCacheTime = 0L;
+    private static final long JEV_CACHE_TTL = 60_000L;
+
+    private void refreshJevConfig() {
+        long now = System.currentTimeMillis();
+        if (now - jevCacheTime <= JEV_CACHE_TTL) return;
+        jevCacheTime = now;
+        String k = PropsUtil.getProperty("keys", "jevKey"); // 파일 재조회는 60초에 한 번만
+        jevKeyCached = k == null ? "" : k.trim();
+        try {
+            jevSwitchOn = !"0".equals(botS4Service.selectTconfigVal("USE_JEV"));
+        } catch (Exception e) {
+            // DB 오류 시 이전 값 유지
+        }
+    }
 
     private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
     private final Gson gson = new GsonBuilder().create();
@@ -151,6 +182,9 @@ public class LoaAiBotController {
 
             String userPrompt = (ctx.length() > 0 ? "[최근대화]\n" + ctx + "\n" : "") + "[현재메시지] " + userMsg;
 
+            IntentResult jev = analyzeIntentJev(userPrompt, userMsg);
+            if (jev != null) return jev; // null = Jev 미사용/실패 -> 아래 GPT 경로
+
             JsonArray messages = new JsonArray();
             messages.add(makeMsg("system", INTENT_SYSTEM));
             messages.add(makeMsg("user", userPrompt));
@@ -184,6 +218,46 @@ public class LoaAiBotController {
             result.query      = userMsg;
         }
         return result;
+    }
+
+    /** Jev로 "웹 검색이 필요한 질문인가"를 판단. 사용 불가/실패/모호하지 않은 오류면 null(호출측이 GPT로 폴백). */
+    private IntentResult analyzeIntentJev(String state, String userMsg) {
+        refreshJevConfig();
+        if (!jevSwitchOn || jevKeyCached.isEmpty()) return null;
+        long t0 = System.currentTimeMillis();
+        try {
+            JsonObject criteria = new JsonObject();
+            criteria.addProperty("true", "Needs factual or up-to-date information from the web: news, weather, prices, "
+                    + "people, places, events, definitions, 'what/where/when/how much is X', or explicit requests to look something up.");
+            criteria.addProperty("false", "Casual chat, greetings, reactions, jokes, opinions, personal talk, game talk, "
+                    + "or continuing the current topic without needing new facts.");
+            JsonObject q = new JsonObject();
+            q.addProperty("type", "noul");
+            q.addProperty("instructions", "The chat below is Korean. Judge only the message after [현재메시지] "
+                    + "(the earlier [최근대화] is context). Does replying well require searching the web for facts?");
+            q.add("criteria", criteria);
+            JsonObject questions = new JsonObject();
+            questions.add("search", q);
+            JsonObject body = new JsonObject();
+            body.addProperty("model", "jev-latest");
+            body.addProperty("state", state);
+            body.add("questions", questions);
+
+            String raw = httpPost(JEV_URL, gson.toJson(body), JEV_TIMEOUT_MS,
+                    "Authorization", "Bearer " + jevKeyCached, "Content-Type", "application/json");
+            double p = gson.fromJson(raw, JsonObject.class)
+                    .getAsJsonObject("answers").getAsJsonObject("search").get("noul").getAsDouble();
+
+            IntentResult r = new IntentResult();
+            r.needSearch = p >= JEV_SEARCH_THRESHOLD;
+            r.query = userMsg.length() > 100 ? userMsg.substring(0, 100) : userMsg;
+            logger.info("[JEV] search p={} -> {} ({}ms) msg={}", String.format("%.3f", p), r.needSearch,
+                    System.currentTimeMillis() - t0, userMsg.length() > 40 ? userMsg.substring(0, 40) : userMsg);
+            return r;
+        } catch (Exception e) {
+            logger.warn("[JEV] failed -> GPT fallback ({}ms): {}", System.currentTimeMillis() - t0, e.toString());
+            return null;
+        }
     }
 
     // 의도 분석 실패 시 단순 키워드 폴백
@@ -323,12 +397,17 @@ public class LoaAiBotController {
     }
 
     private String httpPost(String urlStr, String body, String... headers) throws Exception {
+        return httpPost(urlStr, body, 0, headers);
+    }
+
+    /** timeoutMs > 0 이면 연결/읽기 타임아웃을 그 값으로(Jev처럼 빨라야 의미 있는 호출용), 0이면 기본(8초/15초). */
+    private String httpPost(String urlStr, String body, int timeoutMs, String... headers) throws Exception {
         URL url = new URL(urlStr);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setDoOutput(true);
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(15000);
+        conn.setConnectTimeout(timeoutMs > 0 ? timeoutMs : 8000);
+        conn.setReadTimeout(timeoutMs > 0 ? timeoutMs : 15000);
         for (int i = 0; i + 1 < headers.length; i += 2) {
             conn.setRequestProperty(headers[i], headers[i + 1]);
         }
