@@ -422,7 +422,7 @@ public class LoaAiBotController {
         JsonObject body = new JsonObject();
         body.addProperty("model", model);
         body.add("messages", messages);
-        if (model.startsWith("gpt-5")) {
+        if (model.matches("^gpt-[5-9].*")) { // gpt-5.x / gpt-6.x 계열(추론 모델 파라미터 체계)
             body.addProperty("max_completion_tokens", maxTokens);
             body.addProperty("reasoning_effort", "none");
         } else {
