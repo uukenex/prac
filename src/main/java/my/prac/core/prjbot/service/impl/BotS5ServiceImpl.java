@@ -649,6 +649,27 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
+    /** [2026-09-30] "경매장 시세통계는 한 달이 지나면 일마다 최소값 row/최대값 row 2개씩만 보관" 요청 -- 매일 새벽 4시 50분에
+     *  한 달(30일)이 지난 날짜의 T_MARKET_ITEM_PRICE 행을 아이템별 최소가 행/최대가 행만 남기고 지운다. 일/주/월별 최소~최대를
+     *  보여주는 /시세 명령 결과는 그대로다(시간별 보기는 최근 8시간만 쓰므로 영향 없음). 2026-09-30에 기존 데이터에도 같은 규칙을
+     *  한 번 적용했다(삭제분 43만 행은 T_MKT_PRICE_BAK_20260930에 백업).
+     *  @Scheduled 메서드라 BotS5Service 인터페이스에도 선언돼 있어야 한다. */
+    @Override
+    @Scheduled(cron = "0 50 4 * * *")
+    public void compactOldMarketPrice() {
+        try {
+            int n = dao.compactOldMarketPrice(MARKET_PRICE_FULL_KEEP_DAYS);
+            if (n > 0) {
+                System.out.println("[정리] 경매장 시세 " + MARKET_PRICE_FULL_KEEP_DAYS + "일 초과분 " + n + "건 압축(일 최소/최대만 유지)");
+            }
+        } catch (Exception e) {
+            System.out.println("[정리] 경매장 시세 압축 실패: " + e.getMessage());
+        }
+    }
+
+    /** 경매장 시세를 원본 그대로 보관하는 기간(일). */
+    private static final int MARKET_PRICE_FULL_KEEP_DAYS = 30;
+
     /** 시즌5 전용 로그 테이블 보관기간(일). */
     private static final int S5_WORD_HIS_KEEP_DAYS = 30;
     /** 기존 로그 테이블(TBOT_WORD_HIS) 보관기간(일). */

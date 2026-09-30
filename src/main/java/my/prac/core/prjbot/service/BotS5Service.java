@@ -241,6 +241,10 @@ public interface BotS5Service {
      *  위 메서드들과 같은 이유로 인터페이스에도 반드시 선언(누락하면 컨텍스트 부팅 실패). */
     void purgeOldWordHis();
 
+    /** [2026-09-30] 경매장 시세(T_MARKET_ITEM_PRICE) 한 달이 지난 날짜를 아이템별 일 최소가/최대가 행 2개만 남기고 압축
+     *  (매일 새벽 4시 50분). @Scheduled 메서드라 인터페이스에도 반드시 선언. */
+    void compactOldMarketPrice();
+
     /** /장비해제 M — M번째 파티원이 착용 중인 장비(투구/무기/갑옷) 전부를 한 번에 해제 */
     String equipUnwearAll(String userName, int companionIdx);
 

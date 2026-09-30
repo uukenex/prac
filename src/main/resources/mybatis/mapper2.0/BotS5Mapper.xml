@@ -376,6 +376,22 @@
            AND ROWNUM &lt;= #{batch, jdbcType=INTEGER}
     </delete>
 
+    <!-- [2026-09-30] 경매장 시세 보관: 보관기간(keepDays일)이 지난 날짜는 아이템별로 그 날의 최소가 행 1개와 최대가 행
+         1개만 남기고 나머지를 삭제(하루 전체를 대상으로 하도록 날짜 경계 TRUNC(SYSDATE)-keepDays 기준). 이미 2개 이하인 날은
+         그대로라 여러 번 실행해도 결과가 같다. 가격이 같아 최소/최대가 겹치면 그날 가장 이른 행/가장 늦은 행을 남긴다.
+         PRICE가 NULL인 행은 최소/최대 후보에서 맨 뒤로 밀린다. 시세 명령(/시세1~4)의 일/주/월별 최소~최대 결과는 그대로다. -->
+    <delete id="compactOldMarketPrice">
+        DELETE FROM T_MARKET_ITEM_PRICE
+         WHERE ROWID IN (
+               SELECT RID FROM (
+                   SELECT ROWID AS RID,
+                          ROW_NUMBER() OVER (PARTITION BY ITEM_NAME, TRUNC(INSERT_DATE) ORDER BY PRICE ASC NULLS LAST, INSERT_DATE ASC) AS RN_MIN,
+                          ROW_NUMBER() OVER (PARTITION BY ITEM_NAME, TRUNC(INSERT_DATE) ORDER BY PRICE DESC NULLS LAST, INSERT_DATE DESC) AS RN_MAX
+                     FROM T_MARKET_ITEM_PRICE
+                    WHERE INSERT_DATE &lt; TRUNC(SYSDATE) - #{keepDays, jdbcType=INTEGER}
+               ) WHERE RN_MIN &gt; 1 AND RN_MAX &gt; 1)
+    </delete>
+
     <!-- 방문(발견) 기록. 이미 있으면 VISIT_COUNT 증가(재방문 횟수 추적, SPECIAL/SHOP은 2회차부터 전투로 전환) -->
     <insert id="insertTileVisit">
         MERGE INTO TBOT_S5_USER_TILE_VISIT T

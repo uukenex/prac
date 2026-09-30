@@ -63,6 +63,8 @@ public interface BotS5DAO {
     int deleteOldS5WordHis(@Param("keepDays") int keepDays, @Param("batch") int batch);
     /** [2026-09-30] 기존 로그 테이블(TBOT_WORD_HIS) 보관기간 초과분 배치 삭제. */
     int deleteOldWordHis(@Param("keepDays") int keepDays, @Param("batch") int batch);
+    /** [2026-09-30] 경매장 시세(T_MARKET_ITEM_PRICE): keepDays일이 지난 날짜의 아이템별 최소가 행/최대가 행만 남기고 삭제. */
+    int compactOldMarketPrice(@Param("keepDays") int keepDays);
 
     // ── 몬스터 ──
     HashMap<String, Object> selectMonster(@Param("blockNo") int blockNo, @Param("bossYn") String bossYn);
