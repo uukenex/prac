@@ -143,6 +143,10 @@ public class Season5ViewController {
         if ("Y".equals(String.valueOf(progress.get("AUTO_HUNT_YN")))) {
             result.put("autoHunt", buildAutoHuntInfo(userName));
         }
+        // [2026-09-30] "최근 전투했던 층으로 바로가기" -- TBOT_S5_AUTO_HUNT_LOG.FLOOR는 자동사냥 ON/OFF와 무관하게
+        // "가장 최근에 실제로 몬스터를 처치한 층"으로 갱신되므로(BotS5ServiceImpl 처치 시 upsertAutoHuntLog) 그 값을 그대로 쓴다.
+        HashMap<String, Object> huntLog = s5Dao.selectAutoHuntLog(userName);
+        if (huntLog != null && huntLog.get("FLOOR") != null) result.put("lastBattleFloor", toInt(huntLog.get("FLOOR")));
         // 웹 SPA "층이동 탑 그림"에서 각 층(1~8, 사냥터만)의 탐사완료 여부를 보여주기 위함
         int blockBase = floor - (floor % 10);
         result.put("floorBest", s5Dao.selectUserFloorBestRange(userName, blockBase + 1, blockBase + 8));

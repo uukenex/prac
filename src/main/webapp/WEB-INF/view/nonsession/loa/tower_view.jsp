@@ -82,6 +82,44 @@
                       border-radius:14px; background:var(--parchment-deep);
                       border:1.5px dashed var(--line); padding:10px; box-sizing:border-box; }
     .tower-track{ position:relative; width:100%; height:100%; }
+    /* [2026-09-30] 마을층 미니맵(바람의나라식: 위쪽=상향 이동, 아래쪽=하향 이동, 가운데 건물 버튼) + 최근 전투층 바로가기 */
+    .tower-viewport-wrap.village-map .board-track-controls{ display:none; }
+    .last-battle-bar{ display:none; margin:0 0 8px; }
+    .last-battle-btn{ width:100%; border:1.5px solid var(--gold); background:var(--gold-soft); color:#6B4A12; font-weight:800;
+                      font-size:13px; padding:9px 12px; border-radius:12px; cursor:pointer; text-align:center; }
+    .last-battle-btn.dim{ opacity:.55; }
+    .vmap{ position:relative; width:100%; height:100%; display:flex; flex-direction:column; gap:6px; }
+    .vm-gate{ flex:0 0 auto; border:2px solid #8A6A32; background:linear-gradient(180deg,#E9D3A0,#D9BE84); color:#4A3712;
+              font-weight:800; font-size:12.5px; padding:9px 8px; border-radius:10px; cursor:pointer; text-align:center; }
+    .vm-gate small{ display:block; font-weight:600; font-size:10.5px; opacity:.8; }
+    .vm-gate.locked{ opacity:.5; }
+    .vm-gate.up{ border-bottom-width:4px; } .vm-gate.down{ border-top-width:4px; }
+    .vm-field{ position:relative; flex:1 1 auto; min-height:0; border-radius:12px; border:2px solid #6E9B4F; overflow:hidden;
+               background:
+                 radial-gradient(circle at 20% 30%, rgba(255,255,255,.10) 0 6px, transparent 7px),
+                 radial-gradient(circle at 70% 70%, rgba(255,255,255,.10) 0 6px, transparent 7px),
+                 repeating-linear-gradient(45deg, #9CCB7B 0 14px, #93C271 14px 28px); }
+    .vm-road-v{ position:absolute; left:50%; top:0; bottom:0; width:22%; transform:translateX(-50%); background:#DCC79B; opacity:.9; }
+    .vm-road-h{ position:absolute; top:50%; left:0; right:0; height:16%; transform:translateY(-50%); background:#DCC79B; opacity:.9; }
+    .vm-plaza{ position:absolute; left:50%; top:50%; width:34%; aspect-ratio:1/1; transform:translate(-50%,-50%); border-radius:50%;
+               background:#EAD9AC; border:3px solid #B99B5A; display:flex; align-items:center; justify-content:center; font-size:26px; }
+    .vm-title{ position:absolute; left:8px; top:6px; font-size:11px; font-weight:800; color:#2F5A1E; background:rgba(255,255,255,.7);
+               padding:2px 8px; border-radius:999px; z-index:3; }
+    .vm-you{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:20px; margin-top:26px; z-index:2; }
+    .vm-bld{ position:absolute; width:26%; min-width:74px; transform:translate(-50%,-50%); z-index:2; cursor:pointer;
+             border:2px solid #6B4A12; border-radius:12px; background:#FFF6DC; padding:7px 4px 6px; text-align:center;
+             box-shadow:0 3px 0 rgba(46,36,64,.25); font-family:inherit; color:#2E2440; }
+    .vm-bld:active{ transform:translate(-50%,-48%); }
+    .vm-bld .vb-ico{ display:block; font-size:26px; line-height:1.1; }
+    .vm-bld .vb-name{ display:block; font-size:12px; font-weight:800; margin-top:2px; }
+    .vm-bld .vb-sub{ display:block; font-size:10px; color:var(--ink-soft); }
+    .vm-bld.dungeon{ background:#3A2E4F; color:#fff; border-color:#1D1530; } .vm-bld.dungeon .vb-sub{ color:#D9CFF0; }
+    .vm-bld.dim{ opacity:.6; }
+    .dungeon-opt{ display:flex; align-items:center; gap:10px; width:100%; background:#fff; border:1.5px solid var(--line);
+                  border-radius:12px; padding:12px; margin-bottom:8px; cursor:pointer; font-family:inherit; text-align:left; color:var(--ink); }
+    .dungeon-opt:hover{ border-color:var(--gold); }
+    .dungeon-opt.locked{ opacity:.5; }
+    .dungeon-opt .do-ico{ font-size:24px; } .dungeon-opt .do-name{ font-size:14px; font-weight:800; } .dungeon-opt .do-sub{ font-size:11px; color:var(--ink-soft); }
     /* [2026-09-14] "내 위치/스크롤 버튼을 맵뷰 안에 넣어달라, 마우스휠 스크롤은 막고 대신
        버튼으로 내리게 해달라" 요청으로 처음엔 towerTrack 자식 + position:sticky로 구현했었음
        (매 렌더마다 다시 그려 넣는 방식). [2026-09-14 3차 수정] 위 .tower-viewport-wrap 주석
@@ -819,7 +857,8 @@
             <div class="bs-party-row" id="bsPartyRowV1"></div>
           </div>
         </div>
-        <div class="tower-viewport-wrap">
+        <div class="last-battle-bar" id="lastBattleBar"></div>
+        <div class="tower-viewport-wrap" id="towerViewportWrap">
           <div class="tower-viewport" id="towerViewport">
             <div class="tower-track" id="towerTrack">
               <div style="color:var(--ink-soft);font-size:12px;">데이터를 불러오는 중...</div>
@@ -1059,6 +1098,15 @@
     <button class="detail-close" onclick="TW.closeLegendDisenchant()">✕</button>
     <div class="sheet-title">해체할 전설장비 선택 (조각 15개 환급)</div>
     <div id="legendDisenchantList"></div>
+  </div>
+</div>
+
+<!-- [2026-09-30] 마을 미니맵 '던전' 팝업 -- 이 마을 첫 사냥터층 또는 최근 전투층으로 이동(확인창은 기존 confirmOverlay 재사용). -->
+<div class="detail-overlay" id="dungeonOverlay" onclick="if(event.target===this) TW.closeDungeon();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeDungeon()">✕</button>
+    <div class="sheet-title">🕳️ 던전 — 어디로 갈까요?</div>
+    <div id="dungeonOptions"></div>
   </div>
 </div>
 
@@ -1552,7 +1600,9 @@ var TW = (function () {
         monsterAtkCache = (data.monsterAtk != null) ? data.monsterAtk : null;
         monsterDefCache = (data.monsterDef != null) ? data.monsterDef : null;
         updateBattleScreen(p);
+        state.lastBattleFloor = (data.lastBattleFloor != null) ? data.lastBattleFloor : null;
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
+        renderLastBattleBar(p);
         renderDiceOverlay(data.dice || []);
         renderDiceEnhanceRow(data.diceEnhance);
         renderMoveLimit(data.moveLimit);
@@ -1704,6 +1754,138 @@ var TW = (function () {
     downRow.onclick = function () { confirmTowerDown(downTarget); };
     nav.appendChild(downRow);
   }
+
+  // ===== [2026-09-30] 최근 전투층 바로가기 + 마을 미니맵 + 던전 팝업 =====
+  function floorKindLabel(f) {
+    if (isStairZone(f)) return '계단층';
+    return f % 10 === 9 ? '보스' : '사냥터';
+  }
+
+  /** 지금 위치(cur)에서 last층으로 "한 번에" 갈 수 있는지 서버 changeFloor 규칙대로 판정.
+   *  반환: { ok, param, abs, why }. cur>=100(100층 마을/계단 구역)은 101~200 사이 가본 층 번호로 직접 이동,
+   *  그 아래는 같은 10층 구간(마을 기준 n=1~9) 안에서만 이동 가능(다른 구간이면 마을을 거쳐야 함). */
+  function lastBattleRoute(cur, last, maxReached) {
+    if (last == null || last === cur) return null;
+    if (cur >= STAIR_ZONE_BASE_CAMP) {
+      if (last >= STAIR_ZONE_START && last <= STAIR_ZONE_MAX_FLOOR && (last === STAIR_ZONE_START || last <= maxReached)) {
+        return { ok: true, param: String(last), abs: true };
+      }
+      return { ok: false, why: last + '층은 계단 구역 밖(아래 구간)이라 마을에서 탑내려가기로 이동해야 해요.' };
+    }
+    var base = cur - (cur % 10);
+    if (last > base && last < base + 10) {
+      var n = last - base;
+      if (n === 1 || last <= maxReached) return { ok: true, param: String(n), abs: false };
+      return { ok: false, why: last + '층은 아직 가본 적이 없어요.' };
+    }
+    return { ok: false, why: last + '층은 다른 구간이라 지금 위치에서 바로 갈 수 없어요. 마을에서 탑올라가기/내려가기로 이동하세요.' };
+  }
+
+  function goLastBattle(route, last) {
+    if (route.abs) confirmMoveAbs(last, floorKindLabel(last));
+    else confirmMove(last, parseInt(route.param, 10), floorKindLabel(last));
+  }
+
+  function renderLastBattleBar(p) {
+    var bar = document.getElementById('lastBattleBar');
+    if (!bar) return;
+    var last = state.lastBattleFloor;
+    if (last == null || last === p.CUR_FLOOR) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+    var route = lastBattleRoute(p.CUR_FLOOR, last, p.MAX_FLOOR_REACHED || 0);
+    bar.style.display = 'block';
+    bar.innerHTML = '';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'last-battle-btn' + (route && route.ok ? '' : ' dim');
+    btn.textContent = '⚔️ 최근 전투층 ' + last + '층으로 바로가기';
+    btn.onclick = function () {
+      if (route && route.ok) goLastBattle(route, last); else toast(route ? route.why : '이동할 수 없습니다.');
+    };
+    bar.appendChild(btn);
+  }
+
+  function renderVillageMap(track, floor) {
+    var p = state.progress || {};
+    var maxReached = p.MAX_FLOOR_REACHED || 0;
+    var unlockedBlock = p.UNLOCKED_BLOCK || 0;
+    var deep = floor >= STAIR_ZONE_BASE_CAMP; // 100/200층 마을: 위로 가면 101층+ 계단 구역
+
+    // 위쪽 출구 = 상향 이동
+    var upLabel, upSub, upOk, upFn;
+    if (deep) {
+      var firstUp = floor + 1;
+      upLabel = '⬆ ' + firstUp + '층 (계단 구역)'; upSub = '위층으로 올라가기';
+      upOk = firstUp <= STAIR_ZONE_MAX_FLOOR;
+      upFn = upOk ? function () { confirmMove(firstUp, 1, '계단층'); }
+                  : function () { toast('🌑 ' + firstUp + '층 이상은 추후 오픈 예정입니다.'); };
+    } else {
+      var upTo = floor + 10;
+      upLabel = '⬆ ' + upTo + '층 마을'; upSub = '탑올라가기 (이 구간 보스 처치 필요)';
+      upOk = unlockedBlock >= upTo;
+      upFn = upOk ? function () { confirmTowerUp(upTo); }
+                  : function () { toast('탑올라가기는 이 구간 보스를 처치해야 열립니다.'); };
+    }
+    // 아래쪽 출구 = 하향 이동
+    var downTo = floor > STAIR_ZONE_BASE_CAMP ? floor - 100 : floor - 10;
+    var canDown = floor > 0;
+
+    var html = '<div class="vmap">'
+        + '<button type="button" class="vm-gate up' + (upOk ? '' : ' locked') + '" id="vmUp">' + upLabel + '<small>' + upSub + '</small></button>'
+        + '<div class="vm-field">'
+        + '<div class="vm-road-v"></div><div class="vm-road-h"></div><div class="vm-plaza">⛲</div>'
+        + '<div class="vm-title">🏘️ ' + floor + '층 마을</div>'
+        + '<div class="vm-you" title="현재 위치">🧍</div>'
+        + '<button type="button" class="vm-bld" id="vmShop" style="left:22%;top:26%"><span class="vb-ico">🛍️</span><span class="vb-name">상점</span><span class="vb-sub">뽑기·강화</span></button>'
+        + '<button type="button" class="vm-bld dungeon" id="vmDungeon" style="left:78%;top:26%"><span class="vb-ico">🕳️</span><span class="vb-name">던전</span><span class="vb-sub">사냥터 입구</span></button>'
+        + '<button type="button" class="vm-bld" id="vmCraft" style="left:22%;top:76%"><span class="vb-ico">⚒️</span><span class="vb-name">전설제작</span><span class="vb-sub">조각 10개</span></button>'
+        + '<button type="button" class="vm-bld" id="vmDisenchant" style="left:78%;top:76%"><span class="vb-ico">💎</span><span class="vb-name">전설해체</span><span class="vb-sub">조각 환급</span></button>'
+        + '</div>'
+        + (canDown ? '<button type="button" class="vm-gate down" id="vmDown">⬇ ' + downTo + '층 마을<small>계단내려가기</small></button>' : '')
+        + '</div>';
+    track.innerHTML = html;
+
+    document.getElementById('vmUp').onclick = upFn;
+    if (canDown) document.getElementById('vmDown').onclick = function () { confirmTowerDown(downTo); };
+    document.getElementById('vmShop').onclick = function () { switchTab('shop'); };
+    document.getElementById('vmDungeon').onclick = function () { openDungeon(floor); };
+    document.getElementById('vmCraft').onclick = function () {
+      var frag = p.LEGEND_FRAGMENT || 0;
+      if (frag < LEGEND_CRAFT_COST_UI) { toast('🧩 전설의 조각이 부족합니다. (' + frag + '/' + LEGEND_CRAFT_COST_UI + ')'); return; }
+      openLegendRoster();
+    };
+    document.getElementById('vmDisenchant').onclick = function () { openLegendDisenchant(); };
+  }
+
+  function openDungeon(village) {
+    var p = state.progress || {};
+    var box = document.getElementById('dungeonOptions');
+    box.innerHTML = '';
+    function addOpt(ico, name, sub, locked, fn) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'dungeon-opt' + (locked ? ' locked' : '');
+      b.innerHTML = '<span class="do-ico">' + ico + '</span><span><span class="do-name">' + name + '</span><br><span class="do-sub">' + sub + '</span></span>';
+      b.onclick = fn;
+      box.appendChild(b);
+    }
+    var first = village + 1;
+    var firstBlocked = first > STAIR_ZONE_MAX_FLOOR;
+    addOpt('🚪', first + '층으로 이동', (first > STAIR_ZONE_BASE_CAMP ? '계단 구역' : '이 마을의 첫 사냥터') + '층',
+        firstBlocked, function () {
+          if (firstBlocked) { toast('🌑 ' + first + '층 이상은 추후 오픈 예정입니다.'); return; }
+          closeDungeon(); confirmMove(first, 1, floorKindLabel(first));
+        });
+    var last = state.lastBattleFloor;
+    if (last != null && last !== village && last !== first) {
+      var route = lastBattleRoute(village, last, p.MAX_FLOOR_REACHED || 0);
+      addOpt('⚔️', '이전 전투층 ' + last + '층으로 이동', route && route.ok ? '가장 최근에 싸운 층' : (route ? route.why : ''),
+          !(route && route.ok), function () {
+            if (route && route.ok) { closeDungeon(); goLastBattle(route, last); } else toast(route ? route.why : '이동할 수 없습니다.');
+          });
+    }
+    document.getElementById('dungeonOverlay').classList.add('open');
+  }
+  function closeDungeon() { document.getElementById('dungeonOverlay').classList.remove('open'); }
 
   function confirmMoveAbs(floor, kind) {
     document.getElementById('confirmMsg').textContent = floor + '층(' + kind + ')으로 정말 이동하시겠습니까?';
@@ -2082,6 +2264,8 @@ var TW = (function () {
   function renderBoard(tiles, curTile, floor) {
     var track = document.getElementById('towerTrack');
     track.innerHTML = '';
+    var vwrap = document.getElementById('towerViewportWrap');
+    if (vwrap) vwrap.classList.remove('village-map');
     if (!tiles || !tiles.length) {
       // "보스룸은 지도가 없는데 영역만 있어서 뭔지 모르겠다" 요청 -- 마을/보스층을 뭉뚱그리지
       // 않고, 보스층이면 전용 표시(+보스 일러스트)를 보여준다.
@@ -2092,8 +2276,11 @@ var TW = (function () {
             + (art ? '<svg viewBox="0 0 200 200" style="width:110px;height:110px;">' + art.svg + '</svg><br>' : '')
             + '👑 보스룸' + (art ? ' — ' + art.name : '') + '<br>'
             + '<span style="font-size:11px;">지도 없이 곧바로 전투가 진행됩니다. /주사위로 도전하세요!</span></div>';
+      } else if (floor % 10 === 0) {
+        renderVillageMap(track, floor);
+        if (vwrap) vwrap.classList.add('village-map');
       } else {
-        track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다 (마을층)</div>';
+        track.innerHTML = '<div style="color:var(--ink-soft);font-size:12px;">이 층은 보드가 없습니다</div>';
       }
       return;
     }
@@ -3646,7 +3833,8 @@ var TW = (function () {
            reopenNotice: reopenNotice, closeNotice: closeNotice, dismissNotice: dismissNotice, refreshForUpdate: refreshForUpdate,
            setBattleScreenVersion: setBattleScreenVersion,
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
-           openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant };
+           openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant,
+           closeDungeon: closeDungeon };
 })();
 </script>
 </body>
