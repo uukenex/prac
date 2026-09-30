@@ -42,7 +42,7 @@ import my.prac.core.util.RoomContextService;
  *   1. Jev(TypeSafe System One) — 의도 분석 (검색 필요 여부 확률 판단, 수십 ms). 키 없음/장애/타임아웃이면
  *      GPT-4o-mini(검색 필요 여부 + 검색어 추출, JSON 반환)로 자동 폴백
  *   2. Serper       — 검색 필요 시 웹 검색
- *   3. GPT(TCONFIG GPT_MODEL, 기본 gpt-5.4-mini) 또는 Gemini(USE_GEMINI=1) — 페르소나 + 대화 히스토리 +
+ *   3. GPT(TCONFIG GPT_MODEL, 기본 gpt-6-luna) 또는 Gemini(USE_GEMINI=1) — 페르소나 + 대화 히스토리 +
  *      검색결과 + 이 방의 최근 7일 비슷한 과거 대화를 통합해 최종 답변
  *   대화는 TBOT_AI_CHAT_HIS에 저장돼 서버 재기동 후에도 방 큐를 복원하고 유사 대화를 찾는다(방 단위, 유저 구분은 유지).
  */
@@ -380,13 +380,14 @@ public class LoaAiBotController {
     }
 
     // =====================================================================
-    // GPT 호출 공통 (모델은 TCONFIG GPT_MODEL, 기본 gpt-5.4-mini)
+    // GPT 호출 공통 (모델은 TCONFIG GPT_MODEL, 기본 gpt-6-luna)
     // =====================================================================
-    // [2026-09-30] 최신 소형 모델로 교체. gpt-5.x 계열은 max_tokens 대신 max_completion_tokens를 쓰고 temperature를
+    // [2026-09-30] 최신 소형 모델로 교체(gpt-6-luna: 추론 없음 기준 첫 글자 0.78초/초당 139토큰, 입력 $0.10/출력 $0.50 per 1M --
+    // 속도는 gpt-4o-mini와 비슷하고 더 싸다. 비교 근거는 Artificial Analysis). gpt-5.x 계열은 max_tokens 대신 max_completion_tokens를 쓰고 temperature를
     // 지원하지 않으며, reasoning_effort="none"이어야 추론 없이 gpt-4o-mini처럼 바로 답한다. 새 모델이 거절(400/404)
     // 하면 GPT_FALLBACK_MODEL(gpt-4o-mini)로 한 번 재시도해서 채팅이 끊기지 않게 한다. 모델 변경(예: gpt-5.4-nano로
     // 더 빠르게)은 배포 없이 TCONFIG GPT_MODEL 값만 바꾸면 60초 안에 반영된다.
-    private static final String GPT_DEFAULT_MODEL  = "gpt-5.4-mini";
+    private static final String GPT_DEFAULT_MODEL  = "gpt-6-luna";
     private static final String GPT_FALLBACK_MODEL = "gpt-4o-mini";
     private volatile String gptModelCached = GPT_DEFAULT_MODEL;
     private volatile long gptModelTime = 0L;
