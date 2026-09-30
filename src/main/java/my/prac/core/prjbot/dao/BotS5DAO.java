@@ -17,6 +17,9 @@ public interface BotS5DAO {
     int deleteJunkZeroFloorUsers();
     /** [2026-09-22] /tower-battle-log 페이지 유저 콤보박스용(전체 S5 유저 목록). */
     List<String> selectAllS5UserNames();
+    /** [2026-09-30] 밸런스 통계 페이지용 전투 결과 로그. */
+    int insertBattleStat(HashMap<String, Object> map);
+    List<HashMap<String, Object>> selectBattleStatAgg(@Param("days") double days);
 
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);

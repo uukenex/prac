@@ -41,6 +41,33 @@
         WHERE USER_NAME = #{userName}
     </select>
 
+    <!-- [2026-09-30] 밸런스 통계 페이지용 전투 결과 로그. 전투 1회 종료(승리/전멸/도망)마다 1행. -->
+    <insert id="insertBattleStat" parameterType="hashmap">
+        INSERT INTO TBOT_S5_BATTLE_STAT
+            (USER_NAME, FLOOR, KIND, COMBO, PARTY_SIZE, PARTY_POWER, MON_POWER, RESULT, TURNS, DEAD_CNT)
+        VALUES
+            (#{userName}, #{floor}, #{kind}, #{combo}, #{partySize}, #{partyPower}, #{monPower}, #{result}, #{turns}, #{deadCnt})
+    </insert>
+
+    <!-- 조합/층/몬스터종류/전투력비율(0.5 단위 버킷) 단위로 미리 집계해서 내려주고, 층 구간/조합별 등
+         다른 축의 재집계는 프론트가 한다. 비율 = 파티 전투력 / 그 몬스터 전투력. -->
+    <select id="selectBattleStatAgg" resultType="hashmap">
+        SELECT COMBO, FLOOR, KIND, BUCKET,
+               COUNT(*) AS FIGHTS,
+               SUM(CASE WHEN RESULT = 'WIPE' THEN 1 ELSE 0 END) AS WIPES,
+               SUM(CASE WHEN RESULT = 'FLEE' THEN 1 ELSE 0 END) AS FLEES,
+               SUM(NVL(DEAD_CNT, 0)) AS DEADS,
+               SUM(NVL(TURNS, 0)) AS TURNS
+          FROM (
+            SELECT COMBO, FLOOR, KIND, RESULT, TURNS, DEAD_CNT,
+                   CASE WHEN NVL(MON_POWER, 0) &lt;= 0 THEN -1
+                        ELSE LEAST(TRUNC(PARTY_POWER / MON_POWER * 2) / 2, 8) END AS BUCKET
+              FROM TBOT_S5_BATTLE_STAT
+             WHERE REG_DATE &gt;= SYSDATE - #{days}
+          )
+         GROUP BY COMBO, FLOOR, KIND, BUCKET
+    </select>
+
     <!-- [2026-09-22] /tower-battle-log 페이지 유저 콤보박스용. -->
     <select id="selectAllS5UserNames" resultType="string">
         SELECT USER_NAME FROM TBOT_S5_USER_PROGRESS ORDER BY USER_NAME

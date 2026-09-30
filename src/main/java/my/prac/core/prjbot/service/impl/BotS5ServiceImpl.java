@@ -726,6 +726,88 @@ public class BotS5ServiceImpl implements BotS5Service {
         return Math.round(hp * CP_HP_WEIGHT + atk * CP_ATK_WEIGHT + def * CP_DEF_WEIGHT);
     }
 
+    /** [2026-09-30] 밸런스 통계 -- 전투 1회가 끝날 때(승리/전멸/도망) 결과를 TBOT_S5_BATTLE_STAT에 남긴다.
+     *  실패해도 전투 진행에 영향 없게 전부 try/catch. 테스트/관리자 계정(NO_COOLDOWN_YN)은 통계를
+     *  오염시키므로 제외. 파티 전투력은 지금 편성 기준(/탑현황의 종합전투력과 같은 가중치),
+     *  몬스터 전투력은 그 전투의 배율(강화 x2/중간보스 x3, 보스 공격력 x1.6)까지 반영. */
+    private void logBattleResult(String userName, HashMap<String, Object> p, int floor, String result, int turns) {
+        try {
+            if ("Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) return;
+            boolean elite = "Y".equals(strVal(p.get("CUR_MONSTER_ELITE_YN"), "N"));
+            boolean mid = "Y".equals(strVal(p.get("CUR_MONSTER_MIDBOSS_YN"), "N"));
+            boolean boss = !isStairZone(floor) && floor % 10 == 9;
+            double mult = elite ? 2.0 : (mid ? 3.0 : 1.0);
+            HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(floor), boss ? "Y" : "N"), floor);
+            long monPower = 0;
+            if (mon != null) {
+                double atk = ((Number) mon.get("ATK_VALUE")).doubleValue() * mult * (boss ? 1.6 : 1.0);
+                monPower = combatPower(((Number) mon.get("HP_VALUE")).doubleValue() * mult, atk,
+                        ((Number) mon.get("DEF_VALUE")).doubleValue() * mult);
+            }
+            List<String> jobs = new ArrayList<>();
+            long power = 0;
+            int dead = 0;
+            for (HashMap<String, Object> c : companionsWithEffectiveStats(userName)) {
+                if (c.get("PARTY_SLOT") == null) continue;
+                jobs.add(strVal(c.get("CLASS"), "?"));
+                power += combatPower(intVal(c.get("EFF_HP"), 0), intVal(c.get("EFF_ATK"), 0), intVal(c.get("EFF_DEF"), 0));
+                if (PP.toBaseValue(PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""))) <= 0) dead++;
+            }
+            if (jobs.isEmpty()) return;
+            Collections.sort(jobs);
+            HashMap<String, Object> row = new HashMap<>();
+            row.put("userName", userName);
+            row.put("floor", floor);
+            row.put("kind", boss ? "B" : mid ? "M" : elite ? "E" : "N");
+            row.put("combo", String.join("-", jobs));
+            row.put("partySize", jobs.size());
+            row.put("partyPower", power);
+            row.put("monPower", monPower);
+            row.put("result", result);
+            row.put("turns", turns);
+            row.put("deadCnt", "WIPE".equals(result) ? jobs.size() : dead);
+            dao.insertBattleStat(row);
+        } catch (Exception ignore) {
+            // 통계 적재 실패는 무시(전투 진행/트랜잭션에 영향 주지 않음)
+        }
+    }
+
+    /** [2026-09-30] 몬스터 정보 DB 뷰 -- 층 1~STAIR_ZONE_MAX_FLOOR의 마을(X0, 100의 배수)을 뺀 모든 층에 대해
+     *  실제 전투와 같은 경로(applyHardcoreFloorScale)로 스탯을 만든다. 보스층(X9, 100층 이하)은 보스 행,
+     *  그 외는 일반 행. 처치 PP = 기준행 PP_PER_KILL x floorPpMultiplier(x 처치 종류 배율은 미반영).
+     *  전투력/안전기준은 /탑현황과 같은 combatPower/SAFE_HUNT_RATIO. */
+    @Override
+    public List<HashMap<String, Object>> monsterInfoTable() {
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (int f = 1; f <= STAIR_ZONE_MAX_FLOOR; f++) {
+            if (!isStairZone(f) && f % 10 == 0) continue; // 마을(10/20/../100/200)
+            boolean boss = !isStairZone(f) && f % 10 == 9;
+            HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(f), boss ? "Y" : "N"), f);
+            if (mon == null) continue;
+            double hp = ((Number) mon.get("HP_VALUE")).doubleValue();
+            double atk = ((Number) mon.get("ATK_VALUE")).doubleValue();
+            double def = ((Number) mon.get("DEF_VALUE")).doubleValue();
+            double atkEff = boss ? atk * 1.6 : atk; // 보스 공격력 x1.6은 전투 계산에서 추가로 곱해짐
+            long power = combatPower(hp, atkEff, def);
+            Object ext = mon.get("PP_PER_KILL_EXT");
+            PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), ext == null ? "" : ext.toString())
+                    .multiply(floorPpMultiplier(f));
+            HashMap<String, Object> row = new HashMap<>();
+            row.put("floor", f);
+            row.put("kind", boss ? "보스" : isStairZone(f) ? "계단층" : "일반");
+            row.put("name", boss ? strVal(mon.get("MONSTER_NAME"), "보스") : floorMonsterName(f, mon));
+            row.put("hp", Math.round(hp));
+            row.put("atk", Math.round(atkEff));
+            row.put("def", Math.round(def));
+            row.put("pp", perKill.format());
+            row.put("ppBase", PP.toBaseValue(perKill));
+            row.put("power", power);
+            row.put("safe", Math.round(power * SAFE_HUNT_RATIO));
+            out.add(row);
+        }
+        return out;
+    }
+
     /** 파티(편성된 동료, PARTY_SLOT 있는 동료만) 합산 전투력. */
     private long partyCombatPower(String userName) {
         long total = 0;
@@ -3690,6 +3772,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         if (monsterDead) {
+            logBattleResult(userName, p, floor, "WIN", curCombatTurn); // [2026-09-30] 밸런스 통계
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
             boolean isBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
@@ -3921,6 +4004,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         if (alive.isEmpty()) {
+            logBattleResult(userName, p, floor, "WIPE", curCombatTurn); // [2026-09-30] 밸런스 통계
             int wipeStreak = intVal(p.get("WIPE_STREAK_CUR"), 0) + 1;
             HashMap<String, Object> defeatUp = new HashMap<>();
             defeatUp.put("userName", userName);
@@ -4972,6 +5056,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 전투 중 층 이동 = 도망. 진행 중이던 전투를 포기하고 상태를 되돌린다.
             up.put("status", "NORMAL");
             up.put("clearMonster", true);
+            logBattleResult(userName, p, floor, "FLEE", intVal(p.get("CUR_COMBAT_TURN"), 0)); // [2026-09-30] 밸런스 통계
             // [2026-09-08] "몬스터 전투중 도망치다 업적도 있으면 좋겠다" 요청 -- 도망 누적 횟수.
             newFleeCount = intVal(p.get("FLEE_COUNT_TOTAL"), 0) + 1;
             up.put("fleeCountTotal", newFleeCount);
@@ -5152,6 +5237,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("killCountCur", 0);
         int newFleeCount = -1;
         if (wasInCombat) {
+            logBattleResult(userName, p, floor, "FLEE", intVal(p.get("CUR_COMBAT_TURN"), 0)); // [2026-09-30] 밸런스 통계
             up.put("status", "NORMAL");
             up.put("clearMonster", true);
             newFleeCount = intVal(p.get("FLEE_COUNT_TOTAL"), 0) + 1;

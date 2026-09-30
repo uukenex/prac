@@ -66,6 +66,17 @@ public class Season5ViewController {
         return "nonsession/loa/s5_battle_log_view";
     }
 
+    /** [2026-09-30] /로그 페이지에서 연결되는 관리자용 DB 뷰 2종(SPA 밖 독립 페이지). */
+    @GetMapping("/tower-monster-info")
+    public String monsterInfoViewPage() {
+        return "nonsession/loa/s5_monster_info_view";
+    }
+
+    @GetMapping("/tower-balance-stats")
+    public String balanceStatsViewPage() {
+        return "nonsession/loa/s5_balance_stats_view";
+    }
+
     // ─────────────────────────────────────────────
     // REST API
     // ─────────────────────────────────────────────
@@ -452,6 +463,29 @@ public class Season5ViewController {
         HashMap<String, Object> params = new HashMap<>();
         params.put("oldSince", S5_LOG_OLD_TABLE_SINCE);
         result.put("users", botDao.selectWordHisUserSummary(params));
+        return ResponseEntity.ok(result);
+    }
+
+    /** 층별 몬스터 정보(HP/ATK/DEF/처치PP/전투력/안전기준) -- 1~200층 전체를 한 번에. */
+    @GetMapping("/api/tower-monster-info")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMonsterInfo() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("rows", s5Service.monsterInfoTable());
+        result.put("safeRatio", 1.3); // BotS5ServiceImpl.SAFE_HUNT_RATIO와 같은 값(표시용)
+        return ResponseEntity.ok(result);
+    }
+
+    /** 밸런스 통계 -- 최근 days일치 전투 결과(TBOT_S5_BATTLE_STAT)를 조합/층/종류/전투력비율 버킷 단위로 집계해서 내려주고
+     *  층 구간/조합별 등 다른 축 재집계는 프론트가 한다. */
+    @GetMapping("/api/tower-balance-stats")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerBalanceStats(@RequestParam(value = "days", defaultValue = "7") double days) {
+        if (days < 0.01) days = 0.01;
+        if (days > 90) days = 90;
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("days", days);
+        result.put("rows", s5Dao.selectBattleStatAgg(days));
         return ResponseEntity.ok(result);
     }
 

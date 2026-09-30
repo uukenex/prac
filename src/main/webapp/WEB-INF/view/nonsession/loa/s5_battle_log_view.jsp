@@ -83,6 +83,10 @@
   <div class="wrap">
     <h1>📜 람쥐탑 로그 뷰어</h1>
     <div class="sub">채팅 명령어 + 웹 액션을 유저별로 조회(관리자용, SPA와 별도 페이지) -- 최근 24시간 이내만</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;">
+      <a href="/loa/tower-monster-info" style="color:#6B5E82;text-decoration:none;border:1.5px solid #E5D3A1;background:#fff;padding:5px 12px;border-radius:999px;font-weight:700;">👹 몬스터 정보</a>
+      <a href="/loa/tower-balance-stats" style="color:#6B5E82;text-decoration:none;border:1.5px solid #E5D3A1;background:#fff;padding:5px 12px;border-radius:999px;font-weight:700;">⚖️ 밸런스 통계</a>
+    </div>
 
     <div class="card">
       <div class="search-row">

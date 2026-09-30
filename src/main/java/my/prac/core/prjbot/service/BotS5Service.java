@@ -341,6 +341,10 @@ public interface BotS5Service {
      */
     String battleLogLink(String userName);
 
+    /** [2026-09-30] 몬스터 정보 DB 뷰(/loa/tower-monster-info)용 -- 층별 일반/보스 몬스터의
+     *  HP/ATK/DEF/처치 PP/전투력/안전기준을 실제 전투와 같은 계산(applyHardcoreFloorScale 등)으로 만든 표. */
+    java.util.List<java.util.HashMap<String, Object>> monsterInfoTable();
+
     /**
      * 활동 카운터 1증가 + 그 채널 사용 플래그 세팅. statKey는 아래 6개 중 하나만 유효
      * (그 외는 조용히 무시): "DICE_WEB", "DICE_CHAT", "GACHA_WEB", "GACHA_CHAT", "WIPE_WEB",
