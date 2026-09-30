@@ -63,6 +63,12 @@ public interface BotDAO {
 	 *  전체). 시간대별 세부 필터(5분~24시간)는 이 결과셋 안에서 프론트가 JS로 처리. */
 	public List<HashMap<String, Object>> selectWordHisRecent(Map<String, Object> params);
 
+	/** [2026-09-30] /챗 질문/답변 영구 저장(서버 재기동 후에도 최근 7일 대화를 이어가기 위함). */
+	public int insertAiChatHis(Map<String, Object> params);
+	/** 방(room) 단위 최근 days일 대화를 최신순으로 maxRows건. */
+	public List<HashMap<String, Object>> selectAiChatRecent(Map<String, Object> params);
+	public int deleteAiChatOld(Map<String, Object> params);
+
 	/** [2026-09-30] /tower-battle-log "최근 명령어 사용자 요약" -- 최근 3일 이내 S5 유저별 명령어 사용 횟수
 	 *  (1시간/24시간/3일 구간별 + 웹 액션 횟수 + 마지막 사용시각)를 한 번의 집계로 반환. */
 	public List<HashMap<String, Object>> selectWordHisUserSummary(Map<String, Object> params);

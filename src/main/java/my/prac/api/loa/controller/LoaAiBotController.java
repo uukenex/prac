@@ -7,7 +7,10 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.prac.core.dto.Message;
+import my.prac.core.prjbot.dao.BotDAO;
 import my.prac.core.prjbot.service.BotS4Service;
 import my.prac.core.prjbot.service.BotService;
 import my.prac.core.util.FixedSizeMessageQueue;
@@ -38,7 +42,9 @@ import my.prac.core.util.RoomContextService;
  *   1. Jev(TypeSafe System One) — 의도 분석 (검색 필요 여부 확률 판단, 수십 ms). 키 없음/장애/타임아웃이면
  *      GPT-4o-mini(검색 필요 여부 + 검색어 추출, JSON 반환)로 자동 폴백
  *   2. Serper       — 검색 필요 시 웹 검색
- *   3. Gemini       — 페르소나 + 대화 히스토리 + 검색결과 통합해 최종 답변
+ *   3. GPT(TCONFIG GPT_MODEL, 기본 gpt-5.4-mini) 또는 Gemini(USE_GEMINI=1) — 페르소나 + 대화 히스토리 +
+ *      검색결과 + 이 방의 최근 7일 비슷한 과거 대화를 통합해 최종 답변
+ *   대화는 TBOT_AI_CHAT_HIS에 저장돼 서버 재기동 후에도 방 큐를 복원하고 유사 대화를 찾는다(방 단위, 유저 구분은 유지).
  */
 @Controller
 public class LoaAiBotController {
@@ -82,6 +88,9 @@ public class LoaAiBotController {
 
     @Resource(name = "core.prjbot.BotS4Service")
     BotS4Service botS4Service;
+
+    @Resource(name = "core.prjbot.BotDAO")
+    BotDAO botDao;
 
     private static final Logger logger = LoggerFactory.getLogger(LoaAiBotController.class);
 
@@ -136,7 +145,7 @@ public class LoaAiBotController {
     // 진입점
     // =====================================================================
     public String search(String reqMsg, String roomName, String userName) {
-        FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, r -> new FixedSizeMessageQueue(20));
+        FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, this::loadQueueFromDb);
         queue.add(new Message("user", userName + ": " + reqMsg));
 
         // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
@@ -152,10 +161,12 @@ public class LoaAiBotController {
         }
 
         // 3. Gemini: 페르소나 + 히스토리 + 검색결과 통합 최종 답변
-        String finalAnswer = callGeminiForFinal(reqMsg, userName, searchSummary, queue);
+        String recall = buildRecall(roomName, userName, reqMsg);
+        String finalAnswer = callGeminiForFinal(reqMsg, userName, searchSummary, recall, queue);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
         queue.add(new Message("assistant", finalAnswer));
+        saveChat(roomName, userName, reqMsg, finalAnswer);
         return finalAnswer;
     }
 
@@ -189,18 +200,7 @@ public class LoaAiBotController {
             messages.add(makeMsg("system", INTENT_SYSTEM));
             messages.add(makeMsg("user", userPrompt));
 
-            JsonObject body = new JsonObject();
-            body.addProperty("model", "gpt-4o-mini");
-            body.add("messages", messages);
-            body.addProperty("max_tokens", 80);
-            body.addProperty("temperature", 0);
-
-            String raw = httpPost(GPT_URL, gson.toJson(body),
-                    "Authorization", openaiKey, "Content-Type", "application/json");
-
-            String content = gson.fromJson(raw, JsonObject.class)
-                    .getAsJsonArray("choices").get(0).getAsJsonObject()
-                    .getAsJsonObject("message").get("content").getAsString().trim();
+            String content = gptChat(messages, 80, 0.0);
 
             // JSON 파싱
             if (content.contains("{")) {
@@ -321,7 +321,7 @@ public class LoaAiBotController {
     // 3단계: 최종 답변 (USE_GEMINI는 TCONFIG DB에서 실시간 조회, 60초 캐시)
     // =====================================================================
     private String callGeminiForFinal(String userMsg, String userName,
-                                       String searchSummary, FixedSizeMessageQueue queue) {
+                                       String searchSummary, String recall, FixedSizeMessageQueue queue) {
         // 대화 히스토리 구성 (최대 8개)
         java.util.List<Message> msgs = queue.getAll();
         int start = Math.max(0, msgs.size() - 8);
@@ -337,6 +337,7 @@ public class LoaAiBotController {
                 }
                 StringBuilder prompt = new StringBuilder();
                 prompt.append("[캐릭터 설정]\n").append(SYSTEM_PERSONA).append("\n\n");
+                if (!recall.isEmpty()) prompt.append(recall).append("\n");
                 if (history.length() > 0) prompt.append("[대화 흐름]\n").append(history).append("\n");
                 prompt.append("[").append(userName).append("의 말] ").append(userMsg).append("\n\n");
                 if (!searchSummary.isEmpty()) {
@@ -356,6 +357,7 @@ public class LoaAiBotController {
         try {
             JsonArray messages = new JsonArray();
             messages.add(makeMsg("system", SYSTEM_PERSONA));
+            if (!recall.isEmpty()) messages.add(makeMsg("system", recall));
             // 히스토리
             for (int i = start; i < msgs.size() - 1; i++) {
                 Message m = msgs.get(i);
@@ -369,22 +371,180 @@ public class LoaAiBotController {
             }
             messages.add(makeMsg("user", userName + ": " + userContent));
 
-            JsonObject body = new JsonObject();
-            body.addProperty("model", "gpt-4o-mini");
-            body.add("messages", messages);
-            body.addProperty("max_tokens", 300);
-            body.addProperty("temperature", 0.8);
-
-            String raw = httpPost(GPT_URL, gson.toJson(body),
-                    "Authorization", openaiKey, "Content-Type", "application/json");
-
-            return gson.fromJson(raw, JsonObject.class)
-                       .getAsJsonArray("choices").get(0).getAsJsonObject()
-                       .getAsJsonObject("message").get("content").getAsString().trim();
+            return gptChat(messages, 300, 0.8);
 
         } catch (Exception e) {
             String apiErr = parseApiErrMsg(e);
             return apiErr != null ? apiErr : "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
+        }
+    }
+
+    // =====================================================================
+    // GPT 호출 공통 (모델은 TCONFIG GPT_MODEL, 기본 gpt-5.4-mini)
+    // =====================================================================
+    // [2026-09-30] 최신 소형 모델로 교체. gpt-5.x 계열은 max_tokens 대신 max_completion_tokens를 쓰고 temperature를
+    // 지원하지 않으며, reasoning_effort="none"이어야 추론 없이 gpt-4o-mini처럼 바로 답한다. 새 모델이 거절(400/404)
+    // 하면 GPT_FALLBACK_MODEL(gpt-4o-mini)로 한 번 재시도해서 채팅이 끊기지 않게 한다. 모델 변경(예: gpt-5.4-nano로
+    // 더 빠르게)은 배포 없이 TCONFIG GPT_MODEL 값만 바꾸면 60초 안에 반영된다.
+    private static final String GPT_DEFAULT_MODEL  = "gpt-5.4-mini";
+    private static final String GPT_FALLBACK_MODEL = "gpt-4o-mini";
+    private volatile String gptModelCached = GPT_DEFAULT_MODEL;
+    private volatile long gptModelTime = 0L;
+
+    private String gptModel() {
+        long now = System.currentTimeMillis();
+        if (now - gptModelTime > 60_000L) {
+            gptModelTime = now;
+            try {
+                String v = botS4Service.selectTconfigVal("GPT_MODEL");
+                gptModelCached = (v == null || v.trim().isEmpty()) ? GPT_DEFAULT_MODEL : v.trim();
+            } catch (Exception e) {
+                // DB 오류 시 이전 값 유지
+            }
+        }
+        return gptModelCached;
+    }
+
+    private String gptChat(JsonArray messages, int maxTokens, double temperature) throws Exception {
+        String model = gptModel();
+        try {
+            return gptChatOnce(model, messages, maxTokens, temperature);
+        } catch (HttpApiException e) {
+            if ((e.code == 400 || e.code == 404) && !GPT_FALLBACK_MODEL.equals(model)) {
+                logger.warn("[GPT] {} 거절({}) -> {} 로 재시도: {}", model, e.code, GPT_FALLBACK_MODEL, e.getMessage());
+                return gptChatOnce(GPT_FALLBACK_MODEL, messages, maxTokens, temperature);
+            }
+            throw e;
+        }
+    }
+
+    private String gptChatOnce(String model, JsonArray messages, int maxTokens, double temperature) throws Exception {
+        JsonObject body = new JsonObject();
+        body.addProperty("model", model);
+        body.add("messages", messages);
+        if (model.startsWith("gpt-5")) {
+            body.addProperty("max_completion_tokens", maxTokens);
+            body.addProperty("reasoning_effort", "none");
+        } else {
+            body.addProperty("max_tokens", maxTokens);
+            body.addProperty("temperature", temperature);
+        }
+        long t0 = System.currentTimeMillis();
+        String raw = httpPost(GPT_URL, gson.toJson(body), "Authorization", openaiKey, "Content-Type", "application/json");
+        logger.info("[GPT] {} {}ms", model, System.currentTimeMillis() - t0);
+        return gson.fromJson(raw, JsonObject.class)
+                .getAsJsonArray("choices").get(0).getAsJsonObject()
+                .getAsJsonObject("message").get("content").getAsString().trim();
+    }
+
+    // =====================================================================
+    // /챗 대화 영구 저장 + 재기동 복원 + 유사 과거 대화 (TBOT_AI_CHAT_HIS, 방 단위)
+    // =====================================================================
+    private static final int CHAT_KEEP_DAYS = 7;
+    private static final int CHAT_QUEUE_ROWS = 10;    // 큐(20개 메시지) 복원용 = 최근 10회 왕복
+    private static final int CHAT_RECALL_SCAN = 300;  // 유사도 검색 대상(최근 7일 중 최대 300회)
+    private static final int CHAT_PROMPT_TURNS = 4;   // 프롬프트에 이미 들어가는 최근 왕복 수(8메시지) -- 중복 회상 제외
+    private static final double CHAT_RECALL_MIN_SCORE = 0.35;
+    private volatile long lastChatPurge = 0L;
+
+    private static String cut(String s, int max) {
+        if (s == null) return "";
+        s = s.trim();
+        return s.length() > max ? s.substring(0, max) : s;
+    }
+
+    /** 서버 재기동 후 첫 /챗에서 그 방의 최근 대화(7일 이내)로 메모리 큐를 복원한다. */
+    private FixedSizeMessageQueue loadQueueFromDb(String roomName) {
+        FixedSizeMessageQueue q = new FixedSizeMessageQueue(20);
+        try {
+            HashMap<String, Object> p = new HashMap<>();
+            p.put("room", roomName);
+            p.put("days", CHAT_KEEP_DAYS);
+            p.put("maxRows", CHAT_QUEUE_ROWS);
+            List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
+            for (int i = rows.size() - 1; i >= 0; i--) {
+                HashMap<String, Object> r = rows.get(i);
+                q.add(new Message("user", r.get("USER_NAME") + ": " + r.get("QUESTION")));
+                q.add(new Message("assistant", String.valueOf(r.get("ANSWER"))));
+            }
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 큐 복원 실패(무시): {}", e.toString());
+        }
+        return q;
+    }
+
+    private void saveChat(String roomName, String userName, String question, String answer) {
+        try {
+            // 오류 안내문("(...)")은 대화가 아니므로 저장하지 않는다.
+            if (answer == null || answer.isEmpty() || (answer.startsWith("(") && answer.endsWith(")"))) return;
+            HashMap<String, Object> p = new HashMap<>();
+            p.put("room", cut(roomName, 200));
+            p.put("user", cut(userName, 200));
+            p.put("question", cut(question, 500));
+            p.put("answer", cut(answer, 700));
+            botDao.insertAiChatHis(p);
+
+            long now = System.currentTimeMillis();
+            if (now - lastChatPurge > 3_600_000L) { // 스케줄러 없이, 저장할 때 1시간에 한 번만 오래된 행 정리
+                lastChatPurge = now;
+                HashMap<String, Object> d = new HashMap<>();
+                d.put("keepDays", CHAT_KEEP_DAYS + 1);
+                botDao.deleteAiChatOld(d);
+            }
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 저장 실패(무시): {}", e.toString());
+        }
+    }
+
+    /** 한글/영문/숫자만 남긴 문자열의 문자 bigram 집합(공백/기호 무시). */
+    private static Set<String> bigrams(String s) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : s.toLowerCase().toCharArray()) if (Character.isLetterOrDigit(c)) sb.append(c);
+        Set<String> out = new HashSet<>();
+        for (int i = 0; i + 1 < sb.length(); i++) out.add(sb.substring(i, i + 2));
+        return out;
+    }
+
+    /** 이 방의 최근 7일 대화 중 지금 질문과 비슷한 것(최대 2개)을 프롬프트용 텍스트로. 방이 달라지면 절대 안 섞이고,
+     *  같은 방 안에서는 다른 유저의 대화도 참조한다. 없으면 빈 문자열. */
+    private String buildRecall(String roomName, String userName, String msg) {
+        try {
+            Set<String> cur = bigrams(msg);
+            if (cur.size() < 2) return "";
+            HashMap<String, Object> p = new HashMap<>();
+            p.put("room", roomName);
+            p.put("days", CHAT_KEEP_DAYS);
+            p.put("maxRows", CHAT_RECALL_SCAN);
+            List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
+            List<double[]> scored = new ArrayList<>(); // {index, score}
+            for (int i = CHAT_PROMPT_TURNS; i < rows.size(); i++) { // 최근 몇 회는 이미 [대화 흐름]에 있으니 제외
+                Set<String> past = bigrams(String.valueOf(rows.get(i).get("QUESTION")));
+                if (past.size() < 2) continue;
+                int common = 0;
+                for (String g : cur) if (past.contains(g)) common++;
+                double dice = 2.0 * common / (cur.size() + past.size());
+                if (common >= 2 && dice >= CHAT_RECALL_MIN_SCORE) scored.add(new double[] { i, dice });
+            }
+            if (scored.isEmpty()) return "";
+            scored.sort((a, b) -> a[1] != b[1] ? Double.compare(b[1], a[1]) : Double.compare(a[0], b[0])); // 점수 높은 순, 같으면 최신
+            StringBuilder sb = new StringBuilder("[이 방에서 예전에 나눈 비슷한 대화 -- 참고만 하고, 이어지는 얘기면 자연스럽게 연결해서 답해줘]\n");
+            long now = System.currentTimeMillis();
+            for (int k = 0; k < Math.min(2, scored.size()); k++) {
+                HashMap<String, Object> r = rows.get((int) scored.get(k)[0]);
+                long ageH = 0;
+                Object ts = r.get("REG_DATE");
+                if (ts instanceof java.util.Date) ageH = (now - ((java.util.Date) ts).getTime()) / 3_600_000L;
+                String when = ageH >= 24 ? (ageH / 24) + "일 전" : Math.max(ageH, 1) + "시간 전";
+                String who = String.valueOf(r.get("USER_NAME"));
+                sb.append("- (").append(when).append(", ").append(who.equals(userName) ? "같은 사람" : who).append(") ")
+                  .append("질문: ").append(cut(String.valueOf(r.get("QUESTION")), 120))
+                  .append(" / 람쥐봇 답: ").append(cut(String.valueOf(r.get("ANSWER")), 160)).append("\n");
+            }
+            logger.info("[AICHAT] 유사 과거 대화 {}건 참조 (room={})", Math.min(2, scored.size()), roomName);
+            return sb.toString();
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 유사 대화 검색 실패(무시): {}", e.toString());
+            return "";
         }
     }
 

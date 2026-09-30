@@ -2113,4 +2113,28 @@
 		</foreach>
 	</select>
 
+
+	<!-- [2026-09-30] /챗 대화 저장. 방/유저/질문/답변 전부 NVARCHAR2라 이모지도 안전하게 NChar 핸들러로 바인딩. -->
+	<insert id="insertAiChatHis" parameterType="hashmap">
+		INSERT INTO TBOT_AI_CHAT_HIS (ROOM_NAME, USER_NAME, QUESTION, ANSWER)
+		VALUES (#{room, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{user, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{question, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{answer, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler})
+	</insert>
+
+	<select id="selectAiChatRecent" parameterType="hashmap" resultType="hashmap">
+		SELECT * FROM (
+		    SELECT REG_DATE, USER_NAME, QUESTION, ANSWER
+		      FROM TBOT_AI_CHAT_HIS
+		     WHERE ROOM_NAME = #{room, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       AND REG_DATE >= SYSTIMESTAMP - #{days}
+		     ORDER BY REG_DATE DESC
+		) WHERE ROWNUM &lt;= #{maxRows}
+	</select>
+
+	<delete id="deleteAiChatOld" parameterType="hashmap">
+		DELETE FROM TBOT_AI_CHAT_HIS WHERE REG_DATE &lt; SYSTIMESTAMP - #{keepDays}
+	</delete>
+
 </mapper>
