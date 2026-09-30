@@ -2127,6 +2127,31 @@
 		       ,#{intentModel, jdbcType=VARCHAR})
 	</insert>
 
+	<!-- [2026-09-30] Jev 사용 이력. 사람이 읽는 필드(방/유저/입력/질문문구)는 NVARCHAR2라 NChar 핸들러로 바인딩. -->
+	<insert id="insertJevLog" parameterType="hashmap">
+		INSERT INTO TBOT_JEV_LOG (PURPOSE, ROOM_NAME, USER_NAME, INPUT_TEXT, QUESTION_ID, QUESTION_TYPE, QUESTION_TEXT,
+		                          ANSWER, SCORE, THRESHOLD, DECISION, JEV_MODEL, INPUT_TOKENS, OUTPUT_TOKENS, LATENCY_MS,
+		                          STATUS, ERROR_MSG, RAW_JSON)
+		VALUES (#{purpose, jdbcType=VARCHAR}
+		       ,#{room, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{user, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{input, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{qId, jdbcType=VARCHAR}
+		       ,#{qType, jdbcType=VARCHAR}
+		       ,#{qText, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{answer, jdbcType=VARCHAR}
+		       ,#{score, jdbcType=NUMERIC}
+		       ,#{threshold, jdbcType=NUMERIC}
+		       ,#{decision, jdbcType=VARCHAR}
+		       ,#{jevModel, jdbcType=VARCHAR}
+		       ,#{inputTokens, jdbcType=NUMERIC}
+		       ,#{outputTokens, jdbcType=NUMERIC}
+		       ,#{latencyMs, jdbcType=NUMERIC}
+		       ,#{status, jdbcType=VARCHAR}
+		       ,#{error, jdbcType=VARCHAR}
+		       ,#{rawJson, jdbcType=VARCHAR})
+	</insert>
+
 	<select id="selectAiChatRecent" parameterType="hashmap" resultType="hashmap">
 		SELECT * FROM (
 		    SELECT REG_DATE, USER_NAME, QUESTION, ANSWER

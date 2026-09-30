@@ -156,6 +156,8 @@ public class LoaAiBotController {
     public String search(String reqMsg, String roomName, String userName) {
         java.sql.Timestamp reqAt = new java.sql.Timestamp(System.currentTimeMillis()); // 입력 받은 시각(DB 기록용)
         usedModels.set(new HashMap<>());
+        usedModels.get().put("room", roomName == null ? "" : roomName);
+        usedModels.get().put("user", userName == null ? "" : userName);
         try {
             return searchInternal(reqMsg, roomName, userName, reqAt);
         } finally {
@@ -245,6 +247,7 @@ public class LoaAiBotController {
         refreshJevConfig();
         if (!jevSwitchOn || jevKeyCached.isEmpty()) return null;
         long t0 = System.currentTimeMillis();
+        String raw = null;
         try {
             JsonObject criteria = new JsonObject();
             criteria.addProperty("true", "Needs factual or up-to-date information from the web: news, weather, prices, "
@@ -263,10 +266,10 @@ public class LoaAiBotController {
             body.addProperty("state", state);
             body.add("questions", questions);
 
-            String raw = httpPost(JEV_URL, gson.toJson(body), JEV_TIMEOUT_MS,
+            raw = httpPost(JEV_URL, gson.toJson(body), JEV_TIMEOUT_MS,
                     "Authorization", "Bearer " + jevKeyCached, "Content-Type", "application/json");
-            double p = gson.fromJson(raw, JsonObject.class)
-                    .getAsJsonObject("answers").getAsJsonObject("search").get("noul").getAsDouble();
+            JsonObject root = gson.fromJson(raw, JsonObject.class);
+            double p = root.getAsJsonObject("answers").getAsJsonObject("search").get("noul").getAsDouble();
 
             markModel("intent", "jev-latest");
             IntentResult r = new IntentResult();
@@ -274,10 +277,51 @@ public class LoaAiBotController {
             r.query = userMsg.length() > 100 ? userMsg.substring(0, 100) : userMsg;
             logger.info("[JEV] search p={} -> {} ({}ms) msg={}", String.format("%.3f", p), r.needSearch,
                     System.currentTimeMillis() - t0, userMsg.length() > 40 ? userMsg.substring(0, 40) : userMsg);
+            logJevUse("OK", userMsg, p, r.needSearch, System.currentTimeMillis() - t0, root, raw, null);
             return r;
         } catch (Exception e) {
             logger.warn("[JEV] failed -> GPT fallback ({}ms): {}", System.currentTimeMillis() - t0, e.toString());
+            logJevUse("ERROR", userMsg, null, null, System.currentTimeMillis() - t0, null, raw, e.toString());
             return null;
+        }
+    }
+
+    private static final String JEV_QUESTION_TEXT = "웹 검색이 필요한 질문인가?"; // yes = 검색 필요, no = 잡담/의견 등 검색 불필요
+
+    /** [2026-09-30] "jev 사용이력을 관리, 어떤 방식으로 썼는지 예: 이 질문은 잡담인가 yes 1.0" 요청 -- TBOT_JEV_LOG에 호출마다
+     *  1행: 누가(방/유저) 어떤 입력에 어떤 질문(QUESTION_TEXT)을 어떤 방식(QUESTION_TYPE noul)으로 물어 어떤 답(ANSWER yes/no,
+     *  SCORE 확률)과 판단(DECISION)이 나왔는지, 응답 모델/토큰/지연시간/오류까지. 기록 실패는 무시(채팅에 영향 없음). */
+    private void logJevUse(String status, String userMsg, Double p, Boolean needSearch, long ms,
+                           JsonObject root, String raw, String err) {
+        try {
+            Map<String, String> um = usedModels.get();
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("purpose", "CHAT_SEARCH_INTENT");
+            m.put("room", cut(um == null ? "" : um.get("room"), 200));
+            m.put("user", cut(um == null ? "" : um.get("user"), 200));
+            m.put("input", cut(userMsg, 500));
+            m.put("qId", "search");
+            m.put("qType", "noul");
+            m.put("qText", JEV_QUESTION_TEXT);
+            m.put("answer", p == null ? null : (p >= JEV_SEARCH_THRESHOLD ? "yes" : "no"));
+            m.put("score", p);
+            m.put("threshold", JEV_SEARCH_THRESHOLD);
+            m.put("decision", needSearch == null ? null : (needSearch ? "SEARCH" : "NO_SEARCH"));
+            if (root != null) {
+                if (root.has("model")) m.put("jevModel", cut(root.get("model").getAsString(), 60));
+                if (root.has("usage") && root.get("usage").isJsonObject()) {
+                    JsonObject u = root.getAsJsonObject("usage");
+                    if (u.has("input_tokens")) m.put("inputTokens", u.get("input_tokens").getAsInt());
+                    if (u.has("output_tokens")) m.put("outputTokens", u.get("output_tokens").getAsInt());
+                }
+            }
+            m.put("latencyMs", ms);
+            m.put("status", status);
+            m.put("error", err == null ? null : cut(err, 300));
+            m.put("rawJson", raw == null ? null : cut(raw, 1000));
+            botDao.insertJevLog(m);
+        } catch (Exception e) {
+            logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
         }
     }
 

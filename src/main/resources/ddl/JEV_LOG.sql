@@ -1,0 +1,36 @@
+-- ============================================================
+-- Jev (TypeSafe System One) usage history (2026-09-30). One row per Jev call.
+-- Example: user asked "hello" -> question "needs web search?" (noul) -> ANSWER=no, SCORE=0.03, DECISION=NO_SEARCH.
+-- Never purged by the app. Human-readable fields are NVARCHAR2 (bound via NCharStringTypeHandler). Idempotent.
+-- ============================================================
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt FROM USER_TABLES WHERE TABLE_NAME = 'TBOT_JEV_LOG';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE '
+            CREATE TABLE TBOT_JEV_LOG (
+                REG_DATE      TIMESTAMP(3) DEFAULT SYSTIMESTAMP NOT NULL,
+                PURPOSE       VARCHAR2(30),
+                ROOM_NAME     NVARCHAR2(200),
+                USER_NAME     NVARCHAR2(200),
+                INPUT_TEXT    NVARCHAR2(500),
+                QUESTION_ID   VARCHAR2(30),
+                QUESTION_TYPE VARCHAR2(10),
+                QUESTION_TEXT NVARCHAR2(200),
+                ANSWER        VARCHAR2(20),
+                SCORE         NUMBER(6,4),
+                THRESHOLD     NUMBER(4,2),
+                DECISION      VARCHAR2(20),
+                JEV_MODEL     VARCHAR2(60),
+                INPUT_TOKENS  NUMBER,
+                OUTPUT_TOKENS NUMBER,
+                LATENCY_MS    NUMBER,
+                STATUS        VARCHAR2(10),
+                ERROR_MSG     VARCHAR2(300),
+                RAW_JSON      VARCHAR2(1000)
+            )';
+        EXECUTE IMMEDIATE 'CREATE INDEX IDX_JEV_LOG_DATE ON TBOT_JEV_LOG (REG_DATE)';
+    END IF;
+END;
+/

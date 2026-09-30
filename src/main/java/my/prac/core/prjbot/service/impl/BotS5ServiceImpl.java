@@ -2103,8 +2103,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String rollDice(String userName, String channel) {
-        boolean brandNew = dao.selectUserProgress(userName) == null;
-        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        HashMap<String, Object> p = dao.selectUserProgress(userName); // [2026-09-30] 같은 조회를 두 번 하던 것을 한 번으로
+        boolean brandNew = p == null;
         if (p == null) {
             initUser(userName);
             p = dao.selectUserProgress(userName);

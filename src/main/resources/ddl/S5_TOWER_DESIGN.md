@@ -4687,3 +4687,13 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 카카오 콘솔에 새 리다이렉트 URI를 등록하지 않아도 되게, 이미 등록된 S4 콜백(`/s4/kakao/callback`)을 재사용: 인가 요청에 `state=s5-...`를 넣고 `S4WebController.kakaoCallback`이 그 접두어를 보면 `/loa/s5/kakao/callback`으로 forward.
 - 보호 범위: 페이지 `/loa/tower-battle-log`, `/tower-monster-info`, `/tower-balance-stats`(비로그인 -> 로그인 화면 리다이렉트) + API `/api/tower-battle-log`, `-log-users`, `-log-recent`, `-log-summary`, `/api/tower-monster-info`, `/api/tower-balance-stats`(비로그인 -> 401 JSON). 세 페이지는 fetch 401을 감지해 로그인 화면으로 보내고, 우상단에 "닉네임 · 로그아웃" 표시.
 - 로그인한 카카오 계정이면 누구나 볼 수 있음(허용 목록 없음). 특정인만 허용하려면 KAKAO_ID 화이트리스트 추가 필요.
+
+## 2026-09-30 웹 UI 전투 반응 속도 + 스크롤 튐 개선
+- 증상: 100층 이상 유저가 주사위를 누르면 1초쯤 뒤에야 체력바/캐릭터 모션이 움직임 + 연타 중 화면이 위아래로 튐.
+- 원인(속도): 전투 턴마다 `/api/tower-party`와 `/api/tower-equip`(고레벨은 장비 수백 개)을 둘 다 받고, 파티 슬롯/파티 격자/장비 목록을 화면에 안 보여도 통째로 다시 그린 뒤에야 전투화면(체력바)을 갱신했고, 공격 모션도 서버 응답 뒤에야 재생.
+- 수정: 전투 중 DICE는 누르는 즉시 공격 모션 재생, 응답 후엔 `/api/tower-party`만 받아 전투화면만 갱신(`loadPartyLight`). 처치/전멸/획득/도망 메시지거나 파티 탭이 열려 있거나 파티를 아직 못 불렀을 때만 기존 전체 갱신(`loadPartyAndEquip`). 파티/장비 탭은 열 때 전체를 다시 불러오므로 화면 갱신 누락 없음. 서버 `rollDice`의 중복 `selectUserProgress` 1회 제거.
+- 원인(스크롤): 전투 시작/종료 때 전투화면 높이(스크롤 위치 기준 260~480px)와 보드 뷰포트 높이(고정 min(480px,60svh))가 달라 문서 높이가 출렁였고, 새로 만든 "최근 전투층" 바가 표시/숨김되며 아래 내용을 밀었음.
+- 수정: 전투화면 높이를 보드와 같은 값으로 고정(compact 여부만 문서 기준 좌표로 판단), 최근 전투층 바는 자리 유지(visibility 전환, 전투 중 숨김), 주사위 버튼에 `touch-action: manipulation`(연타 시 더블탭 확대 방지).
+
+## 2026-09-30 Jev 사용 이력
+- 테이블 `TBOT_JEV_LOG`(`JEV_LOG.sql`, 라이브 적용 완료): Jev 호출마다 1행 -- 방/유저/입력, 질문 문구("웹 검색이 필요한 질문인가?")/유형(noul), 답(yes/no)+확률(SCORE)+임계값+판단(SEARCH/NO_SEARCH), 응답 모델/토큰/지연시간/상태/오류/원본 JSON. 삭제하지 않음.

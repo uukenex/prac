@@ -65,6 +65,8 @@ public interface BotDAO {
 
 	/** [2026-09-30] /챗 질문/답변 영구 저장(서버 재기동 후에도 최근 7일 대화를 이어가기 위함). */
 	public int insertAiChatHis(Map<String, Object> params);
+	/** [2026-09-30] Jev(TypeSafe System One) 호출 이력 -- 어떤 질문을 어떤 방식으로 물었고 어떤 확률/판단이 나왔는지. */
+	public int insertJevLog(Map<String, Object> params);
 	/** 방(room) 단위 최근 days일 대화를 최신순으로 maxRows건. */
 	public List<HashMap<String, Object>> selectAiChatRecent(Map<String, Object> params);
 

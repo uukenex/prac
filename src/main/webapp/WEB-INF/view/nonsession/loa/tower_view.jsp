@@ -246,7 +246,8 @@
        [2026-09-12] 절대좌표 오버레이에서 일반 flex 아이템으로 전환(위 .dice-controls 주석
        참고) -- 최대 줄 옆이 아니라 이제 최대+최소 두 줄 전체 옆에서, 부모(.dice-controls)의
        align-items:stretch로 그 두 줄을 합친 높이만큼 늘어난다(고정 height 제거). */
-    .board-roll-btn{ flex:0 0 auto;
+    /* [2026-09-30] 연타할 때 더블탭 확대/스크롤 제스처로 화면이 흔들리지 않게 */
+    .board-roll-btn{ touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; flex:0 0 auto;
                    display:flex; flex-direction:column; align-items:center; justify-content:center;
                    gap:2px; width:56px; border-radius:14px; border:none; cursor:pointer;
                    background:linear-gradient(180deg,#E4633F,var(--combat)); color:#fff; font-weight:800;
@@ -1230,11 +1231,15 @@ var TW = (function () {
     var el = document.getElementById('battleScreen');
     var dock = document.querySelector('.dock');
     if (!el || el.style.display === 'none') return;
-    var top = el.getBoundingClientRect().top;
+    // [2026-09-30] "전투 중 주사위를 계속 누르는데 화면이 위아래로 멋대로 움직인다" 수정 -- 예전엔 화면(뷰포트) 기준 top으로
+    // 높이를 260~480px 사이에서 그때그때 정해서, (1) 스크롤 위치에 따라 높이가 달라지고 (2) 전투 시작/종료 때 보드(고정
+    // min(480px,60svh))와 전투화면의 높이가 달라져 페이지 전체 높이가 출렁이며 스크롤이 튀었다. 이제 스크롤과 무관하게
+    // 문서 기준 top으로 여유 공간(compact 판단)만 계산하고, 높이는 보드 뷰포트와 똑같은 값으로 고정해서 전환해도 높이가 안 변한다.
+    var docTop = el.getBoundingClientRect().top + (window.pageYOffset || 0);
     var dockH = dock ? dock.getBoundingClientRect().height : 0;
-    var available = window.innerHeight - top - dockH - 12; // 12px 여유
+    var available = window.innerHeight - docTop - dockH - 12; // 12px 여유
     el.classList.toggle('compact', available < BATTLE_COMPACT_THRESHOLD);
-    el.style.height = Math.max(260, Math.min(480, available)) + 'px';
+    el.style.height = Math.min(480, Math.round(window.innerHeight * 0.6)) + 'px';
   }
   window.addEventListener('resize', fitBattleScreenHeight);
 
@@ -1790,9 +1795,14 @@ var TW = (function () {
     var bar = document.getElementById('lastBattleBar');
     if (!bar) return;
     var last = state.lastBattleFloor;
-    if (last == null || last === p.CUR_FLOOR) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
-    var route = lastBattleRoute(p.CUR_FLOOR, last, p.MAX_FLOOR_REACHED || 0);
+    // [2026-09-30] 표시/숨김으로 높이가 바뀌면 그 아래 전투화면/주사위 버튼이 위아래로 밀려 스크롤이 튀므로, 최근 전투층
+    // 기록이 있는 유저는 자리를 항상 유지하고(visibility만 전환) 전투 중에도 숨긴다.
+    if (last == null) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
     bar.style.display = 'block';
+    bar.style.minHeight = '42px';
+    if (last === p.CUR_FLOOR || p.STATUS === 'IN_COMBAT') { bar.style.visibility = 'hidden'; bar.innerHTML = ''; return; }
+    bar.style.visibility = 'visible';
+    var route = lastBattleRoute(p.CUR_FLOOR, last, p.MAX_FLOOR_REACHED || 0);
     bar.innerHTML = '';
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -3277,6 +3287,30 @@ var TW = (function () {
   }
 
   // 파티(동료 최대 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리한다.
+  /** 전투화면(동료 HP/대표 캐릭터)을 lastParty 기준으로 다시 그린다. loadPartyAndEquip/loadPartyLight 공용. */
+  function refreshBattleFromParty() {
+    updateBattlePartyV1();
+    if (state.battleScreenVersion !== 'V1' && state.progress && state.progress.STATUS === 'IN_COMBAT') {
+      var pr = state.progress;
+      var curBase = ppToBase(pr.CUR_MONSTER_HP_VALUE, pr.CUR_MONSTER_HP_EXT);
+      var pct = battle.monsterBaseHp > 0 ? Math.max(0, Math.min(100, curBase / battle.monsterBaseHp * 100)) : 100;
+      renderBattleV2(pr, curBase, pct, false);
+    }
+  }
+
+  /** [2026-09-30] "100층 이상 유저가 공격하면 주사위 클릭 후 1초쯤 뒤에야 체력바/캐릭터가 움직인다" 개선 -- 전투 턴마다
+   *  /api/tower-party + /api/tower-equip 를 전부 다시 받고 파티 슬롯/파티 격자/장비 목록(고레벨 유저는 수백 개)을 화면에
+   *  안 보여도 통째로 다시 그리던 것이 병목이었다. 전투화면에 필요한 건 동료 HP뿐이라 /api/tower-party 하나만 받아서
+   *  전투화면만 갱신한다(장비/파티 탭은 탭을 열 때 switchTab이 어차피 전체를 다시 불러온다). */
+  function loadPartyLight() {
+    var u = userName();
+    if (!u) return;
+    fetch(base + '/api/tower-party?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
+      lastParty.companions = d.companions || [];
+      refreshBattleFromParty();
+    });
+  }
+
   function loadPartyAndEquip() {
     var u = userName();
     if (!u) return;
@@ -3311,13 +3345,7 @@ var TW = (function () {
       // [버그 수정, 2026-09-21] 파티로스터(updateBattlePartyV1)는 V1/V2 공용이라 버전과 무관하게
       // 항상 갱신해야 한다 -- V1일 때만 불렀더니 V2에서 "동료가 대표 1명만 보인다" 신고가
       // 여기서도 재발했다(updateBattleScreen 쪽 동일 버그와 같은 원인, 별도 호출 경로).
-      updateBattlePartyV1();
-      if (state.battleScreenVersion !== 'V1' && state.progress && state.progress.STATUS === 'IN_COMBAT') {
-        var pr = state.progress;
-        var curBase = ppToBase(pr.CUR_MONSTER_HP_VALUE, pr.CUR_MONSTER_HP_EXT);
-        var pct = battle.monsterBaseHp > 0 ? Math.max(0, Math.min(100, curBase / battle.monsterBaseHp * 100)) : 100;
-        renderBattleV2(pr, curBase, pct, false);
-      }
+      refreshBattleFromParty();
 
       // 선택 팝업이 열려있으면(드물게 액션 응답 전에 다시 열렸을 경우 대비) 최신 데이터로
       // 다시 그려준다. 보통은 고르자마자 닫히므로(closePicker) 실행되지 않는다.
@@ -3703,6 +3731,9 @@ var TW = (function () {
     if (!u) { toast('유저명을 입력하세요'); return; }
     var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=' + type
         + '&param1=' + encodeURIComponent(param1 || '') + '&param2=' + encodeURIComponent(param2 || '');
+    // 전투 중 공격이면 응답을 기다리지 않고 누르는 즉시 공격 모션 재생(연출일 뿐이라 판정과 정확히 동기화될 필요 없음).
+    var motionPlayed = false;
+    if (type === 'DICE' && state.progress && state.progress.STATUS === 'IN_COMBAT') { playBattleAttackMotion(); motionPlayed = true; }
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       toast(data.message || data.error || '완료');
       if (type === 'DICE') {
@@ -3710,9 +3741,16 @@ var TW = (function () {
         // 열려있지 않으면 refreshActivePanel()이 파티를 안 불러온다 -- 공격(DICE)만은 탭
         // 상태와 무관하게 항상 파티도 같이 새로고침. 공격 모션은 응답을 기다릴 것 없이 버튼을
         // 누른 즉시 재생(연출일 뿐이라 실제 판정 결과와 정확히 동기화될 필요는 없음).
-        playBattleAttackMotion();
-        loadPartyAndEquip();
-        if ((data.message || '').indexOf('처치! 🎉') !== -1) showVictoryFlash();
+        if (!motionPlayed) playBattleAttackMotion();
+        // 전투가 끝났거나(처치/전멸) 파티/장비 탭이 열려 있거나 아직 한 번도 파티를 못 불렀으면 전체를 새로 불러오고(드랍/HP 반영),
+        // 그 외 전투 턴은 전투화면에 필요한 동료 HP만 가볍게 갱신한다.
+        var msgTxt = data.message || '';
+        var needFull = document.getElementById('panel-party').classList.contains('active')
+            || !lastParty.companions.length
+            || msgTxt.indexOf('처치!') !== -1 || msgTxt.indexOf('파티 전멸') !== -1
+            || msgTxt.indexOf('획득') !== -1 || msgTxt.indexOf('도망') !== -1;
+        if (needFull) loadPartyAndEquip(); else loadPartyLight();
+        if (msgTxt.indexOf('처치! 🎉') !== -1) showVictoryFlash();
       }
       loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });
