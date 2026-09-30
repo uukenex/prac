@@ -42,6 +42,17 @@
     </select>
 
     <!-- [2026-09-30] 밸런스 통계 페이지용 전투 결과 로그. 전투 1회 종료(승리/전멸/도망)마다 1행. -->
+    <!-- [2026-09-30] 시즌5 전용 카카오 로그인 회원 -- 카카오 키값(KAKAO_ID)과 닉네임만 저장. -->
+    <insert id="upsertKakaoMember" parameterType="hashmap">
+        MERGE INTO TBOT_S5_KAKAO_MEMBER T
+        USING (SELECT #{kakaoId} AS KAKAO_ID FROM DUAL) S ON (T.KAKAO_ID = S.KAKAO_ID)
+        WHEN MATCHED THEN
+            UPDATE SET NICKNAME = #{nickname, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}, LAST_LOGIN = SYSDATE
+        WHEN NOT MATCHED THEN
+            INSERT (KAKAO_ID, NICKNAME, REG_DATE, LAST_LOGIN)
+            VALUES (#{kakaoId}, #{nickname, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}, SYSDATE, SYSDATE)
+    </insert>
+
     <insert id="insertBattleStat" parameterType="hashmap">
         INSERT INTO TBOT_S5_BATTLE_STAT
             (USER_NAME, FLOOR, KIND, COMBO, PARTY_SIZE, PARTY_POWER, MON_POWER, RESULT, TURNS, DEAD_CNT)

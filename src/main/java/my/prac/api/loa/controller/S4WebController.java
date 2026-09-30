@@ -71,7 +71,14 @@ public class S4WebController {
     public String kakaoCallback(
             @RequestParam(value = "code", required = false) String code,
             @RequestParam(value = "error", required = false) String error,
+            @RequestParam(value = "state", required = false) String state,
             HttpServletRequest request, HttpSession session) throws Exception {
+
+        // [2026-09-30] 시즌5 카카오 로그인(Season5KakaoLoginController)이 카카오 콘솔에 이미 등록된 이 콜백 URI를
+        // 재사용하므로, OAuth state가 "s5-"로 시작하면 그쪽으로 넘긴다(code/state/error 파라미터 그대로 forward).
+        if (state != null && state.startsWith(Season5KakaoLoginController.STATE_PREFIX)) {
+            return "forward:/loa/s5/kakao/callback";
+        }
 
         if (error != null || code == null) {
             return "redirect:/s4/login?err=cancel";

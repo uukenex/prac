@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpSession;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -62,18 +63,22 @@ public class Season5ViewController {
     /** [2026-09-22] "전체 web포함 전투로그를 유저별로 볼수있게 페이지 구성해줘" 요청 -- tower-view
      *  SPA와는 별도의 독립 페이지(URL/파일 둘 다 분리). 데이터는 /api/tower-battle-log. */
     @GetMapping("/tower-battle-log")
-    public String battleLogViewPage() {
+    public String battleLogViewPage(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-battle-log";
         return "nonsession/loa/s5_battle_log_view";
     }
 
-    /** [2026-09-30] /로그 페이지에서 연결되는 관리자용 DB 뷰 2종(SPA 밖 독립 페이지). */
+    /** [2026-09-30] /로그 페이지에서 연결되는 관리자용 DB 뷰 2종(SPA 밖 독립 페이지). 로그 뷰어 포함 3페이지와 그 API는
+     *  시즌5 카카오 로그인(Season5KakaoLoginController)이 된 사람만 볼 수 있다(페이지=로그인 화면으로 리다이렉트, API=401). */
     @GetMapping("/tower-monster-info")
-    public String monsterInfoViewPage() {
+    public String monsterInfoViewPage(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-monster-info";
         return "nonsession/loa/s5_monster_info_view";
     }
 
     @GetMapping("/tower-balance-stats")
-    public String balanceStatsViewPage() {
+    public String balanceStatsViewPage(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-balance-stats";
         return "nonsession/loa/s5_balance_stats_view";
     }
 
@@ -387,7 +392,8 @@ public class Season5ViewController {
             @RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "page", defaultValue = "1") int page,
-            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize) {
+            @RequestParam(value = "pageSize", defaultValue = "50") int pageSize, HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         HashMap<String, Object> result = new HashMap<>();
         if (userName.trim().isEmpty()) {
             result.put("error", "유저명을 입력하세요.");
@@ -419,7 +425,8 @@ public class Season5ViewController {
      *  프론트에서 별도로 얹음, 여긴 실제 유저명만). */
     @GetMapping("/api/tower-battle-log-users")
     @ResponseBody
-    public ResponseEntity<?> apiTowerBattleLogUsers() {
+    public ResponseEntity<?> apiTowerBattleLogUsers(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         HashMap<String, Object> result = new HashMap<>();
         result.put("userNames", s5Dao.selectAllS5UserNames());
         return ResponseEntity.ok(result);
@@ -433,7 +440,8 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerBattleLogRecent(
             @RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "hours", defaultValue = "24") int hours) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours, HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         if (hours < 1) hours = 1;
         if (hours > 24) hours = 24; // 이 페이지가 보장하는 최대 범위(버튼 중 가장 넓은 게 24시간)
 
@@ -462,7 +470,8 @@ public class Season5ViewController {
      *  로그 본문 없이 유저별 사용 횟수만 집계해서 내려준다(구간 전환은 프론트가 이 결과로 처리). */
     @GetMapping("/api/tower-battle-log-summary")
     @ResponseBody
-    public ResponseEntity<?> apiTowerBattleLogSummary() {
+    public ResponseEntity<?> apiTowerBattleLogSummary(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         HashMap<String, Object> result = new HashMap<>();
         HashMap<String, Object> params = new HashMap<>();
         params.put("oldSince", S5_LOG_OLD_TABLE_SINCE);
@@ -470,10 +479,19 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** 로그 관련 API 공통: 카카오 로그인 안 됐을 때 응답(프론트는 401을 보면 로그인 화면으로 보낸다). */
+    private static ResponseEntity<?> unauthorized() {
+        HashMap<String, Object> r = new HashMap<>();
+        r.put("error", "카카오 로그인이 필요합니다.");
+        r.put("login", "/loa/s5/login");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(r);
+    }
+
     /** 층별 몬스터 정보(HP/ATK/DEF/처치PP/전투력/안전기준) -- 1~200층 전체를 한 번에. */
     @GetMapping("/api/tower-monster-info")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMonsterInfo() {
+    public ResponseEntity<?> apiTowerMonsterInfo(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         HashMap<String, Object> result = new HashMap<>();
         result.put("rows", s5Service.monsterInfoTable());
         result.put("safeRatio", 1.3); // BotS5ServiceImpl.SAFE_HUNT_RATIO와 같은 값(표시용)
@@ -484,7 +502,8 @@ public class Season5ViewController {
      *  층 구간/조합별 등 다른 축 재집계는 프론트가 한다. */
     @GetMapping("/api/tower-balance-stats")
     @ResponseBody
-    public ResponseEntity<?> apiTowerBalanceStats(@RequestParam(value = "days", defaultValue = "7") double days) {
+    public ResponseEntity<?> apiTowerBalanceStats(@RequestParam(value = "days", defaultValue = "7") double days, HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         if (days < 0.01) days = 0.01;
         if (days > 90) days = 90;
         HashMap<String, Object> result = new HashMap<>();

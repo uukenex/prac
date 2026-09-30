@@ -47,6 +47,29 @@
   </style>
 </head>
 <body>
+<!-- [2026-09-30] 시즌5 카카오 로그인: 세션 만료(API 401) 시 로그인 화면으로, 우상단에 닉네임/로그아웃 표시. -->
+<script>
+(function () {
+  var of = window.fetch;
+  window.fetch = function () {
+    return of.apply(this, arguments).then(function (r) {
+      if (r.status === 401) location.href = '/loa/s5/login?next=' + encodeURIComponent(location.pathname);
+      return r;
+    });
+  };
+  of('/loa/s5/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+    if (!d || !d.loggedIn) return;
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:8px;right:10px;z-index:50;font-size:11px;background:rgba(255,255,255,.92);border:1.5px solid #E5D3A1;border-radius:999px;padding:4px 10px;color:#6B5E82;';
+    el.appendChild(document.createTextNode('🟡 ' + (d.nickname || '') + ' · '));
+    var a = document.createElement('a');
+    a.href = '/loa/s5/logout'; a.textContent = '로그아웃'; a.style.cssText = 'color:#A31F2B;font-weight:700;text-decoration:none;';
+    el.appendChild(a);
+    document.body.appendChild(el);
+  }).catch(function () {});
+})();
+</script>
+
 <div class="wrap">
   <h1>👹 람쥐탑 몬스터 정보</h1>
   <div class="sub">층별 몬스터 스펙과 적정 전투력 (실제 전투와 같은 계산으로 만든 값 · 관리자용)</div>

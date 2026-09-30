@@ -4679,3 +4679,11 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - `tower_view.jsp`: (1) 보드 카드 위 "⚔️ 최근 전투층 N층으로 바로가기" 바(현재층과 같으면 숨김). 서버 `changeFloor` 규칙대로 판정 -- 100층 이상은 101~200 사이 가본 층이면 절대 층번호로 이동, 100층 미만은 같은 10층 구간(n=1~9)만 가능, 못 가는 경우엔 흐리게 표시하고 이유 토스트.
   (2) 마을층(10의 배수, 100/200 포함) 보드 자리에 미니맵: 위쪽 출구=탑올라가기(100/200층은 101층 계단 구역), 아래쪽 출구=계단내려가기, 가운데 건물 버튼 상점(상점 탭 이동)/던전/전설제작(조각 10개 미만이면 안내)/전설해체(기존 팝업 재사용).
   (3) 던전 팝업: "이 마을 첫 사냥터층(N+1)" + "이전 전투층 M층" 선택 -> 기존 확인창으로 CHANGE_FLOOR.
+
+## 2026-09-30 로그/몬스터정보/밸런스통계 페이지 카카오 로그인 필수 (시즌5 전용 로그인)
+- 요청: "/로그로 연결되는 페이지는 카톡로그인이 된 사람만, 카톡로그인은 s5전용으로, 받는 정보는 키값과 닉네임만."
+- 저장: `TBOT_S5_KAKAO_MEMBER(KAKAO_ID PK, NICKNAME NVARCHAR2, REG_DATE, LAST_LOGIN)`(`S5_KAKAO_MEMBER.sql`, 라이브 적용 완료). S4(낚시) 회원 테이블과 무관. 닉네임은 NCharStringTypeHandler로 바인딩.
+- `Season5KakaoLoginController`(`/loa/s5/login|kakao/auth|kakao/callback|me|logout`): 세션 `s5_kakao`={kakaoId, nickname}. 로그인 후 돌아갈 곳은 보호 대상 3페이지 화이트리스트만 허용(오픈 리다이렉트 방지), OAuth state(랜덤)로 CSRF 확인.
+- 카카오 콘솔에 새 리다이렉트 URI를 등록하지 않아도 되게, 이미 등록된 S4 콜백(`/s4/kakao/callback`)을 재사용: 인가 요청에 `state=s5-...`를 넣고 `S4WebController.kakaoCallback`이 그 접두어를 보면 `/loa/s5/kakao/callback`으로 forward.
+- 보호 범위: 페이지 `/loa/tower-battle-log`, `/tower-monster-info`, `/tower-balance-stats`(비로그인 -> 로그인 화면 리다이렉트) + API `/api/tower-battle-log`, `-log-users`, `-log-recent`, `-log-summary`, `/api/tower-monster-info`, `/api/tower-balance-stats`(비로그인 -> 401 JSON). 세 페이지는 fetch 401을 감지해 로그인 화면으로 보내고, 우상단에 "닉네임 · 로그아웃" 표시.
+- 로그인한 카카오 계정이면 누구나 볼 수 있음(허용 목록 없음). 특정인만 허용하려면 KAKAO_ID 화이트리스트 추가 필요.
