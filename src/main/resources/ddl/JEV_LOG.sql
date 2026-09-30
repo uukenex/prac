@@ -2,6 +2,7 @@
 -- Jev (TypeSafe System One) usage history (2026-09-30). One row per Jev call.
 -- INSTRUCTIONS / CRITERIA = the exact question text and answer criteria (JSON) that were sent to Jev,
 -- so it is always traceable which wording produced ANSWER / SCORE.
+-- STATE = the full input text actually sent to Jev (recent chat context + current message), i.e. the part that changes per call.
 -- Example: user asked "hello" -> question id "search" (noul) -> ANSWER=no, SCORE=0.03, DECISION=NO_SEARCH.
 -- Never purged by the app. Human-readable fields are NVARCHAR2 (bound via NCharStringTypeHandler). Idempotent.
 -- ============================================================
@@ -17,6 +18,7 @@ BEGIN
                 ROOM_NAME     NVARCHAR2(200),
                 USER_NAME     NVARCHAR2(200),
                 INPUT_TEXT    NVARCHAR2(500),
+                STATE         NCLOB,
                 QUESTION_ID   VARCHAR2(30),
                 QUESTION_TYPE VARCHAR2(10),
                 INSTRUCTIONS  NVARCHAR2(1000),
@@ -43,6 +45,11 @@ BEGIN
         SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_JEV_LOG' AND COLUMN_NAME = 'QUESTION_TEXT';
         IF v_cnt > 0 THEN
             EXECUTE IMMEDIATE 'ALTER TABLE TBOT_JEV_LOG DROP COLUMN QUESTION_TEXT';
+        END IF;
+        -- 2026-10-01: STATE = the full text actually sent to Jev (recent chat + current message)
+        SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_JEV_LOG' AND COLUMN_NAME = 'STATE';
+        IF v_cnt = 0 THEN
+            EXECUTE IMMEDIATE 'ALTER TABLE TBOT_JEV_LOG ADD (STATE NCLOB)';
         END IF;
     END IF;
 END;

@@ -274,11 +274,11 @@ public class LoaAiBotController {
             r.query = userMsg.length() > 100 ? userMsg.substring(0, 100) : userMsg;
             logger.info("[JEV] search p={} -> {} ({}ms) msg={}", String.format("%.3f", p), r.needSearch,
                     System.currentTimeMillis() - t0, userMsg.length() > 40 ? userMsg.substring(0, 40) : userMsg);
-            logJevUse("OK", userMsg, p, r.needSearch, System.currentTimeMillis() - t0, root, raw, null);
+            logJevUse("OK", state, userMsg, p, r.needSearch, System.currentTimeMillis() - t0, root, raw, null);
             return r;
         } catch (Exception e) {
             logger.warn("[JEV] failed -> GPT fallback ({}ms): {}", System.currentTimeMillis() - t0, e.toString());
-            logJevUse("ERROR", userMsg, null, null, System.currentTimeMillis() - t0, null, raw, e.toString());
+            logJevUse("ERROR", state, userMsg, null, null, System.currentTimeMillis() - t0, null, raw, e.toString());
             return null;
         }
     }
@@ -296,7 +296,7 @@ public class LoaAiBotController {
     /** [2026-09-30] "jev 사용이력을 관리, 어떤 방식으로 썼는지 예: 이 질문은 잡담인가 yes 1.0" 요청 -- TBOT_JEV_LOG에 호출마다
      *  1행: 누가(방/유저) 어떤 입력에 어떤 질문(QUESTION_TEXT)을 어떤 방식(QUESTION_TYPE noul)으로 물어 어떤 답(ANSWER yes/no,
      *  SCORE 확률)과 판단(DECISION)이 나왔는지, 응답 모델/토큰/지연시간/오류까지. 기록 실패는 무시(채팅에 영향 없음). */
-    private void logJevUse(String status, String userMsg, Double p, Boolean needSearch, long ms,
+    private void logJevUse(String status, String state, String userMsg, Double p, Boolean needSearch, long ms,
                            JsonObject root, String raw, String err) {
         try {
             Map<String, String> um = usedModels.get();
@@ -305,6 +305,9 @@ public class LoaAiBotController {
             m.put("room", cut(um == null ? "" : um.get("room"), 200));
             m.put("user", cut(um == null ? "" : um.get("user"), 200));
             m.put("input", cut(userMsg, 500));
+            // [2026-10-01] 질문 정의(instructions/criteria)는 상수라 항상 같고 실제로 달라지는 건 Jev에 보낸 state(최근대화+현재메시지)
+            // -- 그 원문을 함께 남겨 점수를 문맥과 같이 검증할 수 있게 한다.
+            m.put("state", cut(state, 4000));
             m.put("qId", JEV_SEARCH_QID);
             m.put("qType", "noul");
             m.put("instructions", cut(JEV_SEARCH_INSTRUCTIONS, 1000));
