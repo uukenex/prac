@@ -250,17 +250,14 @@ public class LoaAiBotController {
         String raw = null;
         try {
             JsonObject criteria = new JsonObject();
-            criteria.addProperty("true", "Needs factual or up-to-date information from the web: news, weather, prices, "
-                    + "people, places, events, definitions, 'what/where/when/how much is X', or explicit requests to look something up.");
-            criteria.addProperty("false", "Casual chat, greetings, reactions, jokes, opinions, personal talk, game talk, "
-                    + "or continuing the current topic without needing new facts.");
+            criteria.addProperty("true", JEV_SEARCH_CRITERIA_TRUE);
+            criteria.addProperty("false", JEV_SEARCH_CRITERIA_FALSE);
             JsonObject q = new JsonObject();
             q.addProperty("type", "noul");
-            q.addProperty("instructions", "The chat below is Korean. Judge only the message after [현재메시지] "
-                    + "(the earlier [최근대화] is context). Does replying well require searching the web for facts?");
+            q.addProperty("instructions", JEV_SEARCH_INSTRUCTIONS);
             q.add("criteria", criteria);
             JsonObject questions = new JsonObject();
-            questions.add("search", q);
+            questions.add(JEV_SEARCH_QID, q);
             JsonObject body = new JsonObject();
             body.addProperty("model", "jev-latest");
             body.addProperty("state", state);
@@ -269,7 +266,7 @@ public class LoaAiBotController {
             raw = httpPost(JEV_URL, gson.toJson(body), JEV_TIMEOUT_MS,
                     "Authorization", "Bearer " + jevKeyCached, "Content-Type", "application/json");
             JsonObject root = gson.fromJson(raw, JsonObject.class);
-            double p = root.getAsJsonObject("answers").getAsJsonObject("search").get("noul").getAsDouble();
+            double p = root.getAsJsonObject("answers").getAsJsonObject(JEV_SEARCH_QID).get("noul").getAsDouble();
 
             markModel("intent", "jev-latest");
             IntentResult r = new IntentResult();
@@ -286,7 +283,15 @@ public class LoaAiBotController {
         }
     }
 
-    private static final String JEV_QUESTION_TEXT = "웹 검색이 필요한 질문인가?"; // yes = 검색 필요, no = 잡담/의견 등 검색 불필요
+    // [2026-09-30] "검색 필요 여부" 질문 정의를 한 곳에 모아 Jev 요청과 TBOT_JEV_LOG 이력이 항상 같은 값을 쓰게 한다(이력에는
+    // 실제로 보낸 지시문/기준 원문을 그대로 저장). 지시문을 고치면 이력에도 자동으로 새 문구가 남는다. yes(true) = 검색 필요.
+    private static final String JEV_SEARCH_QID = "search";
+    private static final String JEV_SEARCH_INSTRUCTIONS = "The chat below is Korean. Judge only the message after [현재메시지] "
+            + "(the earlier [최근대화] is context). Does replying well require searching the web for facts?";
+    private static final String JEV_SEARCH_CRITERIA_TRUE = "Needs factual or up-to-date information from the web: news, weather, prices, "
+            + "people, places, events, definitions, 'what/where/when/how much is X', or explicit requests to look something up.";
+    private static final String JEV_SEARCH_CRITERIA_FALSE = "Casual chat, greetings, reactions, jokes, opinions, personal talk, game talk, "
+            + "or continuing the current topic without needing new facts.";
 
     /** [2026-09-30] "jev 사용이력을 관리, 어떤 방식으로 썼는지 예: 이 질문은 잡담인가 yes 1.0" 요청 -- TBOT_JEV_LOG에 호출마다
      *  1행: 누가(방/유저) 어떤 입력에 어떤 질문(QUESTION_TEXT)을 어떤 방식(QUESTION_TYPE noul)으로 물어 어떤 답(ANSWER yes/no,
@@ -300,9 +305,13 @@ public class LoaAiBotController {
             m.put("room", cut(um == null ? "" : um.get("room"), 200));
             m.put("user", cut(um == null ? "" : um.get("user"), 200));
             m.put("input", cut(userMsg, 500));
-            m.put("qId", "search");
+            m.put("qId", JEV_SEARCH_QID);
             m.put("qType", "noul");
-            m.put("qText", JEV_QUESTION_TEXT);
+            m.put("instructions", cut(JEV_SEARCH_INSTRUCTIONS, 1000));
+            JsonObject critLog = new JsonObject();
+            critLog.addProperty("true", JEV_SEARCH_CRITERIA_TRUE);
+            critLog.addProperty("false", JEV_SEARCH_CRITERIA_FALSE);
+            m.put("criteria", cut(gson.toJson(critLog), 1000));
             m.put("answer", p == null ? null : (p >= JEV_SEARCH_THRESHOLD ? "yes" : "no"));
             m.put("score", p);
             m.put("threshold", JEV_SEARCH_THRESHOLD);

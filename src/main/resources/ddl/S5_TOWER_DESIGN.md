@@ -4696,7 +4696,7 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 수정: 전투화면 높이를 보드와 같은 값으로 고정(compact 여부만 문서 기준 좌표로 판단), 최근 전투층 바는 자리 유지(visibility 전환, 전투 중 숨김), 주사위 버튼에 `touch-action: manipulation`(연타 시 더블탭 확대 방지).
 
 ## 2026-09-30 Jev 사용 이력
-- 테이블 `TBOT_JEV_LOG`(`JEV_LOG.sql`, 라이브 적용 완료): Jev 호출마다 1행 -- 방/유저/입력, 질문 문구("웹 검색이 필요한 질문인가?")/유형(noul), 답(yes/no)+확률(SCORE)+임계값+판단(SEARCH/NO_SEARCH), 응답 모델/토큰/지연시간/상태/오류/원본 JSON. 삭제하지 않음.
+- 테이블 `TBOT_JEV_LOG`(`JEV_LOG.sql`, 라이브 적용 완료): Jev 호출마다 1행 -- 방/유저/입력, 질문 문구("웹 검색이 필요한 질문인가?")/유형(noul), 답(yes/no)+확률(SCORE)+임계값+판단(SEARCH/NO_SEARCH), 응답 모델/토큰/지연시간/상태/오류/원본 JSON. 삭제하지 않음. (후속) 의미 없던 QUESTION_TEXT를 없애고 Jev에 실제로 보낸 지시문(INSTRUCTIONS)과 기준(CRITERIA, JSON)을 저장 -- 질문 정의는 LoaAiBotController 상수 한 곳(JEV_SEARCH_*)에서 요청과 이력이 함께 사용.
 
 ## 2026-09-30 버그 수정: 럭키 "체력 두 배(받는 피해 절반)"가 선공 기습에 안 먹힘
 - 신고: 럭키칸 HP_DOUBLE 이후 다음 전투에서 피해 감소(50%)가 적용 안 되는 것 같음(120층, 기습 32,395dmg로 도사 즉사).
