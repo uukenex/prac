@@ -119,6 +119,15 @@ public class LoaAiBotController {
         }
     }
 
+    /** [2026-09-30] 이번 /챗 요청에서 실제로 쓴 모델 기록(DB 저장용). 요청 하나가 한 스레드에서 끝까지 처리되므로
+     *  ThreadLocal로 충분하다. 키: "intent"(의도판단 모델) / "answer"(최종 답변 모델). 폴백이 일어나면 실제 쓴 모델이 남는다. */
+    private final ThreadLocal<Map<String, String>> usedModels = new ThreadLocal<>();
+
+    private void markModel(String kind, String model) {
+        Map<String, String> m = usedModels.get();
+        if (m != null) m.put(kind, model);
+    }
+
     private final Map<String, FixedSizeMessageQueue> roomQueues = new ConcurrentHashMap<>();
     private final Gson gson = new GsonBuilder().create();
 
@@ -145,6 +154,16 @@ public class LoaAiBotController {
     // 진입점
     // =====================================================================
     public String search(String reqMsg, String roomName, String userName) {
+        java.sql.Timestamp reqAt = new java.sql.Timestamp(System.currentTimeMillis()); // 입력 받은 시각(DB 기록용)
+        usedModels.set(new HashMap<>());
+        try {
+            return searchInternal(reqMsg, roomName, userName, reqAt);
+        } finally {
+            usedModels.remove();
+        }
+    }
+
+    private String searchInternal(String reqMsg, String roomName, String userName, java.sql.Timestamp reqAt) {
         FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, this::loadQueueFromDb);
         queue.add(new Message("user", userName + ": " + reqMsg));
 
@@ -166,7 +185,7 @@ public class LoaAiBotController {
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
         queue.add(new Message("assistant", finalAnswer));
-        saveChat(roomName, userName, reqMsg, finalAnswer);
+        saveChat(roomName, userName, reqMsg, finalAnswer, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
         return finalAnswer;
     }
 
@@ -200,7 +219,7 @@ public class LoaAiBotController {
             messages.add(makeMsg("system", INTENT_SYSTEM));
             messages.add(makeMsg("user", userPrompt));
 
-            String content = gptChat(messages, 80, 0.0);
+            String content = gptChat(messages, 80, 0.0, "intent");
 
             // JSON 파싱
             if (content.contains("{")) {
@@ -214,6 +233,7 @@ public class LoaAiBotController {
             String apiErr = parseApiErrMsg(e);
             if (apiErr != null) { result.needSearch = false; result.query = apiErr; result.apiError = apiErr; return result; }
             // 기타 파싱 실패 시 키워드 폴백
+            markModel("intent", "keyword");
             result.needSearch = fallbackNeedsSearch(userMsg);
             result.query      = userMsg;
         }
@@ -248,6 +268,7 @@ public class LoaAiBotController {
             double p = gson.fromJson(raw, JsonObject.class)
                     .getAsJsonObject("answers").getAsJsonObject("search").get("noul").getAsDouble();
 
+            markModel("intent", "jev-latest");
             IntentResult r = new IntentResult();
             r.needSearch = p >= JEV_SEARCH_THRESHOLD;
             r.query = userMsg.length() > 100 ? userMsg.substring(0, 100) : userMsg;
@@ -346,7 +367,9 @@ public class LoaAiBotController {
                 } else {
                     prompt.append("람쥐봇 캐릭터로 자연스럽게 답해줘. 잡담이면 같이 놀아주고, 질문이면 핵심만 짧게.");
                 }
-                return GeminiUtils.callGeminiApi(prompt.toString());
+                String gem = GeminiUtils.callGeminiApi(prompt.toString());
+                markModel("answer", "gemini");
+                return gem;
             } catch (Exception e) {
                 String apiErr = parseApiErrMsg(e);
                 return apiErr != null ? apiErr : "(Gemini 오류 발생... 나중에 다시 물어봐!)";
@@ -371,7 +394,7 @@ public class LoaAiBotController {
             }
             messages.add(makeMsg("user", userName + ": " + userContent));
 
-            return gptChat(messages, 300, 0.8);
+            return gptChat(messages, 300, 0.8, "answer");
 
         } catch (Exception e) {
             String apiErr = parseApiErrMsg(e);
@@ -406,14 +429,19 @@ public class LoaAiBotController {
         return gptModelCached;
     }
 
-    private String gptChat(JsonArray messages, int maxTokens, double temperature) throws Exception {
+    /** kind: "intent"(의도판단) / "answer"(최종 답변) -- DB 기록용으로 실제 성공한 모델명을 남긴다. */
+    private String gptChat(JsonArray messages, int maxTokens, double temperature, String kind) throws Exception {
         String model = gptModel();
         try {
-            return gptChatOnce(model, messages, maxTokens, temperature);
+            String out = gptChatOnce(model, messages, maxTokens, temperature);
+            markModel(kind, model);
+            return out;
         } catch (HttpApiException e) {
             if ((e.code == 400 || e.code == 404) && !GPT_FALLBACK_MODEL.equals(model)) {
                 logger.warn("[GPT] {} 거절({}) -> {} 로 재시도: {}", model, e.code, GPT_FALLBACK_MODEL, e.getMessage());
-                return gptChatOnce(GPT_FALLBACK_MODEL, messages, maxTokens, temperature);
+                String out = gptChatOnce(GPT_FALLBACK_MODEL, messages, maxTokens, temperature);
+                markModel(kind, GPT_FALLBACK_MODEL);
+                return out;
             }
             throw e;
         }
@@ -473,7 +501,8 @@ public class LoaAiBotController {
         return q;
     }
 
-    private void saveChat(String roomName, String userName, String question, String answer) {
+    private void saveChat(String roomName, String userName, String question, String answer,
+                          java.sql.Timestamp reqAt, java.sql.Timestamp resAt) {
         try {
             // 오류 안내문("(...)")은 대화가 아니므로 저장하지 않는다.
             if (answer == null || answer.isEmpty() || (answer.startsWith("(") && answer.endsWith(")"))) return;
@@ -482,6 +511,11 @@ public class LoaAiBotController {
             p.put("user", cut(userName, 200));
             p.put("question", cut(question, 500));
             p.put("answer", cut(answer, 700));
+            p.put("reqDate", reqAt);   // 입력 받은 시각
+            p.put("resDate", resAt);   // 답변을 만든(출력한) 시각
+            Map<String, String> um = usedModels.get();
+            p.put("model", um == null ? "" : cut(um.getOrDefault("answer", ""), 60));
+            p.put("intentModel", um == null ? "" : cut(um.getOrDefault("intent", ""), 60));
             botDao.insertAiChatHis(p); // 삭제하지 않고 영구 보존, 읽을 때만 최근 CHAT_KEEP_DAYS일로 제한
         } catch (Exception e) {
             logger.warn("[AICHAT] 저장 실패(무시): {}", e.toString());

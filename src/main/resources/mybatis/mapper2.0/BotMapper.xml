@@ -2116,11 +2116,15 @@
 
 	<!-- [2026-09-30] /챗 대화 저장. 방/유저/질문/답변 전부 NVARCHAR2라 이모지도 안전하게 NChar 핸들러로 바인딩. -->
 	<insert id="insertAiChatHis" parameterType="hashmap">
-		INSERT INTO TBOT_AI_CHAT_HIS (ROOM_NAME, USER_NAME, QUESTION, ANSWER)
+		INSERT INTO TBOT_AI_CHAT_HIS (ROOM_NAME, USER_NAME, QUESTION, ANSWER, REQ_DATE, RES_DATE, MODEL, INTENT_MODEL)
 		VALUES (#{room, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
 		       ,#{user, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
 		       ,#{question, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
-		       ,#{answer, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler})
+		       ,#{answer, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
+		       ,#{reqDate, jdbcType=TIMESTAMP}
+		       ,#{resDate, jdbcType=TIMESTAMP}
+		       ,#{model, jdbcType=VARCHAR}
+		       ,#{intentModel, jdbcType=VARCHAR})
 	</insert>
 
 	<select id="selectAiChatRecent" parameterType="hashmap" resultType="hashmap">

@@ -21,3 +21,16 @@ BEGIN
     END IF;
 END;
 /
+
+-- 2026-09-30: request/response timestamps and the models actually used (idempotent add).
+-- REQ_DATE = when the message was received, RES_DATE = when the answer was produced,
+-- MODEL = model that wrote the answer (e.g. gpt-6-luna / gemini), INTENT_MODEL = model that decided search or not (jev-latest / gpt model / keyword).
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_AI_CHAT_HIS' AND COLUMN_NAME = 'REQ_DATE';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE TBOT_AI_CHAT_HIS ADD (REQ_DATE TIMESTAMP(3), RES_DATE TIMESTAMP(3), MODEL VARCHAR2(60), INTENT_MODEL VARCHAR2(60))';
+    END IF;
+END;
+/
