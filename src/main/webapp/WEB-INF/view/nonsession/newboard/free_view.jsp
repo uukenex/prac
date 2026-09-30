@@ -16,7 +16,9 @@
 <title>${comment.commentName} ::: TH보드</title>
 </head>
 <body>
-<div class="nb" data-room="free">
+<%-- [2026-09-30] 인벤 스타일 글 상세 -- 회색 제목 헤더 + 메타 한 줄 + 본문 박스 + 댓글 박스. 스타일은
+     newboard_inven.css(.nb.inven 스코프). 기능(수정/삭제/비밀게시판 이동/댓글 등록/Fancybox)은 그대로. --%>
+<div class="nb inven" data-room="free">
   <jsp:include page="_chrome_top.jsp" />
 
   <div class="nb-board">
@@ -25,58 +27,60 @@
         <div class="nb-locked">🔒 비밀글입니다. 로그인 후 확인할 수 있습니다.</div>
       </c:when>
       <c:otherwise>
-        <div class="nb-post">
-          <div class="nb-crumbs">자유게시판 / No.${comment.commentNo}</div>
-          <h1><c:if test="${comment.secretYn=='Y'}">🔒 </c:if>${comment.commentName}</h1>
-          <div class="nb-byline">
-            <span class="nb-avatar">${fn:length(comment.userNick) > 0 ? fn:substring(comment.userNick,0,1) : '?'}</span>
-            <span><b>${comment.userNick}</b> · <fmt:formatDate value="${comment.commentDate}" pattern="yyyy-MM-dd HH:mm"/> · 조회 ${comment.commentCount}</span>
+        <div class="ib-box">
+          <div class="ib-post-head">
+            <div class="ib-crumbs">자유게시판 &gt; No.${comment.commentNo}</div>
+            <h1><c:if test="${comment.secretYn=='Y'}">🔒 </c:if>${comment.commentName}</h1>
+            <div class="ib-byline">
+              <span><b>${comment.userNick}</b></span>
+              <span><fmt:formatDate value="${comment.commentDate}" pattern="yyyy-MM-dd HH:mm"/></span>
+              <span>조회 ${comment.commentCount}</span>
+              <span>댓글 ${fn:length(replys)}</span>
+            </div>
+          </div>
+
+          <div class="ib-post-body" id="nbPostBody">${comment.commentContent}</div>
+
+          <div class="ib-actions">
+            <a class="nb-btn" href="<%=request.getContextPath()%>/newboard/free">목록</a>
+            <c:if test="${comment.userId==Users.userId}">
+            <form action="<%=request.getContextPath()%>/session/newboard/freeUpdate" method="post" style="display:inline">
+              <input type="hidden" name="commentNo" value="${comment.commentNo}">
+              <button type="submit" class="nb-btn">수정</button>
+            </form>
+            <form action="<%=request.getContextPath()%>/newboard/freeDelete" method="post" style="display:inline"
+                  onsubmit="return confirm('삭제하시겠습니까?');">
+              <input type="hidden" name="commentNo" value="${comment.commentNo}">
+              <button type="submit" class="nb-btn danger">삭제</button>
+            </form>
+            </c:if>
+            <c:if test="${'THJEON'==Users.userId}">
+            <form action="<%=request.getContextPath()%>/session/newboard/moveFreeToSecret" method="post" style="display:inline"
+                  onsubmit="return confirm('이 글을 비밀게시판으로 이동할까요? (자유게시판에서는 사라집니다)');">
+              <input type="hidden" name="commentNo" value="${comment.commentNo}">
+              <button type="submit" class="nb-btn">🔒 비밀게시판으로 이동</button>
+            </form>
+            </c:if>
           </div>
         </div>
 
-        <div class="nb-body" id="nbPostBody">${comment.commentContent}</div>
-
-        <div class="nb-actions">
-          <a class="nb-btn" href="<%=request.getContextPath()%>/newboard/free">목록</a>
-          <c:if test="${comment.userId==Users.userId}">
-          <form action="<%=request.getContextPath()%>/session/newboard/freeUpdate" method="post" style="display:inline">
-            <input type="hidden" name="commentNo" value="${comment.commentNo}">
-            <button type="submit" class="nb-btn">수정</button>
-          </form>
-          <form action="<%=request.getContextPath()%>/newboard/freeDelete" method="post" style="display:inline"
-                onsubmit="return confirm('삭제하시겠습니까?');">
-            <input type="hidden" name="commentNo" value="${comment.commentNo}">
-            <button type="submit" class="nb-btn danger">삭제</button>
-          </form>
-          </c:if>
-          <c:if test="${'THJEON'==Users.userId}">
-          <form action="<%=request.getContextPath()%>/session/newboard/moveFreeToSecret" method="post" style="display:inline"
-                onsubmit="return confirm('이 글을 비밀게시판으로 이동할까요? (자유게시판에서는 사라집니다)');">
-            <input type="hidden" name="commentNo" value="${comment.commentNo}">
-            <button type="submit" class="nb-btn">🔒 비밀게시판으로 이동</button>
-          </form>
-          </c:if>
-        </div>
-
-        <div class="nb-replies">
-          <h2>댓글 ${fn:length(replys)}</h2>
+        <div class="ib-replies">
+          <div class="ib-replies-head">댓글<em>${fn:length(replys)}</em></div>
+          <c:if test="${fn:length(replys) == 0}"><div class="ib-noreply">첫 댓글을 남겨보세요.</div></c:if>
           <c:forEach var="reply" items="${replys}">
-            <div class="nb-reply">
-              <span class="nb-avatar">${fn:length(reply.userNick) > 0 ? fn:substring(reply.userNick,0,1) : '?'}</span>
-              <div>
-                <span class="nb-who">${reply.userNick}</span><span class="nb-when"><fmt:formatDate value="${reply.replyDate}" pattern="yy-MM-dd HH:mm"/></span>
-                <div class="nb-txt">${reply.replyContent}</div>
-              </div>
+            <div class="ib-reply">
+              <span class="ib-who">${reply.userNick}</span><span class="ib-when"><fmt:formatDate value="${reply.replyDate}" pattern="yy-MM-dd HH:mm"/></span>
+              <div class="ib-txt">${reply.replyContent}</div>
             </div>
           </c:forEach>
           <c:if test="${!empty Users.userId}">
-          <div class="nb-reply-box">
+          <div class="ib-reply-box">
             <input type="text" id="nbReplyContent" placeholder="댓글을 입력하세요.">
             <button type="button" class="nb-btn primary" id="nbReplyBtn">등록</button>
           </div>
           </c:if>
           <c:if test="${empty Users.userId}">
-          <div class="nb-reply-box">
+          <div class="ib-reply-box">
             <input type="text" placeholder="로그인 후 댓글을 남길 수 있습니다." disabled>
           </div>
           </c:if>

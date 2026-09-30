@@ -10,7 +10,7 @@
 <script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=<%=System.currentTimeMillis()%>" charset="utf-8"></script>
 </head>
 <body>
-<div class="nb" data-room="free">
+<div class="nb inven" data-room="free">
   <jsp:include page="../../nonsession/newboard/_chrome_top.jsp" />
 
   <div class="nb-board">

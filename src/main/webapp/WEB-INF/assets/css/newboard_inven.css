@@ -1,0 +1,171 @@
+/* ============================================================
+   뉴게시판 "인벤(inven) 스타일" 테마 (2026-09-30)
+   요청: "newboard/free 전체적인 디자인이 마음에 안 든다. inven 웹사이트처럼 만들어줘."
+   - .nb.inven 으로 스코프돼 있어서 이 클래스를 붙인 페이지(자유게시판 목록/상세/글쓰기/수정)만
+     바뀌고, 공유/비밀게시판은 기존 newboard.css 톤 그대로 유지된다(newboard.css 뒤에 로드).
+   - 특징: 짙은 남색 상단바 + 흰색 게시판 박스 + 촘촘한 표(번호/제목/글쓴이/날짜/조회),
+     댓글수는 주황 [n], 파란색 액센트, 좁은 화면(<=640px)에선 표가 "제목 + 메타 한 줄"로 접힘.
+   ============================================================ */
+
+.nb.inven{
+  --iv-navy:#1a2b47; --iv-navy-2:#24395c;
+  --iv-blue:#2d63c8; --iv-blue-soft:#eaf1fd;
+  --iv-orange:#f26522;
+  --iv-bg:#eef1f5; --iv-line:#dde1e7; --iv-line-strong:#c8ced8;
+  --iv-ink:#1d232c; --iv-ink-soft:#5d6675; --iv-ink-faint:#8b93a1;
+  --iv-w:1000px;
+  background:var(--iv-bg); color:var(--iv-ink);
+  font-family:'IBM Plex Sans KR','Malgun Gothic','Noto Sans KR',sans-serif; font-size:13px; line-height:1.5;
+  --nb-room:var(--iv-blue); --nb-room-soft:var(--iv-blue-soft);
+}
+.nb.inven a{color:inherit;}
+
+/* ---------- 상단바(짙은 남색) ---------- */
+.nb.inven .nb-topbar{background:var(--iv-navy); border-bottom:0; position:sticky; top:0; z-index:30;}
+.nb.inven .nb-topbar-inner{max-width:var(--iv-w); margin:0 auto; padding:0 16px; height:46px;}
+.nb.inven .nb-brand{color:#fff; font-family:'IBM Plex Sans KR',sans-serif; font-size:19px; font-weight:800; letter-spacing:-.5px;}
+.nb.inven .nb-brand .dot{color:var(--iv-orange);}
+.nb.inven .nb-dd-btn{color:#cdd6e6; font-size:13px; border-radius:3px;}
+.nb.inven .nb-dd-btn:hover,.nb.inven .nb-dd-btn[aria-expanded="true"]{background:var(--iv-navy-2); color:#fff; border-color:transparent;}
+.nb.inven .nb-authlink{color:#cdd6e6; font-size:12.5px; font-weight:500;}
+.nb.inven .nb-authlink:hover{color:#fff;}
+.nb.inven .nb-dd-menu{border-radius:3px; border:1px solid var(--iv-line-strong); box-shadow:0 6px 16px rgba(20,30,50,.18);}
+.nb.inven .nb-dd-menu a{color:var(--iv-ink); font-size:13px; border-radius:2px;}
+.nb.inven .nb-dd-menu a:hover{background:var(--iv-blue-soft); color:var(--iv-blue);}
+
+/* ---------- 게시판 탭(흰 바 + 파란 밑줄) ---------- */
+.nb.inven .nb-rooms-bar{background:#fff; border-bottom:1px solid var(--iv-line-strong);}
+.nb.inven .nb-rooms{max-width:var(--iv-w); margin:0 auto; padding:0 16px; gap:0;}
+.nb.inven .nb-room-tab{
+  border:0; border-radius:0; background:transparent; color:var(--iv-ink-soft);
+  font-size:14px; font-weight:600; padding:13px 18px; box-shadow:none; position:relative;
+}
+.nb.inven .nb-room-tab:hover{color:var(--iv-blue);}
+.nb.inven .nb-room-tab[data-current="true"]{color:var(--iv-blue); background:transparent; box-shadow:none;}
+.nb.inven .nb-room-tab[data-current="true"]:after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; background:var(--iv-blue);}
+
+.nb.inven .nb-more{max-width:var(--iv-w); margin:0 auto; padding:6px 16px 0;}
+.nb.inven .nb-more-toggle{font-family:inherit; font-size:11.5px; color:var(--iv-ink-faint);}
+.nb.inven .nb-more-list{background:#fff; border-radius:3px; border:1px solid var(--iv-line);}
+
+/* ---------- 본문 컨테이너 ---------- */
+.nb.inven .nb-board{max-width:var(--iv-w); margin:0 auto; padding:14px 16px 40px;}
+
+/* ---------- 버튼 ---------- */
+.nb.inven .nb-btn{
+  font-family:inherit; font-size:13px; font-weight:600; border-radius:3px; padding:7px 14px;
+  background:#fff; border:1px solid var(--iv-line-strong); color:var(--iv-ink);
+}
+.nb.inven .nb-btn:hover{background:#f5f7fa; filter:none;}
+.nb.inven .nb-btn.primary{background:var(--iv-blue); border-color:var(--iv-blue); color:#fff;}
+.nb.inven .nb-btn.primary:hover{background:#2555ad;}
+.nb.inven .nb-btn.danger{color:#c0392b; border-color:#e2b8b2;}
+
+/* ---------- 게시판 박스 + 헤더 ---------- */
+.nb.inven .ib-box{background:#fff; border:1px solid var(--iv-line-strong); border-top:2px solid var(--iv-navy);}
+.nb.inven .ib-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  padding:12px 14px; border-bottom:1px solid var(--iv-line); background:#fafbfc;
+}
+.nb.inven .ib-head h1{font-family:inherit; font-size:17px; font-weight:800; color:var(--iv-ink); letter-spacing:-.3px;}
+.nb.inven .ib-head .ib-sub{font-size:12px; color:var(--iv-ink-faint); margin-left:8px; font-weight:400;}
+
+/* ---------- 목록 표 ---------- */
+.nb.inven .ib-list{width:100%; border-collapse:collapse; table-layout:fixed;}
+.nb.inven .ib-list thead th{
+  background:#f4f6f9; color:var(--iv-ink-soft); font-size:12px; font-weight:600; text-align:center;
+  padding:8px 6px; border-bottom:1px solid var(--iv-line-strong);
+}
+.nb.inven .ib-list tbody td{
+  padding:0 6px; height:34px; border-bottom:1px solid var(--iv-line); text-align:center;
+  color:var(--iv-ink-soft); font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.nb.inven .ib-list tbody tr{cursor:pointer;}
+.nb.inven .ib-list tbody tr:hover td{background:#f5f9ff;}
+.nb.inven .ib-list .ib-no{width:64px; color:var(--iv-ink-faint);}
+.nb.inven .ib-list .ib-nick{width:120px; color:var(--iv-ink); font-weight:500;}
+.nb.inven .ib-list .ib-date{width:82px;}
+.nb.inven .ib-list .ib-hit{width:64px;}
+.nb.inven .ib-list td.ib-title{text-align:left; padding-left:12px; color:var(--iv-ink); font-size:13.5px;}
+.nb.inven .ib-list td.ib-title a{color:var(--iv-ink);}
+.nb.inven .ib-list tbody tr:hover td.ib-title a{color:var(--iv-blue); text-decoration:underline;}
+.nb.inven .ib-list .ib-cnt{color:var(--iv-orange); font-weight:700; font-size:12px; margin-left:5px;}
+.nb.inven .ib-list .ib-lock{margin-right:3px; font-size:12px;}
+.nb.inven .ib-list .ib-new{
+  display:inline-block; margin-left:5px; padding:0 4px; font-size:10px; font-weight:800; line-height:14px;
+  color:#fff; background:var(--iv-orange); border-radius:2px; vertical-align:1px;
+}
+.nb.inven .ib-empty td{height:110px !important; color:var(--iv-ink-faint) !important; cursor:default; white-space:normal;}
+
+/* ---------- 목록 하단: 페이저 + 검색 ---------- */
+.nb.inven .ib-foot{padding:14px 12px 16px; display:flex; flex-direction:column; align-items:center; gap:12px;}
+.nb.inven .ib-pager{display:flex; gap:3px; flex-wrap:wrap; justify-content:center;}
+.nb.inven .ib-pager a, .nb.inven .ib-pager span{
+  min-width:30px; height:30px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid var(--iv-line); background:#fff; color:var(--iv-ink-soft); font-size:12.5px;
+}
+.nb.inven .ib-pager a:hover{border-color:var(--iv-blue); color:var(--iv-blue);}
+.nb.inven .ib-pager .cur{background:var(--iv-navy); border-color:var(--iv-navy); color:#fff; font-weight:700;}
+.nb.inven .ib-search{display:flex; gap:4px; width:100%; max-width:460px;}
+.nb.inven .ib-search select, .nb.inven .ib-search input[type=text]{
+  height:32px; border:1px solid var(--iv-line-strong); border-radius:3px; background:#fff; color:var(--iv-ink);
+  font-family:inherit; font-size:13px; padding:0 9px;
+}
+.nb.inven .ib-search input[type=text]{flex:1; min-width:0;}
+.nb.inven .ib-search .nb-btn{height:32px; padding:0 16px; background:var(--iv-navy); border-color:var(--iv-navy); color:#fff;}
+.nb.inven .ib-search .nb-btn:hover{background:var(--iv-navy-2);}
+
+/* ---------- 글 상세 ---------- */
+.nb.inven .ib-post-head{padding:14px 16px 12px; border-bottom:1px solid var(--iv-line); background:#fafbfc;}
+.nb.inven .ib-crumbs{font-size:11.5px; color:var(--iv-blue); margin-bottom:6px; font-weight:600;}
+.nb.inven .ib-post-head h1{font-family:inherit; font-size:19px; font-weight:800; line-height:1.4; letter-spacing:-.3px; word-break:break-word;}
+.nb.inven .ib-byline{margin-top:9px; display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--iv-ink-faint);}
+.nb.inven .ib-byline b{color:var(--iv-ink); font-weight:700;}
+.nb.inven .ib-post-body{padding:22px 18px 26px; font-size:14.5px; line-height:1.8; min-height:120px; word-break:break-word;}
+.nb.inven .ib-post-body img{max-width:100%; border-radius:2px; margin:8px 0; cursor:zoom-in;}
+.nb.inven .ib-actions{display:flex; gap:6px; flex-wrap:wrap; padding:12px 14px; border-top:1px solid var(--iv-line); background:#fafbfc;}
+.nb.inven .nb-locked{background:#fff; border:1px solid var(--iv-line); border-radius:3px; color:var(--iv-ink-soft);}
+
+/* ---------- 댓글 ---------- */
+.nb.inven .ib-replies{margin-top:12px; background:#fff; border:1px solid var(--iv-line-strong); border-top:2px solid var(--iv-navy);}
+.nb.inven .ib-replies-head{padding:10px 14px; font-size:13px; font-weight:800; border-bottom:1px solid var(--iv-line); background:#fafbfc;}
+.nb.inven .ib-replies-head em{font-style:normal; color:var(--iv-orange); margin-left:4px;}
+.nb.inven .ib-reply{padding:11px 14px; border-bottom:1px solid var(--iv-line);}
+.nb.inven .ib-reply .ib-who{font-size:12.5px; font-weight:700;}
+.nb.inven .ib-reply .ib-when{font-size:11.5px; color:var(--iv-ink-faint); margin-left:8px;}
+.nb.inven .ib-reply .ib-txt{margin-top:4px; font-size:13.5px; color:var(--iv-ink); line-height:1.65; word-break:break-word;}
+.nb.inven .ib-noreply{padding:22px 14px; text-align:center; color:var(--iv-ink-faint); font-size:12.5px;}
+.nb.inven .ib-reply-box{display:flex; gap:6px; padding:12px 14px; background:#fafbfc;}
+.nb.inven .ib-reply-box input{
+  flex:1; min-width:0; height:34px; border:1px solid var(--iv-line-strong); border-radius:3px; padding:0 10px;
+  font-family:inherit; font-size:13px; background:#fff;
+}
+
+/* ---------- 글쓰기/수정 폼 ---------- */
+.nb.inven .nb-toolbar h1{font-family:inherit; font-size:17px; font-weight:800;}
+.nb.inven .nb-room-note{background:var(--iv-blue-soft); color:var(--iv-blue); border-radius:3px; font-size:12.5px;}
+.nb.inven .nb-field label{font-family:inherit; font-size:12px; color:var(--iv-ink-soft); font-weight:700;}
+.nb.inven .nb-field input[type=text]{border-radius:3px; border:1px solid var(--iv-line-strong); font-family:inherit; font-size:14px; padding:9px 11px;}
+.nb.inven input:focus, .nb.inven select:focus, .nb.inven textarea:focus{outline:2px solid var(--iv-blue); outline-offset:0;}
+
+/* ---------- 좁은 화면: 표 -> "제목 + 메타 한 줄" ---------- */
+@media (max-width:640px){
+  .nb.inven .nb-topbar-inner{height:44px;}
+  .nb.inven .nb-room-tab{padding:12px 13px; font-size:13.5px;}
+  .nb.inven .ib-list, .nb.inven .ib-list tbody{display:block;}
+  .nb.inven .ib-list thead{display:none;}
+  .nb.inven .ib-list tbody tr{
+    display:grid; grid-template-columns:auto auto 1fr; grid-template-areas:"title title title" "nick date hit";
+    column-gap:10px; padding:9px 12px; border-bottom:1px solid var(--iv-line);
+  }
+  .nb.inven .ib-list tbody td{display:block; height:auto; padding:0; border:0; width:auto !important; text-align:left; background:transparent !important;}
+  .nb.inven .ib-list .ib-no{display:none;}
+  .nb.inven .ib-list td.ib-title{grid-area:title; padding:0 0 3px; white-space:normal; font-size:14px;}
+  .nb.inven .ib-list .ib-nick{grid-area:nick; font-size:11.5px; color:var(--iv-ink-soft);}
+  .nb.inven .ib-list .ib-date{grid-area:date; font-size:11.5px;}
+  .nb.inven .ib-list .ib-hit{grid-area:hit; font-size:11.5px;}
+  .nb.inven .ib-list .ib-hit:before{content:"조회 ";}
+  .nb.inven .ib-empty{display:block !important;}
+  .nb.inven .ib-empty td{display:block; text-align:center; padding:30px 0 !important;}
+  .nb.inven .ib-head h1{font-size:16px;}
+}

@@ -18,6 +18,8 @@
 <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/newboard.css?v=<%=System.currentTimeMillis()%>">
+<%-- [2026-09-30] 인벤 스타일 테마 -- .nb.inven 스코프라 이 클래스를 붙인 페이지(자유게시판)만 적용됨 --%>
+<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/newboard_inven.css?v=<%=System.currentTimeMillis()%>">
 <!-- Fancybox (기존 사이트와 동일한 라이브러리, 이미지 클릭 확대용) -->
 <link rel="stylesheet" type="text/css" href="<%=request.getContextPath()%>/assets/css/jquery.fancybox.css" media="screen" />
 
@@ -47,12 +49,14 @@
   </div>
 </div>
 
+<div class="nb-rooms-bar">
 <div class="nb-rooms">
   <a class="nb-room-tab" data-current="${room=='free'}" href="<%=request.getContextPath()%>/newboard/free">자유게시판</a>
   <a class="nb-room-tab" data-current="${room=='share'}" href="<%=request.getContextPath()%>/newboard/share">공유게시판</a>
   <c:if test="${!empty Users.userId}">
   <a class="nb-room-tab" data-current="${room=='secret'}" href="<%=request.getContextPath()%>/session/newboard/secret">🔒 비밀게시판</a>
   </c:if>
+</div>
 </div>
 
 <%-- [기존 board_left_menu.jsp의 hidable/hide 게임 링크 대응] --%>

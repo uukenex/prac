@@ -88,6 +88,7 @@ public class NewBoardController {
 		model.addAttribute("room", "free");
 		model.addAttribute("comments", comment);
 		model.addAttribute("totalPage", totalPage);
+		model.addAttribute("page", page); // 인벤 스타일 페이저의 현재 페이지 강조용
 		return "nonsession/newboard/free";
 	}
 
