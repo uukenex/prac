@@ -1,6 +1,6 @@
 -- ============================================================
 -- /chat (AI chat) question/answer history (2026-09-30).
--- Kept 7 days (purged by the app), used to restore the in-memory room queue after a restart
+-- Never deleted (kept permanently); the app only reads the last 7 days to restore the in-memory room queue after a restart
 -- and to find similar past conversations in the same room. NVARCHAR2 columns so emoji survive
 -- the KO16MSWIN949 DB charset (bound via NCharStringTypeHandler). Idempotent.
 -- ============================================================

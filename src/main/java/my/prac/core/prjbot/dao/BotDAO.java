@@ -67,7 +67,6 @@ public interface BotDAO {
 	public int insertAiChatHis(Map<String, Object> params);
 	/** 방(room) 단위 최근 days일 대화를 최신순으로 maxRows건. */
 	public List<HashMap<String, Object>> selectAiChatRecent(Map<String, Object> params);
-	public int deleteAiChatOld(Map<String, Object> params);
 
 	/** [2026-09-30] /tower-battle-log "최근 명령어 사용자 요약" -- 최근 3일 이내 S5 유저별 명령어 사용 횟수
 	 *  (1시간/24시간/3일 구간별 + 웹 액션 횟수 + 마지막 사용시각)를 한 번의 집계로 반환. */

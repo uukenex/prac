@@ -2133,8 +2133,4 @@
 		) WHERE ROWNUM &lt;= #{maxRows}
 	</select>
 
-	<delete id="deleteAiChatOld" parameterType="hashmap">
-		DELETE FROM TBOT_AI_CHAT_HIS WHERE REG_DATE &lt; SYSTIMESTAMP - #{keepDays}
-	</delete>
-
 </mapper>

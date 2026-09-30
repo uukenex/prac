@@ -44,7 +44,7 @@ import my.prac.core.util.RoomContextService;
  *   2. Serper       — 검색 필요 시 웹 검색
  *   3. GPT(TCONFIG GPT_MODEL, 기본 gpt-6-luna) 또는 Gemini(USE_GEMINI=1) — 페르소나 + 대화 히스토리 +
  *      검색결과 + 이 방의 최근 7일 비슷한 과거 대화를 통합해 최종 답변
- *   대화는 TBOT_AI_CHAT_HIS에 저장돼 서버 재기동 후에도 방 큐를 복원하고 유사 대화를 찾는다(방 단위, 유저 구분은 유지).
+ *   대화는 TBOT_AI_CHAT_HIS에 삭제 없이 보존되고, 읽을 때 최근 7일만 사용해 서버 재기동 후 방 큐를 복원하고 유사 대화를 찾는다(방 단위, 유저 구분은 유지).
  */
 @Controller
 public class LoaAiBotController {
@@ -441,12 +441,11 @@ public class LoaAiBotController {
     // =====================================================================
     // /챗 대화 영구 저장 + 재기동 복원 + 유사 과거 대화 (TBOT_AI_CHAT_HIS, 방 단위)
     // =====================================================================
-    private static final int CHAT_KEEP_DAYS = 7;
+    private static final int CHAT_KEEP_DAYS = 7;      // 읽는 범위(일). 데이터 자체는 지우지 않고 보존
     private static final int CHAT_QUEUE_ROWS = 10;    // 큐(20개 메시지) 복원용 = 최근 10회 왕복
     private static final int CHAT_RECALL_SCAN = 300;  // 유사도 검색 대상(최근 7일 중 최대 300회)
     private static final int CHAT_PROMPT_TURNS = 4;   // 프롬프트에 이미 들어가는 최근 왕복 수(8메시지) -- 중복 회상 제외
     private static final double CHAT_RECALL_MIN_SCORE = 0.35;
-    private volatile long lastChatPurge = 0L;
 
     private static String cut(String s, int max) {
         if (s == null) return "";
@@ -483,15 +482,7 @@ public class LoaAiBotController {
             p.put("user", cut(userName, 200));
             p.put("question", cut(question, 500));
             p.put("answer", cut(answer, 700));
-            botDao.insertAiChatHis(p);
-
-            long now = System.currentTimeMillis();
-            if (now - lastChatPurge > 3_600_000L) { // 스케줄러 없이, 저장할 때 1시간에 한 번만 오래된 행 정리
-                lastChatPurge = now;
-                HashMap<String, Object> d = new HashMap<>();
-                d.put("keepDays", CHAT_KEEP_DAYS + 1);
-                botDao.deleteAiChatOld(d);
-            }
+            botDao.insertAiChatHis(p); // 삭제하지 않고 영구 보존, 읽을 때만 최근 CHAT_KEEP_DAYS일로 제한
         } catch (Exception e) {
             logger.warn("[AICHAT] 저장 실패(무시): {}", e.toString());
         }
