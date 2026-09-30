@@ -631,7 +631,7 @@
 		VALUES
 			 (upper(#{charName, jdbcType=VARCHAR})
 			 ,#{guildName, jdbcType=VARCHAR}
-			 ,#{score, jdbcType=NUMERIC}
+			 ,#{score, javaType=double, jdbcType=NUMERIC}
 		     ,#{targetGb, jdbcType=VARCHAR}
 		     ,#{lv, jdbcType=NUMERIC}
 		     ,#{classGb, jdbcType=NUMERIC}
@@ -2141,12 +2141,12 @@
 		       ,#{qText, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
 		       ,#{answer, jdbcType=VARCHAR}
 		       ,#{score, jdbcType=NUMERIC}
-		       ,#{threshold, jdbcType=NUMERIC}
+		       ,#{threshold, javaType=double, jdbcType=NUMERIC}
 		       ,#{decision, jdbcType=VARCHAR}
 		       ,#{jevModel, jdbcType=VARCHAR}
-		       ,#{inputTokens, jdbcType=NUMERIC}
-		       ,#{outputTokens, jdbcType=NUMERIC}
-		       ,#{latencyMs, jdbcType=NUMERIC}
+		       ,#{inputTokens, javaType=int, jdbcType=NUMERIC}
+		       ,#{outputTokens, javaType=int, jdbcType=NUMERIC}
+		       ,#{latencyMs, javaType=long, jdbcType=NUMERIC}
 		       ,#{status, jdbcType=VARCHAR}
 		       ,#{error, jdbcType=VARCHAR}
 		       ,#{rawJson, jdbcType=VARCHAR})
