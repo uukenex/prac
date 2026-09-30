@@ -3396,11 +3396,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 최소 보장선 적용(monsterHitDamage 참고). MAX_AMBUSH_DMG/사망방지 클램프는
                 // 아래에서 그대로 이어서 적용됨.
                 int amDmg = monsterHitDamage(amMonsterAtk, amRoll, amEff[2]);
+                // [2026-09-30 버그 수정] "럭키칸 체력 두 배(받는 피해 절반) 이후 다음 전투에서 피해 감소가 안 먹힌다" 신고 --
+                // 절반 처리가 반격 피해(아래 dmgToParty)에만 있고 선공 기습에는 빠져 있어서, 축복 중에도 기습이 100%로 꽂혔다.
+                int amDmgBeforeHalf = amDmg;
+                if (luckyHpDouble) amDmg = Math.max(1, (int) Math.round(amDmg * 0.5));
                 // [2026-09-19] "★6 체력1만인데 기습이 4만" 신고 -- 재요청("즉사할 수도 있게는
                 // 해야지, 다만 100% 확정 즉사는 과함")에 맞춰 즉사 자체는 막지 않되, 실드까지
                 // 감안한 체감 최대치를 MAX_AMBUSH_DMG(2만)로 못박는다.
                 // [2026-09-30] 최대데미지 상한(2만) 제거 -- 몬스터 기본 공격력*굴림 그대로(방어/최소관통선만 적용).
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
+                if (luckyHpDouble) {
+                    sb.append("🍀 체력 두 배 효과: 기습 피해 절반 (").append(amDmgBeforeHalf).append(" → ").append(amDmg).append(")").append(NL);
+                }
                 // 대상 최대체력의 90% 이상이면(사실상 빈사권) 한 명에게 몰아치지 않고 가능하면
                 // 두 명에게 절반씩 나눠 때린다(다중공격 연출). [2026-09-20] 실제 즉사 방지는
                 // applyAmbushHit()의 최종 하드 클램프(AMBUSH_DEATH_GUARD_PCT)가 담당하므로,
@@ -4620,7 +4627,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
             // [2026-09-06, 51층+ 전용 럭키] "체력 두배(3턴)" -- 실제 HP를 다시 계산하지 않고
             // 받는 피해를 절반으로 깎아 체력 두 배로 버티는 것과 동일한 효과를 낸다.
-            if (luckyHpDouble) dmgToParty = (int) Math.round(dmgToParty * 0.5);
+            if (luckyHpDouble) {
+                int hpDoubleBefore = dmgToParty;
+                dmgToParty = (int) Math.round(dmgToParty * 0.5);
+                // [2026-09-30] 절반이 조용히 적용돼 위 "N dmg" 줄과 실제 피해가 달라 보이므로(적용 안 된 것처럼 오해) 명시.
+                if (hpDoubleBefore > 0) {
+                    sb.append("🍀 체력 두 배 효과: 받는 피해 절반 (").append(hpDoubleBefore).append(" → ").append(dmgToParty).append(")").append(NL);
+                }
+            }
         }
 
         // [2026-09-16 재설계] 럭키칸 "피해 1회 면역"(구 즉사방어/DEATH_WARD) -- "즉사방어가
