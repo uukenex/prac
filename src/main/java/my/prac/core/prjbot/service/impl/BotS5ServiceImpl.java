@@ -832,14 +832,17 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  뒤집음). 이제 최종 적용 데미지를 대상 본인의 유효 최대체력 90%로 하드 클램프해서
      *  단일/분산 두 경로 모두 기습만으로는 절대 죽지 않게 한다. */
     private void applyAmbushHit(String userName, HashMap<String, Object> p, HashMap<String, Object> userStat,
-            StringBuilder sb, HashMap<String, Object> target, int dmg) {
+            StringBuilder sb, HashMap<String, Object> target, int dmg, boolean lethalAllowed) {
         String job = strVal(target.get("CLASS"), "WARRIOR");
         int grade = intVal(target.get("GRADE"), 1);
         String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
         int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
-        int hardCap = (int) Math.floor(eff[0] * AMBUSH_DEATH_GUARD_PCT);
-        if (dmg > hardCap) dmg = Math.max(1, hardCap);
+        // [2026-09-30] "100층이후에서는 기습데미지로 인한 즉사도 허용" -- 101층+는 사망방지 클램프 생략.
+        if (!lethalAllowed) {
+            int hardCap = (int) Math.floor(eff[0] * AMBUSH_DEATH_GUARD_PCT);
+            if (dmg > hardCap) dmg = Math.max(1, hardCap);
+        }
         int wardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
         boolean warded = wardCid > 0 && wardCid == intVal(target.get("COMPANION_ID"), 0);
         if (warded) {
@@ -857,7 +860,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(grade, job, name)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
         }
         sb.append(jobTag(grade, job, name)).append("에게 ").append(dmg).append("dmg (💗")
-          .append(plainNum(hpAfter)).append("/").append(eff[0]).append(")").append(NL);
+          .append(plainNum(hpAfter)).append("/").append(eff[0]).append(")")
+          .append(PP.toBaseValue(hpAfter) <= 0 ? " 💀 기습에 쓰러졌다!" : "").append(NL);
         writeCompanionHp(target, hpAfter);
     }
 
@@ -3274,16 +3278,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // 두 명에게 절반씩 나눠 때린다(다중공격 연출). [2026-09-20] 실제 즉사 방지는
                 // applyAmbushHit()의 최종 하드 클램프(AMBUSH_DEATH_GUARD_PCT)가 담당하므로,
                 // 여기서 분산 여부와 무관하게 기습만으로는 죽지 않는다.
-                if (amDmg >= Math.round(amEff[0] * AMBUSH_SPLIT_THRESHOLD_PCT) && ambushAlive.size() > 1) {
+                // [2026-09-30] 100층 초과(계단 구역)는 즉사 허용 -- 분산(절반씩)도 하지 않고 한 명에게 전부 꽂힘.
+                boolean lethalAmbush = floor > 100;
+                if (!lethalAmbush && amDmg >= Math.round(amEff[0] * AMBUSH_SPLIT_THRESHOLD_PCT) && ambushAlive.size() > 1) {
                     List<HashMap<String, Object>> remaining = new ArrayList<>(ambushAlive);
                     remaining.remove(amTarget);
                     HashMap<String, Object> amTarget2 = remaining.get(RND.nextInt(remaining.size()));
                     int half = Math.max(1, amDmg / 2);
                     sb.append("💥 위력이 너무 강해 두 곳으로 갈라져 꽂혔다!").append(NL);
-                    applyAmbushHit(userName, p, userStat, sb, amTarget, half);
-                    applyAmbushHit(userName, p, userStat, sb, amTarget2, half);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget, half, false);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget2, half, false);
                 } else {
-                    applyAmbushHit(userName, p, userStat, sb, amTarget, amDmg);
+                    applyAmbushHit(userName, p, userStat, sb, amTarget, amDmg, lethalAmbush);
                 }
                 sb.append(NL);
             }
