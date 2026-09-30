@@ -1083,12 +1083,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 하드 클램프(단일/분산 두 경로 공통 적용). MAX_AMBUSH_DMG/AMBUSH_SPLIT_THRESHOLD_PCT는
     // "몰아치기 방지"(다중공격 연출) 목적으로는 계속 쓰지만, 즉사 방지 보장은 이제 이
     // 클램프가 전담한다.
-    private static final int MAX_AMBUSH_DMG = 20000;
+    // [2026-09-30] "몬스터 선공 기습시 최대데미지 제한없게, 몬스터의 기본데미지만큼 피해를 받게" 요청 --
+    // 2만 상한 제거(MAX_AMBUSH_DMG 삭제). 즉사 방지 90% 클램프(applyAmbushHit)는 별개 안전장치라 유지.
     private static final double AMBUSH_SPLIT_THRESHOLD_PCT = 0.9;
     private static final double AMBUSH_DEATH_GUARD_PCT = 0.9;
     // [2026-09-20] "데미지가 낮을 때도 많아야 한다, 평소공격력의 50%로" 요청 -- 기습 굴림의
     // 기준 공격력을 몬스터 평소 공격력(ATK_VALUE 기반 정상 공식)의 이 비율만큼만 쓴다.
-    private static final double AMBUSH_ATK_PCT = 0.5;
+    // [2026-09-30] 위 50% 감쇠도 같은 요청으로 1.0(반격과 동일하게 몬스터 기본 공격력 100%)으로 되돌림.
+    private static final double AMBUSH_ATK_PCT = 1.0;
 
     // [2026-09-09] "69층 보스는 10턴내 처치 옵션(폭주 타이머)을 추가해달라" 요청 -- 보스가
     // 있는 층(X9) -> 그 보스를 몇 턴 안에 처치해야 하는지. 넘기면 BOSS_ENRAGE_ATK_MULT배로
@@ -3266,7 +3268,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [2026-09-19] "★6 체력1만인데 기습이 4만" 신고 -- 재요청("즉사할 수도 있게는
                 // 해야지, 다만 100% 확정 즉사는 과함")에 맞춰 즉사 자체는 막지 않되, 실드까지
                 // 감안한 체감 최대치를 MAX_AMBUSH_DMG(2만)로 못박는다.
-                amDmg = Math.min(amDmg, MAX_AMBUSH_DMG);
+                // [2026-09-30] 최대데미지 상한(2만) 제거 -- 몬스터 기본 공격력*굴림 그대로(방어/최소관통선만 적용).
                 sb.append("🌑 은신 기습! ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 먼저 공격한다!").append(NL);
                 // 대상 최대체력의 90% 이상이면(사실상 빈사권) 한 명에게 몰아치지 않고 가능하면
                 // 두 명에게 절반씩 나눠 때린다(다중공격 연출). [2026-09-20] 실제 즉사 방지는
