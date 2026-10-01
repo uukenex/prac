@@ -490,6 +490,7 @@
 					    WHERE B.USER_NAME = #{userName, jdbcType=VARCHAR}
 						  AND B.ROOM_NAME IS NULL)
 		 GROUP BY A.ROOM_NAME
+		 ORDER BY 1
 	</select>
 	<select id="selectRoomList2" resultType="String" parameterType="hashMap">
 		/* bot.xml selectRoomList2 */
