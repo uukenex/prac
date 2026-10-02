@@ -775,7 +775,10 @@ public class LoaAiBotController {
             if (!e.getValue()[1].isEmpty()) sb.append(" (").append(e.getValue()[1]).append(")");
             sb.append("\n");
         }
-        sb.append("규칙: 인자 이름이 있는 명령어는 args에 질문에 나온 캐릭터명/각인명을 그대로 한 단어로 넣어(띄어쓰기 있는 이름은 첫 단어만). 인자 이름이 없는 명령어는 args를 빈 문자열로. ");
+        sb.append("규칙: 인자 이름이 있는 명령어는 args에 질문에 나온 캐릭터명/각인명만 넣어. 이름 뒤에 붙은 호칭(님, 의, 이, 가)은 빼고 순수한 이름만, 띄어쓰기 있는 이름은 첫 단어만. 인자 이름이 없는 명령어는 args를 빈 문자열로. ");
+        sb.append("명령어는 질문이 '무엇'을 알고 싶은지로 골라: 보석/부캐/내실/악세/그리드/주급/치적/시세/떠상/모험섬/경매장 같은 구체적인 주제 단어가 있으면 반드시 그 주제의 명령어를 쓰고, ");
+        sb.append("'정보', '알려줘', '조회', '궁금' 같은 일반 단어 때문에 /정보를 고르지 마. /정보는 구체적 주제 없이 캐릭터의 전반적인 정보/장비/스펙을 물을 때만 써.\n");
+        sb.append("예시: '파기나님 보석 정보 알려줘' -> /보석 파기나 / '파기나 정보 알려줘' -> /정보 파기나 / '빈혜빈 부캐 뭐있어' -> /부캐 빈혜빈 / '오늘 모험섬 뭐야' -> /모험섬 / '파기나 이번주 골드 얼마야' -> /주급 파기나.\n");
         sb.append("[앞 대화]가 있으면, 현재 메시지가 그 로아 질문의 이어짐일 때(예: 캐릭터명만 알려주는 경우) 앞 대화의 의도를 반영해. ");
         sb.append("캐릭터명이나 각인명을 알 수 없거나, 공략/패치/일반 지식처럼 이 명령어들로 답할 수 없는 질문이면 command를 null로 해.");
         return sb.toString();
@@ -794,10 +797,30 @@ public class LoaAiBotController {
             if (j == null || !j.has("command") || j.get("command").isJsonNull()) return null;
             String cmd = j.get("command").getAsString().trim();
             String args = j.has("args") && !j.get("args").isJsonNull() ? j.get("args").getAsString().trim() : "";
+            // [2026-10-01] GPT가 "파기나님 보석 정보 알려줘"에서 '정보'라는 일반 단어에 끌려 /정보를 고르는 실수를 막는 안전장치 --
+            // /정보로 변환됐는데 질문에 다른 허용 명령의 주제 단어(보석, 부캐 ...)가 있으면 그 명령으로 바꾼다("귀속"은 /보석의 별칭).
+            if ("/정보".equals(cmd)) {
+                String lower = text == null ? "" : text;
+                String alt = null;
+                if (lower.contains("귀속") && cmds.containsKey("/보석")) alt = "/보석";
+                if (alt == null) {
+                    for (String k : cmds.keySet()) {
+                        if ("/정보".equals(k) || k.length() < 3) continue;
+                        String word = k.substring(1);
+                        if (word.matches(".*\\d$")) continue; // /시세2 같은 숫자 변형은 건너뜀(/시세로 매칭)
+                        if (lower.contains(word)) { alt = k; break; }
+                    }
+                }
+                if (alt != null) {
+                    logger.info("[AICHAT] 로아 명령 보정: /정보 -> {} (질문에 주제 단어)", alt);
+                    cmd = alt;
+                }
+            }
             String[] spec = cmds.get(cmd);
             if (spec == null) return null; // 허용 목록 밖(상태를 바꾸는 명령 등)은 GPT가 뭐라 하든 절대 실행 안 함
             boolean needArg = !spec[0].isEmpty();
             args = args.replaceAll("[\\r\\n\\t/]", " ").trim();
+            args = args.replaceAll("님(?=\\s|$)", "").trim(); // 호칭 "님" 제거(예: 파기나님 -> 파기나)
             if (args.length() > 30) args = args.substring(0, 30);
             if (needArg && args.isEmpty()) return null;
             if (!needArg) args = "";
