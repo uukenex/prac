@@ -181,10 +181,15 @@ public class LoaAiBotController {
 
         // [2026-10-01] 로스트아크 질문이면 먼저 람쥐봇 명령어(/정보, /시세 등)로 처리할 수 있는지 본다 -- 되면 그 결과를 요약해 답하고,
         // 안 되면(해당 명령어 없음/실패) 아래 웹 검색 경로로 계속한다. 앞 대화가 필요한 질문은 재작성된 문장(intent.query)으로 판단한다.
+        // [2026-10-01 트리거 완화] 주제가 lostark가 아니어도 (1) lostark 확률이 일정 이상이거나 (2) 질문/재작성문에 로아 관련 단어가 있거나
+        // (3) 앞 대화가 로아 얘기였고 지금은 짧은 이어짐이면(예: "캐릭터명이 빈혜빈이야") 명령 변환을 시도한다. 변환이 command null이면 웹 검색으로 넘어간다.
+        String loaText = intent.query != null && !intent.query.isEmpty() ? intent.query : reqMsg;
         boolean loaQuestion = "lostark".equals(intent.category)
-                || (intent.category.isEmpty() && (reqMsg.contains("로아") || reqMsg.contains("로스트아크")));
+                || intent.lostarkProb >= 0.25
+                || looksLikeLostArk(reqMsg) || looksLikeLostArk(loaText)
+                || (reqMsg.length() <= 40 && looksLikeLostArk(intent.ctx));
         if (loaQuestion) {
-            String viaCmd = tryLostArkCommand(intent.query != null && !intent.query.isEmpty() ? intent.query : reqMsg, roomName, userName);
+            String viaCmd = tryLostArkCommand(loaText, intent.ctx, roomName, userName);
             if (viaCmd != null) {
                 queue.add(new Message("assistant", viaCmd));
                 saveChat(roomName, userName, reqMsg, viaCmd, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
@@ -221,6 +226,8 @@ public class LoaAiBotController {
         boolean needSearch = false;
         String  query      = "";
         String  category   = "";   // lostark / bot_system / news / chitchat / general (Jev 사용 시)
+        double  lostarkProb = 0;   // Jev 주제 분류에서 lostark일 확률(주제가 다른 걸로 나와도 로아 연계 트리거 판단에 사용)
+        String  ctx        = "";   // 앞 대화 요약 문자열(로아 명령 변환 시 맥락으로 전달)
         String  apiError   = null;
     }
 
@@ -245,6 +252,7 @@ public class LoaAiBotController {
                 Message m = msgs.get(i);
                 jevCtx.append(m.getRole().equals("user") ? "U" : "B").append(": ").append(cut(m.getContent(), 120)).append("\n");
             }
+            result.ctx = jevCtx.toString();
             IntentResult jev = analyzeIntentJev(userMsg, jevCtx.toString());
             if (jev != null) return jev;
 
@@ -340,6 +348,7 @@ public class LoaAiBotController {
     private static class JevJudge {
         String category = "";
         double categoryConf = 0;
+        double lostarkProb = 0;
         Map<String, Double> noul = new HashMap<>();
         double searchSignal = 0;
         boolean needSearch = false;
@@ -367,6 +376,10 @@ public class LoaAiBotController {
             JsonObject catAns = answers.getAsJsonObject("category");
             j.category = catAns.get("choice").getAsString();
             j.categoryConf = catAns.has("confidence") ? catAns.get("confidence").getAsDouble() : 0;
+            if (catAns.has("probabilities") && catAns.get("probabilities").isJsonObject()
+                    && catAns.getAsJsonObject("probabilities").has("lostark")) {
+                j.lostarkProb = catAns.getAsJsonObject("probabilities").get("lostark").getAsDouble();
+            }
             StringBuilder sum = new StringBuilder("category=").append(j.category).append("(").append(String.format("%.2f", j.categoryConf)).append(")");
             for (Map.Entry<String, com.google.gson.JsonElement> e : answers.entrySet()) {
                 if ("category".equals(e.getKey())) continue;
@@ -413,6 +426,8 @@ public class LoaAiBotController {
         IntentResult r = new IntentResult();
         r.needSearch = use.needSearch;
         r.category = use.category;
+        r.lostarkProb = use.lostarkProb;
+        r.ctx = ctx;
         r.query = query.length() > 100 ? query.substring(0, 100) : query;
         return r;
     }
@@ -694,36 +709,89 @@ public class LoaAiBotController {
     @Autowired
     ApplicationContext appCtx; // LoaChatController와 순환 주입을 피하려고 호출 시점에 getBean
 
-    private static final java.util.Set<String> LOA_CMD_WITH_ARG = new HashSet<>(Arrays.asList(
-            "/정보", "/부캐", "/부캐2", "/내실", "/악세", "/초월", "/시세", "/시세2", "/시세3", "/시세4"));
-    private static final java.util.Set<String> LOA_CMD_NO_ARG = new HashSet<>(Arrays.asList(
-            "/모험섬", "/항협", "/경매장", "/경매장3", "/경매장4", "/경매장유물", "/골드", "/클골"));
+    // [2026-10-01] 허용 명령어는 매뉴얼(TBOT_MANUAL)의 [로아API] 구역을 읽어 자동으로 만든다 -- 거기에 "/떠상 → 떠돌이상인(카단)" 같은 줄을
+    // 추가하면 10분 안에(캐시) 연계 대상에 들어간다. 매뉴얼을 못 읽거나 구역이 없을 때를 위해 기본 목록(LOA_CMD_DEFAULTS)을 항상 깔아 둔다.
+    // 형식: "/명령어 인자이름 → 설명", 별칭은 "/골드, /클골". 인자이름이 있으면 인자 필요, 없으면 인자 없는 명령으로 본다.
+    // {명령어, 인자이름(없으면 ""), 설명}
+    private static final String[][] LOA_CMD_DEFAULTS = {
+        {"/정보", "캐릭터명", "캐릭터 정보/장비/스펙 조회"}, {"/부캐", "캐릭터명", "부캐/원정대 캐릭터 검색"}, {"/부캐2", "캐릭터명", "부캐 보석 검색"},
+        {"/내실", "캐릭터명", "내실 정보"}, {"/악세", "캐릭터명", "악세사리/팔찌 검색"}, {"/초월", "캐릭터명", "초월 검색"},
+        {"/시세", "각인명", "각인서/보석 시세 주별"}, {"/시세2", "각인명", "시세 일별"}, {"/시세3", "각인명", "시세 시간별"}, {"/시세4", "각인명", "시세 월별"},
+        {"/모험섬", "", "오늘, 내일 모험섬"}, {"/항협", "", "항해 협동 정보"}, {"/경매장", "", "3,4티어 경매장 비교"}, {"/경매장3", "", "3티어 경매장"},
+        {"/경매장4", "", "4티어 경매장"}, {"/경매장유물", "", "유물 각인서 경매장"}, {"/골드", "", "클리어 골드"}, {"/클골", "", "클리어 골드"},
+        {"/떠상", "", "카단 서버 떠돌이 상인(떠상) 정보"}
+    };
+    private volatile java.util.Map<String, String[]> loaCmdCache = null;
+    private volatile long loaCmdTime = 0L;
 
-    private static final String LOA_CMD_SYSTEM =
-        "너는 로스트아크 관련 채팅 질문을 람쥐봇 명령어로 바꾸는 분류기야. 설명 없이 JSON 한 줄만 출력해.\n"
-        + "{\"command\":\"/정보\",\"args\":\"캐릭터명\"} 형식이고, 맞는 명령어가 없으면 {\"command\":null,\"args\":\"\"}.\n"
-        + "명령어 목록:\n"
-        + "/정보 캐릭터명 (캐릭터 정보/장비/스펙 조회)\n/부캐 캐릭터명 (부캐/원정대 캐릭터 검색)\n/부캐2 캐릭터명 (부캐 보석 검색)\n"
-        + "/내실 캐릭터명 (내실 정보)\n/악세 캐릭터명 (악세사리/팔찌 검색)\n/초월 캐릭터명 (초월 검색)\n"
-        + "/시세 각인명또는보석 (각인서/보석 시세 주별)  /시세2 (일별)  /시세3 (시간별)  /시세4 (월별)\n"
-        + "/모험섬 (오늘, 내일 모험섬)\n/항협 (항해 협동 정보)\n/경매장 (3,4티어 경매장 비교)  /경매장3  /경매장4  /경매장유물 (유물 각인서)\n/골드 (클리어 골드)\n"
-        + "규칙: args는 질문에 나온 캐릭터명/각인명을 그대로 한 단어로 넣어(띄어쓰기 있는 이름은 첫 단어만). 모험섬/항협/경매장/골드는 args를 빈 문자열로. "
-        + "캐릭터명이나 각인명을 알 수 없거나, 공략/패치/일반 지식처럼 이 명령어들로 답할 수 없는 질문이면 command를 null로 해.";
+    /** 명령어 -> {인자이름, 설명}. 기본 목록 + 매뉴얼 [로아API] 구역(10분 캐시). */
+    private java.util.Map<String, String[]> loaCommands() {
+        long now = System.currentTimeMillis();
+        java.util.Map<String, String[]> cur = loaCmdCache;
+        if (cur != null && now - loaCmdTime < 600_000L) return cur;
+        java.util.Map<String, String[]> map = new java.util.LinkedHashMap<>();
+        for (String[] d : LOA_CMD_DEFAULTS) map.put(d[0], new String[] { d[1], d[2] });
+        try {
+            String manual = loadManual();
+            int a = manual.indexOf("[로아API]");
+            if (a >= 0) {
+                String[] lines = manual.substring(a + "[로아API]".length()).replace("\r", "").replace("\n", NL).split(NL);
+                for (String raw : lines) {
+                    String line = raw.trim();
+                    if (line.startsWith("[")) break; // 다음 구역([람쥐봇기능] 등)
+                    if (!line.startsWith("/")) continue;
+                    int arrow = line.indexOf("→");
+                    String left = (arrow > 0 ? line.substring(0, arrow) : line).trim();
+                    String desc = arrow > 0 ? line.substring(arrow + 1).trim() : "";
+                    String[] parts = left.split(",");
+                    String[] first = parts[0].trim().split("\\s+");
+                    String argName = first.length > 1 ? first[1] : "";
+                    for (String part : parts) {
+                        String cmd = part.trim().split("\\s+")[0];
+                        if (cmd.length() >= 2 && cmd.startsWith("/")) map.put(cmd, new String[] { argName, desc });
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 매뉴얼 로아 명령 파싱 실패(기본 목록 사용): {}", e.toString());
+        }
+        loaCmdCache = map;
+        loaCmdTime = now;
+        return map;
+    }
+
+    private String loaCmdSystemPrompt(java.util.Map<String, String[]> cmds) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("너는 로스트아크 관련 채팅 질문을 람쥐봇 명령어로 바꾸는 분류기야. 설명 없이 JSON 한 줄만 출력해.\n");
+        sb.append("{\"command\":\"/정보\",\"args\":\"캐릭터명\"} 형식이고, 맞는 명령어가 없으면 {\"command\":null,\"args\":\"\"}.\n명령어 목록:\n");
+        for (java.util.Map.Entry<String, String[]> e : cmds.entrySet()) {
+            sb.append(e.getKey());
+            if (!e.getValue()[0].isEmpty()) sb.append(" ").append(e.getValue()[0]);
+            if (!e.getValue()[1].isEmpty()) sb.append(" (").append(e.getValue()[1]).append(")");
+            sb.append("\n");
+        }
+        sb.append("규칙: 인자 이름이 있는 명령어는 args에 질문에 나온 캐릭터명/각인명을 그대로 한 단어로 넣어(띄어쓰기 있는 이름은 첫 단어만). 인자 이름이 없는 명령어는 args를 빈 문자열로. ");
+        sb.append("[앞 대화]가 있으면, 현재 메시지가 그 로아 질문의 이어짐일 때(예: 캐릭터명만 알려주는 경우) 앞 대화의 의도를 반영해. ");
+        sb.append("캐릭터명이나 각인명을 알 수 없거나, 공략/패치/일반 지식처럼 이 명령어들로 답할 수 없는 질문이면 command를 null로 해.");
+        return sb.toString();
+    }
 
     /** 로스트아크 질문을 람쥐봇 명령어로 처리해 요약한 답을 돌려준다. 해당 명령어가 없거나 실패하면 null(호출측이 웹 검색으로 이어감). */
-    private String tryLostArkCommand(String text, String roomName, String userName) {
+    private String tryLostArkCommand(String text, String ctx, String roomName, String userName) {
         try {
+            java.util.Map<String, String[]> cmds = loaCommands();
             JsonArray m = new JsonArray();
-            m.add(makeMsg("system", LOA_CMD_SYSTEM));
-            m.add(makeMsg("user", text));
+            m.add(makeMsg("system", loaCmdSystemPrompt(cmds)));
+            m.add(makeMsg("user", (ctx != null && !ctx.isEmpty() ? "[앞 대화]\n" + ctx + "\n[현재 메시지] " : "") + text));
             String out = gptChat(m, 80, 0.0, "action");
             if (out == null || !out.contains("{")) return null;
             JsonObject j = gson.fromJson(out.substring(out.indexOf("{"), out.lastIndexOf("}") + 1), JsonObject.class);
             if (j == null || !j.has("command") || j.get("command").isJsonNull()) return null;
             String cmd = j.get("command").getAsString().trim();
             String args = j.has("args") && !j.get("args").isJsonNull() ? j.get("args").getAsString().trim() : "";
-            boolean needArg = LOA_CMD_WITH_ARG.contains(cmd);
-            if (!needArg && !LOA_CMD_NO_ARG.contains(cmd)) return null; // 화이트리스트 밖(상태를 바꾸는 명령 등)은 절대 실행 안 함
+            String[] spec = cmds.get(cmd);
+            if (spec == null) return null; // 허용 목록 밖(상태를 바꾸는 명령 등)은 GPT가 뭐라 하든 절대 실행 안 함
+            boolean needArg = !spec[0].isEmpty();
             args = args.replaceAll("[\\r\\n\\t/]", " ").trim();
             if (args.length() > 30) args = args.substring(0, 30);
             if (needArg && args.isEmpty()) return null;
@@ -756,6 +824,14 @@ public class LoaAiBotController {
             logger.warn("[AICHAT] 로아 명령 연계 실패(웹 검색으로 계속): {}", e.toString());
             return null;
         }
+    }
+
+    /** 이 메시지(또는 앞 대화)가 로스트아크 명령 연계를 시도해 볼 만한가 -- 트리거를 넓게 잡고 실제 판단은 GPT 변환(command null이면 웹 검색)에 맡긴다. */
+    private static boolean looksLikeLostArk(String text) {
+        if (text == null) return false;
+        String[] keys = { "로아", "로스트아크", "부캐", "내실", "악세", "초월", "떠상", "모험섬", "항협", "경매장", "클골", "각인", "캐릭", "원정대" };
+        for (String k : keys) if (text.contains(k)) return true;
+        return false;
     }
 
     // =====================================================================
