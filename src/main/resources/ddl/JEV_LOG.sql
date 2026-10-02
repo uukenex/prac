@@ -54,3 +54,18 @@ BEGIN
     END IF;
 END;
 /
+
+-- 2026-10-01: multi-question judging. One row per Jev call:
+-- PHASE = JUDGE (original message) / REWRITTEN (re-judged after GPT restated a follow-up message),
+-- CATEGORY = lostark / bot_system / news / chitchat / general, ANSWERS = per-question summary (category + yes-probabilities),
+-- QUESTIONS = the full question JSON sent, REWRITTEN = the standalone sentence used for the REWRITTEN phase.
+-- SCORE = the strongest search signal, ANSWER = final yes/no. INSTRUCTIONS / CRITERIA are legacy (no longer written).
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_JEV_LOG' AND COLUMN_NAME = 'PHASE';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE TBOT_JEV_LOG ADD (PHASE VARCHAR2(20), CATEGORY VARCHAR2(20), ANSWERS VARCHAR2(1000), QUESTIONS NCLOB, REWRITTEN NVARCHAR2(300))';
+    END IF;
+END;
+/

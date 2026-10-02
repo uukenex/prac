@@ -4702,3 +4702,10 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 신고: 럭키칸 HP_DOUBLE 이후 다음 전투에서 피해 감소(50%)가 적용 안 되는 것 같음(120층, 기습 32,395dmg로 도사 즉사).
 - 원인: `resolveCombatTurn`에서 절반 처리(`luckyHpDouble`)가 반격 피해(`dmgToParty`)에만 있고, 몬스터 선공 기습(`amDmg`)에는 빠져 있었다. 반격 쪽은 절반이 적용돼도 위 "N dmg" 줄이 절반 적용 전 값이라 적용된 게 안 보였다.
 - 수정: 기습 피해에도 절반 적용, 기습/반격 모두 "🍀 체력 두 배 효과: 피해 절반 (원래 → 적용)" 줄을 표시. 남은 확인 사항(미수정): 럭키 DEF_UP/함정 DEF_DOWN도 기습 계산(amEff[2])에는 반영되지 않는다(반격 tEff[2]에만 반영).
+
+## 2026-10-01 /챗 Jev 다중 질문 판단 + 주제별 검색 + 줄바꿈
+- Jev 신뢰도 개선: 질문 1개("검색이 필요한가?")를 원자 질문으로 쪼개 한 요청에 병렬로 보낸다 -- category(Choice: lostark/bot_system/news/chitchat/general), needs_current_info/asks_unknown_fact/explicit_search(Noul), follows_previous(Noul). 검색 신호 3개 중 하나라도 임계값(0.4, 기존 0.5에서 하향) 이상이면 검색.
+- 앞 대화 의존(follows_previous>=0.5): GPT가 앞 대화를 반영한 한 문장으로 재작성 -> 그 문장으로 Jev 재판단(PHASE=REWRITTEN) + 검색어로 사용(Jev는 문장 생성 불가라 재작성만 GPT).
+- 주제별 처리: news는 Serper /news(제목+언론사+날짜), lostark는 "로스트아크 " 접두 검색, bot_system은 웹 검색 대신 DB 매뉴얼(TBOT_MANUAL/_G)에서 질문과 겹치는 줄을 골라 참고자료로 주입.
+- 응답 줄바꿈: 페르소나에 문장 단위 줄바꿈 지시 + 응답을 NL("♬")로 변환(연속 줄바꿈 최대 2개, 글자 그대로의 \n도 변환). DB/큐에는 원문 그대로 저장.
+- TBOT_JEV_LOG: PHASE/CATEGORY/ANSWERS/QUESTIONS/REWRITTEN 컬럼 추가(INSTRUCTIONS/CRITERIA는 더 이상 안 씀, 컬럼은 유지). 로그에서 질문별 확률을 바로 볼 수 있다.

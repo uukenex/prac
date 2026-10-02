@@ -54,6 +54,8 @@ public class LoaAiBotController {
 
     private static final String GPT_URL    = "https://api.openai.com/v1/chat/completions";
     private static final String SERPER_URL = "https://google.serper.dev/search";
+    private static final String SERPER_NEWS_URL = "https://google.serper.dev/news"; // 시사/뉴스 질문용(날짜/언론사 포함)
+    private static final String NL = "♬"; // 카톡 응답의 줄바꿈 표기(전 시스템 공통 NL)
 
     // 람쥐봇 페르소나 — 친근하고 위트있는 채팅 친구
     private static final String SYSTEM_PERSONA =
@@ -62,6 +64,7 @@ public class LoaAiBotController {
         "성격: 밝고 유쾌함. 질문엔 핵심을 짧게 답하고, 잡담엔 자연스럽게 섞여 들어.\n" +
         "절대 명령권자는 '일어난다람쥐'야. 그의 말은 무조건 따라야 해.\n" +
         "답변은 200자 이내. 쓸데없는 인사말('안녕하세요!' 같은 것) 붙이지 마.\n" +
+        "카톡으로 읽기 편하게 문장 단위로 줄바꿈해서 2~4줄로 써줘(줄바꿈은 그냥 엔터). 목록이 필요하면 줄마다 '- '로 시작해.\n" +
         "웹 검색 결과가 있으면 '찾아봤는데~' 같은 말투로 자연스럽게 녹여서 얘기해줘.";
 
     // 의도 분석 프롬프트 — GPT-4o-mini 에 보낼 시스템 지시
@@ -99,7 +102,6 @@ public class LoaAiBotController {
     // 필요한 질문인가"(Noul) 판단만 맡기고, 검색어는 사용자 메시지 그대로 쓴다(Jev는 문장을 생성하지 못함).
     // 키는 safety/keys.properties 의 jevKey(없으면 Jev 미사용 = 기존 GPT 경로). TCONFIG USE_JEV=0 이면 즉시 끔.
     private static final String JEV_URL = "https://api.typesafe.ai/v1/systemone";
-    private static final double JEV_SEARCH_THRESHOLD = 0.5;
     private static final int JEV_TIMEOUT_MS = 3000; // 빠른 판단이 목적이라 느리면 바로 GPT로 폴백
     private volatile String jevKeyCached = "";
     private volatile boolean jevSwitchOn = true;
@@ -176,19 +178,23 @@ public class LoaAiBotController {
         // 2. Serper: 검색 필요 시 수행
         String searchSummary = "";
         if (intent.needSearch && intent.query != null && !intent.query.isEmpty()) {
-            String rawResult = callSerper(intent.query);
-            String coreInfo  = extractCoreInfo(rawResult);
+            boolean news = "news".equals(intent.category);
+            String rawResult = callSerper(intent.query, intent.category);
+            String coreInfo  = news ? extractNewsInfo(rawResult) : extractCoreInfo(rawResult);
+            if (news && coreInfo.isEmpty()) coreInfo = extractCoreInfo(rawResult);
             searchSummary    = coreInfo.length() > 1000 ? coreInfo.substring(0, 1000) + "..." : coreInfo;
         }
 
         // 3. Gemini: 페르소나 + 히스토리 + 검색결과 통합 최종 답변
         String recall = buildRecall(roomName, userName, reqMsg);
+        // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
+        if ("bot_system".equals(intent.category)) recall = buildSystemContext(intent.query) + recall;
         String finalAnswer = callGeminiForFinal(reqMsg, userName, searchSummary, recall, queue);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
         queue.add(new Message("assistant", finalAnswer));
         saveChat(roomName, userName, reqMsg, finalAnswer, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
-        return finalAnswer;
+        return toKakaoNl(finalAnswer);
     }
 
     // =====================================================================
@@ -197,6 +203,7 @@ public class LoaAiBotController {
     private static class IntentResult {
         boolean needSearch = false;
         String  query      = "";
+        String  category   = "";   // lostark / bot_system / news / chitchat / general (Jev 사용 시)
         String  apiError   = null;
     }
 
@@ -214,8 +221,15 @@ public class LoaAiBotController {
 
             String userPrompt = (ctx.length() > 0 ? "[최근대화]\n" + ctx + "\n" : "") + "[현재메시지] " + userMsg;
 
-            IntentResult jev = analyzeIntentJev(userPrompt, userMsg);
-            if (jev != null) return jev; // null = Jev 미사용/실패 -> 아래 GPT 경로
+            // [2026-10-01] Jev 다중 질문 판단(앞 대화가 필요하면 GPT가 짧게 재작성한 문장으로 재판단). 실패하면 null -> GPT 경로.
+            StringBuilder jevCtx = new StringBuilder();
+            int jevStart = Math.max(0, msgs.size() - 5);
+            for (int i = jevStart; i < msgs.size() - 1; i++) {
+                Message m = msgs.get(i);
+                jevCtx.append(m.getRole().equals("user") ? "U" : "B").append(": ").append(cut(m.getContent(), 120)).append("\n");
+            }
+            IntentResult jev = analyzeIntentJev(userMsg, jevCtx.toString());
+            if (jev != null) return jev;
 
             JsonArray messages = new JsonArray();
             messages.add(makeMsg("system", INTENT_SYSTEM));
@@ -242,22 +256,86 @@ public class LoaAiBotController {
         return result;
     }
 
-    /** Jev로 "웹 검색이 필요한 질문인가"를 판단. 사용 불가/실패/모호하지 않은 오류면 null(호출측이 GPT로 폴백). */
-    private IntentResult analyzeIntentJev(String state, String userMsg) {
-        refreshJevConfig();
-        if (!jevSwitchOn || jevKeyCached.isEmpty()) return null;
+    // =====================================================================
+    // Jev 다중 질문 판단 (2026-10-01)
+    // =====================================================================
+    // [2026-10-01] "신뢰도가 낮다" 개선 -- 한 질문("검색이 필요한가?")에 여러 조건이 섞여 있던 걸 TypeSafe 권고대로 원자 질문으로 쪼갠다.
+    // 한 요청에 질문 여러 개를 병렬로 보내므로 지연은 늘지 않는다. 검색 신호 3개(최신정보/모르는 사실/명시적 검색) 중 하나라도
+    // 임계값 이상이면 검색한다. 주제(category)는 검색 방식(뉴스/로아/일반)과 "람쥐봇 시스템 안내" 주입 여부를 정한다.
+    // 앞 대화에 의존하는 짧은 질문("그게 언제 패치됐니?")은 follows_previous가 켜지면 GPT가 앞 대화를 반영해 한 문장으로 재작성하고,
+    // 그 문장으로 다시 판단하며 검색어로도 쓴다(Jev는 문장을 못 쓰므로 재작성만 GPT가 맡는다).
+    private static final double JEV_SEARCH_THRESHOLD = 0.4;
+    private static final String[] JEV_SEARCH_SIGNALS = { "needs_current_info", "asks_unknown_fact", "explicit_search" };
+
+    private static JsonObject jevNoul(String instructions, String trueDesc, String falseDesc) {
+        JsonObject c = new JsonObject();
+        c.addProperty("true", trueDesc);
+        c.addProperty("false", falseDesc);
+        JsonObject q = new JsonObject();
+        q.addProperty("type", "noul");
+        q.addProperty("instructions", instructions);
+        q.add("criteria", c);
+        return q;
+    }
+
+    private JsonObject buildJevQuestions(boolean withFollow) {
+        JsonObject questions = new JsonObject();
+
+        JsonObject cc = new JsonObject();
+        cc.addProperty("lostark", "About the online game Lost Ark (로스트아크/로아): classes, raids, events, patches, items, characters, engravings, "
+                + "market prices, wandering merchant (떠돌이 상인/떠상), adventure islands, achievements, loawa/inven info.");
+        cc.addProperty("bot_system", "About this chat bot itself (람쥐봇): its commands, mini-games, the tower/season game, points, fishing, how the bot works.");
+        cc.addProperty("news", "Current affairs and news: politics, economy, sports results, incidents, celebrities, public issues.");
+        cc.addProperty("chitchat", "Casual conversation: greetings, jokes, feelings, opinions, teasing, role-play, or asking the bot to say or write something "
+                + "(poems, nicknames, summaries) without needing new facts.");
+        cc.addProperty("general", "Other factual questions: definitions, slang or name meanings, how-to, places, people, weather, time, travel, products.");
+        JsonObject cat = new JsonObject();
+        cat.addProperty("type", "choice");
+        cat.addProperty("instructions", "The chat is Korean. Which topic is the message after [현재메시지] about?");
+        cat.add("criteria", cc);
+        questions.add("category", cat);
+
+        questions.add("needs_current_info", jevNoul(
+                "The chat is Korean. Does answering the message after [현재메시지] require current or up-to-date information "
+                        + "(right now, today, the latest patch or event schedule, current time, weather, prices, a recent event)?",
+                "Asks about now, today, latest, schedule, time, weather, price, or a recent event or patch.",
+                "Timeless, personal, opinion, or about the conversation itself."));
+        questions.add("asks_unknown_fact", jevNoul(
+                "The chat is Korean. Does the message after [현재메시지] ask for factual knowledge, or the meaning of a word, slang, "
+                        + "abbreviation, name or term that a friend in the chat might not know?",
+                "Asks what something is or means, who someone is, or for facts, rules, rewards or how something works.",
+                "Does not ask for facts: greetings, feelings, jokes, requests to write or say something, or chatting."));
+        questions.add("explicit_search", jevNoul(
+                "The chat is Korean. Does the message after [현재메시지] explicitly ask to search, look up, check or find information "
+                        + "(e.g. 찾아줘, 검색해, 알아봐, 조회해, 확인해줘)?",
+                "Contains an explicit request to search, look up or find something.",
+                "No explicit request to search or look up."));
+        if (withFollow) {
+            questions.add("follows_previous", jevNoul(
+                    "The chat is Korean. Can the message after [현재메시지] only be understood with the earlier conversation "
+                            + "(it uses pronouns like 그게/그거/걔, or words like 더/다시/또/그럼, or is a very short follow-up)?",
+                    "Depends on earlier messages to be understood: pronouns, 'more', 'again', 'what about that', short follow-up.",
+                    "Fully understandable by itself."));
+        }
+        return questions;
+    }
+
+    private static class JevJudge {
+        String category = "";
+        double categoryConf = 0;
+        Map<String, Double> noul = new HashMap<>();
+        double searchSignal = 0;
+        boolean needSearch = false;
+        String summary = "";
+    }
+
+    /** Jev 한 번 호출 + 결과 해석 + 이력 저장. 실패하면 null. phase: JUDGE(원문) / REWRITTEN(재작성문). */
+    private JevJudge jevJudge(String state, boolean withFollow, String phase, String userMsg, String rewritten) {
         long t0 = System.currentTimeMillis();
         String raw = null;
+        JsonObject questions = null;
         try {
-            JsonObject criteria = new JsonObject();
-            criteria.addProperty("true", JEV_SEARCH_CRITERIA_TRUE);
-            criteria.addProperty("false", JEV_SEARCH_CRITERIA_FALSE);
-            JsonObject q = new JsonObject();
-            q.addProperty("type", "noul");
-            q.addProperty("instructions", JEV_SEARCH_INSTRUCTIONS);
-            q.add("criteria", criteria);
-            JsonObject questions = new JsonObject();
-            questions.add(JEV_SEARCH_QID, q);
+            questions = buildJevQuestions(withFollow);
             JsonObject body = new JsonObject();
             body.addProperty("model", "jev-latest");
             body.addProperty("state", state);
@@ -266,59 +344,103 @@ public class LoaAiBotController {
             raw = httpPost(JEV_URL, gson.toJson(body), JEV_TIMEOUT_MS,
                     "Authorization", "Bearer " + jevKeyCached, "Content-Type", "application/json");
             JsonObject root = gson.fromJson(raw, JsonObject.class);
-            double p = root.getAsJsonObject("answers").getAsJsonObject(JEV_SEARCH_QID).get("noul").getAsDouble();
+            JsonObject answers = root.getAsJsonObject("answers");
+
+            JevJudge j = new JevJudge();
+            JsonObject catAns = answers.getAsJsonObject("category");
+            j.category = catAns.get("choice").getAsString();
+            j.categoryConf = catAns.has("confidence") ? catAns.get("confidence").getAsDouble() : 0;
+            StringBuilder sum = new StringBuilder("category=").append(j.category).append("(").append(String.format("%.2f", j.categoryConf)).append(")");
+            for (Map.Entry<String, com.google.gson.JsonElement> e : answers.entrySet()) {
+                if ("category".equals(e.getKey())) continue;
+                double v = e.getValue().getAsJsonObject().get("noul").getAsDouble();
+                j.noul.put(e.getKey(), v);
+                sum.append(" ").append(e.getKey()).append("=").append(String.format("%.2f", v));
+            }
+            for (String s : JEV_SEARCH_SIGNALS) j.searchSignal = Math.max(j.searchSignal, j.noul.getOrDefault(s, 0.0));
+            j.needSearch = j.searchSignal >= JEV_SEARCH_THRESHOLD;
+            // 람쥐봇 자체에 대한 질문은 웹 검색 대신 아래 "시스템 안내"로 답한다(명시적 검색 요청이 강할 때만 예외).
+            if ("bot_system".equals(j.category) && j.categoryConf >= 0.5 && j.noul.getOrDefault("explicit_search", 0.0) < 0.8) j.needSearch = false;
+            j.summary = sum.toString();
 
             markModel("intent", "jev-latest");
-            IntentResult r = new IntentResult();
-            r.needSearch = p >= JEV_SEARCH_THRESHOLD;
-            r.query = userMsg.length() > 100 ? userMsg.substring(0, 100) : userMsg;
-            logger.info("[JEV] search p={} -> {} ({}ms) msg={}", String.format("%.3f", p), r.needSearch,
-                    System.currentTimeMillis() - t0, userMsg.length() > 40 ? userMsg.substring(0, 40) : userMsg);
-            logJevUse("OK", state, userMsg, p, r.needSearch, System.currentTimeMillis() - t0, root, raw, null);
-            return r;
+            logger.info("[JEV] {} -> {} ({}ms) {}", phase, j.needSearch ? "SEARCH" : "NO_SEARCH", System.currentTimeMillis() - t0, j.summary);
+            logJevUse("OK", phase, state, userMsg, rewritten, j, System.currentTimeMillis() - t0, root, raw, questions, null);
+            return j;
         } catch (Exception e) {
-            logger.warn("[JEV] failed -> GPT fallback ({}ms): {}", System.currentTimeMillis() - t0, e.toString());
-            logJevUse("ERROR", state, userMsg, null, null, System.currentTimeMillis() - t0, null, raw, e.toString());
+            logger.warn("[JEV] {} failed ({}ms): {}", phase, System.currentTimeMillis() - t0, e.toString());
+            logJevUse("ERROR", phase, state, userMsg, rewritten, null, System.currentTimeMillis() - t0, null, raw, questions, e.toString());
             return null;
         }
     }
 
-    // [2026-09-30] "검색 필요 여부" 질문 정의를 한 곳에 모아 Jev 요청과 TBOT_JEV_LOG 이력이 항상 같은 값을 쓰게 한다(이력에는
-    // 실제로 보낸 지시문/기준 원문을 그대로 저장). 지시문을 고치면 이력에도 자동으로 새 문구가 남는다. yes(true) = 검색 필요.
-    private static final String JEV_SEARCH_QID = "search";
-    private static final String JEV_SEARCH_INSTRUCTIONS = "The chat below is Korean. Judge only the message after [현재메시지] "
-            + "(the earlier [최근대화] is context). Does replying well require searching the web for facts?";
-    private static final String JEV_SEARCH_CRITERIA_TRUE = "Needs factual or up-to-date information from the web: news, weather, prices, "
-            + "people, places, events, definitions, 'what/where/when/how much is X', or explicit requests to look something up.";
-    private static final String JEV_SEARCH_CRITERIA_FALSE = "Casual chat, greetings, reactions, jokes, opinions, personal talk, game talk, "
-            + "or continuing the current topic without needing new facts.";
+    /** Jev로 검색 필요 여부/주제를 판단. 사용 불가/실패면 null(호출측이 GPT로 폴백). */
+    private IntentResult analyzeIntentJev(String userMsg, String ctx) {
+        refreshJevConfig();
+        if (!jevSwitchOn || jevKeyCached.isEmpty()) return null;
 
-    /** [2026-09-30] "jev 사용이력을 관리, 어떤 방식으로 썼는지 예: 이 질문은 잡담인가 yes 1.0" 요청 -- TBOT_JEV_LOG에 호출마다
-     *  1행: 누가(방/유저) 어떤 입력에 어떤 질문(QUESTION_TEXT)을 어떤 방식(QUESTION_TYPE noul)으로 물어 어떤 답(ANSWER yes/no,
-     *  SCORE 확률)과 판단(DECISION)이 나왔는지, 응답 모델/토큰/지연시간/오류까지. 기록 실패는 무시(채팅에 영향 없음). */
-    private void logJevUse(String status, String state, String userMsg, Double p, Boolean needSearch, long ms,
-                           JsonObject root, String raw, String err) {
+        JevJudge use = jevJudge("[현재메시지] " + userMsg, true, "JUDGE", userMsg, null);
+        if (use == null) return null;
+        String query = userMsg;
+
+        // 앞 대화에 의존하는 질문이면: GPT가 앞 대화를 반영해 한 문장으로 재작성 -> 그 문장으로 다시 판단 + 검색어로 사용
+        if (use.noul.getOrDefault("follows_previous", 0.0) >= 0.5 && !ctx.isEmpty()) {
+            String rewritten = rewriteWithContext(ctx, userMsg);
+            if (rewritten != null && !rewritten.isEmpty()) {
+                JevJudge j2 = jevJudge("[현재메시지] " + rewritten, false, "REWRITTEN", userMsg, rewritten);
+                if (j2 != null) { use = j2; query = rewritten; }
+                else query = rewritten;
+            }
+        }
+
+        IntentResult r = new IntentResult();
+        r.needSearch = use.needSearch;
+        r.category = use.category;
+        r.query = query.length() > 100 ? query.substring(0, 100) : query;
+        return r;
+    }
+
+    /** 앞 대화를 반영해 현재 메시지를 혼자서도 이해되는 한 문장으로 재작성(답하지 않음). 실패하면 null. */
+    private String rewriteWithContext(String ctx, String userMsg) {
+        try {
+            JsonArray messages = new JsonArray();
+            messages.add(makeMsg("system", "채팅 대화에서 마지막 메시지를, 앞 대화의 맥락(누구/무엇을 가리키는지)을 포함해 "
+                    + "혼자서도 이해되는 한국어 한 문장(60자 이내)으로 바꿔 써. 질문에 답하지 말고 바꾼 문장만 출력해."));
+            messages.add(makeMsg("user", "[앞 대화]\n" + ctx + "\n[마지막 메시지] " + userMsg));
+            String out = gptChat(messages, 100, 0.0, "rewrite");
+            out = out == null ? "" : out.replace("\n", " ").trim();
+            logger.info("[JEV] 재작성: '{}' -> '{}'", cut(userMsg, 40), cut(out, 60));
+            return out.isEmpty() ? null : cut(out, 120);
+        } catch (Exception e) {
+            logger.warn("[JEV] 재작성 실패(원문으로 진행): {}", e.toString());
+            return null;
+        }
+    }
+
+    /** [2026-09-30] "jev 사용이력을 관리" 요청 -- TBOT_JEV_LOG에 Jev 호출마다 1행. [2026-10-01] 질문을 여러 개로 쪼개면서 한 행에
+     *  PHASE(JUDGE/REWRITTEN), CATEGORY, 질문별 답을 요약한 ANSWERS, 보낸 질문 전체(QUESTIONS), 재작성 문장을 남긴다.
+     *  SCORE = 검색 신호 3개 중 최댓값, ANSWER = 최종 yes/no. 기록 실패는 무시(채팅에 영향 없음). */
+    private void logJevUse(String status, String phase, String state, String userMsg, String rewritten, JevJudge j, long ms,
+                           JsonObject root, String raw, JsonObject questions, String err) {
         try {
             Map<String, String> um = usedModels.get();
             HashMap<String, Object> m = new HashMap<>();
             m.put("purpose", "CHAT_SEARCH_INTENT");
+            m.put("phase", phase);
             m.put("room", cut(um == null ? "" : um.get("room"), 200));
             m.put("user", cut(um == null ? "" : um.get("user"), 200));
             m.put("input", cut(userMsg, 500));
-            // [2026-10-01] 질문 정의(instructions/criteria)는 상수라 항상 같고 실제로 달라지는 건 Jev에 보낸 state(최근대화+현재메시지)
-            // -- 그 원문을 함께 남겨 점수를 문맥과 같이 검증할 수 있게 한다.
             m.put("state", cut(state, 4000));
-            m.put("qId", JEV_SEARCH_QID);
-            m.put("qType", "noul");
-            m.put("instructions", cut(JEV_SEARCH_INSTRUCTIONS, 1000));
-            JsonObject critLog = new JsonObject();
-            critLog.addProperty("true", JEV_SEARCH_CRITERIA_TRUE);
-            critLog.addProperty("false", JEV_SEARCH_CRITERIA_FALSE);
-            m.put("criteria", cut(gson.toJson(critLog), 1000));
-            m.put("answer", p == null ? null : (p >= JEV_SEARCH_THRESHOLD ? "yes" : "no"));
-            m.put("score", p);
+            m.put("rewritten", rewritten == null ? null : cut(rewritten, 300));
+            m.put("qId", "multi");
+            m.put("qType", "multi");
+            m.put("questions", questions == null ? null : gson.toJson(questions));
+            m.put("category", j == null ? null : cut(j.category, 20));
+            m.put("answers", j == null ? null : cut(j.summary, 1000));
+            m.put("answer", j == null ? null : (j.needSearch ? "yes" : "no"));
+            m.put("score", j == null ? null : j.searchSignal);
             m.put("threshold", JEV_SEARCH_THRESHOLD);
-            m.put("decision", needSearch == null ? null : (needSearch ? "SEARCH" : "NO_SEARCH"));
+            m.put("decision", j == null ? null : (j.needSearch ? "SEARCH" : "NO_SEARCH"));
             if (root != null) {
                 if (root.has("model")) m.put("jevModel", cut(root.get("model").getAsString(), 60));
                 if (root.has("usage") && root.get("usage").isJsonObject()) {
@@ -348,17 +470,100 @@ public class LoaAiBotController {
     // =====================================================================
     // 2단계: Serper 검색
     // =====================================================================
-    private String callSerper(String query) {
+    private String callSerper(String query, String category) {
         try {
+            boolean news = "news".equals(category);
+            String q = query;
+            // 로스트아크 질문은 게임 이름을 붙여 검색 범위를 좁힌다(로아/로스트아크가 이미 있으면 그대로).
+            if ("lostark".equals(category) && !q.contains("로스트아크") && !q.contains("로아")) q = "로스트아크 " + q;
             JsonObject body = new JsonObject();
-            body.addProperty("q", query);
+            body.addProperty("q", q);
             body.addProperty("hl", "ko");
             body.addProperty("gl", "kr");
-            return httpPost(SERPER_URL, gson.toJson(body),
+            if (news) body.addProperty("num", 6);
+            return httpPost(news ? SERPER_NEWS_URL : SERPER_URL, gson.toJson(body),
                     "X-API-KEY", serperKey, "Content-Type", "application/json");
         } catch (Exception e) {
             return "{}";
         }
+    }
+
+    /** 뉴스 검색 결과(/news)에서 제목 + 요약 + 언론사/날짜를 뽑는다. */
+    private String extractNewsInfo(String serperRaw) {
+        try {
+            JsonObject json = gson.fromJson(serperRaw, JsonObject.class);
+            JsonArray news = json.getAsJsonArray("news");
+            if (news == null) return "";
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < news.size() && sb.length() < 900; i++) {
+                JsonObject r = news.get(i).getAsJsonObject();
+                String title   = r.has("title")   ? r.get("title").getAsString()   : "";
+                String snippet = r.has("snippet") ? r.get("snippet").getAsString() : "";
+                String src     = r.has("source")  ? r.get("source").getAsString()  : "";
+                String date    = r.has("date")    ? r.get("date").getAsString()    : "";
+                if (title.isEmpty()) continue;
+                sb.append("• ").append(title);
+                if (!src.isEmpty() || !date.isEmpty()) sb.append(" (").append(src).append(src.isEmpty() || date.isEmpty() ? "" : ", ").append(date).append(")");
+                if (!snippet.isEmpty()) sb.append(": ").append(snippet.length() > 160 ? snippet.substring(0, 160) + "..." : snippet);
+                sb.append("\n");
+            }
+            return sb.toString().trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    // ── 람쥐봇 시스템 안내(매뉴얼) ────────────────────────────────────────
+    private volatile String manualCached = "";
+    private volatile long manualCacheTime = 0L;
+
+    private String loadManual() {
+        long now = System.currentTimeMillis();
+        if (now - manualCacheTime > 600_000L) { // 10분 캐시
+            manualCacheTime = now;
+            try {
+                String a = botService.selectBotManual(new HashMap<String, Object>());
+                String g = botService.selectBotManualG(new HashMap<String, Object>());
+                manualCached = (a == null ? "" : a) + NL + (g == null ? "" : g);
+            } catch (Exception e) {
+                logger.warn("[AICHAT] 매뉴얼 로드 실패(무시): {}", e.toString());
+            }
+        }
+        return manualCached;
+    }
+
+    /** 매뉴얼(DB, ♬로 줄 구분)에서 질문과 글자가 겹치는 줄을 골라 참고자료로. 전체(약 1.6만자)를 매번 넣지 않는다. */
+    private String buildSystemContext(String query) {
+        try {
+            String manual = loadManual();
+            if (manual.isEmpty()) return "";
+            Set<String> q = bigrams(query);
+            List<double[]> scored = new ArrayList<>();
+            String[] lines = manual.replace("\r", "").replace("\n", NL).split(NL);
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i].trim();
+                if (line.length() < 3) continue;
+                Set<String> b = bigrams(line);
+                int common = 0;
+                for (String g : q) if (b.contains(g)) common++;
+                if (common >= 2) scored.add(new double[] { i, common });
+            }
+            if (scored.isEmpty()) return "";
+            scored.sort((x, y) -> Double.compare(y[1], x[1]));
+            StringBuilder sb = new StringBuilder("[람쥐봇 시스템 안내 -- 이 안에서 답하고, 없는 내용은 모른다고 해줘]\n");
+            for (int k = 0; k < Math.min(10, scored.size()) && sb.length() < 1400; k++) sb.append(lines[(int) scored.get(k)[0]].trim()).append("\n");
+            return sb.toString() + "\n";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** 카톡 응답용 줄바꿈 정리: 모델이 준 줄바꿈(\n, 글자 그대로의 \\n 포함)을 NL(♬)로 바꾸고 연속 줄바꿈은 최대 2개로. */
+    private static String toKakaoNl(String s) {
+        if (s == null) return "";
+        String t = s.replace("\\n", "\n").replace("\r\n", "\n").replace("\r", "\n").trim();
+        t = t.replaceAll("\n{3,}", "\n\n");
+        return t.replace("\n", NL);
     }
 
     private String extractCoreInfo(String serperRaw) {
