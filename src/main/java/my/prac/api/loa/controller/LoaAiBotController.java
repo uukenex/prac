@@ -128,6 +128,10 @@ public class LoaAiBotController {
      *  ThreadLocal로 충분하다. 키: "intent"(의도판단 모델) / "answer"(최종 답변 모델). 폴백이 일어나면 실제 쓴 모델이 남는다. */
     private final ThreadLocal<Map<String, String>> usedModels = new ThreadLocal<>();
 
+    /** [2026-10-02] Jev 이력은 요청이 끝난 뒤(최종으로 무슨 처리를 했는지 알게 된 뒤) 한꺼번에 저장한다 -- DECISION은 Jev 자신의 판단일 뿐이라
+     *  실제로 웹 검색/로아 명령(내부 조회)/시스템 매뉴얼/바로 답변 중 무엇을 했는지는 ACTION 컬럼에 따로 남긴다. */
+    private final ThreadLocal<List<HashMap<String, Object>>> pendingJev = new ThreadLocal<>();
+
     private void markModel(String kind, String model) {
         Map<String, String> m = usedModels.get();
         if (m != null) m.put(kind, model);
@@ -163,9 +167,12 @@ public class LoaAiBotController {
         usedModels.set(new HashMap<>());
         usedModels.get().put("room", roomName == null ? "" : roomName);
         usedModels.get().put("user", userName == null ? "" : userName);
+        pendingJev.set(new ArrayList<>());
         try {
             return searchInternal(reqMsg, roomName, userName, reqAt);
         } finally {
+            flushJevLogs();
+            pendingJev.remove();
             usedModels.remove();
         }
     }
@@ -190,6 +197,7 @@ public class LoaAiBotController {
                 || (reqMsg.length() <= 40 && looksLikeLostArk(intent.ctx));
         if (loaQuestion) {
             String viaCmd = tryLostArkCommand(loaText, intent.ctx, roomName, userName);
+            if (viaCmd == null) markModel("routeNote", "로아 명령 변환 실패/해당 없음");
             if (viaCmd != null) {
                 queue.add(new Message("assistant", viaCmd));
                 saveChat(roomName, userName, reqMsg, viaCmd, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
@@ -201,6 +209,8 @@ public class LoaAiBotController {
         String searchSummary = "";
         if (intent.needSearch && intent.query != null && !intent.query.isEmpty()) {
             boolean news = "news".equals(intent.category);
+            markModel("route", news ? "WEB_NEWS" : "WEB_SEARCH");
+            markModel("routeDetail", cut(intent.query, 200));
             String rawResult = callSerper(intent.query, intent.category);
             String coreInfo  = news ? extractNewsInfo(rawResult) : extractCoreInfo(rawResult);
             if (news && coreInfo.isEmpty()) coreInfo = extractCoreInfo(rawResult);
@@ -210,7 +220,11 @@ public class LoaAiBotController {
         // 3. Gemini: 페르소나 + 히스토리 + 검색결과 통합 최종 답변
         String recall = buildRecall(roomName, userName, reqMsg);
         // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
-        if ("bot_system".equals(intent.category)) recall = buildSystemContext(intent.query) + recall;
+        if ("bot_system".equals(intent.category)) {
+            recall = buildSystemContext(intent.query) + recall;
+            Map<String, String> um0 = usedModels.get();
+            if (um0 != null && !um0.containsKey("route")) um0.put("route", "SYSTEM_MANUAL");
+        }
         String finalAnswer = callGeminiForFinal(reqMsg, nick, searchSummary, recall, queue);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
@@ -485,7 +499,33 @@ public class LoaAiBotController {
             m.put("status", status);
             m.put("error", err == null ? null : cut(err, 300));
             m.put("rawJson", raw == null ? null : cut(raw, 1000));
-            botDao.insertJevLog(m);
+            List<HashMap<String, Object>> pend = pendingJev.get();
+            if (pend != null) pend.add(m); else botDao.insertJevLog(m); // 요청 처리 중이면 끝날 때 ACTION을 채워 저장
+        } catch (Exception e) {
+            logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
+        }
+    }
+
+    /** 요청이 끝났을 때, 그 요청의 Jev 호출 행들에 "실제로 한 처리"(ACTION/ACTION_DETAIL)를 채워 저장. */
+    private void flushJevLogs() {
+        try {
+            List<HashMap<String, Object>> pend = pendingJev.get();
+            if (pend == null || pend.isEmpty()) return;
+            Map<String, String> um = usedModels.get();
+            String route = um == null ? null : um.get("route");
+            String detail = um == null ? null : um.get("routeDetail");
+            String note = um == null ? null : um.get("routeNote");
+            if (route == null) route = "DIRECT"; // 검색/명령/매뉴얼 없이 모델이 바로 답함
+            String fullDetail = (detail == null ? "" : detail) + (note == null ? "" : (detail == null || detail.isEmpty() ? "" : " | ") + note);
+            for (HashMap<String, Object> m : pend) {
+                m.put("action", route);
+                m.put("actionDetail", fullDetail.isEmpty() ? null : cut(fullDetail, 300));
+                try {
+                    botDao.insertJevLog(m);
+                } catch (Exception e) {
+                    logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
+                }
+            }
         } catch (Exception e) {
             logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
         }
@@ -834,6 +874,8 @@ public class LoaAiBotController {
             logger.info("[AICHAT] 로아 명령 연계 {} ({}ms, {}자)", full, System.currentTimeMillis() - t0, raw == null ? 0 : raw.length());
             if (raw == null || raw.trim().isEmpty()) return null;
             markModel("action", cmd);
+            markModel("route", "LOA_CMD");
+            markModel("routeDetail", full);
 
             String plain = raw.replace(NL, "\n");
             String summary = null;

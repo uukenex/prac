@@ -2113,7 +2113,7 @@
 	<!-- [2026-09-30] Jev 사용 이력. 사람이 읽는 필드(방/유저/입력/질문문구)는 NVARCHAR2라 NChar 핸들러로 바인딩. -->
 	<insert id="insertJevLog" parameterType="hashmap">
 		INSERT INTO TBOT_JEV_LOG (PURPOSE, PHASE, ROOM_NAME, USER_NAME, INPUT_TEXT, STATE, REWRITTEN, QUESTION_ID, QUESTION_TYPE, QUESTIONS,
-		                          CATEGORY, ANSWERS, ANSWER, SCORE, THRESHOLD, DECISION, JEV_MODEL, INPUT_TOKENS, OUTPUT_TOKENS, LATENCY_MS,
+		                          CATEGORY, ANSWERS, ACTION, ACTION_DETAIL, ANSWER, SCORE, THRESHOLD, DECISION, JEV_MODEL, INPUT_TOKENS, OUTPUT_TOKENS, LATENCY_MS,
 		                          STATUS, ERROR_MSG, RAW_JSON)
 		VALUES (#{purpose, jdbcType=VARCHAR}
 		       ,#{phase, jdbcType=VARCHAR}
@@ -2127,6 +2127,8 @@
 		       ,#{questions, jdbcType=NCLOB, typeHandler=my.prac.core.util.NCharClobTypeHandler}
 		       ,#{category, jdbcType=VARCHAR}
 		       ,#{answers, jdbcType=VARCHAR}
+		       ,#{action, jdbcType=VARCHAR}
+		       ,#{actionDetail, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
 		       ,#{answer, jdbcType=VARCHAR}
 		       ,#{score, javaType=double, jdbcType=NUMERIC}
 		       ,#{threshold, javaType=double, jdbcType=NUMERIC}

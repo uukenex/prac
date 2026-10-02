@@ -69,3 +69,15 @@ BEGIN
     END IF;
 END;
 /
+
+-- 2026-10-02: DECISION is only Jev's own judgment (SEARCH / NO_SEARCH). ACTION = what the bot actually did for the request:
+-- WEB_SEARCH / WEB_NEWS (web search), LOA_CMD (internal bot command, ACTION_DETAIL = the command), SYSTEM_MANUAL, DIRECT (answered without lookup).
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_JEV_LOG' AND COLUMN_NAME = 'ACTION';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE TBOT_JEV_LOG ADD (ACTION VARCHAR2(20), ACTION_DETAIL NVARCHAR2(300))';
+    END IF;
+END;
+/
