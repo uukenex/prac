@@ -205,6 +205,8 @@ public class LoaAiBotController {
             }
         }
 
+        String loaNoteBlock = loaQuestion ? loaNotesBlock(reqMsg, loaText) : "";
+
         // 2. Serper: 검색 필요 시 수행
         String searchSummary = "";
         if (intent.needSearch && intent.query != null && !intent.query.isEmpty()) {
@@ -218,7 +220,7 @@ public class LoaAiBotController {
         }
 
         // 3. Gemini: 페르소나 + 히스토리 + 검색결과 통합 최종 답변
-        String recall = buildRecall(roomName, userName, reqMsg);
+        String recall = loaNoteBlock + buildRecall(roomName, userName, reqMsg);
         // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
         if ("bot_system".equals(intent.category)) {
             recall = buildSystemContext(intent.query) + recall;
@@ -585,6 +587,53 @@ public class LoaAiBotController {
         }
     }
 
+    // ── 로스트아크 최신 상식 노트 (TBOT_LOA_NOTE, 2026-10-02) ───────────────────────────
+    // GPT가 모르는/낡은 게임 지식(예: 엘릭서/초월 삭제, 신규 장비 완갑)을 운영자가 DB에 적어 두면 로스트아크 관련 질문의 프롬프트에 주입한다.
+    // ALWAYS_YN='Y'는 항상, 아니면 KEYWORDS(쉼표 구분) 중 하나가 질문/조회 결과에 들어 있을 때만. 10분 캐시(DB를 고치면 최대 10분 뒤 반영).
+    private volatile List<HashMap<String, Object>> loaNotesCache = new ArrayList<>();
+    private volatile long loaNotesTime = 0L;
+
+    private List<HashMap<String, Object>> loaNotes() {
+        long now = System.currentTimeMillis();
+        if (now - loaNotesTime > 600_000L) {
+            loaNotesTime = now;
+            try {
+                loaNotesCache = botDao.selectLoaNotes();
+            } catch (Exception e) {
+                logger.warn("[AICHAT] 로아 노트 로드 실패(이전 값 유지): {}", e.toString());
+            }
+        }
+        return loaNotesCache;
+    }
+
+    /** texts 중 하나라도 키워드를 포함하는 노트(+항상 노트)를 프롬프트용 블록으로. 없으면 빈 문자열. 최대 약 1500자. */
+    private String loaNotesBlock(String... texts) {
+        try {
+            StringBuilder hay = new StringBuilder();
+            for (String t : texts) if (t != null) hay.append(t).append(' ');
+            String h = hay.toString();
+            StringBuilder sb = new StringBuilder();
+            for (HashMap<String, Object> n : loaNotes()) {
+                boolean use = "Y".equals(String.valueOf(n.get("ALWAYS_YN")));
+                if (!use) {
+                    String kw = n.get("KEYWORDS") == null ? "" : String.valueOf(n.get("KEYWORDS"));
+                    for (String k : kw.split(",")) {
+                        k = k.trim();
+                        if (!k.isEmpty() && h.contains(k)) { use = true; break; }
+                    }
+                }
+                if (!use) continue;
+                String line = "- " + n.get("TITLE") + ": " + n.get("CONTENT") + "\n";
+                if (sb.length() + line.length() > 1500) break;
+                sb.append(line);
+            }
+            if (sb.length() == 0) return "";
+            return "[로스트아크 최신 상식 노트 -- 웹 검색 결과나 네 기억과 다르면 이 노트가 최신이니 이걸 따라]\n" + sb + "\n";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     // ── 람쥐봇 시스템 안내(매뉴얼) ────────────────────────────────────────
     private volatile String manualCached = "";
     private volatile long manualCacheTime = 0L;
@@ -829,7 +878,7 @@ public class LoaAiBotController {
         try {
             java.util.Map<String, String[]> cmds = loaCommands();
             JsonArray m = new JsonArray();
-            m.add(makeMsg("system", loaCmdSystemPrompt(cmds)));
+            m.add(makeMsg("system", loaCmdSystemPrompt(cmds) + "\n" + loaNotesBlock(text, ctx)));
             m.add(makeMsg("user", (ctx != null && !ctx.isEmpty() ? "[앞 대화]\n" + ctx + "\n[현재 메시지] " : "") + text));
             String out = gptChat(m, 80, 0.0, "action");
             if (out == null || !out.contains("{")) return null;
@@ -889,7 +938,9 @@ public class LoaAiBotController {
                         + "2) 다음 줄부터: 핵심 항목을 한 줄에 하나씩 '- '로 시작해서 '이름 (수치)' 형태로, 중요한 순서대로 최대 5개. 나머지는 '외 N개'로 한 줄에 묶어.\n"
                         + "3) 전체 200자 이내, 문단 사이에 빈 줄은 넣지 마.\n"
                         + "규칙: 숫자와 이름은 원문 그대로(직업명의 어색한 공백은 정리: '리  퍼' -> '리퍼'), 같은 값을 반복하지 말고, 원문에 없는 내용은 지어내지 마. 줄바꿈은 그냥 엔터로."));
-                sm.add(makeMsg("user", "[질문] " + text + "\n[조회 결과]\n" + cut(plain, 3500)));
+                // 조회 결과에 노트 키워드(예: 완갑)가 들어 있으면 그 노트도 함께 줘서 요약에서 중요 스펙을 놓치지 않게 한다.
+                String noteForSummary = loaNotesBlock(text, plain);
+                sm.add(makeMsg("user", noteForSummary + "[질문] " + text + "\n[조회 결과]\n" + cut(plain, 3500)));
                 summary = gptChat(sm, 400, 0.3, "answer");
             } catch (Exception e) {
                 logger.warn("[AICHAT] 로아 결과 요약 실패(원문 일부로 대체): {}", e.toString());

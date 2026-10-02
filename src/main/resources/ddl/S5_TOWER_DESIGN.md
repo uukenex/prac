@@ -4729,3 +4729,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - (10-02) 201~300층 사냥터 오픈: 라이브 TBOT_S5_CONFIG에 `STAIR_ZONE_MAX_FLOOR=300` 등록 + `/갱신` 반영(웹 `/api/tower-status`의 stairZoneMax=300 확인). 되돌리려면 값을 200으로 바꾸고 `/갱신`.
 - (10-02) 로아 명령 변환 정확도: "파기나님 보석 정보 알려줘"가 '정보'라는 일반 단어 때문에 /정보로 가던 문제 -- 프롬프트에 "구체적 주제 단어(보석/부캐/내실...)가 있으면 그 명령을 쓰고 일반 단어로 /정보를 고르지 마" 규칙과 예시 추가, 호칭(님) 제거, 그리고 GPT가 그래도 /정보를 고르면 질문에 다른 허용 명령의 주제 단어가 있는 경우 그 명령으로 바꾸는 코드 보정(귀속=보석 별칭 포함).
 - (10-02) Jev 이력 ACTION: TBOT_JEV_LOG.DECISION은 Jev 자신의 판단(SEARCH/NO_SEARCH)일 뿐이라 실제 처리를 알 수 없었다. 요청이 끝난 뒤 한꺼번에 저장하며 ACTION(WEB_SEARCH/WEB_NEWS/LOA_CMD/SYSTEM_MANUAL/DIRECT)과 ACTION_DETAIL(검색어, 실행한 명령, "로아 명령 변환 실패/해당 없음" 메모)을 채운다.
+
+## 2026-10-02 /챗 로스트아크 최신 상식 노트 (TBOT_LOA_NOTE)
+- 요청: "완갑 포함한 최신 상식 노트를 DB에 두고 프롬프트에 반영". 테이블 `TBOT_LOA_NOTE`(NOTE_KEY, SORT_NO, TITLE, CONTENT, KEYWORDS, ALWAYS_YN, USE_YN, UPDATE_DATE), 시드 2건(ELIXIR_TRANSCEND_REMOVED, WANGAP) -- `LOA_NOTE.sql`(라이브 적용 완료, 한글은 UNISTR 이스케이프).
+- 주입 위치: (1) 로스트아크 질문의 최종 답변 프롬프트(웹 검색 경로 포함), (2) 로아 명령 변환 프롬프트, (3) 로아 명령 결과 요약 프롬프트(조회 결과에 키워드가 있으면 해당 노트 포함 -> 완갑 같은 중요 스펙을 요약에서 놓치지 않게). ALWAYS_YN='Y'는 항상, 아니면 KEYWORDS(쉼표 구분)가 질문/결과에 포함될 때만, 최대 약 1500자, 10분 캐시.
+- 운영: 행을 UPDATE/INSERT하면 최대 10분 뒤 반영(USE_YN='N'으로 끔). 시드 재실행은 NOT MATCHED만 넣으므로 직접 고친 내용은 덮어쓰지 않는다. WANGAP 내용은 검색 기반 초안이라 운영자가 정확한 내용으로 수정할 것.

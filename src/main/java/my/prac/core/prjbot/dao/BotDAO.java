@@ -67,6 +67,8 @@ public interface BotDAO {
 	public int insertAiChatHis(Map<String, Object> params);
 	/** [2026-09-30] Jev(TypeSafe System One) 호출 이력 -- 어떤 질문을 어떤 방식으로 물었고 어떤 확률/판단이 나왔는지. */
 	public int insertJevLog(Map<String, Object> params);
+	/** [2026-10-02] 로스트아크 최신 상식 노트(TBOT_LOA_NOTE) -- /챗 프롬프트에 주입. */
+	public List<HashMap<String, Object>> selectLoaNotes();
 	/** 방(room) 단위 최근 days일 대화를 최신순으로 maxRows건. */
 	public List<HashMap<String, Object>> selectAiChatRecent(Map<String, Object> params);
 

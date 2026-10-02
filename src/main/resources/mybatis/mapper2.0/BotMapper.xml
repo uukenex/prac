@@ -2142,6 +2142,14 @@
 		       ,#{rawJson, jdbcType=VARCHAR})
 	</insert>
 
+	<!-- [2026-10-02] 로스트아크 최신 상식 노트. USE_YN='Y'만, 정렬순으로. 제목/내용/키워드는 NVARCHAR2. -->
+	<select id="selectLoaNotes" resultType="hashmap">
+		SELECT NOTE_KEY, TITLE, CONTENT, KEYWORDS, ALWAYS_YN
+		  FROM TBOT_LOA_NOTE
+		 WHERE USE_YN = 'Y'
+		 ORDER BY SORT_NO, NOTE_KEY
+	</select>
+
 	<select id="selectAiChatRecent" parameterType="hashmap" resultType="hashmap">
 		SELECT * FROM (
 		    SELECT REG_DATE, USER_NAME, QUESTION, ANSWER
