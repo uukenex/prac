@@ -237,6 +237,9 @@ public interface BotS5Service {
      *  @Scheduled 메서드라 위 cleanupJunkZeroFloorUsers와 같은 이유로 인터페이스에도 반드시 선언. */
     void purgeOldS5WordHis();
 
+    /** [2026-10-01] 계단 구역 실제 오픈 상한(TBOT_S5_CONFIG STAIR_ZONE_MAX_FLOOR, 기본 200) -- 웹 UI가 이동 가능 층 범위 표시에 사용. */
+    int stairZoneMaxFloor();
+
     /** [2026-09-30] 기존 로그 테이블(TBOT_WORD_HIS) 30일 초과분 매일 새벽 4시 40분 삭제. @Scheduled 메서드라
      *  위 메서드들과 같은 이유로 인터페이스에도 반드시 선언(누락하면 컨텍스트 부팅 실패). */
     void purgeOldWordHis();

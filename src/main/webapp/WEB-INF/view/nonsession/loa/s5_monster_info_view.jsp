@@ -30,7 +30,7 @@
     .chip{background:#fff; color:var(--ink-soft); border:1.5px solid var(--line); border-radius:999px; padding:6px 13px; font-size:12px; font-weight:700; cursor:pointer;}
     .chip.on{background:var(--gold); color:#fff; border-color:var(--gold);}
     .tbl-wrap{overflow-x:auto; border-radius:14px; border:1.5px solid var(--line); background:#fff;}
-    table{border-collapse:collapse; width:100%; min-width:760px; font-size:12.5px;}
+    table{border-collapse:collapse; width:100%; min-width:860px; font-size:12.5px;}
     th{position:sticky; top:0; background:#F6EBCB; color:var(--ink); font-size:12px; padding:9px 8px; border-bottom:1.5px solid var(--line); cursor:pointer; white-space:nowrap; user-select:none;}
     th.sorted:after{content:" ▾"; color:var(--gold);} th.sorted.asc:after{content:" ▴";}
     td{padding:7px 8px; border-bottom:1px solid #F0E6C8; text-align:right; white-space:nowrap;}
@@ -91,11 +91,12 @@
   <div class="tbl-wrap">
     <table>
       <thead><tr id="headRow"></tr></thead>
-      <tbody id="body"><tr><td colspan="9" class="loading">불러오는 중...</td></tr></tbody>
+      <tbody id="body"><tr><td colspan="10" class="loading">불러오는 중...</td></tr></tbody>
     </table>
   </div>
   <div class="note">
     · <b>적정전투력</b> = 그 층 몬스터 1마리의 전투력(체력×1 + 공격력×10 + 방어력×8, /탑현황과 같은 식). <b>안전기준</b> = 적정전투력 × <span id="safeRatio">1.3</span> — 파티 전투력이 이 이상이면 추천 사냥터.<br>
+    · <b>투자반영 공격력</b> = 공격력 × <b>투자계수(x<span id="investNote">-</span>)</b>. 투자계수는 맞는 동료의 체력 스탯 레벨과 한계돌파가 클수록 커지며(초과분의 50% 반영), 표는 현재 열린 상한 기준 "최대 투자" 동료 기준입니다. 실제 반격은 1 ~ 이 계수가 곱해집니다.<br>
     · 공격력은 보스층의 추가 배율(×1.6)까지 반영한 값입니다. 중간보스(×3)/강화몹(×2)은 이 표의 스펙에 배율만 곱해집니다.<br>
     · 처치 PP는 층 배율(<code>floorPpMultiplier</code>)까지 반영한 1마리 기본 보상입니다(자동사냥 추가 배율/몬스터 2마리 조우 미반영).<br>
     · 계단층(101~199층)은 층마다 일반 몬스터 + 중간보스 칸(스펙 ×3)으로 구성됩니다.
@@ -104,10 +105,10 @@
 
 <script>
 (function () {
-  var rows = [], band = 'all', sortKey = 'floor', sortAsc = true;
+  var rows = [], band = 'all', sortKey = 'floor', sortAsc = true, bandCount = 20;
   var COLS = [
     { k: 'floor', t: '층', cls: 'c' }, { k: 'kind', t: '종류', cls: 'c' }, { k: 'name', t: '몬스터', cls: 'l' },
-    { k: 'hp', t: '체력', bar: true }, { k: 'atk', t: '공격력', bar: true }, { k: 'def', t: '방어력', bar: true },
+    { k: 'hp', t: '체력', bar: true }, { k: 'atk', t: '공격력', bar: true }, { k: 'atkInvest', t: '투자반영 공격력', bar: true }, { k: 'def', t: '방어력', bar: true },
     { k: 'ppBase', t: '처치 PP', pp: true }, { k: 'power', t: '적정전투력', bar: true }, { k: 'safe', t: '안전기준(×1.3)', bar: true }
   ];
   function qs(id) { return document.getElementById(id); }
@@ -129,7 +130,7 @@
 
   function buildBands() {
     var html = '<button class="chip on" data-b="all">전체</button>';
-    for (var b = 0; b < 20; b++) html += '<button class="chip" data-b="' + b + '">' + (b * 10 + 1) + '~' + (b * 10 + 10) + '</button>';
+    for (var b = 0; b < bandCount; b++) html += '<button class="chip" data-b="' + b + '">' + (b * 10 + 1) + '~' + (b * 10 + 10) + '</button>';
     qs('bandBtns').innerHTML = html;
     Array.prototype.forEach.call(qs('bandBtns').children, function (btn) {
       btn.onclick = function () {
@@ -157,7 +158,7 @@
     var max = {};
     COLS.forEach(function (c) { if (c.bar) max[c.k] = Math.max.apply(null, rows.map(function (r) { return r[c.k]; })) || 1; });
     qs('countLabel').textContent = list.length + '개 층';
-    if (!list.length) { qs('body').innerHTML = '<tr><td colspan="9" class="loading">조건에 맞는 층이 없습니다.</td></tr>'; return; }
+    if (!list.length) { qs('body').innerHTML = '<tr><td colspan="10" class="loading">조건에 맞는 층이 없습니다.</td></tr>'; return; }
     qs('body').innerHTML = list.map(function (r) {
       var trc = r.kind === '보스' ? 'boss' : (r.kind === '계단층' ? 'stair' : '');
       var tag = r.kind === '보스' ? '<span class="tag boss">보스</span>' : (r.kind === '계단층' ? '<span class="tag stair">계단</span>' : '<span class="tag n">일반</span>');
@@ -179,8 +180,16 @@
   fetch('/loa/api/tower-monster-info').then(function (r) { return r.json(); }).then(function (d) {
     rows = d.rows || [];
     if (d.safeRatio) qs('safeRatio').textContent = d.safeRatio;
+    var maxFloor = rows.reduce(function (m, r) { return Math.max(m, r.floor); }, 0);
+    bandCount = Math.max(20, Math.ceil(maxFloor / 10));
+    var scale = rows.length ? rows[0].investScale : null;
+    if (scale) {
+      COLS.forEach(function (c) { if (c.k === 'atkInvest') c.t = '투자반영 공격력 (x' + scale + ')'; });
+      qs('investNote').textContent = scale;
+    }
+    buildBands(); buildHead();
     render();
-  }).catch(function () { qs('body').innerHTML = '<tr><td colspan="9" class="loading">불러오지 못했습니다.</td></tr>'; });
+  }).catch(function () { qs('body').innerHTML = '<tr><td colspan="10" class="loading">불러오지 못했습니다.</td></tr>'; });
 })();
 </script>
 </body>

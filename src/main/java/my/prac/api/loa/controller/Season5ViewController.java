@@ -161,6 +161,7 @@ public class Season5ViewController {
         result.put("diceEnhance", s5Service.diceEnhanceInfo(userName));
         // [2026-09-21] "이동한도도 맵이동하는곳에 표기하면 좋을거같아" 요청.
         result.put("moveLimit", s5Service.moveLimitInfo(userName));
+        result.put("stairZoneMax", s5Service.stairZoneMaxFloor()); // [2026-10-01] 계단 구역 오픈 상한(200 -> 300 오픈 준비)
         return ResponseEntity.ok(result);
     }
 

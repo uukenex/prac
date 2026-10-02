@@ -1605,6 +1605,7 @@ var TW = (function () {
         monsterAtkCache = (data.monsterAtk != null) ? data.monsterAtk : null;
         monsterDefCache = (data.monsterDef != null) ? data.monsterDef : null;
         updateBattleScreen(p);
+        if (data.stairZoneMax) STAIR_ZONE_MAX_FLOOR = data.stairZoneMax; // 서버가 정한 계단 구역 오픈 상한
         state.lastBattleFloor = (data.lastBattleFloor != null) ? data.lastBattleFloor : null;
         renderBoard(data.tiles, data.myTile ? data.myTile.CUR_TILE : 0, p.CUR_FLOOR);
         renderLastBattleBar(p);

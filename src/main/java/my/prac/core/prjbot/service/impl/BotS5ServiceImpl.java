@@ -426,6 +426,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                         AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
                         AUTO_HUNT_MAX_HOURS = Integer.parseInt(val);
+                    } else if ("STAIR_ZONE_MAX_FLOOR".equals(key)) {
+                        // 200 미만으로는 내리지 않고(이미 열린 구간 보호), 준비된 최대(300)를 넘기지 않는다.
+                        stairZoneOpenMax = Math.max(200, Math.min(STAIR_ZONE_READY_MAX, Integer.parseInt(val)));
                     }
                 } catch (NumberFormatException ignore) {
                     // 파싱 실패한 값은 무시하고 기존(기본) 값 유지
@@ -824,8 +827,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public List<HashMap<String, Object>> monsterInfoTable() {
         List<HashMap<String, Object>> out = new ArrayList<>();
-        for (int f = 1; f <= STAIR_ZONE_MAX_FLOOR; f++) {
-            if (!isStairZone(f) && f % 10 == 0) continue; // 마을(10/20/../100/200)
+        // [2026-10-01] 관리자용 미리보기라 아직 안 열린 층(~300)까지 전부 보여준다. 투자계수 = 현재 열린 상한 기준 "최대 투자"
+        // (체력 스탯 만렙 + 한계돌파 최대)일 때 몬스터 공격력에 곱해지는 값(investAtkScale와 같은 식) -- 실제 곱해지는 값은 대상 동료의 투자에 따라 1~이 값.
+        int refCap = statCapFor(STAIR_ZONE_BASE_CAMP) + 5 * Math.max(0, stairZoneOpenMax / 100 - 1);
+        double refMult = (1 + HP_PCT_PER_LV * refCap) * (1 + limitBreakPct(LIMIT_BREAK_MAX));
+        double refInvestScale = 1 + ATK_INVEST_SCALE * Math.max(0, refMult - 1);
+        for (int f = 1; f <= STAIR_ZONE_READY_MAX; f++) {
+            if (!isStairZone(f) && f % 10 == 0) continue; // 마을(10/20/../100/200/300)
             boolean boss = !isStairZone(f) && f % 10 == 9;
             HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(f), boss ? "Y" : "N"), f);
             if (mon == null) continue;
@@ -843,6 +851,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             row.put("name", boss ? strVal(mon.get("MONSTER_NAME"), "보스") : floorMonsterName(f, mon));
             row.put("hp", Math.round(hp));
             row.put("atk", Math.round(atkEff));
+            row.put("investScale", Math.round(refInvestScale * 100) / 100.0);
+            row.put("atkInvest", Math.round(atkEff * refInvestScale));
             row.put("def", Math.round(def));
             row.put("pp", perKill.format());
             row.put("ppBase", PP.toBaseValue(perKill));
@@ -886,7 +896,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-09-28] 계단 구역(101층+)은 블록 해금 대신 "가본 층까지 바로 이동" 규칙이라
         // 100층 마을을 연 유저는 가본 최고층(또는 첫 층 101)까지를 추천 범위로 본다.
         if (unlockedBlock >= STAIR_ZONE_BASE_CAMP) {
-            cap = Math.max(cap, Math.min(Math.max(maxReached, STAIR_ZONE_START), STAIR_ZONE_MAX_FLOOR));
+            cap = Math.max(cap, Math.min(Math.max(maxReached, STAIR_ZONE_START), stairZoneOpenMax));
         }
         for (int f = 1; f <= cap; f++) {
             int pos = f % 10;
@@ -944,6 +954,13 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  낀 주사위(diceMax, 최대 20이지만 등급이 낮으면 그보다 작음)를 그대로 재사용하고
      *  있었다" 버그 -- 51층 미만은 원래도 몬스터가 플레이어 주사위를 공유하던 구간이라
      *  그대로 두고, 51층 이상만 이 헬퍼로 통일해서 기습/반격이 항상 같은 규칙을 쓰게 한다. */
+    /** [2026-10-01] "200층 이후는 몬스터 주사위 굴림의 최소치가 더 높게" -- 201~225층 4, 이후 25층마다 +1(300층 7). 최대 눈금보다는 항상 낮게. */
+    private int monsterDiceMin(int floor, int faceMax) {
+        if (floor <= 200) return 1;
+        int min = 4 + (floor - 201) / 25;
+        return Math.max(1, Math.min(min, faceMax - 1));
+    }
+
     private int monsterOwnDiceMax(int floor, int fallbackDiceMax) {
         if (floor < 51) return fallbackDiceMax;
         return (floor <= 70) ? (6 + RND.nextInt(7)) : (8 + RND.nextInt(13));
@@ -1089,6 +1106,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         return Math.max(minGuaranteed, raw - targetDef);
     }
 
+    /** [2026-10-01] 201~300층 몬스터 HP/ATK -- V2 표는 200층까지라, 101~200층에서 층당 오르는 폭(선형)을 200층 값에서 그대로
+     *  이어 붙인다("100~200층 오르는 수치만큼"). DEF는 monsterDefForFloor가 이미 층 기반 선형식이라 따로 안 한다. */
+    private int[] extrapolateMonsterV2(int floor) {
+        int[] a = MONSTER_V2.get(STAIR_ZONE_START);
+        int[] b = MONSTER_V2.get(200);
+        if (a == null || b == null) return null;
+        double span = 200 - STAIR_ZONE_START;
+        int d = floor - 200;
+        int[] out = new int[Math.min(a.length, b.length)];
+        for (int i = 0; i < out.length; i++) out[i] = (int) Math.round(b[i] + (b[i] - a[i]) / span * d);
+        return out;
+    }
+
     private HashMap<String, Object> applyHardcoreFloorScale(HashMap<String, Object> mon, int floor) {
         if (mon == null) return null;
         // [2026-09-21] 밸런스 V2 오버레이 -- 이름/MONSTER_ID/PP_PER_KILL 등은 V1 조회 결과
@@ -1105,6 +1135,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 대신 **50층 이하는 V2를 아예 적용하지 않고 원래 V1 그대로**(블록1~5는 무보정 고정값,
         // 이미 "괜찮았다"고 확인된 값) 돌아가게 하고, V2는 51층 이상에서만 적용한다.
         int[] v2 = (BALANCE_V2_ENABLED && floor > 50) ? MONSTER_V2.get(floor) : null;
+        if (v2 == null && BALANCE_V2_ENABLED && floor > 200) v2 = extrapolateMonsterV2(floor);
         HashMap<String, Object> scaled = new HashMap<>(mon);
         if (v2 != null) {
             scaled.put("HP_VALUE", v2[0]);
@@ -1170,7 +1201,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     //    S5_STAIR_ZONE_101_200.sql로 채워둠.
     private static final int STAIR_ZONE_BASE_CAMP = 100;
     private static final int STAIR_ZONE_START = 101;
-    private static final int STAIR_ZONE_MAX_FLOOR = 200;
+    // [2026-10-01] "200~300층 사냥터 오픈 준비" -- 데이터/로직은 300층까지 준비(STAIR_ZONE_READY_MAX)해 두고, 실제로 갈 수 있는 상한은
+    // TBOT_S5_CONFIG의 STAIR_ZONE_MAX_FLOOR(기본 200, /갱신으로 반영)로 연다. 200 -> 300으로 바꾸면 그 순간 오픈.
+    private static final int STAIR_ZONE_READY_MAX = 300;
+    private static volatile int stairZoneOpenMax = 200;
     private static final String[] STAIR_ZONE_PATTERN = {
         "STAIRS_UP", "COMBAT", "COMBAT", "RANDOM_LUCKY", "MIDBOSS",
         "COMBAT", "COMBAT", "RANDOM_LUCKY", "MIDBOSS"
@@ -3168,9 +3202,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 노출되지만, 정체는 전투 중 스킬 훔치기가 나와야 드러난다.
         sb.append(dualBossFloor ? "👹👹 보스 두 체 등장!" : boss ? "👹 보스 등장!" : elite ? "💪 강화 등장!" : dualMonster ? "👾👾 몬스터 두 마리 등장!" : "👾 등장!").append(NL);
         sb.append(floorMonsterName(floor, mon)).append(NL);
-        sb.append("⚔️ ").append((int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult))
+        // [2026-10-01] "몬스터 처음 소개될 때 투자보정된 값으로" 요청 -- 실제 반격은 맞는 동료의 투자배율(investAtkScale)이 곱해지는데 소개에는
+        // 기본 공격력만 나와 주사위 1에도 그 몇 배가 들어가 보였다. 편성된 동료 중 가장 큰 투자배율(최악 기준)을 곱한 값을 보여주고 배율을 표기한다.
+        HashMap<String, Object> introStat = dao.selectUserStat(userName);
+        double introScale = 1.0;
+        for (HashMap<String, Object> ic : dao.selectUserCompanions(userName)) {
+            if (ic.get("PARTY_SLOT") == null) continue;
+            introScale = Math.max(introScale, investAtkScale(introStat, intVal(ic.get("LIMIT_BREAK"), 0)));
+        }
+        int introAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (boss ? 1.6 : 1.0) * introScale);
+        sb.append("⚔️ ").append(introAtk)
           .append(" 🛡️ ").append((int) Math.round(intVal(mon.get("DEF_VALUE"), 0) * eliteMult))
           .append(" ❤️ ").append(plainNum(fullHp)).append(dualMonster ? " x2" : "").append(NL);
+        if (introScale > 1.005) sb.append("📈 공격력에 투자보정 x").append(String.format("%.2f", introScale)).append(" 반영 (파티 최대 기준)").append(NL);
         if (elite) sb.append("💪 강화몹 -- 스탯/보상 전부 평소의 2배입니다.").append(NL);
         // [2026-09-18] 함정으로 떠밀려 시작된 전투 -- 다음 /주사위(공격)에서 몬스터가 먼저
         // 기습한다(71층+면 그 기습을 포함해 전투 내내 몬스터 공격력도 10% 증가).
@@ -3391,7 +3435,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
                 // (diceMax, 최대 20)를 그대로 재사용해서 플레이어가 강한 주사위를 낄수록
                 // 몬스터 기습도 덩달아 세지는 부작용이 있었다.
-                int amRoll = rollFace(1, monsterOwnDiceMax(floor, diceMax));
+                int amFaceMax = monsterOwnDiceMax(floor, diceMax);
+                int amRoll = rollFace(monsterDiceMin(floor, amFaceMax), amFaceMax);
                 // [2026-09-22] 반격과 동일하게 "적어도 원본 공격력의 절반은 방어를 뚫는다"는
                 // 최소 보장선 적용(monsterHitDamage 참고). MAX_AMBUSH_DMG/사망방지 클램프는
                 // 아래에서 그대로 이어서 적용됨.
@@ -4543,7 +4588,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 비례해서 공격력을 추가로 올린다(investAtkScale 주석 참고). 무투자 캐릭터는 배율 1이라
         // 변화 없음.
         monsterAtk = (int) Math.round(monsterAtk * investAtkScale(userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)));
-        int roll = rollFace(1, monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
+        int roll = rollFace(monsterDiceMin(floor, monsterDiceMax), monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         // [2026-09-22] "플레이어가 공격받을때도 방어력에 의한 차감수치 표기해줘" 요청 -- 파티
         // 공격 쪽(총 N dmg로 공격! / N - 🛡️방어 M = 실제딜)과 동일한 형식을 반격에도 적용.
         // 방어 적용 전 원본(origAtkRoll)을 따로 남겨두고, monsterHitDamage()로 방어(및 최소
@@ -4801,7 +4846,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
                     PP victimHp = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
 
-                    int mRoll = rollFace(1, monsterDiceMax);
+                    int mRoll = rollFace(monsterDiceMin(floor, monsterDiceMax), monsterDiceMax);
                     int mDmg = Math.max(1, mEff[1] * mRoll - vEff[2]);
                     PP victimHpAfter = victimHp.subtract(PP.fromPP(mDmg));
                     if (PP.toBaseValue(victimHpAfter) < 0) victimHpAfter = PP.fromPP(0);
@@ -5281,11 +5326,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         else return "층변경은 0~9, 또는 가본 적 있는 " + STAIR_ZONE_START + "층 이상 층 번호로 입력하세요. (예: /층변경 0 = "
                 + stairCampOf(floor) + "층 마을, /층변경 " + STAIR_ZONE_START + ")";
         if (target == floor) return "이미 " + floor + "층에 있습니다.";
-        if (target > STAIR_ZONE_MAX_FLOOR) {
-            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (" + STAIR_ZONE_MAX_FLOOR + "층까지 오픈, 이후 추후 오픈 예정)";
+        if (target > stairZoneOpenMax) {
+            return "🌑 어둠이 득실거려 현재는 갈 수 없습니다. (" + stairZoneOpenMax + "층까지 오픈, 이후 추후 오픈 예정)";
         }
         int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
-        if (target > STAIR_ZONE_START && target > maxReached) {
+        // [2026-10-01] 마을(200/300..) 바로 위 첫 층(201/301..)은 101층과 같이 항상 입장 가능(마을에서 올라가는 길목)
+        if (target > STAIR_ZONE_START && target % 100 != 1 && target > maxReached) {
             return "🪜 " + target + "층은 아직 가본 적이 없습니다." + NL
                     + "계단 구역은 한 층씩 직접 올라가야 합니다. (지금까지 최고 " + Math.max(maxReached, STAIR_ZONE_BASE_CAMP) + "층)";
         }
@@ -5340,8 +5386,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 계단 구역에서 9번째 칸(마지막 중간보스)까지 끝낸 뒤의 이동 -- 한 층 위 1번 칸으로 오른다. */
     private String climbStairZone(String userName, HashMap<String, Object> p, int floor) {
         int next = floor + 1;
-        if (next > STAIR_ZONE_MAX_FLOOR) {
-            return userName + "님," + NL + "🌑 " + floor + "층 위로는 아직 어둠이 득실거립니다. (" + STAIR_ZONE_MAX_FLOOR
+        if (next > stairZoneOpenMax) {
+            return userName + "님," + NL + "🌑 " + floor + "층 위로는 아직 어둠이 득실거립니다. (" + stairZoneOpenMax
                     + "층까지 오픈, 이후 추후 오픈 예정)" + NL + "👉 /층변경 0 으로 " + stairCampOf(floor) + "층 마을로 돌아갈 수 있어요.";
         }
         HashMap<String, Object> up = new HashMap<>();
@@ -7045,6 +7091,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     @Override
+    public int stairZoneMaxFloor() {
+        return stairZoneOpenMax;
+    }
+
+    @Override
     public int autoHuntKillsPerHour() {
         return AUTO_HUNT_KILLS_PER_HOUR;
     }
@@ -7070,6 +7121,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 스탯 강화 상한 계산: 구간(10층 단위) 하나 클리어(보스 처치)마다 +5. index0(unlockedBlock=0)일 때도 최소 5. */
     private int statCapFor(int unlockedBlock) {
         return 5 + 5 * (unlockedBlock / 10);
+    }
+
+    /** [2026-10-01] "200층 상점에 스탯 업그레이드 추가" -- 계단 구역엔 보스 처치로 오르는 UNLOCKED_BLOCK이 없어서, 100의 배수 마을(200, 300..)에
+     *  도착(가본 최고층 MAX_FLOOR_REACHED가 그 층 이상)할 때마다 상한을 +5 더 준다. 200층 마을 도착 = +5, 300층 = +10. */
+    private int statCapForUser(HashMap<String, Object> p) {
+        int base = statCapFor(intVal(p.get("UNLOCKED_BLOCK"), 0));
+        int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+        return base + 5 * Math.max(0, Math.min(maxReached, STAIR_ZONE_READY_MAX) / 100 - 1);
+    }
+
+    /** 스탯 상한이 다음에 오르는 마을 층: 100층 미만 구간은 다음 10층 마을, 100층 이후는 아직 못 가본 다음 100의 배수 마을. */
+    private int nextStatVillageFloor(HashMap<String, Object> p) {
+        int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
+        if (unlockedBlock < STAIR_ZONE_BASE_CAMP) return unlockedBlock + 10;
+        int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
+        return Math.max(200, (maxReached / 100 + 1) * 100);
     }
 
     /**
@@ -7123,8 +7190,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int atkMinLv = stat == null ? 0 : intVal(stat.get("ATK_MIN_LV"), 0);
         int hpLv     = stat == null ? 0 : intVal(stat.get("HP_LV"), 0);
         int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        int cap = statCapFor(unlockedBlock);
-        int nextVillageFloor = unlockedBlock + 10; // 다음 상한이 열리는 마을(그 앞 보스를 처치하면 도착)
+        int cap = statCapForUser(p);
+        int nextVillageFloor = nextStatVillageFloor(p); // 다음 상한이 열리는 마을(100층 미만: 그 앞 보스 처치 / 100층 이후: 다음 100의 배수 마을 도착)
 
         if (type == null || type.isEmpty()) {
             // 레벨당 실제 증가량("스탯구매로 인해 증가량도 표기해달라" 요청) -- 퍼센트 스탯(공격력
@@ -7204,7 +7271,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int atkMinLv = stat == null ? 0 : intVal(stat.get("ATK_MIN_LV"), 0);
         int hpLv     = stat == null ? 0 : intVal(stat.get("HP_LV"), 0);
         int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
-        int cap = statCapFor(unlockedBlock);
+        int cap = statCapForUser(p);
 
         HashMap<String, Object> result = new HashMap<>();
         result.put("atkMaxLv", atkMaxLv);
@@ -7212,7 +7279,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         result.put("hpLv", hpLv);
         result.put("cap", cap);
         result.put("nextCap", cap + 5);
-        result.put("nextVillageFloor", unlockedBlock + 10);
+        result.put("nextVillageFloor", nextStatVillageFloor(p));
         result.put("nextCostAtkMax", 50 * (atkMaxLv + 1));
         result.put("nextCostAtkMin", 50 * (atkMinLv + 1));
         result.put("nextCostHp", 50 * (hpLv + 1));
