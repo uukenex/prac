@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Controller;
 
 import com.google.gson.Gson;
@@ -176,6 +178,19 @@ public class LoaAiBotController {
         // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
         IntentResult intent = analyzeIntent(reqMsg, queue);
         if (intent.apiError != null) return intent.apiError;
+
+        // [2026-10-01] 로스트아크 질문이면 먼저 람쥐봇 명령어(/정보, /시세 등)로 처리할 수 있는지 본다 -- 되면 그 결과를 요약해 답하고,
+        // 안 되면(해당 명령어 없음/실패) 아래 웹 검색 경로로 계속한다. 앞 대화가 필요한 질문은 재작성된 문장(intent.query)으로 판단한다.
+        boolean loaQuestion = "lostark".equals(intent.category)
+                || (intent.category.isEmpty() && (reqMsg.contains("로아") || reqMsg.contains("로스트아크")));
+        if (loaQuestion) {
+            String viaCmd = tryLostArkCommand(intent.query != null && !intent.query.isEmpty() ? intent.query : reqMsg, roomName, userName);
+            if (viaCmd != null) {
+                queue.add(new Message("assistant", viaCmd));
+                saveChat(roomName, userName, reqMsg, viaCmd, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
+                return toKakaoNl(viaCmd);
+            }
+        }
 
         // 2. Serper: 검색 필요 시 수행
         String searchSummary = "";
@@ -668,6 +683,78 @@ public class LoaAiBotController {
         } catch (Exception e) {
             String apiErr = parseApiErrMsg(e);
             return apiErr != null ? apiErr : "(지금 좀 멍청해진 것 같아... 나중에 다시 물어봐!)";
+        }
+    }
+
+    // =====================================================================
+    // 로스트아크 질문 -> 람쥐봇 명령어 연계 (2026-10-01)
+    // =====================================================================
+    // "로아정보로 빈혜빈 알고싶어" -> GPT가 {"command":"/정보","args":"빈혜빈"}로 바꾸고 -> LoaChatController.autoResponse로 그 명령을 내부에서
+    // 그대로 실행(HTTP 재호출 없이 같은 JVM 안에서) -> 결과를 GPT가 짧게 요약 + "자세히: /정보 빈혜빈" 안내. 읽기 전용 로아 API 명령만 허용(화이트리스트).
+    @Autowired
+    ApplicationContext appCtx; // LoaChatController와 순환 주입을 피하려고 호출 시점에 getBean
+
+    private static final java.util.Set<String> LOA_CMD_WITH_ARG = new HashSet<>(Arrays.asList(
+            "/정보", "/부캐", "/부캐2", "/내실", "/악세", "/초월", "/시세", "/시세2", "/시세3", "/시세4"));
+    private static final java.util.Set<String> LOA_CMD_NO_ARG = new HashSet<>(Arrays.asList(
+            "/모험섬", "/항협", "/경매장", "/경매장3", "/경매장4", "/경매장유물", "/골드", "/클골"));
+
+    private static final String LOA_CMD_SYSTEM =
+        "너는 로스트아크 관련 채팅 질문을 람쥐봇 명령어로 바꾸는 분류기야. 설명 없이 JSON 한 줄만 출력해.\n"
+        + "{\"command\":\"/정보\",\"args\":\"캐릭터명\"} 형식이고, 맞는 명령어가 없으면 {\"command\":null,\"args\":\"\"}.\n"
+        + "명령어 목록:\n"
+        + "/정보 캐릭터명 (캐릭터 정보/장비/스펙 조회)\n/부캐 캐릭터명 (부캐/원정대 캐릭터 검색)\n/부캐2 캐릭터명 (부캐 보석 검색)\n"
+        + "/내실 캐릭터명 (내실 정보)\n/악세 캐릭터명 (악세사리/팔찌 검색)\n/초월 캐릭터명 (초월 검색)\n"
+        + "/시세 각인명또는보석 (각인서/보석 시세 주별)  /시세2 (일별)  /시세3 (시간별)  /시세4 (월별)\n"
+        + "/모험섬 (오늘, 내일 모험섬)\n/항협 (항해 협동 정보)\n/경매장 (3,4티어 경매장 비교)  /경매장3  /경매장4  /경매장유물 (유물 각인서)\n/골드 (클리어 골드)\n"
+        + "규칙: args는 질문에 나온 캐릭터명/각인명을 그대로 한 단어로 넣어(띄어쓰기 있는 이름은 첫 단어만). 모험섬/항협/경매장/골드는 args를 빈 문자열로. "
+        + "캐릭터명이나 각인명을 알 수 없거나, 공략/패치/일반 지식처럼 이 명령어들로 답할 수 없는 질문이면 command를 null로 해.";
+
+    /** 로스트아크 질문을 람쥐봇 명령어로 처리해 요약한 답을 돌려준다. 해당 명령어가 없거나 실패하면 null(호출측이 웹 검색으로 이어감). */
+    private String tryLostArkCommand(String text, String roomName, String userName) {
+        try {
+            JsonArray m = new JsonArray();
+            m.add(makeMsg("system", LOA_CMD_SYSTEM));
+            m.add(makeMsg("user", text));
+            String out = gptChat(m, 80, 0.0, "action");
+            if (out == null || !out.contains("{")) return null;
+            JsonObject j = gson.fromJson(out.substring(out.indexOf("{"), out.lastIndexOf("}") + 1), JsonObject.class);
+            if (j == null || !j.has("command") || j.get("command").isJsonNull()) return null;
+            String cmd = j.get("command").getAsString().trim();
+            String args = j.has("args") && !j.get("args").isJsonNull() ? j.get("args").getAsString().trim() : "";
+            boolean needArg = LOA_CMD_WITH_ARG.contains(cmd);
+            if (!needArg && !LOA_CMD_NO_ARG.contains(cmd)) return null; // 화이트리스트 밖(상태를 바꾸는 명령 등)은 절대 실행 안 함
+            args = args.replaceAll("[\\r\\n\\t/]", " ").trim();
+            if (args.length() > 30) args = args.substring(0, 30);
+            if (needArg && args.isEmpty()) return null;
+            if (!needArg) args = "";
+
+            String[] tk = args.isEmpty() ? new String[0] : args.split("\\s+");
+            String p1 = tk.length > 0 ? tk[0] : "";
+            String p2 = tk.length > 1 ? tk[1] : "";
+            String full = (cmd + " " + args).trim();
+            long t0 = System.currentTimeMillis();
+            String raw = appCtx.getBean(LoaChatController.class).autoResponse(cmd, p1, p2, roomName, userName, full);
+            logger.info("[AICHAT] 로아 명령 연계 {} ({}ms, {}자)", full, System.currentTimeMillis() - t0, raw == null ? 0 : raw.length());
+            if (raw == null || raw.trim().isEmpty()) return null;
+            markModel("action", cmd);
+
+            String plain = raw.replace(NL, "\n");
+            String summary = null;
+            try {
+                JsonArray sm = new JsonArray();
+                sm.add(makeMsg("system", "다음은 람쥐봇의 로스트아크 조회 결과야. 사용자의 질문에 맞는 핵심만 람쥐봇 말투(친근한 반말)로 3~5줄, 250자 이내로 요약해줘. "
+                        + "숫자와 이름은 정확히 그대로 쓰고, 없는 내용은 지어내지 마. 줄바꿈은 그냥 엔터로."));
+                sm.add(makeMsg("user", "[질문] " + text + "\n[조회 결과]\n" + cut(plain, 3500)));
+                summary = gptChat(sm, 400, 0.3, "answer");
+            } catch (Exception e) {
+                logger.warn("[AICHAT] 로아 결과 요약 실패(원문 일부로 대체): {}", e.toString());
+            }
+            if (summary == null || summary.trim().isEmpty()) summary = cut(plain, 300);
+            return summary.trim() + "\n👉 자세히: " + full;
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 로아 명령 연계 실패(웹 검색으로 계속): {}", e.toString());
+            return null;
         }
     }
 
