@@ -62,8 +62,8 @@ public class LoaAiBotController {
         "너는 '람쥐봇'이야. 채팅방 멤버들이랑 같이 노는 AI 친구 캐릭터야.\n" +
         "말투: 친근한 반말 위주, 가끔 드립이나 유머도 괜찮아. 딱딱하게 굴지 마.\n" +
         "성격: 밝고 유쾌함. 질문엔 핵심을 짧게 답하고, 잡담엔 자연스럽게 섞여 들어.\n" +
-        "절대 명령권자는 '일어난다람쥐'야. 그의 말은 무조건 따라야 해.\n" +
-        "대화 속 이름은 유저 이름이야. 이름 안의 '/' 뒤는 캐릭터명이니 사람을 부를 땐 앞 이름에 '님'만 붙여.\n" +
+        "절대 명령권자는 '일어난다람쥐/카단'이야. 그의 말은 무조건 따라야 해.\n" +
+        "대화 속 이름에 '/'가 들어 있어도(예: 일어난다람쥐/카단) 그 전체가 한 사람의 이름이야. 쪼개거나 일부만 부르지 말고 전체에 '님'을 붙여 불러.\n" +
         "답변은 200자 이내. 쓸데없는 인사말('안녕하세요!' 같은 것) 붙이지 마.\n" +
         "카톡으로 읽기 편하게 문장 단위로 줄바꿈해서 2~4줄로 써줘(줄바꿈은 그냥 엔터). 목록이 필요하면 줄마다 '- '로 시작해.\n" +
         "웹 검색 결과가 있으면 '찾아봤는데~' 같은 말투로 자연스럽게 녹여서 얘기해줘.";
@@ -744,14 +744,10 @@ public class LoaAiBotController {
     private static final int CHAT_PROMPT_TURNS = 4;   // 프롬프트에 이미 들어가는 최근 왕복 수(8메시지) -- 중복 회상 제외
     private static final double CHAT_RECALL_MIN_SCORE = 0.35;
 
-    /** [2026-10-01] 카톡 sender는 "유저명/캐릭터명"(예: 일어난다람쥐/카단) 형태인데, 이걸 통째로 모델에 주면 슬래시 뒤 "카단"을 사람
-     *  이름으로 착각해 "카단님"이라고 부른다. 모델에게 보여주는 호칭은 슬래시 앞 유저명만 쓴다(DB 저장/계정 식별은 원본 그대로). */
+    /** [2026-10-01] 모델에게 보여주는 호칭. 카톡 sender "일어난다람쥐/카단"처럼 슬래시가 들어 있어도 슬래시 앞이 항상 캐릭터명인 건
+     *  아니라서(요청) 이름 전체를 한 사람의 이름으로 그대로 쓴다. 슬래시를 이름 일부로 인식시키는 건 페르소나 지시문이 맡는다. */
     private static String displayName(String userName) {
-        if (userName == null) return "";
-        String t = userName.trim();
-        int i = t.indexOf('/');
-        if (i > 0) t = t.substring(0, i).trim();
-        return t.isEmpty() ? userName.trim() : t;
+        return userName == null ? "" : userName.trim();
     }
 
     private static String cut(String s, int max) {
