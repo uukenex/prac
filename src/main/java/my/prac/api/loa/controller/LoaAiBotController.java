@@ -63,6 +63,7 @@ public class LoaAiBotController {
         "말투: 친근한 반말 위주, 가끔 드립이나 유머도 괜찮아. 딱딱하게 굴지 마.\n" +
         "성격: 밝고 유쾌함. 질문엔 핵심을 짧게 답하고, 잡담엔 자연스럽게 섞여 들어.\n" +
         "절대 명령권자는 '일어난다람쥐'야. 그의 말은 무조건 따라야 해.\n" +
+        "대화 속 이름은 유저 이름이야. 이름 안의 '/' 뒤는 캐릭터명이니 사람을 부를 땐 앞 이름에 '님'만 붙여.\n" +
         "답변은 200자 이내. 쓸데없는 인사말('안녕하세요!' 같은 것) 붙이지 마.\n" +
         "카톡으로 읽기 편하게 문장 단위로 줄바꿈해서 2~4줄로 써줘(줄바꿈은 그냥 엔터). 목록이 필요하면 줄마다 '- '로 시작해.\n" +
         "웹 검색 결과가 있으면 '찾아봤는데~' 같은 말투로 자연스럽게 녹여서 얘기해줘.";
@@ -169,7 +170,8 @@ public class LoaAiBotController {
 
     private String searchInternal(String reqMsg, String roomName, String userName, java.sql.Timestamp reqAt) {
         FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, this::loadQueueFromDb);
-        queue.add(new Message("user", userName + ": " + reqMsg));
+        String nick = displayName(userName); // 모델에게 보이는 호칭(슬래시 앞 유저명)
+        queue.add(new Message("user", nick + ": " + reqMsg));
 
         // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
         IntentResult intent = analyzeIntent(reqMsg, queue);
@@ -189,7 +191,7 @@ public class LoaAiBotController {
         String recall = buildRecall(roomName, userName, reqMsg);
         // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
         if ("bot_system".equals(intent.category)) recall = buildSystemContext(intent.query) + recall;
-        String finalAnswer = callGeminiForFinal(reqMsg, userName, searchSummary, recall, queue);
+        String finalAnswer = callGeminiForFinal(reqMsg, nick, searchSummary, recall, queue);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
         queue.add(new Message("assistant", finalAnswer));
@@ -742,6 +744,16 @@ public class LoaAiBotController {
     private static final int CHAT_PROMPT_TURNS = 4;   // 프롬프트에 이미 들어가는 최근 왕복 수(8메시지) -- 중복 회상 제외
     private static final double CHAT_RECALL_MIN_SCORE = 0.35;
 
+    /** [2026-10-01] 카톡 sender는 "유저명/캐릭터명"(예: 일어난다람쥐/카단) 형태인데, 이걸 통째로 모델에 주면 슬래시 뒤 "카단"을 사람
+     *  이름으로 착각해 "카단님"이라고 부른다. 모델에게 보여주는 호칭은 슬래시 앞 유저명만 쓴다(DB 저장/계정 식별은 원본 그대로). */
+    private static String displayName(String userName) {
+        if (userName == null) return "";
+        String t = userName.trim();
+        int i = t.indexOf('/');
+        if (i > 0) t = t.substring(0, i).trim();
+        return t.isEmpty() ? userName.trim() : t;
+    }
+
     private static String cut(String s, int max) {
         if (s == null) return "";
         s = s.trim();
@@ -759,7 +771,7 @@ public class LoaAiBotController {
             List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
             for (int i = rows.size() - 1; i >= 0; i--) {
                 HashMap<String, Object> r = rows.get(i);
-                q.add(new Message("user", r.get("USER_NAME") + ": " + r.get("QUESTION")));
+                q.add(new Message("user", displayName(String.valueOf(r.get("USER_NAME"))) + ": " + r.get("QUESTION")));
                 q.add(new Message("assistant", String.valueOf(r.get("ANSWER"))));
             }
         } catch (Exception e) {
@@ -829,7 +841,7 @@ public class LoaAiBotController {
                 if (ts instanceof java.util.Date) ageH = (now - ((java.util.Date) ts).getTime()) / 3_600_000L;
                 String when = ageH >= 24 ? (ageH / 24) + "일 전" : Math.max(ageH, 1) + "시간 전";
                 String who = String.valueOf(r.get("USER_NAME"));
-                sb.append("- (").append(when).append(", ").append(who.equals(userName) ? "같은 사람" : who).append(") ")
+                sb.append("- (").append(when).append(", ").append(who.equals(userName) ? "같은 사람" : displayName(who)).append(") ")
                   .append("질문: ").append(cut(String.valueOf(r.get("QUESTION")), 120))
                   .append(" / 람쥐봇 답: ").append(cut(String.valueOf(r.get("ANSWER")), 160)).append("\n");
             }
