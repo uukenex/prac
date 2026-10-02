@@ -710,16 +710,18 @@ public class LoaAiBotController {
     ApplicationContext appCtx; // LoaChatController와 순환 주입을 피하려고 호출 시점에 getBean
 
     // [2026-10-01] 허용 명령어는 매뉴얼(TBOT_MANUAL)의 [로아API] 구역을 읽어 자동으로 만든다 -- 거기에 "/떠상 → 떠돌이상인(카단)" 같은 줄을
-    // 추가하면 10분 안에(캐시) 연계 대상에 들어간다. 매뉴얼을 못 읽거나 구역이 없을 때를 위해 기본 목록(LOA_CMD_DEFAULTS)을 항상 깔아 둔다.
+    // 추가하면 10분 안에(캐시) 연계 대상에 들어가고, 줄을 지우면 빠진다(매뉴얼이 기준). 매뉴얼을 못 읽거나 명령 줄이 5개 미만이면
+    // (구역 누락/DB 장애) 안전망으로 기본 목록(LOA_CMD_DEFAULTS)을 쓴다.
     // 형식: "/명령어 인자이름 → 설명", 별칭은 "/골드, /클골". 인자이름이 있으면 인자 필요, 없으면 인자 없는 명령으로 본다.
     // {명령어, 인자이름(없으면 ""), 설명}
     private static final String[][] LOA_CMD_DEFAULTS = {
         {"/정보", "캐릭터명", "캐릭터 정보/장비/스펙 조회"}, {"/부캐", "캐릭터명", "부캐/원정대 캐릭터 검색"}, {"/부캐2", "캐릭터명", "부캐 보석 검색"},
-        {"/내실", "캐릭터명", "내실 정보"}, {"/악세", "캐릭터명", "악세사리/팔찌 검색"}, {"/초월", "캐릭터명", "초월 검색"},
+        {"/내실", "캐릭터명", "내실 정보"}, {"/악세", "캐릭터명", "악세사리/팔찌 검색"},
         {"/시세", "각인명", "각인서/보석 시세 주별"}, {"/시세2", "각인명", "시세 일별"}, {"/시세3", "각인명", "시세 시간별"}, {"/시세4", "각인명", "시세 월별"},
         {"/모험섬", "", "오늘, 내일 모험섬"}, {"/항협", "", "항해 협동 정보"}, {"/경매장", "", "3,4티어 경매장 비교"}, {"/경매장3", "", "3티어 경매장"},
         {"/경매장4", "", "4티어 경매장"}, {"/경매장유물", "", "유물 각인서 경매장"}, {"/골드", "", "클리어 골드"}, {"/클골", "", "클리어 골드"},
-        {"/떠상", "", "카단 서버 떠돌이 상인(떠상) 정보"}
+        {"/젬값", "", "보석 시세 확인"}, {"/떠상", "", "카단 서버 떠돌이 상인(떠상) 정보"}, {"/치적", "캐릭터명", "치명타 정보"},
+        {"/주급", "캐릭터명", "부캐 주급 골드 합산"}, {"/그리드", "캐릭터명", "아크그리드 검색"}, {"/보석", "캐릭터명", "캐릭터 보석 검색"}
     };
     private volatile java.util.Map<String, String[]> loaCmdCache = null;
     private volatile long loaCmdTime = 0L;
@@ -730,7 +732,6 @@ public class LoaAiBotController {
         java.util.Map<String, String[]> cur = loaCmdCache;
         if (cur != null && now - loaCmdTime < 600_000L) return cur;
         java.util.Map<String, String[]> map = new java.util.LinkedHashMap<>();
-        for (String[] d : LOA_CMD_DEFAULTS) map.put(d[0], new String[] { d[1], d[2] });
         try {
             String manual = loadManual();
             int a = manual.indexOf("[로아API]");
@@ -754,6 +755,10 @@ public class LoaAiBotController {
             }
         } catch (Exception e) {
             logger.warn("[AICHAT] 매뉴얼 로아 명령 파싱 실패(기본 목록 사용): {}", e.toString());
+        }
+        if (map.size() < 5) { // 매뉴얼을 못 읽었거나 [로아API] 구역이 없으면 기본 목록
+            map.clear();
+            for (String[] d : LOA_CMD_DEFAULTS) map.put(d[0], new String[] { d[1], d[2] });
         }
         loaCmdCache = map;
         loaCmdTime = now;
