@@ -533,10 +533,16 @@ public class LoaAiBotController {
     }
 
     /** 매뉴얼(DB, ♬로 줄 구분)에서 질문과 글자가 겹치는 줄을 골라 참고자료로. 전체(약 1.6만자)를 매번 넣지 않는다. */
+    // [2026-10-01] 시스템 질문인데 매뉴얼에서 관련 줄을 못 찾으면 모델이 지어내지 않고 도움말 명령어로 안내하게 한다.
+    // (시즌5 /탑도움말은 호출 유저의 계정을 만들 수 있어 여기서 직접 읽지 않고 명령어만 안내한다.)
+    private static final String SYSTEM_GUIDE_FOOTER = "자세한 건 /람쥐봇(전체 매뉴얼), /게임(게임 매뉴얼), /탑도움말(시즌5 탑 등반)을 쓰면 된다고 안내해줘.";
+    private static final String SYSTEM_NOT_FOUND = "[람쥐봇 시스템 안내] 이 질문과 맞는 안내 내용을 찾지 못했어. 모르는 내용을 지어내지 말고 "
+            + "아는 범위까지만 말한 뒤 " + SYSTEM_GUIDE_FOOTER + "\n\n";
+
     private String buildSystemContext(String query) {
         try {
             String manual = loadManual();
-            if (manual.isEmpty()) return "";
+            if (manual.trim().isEmpty()) return SYSTEM_NOT_FOUND;
             Set<String> q = bigrams(query);
             List<double[]> scored = new ArrayList<>();
             String[] lines = manual.replace("\r", "").replace("\n", NL).split(NL);
@@ -548,11 +554,11 @@ public class LoaAiBotController {
                 for (String g : q) if (b.contains(g)) common++;
                 if (common >= 2) scored.add(new double[] { i, common });
             }
-            if (scored.isEmpty()) return "";
+            if (scored.isEmpty()) return SYSTEM_NOT_FOUND;
             scored.sort((x, y) -> Double.compare(y[1], x[1]));
             StringBuilder sb = new StringBuilder("[람쥐봇 시스템 안내 -- 이 안에서 답하고, 없는 내용은 모른다고 해줘]\n");
             for (int k = 0; k < Math.min(10, scored.size()) && sb.length() < 1400; k++) sb.append(lines[(int) scored.get(k)[0]].trim()).append("\n");
-            return sb.toString() + "\n";
+            return sb.append(SYSTEM_GUIDE_FOOTER).append("\n\n").toString();
         } catch (Exception e) {
             return "";
         }
