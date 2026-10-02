@@ -4710,3 +4710,7 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 응답 줄바꿈: 페르소나에 문장 단위 줄바꿈 지시 + 응답을 NL("♬")로 변환(연속 줄바꿈 최대 2개, 글자 그대로의 \n도 변환). DB/큐에는 원문 그대로 저장.
 - TBOT_JEV_LOG: PHASE/CATEGORY/ANSWERS/QUESTIONS/REWRITTEN 컬럼 추가(INSTRUCTIONS/CRITERIA는 더 이상 안 씀, 컬럼은 유지). 로그에서 질문별 확률을 바로 볼 수 있다.
 - (후속, 10-01) 람쥐봇 시스템 질문(bot_system): 매뉴얼에서 관련 줄을 못 찾으면 "지어내지 말고 아는 범위까지만 말한 뒤 /람쥐봇, /게임, /탑도움말을 안내" 지시를 참고자료로 주입, 찾은 경우에도 끝에 같은 도움말 안내 문구를 붙인다. (/탑도움말 본문은 호출 유저 계정을 만들 수 있어 직접 읽지 않음.)
+
+## 2026-10-01 /로그 뷰어: 시즌5 로그만 표시
+- 요청: "/로그 페이지는 s5 로그만, 기존 word his는 게임정보가 아니니 빼달라."
+- 09-30에 붙였던 기존 TBOT_WORD_HIS UNION ALL(및 oldSince 중복 방지 조건/상수)을 제거. `selectWordHisRecent`/`selectWordHisUserSummary`가 TBOT_S5_WORD_HIS만 조회. TBOT_WORD_HIS의 30일 자동 삭제는 그대로.

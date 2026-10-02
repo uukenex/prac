@@ -423,30 +423,18 @@
 	     한 번에 다 가져온다. 그 이후 시간대별 5분/15분/60분/3시간/24시간 버튼은 이 결과셋
 	     안에서 프론트가 순수 JS로 필터링한다(추가 DB 조회 없음). SYSDATE - hours/24 로
 	     "N시간 전"을 표현(Oracle DATE 산술은 일 단위라 시간은 24로 나눔). -->
-	<!-- [2026-09-30] "/로그로 볼 수 있는 건 시즌5 전용 테이블과 기존 테이블 둘 다" 요청으로 시즌5 전용
-	     테이블(TBOT_S5_WORD_HIS)과 기존 TBOT_WORD_HIS를 UNION ALL로 합쳐서 최신순으로 반환. 기존
-	     테이블은 oldSince(전용 테이블로 복사해 둔 시점) 이후 행만 가져와 복사분이 두 번 보이지 않게 한다. -->
+	<!-- [2026-10-01] "/로그 페이지는 시즌5 로그만 보여주고 기존 TBOT_WORD_HIS는 게임 정보가 아니니 빼달라" 요청으로
+	     09-30에 붙였던 기존 테이블 UNION ALL을 제거하고 시즌5 전용 테이블(TBOT_S5_WORD_HIS)만 조회한다. -->
 	<select id="selectWordHisRecent" parameterType="hashMap" resultType="hashMap">
 		SELECT USER_NAME, REQ, RES, ROOM_NAME, INSERT_DATE FROM (
-			SELECT * FROM (
-				SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
-				       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE, A.INSERT_DATE AS SORT_DATE
-				  FROM TBOT_S5_WORD_HIS A
-				 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
-				<if test="userName != null and userName != ''">
-				   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
-				</if>
-				UNION ALL
-				SELECT B.USER_NAME AS USER_NAME, B.REQ AS REQ, TO_NCHAR(B.RES) AS RES, B.ROOM_NAME AS ROOM_NAME,
-				       TO_CHAR(B.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE, B.INSERT_DATE AS SORT_DATE
-				  FROM TBOT_WORD_HIS B
-				 WHERE B.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
-				   AND B.INSERT_DATE > TO_DATE(#{oldSince, jdbcType=VARCHAR}, 'YYYY-MM-DD HH24:MI:SS')
-				<if test="userName != null and userName != ''">
-				   AND B.USER_NAME = #{userName, jdbcType=VARCHAR}
-				</if>
-			)
-			 ORDER BY SORT_DATE DESC
+			SELECT A.USER_NAME AS USER_NAME, A.REQ AS REQ, TO_NCHAR(A.RES) AS RES, A.ROOM_NAME AS ROOM_NAME,
+			       TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE, A.INSERT_DATE AS SORT_DATE
+			  FROM TBOT_S5_WORD_HIS A
+			 WHERE A.INSERT_DATE >= SYSDATE - (#{hours, jdbcType=NUMERIC} / 24)
+			<if test="userName != null and userName != ''">
+			   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
+			</if>
+			 ORDER BY A.INSERT_DATE DESC
 		) WHERE ROWNUM &lt;= #{maxRows, jdbcType=INTEGER}
 	</select>
 
@@ -468,12 +456,6 @@
 		        SELECT S.USER_NAME AS USER_NAME, S.ROOM_NAME AS ROOM_NAME, S.INSERT_DATE AS INSERT_DATE
 		          FROM TBOT_S5_WORD_HIS S
 		         WHERE S.INSERT_DATE >= SYSDATE - 3
-		        UNION ALL
-		        SELECT B.USER_NAME, B.ROOM_NAME, B.INSERT_DATE
-		          FROM TBOT_WORD_HIS B
-		         WHERE B.INSERT_DATE >= SYSDATE - 3
-		           AND B.INSERT_DATE > TO_DATE(#{oldSince, jdbcType=VARCHAR}, 'YYYY-MM-DD HH24:MI:SS')
-		           AND B.USER_NAME IN (SELECT P.USER_NAME FROM TBOT_S5_USER_PROGRESS P)
 		       ) A
 		 GROUP BY A.USER_NAME
 		 ORDER BY MAX(A.INSERT_DATE) DESC

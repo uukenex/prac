@@ -449,7 +449,6 @@ public class Season5ViewController {
         params.put("userName", userName.trim());
         params.put("hours", hours);
         params.put("maxRows", 1000); // 소규모 유저(21명) 기준 24시간 트래픽 상한 -- 안전장치
-        params.put("oldSince", S5_LOG_OLD_TABLE_SINCE);
 
         List<HashMap<String, Object>> items = botDao.selectWordHisRecent(params);
 
@@ -460,11 +459,7 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
-    /** [2026-09-30] 시즌5 전용 로그 테이블(TBOT_S5_WORD_HIS)로 옛 테이블 로그를 복사해 둔 시점(복사된 마지막
-     *  행의 시각). 로그 뷰어는 두 테이블을 합쳐 보되 옛 테이블은 이 시각 이후 행만 읽어 복사분이 중복으로 보이지
-     *  않게 한다. 복사분이 30일 뒤 삭제되고 뷰어 조회 범위(최대 3일)를 벗어나면 의미가 없어지므로 2026-11-01 이후엔
-     *  이 상수와 쿼리의 oldSince 조건을 지워도 된다. */
-    private static final String S5_LOG_OLD_TABLE_SINCE = "2026-09-30 00:20:58";
+    // [2026-10-01] /로그 뷰어는 시즌5 전용 테이블(TBOT_S5_WORD_HIS)만 조회한다(기존 TBOT_WORD_HIS는 게임 정보가 아니라 제외).
 
     /** [2026-09-30] "명령어를 최근에 사용한 사람만 따로, 사람당 몇 회(최근 1시간/24시간/3일)" 요청 --
      *  로그 본문 없이 유저별 사용 횟수만 집계해서 내려준다(구간 전환은 프론트가 이 결과로 처리). */
@@ -473,9 +468,7 @@ public class Season5ViewController {
     public ResponseEntity<?> apiTowerBattleLogSummary(HttpSession session) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         HashMap<String, Object> result = new HashMap<>();
-        HashMap<String, Object> params = new HashMap<>();
-        params.put("oldSince", S5_LOG_OLD_TABLE_SINCE);
-        result.put("users", botDao.selectWordHisUserSummary(params));
+        result.put("users", botDao.selectWordHisUserSummary(new HashMap<String, Object>()));
         return ResponseEntity.ok(result);
     }
 
