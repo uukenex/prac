@@ -881,15 +881,21 @@ public class LoaAiBotController {
             String summary = null;
             try {
                 JsonArray sm = new JsonArray();
-                sm.add(makeMsg("system", "다음은 람쥐봇의 로스트아크 조회 결과야. 사용자의 질문에 맞는 핵심만 람쥐봇 말투(친근한 반말)로 3~5줄, 250자 이내로 요약해줘. "
-                        + "숫자와 이름은 정확히 그대로 쓰고, 없는 내용은 지어내지 마. 줄바꿈은 그냥 엔터로."));
+                // [2026-10-02] "원문을 그대로 주지 말고 간결하게 정리, 엔터를 보기 좋게" 요청 -- 조회 결과 원문(고정폭 표/긴 목록)을 그대로 옮기면
+                // 카톡에서 줄이 어색하게 꺾이므로, 형식을 정해서 짧게 재정리시킨다.
+                sm.add(makeMsg("system", "다음은 람쥐봇의 로스트아크 조회 결과야. 원문을 그대로 옮기지 말고 사용자의 질문에 맞는 핵심만 간결하게 정리해줘.\n"
+                        + "형식:\n"
+                        + "1) 첫 줄: 한 문장 결론(람쥐봇 말투 친근한 반말, 이모지 1개까지).\n"
+                        + "2) 다음 줄부터: 핵심 항목을 한 줄에 하나씩 '- '로 시작해서 '이름 (수치)' 형태로, 중요한 순서대로 최대 5개. 나머지는 '외 N개'로 한 줄에 묶어.\n"
+                        + "3) 전체 200자 이내, 문단 사이에 빈 줄은 넣지 마.\n"
+                        + "규칙: 숫자와 이름은 원문 그대로(직업명의 어색한 공백은 정리: '리  퍼' -> '리퍼'), 같은 값을 반복하지 말고, 원문에 없는 내용은 지어내지 마. 줄바꿈은 그냥 엔터로."));
                 sm.add(makeMsg("user", "[질문] " + text + "\n[조회 결과]\n" + cut(plain, 3500)));
                 summary = gptChat(sm, 400, 0.3, "answer");
             } catch (Exception e) {
                 logger.warn("[AICHAT] 로아 결과 요약 실패(원문 일부로 대체): {}", e.toString());
             }
             if (summary == null || summary.trim().isEmpty()) summary = cut(plain, 300);
-            return summary.trim() + "\n👉 자세히: " + full;
+            return summary.trim() + "\n\n👉 자세히: " + full; // 본문과 안내 사이에 빈 줄 하나
         } catch (Exception e) {
             logger.warn("[AICHAT] 로아 명령 연계 실패(웹 검색으로 계속): {}", e.toString());
             return null;
