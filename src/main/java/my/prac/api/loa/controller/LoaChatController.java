@@ -5514,24 +5514,30 @@ public class LoaChatController {
 		HashMap<String,Object> resMap =new HashMap<>();
 		
 		int charCnt = 0;
+		// [2026-10-05] "니나브 서버는 두 캐릭터라 서버명 한 번 아래에 둘 다 나와야 한다" -- 대표 서버 외 캐릭터는
+		// 서버별로 모아서(레벨 높은 순 유지, 서버는 그 서버 최고 레벨 캐릭터 순) 서버명을 한 번만 찍는다.
+		// 예전엔 캐릭터마다 서버명을 반복해서 찍어 같은 서버가 레벨 순서에 따라 여러 번 나뉘어 보였다.
+		java.util.LinkedHashMap<String, StringBuilder> otherServers = new java.util.LinkedHashMap<>();
 		for(HashMap<String,Object> charList : sortedList) {
+			String line = "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]"
+					+ "(" + charList.get("ItemAvgLevel").toString().replaceAll(",", "") + ")"
+					+ charList.get("CharacterName").toString()
+					+ enterStr;
+			charCnt++;
 			if(mainServer.equals(charList.get("ServerName").toString())) {
-				charCnt++;
-				resMsg += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
-				resMsg += charList.get("CharacterName").toString();
-				resMsg += enterStr;
-				
+				resMsg += line;
 			}else {
-				charCnt++;
-				resMsg2 += charList.get("ServerName").toString() + enterStr;
-				resMsg2 += "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]";
-				resMsg2 += "("+charList.get("ItemAvgLevel").toString().replaceAll(",", "")+")";
-				resMsg2 += charList.get("CharacterName").toString();
-				resMsg2 += enterStr;
-				
+				String serverName = charList.get("ServerName").toString();
+				StringBuilder sbServer = otherServers.get(serverName);
+				if(sbServer == null) {
+					sbServer = new StringBuilder(serverName).append(enterStr);
+					otherServers.put(serverName, sbServer);
+				}
+				sbServer.append(line);
 			}
-			
+		}
+		for(StringBuilder sbServer : otherServers.values()) {
+			resMsg2 += sbServer.toString();
 		}
 		if(charCnt>6) {
 			resMsg = resMsg + allSeeStr + resMsg2;
