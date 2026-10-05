@@ -5507,44 +5507,44 @@ public class LoaChatController {
 		
 		String mainServer = sortedList.get(0).get("ServerName").toString();
 		
-		resMsg += mainServer;
-		resMsg += enterStr;
-		
-		String resMsg2="";
-		HashMap<String,Object> resMap =new HashMap<>();
-		
-		int charCnt = 0;
-		// [2026-10-05] "니나브 서버는 두 캐릭터라 서버명 한 번 아래에 둘 다 나와야 한다" -- 대표 서버 외 캐릭터는
-		// 서버별로 모아서(레벨 높은 순 유지, 서버는 그 서버 최고 레벨 캐릭터 순) 서버명을 한 번만 찍는다.
-		// 예전엔 캐릭터마다 서버명을 반복해서 찍어 같은 서버가 레벨 순서에 따라 여러 번 나뉘어 보였다.
-		java.util.LinkedHashMap<String, StringBuilder> otherServers = new java.util.LinkedHashMap<>();
+		// [2026-10-05] "캐릭터 6개까지만 메인으로 나오고, 나머지는 전체보기 뒤로 넘기자" -- 서버별로 묶은 순서(대표 서버 먼저,
+		// 그다음 서버는 그 서버 최고 레벨 캐릭터 순, 서버명은 한 번만)로 캐릭터를 6개까지 보여주고 그 뒤부터는 전체보기(allSeeStr)
+		// 뒤로 넘긴다. 7번째 캐릭터가 새 서버의 첫 캐릭터면 그 서버명도 전체보기 뒤에 나온다. 예전엔 대표 서버 캐릭터는
+		// 개수와 상관없이 전부 메인에 나오고 다른 서버만 접혔다.
+		final int mainVisible = 6;
+		java.util.LinkedHashMap<String, java.util.List<String>> byServer = new java.util.LinkedHashMap<>();
+		byServer.put(mainServer, new java.util.ArrayList<String>());
 		for(HashMap<String,Object> charList : sortedList) {
 			String line = "[" + LoaApiUtils.shortClassName(charList.get("CharacterClassName").toString()) + "]"
 					+ "(" + charList.get("ItemAvgLevel").toString().replaceAll(",", "") + ")"
 					+ charList.get("CharacterName").toString()
 					+ enterStr;
-			charCnt++;
-			if(mainServer.equals(charList.get("ServerName").toString())) {
-				resMsg += line;
-			}else {
-				String serverName = charList.get("ServerName").toString();
-				StringBuilder sbServer = otherServers.get(serverName);
-				if(sbServer == null) {
-					sbServer = new StringBuilder(serverName).append(enterStr);
-					otherServers.put(serverName, sbServer);
-				}
-				sbServer.append(line);
+			String serverName = charList.get("ServerName").toString();
+			java.util.List<String> serverLines = byServer.get(serverName);
+			if(serverLines == null) {
+				serverLines = new java.util.ArrayList<String>();
+				byServer.put(serverName, serverLines);
 			}
-		}
-		for(StringBuilder sbServer : otherServers.values()) {
-			resMsg2 += sbServer.toString();
-		}
-		if(charCnt>6) {
-			resMsg = resMsg + allSeeStr + resMsg2;
-		}else {
-			resMsg = resMsg + resMsg2;
+			serverLines.add(line);
 		}
 		
+		int shown = 0;
+		boolean folded = false;
+		for(java.util.Map.Entry<String, java.util.List<String>> e : byServer.entrySet()) {
+			boolean headerDone = false;
+			for(String line : e.getValue()) {
+				if(!folded && shown >= mainVisible) {
+					resMsg += allSeeStr;
+					folded = true;
+				}
+				if(!headerDone) {
+					resMsg += e.getKey() + enterStr;
+					headerDone = true;
+				}
+				resMsg += line;
+				shown++;
+			}
+		}
 		
 		return resMsg;
 	}
