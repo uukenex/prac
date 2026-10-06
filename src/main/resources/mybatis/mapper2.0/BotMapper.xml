@@ -2160,4 +2160,12 @@
 		) WHERE ROWNUM &lt;= #{maxRows}
 	</select>
 
+	<!-- [2026-10-06] /챗 방 유행어 판정용: 이 방 단어 목록의 REQ/RES 쌍 -->
+	<select id="selectBotWordSaveRoomPairs" parameterType="hashmap" resultType="hashmap">
+		SELECT REQ, RES
+		  FROM TBOT_WORD_SAVE
+		 WHERE ROOM_NAME = #{roomName, jdbcType=VARCHAR}
+		   AND LIMIT_YN = '0'
+	</select>
+
 </mapper>

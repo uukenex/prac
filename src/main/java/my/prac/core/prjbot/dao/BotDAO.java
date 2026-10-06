@@ -71,6 +71,8 @@ public interface BotDAO {
 	public List<HashMap<String, Object>> selectLoaNotes();
 	/** 방(room) 단위 최근 days일 대화를 최신순으로 maxRows건. */
 	public List<HashMap<String, Object>> selectAiChatRecent(Map<String, Object> params);
+	/** [2026-10-06] 방의 /단어 목록(TBOT_WORD_SAVE) REQ/RES 쌍 -- /챗에서 방 유행어를 잡담으로 처리하기 위함. */
+	public List<HashMap<String, Object>> selectBotWordSaveRoomPairs(Map<String, Object> params);
 
 	/** [2026-09-30] /tower-battle-log "최근 명령어 사용자 요약" -- 최근 3일 이내 S5 유저별 명령어 사용 횟수
 	 *  (1시간/24시간/3일 구간별 + 웹 액션 횟수 + 마지막 사용시각)를 한 번의 집계로 반환. */

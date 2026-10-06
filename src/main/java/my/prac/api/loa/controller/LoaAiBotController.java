@@ -179,24 +179,37 @@ public class LoaAiBotController {
 
     private String searchInternal(String reqMsg, String roomName, String userName, java.sql.Timestamp reqAt) {
         FixedSizeMessageQueue queue = roomQueues.computeIfAbsent(roomName, this::loadQueueFromDb);
+        queue.removeOlderThan(System.currentTimeMillis() - CHAT_MEMORY_MS); // [2026-10-06] 하루 지난 대화는 잊는다
         String nick = displayName(userName); // 모델에게 보이는 호칭(슬래시 앞 유저명)
         queue.add(new Message("user", nick + ": " + reqMsg));
 
-        // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
-        IntentResult intent = analyzeIntent(reqMsg, queue);
-        if (intent.apiError != null) return intent.apiError;
+        // [2026-10-06] 방 유행어(이 방 /단어 목록의 단어나 응답과 같은 말, 예: "/두목" -> "ㄷㅁ ㄷㅁㄹ!!!")는 판단 없이 잡담으로 처리한다.
+        String roomWord = matchRoomWord(roomName, reqMsg);
+        IntentResult intent;
+        if (roomWord != null) {
+            intent = new IntentResult();
+            intent.category = "chitchat";
+            intent.query = reqMsg;
+            markModel("intent", "room-word");
+        } else {
+            // 1. GPT-4o-mini: 의도 분석 (검색 필요 여부 + 검색어)
+            intent = analyzeIntent(reqMsg, queue);
+            if (intent.apiError != null) return intent.apiError;
+        }
+        // [2026-10-06] 앞 대화는 지금 메시지가 앞 대화를 가리키거나 물어볼 때만 참조한다(관계없는 말에 앞 주제를 끌고 오던 문제).
+        boolean usePrev = intent.refersPrevious;
 
         // [2026-10-01] 로스트아크 질문이면 먼저 람쥐봇 명령어(/정보, /시세 등)로 처리할 수 있는지 본다 -- 되면 그 결과를 요약해 답하고,
         // 안 되면(해당 명령어 없음/실패) 아래 웹 검색 경로로 계속한다. 앞 대화가 필요한 질문은 재작성된 문장(intent.query)으로 판단한다.
         // [2026-10-01 트리거 완화] 주제가 lostark가 아니어도 (1) lostark 확률이 일정 이상이거나 (2) 질문/재작성문에 로아 관련 단어가 있거나
         // (3) 앞 대화가 로아 얘기였고 지금은 짧은 이어짐이면(예: "캐릭터명이 빈혜빈이야") 명령 변환을 시도한다. 변환이 command null이면 웹 검색으로 넘어간다.
         String loaText = intent.query != null && !intent.query.isEmpty() ? intent.query : reqMsg;
-        boolean loaQuestion = "lostark".equals(intent.category)
+        boolean loaQuestion = roomWord == null && ("lostark".equals(intent.category)
                 || intent.lostarkProb >= 0.25
                 || looksLikeLostArk(reqMsg) || looksLikeLostArk(loaText)
-                || (reqMsg.length() <= 40 && looksLikeLostArk(intent.ctx));
+                || (usePrev && reqMsg.length() <= 40 && looksLikeLostArk(intent.ctx)));
         if (loaQuestion) {
-            String viaCmd = tryLostArkCommand(loaText, intent.ctx, roomName, userName);
+            String viaCmd = tryLostArkCommand(loaText, usePrev ? intent.ctx : "", roomName, userName);
             if (viaCmd == null) markModel("routeNote", "로아 명령 변환 실패/해당 없음");
             if (viaCmd != null) {
                 queue.add(new Message("assistant", viaCmd));
@@ -220,14 +233,18 @@ public class LoaAiBotController {
         }
 
         // 3. Gemini: 페르소나 + 히스토리 + 검색결과 통합 최종 답변
-        String recall = loaNoteBlock + buildRecall(roomName, userName, reqMsg);
+        String recall = loaNoteBlock + (usePrev ? buildRecall(roomName, userName, reqMsg) : "");
+        if (roomWord != null) {
+            recall = "[참고] 방금 말은 이 방의 유행어야(람쥐봇 /단어 목록: " + roomWord + "). 앞 대화와 상관없는 장난/감탄이니 "
+                    + "뜻을 캐묻거나 검색하지 말고 짧게 같이 받아쳐줘.\n\n" + recall;
+        }
         // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
         if ("bot_system".equals(intent.category)) {
             recall = buildSystemContext(intent.query) + recall;
             Map<String, String> um0 = usedModels.get();
             if (um0 != null && !um0.containsKey("route")) um0.put("route", "SYSTEM_MANUAL");
         }
-        String finalAnswer = callGeminiForFinal(reqMsg, nick, searchSummary, recall, queue);
+        String finalAnswer = callGeminiForFinal(reqMsg, nick, searchSummary, recall, queue, usePrev);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
 
         queue.add(new Message("assistant", finalAnswer));
@@ -244,17 +261,37 @@ public class LoaAiBotController {
         String  category   = "";   // lostark / bot_system / news / chitchat / general (Jev 사용 시)
         double  lostarkProb = 0;   // Jev 주제 분류에서 lostark일 확률(주제가 다른 걸로 나와도 로아 연계 트리거 판단에 사용)
         String  ctx        = "";   // 앞 대화 요약 문자열(로아 명령 변환 시 맥락으로 전달)
+        boolean refersPrevious = false; // 지금 메시지가 앞 대화를 가리키거나 물어보는지(이때만 앞 대화/과거 대화를 참조)
         String  apiError   = null;
+    }
+
+    // [2026-10-06] "앞 대화를 물어볼 때만 참조" -- 앞 대화를 가리키는 표현. 이게 있거나, Jev follows_previous가 높고 완성된 한글 문장일 때만 참조한다.
+    private static final java.util.regex.Pattern PREV_CUE = java.util.regex.Pattern.compile(
+            "아까|방금|이전|앞에서|앞서|위에서|그때|전에\\s*(말|얘기|물어|한)|그거|그게|그건|그걸|그것|걔|그분|그\\s*사람|그\\s*캐릭"
+            + "|계속|이어서|마저|더\\s*(알려|자세히|말해|설명)|다시\\s*(말|알려|설명)|(말|얘기|대답|답)했(던|잖|는데|지|어)|물어봤|그럼|그러면|그래서");
+    private static final double JEV_FOLLOW_THRESHOLD = 0.6;
+
+    private static boolean mentionsPrevious(String msg) {
+        return msg != null && PREV_CUE.matcher(msg).find();
+    }
+
+    /** 완성형 한글 음절 수. 초성만("ㄷㅁ ㄷㅁㄹ")이나 감탄사 같은 말은 Jev가 "짧은 이어짐"으로 잘못 볼 수 있어 거른다. */
+    private static int hangulSyllables(String s) {
+        int n = 0;
+        if (s != null) for (char c : s.toCharArray()) if (c >= '가' && c <= '힣') n++;
+        return n;
     }
 
     private IntentResult analyzeIntent(String userMsg, FixedSizeMessageQueue queue) {
         IntentResult result = new IntentResult();
+        boolean cue = mentionsPrevious(userMsg);
+        result.refersPrevious = cue;
         try {
-            // 최근 대화 2개만 맥락으로 전달 (비용 절약)
+            // 최근 대화 2개만 맥락으로 전달 (비용 절약) -- 앞 대화를 가리킬 때만
             StringBuilder ctx = new StringBuilder();
             java.util.List<Message> msgs = queue.getAll();
             int start = Math.max(0, msgs.size() - 3);
-            for (int i = start; i < msgs.size() - 1; i++) {
+            for (int i = start; cue && i < msgs.size() - 1; i++) {
                 Message m = msgs.get(i);
                 ctx.append(m.getRole().equals("user") ? "U" : "B").append(": ").append(m.getContent()).append("\n");
             }
@@ -269,7 +306,7 @@ public class LoaAiBotController {
                 jevCtx.append(m.getRole().equals("user") ? "U" : "B").append(": ").append(cut(m.getContent(), 120)).append("\n");
             }
             result.ctx = jevCtx.toString();
-            IntentResult jev = analyzeIntentJev(userMsg, jevCtx.toString());
+            IntentResult jev = analyzeIntentJev(userMsg, jevCtx.toString(), cue);
             if (jev != null) return jev;
 
             JsonArray messages = new JsonArray();
@@ -352,11 +389,13 @@ public class LoaAiBotController {
                 "Contains an explicit request to search, look up or find something.",
                 "No explicit request to search or look up."));
         if (withFollow) {
+            // [2026-10-06] "very short follow-up"을 빼고 기준을 좁힘 -- 짧은 유행어/초성/감탄사까지 이어지는 말로 판단하던 문제
             questions.add("follows_previous", jevNoul(
-                    "The chat is Korean. Can the message after [현재메시지] only be understood with the earlier conversation "
-                            + "(it uses pronouns like 그게/그거/걔, or words like 더/다시/또/그럼, or is a very short follow-up)?",
-                    "Depends on earlier messages to be understood: pronouns, 'more', 'again', 'what about that', short follow-up.",
-                    "Fully understandable by itself."));
+                    "The chat is Korean. Does the message after [현재메시지] refer back to, or ask about, something said earlier in the "
+                            + "conversation (pronouns like 그게/그거/걔, words like 아까/방금/이전에, 'tell me more about it', 'what about that')?",
+                    "Clearly points to earlier messages: pronouns or references to what was said before, asks to continue or explain it more.",
+                    "Can be read by itself: a new question or topic, greetings, exclamations, memes, slang, or Korean initial-consonant shorthand "
+                            + "like ㅋㅋ or ㄷㅁ, even if short."));
         }
         return questions;
     }
@@ -421,7 +460,7 @@ public class LoaAiBotController {
     }
 
     /** Jev로 검색 필요 여부/주제를 판단. 사용 불가/실패면 null(호출측이 GPT로 폴백). */
-    private IntentResult analyzeIntentJev(String userMsg, String ctx) {
+    private IntentResult analyzeIntentJev(String userMsg, String ctx, boolean cue) {
         refreshJevConfig();
         if (!jevSwitchOn || jevKeyCached.isEmpty()) return null;
 
@@ -430,7 +469,11 @@ public class LoaAiBotController {
         String query = userMsg;
 
         // 앞 대화에 의존하는 질문이면: GPT가 앞 대화를 반영해 한 문장으로 재작성 -> 그 문장으로 다시 판단 + 검색어로 사용
-        if (use.noul.getOrDefault("follows_previous", 0.0) >= 0.5 && !ctx.isEmpty()) {
+        // [2026-10-06] "ㄷㅁ ㄷㅁㄹ!!!"처럼 관계없는 짧은 말도 follows_previous가 켜져 앞 주제(강화/운세)로 재작성되던 문제 --
+        // 앞 대화를 가리키는 표현이 있거나, Jev 값이 높고 완성된 한글이 2음절 이상일 때만 앞 대화를 쓴다.
+        boolean refers = !ctx.isEmpty() && (cue
+                || (use.noul.getOrDefault("follows_previous", 0.0) >= JEV_FOLLOW_THRESHOLD && hangulSyllables(userMsg) >= 2));
+        if (refers) {
             String rewritten = rewriteWithContext(ctx, userMsg);
             if (rewritten != null && !rewritten.isEmpty()) {
                 JevJudge j2 = jevJudge("[현재메시지] " + rewritten, false, "REWRITTEN", userMsg, rewritten);
@@ -444,6 +487,7 @@ public class LoaAiBotController {
         r.category = use.category;
         r.lostarkProb = use.lostarkProb;
         r.ctx = ctx;
+        r.refersPrevious = refers;
         r.query = query.length() > 100 ? query.substring(0, 100) : query;
         return r;
     }
@@ -730,10 +774,10 @@ public class LoaAiBotController {
     // 3단계: 최종 답변 (USE_GEMINI는 TCONFIG DB에서 실시간 조회, 60초 캐시)
     // =====================================================================
     private String callGeminiForFinal(String userMsg, String userName,
-                                       String searchSummary, String recall, FixedSizeMessageQueue queue) {
-        // 대화 히스토리 구성 (최대 8개)
+                                       String searchSummary, String recall, FixedSizeMessageQueue queue, boolean withHistory) {
+        // 대화 히스토리 구성 (최대 8개) -- [2026-10-06] 지금 메시지가 앞 대화를 가리킬 때만 넣는다
         java.util.List<Message> msgs = queue.getAll();
-        int start = Math.max(0, msgs.size() - 8);
+        int start = withHistory ? Math.max(0, msgs.size() - 8) : Math.max(0, msgs.size() - 1);
 
         if (isUseGemini()) {
             // ── Gemini 경로 ──────────────────────────────────────────────
@@ -1028,9 +1072,11 @@ public class LoaAiBotController {
     // =====================================================================
     // /챗 대화 영구 저장 + 재기동 복원 + 유사 과거 대화 (TBOT_AI_CHAT_HIS, 방 단위)
     // =====================================================================
-    private static final int CHAT_KEEP_DAYS = 7;      // 읽는 범위(일). 데이터 자체는 지우지 않고 보존
+    // [2026-10-06] 기억 범위 7일 -> 1일(24시간). 하루 지난 대화는 큐/회상 모두에서 잊는다.
+    private static final int CHAT_KEEP_DAYS = 1;      // 읽는 범위(일). 데이터 자체는 지우지 않고 보존
+    private static final long CHAT_MEMORY_MS = CHAT_KEEP_DAYS * 86_400_000L; // 메모리 큐에서 잊는 기준
     private static final int CHAT_QUEUE_ROWS = 10;    // 큐(20개 메시지) 복원용 = 최근 10회 왕복
-    private static final int CHAT_RECALL_SCAN = 300;  // 유사도 검색 대상(최근 7일 중 최대 300회)
+    private static final int CHAT_RECALL_SCAN = 300;  // 유사도 검색 대상(최근 1일 중 최대 300회)
     private static final int CHAT_PROMPT_TURNS = 4;   // 프롬프트에 이미 들어가는 최근 왕복 수(8메시지) -- 중복 회상 제외
     private static final double CHAT_RECALL_MIN_SCORE = 0.35;
 
@@ -1046,7 +1092,7 @@ public class LoaAiBotController {
         return s.length() > max ? s.substring(0, max) : s;
     }
 
-    /** 서버 재기동 후 첫 /챗에서 그 방의 최근 대화(7일 이내)로 메모리 큐를 복원한다. */
+    /** 서버 재기동 후 첫 /챗에서 그 방의 최근 대화(1일 이내)로 메모리 큐를 복원한다. */
     private FixedSizeMessageQueue loadQueueFromDb(String roomName) {
         FixedSizeMessageQueue q = new FixedSizeMessageQueue(20);
         try {
@@ -1057,8 +1103,10 @@ public class LoaAiBotController {
             List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
             for (int i = rows.size() - 1; i >= 0; i--) {
                 HashMap<String, Object> r = rows.get(i);
-                q.add(new Message("user", displayName(String.valueOf(r.get("USER_NAME"))) + ": " + r.get("QUESTION")));
-                q.add(new Message("assistant", String.valueOf(r.get("ANSWER"))));
+                Object ts = r.get("REG_DATE");
+                long t = ts instanceof java.util.Date ? ((java.util.Date) ts).getTime() : System.currentTimeMillis();
+                q.add(new Message("user", displayName(String.valueOf(r.get("USER_NAME"))) + ": " + r.get("QUESTION"), t));
+                q.add(new Message("assistant", String.valueOf(r.get("ANSWER")), t));
             }
         } catch (Exception e) {
             logger.warn("[AICHAT] 큐 복원 실패(무시): {}", e.toString());
@@ -1096,7 +1144,46 @@ public class LoaAiBotController {
         return out;
     }
 
-    /** 이 방의 최근 7일 대화 중 지금 질문과 비슷한 것(최대 2개)을 프롬프트용 텍스트로. 방이 달라지면 절대 안 섞이고,
+    /** [2026-10-06] 방 유행어 판정 -- 이 방 /단어 목록(TBOT_WORD_SAVE)의 단어(앞 "/" 제외)나 응답과, 공백/기호를 빼고 똑같은 말이면
+     *  "단어 → 응답" 문자열, 아니면 null. 방별 10분 캐시. */
+    private final Map<String, Object[]> roomWordCache = new ConcurrentHashMap<>(); // room -> {조회시각(Long), Map<정규화문자열, 표시문자열>}
+
+    private static String normWord(String s) {
+        if (s == null) return "";
+        String t = s.trim();
+        if (t.startsWith("/")) t = t.substring(1);
+        return t.replaceAll("[\\s!?.,~…♡♥^]+", "").toLowerCase();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String matchRoomWord(String roomName, String msg) {
+        try {
+            String key = normWord(msg);
+            if (roomName == null || key.length() < 2) return null;
+            long now = System.currentTimeMillis();
+            Object[] c = roomWordCache.get(roomName);
+            if (c == null || now - (Long) c[0] > 600_000L) {
+                Map<String, String> words = new HashMap<>();
+                HashMap<String, Object> p = new HashMap<>();
+                p.put("roomName", roomName);
+                for (HashMap<String, Object> r : botDao.selectBotWordSaveRoomPairs(p)) {
+                    String req = r.get("REQ") == null ? "" : String.valueOf(r.get("REQ"));
+                    String res = r.get("RES") == null ? "" : String.valueOf(r.get("RES"));
+                    String label = cut(req + " → " + res, 80);
+                    if (normWord(req).length() >= 2) words.put(normWord(req), label);
+                    if (normWord(res).length() >= 2) words.putIfAbsent(normWord(res), label);
+                }
+                c = new Object[] { now, words };
+                roomWordCache.put(roomName, c);
+            }
+            return ((Map<String, String>) c[1]).get(key);
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 방 단어 조회 실패(무시): {}", e.toString());
+            return null;
+        }
+    }
+
+    /** 이 방의 최근 1일 대화 중 지금 질문과 비슷한 것(최대 2개)을 프롬프트용 텍스트로. 방이 달라지면 절대 안 섞이고,
      *  같은 방 안에서는 다른 유저의 대화도 참조한다. 없으면 빈 문자열. */
     private String buildRecall(String roomName, String userName, String msg) {
         try {

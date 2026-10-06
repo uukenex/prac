@@ -22,6 +22,11 @@ public class FixedSizeMessageQueue {
         messages.addLast(message);
     }
 
+    /** cutoff(ms)보다 오래된 메시지를 버린다. */
+    public synchronized void removeOlderThan(long cutoff) {
+        messages.removeIf(m -> m.getTime() < cutoff);
+    }
+
     public synchronized List<Message> getAll() {
         return new ArrayList<>(messages);
     }
