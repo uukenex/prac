@@ -34,3 +34,16 @@ BEGIN
     END IF;
 END;
 /
+
+-- 2026-10-06: embedding of the question+answer summary for semantic similar-conversation search.
+-- EMBEDDING = base64 of float32 vector (256 dims = 1368 chars), EMBED_MODEL = model that made it (rows from a different model are not compared).
+-- Rows without a vector keep working through the old word-overlap search. Idempotent.
+DECLARE
+    v_cnt NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_cnt FROM USER_TAB_COLUMNS WHERE TABLE_NAME = 'TBOT_AI_CHAT_HIS' AND COLUMN_NAME = 'EMBEDDING';
+    IF v_cnt = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE TBOT_AI_CHAT_HIS ADD (EMBEDDING VARCHAR2(4000), EMBED_MODEL VARCHAR2(60))';
+    END IF;
+END;
+/

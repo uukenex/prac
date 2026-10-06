@@ -1129,7 +1129,29 @@ public class LoaAiBotController {
             Map<String, String> um = usedModels.get();
             p.put("model", um == null ? "" : cut(um.getOrDefault("answer", ""), 60));
             p.put("intentModel", um == null ? "" : cut(um.getOrDefault("intent", ""), 60));
-            botDao.insertAiChatHis(p); // 삭제하지 않고 영구 보존, 읽을 때만 최근 CHAT_KEEP_DAYS일로 제한
+            // [2026-10-06] 임베딩: 질문+답 요약의 의미 벡터를 같이 저장해 유사 대화 검색이 단어가 달라도 뜻으로 찾게 한다. 임베딩 API
+            // 호출(수백 ms)이 답변을 늦추지 않게 별도 스레드에서 만들고 그 스레드에서 INSERT한다(실패해도 벡터 없이 저장 -- 기존
+            // 단어 겹침 방식이 그 행을 계속 처리). USE_EMBED=0이면 예전처럼 바로 동기 저장.
+            if (!embedEnabled()) {
+                botDao.insertAiChatHis(p);
+                return;
+            }
+            final String embedSrc = cut(question, 300) + "\n" + cut(answer, 200);
+            EMBED_EXEC.submit(() -> {
+                try {
+                    float[] v = embedText(embedSrc);
+                    if (v != null) {
+                        String b64 = vecToB64(v);
+                        if (b64.length() <= 4000) { // 컬럼(VARCHAR2 4000) 크기 초과 모델이면 벡터 저장 생략
+                            p.put("embedding", b64);
+                            p.put("embedModel", cut(embedModelCached, 60));
+                        }
+                    }
+                    botDao.insertAiChatHis(p); // 삭제하지 않고 영구 보존, 읽을 때만 최근 CHAT_KEEP_DAYS일로 제한
+                } catch (Exception e) {
+                    logger.warn("[AICHAT] 저장 실패(무시): {}", e.toString());
+                }
+            });
         } catch (Exception e) {
             logger.warn("[AICHAT] 저장 실패(무시): {}", e.toString());
         }
@@ -1188,20 +1210,40 @@ public class LoaAiBotController {
     private String buildRecall(String roomName, String userName, String msg) {
         try {
             Set<String> cur = bigrams(msg);
-            if (cur.size() < 2) return "";
+            // [2026-10-06] 임베딩: 지금 질문의 의미 벡터(실패/비활성이면 null -> 기존 단어 겹침 방식만 사용).
+            float[] qv = embedText(cut(msg, 300));
+            if (cur.size() < 2 && qv == null) return "";
             HashMap<String, Object> p = new HashMap<>();
             p.put("room", roomName);
             p.put("days", CHAT_KEEP_DAYS);
             p.put("maxRows", CHAT_RECALL_SCAN);
             List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
             List<double[]> scored = new ArrayList<>(); // {index, score}
+            int embCount = 0;
+            double bestCos = -1;
             for (int i = CHAT_PROMPT_TURNS; i < rows.size(); i++) { // 최근 몇 회는 이미 [대화 흐름]에 있으니 제외
-                Set<String> past = bigrams(String.valueOf(rows.get(i).get("QUESTION")));
+                HashMap<String, Object> row = rows.get(i);
+                // 벡터가 있고 같은 임베딩 모델로 만든 행은 의미 유사도(코사인), 그 외 행은 기존 단어 겹침(Dice)으로 점수를 낸다.
+                Object ev = row.get("EMBEDDING");
+                if (qv != null && ev != null && embedModelCached.equals(String.valueOf(row.get("EMBED_MODEL")))) {
+                    float[] pv = b64ToVec(String.valueOf(ev));
+                    double cos = cosine(qv, pv);
+                    embCount++;
+                    if (cos > bestCos) bestCos = cos;
+                    if (cos >= CHAT_RECALL_MIN_COS) scored.add(new double[] { i, cos });
+                    continue;
+                }
+                if (cur.size() < 2) continue;
+                Set<String> past = bigrams(String.valueOf(row.get("QUESTION")));
                 if (past.size() < 2) continue;
                 int common = 0;
                 for (String g : cur) if (past.contains(g)) common++;
                 double dice = 2.0 * common / (cur.size() + past.size());
                 if (common >= 2 && dice >= CHAT_RECALL_MIN_SCORE) scored.add(new double[] { i, dice });
+            }
+            if (qv != null) {
+                // 임계값(CHAT_RECALL_MIN_COS) 조정용 -- 후보 중 가장 비슷했던 점수를 남긴다.
+                logger.info("[AICHAT] 임베딩 비교 {}건, 최고 유사도 {} (임계 {})", embCount, String.format("%.3f", bestCos), CHAT_RECALL_MIN_COS);
             }
             if (scored.isEmpty()) return "";
             scored.sort((a, b) -> a[1] != b[1] ? Double.compare(b[1], a[1]) : Double.compare(a[0], b[0])); // 점수 높은 순, 같으면 최신
@@ -1224,6 +1266,97 @@ public class LoaAiBotController {
             logger.warn("[AICHAT] 유사 대화 검색 실패(무시): {}", e.toString());
             return "";
         }
+    }
+
+    // =====================================================================
+    // 임베딩 (2026-10-06) -- 글의 뜻을 숫자 벡터로 바꿔 "단어가 달라도 뜻이 비슷한" 과거 대화를 찾는다.
+    // =====================================================================
+    // 벡터는 DB에 base64(float32)로 저장하고(256차원 = 1368자, VARCHAR2 4000 안), 검색은 서버 메모리에서 코사인 유사도로 한다
+    // (대화가 하루치 수백 건이라 벡터 DB 없이 충분). 모델/사용 여부는 TCONFIG(EMBED_MODEL, USE_EMBED=0이면 끔)로 배포 없이 바꾼다.
+    // 호출 실패/지연(3초)/비활성이면 null을 돌려줘 기존 단어 겹침 검색이 그대로 동작한다.
+    private static final String EMBED_URL = "https://api.openai.com/v1/embeddings";
+    private static final String EMBED_DEFAULT_MODEL = "text-embedding-3-small";
+    private static final int EMBED_DIMS = 256;            // text-embedding-3 계열의 dimensions 파라미터(저장 크기 절약)
+    private static final int EMBED_TIMEOUT_MS = 3000;
+    private static final double CHAT_RECALL_MIN_COS = 0.45; // 코사인 유사도 임계값(로그의 최고 유사도를 보고 조정)
+    private volatile String embedModelCached = EMBED_DEFAULT_MODEL;
+    private volatile boolean embedOnCached = true;
+    private volatile long embedCfgTime = 0L;
+    private static final java.util.concurrent.ExecutorService EMBED_EXEC = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ai-embed");
+        t.setDaemon(true);
+        return t;
+    });
+
+    private void refreshEmbedConfig() {
+        long now = System.currentTimeMillis();
+        if (now - embedCfgTime <= 60_000L) return;
+        embedCfgTime = now;
+        try {
+            embedOnCached = !"0".equals(botS4Service.selectTconfigVal("USE_EMBED"));
+            String m = botS4Service.selectTconfigVal("EMBED_MODEL");
+            embedModelCached = (m == null || m.trim().isEmpty()) ? EMBED_DEFAULT_MODEL : m.trim();
+        } catch (Exception e) {
+            // DB 오류 시 이전 값 유지
+        }
+    }
+
+    private boolean embedEnabled() {
+        refreshEmbedConfig();
+        return embedOnCached;
+    }
+
+    /** 텍스트의 임베딩 벡터. 비활성/실패/타임아웃이면 null. */
+    private float[] embedText(String text) {
+        if (!embedEnabled() || text == null || text.trim().isEmpty()) return null;
+        long t0 = System.currentTimeMillis();
+        try {
+            String model = embedModelCached;
+            JsonObject body = new JsonObject();
+            body.addProperty("model", model);
+            body.addProperty("input", cut(text, 1000));
+            if (model.startsWith("text-embedding-3")) body.addProperty("dimensions", EMBED_DIMS);
+            String raw = httpPost(EMBED_URL, gson.toJson(body), EMBED_TIMEOUT_MS,
+                    "Authorization", openaiKey, "Content-Type", "application/json");
+            JsonArray arr = gson.fromJson(raw, JsonObject.class)
+                    .getAsJsonArray("data").get(0).getAsJsonObject().getAsJsonArray("embedding");
+            float[] v = new float[arr.size()];
+            for (int i = 0; i < v.length; i++) v[i] = arr.get(i).getAsFloat();
+            logger.info("[EMBED] {} dim={} {}ms", model, v.length, System.currentTimeMillis() - t0);
+            return v;
+        } catch (Exception e) {
+            logger.warn("[EMBED] 실패 -> 단어 겹침 방식으로 대체 ({}ms): {}", System.currentTimeMillis() - t0, e.toString());
+            return null;
+        }
+    }
+
+    private static String vecToB64(float[] v) {
+        java.nio.ByteBuffer bb = java.nio.ByteBuffer.allocate(v.length * 4);
+        for (float f : v) bb.putFloat(f);
+        return java.util.Base64.getEncoder().encodeToString(bb.array());
+    }
+
+    private static float[] b64ToVec(String s) {
+        try {
+            java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(java.util.Base64.getDecoder().decode(s));
+            float[] v = new float[bb.remaining() / 4];
+            for (int i = 0; i < v.length; i++) v[i] = bb.getFloat();
+            return v;
+        } catch (Exception e) {
+            return new float[0];
+        }
+    }
+
+    /** 코사인 유사도(-1~1). 길이가 다르거나 비어 있으면 -1. */
+    private static double cosine(float[] a, float[] b) {
+        if (a == null || b == null || a.length == 0 || a.length != b.length) return -1;
+        double dot = 0, na = 0, nb = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot += (double) a[i] * b[i];
+            na += (double) a[i] * a[i];
+            nb += (double) b[i] * b[i];
+        }
+        return (na == 0 || nb == 0) ? -1 : dot / (Math.sqrt(na) * Math.sqrt(nb));
     }
 
     // =====================================================================
