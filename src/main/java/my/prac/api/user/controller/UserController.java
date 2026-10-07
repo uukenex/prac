@@ -30,6 +30,13 @@ public class UserController {
 
 	@RequestMapping(value = "/loginCheck", method = RequestMethod.GET)
 	public String loginCheck(Model model, HttpServletRequest request, HttpSession session) {
+		// [2026-10-07] 로그인이 필요한 화면(/session/**)에서 넘어온 경우 원래 가려던 주소로 돌아간다(Referer가 없는 직접 접근도 로그인 화면을 보여줌).
+		String target = (String) session.getAttribute("loginTarget");
+		if (target != null) {
+			session.removeAttribute("loginTarget");
+			session.setAttribute("returnUrl", target);
+			return "nonsession/login/loginCheck";
+		}
 		session.setAttribute("returnUrl", request.getHeader("Referer"));
 		if (request.getHeader("Referer") == null) {
 			return "redirect:/free?page=1";

@@ -4754,3 +4754,7 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 오탐 방지: 단어장에 한화/치킨/레이드/주말 같은 흔한 말이 있어 우연히 들어간 진짜 질문은 검색해야 하므로, 주제가 로아/뉴스/람쥐봇시스템이거나 지금 정보 필요(needs_current_info>=0.7)이거나 명시적 검색 요청(explicit_search>=0.8)이면 단어장 포함이어도 검색한다.
 - 잡담 주제 확실(Jev category=chitchat, 확신도 >= 0.6, explicit_search < 0.5)하면 검색 신호가 있어도 웹 검색 생략(`JEV_CHITCHAT_CONF`).
 - 기록: Jev 이력 ACTION_DETAIL에 "방 단어장 포함: 단어 -> 응답" 메모가 남는다(ACTION=DIRECT).
+
+## 2026-10-07 비로그인으로 비밀게시판 진입 시 500 수정
+- 원인: `SessionInterceptor`(/session/**)가 비로그인이면 `/loginCheck`로 sendRedirect한 뒤에도 `true`를 반환해 컨트롤러가 이어서 실행됐고, 컨트롤러도 `redirect:/loginCheck`를 돌려줘 이미 나간 응답에 리다이렉트를 또 시도 -> IllegalStateException(500). (컨트롤러에 로그인 확인을 넣은 뒤로 비밀게시판 목록/글보기에서 발생. 컨트롤러가 로그인 확인이 없는 /session/** 화면은 NPE로 500이 나던 것도 같은 원인.)
+- 수정: 리다이렉트 후 `false`를 반환해 핸들러 실행을 막는다(비로그인으로 /session/** POST가 실행되던 것도 함께 차단). GET 요청이면 가려던 주소를 세션 `loginTarget`에 기억하고, `/loginCheck`가 그 주소를 `returnUrl`로 써서 로그인 뒤 원래 가려던 화면(예: 비밀게시판)으로 돌아간다. Referer가 없는 직접 접근도 로그인 화면이 뜬다.
