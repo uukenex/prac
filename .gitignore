@@ -5,8 +5,9 @@
 .factorypath
 .settings/
 
-# Claude Code
-.claude/
+# Claude Code (역할별 서브에이전트 정의 .claude/agents 만 추적 -- 다른 컴퓨터와 공유)
+.claude/*
+!.claude/agents/
 
 # Tomcat
 catalina.base_IS_UNDEFINED/
