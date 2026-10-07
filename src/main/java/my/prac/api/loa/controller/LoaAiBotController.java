@@ -185,6 +185,9 @@ public class LoaAiBotController {
 
         // [2026-10-06] 방 유행어(이 방 /단어 목록의 단어나 응답과 같은 말, 예: "/두목" -> "ㄷㅁ ㄷㅁㄹ!!!")는 판단 없이 잡담으로 처리한다.
         String roomWord = matchRoomWord(roomName, reqMsg);
+        // [2026-10-07] 말 속에 단어장 단어가 들어 있는 경우(예: "두목님이 ㄷㅁ ㄷㅁㄹ!!!로 화가 났어", "대머리는 누구일까")는 Jev 판단/로아 명령 확인은
+        // 그대로 하되, 그 뒤 웹 검색은 하지 않고 잡담으로 처리한다. 처리 순서: 로아 명령 -> 단어장 -> 잡담 -> 웹 검색.
+        String slangHit = roomWord != null ? null : findSlangTerm(roomName, reqMsg);
         IntentResult intent;
         if (roomWord != null) {
             intent = new IntentResult();
@@ -220,6 +223,17 @@ public class LoaAiBotController {
 
         String loaNoteBlock = loaQuestion ? loaNotesBlock(reqMsg, loaText) : "";
 
+        // 단어장 단어가 든 말 -> 웹 검색 생략. 단, "한화 경기 결과"처럼 단어장 단어(한화, 치킨, 레이드 등 흔한 말)가 우연히 들어간 진짜 질문은 검색해야 하므로
+        // 로아/뉴스/람쥐봇 시스템 주제이거나, 지금 정보가 필요하거나(현재정보 0.7 이상), 명시적 검색 요청(0.8 이상)이면 예외로 둔다.
+        boolean slangChat = slangHit != null && intent.explicitSearch < 0.8 && intent.currentInfo < 0.7
+                && !"lostark".equals(intent.category) && !"news".equals(intent.category) && !"bot_system".equals(intent.category);
+        if (slangChat) {
+            intent.needSearch = false;
+            Map<String, String> um1 = usedModels.get();
+            String prevNote = um1 == null ? null : um1.get("routeNote");
+            markModel("routeNote", (prevNote == null ? "" : prevNote + " | ") + "방 단어장 포함: " + cut(slangHit, 60));
+        }
+
         // 2. Serper: 검색 필요 시 수행
         String searchSummary = "";
         if (intent.needSearch && intent.query != null && !intent.query.isEmpty()) {
@@ -237,6 +251,9 @@ public class LoaAiBotController {
         if (roomWord != null) {
             recall = "[참고] 방금 말은 이 방의 유행어야(람쥐봇 /단어 목록: " + roomWord + "). 앞 대화와 상관없는 장난/감탄이니 "
                     + "뜻을 캐묻거나 검색하지 말고 짧게 같이 받아쳐줘.\n\n" + recall;
+        } else if (slangChat) {
+            recall = "[참고] 방금 말에는 이 방 단어장/유행어가 들어 있어(" + slangHit + "). 이 방 사람들끼리의 장난말이니 뜻을 풀이하거나 웹에서 찾은 것처럼 "
+                    + "말하지 말고, 뜻을 모르면 지어내지 말고 방 분위기에 맞게 짧게 받아쳐줘.\n\n" + recall;
         }
         // 람쥐봇 자체(명령어/게임/시스템)에 대한 질문이면 웹 검색 대신 DB 매뉴얼에서 관련 줄을 골라 참고자료로 붙인다.
         if ("bot_system".equals(intent.category)) {
@@ -261,6 +278,8 @@ public class LoaAiBotController {
         String  category   = "";   // lostark / bot_system / news / chitchat / general (Jev 사용 시)
         double  lostarkProb = 0;   // Jev 주제 분류에서 lostark일 확률(주제가 다른 걸로 나와도 로아 연계 트리거 판단에 사용)
         String  ctx        = "";   // 앞 대화 요약 문자열(로아 명령 변환 시 맥락으로 전달)
+        double  currentInfo = 0;        // Jev: 지금/오늘/최신 정보가 필요할 확률
+        double  explicitSearch = 0;     // Jev: 검색/찾아줘를 명시적으로 요청했을 확률(단어장 포함 말이라도 이때는 검색)
         boolean refersPrevious = false; // 지금 메시지가 앞 대화를 가리키거나 물어보는지(이때만 앞 대화/과거 대화를 참조)
         String  apiError   = null;
     }
@@ -343,6 +362,7 @@ public class LoaAiBotController {
     // 앞 대화에 의존하는 짧은 질문("그게 언제 패치됐니?")은 follows_previous가 켜지면 GPT가 앞 대화를 반영해 한 문장으로 재작성하고,
     // 그 문장으로 다시 판단하며 검색어로도 쓴다(Jev는 문장을 못 쓰므로 재작성만 GPT가 맡는다).
     private static final double JEV_SEARCH_THRESHOLD = 0.4;
+    private static final double JEV_CHITCHAT_CONF = 0.6;
     private static final String[] JEV_SEARCH_SIGNALS = { "needs_current_info", "asks_unknown_fact", "explicit_search" };
 
     private static JsonObject jevNoul(String instructions, String trueDesc, String falseDesc) {
@@ -446,6 +466,9 @@ public class LoaAiBotController {
             j.needSearch = j.searchSignal >= JEV_SEARCH_THRESHOLD;
             // 람쥐봇 자체에 대한 질문은 웹 검색 대신 아래 "시스템 안내"로 답한다(명시적 검색 요청이 강할 때만 예외).
             if ("bot_system".equals(j.category) && j.categoryConf >= 0.5 && j.noul.getOrDefault("explicit_search", 0.0) < 0.8) j.needSearch = false;
+            // [2026-10-07] 주제가 잡담(chitchat)으로 확실하면(확신도 0.6 이상) 웹 검색은 건너뛴다. 명시적 검색 요청이 있을 때만 예외.
+            // ("대머리는 누구일까" 같은 방 안의 장난말이 "누구/무엇" 질문 신호 때문에 웹 검색으로 가던 문제)
+            if ("chitchat".equals(j.category) && j.categoryConf >= JEV_CHITCHAT_CONF && j.noul.getOrDefault("explicit_search", 0.0) < 0.5) j.needSearch = false;
             j.summary = sum.toString();
 
             markModel("intent", "jev-latest");
@@ -488,6 +511,8 @@ public class LoaAiBotController {
         r.lostarkProb = use.lostarkProb;
         r.ctx = ctx;
         r.refersPrevious = refers;
+        r.explicitSearch = use.noul.getOrDefault("explicit_search", 0.0);
+        r.currentInfo = use.noul.getOrDefault("needs_current_info", 0.0);
         r.query = query.length() > 100 ? query.substring(0, 100) : query;
         return r;
     }
@@ -1166,9 +1191,20 @@ public class LoaAiBotController {
         return out;
     }
 
-    /** [2026-10-06] 방 유행어 판정 -- 이 방 /단어 목록(TBOT_WORD_SAVE)의 단어(앞 "/" 제외)나 응답과, 공백/기호를 빼고 똑같은 말이면
-     *  "단어 → 응답" 문자열, 아니면 null. 방별 10분 캐시. */
-    private final Map<String, Object[]> roomWordCache = new ConcurrentHashMap<>(); // room -> {조회시각(Long), Map<정규화문자열, 표시문자열>}
+    // [2026-10-07] 방 유행어/단어장 판정. 이 방 /단어 목록(TBOT_WORD_SAVE)의 단어(앞 "/" 제외)와 응답, 그리고 TCONFIG CHAT_SLANG_ALIAS(쉼표 구분 별칭,
+    // 예: 두목,대머리)를 "정리한 문자열"(공백/기호 제거, 소문자)로 비교한다. AI 호출 없이 문자열 비교만 하므로 비용/지연이 없다.
+    //  - 완전히 같은 말(matchRoomWord)이면 Jev/검색 없이 바로 잡담으로 처리한다.
+    //  - 말 속에 단어장 단어가 들어 있으면(findSlangTerm) 잡담으로 보고 웹 검색을 건너뛴다(명시적으로 검색/찾아줘를 요청하면 예외).
+    // 포함 판정 규칙(오탐 줄이기): 초성/영문뿐인 단어는 3자 이상일 때만, 한글 4자 이상 단어는 포함이면, 2~3자 한글 단어는 띄어쓰기로 나눈 낱말이
+    // 그 단어로 시작할 때만(예: 두목님이, 대머리는) 일치로 본다. 응답이 20자를 넘는 긴 문장은 단어로 보지 않는다.
+    private static class RoomSlang {
+        final Map<String, String> exact = new HashMap<>();   // 정규화 단어/응답 -> 표시 문자열
+        final List<String[]> terms = new ArrayList<>();      // {정규화 단어, 표시 문자열}
+    }
+
+    private final Map<String, Object[]> roomWordCache = new ConcurrentHashMap<>(); // room -> {조회시각(Long), RoomSlang}
+    private volatile List<String> slangAliasCache = new ArrayList<>();
+    private volatile long slangAliasTime = 0L;
 
     private static String normWord(String s) {
         if (s == null) return "";
@@ -1177,30 +1213,77 @@ public class LoaAiBotController {
         return t.replaceAll("[\\s!?.,~…♡♥^]+", "").toLowerCase();
     }
 
-    @SuppressWarnings("unchecked")
+    private RoomSlang roomSlang(String roomName) {
+        long now = System.currentTimeMillis();
+        Object[] c = roomWordCache.get(roomName);
+        if (c != null && now - (Long) c[0] <= 600_000L) return (RoomSlang) c[1];
+        RoomSlang rs = new RoomSlang();
+        HashMap<String, Object> p = new HashMap<>();
+        p.put("roomName", roomName);
+        for (HashMap<String, Object> r : botDao.selectBotWordSaveRoomPairs(p)) {
+            String req = r.get("REQ") == null ? "" : String.valueOf(r.get("REQ"));
+            String res = r.get("RES") == null ? "" : String.valueOf(r.get("RES"));
+            String label = cut(req + " → " + res, 80);
+            String nReq = normWord(req), nRes = normWord(res);
+            if (nReq.length() >= 2) { rs.exact.put(nReq, label); rs.terms.add(new String[] { nReq, label }); }
+            if (nRes.length() >= 2) {
+                rs.exact.putIfAbsent(nRes, label);
+                if (nRes.length() <= 20) rs.terms.add(new String[] { nRes, label });
+            }
+        }
+        roomWordCache.put(roomName, new Object[] { now, rs });
+        return rs;
+    }
+
+    /** 방과 상관없이 쓰는 별칭(TCONFIG CHAT_SLANG_ALIAS). 60초 캐시, DB를 고치면 배포 없이 반영. */
+    private List<String> slangAliases() {
+        long now = System.currentTimeMillis();
+        if (now - slangAliasTime > 60_000L) {
+            slangAliasTime = now;
+            try {
+                List<String> out = new ArrayList<>();
+                String v = botS4Service.selectTconfigVal("CHAT_SLANG_ALIAS");
+                if (v != null) for (String a : v.split(",")) { String n = normWord(a); if (n.length() >= 2) out.add(n); }
+                slangAliasCache = out;
+            } catch (Exception e) {
+                // DB 오류 시 이전 값 유지
+            }
+        }
+        return slangAliasCache;
+    }
+
+    /** 이 방 단어장 단어/응답과 정리 후 완전히 같은 말이면 "단어 → 응답", 아니면 null. */
     private String matchRoomWord(String roomName, String msg) {
         try {
             String key = normWord(msg);
             if (roomName == null || key.length() < 2) return null;
-            long now = System.currentTimeMillis();
-            Object[] c = roomWordCache.get(roomName);
-            if (c == null || now - (Long) c[0] > 600_000L) {
-                Map<String, String> words = new HashMap<>();
-                HashMap<String, Object> p = new HashMap<>();
-                p.put("roomName", roomName);
-                for (HashMap<String, Object> r : botDao.selectBotWordSaveRoomPairs(p)) {
-                    String req = r.get("REQ") == null ? "" : String.valueOf(r.get("REQ"));
-                    String res = r.get("RES") == null ? "" : String.valueOf(r.get("RES"));
-                    String label = cut(req + " → " + res, 80);
-                    if (normWord(req).length() >= 2) words.put(normWord(req), label);
-                    if (normWord(res).length() >= 2) words.putIfAbsent(normWord(res), label);
-                }
-                c = new Object[] { now, words };
-                roomWordCache.put(roomName, c);
-            }
-            return ((Map<String, String>) c[1]).get(key);
+            return roomSlang(roomName).exact.get(key);
         } catch (Exception e) {
             logger.warn("[AICHAT] 방 단어 조회 실패(무시): {}", e.toString());
+            return null;
+        }
+    }
+
+    private static boolean slangHit(String term, String full, List<String> tokens) {
+        boolean hasSyllable = hangulSyllables(term) > 0;
+        if (!hasSyllable) return term.length() >= 3 && full.contains(term);
+        if (term.length() >= 4) return full.contains(term);
+        for (String t : tokens) if (t.startsWith(term)) return true;
+        return false;
+    }
+
+    /** 말 속에 이 방 단어장 단어(또는 별칭)가 들어 있으면 그 표시 문자열, 아니면 null. */
+    private String findSlangTerm(String roomName, String msg) {
+        try {
+            String full = normWord(msg);
+            if (roomName == null || full.length() < 2) return null;
+            List<String> tokens = new ArrayList<>();
+            for (String t : msg.trim().split("\\s+")) { String n = normWord(t); if (!n.isEmpty()) tokens.add(n); }
+            for (String[] t : roomSlang(roomName).terms) if (slangHit(t[0], full, tokens)) return t[1];
+            for (String a : slangAliases()) if (slangHit(a, full, tokens)) return "별칭 " + a;
+            return null;
+        } catch (Exception e) {
+            logger.warn("[AICHAT] 방 단어 포함 검사 실패(무시): {}", e.toString());
             return null;
         }
     }
