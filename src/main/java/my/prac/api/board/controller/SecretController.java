@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
@@ -86,7 +87,8 @@ public class SecretController {
 
 	// 비밀 -단일게시물 보기
 	@RequestMapping(value = "/session/secretView", method = RequestMethod.GET)
-	public String secretView(Model model, @RequestParam int commentNo, HttpSession session) {
+	public String secretView(Model model, @RequestParam int commentNo, HttpSession session,
+			HttpServletRequest request, HttpServletResponse response) {
 		if (notLoggedIn(session)) {
 			return "redirect:/loginCheck";
 		}
@@ -94,8 +96,8 @@ public class SecretController {
 		List<CommentReply> reply = null;
 		Comments comment = null;
 		try {
-			commentService.count(commentNo);
 			comment = commentService.selectComment(commentNo);
+			BoardViewCounter.count(commentService, request, response, session, comment, false); // [2026-10-07] 조회수 중복/작성자 제외
 			reply = commentService.selectReplyList(commentNo);
 			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
 		} catch (Exception e) {

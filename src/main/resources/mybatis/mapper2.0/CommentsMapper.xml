@@ -128,10 +128,7 @@
 	<!-- 조회수 1을 증가시킴 -->
 	<update id="updateCommentCount" parameterType="int">
 		update TCOMMENT set
-		comment_count=
-		(select comment_count from
-		TCOMMENT where
-		comment_no=#{commentNo})+1
+		comment_count = NVL(comment_count, 0) + 1
 		where comment_no = #{commentNo}
 	</update>
 

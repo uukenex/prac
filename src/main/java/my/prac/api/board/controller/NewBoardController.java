@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
@@ -93,15 +94,17 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/newboard/freeView", method = RequestMethod.GET)
-	public String freeView(Model model, @RequestParam int commentNo, HttpSession session) {
+	public String freeView(Model model, @RequestParam int commentNo, HttpSession session,
+			HttpServletRequest request, HttpServletResponse response) {
 		List<CommentReply> reply = null;
 		Comments comment = null;
 		boolean secretLocked = false;
 		try {
-			commentService.count(commentNo);
 			comment = commentService.selectComment(commentNo);
 			boolean isSecret = "Y".equals(comment.getSecretYn());
 			boolean loggedIn = session.getAttribute("Users") != null;
+			// [2026-10-07] 조회수: 쿠키로 24시간 중복 제외, 작성자/잠금 화면/봇 제외 (BoardViewCounter)
+			BoardViewCounter.count(commentService, request, response, session, comment, isSecret && !loggedIn);
 			if (isSecret && !loggedIn) {
 				secretLocked = true;
 				comment.setCommentContent("");
@@ -345,14 +348,15 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/session/newboard/secretView", method = RequestMethod.GET)
-	public String secretView(Model model, @RequestParam int commentNo, HttpSession session) {
+	public String secretView(Model model, @RequestParam int commentNo, HttpSession session,
+			HttpServletRequest request, HttpServletResponse response) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 
 		List<CommentReply> reply = null;
 		Comments comment = null;
 		try {
-			commentService.count(commentNo);
 			comment = commentService.selectComment(commentNo);
+			BoardViewCounter.count(commentService, request, response, session, comment, false); // [2026-10-07] 조회수 중복/작성자 제외
 			reply = commentService.selectReplyList(commentNo);
 			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
 		} catch (Exception e) {

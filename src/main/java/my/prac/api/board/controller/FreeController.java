@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.slf4j.Logger;
@@ -69,15 +70,17 @@ public class FreeController {
 	// 보도록" 요청 -- 비밀글(SECRET_YN='Y')인데 세션에 로그인 정보(Users)가 없으면 내용/댓글은
 	// 아예 담지 않고 secretLocked 플래그만 넘긴다(JSP가 원문 대신 잠금 안내를 보여줌).
 	@RequestMapping(value = "/freeView", method = RequestMethod.GET)
-	public String noticeView(Model model, @RequestParam int commentNo, HttpSession session) {
+	public String noticeView(Model model, @RequestParam int commentNo, HttpSession session,
+			HttpServletRequest request, HttpServletResponse response) {
 		List<CommentReply> reply = null;
 		Comments comment = null;
 		boolean secretLocked = false;
 		try {
-			commentService.count(commentNo);
 			comment = commentService.selectComment(commentNo);
 			boolean isSecret = "Y".equals(comment.getSecretYn());
 			boolean loggedIn = session.getAttribute("Users") != null;
+			// [2026-10-07] 조회수: 쿠키로 24시간 중복 제외, 작성자/잠금 화면/봇 제외 (BoardViewCounter)
+			BoardViewCounter.count(commentService, request, response, session, comment, isSecret && !loggedIn);
 			if (isSecret && !loggedIn) {
 				secretLocked = true;
 				comment.setCommentContent("");
