@@ -280,6 +280,11 @@ public class BotS4ServiceImpl implements BotS4Service {
     }
 
     @Override
+    public java.util.List<java.util.HashMap<String, Object>> selectTconfigList(java.util.List<String> items) {
+        return botS4DAO.selectTconfigList(items);
+    }
+
+    @Override
     @Transactional
     public void upgradeEquip(String userName, String type, int grade) {
         HashMap<String, Object> equip = botS4DAO.selectUserEquip(userName);

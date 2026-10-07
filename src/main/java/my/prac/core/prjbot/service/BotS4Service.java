@@ -38,6 +38,9 @@ public interface BotS4Service {
     /** [설정] TCONFIG에서 단일 값 조회 */
     String selectTconfigVal(String item);
 
+    /** [설정] TCONFIG에서 여러 키를 한 번에 조회 (행: ITEM, VAL) */
+    java.util.List<java.util.HashMap<String, Object>> selectTconfigList(java.util.List<String> items);
+
     /** [낚시구매] 장비 업그레이드 (ROD or BOBBER, grade) */
     void upgradeEquip(String userName, String type, int grade);
 }

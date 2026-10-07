@@ -111,6 +111,34 @@ public class LoaAiBotController {
     private volatile long jevCacheTime = 0L;
     private static final long JEV_CACHE_TTL = 60_000L;
 
+    // [2026-10-07] /챗이 쓰는 TCONFIG 키(USE_JEV, USE_GEMINI, GPT_MODEL, CHAT_SLANG_ALIAS, USE_EMBED, EMBED_MODEL)를 키마다 따로 조회하던 것을
+    // 한 번의 쿼리로 읽어 30초 동안 공유한다(분당 6쿼리 -> 2쿼리 이하). 값이 없는 키는 null(예전과 동일), DB 오류 시 이전 값을 유지한다.
+    private static final List<String> CFG_KEYS = java.util.Arrays.asList(
+            "USE_JEV", "USE_GEMINI", "GPT_MODEL", "CHAT_SLANG_ALIAS", "USE_EMBED", "EMBED_MODEL");
+    private volatile Map<String, String> chatCfg = new HashMap<>();
+    private volatile long chatCfgTime = 0L;
+
+    private String cfgVal(String key) {
+        long now = System.currentTimeMillis();
+        if (now - chatCfgTime > 30_000L) {
+            synchronized (this) {
+                if (now - chatCfgTime > 30_000L) {
+                    chatCfgTime = now;
+                    try {
+                        Map<String, String> m = new HashMap<>();
+                        for (HashMap<String, Object> r : botS4Service.selectTconfigList(CFG_KEYS)) {
+                            if (r.get("ITEM") != null && r.get("VAL") != null) m.put(String.valueOf(r.get("ITEM")), String.valueOf(r.get("VAL")));
+                        }
+                        chatCfg = m;
+                    } catch (Exception e) {
+                        // DB 오류 시 이전 값 유지
+                    }
+                }
+            }
+        }
+        return chatCfg.get(key);
+    }
+
     private void refreshJevConfig() {
         long now = System.currentTimeMillis();
         if (now - jevCacheTime <= JEV_CACHE_TTL) return;
@@ -118,7 +146,7 @@ public class LoaAiBotController {
         String k = PropsUtil.getProperty("keys", "jevKey"); // 파일 재조회는 60초에 한 번만
         jevKeyCached = k == null ? "" : k.trim();
         try {
-            jevSwitchOn = !"0".equals(botS4Service.selectTconfigVal("USE_JEV"));
+            jevSwitchOn = !"0".equals(cfgVal("USE_JEV"));
         } catch (Exception e) {
             // DB 오류 시 이전 값 유지
         }
@@ -131,6 +159,11 @@ public class LoaAiBotController {
     /** [2026-10-02] Jev 이력은 요청이 끝난 뒤(최종으로 무슨 처리를 했는지 알게 된 뒤) 한꺼번에 저장한다 -- DECISION은 Jev 자신의 판단일 뿐이라
      *  실제로 웹 검색/로아 명령(내부 조회)/시스템 매뉴얼/바로 답변 중 무엇을 했는지는 ACTION 컬럼에 따로 남긴다. */
     private final ThreadLocal<List<HashMap<String, Object>>> pendingJev = new ThreadLocal<>();
+    private static final java.util.concurrent.ExecutorService LOG_EXEC = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "ai-log");
+        t.setDaemon(true);
+        return t;
+    });
 
     private void markModel(String kind, String model) {
         Map<String, String> m = usedModels.get();
@@ -149,7 +182,7 @@ public class LoaAiBotController {
         long now = System.currentTimeMillis();
         if (now - geminiCacheTime > GEMINI_CACHE_TTL) {
             try {
-                String val = botS4Service.selectTconfigVal("USE_GEMINI");
+                String val = cfgVal("USE_GEMINI");
                 geminiCached = "1".equals(val);
             } catch (Exception e) {
                 // DB 오류 시 이전 캐시 유지
@@ -588,15 +621,22 @@ public class LoaAiBotController {
             String note = um == null ? null : um.get("routeNote");
             if (route == null) route = "DIRECT"; // 검색/명령/매뉴얼 없이 모델이 바로 답함
             String fullDetail = (detail == null ? "" : detail) + (note == null ? "" : (detail == null || detail.isEmpty() ? "" : " | ") + note);
+            // [2026-10-07] 이력 INSERT는 응답과 상관없으니 별도 스레드에서(요청 스레드가 DB 쓰기 왕복을 기다리지 않게).
+            final List<HashMap<String, Object>> rowsToSave = new ArrayList<>();
             for (HashMap<String, Object> m : pend) {
                 m.put("action", route);
                 m.put("actionDetail", fullDetail.isEmpty() ? null : cut(fullDetail, 300));
-                try {
-                    botDao.insertJevLog(m);
-                } catch (Exception e) {
-                    logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
-                }
+                rowsToSave.add(m);
             }
+            LOG_EXEC.submit(() -> {
+                for (HashMap<String, Object> m : rowsToSave) {
+                    try {
+                        botDao.insertJevLog(m);
+                    } catch (Exception e) {
+                        logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
+                    }
+                }
+            });
         } catch (Exception e) {
             logger.warn("[JEV] 이력 저장 실패(무시): {}", e.toString());
         }
@@ -1048,7 +1088,7 @@ public class LoaAiBotController {
         if (now - gptModelTime > 60_000L) {
             gptModelTime = now;
             try {
-                String v = botS4Service.selectTconfigVal("GPT_MODEL");
+                String v = cfgVal("GPT_MODEL");
                 gptModelCached = (v == null || v.trim().isEmpty()) ? GPT_DEFAULT_MODEL : v.trim();
             } catch (Exception e) {
                 // DB 오류 시 이전 값 유지
@@ -1242,7 +1282,7 @@ public class LoaAiBotController {
             slangAliasTime = now;
             try {
                 List<String> out = new ArrayList<>();
-                String v = botS4Service.selectTconfigVal("CHAT_SLANG_ALIAS");
+                String v = cfgVal("CHAT_SLANG_ALIAS");
                 if (v != null) for (String a : v.split(",")) { String n = normWord(a); if (n.length() >= 2) out.add(n); }
                 slangAliasCache = out;
             } catch (Exception e) {
@@ -1300,6 +1340,7 @@ public class LoaAiBotController {
             p.put("room", roomName);
             p.put("days", CHAT_KEEP_DAYS);
             p.put("maxRows", CHAT_RECALL_SCAN);
+            p.put("withEmbedding", Boolean.TRUE); // 큐 복원(loadQueueFromDb)은 벡터가 필요 없어 안 가져온다
             List<HashMap<String, Object>> rows = botDao.selectAiChatRecent(p); // 최신순
             List<double[]> scored = new ArrayList<>(); // {index, score}
             int embCount = 0;
@@ -1376,8 +1417,8 @@ public class LoaAiBotController {
         if (now - embedCfgTime <= 60_000L) return;
         embedCfgTime = now;
         try {
-            embedOnCached = !"0".equals(botS4Service.selectTconfigVal("USE_EMBED"));
-            String m = botS4Service.selectTconfigVal("EMBED_MODEL");
+            embedOnCached = !"0".equals(cfgVal("USE_EMBED"));
+            String m = cfgVal("EMBED_MODEL");
             embedModelCached = (m == null || m.trim().isEmpty()) ? EMBED_DEFAULT_MODEL : m.trim();
         } catch (Exception e) {
             // DB 오류 시 이전 값 유지

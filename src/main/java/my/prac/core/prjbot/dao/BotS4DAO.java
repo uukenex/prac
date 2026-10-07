@@ -31,6 +31,7 @@ public interface BotS4DAO {
     List<String> selectS4UserSearch(HashMap<String, Object> map);
 
     String selectTconfigVal(@Param("item") String item);
+    List<HashMap<String, Object>> selectTconfigList(@Param("items") List<String> items);
     int updateUserEquip(HashMap<String, Object> map);
     int selectTotalFishingLogCount(@Param("userName") String userName);
 }

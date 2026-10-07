@@ -532,16 +532,17 @@
 	</select>
 	
 	<select id="selectIssueCase" resultType="hashMap" parameterType="hashMap">
-		SELECT TO_CHAR(A.RES) AS RES
-			  ,TO_CHAR(A.INSERT_DATE,'YYYY/MM/DD HH24:MI:SS') AS INSERT_DATE
-		  FROM TBOT_WORD_HIS A
-		 WHERE RES IS NOT NULL
-		   AND TRIM(A.REQ) LIKE trim(#{fulltxt, jdbcType=VARCHAR})
-		   AND A.ISSUE_YN IS NULL
-		   AND A.INSERT_DATE = (SELECT MAX(B.INSERT_DATE)
-							 FROM TBOT_WORD_HIS B
-							WHERE TRIM(B.REQ) = TRIM(A.REQ)
-							  AND B.ISSUE_YN IS NULL)
+		<!-- [2026-10-07] 같은 명령의 가장 최근 정상 응답 1건. 예전 쿼리는 TBOT_WORD_HIS를 두 번 풀스캔(2GB)했다. 이제 함수 인덱스
+		     IDX_WORD_HIS_REQ_DATE (TRIM(REQ), INSERT_DATE)로 최신순 범위 스캔 후 첫 행에서 멈춘다(WORD_HIS_SHRINK.sql). -->
+		SELECT RES, INSERT_DATE
+		  FROM (SELECT TO_CHAR(A.RES) AS RES
+		              ,TO_CHAR(A.INSERT_DATE,'YYYY/MM/DD HH24:MI:SS') AS INSERT_DATE
+		          FROM TBOT_WORD_HIS A
+		         WHERE TRIM(A.REQ) = TRIM(#{fulltxt, jdbcType=VARCHAR})
+		           AND A.RES IS NOT NULL
+		           AND A.ISSUE_YN IS NULL
+		         ORDER BY A.INSERT_DATE DESC)
+		 WHERE ROWNUM = 1
 		
 	</select>
 	
@@ -2154,7 +2155,8 @@
 
 	<select id="selectAiChatRecent" parameterType="hashmap" resultType="hashmap">
 		SELECT * FROM (
-		    SELECT REG_DATE, USER_NAME, QUESTION, ANSWER, EMBEDDING, EMBED_MODEL
+		    SELECT REG_DATE, USER_NAME, QUESTION, ANSWER
+		           <if test="withEmbedding != null and withEmbedding"> , EMBEDDING, EMBED_MODEL</if>
 		      FROM TBOT_AI_CHAT_HIS
 		     WHERE ROOM_NAME = #{room, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}
 		       AND REG_DATE >= SYSTIMESTAMP - #{days}

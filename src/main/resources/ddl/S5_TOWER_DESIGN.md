@@ -4768,3 +4768,15 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - XSS: 제목/닉네임/댓글/IP를 쓰는 JSP 20개(74곳)를 `<c:out>`으로 변경(수정 화면 textarea의 본문도 c:out으로 `</textarea>` 탈출 방지), 구 게시판 JS 목록은 `escH`로 이스케이프. 본문 HTML은 `HtmlSanitizer`(jsoup Safelist.relaxed + style/class/font/table 속성)로 읽을 때 살균 -- script, on* 이벤트, javascript: 링크, iframe 제거, 서식/상대 경로 이미지는 유지(저장된 기존 글에도 적용).
 - 로그인 오픈 리다이렉트: 로그인/로그아웃 뒤 이동 주소는 같은 사이트 주소만 허용(`safeReturnUrl`), 아니면 /free. 비로그인 `/boardWrite` NPE도 로그인 화면으로 처리.
 - 보류(영향이 커서 별도 결정): MD5 무솔트 -> BCrypt 전환, 로그인 시도 제한, 로그인 시 세션 재발급, 의존성(commons-fileupload 중복 선언, Spring 4.3.2) 업그레이드, 새 게시판 비로그인 글쓰기(999999) 도배 방지.
+
+## 2026-10-07 DB 성능 점검(오케스트레이션 첫 점검) 반영
+- 공간 회수(라이브 적용 완료, `WORD_HIS_SHRINK.sql`, `SHAREBOARD_HIST_LOB_SHRINK.sql`):
+  - `TBOT_WORD_HIS`: 27.5만 행(실데이터 약 40MB)인데 세그먼트가 2,159MB였다(30일 정리로 지운 행의 공간이 MANUAL 세그먼트 관리 테이블스페이스라 회수 안 됨, SHRINK SPACE 불가). `ALTER TABLE MOVE`로 120MB(16초)로 줄이고 인덱스 재구성, 행 수 동일 확인.
+  - `TSHAREBOARD_HIST.SHARE_CONTENT`(NCLOB): 실제 텍스트 91MB가 LOB 세그먼트 1,792MB였다 -> `MOVE LOB`로 192MB(50초). 이때 PK 인덱스(SYS_C004425)가 UNUSABLE이 되어 즉시 REBUILD(약 1분 이내 구간, 이후 정상 확인). 같은 작업을 다시 할 때는 스크립트의 UNUSABLE 인덱스 재구성 구문 포함.
+  - 이 스키마 전체 5.2GB 중 약 3.7GB가 낭비 공간이었다. 로그성 테이블이 다시 커질 수 있으므로 정리(delete) 후 공간 회수가 필요하면 같은 방식(MOVE + 인덱스 REBUILD)을 새벽에.
+- `selectIssueCase`(로아 API 실패 시 마지막 정상 응답): TBOT_WORD_HIS를 두 번 풀스캔하던 쿼리를 `TRIM(REQ)` 함수 인덱스 `IDX_WORD_HIS_REQ_DATE (TRIM(REQ), INSERT_DATE)`의 최신순 범위 스캔 + ROWNUM=1로 교체(실측 0.01초, 실행계획 INDEX RANGE SCAN DESCENDING).
+- `/챗` 응답 전 동기 DB 쓰기 줄이기: Jev 이력 INSERT를 별도 스레드(`ai-log`)로. (`/챗`이 TBOT_WORD_HIS에도 한 번 더 기록하는 것은 로그 뷰어/사용자 요약이 쓰는 기록이라 유지.)
+- TCONFIG: `/챗`이 키 6개(USE_JEV, USE_GEMINI, GPT_MODEL, CHAT_SLANG_ALIAS, USE_EMBED, EMBED_MODEL)를 각각 조회하던 것을 한 번의 IN 쿼리(`selectTconfigList`) 스냅샷(30초)으로 통합.
+- `selectAiChatRecent`: 서버 재기동 후 큐 복원(10행)에서는 EMBEDDING/EMBED_MODEL 컬럼을 가져오지 않고, 유사 대화 회상(최대 300행)에서만 가져온다(`withEmbedding`).
+- 임베딩은 14:29부터(배포 후) 저장되는 것을 확인(1368자). 그 전 행과 한 건(15:41, 3초 타임아웃 등 일시 실패 추정)은 벡터 없이 기존 단어 겹침 방식으로 처리된다.
+- 보류: 게시판 글 번호 채번(max+1 -> 시퀀스), 게시판 목록 쿼리의 CLOB 컬럼/스칼라 서브쿼리 정리, TBOT_JEV_LOG.QUESTIONS 상수 JSON 중복 저장, 호출 없는 selectMarketCondition 제거.

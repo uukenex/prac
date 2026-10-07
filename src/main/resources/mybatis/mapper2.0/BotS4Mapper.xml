@@ -111,6 +111,13 @@
         SELECT VAL FROM TCONFIG WHERE ITEM = #{item} AND ROWNUM = 1
     </select>
 
+    <!-- [2026-10-07] 여러 설정 키를 한 번에 조회(/챗이 키마다 따로 조회하던 것을 묶음). -->
+    <select id="selectTconfigList" resultType="hashmap">
+        SELECT ITEM, VAL FROM TCONFIG
+         WHERE ITEM IN
+        <foreach collection="items" item="it" open="(" separator="," close=")">#{it}</foreach>
+    </select>
+
     <select id="selectTotalFishingLogCount" resultType="int">
         SELECT COUNT(*) FROM TBOT_S4_FISHING_LOG WHERE USER_NAME = #{userName}
     </select>
