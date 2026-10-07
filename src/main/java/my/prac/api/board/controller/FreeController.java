@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.CommentReply;
 import my.prac.core.dto.Comments;
+import my.prac.core.util.HtmlSanitizer;
 import my.prac.core.dto.Users;
 import my.prac.core.prjboard.service.CommentService;
 import my.prac.core.prjuser.service.UserService;
@@ -86,7 +87,7 @@ public class FreeController {
 				comment.setCommentContent("");
 			} else {
 				reply = commentService.selectReplyList(commentNo);
-				comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+				comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 			}
 		} catch (Exception e) {
 			log.info("commentService.selectReplyList DB none Connect");
@@ -113,6 +114,7 @@ public class FreeController {
 		String commentContent = request.getParameter("content");
 		String secretYn = "Y".equals(request.getParameter("secretYn")) ? "Y" : "N";
 		Users u = (Users) session.getAttribute("Users");
+		if (u == null) return "redirect:/loginCheck";
 		String userId = u.getUserId();
 		try {
 			commentService.writeFreeComment(commentName, commentContent, userId, secretYn);
@@ -125,12 +127,13 @@ public class FreeController {
 
 	// 공지사항 수정창으로 넘어가기
 	@RequestMapping(value = "/session/freeUpdate", method = RequestMethod.POST)
-	public String noticeUpdate(Model model, HttpServletRequest request) {
+	public String noticeUpdate(Model model, HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/freeView?commentNo=" + commentNo);
 		Comments comment = null;
 		try {
 			comment = commentService.selectComment(Integer.parseInt(commentNo));
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
@@ -143,6 +146,7 @@ public class FreeController {
 	public String commentUpdate(Model model, HttpServletRequest request, HttpSession session) {
 
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/freeView?commentNo=" + commentNo);
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
 		String secretYn = "Y".equals(request.getParameter("secretYn")) ? "Y" : "N";
@@ -159,6 +163,7 @@ public class FreeController {
 	@RequestMapping(value = "/freeDelete", method = RequestMethod.POST)
 	public String commentDelete(Model model, HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/freeView?commentNo=" + commentNo);
 		int result = 0;
 		try {
 			result = commentService.deleteComment(Integer.parseInt(commentNo));
@@ -173,10 +178,13 @@ public class FreeController {
 
 	// 댓글달기 ajax
 	@RequestMapping(value = "/session/replyRegist", method = RequestMethod.POST)
-	public @ResponseBody String ajaxreply(@RequestParam String userId, @RequestParam String replyContent,
+	public @ResponseBody String ajaxreply(@RequestParam(required = false) String userId, @RequestParam String replyContent,
 			@RequestParam int commentNo, HttpSession session) {
+		// [2026-10-07] 작성자는 화면이 보낸 userId가 아니라 로그인 세션의 사용자만 쓴다(남의 명의로 댓글 작성 방지).
+		Users su = (Users) session.getAttribute("Users");
+		if (su == null) return "LOGIN";
 		try {
-			commentService.insertReply(replyContent, commentNo, userId);
+			commentService.insertReply(replyContent, commentNo, su.getUserId());
 		} catch (Exception e) {
 			log.info("commentService.insertReply DB none Connect");
 		}
@@ -187,7 +195,7 @@ public class FreeController {
 	// 검색기능(자유게시판) ajax 카테고리와 검색키워드를 받아옴
 	@RequestMapping(value = "/search", method = RequestMethod.POST)
 	public @ResponseBody List<Comments> ajaxsearch(@RequestParam String category, @RequestParam String keyword,
-			Model model) {
+			Model model, HttpSession session) {
 		List<Comments> result = new ArrayList<>();
 		try {
 			if (category.equals("제목")) {
@@ -201,7 +209,7 @@ public class FreeController {
 		} catch (Exception e) {
 			log.info("commentService.freeSearchListByPage DB none Connect");
 		}
-		return result;
+		return BoardAuth.hideSecrets(result, session, category); // [2026-10-07] 비로그인에게 비밀글 본문 숨김
 	}
 
 }

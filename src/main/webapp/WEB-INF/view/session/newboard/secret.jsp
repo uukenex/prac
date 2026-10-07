@@ -35,8 +35,8 @@
           <c:forEach var="comment" items="${comments}">
             <tr onclick="location.href='<%=request.getContextPath()%>/session/newboard/secretView?commentNo=${comment.commentNo}'">
               <td class="ib-no">${comment.commentNo}</td>
-              <td class="ib-title"><a href="<%=request.getContextPath()%>/session/newboard/secretView?commentNo=${comment.commentNo}">${comment.commentName}</a><c:if test="${comment.replyCnt > 0}"><span class="ib-cnt">[${comment.replyCnt}]</span></c:if></td>
-              <td class="ib-nick">${comment.userNick}</td>
+              <td class="ib-title"><a href="<%=request.getContextPath()%>/session/newboard/secretView?commentNo=${comment.commentNo}"><c:out value="${comment.commentName}"/></a><c:if test="${comment.replyCnt > 0}"><span class="ib-cnt">[${comment.replyCnt}]</span></c:if></td>
+              <td class="ib-nick"><c:out value="${comment.userNick}"/></td>
               <td class="ib-date"><fmt:formatDate value="${comment.commentDate}" pattern="MM-dd"/></td>
               <td class="ib-hit">${comment.commentCount}</td>
             </tr>

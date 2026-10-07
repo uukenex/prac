@@ -46,9 +46,11 @@
 
 	<!-- [2026-09-16 신설] 자유게시판 -> 비밀게시판 이동(COMMENT_CATEGORY만 변경, 댓글은
 	     COMMENT_NO로 연결돼 있어 그대로 따라감). thjeon 전용 이동 버튼용. -->
+	<!-- [2026-10-07] 이동한 글은 SECRET_YN도 Y로 같이 바꾼다(예전엔 N으로 남아 /freeView로 비로그인에게 읽혔음). 이 쿼리는 비밀게시판 이동에만 쓴다. -->
 	<update id="updateCommentCategory" parameterType="Map">
 		update TCOMMENT set
-		comment_category=#{commentCategory}
+		comment_category=#{commentCategory},
+		secret_yn='Y'
 		where comment_no=#{commentNo}
 	</update>
 	<!-- 페이지당 리스트를 보여줌(분류별로 해야할듯) -->

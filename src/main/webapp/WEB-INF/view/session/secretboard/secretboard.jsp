@@ -23,6 +23,7 @@
 	<!--[if lte IE 8]><link rel="stylesheet" href="assets/css/ie8.css" /><![endif]-->
 	<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 <title>비밀게시판 ::: DEV-APC</title>
+<script>function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}</script>
 </head>
 <body>
 
@@ -92,8 +93,8 @@
 									<c:forEach var="comment" items="${comments }">
 										<tr style="border:1px solid #FFA2A2;">
 											<td>${comment.commentNo }</td>
-											<td id="boardTitle"><a href="/session/secretView?commentNo=${comment.commentNo} ">${comment.commentName }(${comment.replyCnt })</a></td>
-											<td>${comment.userNick}</td>
+											<td id="boardTitle"><a href="/session/secretView?commentNo=${comment.commentNo} "><c:out value="${comment.commentName}"/>(${comment.replyCnt })</a></td>
+											<td><c:out value="${comment.userNick}"/></td>
 											<td><fmt:formatDate value="${comment.commentDate }"
 													pattern="yy-MM-dd" var="fmtDate" /> ${fmtDate }</td>
 											<td>${comment.commentCount }</td>
@@ -166,8 +167,8 @@
 				$("tbody")[0].innerHTML+=
 		"<tr style=\"border:1px solid #FFA2A2;\">"
 		+"<td>"+item.commentNo+"</td>"
-		+"<td id='boardTitle'><a href='/session/secretView?commentNo="+item.commentNo+"' >"+item.commentName +"("+item.replyCnt+") </a></td>"
-		+"<td>"+item.userNick+"</td>"
+		+"<td id='boardTitle'><a href='/session/secretView?commentNo="+item.commentNo+"' >"+escH(item.commentName) +"("+item.replyCnt+") </a></td>"
+		+"<td>"+escH(item.userNick)+"</td>"
 		+"<td>"+newDate+"</td>"
 		+"<td>"+item.commentCount +"</td>"
 		+"</tr>"

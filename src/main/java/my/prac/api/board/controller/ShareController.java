@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.Shareboard;
+import my.prac.core.util.HtmlSanitizer;
 import my.prac.core.dto.Users;
 import my.prac.core.prjshare.service.ShareService;
 
@@ -76,7 +77,7 @@ public class ShareController {
 				share = shareService.selectShareHist(shareMap);
 				shareHist = shareService.selectShareHistList(shareNo);
 			}
-			share.setShareContent(share.getShareContent().replaceAll("？", ""));
+			share.setShareContent(HtmlSanitizer.clean(share.getShareContent().replaceAll("？", "")));
 
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
@@ -124,7 +125,7 @@ public class ShareController {
 		Shareboard share = null;
 		try {
 			share = shareService.selectShare(Integer.parseInt(shareNo));
-			share.setShareContent(share.getShareContent().replaceAll("？", ""));
+			share.setShareContent(HtmlSanitizer.clean(share.getShareContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
 		}

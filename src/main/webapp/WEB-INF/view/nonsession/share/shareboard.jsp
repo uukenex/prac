@@ -89,8 +89,8 @@
 									<c:forEach var="share" items="${shares }">
 										<tr style="border:1px solid #FFA2A2;">
 											<td>${share.shareNo }</td>
-											<td id="boardTitle"><a href="shareView?shareNo=${share.shareNo} ">${share.shareName }</a></td>
-											<td>${share.userNick}</td>
+											<td id="boardTitle"><a href="shareView?shareNo=${share.shareNo} "><c:out value="${share.shareName}"/></a></td>
+											<td><c:out value="${share.userNick}"/></td>
 											<td><fmt:formatDate value="${share.modifyDate }"
 													pattern="yyyy-MM-dd HH:mm:ss" var="fmtDate" /> ${fmtDate }</td>
 										</tr>

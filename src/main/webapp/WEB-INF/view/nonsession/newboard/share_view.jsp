@@ -13,7 +13,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${share.shareName} ::: TH보드</title>
+<title><c:out value="${share.shareName}"/> ::: TH보드</title>
 </head>
 <body>
 <%-- [2026-09-30] 인벤 스타일 문서 상세(자유게시판과 동일 테마). 버전 선택/수정/비밀게시판 이동 기능은 그대로. --%>
@@ -24,14 +24,14 @@
     <div class="ib-box">
       <div class="ib-post-head">
         <div class="ib-crumbs">공유게시판 &gt; No.${share.shareNo}</div>
-        <h1>${share.shareName} <span class="ib-ver">v.${share.version}</span></h1>
+        <h1><c:out value="${share.shareName}"/> <span class="ib-ver">v.${share.version}</span></h1>
         <div class="ib-byline">
           <c:choose>
             <c:when test="${share.modifyId == '999999'}">
-              <span><b>${share.userNick}</b> (${share.ipAddr})</span>
+              <span><b><c:out value="${share.userNick}"/></b> (<c:out value="${share.ipAddr}"/>)</span>
             </c:when>
             <c:otherwise>
-              <span><b>${share.userNick}</b></span>
+              <span><b><c:out value="${share.userNick}"/></b></span>
             </c:otherwise>
           </c:choose>
           <span><fmt:formatDate value="${share.modifyDate}" pattern="yyyy-MM-dd HH:mm"/> 수정</span>

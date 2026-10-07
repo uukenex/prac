@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.CommentReply;
 import my.prac.core.dto.Comments;
+import my.prac.core.util.HtmlSanitizer;
 import my.prac.core.dto.Shareboard;
 import my.prac.core.dto.Users;
 import my.prac.core.prjboard.service.CommentService;
@@ -110,7 +111,7 @@ public class NewBoardController {
 				comment.setCommentContent("");
 			} else {
 				reply = commentService.selectReplyList(commentNo);
-				comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+				comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 			}
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
@@ -144,12 +145,13 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/session/newboard/freeUpdate", method = RequestMethod.POST)
-	public String freeUpdateForm(Model model, HttpServletRequest request) {
+	public String freeUpdateForm(Model model, HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/newboard/freeView?commentNo=" + commentNo);
 		Comments comment = null;
 		try {
 			comment = commentService.selectComment(Integer.parseInt(commentNo));
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
@@ -159,8 +161,9 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/newboard/freeUpdate", method = RequestMethod.POST)
-	public String freeUpdate(HttpServletRequest request) {
+	public String freeUpdate(HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/newboard/freeView?commentNo=" + commentNo);
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
 		String secretYn = "Y".equals(request.getParameter("secretYn")) ? "Y" : "N";
@@ -173,8 +176,9 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/newboard/freeDelete", method = RequestMethod.POST)
-	public String freeDelete(HttpServletRequest request) {
+	public String freeDelete(HttpServletRequest request, HttpSession session) {
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/newboard/freeView?commentNo=" + commentNo);
 		try {
 			commentService.deleteComment(Integer.parseInt(commentNo));
 		} catch (Exception e) {
@@ -184,7 +188,8 @@ public class NewBoardController {
 	}
 
 	@RequestMapping(value = "/newboard/search", method = RequestMethod.POST)
-	public @ResponseBody List<Comments> freeSearch(@RequestParam String category, @RequestParam String keyword) {
+	public @ResponseBody List<Comments> freeSearch(@RequestParam String category, @RequestParam String keyword,
+			HttpSession session) {
 		List<Comments> result = new ArrayList<>();
 		try {
 			if (category.equals("제목")) result = commentService.freeSearchListByPage(keyword, 1);
@@ -193,7 +198,7 @@ public class NewBoardController {
 		} catch (Exception e) {
 			log.info("commentService.freeSearchListByPage DB none Connect");
 		}
-		return result;
+		return BoardAuth.hideSecrets(result, session, category); // [2026-10-07] 비로그인에게 비밀글 본문 숨김
 	}
 
 	// ================================================================
@@ -238,7 +243,7 @@ public class NewBoardController {
 				share = shareService.selectShareHist(shareMap);
 			}
 			shareHist = shareService.selectShareHistList(shareNo);
-			share.setShareContent(share.getShareContent().replaceAll("？", ""));
+			share.setShareContent(HtmlSanitizer.clean(share.getShareContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
 		}
@@ -282,7 +287,7 @@ public class NewBoardController {
 		Shareboard share = null;
 		try {
 			share = shareService.selectShare(Integer.parseInt(shareNo));
-			share.setShareContent(share.getShareContent().replaceAll("？", ""));
+			share.setShareContent(HtmlSanitizer.clean(share.getShareContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("shareService.selectShare DB none Connect");
 		}
@@ -358,7 +363,7 @@ public class NewBoardController {
 			comment = commentService.selectComment(commentNo);
 			BoardViewCounter.count(commentService, request, response, session, comment, false); // [2026-10-07] 조회수 중복/작성자 제외
 			reply = commentService.selectReplyList(commentNo);
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
@@ -394,10 +399,11 @@ public class NewBoardController {
 	public String secretUpdateForm(Model model, HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/newboard/secretView?commentNo=" + commentNo);
 		Comments comment = null;
 		try {
 			comment = commentService.selectComment(Integer.parseInt(commentNo));
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
@@ -410,6 +416,7 @@ public class NewBoardController {
 	public String secretUpdate(HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/newboard/secretView?commentNo=" + commentNo);
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
 		try {
@@ -424,6 +431,7 @@ public class NewBoardController {
 	public String secretDelete(HttpServletRequest request, HttpSession session) {
 		if (notLoggedIn(session)) return "redirect:/loginCheck";
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/newboard/secretView?commentNo=" + commentNo);
 		try {
 			commentService.deleteComment(Integer.parseInt(commentNo));
 		} catch (Exception e) {

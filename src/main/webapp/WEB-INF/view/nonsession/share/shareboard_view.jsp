@@ -31,7 +31,7 @@
 		
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 
-<title>${share.shareName} ::: TH-HOME</title>
+<title><c:out value="${share.shareName}"/> ::: TH-HOME</title>
 
 </head>
 <body>
@@ -68,7 +68,7 @@
 											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
-										<h3 id="boardTitleSytle1">${share.shareName} ver.${share.version}</h3>
+										<h3 id="boardTitleSytle1"><c:out value="${share.shareName}"/> ver.${share.version}</h3>
 										<input type="hidden" name="shareNo" value="${share.shareNo }" />
 										
 										<hr id="boardTitleHrStyle1">
@@ -97,10 +97,10 @@
 											<tr>
 												<td>수정자</td>
 												<c:if test="${share.modifyId == '999999'}"> 
-													<td class="boardTitleSort boardFontBold">${share.userNick} (${share.ipAddr})</td>
+													<td class="boardTitleSort boardFontBold"><c:out value="${share.userNick}"/> (<c:out value="${share.ipAddr}"/>)</td>
 												</c:if>
 												<c:if test="${share.modifyId != '999999'}">
-													<td class="boardTitleSort boardFontBold">${share.userNick}</td> 
+													<td class="boardTitleSort boardFontBold"><c:out value="${share.userNick}"/></td> 
 												</c:if>
 												
 												<td>최근수정일</td>

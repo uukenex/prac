@@ -28,6 +28,23 @@ public class UserController {
 	@Resource(name = "core.prjuser.UserService")
 	UserService uService;
 
+	/** [2026-10-07] 로그인/로그아웃 뒤 이동 주소는 이 사이트 안의 주소만 허용한다(외부 사이트에서 링크로 넘어와 로그인하면 그 사이트로 보내던 오픈 리다이렉트 방지).
+	 *  null/외부 주소/`//` 프로토콜 상대 주소는 자유게시판으로. */
+	private static String safeReturnUrl(HttpServletRequest request, String url) {
+		final String dflt = "/free?page=1";
+		if (url == null || url.trim().isEmpty()) return dflt;
+		if (url.startsWith("/") && !url.startsWith("//") && !url.contains("\\")) return url;
+		try {
+			java.net.URI u = new java.net.URI(url);
+			String scheme = u.getScheme();
+			if (u.getHost() != null && u.getHost().equalsIgnoreCase(request.getServerName())
+					&& ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) return url;
+		} catch (Exception ignore) {
+			// 잘못된 주소는 기본값
+		}
+		return dflt;
+	}
+
 	@RequestMapping(value = "/loginCheck", method = RequestMethod.GET)
 	public String loginCheck(Model model, HttpServletRequest request, HttpSession session) {
 		// [2026-10-07] 로그인이 필요한 화면(/session/**)에서 넘어온 경우 원래 가려던 주소로 돌아간다(Referer가 없는 직접 접근도 로그인 화면을 보여줌).
@@ -37,7 +54,7 @@ public class UserController {
 			session.setAttribute("returnUrl", target);
 			return "nonsession/login/loginCheck";
 		}
-		session.setAttribute("returnUrl", request.getHeader("Referer"));
+		session.setAttribute("returnUrl", safeReturnUrl(request, request.getHeader("Referer")));
 		if (request.getHeader("Referer") == null) {
 			return "redirect:/free?page=1";
 		}
@@ -68,7 +85,7 @@ public class UserController {
 
 				uService.insertUsertracking(hashMap);
 				System.out.println("returnUrl: " + returnUrl);
-				return "redirect:" + returnUrl;
+				return "redirect:" + safeReturnUrl(request, returnUrl);
 			}
 			model.addAttribute("message", "아이디 혹은 비밀번호를 확인해주세요.");
 			return "nonsession/login/login";
@@ -134,7 +151,7 @@ public class UserController {
 
 				uService.insertUsertracking(hashMap);
 				System.out.println("returnUrl: " + returnUrl);
-				return "redirect:" + returnUrl;
+				return "redirect:" + safeReturnUrl(request, returnUrl);
 			}
 			model.addAttribute("message", "아이디 혹은 비밀번호를 확인해주세요.");
 			return "nonsession/login/login";
@@ -149,7 +166,7 @@ public class UserController {
 		String referer = request.getHeader("Referer");
 
 		session.invalidate();
-		return "redirect:" + referer;
+		return "redirect:" + safeReturnUrl(request, referer);
 	}
 
 	@RequestMapping(value = "/autoLogout", method = RequestMethod.GET)

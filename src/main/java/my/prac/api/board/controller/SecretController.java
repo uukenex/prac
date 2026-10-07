@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import my.prac.core.dto.Comments;
+import my.prac.core.util.HtmlSanitizer;
 import my.prac.core.dto.CommentReply;
 import my.prac.core.dto.Shareboard;
 import my.prac.core.dto.Users;
@@ -99,7 +100,7 @@ public class SecretController {
 			comment = commentService.selectComment(commentNo);
 			BoardViewCounter.count(commentService, request, response, session, comment, false); // [2026-10-07] 조회수 중복/작성자 제외
 			reply = commentService.selectReplyList(commentNo);
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectReplyList DB none Connect");
 			log.info("commentService.selectComment DB none Connect");
@@ -147,10 +148,11 @@ public class SecretController {
 		}
 
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/secretView?commentNo=" + commentNo);
 		Comments comment = null;
 		try {
 			comment = commentService.selectComment(Integer.parseInt(commentNo));
-			comment.setCommentContent(comment.getCommentContent().replaceAll("？", ""));
+			comment.setCommentContent(HtmlSanitizer.clean(comment.getCommentContent().replaceAll("？", "")));
 		} catch (Exception e) {
 			log.info("commentService.selectComment DB none Connect");
 		}
@@ -166,6 +168,7 @@ public class SecretController {
 		}
 
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/secretView?commentNo=" + commentNo);
 		String commentName = request.getParameter("title");
 		String commentContent = request.getParameter("content");
 
@@ -185,6 +188,7 @@ public class SecretController {
 		}
 
 		String commentNo = request.getParameter("commentNo");
+		if (!BoardAuth.mayModify(commentService, session, commentNo)) return BoardAuth.denied(session, "/session/secretView?commentNo=" + commentNo);
 		try {
 			commentService.deleteComment(Integer.parseInt(commentNo));
 		} catch (Exception e) {

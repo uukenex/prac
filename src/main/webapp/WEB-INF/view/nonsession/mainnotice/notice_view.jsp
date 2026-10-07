@@ -19,7 +19,7 @@
 		
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 
-<title>공지사항: ${comment.commentName}</title>
+<title>공지사항: <c:out value="${comment.commentName}"/></title>
 </head>
 <body>
 	<!-- Drop Menu Header -->
@@ -46,7 +46,7 @@
 											<input type="button" value="목록" id="listview" class="boardButtonStyle2">
 										</section>
 										<hr id="boardTitleHrStyle1">
-										<h3 id="boardTitleSytle1">${comment.commentName}</h3>
+										<h3 id="boardTitleSytle1"><c:out value="${comment.commentName}"/></h3>
 										<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 										<hr id="boardTitleHrStyle1">
 										<table>
@@ -59,7 +59,7 @@
 											<tr>
 												<th>작성자</th>
 												<input type="hidden" name="userId" value="${comment.userId }" />
-												<td class="boardTitleSort boardFontBold">${comment.userNick}</td>
+												<td class="boardTitleSort boardFontBold"><c:out value="${comment.userNick}"/></td>
 												<th>작성일</th>
 												<td class="boardTitleSort boardFontBold">
 													<fmt:formatDate value="${comment.commentDate}"

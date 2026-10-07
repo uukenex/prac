@@ -4758,3 +4758,13 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 ## 2026-10-07 비로그인으로 비밀게시판 진입 시 500 수정
 - 원인: `SessionInterceptor`(/session/**)가 비로그인이면 `/loginCheck`로 sendRedirect한 뒤에도 `true`를 반환해 컨트롤러가 이어서 실행됐고, 컨트롤러도 `redirect:/loginCheck`를 돌려줘 이미 나간 응답에 리다이렉트를 또 시도 -> IllegalStateException(500). (컨트롤러에 로그인 확인을 넣은 뒤로 비밀게시판 목록/글보기에서 발생. 컨트롤러가 로그인 확인이 없는 /session/** 화면은 NPE로 500이 나던 것도 같은 원인.)
 - 수정: 리다이렉트 후 `false`를 반환해 핸들러 실행을 막는다(비로그인으로 /session/** POST가 실행되던 것도 함께 차단). GET 요청이면 가려던 주소를 세션 `loginTarget`에 기억하고, `/loginCheck`가 그 주소를 `returnUrl`로 써서 로그인 뒤 원래 가려던 화면(예: 비밀게시판)으로 돌아간다. Referer가 없는 직접 접근도 로그인 화면이 뜬다.
+
+## 2026-10-07 보안 점검(오케스트레이션 첫 점검) 반영 -- 게시판/로그인
+- 점검 담당(security-reviewer) 보고 중 큰 틀을 깨지 않는 항목을 반영했다.
+- 글 수정/삭제 권한(`BoardAuth.mayModify`): 로그인한 작성자 또는 관리자(THJEON)만 수정/삭제/수정창 열기 -- 자유(`/freeUpdate`, `/freeDelete`, `/session/freeUpdate`), 새 자유(`/newboard/free*`, `/session/newboard/freeUpdate`), 비밀(`/session/secret*`, `/session/newboard/secret*`). 권한이 없으면 비로그인은 로그인 화면, 로그인했으면 그 글 보기로. 공유게시판은 원래 누구나 고치는 위키 구조(IP/버전 기록)라 그대로 둠.
+- 댓글 작성자: `/session/replyRegist`가 화면이 보낸 userId 대신 로그인 세션 사용자만 사용.
+- 검색 API(`/search`, `/newboard/search`): 비로그인에게는 비밀글 본문을 비우고, "내용" 검색에서는 비밀글을 결과에서 제외(일치 여부로 내용 추측 방지).
+- 비밀게시판 이동: `updateCommentCategory`가 `secret_yn='Y'`도 함께 갱신(예전엔 공개 글이 이동 후에도 /freeView로 읽힘). 라이브 TCOMMENT에 이미 어긋난 행은 0건 확인.
+- XSS: 제목/닉네임/댓글/IP를 쓰는 JSP 20개(74곳)를 `<c:out>`으로 변경(수정 화면 textarea의 본문도 c:out으로 `</textarea>` 탈출 방지), 구 게시판 JS 목록은 `escH`로 이스케이프. 본문 HTML은 `HtmlSanitizer`(jsoup Safelist.relaxed + style/class/font/table 속성)로 읽을 때 살균 -- script, on* 이벤트, javascript: 링크, iframe 제거, 서식/상대 경로 이미지는 유지(저장된 기존 글에도 적용).
+- 로그인 오픈 리다이렉트: 로그인/로그아웃 뒤 이동 주소는 같은 사이트 주소만 허용(`safeReturnUrl`), 아니면 /free. 비로그인 `/boardWrite` NPE도 로그인 화면으로 처리.
+- 보류(영향이 커서 별도 결정): MD5 무솔트 -> BCrypt 전환, 로그인 시도 제한, 로그인 시 세션 재발급, 의존성(commons-fileupload 중복 선언, Spring 4.3.2) 업그레이드, 새 게시판 비로그인 글쓰기(999999) 도배 방지.

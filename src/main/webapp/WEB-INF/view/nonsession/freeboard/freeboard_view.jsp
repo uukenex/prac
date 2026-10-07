@@ -27,7 +27,7 @@
 		
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css">
 
-<title>${comment.commentName} ::: TH-HOME</title>
+<title><c:out value="${comment.commentName}"/> ::: TH-HOME</title>
 
 </head>
 <body>
@@ -69,7 +69,7 @@
 											</c:if>
 										</section>
 										<hr id="boardTitleHrStyle1">
-										<h3 id="boardTitleSytle1">${comment.commentName}</h3>
+										<h3 id="boardTitleSytle1"><c:out value="${comment.commentName}"/></h3>
 										<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 										<hr id="boardTitleHrStyle1">
 										<table style="border:2px solid #1DDB16">
@@ -82,7 +82,7 @@
 											<tr>
 												<td>작성자</td>
 												<input type="hidden" name="userId" value="${comment.userId }" />
-												<td class="boardTitleSort boardFontBold">${comment.userNick}</td>
+												<td class="boardTitleSort boardFontBold"><c:out value="${comment.userNick}"/></td>
 												<td>작성일</td>
 												<td class="boardTitleSort boardFontBold2">
 													<fmt:formatDate value="${comment.commentDate}"
@@ -160,7 +160,7 @@
 												<tbody id="replyContentViewTableBody" style="border:2px solid #FFA2A2">
 								            	<tr>
 								            		<td>작성자</td>
-								            		<td class=boardFontBold>${reply.userNick}</td>
+								            		<td class=boardFontBold><c:out value="${reply.userNick}"/></td>
 								            		<td>작성일</td>
 								            		<td class="boardTitleSort">
 								            			<fmt:formatDate value="${reply.replyDate }"
@@ -184,7 +184,7 @@
 								            	</tr>
 												<tr>
 													<td colspan="4" class="boardTitleSort" style="border:1px solid #FFA2A2">
-													<pre style="padding-bottom: 50px;"> ${reply.replyContent }</pre> 
+													<pre style="padding-bottom: 50px;"> <c:out value="${reply.replyContent}"/></pre> 
 													</td>
 												</tr>
 										</c:forEach>

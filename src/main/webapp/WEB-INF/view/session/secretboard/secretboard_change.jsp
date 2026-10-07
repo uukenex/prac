@@ -21,7 +21,7 @@
 
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css?v=1.0">
 
-<title>${comment.commentName} 수정</title>
+<title><c:out value="${comment.commentName}"/> 수정</title>
 
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=<%=System.currentTimeMillis()%>" charset="utf-8"></script>
@@ -47,7 +47,7 @@
 					<!-- Board body part -->
 						<div class="10u -1u 12u(mobile) important(moblie)">
 							<section class="middle-content">
-								<h3>🔒 ${comment.commentName} 수정</h3>
+								<h3>🔒 <c:out value="${comment.commentName}"/> 수정</h3>
 								<form action="/session/secretUpdate" method="post" id="frm">
 									<table class="boardEditorTable">
 										<colgroup>
@@ -58,7 +58,7 @@
 											<td></td>
 											<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 											<td class="inputTitle"><input type="text" name="title" id="editorTitleWritter"
-														value="${comment.commentName}">
+														value="<c:out value="${comment.commentName}"/>">
 											</td>
 										</tr>
 										<tr>
@@ -67,7 +67,7 @@
 												 rows="9" cols="100" style="width:100%;
 												 height:412px; min-width:200px; display:none;"
 												 class="editorContentWritter">
-													${comment.commentContent }
+													<c:out value="${comment.commentContent}"/>
 												</textarea>
 											</td>
 										</tr>

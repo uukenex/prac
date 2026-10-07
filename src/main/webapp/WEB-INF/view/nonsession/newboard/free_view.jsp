@@ -13,7 +13,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${comment.commentName} ::: TH보드</title>
+<title><c:out value="${comment.commentName}"/> ::: TH보드</title>
 </head>
 <body>
 <%-- [2026-09-30] 인벤 스타일 글 상세 -- 회색 제목 헤더 + 메타 한 줄 + 본문 박스 + 댓글 박스. 스타일은
@@ -30,9 +30,9 @@
         <div class="ib-box">
           <div class="ib-post-head">
             <div class="ib-crumbs">자유게시판 &gt; No.${comment.commentNo}</div>
-            <h1><c:if test="${comment.secretYn=='Y'}">🔒 </c:if>${comment.commentName}</h1>
+            <h1><c:if test="${comment.secretYn=='Y'}">🔒 </c:if><c:out value="${comment.commentName}"/></h1>
             <div class="ib-byline">
-              <span><b>${comment.userNick}</b></span>
+              <span><b><c:out value="${comment.userNick}"/></b></span>
               <span><fmt:formatDate value="${comment.commentDate}" pattern="yyyy-MM-dd HH:mm"/></span>
               <span>조회 ${comment.commentCount}</span>
               <span>댓글 ${fn:length(replys)}</span>
@@ -69,8 +69,8 @@
           <c:if test="${fn:length(replys) == 0}"><div class="ib-noreply">첫 댓글을 남겨보세요.</div></c:if>
           <c:forEach var="reply" items="${replys}">
             <div class="ib-reply">
-              <span class="ib-who">${reply.userNick}</span><span class="ib-when"><fmt:formatDate value="${reply.replyDate}" pattern="yy-MM-dd HH:mm"/></span>
-              <div class="ib-txt">${reply.replyContent}</div>
+              <span class="ib-who"><c:out value="${reply.userNick}"/></span><span class="ib-when"><fmt:formatDate value="${reply.replyDate}" pattern="yy-MM-dd HH:mm"/></span>
+              <div class="ib-txt"><c:out value="${reply.replyContent}"/></div>
             </div>
           </c:forEach>
           <c:if test="${!empty Users.userId}">

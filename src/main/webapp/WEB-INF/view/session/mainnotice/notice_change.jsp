@@ -20,7 +20,7 @@
 		
 		<link rel="stylesheet" href="<%=request.getContextPath()%>/assets/css/font-awesome.min.css?v=1.0">
 		
-	<title>${comment.commentName} 수정</title>
+	<title><c:out value="${comment.commentName}"/> 수정</title>
 	
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=<%=System.currentTimeMillis()%>" charset="utf-8"></script>
@@ -43,7 +43,7 @@
 					<!-- Board body part -->
 						<div class="8u 12u(moblie) important(moblie)">
 							<section class="middle-content">
-								<h3>${comment.commentName} 수정</h3>
+								<h3><c:out value="${comment.commentName}"/> 수정</h3>
 								<input type="hidden" name="commentNo" value="${comment.commentNo }" />
 								<form action="/commentUpdate" method="post" id="frm">
 									<table class="boardUpdateTable">
@@ -58,7 +58,7 @@
 											<th scope="row">작성자</th>
 						                    <td>
 						                        <input type="hidden" id="IDX" name="IDX" value="">
-						                        ${comment.users.userNick}
+						                        <c:out value="${comment.users.userNick}"/>
 						                    </td>
 						                    <th scope="row">작성일</th>
 						                    <td><fmt:formatDate value="${comment.commentDate}"
@@ -68,13 +68,13 @@
 											<th>제목</th>
 											<td colspan="3">
 												<input type="text" name="title" id="editorTitleWritter"
-														value="${comment.commentName}" class="wdp_90">
+														value="<c:out value="${comment.commentName}"/>" class="wdp_90">
 											</td>
 										</tr>
 										<tr>
 											<td colspan="4">
 												<textarea name="content" id="content" class="editorContentWritter">
-													${comment.commentContent }
+													<c:out value="${comment.commentContent}"/>
 												</textarea>
 											</td>
 										</tr>

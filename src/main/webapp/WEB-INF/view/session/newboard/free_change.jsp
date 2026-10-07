@@ -5,7 +5,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${comment.commentName} 수정 ::: TH보드</title>
+<title><c:out value="${comment.commentName}"/> 수정 ::: TH보드</title>
 <script type="text/javascript" src="//code.jquery.com/jquery-1.11.0.min.js"></script>
 <script type="text/javascript" src="<%=request.getContextPath()%>/se2/js/HuskyEZCreator.js?v=<%=System.currentTimeMillis()%>" charset="utf-8"></script>
 </head>
@@ -14,18 +14,18 @@
   <jsp:include page="../../nonsession/newboard/_chrome_top.jsp" />
 
   <div class="nb-board">
-    <div class="nb-toolbar"><h1>${comment.commentName} 수정</h1></div>
+    <div class="nb-toolbar"><h1><c:out value="${comment.commentName}"/> 수정</h1></div>
     <form action="<%=request.getContextPath()%>/newboard/freeUpdate" method="post" id="nbFrm">
       <input type="hidden" name="commentNo" value="${comment.commentNo}">
       <div class="nb-field">
         <label>제목</label>
-        <input type="text" name="title" id="nbTitle" value="${comment.commentName}">
+        <input type="text" name="title" id="nbTitle" value="<c:out value="${comment.commentName}"/>">
         <label class="nb-check"><input type="checkbox" name="secretYn" value="Y" <c:if test="${comment.secretYn=='Y'}">checked</c:if>> 비밀글(로그인한 유저만 열람)</label>
       </div>
       <div class="nb-field">
         <label>내용</label>
         <textarea name="content" id="content" rows="9" cols="100"
-          style="width:100%; height:380px; min-width:200px; display:none;">${comment.commentContent}</textarea>
+          style="width:100%; height:380px; min-width:200px; display:none;"><c:out value="${comment.commentContent}"/></textarea>
       </div>
       <div class="nb-form-actions">
         <button type="button" class="nb-btn" onclick="history.back();">취소</button>

@@ -36,8 +36,8 @@
           <c:forEach var="share" items="${shares}">
             <tr onclick="location.href='<%=request.getContextPath()%>/newboard/shareView?shareNo=${share.shareNo}'">
               <td class="ib-no">${share.shareNo}</td>
-              <td class="ib-title"><a href="<%=request.getContextPath()%>/newboard/shareView?shareNo=${share.shareNo}">${share.shareName}</a><span class="ib-ver">v.${share.version}</span></td>
-              <td class="ib-nick">${share.userNick}</td>
+              <td class="ib-title"><a href="<%=request.getContextPath()%>/newboard/shareView?shareNo=${share.shareNo}"><c:out value="${share.shareName}"/></a><span class="ib-ver">v.${share.version}</span></td>
+              <td class="ib-nick"><c:out value="${share.userNick}"/></td>
               <td class="ib-date"><fmt:formatDate value="${share.modifyDate}" pattern="MM-dd"/></td>
             </tr>
           </c:forEach>
