@@ -4839,3 +4839,17 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 몬스터도감: 예전 `/로그`의 "몬스터 정보" 표를 가져옴. API `/loa/api/tower-codex-monsters`(로그인 없이 공개, `monsterInfoTable` 10분 캐시 -- 층 수만큼 몬스터 조회가 나가서). 구간 칩: 100층 아래는 10층 단위(1~10 ... 91~100), 100층 이후는 100층 단위(101~200, 201~300, 301~400, 401~500), 층 번호 검색. 열: 층/종류/몬스터/체력/공격력/투자반영 공격력/방어력/처치 PP(관리자용이던 적정전투력/안전기준 열은 뺌).
 - `/로그`에서 몬스터 정보 페이지 제거: `/loa/tower-monster-info` 페이지, `/loa/api/tower-monster-info` API, `s5_monster_info_view.jsp`, 로그 뷰어/밸런스 통계 페이지의 "몬스터 정보" 링크, 카카오 로그인 복귀 허용 목록에서 삭제.
 - 아이템도감: API `/loa/api/tower-codex-items` = `TBOT_S5_LEGENDARY_MASTER` + `TBOT_S5_USER_EQUIP` 집계(`selectLegendaryCodex`). 장비마다 이름/종류(★7 직업·부위·No.)/효과 설명/플레이버, 보유 인원(유저 수)과 총 개수, 최고 강화 수치. 새 전설장비를 master에 추가하면 도감에 자동으로 나타나므로(효과 설명은 웹 `LEGEND_EFFECT_LABEL`에 추가) 추가 장비를 만들 때 목록 확인용으로 쓴다.
+
+## [2026-10-08] 게시판 카카오 로그인 -- 시즌5와 같은 등록 콜백 사용(호스트 무관) + 회원 테이블은 별도 유지
+
+**신고**: "카카오로그인이 안 되는 문제 -- 다른 경로를 이용한 것 같다. s5 로그인 경로를 동일하게 이용하게 해줘(카카오 개발자센터에 콜백 URL이 그렇게 등록돼 있어). 테이블은 s5와 별도로 운영."
+- **원인 추정**: 게시판 로그인(`BoardKakaoLoginController`)이 `redirect_uri`를 "지금 접속한 호스트" 기준(`scheme://호스트/s4/kakao/callback`)으로 만들었다. 카카오 콘솔에는
+  시즌5가 쓰는 `http://rgb-tns.dev-apc.com/s4/kakao/callback` 하나만 등록돼 있어서, 게시판을 rgb-tns가 아닌 호스트(prd-web 등; rgb-tns는 `urlFilter`가 게시판 경로를 막음)로
+  열면 미등록 주소라 로그인 후 카카오가 거부했을 가능성이 크다. (확인: 라이브에서 세 호스트 모두 호스트별 redirect_uri로 카카오에 요청하고 있었고, 게시판 회원 테이블은 시드 1명뿐.
+  카카오 인가 엔드포인트는 로그인 전엔 미등록 주소도 막지 않아 외부에서 오류를 재현하진 못함.)
+- **수정**: 시즌5와 똑같이 등록된 콜백 주소 하나(`REGISTERED_REDIRECT_URI`)만 쓴다(`S4WebController.kakaoCallback`이 state "bd-"면 `/board/kakao/callback`으로 forward -- 기존 구조 그대로).
+  게시판 호스트가 다르면 세션을 넘기는 흐름: (1) 시작 호스트 `/board/kakao/auth`가 일회용 nonce를 그 세션에 저장하고 state=`bd-`+nonce+`.`+base64url(출발 origin) (2) 등록 콜백이 state에서
+  출발 origin을 꺼내(허용 도메인 `*.dev-apc.com`/localhost만) 토큰·회원 처리 후 일회용 티켓(60초, 메모리)을 만들어 출발 origin의 `/board/kakao/finish?ticket=`로 리다이렉트 (3) finish가
+  티켓을 소비하고 티켓 nonce가 그 브라우저 세션 nonce와 같을 때만 로그인(세션 새로 발급). 티켓 저장소가 메모리라 앱이 한 JVM일 때만 동작(현재 구성).
+- **회원 테이블은 시즌5와 별도**: 게시판은 `TBOARD_KAKAO_MEMBER`(+`TBOARD_USER_V`), 시즌5는 `TBOT_S5_KAKAO_MEMBER` -- 이번 변경도 시즌5 테이블/컨트롤러를 건드리지 않음.
+- **배포 후 확인**: 게시판 호스트에서 `/board/kakao/auth` -> 카카오 로그인 -> 게시판으로 돌아와 로그인되는지. 실패하면 카카오 콘솔에 그 호스트의 콜백을 추가 등록하지 않아도 되는지(이제 등록된 하나만 씀) 확인.
