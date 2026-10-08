@@ -699,6 +699,7 @@
         SET EQUIP_VOUCHER = NVL(EQUIP_VOUCHER, 0) + #{qty}
     </update>
 
+    <!-- [2026-10-08] 이벤트지급 3종(동료/장비/악세)은 최근 days일(기본 3일) 안에 전투 기록(TBOT_S5_BATTLE_STAT)이 있는 유저에게만 지급한다. -->
     <!-- /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 장비뽑기권만 지급.
          bulkGrantTierCompanionVoucher와 동일 패턴(CASE로 4개 컬럼 중 tier와 일치하는 것만 갱신). -->
     <update id="bulkGrantTierEquipVoucher">
@@ -707,6 +708,7 @@
             EQUIP_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(EQUIP_VOUCHER_T2, 0) + #{qty} ELSE EQUIP_VOUCHER_T2 END,
             EQUIP_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(EQUIP_VOUCHER_T3, 0) + #{qty} ELSE EQUIP_VOUCHER_T3 END,
             EQUIP_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(EQUIP_VOUCHER_T4, 0) + #{qty} ELSE EQUIP_VOUCHER_T4 END
+        WHERE USER_NAME IN (SELECT USER_NAME FROM TBOT_S5_BATTLE_STAT WHERE REG_DATE &gt;= SYSDATE - #{days})
     </update>
 
     <!-- /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락 동료뽑기권만 지급.
@@ -718,6 +720,7 @@
             COMPANION_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(COMPANION_VOUCHER_T2, 0) + #{qty} ELSE COMPANION_VOUCHER_T2 END,
             COMPANION_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(COMPANION_VOUCHER_T3, 0) + #{qty} ELSE COMPANION_VOUCHER_T3 END,
             COMPANION_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(COMPANION_VOUCHER_T4, 0) + #{qty} ELSE COMPANION_VOUCHER_T4 END
+        WHERE USER_NAME IN (SELECT USER_NAME FROM TBOT_S5_BATTLE_STAT WHERE REG_DATE &gt;= SYSDATE - #{days})
     </update>
 
     <!-- [2026-09-15] /이벤트지급(관리자 전용): 전체 유저에게 특정 등급(1~4)의 티어락
@@ -728,6 +731,7 @@
             ACCESSORY_VOUCHER_T2 = CASE WHEN #{tier} = 2 THEN NVL(ACCESSORY_VOUCHER_T2, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T2 END,
             ACCESSORY_VOUCHER_T3 = CASE WHEN #{tier} = 3 THEN NVL(ACCESSORY_VOUCHER_T3, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T3 END,
             ACCESSORY_VOUCHER_T4 = CASE WHEN #{tier} = 4 THEN NVL(ACCESSORY_VOUCHER_T4, 0) + #{qty} ELSE ACCESSORY_VOUCHER_T4 END
+        WHERE USER_NAME IN (SELECT USER_NAME FROM TBOT_S5_BATTLE_STAT WHERE REG_DATE &gt;= SYSDATE - #{days})
     </update>
 
     <!-- ==================== /탑랭킹: 서버 전체 최고기록(익명 집계) ====================

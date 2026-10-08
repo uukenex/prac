@@ -5924,6 +5924,9 @@ public class BotS5ServiceImpl implements BotS5Service {
      * [2026-09-15] "악세뽑기권도 파라미터로 추가해서 지급할 수 있게 해달라, 예: /이벤트지급
      * 초급 0 0 1 => 악세뽑기권초급 1개" 요청으로 4번째 인자(accessoryQty) 추가.
      */
+    /** [2026-10-08] "이벤트지급 시 최근 3일내 전투기록이 있는 사람만으로 한정" 요청 -- 이 일수 안에 TBOT_S5_BATTLE_STAT(전투 종료 기록)이 있는 유저에게만 지급. */
+    private static final int EVENT_GRANT_ACTIVE_DAYS = 3;
+
     @Override
     @Transactional
     public String grantEventVouchers(String userName, int tier, int companionQty, int equipQty, int accessoryQty) {
@@ -5940,22 +5943,22 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "사용법: /이벤트지급 [등급 초급|중급|상급|최상급] [동료뽑기권수량] [장비뽑기권수량] [악세뽑기권수량] "
                     + "(예: /이벤트지급 중급 3 2 1, 등급 생략 시 초급, 수량 생략 시 0)";
         }
-        StringBuilder sb = new StringBuilder("🎉 이벤트 지급 완료!");
+        StringBuilder sb = new StringBuilder("🎉 이벤트 지급 완료! (최근 " + EVENT_GRANT_ACTIVE_DAYS + "일 내 전투 기록이 있는 유저만)");
         if (companionQty > 0) {
-            int affected = dao.bulkGrantTierCompanionVoucher(tier, companionQty);
-            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
+            int affected = dao.bulkGrantTierCompanionVoucher(tier, companionQty, EVENT_GRANT_ACTIVE_DAYS);
+            sb.append(NL).append("최근 " + EVENT_GRANT_ACTIVE_DAYS + "일 내 전투한 유저 ").append(affected).append("명에게 ")
               .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 동료뽑기권 ")
               .append(companionQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
         }
         if (equipQty > 0) {
-            int affected = dao.bulkGrantTierEquipVoucher(tier, equipQty);
-            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
+            int affected = dao.bulkGrantTierEquipVoucher(tier, equipQty, EVENT_GRANT_ACTIVE_DAYS);
+            sb.append(NL).append("최근 " + EVENT_GRANT_ACTIVE_DAYS + "일 내 전투한 유저 ").append(affected).append("명에게 ")
               .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 장비뽑기권 ")
               .append(equipQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
         }
         if (accessoryQty > 0) {
-            int affected = dao.bulkGrantTierAccessoryVoucher(tier, accessoryQty);
-            sb.append(NL).append("전체 유저 ").append(affected).append("명에게 ")
+            int affected = dao.bulkGrantTierAccessoryVoucher(tier, accessoryQty, EVENT_GRANT_ACTIVE_DAYS);
+            sb.append(NL).append("최근 " + EVENT_GRANT_ACTIVE_DAYS + "일 내 전투한 유저 ").append(affected).append("명에게 ")
               .append(COMPANION_TIER_NAME[tier - 1]).append("(").append(tier).append("번) 악세뽑기권 ")
               .append(accessoryQty).append("장 지급 (해금 여부와 무관하게 바로 사용 가능)");
         }
