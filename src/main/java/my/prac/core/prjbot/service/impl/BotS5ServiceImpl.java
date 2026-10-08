@@ -300,18 +300,20 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 2개"였다가 같은 날 후속 메시지("일반사용자에겐 제작은 아직 오픈하지 말고, 보스처치시
     // 최대1개")로 최대 1개로 축소.
     private static final int[] LEGEND_FRAGMENT_BOSS_FLOOR = { 59, 69, 79, 89, 99 };
-    private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 5, 10, 15, 20, 25 };
+    // [2026-10-08] "전설의조각 확률을 기존 대비 2배" 요청 -- 보스층 5/10/15/20/25% -> 10/20/30/40/50%, 몬스터 0.5% -> 1%, 중간보스 1% -> 2%,
+    // 장비상자 15% -> 30%, 행운칸 사원/유적 5% -> 10%.
+    private static final int[] LEGEND_FRAGMENT_DROP_PCT   = { 10, 20, 30, 40, 50 };
     // [2026-09-29] 80층 이상 일반몬스터 0.5%(5/1000), 중간보스 1%(10/1000) 조각 드랍
     private static final int LEGEND_FRAGMENT_MOB_MIN_FLOOR = 80;
-    private static final int LEGEND_FRAGMENT_MOB_DROP_PERMILLE = 5;
-    private static final int LEGEND_FRAGMENT_MIDBOSS_DROP_PERMILLE = 10;
+    private static final int LEGEND_FRAGMENT_MOB_DROP_PERMILLE = 10;
+    private static final int LEGEND_FRAGMENT_MIDBOSS_DROP_PERMILLE = 20;
     private static final int LEGEND_CRAFT_COST = 10;      // 전설제작 소모 조각 개수
     private static final int LEGEND_CRAFT_SUCCESS_PCT = 30; // 전설제작 성공률
     // [2026-09-21] "최상급장비상자에서 조각이 너무 잘 나온다, 확률에 맞게 나오도록" 요청 --
     // 원래 100% 확정 지급이던 걸 보스층 드랍(5~25%)과 같은 방식의 확률 지급으로 전환.
     // 보스층 최고 확률(25%, 99층)보다 살짝 낮은 수준으로 잡음 -- 상자는 반복 구매/오픈이
     // 가능해 보스킬(하루 3회 제한)보다 훨씬 자주 시도할 수 있으므로.
-    private static final int LEGEND_FRAGMENT_BOX_DROP_PCT = 15;
+    private static final int LEGEND_FRAGMENT_BOX_DROP_PCT = 30;
     // [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" 요청 --
     // 제작 비용(10개)보다 1개 적게(9개) 돌려줘서 무손실 순환을 막는 조각 싱크.
     // [2026-09-29] "조각 15개로 주거나...만드는데도 30%확률이라 혜택을 주고싶어" 요청 -- 환급 9->15
@@ -2968,22 +2970,22 @@ public class BotS5ServiceImpl implements BotS5Service {
             return sb.toString();
         }
         int roll = RND.nextInt(100);
-        if (roll < 5) {
+        if (roll < 10) { // [2026-10-08] 조각 5% -> 10% (축복 30% -> 25%)
             int newFragment = intVal(p.get("LEGEND_FRAGMENT"), 0) + 1;
             HashMap<String, Object> up = new HashMap<>();
             up.put("userName", userName);
             up.put("legendFragment", newFragment);
             dao.updateUserProgress(up);
             p.put("LEGEND_FRAGMENT", newFragment);
-            sb.append(NL).append("🧩 폐허 잔해 속에서 전설의조각을 발견했다! (보유 ").append(newFragment).append("개)");
-        } else if (roll < 20) {
+            sb.append(NL).append("🧩 ").append(floor).append("층 ").append(siteName).append("의 폐허 잔해 속에서 전설의조각을 발견했다! (보유 ").append(newFragment).append("개)");
+        } else if (roll < 25) {
             HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
             PP reward = mon == null ? PP.of(10, "")
                     : PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(3 * floorPpMultiplier(floor));
             addPp(userName, p, reward);
             PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
             sb.append(NL).append("💰 폐허 속에 묻혀있던 ").append(reward.format()).append(" PP를 발견했다! (보유 ").append(curPp.format()).append(" PP)");
-        } else if (roll < 70) {
+        } else if (roll < 75) {
             // 계단 구역은 중간보스가 전용 칸으로 따로 있어서 여기선 확률 조우를 끔(COMBAT 칸과 동일 이유).
             boolean midBossEncounter = !ruins && blockNo(floor) >= 6 && RND.nextInt(100) < MIDBOSS_CHANCE_PCT;
             sb.append(NL).append(ruins ? "😱 유적 안쪽에 숨어있던 몬스터가 튀어나왔다!" : "😱 사원 안쪽에 숨어있던 몬스터가 튀어나왔다!").append(NL)
@@ -4017,7 +4019,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 fragUp.put("legendFragment", newFragment);
                 dao.updateUserProgress(fragUp);
                 p.put("LEGEND_FRAGMENT", newFragment);
-                sb.append("🧩 ").append(midBoss ? "중간보스가" : "몬스터가").append(" 전설의조각을 떨어뜨렸다! (보유 ")
+                sb.append("🧩 ").append(floor).append("층 ").append(midBoss ? "중간보스가" : "몬스터가").append(" 전설의조각을 떨어뜨렸다! (보유 ")
                   .append(newFragment).append("개)").append(NL);
             }
 
@@ -4035,7 +4037,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         fragUp.put("legendFragment", newFragment);
                         dao.updateUserProgress(fragUp);
                         p.put("LEGEND_FRAGMENT", newFragment);
-                        sb.append("🧩 전설의조각 획득! (보유 ").append(newFragment).append("개)").append(NL);
+                        sb.append("🧩 ").append(floor).append("층 보스가 전설의조각을 떨어뜨렸다! (보유 ").append(newFragment).append("개)").append(NL);
                     }
                     break;
                 }
@@ -6849,7 +6851,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 : (equipClassLabel(equipClass, part) + "용 " + partNameOf(part));
         String result = "🎁 " + itemLabel + " ★" + grade + " 획득! (" + equipBonusText(part, grade) + ")";
         if (r.get("fragmentGranted") != null) {
-            result += NL + "🧩 전설의조각 " + r.get("fragmentGranted") + "개도 함께 획득!";
+            result += NL + "🧩 전설의 장비 상자에서 전설의조각 " + r.get("fragmentGranted") + "개도 함께 획득!";
         }
         return result;
     }
@@ -6884,7 +6886,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (int g = 1; g <= 6; g++) {
             if (gradeCount[g] > 0) sb.append("★").append(g).append("×").append(gradeCount[g]).append("  ");
         }
-        if (fragmentTotal > 0) sb.append(NL).append("🧩 전설의조각 ").append(fragmentTotal).append("개 획득!");
+        if (fragmentTotal > 0) sb.append(NL).append("🧩 전설의 장비 상자에서 전설의조각 ").append(fragmentTotal).append("개 획득!");
         if (stopReason != null) sb.append(NL).append("⚠️ ").append(stopReason).append(" (그 이상은 중단됨)");
         sb.append(NL).append("👉 파티/장비 탭에서 확인하세요");
         return sb.toString();
