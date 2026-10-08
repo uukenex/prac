@@ -429,7 +429,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
                         AUTO_HUNT_MAX_HOURS = Integer.parseInt(val);
                     } else if ("STAIR_ZONE_MAX_FLOOR".equals(key)) {
-                        // 200 미만으로는 내리지 않고(이미 열린 구간 보호), 준비된 최대(300)를 넘기지 않는다.
+                        // 200 미만으로는 내리지 않고(이미 열린 구간 보호), 준비된 최대(500)를 넘기지 않는다.
                         stairZoneOpenMax = Math.max(200, Math.min(STAIR_ZONE_READY_MAX, Integer.parseInt(val)));
                     }
                 } catch (NumberFormatException ignore) {
@@ -829,13 +829,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public List<HashMap<String, Object>> monsterInfoTable() {
         List<HashMap<String, Object>> out = new ArrayList<>();
-        // [2026-10-01] 관리자용 미리보기라 아직 안 열린 층(~300)까지 전부 보여준다. 투자계수 = 현재 열린 상한 기준 "최대 투자"
+        // [2026-10-01] 관리자용 미리보기라 아직 안 열린 층(~500)까지 전부 보여준다. 투자계수 = 현재 열린 상한 기준 "최대 투자"
         // (체력 스탯 만렙 + 한계돌파 최대)일 때 몬스터 공격력에 곱해지는 값(investAtkScale와 같은 식) -- 실제 곱해지는 값은 대상 동료의 투자에 따라 1~이 값.
         int refCap = statCapFor(STAIR_ZONE_BASE_CAMP) + 5 * Math.max(0, stairZoneOpenMax / 100 - 1);
         double refMult = (1 + HP_PCT_PER_LV * refCap) * (1 + limitBreakPct(LIMIT_BREAK_MAX));
         double refInvestScale = 1 + ATK_INVEST_SCALE * Math.max(0, refMult - 1);
         for (int f = 1; f <= STAIR_ZONE_READY_MAX; f++) {
-            if (!isStairZone(f) && f % 10 == 0) continue; // 마을(10/20/../100/200/300)
+            if (!isStairZone(f) && f % 10 == 0) continue; // 마을(10/20/../100/200/300/400/500)
             boolean boss = !isStairZone(f) && f % 10 == 9;
             HashMap<String, Object> mon = applyHardcoreFloorScale(dao.selectMonster(monsterBlockNo(f), boss ? "Y" : "N"), f);
             if (mon == null) continue;
@@ -956,7 +956,7 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  낀 주사위(diceMax, 최대 20이지만 등급이 낮으면 그보다 작음)를 그대로 재사용하고
      *  있었다" 버그 -- 51층 미만은 원래도 몬스터가 플레이어 주사위를 공유하던 구간이라
      *  그대로 두고, 51층 이상만 이 헬퍼로 통일해서 기습/반격이 항상 같은 규칙을 쓰게 한다. */
-    /** [2026-10-01] "200층 이후는 몬스터 주사위 굴림의 최소치가 더 높게" -- 201~225층 4, 이후 25층마다 +1(300층 7). 최대 눈금보다는 항상 낮게. */
+    /** [2026-10-01] "200층 이후는 몬스터 주사위 굴림의 최소치가 더 높게" -- 201~225층 4, 이후 25층마다 +1(300층 7, 500층 15). 최대 눈금보다는 항상 낮게. */
     private int monsterDiceMin(int floor, int faceMax) {
         if (floor <= 200) return 1;
         int min = 4 + (floor - 201) / 25;
@@ -1238,7 +1238,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int STAIR_ZONE_START = 101;
     // [2026-10-01] "200~300층 사냥터 오픈 준비" -- 데이터/로직은 300층까지 준비(STAIR_ZONE_READY_MAX)해 두고, 실제로 갈 수 있는 상한은
     // TBOT_S5_CONFIG의 STAIR_ZONE_MAX_FLOOR(기본 200, /갱신으로 반영)로 연다. 200 -> 300으로 바꾸면 그 순간 오픈.
-    private static final int STAIR_ZONE_READY_MAX = 300;
+    // [2026-10-08] "300층 이후 500층까지도 가능하도록 미리" 요청 -- 준비 상한을 300 -> 500으로(층 정보 301~500은 S5_FLOOR_301_500.sql). 몬스터 HP/ATK는
+    // extrapolateMonsterV2가 200층 값에서 층당 오르는 폭 그대로 이어 붙이고, DEF/PP 보상/주사위 최솟값/스탯 상한도 층 기반 공식이라 별도 표가 필요 없다.
+    private static final int STAIR_ZONE_READY_MAX = 500;
     private static volatile int stairZoneOpenMax = 200;
     private static final String[] STAIR_ZONE_PATTERN = {
         "STAIRS_UP", "COMBAT", "COMBAT", "RANDOM_LUCKY", "MIDBOSS",
