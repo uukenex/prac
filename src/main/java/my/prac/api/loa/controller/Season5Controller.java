@@ -319,6 +319,17 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-10-08] /전설강화 [N] -- 인자 없으면 내 전설장비 목록, 번호를 주면 그 장비 강화 시도(성공 시 +1, 실패해도 수치 유지). */
+    public String enhanceLegendary(HashMap<String, Object> map) {
+        String param1 = param1Of(map);
+        if (param1.isEmpty()) return s5Service.enhanceLegendaryList(userNameOf(map));
+        try {
+            return s5Service.enhanceLegendaryByNo(userNameOf(map), Integer.parseInt(param1));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요.";
+        }
+    }
+
     /** [2026-09-21] /전투화면 v1|v2 -- 전투화면 UI 버전 선호 저장. */
     public String setBattleScreenVersion(HashMap<String, Object> map) {
         String param1 = param1Of(map);

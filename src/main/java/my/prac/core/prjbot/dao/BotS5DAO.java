@@ -107,6 +107,8 @@ public interface BotS5DAO {
     int countUserEquip(@Param("userName") String userName);
     int insertEquip(HashMap<String, Object> map);
     int deleteEquip(@Param("equipId") int equipId);
+    /** [2026-10-08] 전설장비 강화 수치/연속 실패 횟수 저장. */
+    int updateEquipEnhance(@Param("equipId") int equipId, @Param("level") int level, @Param("pity") int pity);
     int updateEquipEquippedCompanion(HashMap<String, Object> map);
     List<HashMap<String, Object>> selectSameEquipForSynthesis(@Param("userName") String userName,
             @Param("clazz") String clazz, @Param("part") String part, @Param("grade") int grade);

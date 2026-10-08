@@ -320,6 +320,32 @@ public class BotS5ServiceImpl implements BotS5Service {
     // (제작 1회 기대비용 10/0.3=약33개의 절반 이하라 무손실 순환은 여전히 불가), 그리고 연속 실패
     // 1회당 다음 성공률 +10%p 누적(성공하면 0으로 초기화, 100% 상한 = 연속 7회 실패 시 확정).
     private static final int LEGEND_DISENCHANT_REFUND = 15;
+    // [2026-10-08] 전설장비 강화(수치 제한 없음). 레벨 n -> n+1 시도:
+    //  - 조각 비용 = 3 + n/2 (n=0,1 -> 3개, n=20 -> 13개, n=40 -> 23개 ... 계속 증가)
+    //  - 성공률 = max(30, 95 - 3n)% (n=10 -> 65%, n>=22 -> 30% 고정) + 그 장비의 연속 실패 1회당 +5%p(최대 +50%p, 성공하면 0으로)
+    //  - 실패하면 강화 수치는 그대로(조각만 소모). 성공하면 +1, 그 장비의 보너스가 단계당 6%씩 늘어난다(예: +20 = 보너스 2.2배).
+    //  - 분해하면 기본 환급(15개)에 그 장비에 쓴 정가 조각의 절반을 더 돌려준다.
+    private static final int ENHANCE_STAT_PCT_PER_LV = 6;
+    private static final int ENHANCE_BASE_SUCCESS_PCT = 95;
+    private static final int ENHANCE_SUCCESS_DROP_PER_LV = 3;
+    private static final int ENHANCE_MIN_SUCCESS_PCT = 30;
+    private static final int ENHANCE_PITY_STEP_PCT = 5;
+    private static final int ENHANCE_PITY_MAX = 10;
+
+    private static int enhanceCost(int lv) { return 3 + lv / 2; }
+
+    private static int enhanceBaseSuccessPct(int lv) { return Math.max(ENHANCE_MIN_SUCCESS_PCT, ENHANCE_BASE_SUCCESS_PCT - ENHANCE_SUCCESS_DROP_PER_LV * lv); }
+
+    private static int enhanceSuccessPct(int lv, int pity) {
+        return Math.min(100, enhanceBaseSuccessPct(lv) + Math.min(pity, ENHANCE_PITY_MAX) * ENHANCE_PITY_STEP_PCT);
+    }
+
+    /** 0단계에서 lv단계까지 올리는 데 든 정가 조각 합계(실패로 날린 조각은 제외). */
+    private static int enhanceCumulativeCost(int lv) {
+        int sum = 0;
+        for (int i = 0; i < lv; i++) sum += enhanceCost(i);
+        return sum;
+    }
     private static final int LEGEND_PITY_STEP_PCT = 10;
     private static final int BOSS_DAILY_KILL_LIMIT = 3;   // 보스 하루 처치 제한(모든 보스층 공통 카운터)
 
@@ -721,6 +747,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [2026-09-29] 전설 STAT_MULT 효과(예: 조던 링) -- 그 장비 한 개가 주는 보너스만 N% 배율.
                 double sm = "STAT_MULT".equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))
                         ? intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 : 1.0;
+                // [2026-10-08] 전설장비 강화 -- 강화 1단계마다 그 장비 한 개가 주는 보너스가 ENHANCE_STAT_PCT_PER_LV% 늘어난다(수치 제한 없음).
+                int enhLv = e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0);
+                if (enhLv > 0) sm *= 1 + enhLv * ENHANCE_STAT_PCT_PER_LV / 100.0;
                 if ("HELMET".equals(part)) hp += (b[0] + base[0] * b[1]) * sm;
                 else if ("WEAPON".equals(part)) atk += (b[2] + base[1] * b[3]) * sm;
                 else if ("ARMOR".equals(part)) def += (b[4] + base[2] * b[5]) * sm;
@@ -8019,8 +8048,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
         if (intVal(equip.get("GRADE"), 1) != 7) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
 
+        int enhRefund = enhanceCumulativeCost(intVal(equip.get("ENHANCE_LEVEL"), 0)) / 2; // [2026-10-08] 강화에 쓴 조각의 절반 추가 환급
         dao.deleteEquip(intVal(equip.get("EQUIP_ID"), 0));
-        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND;
+        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND + enhRefund;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("legendFragment", newFragment);
@@ -8032,7 +8062,89 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> meta = dao.selectLegendaryMaster(intVal(legIdObj, 0));
             if (meta != null) itemName = strVal(meta.get("ITEM_NAME"), itemName);
         }
-        return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + LEGEND_DISENCHANT_REFUND + "개 획득 (보유 " + newFragment + "개)";
+        return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + (LEGEND_DISENCHANT_REFUND + enhRefund) + "개 획득 (보유 " + newFragment + "개)"
+                + (enhRefund > 0 ? " -- 강화 +" + intVal(equip.get("ENHANCE_LEVEL"), 0) + "에 쓴 조각의 절반(" + enhRefund + "개) 포함" : "");
+    }
+
+    /** [2026-10-08] 내 ★7 전설장비(착용/미착용 모두), 번호는 EQUIP_ID 오름차순 -- 채팅 /전설강화 번호와 같은 기준. */
+    private List<HashMap<String, Object>> legendaryEquipsOf(String userName) {
+        List<HashMap<String, Object>> list = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (intVal(e.get("GRADE"), 1) == 7 && e.get("LEGENDARY_ID") != null) list.add(e);
+        }
+        Collections.sort(list, (a, b) -> Integer.compare(intVal(a.get("EQUIP_ID"), 0), intVal(b.get("EQUIP_ID"), 0)));
+        return list;
+    }
+
+    @Override
+    public String enhanceLegendaryList(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        List<HashMap<String, Object>> list = legendaryEquipsOf(userName);
+        if (list.isEmpty()) return "강화할 ★7 전설장비가 없습니다. (전설제작으로 먼저 만들어보세요)";
+        Map<Integer, String> wearer = new HashMap<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            wearer.put(intVal(c.get("COMPANION_ID"), 0), strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료")));
+        }
+        StringBuilder sb = new StringBuilder("⬆️ 전설강화 (보유 🧩 ").append(intVal(p.get("LEGEND_FRAGMENT"), 0)).append("개)").append(NL);
+        int no = 1;
+        for (HashMap<String, Object> e : list) {
+            int lv = intVal(e.get("ENHANCE_LEVEL"), 0);
+            int pity = intVal(e.get("ENHANCE_PITY"), 0);
+            Object cid = e.get("EQUIPPED_COMPANION_ID");
+            sb.append(no++).append(". ✨").append(strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비")).append(" +").append(lv)
+              .append(" (").append(cid == null ? "미착용" : wearer.getOrDefault(intVal(cid, 0), "착용중")).append(") ")
+              .append("성공 ").append(enhanceSuccessPct(lv, pity)).append("% / 🧩").append(enhanceCost(lv)).append(NL);
+        }
+        sb.append("사용법: /전설강화 번호 (실패해도 강화 수치는 유지되고 조각만 소모됩니다)");
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String enhanceLegendaryByNo(String userName, int no) {
+        List<HashMap<String, Object>> list = legendaryEquipsOf(userName);
+        if (no < 1 || no > list.size()) return "잘못된 번호입니다. /전설강화 로 목록을 확인하세요.";
+        return enhanceLegendary(userName, intVal(list.get(no - 1).get("EQUIP_ID"), 0));
+    }
+
+    @Override
+    @Transactional
+    public String enhanceLegendary(String userName, int equipId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 전설강화를 할 수 없습니다.";
+        }
+        HashMap<String, Object> equip = null;
+        for (HashMap<String, Object> e : legendaryEquipsOf(userName)) {
+            if (intVal(e.get("EQUIP_ID"), 0) == equipId) { equip = e; break; }
+        }
+        if (equip == null) return "강화할 수 있는 ★7 전설장비를 찾을 수 없습니다.";
+        int lv = intVal(equip.get("ENHANCE_LEVEL"), 0);
+        int pity = intVal(equip.get("ENHANCE_PITY"), 0);
+        int cost = enhanceCost(lv);
+        int fragment = intVal(p.get("LEGEND_FRAGMENT"), 0);
+        String itemName = strVal(equip.get("LEGENDARY_ITEM_NAME"), "전설장비");
+        if (fragment < cost) {
+            return "전설의조각이 부족합니다. (보유 " + fragment + "개 / [" + itemName + "] +" + lv + " -> +" + (lv + 1) + " 강화에 " + cost + "개 필요)";
+        }
+        int remaining = fragment - cost;
+        HashMap<String, Object> fragUp = new HashMap<>();
+        fragUp.put("userName", userName);
+        fragUp.put("legendFragment", remaining);
+        dao.updateUserProgress(fragUp);
+        p.put("LEGEND_FRAGMENT", remaining);
+
+        int chance = enhanceSuccessPct(lv, pity);
+        boolean success = RND.nextInt(100) < chance;
+        if (success) {
+            dao.updateEquipEnhance(equipId, lv + 1, 0);
+            return "✨✨ 강화 성공! [" + itemName + "] +" + lv + " → +" + (lv + 1) + " (장비 성능 +" + ((lv + 1) * ENHANCE_STAT_PCT_PER_LV) + "%)"
+                    + NL + "🧩 " + cost + "개 소모 (보유 " + remaining + "개) / 다음 강화: 성공률 " + enhanceSuccessPct(lv + 1, 0) + "%, 🧩" + enhanceCost(lv + 1) + "개";
+        }
+        dao.updateEquipEnhance(equipId, lv, pity + 1);
+        return "💨 [" + itemName + "] +" + lv + " 강화 실패... 강화 수치는 그대로 유지됩니다."
+                + NL + "🧩 " + cost + "개 소모 (보유 " + remaining + "개) 🍀 연속 실패 보너스로 다음 성공률 " + enhanceSuccessPct(lv, pity + 1) + "%";
     }
 
     // [2026-09-21] "이전버전은 v1, 지금은v2로 해서 유저가 선택한걸 띄워주도록 하자. 전투화면

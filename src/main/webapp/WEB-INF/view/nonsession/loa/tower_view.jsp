@@ -953,6 +953,11 @@
       <div class="card-title">🔨 전설해체</div>
       <button type="button" class="legend-craft-btn" id="legendDisenchantBtn" disabled onclick="TW.openLegendDisenchant()">해체하기</button>
     </div>
+    <!-- [2026-10-08] 전설장비 강화 -- 전설의조각을 넣어 +1씩(수치 제한 없음), 실패해도 수치는 유지. -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">⬆️ 전설강화</div>
+      <button type="button" class="legend-craft-btn" id="legendEnhanceBtn" disabled onclick="TW.openLegendEnhance()">강화하기</button>
+    </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
          카드/목록으로 분리(renderShop의 accessoryGachaList 참고). -->
@@ -1099,6 +1104,16 @@
     <button class="detail-close" onclick="TW.closeLegendDisenchant()">✕</button>
     <div class="sheet-title">해체할 전설장비 선택 (조각 15개 환급)</div>
     <div id="legendDisenchantList"></div>
+  </div>
+</div>
+
+<!-- [2026-10-08] 전설장비 강화 팝업 -- 착용/미착용 ★7 전설장비 전부. 실패해도 강화 수치는 유지되고 조각만 소모된다. -->
+<div class="detail-overlay" id="legendEnhanceOverlay" onclick="if(event.target===this) TW.closeLegendEnhance();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeLegendEnhance()">✕</button>
+    <div class="sheet-title">⬆️ 전설강화 <span class="legend-frag-badge">🧩 <span id="legendEnhanceFrag">0</span></span></div>
+    <div class="legend-craft-result" id="legendEnhanceResult" style="display:none;"></div>
+    <div id="legendEnhanceList"></div>
   </div>
 </div>
 
@@ -1560,7 +1575,7 @@ var TW = (function () {
   function loadStatus() {
     var u = userName();
     if (!u) { toast('유저명을 입력하세요'); return; }
-    fetch(base + '/api/tower-status?userName=' + encodeURIComponent(u))
+    return fetch(base + '/api/tower-status?userName=' + encodeURIComponent(u))
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) { toast(data.error); return; }
@@ -2648,7 +2663,7 @@ var TW = (function () {
   // 일반 이름(검/지팡이 등)만 표시할 수밖에 없었다. 이제 LEGENDARY_ITEM_NAME이 내려오므로
   // ★7 장비는 이 고유이름을 우선 표시한다.
   function legendaryTag(e) {
-    return e && e.LEGENDARY_ITEM_NAME ? (' ✨' + e.LEGENDARY_ITEM_NAME) : '';
+    return e && e.LEGENDARY_ITEM_NAME ? (' ✨' + e.LEGENDARY_ITEM_NAME + (e.ENHANCE_LEVEL > 0 ? ' +' + e.ENHANCE_LEVEL : '')) : '';
   }
   // [2026-09-17] "무기 아이콘을 지팡이는 지팡이로, 활은 활로, 갑옷도 적당한 거 있으면"
   // 요청 -- 지금까진 PART 하나로만 아이콘을 정해서(무기는 전부 ⚔️) 검/지팡이/활이 다
@@ -3258,7 +3273,7 @@ var TW = (function () {
         // 처럼 부위명 그대로.
         var isGroupedClass = !!WEAPON_CLASS_NAME[e.CLASS] || e.CLASS === 'COMMON';
         // [2026-09-21] ★7 전설장비는 부위 일반명 대신 고유이름을 보여준다.
-        var eqLabel = e.LEGENDARY_ITEM_NAME ? ('✨ ' + e.LEGENDARY_ITEM_NAME)
+        var eqLabel = e.LEGENDARY_ITEM_NAME ? ('✨ ' + e.LEGENDARY_ITEM_NAME + (e.ENHANCE_LEVEL > 0 ? ' +' + e.ENHANCE_LEVEL : ''))
             : (isGroupedClass ? equipClassLabel(e.CLASS, e.PART) : (PART_KR[e.PART] || e.PART));
         var actionsHtml;
         if (e.__wearerName) {
@@ -3315,7 +3330,7 @@ var TW = (function () {
   function loadPartyAndEquip() {
     var u = userName();
     if (!u) return;
-    Promise.all([
+    return Promise.all([
       fetch(base + '/api/tower-party?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }),
       fetch(base + '/api/tower-equip?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); })
     ]).then(function (results) {
@@ -3555,6 +3570,8 @@ var TW = (function () {
     var btn = document.getElementById('legendDisenchantBtn');
     if (!btn) return;
     btn.disabled = !(lastParty.unequipped || []).some(function (e) { return e.GRADE === 7; });
+    var eb = document.getElementById('legendEnhanceBtn');
+    if (eb) eb.disabled = allLegendaryEquips().length === 0;
   }
 
   function renderLegendaryCraftCard() {
@@ -3664,6 +3681,71 @@ var TW = (function () {
   }
   function closeLegendDisenchant() {
     document.getElementById('legendDisenchantOverlay').classList.remove('open');
+  }
+
+  // [2026-10-08] 전설장비 강화 -- 규칙은 서버(BotS5ServiceImpl)와 같아야 한다: 비용 3 + n/2, 성공률 max(30, 95 - 3n)% + 연속 실패 1회당 5%p(최대 +50), 단계당 장비 보너스 +6%.
+  function enhCost(lv) { return 3 + Math.floor(lv / 2); }
+  function enhRate(lv, pity) { return Math.min(100, Math.max(30, 95 - 3 * lv) + Math.min(pity || 0, 10) * 5); }
+  // 내 ★7 전설장비(미착용 + 착용 중) 전부. 착용 중인 것은 __wearerName을 붙여 반환.
+  function allLegendaryEquips() {
+    var out = (lastParty.unequipped || []).filter(function (e) { return e.GRADE === 7 && e.LEGENDARY_ID != null; });
+    var companionById = {};
+    (lastParty.companions || []).forEach(function (c) { companionById[c.COMPANION_ID] = c; });
+    Object.keys(lastParty.byCompanion || {}).forEach(function (cid) {
+      var c = companionById[cid];
+      (lastParty.byCompanion[cid] || []).forEach(function (e) {
+        if (e.GRADE === 7 && e.LEGENDARY_ID != null) {
+          var copy = Object.assign({}, e);
+          copy.__wearerName = c ? (c.NAME || JOB_KR[c.CLASS] || c.CLASS) : '?';
+          out.push(copy);
+        }
+      });
+    });
+    out.sort(function (a, b) { return a.EQUIP_ID - b.EQUIP_ID; });
+    return out;
+  }
+  function renderLegendEnhanceList() {
+    var list = document.getElementById('legendEnhanceList');
+    var frag = (state.progress && state.progress.LEGEND_FRAGMENT) || 0;
+    document.getElementById('legendEnhanceFrag').textContent = frag;
+    var items = allLegendaryEquips();
+    if (!items.length) { list.innerHTML = '<div class="sheet-empty">강화할 ★7 전설장비가 없습니다.</div>'; return; }
+    list.innerHTML = '';
+    items.forEach(function (e) {
+      var lv = e.ENHANCE_LEVEL || 0;
+      var cost = enhCost(lv);
+      var el = document.createElement('div');
+      el.className = 'legend-roster-item';
+      el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
+          + '<div class="lri-body"><div class="lri-name">✨ ' + e.LEGENDARY_ITEM_NAME + ' <b>+' + lv + '</b></div>'
+          + '<div class="lri-desc">' + (e.__wearerName ? ('👤 ' + e.__wearerName + ' 장착중 · ') : '') + '성능 +' + (lv * 6) + '% · 성공률 ' + enhRate(lv, e.ENHANCE_PITY) + '%</div></div>'
+          + '<button class="legend-disenchant-item-btn" type="button"' + (frag < cost ? ' disabled' : '') + '>🧩' + cost + ' 강화</button>';
+      el.querySelector('button').onclick = function (ev) { ev.stopPropagation(); doLegendEnhance(e, el.querySelector('button')); };
+      list.appendChild(el);
+    });
+  }
+  function doLegendEnhance(e, btn) {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    btn.disabled = true;
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=ENHANCE_LEGENDARY&param1=' + encodeURIComponent(e.EQUIP_ID) + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var msg = data.message || data.error || '완료';
+      var result = document.getElementById('legendEnhanceResult');
+      result.className = 'legend-craft-result' + (msg.indexOf('강화 성공') !== -1 ? ' success' : msg.indexOf('강화 실패') !== -1 ? ' fail' : '');
+      result.textContent = msg;
+      result.style.display = '';
+      return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
+    }).then(function () { renderLegendEnhanceList(); })
+      .catch(function () { toast('요청 실패'); renderLegendEnhanceList(); });
+  }
+  function openLegendEnhance() {
+    document.getElementById('legendEnhanceResult').style.display = 'none';
+    renderLegendEnhanceList();
+    document.getElementById('legendEnhanceOverlay').classList.add('open');
+  }
+  function closeLegendEnhance() {
+    document.getElementById('legendEnhanceOverlay').classList.remove('open');
   }
 
   function loadAchievements() {
@@ -3873,6 +3955,7 @@ var TW = (function () {
            setBattleScreenVersion: setBattleScreenVersion,
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
            openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant,
+           openLegendEnhance: openLegendEnhance, closeLegendEnhance: closeLegendEnhance,
            closeDungeon: closeDungeon };
 })();
 </script>

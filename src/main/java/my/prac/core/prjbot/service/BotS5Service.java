@@ -218,6 +218,15 @@ public interface BotS5Service {
      *  ★7 전설장비(미착용 목록 N번)를 분해해서 조각 9개로 환급. */
     String disenchantLegendary(String userName, int equipIdx);
 
+    /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
+    String enhanceLegendary(String userName, int equipId);
+
+    /** [2026-10-08] 채팅 /전설강화 N -- N은 /전설강화로 보이는 ★7 전설장비 목록 번호. */
+    String enhanceLegendaryByNo(String userName, int no);
+
+    /** [2026-10-08] 채팅 /전설강화(인자 없음) -- 내 ★7 전설장비 목록과 다음 강화의 성공률/조각 비용. */
+    String enhanceLegendaryList(String userName);
+
     /** [2026-09-21] 전투화면 UI 버전(V1=포켓몬 스타일 구버전, V2=삼국지 대전화면 신버전)
      *  선호 저장. version이 "V1"이 아니면 전부 V2로 정규화. */
     String setBattleScreenVersion(String userName, String version);

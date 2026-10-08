@@ -373,7 +373,7 @@ public class LoaChatController {
 			"/로그", "/탑업적", "/ㅌㅇㅂ", "/ㅌㅇㅈ", "/탑랭킹", "/ㅌㄹㅋ", "/이벤트지급", "/공지등록", "/탑통계",
 			"/ㅌㅌㄱ", "/동료뽑기", "/동료뽑기10", "/장비뽑기", "/장비뽑기10", "/악세뽑기", "/악세뽑기10",
 			"/주사위구매", "/주사위강화", "/마이너스주사위", "/스탯구매", "/장비목록", "/장비장착", "/장비합성",
-			"/장비일괄합성", "/전설제작", "/전설분해", "/전투화면", "/장비해제", "/탑해제", "/ㅈㅂㅎㅈ", "/ㅌㅎㅈ"));
+			"/장비일괄합성", "/전설제작", "/전설분해", "/전설강화", "/전투화면", "/장비해제", "/탑해제", "/ㅈㅂㅎㅈ", "/ㅌㅎㅈ"));
 
 	public static boolean shouldSkip2() {
 	    LocalTime now = LocalTime.now();
@@ -732,6 +732,9 @@ public class LoaChatController {
 				break;
 			case "/전설분해":
 				val = s5.disenchantLegendary(reqMap);
+				break;
+			case "/전설강화":
+				val = s5.enhanceLegendary(reqMap);
 				break;
 			case "/전투화면":
 				val = s5.setBattleScreenVersion(reqMap);
