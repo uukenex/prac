@@ -4819,3 +4819,12 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 
 ## 2026-10-08 /탑현황(탑정보) -- 추천 사냥터/안전기준 표시 제거
 - 요청: "현재 전투력이 추천층 뜨는 게 의미가 없는 것 같다". 종합전투력 줄의 `(🎯추천: N층)`/`(⚠️ 1층 사냥도 버거울 수 있어요)`/`(아직 사냥터 미진입)`과, 사냥터 층 줄의 `안전기준`(몬스터 전투력 x1.3)을 없애고 수치만 보여준다(`⚡ 종합전투력: N`, `🗼 N층 (몬스터 전투력 M)`). 쓰이지 않게 된 `recommendHuntFloor`는 삭제. 몬스터 정보 페이지(`/로그` 쪽)의 안전기준 열은 관리자용 참고 수치라 그대로 둠.
+
+## 2026-10-08 게시판 카카오 로그인 도입, 일반 로그인/회원가입 폐지, 비밀게시판 관리자 전용
+- 요청: 게시판도 카카오 로그인, 일반 로그인 없앰, 기존 테이블은 그대로, 전태환은 관리자로 계속 표기, 비밀게시판은 관리자만.
+- 구조: `BoardKakaoLoginController`(`/board/kakao/auth`, `/board/kakao/callback`) -- 시즌5 카카오 로그인과 같은 방식(카카오 콘솔에 등록된 `/s4/kakao/callback` 재사용, OAuth state `bd-`로 구분해 `S4WebController`가 forward). 세션 키는 기존과 같은 `Users`라 글쓰기/인터셉터/JSP가 그대로 동작하고, 로그인 성공 시 세션을 새로 발급(세션 고정 방지)하며 로그인 직전에 가려던 주소(`returnUrl`, 같은 사이트만)로 돌아간다.
+- DB(신규만, `BOARD_KAKAO_MEMBER.sql` 라이브 적용): `TBOARD_KAKAO_MEMBER(KAKAO_ID PK, USER_ID UNIQUE, NICKNAME, REG_DATE, LAST_LOGIN)` + 뷰 `TBOARD_USER_V`(= TUSER + 카카오 회원). TUSER/TCOMMENT 등 기존 테이블은 변경 없음. 게시판 쿼리(`CommentsMapper`, `ShareMapper`)의 `TUSER` 조인만 뷰로 교체 -- 예전 회원 글은 예전 닉네임, 카카오 회원 글은 카카오 닉네임(로그인 때마다 갱신)으로 표시된다. 일반 회원 사용자 ID는 `K`+카카오ID(11자).
+- 관리자: 카카오 고유번호 `4868121890`(시즌5 로그인 기록의 "전태환" 계정)을 `THJEON`으로 매핑한 행을 시드. 이 계정으로 로그인하면 기존 TUSER의 THJEON(게시판 표기 "관리자")이 된다 -- 닉네임이 아니라 고유번호로만 매핑하므로 카카오 닉네임을 "전태환"으로 바꿔도 관리자가 될 수 없다. 관리자 계정을 바꾸려면 `TBOARD_KAKAO_MEMBER`의 THJEON 행의 KAKAO_ID를 수정.
+- 폐지: `/loginUser`, `/pop_loginUser`, `/directloginUser`, `/joinOk`, `/checkId`, `/checkNick`, `/autoLogin`, `/findId`, `/searchId` 삭제(`/join`, `/login`, `/pop_login`은 `/loginCheck`로 리다이렉트), `login.jsp`/`pop_login.jsp`/`join.jsp` 삭제, `loginCheck.jsp`는 카카오 버튼 한 개로 교체, 메뉴의 회원가입 링크 제거. (옛 `/joinOk`는 가입 성공 여부와 상관없이 입력한 아이디로 세션을 만들어 THJEON 같은 기존 아이디로 POST만 보내도 그 사용자가 되는 구멍이 있었는데 함께 사라졌다.)
+- 비밀게시판 관리자 전용: `SecretController`/`NewBoardController`의 비밀게시판 접근 확인을 `THJEON`만 통과하도록 변경(목록/글보기/쓰기/수정/삭제/검색/폼 전부), 메뉴/탭의 비밀게시판 링크도 관리자에게만 표시. 로그인한 일반 회원이 주소로 들어가면 로그인 화면을 거쳐 자유게시판으로 돌려보낸다. 자유게시판의 비밀글(비밀 체크)은 기존처럼 로그인한 회원이면 열람.
+- 배포 후 필요: 카카오 개발자 콘솔 Redirect URI에 게시판 도메인의 `/s4/kakao/callback`이 등록돼 있어야 한다(시즌5 로그인이 쓰는 도메인과 게시판 도메인이 다르면 추가 등록).

@@ -62,8 +62,10 @@ public class NewBoardController {
 		return u != null && "THJEON".equals(u.getUserId());
 	}
 
+	// [2026-10-08] 비밀게시판은 관리자(THJEON)만 -- 로그인하지 않았거나 관리자가 아니면 true(호출부가 /loginCheck로 보내고, 로그인한 일반 회원은
+	// 로그인 화면에서 자유게시판으로 넘어간다).
 	private boolean notLoggedIn(HttpSession session) {
-		return session.getAttribute("Users") == null;
+		return !isThjeon(session);
 	}
 
 	// ================================================================

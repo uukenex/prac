@@ -19,19 +19,20 @@ public class BasicController{
 	@Resource(name = "core.prjboard.CommentService")
 	CommentService commentService;
 
+	// [2026-10-08] 회원가입/아이디 로그인은 없애고 카카오 로그인만 쓴다 -- 옛 진입 주소는 로그인 화면(/loginCheck)으로 보낸다.
 	@RequestMapping("/join")
 	public String join(Model model) {
-		return "nonsession/join/join";
+		return "redirect:/loginCheck";
 	}
 
 	@RequestMapping("/login")
 	public String login(Model model, HttpSession session, HttpServletRequest request) {
-		return "nonsession/login/login";
+		return "redirect:/loginCheck";
 	}
 
 	@RequestMapping("/pop_login")
 	public String popLogin(Model model, HttpSession session, HttpServletRequest request) {
-		return "nonsession/popup/pop_login";
+		return "redirect:/loginCheck";
 	}
 
 	@RequestMapping("/mainpage")

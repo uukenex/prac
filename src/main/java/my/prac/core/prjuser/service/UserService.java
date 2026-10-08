@@ -33,4 +33,7 @@ public interface UserService {
 	public int updatePass(String userId, String userPass);
 
 	public int insertUsertracking(HashMap<String, Object> hashMap) throws Exception;
+
+	/** [2026-10-08] 게시판 카카오 로그인 -- 회원 등록/닉네임 갱신 후 게시판 사용자 ID(일반 회원 K+카카오ID, 관리자 THJEON)를 돌려준다. */
+	public String boardKakaoLogin(String kakaoId, String nickname);
 }

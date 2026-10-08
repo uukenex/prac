@@ -14,7 +14,7 @@
 	<select id="selectComment" parameterType="int" resultType="my.prac.core.dto.Comments">
 		select * from
 		TCOMMENT c
-		join Tuser u on u.user_id=c.user_id
+		join TBOARD_USER_V u on u.user_id=c.user_id
 		where comment_no= #{commentNo}
 	</select>
 
@@ -63,7 +63,7 @@
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,
 		               ROWNUM RNUM
 		          FROM (SELECT C.*,U.USER_NICK
-		                  FROM TCOMMENT C,TUSER U
+		                  FROM TCOMMENT C,TBOARD_USER_V U
 		                 WHERE C.USER_ID = U.USER_ID 
 		                   AND C.COMMENT_CATEGORY = #{commentCategory}  
 		                 ORDER BY C.COMMENT_NO DESC) SUB)
@@ -79,7 +79,7 @@
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		TCOMMENT c
-		join Tuser u on u.user_id=c.user_id
+		join TBOARD_USER_V u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
 		and comment_name like '%'||	#{commentName} || '%' order by
@@ -98,7 +98,7 @@
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		TCOMMENT c
-		join Tuser u on u.user_id=c.user_id
+		join TBOARD_USER_V u on u.user_id=c.user_id
 		where
 		comment_category=#{commentCategory}
 		and comment_content like '%'|| #{commentContent} || '%' order by
@@ -117,7 +117,7 @@
 		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,rownum rnum from
 		(select * from
 		TCOMMENT c
-		join Tuser u on u.user_id = c.user_id
+		join TBOARD_USER_V u on u.user_id = c.user_id
 		where
 		comment_category=#{commentCategory}
 		and user_nick like '%' || #{userNick} || '%'
@@ -172,7 +172,7 @@
 	<select id="selectReplyList" parameterType="int" resultType="my.prac.core.dto.CommentReply">
 		select * from
 		TCOMMENT_REPLY c
-		join Tuser u on u.user_id=c.user_id 
+		join TBOARD_USER_V u on u.user_id=c.user_id 
 		where reply_comment_no=#{replyCommentNo} order by reply_no 
 	</select>
 	<!-- 댓글 달기 기능 -->

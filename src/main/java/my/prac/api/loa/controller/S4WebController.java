@@ -79,6 +79,10 @@ public class S4WebController {
         if (state != null && state.startsWith(Season5KakaoLoginController.STATE_PREFIX)) {
             return "forward:/loa/s5/kakao/callback";
         }
+        // [2026-10-08] 게시판 카카오 로그인(BoardKakaoLoginController)도 같은 콜백 URI를 재사용 -- state가 "bd-"로 시작하면 그쪽으로.
+        if (state != null && state.startsWith(my.prac.api.user.controller.BoardKakaoLoginController.STATE_PREFIX)) {
+            return "forward:/board/kakao/callback";
+        }
 
         if (error != null || code == null) {
             return "redirect:/s4/login?err=cancel";

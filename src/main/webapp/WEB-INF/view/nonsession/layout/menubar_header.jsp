@@ -71,7 +71,7 @@
 			<ul>
 				<li><a href="<%=request.getContextPath() %>${free }" >자유게시판</a></li>
 				<li><a href="<%=request.getContextPath() %>${share }">공유게시판</a></li>
-				<c:if test="${!empty Users.userId }">
+				<c:if test="${Users.userId == 'THJEON'}">
 				<li><a href="<%=request.getContextPath() %>${secret }">비밀게시판</a></li>
 				</c:if>
 				<li><a href="<%=request.getContextPath() %>${rank }" >랭크게시판</a></li>

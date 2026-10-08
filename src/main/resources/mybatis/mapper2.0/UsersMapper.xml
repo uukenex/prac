@@ -93,4 +93,21 @@
            set last_login_date = sysdate 
          where user_id = #{userId, jdbcType=VARCHAR}
     </update>
+
+	<!-- [2026-10-08] 게시판 카카오 로그인. 처음이면 USER_ID='K'+카카오ID로 등록, 이미 있으면(관리자 매핑 포함) 닉네임/마지막 로그인만 갱신. -->
+	<update id="mergeBoardKakaoMember" parameterType="Map">
+		MERGE INTO TBOARD_KAKAO_MEMBER T
+		USING (SELECT #{kakaoId, jdbcType=VARCHAR} AS KAKAO_ID FROM DUAL) S
+		   ON (T.KAKAO_ID = S.KAKAO_ID)
+		WHEN MATCHED THEN
+		    UPDATE SET T.NICKNAME = #{nickname, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}, T.LAST_LOGIN = SYSDATE
+		WHEN NOT MATCHED THEN
+		    INSERT (KAKAO_ID, USER_ID, NICKNAME, REG_DATE, LAST_LOGIN)
+		    VALUES (#{kakaoId, jdbcType=VARCHAR}, 'K' || #{kakaoId, jdbcType=VARCHAR},
+		            #{nickname, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}, SYSDATE, SYSDATE)
+	</update>
+
+	<select id="selectBoardKakaoUserId" parameterType="String" resultType="String">
+		SELECT USER_ID FROM TBOARD_KAKAO_MEMBER WHERE KAKAO_ID = #{kakaoId, jdbcType=VARCHAR}
+	</select>
 </mapper>

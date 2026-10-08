@@ -27,12 +27,6 @@
 				</c:if>
 				<c:if test="${empty Users.userId}">
 					<li><a href="/loginCheck">Log In</a></li>
-					<c:url value="/join" var="join" />
-					<li>
-						<a href="#" onclick="window.open('/join', 'win1', 'width=560, height=680');" onkeypress="this.onclick()">
-							사이트 회원 가입
-						</a>
-					</li>
 				</c:if>	
 				<%-- [2026-09-16 변경] 뉴게시판을 기본으로, 기존 게시판은 백업 링크로만 유지. --%>
 				<c:url value="/newboard/free"  var="free"/>
@@ -41,7 +35,7 @@
 				<c:url value="/free" var="oldFree"/>
 					<li><a href="${free } ">자유게시판</a></li>
 					<li><a href="${share }">공유게시판</a></li>
-					<c:if test="${!empty Users.userId }">
+					<c:if test="${Users.userId == 'THJEON'}">
 					<li><a href="${secret }">비밀게시판</a></li>
 					</c:if>
 					<li><a href="${oldFree }">🗄️ 예전 디자인(백업)</a></li>

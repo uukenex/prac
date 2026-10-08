@@ -20,7 +20,7 @@
 				  FROM (SELECT C.*
 						      ,U.USER_NICK
 						  FROM TSHAREBOARD C
-							  ,TUSER    U
+							  ,TBOARD_USER_V    U
 						 WHERE C.MODIFY_ID = U.USER_ID
 						 ORDER BY C.SHARE_NO DESC) SUB) X
 		 WHERE RNUM BETWEEN #{page} * 10 - 9 AND #{page} * 10
@@ -42,7 +42,7 @@
 			 , MODIFY_DATE
 			 , U.USER_NICK
 			 , SB.IP_ADDR
-		  FROM TSHAREBOARD SB,TUSER U
+		  FROM TSHAREBOARD SB,TBOARD_USER_V U
 		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
 		   AND SB.MODIFY_ID = U.USER_ID
 	</select> 
@@ -50,7 +50,7 @@
 	<select id="selectMaxShareNo" parameterType="my.prac.core.dto.Shareboard" resultType="int">
 		SELECT /* ShareMapper.selectShare */
 		       MAX(SHARE_NO)
-		  FROM TSHAREBOARD SB,TUSER U
+		  FROM TSHAREBOARD SB,TBOARD_USER_V U
 		 WHERE SB.INSERT_ID = U.USER_ID
 	</select> 
 
@@ -64,7 +64,7 @@
 			 , MODIFY_DATE
 			 , U.USER_NICK
 			 , SB.IP_ADDR
-		  FROM TSHAREBOARD_HIST SB,TUSER U
+		  FROM TSHAREBOARD_HIST SB,TBOARD_USER_V U
 		 WHERE SB.SHARE_NO = #{shareNo, jdbcType=NUMERIC}
 		   AND SB.VERSION = #{version, jdbcType=NUMERIC}
 		   AND SB.INSERT_ID = U.USER_ID

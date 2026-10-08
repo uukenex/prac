@@ -49,7 +49,7 @@
 				</li>
 				<%-- [2026-09-16 신설] 로그인했을 때만 노출(비로그인 접근은 NewBoardController가
 					 /loginCheck로 리다이렉트하지만, 메뉴 자체도 비로그인 상태에선 숨긴다). --%>
-				<c:if test="${!empty Users.userId }">
+				<c:if test="${Users.userId == 'THJEON'}">
 				<li>
 					<a href="${secret }" class="freeBoard">
 						<i class="fa fa-lock"></i>

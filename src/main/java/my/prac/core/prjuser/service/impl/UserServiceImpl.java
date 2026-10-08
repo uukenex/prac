@@ -100,4 +100,14 @@ public class UserServiceImpl implements UserService {
 		return urepo.updatePass(map);
 	}
 
+
+	// [2026-10-08] 게시판 카카오 로그인
+	@Override
+	public String boardKakaoLogin(String kakaoId, String nickname) {
+		HashMap<String, Object> map = new HashMap<>();
+		map.put("kakaoId", kakaoId);
+		map.put("nickname", nickname);
+		urepo.mergeBoardKakaoMember(map);
+		return urepo.selectBoardKakaoUserId(kakaoId);
+	}
 }

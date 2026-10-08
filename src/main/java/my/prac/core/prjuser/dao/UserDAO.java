@@ -38,4 +38,9 @@ public interface UserDAO {
 	public int insertUsertracking(HashMap<String, Object> hashMap);
 
 	public int updateLastLoginDate(HashMap<String, Object> hashMap);
+
+	// [2026-10-08] 게시판 카카오 로그인 -- 회원 등록/갱신(MERGE)과 게시판 사용자 ID 조회
+	public int mergeBoardKakaoMember(HashMap<String, Object> hashMap);
+
+	public String selectBoardKakaoUserId(String kakaoId);
 }
