@@ -1007,6 +1007,21 @@ public class BotS5ServiceImpl implements BotS5Service {
           .append(plainNum(hpAfter)).append("/").append(eff[0]).append(")")
           .append(PP.toBaseValue(hpAfter) <= 0 ? " 💀 기습에 쓰러졌다!" : "").append(NL);
         writeCompanionHp(target, hpAfter);
+        // [2026-10-08] "은신 기습 한 턴 말고 다음턴부터 부활 가능하도록" -- 기습 턴에는 도사 부활이 없지만, 기습으로 쓰러진 동료는
+        // 이 전투의 2턴째부터 살아있는 ★5+ 도사가 부활을 시도할 수 있다(resolveCombatTurn 참고). 누가 쓰러졌는지 전투 동안 기억해 둔다.
+        if (PP.toBaseValue(hpAfter) <= 0) {
+            int deadCid = intVal(target.get("COMPANION_ID"), 0);
+            List<Integer> ambushDead = parseMinionCids(strVal(p.get("CUR_AMBUSH_DEAD_CIDS"), ""));
+            if (deadCid > 0 && !ambushDead.contains(deadCid)) {
+                ambushDead.add(deadCid);
+                String joined = joinMinionCids(ambushDead);
+                HashMap<String, Object> adUp = new HashMap<>();
+                adUp.put("userName", userName);
+                adUp.put("curAmbushDeadCids", joined);
+                dao.updateUserProgress(adUp);
+                p.put("CUR_AMBUSH_DEAD_CIDS", joined);
+            }
+        }
     }
 
     /** 위 rollFace()의 diceMin 인자용 -- 유저가 지금 "선택"해둔 최소 눈금 조정치
@@ -3150,6 +3165,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("curMonsterMidbossYn", midBoss ? "Y" : "N");
         up.put("curMonsterDualYn", dualMonster ? "Y" : "N");
         up.put("trapAmbushYn", trapAmbush ? "Y" : "N"); // 항상 명시 세팅(직전 전투가 함정기습이었던 잔여값 방지)
+        up.put("curAmbushDeadCids", ""); // [2026-10-08] 은신 기습 사망자 명단 초기화
         up.put("curCombatTurn", 0); // 새 전투 시작 -- 69층 보스 등 턴제한 타이머를 0부터 다시 셈
         // [2026-09-14] "99층 보스는 죽으면 200% 체력으로 한 번 부활" 요청 -- 새 전투 시작
         // 시점엔 항상 아직 부활을 안 쓴 상태로 초기화(clearMonster에서도 'N'으로 정리되지만,
@@ -3471,6 +3487,55 @@ public class BotS5ServiceImpl implements BotS5Service {
                     applyAmbushHit(userName, p, userStat, sb, amTarget, amDmg, lethalAmbush);
                 }
                 sb.append(NL);
+            }
+        }
+
+        // [2026-10-08] "은신 기습 한 턴 말고 다음턴부터 부활 가능하도록" 요청 -- 기습(1턴째)으로 쓰러진 동료는 2턴째부터 매 턴, 파티에 살아있는
+        // ★5+ 도사가 반격 사망 때와 같은 확률(★5 10%/HP30%, ★6 15%/HP50%)로 한 명씩 부활을 시도한다. 부활하면 이번 턴 파티 공격에 바로 참여한다.
+        // 도사가 없거나 쓰러져 있으면 명단을 유지(도사가 부활하면 이어서 시도), 파티에서 빠졌거나 이미 살아난 동료는 명단에서 지운다.
+        if (curCombatTurn >= 2) {
+            List<Integer> ambushDeadList = parseMinionCids(strVal(p.get("CUR_AMBUSH_DEAD_CIDS"), ""));
+            if (!ambushDeadList.isEmpty()) {
+                HashMap<String, Object> ambushReviver = null;
+                for (HashMap<String, Object> c : party) {
+                    if (!"PRIEST".equals(strVal(c.get("CLASS"), "")) || intVal(c.get("GRADE"), 1) < 5) continue;
+                    if (PP.toBaseValue(PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""))) <= 0) continue;
+                    ambushReviver = c;
+                    break;
+                }
+                if (ambushReviver != null) {
+                    int arGrade = intVal(ambushReviver.get("GRADE"), 1);
+                    int arChance = arGrade >= 6 ? 15 : 10;
+                    double arPct = arGrade >= 6 ? 0.5 : 0.3;
+                    List<Integer> stillDead = new ArrayList<>();
+                    for (int deadCid : ambushDeadList) {
+                        HashMap<String, Object> vc = null;
+                        for (HashMap<String, Object> c : party) {
+                            if (intVal(c.get("COMPANION_ID"), 0) == deadCid) { vc = c; break; }
+                        }
+                        if (vc == null) continue; // 파티에서 빠짐
+                        if (PP.toBaseValue(PP.of(((Number) vc.get("CUR_HP_VALUE")).doubleValue(), strVal(vc.get("CUR_HP_EXT"), ""))) > 0) continue; // 이미 살아남
+                        if (RND.nextInt(100) < arChance) {
+                            String vJob = strVal(vc.get("CLASS"), "WARRIOR");
+                            int vGrade = intVal(vc.get("GRADE"), 1);
+                            int[] vEff = computeEffectiveStat(vJob, vGrade, dao.selectEquipByCompanion(deadCid), userStat, intVal(vc.get("LIMIT_BREAK"), 0));
+                            PP vHp = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * arPct)));
+                            writeCompanionHp(vc, vHp);
+                            sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, strVal(vc.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"))))
+                              .append(" 부활 (HP ").append(plainNum(vHp)).append("/").append(vEff[0]).append(") -- 기습에 쓰러졌던 동료").append(NL);
+                        } else {
+                            stillDead.add(deadCid);
+                        }
+                    }
+                    String stillJoined = joinMinionCids(stillDead);
+                    if (!stillJoined.equals(joinMinionCids(ambushDeadList))) {
+                        HashMap<String, Object> stUp = new HashMap<>();
+                        stUp.put("userName", userName);
+                        stUp.put("curAmbushDeadCids", stillJoined);
+                        dao.updateUserProgress(stUp);
+                        p.put("CUR_AMBUSH_DEAD_CIDS", stillJoined);
+                    }
+                }
             }
         }
 

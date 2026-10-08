@@ -27,7 +27,7 @@
                AUTO_HUNT_KILL_TOTAL, AUTO_HUNT_PP_TOTAL_VALUE, AUTO_HUNT_PP_TOTAL_EXT, FLEE_COUNT_TOTAL,
                DICE_MIN_BONUS, DICE_MIN_MALUS, DICE_MIN_ADJUST, DOUBLE_DICE_YN,
                SUSPEND_RETRY_COUNT, BAN_DATE, CUR_MONSTER_DUAL_YN, CUR_COMBAT_TURN,
-               CUR_BOSS_MINION_CIDS, CUR_MONSTER2_HP_VALUE, CUR_MONSTER_REVIVED_YN, WARD_COMPANION_ID,
+               CUR_BOSS_MINION_CIDS, CUR_MONSTER2_HP_VALUE, CUR_MONSTER_REVIVED_YN, WARD_COMPANION_ID, CUR_AMBUSH_DEAD_CIDS,
                <!-- [버그 수정, 2026-09-18] 오늘 추가한 컬럼들이 이 명시적 컬럼목록 SELECT에 빠져있어서
                     (SELECT * 가 아님을 놓침) DB엔 정상 저장돼도 다음 요청부터 다시 읽어올 때 항상 null로
                     보이던 문제. 조각/보스처치제한(전설제작), 도적스킬도용 회피, 함정 기습 전부 이
@@ -186,7 +186,7 @@
                 BOSS_IMMUNE_CID = NULL, BOSS_STUN_CID = NULL, CUR_MONSTER_ELITE_YN = 'N',
                 MONSTER_STUNNED_YN = 'N', CUR_MONSTER_MIDBOSS_YN = 'N',
                 MONSTER_DEF_BUFF_PCT = 0, MONSTER_SHIELD_VALUE = 0,
-                CUR_MONSTER_DUAL_YN = 'N', CUR_COMBAT_TURN = 0, CUR_BOSS_MINION_CIDS = NULL,
+                CUR_MONSTER_DUAL_YN = 'N', CUR_COMBAT_TURN = 0, CUR_BOSS_MINION_CIDS = NULL, CUR_AMBUSH_DEAD_CIDS = NULL,
                 CUR_MONSTER2_HP_VALUE = NULL, CUR_MONSTER_REVIVED_YN = 'N',
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
@@ -205,6 +205,7 @@
             <if test="trapAmbushYn != null">TRAP_AMBUSH_YN = #{trapAmbushYn},</if>
             <if test="curCombatTurn != null">CUR_COMBAT_TURN = #{curCombatTurn},</if>
             <if test="curBossMinionCids != null">CUR_BOSS_MINION_CIDS = #{curBossMinionCids},</if>
+            <if test="curAmbushDeadCids != null">CUR_AMBUSH_DEAD_CIDS = #{curAmbushDeadCids, jdbcType=VARCHAR},</if>
             <if test="curMonsterRevivedYn != null">CUR_MONSTER_REVIVED_YN = #{curMonsterRevivedYn},</if>
             <if test="monsterDefBuffPct != null">MONSTER_DEF_BUFF_PCT = #{monsterDefBuffPct},</if>
             <if test="monsterShieldValue != null">MONSTER_SHIELD_VALUE = #{monsterShieldValue},</if>
