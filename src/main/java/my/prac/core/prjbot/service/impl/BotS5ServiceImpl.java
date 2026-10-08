@@ -913,31 +913,6 @@ public class BotS5ServiceImpl implements BotS5Service {
                 ((Number) mon.get("ATK_VALUE")).doubleValue(), ((Number) mon.get("DEF_VALUE")).doubleValue());
     }
 
-    /** [2026-09-16] "현재 갈 수 있는(이미 밟아본) 층 말고, 진짜 전투력 기준으로 어느 층이
-     *  좋은 사냥터인지 추천해달라" 요청 -- 기존엔 MAX_FLOOR_REACHED(직접 걸어서 밟아본 최고
-     *  층)를 상한으로 써서, 아직 그 블록 안을 다 안 걸어봤으면(예: /탑올라가기로 방금 새
-     *  블록에 도착) 실제로 바로 갈 수 있는 층인데도 추천 대상에서 빠졌다. UNLOCKED_BLOCK
-     *  (보스 처치로 열린 최고 마을층, 그 블록의 1~8층은 /층변경으로 즉시 이동 가능)+9를
-     *  상한으로 바꿔서 "지금 당장 이동 가능한 전체 범위"를 기준으로 추천한다.
-     *  SAFE_HUNT_RATIO배 이상 여유 있는 "가장 높은" 층을 추천(같은 조건이면 보상이 더 좋은
-     *  고층 우선). 만족하는 층이 하나도 없으면(1층조차 버거움) 0 반환. */
-    private int recommendHuntFloor(long myPower, int unlockedBlock, int maxReached) {
-        int best = 0;
-        int cap = Math.min(unlockedBlock + 9, CONTENT_LOCKED_FLOOR - 1);
-        // [2026-09-28] 계단 구역(101층+)은 블록 해금 대신 "가본 층까지 바로 이동" 규칙이라
-        // 100층 마을을 연 유저는 가본 최고층(또는 첫 층 101)까지를 추천 범위로 본다.
-        if (unlockedBlock >= STAIR_ZONE_BASE_CAMP) {
-            cap = Math.max(cap, Math.min(Math.max(maxReached, STAIR_ZONE_START), stairZoneOpenMax));
-        }
-        for (int f = 1; f <= cap; f++) {
-            int pos = f % 10;
-            if (!isStairZone(f) && (pos < 1 || pos > 8)) continue; // 사냥터층만 대상(마을/보스 제외, 계단 구역은 전부 전투층)
-            long monPower = floorMonsterCombatPower(f);
-            if (monPower > 0 && myPower >= monPower * SAFE_HUNT_RATIO) best = f;
-        }
-        return best;
-    }
-
     private int diceMax(String diceGrade) {
         if (diceGrade == null) return 6;
         switch (diceGrade) {
@@ -1792,9 +1767,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 라벨을 "몬스터 전투력"(원본, 안전마진 미포함)으로 바꾸고 안전기준(margin 적용값)도
         // 같이 보여줘서 두 수치가 왜 다른 결론을 내는지 한눈에 보이게 한다.
         if (isHuntFloor) {
+            // [2026-10-08] "현재 전투력/추천층이 의미가 없는 것 같다" 요청 -- 추천 사냥터와 그 근거인 "안전기준"(몬스터 전투력의 1.3배)을 없앴다.
             long monPower = floorMonsterCombatPower(floor);
-            long safeThreshold = Math.round(monPower * SAFE_HUNT_RATIO);
-            sb.append(" (몬스터 전투력 ").append(monPower).append(", 안전기준 ").append(safeThreshold).append(")");
+            sb.append(" (몬스터 전투력 ").append(monPower).append(")");
         } else sb.append(" (").append(floorKindLabel(floor)).append(")");
         sb.append(NL);
         if (stairZoneFloor) {
@@ -1847,19 +1822,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("⚡ 종합전투력: 0 (파티에 동료를 편성하면 계산됩니다)").append(NL);
         } else {
             sb.append("⚡ 종합전투력: ").append(myPower);
-            int maxReached = intVal(p.get("MAX_FLOOR_REACHED"), 0);
-            if (maxReached < 1) {
-                sb.append("(아직 사냥터 미진입)");
-            } else {
-                // [2026-09-16] "이미 밟아본 층 말고 진짜 전투력 기준으로 추천, 괄호 설명은
-                // 빼달라" 요청 -- 상한을 MAX_FLOOR_REACHED 대신 UNLOCKED_BLOCK(지금 당장
-                // /탑올라가기+층변경으로 이동 가능한 전체 범위)로 바꿔서 계산(recommendHuntFloor
-                // 주석 참고).
-                int unlockedBlock = intVal(p.get("UNLOCKED_BLOCK"), 0);
-                int recommended = recommendHuntFloor(myPower, unlockedBlock, maxReached);
-                if (recommended > 0) sb.append("(🎯추천: ").append(recommended).append("층)");
-                else sb.append("(⚠️ 1층 사냥도 버거울 수 있어요)");
-            }
+            // [2026-10-08] 추천 사냥터(🎯추천: N층) 표시 제거 -- 전투력 수치만 보여준다.
             sb.append(NL);
         }
         sb.append("📊 누적 처치: ").append(intVal(p.get("TOTAL_KILL_COUNT"), 0)).append("마리").append(NL);
