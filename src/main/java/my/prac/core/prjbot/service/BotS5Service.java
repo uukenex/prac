@@ -361,9 +361,15 @@ public interface BotS5Service {
      */
     String battleLogLink(String userName);
 
-    /** [2026-09-30] 몬스터 정보 DB 뷰(/loa/tower-monster-info)용 -- 층별 일반/보스 몬스터의
+    /** [2026-09-30] 몬스터 정보 표(웹 도감 탭 몬스터도감의 원본)용 -- 층별 일반/보스 몬스터의
      *  HP/ATK/DEF/처치 PP/전투력/안전기준을 실제 전투와 같은 계산(applyHardcoreFloorScale 등)으로 만든 표. */
     java.util.List<java.util.HashMap<String, Object>> monsterInfoTable();
+
+    /** [2026-10-08] 웹 도감 탭(몬스터도감)용 -- monsterInfoTable과 같은 표를 10분 캐시해서 모든 유저에게 공개(층별 480행 계산이 무거워서). */
+    java.util.List<java.util.HashMap<String, Object>> monsterCodex();
+
+    /** [2026-10-08] 웹 도감 탭(아이템도감)용 -- ★7 전설장비 목록, 보유 인원/개수, 최고 강화 수치. */
+    java.util.List<java.util.HashMap<String, Object>> legendaryCodex();
 
     /**
      * 활동 카운터 1증가 + 그 채널 사용 플래그 세팅. statKey는 아래 6개 중 하나만 유효

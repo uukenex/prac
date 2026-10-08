@@ -78,7 +78,6 @@
   <div class="sub">전투가 끝날 때마다(승리/전멸/도망) 쌓이는 실제 플레이 기록 기준 · 테스트/관리자 계정 제외 · 관리자용</div>
   <div class="nav">
     <a href="/loa/tower-battle-log">📜 로그 뷰어</a>
-    <a href="/loa/tower-monster-info">👹 몬스터 정보</a>
     <a class="on" href="/loa/tower-balance-stats">⚖️ 밸런스 통계</a>
   </div>
 

@@ -917,6 +917,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
+    private volatile List<HashMap<String, Object>> monsterCodexCache = null;
+    private volatile long monsterCodexTime = 0L;
+
+    @Override
+    public List<HashMap<String, Object>> monsterCodex() {
+        long now = System.currentTimeMillis();
+        List<HashMap<String, Object>> cached = monsterCodexCache;
+        if (cached == null || now - monsterCodexTime > 600_000L) {
+            cached = monsterInfoTable(); // 층 수만큼 몬스터 조회가 나가므로 10분 캐시(밸런스/오픈 층이 바뀌면 최대 10분 뒤 반영)
+            monsterCodexCache = cached;
+            monsterCodexTime = now;
+        }
+        return cached;
+    }
+
+    @Override
+    public List<HashMap<String, Object>> legendaryCodex() {
+        return dao.selectLegendaryCodex();
+    }
+
     /** 파티(편성된 동료, PARTY_SLOT 있는 동료만) 합산 전투력. */
     private long partyCombatPower(String userName) {
         long total = 0;

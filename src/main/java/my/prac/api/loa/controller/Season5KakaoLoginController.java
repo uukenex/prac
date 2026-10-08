@@ -58,8 +58,7 @@ public class Season5KakaoLoginController {
 
     /** 로그인 후 돌아갈 수 있는 곳(오픈 리다이렉트 방지) -- 보호 대상 3페이지만. */
     private static boolean allowedNext(String next) {
-        return "/loa/tower-battle-log".equals(next) || "/loa/tower-monster-info".equals(next)
-                || "/loa/tower-balance-stats".equals(next);
+        return "/loa/tower-battle-log".equals(next) || "/loa/tower-balance-stats".equals(next);
     }
 
     /** 다른 컨트롤러(Season5ViewController)가 페이지/API 보호에 쓴다. */

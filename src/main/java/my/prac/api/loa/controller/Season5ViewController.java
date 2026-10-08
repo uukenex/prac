@@ -70,12 +70,6 @@ public class Season5ViewController {
 
     /** [2026-09-30] /로그 페이지에서 연결되는 관리자용 DB 뷰 2종(SPA 밖 독립 페이지). 로그 뷰어 포함 3페이지와 그 API는
      *  시즌5 카카오 로그인(Season5KakaoLoginController)이 된 사람만 볼 수 있다(페이지=로그인 화면으로 리다이렉트, API=401). */
-    @GetMapping("/tower-monster-info")
-    public String monsterInfoViewPage(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-monster-info";
-        return "nonsession/loa/s5_monster_info_view";
-    }
-
     @GetMapping("/tower-balance-stats")
     public String balanceStatsViewPage(HttpSession session) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-balance-stats";
@@ -481,14 +475,21 @@ public class Season5ViewController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(r);
     }
 
-    /** 층별 몬스터 정보(HP/ATK/DEF/처치PP/전투력/안전기준) -- 1~200층 전체를 한 번에. */
-    @GetMapping("/api/tower-monster-info")
+    /** [2026-10-08] 웹 도감 탭 -- 몬스터도감(층별 몬스터 스펙). 예전 /로그의 "몬스터 정보" 페이지(카카오 로그인 필요)를 웹 UI로 옮겼고 누구나 볼 수 있다. */
+    @GetMapping("/api/tower-codex-monsters")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMonsterInfo(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+    public ResponseEntity<?> apiTowerCodexMonsters() {
         HashMap<String, Object> result = new HashMap<>();
-        result.put("rows", s5Service.monsterInfoTable());
-        result.put("safeRatio", 1.3); // BotS5ServiceImpl.SAFE_HUNT_RATIO와 같은 값(표시용)
+        result.put("rows", s5Service.monsterCodex());
+        return ResponseEntity.ok(result);
+    }
+
+    /** [2026-10-08] 웹 도감 탭 -- 아이템도감(★7 전설장비 목록, 보유 인원, 최고 강화). */
+    @GetMapping("/api/tower-codex-items")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerCodexItems() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("items", s5Service.legendaryCodex());
         return ResponseEntity.ok(result);
     }
 

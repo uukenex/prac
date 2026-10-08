@@ -571,6 +571,29 @@
     .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
     .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
 
+    /* [2026-10-08] 도감 탭 */
+    .cx-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+    .cx-chip{ background:#fff; border:1.5px solid var(--line); border-radius:999px; padding:5px 11px; font-size:11px; font-weight:700;
+              color:var(--ink-soft); cursor:pointer; }
+    .cx-chip.on{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    .cx-tbl-wrap{ overflow-x:auto; margin-top:8px; }
+    .cx-tbl{ width:100%; border-collapse:collapse; font-size:11px; }
+    .cx-tbl th{ background:var(--parchment-deep); color:var(--ink-soft); font-weight:800; padding:6px 6px; text-align:right; white-space:nowrap; position:sticky; top:0; }
+    .cx-tbl th.l, .cx-tbl td.l{ text-align:left; }
+    .cx-tbl th.c, .cx-tbl td.c{ text-align:center; }
+    .cx-tbl td{ padding:5px 6px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+    .cx-tbl tr.boss td{ background:#FBE9E4; }
+    .cx-note{ font-size:10px; color:var(--ink-soft); line-height:1.5; margin-top:8px; }
+    .cx-item{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+    .cx-item-head{ display:flex; align-items:center; gap:8px; }
+    .cx-item-name{ font-size:14px; font-weight:800; }
+    .cx-item-kind{ font-size:10px; color:var(--ink-soft); }
+    .cx-item-effect{ font-size:12px; margin-top:6px; }
+    .cx-item-flavor{ font-size:10px; color:var(--ink-soft); margin-top:3px; line-height:1.4; }
+    .cx-item-stats{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .cx-stat{ font-size:11px; font-weight:800; background:var(--gold-soft); color:#6B4A12; border-radius:999px; padding:3px 9px; }
+    .cx-stat.none{ background:#EFE7D2; color:var(--ink-soft); font-weight:700; }
+
     /* 미착용 장비 목록(합성/자동장착용 버튼은 그대로, 드래그는 폐지). 직업별로 묶고 그 안에서
        성급 내림차순 정렬, 카드 한 칸이 화면 폭을 다 먹던 걸 party-grid처럼 여러 칸으로
        배치되는 작은 카드로 줄임(개수 많아지면 스캔하기 쉽게). .equip-group-title은 선택
@@ -986,6 +1009,42 @@
     </div>
   </div>
 
+  <!-- [2026-10-08] 도감 탭 -- 몬스터도감(예전 /로그의 몬스터 정보 표) / 아이템도감(★7 전설장비). 앞으로 도감 기능을 이 안에 더 추가한다. -->
+  <div class="panel" id="panel-codex">
+    <div class="card">
+      <div class="card-title">📖 도감</div>
+      <div class="cx-chips" id="cxMain">
+        <button type="button" class="cx-chip on" data-cx="mon">👹 몬스터도감</button>
+        <button type="button" class="cx-chip" data-cx="item">🗡️ 아이템도감</button>
+      </div>
+
+      <div id="cxMonster">
+        <div class="cx-chips" id="cxBands"></div>
+        <div class="cx-chips" style="align-items:center;">
+          <input type="text" id="cxFloor" placeholder="층 번호 (예: 87)" style="width:120px; padding:5px 8px; border:1.5px solid var(--line); border-radius:8px; font-size:12px;">
+          <span class="cx-note" id="cxCount" style="margin:0;"></span>
+        </div>
+        <div class="cx-tbl-wrap">
+          <table class="cx-tbl">
+            <thead><tr><th class="c">층</th><th class="c">종류</th><th class="l">몬스터</th><th>체력</th><th>공격력</th><th>투자반영 공격력</th><th>방어력</th><th>처치 PP</th></tr></thead>
+            <tbody id="cxBody"><tr><td colspan="8" class="c">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="cx-note">
+          · 100층 아래는 10층, 100층 이후는 100층 단위로 볼 수 있습니다. 마을(10/20/.../100/200...층)은 몬스터가 없어서 표에 나오지 않습니다.<br>
+          · <b>공격력</b>은 보스층의 추가 배율(×1.6)까지 반영한 값입니다. 중간보스(×3)/강화몹(×2)은 이 표의 스펙에 배율만 곱해집니다.<br>
+          · <b>투자반영 공격력</b> = 공격력 × 투자계수(<span id="cxInvest">-</span>배). 투자계수는 맞는 동료의 체력 스탯 레벨과 한계돌파가 클수록 커집니다(표는 최대 투자 기준).<br>
+          · 처치 PP는 층 배율까지 반영한 1마리 기본 보상입니다(자동사냥 추가 배율/몬스터 2마리 조우 미반영).
+        </div>
+      </div>
+
+      <div id="cxItem" style="display:none;">
+        <div class="cx-note" style="margin-top:0;">★7 전설장비 목록입니다. 보유 인원은 이 서버에서 그 장비를 가진 유저 수, 최고 강화는 가장 높게 강화된 개체의 수치입니다.</div>
+        <div id="cxItemList" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="panel" id="panel-msg">
     <div class="card">
       <div class="card-title">💬 지난 메시지 (최근 10개)</div>
@@ -1134,6 +1193,7 @@
          굴리기 버튼(dbtnDice)은 보드 카드 안의 #boardRollBtn으로 이동(updateDiceButtonState 참고). -->
     <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
     <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
+    <button class="dbtn" data-tab="codex" onclick="TW.switchTab('codex')"><span class="d-icn">📖</span>도감</button>
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
   </div>
 </nav>
@@ -1555,6 +1615,7 @@ var TW = (function () {
     if (name === 'ach') loadAchievements();
     if (name === 'party') loadPartyAndEquip();
     if (name === 'msg') loadMessages();
+    if (name === 'codex') loadCodex();
     updateDiceButtonState();
   }
 
@@ -3749,6 +3810,102 @@ var TW = (function () {
   function closeLegendEnhance() {
     document.getElementById('legendEnhanceOverlay').classList.remove('open');
   }
+
+  // ==================== 도감 탭 (2026-10-08) ====================
+  var cxMonRows = null, cxItems = null, cxBand = 'all', cxSub = 'mon';
+  function cxEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function cxNum(n) { return Number(n).toLocaleString('ko-KR'); }
+
+  // 100층 아래는 10층 단위, 100층 이후는 100층 단위 구간
+  function cxBandDefs(maxFloor) {
+    var defs = [], f;
+    for (f = 1; f <= Math.min(100, maxFloor); f += 10) defs.push({ lo: f, hi: Math.min(f + 9, 100) });
+    for (f = 101; f <= maxFloor; f += 100) defs.push({ lo: f, hi: f + 99 }); // 마지막 구간도 100층 단위(예: 401~500)로 표기
+    return defs;
+  }
+
+  function loadCodex() {
+    if (!cxMonRows) {
+      fetch(base + '/api/tower-codex-monsters').then(function (r) { return r.json(); }).then(function (d) {
+        cxMonRows = d.rows || [];
+        cxBuildBands();
+        cxRenderMonsters();
+      }).catch(function () { document.getElementById('cxBody').innerHTML = '<tr><td colspan="8" class="c">불러오지 못했습니다.</td></tr>'; });
+    }
+    if (!cxItems) {
+      fetch(base + '/api/tower-codex-items').then(function (r) { return r.json(); }).then(function (d) {
+        cxItems = d.items || [];
+        cxRenderItems();
+      }).catch(function () { document.getElementById('cxItemList').innerHTML = '<div class="cx-note">불러오지 못했습니다.</div>'; });
+    }
+  }
+
+  function cxBuildBands() {
+    var maxFloor = cxMonRows.reduce(function (m, r) { return Math.max(m, r.floor); }, 0);
+    var box = document.getElementById('cxBands');
+    var html = '<button type="button" class="cx-chip on" data-b="all">전체</button>';
+    cxBandDefs(maxFloor).forEach(function (b) { html += '<button type="button" class="cx-chip" data-b="' + b.lo + '-' + b.hi + '">' + b.lo + '~' + b.hi + '</button>'; });
+    box.innerHTML = html;
+    Array.prototype.forEach.call(box.children, function (btn) {
+      btn.onclick = function () {
+        cxBand = btn.getAttribute('data-b');
+        Array.prototype.forEach.call(box.children, function (x) { x.classList.toggle('on', x === btn); });
+        cxRenderMonsters();
+      };
+    });
+    var inv = cxMonRows.length ? cxMonRows[0].investScale : null;
+    if (inv != null) document.getElementById('cxInvest').textContent = inv;
+    document.getElementById('cxFloor').oninput = cxRenderMonsters;
+  }
+
+  function cxRenderMonsters() {
+    if (!cxMonRows) return;
+    var q = (document.getElementById('cxFloor').value || '').trim();
+    var lo = 0, hi = 99999;
+    if (cxBand !== 'all') { var p = cxBand.split('-'); lo = parseInt(p[0], 10); hi = parseInt(p[1], 10); }
+    var rows = cxMonRows.filter(function (r) {
+      if (r.floor < lo || r.floor > hi) return false;
+      return q === '' || String(r.floor) === q;
+    });
+    rows.sort(function (a, b) { return a.floor - b.floor; });
+    document.getElementById('cxCount').textContent = rows.length + '개 층';
+    var body = document.getElementById('cxBody');
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="8" class="c">해당하는 층이 없습니다.</td></tr>'; return; }
+    body.innerHTML = rows.map(function (r) {
+      return '<tr class="' + (r.kind === '보스' ? 'boss' : '') + '"><td class="c">' + r.floor + '</td><td class="c">' + cxEsc(r.kind) + '</td><td class="l">' + cxEsc(r.name) + '</td>'
+          + '<td>' + cxNum(r.hp) + '</td><td>' + cxNum(r.atk) + '</td><td>' + cxNum(r.atkInvest) + '</td><td>' + cxNum(r.def) + '</td><td>' + cxEsc(r.pp) + '</td></tr>';
+    }).join('');
+  }
+
+  function cxRenderItems() {
+    var box = document.getElementById('cxItemList');
+    if (!cxItems || !cxItems.length) { box.innerHTML = '<div class="cx-note">등록된 전설장비가 없습니다.</div>'; return; }
+    box.innerHTML = cxItems.map(function (it) {
+      var effFn = LEGEND_EFFECT_LABEL[it.EFFECT_TYPE];
+      var effect = effFn ? effFn(it.EFFECT_PARAM1) : (it.EFFECT_TYPE || '');
+      var group = WEAPON_CLASS_NAME[it.CLASS] || (it.CLASS === 'COMMON' ? '공용' : (JOB_KR[it.CLASS] || it.CLASS));
+      var owners = it.OWNERS || 0;
+      var stats = owners > 0
+          ? '<span class="cx-stat">👥 보유 ' + owners + '명 (총 ' + (it.COPIES || 0) + '개)</span><span class="cx-stat">⬆️ 최고 +' + (it.MAX_ENHANCE || 0) + '강</span>'
+          : '<span class="cx-stat none">👥 아직 아무도 없음</span>';
+      return '<div class="cx-item"><div class="cx-item-head"><div class="lri-icon">' + equipIcon(it.CLASS, it.PART) + '</div>'
+          + '<div><div class="cx-item-name">✨ ' + cxEsc(it.ITEM_NAME) + '</div><div class="cx-item-kind">★7 ' + cxEsc(group) + ' · ' + cxEsc(PART_KR[it.PART] || it.PART) + ' · No.' + it.LEGENDARY_ID + '</div></div></div>'
+          + '<div class="cx-item-effect">' + cxEsc(effect) + '</div>'
+          + (it.FLAVOR_TEXT ? '<div class="cx-item-flavor">' + cxEsc(it.FLAVOR_TEXT) + '</div>' : '')
+          + '<div class="cx-item-stats">' + stats + '</div></div>';
+    }).join('');
+  }
+
+  function cxSwitch(sub) {
+    cxSub = sub;
+    document.getElementById('cxMonster').style.display = sub === 'mon' ? '' : 'none';
+    document.getElementById('cxItem').style.display = sub === 'item' ? '' : 'none';
+    Array.prototype.forEach.call(document.getElementById('cxMain').children, function (b) { b.classList.toggle('on', b.getAttribute('data-cx') === sub); });
+  }
+  (function () {
+    var main = document.getElementById('cxMain');
+    if (main) Array.prototype.forEach.call(main.children, function (b) { b.onclick = function () { cxSwitch(b.getAttribute('data-cx')); }; });
+  })();
 
   function loadAchievements() {
     var u = userName();
