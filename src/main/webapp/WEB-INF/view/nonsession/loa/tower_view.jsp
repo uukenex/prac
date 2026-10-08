@@ -3718,7 +3718,7 @@ var TW = (function () {
       el.className = 'legend-roster-item';
       el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
           + '<div class="lri-body"><div class="lri-name">✨ ' + e.LEGENDARY_ITEM_NAME + ' <b>+' + lv + '</b></div>'
-          + '<div class="lri-desc">' + (e.__wearerName ? ('👤 ' + e.__wearerName + ' 장착중 · ') : '') + '성능 +' + (lv * 6) + '% · 성공률 ' + enhRate(lv, e.ENHANCE_PITY) + '%</div></div>'
+          + '<div class="lri-meta">' + (e.__wearerName ? ('👤 ' + e.__wearerName + ' 장착중 · ') : '') + '성능 +' + (lv * 6) + '% · 성공률 ' + enhRate(lv, e.ENHANCE_PITY) + '%</div></div>'
           + '<button class="legend-disenchant-item-btn" type="button"' + (frag < cost ? ' disabled' : '') + '>🧩' + cost + ' 강화</button>';
       el.querySelector('button').onclick = function (ev) { ev.stopPropagation(); doLegendEnhance(e, el.querySelector('button')); };
       list.appendChild(el);
@@ -3733,7 +3733,8 @@ var TW = (function () {
       var msg = data.message || data.error || '완료';
       var result = document.getElementById('legendEnhanceResult');
       result.className = 'legend-craft-result' + (msg.indexOf('강화 성공') !== -1 ? ' success' : msg.indexOf('강화 실패') !== -1 ? ' fail' : '');
-      result.textContent = msg;
+      result.textContent = formatMsg(msg); // 서버 메시지의 ♬(NL)를 줄바꿈으로
+      result.style.whiteSpace = 'pre-line';
       result.style.display = '';
       return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
     }).then(function () { renderLegendEnhanceList(); })
