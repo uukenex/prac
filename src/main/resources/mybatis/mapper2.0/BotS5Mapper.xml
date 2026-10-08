@@ -188,6 +188,10 @@
                 MONSTER_DEF_BUFF_PCT = 0, MONSTER_SHIELD_VALUE = 0,
                 CUR_MONSTER_DUAL_YN = 'N', CUR_COMBAT_TURN = 0, CUR_BOSS_MINION_CIDS = NULL, CUR_AMBUSH_DEAD_CIDS = NULL,
                 CUR_MONSTER2_HP_VALUE = NULL, CUR_MONSTER_REVIVED_YN = 'N',
+                <!-- [2026-10-08] 전투가 끝나면 쓰지 못한 로브 보호막(WARD_ROBE_YN=Y)은 사라진다. 럭키칸 가호는 그대로 유지. 같은 호출이 직접
+                     wardCompanionId/wardRobeYn을 세팅할 때는 중복 대입을 피하려고 건드리지 않는다. -->
+                <if test="wardCompanionId == null">WARD_COMPANION_ID = CASE WHEN WARD_ROBE_YN = 'Y' THEN 0 ELSE WARD_COMPANION_ID END,</if>
+                <if test="wardRobeYn == null">WARD_ROBE_YN = 'N',</if>
             </if>
             <if test="curMonsterId != null">CUR_MONSTER_ID = #{curMonsterId},</if>
             <if test="curMonsterHpValue != null">CUR_MONSTER_HP_VALUE = #{curMonsterHpValue},</if>
@@ -205,6 +209,7 @@
             <if test="trapAmbushYn != null">TRAP_AMBUSH_YN = #{trapAmbushYn},</if>
             <if test="curCombatTurn != null">CUR_COMBAT_TURN = #{curCombatTurn},</if>
             <if test="curBossMinionCids != null">CUR_BOSS_MINION_CIDS = #{curBossMinionCids},</if>
+            <if test="wardRobeYn != null">WARD_ROBE_YN = #{wardRobeYn, jdbcType=VARCHAR},</if>
             <if test="curAmbushDeadCids != null">CUR_AMBUSH_DEAD_CIDS = #{curAmbushDeadCids, jdbcType=VARCHAR},</if>
             <if test="curMonsterRevivedYn != null">CUR_MONSTER_REVIVED_YN = #{curMonsterRevivedYn},</if>
             <if test="monsterDefBuffPct != null">MONSTER_DEF_BUFF_PCT = #{monsterDefBuffPct},</if>

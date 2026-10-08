@@ -1024,6 +1024,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
+    /** [2026-10-08] 보스 은신 급습(79/89층 은신 즉사, 하수인 급습·공격) 경로용 -- 대상이 가호(WARD_COMPANION_ID, 럭키칸 가호/수수께끼 로브 보호막)
+     *  보유자이면 이번 피해를 막고 가호를 소모한다. 막았으면 true. (예전엔 "보스방 진입 시 가호가 초기화되니 불필요"라며 빠져 있었지만,
+     *  로브 보호막은 보스전 시작(startCombat) 때 걸리므로 이 경로들에서도 막혀야 한다.) */
+    private boolean consumeWardIfTarget(String userName, HashMap<String, Object> p, HashMap<String, Object> target, StringBuilder sb, String attackWord) {
+        int wardCid = intVal(p.get("WARD_COMPANION_ID"), 0);
+        if (wardCid <= 0 || wardCid != intVal(target.get("COMPANION_ID"), 0)) return false;
+        HashMap<String, Object> wardClearUp = new HashMap<>();
+        wardClearUp.put("userName", userName);
+        wardClearUp.put("wardCompanionId", 0);
+        dao.updateUserProgress(wardClearUp);
+        p.put("WARD_COMPANION_ID", 0);
+        String job = strVal(target.get("CLASS"), "WARRIOR");
+        String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
+        sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(intVal(target.get("GRADE"), 1), job, name))
+          .append("이(가) ").append(attackWord).append("을(를) 완전히 막아냈다! (가호 소모)").append(NL);
+        return true;
+    }
+
     /** 위 rollFace()의 diceMin 인자용 -- 유저가 지금 "선택"해둔 최소 눈금 조정치
      *  (DICE_MIN_ADJUST, -1..+6)를 반영한다(계정 전체 공통 적용, 장착 주사위 등급 무관,
      *  최대치는 항상 diceMax 그대로). 몬스터 자신의 반격 굴림(rollFace(1, monsterDiceMax))
@@ -2684,6 +2702,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         HashMap<String, Object> wardUp = new HashMap<>();
                         wardUp.put("userName", userName);
                         wardUp.put("wardCompanionId", wardCid);
+                        wardUp.put("wardRobeYn", "N"); // 럭키칸 가호는 전투가 끝나도 유지
                         dao.updateUserProgress(wardUp);
                         p.put("WARD_COMPANION_ID", wardCid);
                         sb.append("🍀 강력한 가호! ").append(wardedTag).append("에게 다음 피해 1회 면역이 걸렸습니다. (다음 반격을 맞는 순간 그 피해를 완전히 막아냅니다, 1회 소모)");
@@ -3203,6 +3222,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> wardUp = new HashMap<>();
                 wardUp.put("userName", userName);
                 wardUp.put("wardCompanionId", bcid);
+                wardUp.put("wardRobeYn", "Y"); // [2026-10-08] 로브 보호막 -- 전투가 끝나면 쓰지 않았어도 사라진다
                 dao.updateUserProgress(wardUp);
                 p.put("WARD_COMPANION_ID", bcid);
                 String bcJob = strVal(bc.get("CLASS"), "WARRIOR");
@@ -4221,9 +4241,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             sb.append("😈 ").append(eliteMonsterName(floor, mon, elite)).append("이(가) 은신에서 나타나 ")
               .append(jobTag(vGrade, vJob, vName)).append("을(를) 급습했다!").append(NL);
 
-            PP vHpAfter = PP.fromPP(0);
+            boolean vWarded = consumeWardIfTarget(userName, p, victim, sb, "은신 급습");
+            PP vHpAfter = vWarded
+                    ? PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""))
+                    : PP.fromPP(0);
             HashMap<String, Object> reviver79 = null;
             for (HashMap<String, Object> c : party) {
+                if (vWarded) break; // 막았으면 부활 판정 불필요
                 PP rHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
                 if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5 && PP.toBaseValue(rHp) > 0) {
                     reviver79 = c;
@@ -4300,9 +4324,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                     sb.append(NL).append("👹🌑 하수인이 된 ").append(jobTag(mGrade79, mJob79, mName79))
                       .append("이(가) 은신에서 나타나 ").append(jobTag(ivGrade, ivJob, ivName)).append("을(를) 급습했다!").append(NL);
 
-                    PP ivHpAfter = PP.fromPP(0);
+                    boolean ivWarded = consumeWardIfTarget(userName, p, instaVictim, sb, "은신 급습");
+                    PP ivHpAfter = ivWarded
+                            ? PP.of(((Number) instaVictim.get("CUR_HP_VALUE")).doubleValue(), strVal(instaVictim.get("CUR_HP_EXT"), ""))
+                            : PP.fromPP(0);
                     HashMap<String, Object> reviverIv = null;
                     for (HashMap<String, Object> c : party) {
+                        if (ivWarded) break;
                         PP rHp2 = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
                         if ("PRIEST".equals(strVal(c.get("CLASS"), "")) && intVal(c.get("GRADE"), 1) >= 5 && PP.toBaseValue(rHp2) > 0) {
                             reviverIv = c;
@@ -4913,6 +4941,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
                     int mRoll = rollFace(monsterDiceMin(floor, monsterDiceMax), monsterDiceMax);
                     int mDmg = Math.max(1, mEff[1] * mRoll - vEff[2]);
+                    if (consumeWardIfTarget(userName, p, victim, sb, "하수인의 공격")) mDmg = 0;
                     PP victimHpAfter = victimHp.subtract(PP.fromPP(mDmg));
                     if (PP.toBaseValue(victimHpAfter) < 0) victimHpAfter = PP.fromPP(0);
 
