@@ -515,6 +515,29 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ================================================================
     // 스탯 계산
     // ================================================================
+    /** [2026-10-08] 전설 팔찌 "학자의 토시"(SKILL_RATE_MULT) -- 착용한 동료의 캐릭터 스킬 발동 확률을 배율만큼 올린다(예: 도사 부활 10% -> 15%).
+     *  resolveCombatTurn이 턴 시작에 파티 동료마다 SKILL_MULT(배율)를 붙여 두고, 확률 굴림 지점이 이 헬퍼로 최종 확률을 구한다(100% 상한). */
+    private int skillRate(HashMap<String, Object> companion, int baseChance) {
+        if (companion == null) return baseChance;
+        Object m = companion.get("SKILL_MULT");
+        double mult = m instanceof Number ? ((Number) m).doubleValue() : 1.0;
+        return mult == 1.0 ? baseChance : (int) Math.min(100, Math.round(baseChance * mult));
+    }
+
+    private void attachSkillMult(String userName, List<HashMap<String, Object>> party) {
+        try {
+            for (HashMap<String, Object> r : dao.selectSkillRateMults(userName)) {
+                int cid = intVal(r.get("CID"), 0);
+                double mult = intVal(r.get("MULT_PCT"), 100) / 100.0;
+                for (HashMap<String, Object> c : party) {
+                    if (intVal(c.get("COMPANION_ID"), 0) == cid) c.put("SKILL_MULT", mult);
+                }
+            }
+        } catch (Exception e) {
+            // 배율 조회 실패는 전투를 막지 않는다(배율 없이 진행)
+        }
+    }
+
     private int[] calcBaseStat(String job, int grade) {
         int[][] gradeBase = GRADE_BASE_V2;
         int[] base = (BALANCE_V2_ENABLED && gradeBase != null && grade - 1 < gradeBase.length && gradeBase[grade - 1] != null)
@@ -3418,6 +3441,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (party.isEmpty()) {
             return "파티에 편성된 동료가 없습니다. /파티편성 으로 동료를 편성하세요.";
         }
+        attachSkillMult(userName, party); // [2026-10-08] 학자의 토시 착용 동료는 스킬 발동 확률 배율
 
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         StringBuilder sb = new StringBuilder(userName).append("님," + NL);
@@ -3531,7 +3555,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         }
                         if (vc == null) continue; // 파티에서 빠짐
                         if (PP.toBaseValue(PP.of(((Number) vc.get("CUR_HP_VALUE")).doubleValue(), strVal(vc.get("CUR_HP_EXT"), ""))) > 0) continue; // 이미 살아남
-                        if (RND.nextInt(100) < arChance) {
+                        if (RND.nextInt(100) < skillRate(ambushReviver, arChance)) {
                             String vJob = strVal(vc.get("CLASS"), "WARRIOR");
                             int vGrade = intVal(vc.get("GRADE"), 1);
                             int[] vEff = computeEffectiveStat(vJob, vGrade, dao.selectEquipByCompanion(deadCid), userStat, intVal(vc.get("LIMIT_BREAK"), 0));
@@ -3668,7 +3692,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // (1~4성 30%, 5성 40%, 6성 50% -- 배율은 성급 무관 항상 1.5배로 고정).
             boolean archerCrit = false;
             if ("ARCHER".equals(job)) {
-                int critChance = grade >= 6 ? 50 : (grade >= 5 ? 40 : 30);
+                int critChance = skillRate(c, grade >= 6 ? 50 : (grade >= 5 ? 40 : 30));
                 archerCrit = RND.nextInt(100) < critChance;
             }
 
@@ -3721,7 +3745,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     && RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM1"), 0)) {
                 extraRaw = eff[1] * roll;
                 extraDmg = Math.max(Math.max(1, extraRaw - effMonsterDef), eff[3]);
-                if ("ARCHER".equals(job) && RND.nextInt(100) < (grade >= 6 ? 50 : (grade >= 5 ? 40 : 30))) {
+                if ("ARCHER".equals(job) && RND.nextInt(100) < skillRate(c, grade >= 6 ? 50 : (grade >= 5 ? 40 : 30))) {
                     extraDmg = (int) Math.round(extraDmg * 1.5);
                 }
                 dmg += extraDmg;
@@ -3762,7 +3786,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int stunChance = 20;
                     if ("MAGE".equals(synergy)) stunChance += 20; // 시너지: 마법사3인조
                     if (grade >= 6) stunChance += 15;              // ★6: 확률도 약간 상승
-                    if (RND.nextInt(100) < stunChance) {
+                    if (RND.nextInt(100) < skillRate(c, stunChance)) {
                         stunned = true;
                         sb.append(" ✨스턴!");
                         // [2026-09-05] ★5/★6 "2턴 스턴" -- 이번 턴은 물론 다음 턴 반격까지
@@ -3777,7 +3801,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 case "ROGUE": {
                     int stealChance = 25;
                     if ("ROGUE".equals(synergy)) stealChance += 10; // 시너지: 도적3인조
-                    if (RND.nextInt(100) < stealChance) {
+                    if (RND.nextInt(100) < skillRate(c, stealChance)) {
                         double stealMult = 0.1;
                         if ("ROGUE".equals(synergy)) stealMult *= 2.0; // 시너지: 훔친 PP 2배
                         PP steal = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(stealMult * floorPpMultiplier(floor) * eliteMult);
@@ -4254,7 +4278,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int reviverGrade = intVal(reviver79.get("GRADE"), 1);
                 int reviveChance = reviverGrade >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
-                if (RND.nextInt(100) < reviveChance) {
+                if (RND.nextInt(100) < skillRate(reviver79, reviveChance)) {
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
                     int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
                     vHpAfter = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * revivePct)));
@@ -4337,7 +4361,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         int reviverGrade2 = intVal(reviverIv.get("GRADE"), 1);
                         int reviveChance2 = reviverGrade2 >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                         double revivePct2 = reviverGrade2 >= 6 ? 0.5 : 0.3;
-                        if (RND.nextInt(100) < reviveChance2) {
+                        if (RND.nextInt(100) < skillRate(reviverIv, reviveChance2)) {
                             List<HashMap<String, Object>> ivEquips = dao.selectEquipByCompanion(intVal(instaVictim.get("COMPANION_ID"), 0));
                             int[] ivEff = computeEffectiveStat(ivJob, ivGrade, ivEquips, userStat, intVal(instaVictim.get("LIMIT_BREAK"), 0));
                             ivHpAfter = PP.fromPP(Math.max(1, (int) Math.round(ivEff[0] * revivePct2)));
@@ -4384,7 +4408,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (warriorSynergy) guardChance += 20;      // 시너지: 전사3인조
             if (wGrade >= 6) guardChance += 20;          // ★6
             else if (wGrade >= 5) guardChance += 10;     // ★5
-            if (over50 && !c.equals(target) && RND.nextInt(100) < guardChance) {
+            if (over50 && !c.equals(target) && RND.nextInt(100) < skillRate(c, guardChance)) {
                 target = c;
                 guarded = true;
                 warriorGuardMitigationPct = wGrade >= 5 ? 20 : 0; // [2026-09-17] ★5/★6: 도발 성공 시 받는 피해 추가 20%↓(기존 ★6 전용에서 ★5도 포함)
@@ -4719,7 +4743,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean rogueEvaded = false;
         if ("ROGUE".equals(tJob) && tGrade >= 5) {
             int evadeChance = tGrade >= 6 ? 25 : 20; // [2026-09-17] 밸런스 조정: 기존 45/30 -> 25/20
-            if (RND.nextInt(100) < evadeChance) rogueEvaded = true;
+            if (RND.nextInt(100) < skillRate(curTarget, evadeChance)) rogueEvaded = true;
         }
 
         if (rogueEvaded) {
@@ -4821,7 +4845,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int reviverGrade = intVal(reviver.get("GRADE"), 1);
                 int reviveChance = reviverGrade >= 6 ? 15 : 10; // [2026-09-17] 밸런스 조정: 기존 40/25 -> 15/10
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
-                if (RND.nextInt(100) < reviveChance) {
+                if (RND.nextInt(100) < skillRate(reviver, reviveChance)) {
                     targetHpAfter = PP.fromPP(Math.max(1, (int) Math.round(tEff[0] * revivePct)));
                     sb.append("✨ 도사의 기적! ").append(jobTag(tGrade, tJob, tName))
                       .append(" 부활 (HP ").append(plainNum(targetHpAfter)).append("/").append(tEff[0]).append(")").append(NL);

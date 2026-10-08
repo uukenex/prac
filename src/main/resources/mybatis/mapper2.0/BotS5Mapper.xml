@@ -605,6 +605,17 @@
         FROM TBOT_S5_LEGENDARY_MASTER WHERE LEGENDARY_ID = #{legendaryId}
     </select>
 
+    <!-- [2026-10-08] 학자의 토시(SKILL_RATE_MULT) 착용 동료와 배율(%). 착용자가 없으면 빈 결과. -->
+    <select id="selectSkillRateMults" resultType="hashmap">
+        SELECT e.EQUIPPED_COMPANION_ID AS CID, MAX(lm.EFFECT_PARAM1) AS MULT_PCT
+          FROM TBOT_S5_USER_EQUIP e
+          JOIN TBOT_S5_LEGENDARY_MASTER lm ON lm.LEGENDARY_ID = e.LEGENDARY_ID
+         WHERE e.USER_NAME = #{userName}
+           AND e.EQUIPPED_COMPANION_ID IS NOT NULL
+           AND lm.EFFECT_TYPE = 'SKILL_RATE_MULT'
+         GROUP BY e.EQUIPPED_COMPANION_ID
+    </select>
+
     <update id="updateEquipEquippedCompanion" parameterType="hashmap">
         UPDATE TBOT_S5_USER_EQUIP
         SET EQUIPPED_COMPANION_ID = #{equippedCompanionId, jdbcType=NUMERIC}

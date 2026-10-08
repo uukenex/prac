@@ -3533,7 +3533,8 @@ var TW = (function () {
     DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; },
     DOUBLE_SHOT: function (p1) { return '공격 시 ' + p1 + '% 확률로 같은 눈금으로 한 번 더 연사'; },
     START_BARRIER: function () { return '전투 시작 시 무적 보호막(다음 피해 1회 면역)을 두르고 시작'; },
-    STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + (p1 / 100) + '배'; }
+    STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + (p1 / 100) + '배'; },
+    SKILL_RATE_MULT: function (p1) { return '장착한 캐릭터의 스킬 발동 확률 ' + (p1 / 100) + '배 (예: 부활 10% -> ' + Math.round(10 * p1 / 100) + '%)'; }
   };
 
   function legendItemSummaryHtml(item) {

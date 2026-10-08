@@ -4828,3 +4828,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 폐지: `/loginUser`, `/pop_loginUser`, `/directloginUser`, `/joinOk`, `/checkId`, `/checkNick`, `/autoLogin`, `/findId`, `/searchId` 삭제(`/join`, `/login`, `/pop_login`은 `/loginCheck`로 리다이렉트), `login.jsp`/`pop_login.jsp`/`join.jsp` 삭제, `loginCheck.jsp`는 카카오 버튼 한 개로 교체, 메뉴의 회원가입 링크 제거. (옛 `/joinOk`는 가입 성공 여부와 상관없이 입력한 아이디로 세션을 만들어 THJEON 같은 기존 아이디로 POST만 보내도 그 사용자가 되는 구멍이 있었는데 함께 사라졌다.)
 - 비밀게시판 관리자 전용: `SecretController`/`NewBoardController`의 비밀게시판 접근 확인을 `THJEON`만 통과하도록 변경(목록/글보기/쓰기/수정/삭제/검색/폼 전부), 메뉴/탭의 비밀게시판 링크도 관리자에게만 표시. 로그인한 일반 회원이 주소로 들어가면 로그인 화면을 거쳐 자유게시판으로 돌려보낸다. 자유게시판의 비밀글(비밀 체크)은 기존처럼 로그인한 회원이면 열람.
 - 배포 후 필요: 카카오 개발자 콘솔 Redirect URI에 게시판 도메인의 `/s4/kakao/callback`이 등록돼 있어야 한다(시즌5 로그인이 쓰는 도메인과 게시판 도메인이 다르면 추가 등록).
+
+## 2026-10-08 ★7 전설 팔찌 "학자의 토시" (LEGENDARY_ID=5, COMMON/BRACELET, SKILL_RATE_MULT 150)
+- 요청: 팔찌에 학자의 토시를 추가, 캐릭터 스킬 발동률 1.5배(예: 장착 캐릭터의 부활 확률 10% -> 15%). `S5_LEGENDARY_SCHOLAR_BRACER.sql` 라이브 적용(이름/설명은 CP949 hex).
+- 적용 대상(착용한 그 동료의 확률만, 100% 상한, 반올림): 도사 부활(★5 10% / ★6 15% -- 반격 사망, 79/89층 보스 은신 즉사·하수인 급습, 기습 사망자 2턴째 부활 모두), 궁수 크리티컬(30/40/50%, 전설 활 추가타의 크리 포함), 마법사 스턴(20~55%), 도적 훔치기(25~35%)와 회피(20/25%), 전사 도발(30~80%). 장비 자체의 효과 확률(전설 활 DOUBLE_SHOT 등)과 드랍/제작 확률은 대상이 아님.
+- 구현: 전투 턴 시작에 `selectSkillRateMults`(착용 동료와 배율 1쿼리, 학자의 토시가 없으면 빈 결과)로 파티 동료마다 `SKILL_MULT`를 붙이고 각 확률 굴림이 `skillRate(동료, 기본확률)`을 거친다. 제작은 기존 전설제작 로스터에 자동 포함, 효과 설명은 웹 `LEGEND_EFFECT_LABEL`.

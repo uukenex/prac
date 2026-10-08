@@ -116,6 +116,8 @@ public interface BotS5DAO {
     // ── 전설장비(★7) ──
     List<HashMap<String, Object>> selectLegendaryMasterList();
     HashMap<String, Object> selectLegendaryMaster(@Param("legendaryId") int legendaryId);
+    /** [2026-10-08] 학자의 토시(SKILL_RATE_MULT)를 착용한 동료(CID)와 배율(MULT_PCT, 150 = 1.5배). */
+    List<HashMap<String, Object>> selectSkillRateMults(@Param("userName") String userName);
 
     // ── 스탯 구매 ──
     HashMap<String, Object> selectUserStat(@Param("userName") String userName);
