@@ -13,7 +13,9 @@
   -- 2026-10-19 기준 첫 번째 PC는 Node v20.18.0이라 업그레이드가 선행 조건이었음. 등록 범위는 user 권장(프로젝트와 무관한 도구라서 `.mcp.json`으로 리포지토리에 넣지 않음).
 - 깊은 네이티브 분석은 Hopper/Ghidra/IDA 등 외부 도구가 PC마다 따로 필요(상용 도구는 정식 라이선스). 본인 소유 또는 분석 권한이 있는 대상에만 사용.
 - 다른 AI 에이전트(Codex, Cursor 등)는 설정이 따로라서 각각 등록해야 함.
-- 진행 상황: (이 항목 아래에 갱신) -- 첫 번째 PC는 Node 업그레이드 대기 중.
+- 진행 상황: 첫 번째 PC(2026-10-19)는 Node를 v24.20.0(winget `OpenJS.NodeJS.LTS`)으로 올리고 `npx rea-agents setup --yes --client claude_code`로 Claude Code
+  user 범위에 등록 완료(`rea-agents@6.7.0`, 스킬 `~/.claude/skills/reverse-engineer-anything`, 백업 `~/.claude.json.rea.backup`). 다른 PC도 같은 순서로 하면 됨
+  (먼저 `--dry-run`으로 변경 내용 확인). Claude Desktop은 완전히 종료한 뒤 설정해야 해서 미등록. 분석 엔진(Ghidra/IDA/jadx 등)은 아직 어느 PC에도 미설치.
 
 ## 2026-10-08 갱신 (이 컴퓨터의 마지막 대화 상태) -- 다른 컴퓨터에서 시작하면 이것부터 알려줄 것
 
