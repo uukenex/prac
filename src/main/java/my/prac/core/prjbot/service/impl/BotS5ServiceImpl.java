@@ -8477,8 +8477,22 @@ public class BotS5ServiceImpl implements BotS5Service {
         return t;
     }
 
-    /** [2026-10-20] 동료 상세(웹) -- 최종 능력치를 "캐릭터 기본(스탯구매 포함) + 한계돌파(★7은 7성 보정) 보너스 + 장비 합계"로 분해하고, 장비별 기여 행을 함께 내려준다.
-     *  분해는 합이 정확히 맞도록 total - 캐릭터 합계로 장비 합계를 구한다(장비별 반올림 오차 때문에 행 합계와 ±1 다를 수 있음). */
+    /** 기여 수치가 "그 장비를 뺀 캐릭터 능력치"의 몇 %인지(소수 1자리). 기준이 0 이하면 0. */
+    private double pctOf(long contribution, long baseline) {
+        if (baseline <= 0 || contribution == 0) return 0.0;
+        return Math.round(contribution * 1000.0 / baseline) / 10.0;
+    }
+
+    /** 행에 PCT_HP/PCT_ATK/PCT_DEF(기여 / 기준 능력치 %)를 붙인다. */
+    private void attachPct(HashMap<String, Object> row, long[] baseline) {
+        row.put("PCT_HP", pctOf(((Number) row.get("HP")).longValue(), baseline[0]));
+        row.put("PCT_ATK", pctOf(((Number) row.get("ATK")).longValue(), baseline[1]));
+        row.put("PCT_DEF", pctOf(((Number) row.get("DEF")).longValue(), baseline[2]));
+    }
+
+    /** [2026-10-20] 동료 상세(웹) -- 최종 능력치를 "원래(등급/직업 기본) + 스탯구매 + 한계돌파(★7은 7성 보정) + 장비(강화분 포함)"로 분해하고,
+     *  총 배율(스탯구매 x 한계돌파)과 장비별 기여 행(기여가 "그 장비를 뺀 능력치"의 몇 %인지 포함)을 함께 내려준다.
+     *  분해는 합이 정확히 맞도록 한계돌파=캐릭터 합계-스탯구매 반영 기본, 장비=total-캐릭터 합계로 구한다(장비별 반올림 오차 때문에 행 합계와 ±1 다를 수 있음). */
     @Override
     public HashMap<String, Object> companionDetail(String userName, int companionId) {
         HashMap<String, Object> out = new HashMap<>();
@@ -8494,41 +8508,87 @@ public class BotS5ServiceImpl implements BotS5Service {
         int[] base = calcBaseStat(job, grade);
         int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
         int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
-        long cbHp = Math.round(base[0] * (1 + HP_PCT_PER_LV * hpLv));
-        long cbAtk = Math.round(base[1] * (1 + ATK_PCT_PER_LV * atkMaxLv));
-        long cbDef = base[2];
-        out.put("base", statTriple(cbHp, cbAtk, cbDef));
-        out.put("lbBonus", statTriple(charTotal[0] - cbHp, charTotal[1] - cbAtk, charTotal[2] - cbDef));
+        long buyHp = Math.round(base[0] * (1 + HP_PCT_PER_LV * hpLv));
+        long buyAtk = Math.round(base[1] * (1 + ATK_PCT_PER_LV * atkMaxLv));
+        long buyDef = base[2];
+        double lbM = grade >= STAR7_GRADE ? star7StatMult() : (lb > 0 ? 1 + limitBreakPct(lb) : 1.0);
+        out.put("baseRaw", statTriple(base[0], base[1], base[2]));
+        out.put("statBuy", statTriple(buyHp - base[0], buyAtk - base[1], 0));
+        out.put("lbBonus", statTriple(charTotal[0] - buyHp, charTotal[1] - buyAtk, charTotal[2] - buyDef));
         out.put("equipTotal", statTriple(total[0] - charTotal[0], total[1] - charTotal[1], total[2] - charTotal[2]));
         out.put("total", statTriple(total[0], total[1], total[2]));
+        out.put("base", statTriple(buyHp, buyAtk, buyDef)); // 스탯구매까지 반영한 캐릭터 기본(상세 팝업용)
         out.put("lbLabel", grade >= STAR7_GRADE ? "7성 보정" : "한계돌파");
+        // 퍼센트 증가율(소수 1자리): 스탯구매(체력/공격), 한계돌파(또는 7성 보정), 둘을 곱한 총 증가율
+        HashMap<String, Object> pct = new HashMap<>();
+        pct.put("buyHp", Math.round(HP_PCT_PER_LV * hpLv * 1000) / 10.0);
+        pct.put("buyAtk", Math.round(ATK_PCT_PER_LV * atkMaxLv * 1000) / 10.0);
+        pct.put("lb", Math.round((lbM - 1) * 1000) / 10.0);
+        pct.put("totalHp", Math.round(((1 + HP_PCT_PER_LV * hpLv) * lbM - 1) * 1000) / 10.0);
+        pct.put("totalAtk", Math.round(((1 + ATK_PCT_PER_LV * atkMaxLv) * lbM - 1) * 1000) / 10.0);
+        pct.put("totalDef", Math.round((lbM - 1) * 1000) / 10.0);
+        out.put("pct", pct);
         double[] m = contribMultipliers(comp, userStat);
         List<HashMap<String, Object>> rows = new ArrayList<>();
-        for (HashMap<String, Object> e : equips) rows.add(equipContribRow(e, calcBaseStat(job, grade), m));
+        long enhHp = 0, enhAtk = 0, enhDef = 0;
+        for (HashMap<String, Object> e : equips) {
+            HashMap<String, Object> row = equipContribRow(e, base, m);
+            attachPct(row, new long[]{ total[0] - ((Number) row.get("HP")).longValue(), total[1] - ((Number) row.get("ATK")).longValue(), total[2] - ((Number) row.get("DEF")).longValue() });
+            enhHp += ((Number) row.get("ENH_HP")).longValue();
+            enhAtk += ((Number) row.get("ENH_ATK")).longValue();
+            enhDef += ((Number) row.get("ENH_DEF")).longValue();
+            rows.add(row);
+        }
+        out.put("enhTotal", statTriple(enhHp, enhAtk, enhDef));
         out.put("equips", rows);
         return out;
     }
 
-    /** [2026-10-20] 장비변경 팝업용 -- 이 동료가 그 부위에 끼울 수 있는 장비(현재 착용 중 + 미착용)를 끼웠을 때의 기여 행. */
+    /** [2026-10-20] 편성 화면 슬롯 카드 상단 표시용 -- 파티 동료마다 companionDetail. 키 = 동료ID 문자열. */
+    @Override
+    public HashMap<String, HashMap<String, Object>> partyDetail(String userName) {
+        HashMap<String, HashMap<String, Object>> out = new HashMap<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") == null) continue;
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            out.put(String.valueOf(cid), companionDetail(userName, cid));
+        }
+        return out;
+    }
+
+    /** [2026-10-20] 장비변경 팝업용 -- 이 동료가 그 부위에 끼울 수 있는 장비(현재 착용 중 + 미착용)를 끼웠을 때의 기여 행.
+     *  기준(baseline) = 그 부위 장비를 뺀 현재 능력치. 각 행의 PCT_*는 기여가 이 기준의 몇 %인지. */
     @Override
     public HashMap<String, Object> equipPreview(String userName, int companionId, String part) {
         HashMap<String, Object> out = new HashMap<>();
         HashMap<String, Object> comp = findCompanionOf(userName, companionId);
         if (comp == null) { out.put("error", "동료를 찾을 수 없습니다."); return out; }
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
-        int[] base = calcBaseStat(strVal(comp.get("CLASS"), "WARRIOR"), intVal(comp.get("GRADE"), 1));
+        String job = strVal(comp.get("CLASS"), "WARRIOR");
+        int grade = intVal(comp.get("GRADE"), 1);
+        int[] base = calcBaseStat(job, grade);
         double[] m = contribMultipliers(comp, userStat);
+        int[] total = computeEffectiveStat(job, grade, dao.selectEquipByCompanion(companionId), userStat, intVal(comp.get("LIMIT_BREAK"), 0));
         List<HashMap<String, Object>> rows = new ArrayList<>();
         int currentId = 0;
+        long[] baseline = { total[0], total[1], total[2] };
         for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
             if (!strVal(e.get("PART"), "").equals(part)) continue;
             Object wearer = e.get("EQUIPPED_COMPANION_ID");
             if (wearer != null && intVal(wearer, 0) != companionId) continue;
-            if (wearer != null) currentId = intVal(e.get("EQUIP_ID"), 0);
-            rows.add(equipContribRow(e, base, m));
+            HashMap<String, Object> row = equipContribRow(e, base, m);
+            if (wearer != null) {
+                currentId = intVal(e.get("EQUIP_ID"), 0);
+                baseline[0] = total[0] - ((Number) row.get("HP")).longValue();
+                baseline[1] = total[1] - ((Number) row.get("ATK")).longValue();
+                baseline[2] = total[2] - ((Number) row.get("DEF")).longValue();
+            }
+            rows.add(row);
         }
+        for (HashMap<String, Object> row : rows) attachPct(row, baseline);
         out.put("rows", rows);
         out.put("currentEquipId", currentId);
+        out.put("baseline", statTriple(baseline[0], baseline[1], baseline[2]));
         return out;
     }
 

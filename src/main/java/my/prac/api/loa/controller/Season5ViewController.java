@@ -521,6 +521,7 @@ public class Season5ViewController {
             return ResponseEntity.ok(result);
         }
         result.put("byCompanion", s5Service.partyEquipContribution(userName));
+        result.put("detail", s5Service.partyDetail(userName));
         return ResponseEntity.ok(result);
     }
 

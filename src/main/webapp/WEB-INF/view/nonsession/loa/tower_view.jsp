@@ -302,6 +302,18 @@
     .ps-equip-name{ font-size:10px; color:var(--ink-soft); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .ps-equip-stat{ font-size:10px; line-height:1.45; text-align:center; color:var(--ink-soft); min-height:14px; }
     .ps-equip-stat b{ color:var(--ink); font-weight:700; }
+    /* [2026-10-20] 파티 카드 상단 상세: 총합 = 원래 + 스탯구매 + 한계돌파 + 장비(+강화) 색 구분 */
+    .ps-detail{ font-size:11px; line-height:1.65; margin-bottom:10px; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; }
+    .ps-detail:empty{ display:none; }
+    .psd-k{ display:inline-block; min-width:28px; font-weight:800; color:var(--ink); }
+    .psd-total{ font-size:13px; color:var(--ink); }
+    .c-base{ color:var(--ink-soft); }
+    .c-buy{ color:#1F8A8A; font-weight:700; }
+    .c-lb{ color:#C2661A; font-weight:700; }
+    .c-eq{ color:#2D6CB5; font-weight:700; }
+    .c-enh{ color:#2F7D32; font-weight:700; }
+    .psd-mult{ margin-top:4px; padding-top:4px; border-top:1px dashed var(--line); color:var(--ink-soft); font-size:10.5px; }
+    .psd-mult b{ color:#C2661A; }
     .ps-equip-enh{ font-size:10px; line-height:1.4; text-align:center; color:#9A6B12; font-weight:700; }
     /* 카드마다 내용 길이가 달라도(능력치/강화 줄 수) 변경 버튼이 늘어나지 않고 카드 맨 아래에 같은 높이로 붙게 */
     .ps-equip-slot .ps-btn.small{ flex:none; margin-top:auto; }
@@ -2986,7 +2998,7 @@ var TW = (function () {
           if (!r) return;
           var isCur = String(d.currentEquipId) === el.getAttribute('data-eq');
           var enhInfo = r.ENHANCE_LEVEL > 0 ? ' <small>(강화 +' + r.ENHANCE_LEVEL + ', 성능 +' + (r.ENHANCE_LEVEL * 6) + '%)</small>' : '';
-          var html = '장비 능력치 <b>' + (eqStatText(r, 'raw') || '-') + '</b>' + enhInfo
+          var html = '<b>' + (eqStatText(r, 'raw') || '-') + '</b>' + enhInfo
               + '<br>캐릭터 상승 <b>' + (eqFinalText(r) || '-') + '</b>';
           if (!isCur) html += '<br>현재 장비 대비 ' + (eqDeltaText(r, cur) || '변화 없음');
           el.innerHTML = html;
@@ -3105,7 +3117,7 @@ var TW = (function () {
           var head = '<div class="der-head"><span>' + PART_KR[part] + '</span><span>' + (found ? ('★' + found.GRADE + legendaryTag(found)) : '미착용') + '</span></div>';
           if (!found || !r) { el.innerHTML = head; eqBox.appendChild(el); return; }
           el.innerHTML = head
-              + '<div class="der-line">장비 능력치 <b>' + (eqStatText(r, 'raw') || '-') + '</b></div>'
+              + '<div class="der-line"><b>' + (eqStatText(r, 'raw') || '-') + '</b></div>'
               + '<div class="der-line up">캐릭터 상승 <b>' + (eqFinalText(r) || '-') + '</b>' + (r.ENHANCE_LEVEL > 0 ? ' <small>(강화 +' + r.ENHANCE_LEVEL + ', 성능 +' + (r.ENHANCE_LEVEL * 6) + '%)</small>' : '') + '</div>';
           eqBox.appendChild(el);
         });
@@ -3211,6 +3223,10 @@ var TW = (function () {
                      : '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>');
       header.appendChild(info);
       card.appendChild(header);
+      var detailEl = document.createElement('div');
+      detailEl.className = 'ps-detail';
+      detailEl.setAttribute('data-cid', occ.COMPANION_ID);
+      card.appendChild(detailEl);
 
       var actions = document.createElement('div');
       actions.className = 'ps-actions';
@@ -3271,8 +3287,44 @@ var TW = (function () {
   // [2026-10-20] "동료편성 화면에 장비/악세 능력치와 강화수치(강화로 늘어난 성능 포함)를 보여달라" 요청 -- 서버(partyEquipContribution)가
   // 장비 1개가 올려주는 최종 체력/공격/방어(스탯구매/한계돌파 반영)와 그중 강화(+N, 1강당 +6%)로 늘어난 몫을 계산해서 내려준다.
   var partyEquipStat = {};
+  var partyDetailData = {};
+  // [2026-10-20] 파티 카드 상단 상세 -- 총합 = 원래 + 스탯구매 + 한계돌파(★7은 7성 보정) + 장비 + 장비강화(색 구분), 아래에 총 증가율(배율) 계산 근거.
+  function psDetailHtml(d) {
+    if (!d || d.error || !d.total) return '';
+    var html = '';
+    [['hp', 'HP'], ['atk', '공격'], ['def', '방어']].forEach(function (r) {
+      var k = r[0];
+      var enh = (d.enhTotal && d.enhTotal[k]) || 0;
+      var eq = d.equipTotal[k] || 0;
+      html += '<div><span class="psd-k">' + r[1] + '</span> <b class="psd-total">' + fmtN(d.total[k]) + '</b> = '
+          + '<span class="c-base">원래 ' + fmtN(d.baseRaw[k]) + '</span>'
+          + (d.statBuy[k] ? ' <span class="c-buy">+스탯구매 ' + fmtN(d.statBuy[k]) + '</span>' : '')
+          + (d.lbBonus[k] ? ' <span class="c-lb">+' + d.lbLabel + ' ' + fmtN(d.lbBonus[k]) + '</span>' : '')
+          + (eq ? ' <span class="c-eq">+장비 ' + fmtN(eq - enh) + '</span>' : '')
+          + (enh ? ' <span class="c-enh">+장비강화 ' + fmtN(enh) + '</span>' : '')
+          + '</div>';
+    });
+    var p = d.pct || {};
+    function why(total, buy) {
+      if (!(total > 0)) return null;
+      var parts = [];
+      if (buy > 0) parts.push('스탯구매 +' + fmtPct(buy) + '%');
+      if (p.lb > 0) parts.push(d.lbLabel + ' +' + fmtPct(p.lb) + '%');
+      return '+' + fmtPct(total) + '%' + (parts.length > 1 ? ' (' + parts.join(' × ') + ')' : (parts.length ? ' (' + parts[0] + ')' : ''));
+    }
+    var lines = [];
+    var w1 = why(p.totalHp, p.buyHp), w2 = why(p.totalAtk, p.buyAtk), w3 = why(p.totalDef, 0);
+    if (w1) lines.push('체력 <b>' + w1 + '</b>');
+    if (w2) lines.push('공격 <b>' + w2 + '</b>');
+    if (w3) lines.push('방어 <b>' + w3 + '</b>');
+    if (lines.length) html += '<div class="psd-mult">총 증가율(배율) — ' + lines.join(' · ') + '<br>※ 이 배율은 (원래 + 장비)에 곱해져서 장비 수치에도 이미 반영돼 있습니다.</div>';
+    return html;
+  }
   function fmtN(n) { return Number(n).toLocaleString('ko-KR'); }
   function applyPartyEquipStat() {
+    Array.prototype.forEach.call(document.querySelectorAll('#partySlots .ps-detail[data-cid]'), function (el) {
+      el.innerHTML = psDetailHtml(partyDetailData[el.getAttribute('data-cid')]);
+    });
     Array.prototype.forEach.call(document.querySelectorAll('#partySlots .ps-equip-slot[data-cid]'), function (slot) {
       var rows = partyEquipStat[slot.getAttribute('data-cid')] || [];
       var el = slot.querySelector('.ps-equip-stat');
@@ -3289,7 +3341,7 @@ var TW = (function () {
         if (row.ENH_HP) enh.push('체력+' + fmtN(row.ENH_HP));
         if (row.ENH_ATK) enh.push('공격+' + fmtN(row.ENH_ATK));
         if (row.ENH_DEF) enh.push('방어+' + fmtN(row.ENH_DEF));
-        html += '<div class="ps-equip-enh">⬆️ 강화 +' + row.ENHANCE_LEVEL + '<br>성능 +' + (row.ENHANCE_LEVEL * 6) + '%' + (enh.length ? '<br>' + enh.join(' ') : '') + '</div>';
+        html += '<div class="ps-equip-enh">⬆️ 강화 +' + row.ENHANCE_LEVEL + ' (성능 +' + (row.ENHANCE_LEVEL * 6) + '%)' + (enh.length ? '<br>' + enh.join(' ') : '') + '</div>';
       }
       el.innerHTML = html;
     });
@@ -3307,10 +3359,14 @@ var TW = (function () {
     });
     return out.join(' · ');
   }
+  function fmtPct(x) { return (Math.round(x * 10) / 10).toString(); }
+  // "캐릭터 상승" = 이 장비가 캐릭터 능력치를 올려주는 양과, 그 장비를 뺀 능력치 대비 몇 %인지
   function eqFinalText(row) {
     var out = [];
     [['HP', '체력'], ['ATK', '공격'], ['DEF', '방어']].forEach(function (p) {
-      if (row[p[0]]) out.push(p[1] + ' +' + fmtN(row[p[0]]));
+      if (!row[p[0]]) return;
+      var pct = row['PCT_' + p[0]];
+      out.push(p[1] + ' +' + fmtN(row[p[0]]) + (pct > 0 ? '(+' + fmtPct(pct) + '%)' : ''));
     });
     return out.join(' · ');
   }
@@ -3328,7 +3384,7 @@ var TW = (function () {
     var u = userName();
     if (!u) return;
     fetch(base + '/api/tower-party-equip-stat?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.byCompanion) { partyEquipStat = d.byCompanion; applyPartyEquipStat(); }
+      if (d && d.byCompanion) { partyEquipStat = d.byCompanion; partyDetailData = d.detail || {}; applyPartyEquipStat(); }
     }).catch(function () { /* 수치 표시는 부가 정보라 실패해도 조용히 둔다 */ });
   }
 
@@ -3761,7 +3817,7 @@ var TW = (function () {
     DOUBLE_SHOT: function (p1) { return '공격 시 ' + p1 + '% 확률로 같은 눈금으로 한 번 더 연사'; },
     START_BARRIER: function () { return '전투 시작 시 무적 보호막(다음 피해 1회 면역)을 두르고 시작'; },
     STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + (p1 / 100) + '배'; },
-    SKILL_RATE_MULT: function (p1) { return '장착한 캐릭터의 스킬 발동 확률 ' + (p1 / 100) + '배 (예: 부활 10% -> ' + Math.round(10 * p1 / 100) + '%)'; }
+    SKILL_RATE_MULT: function (p1) { return '장착한 캐릭터의 스킬 발동 확률 ' + (p1 / 100) + '배 (예: ★6 도사 부활 15% -> ' + Math.round(15 * p1 / 100) + '%). ★7 동료 보너스(x1.2)와는 곱하지 않고 증가분을 합산하며, 증가한 확률은 최대 90%까지'; }
   };
 
   function legendItemSummaryHtml(item) {
