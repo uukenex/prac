@@ -4967,3 +4967,6 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 
 ## [2026-10-20] 성장형 동료 그림 3차 -- 어둠 속의 암살자
 - 요청("멋있고 남성미 있고 무거운 분위기, 어둠 속의 암살자 느낌")으로 다시 그림: 후드를 깊게 쓴 암살자, 마스크로 가린 하관, 붉게 빛나는 눈과 사나운 눈썹, 달빛 림라이트, 어두운 망토와 가죽 끈, 아래쪽 단검. `src/main/resources/s5/growth_assassin.png`(512x512, 직접 그린 오리지널), `TBOT_S5_GROWTH_PORTRAIT` 주소를 `classpath:s5/growth_assassin.png`로 교체(라이브 DB 적용 완료, 이전 두 버전 파일은 삭제). 160px 썸네일에서도 눈빛과 후드 실루엣이 읽힌다.
+
+## [2026-10-20] 성장형 동료 그림 4차 -- 얼굴이 물음표
+- 요청("얼굴을 물음표로 해줘, 궁금증 유발하게")으로 암살자 그림의 얼굴(눈/마스크)을 빼고, 어두운 후드 안에 붉게 빛나는 큼직한 물음표(?)가 떠 있는 그림으로 교체: `src/main/resources/s5/growth_mystery.png`(512x512, 오리지널). `TBOT_S5_GROWTH_PORTRAIT`를 `classpath:s5/growth_mystery.png`로 변경(라이브 DB 적용 완료, 이전 버전 파일 삭제).
