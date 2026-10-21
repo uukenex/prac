@@ -81,6 +81,8 @@ public interface BotS5DAO {
     int updateCompanionLimitBreak(HashMap<String, Object> map);
     /** [2026-10-20] 성장형 동료 이름/직업 변경, 공통 초상화. */
     int updateCompanionName(@Param("companionId") int companionId, @Param("userName") String userName, @Param("name") String name);
+    /** [2026-10-21] 동료 이미지 교체 -- 이 동료만의 이미지(IMAGE_OVERRIDE, 등급 규칙보다 우선). */
+    int updateCompanionImageOverride(@Param("companionId") int companionId, @Param("userName") String userName, @Param("imageUrl") String imageUrl);
     int updateCompanionClass(@Param("companionId") int companionId, @Param("userName") String userName, @Param("job") String job);
     /** [2026-10-20] ★7 방출. */
     int deleteCompanion(@Param("companionId") int companionId, @Param("userName") String userName);

@@ -29,7 +29,7 @@
       background: radial-gradient(1100px 500px at 50% -8%, #FFFDF6 0%, var(--parchment) 46%, var(--parchment-deep) 100%);
       color:var(--ink); font-family:'Malgun Gothic','Segoe UI',sans-serif;
     }
-    .wrap{ max-width:900px; margin:0 auto; padding:20px 16px 120px; display:flex; flex-direction:column; gap:14px; }
+    .wrap{ max-width:900px; margin:0 auto; padding:20px 16px 160px; display:flex; flex-direction:column; gap:14px; }
 
     .top-controls{ display:flex; gap:8px; margin-bottom:2px; }
     .top-controls input{ padding:9px 14px; border:1.5px solid var(--line); border-radius:22px; background:#fff; font-size:13px; width:150px; }
@@ -287,7 +287,18 @@
     .bs-companion.incapacitated .bs-avatar, .bs-companion.incapacitated .avatar-emoji{
       filter:grayscale(70%); opacity:.65; }
     .incapacitated-badge{ color:var(--combat); font-weight:800; font-size:10px; }
-    .ps-actions{ display:flex; gap:8px; margin-bottom:12px; }
+    .ps-actions{ display:flex; gap:6px; margin-bottom:12px; }
+    /* [2026-10-21] 설정 탭 + 동료 이미지 바꾸기 팝업 */
+    .set-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-top:1px dashed var(--line); }
+    .set-label{ font-size:13px; font-weight:800; }
+    .set-btns{ display:flex; gap:6px; }
+    .set-btn{ border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:8px 16px; font-size:13px; font-weight:800; color:var(--ink-soft); cursor:pointer; }
+    .set-btn.active{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    .isw-now{ display:flex; align-items:center; gap:12px; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px 10px; margin-bottom:10px; font-size:12px; line-height:1.5; }
+    .isw-now .avatar{ width:56px; height:56px; flex:none; border-radius:10px; object-fit:cover; object-position:50% 15%; background:#EFE7D2; border:2px solid var(--line); }
+    .isw-now .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:26px; }
+    .party-card.swappable{ cursor:pointer; }
+    .party-card.swappable:active{ transform:scale(.97); }
     .ps-btn{ flex:1; background:#fff; border:1.5px solid var(--line); border-radius:10px; font-size:12px;
              font-weight:700; padding:9px; cursor:pointer; color:var(--ink); }
     .ps-btn:active{ transform:scale(.97); }
@@ -759,7 +770,7 @@
        그만큼 더 많이 덮었다. max-height+내부 스크롤로 상한을 둬서 아무리 길어도 화면을
        덮는 범위 자체는 고정폭 이상으로 안 커지게 함(중요한 앞부분 줄은 그대로 보이고,
        나머지는 안에서 스크롤). */
-    .msg-toast{ position:fixed; left:10px; right:auto; bottom:110px; top:auto; transform:none;
+    .msg-toast{ position:fixed; left:10px; right:auto; bottom:150px; top:auto; transform:none;
                 background:var(--ink); color:#fff; padding:9px 12px; border-radius:12px;
                 font-size:11px; line-height:1.6; max-width:min(62vw,300px);
                 max-height:150px; overflow-y:auto;
@@ -769,10 +780,12 @@
     .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
            background:linear-gradient(180deg,rgba(251,243,223,0),var(--parchment) 22%); }
-    .dock-inner{ max-width:900px; width:100%; display:flex; gap:8px; background:#fff;
-                 border:2px solid var(--line); border-radius:20px; padding:8px; box-shadow:0 10px 26px -10px rgba(46,36,64,.4); }
-    .dbtn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none;
-           border-radius:14px; padding:8px 4px 6px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
+    /* [2026-10-21] "옆으로 쫙 있는 메뉴를 두 줄, 한 줄에 4칸씩" 요청 -- 탑/편성/상점/빈칸, 업적/도감/메시지/설정. */
+    .dock-inner{ max-width:900px; width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:2px 8px; background:#fff;
+                 border:2px solid var(--line); border-radius:20px; padding:6px 8px; box-shadow:0 10px 26px -10px rgba(46,36,64,.4); }
+    .dbtn{ display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none;
+           border-radius:14px; padding:6px 4px 5px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
+    .dbtn-empty{ visibility:hidden; pointer-events:none; }
     .dbtn .d-icn{ font-size:18px; }
     .dbtn:hover{ background:var(--parchment-deep); }
     .dbtn.active{ color:var(--gold); }
@@ -1144,6 +1157,24 @@
     </div>
   </div>
 
+  <!-- [2026-10-21] 하단 메뉴 "설정" 칸 -- 지금은 전투화면 버전 선택과 공지 다시 보기만 모아 둔다(기존 버튼은 그대로 있다). -->
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <div class="card-title">⚙️ 설정</div>
+      <div class="set-row">
+        <div class="set-label">전투화면 버전</div>
+        <div class="set-btns">
+          <button type="button" class="set-btn set-ver" data-v="V1" onclick="TW.setBattleScreenVersion('V1')">V1</button>
+          <button type="button" class="set-btn set-ver" data-v="V2" onclick="TW.setBattleScreenVersion('V2')">V2</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-label">업데이트 공지</div>
+        <button type="button" class="set-btn" onclick="TW.reopenNotice()">📢 다시 보기</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="msg-toast" id="msgToast"></div>
@@ -1210,6 +1241,17 @@
     <div class="sheet-title" id="allCompanionsTitle">보유 동료</div>
     <div id="partyGridFilters"></div>
     <div class="party-grid" id="partyGrid"></div>
+  </div>
+</div>
+
+<!-- [2026-10-21] 동료 이미지 바꾸기 -- 편성된 동료의 이미지를 내가 가진 다른 동료(전부)의 이미지와 서로 맞바꾼다(★7/성장형 포함). -->
+<div class="detail-overlay" id="imageSwapOverlay" onclick="if(event.target===this) TW.closeImageSwap();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeImageSwap()">✕</button>
+    <div class="sheet-title">🖼️ 이미지 바꾸기</div>
+    <div class="isw-now" id="imageSwapNow"></div>
+    <div id="imageSwapFilters"></div>
+    <div class="party-grid" id="imageSwapGrid"></div>
   </div>
 </div>
 
@@ -1304,9 +1346,11 @@
     <!-- [2026-09-09] "주사위를 보드 안쪽으로 옮겼으니 하단 탭은 없애자" 요청 -- 여기 있던
          굴리기 버튼(dbtnDice)은 보드 카드 안의 #boardRollBtn으로 이동(updateDiceButtonState 참고). -->
     <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
+    <span class="dbtn dbtn-empty" aria-hidden="true"></span>
     <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
     <button class="dbtn" data-tab="codex" onclick="TW.switchTab('codex')"><span class="d-icn">📖</span>도감</button>
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
+    <button class="dbtn" data-tab="settings" onclick="TW.switchTab('settings')"><span class="d-icn">⚙️</span>설정</button>
   </div>
 </nav>
 
@@ -1613,6 +1657,7 @@ var TW = (function () {
     var btnV2 = document.getElementById('bsVersionBtnV2');
     if (btnV1) btnV1.classList.toggle('active', isV1);
     if (btnV2) btnV2.classList.toggle('active', !isV1);
+    document.querySelectorAll('.set-ver').forEach(function (b) { b.classList.toggle('active', b.dataset.v === v); });
   }
 
   // [2026-09-21] "전투화면 v1,v2는 db에저장해서 선택한걸 저장하도록 해줘" 요청, 이어서
@@ -2153,6 +2198,7 @@ var TW = (function () {
 
   function closeConfirm() {
     document.getElementById('confirmOverlay').classList.remove('open');
+    document.getElementById('confirmYesBtn').textContent = '이동'; // 이미지 바꾸기 확인창이 라벨을 '바꾸기'로 바꿔 쓴다
   }
 
   // [2026-09-05] "던전앤파이터 보스맵/카트라이더 느낌으로 구불구불하게, 시작과 끝이 이어지면
@@ -3120,6 +3166,70 @@ var TW = (function () {
     companionPickerSlot = null;
     document.getElementById('allCompanionsOverlay').classList.remove('open');
   }
+  // [2026-10-21] 동료 이미지 바꾸기 -- 편성된 동료(src)의 이미지를 내가 가진 다른 동료(전부, 숨김/편성 여부 무관)와 서로 맞바꾼다.
+  var imageSwapSrc = null;
+  var imageSwapFilter = { job: null, grade: null };
+  function openImageSwap(companionId) {
+    imageSwapSrc = companionId;
+    imageSwapFilter = { job: null, grade: null };
+    renderImageSwap();
+    document.getElementById('imageSwapOverlay').classList.add('open');
+  }
+  function closeImageSwap() {
+    imageSwapSrc = null;
+    document.getElementById('imageSwapOverlay').classList.remove('open');
+  }
+  function companionNameOf(c) { return c.NAME || (JOB_KR[c.CLASS] || c.CLASS); }
+  function renderImageSwap() {
+    var companions = lastParty.companions || [];
+    var src = companions.filter(function (x) { return x.COMPANION_ID === imageSwapSrc; })[0];
+    if (!src) { closeImageSwap(); return; }
+    var now = document.getElementById('imageSwapNow');
+    now.innerHTML = '';
+    now.appendChild(buildAvatarEl(src, 'avatar', false));
+    var txt = document.createElement('div');
+    txt.innerHTML = '<b>' + companionNameOf(src) + '</b> ' + gradeMark(src.GRADE)
+        + '<br>아래에서 고른 동료와 <b>이미지를 서로 바꿉니다</b>. (능력치는 그대로)';
+    now.appendChild(txt);
+
+    var filterBox = document.getElementById('imageSwapFilters');
+    filterBox.innerHTML = '';
+    filterBox.appendChild(buildJobFilterRow(imageSwapFilter.job, function (job) { imageSwapFilter.job = job; renderImageSwap(); }));
+    filterBox.appendChild(buildGradeFilterRow(imageSwapFilter.grade, function (g) { imageSwapFilter.grade = g; renderImageSwap(); }));
+
+    var list = companions.filter(function (c) {
+      if (c.COMPANION_ID === imageSwapSrc) return false;
+      if (imageSwapFilter.job && c.CLASS !== imageSwapFilter.job) return false;
+      if (imageSwapFilter.grade && c.GRADE !== imageSwapFilter.grade) return false;
+      return true;
+    }).sort(function (a, b) { return (b.GRADE || 0) - (a.GRADE || 0); });
+    var grid = document.getElementById('imageSwapGrid');
+    grid.innerHTML = '';
+    if (!list.length) { grid.innerHTML = '<div class="sheet-empty">바꿀 수 있는 동료가 없습니다.</div>'; return; }
+    list.forEach(function (c) {
+      var div = document.createElement('div');
+      div.className = 'party-card swappable' + (c.HIDDEN_YN === 'Y' ? ' hidden' : '');
+      var lb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
+      div.innerHTML = '<div class="cname">' + companionNameOf(c) + '</div>'
+          + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ' + gradeMark(c.GRADE) + (lb > 0 ? ' (+' + lb + ')' : '')
+          + (c.PARTY_SLOT ? ' [파티' + c.PARTY_SLOT + ']' : '') + '</div>';
+      div.insertBefore(buildAvatarEl(c, 'avatar', false), div.firstChild);
+      div.onclick = function () { confirmImageSwap(src, c); };
+      grid.appendChild(div);
+    });
+  }
+  function confirmImageSwap(src, target) {
+    document.getElementById('confirmMsg').textContent = '[' + companionNameOf(src) + ']와(과) [' + companionNameOf(target) + ']의 이미지를 서로 바꿀까요?';
+    var yes = document.getElementById('confirmYesBtn');
+    yes.textContent = '바꾸기';
+    yes.onclick = function () {
+      closeConfirm();
+      closeImageSwap();
+      action('COMPANION_IMAGE_SWAP', String(src.COMPANION_ID), String(target.COMPANION_ID));
+    };
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+
   function openAllEquip() {
     document.getElementById('allEquipOverlay').classList.add('open');
     if (equipDirty) { renderEquipList(); equipDirty = false; }
@@ -3151,7 +3261,7 @@ var TW = (function () {
     var detailImg = document.getElementById('detailImg');
     detailImg.onerror = function () { detailImg.style.display = 'none'; };
     // 성장형(☆1) 이미지는 앱에 포함된 파일(classpath:)일 수 있어 브라우저가 직접 못 읽으므로 아바타 프록시로 받는다.
-    detailImg.src = c.GRADE === 8 && c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID + '&u=' + encodeURIComponent(c.IMAGE_URL)) : (c.IMAGE_URL || '');
+    detailImg.src = (c.GRADE === 8 || /^classpath:/.test(c.IMAGE_URL || '')) && c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID + '&u=' + encodeURIComponent(c.IMAGE_URL)) : (c.IMAGE_URL || '');
     detailImg.style.display = c.IMAGE_URL ? '' : 'none';
     document.getElementById('detailName').textContent = name;
     // [2026-09-14] "동료편성 화면에 한계돌파 (+N) 표기해달라" 요청 -- 단계가 있을 때만 붙인다.
@@ -3337,8 +3447,15 @@ var TW = (function () {
       bestAllBtn.className = 'ps-btn';
       bestAllBtn.textContent = '일괄장착';
       (function (idx) { bestAllBtn.onclick = function () { action('EQUIP_BEST_ALL', String(idx)); }; })(occIdx);
+      var imageBtn = document.createElement('button');
+      imageBtn.type = 'button';
+      imageBtn.className = 'ps-btn';
+      imageBtn.textContent = '이미지';
+      imageBtn.title = '이미지 변경 -- 내 다른 동료와 이미지를 서로 바꿉니다';
+      (function (cid) { imageBtn.onclick = function () { openImageSwap(cid); }; })(occ.COMPANION_ID);
       actions.appendChild(changeBtn);
       actions.appendChild(bestAllBtn);
+      actions.appendChild(imageBtn);
       actions.appendChild(unassignBtn);
       card.appendChild(actions);
 
@@ -4572,7 +4689,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,

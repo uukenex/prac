@@ -4998,3 +4998,10 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 공지(`selectNotice`)는 웹 화면이 탭마다 3분 간격으로 폴링하므로 요청과 무관하게 30초 캐시(`updateNotice` 시 즉시 무효화). 유저별 `selectNoticeSeenVersion`은 요청 범위 캐시만.
 - 새 DAO 읽기 메서드를 캐시하려면 `CACHED_READS`에 이름만 추가, 새 쓰기 메서드는 이름이 select/count로 시작하지 않으면 자동으로 캐시를 비운다(select/count로 시작하는데 데이터를 쓰는 메서드는 만들지 말 것).
 - 검증: 스텁 DAO 하네스(중복 제거, null 캐시, 복사본 격리, 쓰기 후 무효화, 예외 언래핑, 범위 밖 통과, 공지 TTL) 전부 통과, Spring 컨텍스트에서 FactoryBean 산출 DAO에도 후처리기가 적용되는지 확인. 라이브 쿼리 감소량은 배포 후 jdbc.sqlonly 로그로 확인 필요.
+
+### 2026-10-21 동료 이미지 바꾸기 + 하단 메뉴 2줄(4칸) + 설정 탭
+- 하단 메뉴를 한 줄 가로 배열에서 2줄 x 4칸 격자로 변경: 탑/편성/상점/(빈칸), 업적/도감/메시지/설정. 높이가 늘어난 만큼 `.wrap` 하단 패딩(160px)과 토스트 위치(bottom:150px)를 올림. 새 `설정` 탭(`panel-settings`)에는 전투화면 V1/V2 선택과 공지 다시 보기를 모음(기존 버튼은 그대로).
+- 이미지 바꾸기: 편성 슬롯 카드의 `이미지` 버튼 -> 내가 가진 모든 동료(숨김/편성 여부 무관, 직업/성급 필터) 중 하나를 골라 **두 동료의 표시 이미지를 서로 맞바꾼다**. 확인창을 거친다. 능력치/전투에는 영향 없음, 두 번 바꾸면 원래대로.
+- 저장 방식: `TBOT_S5_USER_COMPANION.IMAGE_OVERRIDE`(VARCHAR2(500), NULL 허용, `S5_COMPANION_IMAGE_OVERRIDE.sql`, 라이브 적용 완료). 값이 있으면 등급 규칙(★7 = 직업별 고정 초상화, 성장형 = 공용 고정 초상화, 그 외 IMAGE_URL)보다 우선하고, 없으면 예전과 동일. `selectUserCompanions`/`selectCompanionImageUrl`이 `NVL(IMAGE_OVERRIDE, 등급 규칙)`으로 계산하므로 아바타 프록시/전투화면/성장형 화면이 자동으로 따라온다. 그래서 ★7/성장형도 "고정 초상화" 대신 개별 이미지로 바뀐다.
+- 서버: `swapCompanionImage(userName, companionId, targetId)`(웹 액션 `COMPANION_IMAGE_SWAP`, param1/param2 = 동료 ID). 두 동료가 모두 내 소유여야 하고(UPDATE도 USER_NAME 조건), 한쪽이 이미지가 없으면(이미지갱신 전) 거부, 같은 이미지면 안내만.
+- 성장형 고정 이미지가 `classpath:` 경로라 일반 동료가 그 이미지를 받으면 브라우저가 직접 못 읽으므로, 동료 상세 모달도 `classpath:`는 아바타 프록시로 받게 함.

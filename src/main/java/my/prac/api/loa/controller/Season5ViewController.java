@@ -710,6 +710,9 @@ public class Season5ViewController {
                 case "GROWTH_RENAME":
                     message = s5Service.growthRename(userName, param1);
                     break;
+                case "COMPANION_IMAGE_SWAP":
+                    message = s5Service.swapCompanionImage(userName, Integer.parseInt(param1), Integer.parseInt(param2));
+                    break;
                 case "GROWTH_JOB":
                     message = s5Service.growthChangeJob(userName, param1);
                     break;

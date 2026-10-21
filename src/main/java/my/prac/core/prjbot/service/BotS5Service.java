@@ -390,6 +390,9 @@ public interface BotS5Service {
     java.util.HashMap<String, Object> growthStatus(String userName);
     String growthInfoText(String userName);
     String growthRename(String userName, String name);
+
+    /** [2026-10-21] 편성 화면 "이미지변경" -- 내 동료 두 명의 표시 이미지를 서로 바꾼다(★7/성장형 포함, 개별 이미지로 저장). */
+    String swapCompanionImage(String userName, int companionId, int targetId);
     String growthChangeJob(String userName, String job);
 
     /** [2026-10-20] ★7 동료 소환 -- 현재 상태(업적/보유 여부/직업별 능력치와 고정 초상화). */

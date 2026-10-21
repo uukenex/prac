@@ -8396,6 +8396,29 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "✏️ 성장형 동료의 이름을 [" + name + "](으)로 바꿨습니다.";
     }
 
+    /** [2026-10-21] "동료 이미지 변경" 요청 -- 내가 가진 동료끼리 이미지를 서로 맞바꾼다. 화면에 보이는 이미지(IMAGE_URL, ★7/성장형의 고정 초상화 포함)를
+     *  그대로 서로에게 개별 이미지(IMAGE_OVERRIDE)로 저장하므로 전투/스탯에는 영향이 없다. 두 번 바꾸면 원래대로 돌아온다. */
+    @Override
+    @Transactional
+    public String swapCompanionImage(String userName, int companionId, int targetId) {
+        if (companionId == targetId) return "같은 동료입니다. 이미지를 바꿀 다른 동료를 골라주세요.";
+        HashMap<String, Object> a = findCompanionOf(userName, companionId);
+        HashMap<String, Object> b = findCompanionOf(userName, targetId);
+        if (a == null || b == null) return "동료를 찾을 수 없습니다.";
+        String ia = strVal(a.get("IMAGE_URL"), "");
+        String ib = strVal(b.get("IMAGE_URL"), "");
+        if (ia.isEmpty() || ib.isEmpty()) return "이미지가 아직 없는 동료는 바꿀 수 없습니다. (이미지갱신 후 이용해주세요)";
+        if (ia.equals(ib)) return "두 동료의 이미지가 같아 바뀌는 것이 없습니다.";
+        dao.updateCompanionImageOverride(companionId, userName, ib);
+        dao.updateCompanionImageOverride(targetId, userName, ia);
+        return "🖼️ [" + companionLabelForImage(a) + "]와(과) [" + companionLabelForImage(b) + "]의 이미지를 서로 바꿨습니다.";
+    }
+
+    private String companionLabelForImage(HashMap<String, Object> c) {
+        String nm = strVal(c.get("NAME"), "");
+        return nm.isEmpty() ? JOB_NAME.get(strVal(c.get("CLASS"), "WARRIOR")) : nm;
+    }
+
     @Override
     @Transactional
     public String growthChangeJob(String userName, String arg) {

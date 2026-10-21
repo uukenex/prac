@@ -439,9 +439,10 @@
     <!-- ==================== 동료 ==================== -->
     <select id="selectUserCompanions" resultType="hashmap">
         SELECT c.COMPANION_ID, c.USER_NAME, c.CLASS, c.GRADE, c.NAME,
-               CASE WHEN c.GRADE = 7 THEN NVL((SELECT sp.IMAGE_URL FROM TBOT_S5_STAR7_PORTRAIT sp WHERE sp.JOB = c.CLASS), c.IMAGE_URL)
-                    WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
-                    ELSE c.IMAGE_URL END AS IMAGE_URL,
+               NVL(c.IMAGE_OVERRIDE,
+                   CASE WHEN c.GRADE = 7 THEN NVL((SELECT sp.IMAGE_URL FROM TBOT_S5_STAR7_PORTRAIT sp WHERE sp.JOB = c.CLASS), c.IMAGE_URL)
+                        WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
+                        ELSE c.IMAGE_URL END) AS IMAGE_URL,
                c.CUR_HP_VALUE, c.CUR_HP_EXT, c.PARTY_SLOT,
                NVL(c.HIDDEN_YN, 'N') AS HIDDEN_YN, NVL(c.LIMIT_BREAK, 0) AS LIMIT_BREAK
         FROM TBOT_S5_USER_COMPANION c
@@ -473,12 +474,19 @@
     <!-- [2026-09-14] 동료 초상화 축소판 캐싱 프록시(/api/tower-avatar)용: USER_NAME 조회 없이
          COMPANION_ID 하나로 IMAGE_URL만 바로 가져온다(COMPANION_ID가 전역 PK). -->
     <select id="selectCompanionImageUrl" resultType="String">
-        SELECT CASE WHEN c.GRADE = 7 THEN NVL((SELECT sp.IMAGE_URL FROM TBOT_S5_STAR7_PORTRAIT sp WHERE sp.JOB = c.CLASS), c.IMAGE_URL)
-                    WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
-                    ELSE c.IMAGE_URL END
+        SELECT NVL(c.IMAGE_OVERRIDE,
+                   CASE WHEN c.GRADE = 7 THEN NVL((SELECT sp.IMAGE_URL FROM TBOT_S5_STAR7_PORTRAIT sp WHERE sp.JOB = c.CLASS), c.IMAGE_URL)
+                        WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
+                        ELSE c.IMAGE_URL END)
         FROM TBOT_S5_USER_COMPANION c
         WHERE c.COMPANION_ID = #{companionId}
     </select>
+
+    <!-- [2026-10-21] 동료 이미지 교체: 이 동료만의 이미지(등급 규칙보다 우선). 소유자 조건으로 남의 동료는 못 바꾼다. -->
+    <update id="updateCompanionImageOverride">
+        UPDATE TBOT_S5_USER_COMPANION SET IMAGE_OVERRIDE = #{imageUrl}
+        WHERE COMPANION_ID = #{companionId} AND USER_NAME = #{userName}
+    </update>
 
     <select id="countCompanionsMissingImage" resultType="int">
         SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE IMAGE_URL IS NULL AND GRADE &lt; 7
