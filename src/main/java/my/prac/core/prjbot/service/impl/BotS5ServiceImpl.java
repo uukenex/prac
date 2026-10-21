@@ -8221,7 +8221,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return false;
     }
 
-    /** 직업별 고정 ★7 초상화. 표에 없으면 처음 소환되는 순간 랜덤 이미지를 한 번 뽑아 저장해서 이후 모두가 같은 이미지를 쓴다(TBOT_S5_STAR7_PORTRAIT를 직접 고쳐서 바꿀 수도 있음). */
+    /** 직업별 고정 ★7 초상화(대표 이미지). 표에 없으면 첫 소환자의 랜덤 이미지를 한 번 뽑아 저장해서 이후 모두가 같은 이미지를 쓴다.
+     *  ★7 동료의 IMAGE_URL은 조회 때 이 표 값으로 대체되므로(selectUserCompanions/selectCompanionImageUrl) TBOT_S5_STAR7_PORTRAIT를 고치면 기존 ★7에도 바로 반영된다. */
     private String star7PortraitUrl(String job) {
         String url = dao.selectStar7Portrait(job);
         if (url != null && !url.isEmpty()) return url;
@@ -8322,6 +8323,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!newly && !hasLegendBegin(userName)) {
             return "업적 [전설의 시작]이 필요합니다. 한계돌파 +" + LIMIT_BREAK_MAX + " ★5 동료 " + S7_REQ_G5 + "체를 모으세요. (현재 " + countStar5Lb6(cs) + "체)";
         }
+        // 이 직업의 대표 초상화 -- 아직 없으면 지금 소환하는 사람의 이미지가 모두의 대표가 된다. 이미지를 못 가져오면(외부 API 장애) 대표가 비어 있게 되므로 소환을 미룬다.
+        String portrait = star7PortraitUrl(job);
+        if (portrait == null) return "초상화 이미지를 가져오지 못했습니다. 잠시 후 다시 시도해주세요. (아무것도 소모되지 않았습니다)";
         String name = NAME_POOL_BY_JOB_GRADE.get(job)[STAR7_GRADE - 1][0];
         int[] stat = calcBaseStat(job, STAR7_GRADE);
         HashMap<String, Object> nc = new HashMap<>();
@@ -8329,7 +8333,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         nc.put("class", job);
         nc.put("grade", STAR7_GRADE);
         nc.put("name", name);
-        nc.put("imageUrl", star7PortraitUrl(job));
+        nc.put("imageUrl", portrait);
         nc.put("curHpValue", (double) stat[0]);
         nc.put("curHpExt", "");
         nc.put("partySlot", null);
