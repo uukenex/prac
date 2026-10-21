@@ -79,6 +79,9 @@ public interface BotS5DAO {
 
     /** [2026-09-14] 한계돌파(중복 동료를 또 뽑으면 그 동료 개체에 붙는 강화, 최대 6단계) 갱신. */
     int updateCompanionLimitBreak(HashMap<String, Object> map);
+    /** [2026-10-20] 성장형 동료 이름/직업 변경, 공통 초상화. */
+    int updateCompanionName(@Param("companionId") int companionId, @Param("userName") String userName, @Param("name") String name);
+    int updateCompanionClass(@Param("companionId") int companionId, @Param("userName") String userName, @Param("job") String job);
     /** [2026-10-20] ★7 방출. */
     int deleteCompanion(@Param("companionId") int companionId, @Param("userName") String userName);
     /** [2026-10-20] 직업별 고정 ★7 초상화. */

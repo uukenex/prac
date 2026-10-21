@@ -603,6 +603,30 @@
     .legend-craft-result{ text-align:center; font-size:13px; font-weight:700; padding:14px 10px; border-radius:12px; margin-top:4px; }
     .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
     .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
+    /* [2026-10-20] 성장형 동료 팝업 */
+    .gr-head{ display:flex; gap:12px; align-items:center; margin-bottom:10px; }
+    .gr-face{ width:84px; height:84px; border-radius:14px; object-fit:cover; object-position:50% 15%; background:#fff; border:1.5px solid var(--line); }
+    .gr-face.avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:38px; }
+    .gr-head-info{ flex:1; min-width:0; }
+    .gr-role{ font-size:12px; color:var(--ink-soft); margin-bottom:4px; }
+    .gr-name-row{ display:flex; gap:6px; }
+    .gr-input{ flex:1; min-width:0; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; font-size:14px; font-weight:700; background:#fff; color:var(--ink); }
+    .gr-save{ width:auto; padding:8px 12px; margin:0; font-size:12px; }
+    .gr-sub{ font-size:10.5px; color:var(--ink-soft); margin-top:4px; }
+    .gr-prog{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+    .gr-prog-top{ display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; }
+    .gr-bar{ height:10px; background:#EFE7D2; border-radius:6px; overflow:hidden; }
+    .gr-bar > i{ display:block; height:100%; background:var(--gold); }
+    .gr-line{ font-size:12px; margin-top:6px; color:var(--ink-soft); }
+    .gr-line b{ color:var(--ink); }
+    .gr-title{ font-weight:800; font-size:13px; margin:4px 0 6px; }
+    .gr-title small{ font-weight:400; color:var(--ink-soft); font-size:10px; }
+    .gr-jobs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; }
+    .gr-job{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:12px; border:2px solid transparent; background:#F4EDD9; color:var(--ink); font-size:13px; cursor:pointer; }
+    .gr-job small{ font-size:9.5px; color:var(--ink-soft); }
+    .gr-job .gr-job-em{ font-size:22px; }
+    .gr-job.sel{ border-color:var(--gold); background:var(--gold-soft); cursor:default; }
+    .gr-job:disabled{ opacity:.85; }
     /* [2026-10-20] ★7 동료 소환/방출 팝업 */
     .s7-intro{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:8px; }
     .s7-req{ font-size:13px; padding:6px 10px; border-radius:10px; margin-bottom:4px; background:#F4EDD9; }
@@ -1031,6 +1055,11 @@
       <div class="card-title">🌟 7성 동료 소환</div>
       <button type="button" class="legend-craft-btn" id="star7Btn" onclick="TW.openStar7()">소환 / 방출</button>
     </div>
+    <!-- [2026-10-20] 성장형 동료(☆1) -- 모두에게 무료, 1~100층 완전탐사로 영구 성장, 직업 자유 변경, 이름 변경, 장비 직업 제한 없음. -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">🌱 성장형 동료 (☆1)</div>
+      <button type="button" class="legend-craft-btn" id="growthBtn" onclick="TW.openGrowth()">확인 / 직업·이름 변경</button>
+    </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
          카드/목록으로 분리(renderShop의 accessoryGachaList 참고). -->
@@ -1223,6 +1252,16 @@
     <div class="sheet-title">⬆️ 전설강화 <span class="legend-frag-badge">🧩 <span id="legendEnhanceFrag">0</span></span></div>
     <div class="legend-craft-result" id="legendEnhanceResult" style="display:none;"></div>
     <div id="legendEnhanceList"></div>
+  </div>
+</div>
+
+<!-- [2026-10-20] 성장형 동료 팝업 -- 탐사 진행/성장 배율, 직업 변경(무료), 이름 변경. 조건 판정은 서버가 한다. -->
+<div class="detail-overlay" id="growthOverlay" onclick="if(event.target===this) TW.closeGrowth();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeGrowth()">✕</button>
+    <div class="sheet-title">🌱 성장형 동료</div>
+    <div class="legend-craft-result" id="growthResult" style="display:none;"></div>
+    <div id="growthBody"></div>
   </div>
 </div>
 
@@ -1503,7 +1542,7 @@ var TW = (function () {
         leadSlot.appendChild(buildAvatarEl(lead, 'bs-duel-avatar', false));
       }
       document.getElementById('bsLeadName').textContent = lead.NAME || JOB_KR[lead.CLASS] || '파티';
-      document.getElementById('bsLeadLevel').textContent = '★' + (lead.GRADE || 1);
+      document.getElementById('bsLeadLevel').textContent = gradeMark(lead.GRADE || 1);
       document.getElementById('bsLeadPower').textContent = lead.EFF_ATK || '-';
       document.getElementById('bsLeadGuard').textContent = lead.EFF_DEF || '-';
       var leadMaxHp = lead.EFF_HP || 1;
@@ -2747,6 +2786,8 @@ var TW = (function () {
   var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷', NECKLACE: '목걸이', RING: '반지', BRACELET: '팔찌' };
   var PART_EMOJI = { HELMET: '⛑️', WEAPON: '⚔️', ARMOR: '🛡️', NECKLACE: '📿', RING: '💍', BRACELET: '⛓️' };
   var PART_ORDER = ['WEAPON', 'HELMET', 'ARMOR', 'NECKLACE', 'RING', 'BRACELET']; // 장비 부위 표시 순서
+  // [2026-10-20] 성장형 동료(GRADE 8)는 ☆1로 표기(다른 동료는 ★등급)
+  function gradeMark(g) { return g === 8 ? '☆1' : '★' + g; }
   var JOB_KR    = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사', SHAMAN: '무녀' };
   var JOB_ORDER = ['WARRIOR', 'MAGE', 'ROGUE', 'ARCHER', 'PRIEST', 'SHAMAN']; // 장비 목록 직업별 그룹핑 순서
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
@@ -2832,7 +2873,7 @@ var TW = (function () {
   // 안 읽으므로 별도 서버 수정 불필요).
   function buildAvatarEl(c, sizeClass, clickable) {
     var img = c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID + '&u=' + encodeURIComponent(c.IMAGE_URL)) : '';
-    var emoji = JOB_EMOJI[c.CLASS] || '👤';
+    var emoji = c.GRADE === 8 ? '🌱' : (JOB_EMOJI[c.CLASS] || '👤');
     var onClick = clickable ? function (ev) { ev.stopPropagation(); showCompanionDetail(c.COMPANION_ID); } : null;
     var el = document.createElement(img ? 'img' : 'div');
     el.className = sizeClass + (img ? '' : ' avatar-emoji');
@@ -2875,11 +2916,11 @@ var TW = (function () {
     var row = document.createElement('div');
     row.className = 'filter-row';
     // [2026-09-07] "필터도 성급 desc로 정렬순서 바꿔줘" 요청 -- 전체 다음 ★6부터 내림차순.
-    [null, 6, 5, 4, 3, 2, 1].forEach(function (g) {
+    [null, 6, 5, 4, 3, 2, 1, 8].forEach(function (g) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'filter-chip' + (current === g ? ' on' : '');
-      btn.textContent = g ? ('★' + g) : '전체';
+      btn.textContent = g ? gradeMark(g) : '전체';
       btn.onclick = function () { onSelect(g); };
       row.appendChild(btn);
     });
@@ -2962,7 +3003,7 @@ var TW = (function () {
     label.textContent = '장착 가능한 미착용 장비';
     body.appendChild(label);
 
-    var candidates2 = unequipped.filter(function (e) { return e.PART === part && weaponAllowedJobs(e.CLASS).indexOf(occupant.CLASS) !== -1; })
+    var candidates2 = unequipped.filter(function (e) { return e.PART === part && (occupant.GRADE === 8 || weaponAllowedJobs(e.CLASS).indexOf(occupant.CLASS) !== -1); })
         .sort(function (a, b) { return b.GRADE - a.GRADE; });
     if (candidates2.length === 0) {
       var noEquip = document.createElement('div');
@@ -3071,7 +3112,7 @@ var TW = (function () {
     document.getElementById('detailName').textContent = name;
     // [2026-09-14] "동료편성 화면에 한계돌파 (+N) 표기해달라" 요청 -- 단계가 있을 때만 붙인다.
     var lb = c.LIMIT_BREAK ? parseInt(c.LIMIT_BREAK, 10) : 0;
-    document.getElementById('detailRole').textContent = (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
+    document.getElementById('detailRole').textContent = (JOB_KR[c.CLASS] || c.CLASS) + ' ' + gradeMark(c.GRADE)
         + (lb > 0 ? ' (+' + lb + ')' : '')
         + (c.PARTY_SLOT ? ' · 파티 ' + c.PARTY_SLOT + '번' : ' · 대기중');
     document.getElementById('detailHp').textContent = '-';
@@ -3217,7 +3258,7 @@ var TW = (function () {
       var occLb = occ.LIMIT_BREAK ? parseInt(occ.LIMIT_BREAK, 10) : 0;
       info.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div>'
           + '<div class="ps-name">' + (occ.NAME || JOB_KR[occ.CLASS] || occ.CLASS) + '</div>'
-          + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ★' + occ.GRADE
+          + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ' + gradeMark(occ.GRADE)
           + (occLb > 0 ? ' (+' + occLb + ')' : '') + '</div>'
           + (occDown ? '<div class="ps-hp incapacitated">💀 전투불능 (HP 0)</div>'
                      : '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>');
@@ -3434,7 +3475,7 @@ var TW = (function () {
       // 필드, apiTowerParty 참고). fmtStatWithBonus는 위 showCompanionDetail 쪽에서 이미
       // 정의된 공용 헬퍼.
       div.innerHTML = '<div class="cname">' + name + '</div>'
-          + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ★' + c.GRADE
+          + '<div class="role">' + (JOB_KR[c.CLASS] || c.CLASS) + ' ' + gradeMark(c.GRADE)
           + (cLb > 0 ? ' (+' + cLb + ')' : '') + '</div>'
           + (cDown ? '<div class="incapacitated-badge">💀 전투불능</div>' : '')
           + '<div class="hpbar-track"><div class="hpbar-fill" style="width:100%"></div></div>'
@@ -4123,6 +4164,67 @@ var TW = (function () {
     if (b2) b2.disabled = true;
     star7Call('RELEASE_STAR7', '');
   }
+  // ==================== 성장형 동료 (2026-10-20) ====================
+  // 규칙(성장 배율/탐사 진행/직업 변경 가능 여부)은 서버(BotS5ServiceImpl.growthStatus)가 계산하고, 여기선 표시와 입력만 한다.
+  var grData = null;
+  function openGrowth() {
+    document.getElementById('growthResult').style.display = 'none';
+    renderGrowth();
+    document.getElementById('growthOverlay').classList.add('open');
+  }
+  function closeGrowth() { document.getElementById('growthOverlay').classList.remove('open'); }
+  function renderGrowth() {
+    var box = document.getElementById('growthBody');
+    var u = userName();
+    if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
+    box.innerHTML = '<div class="sheet-empty">불러오는 중...</div>';
+    fetch(base + '/api/tower-growth?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
+      grData = d;
+      if (d.error || !d.exists) { box.innerHTML = '<div class="sheet-empty">' + (d.error || '성장형 동료를 만들지 못했습니다.') + '</div>'; return; }
+      var pct = Math.round(d.exploredFloors * 100 / d.exploreMax);
+      var html = '<div class="gr-head"><span id="grFace"></span><div class="gr-head-info">'
+          + '<div class="gr-role">☆1 · 현재 직업 <b>' + d.jobName + '</b></div>'
+          + '<div class="gr-name-row"><input id="grName" class="gr-input" type="text" maxlength="10" value="' + String(d.name).replace(/"/g, '') + '">'
+          + '<button type="button" class="legend-craft-btn gr-save" onclick="TW.growthSaveName()">이름 저장</button></div>'
+          + '<div class="gr-sub">' + (d.partySlot ? '파티 ' + d.partySlot + '번에 편성됨' : '편성 탭에서 파티에 넣을 수 있어요') + ' · 장비는 직업과 상관없이 착용</div></div></div>';
+      html += '<div class="gr-prog"><div class="gr-prog-top"><span>1~100층 완전탐사 (보스·마을 제외)</span><b>' + d.exploredFloors + ' / ' + d.exploreMax + '</b></div>'
+          + '<div class="gr-bar"><i style="width:' + pct + '%"></i></div>'
+          + '<div class="gr-line">성장 배율 <b>x' + d.mult + '</b> · ★7의 <b>' + d.ratioVsStar7 + '배</b> <small>(풀 성장 x' + d.fullMult + ' = ★7의 2배)</small></div>'
+          + '<div class="gr-line">101층 이상: 계단층 ' + d.stairFloors + '개 도달 · ' + (d.stairApplied ? '<b>반영 중</b>' : '1~100층 완전탐사를 모두 마치면 일괄 반영') + '</div></div>';
+      html += '<div class="gr-title">직업 선택 <small>(무료, 전투 중에는 변경 불가 · 아래는 장비 없을 때 예상 능력치)</small></div><div class="gr-jobs">';
+      (d.jobs || []).forEach(function (j) {
+        var cur = j.key === d.job;
+        html += '<button type="button" class="gr-job' + (cur ? ' sel' : '') + '" onclick="TW.growthPickJob(\'' + j.key + '\')"' + (cur || d.inCombat ? ' disabled' : '') + '>'
+            + '<span class="gr-job-em">' + (JOB_EMOJI[j.key] || '') + '</span><b>' + j.name + (cur ? ' (현재)' : '') + '</b>'
+            + '<small>❤️' + fmtN(j.hp) + ' ⚔️' + fmtN(j.atk) + ' 🛡️' + fmtN(j.def) + '</small></button>';
+      });
+      html += '</div>';
+      box.innerHTML = html;
+      var face = buildAvatarEl({ COMPANION_ID: d.companionId, IMAGE_URL: d.image, CLASS: d.job, GRADE: 8 }, 'gr-face', false);
+      document.getElementById('grFace').appendChild(face);
+    }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
+  }
+  function growthCall(type, param1) {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=' + type + '&param1=' + encodeURIComponent(param1 || '') + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var msg = data.message || data.error || '완료';
+      var result = document.getElementById('growthResult');
+      result.className = 'legend-craft-result' + (msg.indexOf('바꿨습니다') !== -1 ? ' success' : ' fail');
+      result.textContent = formatMsg(msg);
+      result.style.whiteSpace = 'pre-line';
+      result.style.display = '';
+      return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
+    }).then(function () { renderGrowth(); })
+      .catch(function () { toast('요청 실패'); renderGrowth(); });
+  }
+  function growthSaveName() {
+    var v = (document.getElementById('grName').value || '').trim();
+    if (!v) { toast('이름을 입력하세요'); return; }
+    growthCall('GROWTH_RENAME', v);
+  }
+  function growthPickJob(job) { growthCall('GROWTH_JOB', job); }
 
   // ==================== 도감 탭 (2026-10-08) ====================
   var cxMonRows = null, cxItems = null, cxBand = 'all', cxSub = 'mon';
@@ -4428,6 +4530,7 @@ var TW = (function () {
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
            openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant,
            openLegendEnhance: openLegendEnhance, closeLegendEnhance: closeLegendEnhance,
+           openGrowth: openGrowth, closeGrowth: closeGrowth, growthSaveName: growthSaveName, growthPickJob: growthPickJob,
            openStar7: openStar7, closeStar7: closeStar7, star7Pick: star7Pick, star7Do: star7Do, star7Release: star7Release,
            closeDungeon: closeDungeon };
 })();

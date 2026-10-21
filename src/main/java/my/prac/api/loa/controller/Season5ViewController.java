@@ -484,6 +484,18 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-10-20] 성장형 동료 팝업용 -- 현황(탐사 진행, 배율, 직업별 예상 능력치). 없으면 자동 생성. */
+    @GetMapping("/api/tower-growth")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerGrowth(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.growthStatus(userName));
+    }
+
     /** [2026-10-20] 동료 상세 팝업용 -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여. */
     @GetMapping("/api/tower-companion-detail")
     @ResponseBody
@@ -695,6 +707,12 @@ public class Season5ViewController {
                     break;
                 case "ENHANCE_LEGENDARY":
                     message = s5Service.enhanceLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "GROWTH_RENAME":
+                    message = s5Service.growthRename(userName, param1);
+                    break;
+                case "GROWTH_JOB":
+                    message = s5Service.growthChangeJob(userName, param1);
                     break;
                 case "SUMMON_STAR7":
                     message = s5Service.summonStar7(userName, param1);

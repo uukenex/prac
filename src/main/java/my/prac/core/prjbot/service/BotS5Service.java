@@ -383,6 +383,12 @@ public interface BotS5Service {
     /** [2026-10-20] 장비변경 팝업용 -- 그 부위에 낄 수 있는 장비의 기여 미리보기. */
     java.util.HashMap<String, Object> equipPreview(String userName, int companionId, String part);
 
+    /** [2026-10-20] 성장형 동료(☆1) -- 현황(없으면 자동 생성). */
+    java.util.HashMap<String, Object> growthStatus(String userName);
+    String growthInfoText(String userName);
+    String growthRename(String userName, String name);
+    String growthChangeJob(String userName, String job);
+
     /** [2026-10-20] ★7 동료 소환 -- 현재 상태(업적/보유 여부/직업별 능력치와 고정 초상화). */
     java.util.HashMap<String, Object> star7Status(String userName);
 

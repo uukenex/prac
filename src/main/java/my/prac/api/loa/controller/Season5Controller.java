@@ -330,6 +330,23 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-10-20] /성장 -- 성장형 동료 현황. */
+    public String growth(HashMap<String, Object> map) {
+        return s5Service.growthInfoText(userNameOf(map));
+    }
+
+    /** [2026-10-20] /성장이름 새이름 -- 이름에 공백이 있어도 되도록 param1, param2를 이어 붙인다. */
+    public String growthRename(HashMap<String, Object> map) {
+        String n1 = param1Of(map);
+        String n2 = String.valueOf(map.get("param2") == null ? "" : map.get("param2")).trim();
+        return s5Service.growthRename(userNameOf(map), (n1 + " " + n2).trim());
+    }
+
+    /** [2026-10-20] /성장직업 직업 -- 성장형 동료 직업 변경. */
+    public String growthJob(HashMap<String, Object> map) {
+        return s5Service.growthChangeJob(userNameOf(map), param1Of(map));
+    }
+
     /** [2026-10-20] /7성소환 [직업] -- 인자 없으면 조건 안내, 직업을 주면 ★7 동료 소환. */
     public String star7(HashMap<String, Object> map) {
         return s5Service.star7Command(userNameOf(map), param1Of(map));

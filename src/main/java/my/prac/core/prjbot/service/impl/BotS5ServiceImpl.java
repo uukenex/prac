@@ -542,7 +542,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         double bonus = 0.0;
         Object m = companion.get("SKILL_MULT");
         if (m instanceof Number) bonus += ((Number) m).doubleValue() - 1.0;
-        if (intVal(companion.get("GRADE"), 1) >= STAR7_GRADE) bonus += STAR7_SKILL_BONUS;
+        if (intVal(companion.get("GRADE"), 1) == STAR7_GRADE) bonus += STAR7_SKILL_BONUS;
         if (bonus <= 0) return baseChance;
         int boosted = (int) Math.round(baseChance * (1.0 + bonus));
         return Math.min(boosted, Math.max(baseChance, SKILL_RATE_CAP));
@@ -634,6 +634,45 @@ public class BotS5ServiceImpl implements BotS5Service {
     private double star7StatMult() {
         return (1 + limitBreakPct(LIMIT_BREAK_MAX)) * STAR7_STAT_OVER_LB6;
     }
+
+    // ---- [2026-10-20] 성장형 동료(☆1) ----
+    // 유저당 1명(GRADE=8 표식, 가챠/한계돌파/승급과 무관), 직업은 상점에서 자유 변경, 이름은 유저가 변경, 장비는 직업 그룹과 상관없이 착용.
+    // 강함: 1~100층 사냥층(보스/마을 제외 80개) 중 100% 탐사를 기록한 층 수 n에 비례해 배율 G가 0.25(★3 기본 수준)에서 ★7(3.36)의 2배(6.72)까지 선형 상승.
+    // 101층 이상은 (계단 구역은 항상 완전탐사로 보고) n이 80이 된 시점부터, 도달한 최고층 기준 계단층(100의 배수 제외, 1000층까지) 하나당 +0.0005를 일괄 반영한다.
+    // ★7처럼 장비까지 더한 최종 값에 곱한다(finalStatMult). 직업 스킬은 ★6 기준(GRADE 8은 6 이상 분기를 그대로 탐), ★7 발현율 보너스는 없다.
+    private static final int GROWTH_GRADE = 8;
+    private static final double GROWTH_START_MULT = 0.25;
+    private static final int GROWTH_FLOORS_FULL = 80;
+    private static final double GROWTH_STAIR_PER_FLOOR = 0.0005;
+    private static final int GROWTH_STAIR_MAX_FLOOR = 1000;
+    private static final String GROWTH_DEFAULT_NAME = "선생님";
+    private static final String GROWTH_DEFAULT_JOB = "WARRIOR";
+
+    private double growthFullMult() { return 2.0 * star7StatMult(); }
+
+    /** 101층~maxFloor(최대 1000층) 중 100의 배수(마을)를 뺀 계단층 수. */
+    private int growthStairFloors(int maxFloor) {
+        int cap = Math.min(maxFloor, GROWTH_STAIR_MAX_FLOOR);
+        if (cap <= 100) return 0;
+        return (cap - 100) - (cap / 100 - 1);
+    }
+
+    /** userStat(selectUserStat)에 실린 GROWTH_N(1~100층 사냥층 중 100% 탐사 수), GROWTH_MAXF(도달 최고층)로 성장 배율을 계산. */
+    private double growthMult(HashMap<String, Object> userStat) {
+        int n = userStat == null ? 0 : Math.max(0, Math.min(GROWTH_FLOORS_FULL, intVal(userStat.get("GROWTH_N"), 0)));
+        double g = GROWTH_START_MULT + (growthFullMult() - GROWTH_START_MULT) * n / GROWTH_FLOORS_FULL;
+        if (n >= GROWTH_FLOORS_FULL && userStat != null) g += GROWTH_STAIR_PER_FLOOR * growthStairFloors(intVal(userStat.get("GROWTH_MAXF"), 0));
+        return g;
+    }
+
+    /** 장비/스탯구매까지 더한 값에 마지막으로 곱하는 최종 배율 -- 성장형은 탐사 성장, ★7은 고정 배율, 그 외는 한계돌파. */
+    private double finalStatMult(int grade, int limitBreak, HashMap<String, Object> userStat) {
+        if (grade == GROWTH_GRADE) return growthMult(userStat);
+        if (grade >= STAR7_GRADE) return star7StatMult();
+        return limitBreak > 0 ? 1 + limitBreakPct(limitBreak) : 1.0;
+    }
+
+    private String gradeMark(int grade) { return grade == GROWTH_GRADE ? "☆1" : "★" + grade; }
 
     /** [2026-09-14] 한계돌파(★N 동료를 중복으로 또 뽑으면 그 동료 개체에 붙는 강화, 최대
      *  6단계) -- 등급/장비/스탯구매 전부 반영한 최종 수치에 마지막으로 곱해진다("등급 하나를
@@ -845,7 +884,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private double investAtkScaleFor(HashMap<String, Object> userStat, HashMap<String, Object> companion) {
         if (intVal(companion.get("GRADE"), 1) >= STAR7_GRADE) {
             int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
-            double investMult = (1 + HP_PCT_PER_LV * hpLv) * star7StatMult();
+            double investMult = (1 + HP_PCT_PER_LV * hpLv) * finalStatMult(intVal(companion.get("GRADE"), 1), 0, userStat);
             return 1 + ATK_INVEST_SCALE * Math.max(0, investMult - 1);
         }
         return investAtkScale(userStat, intVal(companion.get("LIMIT_BREAK"), 0));
@@ -895,7 +934,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         atk *= (1 + ATK_PCT_PER_LV * atkMaxLv);
         hp  *= (1 + HP_PCT_PER_LV * hpLv);
         // [2026-10-20] ★7은 한계돌파가 없는 대신 같은 자리(장비/스탯구매까지 반영한 최종 값)에 star7StatMult(★6 한계돌파 최대 x 1.2)를 곱한다 -- 어떤 장비를 껴도 항상 ★6 한계돌파 최대의 1.2배.
-        double lbMult = grade >= STAR7_GRADE ? star7StatMult() : (limitBreak > 0 ? 1 + limitBreakPct(limitBreak) : 1.0);
+        double lbMult = finalStatMult(grade, limitBreak, userStat);
         if (lbMult != 1.0) {
             hp *= lbMult; atk *= lbMult; def *= lbMult;
         }
@@ -1710,6 +1749,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             mineCompanion = dao.countUserCompanions(userName);
             for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
                 int cg = intVal(c.get("GRADE"), 0);
+                if (cg == GROWTH_GRADE) continue; // 성장형(☆1)은 최고 등급 집계 제외
                 if (cg > mineCompanionGrade) { mineCompanionGrade = cg; mineCompanionGradeCount = 0; }
                 if (cg == mineCompanionGrade) mineCompanionGradeCount++;
             }
@@ -1947,6 +1987,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> allCompanions = dao.selectUserCompanions(target);
         if (!allCompanions.isEmpty()) {
             List<HashMap<String, Object>> topThree = new ArrayList<>(allCompanions);
+            topThree.removeIf(gc -> intVal(gc.get("GRADE"), 1) == GROWTH_GRADE); // 성장형(☆1)은 최고 등급 집계에서 제외
             topThree.sort((a, b) -> intVal(b.get("GRADE"), 1) - intVal(a.get("GRADE"), 1));
             if (topThree.size() > 3) topThree = topThree.subList(0, 3);
             List<String> tags = new ArrayList<>();
@@ -1999,7 +2040,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 전투 로그 표시용 "★등급직업(이름)" 포맷. 예: ★3궁수(나나) */
     private String jobTag(int grade, String job, String name) {
-        return "★" + grade + JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
+        return gradeMark(grade) + JOB_NAME.getOrDefault(job, "동료") + "(" + name + ")";
     }
 
     /**
@@ -5911,7 +5952,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             Object slot = c.get("PARTY_SLOT");
             // [2026-09-14] "동료편성 화면 및 텍스트에 (+3)이런식으로 표기해줘" 요청 -- 한계돌파
             // 단계가 있을 때만 등급 뒤에 붙인다.
-            String line = idx + ". " + name + " (" + job + " ★" + grade
+            String line = idx + ". " + name + " (" + job + " " + gradeMark(grade)
                     + (limitBreak > 0 ? " (+" + limitBreak + ")" : "") + ")"
                     + (slot != null ? " [파티 " + slot + "번]" : " [대기]");
             order.add(new int[]{ grade, limitBreak, lines.size() });
@@ -6747,6 +6788,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 이 유저가 이미 보유한 (직업,이름) 동료 개체를 반환(없으면 null). 뽑기/선택권 공용 중복판정. */
     private HashMap<String, Object> findOwnedCompanion(String userName, String job, String name) {
         for (HashMap<String, Object> owned : dao.selectUserCompanions(userName)) {
+            if (intVal(owned.get("GRADE"), 1) == GROWTH_GRADE) continue; // 성장형 동료는 이름/직업이 바뀌므로 중복 판정 대상이 아니다
             if (job.equals(strVal(owned.get("CLASS"), "")) && name.equals(strVal(owned.get("NAME"), ""))) {
                 return owned;
             }
@@ -6875,7 +6917,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
 
         int[] stat = (int[]) r.get("stat");
-        int cnt = ownedBefore + 1;
+        int cnt = dao.selectUserCompanions(userName).size(); // 목록 번호는 성장형 포함 전체 기준(보유 수 집계는 성장형 제외)
 
         // 새로 뽑은 동료는 (PARTY_SLOT NULLS LAST, COMPANION_ID) 정렬상 항상 목록의 맨 끝(=cnt번)에 위치
         // [정리 요청] 테두리가 너무 길어서 텍스트 폭에 맞게 줄이고, HP/ATK/DEF 라벨도 이모지로.
@@ -7700,7 +7742,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (HashMap<String, Object> c : companions) {
             String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?");
             String name = strVal(c.get("NAME"), job);
-            companionLabel.put(intVal(c.get("COMPANION_ID"), -1), job + "(" + name + ") ★" + intVal(c.get("GRADE"), 1));
+            companionLabel.put(intVal(c.get("COMPANION_ID"), -1), job + "(" + name + ") " + gradeMark(intVal(c.get("GRADE"), 1)));
         }
         if (equips.isEmpty()) return "보유한 장비가 없습니다.";
 
@@ -7777,7 +7819,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> c : party) {
                 String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), ""), "?");
                 String name = strVal(c.get("NAME"), job);
-                sb.append(idx++).append(". ").append(job).append("(").append(name).append(") ★").append(intVal(c.get("GRADE"), 1)).append(NL);
+                sb.append(idx++).append(". ").append(job).append("(").append(name).append(") ").append(gradeMark(intVal(c.get("GRADE"), 1))).append(NL);
             }
         }
         return sb.toString();
@@ -7818,7 +7860,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         if (targetCompanion == null) return "장착할 동료를 찾지 못했습니다 (착용 가능한 직업의 파티원이 필요합니다).";
-        if (!allowedJobs.contains(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + equipClassLabel(equipClass, part) + " 전용입니다.";
+        if (intVal(targetCompanion.get("GRADE"), 1) != GROWTH_GRADE && !allowedJobs.contains(strVal(targetCompanion.get("CLASS"), ""))) return "이 장비는 " + equipClassLabel(equipClass, part) + " 전용입니다.";
 
         int companionId = intVal(targetCompanion.get("COMPANION_ID"), 0);
         // [2026-09-18] 장착으로 EFF_HP가 바뀌어도 비율 유지(rescaleHpForEquipChange 참고) --
@@ -7919,7 +7961,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> best = null;
             for (HashMap<String, Object> e : unequipped) {
                 if (!part.equals(strVal(e.get("PART"), ""))) continue;
-                if (!weaponAllowedJobs(strVal(e.get("CLASS"), "")).contains(job)) continue;
+                if (intVal(target.get("GRADE"), 1) != GROWTH_GRADE && !weaponAllowedJobs(strVal(e.get("CLASS"), "")).contains(job)) continue; // 성장형은 직업 제한 없음
                 if (best == null || intVal(e.get("GRADE"), 0) > intVal(best.get("GRADE"), 0)) best = e;
             }
             if (best == null) continue;
@@ -8243,6 +8285,120 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // ================================================================
+    // [2026-10-20] 성장형 동료(☆1) -- 위 growthMult 설명 참고. 모두에게 무료, 처음 상점/명령어로 열 때 자동 생성.
+    // ================================================================
+    private HashMap<String, Object> findGrowthCompanion(String userName) {
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (intVal(c.get("GRADE"), 1) == GROWTH_GRADE) return c;
+        }
+        return null;
+    }
+
+    private HashMap<String, Object> ensureGrowthCompanion(String userName) {
+        HashMap<String, Object> g = findGrowthCompanion(userName);
+        if (g != null) return g;
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int[] max = computeEffectiveStat(GROWTH_DEFAULT_JOB, GROWTH_GRADE, new ArrayList<HashMap<String, Object>>(), userStat, 0);
+        HashMap<String, Object> nc = new HashMap<>();
+        nc.put("userName", userName);
+        nc.put("class", GROWTH_DEFAULT_JOB);
+        nc.put("grade", GROWTH_GRADE);
+        nc.put("name", GROWTH_DEFAULT_NAME);
+        nc.put("imageUrl", null); // 이미지는 조회 때 TBOT_S5_GROWTH_PORTRAIT로 대체된다(모든 유저 공통)
+        nc.put("curHpValue", (double) max[0]);
+        nc.put("curHpExt", "");
+        nc.put("partySlot", null);
+        try {
+            dao.insertCompanion(nc);
+        } catch (Exception dup) { // 동시 요청으로 이미 생겼으면(유니크 인덱스) 그걸 쓴다
+        }
+        return findGrowthCompanion(userName);
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> growthStatus(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        HashMap<String, Object> g = ensureGrowthCompanion(userName);
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        HashMap<String, Object> r = new HashMap<>();
+        r.put("exists", g != null);
+        if (g == null) return r;
+        String job = strVal(g.get("CLASS"), GROWTH_DEFAULT_JOB);
+        int n = userStat == null ? 0 : Math.min(GROWTH_FLOORS_FULL, intVal(userStat.get("GROWTH_N"), 0));
+        int maxF = userStat == null ? 0 : intVal(userStat.get("GROWTH_MAXF"), 0);
+        double mult = growthMult(userStat);
+        r.put("companionId", intVal(g.get("COMPANION_ID"), 0));
+        r.put("name", strVal(g.get("NAME"), GROWTH_DEFAULT_NAME));
+        r.put("job", job);
+        r.put("jobName", JOB_NAME.getOrDefault(job, "?"));
+        r.put("partySlot", g.get("PARTY_SLOT"));
+        r.put("image", g.get("IMAGE_URL"));
+        r.put("exploredFloors", n);
+        r.put("exploreMax", GROWTH_FLOORS_FULL);
+        r.put("stairFloors", growthStairFloors(maxF));
+        r.put("stairApplied", n >= GROWTH_FLOORS_FULL);
+        r.put("mult", Math.round(mult * 1000) / 1000.0);
+        r.put("fullMult", Math.round(growthFullMult() * 1000) / 1000.0);
+        r.put("ratioVsStar7", Math.round(mult / star7StatMult() * 100) / 100.0);
+        r.put("inCombat", "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL")));
+        List<HashMap<String, Object>> jobs = new ArrayList<>();
+        for (String j : JOB_KEYS) {
+            int[] st = calcBaseStat(j, GROWTH_GRADE);
+            HashMap<String, Object> jm = new HashMap<>();
+            jm.put("key", j); jm.put("name", JOB_NAME.get(j));
+            jm.put("hp", Math.round(st[0] * mult)); jm.put("atk", Math.round(st[1] * mult)); jm.put("def", Math.round(st[2] * mult));
+            jobs.add(jm);
+        }
+        r.put("jobs", jobs);
+        return r;
+    }
+
+    /** 채팅 /성장 -- 성장형 동료 현황 텍스트. */
+    @Override
+    public String growthInfoText(String userName) {
+        HashMap<String, Object> st = growthStatus(userName);
+        if (!Boolean.TRUE.equals(st.get("exists"))) return "성장형 동료를 만들지 못했습니다.";
+        StringBuilder sb = new StringBuilder("🌱 성장형 동료").append(NL);
+        sb.append("☆1 ").append(st.get("jobName")).append(" (").append(st.get("name")).append(")").append(NL);
+        sb.append("탐사 ").append(st.get("exploredFloors")).append("/").append(st.get("exploreMax")).append("층 완료 · 성장 배율 x").append(st.get("mult"))
+          .append(" (풀 성장 x").append(st.get("fullMult")).append(" = ★7의 2배, 지금 ★7의 ").append(st.get("ratioVsStar7")).append("배)").append(NL);
+        sb.append("101층 이상 상승분은 1~100층 탐사를 모두 마친 뒤부터 일괄 반영됩니다 (계단층 ").append(st.get("stairFloors")).append("개 도달").append(Boolean.TRUE.equals(st.get("stairApplied")) ? ", 반영 중" : ", 대기 중").append(")").append(NL);
+        sb.append("직업 변경: /성장직업 직업 (전사/마법사/도적/궁수/도사/무녀, 무료, 전투 중 불가) · 이름 변경: /성장이름 새이름 · 장비는 직업과 상관없이 착용");
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String growthRename(String userName, String rawName) {
+        String name = rawName == null ? "" : rawName.trim().replaceAll("\\s+", " ");
+        if (name.isEmpty()) return "사용법: /성장이름 새이름 (한글/영문/숫자/공백 1~10자)";
+        if (name.length() > 10 || !name.matches("[가-힣A-Za-z0-9 ]+")) return "이름은 한글/영문/숫자/공백만 쓸 수 있고 1~10자여야 합니다.";
+        HashMap<String, Object> g = ensureGrowthCompanion(userName);
+        if (g == null) return "성장형 동료를 찾지 못했습니다.";
+        dao.updateCompanionName(intVal(g.get("COMPANION_ID"), 0), userName, name);
+        return "✏️ 성장형 동료의 이름을 [" + name + "](으)로 바꿨습니다.";
+    }
+
+    @Override
+    @Transactional
+    public String growthChangeJob(String userName, String arg) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) return "전투 중에는 직업을 바꿀 수 없습니다.";
+        String job = star7JobKey(arg);
+        if (job == null) return "직업을 알 수 없습니다. (전사/마법사/도적/궁수/도사/무녀)";
+        HashMap<String, Object> g = ensureGrowthCompanion(userName);
+        if (g == null) return "성장형 동료를 찾지 못했습니다.";
+        if (job.equals(strVal(g.get("CLASS"), ""))) return "이미 " + JOB_NAME.get(job) + "입니다.";
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int oldMaxHp = effMaxHpOf(g, userStat);
+        dao.updateCompanionClass(intVal(g.get("COMPANION_ID"), 0), userName, job);
+        g.put("CLASS", job);
+        rescaleHpForEquipChange(g, userStat, oldMaxHp); // 직업 체형이 바뀌어도 체력 비율 유지
+        return "🔄 성장형 동료의 직업을 " + JOB_NAME.get(job) + "(으)로 바꿨습니다. 장비는 그대로 유지됩니다.";
+    }
+
+    // ================================================================
     // [2026-10-20] ★7 동료 소환/방출
     // 업적 "전설의 시작"(한계돌파 +6 ★5 동료 2체 보유)을 달성하면 원하는 직업의 ★7 동료를 소환할 수 있다. 재료/전설의조각은 소모하지 않는다.
     // 유저당 ★7은 1명(앱 검사 + DB 유니크 인덱스 UX_S5_COMP_STAR7_USER), 방출하면(장비는 벗겨짐) 다시 소환할 수 있다.
@@ -8290,7 +8446,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> cs = dao.selectUserCompanions(userName);
         HashMap<String, Object> owned = null;
         for (HashMap<String, Object> c : cs) {
-            if (intVal(c.get("GRADE"), 1) >= STAR7_GRADE) owned = c;
+            if (intVal(c.get("GRADE"), 1) == STAR7_GRADE) owned = c;
         }
         int have5 = countStar5Lb6(cs);
         boolean newlyGranted = have5 >= S7_REQ_G5 && grantAchievement(userName, ACH_LEGEND_BEGIN);
@@ -8363,7 +8519,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (job == null || !JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
         List<HashMap<String, Object>> cs = dao.selectUserCompanions(userName);
         for (HashMap<String, Object> c : cs) {
-            if (intVal(c.get("GRADE"), 1) >= STAR7_GRADE) {
+            if (intVal(c.get("GRADE"), 1) == STAR7_GRADE) {
                 return "이미 ★7 동료(" + strVal(c.get("NAME"), "?") + ")를 보유 중입니다. ★7은 1명만 가질 수 있습니다. (/7성방출 로 방출하면 다시 소환할 수 있어요)";
             }
         }
@@ -8392,7 +8548,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         } catch (Exception e) {
             return "이미 ★7 동료를 보유 중이거나 소환 처리 중입니다.";
         }
-        int idx = dao.countUserCompanions(userName);
+        int idx = dao.selectUserCompanions(userName).size();
         return (newly ? "🏆 업적 [전설의 시작] 달성!" + NL : "")
                 + "🌟✨ ★7 동료 소환! " + name + " (" + JOB_NAME.get(job) + " ★7)" + NL
                 + "❤️ " + stat[0] + " ⚔️ " + stat[1] + " 🛡️ " + stat[2] + " (스킬 발현율 x1.2, 한계돌파 없음)" + NL
@@ -8416,7 +8572,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) return "전투 중에는 방출할 수 없습니다.";
         HashMap<String, Object> target = null;
         for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
-            if (intVal(c.get("GRADE"), 1) >= STAR7_GRADE) target = c;
+            if (intVal(c.get("GRADE"), 1) == STAR7_GRADE) target = c;
         }
         if (target == null) return "방출할 ★7 동료가 없습니다.";
         int cid = intVal(target.get("COMPANION_ID"), 0);
@@ -8493,7 +8649,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
         int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
         int lb = intVal(comp.get("LIMIT_BREAK"), 0);
-        double lbM = intVal(comp.get("GRADE"), 1) >= STAR7_GRADE ? star7StatMult() : (lb > 0 ? 1 + limitBreakPct(lb) : 1.0);
+        double lbM = finalStatMult(intVal(comp.get("GRADE"), 1), lb, userStat);
         return new double[]{ (1 + HP_PCT_PER_LV * hpLv) * lbM, (1 + ATK_PCT_PER_LV * atkMaxLv) * lbM, lbM };
     }
 
@@ -8585,14 +8741,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         long buyHp = Math.round(base[0] * (1 + HP_PCT_PER_LV * hpLv));
         long buyAtk = Math.round(base[1] * (1 + ATK_PCT_PER_LV * atkMaxLv));
         long buyDef = base[2];
-        double lbM = grade >= STAR7_GRADE ? star7StatMult() : (lb > 0 ? 1 + limitBreakPct(lb) : 1.0);
+        double lbM = finalStatMult(grade, lb, userStat);
         out.put("baseRaw", statTriple(base[0], base[1], base[2]));
         out.put("statBuy", statTriple(buyHp - base[0], buyAtk - base[1], 0));
         out.put("lbBonus", statTriple(charTotal[0] - buyHp, charTotal[1] - buyAtk, charTotal[2] - buyDef));
         out.put("equipTotal", statTriple(total[0] - charTotal[0], total[1] - charTotal[1], total[2] - charTotal[2]));
         out.put("total", statTriple(total[0], total[1], total[2]));
         out.put("base", statTriple(buyHp, buyAtk, buyDef)); // 스탯구매까지 반영한 캐릭터 기본(상세 팝업용)
-        out.put("lbLabel", grade >= STAR7_GRADE ? "7성 보정" : "한계돌파");
+        out.put("lbLabel", grade == GROWTH_GRADE ? "성장 보정" : (grade >= STAR7_GRADE ? "7성 보정" : "한계돌파"));
         // 퍼센트 증가율(소수 1자리): 스탯구매(체력/공격), 한계돌파(또는 7성 보정), 둘을 곱한 총 증가율
         HashMap<String, Object> pct = new HashMap<>();
         pct.put("buyHp", Math.round(HP_PCT_PER_LV * hpLv * 1000) / 10.0);

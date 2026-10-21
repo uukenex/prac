@@ -439,11 +439,13 @@
     <!-- ==================== 동료 ==================== -->
     <select id="selectUserCompanions" resultType="hashmap">
         SELECT c.COMPANION_ID, c.USER_NAME, c.CLASS, c.GRADE, c.NAME,
-               CASE WHEN c.GRADE >= 7 THEN NVL(sp.IMAGE_URL, c.IMAGE_URL) ELSE c.IMAGE_URL END AS IMAGE_URL,
+               CASE WHEN c.GRADE = 7 THEN NVL(sp.IMAGE_URL, c.IMAGE_URL)
+                    WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
+                    ELSE c.IMAGE_URL END AS IMAGE_URL,
                c.CUR_HP_VALUE, c.CUR_HP_EXT, c.PARTY_SLOT,
                NVL(c.HIDDEN_YN, 'N') AS HIDDEN_YN, NVL(c.LIMIT_BREAK, 0) AS LIMIT_BREAK
         FROM TBOT_S5_USER_COMPANION c
-        LEFT JOIN TBOT_S5_STAR7_PORTRAIT sp ON sp.JOB = c.CLASS AND c.GRADE >= 7
+        LEFT JOIN TBOT_S5_STAR7_PORTRAIT sp ON sp.JOB = c.CLASS AND c.GRADE = 7
         WHERE c.USER_NAME = #{userName}
         ORDER BY c.PARTY_SLOT NULLS LAST, c.COMPANION_ID
     </select>
@@ -472,9 +474,11 @@
     <!-- [2026-09-14] 동료 초상화 축소판 캐싱 프록시(/api/tower-avatar)용: USER_NAME 조회 없이
          COMPANION_ID 하나로 IMAGE_URL만 바로 가져온다(COMPANION_ID가 전역 PK). -->
     <select id="selectCompanionImageUrl" resultType="String">
-        SELECT CASE WHEN c.GRADE >= 7 THEN NVL(sp.IMAGE_URL, c.IMAGE_URL) ELSE c.IMAGE_URL END
+        SELECT CASE WHEN c.GRADE = 7 THEN NVL(sp.IMAGE_URL, c.IMAGE_URL)
+                    WHEN c.GRADE = 8 THEN NVL((SELECT MAX(gp.IMAGE_URL) FROM TBOT_S5_GROWTH_PORTRAIT gp), c.IMAGE_URL)
+                    ELSE c.IMAGE_URL END
         FROM TBOT_S5_USER_COMPANION c
-        LEFT JOIN TBOT_S5_STAR7_PORTRAIT sp ON sp.JOB = c.CLASS AND c.GRADE >= 7
+        LEFT JOIN TBOT_S5_STAR7_PORTRAIT sp ON sp.JOB = c.CLASS AND c.GRADE = 7
         WHERE c.COMPANION_ID = #{companionId}
     </select>
 
@@ -483,8 +487,17 @@
     </select>
 
     <select id="countUserCompanions" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName}
+        SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName} AND GRADE &lt; 8
     </select>
+
+    <!-- [2026-10-20] 성장형 동료 이름/직업 변경 (소유자 조건 포함, 성장형 행만) -->
+    <update id="updateCompanionName">
+        UPDATE TBOT_S5_USER_COMPANION SET NAME = #{name} WHERE COMPANION_ID = #{companionId} AND USER_NAME = #{userName} AND GRADE = 8
+    </update>
+
+    <update id="updateCompanionClass">
+        UPDATE TBOT_S5_USER_COMPANION SET CLASS = #{job} WHERE COMPANION_ID = #{companionId} AND USER_NAME = #{userName} AND GRADE = 8
+    </update>
 
     <!-- [2026-10-20] 직업별 고정 7성 초상화 (모든 유저 공통) -->
     <select id="selectStar7Portrait" resultType="string">
@@ -664,7 +677,12 @@
 
     <!-- ==================== 스탯 구매 ==================== -->
     <select id="selectUserStat" resultType="hashmap">
-        SELECT USER_NAME, ATK_MAX_LV, ATK_MIN_LV, HP_LV FROM TBOT_S5_USER_STAT WHERE USER_NAME = #{userName}
+        SELECT s.USER_NAME, s.ATK_MAX_LV, s.ATK_MIN_LV, s.HP_LV,
+               (SELECT COUNT(*) FROM TBOT_S5_USER_FLOOR_BEST f
+                 WHERE f.USER_NAME = s.USER_NAME AND f.FULLY_EXPLORED_YN = 'Y'
+                   AND f.FLOOR BETWEEN 1 AND 100 AND MOD(f.FLOOR, 10) NOT IN (0, 9)) AS GROWTH_N,
+               (SELECT NVL(MAX(p.MAX_FLOOR_REACHED), 0) FROM TBOT_S5_USER_PROGRESS p WHERE p.USER_NAME = s.USER_NAME) AS GROWTH_MAXF
+        FROM TBOT_S5_USER_STAT s WHERE s.USER_NAME = #{userName}
     </select>
 
     <insert id="upsertUserStat" parameterType="hashmap">
@@ -808,12 +826,12 @@
 
     <select id="selectMaxCompanionCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION GROUP BY USER_NAME
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8 GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxCompanionGrade" resultType="int">
-        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8
     </select>
 
     <!-- [2026-09-15] "최고 동료 등급을 갯수까지 포함해서" 요청: 원래는 최고 등급 동료의
@@ -823,7 +841,7 @@
     <select id="selectMaxCompanionGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION
-            WHERE GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION)
+            WHERE GRADE &lt; 8 AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8)
             GROUP BY USER_NAME
         )
     </select>
