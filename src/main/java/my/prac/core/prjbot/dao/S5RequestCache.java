@@ -15,6 +15,8 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * [2026-10-21 성능] 한 요청 안에서 똑같은 읽기 쿼리(selectUserCompanions, selectEquipByCompanion, selectUserStat,
@@ -37,6 +39,7 @@ public final class S5RequestCache {
     private static final Object NULL = new Object();
     private static final ThreadLocal<Map<String, Object>> SCOPE = new ThreadLocal<Map<String, Object>>();
     private static final ThreadLocal<int[]> STAT = new ThreadLocal<int[]>(); // {hit, miss}
+    private static final ThreadLocal<Boolean> TX_ARMED = new ThreadLocal<Boolean>();
 
     /** 요청 범위에서 캐시하는 읽기 메서드. */
     private static final Set<String> CACHED_READS = new HashSet<String>(Arrays.asList(
@@ -51,7 +54,7 @@ public final class S5RequestCache {
     /** 캐시된 조회 결과에 영향을 주지 않는 쓰기(로그/통계) -- 이 메서드들은 캐시를 비우지 않는다. */
     private static final Set<String> HARMLESS_WRITES = new HashSet<String>(Arrays.asList(
             "bumpDiceFaceStat", "bumpActivityHourly", "insertBattleStat", "upsertKakaoMember",
-            "upsertAutoHuntLog", "insertTileVisit"));
+            "upsertAutoHuntLog"));
 
     private static final long NOTICE_TTL_MS = 30000L;
     private static volatile Object noticeValue;
@@ -60,6 +63,7 @@ public final class S5RequestCache {
     private S5RequestCache() {}
 
     public static void begin() {
+        TX_ARMED.remove();
         SCOPE.set(new HashMap<String, Object>());
         STAT.set(new int[2]);
     }
@@ -88,11 +92,12 @@ public final class S5RequestCache {
         if (method.getDeclaringClass() == Object.class) return invoke(target, method, args);
         String name = method.getName();
         if (!CACHED_READS.contains(name)) {
-            Object r = invoke(target, method, args);
-            if (!name.startsWith("select") && !name.startsWith("count") && !HARMLESS_WRITES.contains(name)) {
-                clearAll(name);
+            boolean write = !name.startsWith("select") && !name.startsWith("count") && !HARMLESS_WRITES.contains(name);
+            try {
+                return invoke(target, method, args);
+            } finally {
+                if (write) clearAll(name); // 쓰기가 예외를 던져도(일부만 반영됐을 수 있어) 비운다
             }
-            return r;
         }
         if ("selectNotice".equals(name)) return noticeCached(target, method, args);
         Map<String, Object> scope = SCOPE.get();
@@ -104,10 +109,25 @@ public final class S5RequestCache {
             if (st != null) st[0]++;
             return hit == NULL ? null : copy(hit);
         }
+        armClearOnTxEnd();
         Object r = invoke(target, method, args);
         scope.put(key, r == null ? NULL : copy(r));
         if (st != null) st[1]++;
         return r;
+    }
+
+    /** 트랜잭션 안에서 읽은 값은 아직 커밋 전 상태일 수 있다(롤백되면 사라질 값). 그래서 트랜잭션이 끝나는 순간(커밋/롤백 모두) 캐시를 비운다. */
+    private static void armClearOnTxEnd() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive() || TX_ARMED.get() != null) return;
+        TX_ARMED.set(Boolean.TRUE);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+            @Override
+            public void afterCompletion(int status) {
+                TX_ARMED.remove();
+                Map<String, Object> scope = SCOPE.get();
+                if (scope != null) scope.clear();
+            }
+        });
     }
 
     private static Object noticeCached(Object target, Method method, Object[] args) throws Throwable {
