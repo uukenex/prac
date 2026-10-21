@@ -79,8 +79,11 @@ public interface BotS5DAO {
 
     /** [2026-09-14] 한계돌파(중복 동료를 또 뽑으면 그 동료 개체에 붙는 강화, 최대 6단계) 갱신. */
     int updateCompanionLimitBreak(HashMap<String, Object> map);
-    /** [2026-10-20] ★7 승급 재료 소모. */
+    /** [2026-10-20] ★7 방출. */
     int deleteCompanion(@Param("companionId") int companionId, @Param("userName") String userName);
+    /** [2026-10-20] 직업별 고정 ★7 초상화. */
+    String selectStar7Portrait(@Param("job") String job);
+    int insertStar7Portrait(@Param("job") String job, @Param("imageUrl") String imageUrl);
 
     // ── /이미지갱신: IMAGE_URL이 없는 동료를 서버 커맨드로 나중에 채워넣기 ──
     List<HashMap<String, Object>> selectCompanionsMissingImage(@Param("limit") int limit);

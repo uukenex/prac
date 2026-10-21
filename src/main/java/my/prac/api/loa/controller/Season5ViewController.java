@@ -655,8 +655,11 @@ public class Season5ViewController {
                 case "ENHANCE_LEGENDARY":
                     message = s5Service.enhanceLegendary(userName, Integer.parseInt(param1));
                     break;
-                case "PROMOTE_STAR7":
-                    message = s5Service.promoteToStar7(userName, param1);
+                case "SUMMON_STAR7":
+                    message = s5Service.summonStar7(userName, param1);
+                    break;
+                case "RELEASE_STAR7":
+                    message = s5Service.releaseStar7(userName);
                     break;
                 case "SET_BATTLE_SCREEN_VERSION":
                     message = s5Service.setBattleScreenVersion(userName, param1);

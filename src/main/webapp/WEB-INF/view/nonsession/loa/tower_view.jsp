@@ -570,7 +570,7 @@
     .legend-craft-result{ text-align:center; font-size:13px; font-weight:700; padding:14px 10px; border-radius:12px; margin-top:4px; }
     .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
     .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
-    /* [2026-10-20] ★7 동료 승급 팝업 */
+    /* [2026-10-20] ★7 동료 소환/방출 팝업 */
     .s7-intro{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:8px; }
     .s7-req{ font-size:13px; padding:6px 10px; border-radius:10px; margin-bottom:4px; background:#F4EDD9; }
     .s7-req.no{ color:#9A4A2E; }
@@ -580,6 +580,7 @@
              border:2px solid transparent; background:#F4EDD9; color:var(--ink); font-size:13px; cursor:pointer; }
     .s7-job small{ font-size:10px; color:var(--ink-soft); }
     .s7-job .s7-job-em{ font-size:22px; }
+    .s7-job .s7-face{ width:56px; height:56px; border-radius:10px; object-fit:cover; object-position:50% 15%; }
     .s7-job.sel{ border-color:var(--gold); background:var(--gold-soft); }
 
     /* [2026-10-08] 도감 탭 */
@@ -992,10 +993,10 @@
       <div class="card-title">⬆️ 전설강화</div>
       <button type="button" class="legend-craft-btn" id="legendEnhanceBtn" disabled onclick="TW.openLegendEnhance()">강화하기</button>
     </div>
-    <!-- [2026-10-20] ★7 동료 승급 -- 한계돌파 최대(+6)인 ★4/★5 동료와 전설의조각으로 원하는 직업의 ★7 동료 1명을 받는다. -->
+    <!-- [2026-10-20] ★7 동료 소환 -- 업적 "전설의 시작"(한계돌파 +6 ★5 동료 2체)을 달성하면 원하는 직업의 ★7 동료 1명을 소환(재료/조각 소모 없음). 방출 후 재소환 가능. -->
     <div class="card" style="margin-top:10px;">
-      <div class="card-title">🌟 7성 승급</div>
-      <button type="button" class="legend-craft-btn" id="star7Btn" onclick="TW.openStar7()">승급하기</button>
+      <div class="card-title">🌟 7성 동료 소환</div>
+      <button type="button" class="legend-craft-btn" id="star7Btn" onclick="TW.openStar7()">소환 / 방출</button>
     </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
@@ -1192,11 +1193,11 @@
   </div>
 </div>
 
-<!-- [2026-10-20] ★7 동료 승급 팝업 -- 직업을 고르면 그 직업의 ★7 동료가 생긴다(1인 1명). 재료 현황은 서버가 계산해서 내려준다. -->
+<!-- [2026-10-20] ★7 동료 소환/방출 팝업 -- 직업을 고르면 그 직업의 ★7 동료가 생긴다(1인 1명, 소모 없음). 조건 판정은 서버가 한다. -->
 <div class="detail-overlay" id="star7Overlay" onclick="if(event.target===this) TW.closeStar7();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeStar7()">✕</button>
-    <div class="sheet-title">🌟 7성 승급</div>
+    <div class="sheet-title">🌟 7성 동료 소환</div>
     <div class="legend-craft-result" id="star7Result" style="display:none;"></div>
     <div id="star7Body"></div>
   </div>
@@ -3837,12 +3838,12 @@ var TW = (function () {
     document.getElementById('legendEnhanceOverlay').classList.remove('open');
   }
 
-  // ==================== ★7 동료 승급 (2026-10-20) ====================
-  // 규칙은 서버(BotS5ServiceImpl.star7Status/promoteToStar7)가 판단하고, 여기선 현황 표시와 직업 선택만 한다.
-  var s7Data = null, s7Sel = null;
+  // ==================== ★7 동료 소환/방출 (2026-10-20) ====================
+  // 규칙은 서버(BotS5ServiceImpl.star7Status/summonStar7/releaseStar7)가 판단하고, 여기선 현황 표시와 직업 선택만 한다.
+  var s7Data = null, s7Sel = null, s7ReleaseArmed = false;
   function openStar7() {
     document.getElementById('star7Result').style.display = 'none';
-    s7Sel = null;
+    s7Sel = null; s7ReleaseArmed = false;
     renderStar7();
     document.getElementById('star7Overlay').classList.add('open');
   }
@@ -3855,16 +3856,22 @@ var TW = (function () {
     fetch(base + '/api/tower-star7?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
       s7Data = d;
       if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
-      if (d.owned) { box.innerHTML = '<div class="sheet-empty">이미 ★7 동료를 보유 중입니다: <b>' + d.ownedName + '</b> (' + d.ownedJob + ')</div>'; return; }
+      var html = '';
+      if (d.owned) {
+        html += '<div class="s7-intro">이미 ★7 동료를 보유 중입니다: <b>' + d.ownedName + '</b> (' + d.ownedJob + '). ★7은 1명만 가질 수 있어요. 방출하면 장비가 모두 벗겨지고(장비는 사라지지 않음), 직업을 다시 골라 소환할 수 있습니다.</div>'
+            + '<button type="button" class="legend-craft-btn" id="star7Release" ' + (d.canRelease ? '' : 'disabled ') + 'onclick="TW.star7Release()">'
+            + (s7ReleaseArmed ? '⚠️ 정말 방출 (한 번 더 누르면 실행)' : '👋 ★7 동료 방출') + '</button>';
+        box.innerHTML = html;
+        return;
+      }
       function req(ok, text) { return '<div class="s7-req ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✅' : '❌') + ' ' + text + '</div>'; }
-      var html = '<div class="s7-intro">능력치는 ★6 한계돌파 최대의 1.2배, 스킬 발현율은 ★6의 1.5배, 한계돌파는 없고 1인 1명입니다. 고른 직업의 ★7 동료가 새로 생기고, 재료 동료는 사라집니다(장비는 미착용으로 돌아옴).</div>';
-      html += req(d.haveG5 >= d.needG5, '한계돌파 +6 ★5 동료 ' + d.needG5 + '명 <small>(파티 밖 보유 ' + d.haveG5 + '명)</small>');
-      html += req(d.haveG4 >= d.needG4, '한계돌파 +6 ★4 동료 ' + d.needG4 + '명 <small>(파티 밖 보유 ' + d.haveG4 + '명)</small>');
-      html += req(d.fragment >= d.fragmentCost, '🧩 전설의조각 ' + d.fragmentCost + '개 <small>(보유 ' + d.fragment + (d.surcharge ? ' · ★6 한계돌파 최대 보유자는 조각 2배' : '') + ')</small>');
+      html += '<div class="s7-intro">재료·전설의조각 소모 없이, 원하는 직업의 ★7 동료를 소환합니다. 능력치는 ★6 한계돌파 최대의 1.2배, 스킬 발현율은 ★6의 1.2배, 한계돌파는 없고 1인 1명입니다. 초상화는 직업마다 고정입니다.</div>';
+      html += req(d.hasAchievement, '업적 <b>전설의 시작</b> <small>(한계돌파 +6 ★5 동료 ' + d.need5 + '체 보유 · 현재 ' + d.have5 + '체)</small>');
       html += '<div class="s7-jobs">';
       (d.jobs || []).forEach(function (j) {
+        var face = j.portrait ? '<img class="s7-face" src="' + j.portrait + '" alt="" onerror="this.style.display=\'none\'">' : '<span class="s7-job-em">' + (JOB_EMOJI[j.key] || '') + '</span>';
         html += '<button type="button" class="s7-job" data-job="' + j.key + '" onclick="TW.star7Pick(\'' + j.key + '\')">'
-            + '<span class="s7-job-em">' + (JOB_EMOJI[j.key] || '') + '</span><b>' + j.name + '</b>'
+            + face + '<b>' + j.name + '</b>'
             + '<small>❤️' + j.hp + ' ⚔️' + j.atk + ' 🛡️' + j.def + '</small></button>';
       });
       html += '</div><button type="button" class="legend-craft-btn" id="star7Go" disabled onclick="TW.star7Do()">직업을 선택하세요</button>';
@@ -3877,27 +3884,42 @@ var TW = (function () {
     Array.prototype.forEach.call(document.querySelectorAll('#star7Body .s7-job'), function (b) { b.classList.toggle('sel', b.getAttribute('data-job') === job); });
     var go = document.getElementById('star7Go');
     if (!go) return;
-    var ok = s7Data && s7Data.canPromote;
+    var ok = s7Data && s7Data.canSummon;
     go.disabled = !ok;
-    go.textContent = ok ? ('🌟 ' + (JOB_KR[job] || job) + '(으)로 승급 (재료 동료 소모)') : (s7Data && s7Data.inCombat ? '전투 중에는 승급할 수 없습니다' : '재료/조각이 부족합니다');
+    go.textContent = ok ? ('🌟 ' + (JOB_KR[job] || job) + ' ★7 소환') : (s7Data && s7Data.inCombat ? '전투 중에는 소환할 수 없습니다' : '업적 [전설의 시작]이 필요합니다');
   }
-  function star7Do() {
+  function star7Call(type, param1) {
     var u = userName();
     if (!u) { toast('유저명을 입력하세요'); return; }
-    if (!s7Sel) { toast('직업을 선택하세요'); return; }
-    var go = document.getElementById('star7Go');
-    if (go) go.disabled = true;
-    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=PROMOTE_STAR7&param1=' + encodeURIComponent(s7Sel) + '&param2=';
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=' + type + '&param1=' + encodeURIComponent(param1 || '') + '&param2=';
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       var msg = data.message || data.error || '완료';
       var result = document.getElementById('star7Result');
-      result.className = 'legend-craft-result' + (msg.indexOf('승급 성공') !== -1 ? ' success' : ' fail');
+      result.className = 'legend-craft-result' + (msg.indexOf('★7 동료 소환') !== -1 || msg.indexOf('방출했습니다') !== -1 ? ' success' : ' fail');
       result.textContent = formatMsg(msg);
       result.style.whiteSpace = 'pre-line';
       result.style.display = '';
       return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
-    }).then(function () { renderStar7(); })
+    }).then(function () { s7ReleaseArmed = false; renderStar7(); })
       .catch(function () { toast('요청 실패'); renderStar7(); });
+  }
+  function star7Do() {
+    if (!s7Sel) { toast('직업을 선택하세요'); return; }
+    var go = document.getElementById('star7Go');
+    if (go) go.disabled = true;
+    star7Call('SUMMON_STAR7', s7Sel);
+  }
+  // 방출은 되돌릴 수 없으므로 같은 버튼을 두 번 눌러야 실행된다(첫 클릭은 경고 문구로 바뀜).
+  function star7Release() {
+    if (!s7ReleaseArmed) {
+      s7ReleaseArmed = true;
+      var b = document.getElementById('star7Release');
+      if (b) b.textContent = '⚠️ 정말 방출 (한 번 더 누르면 실행)';
+      return;
+    }
+    var b2 = document.getElementById('star7Release');
+    if (b2) b2.disabled = true;
+    star7Call('RELEASE_STAR7', '');
   }
 
   // ==================== 도감 탭 (2026-10-08) ====================
@@ -4204,7 +4226,7 @@ var TW = (function () {
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
            openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant,
            openLegendEnhance: openLegendEnhance, closeLegendEnhance: closeLegendEnhance,
-           openStar7: openStar7, closeStar7: closeStar7, star7Pick: star7Pick, star7Do: star7Do,
+           openStar7: openStar7, closeStar7: closeStar7, star7Pick: star7Pick, star7Do: star7Do, star7Release: star7Release,
            closeDungeon: closeDungeon };
 })();
 </script>

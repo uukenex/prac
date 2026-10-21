@@ -479,7 +479,16 @@
         SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName}
     </select>
 
-    <!-- [2026-10-20] 7성 승급 재료 소모 (소유자 조건 포함). -->
+    <!-- [2026-10-20] 직업별 고정 7성 초상화 (모든 유저 공통) -->
+    <select id="selectStar7Portrait" resultType="string">
+        SELECT IMAGE_URL FROM TBOT_S5_STAR7_PORTRAIT WHERE JOB = #{job}
+    </select>
+
+    <insert id="insertStar7Portrait">
+        INSERT INTO TBOT_S5_STAR7_PORTRAIT (JOB, IMAGE_URL) VALUES (#{job}, #{imageUrl})
+    </insert>
+
+    <!-- [2026-10-20] 7성 동료 방출 (소유자 조건 포함). -->
     <delete id="deleteCompanion">
         DELETE FROM TBOT_S5_USER_COMPANION WHERE COMPANION_ID = #{companionId} AND USER_NAME = #{userName}
     </delete>

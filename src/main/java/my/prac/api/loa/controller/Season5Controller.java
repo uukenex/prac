@@ -330,9 +330,14 @@ public class Season5Controller {
         }
     }
 
-    /** [2026-10-20] /7성승급 [직업] -- 인자 없으면 필요 재료 안내, 직업을 주면 승급 실행. */
+    /** [2026-10-20] /7성소환 [직업] -- 인자 없으면 조건 안내, 직업을 주면 ★7 동료 소환. */
     public String star7(HashMap<String, Object> map) {
         return s5Service.star7Command(userNameOf(map), param1Of(map));
+    }
+
+    /** [2026-10-20] /7성방출 확인 -- ★7 동료 방출(장비 해제). */
+    public String star7Release(HashMap<String, Object> map) {
+        return s5Service.star7ReleaseCommand(userNameOf(map), param1Of(map));
     }
 
     /** [2026-09-21] /전투화면 v1|v2 -- 전투화면 UI 버전 선호 저장. */
