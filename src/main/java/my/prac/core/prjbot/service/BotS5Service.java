@@ -371,6 +371,15 @@ public interface BotS5Service {
     /** [2026-10-08] 웹 도감 탭(아이템도감)용 -- ★7 전설장비 목록, 보유 인원/개수, 최고 강화 수치. */
     java.util.List<java.util.HashMap<String, Object>> legendaryCodex();
 
+    /** [2026-10-20] ★7 동료 승급 -- 현재 상태(재료/조각/가능 여부/직업별 예상 능력치). */
+    java.util.HashMap<String, Object> star7Status(String userName);
+
+    /** [2026-10-20] 채팅 /7성승급 [직업] -- 인자가 없으면 안내, 있으면 그 직업으로 승급. */
+    String star7Command(String userName, String arg);
+
+    /** [2026-10-20] 웹 승급 실행. */
+    String promoteToStar7(String userName, String job);
+
     /**
      * 활동 카운터 1증가 + 그 채널 사용 플래그 세팅. statKey는 아래 6개 중 하나만 유효
      * (그 외는 조용히 무시): "DICE_WEB", "DICE_CHAT", "GACHA_WEB", "GACHA_CHAT", "WIPE_WEB",

@@ -108,7 +108,7 @@
 
 <script>
 (function () {
-  var JOB_KR = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
+  var JOB_KR = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사', SHAMAN: '무녀' };
   var raw = [], days = 7, comboSel = '';
   var MIN_N = 5;
   function qs(id) { return document.getElementById(id); }

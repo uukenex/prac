@@ -570,6 +570,17 @@
     .legend-craft-result{ text-align:center; font-size:13px; font-weight:700; padding:14px 10px; border-radius:12px; margin-top:4px; }
     .legend-craft-result.success{ background:var(--gold-soft); color:#6B4A12; }
     .legend-craft-result.fail{ background:#EFE7D2; color:var(--ink-soft); }
+    /* [2026-10-20] ★7 동료 승급 팝업 */
+    .s7-intro{ font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:8px; }
+    .s7-req{ font-size:13px; padding:6px 10px; border-radius:10px; margin-bottom:4px; background:#F4EDD9; }
+    .s7-req.no{ color:#9A4A2E; }
+    .s7-req small{ color:var(--ink-soft); }
+    .s7-jobs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin:10px 0; }
+    .s7-job{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:12px;
+             border:2px solid transparent; background:#F4EDD9; color:var(--ink); font-size:13px; cursor:pointer; }
+    .s7-job small{ font-size:10px; color:var(--ink-soft); }
+    .s7-job .s7-job-em{ font-size:22px; }
+    .s7-job.sel{ border-color:var(--gold); background:var(--gold-soft); }
 
     /* [2026-10-08] 도감 탭 */
     .cx-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
@@ -981,6 +992,11 @@
       <div class="card-title">⬆️ 전설강화</div>
       <button type="button" class="legend-craft-btn" id="legendEnhanceBtn" disabled onclick="TW.openLegendEnhance()">강화하기</button>
     </div>
+    <!-- [2026-10-20] ★7 동료 승급 -- 한계돌파 최대(+6)인 ★4/★5 동료와 전설의조각으로 원하는 직업의 ★7 동료 1명을 받는다. -->
+    <div class="card" style="margin-top:10px;">
+      <div class="card-title">🌟 7성 승급</div>
+      <button type="button" class="legend-craft-btn" id="star7Btn" onclick="TW.openStar7()">승급하기</button>
+    </div>
     <!-- [2026-09-15] "장비뽑기 말고 악세뽑기를 추가해서 목걸이/반지/팔찌" 요청 -- 장비 상자와
          같은 4단계(초급/중급/상급/최상급) 구조지만 해금층(50/60/70/80)과 가격이 달라 별도
          카드/목록으로 분리(renderShop의 accessoryGachaList 참고). -->
@@ -1173,6 +1189,16 @@
     <div class="sheet-title">⬆️ 전설강화 <span class="legend-frag-badge">🧩 <span id="legendEnhanceFrag">0</span></span></div>
     <div class="legend-craft-result" id="legendEnhanceResult" style="display:none;"></div>
     <div id="legendEnhanceList"></div>
+  </div>
+</div>
+
+<!-- [2026-10-20] ★7 동료 승급 팝업 -- 직업을 고르면 그 직업의 ★7 동료가 생긴다(1인 1명). 재료 현황은 서버가 계산해서 내려준다. -->
+<div class="detail-overlay" id="star7Overlay" onclick="if(event.target===this) TW.closeStar7();">
+  <div class="detail-card sheet-card wide-card">
+    <button class="detail-close" onclick="TW.closeStar7()">✕</button>
+    <div class="sheet-title">🌟 7성 승급</div>
+    <div class="legend-craft-result" id="star7Result" style="display:none;"></div>
+    <div id="star7Body"></div>
   </div>
 </div>
 
@@ -2687,10 +2713,10 @@ var TW = (function () {
   var PART_KR   = { HELMET: '투구', WEAPON: '무기', ARMOR: '갑옷', NECKLACE: '목걸이', RING: '반지', BRACELET: '팔찌' };
   var PART_EMOJI = { HELMET: '⛑️', WEAPON: '⚔️', ARMOR: '🛡️', NECKLACE: '📿', RING: '💍', BRACELET: '⛓️' };
   var PART_ORDER = ['WEAPON', 'HELMET', 'ARMOR', 'NECKLACE', 'RING', 'BRACELET']; // 장비 부위 표시 순서
-  var JOB_KR    = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사' };
-  var JOB_ORDER = ['WARRIOR', 'MAGE', 'ROGUE', 'ARCHER', 'PRIEST']; // 장비 목록 직업별 그룹핑 순서
+  var JOB_KR    = { WARRIOR: '전사', MAGE: '마법사', ROGUE: '도적', ARCHER: '궁수', PRIEST: '도사', SHAMAN: '무녀' };
+  var JOB_ORDER = ['WARRIOR', 'MAGE', 'ROGUE', 'ARCHER', 'PRIEST', 'SHAMAN']; // 장비 목록 직업별 그룹핑 순서
   // 초상화(IMAGE_URL)는 외부 API(nekos.best) 실패/차단 시 비어있을 수 있어 직업별 이모지로 항상 얼굴이 보이게 폴백
-  var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫' };
+  var JOB_EMOJI = { WARRIOR: '⚔️', MAGE: '🧙', ROGUE: '🗡️', ARCHER: '🏹', PRIEST: '💫', SHAMAN: '🔮' };
 
   // [2026-09-17] 장비 그룹 통합(BotS5ServiceImpl의 WEAPON_CLASS_JOBS/JOB_TO_WEAPON_CLASS/
   // JOB_TO_ARMOR_CLASS/JOB_TO_HELMET_CLASS/WEAPON_CLASS_NAME/weaponAllowedJobs/
@@ -2700,9 +2726,9 @@ var TW = (function () {
   // 함께 지원해야 해서 weaponAllowedJobs는 신규값이 아니면 그 값 자신 하나짜리 집합으로
   // 취급한다(서버 로직과 동일).
   var WEAPON_CLASS_JOBS = {
-    SWORD: ['WARRIOR', 'ROGUE'], STAFF: ['MAGE', 'PRIEST'], BOW: ['ARCHER'],
-    PLATE: ['WARRIOR', 'ROGUE'], ROBE: ['MAGE', 'PRIEST'], JACKET: ['ARCHER'],
-    HELM: ['WARRIOR', 'ROGUE'], HEADBAND: ['MAGE', 'PRIEST'], PLUME: ['ARCHER'],
+    SWORD: ['WARRIOR', 'ROGUE'], STAFF: ['MAGE', 'PRIEST', 'SHAMAN'], BOW: ['ARCHER'],
+    PLATE: ['WARRIOR', 'ROGUE'], ROBE: ['MAGE', 'PRIEST', 'SHAMAN'], JACKET: ['ARCHER'],
+    HELM: ['WARRIOR', 'ROGUE'], HEADBAND: ['MAGE', 'PRIEST', 'SHAMAN'], PLUME: ['ARCHER'],
     COMMON: JOB_ORDER
   };
   var WEAPON_CLASS_NAME = {
@@ -3811,6 +3837,69 @@ var TW = (function () {
     document.getElementById('legendEnhanceOverlay').classList.remove('open');
   }
 
+  // ==================== ★7 동료 승급 (2026-10-20) ====================
+  // 규칙은 서버(BotS5ServiceImpl.star7Status/promoteToStar7)가 판단하고, 여기선 현황 표시와 직업 선택만 한다.
+  var s7Data = null, s7Sel = null;
+  function openStar7() {
+    document.getElementById('star7Result').style.display = 'none';
+    s7Sel = null;
+    renderStar7();
+    document.getElementById('star7Overlay').classList.add('open');
+  }
+  function closeStar7() { document.getElementById('star7Overlay').classList.remove('open'); }
+  function renderStar7() {
+    var box = document.getElementById('star7Body');
+    var u = userName();
+    if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
+    box.innerHTML = '<div class="sheet-empty">불러오는 중...</div>';
+    fetch(base + '/api/tower-star7?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
+      s7Data = d;
+      if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
+      if (d.owned) { box.innerHTML = '<div class="sheet-empty">이미 ★7 동료를 보유 중입니다: <b>' + d.ownedName + '</b> (' + d.ownedJob + ')</div>'; return; }
+      function req(ok, text) { return '<div class="s7-req ' + (ok ? 'ok' : 'no') + '">' + (ok ? '✅' : '❌') + ' ' + text + '</div>'; }
+      var html = '<div class="s7-intro">능력치는 ★6 한계돌파 최대의 1.2배, 스킬 발현율은 ★6의 1.5배, 한계돌파는 없고 1인 1명입니다. 고른 직업의 ★7 동료가 새로 생기고, 재료 동료는 사라집니다(장비는 미착용으로 돌아옴).</div>';
+      html += req(d.haveG5 >= d.needG5, '한계돌파 +6 ★5 동료 ' + d.needG5 + '명 <small>(파티 밖 보유 ' + d.haveG5 + '명)</small>');
+      html += req(d.haveG4 >= d.needG4, '한계돌파 +6 ★4 동료 ' + d.needG4 + '명 <small>(파티 밖 보유 ' + d.haveG4 + '명)</small>');
+      html += req(d.fragment >= d.fragmentCost, '🧩 전설의조각 ' + d.fragmentCost + '개 <small>(보유 ' + d.fragment + (d.surcharge ? ' · ★6 한계돌파 최대 보유자는 조각 2배' : '') + ')</small>');
+      html += '<div class="s7-jobs">';
+      (d.jobs || []).forEach(function (j) {
+        html += '<button type="button" class="s7-job" data-job="' + j.key + '" onclick="TW.star7Pick(\'' + j.key + '\')">'
+            + '<span class="s7-job-em">' + (JOB_EMOJI[j.key] || '') + '</span><b>' + j.name + '</b>'
+            + '<small>❤️' + j.hp + ' ⚔️' + j.atk + ' 🛡️' + j.def + '</small></button>';
+      });
+      html += '</div><button type="button" class="legend-craft-btn" id="star7Go" disabled onclick="TW.star7Do()">직업을 선택하세요</button>';
+      box.innerHTML = html;
+      if (s7Sel) star7Pick(s7Sel);
+    }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
+  }
+  function star7Pick(job) {
+    s7Sel = job;
+    Array.prototype.forEach.call(document.querySelectorAll('#star7Body .s7-job'), function (b) { b.classList.toggle('sel', b.getAttribute('data-job') === job); });
+    var go = document.getElementById('star7Go');
+    if (!go) return;
+    var ok = s7Data && s7Data.canPromote;
+    go.disabled = !ok;
+    go.textContent = ok ? ('🌟 ' + (JOB_KR[job] || job) + '(으)로 승급 (재료 동료 소모)') : (s7Data && s7Data.inCombat ? '전투 중에는 승급할 수 없습니다' : '재료/조각이 부족합니다');
+  }
+  function star7Do() {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    if (!s7Sel) { toast('직업을 선택하세요'); return; }
+    var go = document.getElementById('star7Go');
+    if (go) go.disabled = true;
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=PROMOTE_STAR7&param1=' + encodeURIComponent(s7Sel) + '&param2=';
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var msg = data.message || data.error || '완료';
+      var result = document.getElementById('star7Result');
+      result.className = 'legend-craft-result' + (msg.indexOf('승급 성공') !== -1 ? ' success' : ' fail');
+      result.textContent = formatMsg(msg);
+      result.style.whiteSpace = 'pre-line';
+      result.style.display = '';
+      return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
+    }).then(function () { renderStar7(); })
+      .catch(function () { toast('요청 실패'); renderStar7(); });
+  }
+
   // ==================== 도감 탭 (2026-10-08) ====================
   var cxMonRows = null, cxItems = null, cxBand = 'all', cxSub = 'mon';
   function cxEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -4115,6 +4204,7 @@ var TW = (function () {
            openLegendRoster: openLegendRoster, closeLegendRoster: closeLegendRoster,
            openLegendDisenchant: openLegendDisenchant, closeLegendDisenchant: closeLegendDisenchant,
            openLegendEnhance: openLegendEnhance, closeLegendEnhance: closeLegendEnhance,
+           openStar7: openStar7, closeStar7: closeStar7, star7Pick: star7Pick, star7Do: star7Do,
            closeDungeon: closeDungeon };
 })();
 </script>

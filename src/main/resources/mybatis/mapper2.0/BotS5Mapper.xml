@@ -479,6 +479,11 @@
         SELECT COUNT(*) FROM TBOT_S5_USER_COMPANION WHERE USER_NAME = #{userName}
     </select>
 
+    <!-- [2026-10-20] 7성 승급 재료 소모 (소유자 조건 포함). -->
+    <delete id="deleteCompanion">
+        DELETE FROM TBOT_S5_USER_COMPANION WHERE COMPANION_ID = #{companionId} AND USER_NAME = #{userName}
+    </delete>
+
     <insert id="insertCompanion" parameterType="hashmap">
         INSERT INTO TBOT_S5_USER_COMPANION
             (COMPANION_ID, USER_NAME, CLASS, GRADE, NAME, IMAGE_URL, CUR_HP_VALUE, CUR_HP_EXT, PARTY_SLOT)

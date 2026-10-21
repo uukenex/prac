@@ -484,6 +484,18 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-10-20] ★7 동료 승급 팝업용 -- 재료/조각 현황과 직업별 ★7 예상 능력치. */
+    @GetMapping("/api/tower-star7")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerStar7(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.star7Status(userName));
+    }
+
     /** [2026-10-08] 웹 도감 탭 -- 아이템도감(★7 전설장비 목록, 보유 인원, 최고 강화). */
     @GetMapping("/api/tower-codex-items")
     @ResponseBody
@@ -642,6 +654,9 @@ public class Season5ViewController {
                     break;
                 case "ENHANCE_LEGENDARY":
                     message = s5Service.enhanceLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "PROMOTE_STAR7":
+                    message = s5Service.promoteToStar7(userName, param1);
                     break;
                 case "SET_BATTLE_SCREEN_VERSION":
                     message = s5Service.setBattleScreenVersion(userName, param1);

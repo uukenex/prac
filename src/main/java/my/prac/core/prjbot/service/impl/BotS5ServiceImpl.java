@@ -69,7 +69,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return TOWER_VIEW_URL + "?userName=" + userName;
     }
 
-    private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST" };
+    private static final String[] JOB_KEYS = { "WARRIOR", "MAGE", "ROGUE", "ARCHER", "PRIEST", "SHAMAN" };
 
     // 등급(성급) 베이스 스탯 [HP, ATK, DEF], index0 = ★1
     private static final int[][] GRADE_BASE = {
@@ -88,11 +88,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         put("ROGUE",   new double[]{ 0.9, 1.4, 1.0 });
         put("ARCHER",  new double[]{ 0.7, 1.8, 0.8 });
         put("PRIEST",  new double[]{ 1.2, 0.6, 1.6 });
+        put("SHAMAN",  new double[]{ 1.1, 0.7, 1.4 }); // [2026-10-20] 무녀 -- 도사와 비슷한 서포터 체형(체력/방어 높고 공격 낮음)
     }};
 
     private static final HashMap<String, String> JOB_NAME = new HashMap<String, String>() {{
         put("WARRIOR", "전사"); put("MAGE", "마법사"); put("ROGUE", "도적");
-        put("ARCHER", "궁수");  put("PRIEST", "도사");
+        put("ARCHER", "궁수");  put("PRIEST", "도사"); put("SHAMAN", "무녀");
     }};
 
     // [2026-09-17] "장비 분류 통합, 먼저 무기류 -- 검(전사/도적)/지팡이(도사/마법사)/활(궁수)
@@ -111,29 +112,29 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 배포(구/신 데이터 둘 다 호환) -> 그 다음에 마이그레이션 SQL 실행"이 안전한 순서.
     private static final HashMap<String, java.util.Set<String>> WEAPON_CLASS_JOBS = new HashMap<String, java.util.Set<String>>() {{
         put("SWORD", new java.util.HashSet<>(java.util.Arrays.asList("WARRIOR", "ROGUE")));
-        put("STAFF", new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST")));
+        put("STAFF", new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST", "SHAMAN")));
         put("BOW",   new java.util.HashSet<>(java.util.Arrays.asList("ARCHER")));
         put("PLATE", new java.util.HashSet<>(java.util.Arrays.asList("WARRIOR", "ROGUE")));
-        put("ROBE",  new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST")));
+        put("ROBE",  new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST", "SHAMAN")));
         put("JACKET", new java.util.HashSet<>(java.util.Arrays.asList("ARCHER")));
         put("HELM",  new java.util.HashSet<>(java.util.Arrays.asList("WARRIOR", "ROGUE")));
-        put("HEADBAND", new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST")));
+        put("HEADBAND", new java.util.HashSet<>(java.util.Arrays.asList("MAGE", "PRIEST", "SHAMAN")));
         put("PLUME", new java.util.HashSet<>(java.util.Arrays.asList("ARCHER")));
         put("COMMON", new java.util.HashSet<>(java.util.Arrays.asList(JOB_KEYS))); // 악세서리 -- 전 직업 착용 가능
     }};
     private static final HashMap<String, String> JOB_TO_WEAPON_CLASS = new HashMap<String, String>() {{
         put("WARRIOR", "SWORD"); put("ROGUE", "SWORD");
-        put("MAGE", "STAFF");    put("PRIEST", "STAFF");
+        put("MAGE", "STAFF");    put("PRIEST", "STAFF"); put("SHAMAN", "STAFF");
         put("ARCHER", "BOW");
     }};
     private static final HashMap<String, String> JOB_TO_ARMOR_CLASS = new HashMap<String, String>() {{
         put("WARRIOR", "PLATE"); put("ROGUE", "PLATE");
-        put("MAGE", "ROBE");     put("PRIEST", "ROBE");
+        put("MAGE", "ROBE");     put("PRIEST", "ROBE"); put("SHAMAN", "ROBE");
         put("ARCHER", "JACKET");
     }};
     private static final HashMap<String, String> JOB_TO_HELMET_CLASS = new HashMap<String, String>() {{
         put("WARRIOR", "HELM"); put("ROGUE", "HELM");
-        put("MAGE", "HEADBAND"); put("PRIEST", "HEADBAND");
+        put("MAGE", "HEADBAND"); put("PRIEST", "HEADBAND"); put("SHAMAN", "HEADBAND");
         put("ARCHER", "PLUME");
     }};
     private static final HashMap<String, String> WEAPON_CLASS_NAME = new HashMap<String, String>() {{
@@ -199,6 +200,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             { "렌지", "아츠시" },
             { "츠요시" },
             { "고우키" },
+            { "타이가" }, // ★7
         });
         put("MAGE", new String[][]{
             { "유키", "아오이", "이츠키" },
@@ -207,6 +209,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             { "리오", "카나" },
             { "미코토" },
             { "세라" },
+            { "아리스" }, // ★7
         });
         put("ROGUE", new String[][]{
             { "카이토", "료", "츠바사" },
@@ -215,6 +218,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             { "유이토", "카게로우" },
             { "나기" },
             { "야토" },
+            { "시노" }, // ★7
         });
         put("ARCHER", new String[][]{
             { "소라", "유토", "나나" },
@@ -223,6 +227,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             { "세리나", "츠키미" },
             { "스즈네" },
             { "아마츠" },
+            { "히카리" }, // ★7
         });
         put("PRIEST", new String[][]{
             { "사쿠라", "히나", "유이" },
@@ -231,6 +236,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             { "코하루", "미레이" },
             { "스이렌" },
             { "아마네" },
+            { "미코" }, // ★7
+        });
+        // [2026-10-20] 무녀(SHAMAN) -- 신사/제례 느낌의 이름. 마지막(★7)은 히미코(고대 무녀왕).
+        put("SHAMAN", new String[][]{
+            { "하나", "토키", "메이" },
+            { "카구야", "유라", "사요" },
+            { "아카네", "치요", "스미레" },
+            { "미즈키", "하스미" },
+            { "시즈쿠" },
+            { "카가리" },
+            { "히미코" },
         });
     }};
 
@@ -454,6 +470,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                         AUTO_HUNT_KILLS_PER_HOUR = Integer.parseInt(val);
                     } else if ("AUTO_HUNT_MAX_HOURS".equals(key)) {
                         AUTO_HUNT_MAX_HOURS = Integer.parseInt(val);
+                    } else if ("S7_MAT_G5".equals(key)) {
+                        S7_MAT_G5 = Integer.parseInt(val);
+                    } else if ("S7_MAT_G4".equals(key)) {
+                        S7_MAT_G4 = Integer.parseInt(val);
+                    } else if ("S7_FRAGMENT".equals(key)) {
+                        S7_FRAGMENT = Integer.parseInt(val);
+                    } else if ("S7_FRAGMENT_MULT_S6".equals(key)) {
+                        S7_FRAGMENT_MULT_S6 = Integer.parseInt(val);
                     } else if ("STAIR_ZONE_MAX_FLOOR".equals(key)) {
                         // 200 미만으로는 내리지 않고(이미 열린 구간 보호), 준비된 최대(500)를 넘기지 않는다.
                         stairZoneOpenMax = Math.max(200, Math.min(STAIR_ZONE_READY_MAX, Integer.parseInt(val)));
@@ -516,12 +540,65 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 스탯 계산
     // ================================================================
     /** [2026-10-08] 전설 팔찌 "학자의 토시"(SKILL_RATE_MULT) -- 착용한 동료의 캐릭터 스킬 발동 확률을 배율만큼 올린다(예: 도사 부활 10% -> 15%).
-     *  resolveCombatTurn이 턴 시작에 파티 동료마다 SKILL_MULT(배율)를 붙여 두고, 확률 굴림 지점이 이 헬퍼로 최종 확률을 구한다(100% 상한). */
+     *  resolveCombatTurn이 턴 시작에 파티 동료마다 SKILL_MULT(배율)를 붙여 두고, 확률 굴림 지점이 이 헬퍼로 최종 확률을 구한다.
+     *  [2026-10-20] ★7 동료는 ★6 대비 발현율 x1.5(STAR7_SKILL_BONUS). 학자의 토시(x1.5)와는 곱하지 않고 "증가분을 더한다"(1+0.5+0.5 = x2.0)
+     *  -- 곱셈(x2.25)이면 대부분 스킬이 한계에 닿아 아이템 가치가 무의미해지기 때문. 증가가 붙은 확률은 SKILL_RATE_CAP(90%)를 넘지 않아 필중이 되지 않는다. */
     private int skillRate(HashMap<String, Object> companion, int baseChance) {
         if (companion == null) return baseChance;
+        double bonus = 0.0;
         Object m = companion.get("SKILL_MULT");
-        double mult = m instanceof Number ? ((Number) m).doubleValue() : 1.0;
-        return mult == 1.0 ? baseChance : (int) Math.min(100, Math.round(baseChance * mult));
+        if (m instanceof Number) bonus += ((Number) m).doubleValue() - 1.0;
+        if (intVal(companion.get("GRADE"), 1) >= STAR7_GRADE) bonus += STAR7_SKILL_BONUS;
+        if (bonus <= 0) return baseChance;
+        int boosted = (int) Math.round(baseChance * (1.0 + bonus));
+        return Math.min(boosted, Math.max(baseChance, SKILL_RATE_CAP));
+    }
+
+    // ---- [2026-10-20] ★7 동료 ----
+    private static final int STAR7_GRADE = 7;
+    /** ★7 기본 스탯 = ★6 기본 x (한계돌파 최대 단계 배율) x 1.2. 한계돌파는 없다(LIMIT_BREAK는 항상 0). */
+    private static final double STAR7_STAT_OVER_LB6 = 1.2;
+    /** ★7 스킬 발현율 증가분(+50% = x1.5). */
+    private static final double STAR7_SKILL_BONUS = 0.5;
+    /** 아이템/★7 배율이 붙은 스킬 확률의 상한(%) -- 필중 방지. */
+    private static final int SKILL_RATE_CAP = 90;
+    // 승급 비용(TBOT_S5_CONFIG로 조정): 한계돌파 최대(+6)인 ★5/★4 동료를 재료로 소모 + 전설의조각. ★6 한계돌파 최대 동료를 이미 가진 유저는 조각이 배.
+    private static volatile int S7_MAT_G5 = 2;
+    private static volatile int S7_MAT_G4 = 3;
+    private static volatile int S7_FRAGMENT = 15;
+    private static volatile int S7_FRAGMENT_MULT_S6 = 2;
+    /** 무녀 스킬 이름(전투 로그/시너지 안내에 표시) -- 최종 이름은 사용자가 정하는 대로 이 상수만 바꾸면 된다. 지금은 임시 이름. */
+    private static final String SHAMAN_SKILL_NAME = "기원";
+    /** 무녀 스킬 -- 몬스터 공격력에서 한 턴에 뺏을 수 있는 최대치(몬스터 공격력 대비). */
+    private static final double SHAMAN_DRAIN_CAP_PCT = 0.5;
+
+    /** [2026-10-20] 무녀 스킬 사전 굴림 -- 파티 공격 전에 호출. 발동한 무녀(살아있고 기절 아님)마다 몬스터 공격력에서 뺏는 고정 수치를 구한다.
+     *  뺏은 총량은 몬스터 공격력(기준값)의 SHAMAN_DRAIN_CAP_PCT를 넘지 않고, 같은 수치만큼 이번 턴 아군 전원의 공격력이 오른다(공격/반격 모두 굴림 눈금을 곱하므로 대칭).
+     *  수치 = 무녀의 최종 공격력 x 계수(★1~4 0.5, ★5 0.6, ★6~7 0.7, 무녀 3인조 x1.5). 확률 = ★1~3 30%, ★4 35%, ★5 40%, ★6~7 45%(+무녀 3인조 20%p) -- skillRate 적용. */
+    private LinkedHashMap<Integer, Integer> rollShamanPlays(List<HashMap<String, Object>> party, HashMap<String, Object> userStat,
+            String synergy, double monsterAtkBase, int bossStunCid) {
+        LinkedHashMap<Integer, Integer> plays = new LinkedHashMap<>();
+        int remainingCap = (int) Math.floor(monsterAtkBase * SHAMAN_DRAIN_CAP_PCT);
+        boolean mono = "SHAMAN".equals(synergy);
+        for (HashMap<String, Object> c : party) {
+            if (!"SHAMAN".equals(strVal(c.get("CLASS"), ""))) continue;
+            PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
+            if (PP.toBaseValue(hp) <= 0) continue;
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            if (bossStunCid != 0 && bossStunCid == cid) continue;
+            int grade = intVal(c.get("GRADE"), 1);
+            int chance = grade >= 6 ? 45 : (grade >= 5 ? 40 : (grade >= 4 ? 35 : 30));
+            if (mono) chance += 20;
+            if (RND.nextInt(100) >= skillRate(c, chance)) continue;
+            int[] eff = computeEffectiveStat("SHAMAN", grade, dao.selectEquipByCompanion(cid), userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            double coef = grade >= 6 ? 0.7 : (grade >= 5 ? 0.6 : 0.5);
+            if (mono) coef *= 1.5;
+            int drain = Math.min(remainingCap, Math.max(1, (int) Math.round(eff[1] * coef)));
+            if (drain <= 0) continue;
+            remainingCap -= drain;
+            plays.put(cid, drain);
+        }
+        return plays;
     }
 
     private void attachSkillMult(String userName, List<HashMap<String, Object>> party) {
@@ -540,13 +617,22 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private int[] calcBaseStat(String job, int grade) {
         int[][] gradeBase = GRADE_BASE_V2;
-        int[] base = (BALANCE_V2_ENABLED && gradeBase != null && grade - 1 < gradeBase.length && gradeBase[grade - 1] != null)
-                ? gradeBase[grade - 1] : GRADE_BASE[grade - 1];
+        // [2026-10-20] ★7은 ★6 기본 스탯 x 한계돌파 최대 배율 x 1.2 (별도 표 없이 ★6 행과 한계돌파 표에서 파생 -- 밸런스 표를 고치면 따라 움직인다).
+        boolean star7 = grade >= STAR7_GRADE;
+        int g = star7 ? 6 : grade;
+        int[] base = (BALANCE_V2_ENABLED && gradeBase != null && g - 1 < gradeBase.length && gradeBase[g - 1] != null)
+                ? gradeBase[g - 1] : GRADE_BASE[g - 1];
         double[] mult = JOB_MULT.get(job);
-        int hp  = (int) Math.round(base[0] * mult[0]);
-        int atk = (int) Math.round(base[1] * mult[1]);
-        int def = (int) Math.round(base[2] * mult[2]);
+        double s7 = star7 ? star7StatMult() : 1.0;
+        int hp  = (int) Math.round(base[0] * mult[0] * s7);
+        int atk = (int) Math.round(base[1] * mult[1] * s7);
+        int def = (int) Math.round(base[2] * mult[2] * s7);
         return new int[]{ hp, atk, def };
+    }
+
+    /** ★7 능력치 배율(★6 기본 대비) = (1 + 한계돌파 최대 단계 증가율) x 1.2. 현재 표 기준 2.8 x 1.2 = 3.36. */
+    private double star7StatMult() {
+        return (1 + limitBreakPct(LIMIT_BREAK_MAX)) * STAR7_STAT_OVER_LB6;
     }
 
     /** [2026-09-14] 한계돌파(★N 동료를 중복으로 또 뽑으면 그 동료 개체에 붙는 강화, 최대
@@ -753,6 +839,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
         double investMult = (1 + HP_PCT_PER_LV * hpLv) * (1 + limitBreakPct(limitBreak));
         return 1 + ATK_INVEST_SCALE * Math.max(0, investMult - 1);
+    }
+
+    /** [2026-10-20] 동료 개체 기준 투자배율 -- ★7은 한계돌파가 없는 대신 기본 스탯이 이미 부풀려져 있으므로 그 배율(star7StatMult)을 한계돌파 증가분과 같은 취급으로 반영한다. */
+    private double investAtkScaleFor(HashMap<String, Object> userStat, HashMap<String, Object> companion) {
+        if (intVal(companion.get("GRADE"), 1) >= STAR7_GRADE) {
+            int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
+            double investMult = (1 + HP_PCT_PER_LV * hpLv) * star7StatMult();
+            return 1 + ATK_INVEST_SCALE * Math.max(0, investMult - 1);
+        }
+        return investAtkScale(userStat, intVal(companion.get("LIMIT_BREAK"), 0));
     }
 
     /** 등급+직업 베이스 스탯에 장비/스탯구매/한계돌파 보너스를 반영한 최종 전투 스탯. [hp, atk, def, minDmgFloor] */
@@ -1927,6 +2023,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             case "ROGUE":   return "🗡️ 도적 3인조 시너지! PP 훔치기 확률 상승, 훔친 PP량 2배" + NL;
             case "ARCHER":  return "🏹 궁수 3인조 시너지! 파티 전체 공격력 +30%" + NL;
             case "PRIEST":  return "✨ 도사 3인조 시너지! 보호막량 2배 + 보호막이 흡수한 피해의 절반을 반사" + NL;
+            case "SHAMAN":  return "🔮 " + JOB_NAME.get("SHAMAN") + " 3인조 시너지! " + SHAMAN_SKILL_NAME + " 확률 +20%p, 뺏는 공격력 x1.5" + NL;
             case "RAINBOW": return ""; // 균형 파티 시너지 멘트 제거 요청(효과 자체는 유지)
             default:        return "";
         }
@@ -3283,7 +3380,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         double introScale = 1.0;
         for (HashMap<String, Object> ic : dao.selectUserCompanions(userName)) {
             if (ic.get("PARTY_SLOT") == null) continue;
-            introScale = Math.max(introScale, investAtkScale(introStat, intVal(ic.get("LIMIT_BREAK"), 0)));
+            introScale = Math.max(introScale, investAtkScaleFor(introStat, ic));
         }
         int introAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * (boss ? 1.6 : 1.0) * introScale);
         sb.append("⚔️ ").append(introAtk)
@@ -3506,7 +3603,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult * AMBUSH_ATK_PCT);
                 // [2026-09-22] "60~70층 유저도 선공(기습)당할때 데미지가 너무 적어" 신고 --
                 // 반격과 동일하게 대상 본인의 투자배율만큼 기습 공격력도 같이 올린다.
-                amMonsterAtk = (int) Math.round(amMonsterAtk * investAtkScale(userStat, intVal(amTarget.get("LIMIT_BREAK"), 0)));
+                amMonsterAtk = (int) Math.round(amMonsterAtk * investAtkScaleFor(userStat, amTarget));
                 // [2026-09-19] "51층+ 몬스터는 자기만의 무작위 면수를 쓴다"는 규칙(반격과 동일,
                 // monsterOwnDiceMax 참고)을 기습 굴림에도 맞춤 -- 예전엔 플레이어가 낀 주사위
                 // (diceMax, 최대 20)를 그대로 재사용해서 플레이어가 강한 주사위를 낄수록
@@ -3674,6 +3771,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!evadeCandidates.isEmpty()) monsterEvadeCid = evadeCandidates.get(RND.nextInt(evadeCandidates.size()));
         }
 
+        // [2026-10-20] 무녀 스킬 -- 파티가 공격하기 전에 발동 여부를 굴려서, 몬스터 공격력에서 뺏은 고정 수치(shamanDrain)를 아군 전원의 공격력에 더하고
+        // (아래 공격 루프), 같은 수치를 이번 턴 몬스터 반격 공격력에서 뺀다(반격 파트). 몬스터 공격력 기준값의 50%까지만 뺏을 수 있다.
+        LinkedHashMap<Integer, Integer> shamanPlays = skillLocked ? new LinkedHashMap<Integer, Integer>()
+                : rollShamanPlays(party, userStat, synergy,
+                        intVal(mon.get("ATK_VALUE"), 0) * eliteMult * ("Y".equals(strVal(mon.get("BOSS_YN"), "N")) ? 1.6 : 1.0), bossStunCid);
+        int shamanDrain = 0;
+        for (int v : shamanPlays.values()) shamanDrain += v;
+
         for (HashMap<String, Object> c : party) {
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             if (PP.toBaseValue(hp) <= 0) continue; // 전투불가
@@ -3695,6 +3800,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if ("RAINBOW".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.1); // 시너지: 균형3인조 공격 +10%
             if (trapAtkDown) eff[1] = (int) Math.round(eff[1] * 0.7); // 함정: 공격력 30% 약화
             if (luckyAtkUp) eff[1] = (int) Math.round(eff[1] * luckyMult); // 럭키: 공격력 강화
+            if (shamanDrain > 0) eff[1] += shamanDrain; // 무녀 스킬: 몬스터에게서 뺏은 만큼 아군 공격력 +N (고정 수치)
             if (luckyShieldOnAtk) shieldPool += eff[1]; // 럭키: 매턴 공격력만큼 방어막 추가 생성(도사 실드와 별개로 가산)
 
             // [정책 변경, 2026-09-05] "무시 대상" 스킬 자체를 제거했다("29층 보스가 너무 세다"는
@@ -3774,7 +3880,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 그대로 들어가도록(완전히 0은 아님), 실드는 변경없음" 요청 -- 실드는 이 dmg와
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
-            if ("PRIEST".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
+            if ("PRIEST".equals(job) || "SHAMAN".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
             boolean evadedHit = intVal(c.get("COMPANION_ID"), -1) == monsterEvadeCid;
             if (evadedHit) dmg = 0; // 몬스터가 훔친 회피 -- 이 동료의 공격만 무효(총딜/방어차감 산수에서도 제외)
             totalDamage += dmg;
@@ -3842,6 +3948,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                     shieldPool += shieldAmt;
                     // ★5/★6 특수효과(부활)는 반격으로 동료가 사망할 때 발동하므로 아래 반격
                     // 파트에서 처리한다.
+                    break;
+                }
+                case "SHAMAN": {
+                    Integer played = shamanPlays.get(intVal(c.get("COMPANION_ID"), 0));
+                    if (played != null && played > 0) {
+                        sb.append(" 🔮").append(SHAMAN_SKILL_NAME).append("! 몬스터 공격력 -").append(played).append(" → 아군 공격력 +").append(played);
+                    }
                     break;
                 }
                 default:
@@ -4717,10 +4830,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 유지 -- 이 조합이 시뮬레이션상 목표치에 가장 가까웠다(주사위까지 올리면 약 16%로
         // 오히려 목표보다 낮아짐).
         if (isBossRow) monsterAtk = (int) Math.round(monsterAtk * 1.6);
+        if (shamanDrain > 0) monsterAtk = Math.max(1, monsterAtk - shamanDrain); // 무녀 스킬: 뺏은 고정 수치만큼 반격 공격력 감소(투자배율 곱하기 전)
         // [2026-09-22] "근본" 처방 -- 이 반격을 맞는 대상 본인의 투자배율(스탯구매+한계돌파)에
         // 비례해서 공격력을 추가로 올린다(investAtkScale 주석 참고). 무투자 캐릭터는 배율 1이라
         // 변화 없음.
-        monsterAtk = (int) Math.round(monsterAtk * investAtkScale(userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)));
+        monsterAtk = (int) Math.round(monsterAtk * investAtkScaleFor(userStat, curTarget));
         int roll = rollFace(monsterDiceMin(floor, monsterDiceMax), monsterDiceMax); // 몬스터 자신의 반격 굴림 -- 플레이어 강화/마이너스 주사위와 무관하게 항상 1부터
         // [2026-09-22] "플레이어가 공격받을때도 방어력에 의한 차감수치 표기해줘" 요청 -- 파티
         // 공격 쪽(총 N dmg로 공격! / N - 🛡️방어 M = 실제딜)과 동일한 형식을 반격에도 적용.
@@ -8071,6 +8185,165 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + (LEGEND_DISENCHANT_REFUND + enhRefund) + "개 획득 (보유 " + newFragment + "개)"
                 + (enhRefund > 0 ? " -- 강화 +" + intVal(equip.get("ENHANCE_LEVEL"), 0) + "에 쓴 조각의 절반(" + enhRefund + "개) 포함" : "");
+    }
+
+    // ================================================================
+    // [2026-10-20] ★7 동료 승급 -- 한계돌파 최대(+6)인 ★4/★5 동료를 재료로 소모하고 직업을 골라 ★7 동료 1명을 받는다.
+    // 유저당 ★7은 1명(DB 유니크 인덱스 UX_S5_COMP_STAR7_USER가 최종 방어). 가챠에서는 나오지 않는다.
+    // ================================================================
+    /** 승급 재료 후보 -- 파티에 편성되지 않은 한계돌파 최대 동료. 장비를 덜 낀 것부터, 같으면 최근에 얻은 것부터 소모한다. */
+    private List<HashMap<String, Object>> star7MaterialPool(List<HashMap<String, Object>> companions, int grade) {
+        List<HashMap<String, Object>> pool = new ArrayList<>();
+        final Map<Integer, Integer> equipCnt = new HashMap<>();
+        for (HashMap<String, Object> c : companions) {
+            if (intVal(c.get("GRADE"), 1) != grade || intVal(c.get("LIMIT_BREAK"), 0) < LIMIT_BREAK_MAX || c.get("PARTY_SLOT") != null) continue;
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            equipCnt.put(cid, dao.selectEquipByCompanion(cid).size());
+            pool.add(c);
+        }
+        Collections.sort(pool, (a, b) -> {
+            int ca = equipCnt.get(intVal(a.get("COMPANION_ID"), 0)), cb = equipCnt.get(intVal(b.get("COMPANION_ID"), 0));
+            if (ca != cb) return Integer.compare(ca, cb);
+            return Integer.compare(intVal(b.get("COMPANION_ID"), 0), intVal(a.get("COMPANION_ID"), 0));
+        });
+        return pool;
+    }
+
+    @Override
+    public HashMap<String, Object> star7Status(String userName) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        List<HashMap<String, Object>> cs = dao.selectUserCompanions(userName);
+        HashMap<String, Object> owned = null;
+        boolean hasS6Lb6 = false;
+        for (HashMap<String, Object> c : cs) {
+            int g = intVal(c.get("GRADE"), 1);
+            if (g >= STAR7_GRADE) owned = c;
+            if (g == 6 && intVal(c.get("LIMIT_BREAK"), 0) >= LIMIT_BREAK_MAX) hasS6Lb6 = true;
+        }
+        HashMap<String, Object> r = new HashMap<>();
+        r.put("owned", owned != null);
+        if (owned != null) {
+            r.put("ownedName", strVal(owned.get("NAME"), "?"));
+            r.put("ownedJob", JOB_NAME.getOrDefault(strVal(owned.get("CLASS"), ""), "?"));
+        }
+        int haveG5 = star7MaterialPool(cs, 5).size();
+        int haveG4 = star7MaterialPool(cs, 4).size();
+        int cost = S7_FRAGMENT * (hasS6Lb6 ? S7_FRAGMENT_MULT_S6 : 1);
+        int frag = intVal(p.get("LEGEND_FRAGMENT"), 0);
+        r.put("needG5", S7_MAT_G5); r.put("haveG5", haveG5);
+        r.put("needG4", S7_MAT_G4); r.put("haveG4", haveG4);
+        r.put("fragmentCost", cost); r.put("fragment", frag); r.put("surcharge", hasS6Lb6);
+        boolean inCombat = "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"));
+        r.put("canPromote", owned == null && !inCombat && haveG5 >= S7_MAT_G5 && haveG4 >= S7_MAT_G4 && frag >= cost);
+        r.put("inCombat", inCombat);
+        List<HashMap<String, Object>> jobs = new ArrayList<>();
+        for (String j : JOB_KEYS) {
+            int[] st = calcBaseStat(j, STAR7_GRADE);
+            HashMap<String, Object> jm = new HashMap<>();
+            jm.put("key", j); jm.put("name", JOB_NAME.get(j));
+            jm.put("hp", st[0]); jm.put("atk", st[1]); jm.put("def", st[2]);
+            jm.put("portraitName", NAME_POOL_BY_JOB_GRADE.get(j)[STAR7_GRADE - 1][0]);
+            jobs.add(jm);
+        }
+        r.put("jobs", jobs);
+        return r;
+    }
+
+    private String star7JobKey(String arg) {
+        String a = arg == null ? "" : arg.trim();
+        for (String j : JOB_KEYS) {
+            if (j.equalsIgnoreCase(a) || JOB_NAME.get(j).equals(a)) return j;
+        }
+        return null;
+    }
+
+    @Override
+    public String star7Command(String userName, String arg) {
+        String a = arg == null ? "" : arg.trim();
+        if (a.isEmpty()) {
+            HashMap<String, Object> st = star7Status(userName);
+            StringBuilder sb = new StringBuilder("🌟 ★7 동료 승급").append(NL);
+            if (Boolean.TRUE.equals(st.get("owned"))) {
+                return sb.append("이미 ★7 동료를 보유 중입니다: ").append(st.get("ownedName")).append(" (").append(st.get("ownedJob")).append(")").toString();
+            }
+            sb.append("재료: 한계돌파 +").append(LIMIT_BREAK_MAX).append(" ★5 ").append(st.get("needG5")).append("명 (보유 ").append(st.get("haveG5")).append(") + ★4 ")
+              .append(st.get("needG4")).append("명 (보유 ").append(st.get("haveG4")).append(") -- 파티에 편성되지 않은 동료만 소모됩니다").append(NL);
+            sb.append("🧩 전설의조각 ").append(st.get("fragmentCost")).append("개 (보유 ").append(st.get("fragment")).append(")")
+              .append(Boolean.TRUE.equals(st.get("surcharge")) ? " -- ★6 한계돌파 최대 동료 보유자는 x" + S7_FRAGMENT_MULT_S6 : "").append(NL);
+            sb.append("직업: ");
+            for (String j : JOB_KEYS) sb.append(JOB_NAME.get(j)).append(" ");
+            sb.append(NL).append("사용법: /7성승급 직업 (예: /7성승급 궁수) -- 능력치는 ★6 한계돌파 최대의 1.2배, 스킬 발현율은 ★6의 1.5배, 한계돌파 없음, 1인 1명");
+            return sb.toString();
+        }
+        String job = star7JobKey(a);
+        if (job == null) return "직업을 알 수 없습니다. (전사/마법사/도적/궁수/도사/무녀)";
+        return promoteToStar7(userName, job);
+    }
+
+    @Override
+    @Transactional
+    public String promoteToStar7(String userName, String job) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) return "전투 중에는 승급할 수 없습니다.";
+        if (job == null || !JOB_NAME.containsKey(job)) return "직업 값이 올바르지 않습니다.";
+        List<HashMap<String, Object>> cs = dao.selectUserCompanions(userName);
+        boolean hasS6Lb6 = false;
+        for (HashMap<String, Object> c : cs) {
+            if (intVal(c.get("GRADE"), 1) >= STAR7_GRADE) return "이미 ★7 동료(" + strVal(c.get("NAME"), "?") + ")를 보유 중입니다. ★7은 1명만 가질 수 있습니다.";
+            if (intVal(c.get("GRADE"), 1) == 6 && intVal(c.get("LIMIT_BREAK"), 0) >= LIMIT_BREAK_MAX) hasS6Lb6 = true;
+        }
+        List<HashMap<String, Object>> pool5 = star7MaterialPool(cs, 5);
+        List<HashMap<String, Object>> pool4 = star7MaterialPool(cs, 4);
+        if (pool5.size() < S7_MAT_G5 || pool4.size() < S7_MAT_G4) {
+            return "재료가 부족합니다. 한계돌파 +" + LIMIT_BREAK_MAX + " ★5 " + S7_MAT_G5 + "명(보유 " + pool5.size() + ") + ★4 " + S7_MAT_G4 + "명(보유 " + pool4.size()
+                    + ") 필요 -- 파티에 편성된 동료는 재료로 쓸 수 없습니다.";
+        }
+        int cost = S7_FRAGMENT * (hasS6Lb6 ? S7_FRAGMENT_MULT_S6 : 1);
+        int fragment = intVal(p.get("LEGEND_FRAGMENT"), 0);
+        if (fragment < cost) return "전설의조각이 부족합니다. (보유 " + fragment + "개 / 필요 " + cost + "개)";
+
+        String name = NAME_POOL_BY_JOB_GRADE.get(job)[STAR7_GRADE - 1][0];
+        int[] stat = calcBaseStat(job, STAR7_GRADE);
+        HashMap<String, Object> nc = new HashMap<>();
+        nc.put("userName", userName);
+        nc.put("class", job);
+        nc.put("grade", STAR7_GRADE);
+        nc.put("name", name);
+        nc.put("imageUrl", fetchRandomNekoImage());
+        nc.put("curHpValue", (double) stat[0]);
+        nc.put("curHpExt", "");
+        nc.put("partySlot", null);
+        try {
+            dao.insertCompanion(nc); // 유니크 인덱스 위반(동시 요청)이면 여기서 막힌다 -- 아직 아무것도 소모하지 않은 상태
+        } catch (Exception e) {
+            return "이미 ★7 동료를 보유 중이거나 승급 처리 중입니다.";
+        }
+        List<HashMap<String, Object>> used = new ArrayList<>(pool5.subList(0, S7_MAT_G5));
+        used.addAll(pool4.subList(0, S7_MAT_G4));
+        StringBuilder usedNames = new StringBuilder();
+        for (HashMap<String, Object> m : used) {
+            int cid = intVal(m.get("COMPANION_ID"), 0);
+            for (HashMap<String, Object> e : dao.selectEquipByCompanion(cid)) {
+                HashMap<String, Object> un = new HashMap<>();
+                un.put("equipId", intVal(e.get("EQUIP_ID"), 0));
+                un.put("equippedCompanionId", null);
+                dao.updateEquipEquippedCompanion(un); // 장비는 사라지지 않고 미착용 상태로 돌아온다
+            }
+            dao.deleteCompanion(cid, userName);
+            if (usedNames.length() > 0) usedNames.append(", ");
+            usedNames.append("★").append(intVal(m.get("GRADE"), 1)).append(JOB_NAME.getOrDefault(strVal(m.get("CLASS"), ""), "동료")).append("(").append(strVal(m.get("NAME"), "?")).append(")");
+        }
+        int remaining = fragment - cost;
+        HashMap<String, Object> fragUp = new HashMap<>();
+        fragUp.put("userName", userName);
+        fragUp.put("legendFragment", remaining);
+        dao.updateUserProgress(fragUp);
+
+        int idx = dao.countUserCompanions(userName);
+        return "🌟✨ ★7 승급 성공! " + name + " (" + JOB_NAME.get(job) + " ★7) 동료를 얻었습니다!" + NL
+                + "❤️ " + stat[0] + " ⚔️ " + stat[1] + " 🛡️ " + stat[2] + " (스킬 발현율 x1.5, 한계돌파 없음)" + NL
+                + "소모: " + usedNames + " + 🧩" + cost + "개 (남은 조각 " + remaining + "개, 재료 동료의 장비는 미착용으로 돌아왔습니다)" + NL
+                + "👉 /파티편성 으로 파티에 편성하세요 (동료 목록 " + idx + "번 근처)";
     }
 
     /** [2026-10-08] 내 ★7 전설장비(착용/미착용 모두), 번호는 EQUIP_ID 오름차순 -- 채팅 /전설강화 번호와 같은 기준. */

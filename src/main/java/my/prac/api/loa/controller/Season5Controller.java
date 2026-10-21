@@ -330,6 +330,11 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-10-20] /7성승급 [직업] -- 인자 없으면 필요 재료 안내, 직업을 주면 승급 실행. */
+    public String star7(HashMap<String, Object> map) {
+        return s5Service.star7Command(userNameOf(map), param1Of(map));
+    }
+
     /** [2026-09-21] /전투화면 v1|v2 -- 전투화면 UI 버전 선호 저장. */
     public String setBattleScreenVersion(HashMap<String, Object> map) {
         String param1 = param1Of(map);
