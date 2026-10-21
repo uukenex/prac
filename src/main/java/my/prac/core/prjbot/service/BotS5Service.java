@@ -374,6 +374,12 @@ public interface BotS5Service {
     /** [2026-10-20] 편성 화면 장비 카드용 -- 파티 동료별 장비 1개가 올려주는 체력/공격/방어와 강화로 늘어난 몫. 키 = 동료ID 문자열. */
     java.util.HashMap<String, java.util.List<java.util.HashMap<String, Object>>> partyEquipContribution(String userName);
 
+    /** [2026-10-20] 동료 상세(웹) -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여 행. */
+    java.util.HashMap<String, Object> companionDetail(String userName, int companionId);
+
+    /** [2026-10-20] 장비변경 팝업용 -- 그 부위에 낄 수 있는 장비의 기여 미리보기. */
+    java.util.HashMap<String, Object> equipPreview(String userName, int companionId, String part);
+
     /** [2026-10-20] ★7 동료 소환 -- 현재 상태(업적/보유 여부/직업별 능력치와 고정 초상화). */
     java.util.HashMap<String, Object> star7Status(String userName);
 

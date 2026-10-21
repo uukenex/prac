@@ -484,6 +484,33 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-10-20] 동료 상세 팝업용 -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여. */
+    @GetMapping("/api/tower-companion-detail")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerCompanionDetail(@RequestParam(value = "userName", defaultValue = "") String userName,
+                                                     @RequestParam(value = "companionId", defaultValue = "0") int companionId) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.companionDetail(userName, companionId));
+    }
+
+    /** [2026-10-20] 장비변경 팝업용 -- 낄 수 있는 장비의 기여 미리보기. */
+    @GetMapping("/api/tower-equip-preview")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerEquipPreview(@RequestParam(value = "userName", defaultValue = "") String userName,
+                                                  @RequestParam(value = "companionId", defaultValue = "0") int companionId,
+                                                  @RequestParam(value = "part", defaultValue = "") String part) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.equipPreview(userName, companionId, part));
+    }
+
     /** [2026-10-20] 편성 화면 장비 카드 표시용 -- 파티 동료별 장비 기여 수치(강화 포함). */
     @GetMapping("/api/tower-party-equip-stat")
     @ResponseBody

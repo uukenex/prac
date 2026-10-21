@@ -365,6 +365,20 @@
     .detail-stats .stat-box{ background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 4px; text-align:center; }
     .detail-stats .stat-box .stat-label{ font-size:9px; color:var(--ink-soft); }
     .detail-stats .stat-box .stat-val{ font-size:14px; font-weight:800; }
+    /* [2026-10-20] 동료 상세: 총합 아래에 "캐릭터 기본(+한계돌파) / 장비 합계"를 두 줄로 */
+    .detail-stats .stat-box .stat-sub{ font-size:9px; line-height:1.45; color:var(--ink-soft); margin-top:3px; }
+    .detail-stats .stat-box .stat-sub b{ color:var(--ink); font-weight:700; }
+    .detail-stats .stat-box .stat-sub .lb{ color:#9A6B12; }
+    .der{ background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:8px 10px; margin-bottom:6px; }
+    .der-head{ display:flex; justify-content:space-between; gap:8px; font-weight:700; font-size:12px; }
+    .der-line{ font-size:10.5px; line-height:1.5; color:var(--ink-soft); margin-top:2px; }
+    .der-line b{ color:var(--ink); }
+    .der-line.up b{ color:#2F7D32; }
+    .sheet-row.has-stat{ flex-wrap:wrap; }
+    .sheet-row .sr-stat{ flex-basis:100%; font-size:10.5px; line-height:1.5; color:var(--ink-soft); }
+    .sheet-row .sr-stat b{ color:var(--ink); }
+    .sheet-row .sr-stat .up{ color:#2F7D32; font-weight:700; }
+    .sheet-row .sr-stat .down{ color:#B23A2A; font-weight:700; }
     .detail-equip-row{ display:flex; justify-content:space-between; background:#fff; border:1.5px solid var(--line);
                         border-radius:10px; padding:7px 10px; margin-bottom:5px; font-size:11px; }
     .party-card{ position:relative; }
@@ -1088,9 +1102,9 @@
     <div class="detail-name" id="detailName">-</div>
     <div class="detail-role" id="detailRole">-</div>
     <div class="detail-stats">
-      <div class="stat-box"><div class="stat-label">HP</div><div class="stat-val" id="detailHp">-</div></div>
-      <div class="stat-box"><div class="stat-label">공격력</div><div class="stat-val" id="detailAtk">-</div></div>
-      <div class="stat-box"><div class="stat-label">방어력</div><div class="stat-val" id="detailDef">-</div></div>
+      <div class="stat-box"><div class="stat-label">HP</div><div class="stat-val" id="detailHp">-</div><div class="stat-sub" id="detailHpSub"></div></div>
+      <div class="stat-box"><div class="stat-label">공격력</div><div class="stat-val" id="detailAtk">-</div><div class="stat-sub" id="detailAtkSub"></div></div>
+      <div class="stat-box"><div class="stat-label">방어력</div><div class="stat-val" id="detailDef">-</div><div class="stat-sub" id="detailDefSub"></div></div>
     </div>
     <div class="card-title" style="font-size:13px;">착용 장비</div>
     <div id="detailEquipBox"></div>
@@ -2919,7 +2933,9 @@ var TW = (function () {
     if (cur) {
       var curRow = document.createElement('div');
       curRow.className = 'sheet-row current readonly';
-      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + legendaryTag(cur) + ' 장착중</span>';
+      curRow.className += ' has-stat';
+      curRow.innerHTML = '<span class="sr-main">' + equipIcon(cur.CLASS, part) + ' ★' + cur.GRADE + legendaryTag(cur) + ' 장착중</span>'
+          + '<div class="sr-stat" data-eq="' + cur.EQUIP_ID + '"></div>';
       var unwearBtn = document.createElement('button');
       unwearBtn.type = 'button';
       unwearBtn.className = 'mini-btn';
@@ -2944,12 +2960,39 @@ var TW = (function () {
     } else {
       candidates2.forEach(function (e) {
         var row = document.createElement('div');
-        row.className = 'sheet-row';
-        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + '</span><span class="sr-sub">탭해서 장착</span>';
+        row.className = 'sheet-row has-stat';
+        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + '</span><span class="sr-sub">탭해서 장착</span>'
+            + '<div class="sr-stat" data-eq="' + e.EQUIP_ID + '"></div>';
         row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
         body.appendChild(row);
       });
     }
+    loadPickerPreview(occupant.COMPANION_ID, part, pickerState.slot);
+  }
+
+  // [2026-10-20] 장비변경 팝업에도 같은 수치 표기 -- 후보마다 "장비 능력치(+강화), 이 동료에게 올려주는 수치, 현재 장비 대비 증감".
+  function loadPickerPreview(companionId, part, slot) {
+    var u = userName();
+    if (!u) return;
+    fetch(base + '/api/tower-equip-preview?userName=' + encodeURIComponent(u) + '&companionId=' + companionId + '&part=' + encodeURIComponent(part))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || d.error || !pickerState || pickerState.slot !== slot || pickerState.part !== part) return;
+        var byId = {};
+        (d.rows || []).forEach(function (r) { byId[r.EQUIP_ID] = r; });
+        var cur = byId[d.currentEquipId];
+        Array.prototype.forEach.call(document.querySelectorAll('#pickerBody .sr-stat[data-eq]'), function (el) {
+          var r = byId[el.getAttribute('data-eq')];
+          if (!r) return;
+          var isCur = String(d.currentEquipId) === el.getAttribute('data-eq');
+          var enhInfo = r.ENHANCE_LEVEL > 0 ? ' <small>(강화 +' + r.ENHANCE_LEVEL + ', 성능 +' + (r.ENHANCE_LEVEL * 6) + '%)</small>' : '';
+          var html = '장비 능력치 <b>' + (eqStatText(r, 'raw') || '-') + '</b>' + enhInfo
+              + '<br>캐릭터 상승 <b>' + (eqFinalText(r) || '-') + '</b>';
+          if (!isCur) html += '<br>현재 장비 대비 ' + (eqDeltaText(r, cur) || '변화 없음');
+          el.innerHTML = html;
+        });
+      })
+      .catch(function () { /* 수치 표시는 부가 정보 */ });
   }
 
   // "보유동료/파티장비현황/미착용장비는 없애고 전체동료보기/전체아이템보기 버튼으로 이관"
@@ -3022,6 +3065,7 @@ var TW = (function () {
     document.getElementById('detailHp').textContent = '-';
     document.getElementById('detailAtk').textContent = '-';
     document.getElementById('detailDef').textContent = '-';
+    ['Hp', 'Atk', 'Def'].forEach(function (k) { document.getElementById('detail' + k + 'Sub').innerHTML = ''; });
 
     var mine = lastParty.byCompanion[companionId] || [];
     var eqBox = document.getElementById('detailEquipBox');
@@ -3037,16 +3081,34 @@ var TW = (function () {
     document.getElementById('detailOverlay').classList.add('open');
 
     var u = userName();
-    fetch(base + '/api/tower-companion-stat?userName=' + encodeURIComponent(u) + '&companionId=' + companionId)
+    // [2026-10-20] "상단에 캐릭터 기본스탯(+한계돌파로 인한 스탯) + 장비 총합, 장비는 기본스탯(+강화로 인한 스탯)과 각 장비로 인한 상승량" 요청 --
+    // 서버(companionDetail)가 최종 능력치를 기본/한계돌파(★7은 7성 보정)/장비 합계로 분해하고 장비별 기여를 내려준다. 기본 값에는 스탯구매가 포함돼 있다.
+    fetch(base + '/api/tower-companion-detail?userName=' + encodeURIComponent(u) + '&companionId=' + companionId)
       .then(function (r) { return r.json(); })
-      .then(function (data) {
-        // [2026-09-14] "공방체도 합산치 말고 한계돌파0성스탯(+돌파로인한스탯)처럼 표기해달라"
-        // 요청 -- 서버가 최종값(hp/atk/def)과 한계돌파를 뺀 기본값(hpBase/atkBase/defBase)을
-        // 같이 내려주면, 그 차이만큼을 "+보너스"로 붙여서 보여준다(한계돌파 0단계면 차이가
-        // 0이라 "+0"은 굳이 안 붙임).
-        document.getElementById('detailHp').textContent = fmtStatWithBonus(data.hp, data.hpBase);
-        document.getElementById('detailAtk').textContent = fmtStatWithBonus(data.atk, data.atkBase);
-        document.getElementById('detailDef').textContent = fmtStatWithBonus(data.def, data.defBase);
+      .then(function (d) {
+        if (d.error) return;
+        [['Hp', 'hp'], ['Atk', 'atk'], ['Def', 'def']].forEach(function (k) {
+          var key = k[1];
+          document.getElementById('detail' + k[0]).textContent = fmtN(d.total[key]);
+          document.getElementById('detail' + k[0] + 'Sub').innerHTML =
+              '<div>기본 <b>' + fmtN(d.base[key]) + '</b></div>' + (d.lbBonus[key] ? '<div class="lb">(+' + d.lbLabel + ' ' + fmtN(d.lbBonus[key]) + ')</div>' : '')
+              + '<div>장비 <b>+' + fmtN(d.equipTotal[key]) + '</b></div>';
+        });
+        var byPart = {};
+        (d.equips || []).forEach(function (r) { byPart[r.PART] = r; });
+        eqBox.innerHTML = '';
+        PART_ORDER.forEach(function (part) {
+          var found = mine.filter(function (e) { return e.PART === part; })[0];
+          var r = byPart[part];
+          var el = document.createElement('div');
+          el.className = 'der';
+          var head = '<div class="der-head"><span>' + PART_KR[part] + '</span><span>' + (found ? ('★' + found.GRADE + legendaryTag(found)) : '미착용') + '</span></div>';
+          if (!found || !r) { el.innerHTML = head; eqBox.appendChild(el); return; }
+          el.innerHTML = head
+              + '<div class="der-line">장비 능력치 <b>' + (eqStatText(r, 'raw') || '-') + '</b></div>'
+              + '<div class="der-line up">캐릭터 상승 <b>' + (eqFinalText(r) || '-') + '</b>' + (r.ENHANCE_LEVEL > 0 ? ' <small>(강화 +' + r.ENHANCE_LEVEL + ', 성능 +' + (r.ENHANCE_LEVEL * 6) + '%)</small>' : '') + '</div>';
+          eqBox.appendChild(el);
+        });
       })
       .catch(function () {});
   }
@@ -3232,6 +3294,36 @@ var TW = (function () {
       el.innerHTML = html;
     });
   }
+  // [2026-10-20] 장비/동료 상세 수치 표기 -- 서버(equipContribRow)가 준 행에서 "기본 +강화분" 형태로 만든다.
+  // kind 'raw' = 장비 자체 수치, 'final' = 동료에게 실제로 올려주는 수치(스탯구매/한계돌파 반영). 강화분(ENH)은 전체에서 따로 떼어 (+강화 N)로 붙인다.
+  function eqStatText(row, kind) {
+    var pre = kind === 'raw' ? 'RAW_' : '';
+    var out = [];
+    [['HP', '체력'], ['ATK', '공격'], ['DEF', '방어']].forEach(function (p) {
+      var total = row[pre + p[0]] || 0;
+      if (!total) return;
+      var enh = row[pre + 'ENH_' + p[0]] || 0;
+      out.push(p[1] + ' +' + fmtN(total - enh) + (enh > 0 ? '(+강화 ' + fmtN(enh) + ')' : ''));
+    });
+    return out.join(' · ');
+  }
+  function eqFinalText(row) {
+    var out = [];
+    [['HP', '체력'], ['ATK', '공격'], ['DEF', '방어']].forEach(function (p) {
+      if (row[p[0]]) out.push(p[1] + ' +' + fmtN(row[p[0]]));
+    });
+    return out.join(' · ');
+  }
+  // 현재 장비 대비 증감(장비변경 후보 표시용)
+  function eqDeltaText(row, cur) {
+    var out = [];
+    [['HP', '체력'], ['ATK', '공격'], ['DEF', '방어']].forEach(function (p) {
+      var d = (row[p[0]] || 0) - (cur ? (cur[p[0]] || 0) : 0);
+      if (d !== 0) out.push('<span class="' + (d > 0 ? 'up' : 'down') + '">' + p[1] + ' ' + (d > 0 ? '+' : '-') + fmtN(Math.abs(d)) + '</span>');
+    });
+    return out.join(' ');
+  }
+
   function loadPartyEquipStat() {
     var u = userName();
     if (!u) return;
