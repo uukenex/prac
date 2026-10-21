@@ -3817,12 +3817,19 @@ var TW = (function () {
     DOUBLE_SHOT: function (p1) { return '공격 시 ' + p1 + '% 확률로 같은 눈금으로 한 번 더 연사'; },
     START_BARRIER: function () { return '전투 시작 시 무적 보호막(다음 피해 1회 면역)을 두르고 시작'; },
     STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + (p1 / 100) + '배'; },
+    CHATTER: function (p1, p2) { return '공격할 때 ' + p1 + '% 확률로 몬스터 스턴, ' + p2 + '% 확률로 내 데미지 두 배 (각각 따로 판정)'; },
+    LAST_STAND: function () { return '전투당 1번, 치명적인 피해를 받아도 HP 1로 생존 (불굴)'; },
+    DICE_MIN_PLUS: function (p1) { return '전투 중 공격/보호막 주사위의 최소 눈 +' + p1; },
+    CRIT_DAMAGE: function (p1) { return '크리티컬 피해 배율 x1.5 -> x' + (p1 / 100); },
+    DAMAGE_REDUCTION: function (p1) { return '착용한 동료가 받는 피해 ' + p1 + '% 감소'; },
+    EVADE_CHANCE: function (p1) { return '착용한 동료가 맞을 때 ' + p1 + '% 확률로 피해 무효'; },
+    KILL_PP_BONUS: function (p1) { return '파티에 착용한 동료가 있으면 몬스터 처치 PP +' + p1 + '%'; },
     SKILL_RATE_MULT: function (p1) { return '장착한 캐릭터의 스킬 발동 확률 ' + (p1 / 100) + '배 (예: ★6 도사 부활 15% -> ' + Math.round(15 * p1 / 100) + '%). ★7 동료 보너스(x1.2)와는 곱하지 않고 증가분을 합산하며, 증가한 확률은 최대 90%까지'; }
   };
 
   function legendItemSummaryHtml(item) {
     var effectFn = LEGEND_EFFECT_LABEL[item.EFFECT_TYPE];
-    var effectLabel = effectFn ? effectFn(item.EFFECT_PARAM1) : (item.EFFECT_TYPE || '');
+    var effectLabel = effectFn ? effectFn(item.EFFECT_PARAM1, item.EFFECT_PARAM2) : (item.EFFECT_TYPE || '');
     var groupLabel = WEAPON_CLASS_NAME[item.CLASS] || (item.CLASS === 'COMMON' ? '공용' : item.CLASS);
     return '<div class="lri-icon">' + equipIcon(item.CLASS, item.PART) + '</div>'
         + '<div class="lri-body">'
@@ -4188,7 +4195,7 @@ var TW = (function () {
     if (!cxItems || !cxItems.length) { box.innerHTML = '<div class="cx-note">등록된 전설장비가 없습니다.</div>'; return; }
     box.innerHTML = cxItems.map(function (it) {
       var effFn = LEGEND_EFFECT_LABEL[it.EFFECT_TYPE];
-      var effect = effFn ? effFn(it.EFFECT_PARAM1) : (it.EFFECT_TYPE || '');
+      var effect = effFn ? effFn(it.EFFECT_PARAM1, it.EFFECT_PARAM2) : (it.EFFECT_TYPE || '');
       var group = WEAPON_CLASS_NAME[it.CLASS] || (it.CLASS === 'COMMON' ? '공용' : (JOB_KR[it.CLASS] || it.CLASS));
       var owners = it.OWNERS || 0;
       var stats = owners > 0

@@ -1146,6 +1146,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP hp = PP.of(((Number) target.get("CUR_HP_VALUE")).doubleValue(), strVal(target.get("CUR_HP_EXT"), ""));
         PP hpAfter = hp.subtract(PP.fromPP(dmg));
         if (PP.toBaseValue(hpAfter) < 0) hpAfter = PP.fromPP(0);
+        if (PP.toBaseValue(hpAfter) <= 0 && tryLastStand(userName, p, intVal(target.get("COMPANION_ID"), 0), equips, sb)) {
+            hpAfter = PP.fromPP(1); // 용왕의 투구 불굴
+        }
         if (warded) {
             sb.append("🛡️✨ 피해 면역 발동! ").append(jobTag(grade, job, name)).append("이(가) 이번 피해를 완전히 막아냈다! (가호 소모)").append(NL);
         }
@@ -3795,6 +3798,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            // [2026-10-20] 전설 머리띠 "수선도사의 머리띠"(DICE_MIN_PLUS): 전투 중 이 동료의 공격/보호막 주사위 하한 +N. 전설 깃장식 "주작의 깃장식"(CRIT_DAMAGE): 크리티컬 배율 교체.
+            HashMap<String, Object> diceMinEq = legendEquipEffect(equips, "DICE_MIN_PLUS");
+            int myDiceMin = diceMinFor(p) + (diceMinEq == null ? 0 : intVal(diceMinEq.get("LEGENDARY_EFFECT_PARAM1"), 0));
+            HashMap<String, Object> critEq = legendEquipEffect(equips, "CRIT_DAMAGE");
+            double critMult = critEq == null ? 1.5 : intVal(critEq.get("LEGENDARY_EFFECT_PARAM1"), 150) / 100.0;
             if ("ARCHER".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.3); // 시너지: 궁수3인조 공격력+30%
             // 균형3인조(RAINBOW)의 방어 +10%는 이 배열이 아니라 반격 파트에서 대상(tEff[2])에
             // 직접 적용한다(여기 eff[2]는 "내가 공격할 때" 값이라 방어 보너스는 안 쓰임).
@@ -3826,12 +3834,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             int roll;
             String rollLabel;
             if (doubleDice) {
-                int atkRoll1 = rollFace(diceMinFor(p), diceMax);
-                int atkRoll2 = rollFace(diceMinFor(p), diceMax);
+                int atkRoll1 = rollFace(myDiceMin, diceMax);
+                int atkRoll2 = rollFace(myDiceMin, diceMax);
                 roll = atkRoll1 + atkRoll2;
                 rollLabel = atkRoll1 + "+" + atkRoll2;
             } else {
-                roll = rollFace(diceMinFor(p), diceMax);
+                roll = rollFace(myDiceMin, diceMax);
                 rollLabel = String.valueOf(roll);
             }
             // [2026-09-18] ★7 전설무기 효과(데이터 기반, TBOT_S5_LEGENDARY_MASTER 참고) --
@@ -3863,7 +3871,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             }
             dmg = Math.max(dmg, eff[3]); // 스탯구매 최소공격력 보정
-            if (archerCrit) dmg = (int) Math.round(dmg * 1.5); // 궁수 크리티컬: 최종 데미지 1.5배
+            if (archerCrit) dmg = (int) Math.round(dmg * critMult); // 궁수 크리티컬: 최종 데미지 1.5배(주작의 깃장식이면 그 배율)
             // [2026-09-29] ★7 전설 활 "바펠세파르 활"(DOUBLE_SHOT) -- EFFECT_PARAM1(%) 확률로 같은
             // 주사위 눈금으로 한 번 더 쏜다. 추가타도 방어/최소공격력/크리티컬은 독립적으로 다시
             // 계산해서 원 공격과 동일한 규칙을 따른다(크리 확률도 따로 굴림).
@@ -3873,7 +3881,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 extraRaw = eff[1] * roll;
                 extraDmg = Math.max(Math.max(1, extraRaw - effMonsterDef), eff[3]);
                 if ("ARCHER".equals(job) && RND.nextInt(100) < skillRate(c, grade >= 6 ? 50 : (grade >= 5 ? 40 : 30))) {
-                    extraDmg = (int) Math.round(extraDmg * 1.5);
+                    extraDmg = (int) Math.round(extraDmg * critMult);
                 }
                 dmg += extraDmg;
             }
@@ -3882,10 +3890,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 완전히 별개의 두 번째 주사위 굴림(shieldRoll, 아래 PRIEST switch case)으로
             // 계산되므로 이 줄과 무관하게 그대로 유지된다.
             if ("PRIEST".equals(job) || "SHAMAN".equals(job)) dmg = Math.max(1, (int) Math.round(dmg / 6.0));
+            // [2026-10-20] 전설 지팡이 "수다쟁이 웨리"(CHATTER): PARAM1% 확률로 몬스터 스턴, PARAM2% 확률로 이 공격 데미지 두 배(두 확률은 각각 따로 굴림, 특수효과라 강화/스킬 배율과 무관).
+            boolean chatterDouble = false, chatterStun = false;
+            int chatterRawBonus = 0;
+            if (legWeapon != null && "CHATTER".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
+                if (RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM2"), 0)) { chatterDouble = true; dmg *= 2; chatterRawBonus = rawDmg + extraRaw; }
+                if (RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM1"), 0)) { chatterStun = true; stunned = true; }
+            }
             boolean evadedHit = intVal(c.get("COMPANION_ID"), -1) == monsterEvadeCid;
             if (evadedHit) dmg = 0; // 몬스터가 훔친 회피 -- 이 동료의 공격만 무효(총딜/방어차감 산수에서도 제외)
             totalDamage += dmg;
-            totalRawDamage += evadedHit ? 0 : rawDmg + extraRaw;
+            totalRawDamage += evadedHit ? 0 : rawDmg + extraRaw + chatterRawBonus;
             // [간결화] 텍스트가 너무 길다는 요청으로, 공격력/범위(전투 시작 전 "OO 등장!" 메시지에
             // 이미 표시됨)는 매 줄마다 반복하지 않고, 직업별 특수효과도 새 줄 대신 같은 줄 끝에
             // 붙여서 파티원 1명당 항상 딱 1줄만 쓰도록 함.
@@ -3897,9 +3912,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             // (rawDmg)을 보여주고, 방어 차감은 아래 "총 N dmg로 공격!" 다음 줄에서 한 번에.
             sb.append(jobTag(grade, job, cName)).append(" 💗").append(plainNum(hp)).append("/").append(eff[0]).append(NL)
               .append("🎲").append(rollLabel).append("→").append(rawDmg).append("dmg");
-            if (archerCrit) sb.append(" 💥크리티컬!");
+            if (archerCrit) sb.append(" 💥크리티컬!").append(critMult != 1.5 ? "(x" + critMult + ")" : "");
             if (legendaryWeaponTag != null) sb.append(" 🗡️").append(legendaryWeaponTag).append("(방어력 무시+가산)");
             if (extraRaw > 0) sb.append(" 🏹").append(strVal(legWeapon.get("ITEM_NAME"), "")).append(" 연사! +").append(extraRaw).append("dmg");
+            if (chatterDouble) sb.append(" 🗣️").append(strVal(legWeapon.get("ITEM_NAME"), "")).append(": 데미지 두 배!");
+            if (chatterStun) sb.append(" 💫").append(strVal(legWeapon.get("ITEM_NAME"), "")).append(": 몬스터 스턴!");
             if (evadedHit) sb.append(" 🌀").append(eliteMonsterName(floor, mon, elite)).append("이(가) 도적의 몸놀림으로 이 공격을 회피!(0dmg)");
 
             // [2026-09-05 신설] ★5/★6 동료 성급 특수효과 -- 시너지와 별개로 "이 동료 개인"의
@@ -3943,7 +3960,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // [명확화 요청] "실드를 누구한테 주는지 안 보인다"는 지적으로, 도사 자신의
                     // 줄에는 더 이상 🛡️+N을 안 찍는다 -- 실제로 이번 반격을 막아준 대상이
                     // 정해진 뒤(아래 resolveCombatTurn의 반격 파트) 그 동료 자신의 줄에 붙여준다.
-                    int shieldRoll = doubleDice ? rollFace(diceMinFor(p), diceMax) + rollFace(diceMinFor(p), diceMax) : rollFace(diceMinFor(p), diceMax);
+                    int shieldRoll = doubleDice ? rollFace(myDiceMin, diceMax) + rollFace(myDiceMin, diceMax) : rollFace(myDiceMin, diceMax);
                     int shieldAmt = Math.max(0, eff[1] * shieldRoll);
                     if ("PRIEST".equals(synergy)) shieldAmt = (int) Math.round(shieldAmt * 2.0); // 시너지: 도사3인조 2배
                     shieldPool += shieldAmt;
@@ -4112,6 +4129,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             logBattleResult(userName, p, floor, "WIN", curCombatTurn); // [2026-09-30] 밸런스 통계
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
+            // [2026-10-20] 전설 목걸이 "군트람"(KILL_PP_BONUS): 파티에 착용한 동료가 있으면 처치 PP +PARAM1%(여러 개여도 한 번만, 가장 큰 값).
+            int killPpPct = 0;
+            String killPpItem = null;
+            for (HashMap<String, Object> pc : party) {
+                HashMap<String, Object> kEq = legendEquipEffect(dao.selectEquipByCompanion(intVal(pc.get("COMPANION_ID"), 0)), "KILL_PP_BONUS");
+                if (kEq != null && intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0) > killPpPct) {
+                    killPpPct = intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
+                    killPpItem = strVal(kEq.get("LEGENDARY_ITEM_NAME"), "목걸이");
+                }
+            }
+            if (killPpPct > 0) reward = reward.multiply(1 + killPpPct / 100.0);
             boolean isBoss = "Y".equals(strVal(mon.get("BOSS_YN"), "N"));
             int killCountCur = intVal(p.get("KILL_COUNT_CUR"), 0) + 1;
             int totalKill = intVal(p.get("TOTAL_KILL_COUNT"), 0) + 1;
@@ -4292,7 +4320,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [세 구간 분리 요청] "이번턴 남은" 자리를 처치 시에는 생존 동료 HP 대신 획득 PP로
                 // 대체 -- 처치한 마당에 파티 HP를 또 보여줄 필요는 없으므로.
                 PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                sb.append(NL).append(reward.format()).append(" PP 획득! (보유 ").append(curPp.format()).append(" PP)");
+                sb.append(NL).append(reward.format()).append(" PP 획득!").append(killPpItem != null ? " ✨[" + killPpItem + "] +" + killPpPct + "%" : "").append(" (보유 ").append(curPp.format()).append(" PP)");
             }
             // 승리하면 살아있는 동료는 자동으로 풀피 회복되지만, 전투불가(HP 0)가 된 동료는
             // 그대로 둔다 -- 부활은 마을 도착이나 럭키칸의 "완전회복" 효과로만 일어난다.
@@ -4882,9 +4910,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (RND.nextInt(100) < skillRate(curTarget, evadeChance)) rogueEvaded = true;
         }
 
+        // [2026-10-20] 전설 재킷 "랑그히리스 체이서"(EVADE_CHANCE): 맞을 때 PARAM1% 확률로 피해 무효(특수효과라 스킬 배율과 무관).
+        String itemEvadeName = null;
+        HashMap<String, Object> evEq = legendEquipEffect(tEquips, "EVADE_CHANCE");
+        if (!rogueEvaded && evEq != null && RND.nextInt(100) < intVal(evEq.get("LEGENDARY_EFFECT_PARAM1"), 0)) {
+            rogueEvaded = true;
+            itemEvadeName = strVal(evEq.get("LEGENDARY_ITEM_NAME"), "장비");
+        }
         if (rogueEvaded) {
             dmgToParty = 0;
-            sb.append("🌀 회피! 피해를 완전히 피했다").append(NL);
+            sb.append(itemEvadeName != null ? "🌀 [" + itemEvadeName + "] 피해 무효!" : "🌀 회피! 피해를 완전히 피했다").append(NL);
         } else {
             if (shieldPool > 0) {
                 int absorbed = Math.min(shieldPool, dmgToParty);
@@ -4919,6 +4954,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             // ★6 전사가 이번에 도발로 대신 맞았으면 그 몫만 추가로 20% 더 감소.
             if (warriorSynergy) dmgToParty = (int) Math.round(dmgToParty * 0.9);
             if (warriorGuardMitigationPct > 0) dmgToParty = (int) Math.round(dmgToParty * (1 - warriorGuardMitigationPct / 100.0));
+            // [2026-10-20] 전설 갑주 "템즈 플레이트"(DAMAGE_REDUCTION): 이 동료가 받는 피해 PARAM1% 감소.
+            HashMap<String, Object> drEq = legendEquipEffect(tEquips, "DAMAGE_REDUCTION");
+            if (drEq != null && dmgToParty > 0) {
+                int before = dmgToParty;
+                dmgToParty = (int) Math.round(dmgToParty * (1 - intVal(drEq.get("LEGENDARY_EFFECT_PARAM1"), 0) / 100.0));
+                sb.append("🛡️ [").append(strVal(drEq.get("LEGENDARY_ITEM_NAME"), "갑주")).append("] 받는 피해 감소 (").append(before).append(" → ").append(dmgToParty).append(")").append(NL);
+            }
             // [2026-09-06, 51층+ 전용 럭키] "체력 두배(3턴)" -- 실제 HP를 다시 계산하지 않고
             // 받는 피해를 절반으로 깎아 체력 두 배로 버티는 것과 동일한 효과를 낸다.
             if (luckyHpDouble) {
@@ -4956,6 +4998,10 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         PP targetHpAfter = targetHp.subtract(PP.fromPP(dmgToParty));
         if (PP.toBaseValue(targetHpAfter) < 0) targetHpAfter = PP.fromPP(0);
+        // [2026-10-20] 전설 투구 "용왕의 투구"(LAST_STAND): 전투당 1번, 쓰러질 피해를 받아도 HP 1로 생존(도사 부활 판정보다 먼저).
+        if (PP.toBaseValue(targetHpAfter) <= 0 && tryLastStand(userName, p, intVal(curTarget.get("COMPANION_ID"), 0), tEquips, sb)) {
+            targetHpAfter = PP.fromPP(1);
+        }
 
         // [2026-09-05 신설] ★5/★6 도사 "부활" -- 이번 반격으로 동료가 쓰러지면, 파티 안의
         // ★5 이상 도사가(자기 자신이 쓰러진 경우 포함) 일정 확률로 그 자리에서 되살린다.
@@ -8386,6 +8432,34 @@ public class BotS5ServiceImpl implements BotS5Service {
         return "👋 ★7 " + JOB_NAME.getOrDefault(strVal(target.get("CLASS"), ""), "동료") + "(" + strVal(target.get("NAME"), "?") + ")를 방출했습니다."
                 + (unequipped > 0 ? NL + "착용하던 장비 " + unequipped + "개는 벗겨져 보관함으로 돌아왔습니다." : "")
                 + NL + "👉 /7성소환 으로 직업을 골라 다시 소환할 수 있습니다.";
+    }
+
+    /** [2026-10-20] 장착 장비 중 전설 특수효과(EFFECT_TYPE)가 type인 장비(없으면 null). 파라미터는 LEGENDARY_EFFECT_PARAM1(selectEquipByCompanion 제공).
+     *  전설강화(+N)는 능력치 보너스에만 적용되고 특수효과 수치에는 적용되지 않는다(2026-10-20 결정). */
+    private HashMap<String, Object> legendEquipEffect(List<HashMap<String, Object>> equips, String type) {
+        if (equips == null) return null;
+        for (HashMap<String, Object> e : equips) {
+            if (type.equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))) return e;
+        }
+        return null;
+    }
+
+    /** 전투 중 "불굴"(LAST_STAND, 용왕의 투구): 전투당 1번, 이 동료가 치명적 피해를 받아도 HP 1로 살아남는다. 사용한 동료는 LAST_STAND_USED_CIDS에 기록(전투 종료 때 초기화).
+     *  @return 이번에 발동했으면 true(호출자가 HP를 1로 정함) */
+    private boolean tryLastStand(String userName, HashMap<String, Object> p, int companionId, List<HashMap<String, Object>> equips, StringBuilder sb) {
+        HashMap<String, Object> eq = legendEquipEffect(equips, "LAST_STAND");
+        if (eq == null || companionId <= 0) return false;
+        List<Integer> used = parseMinionCids(strVal(p.get("LAST_STAND_USED_CIDS"), ""));
+        if (used.contains(companionId)) return false;
+        used.add(companionId);
+        String joined = joinMinionCids(used);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("lastStandUsedCids", joined);
+        dao.updateUserProgress(up);
+        p.put("LAST_STAND_USED_CIDS", joined);
+        sb.append("🐉 [").append(strVal(eq.get("LEGENDARY_ITEM_NAME"), "불굴")).append("] 불굴! 치명적인 피해를 견뎌내 HP 1로 살아남았다!").append(NL);
+        return true;
     }
 
     /** [2026-10-20] 장비 한 개가 동료 스탯에 주는 보너스 [hp, atk, def] -- computeEffectiveStat의 장비 반영식과 똑같이 유지할 것(스탯구매/한계돌파 곱하기 전 값).
