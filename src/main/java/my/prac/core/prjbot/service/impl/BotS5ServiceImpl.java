@@ -617,16 +617,16 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private int[] calcBaseStat(String job, int grade) {
         int[][] gradeBase = GRADE_BASE_V2;
-        // [2026-10-20] ★7은 ★6 기본 스탯 x 한계돌파 최대 배율 x 1.2 (별도 표 없이 ★6 행과 한계돌파 표에서 파생 -- 밸런스 표를 고치면 따라 움직인다).
+        // [2026-10-20] ★7은 ★6 행을 기본으로 쓰고, 한계돌파와 똑같이 "장비까지 더한 뒤" 최종 배율(star7StatMult = ★6 한계돌파 최대 x 1.2)을 곱한다 -- computeEffectiveStat 참고.
+        // (기본 스탯에만 배율을 곱하면 장비 보너스에는 안 곱해져서, 장비를 낀 ★6 한계돌파 최대보다 약해지는 문제가 있었다.)
         boolean star7 = grade >= STAR7_GRADE;
         int g = star7 ? 6 : grade;
         int[] base = (BALANCE_V2_ENABLED && gradeBase != null && g - 1 < gradeBase.length && gradeBase[g - 1] != null)
                 ? gradeBase[g - 1] : GRADE_BASE[g - 1];
         double[] mult = JOB_MULT.get(job);
-        double s7 = star7 ? star7StatMult() : 1.0;
-        int hp  = (int) Math.round(base[0] * mult[0] * s7);
-        int atk = (int) Math.round(base[1] * mult[1] * s7);
-        int def = (int) Math.round(base[2] * mult[2] * s7);
+        int hp  = (int) Math.round(base[0] * mult[0]);
+        int atk = (int) Math.round(base[1] * mult[1]);
+        int def = (int) Math.round(base[2] * mult[2]);
         return new int[]{ hp, atk, def };
     }
 
@@ -894,8 +894,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int hpLv     = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
         atk *= (1 + ATK_PCT_PER_LV * atkMaxLv);
         hp  *= (1 + HP_PCT_PER_LV * hpLv);
-        if (limitBreak > 0) {
-            double lbMult = 1 + limitBreakPct(limitBreak);
+        // [2026-10-20] ★7은 한계돌파가 없는 대신 같은 자리(장비/스탯구매까지 반영한 최종 값)에 star7StatMult(★6 한계돌파 최대 x 1.2)를 곱한다 -- 어떤 장비를 껴도 항상 ★6 한계돌파 최대의 1.2배.
+        double lbMult = grade >= STAR7_GRADE ? star7StatMult() : (limitBreak > 0 ? 1 + limitBreakPct(limitBreak) : 1.0);
+        if (lbMult != 1.0) {
             hp *= lbMult; atk *= lbMult; def *= lbMult;
         }
         int minDmgFloor = atkMinLv * MIN_DMG_PER_LV;
@@ -8265,9 +8266,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> jobs = new ArrayList<>();
         for (String j : JOB_KEYS) {
             int[] st = calcBaseStat(j, STAR7_GRADE);
+            double m7 = star7StatMult();
             HashMap<String, Object> jm = new HashMap<>();
             jm.put("key", j); jm.put("name", JOB_NAME.get(j));
-            jm.put("hp", st[0]); jm.put("atk", st[1]); jm.put("def", st[2]);
+            jm.put("hp", Math.round(st[0] * m7)); jm.put("atk", Math.round(st[1] * m7)); jm.put("def", Math.round(st[2] * m7));
             jm.put("portrait", dao.selectStar7Portrait(j));
             jobs.add(jm);
         }
@@ -8328,6 +8330,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (portrait == null) return "초상화 이미지를 가져오지 못했습니다. 잠시 후 다시 시도해주세요. (아무것도 소모되지 않았습니다)";
         String name = NAME_POOL_BY_JOB_GRADE.get(job)[STAR7_GRADE - 1][0];
         int[] stat = calcBaseStat(job, STAR7_GRADE);
+        double m7 = star7StatMult();
+        stat = new int[]{ (int) Math.round(stat[0] * m7), (int) Math.round(stat[1] * m7), (int) Math.round(stat[2] * m7) }; // 장비 없을 때의 최종 능력치
         HashMap<String, Object> nc = new HashMap<>();
         nc.put("userName", userName);
         nc.put("class", job);
@@ -8423,7 +8427,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int cid = intVal(c.get("COMPANION_ID"), 0);
             int[] base = calcBaseStat(strVal(c.get("CLASS"), "WARRIOR"), intVal(c.get("GRADE"), 1));
             int lb = intVal(c.get("LIMIT_BREAK"), 0);
-            double lbM = lb > 0 ? 1 + limitBreakPct(lb) : 1.0;
+            double lbM = intVal(c.get("GRADE"), 1) >= STAR7_GRADE ? star7StatMult() : (lb > 0 ? 1 + limitBreakPct(lb) : 1.0);
             double hpM = (1 + HP_PCT_PER_LV * hpLv) * lbM, atkM = (1 + ATK_PCT_PER_LV * atkMaxLv) * lbM;
             List<HashMap<String, Object>> rows = new ArrayList<>();
             for (HashMap<String, Object> e : dao.selectEquipByCompanion(cid)) {
