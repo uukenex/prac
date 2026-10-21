@@ -4987,4 +4987,14 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 인덱스(`S5_PERF_INDEXES.sql`, 라이브 적용): `IDX_S5_EQUIP_COMP`(EQUIPPED_COMPANION_ID, 동료별 장비 조회 -- 전엔 인덱스가 없어 매 턴 여러 번 전체 스캔), `IDX_S5_EQUIP_LEG`(LEGENDARY_ID). 통계 갱신.
 - 편성 API `tower-party-equip-stat`을 한 번에 계산(`partyEquipAndDetail`: 동료/스탯 1회 조회 + 동료별 장비 1회, byCompanion은 detail의 equips 재사용)하고 웹이 동료/장비 조회와 동시에 호출. 보유 동료 전체 카드/장비 전체 목록(DOM 약 9천 노드)은 팝업이 열릴 때만 그림(`renderHeavyListsIfOpen`).
 - 게시판 목록(`getCommentByPage`, `selectShareListByPage`): 페이지 하한을 먼저 잘라서(ROWNUM <= N) 댓글 수 서브쿼리를 10행에만 실행하고 `USE_NL(U)` 힌트로 사용자 뷰 해시 조인을 피한다.
-**남은 과제**: 전투 한 턴의 DB 호출 수(동료/스탯/장비/진행 조회가 중복) 줄이기(요청 단위 캐시), `/탑랭킹`의 GROUP BY 쿼리들, 필요하면 DB 관리자 작업(해시 연산 비용의 원인인 임시 공간/메모리 설정과 유지보수 윈도우 자원 플랜 해제).
+**남은 과제**: `/탑랭킹`의 GROUP BY 쿼리들, 필요하면 DB 관리자 작업(해시 연산 비용의 원인인 임시 공간/메모리 설정과 유지보수 윈도우 자원 플랜 해제).
+
+
+### 2026-10-21 요청 범위 읽기 캐시 -- 같은 요청 안의 동일 쿼리 중복 제거
+- 문제: 전투 한 턴/API 한 번에 `selectUserCompanions`, `selectEquipByCompanion`, `selectUserStat`, `selectUserProgress` 같은 똑같은 쿼리가 서비스 메서드 여러 곳에서 반복 실행됨.
+- 해결(코드 호출부는 안 건드림): `BotS5DAO`를 `S5RequestCache.wrap()` 프록시로 감싸는 `BeanPostProcessor`(`ApplicationConfig.s5DaoCachePostProcessor`)를 등록. `S5RequestCacheFilter`(web.xml, `/*`)가 요청 시작/끝에 캐시를 열고 닫는다(웹 API와 `/loa/chat` 모두 HTTP 요청). 스케줄러/@Async 스레드는 범위 밖이라 기존처럼 바로 DB 조회.
+- 캐시 대상: `S5RequestCache.CACHED_READS`(유저 진행/동료/장비/스탯/업적/층 진행, 몬스터·전설 마스터 등). 키 = 메서드명+인자. 꺼낼 때마다 HashMap/List 얕은 복사본을 돌려줘서(호출부가 맵에 값을 넣음) 변경이 새지 않는다.
+- 일관성: select/count로 시작하지 않는 메서드(insert/update/delete/upsert/bump/bulk 등)가 한 번이라도 불리면 캐시 전체를 비운다(안전 우선). 예외는 로그/통계 전용 `HARMLESS_WRITES`(bumpDiceFaceStat, bumpActivityHourly, insertBattleStat, upsertKakaoMember, upsertAutoHuntLog, insertTileVisit) 뿐. 그래서 쓰고 바로 다시 읽는 코드는 항상 새 값을 읽는다.
+- 공지(`selectNotice`)는 웹 화면이 탭마다 3분 간격으로 폴링하므로 요청과 무관하게 30초 캐시(`updateNotice` 시 즉시 무효화). 유저별 `selectNoticeSeenVersion`은 요청 범위 캐시만.
+- 새 DAO 읽기 메서드를 캐시하려면 `CACHED_READS`에 이름만 추가, 새 쓰기 메서드는 이름이 select/count로 시작하지 않으면 자동으로 캐시를 비운다(select/count로 시작하는데 데이터를 쓰는 메서드는 만들지 말 것).
+- 검증: 스텁 DAO 하네스(중복 제거, null 캐시, 복사본 격리, 쓰기 후 무효화, 예외 언래핑, 범위 밖 통과, 공지 TTL) 전부 통과, Spring 컨텍스트에서 FactoryBean 산출 DAO에도 후처리기가 적용되는지 확인. 라이브 쿼리 감소량은 배포 후 jdbc.sqlonly 로그로 확인 필요.

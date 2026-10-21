@@ -10,6 +10,7 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.mybatis.spring.annotation.MapperScan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScan.Filter;
@@ -36,6 +37,26 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 public class ApplicationConfig {
 	static Logger logger = LoggerFactory.getLogger(ApplicationConfig.class);
+
+	/** [2026-10-21 성능] BotS5DAO를 요청 범위 읽기 캐시 프록시로 감싼다(같은 요청 안의 동일 쿼리 중복 제거, S5RequestCache 참고). */
+	@Bean
+	public static BeanPostProcessor s5DaoCachePostProcessor() {
+		return new BeanPostProcessor() {
+			@Override
+			public Object postProcessBeforeInitialization(Object bean, String beanName) {
+				return bean;
+			}
+
+			@Override
+			public Object postProcessAfterInitialization(Object bean, String beanName) {
+				if (bean instanceof my.prac.core.prjbot.dao.BotS5DAO) {
+					return my.prac.core.prjbot.dao.S5RequestCache.wrap(my.prac.core.prjbot.dao.BotS5DAO.class,
+							(my.prac.core.prjbot.dao.BotS5DAO) bean);
+				}
+				return bean;
+			}
+		};
+	}
 
 	@Bean
 	public PlatformTransactionManager transactionManager(DataSource ds) {
