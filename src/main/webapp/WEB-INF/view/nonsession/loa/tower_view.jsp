@@ -487,6 +487,22 @@
     .bs-duel-avatar-slot .avatar-emoji{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center;
                                           justify-content:center; font-size:26px; background:#fff; border:2.5px solid #fff;
                                           box-shadow:0 2px 6px rgba(0,0,0,.18); }
+    /* [2026-10-20] "전투화면이 어색해, 왼쪽에 메인캐릭터 한 마리가 덩그러니 가운데 있는데 캐릭터 여러 마리가 동시에 서 있도록" 요청 --
+       V2 대치 장면 왼쪽을 대표 1명 대신 파티 전원이 나란히 서 있는 대열(.bs-duel-party)로 바꿨다. 1번 슬롯이 몬스터에 가장 가깝게(row-reverse) 서고,
+       가운데 동료는 한 칸 뒤로 물러서서 V자 대열처럼 보이게 한다. 각 동료가 자기 HP바/상태(전투불능)/피격 흔들림/공격 펄스를 가진다. */
+    .bs-duel-party{ flex:1; min-width:0; display:flex; flex-direction:row-reverse; align-items:flex-end; justify-content:center; gap:4px; padding:0 4px; }
+    .bs-duel-member{ display:flex; flex-direction:column; align-items:center; gap:3px; flex:1 1 0; min-width:0; max-width:68px; }
+    .bs-duel-member:nth-child(2){ margin-bottom:14px; }
+    .bs-duel-member .bs-duel-avatar-slot{ width:100%; display:flex; justify-content:center; }
+    /* 화면 폭이 좁으면(모바일) 3명이 한 줄에 들어가도록 아바타 크기를 vw 기준으로 줄인다(데스크톱은 52px). */
+    .bs-duel-member .bs-duel-avatar-slot .bs-duel-avatar, .bs-duel-member .bs-duel-avatar-slot .avatar-emoji{ width:min(52px, 11vw); height:min(52px, 11vw); font-size:min(24px, 5.2vw); }
+    .bs-duel-member .bs-duel-name{ font-size:10px; max-width:100%; line-height:1.15; white-space:normal; word-break:keep-all; overflow-wrap:anywhere; }
+    .bs-duel-member .bs-duel-hpbar{ width:82%; }
+    .bs-duel-member.incapacitated .bs-duel-avatar, .bs-duel-member.incapacitated .avatar-emoji{ filter:grayscale(1); opacity:.5; }
+    .bs-duel-member .bs-duel-down{ font-size:9px; color:var(--combat); font-weight:800; }
+    .bs-duel-member.shake{ animation:bsShake .35s; }
+    .bs-duel-empty{ flex:1; text-align:center; font-size:11px; color:var(--ink-soft); }
+    @media (max-width:420px){ .bs-duel-row > .bs-duel-side{ width:70px; } .bs-duel-vs-badge{ padding:2px 5px; font-size:13px; } }
     .bs-monster-sprite{ font-size:52px; line-height:1; }
     .bs-monster-sprite.hit{ animation:bsShake .35s; }
     .bs-duel-name{ font-size:11px; font-weight:800; text-align:center; }
@@ -542,6 +558,8 @@
     .battle-screen.compact .bs-top{ width:100%; }
     .battle-screen.compact .bs-power-num{ font-size:14px; min-width:32px; }
     .battle-screen.compact .bs-duel-side{ width:64px; }
+    .battle-screen.compact .bs-duel-member{ max-width:58px; }
+    .battle-screen.compact .bs-duel-member .bs-duel-avatar-slot .bs-duel-avatar, .battle-screen.compact .bs-duel-member .bs-duel-avatar-slot .avatar-emoji{ width:min(44px, 10vw); height:min(44px, 10vw); }
     /* V1(구버전) 전용 -- row-reverse로 가로 배치(몬스터 오른쪽 위/파티 왼쪽 아래 유지) */
     .battle-screen.compact #battleScreenV1{ flex-direction:row-reverse; justify-content:space-between; }
     .battle-screen.compact .bs-monster-row{ flex-direction:column; align-items:flex-end; gap:6px; }
@@ -891,7 +909,7 @@
                  로스터 줄(.bs-party-row)이 .bs-top(VS 대전 영역) 뒤(화면 맨 아래)에 있어서
                  몬스터보다도 한참 밑에 나왔다. 순서만 앞으로 옮겨서 화면 상단에 파티가
                  먼저 보이게 한다(내용/로직은 그대로, DOM 순서만 이동). -->
-            <div class="bs-party-row" id="bsPartyRowV2"></div>
+            <!-- [2026-10-20] 위쪽 동료 줄(bsPartyRowV2)은 대치 장면의 파티 대열(bsDuelParty)과 같은 정보라 중복이어서 제거했다. -->
             <div class="bs-top">
               <!-- [2026-09-21] "상단 체력바를 절반씩 영역을 차지하면 좋겠어" 요청 -- 예전엔
                    두 fill의 width가 서로 다른 값(각자 %)이라 트랙 안에서 비율이 안 맞았는데,
@@ -907,12 +925,7 @@
                 <div class="bs-power-num bs-power-num-monster" id="bsMonsterPowerNum">0</div>
               </div>
               <div class="bs-duel-row">
-                <div class="bs-duel-side">
-                  <div class="bs-duel-avatar-slot" id="bsLeadAvatarSlot"></div>
-                  <div class="bs-duel-name" id="bsLeadName">파티</div>
-                  <div class="hpbar-track bs-duel-hpbar"><div class="hpbar-fill" id="bsLeadHpFill" style="width:100%"></div></div>
-                  <div class="hp-num" id="bsLeadHpNum"></div>
-                </div>
+                <div class="bs-duel-party" id="bsDuelParty"></div>
                 <div class="bs-duel-vs-badge">對</div>
                 <div class="bs-duel-side">
                   <div class="bs-monster-sprite" id="bsMonsterSprite">👹</div>
@@ -921,10 +934,10 @@
               </div>
               <div class="bs-stat-table">
                 <div class="bs-stat-col bs-stat-col-left">
-                  <div class="bs-stat-hdr">LEVEL</div><div class="bs-stat-val" id="bsLeadLevel">-</div>
+                  <div class="bs-stat-hdr">PARTY</div><div class="bs-stat-val" id="bsLeadLevel">-</div>
                   <div class="bs-stat-hdr">POWER</div><div class="bs-stat-val" id="bsLeadPower">-</div>
                   <div class="bs-stat-hdr">GUARD</div><div class="bs-stat-val" id="bsLeadGuard">-</div>
-                  <div class="bs-stat-hit">HIT 100%</div>
+                  <div class="bs-stat-hit">공격 합계 · 방어 평균</div>
                 </div>
                 <div class="bs-stat-mid">반격<br>방어</div>
                 <div class="bs-stat-col bs-stat-col-right">
@@ -1505,6 +1518,58 @@ var TW = (function () {
     if (monsterHit) { sprite.classList.remove('hit'); void sprite.offsetWidth; sprite.classList.add('hit'); }
   }
 
+  // [2026-10-20] 대치 장면의 파티 대열 -- 편성(구성/그림)이 바뀐 때만 다시 만들고(HP바 transition 유지), 매 갱신마다 HP/전투불능/피격 흔들림만 갱신한다.
+  function renderDuelParty(members) {
+    var box = document.getElementById('bsDuelParty');
+    if (!box) return;
+    if (!members.length) {
+      if (box.dataset.ids !== 'none') { box.dataset.ids = 'none'; box.innerHTML = '<div class="bs-duel-empty">파티 없음</div>'; }
+      return;
+    }
+    members = members.slice().sort(function (a, b) { return (a.PARTY_SLOT || 9) - (b.PARTY_SLOT || 9); });
+    var ids = members.map(function (c) { return c.COMPANION_ID + ':' + (c.IMAGE_URL || '') + ':' + c.CLASS + ':' + (c.NAME || ''); }).join(',');
+    if (box.dataset.ids !== ids) {
+      box.dataset.ids = ids;
+      box.innerHTML = '';
+      members.forEach(function (c) {
+        var m = document.createElement('div');
+        m.className = 'bs-duel-member';
+        m.dataset.cid = c.COMPANION_ID;
+        var slot = document.createElement('div');
+        slot.className = 'bs-duel-avatar-slot';
+        slot.appendChild(buildAvatarEl(c, 'bs-duel-avatar', false));
+        m.appendChild(slot);
+        var nm = document.createElement('div');
+        nm.className = 'bs-duel-name';
+        nm.textContent = (c.GRADE === 8 ? '🌱' : (JOB_EMOJI[c.CLASS] || '')) + ' ' + (c.NAME || JOB_KR[c.CLASS] || c.CLASS);
+        m.appendChild(nm);
+        var bar = document.createElement('div');
+        bar.className = 'hpbar-track bs-duel-hpbar';
+        bar.innerHTML = '<div class="hpbar-fill" style="width:100%"></div>';
+        m.appendChild(bar);
+        var down = document.createElement('div');
+        down.className = 'bs-duel-down';
+        down.style.display = 'none';
+        down.textContent = '💀 전투불능';
+        m.appendChild(down);
+        box.appendChild(m);
+      });
+    }
+    var dropped = battle.dropped || {};
+    members.forEach(function (c) {
+      var m = box.querySelector('.bs-duel-member[data-cid="' + c.COMPANION_ID + '"]');
+      if (!m) return;
+      var maxHp = c.EFF_HP || 1;
+      var curHp = ppToBase(c.CUR_HP_VALUE, c.CUR_HP_EXT);
+      setHpBarFill(m.querySelector('.hpbar-fill'), Math.max(0, Math.min(100, curHp / maxHp * 100)));
+      var downNow = isIncapacitated(curHp);
+      m.classList.toggle('incapacitated', downNow);
+      var d = m.querySelector('.bs-duel-down');
+      if (d) d.style.display = downNow ? '' : 'none';
+      if (dropped[c.COMPANION_ID]) { m.classList.remove('shake'); void m.offsetWidth; m.classList.add('shake'); }
+    });
+  }
+
   function renderBattleV2(p, curMonsterHpBase, monsterPct, monsterHit) {
     document.getElementById('bsMonsterSprite').textContent = monsterEmoji(p.CUR_MONSTER_ID);
     document.getElementById('bsMonsterName').textContent =
@@ -1526,39 +1591,14 @@ var TW = (function () {
     setHpBarFill(document.getElementById('bsPowerFillParty'), partyPct);
     document.getElementById('bsPartyPowerNum').textContent = Math.round(partyCurSum).toLocaleString();
 
-    // [2026-09-21] 중앙 대치 장면 왼쪽 -- 파티 "대표"(생존자 중 1번 슬롯 우선, 없으면 첫
-    // 생존자, 그마저 없으면 1번 슬롯 그대로)와 좌우 스탯표(LEVEL=★성급/POWER=공격력/
-    // GUARD=방어력) + 대표 본인 HP바("왼쪽아래 아이콘은 없어도 될거같아, 위쪽 캐릭터에
-    // 체력바를 넣어주면" 요청으로 하단 파티목록 대신 여기 넣음). 오른쪽(몬스터)은
-    // apiTowerStatus가 함께 내려준 monsterAtk/monsterDef 캐시 사용.
-    var lead = partyMembers.filter(function (c) { return !isIncapacitated(c.CUR_HP_VALUE); })[0]
-        || partyMembers.filter(function (c) { return c.PARTY_SLOT === 1; })[0]
-        || partyMembers[0];
-    var leadSlot = document.getElementById('bsLeadAvatarSlot');
-    if (lead) {
-      if (leadSlot.dataset.cid !== String(lead.COMPANION_ID)) {
-        leadSlot.dataset.cid = String(lead.COMPANION_ID);
-        leadSlot.innerHTML = '';
-        leadSlot.appendChild(buildAvatarEl(lead, 'bs-duel-avatar', false));
-      }
-      document.getElementById('bsLeadName').textContent = lead.NAME || JOB_KR[lead.CLASS] || '파티';
-      document.getElementById('bsLeadLevel').textContent = gradeMark(lead.GRADE || 1);
-      document.getElementById('bsLeadPower').textContent = lead.EFF_ATK || '-';
-      document.getElementById('bsLeadGuard').textContent = lead.EFF_DEF || '-';
-      var leadMaxHp = lead.EFF_HP || 1;
-      var leadCurHp = ppToBase(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
-      setHpBarFill(document.getElementById('bsLeadHpFill'), leadCurHp / leadMaxHp * 100);
-      document.getElementById('bsLeadHpNum').textContent = fmtPP(lead.CUR_HP_VALUE, lead.CUR_HP_EXT);
-    } else {
-      leadSlot.dataset.cid = '';
-      leadSlot.innerHTML = '';
-      document.getElementById('bsLeadName').textContent = '파티';
-      document.getElementById('bsLeadLevel').textContent = '-';
-      document.getElementById('bsLeadPower').textContent = '-';
-      document.getElementById('bsLeadGuard').textContent = '-';
-      setHpBarFill(document.getElementById('bsLeadHpFill'), 0);
-      document.getElementById('bsLeadHpNum').textContent = '';
-    }
+    // [2026-10-20] 중앙 대치 장면 왼쪽 -- 대표 1명이 아니라 편성된 동료 전원이 나란히 선 대열(renderDuelParty). 좌우 스탯표 왼쪽은 파티 전체
+    // (PARTY=인원, POWER=공격력 합계, GUARD=방어력 평균)이고, 오른쪽(몬스터)은 apiTowerStatus가 함께 내려준 monsterAtk/monsterDef 캐시를 쓴다.
+    renderDuelParty(partyMembers);
+    var atkSum = 0, defSum = 0;
+    partyMembers.forEach(function (c) { atkSum += (c.EFF_ATK || 0); defSum += (c.EFF_DEF || 0); });
+    document.getElementById('bsLeadLevel').textContent = partyMembers.length ? partyMembers.length + '명' : '-';
+    document.getElementById('bsLeadPower').textContent = partyMembers.length ? fmtN(atkSum) : '-';
+    document.getElementById('bsLeadGuard').textContent = partyMembers.length ? fmtN(Math.round(defSum / partyMembers.length)) : '-';
     document.getElementById('bsMonsterLevel').textContent = p.CUR_FLOOR || '-';
     document.getElementById('bsMonsterPower').textContent = (monsterAtkCache != null) ? monsterAtkCache : '-';
     document.getElementById('bsMonsterGuard').textContent = (monsterDefCache != null) ? monsterDefCache : '-';
@@ -1649,6 +1689,7 @@ var TW = (function () {
         }
       });
     });
+    battle.dropped = hpDropped; // 대치 장면 대열(renderDuelParty)이 같은 피격 정보를 쓴다
     companions.forEach(function (c) { battle.companionHp[c.COMPANION_ID] = newHp[c.COMPANION_ID]; });
   }
 
@@ -1666,8 +1707,9 @@ var TW = (function () {
       });
     }
     if (state.battleScreenVersion !== 'V1') {
-      var slot = document.getElementById('bsLeadAvatarSlot');
-      if (slot) { slot.classList.remove('bs-atk-pulse'); void slot.offsetWidth; slot.classList.add('bs-atk-pulse'); }
+      document.querySelectorAll('#bsDuelParty .bs-duel-member').forEach(function (m) {
+        m.classList.remove('bs-atk-pulse'); void m.offsetWidth; m.classList.add('bs-atk-pulse');
+      });
     }
   }
 
