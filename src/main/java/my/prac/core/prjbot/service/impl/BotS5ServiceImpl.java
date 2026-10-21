@@ -8384,6 +8384,68 @@ public class BotS5ServiceImpl implements BotS5Service {
                 + NL + "👉 /7성소환 으로 직업을 골라 다시 소환할 수 있습니다.";
     }
 
+    /** [2026-10-20] 장비 한 개가 동료 스탯에 주는 보너스 [hp, atk, def] -- computeEffectiveStat의 장비 반영식과 똑같이 유지할 것(스탯구매/한계돌파 곱하기 전 값).
+     *  withEnhance=false면 전설장비 강화 배율을 뺀 값(강화로 늘어난 몫 = 차이). */
+    private double[] equipItemBonus(HashMap<String, Object> e, int[] base, boolean withEnhance) {
+        int eg = intVal(e.get("GRADE"), 1);
+        double[][] equipV2 = EQUIP_BONUS_V2;
+        double[] b = (BALANCE_V2_ENABLED && equipV2 != null && eg - 1 < equipV2.length && equipV2[eg - 1] != null)
+                ? equipV2[eg - 1] : EQUIP_BONUS[eg - 1];
+        String part = strVal(e.get("PART"), "");
+        double sm = "STAT_MULT".equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))
+                ? intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 : 1.0;
+        int enhLv = e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0);
+        if (withEnhance && enhLv > 0) sm *= 1 + enhLv * ENHANCE_STAT_PCT_PER_LV / 100.0;
+        double hp = 0, atk = 0, def = 0;
+        double helmHp = (b[0] + base[0] * b[1]) * sm, weapAtk = (b[2] + base[1] * b[3]) * sm, armorDef = (b[4] + base[2] * b[5]) * sm;
+        switch (part) {
+            case "HELMET":   hp = helmHp; break;
+            case "WEAPON":   atk = weapAtk; break;
+            case "ARMOR":    def = armorDef; break;
+            case "NECKLACE": atk = weapAtk / 2.0; def = armorDef / 2.0; break;
+            case "RING":     atk = weapAtk / 2.0; hp = helmHp / 2.0; break;
+            case "BRACELET": def = armorDef / 2.0; hp = helmHp / 2.0; break;
+            default: break;
+        }
+        return new double[]{ hp, atk, def };
+    }
+
+    /** [2026-10-20] 파티에 편성된 동료마다 "장비 한 개가 실제로 올려주는 체력/공격/방어"와 그중 강화(+N)로 늘어난 몫을 돌려준다(편성 화면 장비 카드 표시용).
+     *  스탯구매(레벨당 +3%)와 한계돌파 배율까지 곱한 최종 기여값이라 동료 총 스탯에서 그만큼 차지한다. 키 = 동료ID 문자열. */
+    @Override
+    public HashMap<String, List<HashMap<String, Object>>> partyEquipContribution(String userName) {
+        HashMap<String, List<HashMap<String, Object>>> out = new HashMap<>();
+        HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
+        int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") == null) continue;
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            int[] base = calcBaseStat(strVal(c.get("CLASS"), "WARRIOR"), intVal(c.get("GRADE"), 1));
+            int lb = intVal(c.get("LIMIT_BREAK"), 0);
+            double lbM = lb > 0 ? 1 + limitBreakPct(lb) : 1.0;
+            double hpM = (1 + HP_PCT_PER_LV * hpLv) * lbM, atkM = (1 + ATK_PCT_PER_LV * atkMaxLv) * lbM;
+            List<HashMap<String, Object>> rows = new ArrayList<>();
+            for (HashMap<String, Object> e : dao.selectEquipByCompanion(cid)) {
+                double[] full = equipItemBonus(e, base, true);
+                double[] plain = equipItemBonus(e, base, false);
+                HashMap<String, Object> r = new HashMap<>();
+                r.put("EQUIP_ID", intVal(e.get("EQUIP_ID"), 0));
+                r.put("PART", strVal(e.get("PART"), ""));
+                r.put("ENHANCE_LEVEL", e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0));
+                r.put("HP", Math.round(full[0] * hpM));
+                r.put("ATK", Math.round(full[1] * atkM));
+                r.put("DEF", Math.round(full[2] * lbM));
+                r.put("ENH_HP", Math.round((full[0] - plain[0]) * hpM));
+                r.put("ENH_ATK", Math.round((full[1] - plain[1]) * atkM));
+                r.put("ENH_DEF", Math.round((full[2] - plain[2]) * lbM));
+                rows.add(r);
+            }
+            out.put(String.valueOf(cid), rows);
+        }
+        return out;
+    }
+
     /** [2026-10-08] 내 ★7 전설장비(착용/미착용 모두), 번호는 EQUIP_ID 오름차순 -- 채팅 /전설강화 번호와 같은 기준. */
     private List<HashMap<String, Object>> legendaryEquipsOf(String userName) {
         List<HashMap<String, Object>> list = new ArrayList<>();

@@ -298,6 +298,13 @@
                     border:1.5px solid var(--line); border-radius:12px; padding:9px 6px; }
     .ps-equip-icon{ font-size:22px; }
     .ps-equip-grade{ font-size:11px; font-weight:700; color:var(--ink); }
+    /* [2026-10-20] 장비 카드: 전설 이름/강화 수치와 장비가 올려주는 능력치(강화로 늘어난 몫은 따로) */
+    .ps-equip-name{ font-size:10px; color:var(--ink-soft); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ps-equip-stat{ font-size:10px; line-height:1.45; text-align:center; color:var(--ink-soft); min-height:14px; }
+    .ps-equip-stat b{ color:var(--ink); font-weight:700; }
+    .ps-equip-enh{ font-size:10px; line-height:1.4; text-align:center; color:#9A6B12; font-weight:700; }
+    /* 카드마다 내용 길이가 달라도(능력치/강화 줄 수) 변경 버튼이 늘어나지 않고 카드 맨 아래에 같은 높이로 붙게 */
+    .ps-equip-slot .ps-btn.small{ flex:none; margin-top:auto; }
     .ps-empty-msg{ font-size:13px; }
 
     /* "보유동료/파티장비현황/미착용장비는 없애고 버튼으로 이관" 요청 -- 파티 탭 하단의
@@ -3178,8 +3185,12 @@ var TW = (function () {
         var found = mine.filter(function (e) { return e.PART === part; })[0];
         var equipSlotEl = document.createElement('div');
         equipSlotEl.className = 'ps-equip-slot';
+        var foundEnh = found && found.LEGENDARY_ID != null ? (found.ENHANCE_LEVEL || 0) : 0;
         equipSlotEl.innerHTML = '<div class="ps-equip-icon">' + (found ? equipIcon(found.CLASS, part) : (PART_EMOJI[part] || '🎽')) + '</div>'
-            + '<div class="ps-equip-grade">' + (found ? '★' + found.GRADE : '비어있음') + '</div>';
+            + (found && found.LEGENDARY_ID != null && found.LEGENDARY_ITEM_NAME ? '<div class="ps-equip-name" title="' + found.LEGENDARY_ITEM_NAME + '">✨' + found.LEGENDARY_ITEM_NAME + '</div>' : '')
+            + '<div class="ps-equip-grade">' + (found ? '★' + found.GRADE + (foundEnh > 0 ? ' +' + foundEnh + '강' : '') : '비어있음') + '</div>'
+            + (found ? '<div class="ps-equip-stat" data-eq="' + found.EQUIP_ID + '"></div>' : '');
+        if (found) equipSlotEl.setAttribute('data-cid', occ.COMPANION_ID);
         var changeEqBtn = document.createElement('button');
         changeEqBtn.type = 'button';
         changeEqBtn.className = 'ps-btn small';
@@ -3191,6 +3202,42 @@ var TW = (function () {
       card.appendChild(equipRow);
       box.appendChild(card);
     }
+    applyPartyEquipStat();
+    loadPartyEquipStat();
+  }
+
+  // [2026-10-20] "동료편성 화면에 장비/악세 능력치와 강화수치(강화로 늘어난 성능 포함)를 보여달라" 요청 -- 서버(partyEquipContribution)가
+  // 장비 1개가 올려주는 최종 체력/공격/방어(스탯구매/한계돌파 반영)와 그중 강화(+N, 1강당 +6%)로 늘어난 몫을 계산해서 내려준다.
+  var partyEquipStat = {};
+  function fmtN(n) { return Number(n).toLocaleString('ko-KR'); }
+  function applyPartyEquipStat() {
+    Array.prototype.forEach.call(document.querySelectorAll('#partySlots .ps-equip-slot[data-cid]'), function (slot) {
+      var rows = partyEquipStat[slot.getAttribute('data-cid')] || [];
+      var el = slot.querySelector('.ps-equip-stat');
+      if (!el) return;
+      var row = rows.filter(function (r) { return String(r.EQUIP_ID) === el.getAttribute('data-eq'); })[0];
+      if (!row) { el.innerHTML = ''; return; }
+      var lines = [];
+      if (row.HP) lines.push('체력 <b>+' + fmtN(row.HP) + '</b>');
+      if (row.ATK) lines.push('공격 <b>+' + fmtN(row.ATK) + '</b>');
+      if (row.DEF) lines.push('방어 <b>+' + fmtN(row.DEF) + '</b>');
+      var html = lines.join('<br>');
+      if (row.ENHANCE_LEVEL > 0) {
+        var enh = [];
+        if (row.ENH_HP) enh.push('체력+' + fmtN(row.ENH_HP));
+        if (row.ENH_ATK) enh.push('공격+' + fmtN(row.ENH_ATK));
+        if (row.ENH_DEF) enh.push('방어+' + fmtN(row.ENH_DEF));
+        html += '<div class="ps-equip-enh">⬆️ 강화 +' + row.ENHANCE_LEVEL + '<br>성능 +' + (row.ENHANCE_LEVEL * 6) + '%' + (enh.length ? '<br>' + enh.join(' ') : '') + '</div>';
+      }
+      el.innerHTML = html;
+    });
+  }
+  function loadPartyEquipStat() {
+    var u = userName();
+    if (!u) return;
+    fetch(base + '/api/tower-party-equip-stat?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && d.byCompanion) { partyEquipStat = d.byCompanion; applyPartyEquipStat(); }
+    }).catch(function () { /* 수치 표시는 부가 정보라 실패해도 조용히 둔다 */ });
   }
 
   // 보유 동료 목록 -- 편성 여부 1순위(편성된 동료 먼저) + 성급 내림차순으로 정렬(기존과 동일),

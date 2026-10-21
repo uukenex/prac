@@ -484,6 +484,19 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-10-20] 편성 화면 장비 카드 표시용 -- 파티 동료별 장비 기여 수치(강화 포함). */
+    @GetMapping("/api/tower-party-equip-stat")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerPartyEquipStat(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> result = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            result.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(result);
+        }
+        result.put("byCompanion", s5Service.partyEquipContribution(userName));
+        return ResponseEntity.ok(result);
+    }
+
     /** [2026-10-20] ★7 동료 승급 팝업용 -- 재료/조각 현황과 직업별 ★7 예상 능력치. */
     @GetMapping("/api/tower-star7")
     @ResponseBody

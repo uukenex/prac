@@ -371,6 +371,9 @@ public interface BotS5Service {
     /** [2026-10-08] 웹 도감 탭(아이템도감)용 -- ★7 전설장비 목록, 보유 인원/개수, 최고 강화 수치. */
     java.util.List<java.util.HashMap<String, Object>> legendaryCodex();
 
+    /** [2026-10-20] 편성 화면 장비 카드용 -- 파티 동료별 장비 1개가 올려주는 체력/공격/방어와 강화로 늘어난 몫. 키 = 동료ID 문자열. */
+    java.util.HashMap<String, java.util.List<java.util.HashMap<String, Object>>> partyEquipContribution(String userName);
+
     /** [2026-10-20] ★7 동료 소환 -- 현재 상태(업적/보유 여부/직업별 능력치와 고정 초상화). */
     java.util.HashMap<String, Object> star7Status(String userName);
 
