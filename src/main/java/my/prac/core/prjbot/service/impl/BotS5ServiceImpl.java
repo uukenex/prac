@@ -424,7 +424,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 건너뛰어 전투 턴은 무제한). 컬럼(DICE_ROLL_COUNT_TODAY/DICE_ROLL_DATE)은 그대로 재사용
     // (의미만 "이동만 카운트"로 좁혀짐, 마이그레이션 불필요). 위 쿨타임들과 같은 이유로
     // DB(TBOT_S5_CONFIG) config화 -- 재배포 없이 /갱신으로 값만 바꿀 수 있게.
-    private static volatile int DAILY_MOVE_LIMIT = 400;
+    // [2026-10-20] "하루 400회 제한 없애줘" -- 하루 이동 한도를 폐지했다. 0 이하 = 제한 없음(기본값). 다시 걸려면 TBOT_S5_CONFIG의 DAILY_MOVE_LIMIT를 1 이상으로 넣고 /갱신.
+    private static volatile int DAILY_MOVE_LIMIT = 0;
 
     // 채널(WEB/CHAT) 무관하게 공유하는 총 이동 카운터(DICE_ROLL_COUNT_TODAY) 기준으로, 웹은
     // DAILY_MOVE_LIMIT까지만, 카카오톡(CHAT)은 거기에 이 보너스를 더한 값(400+100=500)까지
@@ -500,8 +501,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         loadConfig();
         loadBalanceV2();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
-                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 이동 한도 웹 " + DAILY_MOVE_LIMIT
-                + "회·카톡 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "회 / 자동사냥 시간당 "
+                + "초 / 전투종료 " + COMBAT_END_COOLDOWN_SEC + "초 / 하루 이동 한도 "
+                + (DAILY_MOVE_LIMIT > 0 ? "웹 " + DAILY_MOVE_LIMIT + "회·카톡 " + (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) + "회" : "없음")
+                + " / 자동사냥 시간당 "
                 + AUTO_HUNT_KILLS_PER_HOUR + "마리, 최대 " + AUTO_HUNT_MAX_HOURS + "시간)";
     }
 
@@ -2480,12 +2482,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         int used = sameDay ? rawUsedToday : 0;
         HashMap<String, Object> info = new HashMap<>();
         info.put("used", used);
-        info.put("webLimit", DAILY_MOVE_LIMIT);
-        info.put("totalLimit", DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE);
+        // 한도 폐지(0 이하) 상태에서는 null을 내려서 웹이 사용량/한도 배지를 숨긴다.
+        info.put("webLimit", DAILY_MOVE_LIMIT > 0 ? (Object) DAILY_MOVE_LIMIT : null);
+        info.put("totalLimit", DAILY_MOVE_LIMIT > 0 ? (Object) (DAILY_MOVE_LIMIT + KAKAO_BONUS_MOVE) : null);
         return info;
     }
 
     private String checkAndBumpDailyDiceLimit(String userName, HashMap<String, Object> p, String channel) {
+        if (DAILY_MOVE_LIMIT <= 0) return null; // [2026-10-20] 하루 이동 한도 폐지 -- 막지 않고 카운트(DB 쓰기)도 하지 않는다
         java.util.Date rollDate = (java.util.Date) p.get("DICE_ROLL_DATE");
         int rawUsedToday = intVal(p.get("DICE_ROLL_COUNT_TODAY"), 0);
         boolean sameDay = rollDate != null
