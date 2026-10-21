@@ -3122,6 +3122,7 @@ var TW = (function () {
   }
   function openAllEquip() {
     document.getElementById('allEquipOverlay').classList.add('open');
+    if (equipDirty) { renderEquipList(); equipDirty = false; }
   }
   function closeAllEquip() {
     document.getElementById('allEquipOverlay').classList.remove('open');
@@ -3365,7 +3366,6 @@ var TW = (function () {
       box.appendChild(card);
     }
     applyPartyEquipStat();
-    loadPartyEquipStat();
   }
 
   // [2026-10-20] "동료편성 화면에 장비/악세 능력치와 강화수치(강화로 늘어난 성능 포함)를 보여달라" 요청 -- 서버(partyEquipContribution)가
@@ -3694,9 +3694,19 @@ var TW = (function () {
     });
   }
 
+  // [2026-10-21 성능] 편성 탭을 열 때마다 보유 동료 전체 카드(수십 장)와 장비 목록 전체(많은 유저는 천 개 이상, DOM 약 9천 노드)를 보이지 않는 팝업에도 매번 그려서 느렸다.
+  // 팝업(전체동료보기/전체아이템보기)이 열려 있을 때만 그리고, 닫혀 있으면 더럽힘 표시만 해 두었다가 열 때 그린다. 장비 기여/상세 조회(tower-party-equip-stat)도
+  // 동료/장비 조회가 끝나길 기다리지 않고 동시에 보낸다.
+  var gridDirty = true, equipDirty = true;
+  function renderHeavyListsIfOpen() {
+    if (document.getElementById('allCompanionsOverlay').classList.contains('open')) { renderPartyGrid(); gridDirty = false; } else { gridDirty = true; }
+    if (document.getElementById('allEquipOverlay').classList.contains('open')) { renderEquipList(); equipDirty = false; } else { equipDirty = true; }
+  }
+
   function loadPartyAndEquip() {
     var u = userName();
     if (!u) return;
+    loadPartyEquipStat(); // 병렬 -- 결과는 도착하는 대로 applyPartyEquipStat()이 카드에 채운다(카드가 아직 없으면 renderPartySlots 끝에서 채움)
     return Promise.all([
       fetch(base + '/api/tower-party?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }),
       fetch(base + '/api/tower-equip?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); })
@@ -3721,8 +3731,7 @@ var TW = (function () {
       updateLegendDisenchantBtn();
 
       renderPartySlots();
-      renderPartyGrid();
-      renderEquipList();
+      renderHeavyListsIfOpen();
       // 전투화면이 떠 있으면(다른 fetch보다 이게 늦게 끝난 경우) 최신 HP로 갱신. V2는 대표
       // 캐릭터 HP바가 파티 데이터에 걸려있어 state.progress(가장 최근 상태 캐시)로 재렌더.
       // [버그 수정, 2026-09-21] 파티로스터(updateBattlePartyV1)는 V1/V2 공용이라 버전과 무관하게

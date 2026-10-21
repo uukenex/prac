@@ -56,18 +56,19 @@
 	<!-- 페이지당 리스트를 보여줌(분류별로 해야할듯) -->
 	<select id="getCommentByPage" parameterType="Map" resultType="my.prac.core.dto.Comments">
 		SELECT /* prjboard.TCOMMENTMapper.getCommentByPage */
-			   *
+			   X.*,
+			   (SELECT COUNT(1)
+			      FROM TCOMMENT_REPLY R
+			     WHERE R.REPLY_COMMENT_NO = X.COMMENT_NO) AS REPLY_CNT
 		  FROM (SELECT SUB.*,
-		               (SELECT COUNT(1)
-		                  FROM TCOMMENT_REPLY C
-		                 WHERE REPLY_COMMENT_NO = SUB.COMMENT_NO) AS REPLY_CNT,
 		               ROWNUM RNUM
-		          FROM (SELECT C.*,U.USER_NICK
+		          FROM (SELECT /*+ USE_NL(U) */ C.*,U.USER_NICK
 		                  FROM TCOMMENT C,TBOARD_USER_V U
-		                 WHERE C.USER_ID = U.USER_ID 
-		                   AND C.COMMENT_CATEGORY = #{commentCategory}  
-		                 ORDER BY C.COMMENT_NO DESC) SUB)
-		 WHERE RNUM BETWEEN #{page} * 10 - 9 AND #{page} * 10
+		                 WHERE C.USER_ID = U.USER_ID
+		                   AND C.COMMENT_CATEGORY = #{commentCategory}
+		                 ORDER BY C.COMMENT_NO DESC) SUB
+		         WHERE ROWNUM &lt;= #{page} * 10) X
+		 WHERE X.RNUM &gt;= #{page} * 10 - 9
 	</select>
 
 

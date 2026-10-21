@@ -17,13 +17,14 @@
 			   X.RNUM
 		  FROM (SELECT SUB.*
 				     , ROWNUM RNUM
-				  FROM (SELECT C.*
+				  FROM (SELECT /*+ USE_NL(U) */ C.*
 						      ,U.USER_NICK
 						  FROM TSHAREBOARD C
 							  ,TBOARD_USER_V    U
 						 WHERE C.MODIFY_ID = U.USER_ID
-						 ORDER BY C.SHARE_NO DESC) SUB) X
-		 WHERE RNUM BETWEEN #{page} * 10 - 9 AND #{page} * 10
+						 ORDER BY C.SHARE_NO DESC) SUB
+				 WHERE ROWNUM &lt;= #{page} * 10) X
+		 WHERE RNUM &gt;= #{page} * 10 - 9
 	</select>
 	
 	<select id="selectSharePageCount" resultType="int" parameterType="String">

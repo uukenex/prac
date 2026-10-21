@@ -532,8 +532,7 @@ public class Season5ViewController {
             result.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(result);
         }
-        result.put("byCompanion", s5Service.partyEquipContribution(userName));
-        result.put("detail", s5Service.partyDetail(userName));
+        result.putAll(s5Service.partyEquipAndDetail(userName)); // byCompanion + detail (한 번에 계산)
         return ResponseEntity.ok(result);
     }
 

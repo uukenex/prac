@@ -4975,3 +4975,16 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 요청("왼쪽에 메인캐릭터 한 마리가 덩그러니 가운데 있는 게 어색해, 캐릭터 여러 마리가 동시에 서 있도록"): V2 대치 장면 왼쪽을 대표 1명(`bsLeadAvatarSlot`) 대신 편성된 동료 전원의 대열(`#bsDuelParty`, `renderDuelParty`)로 교체. 1번 슬롯이 몬스터에 가장 가깝게(row-reverse) 서고 가운데 동료는 한 칸 뒤로 물러서는 V자 대열.
   각 동료가 자기 아바타/이름(성장형은 🌱)/HP바/전투불능 표시/피격 흔들림/공격 펄스를 가진다(`battle.dropped`로 `updateBattlePartyV1`의 피격 판정을 공유). 위쪽 동료 줄(`bsPartyRowV2`)은 같은 정보라 제거.
 - 스탯표 왼쪽은 파티 전체: PARTY=인원, POWER=공격력 합계, GUARD=방어력 평균(오른쪽 몬스터와 비교). 아바타 크기는 `min(52px, 11vw)`로 줄여 모바일 폭에서도 3명이 한 줄에 들어가게 했고(좁은 화면은 몬스터 칸/對 배지도 축소), 파티가 없으면 "파티 없음". V1(포켓몬 스타일)은 그대로.
+
+## [2026-10-21] 성능 점검 -- DB 해시 연산이 느린 환경 + 불필요한 조인/그룹 제거
+**측정**(라이브 API 응답, DB 내부 벤치, `V$SQL`):
+- 화면 로드(탑 탭)는 TTFB 0.35초/완료 약 1초로 양호. 편성 탭을 열면 API 3개가 순차로 약 1.4초(`tower-party` 0.5초 + `tower-equip` 0.7초(장비 1,300개 유저는 343KB) + 내 신규 `tower-party-equip-stat` 0.6초).
+- **DB 병목**: 이 인스턴스(Oracle XE, RAM 2GB)는 **HASH JOIN/HASH GROUP BY 연산 1회에 약 65ms**가 든다(12행짜리 표의 GROUP BY도 65ms, `NO_USE_HASH_AGGREGATION` 힌트를 주면 0.07ms). `V$SQL`에서 CPU는 거의 안 쓰는데 경과시간만 큰 쿼리들이 전부 해시 조인/그룹이었다.
+  내가 `selectUserCompanions`에 넣은 `LEFT JOIN`(★7 초상화)이 해시 조인이 되어 평균 45ms(조회 횟수 수천 번), `selectSkillRateMults`(GROUP BY) 25ms, `selectUserEquip` 40ms(LEFT JOIN), 도감 `selectLegendaryCodex` 134ms였다.
+  원인 후보(관리자 확인 필요): 해시 작업영역이 임시 공간 I/O로 밀림(`direct path read` 6.3억 회, `db file async I/O submit` 평균 10ms), 그리고 `resmgr:cpu quantum` 대기 39만 회/8,373초(평균 21ms) -- 평일 22:00~02:00과 주말(06:00~다음날 02:00) 유지보수 윈도우가 `DEFAULT_MAINTENANCE_PLAN`을 켜서 CPU를 제한하는 것으로 보인다.
+**수정**(데이터 동일 검증 완료: 장비 4,663행/도감 12종/게시판 페이지 MINUS 비교 0건 차이):
+- 조인 -> 스칼라 서브쿼리: `selectUserCompanions`(0.09ms), `selectCompanionImageUrl`, `selectUserEquip`, `selectEquipByCompanion`, 도감 `selectLegendaryCodex`(134ms -> 0.04ms). GROUP BY 제거: `selectSkillRateMults`(Java가 동료별 최댓값, 25ms -> 0.28ms).
+- 인덱스(`S5_PERF_INDEXES.sql`, 라이브 적용): `IDX_S5_EQUIP_COMP`(EQUIPPED_COMPANION_ID, 동료별 장비 조회 -- 전엔 인덱스가 없어 매 턴 여러 번 전체 스캔), `IDX_S5_EQUIP_LEG`(LEGENDARY_ID). 통계 갱신.
+- 편성 API `tower-party-equip-stat`을 한 번에 계산(`partyEquipAndDetail`: 동료/스탯 1회 조회 + 동료별 장비 1회, byCompanion은 detail의 equips 재사용)하고 웹이 동료/장비 조회와 동시에 호출. 보유 동료 전체 카드/장비 전체 목록(DOM 약 9천 노드)은 팝업이 열릴 때만 그림(`renderHeavyListsIfOpen`).
+- 게시판 목록(`getCommentByPage`, `selectShareListByPage`): 페이지 하한을 먼저 잘라서(ROWNUM <= N) 댓글 수 서브쿼리를 10행에만 실행하고 `USE_NL(U)` 힌트로 사용자 뷰 해시 조인을 피한다.
+**남은 과제**: 전투 한 턴의 DB 호출 수(동료/스탯/장비/진행 조회가 중복) 줄이기(요청 단위 캐시), `/탑랭킹`의 GROUP BY 쿼리들, 필요하면 DB 관리자 작업(해시 연산 비용의 원인인 임시 공간/메모리 설정과 유지보수 윈도우 자원 플랜 해제).

@@ -609,7 +609,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int cid = intVal(r.get("CID"), 0);
                 double mult = intVal(r.get("MULT_PCT"), 100) / 100.0;
                 for (HashMap<String, Object> c : party) {
-                    if (intVal(c.get("COMPANION_ID"), 0) == cid) c.put("SKILL_MULT", mult);
+                    // 같은 동료가 여러 개를 껴도(쿼리가 GROUP BY 없이 행을 그대로 준다) 가장 큰 배율 하나만 적용한다
+                    if (intVal(c.get("COMPANION_ID"), 0) == cid) {
+                        Object prev = c.get("SKILL_MULT");
+                        if (!(prev instanceof Number) || mult > ((Number) prev).doubleValue()) c.put("SKILL_MULT", mult);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -8737,14 +8741,42 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  분해는 합이 정확히 맞도록 한계돌파=캐릭터 합계-스탯구매 반영 기본, 장비=total-캐릭터 합계로 구한다(장비별 반올림 오차 때문에 행 합계와 ±1 다를 수 있음). */
     @Override
     public HashMap<String, Object> companionDetail(String userName, int companionId) {
-        HashMap<String, Object> out = new HashMap<>();
         HashMap<String, Object> comp = findCompanionOf(userName, companionId);
-        if (comp == null) { out.put("error", "동료를 찾을 수 없습니다."); return out; }
+        if (comp == null) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "동료를 찾을 수 없습니다.");
+            return err;
+        }
+        return companionDetailCore(comp, dao.selectUserStat(userName), dao.selectEquipByCompanion(companionId));
+    }
+
+    /** [2026-10-21 성능] 편성 화면 API(/api/tower-party-equip-stat)용 -- 파티 동료 전원의 상세(companionDetail)와 장비 기여 행을 한 번에 계산한다.
+     *  예전엔 byCompanion(partyEquipContribution)과 detail(partyDetail)이 각각 동료 목록/유저 스탯/장비를 다시 조회했고 detail은 동료마다 또 조회해서(N+1) 한 번에 0.6초가 걸렸다.
+     *  이제 동료 목록과 유저 스탯을 한 번만 읽고 동료별 장비도 한 번씩만 읽는다(장비 기여 행은 detail의 equips를 그대로 byCompanion으로 재사용). */
+    @Override
+    public HashMap<String, Object> partyEquipAndDetail(String userName) {
+        HashMap<String, List<HashMap<String, Object>>> by = new HashMap<>();
+        HashMap<String, HashMap<String, Object>> detail = new HashMap<>();
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            if (c.get("PARTY_SLOT") == null) continue;
+            int cid = intVal(c.get("COMPANION_ID"), 0);
+            HashMap<String, Object> d = companionDetailCore(c, userStat, dao.selectEquipByCompanion(cid));
+            detail.put(String.valueOf(cid), d);
+            @SuppressWarnings("unchecked") List<HashMap<String, Object>> rows = (List<HashMap<String, Object>>) d.get("equips");
+            by.put(String.valueOf(cid), rows);
+        }
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("byCompanion", by);
+        out.put("detail", detail);
+        return out;
+    }
+
+    private HashMap<String, Object> companionDetailCore(HashMap<String, Object> comp, HashMap<String, Object> userStat, List<HashMap<String, Object>> equips) {
+        HashMap<String, Object> out = new HashMap<>();
         String job = strVal(comp.get("CLASS"), "WARRIOR");
         int grade = intVal(comp.get("GRADE"), 1);
         int lb = intVal(comp.get("LIMIT_BREAK"), 0);
-        List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(companionId);
         int[] total = computeEffectiveStat(job, grade, equips, userStat, lb);
         int[] charTotal = computeEffectiveStat(job, grade, new ArrayList<HashMap<String, Object>>(), userStat, lb);
         int[] base = calcBaseStat(job, grade);

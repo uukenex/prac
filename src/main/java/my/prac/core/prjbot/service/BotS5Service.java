@@ -377,6 +377,9 @@ public interface BotS5Service {
     /** [2026-10-20] 동료 상세(웹) -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여 행. */
     java.util.HashMap<String, Object> companionDetail(String userName, int companionId);
 
+    /** [2026-10-21 성능] 편성 화면용 -- 파티 동료 전원의 detail(companionDetail)과 byCompanion(장비 기여 행)을 한 번에(조회 최소화). */
+    java.util.HashMap<String, Object> partyEquipAndDetail(String userName);
+
     /** [2026-10-20] 편성 화면 슬롯 카드 상단용 -- 파티 동료별 companionDetail. 키 = 동료ID 문자열. */
     java.util.HashMap<String, java.util.HashMap<String, Object>> partyDetail(String userName);
 
