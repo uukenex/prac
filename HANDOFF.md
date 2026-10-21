@@ -16,6 +16,11 @@
 - 진행 상황: 첫 번째 PC(2026-10-19)는 Node를 v24.20.0(winget `OpenJS.NodeJS.LTS`)으로 올리고 `npx rea-agents setup --yes --client claude_code`로 Claude Code
   user 범위에 등록 완료(`rea-agents@6.7.0`, 스킬 `~/.claude/skills/reverse-engineer-anything`, 백업 `~/.claude.json.rea.backup`). 다른 PC도 같은 순서로 하면 됨
   (먼저 `--dry-run`으로 변경 내용 확인). Claude Desktop은 완전히 종료한 뒤 설정해야 해서 미등록. 분석 엔진(Ghidra/IDA/jadx 등)은 아직 어느 PC에도 미설치.
+- **두 번째 PC(2026-10-19 저녁) 등록 완료**: winget으로 Node v24.20.0 설치 후 `npx.cmd rea-agents setup --yes --client claude_code`로 Claude Code user 범위에
+  등록(`~/.claude.json`의 `mcpServers`에 `cmd.exe /d /c npx -y rea-agents@6.7.0 mcp`, 스킬 `~/.claude/skills/reverse-engineer-anything`, 백업 `.claude.json.rea.backup`).
+  Claude Code 재시작 후 사용. **Windows PowerShell 함정**: 실행 정책 때문에 `npx`가 `npx.ps1`을 못 불러 막힘 -> `npx.cmd`로 실행하거나
+  `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`(이 PC는 사용자가 직접 설정함). Claude가 `~/.claude.json`을 직접 수정하는 건 자동 권한
+  분류기가 "자기 설정 수정"으로 막으므로 등록 명령은 사용자가 터미널에서 직접 실행해야 함.
 
 ## 2026-10-08 갱신 (이 컴퓨터의 마지막 대화 상태) -- 다른 컴퓨터에서 시작하면 이것부터 알려줄 것
 
