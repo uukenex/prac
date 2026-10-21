@@ -6726,17 +6726,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (cacheFile.exists() && cacheFile.length() > 0) {
                 return Files.readAllBytes(cacheFile.toPath());
             }
-            URL url = new URL(imageUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(8000);
-            // fetchRandomNekoImage()와 동일 이유(User-Agent 없으면 403).
-            conn.setRequestProperty("User-Agent", "RgbTowerBot/1.0 (https://rgb-tns.dev-apc.com)");
-            if (conn.getResponseCode() != 200) return null;
             BufferedImage original;
-            try (InputStream is = conn.getInputStream()) {
-                original = ImageIO.read(is);
+            if (imageUrl.startsWith("classpath:")) {
+                // [2026-10-20] 앱에 포함된 이미지(예: 성장형 동료 그림 s5/growth_doodle.png) -- 외부 호출 없이 클래스패스에서 읽는다.
+                try (InputStream is = BotS5ServiceImpl.class.getResourceAsStream("/" + imageUrl.substring("classpath:".length()))) {
+                    if (is == null) return null;
+                    original = ImageIO.read(is);
+                }
+            } else {
+                URL url = new URL(imageUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(8000);
+                // fetchRandomNekoImage()와 동일 이유(User-Agent 없으면 403).
+                conn.setRequestProperty("User-Agent", "RgbTowerBot/1.0 (https://rgb-tns.dev-apc.com)");
+                if (conn.getResponseCode() != 200) return null;
+                try (InputStream is = conn.getInputStream()) {
+                    original = ImageIO.read(is);
+                }
             }
             if (original == null) return null;
             BufferedImage thumb = cropResizeSquare(original, AVATAR_THUMB_SIZE);

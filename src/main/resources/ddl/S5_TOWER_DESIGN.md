@@ -4953,3 +4953,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - **스킬**: GRADE 8은 `grade >= 6` 분기를 그대로 타므로 ★6 기준 효과/확률이고, ★7 발현율 보너스(x1.2)는 없다(`== STAR7_GRADE`로 정정). 집계(보유 수/최고 동료 등급/`/탑랭킹`)와 가챠 중복 판정, 시작 무료 뽑기 횟수에서는 성장형을 제외.
 - **이미지**: 성장형 동료 이미지는 `TBOT_S5_GROWTH_PORTRAIT`(1행) 한 곳에서 모든 유저가 같은 이미지를 쓴다(조회 때 대체). 비어 있으면 웹에서 🌱 이모지. 서버가 주소를 받아 썸네일(JPEG)로 캐시하는 구조(`getCompanionAvatarThumbnail`)라 외부 주소도 동작한다. 설정: `DELETE FROM TBOT_S5_GROWTH_PORTRAIT; INSERT INTO TBOT_S5_GROWTH_PORTRAIT (ID, IMAGE_URL) VALUES (1, '<url>'); COMMIT;`
 - 웹: 상점의 "🌱 성장형 동료 (☆1)" 카드 -> 팝업(이미지/이름 저장, 1~100층 탐사 진행 바, 성장 배율, 101층 이상 반영 상태, 직업 6종 선택과 장비 없을 때 예상 능력치). 성급 필터에 ☆1 칩 추가.
+
+## [2026-10-20] 성장형 동료 그림(직접 그린 낙서 스타일)
+- 원작 이미지 대신 **새로 그린 오리지널 그림**(붉은 머리, 웃는 눈, 양팔 벌린 낙서 스타일, 파란 배경)을 성장형 동료의 고정 이미지로 사용: `src/main/resources/s5/growth_doodle.png`(512x512).
+  `TBOT_S5_GROWTH_PORTRAIT`에 `classpath:s5/growth_doodle.png`로 등록(라이브 DB 적용 완료). `getCompanionAvatarThumbnail`이 `classpath:` 주소는 클래스패스에서 읽어 썸네일을 만들고(외부 호출 없음), 웹 동료 상세는 성장형만 아바타 프록시로 받는다.
+- 다른 그림으로 바꾸려면 파일을 교체하거나 표의 주소를 외부 URL로 바꾸면 된다(썸네일 캐시는 주소 기준이라 주소가 바뀌면 새로 만들어짐. 같은 주소로 파일만 교체하면 서버 캐시 폴더의 옛 썸네일을 지워야 한다).

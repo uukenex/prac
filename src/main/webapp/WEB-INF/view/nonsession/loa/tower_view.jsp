@@ -3107,7 +3107,8 @@ var TW = (function () {
     var name = c.NAME || (JOB_KR[c.CLASS] || c.CLASS);
     var detailImg = document.getElementById('detailImg');
     detailImg.onerror = function () { detailImg.style.display = 'none'; };
-    detailImg.src = c.IMAGE_URL || '';
+    // 성장형(☆1) 이미지는 앱에 포함된 파일(classpath:)일 수 있어 브라우저가 직접 못 읽으므로 아바타 프록시로 받는다.
+    detailImg.src = c.GRADE === 8 && c.IMAGE_URL ? (base + '/api/tower-avatar?companionId=' + c.COMPANION_ID + '&u=' + encodeURIComponent(c.IMAGE_URL)) : (c.IMAGE_URL || '');
     detailImg.style.display = c.IMAGE_URL ? '' : 'none';
     document.getElementById('detailName').textContent = name;
     // [2026-09-14] "동료편성 화면에 한계돌파 (+N) 표기해달라" 요청 -- 단계가 있을 때만 붙인다.
