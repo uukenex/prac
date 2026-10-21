@@ -193,6 +193,11 @@ public interface BotS5DAO {
 
     /** 주사위 눈(1~20) 전역 통계 1증가. face는 항상 서버에서 RND로 만든 값이라 안전. */
     void bumpDiceFaceStat(@Param("face") int face);
+    /** [2026-10-21 성능] 위 +1 통계 쓰기들의 +N 버전 -- 메모리에 모았다가 한꺼번에 반영(BotS5Service.flushStatBuffers). */
+    void bumpDiceFaceStatBy(@Param("face") int face, @Param("n") int n);
+    void bumpActivityStatBy(@Param("userName") String userName, @Param("countColumn") String countColumn,
+                            @Param("usedFlagColumn") String usedFlagColumn, @Param("n") int n);
+    void bumpActivityHourlyBy(@Param("statType") String statType, @Param("channel") String channel, @Param("n") int n);
 
     /** /탑통계 시간대별(1시간/24시간/오늘) 집계용 현재 시(hour) 버킷 1증가. statType/channel은
      *  BotS5ServiceImpl.bumpActivityStat()의 고정 화이트리스트에서만 온다. */

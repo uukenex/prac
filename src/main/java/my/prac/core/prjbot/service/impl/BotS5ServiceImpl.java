@@ -1136,7 +1136,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         } else {
             face = RND.nextInt(hi - lo + 1) + lo;
         }
-        try { dao.bumpDiceFaceStat(face); } catch (Exception ignore) { }
+        PENDING_FACE.merge(face, 1, Integer::sum); // [2026-10-21 성능] 공용 통계 행 UPDATE를 굴림마다(트랜잭션 안에서) 하지 않고 모아서 반영
         return face;
     }
 
@@ -6417,22 +6417,52 @@ public class BotS5ServiceImpl implements BotS5Service {
     public void bumpActivityStat(String userName, String statKey) {
         String[] cols = ACTIVITY_STAT_COLUMNS.get(statKey);
         if (cols == null) return;
-        try {
-            dao.bumpActivityStat(userName, cols[0], cols[1]);
-        } catch (Exception ignore) {
-            // 통계 적재 실패가 실제 게임 액션 응답을 막으면 안 됨(TBOT_WORD_HIS 로깅과 동일 관례)
-        }
+        // [2026-10-21 성능] 예전엔 액션마다 (1) 유저 행 카운터 UPDATE (2) 시간대별 공용 행 MERGE를 각각 단독으로(커밋 2번) 실행했다.
+        // 통계 화면에서만 읽는 값이라 메모리에 모았다가 flushStatBuffers()가 30초마다 한 번에 반영한다.
+        PENDING_ACTIVITY.merge(userName + "\u0001" + cols[0] + "\u0001" + cols[1], 1, Integer::sum);
         // [2026-09-06] "/탑통계에 1시간/24시간/오늘 기준도 보고싶다" 요청 -- 전체 누적 컬럼과
         // 별개로, 현재 시(hour) 버킷에도 같이 적재해서 시간대별 집계를 가능하게 함.
         // statKey는 항상 "STATTYPE_CHANNEL"(예: DICE_WEB) 형태의 고정 화이트리스트 값.
-        try {
-            int us = statKey.lastIndexOf('_');
-            if (us > 0) {
-                dao.bumpActivityHourly(statKey.substring(0, us), statKey.substring(us + 1));
-            }
-        } catch (Exception ignore) {
-            // 마찬가지로 통계 실패가 게임 진행을 막으면 안 됨
+        int us = statKey.lastIndexOf('_');
+        if (us > 0) {
+            PENDING_HOURLY.merge(statKey.substring(0, us) + "\u0001" + statKey.substring(us + 1), 1, Integer::sum);
         }
+    }
+
+    // ---- [2026-10-21 성능] 통계 카운터 쓰기 모으기 ----
+    // 이 값들은 통계 화면에서만 읽고 게임 진행에는 쓰이지 않는다. 주사위 눈 분포(전 유저가 같은 행을 올림)와 시간대별 활동(같은 행)은
+    // 여러 유저가 동시에 같은 행을 갱신하면 서로의 커밋을 기다리고, 눈을 서로 다른 순서로 갱신하면 교착(ORA-00060)까지 날 수 있어서
+    // 메모리에 모았다가 별도 짧은 트랜잭션에서 한 번에 반영한다. 서버가 갑자기 죽으면 최대 30초치가 사라질 뿐이다.
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, Integer> PENDING_FACE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, Integer> PENDING_ACTIVITY = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, Integer> PENDING_HOURLY = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @Override
+    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
+    public void flushStatBuffers() {
+        for (Integer face : new ArrayList<>(PENDING_FACE.keySet())) {
+            Integer n = PENDING_FACE.remove(face);
+            if (n == null || n <= 0) continue;
+            try { dao.bumpDiceFaceStatBy(face, n); } catch (Exception e) { PENDING_FACE.merge(face, n, Integer::sum); }
+        }
+        for (String key : new ArrayList<>(PENDING_ACTIVITY.keySet())) {
+            Integer n = PENDING_ACTIVITY.remove(key);
+            if (n == null || n <= 0) continue;
+            String[] p = key.split("\u0001");
+            try { dao.bumpActivityStatBy(p[0], p[1], p[2], n); } catch (Exception e) { /* 통계 실패는 버린다(유저 삭제 등) */ }
+        }
+        for (String key : new ArrayList<>(PENDING_HOURLY.keySet())) {
+            Integer n = PENDING_HOURLY.remove(key);
+            if (n == null || n <= 0) continue;
+            String[] p = key.split("\u0001");
+            try { dao.bumpActivityHourlyBy(p[0], p[1], n); } catch (Exception e) { PENDING_HOURLY.merge(key, n, Integer::sum); }
+        }
+    }
+
+    /** 서버 종료/재배포 때 아직 반영 안 된 통계를 남기지 않도록 마지막으로 한 번 반영. */
+    @javax.annotation.PreDestroy
+    public void flushStatBuffersOnShutdown() {
+        try { flushStatBuffers(); } catch (Throwable ignore) { }
     }
 
     // ================================================================

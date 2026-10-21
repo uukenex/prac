@@ -234,6 +234,10 @@ public interface BotS5Service {
     /** [2026-09-21] 웹 UI 이동한도 표시용 -- {used, webLimit, totalLimit(카톡 보너스 포함)}. */
     HashMap<String, Object> moveLimitInfo(String userName);
 
+    /** [2026-10-21 성능] 통계 카운터(주사위 눈 분포/활동 카운터/시간대별 활동)를 메모리에 모았다가 30초마다 한 번에 반영한다.
+     *  @Scheduled 메서드라 인터페이스에도 반드시 선언(JDK 동적 프록시). */
+    void flushStatBuffers();
+
     /** [2026-09-21 버그수정] @Scheduled 메서드는 반드시 인터페이스에 선언돼야 한다 -- 이 빈은
      *  JDK 동적 프록시(인터페이스 기반)로 노출되는데, 구현체에만 있고 인터페이스에 없는
      *  메서드를 스케줄러가 프록시로 호출하려다 "Need to invoke method ... but not found in

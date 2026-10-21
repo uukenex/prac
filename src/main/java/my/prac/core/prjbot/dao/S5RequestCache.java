@@ -1,5 +1,7 @@
 package my.prac.core.prjbot.dao;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -9,9 +11,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,10 +31,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  *   <li>{@link #begin()}/{@link #end()}를 {@code S5RequestCacheFilter}가 요청마다 호출한다. 범위 밖(스케줄러/@Async 스레드 등)에서는
  *       캐시 없이 그대로 DB를 조회한다(기존 동작).</li>
  *   <li>캐시하는 건 {@link #CACHED_READS}에 적은 읽기 메서드뿐이다. 키는 메서드 이름 + 인자.</li>
- *   <li>캐시에서 꺼낼 때마다 얕은 복사본(HashMap/List)을 돌려준다 -- 호출한 쪽이 맵에 값을 넣거나 목록을 고치는 코드가 많아서(예: SKILL_MULT)
+ *   <li>캐시에서 꺼낼 때마다 얕은 복사본(HashMap/List)을 돌려준다 -- 호출한 쪽이 맵에 값을 넣거나 목록을 고치는 코드가 많아서
  *       원본을 그대로 주면 다음 호출에 새어나간다.</li>
- *   <li>읽기(select, count로 시작하는 메서드)가 아닌 메서드가 한 번이라도 불리면 캐시 전체를 비운다(안전 우선) -- 로그/통계만 쓰는
- *       {@link #HARMLESS_WRITES}만 예외. 그래서 "쓰고 나서 바로 다시 읽는" 코드는 항상 새 값을 읽는다.</li>
+ *   <li><b>무효화는 테이블 단위</b>: BotS5Mapper.xml을 읽어서 (읽기 쿼리 -> 읽는 테이블들), (쓰기 쿼리 -> 쓰는 테이블들)을 자동으로 뽑는다.
+ *       쓰기가 불리면 그 쓰기가 건드리는 테이블을 읽은 캐시 항목만 지우고 나머지는 남긴다. 매퍼에서 대응을 못 찾는 쓰기
+ *       (select, count로 시작하지 않는 메서드)는 안전하게 캐시 전체를 지운다. 읽기 쿼리의 테이블을 못 뽑으면 그 쿼리는 캐시하지 않는다.</li>
+ *   <li>트랜잭션이 <b>롤백</b>되면 캐시 전체를 비운다(롤백될 커밋 전 값을 읽어 둔 채로 남지 않게). 커밋은 읽은 값이 그대로 맞으므로 유지한다.</li>
  *   <li>공지 조회(selectNotice)는 요청과 무관하게 짧게(30초) 캐시한다 -- 웹 화면이 탭마다 3분마다 폴링하는 값이라서. updateNotice가 불리면 즉시 비운다.</li>
  * </ul>
  */
@@ -37,34 +44,88 @@ public final class S5RequestCache {
     private static final Logger logger = LoggerFactory.getLogger(S5RequestCache.class);
 
     private static final Object NULL = new Object();
-    private static final ThreadLocal<Map<String, Object>> SCOPE = new ThreadLocal<Map<String, Object>>();
+    private static final ThreadLocal<Map<String, Entry>> SCOPE = new ThreadLocal<Map<String, Entry>>();
     private static final ThreadLocal<int[]> STAT = new ThreadLocal<int[]>(); // {hit, miss}
     private static final ThreadLocal<Boolean> TX_ARMED = new ThreadLocal<Boolean>();
+
+    private static final class Entry {
+        final Object value;
+        final Set<String> tables;
+        Entry(Object value, Set<String> tables) { this.value = value; this.tables = tables; }
+    }
 
     /** 요청 범위에서 캐시하는 읽기 메서드. */
     private static final Set<String> CACHED_READS = new HashSet<String>(Arrays.asList(
             "selectUserProgress", "selectUserCompanions", "countUserCompanions",
             "selectUserEquip", "countUserEquip", "selectEquipByCompanion", "selectSkillRateMults",
-            "selectUserStat", "selectUserAchievements", "selectUserFloorProgress", "selectUserFloorBest",
-            "selectUserTileMaster", "selectVisitedTileNos", "countFullyExploredFloors",
-            "selectMonster", "selectFloorInfo", "selectTileMaster", "selectGacha",
+            "selectUserStat", "selectUserAchievements", "selectUserFloorProgress", "selectUserFloorBest", "selectUserFloorBestRange",
+            "selectUserTileMaster", "selectVisitedTileNos", "countFullyExploredFloors", "selectAutoHuntLog", "selectUserSpecialVisit",
+            "selectMonster", "selectFloorInfo", "selectTileMaster", "selectGacha", "selectGachaList", "selectAchievementList",
             "selectLegendaryMaster", "selectLegendaryMasterList", "selectStar7Portrait", "selectCompanionImageUrl",
             "selectNotice", "selectNoticeSeenVersion"));
-
-    /** 캐시된 조회 결과에 영향을 주지 않는 쓰기(로그/통계) -- 이 메서드들은 캐시를 비우지 않는다. */
-    private static final Set<String> HARMLESS_WRITES = new HashSet<String>(Arrays.asList(
-            "bumpDiceFaceStat", "bumpActivityHourly", "insertBattleStat", "upsertKakaoMember",
-            "upsertAutoHuntLog"));
 
     private static final long NOTICE_TTL_MS = 30000L;
     private static volatile Object noticeValue;
     private static volatile long noticeAt;
 
+    /** 매퍼 id -> 읽는 테이블들(읽기) / 쓰는 테이블들(쓰기). 못 뽑았으면 항목이 없다. */
+    private static final Map<String, Set<String>> READ_TABLES = new HashMap<String, Set<String>>();
+    private static final Map<String, Set<String>> WRITE_TABLES = new HashMap<String, Set<String>>();
+
     private S5RequestCache() {}
 
+    // ---------------------------------------------------------------- mapper parsing
+    private static final Pattern STMT = Pattern.compile("<(select|insert|update|delete)\\b[^>]*?\\bid=\"(\\w+)\"[^>]*>([\\s\\S]*?)</\\1>");
+    private static final Pattern TABLE = Pattern.compile("\\b(TBOT_\\w+|TBOARD_\\w+)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern TARGET = Pattern.compile("(?:INSERT\\s+(?:/\\*[^*]*\\*/\\s*)?INTO|\\bUPDATE|DELETE(?:\\s+FROM)?|MERGE\\s+INTO)\\s+((?:TBOT_|TBOARD_)\\w+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PLSQL = Pattern.compile("\\b(BEGIN|CALL|EXECUTE)\\b", Pattern.CASE_INSENSITIVE);
+
+    // 주의: 위의 Pattern 상수들보다 뒤에 있어야 한다(정적 초기화는 선언 순서대로 실행되므로, 앞에 두면 Pattern이 아직 null이라 파싱이 통째로 실패한다).
+    static {
+        try {
+            parseMapper();
+        } catch (Throwable t) {
+            logger.warn("S5RequestCache: mapper parse failed, falling back to no caching / full invalidation", t);
+        }
+    }
+
+    static void parseMapper() throws Exception {
+        InputStream in = S5RequestCache.class.getResourceAsStream("/mybatis/mapper2.0/BotS5Mapper.xml");
+        if (in == null) return;
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        try {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = in.read(buf)) > 0) bo.write(buf, 0, n);
+        } finally {
+            in.close();
+        }
+        String xml = new String(bo.toByteArray(), "UTF-8").replaceAll("(?s)<!--.*?-->", "");
+        Matcher m = STMT.matcher(xml);
+        while (m.find()) {
+            String kind = m.group(1);
+            String id = m.group(2);
+            String body = m.group(3);
+            if ("select".equals(kind)) {
+                Set<String> t = new HashSet<String>();
+                Matcher tm = TABLE.matcher(body);
+                while (tm.find()) t.add(tm.group(1).toUpperCase());
+                if (!t.isEmpty()) READ_TABLES.put(id, t);
+            } else {
+                // 다른 문장을 부르는 PL/SQL 블록 등은 쓰는 곳을 정확히 알 수 없으니 등록하지 않는다(= 전체 무효화).
+                if (PLSQL.matcher(body).find()) continue;
+                Set<String> t = new HashSet<String>();
+                Matcher gm = TARGET.matcher(body);
+                while (gm.find()) t.add(gm.group(1).toUpperCase());
+                if (!t.isEmpty()) WRITE_TABLES.put(id, t);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- scope
     public static void begin() {
         TX_ARMED.remove();
-        SCOPE.set(new HashMap<String, Object>());
+        SCOPE.set(new HashMap<String, Entry>());
         STAT.set(new int[2]);
     }
 
@@ -72,6 +133,7 @@ public final class S5RequestCache {
         int[] st = STAT.get();
         SCOPE.remove();
         STAT.remove();
+        TX_ARMED.remove();
         if (st != null && st[0] > 0 && logger.isDebugEnabled()) {
             logger.debug("S5 request cache hit={} miss={}", st[0], st[1]);
         }
@@ -92,40 +154,43 @@ public final class S5RequestCache {
         if (method.getDeclaringClass() == Object.class) return invoke(target, method, args);
         String name = method.getName();
         if (!CACHED_READS.contains(name)) {
-            boolean write = !name.startsWith("select") && !name.startsWith("count") && !HARMLESS_WRITES.contains(name);
+            boolean write = !name.startsWith("select") && !name.startsWith("count");
             try {
                 return invoke(target, method, args);
             } finally {
-                if (write) clearAll(name); // 쓰기가 예외를 던져도(일부만 반영됐을 수 있어) 비운다
+                if (write) invalidate(name); // 쓰기가 예외를 던져도(일부만 반영됐을 수 있어) 비운다
             }
         }
         if ("selectNotice".equals(name)) return noticeCached(target, method, args);
-        Map<String, Object> scope = SCOPE.get();
-        if (scope == null) return invoke(target, method, args);
+        Map<String, Entry> scope = SCOPE.get();
+        Set<String> tables = READ_TABLES.get(name);
+        if (scope == null || tables == null) return invoke(target, method, args);
         String key = name + Arrays.deepToString(args);
-        Object hit = scope.get(key);
+        Entry hit = scope.get(key);
         int[] st = STAT.get();
         if (hit != null) {
             if (st != null) st[0]++;
-            return hit == NULL ? null : copy(hit);
+            return hit.value == NULL ? null : copy(hit.value);
         }
-        armClearOnTxEnd();
+        armClearOnRollback();
         Object r = invoke(target, method, args);
-        scope.put(key, r == null ? NULL : copy(r));
+        scope.put(key, new Entry(r == null ? NULL : copy(r), tables));
         if (st != null) st[1]++;
         return r;
     }
 
-    /** 트랜잭션 안에서 읽은 값은 아직 커밋 전 상태일 수 있다(롤백되면 사라질 값). 그래서 트랜잭션이 끝나는 순간(커밋/롤백 모두) 캐시를 비운다. */
-    private static void armClearOnTxEnd() {
+    /** 트랜잭션 안에서 읽은 값은 아직 커밋 전 상태일 수 있다. 커밋되면 그대로 맞지만 롤백되면 사라질 값이므로, 롤백 때만 캐시를 비운다. */
+    private static void armClearOnRollback() {
         if (!TransactionSynchronizationManager.isSynchronizationActive() || TX_ARMED.get() != null) return;
         TX_ARMED.set(Boolean.TRUE);
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
             @Override
             public void afterCompletion(int status) {
                 TX_ARMED.remove();
-                Map<String, Object> scope = SCOPE.get();
-                if (scope != null) scope.clear();
+                if (status != STATUS_COMMITTED) {
+                    Map<String, Entry> scope = SCOPE.get();
+                    if (scope != null) scope.clear();
+                }
             }
         });
     }
@@ -139,10 +204,25 @@ public final class S5RequestCache {
         return r;
     }
 
-    private static void clearAll(String writer) {
-        Map<String, Object> scope = SCOPE.get();
-        if (scope != null) scope.clear();
+    /** 쓰기 메서드가 불렸을 때: 그 쓰기가 건드리는 테이블을 읽은 캐시 항목만 지운다. 쓰는 테이블을 모르면 전체를 지운다. */
+    private static void invalidate(String writer) {
         if ("updateNotice".equals(writer)) noticeValue = null;
+        Map<String, Entry> scope = SCOPE.get();
+        if (scope == null || scope.isEmpty()) return;
+        Set<String> written = WRITE_TABLES.get(writer);
+        if (written == null) {
+            scope.clear();
+            return;
+        }
+        for (Iterator<Map.Entry<String, Entry>> it = scope.entrySet().iterator(); it.hasNext();) {
+            Set<String> read = it.next().getValue().tables;
+            for (String w : written) {
+                if (read.contains(w)) {
+                    it.remove();
+                    break;
+                }
+            }
+        }
     }
 
     private static Object invoke(Object target, Method method, Object[] args) throws Throwable {
@@ -169,6 +249,11 @@ public final class S5RequestCache {
     /** 테스트/진단용: 현재 스레드의 요청 캐시가 열려 있는지. */
     public static boolean active() {
         return SCOPE.get() != null;
+    }
+
+    /** 테스트/진단용: 매퍼에서 뽑은 대응표 요약. */
+    public static String describe(String id) {
+        return id + " reads=" + READ_TABLES.get(id) + " writes=" + WRITE_TABLES.get(id);
     }
 
     static List<String> cachedReadNames() {

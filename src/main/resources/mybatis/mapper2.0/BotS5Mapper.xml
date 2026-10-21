@@ -953,6 +953,26 @@
         UPDATE TBOT_S5_DICE_STATS SET ROLL_COUNT = ROLL_COUNT + 1 WHERE FACE_VALUE = #{face}
     </update>
 
+    <!-- [2026-10-21 성능] 통계 카운터를 메모리에 모았다가 한꺼번에 반영하는 용도(flushStatBuffers), 위 +1 쿼리들의 +N 버전. -->
+    <update id="bumpDiceFaceStatBy">
+        UPDATE TBOT_S5_DICE_STATS SET ROLL_COUNT = ROLL_COUNT + #{n} WHERE FACE_VALUE = #{face}
+    </update>
+
+    <update id="bumpActivityStatBy">
+        UPDATE TBOT_S5_USER_PROGRESS
+        SET ${countColumn} = NVL(${countColumn}, 0) + #{n},
+            ${usedFlagColumn} = 'Y'
+        WHERE USER_NAME = #{userName}
+    </update>
+
+    <update id="bumpActivityHourlyBy">
+        MERGE INTO TBOT_S5_ACTIVITY_HOURLY T
+        USING (SELECT TRUNC(SYSDATE, 'HH24') AS BD, '${statType}' AS ST, '${channel}' AS CH FROM DUAL) S
+        ON (T.BUCKET_DATE = S.BD AND T.STAT_TYPE = S.ST AND T.CHANNEL = S.CH)
+        WHEN MATCHED THEN UPDATE SET CNT = CNT + #{n}
+        WHEN NOT MATCHED THEN INSERT (BUCKET_DATE, STAT_TYPE, CHANNEL, CNT) VALUES (S.BD, S.ST, S.CH, #{n})
+    </update>
+
     <select id="selectDiceFaceStats" resultType="hashmap">
         SELECT FACE_VALUE, ROLL_COUNT FROM TBOT_S5_DICE_STATS ORDER BY FACE_VALUE
     </select>

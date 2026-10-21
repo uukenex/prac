@@ -5005,3 +5005,11 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 저장 방식: `TBOT_S5_USER_COMPANION.IMAGE_OVERRIDE`(VARCHAR2(500), NULL 허용, `S5_COMPANION_IMAGE_OVERRIDE.sql`, 라이브 적용 완료). 값이 있으면 등급 규칙(★7 = 직업별 고정 초상화, 성장형 = 공용 고정 초상화, 그 외 IMAGE_URL)보다 우선하고, 없으면 예전과 동일. `selectUserCompanions`/`selectCompanionImageUrl`이 `NVL(IMAGE_OVERRIDE, 등급 규칙)`으로 계산하므로 아바타 프록시/전투화면/성장형 화면이 자동으로 따라온다. 그래서 ★7/성장형도 "고정 초상화" 대신 개별 이미지로 바뀐다.
 - 서버: `swapCompanionImage(userName, companionId, targetId)`(웹 액션 `COMPANION_IMAGE_SWAP`, param1/param2 = 동료 ID). 두 동료가 모두 내 소유여야 하고(UPDATE도 USER_NAME 조건), 한쪽이 이미지가 없으면(이미지갱신 전) 거부, 같은 이미지면 안내만.
 - 성장형 고정 이미지가 `classpath:` 경로라 일반 동료가 그 이미지를 받으면 브라우저가 직접 못 읽으므로, 동료 상세 모달도 `classpath:`는 아바타 프록시로 받게 함.
+
+### 2026-10-21 DB 사용 최소화 2차 -- 요청 캐시 정책 개선 + 통계 쓰기 모으기
+- **원인(라이브 로그로 확인)**: 일반 계정이 2초마다 주사위를 굴리는데, 한 요청 안에서 `selectUserProgress`(컬럼 100개)와 `selectAutoHuntLog` 등이 반복 실행됨. 요청 캐시가 거의 못 막고 있었다. 이유 두 가지: (1) 서비스 메서드마다 `@Transactional`인데 트랜잭션이 끝날 때마다 캐시 전체를 비우는 안전장치를 넣었더니 컨트롤러가 서비스를 여러 번 부르는 상태 조회에서 계속 비워짐, (2) 쓰기가 하나라도 있으면 전체를 비우는 정책이라 전투 턴에서도 장비 조회가 7번.
+- **캐시 정책 변경(`S5RequestCache`)**: (1) 트랜잭션 **롤백일 때만** 비움(커밋은 읽은 값이 그대로 맞음). (2) 무효화를 **테이블 단위**로: `BotS5Mapper.xml`을 읽어 읽기 쿼리의 테이블/쓰기 쿼리의 대상 테이블을 자동으로 뽑고, 쓰기는 그 테이블을 읽은 캐시 항목만 지운다. 대상 테이블을 못 뽑는 쓰기(현재 `compactOldMarketPrice`, `insertUserTileMasterBatch`)는 전체 무효화, 읽기 쿼리의 테이블을 못 뽑으면 그 쿼리는 캐시하지 않음. 고정 예외 목록(HARMLESS_WRITES)은 없앴다. 캐시 대상에 `selectAutoHuntLog`, `selectUserFloorBestRange`, `selectUserSpecialVisit`, `selectGachaList`, `selectAchievementList` 추가.
+- **주의(정적 초기화 순서)**: `parseMapper()`를 부르는 `static {}` 블록은 Pattern 상수들 선언보다 아래에 있어야 한다(위에 두면 Pattern이 null이라 조용히 실패하고 전체 무효화로 폴백).
+- **통계 쓰기 모으기**: 주사위 눈 분포(`bumpDiceFaceStat`), 유저 활동 카운터(`bumpActivityStat`), 시간대별 활동(`bumpActivityHourly`)은 통계 화면에서만 읽는 값인데 굴림/액션마다 쓰기(공용 행 UPDATE/MERGE + 커밋)가 일어나 공용 행 잠금 경합과 교착 가능성이 있었다. 메모리(ConcurrentHashMap)에 모았다가 `flushStatBuffers()`(@Scheduled 30초, 인터페이스에도 선언, @PreDestroy로 종료 시 마지막 반영)가 `...By(n)` 쿼리로 한 번에 반영한다. 통계 화면이 최대 30초 늦게 반영되고, 서버가 갑자기 죽으면 최대 30초치가 사라질 수 있다.
+- **효과(라이브 DB에 붙인 로컬 하네스로 측정, 한 요청의 실제 DB 문장 수)**: 전투 턴 27~33 -> 17(장비 조회 7 -> 3), `tower-status` 15 -> 8, 상점 조회 12 -> 7. 통계 쓰기 제거로 굴림당 쓰기 약 3~4(트랜잭션 안) + 2(트랜잭션 밖, 커밋 2회)가 더 줄어든다(위 수치에는 컨트롤러가 부르는 bumpActivityStat이 빠져 있다).
+- 남은 쓰기: 굴림당 `updateUserProgress` 3~6회(같은 행을 여러 번 갱신) -- 서비스 로직을 합쳐야 해서 이번엔 손대지 않음.
