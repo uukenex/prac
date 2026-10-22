@@ -7782,6 +7782,34 @@ public class BotS5ServiceImpl implements BotS5Service {
         return r == Math.rint(r) ? String.valueOf((long) r) : String.valueOf(r);
     }
 
+    // [2026-10-22] "설정에서 8개 탭 순서를 바꾸거나 가리기, 유저별로" 요청 -- 하단 메뉴 배치(TBOT_S5_USER_PROGRESS.DOCK_LAYOUT).
+    // 순서대로 쉼표로 잇고 숨긴 탭은 앞에 '!'(예: board,party,!msg,...). 탑(board)과 설정(settings)은 숨길 수 없다(되돌릴 길/게임 진행이 막히지 않게).
+    // 모르는 키/중복은 버리고, 빠진 키는 뒤에 붙인다(나중에 탭이 늘어나도 기존 저장값이 깨지지 않게). 기본 배치와 같으면 NULL로 저장.
+    private static final List<String> DOCK_KEYS = java.util.Arrays.asList("board", "party", "shop", "inven", "ach", "codex", "msg", "settings");
+
+    @Override
+    @Transactional
+    public String setDockLayout(String userName, String raw) {
+        getOrInitProgress(userName);
+        List<String> out = new ArrayList<>();
+        Set<String> seen = new java.util.HashSet<>();
+        for (String t : (raw == null ? "" : raw).split(",")) {
+            t = t.trim();
+            boolean hidden = t.startsWith("!");
+            String k = hidden ? t.substring(1) : t;
+            if (!DOCK_KEYS.contains(k) || !seen.add(k)) continue;
+            if ("board".equals(k) || "settings".equals(k)) hidden = false;
+            out.add((hidden ? "!" : "") + k);
+        }
+        for (String k : DOCK_KEYS) if (seen.add(k)) out.add(k);
+        String v = String.join(",", out);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("dockLayout", v.equals(String.join(",", DOCK_KEYS)) ? "" : v); // 빈 문자열 = Oracle NULL = 기본 배치
+        dao.updateUserProgress(up);
+        return "하단 메뉴 설정을 저장했습니다.";
+    }
+
     /** [2026-10-22] 인벤토리 화면용 장비 옵션 문구(부위/등급 기준 능력치 보너스). */
     @Override
     public String equipOptionText(String part, int grade) {

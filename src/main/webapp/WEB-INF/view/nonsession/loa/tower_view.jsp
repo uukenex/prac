@@ -294,6 +294,20 @@
     .set-btns{ display:flex; gap:6px; }
     .set-btn{ border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:8px 16px; font-size:13px; font-weight:800; color:var(--ink-soft); cursor:pointer; }
     .set-btn.active{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    /* [2026-10-22] 설정 -- 하단 메뉴 순서/숨기기(유저별 저장) */
+    .set-block{ padding:10px 0; border-top:1px dashed var(--line); }
+    .set-block-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+    .set-hint{ font-size:11px; color:var(--ink-soft); margin:-4px 0 8px; }
+    .dock-edit-row{ display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:6px 8px; margin-bottom:6px; }
+    .dock-edit-row.hidden-tab .de-icn, .dock-edit-row.hidden-tab .de-name{ opacity:.4; text-decoration:line-through; }
+    .dock-edit-row .de-no{ width:18px; font-size:11px; font-weight:800; color:var(--ink-soft); text-align:center; }
+    .dock-edit-row .de-icn{ font-size:18px; }
+    .dock-edit-row .de-name{ flex:1; font-size:13px; font-weight:800; }
+    .dock-edit-row button{ border:1.5px solid var(--line); background:#fff; border-radius:8px; font-size:12px; font-weight:800; color:var(--ink-soft); padding:5px 8px; cursor:pointer; min-width:34px; }
+    .dock-edit-row button:disabled{ opacity:.35; cursor:default; }
+    .dock-edit-row button.de-toggle{ min-width:58px; }
+    .dock-edit-row button.de-toggle.off{ background:var(--parchment-deep); }
+    .dock-save-state{ font-size:11px; color:var(--ink-soft); }
     .isw-now{ display:flex; align-items:center; gap:12px; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px 10px; margin-bottom:10px; font-size:12px; line-height:1.5; }
     .isw-now .avatar{ width:56px; height:56px; flex:none; border-radius:10px; object-fit:cover; object-position:50% 15%; background:#EFE7D2; border:2px solid var(--line); }
     .isw-now .avatar-emoji{ display:flex; align-items:center; justify-content:center; font-size:26px; }
@@ -1220,6 +1234,15 @@
         <div class="set-label">업데이트 공지</div>
         <button type="button" class="set-btn" onclick="TW.reopenNotice()">📢 다시 보기</button>
       </div>
+      <!-- [2026-10-22] 하단 메뉴 순서/숨기기 -- 유저별로 서버(DOCK_LAYOUT)에 저장. 탑/설정은 숨길 수 없다. -->
+      <div class="set-block">
+        <div class="set-block-head">
+          <div class="set-label">하단 메뉴 순서 · 숨기기</div>
+          <button type="button" class="set-btn" onclick="TW.resetDockLayout()">기본값으로</button>
+        </div>
+        <div class="set-hint">▲▼로 순서를 바꾸고, 안 쓰는 메뉴는 숨길 수 있어요. 바로 적용·저장됩니다. (탑·설정은 숨길 수 없어요) <span class="dock-save-state" id="dockSaveState"></span></div>
+        <div id="dockEditList"></div>
+      </div>
     </div>
   </div>
 
@@ -1838,6 +1861,101 @@ var TW = (function () {
     document.getElementById('boardRollBtn').disabled = state.inVillage || !onBoardTab;
   }
 
+  // ---- [2026-10-22] 하단 메뉴 순서/숨기기(유저별, 서버 DOCK_LAYOUT) -- 규칙은 서버 setDockLayout과 같다 ----
+  var DOCK_DEFAULT = ['board', 'party', 'shop', 'inven', 'ach', 'codex', 'msg', 'settings'];
+  var DOCK_LOCKED = { board: true, settings: true };
+  var dockLayout = { order: DOCK_DEFAULT.slice(), hidden: {} };
+  var lastDockStr = '';
+  var dockSaveTimer = null;
+  function parseDockLayout(str) {
+    var order = [], hidden = {};
+    String(str || '').split(',').forEach(function (t) {
+      t = t.trim();
+      var h = t.charAt(0) === '!';
+      var k = h ? t.slice(1) : t;
+      if (DOCK_DEFAULT.indexOf(k) === -1 || order.indexOf(k) !== -1) return;
+      order.push(k);
+      if (h && !DOCK_LOCKED[k]) hidden[k] = true;
+    });
+    DOCK_DEFAULT.forEach(function (k) { if (order.indexOf(k) === -1) order.push(k); });
+    return { order: order, hidden: hidden };
+  }
+  function dockLayoutString(l) {
+    var v = l.order.map(function (k) { return (l.hidden[k] ? '!' : '') + k; }).join(',');
+    return v === DOCK_DEFAULT.join(',') ? '' : v;
+  }
+  function applyDockLayout(str) {
+    lastDockStr = str || '';
+    dockLayout = parseDockLayout(str);
+    var inner = document.querySelector('.dock-inner');
+    if (!inner) return;
+    dockLayout.order.forEach(function (k) {
+      var b = inner.querySelector('.dbtn[data-tab="' + k + '"]');
+      if (!b) return;
+      inner.appendChild(b); // 순서대로 다시 붙이면 그 순서가 된다
+      b.style.display = dockLayout.hidden[k] ? 'none' : '';
+    });
+    if (document.getElementById('panel-settings').classList.contains('active')) renderDockEdit();
+  }
+  function renderDockEdit() {
+    var box = document.getElementById('dockEditList');
+    if (!box) return;
+    box.innerHTML = '';
+    var inner = document.querySelector('.dock-inner');
+    dockLayout.order.forEach(function (k, i) {
+      var b = inner && inner.querySelector('.dbtn[data-tab="' + k + '"]');
+      var icn = b ? (b.querySelector('.d-icn') || {}).textContent : '';
+      var name = b ? b.textContent.replace(icn, '').trim() : k;
+      var hidden = !!dockLayout.hidden[k];
+      var row = document.createElement('div');
+      row.className = 'dock-edit-row' + (hidden ? ' hidden-tab' : '');
+      row.innerHTML = '<span class="de-no">' + (i + 1) + '</span><span class="de-icn">' + icn + '</span><span class="de-name">' + name + '</span>';
+      var up = document.createElement('button'); up.type = 'button'; up.textContent = '▲'; up.disabled = i === 0;
+      up.onclick = function () { moveDockTab(i, -1); };
+      var down = document.createElement('button'); down.type = 'button'; down.textContent = '▼'; down.disabled = i === dockLayout.order.length - 1;
+      down.onclick = function () { moveDockTab(i, 1); };
+      var tg = document.createElement('button'); tg.type = 'button';
+      tg.className = 'de-toggle' + (hidden ? ' off' : '');
+      tg.textContent = DOCK_LOCKED[k] ? '고정' : (hidden ? '보이기' : '숨기기');
+      tg.disabled = !!DOCK_LOCKED[k];
+      tg.onclick = function () { toggleDockTab(k); };
+      row.appendChild(up); row.appendChild(down); row.appendChild(tg);
+      box.appendChild(row);
+    });
+  }
+  function moveDockTab(i, d) {
+    var j = i + d;
+    if (j < 0 || j >= dockLayout.order.length) return;
+    var o = dockLayout.order;
+    var t = o[i]; o[i] = o[j]; o[j] = t;
+    commitDockLayout();
+  }
+  function toggleDockTab(k) {
+    if (DOCK_LOCKED[k]) return;
+    if (dockLayout.hidden[k]) delete dockLayout.hidden[k]; else dockLayout.hidden[k] = true;
+    commitDockLayout();
+  }
+  function resetDockLayout() {
+    dockLayout = { order: DOCK_DEFAULT.slice(), hidden: {} };
+    commitDockLayout();
+  }
+  // 화면은 바로 바꾸고, 서버 저장은 연속 클릭을 모아 0.6초 뒤 한 번만.
+  function commitDockLayout() {
+    var str = dockLayoutString(dockLayout);
+    applyDockLayout(str);
+    var st = document.getElementById('dockSaveState');
+    if (st) st.textContent = '저장 중...';
+    clearTimeout(dockSaveTimer);
+    dockSaveTimer = setTimeout(function () {
+      var u = userName();
+      if (!u) { if (st) st.textContent = '(유저명이 있어야 저장돼요)'; return; }
+      fetch(base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=SET_DOCK_LAYOUT&param1=' + encodeURIComponent(str) + '&param2=')
+        .then(function (r) { return r.json(); })
+        .then(function () { if (st) st.textContent = '✓ 저장됨'; if (state.progress) state.progress.DOCK_LAYOUT = str; })
+        .catch(function () { if (st) st.textContent = '저장 실패 -- 다시 시도해주세요'; });
+    }, 600);
+  }
+
   function switchTab(name) {
     document.querySelectorAll('.dbtn[data-tab]').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === name); });
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + name); });
@@ -1845,6 +1963,7 @@ var TW = (function () {
     if (name === 'ach') loadAchievements();
     if (name === 'party' || name === 'inven') loadPartyAndEquip();
     if (name === 'inven' && invTab === 'etc') renderInvEtc();
+    if (name === 'settings') renderDockEdit();
     if (name === 'msg') loadMessages();
     if (name === 'codex') loadCodex();
     updateDiceButtonState();
@@ -1884,6 +2003,7 @@ var TW = (function () {
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
         state.progress = p; // [2026-09-18] 전설의조각 보유량 등, 다른 렌더 함수(renderEquipList)에서도 참조
+        if ((p.DOCK_LAYOUT || '') !== lastDockStr) applyDockLayout(p.DOCK_LAYOUT || ''); // [2026-10-22] 유저별 하단 메뉴 배치(바뀐 때만)
         var legendFragmentEl = document.getElementById('legendFragmentVal');
         if (legendFragmentEl) legendFragmentEl.textContent = p.LEGEND_FRAGMENT || 0;
 
@@ -4872,7 +4992,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,

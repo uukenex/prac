@@ -37,8 +37,8 @@
                     SELECT *가 아니라서, 새로 추가한 컬럼은 여기 안 넣으면 저장은 되는데 다음 조회부터
                     항상 null로 돌아옴). V1/V2 전환이 "저장은 되는데 화면은 계속 V2"로 보이던 원인. -->
                BATTLE_SCREEN_VERSION,
-               <!-- [2026-10-22] 전투 영향 패치 확인 버전(주사위 전 확인 게이트) -->
-               PATCH_ACK_VERSION
+               <!-- [2026-10-22] 전투 영향 패치 확인 버전(주사위 전 확인 게이트), 하단 메뉴 순서/숨기기(유저별) -->
+               PATCH_ACK_VERSION, DOCK_LAYOUT
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -234,6 +234,7 @@
             <if test="touchBossKillDate != null">BOSS_KILL_DATE = SYSDATE,</if>
             <if test="battleScreenVersion != null">BATTLE_SCREEN_VERSION = #{battleScreenVersion},</if>
             <if test="patchAckVersion != null">PATCH_ACK_VERSION = #{patchAckVersion},</if>
+            <if test="dockLayout != null">DOCK_LAYOUT = #{dockLayout, jdbcType=VARCHAR},</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}

@@ -647,6 +647,9 @@ public class Season5ViewController {
                     }
                     break;
                 }
+                case "SET_DOCK_LAYOUT":
+                    message = s5Service.setDockLayout(userName, param1);
+                    break;
                 case "PATCH_ACK":
                     message = s5Service.ackPatch(userName);
                     break;

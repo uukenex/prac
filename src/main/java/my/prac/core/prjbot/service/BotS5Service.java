@@ -395,6 +395,9 @@ public interface BotS5Service {
     String growthInfoText(String userName);
     String growthRename(String userName, String name);
 
+    /** [2026-10-22] 하단 메뉴 순서/숨기기(유저별 저장). */
+    String setDockLayout(String userName, String layout);
+
     /** [2026-10-22] 인벤토리 화면용 장비 옵션 문구(실제 능력치 계산과 같은 V2 표 기준). */
     String equipOptionText(String part, int grade);
 
