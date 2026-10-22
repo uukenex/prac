@@ -117,6 +117,16 @@ public interface BotS5DAO {
     int countUserEquip(@Param("userName") String userName);
     int insertEquip(HashMap<String, Object> map);
     int deleteEquip(@Param("equipId") int equipId);
+    /** [2026-10-22] 장비 수량(QTY) -- 같은 종류 미착용 일반 장비 스택에 qty만큼 더한다(excludeId 행 제외). 스택이 없으면 0 반환(호출자가 insertEquip). */
+    int addEquipStack(HashMap<String, Object> map);
+    /** 미착용 행 equipId에서 n개 뺀다(남는 게 있을 때만, 아니면 0). */
+    int decrementEquipQty(@Param("equipId") int equipId, @Param("n") int n);
+    /** 미착용 행 equipId의 수량이 정확히 n이면 행을 지운다. */
+    int deleteEquipIfQty(@Param("equipId") int equipId, @Param("n") int n);
+    /** [2026-10-22] 강화권 */
+    int insertEnhanceTicket(@Param("userName") String userName, @Param("level") int level, @Param("legendaryId") Integer legendaryId);
+    List<HashMap<String, Object>> selectEnhanceTickets(@Param("userName") String userName);
+    int deleteEnhanceTicket(@Param("ticketId") int ticketId, @Param("userName") String userName);
     /** [2026-10-08] 전설장비 강화 수치/연속 실패 횟수 저장. */
     int updateEquipEnhance(@Param("equipId") int equipId, @Param("level") int level, @Param("pity") int pity);
     int updateEquipEquippedCompanion(HashMap<String, Object> map);

@@ -5016,3 +5016,12 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 
 ### 2026-10-22 공지 확인 폴링 제거
 - 웹 화면이 탭마다 3분마다 `/api/tower-notice`를 불러 공지 행 + 유저별 `NOTICE_SEEN_VERSION`을 DB에서 읽던 것을 정리. 화면: 3분 타이머(setInterval) 삭제, 다른 앱/탭에서 돌아올 때(visibilitychange)만 마지막 확인 10분 뒤 한 번 확인. 서버(`getNotice`): 공지 행은 10분 메모리 캐시(`/공지등록` 시 즉시 비움), 유저별 다시 보지 않기 값은 처음 한 번만 읽고 메모리에 기억(`dismissNotice`가 같이 갱신). 이미 열린 옛 탭은 새로고침 전까지 계속 부르지만 DB는 안 탄다. DB를 직접 고친 공지는 최대 10분 늦게 반영.
+
+### 2026-10-22 전투 밸런스 패치 (성장형 하향, 장비 50%, 전설 규칙, 주사위 전 확인, 강화권, 장비 QTY)
+- **성장형(☆1)**: 풀 성장 = ★6 한계돌파 최대(x2.8)의 2배 = x5.6(예전 ★7의 2배 x6.72). 장비 효과는 `GROWTH_EQUIP_EFFECT`(50%)만: 능력치 보너스(STAT_MULT/강화 포함)는 computeEffectiveStat/contribMultipliers에서 절반, 전설 특수효과는 확률(DOUBLE_SHOT, CHATTER, EVADE, START_BARRIER, LAST_STAND)은 `legendRoll(pct, half)`로 절반, 수치(DAMAGE_REDUCTION, KILL_PP_BONUS, CRIT_DAMAGE 증가분, SKILL_RATE_MULT 증가분)는 절반, DICE_MIN_PLUS(+1)는 `halfInt`(평균 +0.5), DEF_STEAL은 효과 없음과 온전한 효과의 중간. 화면/채팅에는 "장비 효과 50%" 한 줄 안내만.
+- **전설장비 착용 규칙**: 동료당 전설 1개, 같은 전설(LEGENDARY_ID)은 한 동료만. `legendWearBlock`이 장착(equipWear)에서 막고, 일괄장착(equipBestAll)은 걸리는 후보를 건너뛴다. 같은 부위의 기존 전설을 빼고 끼우는 교체는 허용.
+- **주사위 전 확인 게이트**: `diceGate` -- 패치 확인(PATCH_ACK_VERSION != PATCH_VERSION) 전이면 PATCH(패치 내용), 확인 후에도 전설 규칙 위반이 남아 있으면 LEGEND(무엇을 해제할지). rollDice가 굴리기 전에 텍스트로 돌려주고(채팅), 웹은 DICE 응답의 `gate`로 확인 팝업(#gateOverlay)을 띄운다. 확인 = 웹 PATCH_ACK / 채팅 `/패치확인`. 기존 위반(배포 시점 유저 4명)은 자동 해제하지 않고 유저가 직접 해제(사용자 결정). 다음 전투 영향 패치 때는 PATCH_VERSION/PATCH_NOTES만 바꾸면 된다.
+- **분해 -> 강화권**: 강화된 ★7 전설 해체 시 조각은 기본 15개만 주고(예전 "강화비 절반 환급" 폐지), 그 강화 수치의 강화권(`TBOT_S5_ENHANCE_TICKET`)을 준다. 강화권은 강화 수치가 더 낮은 내 전설장비에 쓰면 그 수치로 덮어쓴다(더하기 아님, 연속 실패 보정 0). 웹 전설강화 창의 "🎫 +N 적용", 채팅 `/강화권 [권번호 장비번호]`.
+- **장비 수량(QTY)**: 미착용 일반 장비는 같은 종류(USER/CLASS/PART/GRADE)끼리 한 행에 QTY로 쌓는다. 착용 행과 전설 행은 항상 1. 헬퍼 addEquipItems(뽑기/선택권/합성 결과), takeEquipUnits(합성 재료), wearEquipOne(스택에서 1개 떼어 장착 -- 반드시 장착 먼저, 같은 부위 기존 장비 해제는 뒤에: 반대로 하면 해제한 장비가 1개짜리 스택에 합쳐져 그 행 전체가 끼워진다), unwearEquipOne(해제 후 같은 종류 스택에 합침). 집계(countUserEquip/랭킹/탑현황)는 SUM(QTY). 같은 종류가 여러 행이어도(합치기 전) 모든 경로가 맞게 동작한다.
+- **배포 순서**: (1) `S5_PATCH_20261022_PRE.sql`(추가 전용, 2026-10-22 라이브 적용 완료) (2) 새 코드 배포 (3) 배포 확인 후 `S5_EQUIP_QTY_MERGE_POST.sql`(그룹별 잠금+재계산+커밋). 3번을 옛 코드가 도는 중에 돌리면 합쳐진 행을 1개로 읽어 아이템이 사라지니 반드시 배포 뒤에. 복사본 테이블 사전 실행: 6669행 -> 1122행(522묶음), 유저별 개수 변화 0.
+- 검증: 실제 서비스+매퍼를 라이브 DB에 붙여 관리자 계정으로 하나의 트랜잭션에서 실행 후 롤백(성장 배율/장비 50%, 쌓기/장착/같은 종류 재장착/해제 합치기/합성/일괄합성 개수 보존, 전설 차단 2종, 게이트 PATCH->LEGEND, 해체 +15+강화권, 강화권 적용/재사용 불가) 전부 통과.

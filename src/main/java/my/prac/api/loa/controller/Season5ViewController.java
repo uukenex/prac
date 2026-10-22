@@ -221,6 +221,7 @@ public class Season5ViewController {
                 ? new ArrayList<>() : s5Dao.selectUserEquip(userName);
         HashMap<String, Object> result = new HashMap<>();
         result.put("equips", equips);
+        if (!userName.trim().isEmpty()) result.put("tickets", s5Service.enhanceTickets(userName)); // [2026-10-22] 강화권(전설강화 창)
         return ResponseEntity.ok(result);
     }
 
@@ -631,8 +632,22 @@ public class Season5ViewController {
         String message;
         try {
             switch (type) {
-                case "DICE":
-                    message = s5Service.rollDice(userName, "WEB");
+                case "DICE": {
+                    // [2026-10-22] 전투 영향 패치 확인 전/전설 규칙 위반이면 굴리지 않고 화면이 확인 팝업을 띄우도록 gate를 같이 내려준다.
+                    HashMap<String, Object> gate = s5Service.diceGate(userName);
+                    if (gate != null) {
+                        message = String.valueOf(gate.get("text"));
+                        result.put("gate", gate.get("type"));
+                    } else {
+                        message = s5Service.rollDice(userName, "WEB");
+                    }
+                    break;
+                }
+                case "PATCH_ACK":
+                    message = s5Service.ackPatch(userName);
+                    break;
+                case "USE_ENHANCE_TICKET":
+                    message = s5Service.useEnhanceTicket(userName, Integer.parseInt(param1), Integer.parseInt(param2));
                     break;
                 case "CHANGE_FLOOR":
                     message = s5Service.changeFloor(userName, Integer.parseInt(param1));

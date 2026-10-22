@@ -36,7 +36,9 @@
                <!-- [버그 수정, 2026-09-21] 바로 위 09-18 주석과 똑같은 함정을 또 밟음(이 SELECT가
                     SELECT *가 아니라서, 새로 추가한 컬럼은 여기 안 넣으면 저장은 되는데 다음 조회부터
                     항상 null로 돌아옴). V1/V2 전환이 "저장은 되는데 화면은 계속 V2"로 보이던 원인. -->
-               BATTLE_SCREEN_VERSION
+               BATTLE_SCREEN_VERSION,
+               <!-- [2026-10-22] 전투 영향 패치 확인 버전(주사위 전 확인 게이트) -->
+               PATCH_ACK_VERSION
         FROM TBOT_S5_USER_PROGRESS
         WHERE USER_NAME = #{userName}
     </select>
@@ -231,6 +233,7 @@
             <if test="bossKillCountToday != null">BOSS_KILL_COUNT_TODAY = #{bossKillCountToday},</if>
             <if test="touchBossKillDate != null">BOSS_KILL_DATE = SYSDATE,</if>
             <if test="battleScreenVersion != null">BATTLE_SCREEN_VERSION = #{battleScreenVersion},</if>
+            <if test="patchAckVersion != null">PATCH_ACK_VERSION = #{patchAckVersion},</if>
             LAST_ACTION_DATE = SYSDATE
         </set>
         WHERE USER_NAME = #{userName}
@@ -596,7 +599,7 @@
         SELECT e.EQUIP_ID, e.USER_NAME, e.CLASS, e.PART, e.GRADE, e.EQUIPPED_COMPANION_ID,
                e.LEGENDARY_ID,
                (SELECT lm.ITEM_NAME FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_ITEM_NAME,
-               e.ENHANCE_LEVEL, e.ENHANCE_PITY,
+               e.ENHANCE_LEVEL, e.ENHANCE_PITY, NVL(e.QTY, 1) AS QTY,
                (SELECT lm.EFFECT_TYPE FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_EFFECT_TYPE,
                (SELECT lm.EFFECT_PARAM1 FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_EFFECT_PARAM1
         FROM TBOT_S5_USER_EQUIP e
@@ -609,7 +612,7 @@
          보고 있었음(★7 송곳을 만들어 착용해도 DEF_STEAL 효과가 실전투에서 한 번도 발동하지
          않았을 것. "검으로만 나와" 신고와 별개로 발견). -->
     <select id="selectEquipByCompanion" resultType="hashmap">
-        SELECT e.EQUIP_ID, e.PART, e.GRADE, e.LEGENDARY_ID, e.ENHANCE_LEVEL,
+        SELECT e.EQUIP_ID, e.CLASS, e.PART, e.GRADE, e.LEGENDARY_ID, e.ENHANCE_LEVEL, NVL(e.QTY, 1) AS QTY,
                (SELECT lm.EFFECT_TYPE FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_EFFECT_TYPE,
                (SELECT lm.EFFECT_PARAM1 FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_EFFECT_PARAM1,
                (SELECT lm.ITEM_NAME FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = e.LEGENDARY_ID) AS LEGENDARY_ITEM_NAME
@@ -620,18 +623,55 @@
     <!-- [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비" 개수 통계에서는 그 3종 제외
          (countUserAccessory로 분리). -->
     <select id="countUserEquip" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_EQUIP WHERE USER_NAME = #{userName} AND PART NOT IN ('NECKLACE','RING','BRACELET')
+        SELECT NVL(SUM(NVL(QTY, 1)), 0) FROM TBOT_S5_USER_EQUIP WHERE USER_NAME = #{userName} AND PART NOT IN ('NECKLACE','RING','BRACELET')
     </select>
 
     <insert id="insertEquip" parameterType="hashmap">
-        INSERT INTO TBOT_S5_USER_EQUIP (EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID, LEGENDARY_ID)
-        VALUES (SEQ_S5_EQUIP_ID.NEXTVAL, #{userName}, #{class}, #{part}, #{grade}, #{equippedCompanionId, jdbcType=NUMERIC}, #{legendaryId, jdbcType=NUMERIC})
+        INSERT INTO TBOT_S5_USER_EQUIP (EQUIP_ID, USER_NAME, CLASS, PART, GRADE, EQUIPPED_COMPANION_ID, LEGENDARY_ID, QTY)
+        VALUES (SEQ_S5_EQUIP_ID.NEXTVAL, #{userName}, #{class}, #{part}, #{grade}, #{equippedCompanionId, jdbcType=NUMERIC}, #{legendaryId, jdbcType=NUMERIC}, NVL(#{qty, jdbcType=NUMERIC}, 1))
     </insert>
 
     <!-- [2026-10-08] 전설장비 강화: 강화 수치와 연속 실패 횟수 저장(성공/실패 모두 호출). -->
     <update id="updateEquipEnhance">
         UPDATE TBOT_S5_USER_EQUIP SET ENHANCE_LEVEL = #{level}, ENHANCE_PITY = #{pity} WHERE EQUIP_ID = #{equipId}
     </update>
+
+    <!-- [2026-10-22] 장비 수량(QTY): 미착용 일반 장비(전설 아님)는 같은 종류(유저/CLASS/PART/GRADE)끼리 한 행에 수량으로 쌓는다.
+         착용 중인 행과 전설 행은 항상 수량 1. 같은 종류 스택이 여러 행이어도(합치기 전 옛 데이터) 동작하도록 가장 작은 EQUIP_ID 행에 더한다. -->
+    <update id="addEquipStack" parameterType="hashmap">
+        UPDATE TBOT_S5_USER_EQUIP SET QTY = NVL(QTY, 1) + #{qty}
+         WHERE EQUIP_ID = (SELECT MIN(s.EQUIP_ID) FROM TBOT_S5_USER_EQUIP s
+                            WHERE s.USER_NAME = #{userName} AND s.CLASS = #{class} AND s.PART = #{part} AND s.GRADE = #{grade}
+                              AND s.LEGENDARY_ID IS NULL AND s.EQUIPPED_COMPANION_ID IS NULL
+                              <if test="excludeId != null">AND s.EQUIP_ID &lt;&gt; #{excludeId}</if>)
+    </update>
+
+    <update id="decrementEquipQty">
+        UPDATE TBOT_S5_USER_EQUIP SET QTY = NVL(QTY, 1) - #{n}
+         WHERE EQUIP_ID = #{equipId} AND NVL(QTY, 1) &gt; #{n} AND EQUIPPED_COMPANION_ID IS NULL
+    </update>
+
+    <delete id="deleteEquipIfQty">
+        DELETE FROM TBOT_S5_USER_EQUIP WHERE EQUIP_ID = #{equipId} AND NVL(QTY, 1) = #{n} AND EQUIPPED_COMPANION_ID IS NULL
+    </delete>
+
+    <!-- [2026-10-22] 강화권: 강화된 전설장비를 해체하면 그 강화 수치의 권을 준다. 강화 수치가 더 낮은 다른 전설장비에 쓰면 그 수치로 맞춘다. -->
+    <insert id="insertEnhanceTicket">
+        INSERT INTO TBOT_S5_ENHANCE_TICKET (TICKET_ID, USER_NAME, ENHANCE_LEVEL, SOURCE_LEGENDARY_ID, INSERT_DATE)
+        VALUES (SEQ_S5_ENHANCE_TICKET.NEXTVAL, #{userName}, #{level}, #{legendaryId, jdbcType=NUMERIC}, SYSDATE)
+    </insert>
+
+    <select id="selectEnhanceTickets" resultType="hashmap">
+        SELECT t.TICKET_ID, t.ENHANCE_LEVEL, t.SOURCE_LEGENDARY_ID,
+               (SELECT lm.ITEM_NAME FROM TBOT_S5_LEGENDARY_MASTER lm WHERE lm.LEGENDARY_ID = t.SOURCE_LEGENDARY_ID) AS SOURCE_ITEM_NAME
+          FROM TBOT_S5_ENHANCE_TICKET t
+         WHERE t.USER_NAME = #{userName}
+         ORDER BY t.ENHANCE_LEVEL DESC, t.TICKET_ID
+    </select>
+
+    <delete id="deleteEnhanceTicket">
+        DELETE FROM TBOT_S5_ENHANCE_TICKET WHERE TICKET_ID = #{ticketId} AND USER_NAME = #{userName}
+    </delete>
 
     <delete id="deleteEquip">
         DELETE FROM TBOT_S5_USER_EQUIP WHERE EQUIP_ID = #{equipId}
@@ -676,9 +716,9 @@
     </update>
 
     <select id="selectSameEquipForSynthesis" resultType="hashmap">
-        SELECT EQUIP_ID, CLASS, PART, GRADE FROM TBOT_S5_USER_EQUIP
+        SELECT EQUIP_ID, CLASS, PART, GRADE, NVL(QTY, 1) AS QTY FROM TBOT_S5_USER_EQUIP
         WHERE USER_NAME = #{userName} AND CLASS = #{clazz} AND PART = #{part} AND GRADE = #{grade}
-          AND EQUIPPED_COMPANION_ID IS NULL
+          AND EQUIPPED_COMPANION_ID IS NULL AND LEGENDARY_ID IS NULL
         ORDER BY EQUIP_ID
     </select>
 
@@ -857,7 +897,7 @@
          투구/무기/갑옷만 집계(악세서리는 아래 별도 통계로 분리). -->
     <select id="selectMaxEquipCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
             WHERE PART NOT IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
         )
     </select>
@@ -870,7 +910,7 @@
          후 MAX(한 사람이 최고로 보유한 개수)로 변경. -->
     <select id="selectMaxEquipGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
             WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
               AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET'))
             GROUP BY USER_NAME
@@ -880,7 +920,7 @@
     <!-- [2026-09-15] 악세서리 전용 랭킹 통계(목걸이/반지/팔찌만). -->
     <select id="selectMaxAccessoryCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
             WHERE PART IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
         )
     </select>
@@ -893,7 +933,7 @@
          (질문은 동료/장비만 나왔지만 같은 날 같은 패턴으로 추가된 통계라 함께 정정). -->
     <select id="selectMaxAccessoryGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_EQUIP
+            SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
             WHERE PART IN ('NECKLACE','RING','BRACELET')
               AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET'))
             GROUP BY USER_NAME
@@ -901,7 +941,7 @@
     </select>
 
     <select id="countUserAccessory" resultType="int">
-        SELECT COUNT(*) FROM TBOT_S5_USER_EQUIP WHERE USER_NAME = #{userName} AND PART IN ('NECKLACE','RING','BRACELET')
+        SELECT NVL(SUM(NVL(QTY, 1)), 0) FROM TBOT_S5_USER_EQUIP WHERE USER_NAME = #{userName} AND PART IN ('NECKLACE','RING','BRACELET')
     </select>
 
     <!-- PP는 값+단위(EXT) 쌍이라 단위가 섞여있으면 SQL MAX로 못 비교함(예: 9999 vs 1a는 1a가 더 큼).

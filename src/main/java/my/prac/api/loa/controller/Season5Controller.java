@@ -330,6 +330,23 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-10-22] /패치확인 -- 전투 영향 패치 내용을 확인해야 다시 주사위를 굴릴 수 있다. */
+    public String patchAck(HashMap<String, Object> map) {
+        return s5Service.ackPatch(userNameOf(map));
+    }
+
+    /** [2026-10-22] /강화권 [권번호 장비번호] -- 인자 없으면 목록, 두 번호를 주면 그 전설장비에 강화권 사용. */
+    public String enhanceTicket(HashMap<String, Object> map) {
+        String p1 = param1Of(map);
+        String p2 = String.valueOf(map.get("param2") == null ? "" : map.get("param2")).trim();
+        if (p1.isEmpty() || p2.isEmpty()) return s5Service.enhanceTicketText(userNameOf(map));
+        try {
+            return s5Service.useEnhanceTicketByNo(userNameOf(map), Integer.parseInt(p1), Integer.parseInt(p2));
+        } catch (NumberFormatException e) {
+            return "번호는 숫자로 입력해주세요. (예: /강화권 1 2)";
+        }
+    }
+
     /** [2026-10-20] /성장 -- 성장형 동료 현황. */
     public String growth(HashMap<String, Object> map) {
         return s5Service.growthInfoText(userNameOf(map));

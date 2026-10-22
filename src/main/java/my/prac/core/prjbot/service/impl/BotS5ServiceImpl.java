@@ -611,8 +611,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 for (HashMap<String, Object> c : party) {
                     // 같은 동료가 여러 개를 껴도(쿼리가 GROUP BY 없이 행을 그대로 준다) 가장 큰 배율 하나만 적용한다
                     if (intVal(c.get("COMPANION_ID"), 0) == cid) {
+                        // [2026-10-22] 성장형은 특수효과 50% -- 배율의 증가분만 절반(x1.5 -> x1.25)
+                        double cm = intVal(c.get("GRADE"), 1) == GROWTH_GRADE ? 1 + (mult - 1) * GROWTH_EQUIP_EFFECT : mult;
                         Object prev = c.get("SKILL_MULT");
-                        if (!(prev instanceof Number) || mult > ((Number) prev).doubleValue()) c.put("SKILL_MULT", mult);
+                        if (!(prev instanceof Number) || cm > ((Number) prev).doubleValue()) c.put("SKILL_MULT", cm);
                     }
                 }
             }
@@ -654,7 +656,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String GROWTH_DEFAULT_NAME = "선생님";
     private static final String GROWTH_DEFAULT_JOB = "WARRIOR";
 
-    private double growthFullMult() { return 2.0 * star7StatMult(); }
+    // [2026-10-22] "성장형 스펙을 조금 낮추자 -- ★7 기준이 아니라 ★6의 2배가 최대" 요청: 풀 성장을 ★7의 2배(x6.72)에서
+    // ★6 한계돌파 최대(+6, x2.8)의 2배(x5.6)로 하향. 또 "성장형은 장비의 효과를 50%만 받게(특수효과 포함)" 요청으로
+    // 장비 능력치 보너스(전설 STAT_MULT/강화 포함)와 전설 특수효과(확률/수치)를 GROWTH_EQUIP_EFFECT만큼만 받는다.
+    private static final double GROWTH_EQUIP_EFFECT = 0.5;
+
+    private double growthFullMult() { return 2.0 * (1 + limitBreakPct(LIMIT_BREAK_MAX)); }
+
+    /** 전설 특수효과 확률 굴림 -- 성장형(half)이면 확률을 절반으로. */
+    private static boolean legendRoll(int pct, boolean half) {
+        return pct > 0 && RND.nextInt(half ? 200 : 100) < pct;
+    }
+
+    /** 정수 효과(+N)의 절반 -- 홀수면 남는 0.5는 50% 확률로 1이 된다(평균이 정확히 절반). */
+    private static int halfInt(int n) {
+        return n / 2 + (n % 2 != 0 && RND.nextBoolean() ? Integer.signum(n) : 0);
+    }
 
     /** 101층~maxFloor(최대 1000층) 중 100의 배수(마을)를 뺀 계단층 수. */
     private int growthStairFloors(int maxFloor) {
@@ -914,6 +931,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [2026-10-08] 전설장비 강화 -- 강화 1단계마다 그 장비 한 개가 주는 보너스가 ENHANCE_STAT_PCT_PER_LV% 늘어난다(수치 제한 없음).
                 int enhLv = e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0);
                 if (enhLv > 0) sm *= 1 + enhLv * ENHANCE_STAT_PCT_PER_LV / 100.0;
+                if (grade == GROWTH_GRADE) sm *= GROWTH_EQUIP_EFFECT; // [2026-10-22] 성장형은 장비 효과 50%
                 if ("HELMET".equals(part)) hp += (b[0] + base[0] * b[1]) * sm;
                 else if ("WEAPON".equals(part)) atk += (b[2] + base[1] * b[3]) * sm;
                 else if ("ARMOR".equals(part)) def += (b[4] + base[2] * b[5]) * sm;
@@ -1766,10 +1784,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) {
                     if (eg > mineAccessoryGrade) { mineAccessoryGrade = eg; mineAccessoryGradeCount = 0; }
-                    if (eg == mineAccessoryGrade) mineAccessoryGradeCount++;
+                    if (eg == mineAccessoryGrade) mineAccessoryGradeCount += qtyOf(e);
                 } else {
                     if (eg > mineEquipGrade) { mineEquipGrade = eg; mineEquipGradeCount = 0; }
-                    if (eg == mineEquipGrade) mineEquipGradeCount++;
+                    if (eg == mineEquipGrade) mineEquipGradeCount += qtyOf(e);
                 }
             }
             minePp = PP.of(numVal(mineP.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(mineP.get("TOTAL_PP_EARNED_EXT"), ""));
@@ -2023,8 +2041,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int equipCount = 0, accessoryCount = 0;
         for (HashMap<String, Object> e : dao.selectUserEquip(target)) {
             String part = strVal(e.get("PART"), "");
-            if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) accessoryCount++;
-            else equipCount++;
+            if ("NECKLACE".equals(part) || "RING".equals(part) || "BRACELET".equals(part)) accessoryCount += qtyOf(e);
+            else equipCount += qtyOf(e);
         }
         sb.append("🎽 장비 보유: ").append(equipCount).append("개").append(NL);
         sb.append("💍 악세서리 보유: ").append(accessoryCount).append("개").append(NL);
@@ -2379,6 +2397,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 무관하게 항상 먼저 확인한다(정지된 계정은 쿨타임과 무관하게 계속 차단).
         String macroBanMsg = checkMacroBanState(userName, p);
         if (macroBanMsg != null) return macroBanMsg;
+
+        // [2026-10-22] 전투에 영향이 가는 패치 -- 패치 내용을 확인하기 전, 또는 전설장비 착용 규칙에 어긋난 장비가 남아 있으면 굴리지 않고 돌려보낸다.
+        HashMap<String, Object> gate = diceGate(userName);
+        if (gate != null) return strVal(gate.get("text"), "");
 
         java.util.Date lastAction = (java.util.Date) p.get("LAST_DICE_ACTION_DATE");
         String autoHuntMsg = settleAutoHunt(userName, p);
@@ -3407,6 +3429,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     if ("START_BARRIER".equals(strVal(be.get("LEGENDARY_EFFECT_TYPE"), ""))) { barrierItem = strVal(be.get("LEGENDARY_ITEM_NAME"), "전설 로브"); break; }
                 }
                 if (barrierItem == null) continue;
+                if (intVal(bc.get("GRADE"), 1) == GROWTH_GRADE && !legendRoll(100, true)) continue; // [2026-10-22] 성장형은 특수효과 50%
                 int bcid = intVal(bc.get("COMPANION_ID"), 0);
                 HashMap<String, Object> wardUp = new HashMap<>();
                 wardUp.put("userName", userName);
@@ -3848,10 +3871,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
             int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
             // [2026-10-20] 전설 머리띠 "수선도사의 머리띠"(DICE_MIN_PLUS): 전투 중 이 동료의 공격/보호막 주사위 하한 +N. 전설 깃장식 "주작의 깃장식"(CRIT_DAMAGE): 크리티컬 배율 교체.
+            boolean growthHalf = grade == GROWTH_GRADE; // [2026-10-22] 성장형은 장비 특수효과 50%
             HashMap<String, Object> diceMinEq = legendEquipEffect(equips, "DICE_MIN_PLUS");
-            int myDiceMin = diceMinFor(p) + (diceMinEq == null ? 0 : intVal(diceMinEq.get("LEGENDARY_EFFECT_PARAM1"), 0));
+            int diceMinPlus = diceMinEq == null ? 0 : intVal(diceMinEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
+            if (growthHalf && diceMinPlus != 0) diceMinPlus = halfInt(diceMinPlus);
+            int myDiceMin = diceMinFor(p) + diceMinPlus;
             HashMap<String, Object> critEq = legendEquipEffect(equips, "CRIT_DAMAGE");
             double critMult = critEq == null ? 1.5 : intVal(critEq.get("LEGENDARY_EFFECT_PARAM1"), 150) / 100.0;
+            if (growthHalf && critEq != null) critMult = 1.5 + (critMult - 1.5) * GROWTH_EQUIP_EFFECT;
             if ("ARCHER".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.3); // 시너지: 궁수3인조 공격력+30%
             // 균형3인조(RAINBOW)의 방어 +10%는 이 배열이 아니라 반격 파트에서 대상(tEff[2])에
             // 직접 적용한다(여기 eff[2]는 "내가 공격할 때" 값이라 방어 보너스는 안 쓰임).
@@ -3915,7 +3942,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (legWeapon != null && "DEF_STEAL".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
                 int bonus = (int) Math.round(effMonsterDef * (intVal(legWeapon.get("EFFECT_PARAM1"), 0) / 100.0));
                 dmg = Math.max(1, eff[1] * roll) + bonus;
-                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + bonus;
+                // [2026-10-22] 성장형은 효과 50% -- 효과 없을 때(방어 차감)와 온전한 효과의 정확히 중간
+                if (growthHalf) dmg = (Math.max(1, eff[1] * roll - effMonsterDef) + dmg) / 2;
+                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + bonus + (growthHalf ? "(효과 50%)" : "");
             } else {
                 dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             }
@@ -3926,7 +3955,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 계산해서 원 공격과 동일한 규칙을 따른다(크리 확률도 따로 굴림).
             int extraDmg = 0, extraRaw = 0;
             if (legWeapon != null && "DOUBLE_SHOT".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))
-                    && RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM1"), 0)) {
+                    && legendRoll(intVal(legWeapon.get("EFFECT_PARAM1"), 0), growthHalf)) {
                 extraRaw = eff[1] * roll;
                 extraDmg = Math.max(Math.max(1, extraRaw - effMonsterDef), eff[3]);
                 if ("ARCHER".equals(job) && RND.nextInt(100) < skillRate(c, grade >= 6 ? 50 : (grade >= 5 ? 40 : 30))) {
@@ -3943,8 +3972,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean chatterDouble = false, chatterStun = false;
             int chatterRawBonus = 0;
             if (legWeapon != null && "CHATTER".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
-                if (RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM2"), 0)) { chatterDouble = true; dmg *= 2; chatterRawBonus = rawDmg + extraRaw; }
-                if (RND.nextInt(100) < intVal(legWeapon.get("EFFECT_PARAM1"), 0)) { chatterStun = true; stunned = true; }
+                if (legendRoll(intVal(legWeapon.get("EFFECT_PARAM2"), 0), growthHalf)) { chatterDouble = true; dmg *= 2; chatterRawBonus = rawDmg + extraRaw; }
+                if (legendRoll(intVal(legWeapon.get("EFFECT_PARAM1"), 0), growthHalf)) { chatterStun = true; stunned = true; }
             }
             boolean evadedHit = intVal(c.get("COMPANION_ID"), -1) == monsterEvadeCid;
             if (evadedHit) dmg = 0; // 몬스터가 훔친 회피 -- 이 동료의 공격만 무효(총딜/방어차감 산수에서도 제외)
@@ -4183,8 +4212,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             String killPpItem = null;
             for (HashMap<String, Object> pc : party) {
                 HashMap<String, Object> kEq = legendEquipEffect(dao.selectEquipByCompanion(intVal(pc.get("COMPANION_ID"), 0)), "KILL_PP_BONUS");
-                if (kEq != null && intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0) > killPpPct) {
-                    killPpPct = intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
+                int kPct = kEq == null ? 0 : intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
+                if (intVal(pc.get("GRADE"), 1) == GROWTH_GRADE) kPct = (int) Math.round(kPct * GROWTH_EQUIP_EFFECT); // [2026-10-22] 성장형은 특수효과 50%
+                if (kEq != null && kPct > killPpPct) {
+                    killPpPct = kPct;
                     killPpItem = strVal(kEq.get("LEGENDARY_ITEM_NAME"), "목걸이");
                 }
             }
@@ -4962,7 +4993,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-20] 전설 재킷 "랑그히리스 체이서"(EVADE_CHANCE): 맞을 때 PARAM1% 확률로 피해 무효(특수효과라 스킬 배율과 무관).
         String itemEvadeName = null;
         HashMap<String, Object> evEq = legendEquipEffect(tEquips, "EVADE_CHANCE");
-        if (!rogueEvaded && evEq != null && RND.nextInt(100) < intVal(evEq.get("LEGENDARY_EFFECT_PARAM1"), 0)) {
+        if (!rogueEvaded && evEq != null && legendRoll(intVal(evEq.get("LEGENDARY_EFFECT_PARAM1"), 0), tGrade == GROWTH_GRADE)) {
             rogueEvaded = true;
             itemEvadeName = strVal(evEq.get("LEGENDARY_ITEM_NAME"), "장비");
         }
@@ -5007,7 +5038,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> drEq = legendEquipEffect(tEquips, "DAMAGE_REDUCTION");
             if (drEq != null && dmgToParty > 0) {
                 int before = dmgToParty;
-                dmgToParty = (int) Math.round(dmgToParty * (1 - intVal(drEq.get("LEGENDARY_EFFECT_PARAM1"), 0) / 100.0));
+                double drPct = intVal(drEq.get("LEGENDARY_EFFECT_PARAM1"), 0) * (tGrade == GROWTH_GRADE ? GROWTH_EQUIP_EFFECT : 1.0); // [2026-10-22] 성장형은 특수효과 50%
+                dmgToParty = (int) Math.round(dmgToParty * (1 - drPct / 100.0));
                 sb.append("🛡️ [").append(strVal(drEq.get("LEGENDARY_ITEM_NAME"), "갑주")).append("] 받는 피해 감소 (").append(before).append(" → ").append(dmgToParty).append(")").append(NL);
             }
             // [2026-09-06, 51층+ 전용 럭키] "체력 두배(3턴)" -- 실제 HP를 다시 계산하지 않고
@@ -6003,12 +6035,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 해제 "전" 최대체력을 먼저 구해둔다.
         HashMap<String, Object> userStat = dao.selectUserStat(strVal(companion.get("USER_NAME"), ""));
         int oldMaxHp = effMaxHpOf(companion, userStat);
-        for (HashMap<String, Object> e : equipped) {
-            HashMap<String, Object> unwear = new HashMap<>();
-            unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
-            unwear.put("equippedCompanionId", null);
-            dao.updateEquipEquippedCompanion(unwear);
-        }
+        for (HashMap<String, Object> e : equipped) unwearEquipOne(strVal(companion.get("USER_NAME"), ""), e);
         rescaleHpForEquipChange(companion, userStat, oldMaxHp);
         return equipped.size();
     }
@@ -7114,13 +7141,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 것뿐이라 경제(획득 총량)에 영향 없음.
         String equipClassToStore = equipClassForNewItem(job, part);
 
-        HashMap<String, Object> e = new HashMap<>();
-        e.put("userName", userName);
-        e.put("class", equipClassToStore);
-        e.put("part", part);
-        e.put("grade", grade);
-        e.put("equippedCompanionId", null);
-        dao.insertEquip(e);
+        addEquipItems(userName, equipClassToStore, part, grade, 1); // [2026-10-22] 같은 종류 스택에 수량으로 쌓는다
 
         if (grade == 6) grantAchievement(userName, 22);
 
@@ -7242,13 +7263,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String[] parts = { "NECKLACE", "RING", "BRACELET" };
         String part = parts[RND.nextInt(parts.length)];
 
-        HashMap<String, Object> e = new HashMap<>();
-        e.put("userName", userName);
-        e.put("class", "COMMON");
-        e.put("part", part);
-        e.put("grade", grade);
-        e.put("equippedCompanionId", null);
-        dao.insertEquip(e);
+        addEquipItems(userName, "COMMON", part, grade, 1); // [2026-10-22] 같은 종류 스택에 수량으로 쌓는다
 
         if (grade == 6) grantAchievement(userName, 22); // 기존 ★6 장비 업적(악세서리도 "장비"로 취급)
 
@@ -7836,7 +7851,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
                 sb.append(idx++).append(". ").append(equipFullLabel(strVal(e.get("CLASS"), ""), part))
-                  .append(" ★").append(grade)
+                  .append(" ★").append(grade).append(qtyOf(e) > 1 ? " x" + qtyOf(e) : "")
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
         }
@@ -7880,7 +7895,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 int grade = intVal(e.get("GRADE"), 1);
                 sb.append(idx++).append(". ").append(equipFullLabel(strVal(e.get("CLASS"), ""), part))
-                  .append(" ★").append(grade)
+                  .append(" ★").append(grade).append(qtyOf(e) > 1 ? " x" + qtyOf(e) : "")
                   .append(" (").append(equipBonusText(part, grade)).append(")").append(NL);
             }
         }
@@ -7940,20 +7955,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 장착 "전" 최대체력을 먼저 구해둔다.
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         int oldMaxHp = effMaxHpOf(targetCompanion, userStat);
-        // 같은 부위에 이미 장착된 게 있으면 해제
+        // [2026-10-22] 전설장비는 동료당 1개, 같은 전설은 한 동료만
+        String legendBlock = legendWearBlock(userName, equip, companionId);
+        if (legendBlock != null) return legendBlock;
+        // 같은 부위에 이미 장착된 게 있으면 해제 -- [2026-10-22] 수량(QTY) 때문에 장착을 먼저 하고 기존 장비 해제는 그 뒤에(unwearEquipOne 설명 참고)
+        List<HashMap<String, Object>> oldSamePart = new ArrayList<>();
         for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
-            if (part.equals(strVal(e.get("PART"), ""))) {
-                HashMap<String, Object> unwear = new HashMap<>();
-                unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
-                unwear.put("equippedCompanionId", null);
-                dao.updateEquipEquippedCompanion(unwear);
-            }
+            if (part.equals(strVal(e.get("PART"), ""))) oldSamePart.add(e);
         }
-
-        HashMap<String, Object> wear = new HashMap<>();
-        wear.put("equipId", intVal(equip.get("EQUIP_ID"), 0));
-        wear.put("equippedCompanionId", companionId);
-        dao.updateEquipEquippedCompanion(wear);
+        wearEquipOne(userName, equip, companionId);
+        for (HashMap<String, Object> e : oldSamePart) unwearEquipOne(userName, e);
         rescaleHpForEquipChange(targetCompanion, userStat, oldMaxHp);
 
         int grade = intVal(equip.get("GRADE"), 1);
@@ -7968,6 +7979,83 @@ public class BotS5ServiceImpl implements BotS5Service {
         String itemLabel = grouped ? equipClassLabel(equipClass, part) : partNameOf(part);
         return "🎽 " + targetJob + "(" + targetName + ")에게 " + itemLabel + " ★" + grade
                 + " (" + equipBonusText(part, grade) + ") 장착 완료!";
+    }
+
+    // ---- [2026-10-22] 장비 수량(QTY) ----
+    // 미착용 일반 장비(전설 아님)는 같은 종류(CLASS/PART/GRADE)끼리 한 행에 QTY로 쌓는다(보관함이 행 수천 개로 불어나던 문제).
+    // 착용 중인 행과 전설 행은 항상 1개짜리 행이다. 장착하면 스택에서 1개를 떼어 새 행으로 끼우고, 해제하면 같은 종류 스택에 다시 합친다.
+    // 합성/분해는 스택에서 수량만 뺀다. 같은 종류가 아직 여러 행이어도(배포 직후 합치기 스크립트 전) 모든 경로가 행 단위로 맞게 동작한다.
+    private int qtyOf(HashMap<String, Object> e) { return Math.max(1, intVal(e.get("QTY"), 1)); }
+
+    private boolean stackable(HashMap<String, Object> e) {
+        return e.get("LEGENDARY_ID") == null && intVal(e.get("GRADE"), 1) < 7;
+    }
+
+    /** 미착용 일반 장비 n개를 보관함에 넣는다(같은 종류 스택이 있으면 수량만 늘리고, 없으면 n개짜리 행 하나를 만든다). */
+    private void addEquipItems(String userName, String clazz, String part, int grade, int n) {
+        if (n <= 0) return;
+        HashMap<String, Object> m = new HashMap<>();
+        m.put("userName", userName);
+        m.put("class", clazz);
+        m.put("part", part);
+        m.put("grade", grade);
+        m.put("qty", n);
+        m.put("equippedCompanionId", null);
+        if (grade < 7) {
+            if (dao.addEquipStack(m) > 0) return;
+            dao.insertEquip(m);
+            return;
+        }
+        m.put("qty", 1);
+        for (int i = 0; i < n; i++) dao.insertEquip(m);
+    }
+
+    /** 미착용 행에서 n개를 꺼낸다(남으면 수량만 줄이고, 딱 맞으면 행 삭제). 수량이 모자라면(동시 처리 등) 예외로 트랜잭션 전체를 되돌린다. */
+    private void takeEquipUnits(int equipId, int n) {
+        if (n <= 0) return;
+        if (dao.decrementEquipQty(equipId, n) > 0) return;
+        if (dao.deleteEquipIfQty(equipId, n) > 0) return;
+        throw new IllegalStateException("장비 수량이 바뀌었습니다. 다시 시도해주세요. (" + equipId + ")");
+    }
+
+    /** 미착용 행 equip(스택일 수 있음)에서 1개를 companionId에게 장착한다. */
+    private void wearEquipOne(String userName, HashMap<String, Object> equip, int companionId) {
+        int id = intVal(equip.get("EQUIP_ID"), 0);
+        if (qtyOf(equip) > 1) {
+            takeEquipUnits(id, 1);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("userName", userName);
+            m.put("class", strVal(equip.get("CLASS"), ""));
+            m.put("part", strVal(equip.get("PART"), ""));
+            m.put("grade", intVal(equip.get("GRADE"), 1));
+            m.put("equippedCompanionId", companionId);
+            m.put("qty", 1);
+            dao.insertEquip(m);
+            return;
+        }
+        HashMap<String, Object> wear = new HashMap<>();
+        wear.put("equipId", id);
+        wear.put("equippedCompanionId", companionId);
+        dao.updateEquipEquippedCompanion(wear);
+    }
+
+    /** 착용 해제 -- 일반 장비면 같은 종류 미착용 스택에 합친다(스택이 없으면 이 행이 그대로 새 스택). 장착과 함께 쓸 땐 반드시 장착 "뒤에" 부른다
+     *  (먼저 해제하면 해제한 장비가 장착하려던 1개짜리 스택에 합쳐져 그 행 전체가 끼워질 수 있다). */
+    private void unwearEquipOne(String userName, HashMap<String, Object> equip) {
+        int id = intVal(equip.get("EQUIP_ID"), 0);
+        HashMap<String, Object> unwear = new HashMap<>();
+        unwear.put("equipId", id);
+        unwear.put("equippedCompanionId", null);
+        dao.updateEquipEquippedCompanion(unwear);
+        if (!stackable(equip) || equip.get("CLASS") == null) return;
+        HashMap<String, Object> m = new HashMap<>();
+        m.put("userName", userName);
+        m.put("class", strVal(equip.get("CLASS"), ""));
+        m.put("part", strVal(equip.get("PART"), ""));
+        m.put("grade", intVal(equip.get("GRADE"), 1));
+        m.put("qty", qtyOf(equip));
+        m.put("excludeId", id);
+        if (dao.addEquipStack(m) > 0) dao.deleteEquip(id);
     }
 
     /** /장비해제 M — M번째 파티원(equipWear의 companionIdx와 동일 기준)이 착용 중인 장비 전부 해제 */
@@ -8035,23 +8123,20 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> e : unequipped) {
                 if (!part.equals(strVal(e.get("PART"), ""))) continue;
                 if (intVal(target.get("GRADE"), 1) != GROWTH_GRADE && !weaponAllowedJobs(strVal(e.get("CLASS"), "")).contains(job)) continue; // 성장형은 직업 제한 없음
-                if (best == null || intVal(e.get("GRADE"), 0) > intVal(best.get("GRADE"), 0)) best = e;
+                if (best != null && intVal(e.get("GRADE"), 0) <= intVal(best.get("GRADE"), 0)) continue;
+                if (legendWearBlock(userName, e, companionId) != null) continue; // [2026-10-22] 전설 규칙에 걸리는 후보는 건너뜀
+                best = e;
             }
             if (best == null) continue;
             int bestGrade = intVal(best.get("GRADE"), 0);
             if (bestGrade <= curGradeByPart.getOrDefault(part, 0)) continue; // 이미 같거나 더 좋음
 
+            List<HashMap<String, Object>> oldSamePart = new ArrayList<>();
             for (HashMap<String, Object> e : dao.selectEquipByCompanion(companionId)) {
-                if (!part.equals(strVal(e.get("PART"), ""))) continue;
-                HashMap<String, Object> unwear = new HashMap<>();
-                unwear.put("equipId", intVal(e.get("EQUIP_ID"), 0));
-                unwear.put("equippedCompanionId", null);
-                dao.updateEquipEquippedCompanion(unwear);
+                if (part.equals(strVal(e.get("PART"), ""))) oldSamePart.add(e);
             }
-            HashMap<String, Object> wear = new HashMap<>();
-            wear.put("equipId", intVal(best.get("EQUIP_ID"), 0));
-            wear.put("equippedCompanionId", companionId);
-            dao.updateEquipEquippedCompanion(wear);
+            wearEquipOne(userName, best, companionId); // [2026-10-22] 수량(QTY) -- 장착 먼저, 기존 장비 해제는 뒤에
+            for (HashMap<String, Object> e : oldSamePart) unwearEquipOne(userName, e);
             String bestClass = strVal(best.get("CLASS"), "");
             boolean grouped = WEAPON_CLASS_NAME.containsKey(bestClass) || "COMMON".equals(bestClass);
             String itemLabel = grouped ? equipClassLabel(bestClass, part) : partNameOf(part);
@@ -8094,10 +8179,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> ownerUserStat = owner == null ? null : dao.selectUserStat(userName);
         int ownerOldMaxHp = owner == null ? 0 : effMaxHpOf(owner, ownerUserStat);
 
-        HashMap<String, Object> unwear = new HashMap<>();
-        unwear.put("equipId", equipId);
-        unwear.put("equippedCompanionId", null);
-        dao.updateEquipEquippedCompanion(unwear);
+        unwearEquipOne(userName, found); // [2026-10-22] 일반 장비는 같은 종류 미착용 스택에 합쳐진다
         if (owner != null) rescaleHpForEquipChange(owner, ownerUserStat, ownerOldMaxHp);
         String part = strVal(found.get("PART"), "");
         int grade = intVal(found.get("GRADE"), 1);
@@ -8198,13 +8280,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 도적을 골라도 결과는 똑같이 CLASS=SWORD로 저장되어 둘 다 착용 가능한 검 1자루가 된다.
         String weaponClass = JOB_TO_WEAPON_CLASS.getOrDefault(job, job);
 
-        HashMap<String, Object> e = new HashMap<>();
-        e.put("userName", userName);
-        e.put("class", weaponClass);
-        e.put("part", "WEAPON");
-        e.put("grade", grade);
-        e.put("equippedCompanionId", null);
-        dao.insertEquip(e);
+        addEquipItems(userName, weaponClass, "WEAPON", grade, 1); // [2026-10-22] 같은 종류 스택에 수량으로 쌓는다
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -8233,18 +8309,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         String part = strVal(equip.get("PART"), "");
 
         List<HashMap<String, Object>> same = dao.selectSameEquipForSynthesis(userName, clazz, part, grade);
-        if (same.size() < 3) return "동일 등급/부위/직업 미착용 장비가 3개 이상 필요합니다. (현재 " + same.size() + "개)";
+        int have = 0;
+        for (HashMap<String, Object> sm : same) have += qtyOf(sm);
+        if (have < 3) return "동일 등급/부위/직업 미착용 장비가 3개 이상 필요합니다. (현재 " + have + "개)";
 
-        for (int i = 0; i < 3; i++) {
-            dao.deleteEquip(intVal(same.get(i).get("EQUIP_ID"), 0));
+        // [2026-10-22] 수량(QTY) -- 재료 3개를 스택(들)에서 수량으로 뺀다
+        int need = 3;
+        for (HashMap<String, Object> sm : same) {
+            if (need <= 0) break;
+            int take = Math.min(need, qtyOf(sm));
+            takeEquipUnits(intVal(sm.get("EQUIP_ID"), 0), take);
+            need -= take;
         }
-        HashMap<String, Object> e = new HashMap<>();
-        e.put("userName", userName);
-        e.put("class", clazz);
-        e.put("part", part);
-        e.put("grade", grade + 1);
-        e.put("equippedCompanionId", null);
-        dao.insertEquip(e);
+        addEquipItems(userName, clazz, part, grade + 1, 1);
 
         grantAchievement(userName, 12);
         // TODO: EQUIP_SYNTHESIS 누적 횟수 카운터가 없어 13번(30회) 업적은 아직 체크 불가
@@ -8339,22 +8416,199 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
         if (intVal(equip.get("GRADE"), 1) != 7) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
 
-        int enhRefund = enhanceCumulativeCost(intVal(equip.get("ENHANCE_LEVEL"), 0)) / 2; // [2026-10-08] 강화에 쓴 조각의 절반 추가 환급
+        // [2026-10-22] "강화된 장비 해체 시 전설의조각과 강화권을 돌려줘서 다른 장비에 덧입힐 수 있게" 요청 -- 예전의 "강화에 쓴 조각 절반 환급" 대신
+        // 그 강화 수치의 강화권(예: +8 강화권)을 준다. 강화권은 강화 수치가 더 낮은 다른 전설장비에 쓰면 그 수치로 맞춰진다(useEnhanceTicket).
+        int enhLv = intVal(equip.get("ENHANCE_LEVEL"), 0);
+        Object legIdObj = equip.get("LEGENDARY_ID");
         dao.deleteEquip(intVal(equip.get("EQUIP_ID"), 0));
-        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND + enhRefund;
+        if (enhLv > 0) dao.insertEnhanceTicket(userName, enhLv, legIdObj == null ? null : intVal(legIdObj, 0));
+        int newFragment = intVal(progress.get("LEGEND_FRAGMENT"), 0) + LEGEND_DISENCHANT_REFUND;
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("legendFragment", newFragment);
         dao.updateUserProgress(up);
 
-        Object legIdObj = equip.get("LEGENDARY_ID");
         String itemName = "전설장비";
         if (legIdObj != null) {
             HashMap<String, Object> meta = dao.selectLegendaryMaster(intVal(legIdObj, 0));
             if (meta != null) itemName = strVal(meta.get("ITEM_NAME"), itemName);
         }
-        return "🧩 [" + itemName + "] 분해 완료! 전설의조각 " + (LEGEND_DISENCHANT_REFUND + enhRefund) + "개 획득 (보유 " + newFragment + "개)"
-                + (enhRefund > 0 ? " -- 강화 +" + intVal(equip.get("ENHANCE_LEVEL"), 0) + "에 쓴 조각의 절반(" + enhRefund + "개) 포함" : "");
+        return "🧩 [" + itemName + (enhLv > 0 ? " +" + enhLv : "") + "] 분해 완료! 전설의조각 " + LEGEND_DISENCHANT_REFUND + "개 획득 (보유 " + newFragment + "개)"
+                + (enhLv > 0 ? NL + "🎫 +" + enhLv + " 강화권 획득! 강화 수치가 더 낮은 다른 전설장비에 쓰면 +" + enhLv + "로 맞춰집니다. (웹: 전설강화 창 / 채팅: /강화권)" : "");
+    }
+
+    // ================================================================
+    // [2026-10-22] 전투 영향 패치 확인 게이트 + 전설장비 착용 규칙 + 강화권
+    // ================================================================
+    // 패치를 확인(PATCH_ACK_VERSION)하기 전에는 주사위를 굴리지 않고 패치 내용을 보여준다. 다음 전투 영향 패치 때는 PATCH_VERSION과 PATCH_NOTES만 바꾸면 된다.
+    private static final String PATCH_VERSION = "20261022";
+    private static final String PATCH_NOTES = "📢 전투 밸런스 패치 안내 (2026-10-22)" + NL
+            + "1. 성장형 동료(☆1) 최대 성장: ★7의 2배(x6.72) → ★6 한계돌파+6의 2배(x5.6)" + NL
+            + "2. 성장형 동료는 장비 효과(전설 특수효과 포함)를 50%만 받습니다." + NL
+            + "3. 전설장비는 동료 1명당 1개만 착용할 수 있고, 같은 전설장비를 여러 동료가 동시에 착용할 수 없습니다. 규칙에 어긋난 착용이 남아 있으면 해제하기 전까지 공격할 수 없습니다." + NL
+            + "4. 강화된 전설장비를 해체하면 전설의조각 15개와 그 수치의 강화권(예: +8 강화권)을 돌려받습니다. 강화권은 강화 수치가 더 낮은 다른 전설장비에 써서 그 수치로 맞출 수 있습니다. (강화비 절반 환급은 강화권으로 대체)" + NL
+            + "5. 보관함의 같은 종류 일반 장비/악세서리는 개수(xN)로 묶여 표시됩니다. (합성 규칙은 그대로)";
+
+    /** 주사위를 막아야 하면 {type: PATCH|LEGEND, text}, 아니면 null. 웹 컨트롤러는 굴리기 전에 이걸로 확인 팝업을 띄우고, 채팅은 rollDice가 text를 그대로 돌려준다. */
+    @Override
+    public HashMap<String, Object> diceGate(String userName) {
+        HashMap<String, Object> p = dao.selectUserProgress(userName);
+        if (p == null) return null;
+        HashMap<String, Object> g = new HashMap<>();
+        if (!PATCH_VERSION.equals(strVal(p.get("PATCH_ACK_VERSION"), ""))) {
+            g.put("type", "PATCH");
+            g.put("version", PATCH_VERSION);
+            g.put("text", PATCH_NOTES + NL + NL + "👉 확인하면 다시 공격할 수 있습니다. (웹: 확인 버튼 / 채팅: /패치확인)");
+            return g;
+        }
+        List<String> v = legendViolations(userName);
+        if (!v.isEmpty()) {
+            g.put("type", "LEGEND");
+            g.put("text", "⚠️ 전설장비 착용 규칙에 어긋난 장비가 있어 공격할 수 없습니다." + NL + String.join(NL, v) + NL
+                    + "👉 편성 탭(채팅: /장비해제 파티번호)에서 해제한 뒤 다시 시도하세요. (전설장비는 동료당 1개, 같은 전설은 한 동료만)");
+            return g;
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional
+    public String ackPatch(String userName) {
+        getOrInitProgress(userName);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("patchAckVersion", PATCH_VERSION);
+        dao.updateUserProgress(up);
+        List<String> v = legendViolations(userName);
+        return "✅ 패치 내용을 확인했습니다. 이제 공격할 수 있습니다."
+                + (v.isEmpty() ? "" : NL + "⚠️ 단, 아래 전설장비 착용을 먼저 정리해야 공격할 수 있습니다." + NL + String.join(NL, v));
+    }
+
+    /** 동료ID -> "직업(이름)" */
+    private Map<Integer, String> companionLabels(String userName) {
+        Map<Integer, String> m = new HashMap<>();
+        for (HashMap<String, Object> c : dao.selectUserCompanions(userName)) {
+            String job = strVal(c.get("CLASS"), "WARRIOR");
+            m.put(intVal(c.get("COMPANION_ID"), 0), JOB_NAME.getOrDefault(job, "동료") + "(" + strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료")) + ")");
+        }
+        return m;
+    }
+
+    /** 전설장비를 companionId에게 끼우면 규칙 위반인지 -- 위반이면 안내 문구, 아니면 null. 같은 부위의 기존 전설을 빼고 끼우는 교체는 허용. */
+    private String legendWearBlock(String userName, HashMap<String, Object> equip, int companionId) {
+        if (equip.get("LEGENDARY_ID") == null) return null;
+        int lid = intVal(equip.get("LEGENDARY_ID"), 0);
+        String part = strVal(equip.get("PART"), "");
+        int equipId = intVal(equip.get("EQUIP_ID"), 0);
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("LEGENDARY_ID") == null || e.get("EQUIPPED_COMPANION_ID") == null) continue;
+            if (intVal(e.get("EQUIP_ID"), 0) == equipId) continue;
+            int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
+            String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
+            if (cid == companionId && !part.equals(strVal(e.get("PART"), ""))) {
+                return "⚠️ 전설장비는 동료 1명당 1개만 착용할 수 있습니다. 이 동료는 이미 [" + nm + "]을(를) 착용 중입니다. (먼저 해제하세요)";
+            }
+            if (cid != companionId && intVal(e.get("LEGENDARY_ID"), 0) == lid) {
+                return "⚠️ [" + nm + "]은(는) 이미 " + companionLabels(userName).getOrDefault(cid, "다른 동료")
+                        + "이(가) 착용 중입니다. 같은 전설장비는 한 동료만 착용할 수 있습니다.";
+            }
+        }
+        return null;
+    }
+
+    /** 지금 착용 상태의 전설 규칙 위반 목록(없으면 빈 목록). */
+    private List<String> legendViolations(String userName) {
+        Map<Integer, List<String>> byCompanion = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> wearersByLegend = new LinkedHashMap<>();
+        Map<Integer, String> legendName = new HashMap<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("LEGENDARY_ID") == null || e.get("EQUIPPED_COMPANION_ID") == null) continue;
+            int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
+            int lid = intVal(e.get("LEGENDARY_ID"), 0);
+            String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
+            byCompanion.computeIfAbsent(cid, k -> new ArrayList<>()).add(nm);
+            wearersByLegend.computeIfAbsent(lid, k -> new ArrayList<>()).add(cid);
+            legendName.put(lid, nm);
+        }
+        List<String> out = new ArrayList<>();
+        Map<Integer, String> labels = null;
+        for (Map.Entry<Integer, List<String>> en : byCompanion.entrySet()) {
+            if (en.getValue().size() < 2) continue;
+            if (labels == null) labels = companionLabels(userName);
+            out.add("- " + labels.getOrDefault(en.getKey(), "동료") + ": 전설 " + en.getValue().size() + "개 착용 ("
+                    + String.join(", ", en.getValue()) + ") → 1개만 남기고 해제");
+        }
+        for (Map.Entry<Integer, List<Integer>> en : wearersByLegend.entrySet()) {
+            if (en.getValue().size() < 2) continue;
+            if (labels == null) labels = companionLabels(userName);
+            List<String> who = new ArrayList<>();
+            for (Integer cid : en.getValue()) who.add(labels.getOrDefault(cid, "동료"));
+            out.add("- [" + legendName.get(en.getKey()) + "]을(를) " + String.join(", ", who) + "이(가) 함께 착용 → 1명만 착용");
+        }
+        return out;
+    }
+
+    @Override
+    public List<HashMap<String, Object>> enhanceTickets(String userName) {
+        return dao.selectEnhanceTickets(userName);
+    }
+
+    /** 강화권 사용 -- 강화 수치가 권보다 낮은 내 ★7 전설장비를 그 수치로 맞춘다(연속 실패 보정은 0으로). */
+    @Override
+    @Transactional
+    public String useEnhanceTicket(String userName, int ticketId, int equipId) {
+        HashMap<String, Object> p = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) return "전투 중에는 강화권을 쓸 수 없습니다.";
+        HashMap<String, Object> ticket = null;
+        for (HashMap<String, Object> t : dao.selectEnhanceTickets(userName)) {
+            if (intVal(t.get("TICKET_ID"), 0) == ticketId) { ticket = t; break; }
+        }
+        if (ticket == null) return "강화권을 찾을 수 없습니다.";
+        HashMap<String, Object> equip = null;
+        for (HashMap<String, Object> e : legendaryEquipsOf(userName)) {
+            if (intVal(e.get("EQUIP_ID"), 0) == equipId) { equip = e; break; }
+        }
+        if (equip == null) return "강화권을 쓸 ★7 전설장비를 찾을 수 없습니다.";
+        int lv = intVal(ticket.get("ENHANCE_LEVEL"), 0);
+        int cur = intVal(equip.get("ENHANCE_LEVEL"), 0);
+        String name = strVal(equip.get("LEGENDARY_ITEM_NAME"), "전설장비");
+        if (cur >= lv) return "[" + name + "]은(는) 이미 +" + cur + "입니다. +" + lv + " 강화권은 강화 수치가 더 낮은 장비에만 쓸 수 있습니다.";
+        if (dao.deleteEnhanceTicket(ticketId, userName) == 0) return "이미 사용한 강화권입니다.";
+        dao.updateEquipEnhance(equipId, lv, 0);
+        return "🎫 +" + lv + " 강화권 사용! [" + name + "] +" + cur + " → +" + lv + " (장비 성능 +" + (lv * ENHANCE_STAT_PCT_PER_LV) + "%)";
+    }
+
+    /** 채팅 /강화권 -- 보유 강화권과 전설장비 번호 목록. */
+    @Override
+    public String enhanceTicketText(String userName) {
+        List<HashMap<String, Object>> tickets = dao.selectEnhanceTickets(userName);
+        if (tickets.isEmpty()) return "보유한 강화권이 없습니다. (강화된 ★7 전설장비를 /전설분해 하면 그 수치의 강화권을 받습니다)";
+        StringBuilder sb = new StringBuilder("🎫 강화권").append(NL);
+        int no = 1;
+        for (HashMap<String, Object> t : tickets) {
+            sb.append(no++).append(". +").append(intVal(t.get("ENHANCE_LEVEL"), 0)).append(" 강화권");
+            String src = strVal(t.get("SOURCE_ITEM_NAME"), "");
+            if (!src.isEmpty()) sb.append(" (").append(src).append(" 해체)");
+            sb.append(NL);
+        }
+        sb.append("[전설장비]").append(NL);
+        no = 1;
+        for (HashMap<String, Object> e : legendaryEquipsOf(userName)) {
+            sb.append(no++).append(". ✨").append(strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비")).append(" +").append(intVal(e.get("ENHANCE_LEVEL"), 0))
+              .append(e.get("EQUIPPED_COMPANION_ID") == null ? " (미착용)" : " (착용중)").append(NL);
+        }
+        sb.append("사용법: /강화권 권번호 장비번호 (강화 수치가 더 낮은 장비에만 쓸 수 있고, 그 수치로 맞춰집니다)");
+        return sb.toString();
+    }
+
+    @Override
+    @Transactional
+    public String useEnhanceTicketByNo(String userName, int ticketNo, int equipNo) {
+        List<HashMap<String, Object>> tickets = dao.selectEnhanceTickets(userName);
+        List<HashMap<String, Object>> legends = legendaryEquipsOf(userName);
+        if (ticketNo < 1 || ticketNo > tickets.size()) return "잘못된 강화권 번호입니다. /강화권 으로 목록을 확인하세요.";
+        if (equipNo < 1 || equipNo > legends.size()) return "잘못된 장비 번호입니다. /강화권 으로 목록을 확인하세요.";
+        return useEnhanceTicket(userName, intVal(tickets.get(ticketNo - 1).get("TICKET_ID"), 0), intVal(legends.get(equipNo - 1).get("EQUIP_ID"), 0));
     }
 
     // ================================================================
@@ -8414,6 +8668,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         r.put("mult", Math.round(mult * 1000) / 1000.0);
         r.put("fullMult", Math.round(growthFullMult() * 1000) / 1000.0);
         r.put("ratioVsStar7", Math.round(mult / star7StatMult() * 100) / 100.0);
+        r.put("ratioVsStar6Max", Math.round(mult / (1 + limitBreakPct(LIMIT_BREAK_MAX)) * 100) / 100.0);
+        r.put("equipEffectPct", (int) Math.round(GROWTH_EQUIP_EFFECT * 100));
         r.put("inCombat", "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL")));
         List<HashMap<String, Object>> jobs = new ArrayList<>();
         for (String j : JOB_KEYS) {
@@ -8435,7 +8691,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         StringBuilder sb = new StringBuilder("🌱 성장형 동료").append(NL);
         sb.append("☆1 ").append(st.get("jobName")).append(" (").append(st.get("name")).append(")").append(NL);
         sb.append("탐사 ").append(st.get("exploredFloors")).append("/").append(st.get("exploreMax")).append("층 완료 · 성장 배율 x").append(st.get("mult"))
-          .append(" (풀 성장 x").append(st.get("fullMult")).append(" = ★7의 2배, 지금 ★7의 ").append(st.get("ratioVsStar7")).append("배)").append(NL);
+          .append(" (풀 성장 x").append(st.get("fullMult")).append(" = ★6 한계돌파+6의 2배, 지금 ★6+6의 ").append(st.get("ratioVsStar6Max")).append("배)").append(NL);
+        sb.append("※ 성장형은 장비 효과(전설 특수효과 포함)를 ").append(st.get("equipEffectPct")).append("%만 받습니다.").append(NL);
         sb.append("101층 이상 상승분은 1~100층 탐사를 모두 마친 뒤부터 일괄 반영됩니다 (계단층 ").append(st.get("stairFloors")).append("개 도달").append(Boolean.TRUE.equals(st.get("stairApplied")) ? ", 반영 중" : ", 대기 중").append(")").append(NL);
         sb.append("직업 변경: /성장직업 직업 (전사/마법사/도적/궁수/도사/무녀, 무료, 전투 중 불가) · 이름 변경: /성장이름 새이름 · 장비는 직업과 상관없이 착용");
         return sb.toString();
@@ -8674,10 +8931,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int cid = intVal(target.get("COMPANION_ID"), 0);
         int unequipped = 0;
         for (HashMap<String, Object> e : dao.selectEquipByCompanion(cid)) {
-            HashMap<String, Object> un = new HashMap<>();
-            un.put("equipId", intVal(e.get("EQUIP_ID"), 0));
-            un.put("equippedCompanionId", null);
-            dao.updateEquipEquippedCompanion(un); // 장비는 사라지지 않고 미착용으로 돌아온다
+            unwearEquipOne(userName, e); // 장비는 사라지지 않고 미착용으로 돌아온다(일반 장비는 같은 종류 스택에 합쳐짐)
             unequipped++;
         }
         dao.deleteCompanion(cid, userName);
@@ -8703,6 +8957,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (eq == null || companionId <= 0) return false;
         List<Integer> used = parseMinionCids(strVal(p.get("LAST_STAND_USED_CIDS"), ""));
         if (used.contains(companionId)) return false;
+        HashMap<String, Object> owner = findCompanionOf(userName, companionId);
+        if (owner != null && intVal(owner.get("GRADE"), 1) == GROWTH_GRADE && !legendRoll(100, true)) return false; // [2026-10-22] 성장형은 특수효과 50%(실패해도 기회는 남음)
         used.add(companionId);
         String joined = joinMinionCids(used);
         HashMap<String, Object> up = new HashMap<>();
@@ -8746,6 +9002,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
         int lb = intVal(comp.get("LIMIT_BREAK"), 0);
         double lbM = finalStatMult(intVal(comp.get("GRADE"), 1), lb, userStat);
+        if (intVal(comp.get("GRADE"), 1) == GROWTH_GRADE) lbM *= GROWTH_EQUIP_EFFECT; // [2026-10-22] 성장형은 장비 효과 50%(이 배율은 장비 기여 행에만 쓰인다)
         return new double[]{ (1 + HP_PCT_PER_LV * hpLv) * lbM, (1 + ATK_PCT_PER_LV * atkMaxLv) * lbM, lbM };
     }
 
@@ -8873,6 +9130,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("total", statTriple(total[0], total[1], total[2]));
         out.put("base", statTriple(buyHp, buyAtk, buyDef)); // 스탯구매까지 반영한 캐릭터 기본(상세 팝업용)
         out.put("lbLabel", grade == GROWTH_GRADE ? "성장 보정" : (grade >= STAR7_GRADE ? "7성 보정" : "한계돌파"));
+        out.put("equipEffectPct", grade == GROWTH_GRADE ? (int) Math.round(GROWTH_EQUIP_EFFECT * 100) : 100);
         // 퍼센트 증가율(소수 1자리): 스탯구매(체력/공격), 한계돌파(또는 7성 보정), 둘을 곱한 총 증가율
         HashMap<String, Object> pct = new HashMap<>();
         pct.put("buyHp", Math.round(HP_PCT_PER_LV * hpLv * 1000) / 10.0);
@@ -9068,8 +9326,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             String clazz = strVal(e.get("CLASS"), "");
             String part = strVal(e.get("PART"), "");
             int grade = intVal(e.get("GRADE"), 1);
-            realIdsByKey.computeIfAbsent(clazz + "|" + part + "|" + grade, k -> new ArrayList<>())
-                    .add(intVal(e.get("EQUIP_ID"), 0));
+            if (!stackable(e)) continue; // 전설은 합성 대상 아님
+            // [2026-10-22] 수량(QTY) -- 한 행이 n개면 같은 EQUIP_ID를 n번 넣어 "개수" 단위로 센다(소모도 아래에서 행별 개수로 묶어 뺀다)
+            List<Integer> ids = realIdsByKey.computeIfAbsent(clazz + "|" + part + "|" + grade, k -> new ArrayList<>());
+            int eid = intVal(e.get("EQUIP_ID"), 0);
+            for (int q = qtyOf(e); q > 0; q--) ids.add(eid);
             classPartCombos.add(clazz + "|" + part);
         }
 
@@ -9109,9 +9370,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "합성 가능한 조합이 없습니다. (동일 등급/부위/직업 미착용 장비가 3개 이상 있어야 합성됩니다)";
         }
 
-        for (Integer equipId : toDelete) {
-            dao.deleteEquip(equipId);
-        }
+        Map<Integer, Integer> takeById = new LinkedHashMap<>();
+        for (Integer equipId : toDelete) takeById.merge(equipId, 1, Integer::sum);
+        for (Map.Entry<Integer, Integer> t : takeById.entrySet()) takeEquipUnits(t.getKey(), t.getValue());
         // 합성으로 순생성된(더 이상 소모되지 않고 남은) 장비만 실제로 DB에 새로 넣는다.
         List<String> resultLines = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : virtualCredit.entrySet()) {
@@ -9120,15 +9381,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             String[] parts = entry.getKey().split("\\|", 3);
             String clazz = parts[0], part = parts[1];
             int grade = Integer.parseInt(parts[2]);
-            for (int i = 0; i < qty; i++) {
-                HashMap<String, Object> e = new HashMap<>();
-                e.put("userName", userName);
-                e.put("class", clazz);
-                e.put("part", part);
-                e.put("grade", grade);
-                e.put("equippedCompanionId", null);
-                dao.insertEquip(e);
-            }
+            addEquipItems(userName, clazz, part, grade, qty); // [2026-10-22] 같은 종류 스택에 수량으로 한 번에
             resultLines.add(equipFullLabel(clazz, part) + " ★" + grade
                     + " (" + equipBonusText(part, grade) + ") x" + qty);
         }

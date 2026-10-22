@@ -374,7 +374,16 @@
        두고, 그 안에서 "더 파고드는" 상세보기는 210으로, 언제 어디서 열려도 항상 최상단
        이어야 하는 확인/알림 다이얼로그는 220으로 개별 지정해서 항상 올바른 순서로 쌓이게 함. */
     #detailOverlay{ z-index:210; }
-    #confirmOverlay, #noticeOverlay{ z-index:220; }
+    #confirmOverlay, #noticeOverlay, #gateOverlay{ z-index:220; }
+    /* [2026-10-22] 주사위 전 패치 확인 팝업 / 장비 수량 / 강화권 */
+    .gate-body{ font-size:12.5px; line-height:1.6; white-space:pre-line; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; margin:6px 0 12px; max-height:52vh; overflow:auto; }
+    .gate-btns{ display:flex; gap:8px; }
+    .gate-btns button{ flex:1; border-radius:12px; padding:11px 8px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); }
+    .gate-btns button.primary{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    .eq-qty{ display:inline-block; margin-left:4px; padding:0 6px; border-radius:999px; background:var(--gold); color:#fff; font-size:10px; font-weight:800; }
+    .ticket-row{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; font-size:11px; }
+    .ticket-chip{ background:#fff; border:1.5px solid var(--gold); color:var(--gold); border-radius:999px; padding:3px 9px; font-weight:800; }
+    .legend-ticket-btn{ margin-left:6px; }
     .detail-card{ background:linear-gradient(180deg,#FFFCF3,var(--parchment-deep)); border:2px solid var(--line);
                    border-radius:20px; padding:16px; box-shadow:var(--shadow); max-width:360px; width:100%;
                    max-height:88vh; overflow:auto; position:relative; }
@@ -1301,6 +1310,18 @@
 </div>
 
 <!-- [2026-10-08] 전설장비 강화 팝업 -- 착용/미착용 ★7 전설장비 전부. 실패해도 강화 수치는 유지되고 조각만 소모된다. -->
+<!-- [2026-10-22] 전투에 영향이 가는 패치 -- 주사위를 굴리기 전에 패치 내용을 보여주고, 확인을 눌러야 공격할 수 있다(전설 규칙 위반이면 해제 안내). -->
+<div class="detail-overlay" id="gateOverlay">
+  <div class="detail-card">
+    <div class="sheet-title" id="gateTitle">📢 패치 안내</div>
+    <div class="gate-body" id="gateBody"></div>
+    <div class="gate-btns">
+      <button type="button" onclick="TW.closeGate()">닫기</button>
+      <button type="button" class="primary" id="gateOkBtn">확인</button>
+    </div>
+  </div>
+</div>
+
 <div class="detail-overlay" id="legendEnhanceOverlay" onclick="if(event.target===this) TW.closeLegendEnhance();">
   <div class="detail-card sheet-card wide-card">
     <button class="detail-close" onclick="TW.closeLegendEnhance()">✕</button>
@@ -2195,6 +2216,22 @@ var TW = (function () {
     };
     document.getElementById('confirmOverlay').classList.add('open');
   }
+
+  // [2026-10-22] 주사위 게이트 팝업 -- PATCH: 패치 내용 + "확인했습니다"(PATCH_ACK 후 다시 굴릴 수 있음), LEGEND: 전설 규칙 위반 안내 + 편성 탭으로.
+  function showDiceGate(type, msg) {
+    document.getElementById('gateTitle').textContent = type === 'PATCH' ? '📢 전투 밸런스 패치 안내' : '⚠️ 전설장비 착용 정리 필요';
+    document.getElementById('gateBody').textContent = formatMsg(msg);
+    var ok = document.getElementById('gateOkBtn');
+    if (type === 'PATCH') {
+      ok.textContent = '확인했습니다';
+      ok.onclick = function () { closeGate(); action('PATCH_ACK', ''); };
+    } else {
+      ok.textContent = '편성 탭으로';
+      ok.onclick = function () { closeGate(); switchTab('party'); };
+    }
+    document.getElementById('gateOverlay').classList.add('open');
+  }
+  function closeGate() { document.getElementById('gateOverlay').classList.remove('open'); }
 
   function closeConfirm() {
     document.getElementById('confirmOverlay').classList.remove('open');
@@ -3102,7 +3139,7 @@ var TW = (function () {
       candidates2.forEach(function (e) {
         var row = document.createElement('div');
         row.className = 'sheet-row has-stat';
-        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + '</span><span class="sr-sub">탭해서 장착</span>'
+        row.innerHTML = '<span class="sr-main">' + equipIcon(e.CLASS, part) + ' ★' + e.GRADE + legendaryTag(e) + (e.QTY > 1 ? '<span class="eq-qty">x' + e.QTY + '</span>' : '') + '</span><span class="sr-sub">탭해서 장착</span>'
             + '<div class="sr-stat" data-eq="' + e.EQUIP_ID + '"></div>';
         row.onclick = function () { action('EQUIP_WEAR', String(e.__idx), String(pickerState.slot)); closePicker(); };
         body.appendChild(row);
@@ -3299,7 +3336,7 @@ var TW = (function () {
           document.getElementById('detail' + k[0]).textContent = fmtN(d.total[key]);
           document.getElementById('detail' + k[0] + 'Sub').innerHTML =
               '<div>기본 <b>' + fmtN(d.base[key]) + '</b></div>' + (d.lbBonus[key] ? '<div class="lb">(+' + d.lbLabel + ' ' + fmtN(d.lbBonus[key]) + ')</div>' : '')
-              + '<div>장비 <b>+' + fmtN(d.equipTotal[key]) + '</b></div>';
+              + '<div>장비 <b>+' + fmtN(d.equipTotal[key]) + '</b>' + (d.equipEffectPct < 100 ? ' <small>(효과 ' + d.equipEffectPct + '%)</small>' : '') + '</div>';
         });
         var byPart = {};
         (d.equips || []).forEach(function (r) { byPart[r.PART] = r; });
@@ -3501,7 +3538,7 @@ var TW = (function () {
           + '<span class="c-base">원래 ' + fmtN(d.baseRaw[k]) + '</span>'
           + (d.statBuy[k] ? ' <span class="c-buy">+스탯구매 ' + fmtN(d.statBuy[k]) + '</span>' : '')
           + (d.lbBonus[k] ? ' <span class="c-lb">+' + d.lbLabel + ' ' + fmtN(d.lbBonus[k]) + '</span>' : '')
-          + (eq ? ' <span class="c-eq">+장비 ' + fmtN(eq - enh) + '</span>' : '')
+          + (eq ? ' <span class="c-eq">+장비 ' + fmtN(eq - enh) + (d.equipEffectPct < 100 ? '(효과 ' + d.equipEffectPct + '%)' : '') + '</span>' : '')
           + (enh ? ' <span class="c-enh">+장비강화 ' + fmtN(enh) + '</span>' : '')
           + '</div>';
     });
@@ -3707,7 +3744,7 @@ var TW = (function () {
     var synthCountByKey = {};
     unequipped.forEach(function (e) {
       var key = e.CLASS + '|' + e.PART + '|' + e.GRADE;
-      synthCountByKey[key] = (synthCountByKey[key] || 0) + 1;
+      synthCountByKey[key] = (synthCountByKey[key] || 0) + (e.QTY || 1); // [2026-10-22] 수량(QTY) 기준
     });
     function canSynth(e) {
       return e.GRADE < 6 && synthCountByKey[e.CLASS + '|' + e.PART + '|' + e.GRADE] >= 3;
@@ -3741,7 +3778,7 @@ var TW = (function () {
       var title = document.createElement('div');
       title.className = 'equip-group-title';
       var groupLabel = job === 'COMMON' ? '공용 악세서리' : (WEAPON_CLASS_NAME[job] || JOB_KR[job] || job);
-      title.textContent = groupLabel + equipGroupJobSuffix(job) + ' (' + list.length + ')';
+      title.textContent = groupLabel + equipGroupJobSuffix(job) + ' (' + list.reduce(function (n, e) { return n + (e.QTY || 1); }, 0) + ')';
       box.appendChild(title);
 
       var grid = document.createElement('div');
@@ -3778,7 +3815,7 @@ var TW = (function () {
           actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
         }
         card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
-            + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + '</div>'
+            + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + (e.QTY > 1 ? '<span class="eq-qty">x' + e.QTY + '</span>' : '') + '</div>'
             + actionsHtml;
         grid.appendChild(card);
       });
@@ -3844,7 +3881,7 @@ var TW = (function () {
       // idx(N번)는 필터링 전 원본 순서 기준으로 딱 한 번만 매긴다(renderEquipList 참고).
       unequipped.forEach(function (e, i) { e.__idx = i + 1; });
       // 캐릭터 상세 카드(showCompanionDetail)와 선택 팝업(renderPicker) 공용 캐시.
-      lastParty = { companions: companions, byCompanion: byCompanion, unequipped: unequipped };
+      lastParty = { companions: companions, byCompanion: byCompanion, unequipped: unequipped, tickets: results[1].tickets || [] };
       updateLegendDisenchantBtn();
 
       renderPartySlots();
@@ -4169,7 +4206,7 @@ var TW = (function () {
         var groupLabel = WEAPON_CLASS_NAME[e.CLASS] || (e.CLASS === 'COMMON' ? '공용' : e.CLASS);
         el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="lri-body"><div class="lri-name">★7 ' + groupLabel + '</div></div>'
-            + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+15)</button>';
+            + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+15' + (e.ENHANCE_LEVEL > 0 ? ' · 🎫+' + e.ENHANCE_LEVEL + '권' : '') + ')</button>';
         el.querySelector('.legend-disenchant-item-btn').onclick = function (ev) {
           ev.stopPropagation();
           action('DISENCHANT_LEGENDARY', String(e.__idx));
@@ -4212,6 +4249,14 @@ var TW = (function () {
     var items = allLegendaryEquips();
     if (!items.length) { list.innerHTML = '<div class="sheet-empty">강화할 ★7 전설장비가 없습니다.</div>'; return; }
     list.innerHTML = '';
+    // [2026-10-22] 강화권(강화된 전설을 해체하면 받음) -- 강화 수치가 권보다 낮은 장비에 쓰면 그 수치로 맞춰진다.
+    var tickets = (lastParty.tickets || []).slice().sort(function (a, b) { return b.ENHANCE_LEVEL - a.ENHANCE_LEVEL; });
+    if (tickets.length) {
+      var tr = document.createElement('div');
+      tr.className = 'ticket-row';
+      tr.innerHTML = '<span>보유 강화권</span>' + tickets.map(function (t) { return '<span class="ticket-chip">🎫 +' + t.ENHANCE_LEVEL + '</span>'; }).join('');
+      list.appendChild(tr);
+    }
     items.forEach(function (e) {
       var lv = e.ENHANCE_LEVEL || 0;
       var cost = enhCost(lv);
@@ -4222,6 +4267,15 @@ var TW = (function () {
           + '<div class="lri-meta">' + (e.__wearerName ? ('👤 ' + e.__wearerName + ' 장착중 · ') : '') + '성능 +' + (lv * 6) + '% · 성공률 ' + enhRate(lv, e.ENHANCE_PITY) + '%</div></div>'
           + '<button class="legend-disenchant-item-btn" type="button"' + (frag < cost ? ' disabled' : '') + '>🧩' + cost + ' 강화</button>';
       el.querySelector('button').onclick = function (ev) { ev.stopPropagation(); doLegendEnhance(e, el.querySelector('button')); };
+      var usable = tickets.filter(function (t) { return t.ENHANCE_LEVEL > lv; })[0]; // 쓸 수 있는 것 중 가장 높은 권
+      if (usable) {
+        var tb = document.createElement('button');
+        tb.type = 'button';
+        tb.className = 'legend-disenchant-item-btn legend-ticket-btn';
+        tb.textContent = '🎫 +' + usable.ENHANCE_LEVEL + ' 적용';
+        tb.onclick = function (ev) { ev.stopPropagation(); doUseTicket(usable, e, tb); };
+        el.appendChild(tb);
+      }
       list.appendChild(el);
     });
   }
@@ -4238,6 +4292,21 @@ var TW = (function () {
       result.style.whiteSpace = 'pre-line';
       result.style.display = '';
       return Promise.all([Promise.resolve(loadStatus()), Promise.resolve(loadPartyAndEquip())]);
+    }).then(function () { renderLegendEnhanceList(); })
+      .catch(function () { toast('요청 실패'); renderLegendEnhanceList(); });
+  }
+  function doUseTicket(t, e, btn) {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    btn.disabled = true;
+    var url = base + '/api/tower-action?userName=' + encodeURIComponent(u) + '&type=USE_ENHANCE_TICKET&param1=' + encodeURIComponent(t.TICKET_ID) + '&param2=' + encodeURIComponent(e.EQUIP_ID);
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      var result = document.getElementById('legendEnhanceResult');
+      result.className = 'legend-craft-result' + ((data.message || '').indexOf('강화권 사용') !== -1 ? ' success' : '');
+      result.textContent = formatMsg(data.message || data.error || '완료');
+      result.style.whiteSpace = 'pre-line';
+      result.style.display = '';
+      return loadPartyAndEquip();
     }).then(function () { renderLegendEnhanceList(); })
       .catch(function () { toast('요청 실패'); renderLegendEnhanceList(); });
   }
@@ -4358,7 +4427,8 @@ var TW = (function () {
           + '<div class="gr-sub">' + (d.partySlot ? '파티 ' + d.partySlot + '번에 편성됨' : '편성 탭에서 파티에 넣을 수 있어요') + ' · 장비는 직업과 상관없이 착용</div></div></div>';
       html += '<div class="gr-prog"><div class="gr-prog-top"><span>1~100층 완전탐사 (보스·마을 제외)</span><b>' + d.exploredFloors + ' / ' + d.exploreMax + '</b></div>'
           + '<div class="gr-bar"><i style="width:' + pct + '%"></i></div>'
-          + '<div class="gr-line">성장 배율 <b>x' + d.mult + '</b> · ★7의 <b>' + d.ratioVsStar7 + '배</b> <small>(풀 성장 x' + d.fullMult + ' = ★7의 2배)</small></div>'
+          + '<div class="gr-line">성장 배율 <b>x' + d.mult + '</b> · ★6 한돌+6의 <b>' + d.ratioVsStar6Max + '배</b> <small>(풀 성장 x' + d.fullMult + ' = ★6 한돌+6의 2배)</small></div>'
+          + '<div class="gr-line"><small>※ 장비 효과(전설 특수효과 포함)는 ' + (d.equipEffectPct || 50) + '%만 적용됩니다.</small></div>'
           + '<div class="gr-line">101층 이상: 계단층 ' + d.stairFloors + '개 도달 · ' + (d.stairApplied ? '<b>반영 중</b>' : '1~100층 완전탐사를 모두 마치면 일괄 반영') + '</div></div>';
       html += '<div class="gr-title">직업 선택 <small>(무료, 전투 중에는 변경 불가 · 아래는 장비 없을 때 예상 능력치)</small></div><div class="gr-jobs">';
       (d.jobs || []).forEach(function (j) {
@@ -4561,6 +4631,7 @@ var TW = (function () {
     var motionPlayed = false;
     if (type === 'DICE' && state.progress && state.progress.STATUS === 'IN_COMBAT') { playBattleAttackMotion(); motionPlayed = true; }
     fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+      if (type === 'DICE' && data.gate) { showDiceGate(data.gate, data.message || ''); return; } // [2026-10-22] 패치 확인/전설 규칙 게이트
       toast(data.message || data.error || '완료');
       if (type === 'DICE') {
         // [2026-09-17] 전투화면이 동료 HP를 보여주려면 최신 파티 데이터가 필요한데, '편성' 탭이
@@ -4696,7 +4767,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeDetail: closeDetail, closeConfirm: closeConfirm,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,

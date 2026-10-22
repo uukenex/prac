@@ -395,6 +395,16 @@ public interface BotS5Service {
     String growthInfoText(String userName);
     String growthRename(String userName, String name);
 
+    /** [2026-10-22] 전투 영향 패치 -- 주사위를 막아야 하면 {type: PATCH|LEGEND, text}, 아니면 null. */
+    java.util.HashMap<String, Object> diceGate(String userName);
+    /** [2026-10-22] 패치 내용 확인(웹 확인 버튼, 채팅 /패치확인). */
+    String ackPatch(String userName);
+    /** [2026-10-22] 강화권(강화된 전설장비 해체 시 지급) 목록/사용. */
+    java.util.List<java.util.HashMap<String, Object>> enhanceTickets(String userName);
+    String useEnhanceTicket(String userName, int ticketId, int equipId);
+    String enhanceTicketText(String userName);
+    String useEnhanceTicketByNo(String userName, int ticketNo, int equipNo);
+
     /** [2026-10-21] 편성 화면 "이미지변경" -- 내 동료 두 명의 표시 이미지를 서로 바꾼다(★7/성장형 포함, 개별 이미지로 저장). */
     String swapCompanionImage(String userName, int companionId, int targetId);
     String growthChangeJob(String userName, String job);
