@@ -444,6 +444,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 없어서, 뽑기권처럼 실제 경제가치가 있는 걸 아무나 채팅으로 못 뿌리게 막는 유일한 장치다.
     // 비어있으면(기본값) 아무도 실행할 수 없다 -- 반드시 DB에 직접 세팅해야 활성화됨(의도적).
     private static volatile String EVENT_ADMIN_USERS = "";
+    // [2026-10-22] "관리자 계정은 랭킹에서 안 나오도록" 요청 -- /탑랭킹 집계에서 뺄 유저명('|' 구분, TBOT_S5_CONFIG.RANK_EXCLUDE_USERS, /갱신으로 반영).
+    private static volatile String RANK_EXCLUDE_USERS = "";
 
     /** 서버 기동 시 TBOT_S5_CONFIG를 읽어 메모리(static 필드)에 반영. 실패해도 기본값으로 계속 동작. */
     @PostConstruct
@@ -454,6 +456,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String val = strVal(row.get("CONFIG_VALUE"), "");
                 if ("EVENT_ADMIN_USERS".equals(key)) {
                     EVENT_ADMIN_USERS = val; // 문자열 그대로라 파싱 실패 케이스 없음
+                    continue;
+                }
+                if ("RANK_EXCLUDE_USERS".equals(key)) {
+                    RANK_EXCLUDE_USERS = val;
                     continue;
                 }
                 try {
@@ -1729,37 +1735,48 @@ public class BotS5ServiceImpl implements BotS5Service {
      * 다른 사람 기록은 여전히 완전 비공개(유저명 조회 자체를 안 함), 딱 이 요청을 보낸 본인의
      * 수치만 서버 최고기록과 같은지(동타 포함, >=) 비교해서 같으면 그 줄에만 "(me)"를 붙인다.
      */
+    /** 랭킹 제외 유저 목록(RANK_EXCLUDE_USERS). */
+    private List<String> rankExcludeUsers() {
+        List<String> out = new ArrayList<>();
+        String v = RANK_EXCLUDE_USERS;
+        if (v == null) return out;
+        for (String u : v.split("\\|")) if (!u.trim().isEmpty()) out.add(u.trim());
+        return out;
+    }
+
     @Override
     public String ranking(String userName) {
-        int maxFloor = dao.selectMaxFloorReached();
-        int maxKill = dao.selectMaxTotalKillCount();
-        int maxAch = dao.selectMaxAchievementCount();
-        int maxExplored = dao.selectMaxFullyExploredCount();
-        int maxCompanion = dao.selectMaxCompanionCount();
-        int maxCompanionGrade = dao.selectMaxCompanionGrade();
+        List<String> ex = rankExcludeUsers(); // [2026-10-22] 관리자(테스트) 계정은 랭킹 집계에서 제외
+        int maxFloor = dao.selectMaxFloorReached(ex);
+        int maxKill = dao.selectMaxTotalKillCount(ex);
+        int maxAch = dao.selectMaxAchievementCount(ex);
+        int maxExplored = dao.selectMaxFullyExploredCount(ex);
+        int maxCompanion = dao.selectMaxCompanionCount(ex);
+        int maxCompanionGrade = dao.selectMaxCompanionGrade(ex);
         // [2026-09-15] "최고 동료/장비 등급을 갯수까지 포함해서" 요청 -- 처음엔 서버 전체
         // 합산치(여러 유저가 나눠 가진 걸 다 더한 값)로 잘못 구현했었는데("13명이라고
         // 나오는데 실제로 한 사람이 최고로 가진 명수를 적어달라" 신고로 확인), 최고 등급
         // 컴패니언/장비를 "한 명이 최고 몇 개 보유했는지"(개인별 집계의 MAX)로 정정.
         // "누가"는 여전히 비공개.
-        int maxCompanionGradeCount = dao.selectMaxCompanionGradeCount();
-        int maxEquip = dao.selectMaxEquipCount();
-        int maxEquipGrade = dao.selectMaxEquipGrade();
-        int maxEquipGradeCount = dao.selectMaxEquipGradeCount();
+        int maxCompanionGradeCount = dao.selectMaxCompanionGradeCount(ex);
+        int maxEquip = dao.selectMaxEquipCount(ex);
+        int maxEquipGrade = dao.selectMaxEquipGrade(ex);
+        int maxEquipGradeCount = dao.selectMaxEquipGradeCount(ex);
         // [2026-09-15] 악세서리(목걸이/반지/팔찌) 신설로 "장비"와 분리된 전용 랭킹 통계.
-        int maxAccessory = dao.selectMaxAccessoryCount();
-        int maxAccessoryGrade = dao.selectMaxAccessoryGrade();
-        int maxAccessoryGradeCount = dao.selectMaxAccessoryGradeCount();
+        int maxAccessory = dao.selectMaxAccessoryCount(ex);
+        int maxAccessoryGrade = dao.selectMaxAccessoryGrade(ex);
+        int maxAccessoryGradeCount = dao.selectMaxAccessoryGradeCount(ex);
 
         PP maxPp = PP.fromPP(0);
-        for (HashMap<String, Object> row : dao.selectAllUserPp()) {
+        for (HashMap<String, Object> row : dao.selectAllUserPp(ex)) {
             PP v = PP.of(((Number) row.get("PP_VALUE")).doubleValue(), strVal(row.get("PP_EXT"), ""));
             if (v.compare(maxPp) > 0) maxPp = v;
         }
 
         // 본인 수치 -- 미등록/조회 실패 시 전부 0/빈 값으로 둬서 (me) 표시가 안 붙게만 하고
         // 그 외엔 정상 진행(랭킹판 자체는 로그인 여부와 무관하게 항상 보여준다).
-        HashMap<String, Object> mineP = userName == null || userName.trim().isEmpty() ? null : dao.selectUserProgress(userName);
+        // 랭킹에서 빠진 유저(관리자 테스트 계정)는 (me)도 붙이지 않는다 -- 남의 기록과 비교하는 의미가 없음
+        HashMap<String, Object> mineP = userName == null || userName.trim().isEmpty() || ex.contains(userName.trim()) ? null : dao.selectUserProgress(userName);
         int mineFloor = 0, mineKill = 0, mineAch = 0, mineExplored = 0;
         int mineCompanion = 0, mineCompanionGrade = 0, mineEquip = 0, mineEquipGrade = 0;
         int mineAccessory = 0, mineAccessoryGrade = 0;

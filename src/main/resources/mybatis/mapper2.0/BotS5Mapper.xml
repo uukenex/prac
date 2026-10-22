@@ -850,37 +850,40 @@
         WHERE USER_NAME IN (SELECT USER_NAME FROM TBOT_S5_BATTLE_STAT WHERE REG_DATE &gt;= SYSDATE - #{days})
     </update>
 
+    <!-- [2026-10-22] 랭킹 제외 유저(TBOT_S5_CONFIG.RANK_EXCLUDE_USERS, 관리자 테스트 계정 등). 각 WHERE 바로 뒤에 넣는다. -->
+    <sql id="rankExclude"><if test="excluded != null and excluded.size() &gt; 0">USER_NAME NOT IN <foreach collection="excluded" item="ex" open="(" separator="," close=")">#{ex}</foreach> AND </if></sql>
+
     <!-- ==================== /탑랭킹: 서버 전체 최고기록(익명 집계) ====================
          누가 세운 기록인지는 노출하지 않는다는 설계상 USER_NAME은 절대 SELECT하지 않고
          MAX(수치)만 조회한다. -->
     <select id="selectMaxFloorReached" resultType="int">
-        SELECT NVL(MAX(MAX_FLOOR_REACHED), 0) FROM TBOT_S5_USER_PROGRESS
+        SELECT NVL(MAX(MAX_FLOOR_REACHED), 0) FROM TBOT_S5_USER_PROGRESS WHERE <include refid="rankExclude"/> 1 = 1
     </select>
 
     <select id="selectMaxTotalKillCount" resultType="int">
-        SELECT NVL(MAX(TOTAL_KILL_COUNT), 0) FROM TBOT_S5_USER_PROGRESS
+        SELECT NVL(MAX(TOTAL_KILL_COUNT), 0) FROM TBOT_S5_USER_PROGRESS WHERE <include refid="rankExclude"/> 1 = 1
     </select>
 
     <select id="selectMaxAchievementCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_ACH GROUP BY USER_NAME
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_ACH WHERE <include refid="rankExclude"/> 1 = 1 GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxFullyExploredCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_FLOOR_BEST WHERE FULLY_EXPLORED_YN = 'Y' GROUP BY USER_NAME
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_FLOOR_BEST WHERE <include refid="rankExclude"/> FULLY_EXPLORED_YN = 'Y' GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxCompanionCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
-            SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8 GROUP BY USER_NAME
+            SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION WHERE <include refid="rankExclude"/> GRADE &lt; 8 GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxCompanionGrade" resultType="int">
-        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE <include refid="rankExclude"/> GRADE &lt; 8
     </select>
 
     <!-- [2026-09-15] "최고 동료 등급을 갯수까지 포함해서" 요청: 원래는 최고 등급 동료의
@@ -890,7 +893,7 @@
     <select id="selectMaxCompanionGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT COUNT(*) CNT FROM TBOT_S5_USER_COMPANION
-            WHERE GRADE &lt; 8 AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE GRADE &lt; 8)
+            WHERE <include refid="rankExclude"/> GRADE &lt; 8 AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_COMPANION WHERE <include refid="rankExclude"/> GRADE &lt; 8)
             GROUP BY USER_NAME
         )
     </select>
@@ -900,12 +903,12 @@
     <select id="selectMaxEquipCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
-            WHERE PART NOT IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
+            WHERE <include refid="rankExclude"/> PART NOT IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxEquipGrade" resultType="int">
-        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE <include refid="rankExclude"/> PART NOT IN ('NECKLACE','RING','BRACELET')
     </select>
 
     <!-- [2026-09-15 정정] 동료와 동일한 이유로 서버 합산 COUNT(*)가 아니라 유저별 GROUP BY
@@ -913,8 +916,8 @@
     <select id="selectMaxEquipGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
-            WHERE PART NOT IN ('NECKLACE','RING','BRACELET')
-              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART NOT IN ('NECKLACE','RING','BRACELET'))
+            WHERE <include refid="rankExclude"/> PART NOT IN ('NECKLACE','RING','BRACELET')
+              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE <include refid="rankExclude"/> PART NOT IN ('NECKLACE','RING','BRACELET'))
             GROUP BY USER_NAME
         )
     </select>
@@ -923,12 +926,12 @@
     <select id="selectMaxAccessoryCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
-            WHERE PART IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
+            WHERE <include refid="rankExclude"/> PART IN ('NECKLACE','RING','BRACELET') GROUP BY USER_NAME
         )
     </select>
 
     <select id="selectMaxAccessoryGrade" resultType="int">
-        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET')
+        SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE <include refid="rankExclude"/> PART IN ('NECKLACE','RING','BRACELET')
     </select>
 
     <!-- [2026-09-15 정정] 동료/장비와 동일한 이유로 서버 합산이 아니라 유저별 MAX로 변경
@@ -936,8 +939,8 @@
     <select id="selectMaxAccessoryGradeCount" resultType="int">
         SELECT NVL(MAX(CNT), 0) FROM (
             SELECT SUM(NVL(QTY, 1)) CNT FROM TBOT_S5_USER_EQUIP
-            WHERE PART IN ('NECKLACE','RING','BRACELET')
-              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE PART IN ('NECKLACE','RING','BRACELET'))
+            WHERE <include refid="rankExclude"/> PART IN ('NECKLACE','RING','BRACELET')
+              AND GRADE = (SELECT NVL(MAX(GRADE), 0) FROM TBOT_S5_USER_EQUIP WHERE <include refid="rankExclude"/> PART IN ('NECKLACE','RING','BRACELET'))
             GROUP BY USER_NAME
         )
     </select>
@@ -953,7 +956,7 @@
          스탯구매로 쓰면 줄어들어서 "기록"으로서 의미가 없음. 컬럼명은 그대로 두고(변경 범위
          최소화) 값만 TOTAL_PP_EARNED로 바꿈. -->
     <select id="selectAllUserPp" resultType="hashmap">
-        SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS
+        SELECT TOTAL_PP_EARNED_VALUE AS PP_VALUE, TOTAL_PP_EARNED_EXT AS PP_EXT FROM TBOT_S5_USER_PROGRESS WHERE <include refid="rankExclude"/> 1 = 1
     </select>
 
     <!-- /탑통계(관리자 전용) 웹/카톡 채널별 이용자 수 + 활동량(주사위/가챠/전멸).

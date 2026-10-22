@@ -179,22 +179,22 @@ public interface BotS5DAO {
     int bulkGrantTierAccessoryVoucher(@Param("tier") int tier, @Param("qty") int qty, @Param("days") int days);
 
     // ── /탑랭킹: 서버 전체 최고기록(익명 집계) — 누가 세운 기록인지는 노출하지 않고 수치만 조회 ──
-    int selectMaxFloorReached();
-    int selectMaxTotalKillCount();
-    int selectMaxAchievementCount();
-    int selectMaxFullyExploredCount();
-    int selectMaxCompanionCount();
-    int selectMaxCompanionGrade();
-    int selectMaxCompanionGradeCount();
-    int selectMaxEquipCount();
-    int selectMaxEquipGrade();
-    int selectMaxEquipGradeCount();
+    int selectMaxFloorReached(@Param("excluded") List<String> excluded);
+    int selectMaxTotalKillCount(@Param("excluded") List<String> excluded);
+    int selectMaxAchievementCount(@Param("excluded") List<String> excluded);
+    int selectMaxFullyExploredCount(@Param("excluded") List<String> excluded);
+    int selectMaxCompanionCount(@Param("excluded") List<String> excluded);
+    int selectMaxCompanionGrade(@Param("excluded") List<String> excluded);
+    int selectMaxCompanionGradeCount(@Param("excluded") List<String> excluded);
+    int selectMaxEquipCount(@Param("excluded") List<String> excluded);
+    int selectMaxEquipGrade(@Param("excluded") List<String> excluded);
+    int selectMaxEquipGradeCount(@Param("excluded") List<String> excluded);
     // [2026-09-15] 악세서리(목걸이/반지/팔찌) 전용 랭킹 통계.
-    int selectMaxAccessoryCount();
-    int selectMaxAccessoryGrade();
-    int selectMaxAccessoryGradeCount();
+    int selectMaxAccessoryCount(@Param("excluded") List<String> excluded);
+    int selectMaxAccessoryGrade(@Param("excluded") List<String> excluded);
+    int selectMaxAccessoryGradeCount(@Param("excluded") List<String> excluded);
     int countUserAccessory(@Param("userName") String userName);
-    List<HashMap<String, Object>> selectAllUserPp();
+    List<HashMap<String, Object>> selectAllUserPp(@Param("excluded") List<String> excluded);
     HashMap<String, Object> selectChannelUsageStats();
 
     /** countColumn/usedFlagColumn은 BotS5ServiceImpl.bumpActivityStat()의 고정 화이트리스트에서만 온다. */
