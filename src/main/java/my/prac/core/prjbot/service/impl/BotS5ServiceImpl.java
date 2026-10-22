@@ -7751,20 +7751,42 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  [2026-09-15] 악세서리는 두 부위(무기/갑옷/투구 중 둘)의 절반씩을 동시에 주므로 표기도
      *  "스탯A +x/+y% · 스탯B +x/+y%" 형태로 두 줄 합쳐서 보여준다. */
     private String equipBonusText(String part, int grade) {
-        double[] b = EQUIP_BONUS[grade - 1];
+        // [2026-10-22] 실제 능력치 계산(computeEffectiveStat)은 V2 표(TBOT_S5_EQUIP_BONUS_V2)를 쓰는데 이 문구만 예전 하드코딩 표(EQUIP_BONUS)를 보여줘서
+        // 화면/채팅의 장비 옵션이 실제와 달랐다(예: ★6 무기 실제 ATK +139/+31.2%인데 +150/+35%로 표시). 같은 행(equipBonusRow)을 쓰도록 통일.
+        double[] b = equipBonusRow(grade);
         if ("NECKLACE".equals(part)) { // 무기(ATK)+갑옷(DEF) 절반씩
-            return "ATK +" + Math.round(b[2] / 2) + "/+" + Math.round(b[3] * 50) + "% · DEF +" + Math.round(b[4] / 2) + "/+" + Math.round(b[5] * 50) + "%";
+            return "ATK +" + Math.round(b[2] / 2) + "/+" + pct1(b[3] * 50) + "% · DEF +" + Math.round(b[4] / 2) + "/+" + pct1(b[5] * 50) + "%";
         }
         if ("RING".equals(part)) { // 무기(ATK)+투구(HP) 절반씩
-            return "ATK +" + Math.round(b[2] / 2) + "/+" + Math.round(b[3] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + Math.round(b[1] * 50) + "%";
+            return "ATK +" + Math.round(b[2] / 2) + "/+" + pct1(b[3] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + pct1(b[1] * 50) + "%";
         }
         if ("BRACELET".equals(part)) { // 갑옷(DEF)+투구(HP) 절반씩
-            return "DEF +" + Math.round(b[4] / 2) + "/+" + Math.round(b[5] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + Math.round(b[1] * 50) + "%";
+            return "DEF +" + Math.round(b[4] / 2) + "/+" + pct1(b[5] * 50) + "% · HP +" + Math.round(b[0] / 2) + "/+" + pct1(b[1] * 50) + "%";
         }
         int fixedIdx = "HELMET".equals(part) ? 0 : "WEAPON".equals(part) ? 2 : 4;
         int pctIdx = fixedIdx + 1;
         String statName = "HELMET".equals(part) ? "HP" : "WEAPON".equals(part) ? "ATK" : "DEF";
-        return statName + " +" + (int) b[fixedIdx] + " / +" + Math.round(b[pctIdx] * 100) + "%";
+        return statName + " +" + Math.round(b[fixedIdx]) + " / +" + pct1(b[pctIdx] * 100) + "%";
+    }
+
+    /** 실제 능력치 계산(computeEffectiveStat)과 같은 장비 보너스 행 -- V2 표가 로드돼 있으면 V2, 아니면 기본 표. */
+    private double[] equipBonusRow(int grade) {
+        double[][] equipV2 = EQUIP_BONUS_V2;
+        return (BALANCE_V2_ENABLED && equipV2 != null && grade - 1 < equipV2.length && equipV2[grade - 1] != null)
+                ? equipV2[grade - 1] : EQUIP_BONUS[grade - 1];
+    }
+
+    /** 퍼센트 표기 -- 정수면 정수, 아니면 소수 1자리(31.2). */
+    private static String pct1(double v) {
+        double r = Math.round(v * 10) / 10.0;
+        return r == Math.rint(r) ? String.valueOf((long) r) : String.valueOf(r);
+    }
+
+    /** [2026-10-22] 인벤토리 화면용 장비 옵션 문구(부위/등급 기준 능력치 보너스). */
+    @Override
+    public String equipOptionText(String part, int grade) {
+        if (grade < 1 || grade > 7) return "";
+        return equipBonusText(part, grade);
     }
 
     /** 웹 SPA 캐릭터 상세 카드용 — 장비/스탯구매 보너스까지 반영한 유효 스탯. 대상이 없으면

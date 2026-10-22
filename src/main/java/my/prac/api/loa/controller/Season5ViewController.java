@@ -219,9 +219,13 @@ public class Season5ViewController {
     public ResponseEntity<?> apiTowerEquip(@RequestParam(value = "userName", defaultValue = "") String userName) {
         List<HashMap<String, Object>> equips = userName.trim().isEmpty()
                 ? new ArrayList<>() : s5Dao.selectUserEquip(userName);
+        // [2026-10-22] 인벤토리 탭 -- 장비마다 옵션 문구(능력치 보너스)를 같이 내려준다.
+        for (HashMap<String, Object> e : equips) {
+            e.put("OPTION_TEXT", s5Service.equipOptionText(String.valueOf(e.get("PART")), toInt(e.get("GRADE"))));
+        }
         HashMap<String, Object> result = new HashMap<>();
         result.put("equips", equips);
-        if (!userName.trim().isEmpty()) result.put("tickets", s5Service.enhanceTickets(userName)); // [2026-10-22] 강화권(전설강화 창)
+        if (!userName.trim().isEmpty()) result.put("tickets", s5Service.enhanceTickets(userName)); // [2026-10-22] 강화권(전설강화 창, 인벤토리 기타 탭)
         return ResponseEntity.ok(result);
     }
 

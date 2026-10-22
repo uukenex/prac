@@ -718,6 +718,25 @@
     .equip-card button.ten{ background:var(--shop); }
     /* [2026-09-17 2차] 착용중인 장비 카드 -- 미착용과 구분되게 살짝 다른 배경 + 착용자 표시. */
     .equip-card.worn{ background:var(--gold-soft); border-color:var(--gold); }
+    /* [2026-10-22] 인벤토리 탭 -- 장비 카드에 옵션(능력치 보너스/강화/전설 효과), 기타 탭은 아이콘 타일 */
+    #panel-inven .equip-grid{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+    .equip-card .eq-opt{ font-size:10px; line-height:1.45; color:var(--ink-soft); background:var(--parchment); border-radius:8px; padding:4px 6px; margin:0 0 6px; text-align:left; word-break:keep-all; }
+    .equip-card .eq-opt .eq-leg{ color:#8a5a00; font-weight:700; }
+    .inv-tabs{ display:flex; gap:6px; margin-bottom:10px; }
+    .inv-tabs button{ flex:1; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:7px 4px; font-size:12px; font-weight:800; color:var(--ink-soft); cursor:pointer; }
+    .inv-tabs button.on{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    .inv-etc-title{ font-size:12px; font-weight:800; color:var(--ink-soft); margin:12px 0 6px; }
+    .inv-etc-title:first-child{ margin-top:0; }
+    .inv-etc-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+    .inv-item{ display:flex; gap:8px; align-items:center; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:8px; }
+    .inv-ico{ flex:none; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:24px; background:var(--parchment); border:2px solid var(--line); position:relative; }
+    .inv-ico.t1{ border-color:#B9B3A6; } .inv-ico.t2{ border-color:#5FAE6E; background:#EEF7EF; } .inv-ico.t3{ border-color:#4C86C8; background:#EDF3FB; }
+    .inv-ico.t4{ border-color:#9B5FD1; background:#F4ECFB; } .inv-ico.legend{ border-color:var(--gold); background:#FFF4D6; }
+    .inv-ico .inv-qty{ position:absolute; right:-6px; bottom:-6px; background:var(--ink); color:#fff; border-radius:999px; font-size:10px; font-weight:800; padding:0 5px; line-height:16px; }
+    .inv-body{ min-width:0; flex:1; }
+    .inv-name{ font-size:12px; font-weight:800; }
+    .inv-sub{ font-size:10px; color:var(--ink-soft); margin:1px 0 4px; }
+    .inv-body button{ border:none; border-radius:8px; background:var(--gold); color:#fff; font-size:10px; font-weight:700; padding:4px 8px; cursor:pointer; }
     .equip-card .eq-worn-by{ font-size:9.5px; color:var(--ink-soft); margin-bottom:6px; font-weight:600; }
 
     /* [2026-09-06] 동료변경/장비변경 선택 팝업(#pickerOverlay), "전체 동료보기"/"전체
@@ -790,14 +809,15 @@
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
            background:linear-gradient(180deg,rgba(251,243,223,0),var(--parchment) 22%); }
     /* [2026-10-21] "옆으로 쫙 있는 메뉴를 두 줄, 한 줄에 4칸씩" 요청 -- 탑/편성/상점/빈칸, 업적/도감/메시지/설정. */
-    .dock-inner{ max-width:900px; width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:2px 8px; background:#fff;
-                 border:2px solid var(--line); border-radius:20px; padding:6px 8px; box-shadow:0 10px 26px -10px rgba(46,36,64,.4); }
-    .dbtn{ display:flex; flex-direction:column; align-items:center; gap:2px; background:transparent; border:none;
-           border-radius:14px; padding:6px 4px 5px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
+    /* [2026-10-22] "8개의 탭메뉴가 영역분리가 되면 좋겠어(테두리)" 요청 -- 칸마다 테두리를 두르고, 선택된 칸은 금색 테두리+배경. 빈칸 자리는 인벤토리 탭. */
+    .dock-inner{ max-width:900px; width:100%; display:grid; grid-template-columns:repeat(4,1fr); gap:6px; background:#fff;
+                 border:2px solid var(--line); border-radius:20px; padding:7px; box-shadow:0 10px 26px -10px rgba(46,36,64,.4); }
+    .dbtn{ display:flex; flex-direction:column; align-items:center; gap:2px; background:#FFFCF3; border:1.5px solid var(--line);
+           border-radius:12px; padding:5px 4px 4px; color:var(--ink-soft); font-size:10px; font-weight:700; cursor:pointer; }
     .dbtn-empty{ visibility:hidden; pointer-events:none; }
     .dbtn .d-icn{ font-size:18px; }
     .dbtn:hover{ background:var(--parchment-deep); }
-    .dbtn.active{ color:var(--gold); }
+    .dbtn.active{ color:var(--gold); border-color:var(--gold); background:var(--gold-soft); }
     .dbtn.primary{ background:linear-gradient(180deg,#E4633F,var(--combat)); color:#fff; box-shadow:0 3px 0 #A93A28; }
     .dbtn.primary .d-icn{ font-size:22px; }
     .dbtn:disabled{ opacity:.35; cursor:not-allowed; }
@@ -1039,7 +1059,26 @@
          슬롯 카드에 이미 다 보이는 중복 정보라 [2026-09-07]에 완전히 제거. -->
     <div class="card" style="margin-top:10px; display:flex; gap:8px;">
       <button type="button" class="browse-btn" onclick="TW.openAllCompanions()">👥 전체 동료보기</button>
-      <button type="button" class="browse-btn" onclick="TW.openAllEquip()">🎒 전체 아이템보기</button>
+    </div>
+  </div>
+
+  <!-- [2026-10-22] "편성 탭의 전체 아이템보기를 없애고 인벤토리 탭을 만들어줘" 요청 -- 예전 #allEquipOverlay 팝업의 장비 목록을 탭으로 옮기고
+       카드에 옵션(능력치 보너스/강화/전설 효과)을 보여준다. 기타 탭에는 강화권/전설의 조각/뽑기권/선택권. -->
+  <div class="panel" id="panel-inven">
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">🧳 인벤토리</div>
+        <button class="synth-all-btn" id="invSynthAllBtn" onclick="TW.action('EQUIP_SYNTH_ALL','')">⚗️ 일괄합성</button>
+      </div>
+      <div class="inv-tabs">
+        <button type="button" class="on" data-inv="equip" onclick="TW.setInvTab('equip')">장비 · 악세서리</button>
+        <button type="button" data-inv="etc" onclick="TW.setInvTab('etc')">기타</button>
+      </div>
+      <div id="invEquipPane">
+        <div id="equipListFilters"></div>
+        <div id="equipListBox"></div>
+      </div>
+      <div id="invEtcPane" style="display:none;"><div id="invEtcBox"></div></div>
     </div>
   </div>
 
@@ -1264,23 +1303,7 @@
   </div>
 </div>
 
-<div class="detail-overlay" id="allEquipOverlay" onclick="if(event.target===this) TW.closeAllEquip();">
-  <div class="detail-card sheet-card wide-card">
-    <button class="detail-close" onclick="TW.closeAllEquip()">✕</button>
-    <!-- [2026-09-12] "장비 일괄합성 기능을 만들고 싶다" 요청 -- 미착용 장비 시트 상단에
-         버튼 하나만 두면 합성 가능한 조합(동일 클래스/부위/등급 3개 이상, ★6 미만)을 전부
-         한 번에 처리(EQUIP_SYNTH_ALL, 서버에서 연쇄 합성까지 계산). -->
-    <div class="sheet-title-row">
-      <div class="sheet-title">미착용 장비</div>
-      <button class="synth-all-btn" onclick="TW.action('EQUIP_SYNTH_ALL','')">⚗️ 일괄합성</button>
-    </div>
-    <!-- [2026-09-21] 여기 있던 임시 "전설제작" 버튼은 상점 탭의 전설제작 카드로 완전히
-         대체돼서 제거(craftLegendary가 legendaryId 파라미터를 받도록 바뀌어서 이 빈 버튼은
-         이제 호출하면 오류가 났을 것). -->
-    <div id="equipListFilters"></div>
-    <div id="equipListBox"></div>
-  </div>
-</div>
+<!-- [2026-10-22] 예전 장비 목록 팝업(#allEquipOverlay)은 인벤토리 탭(#panel-inven)으로 옮겨졌다(일괄합성 버튼 포함). -->
 
 <!-- [2026-09-21] "전설제작 리스트로 쭉 나오는게 아니고, 전체동료리스트처럼 팝업을띄워서
      거기서 선택" 요청 -- allCompanionsOverlay/allEquipOverlay와 동일한 .detail-overlay 패턴. -->
@@ -1367,7 +1390,7 @@
     <!-- [2026-09-09] "주사위를 보드 안쪽으로 옮겼으니 하단 탭은 없애자" 요청 -- 여기 있던
          굴리기 버튼(dbtnDice)은 보드 카드 안의 #boardRollBtn으로 이동(updateDiceButtonState 참고). -->
     <button class="dbtn" data-tab="shop" id="dbtnShop" onclick="TW.switchTab('shop')"><span class="d-icn">🛍️</span>상점</button>
-    <span class="dbtn dbtn-empty" aria-hidden="true"></span>
+    <button class="dbtn" data-tab="inven" onclick="TW.switchTab('inven')"><span class="d-icn">🧳</span>인벤토리</button>
     <button class="dbtn" data-tab="ach" onclick="TW.switchTab('ach')"><span class="d-icn">🏆</span>업적</button>
     <button class="dbtn" data-tab="codex" onclick="TW.switchTab('codex')"><span class="d-icn">📖</span>도감</button>
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
@@ -1820,7 +1843,8 @@ var TW = (function () {
     document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('active', p.id === 'panel-' + name); });
     if (name === 'shop') loadShop();
     if (name === 'ach') loadAchievements();
-    if (name === 'party') loadPartyAndEquip();
+    if (name === 'party' || name === 'inven') loadPartyAndEquip();
+    if (name === 'inven' && invTab === 'etc') renderInvEtc();
     if (name === 'msg') loadMessages();
     if (name === 'codex') loadCodex();
     updateDiceButtonState();
@@ -1908,7 +1932,7 @@ var TW = (function () {
   // 지금 활성화된 탭(파티/상점/업적)이 있으면 그 데이터도 같이 새로고침 -- loadStatus()(닉네임
   // 재조회)와 action()(액션 후 갱신) 둘 다에서 공유해서 쓴다.
   function refreshActivePanel() {
-    if (document.getElementById('panel-party').classList.contains('active')) loadPartyAndEquip();
+    if (document.getElementById('panel-party').classList.contains('active') || document.getElementById('panel-inven').classList.contains('active')) loadPartyAndEquip();
     if (document.getElementById('panel-shop').classList.contains('active')) loadShop();
     if (document.getElementById('panel-ach').classList.contains('active')) loadAchievements();
     if (document.getElementById('panel-msg').classList.contains('active')) loadMessages();
@@ -2957,7 +2981,8 @@ var TW = (function () {
   // 똑같은 검 아이콘으로 보였다. 그룹(검/지팡이/활/갑주/로브/재킷)별로 실제 어울리는
   // 이모지를 따로 두고, 매핑에 없으면(투구/악세서리, 또는 마이그레이션 전 구 데이터)
   // 기존 PART_EMOJI로 그대로 폴백한다.
-  var GROUP_EMOJI = { SWORD: '⚔️', STAFF: '🪄', BOW: '🏹', PLATE: '🛡️', ROBE: '👘', JACKET: '🧥' };
+  // [2026-10-22] "투구 종류가 여러 개인데 이미지가 하나" 요청 -- 투구/머리띠/깃장식을 각각 다른 아이콘으로.
+  var GROUP_EMOJI = { SWORD: '⚔️', STAFF: '🪄', BOW: '🏹', PLATE: '🛡️', ROBE: '👘', JACKET: '🧥', HELM: '🪖', HEADBAND: '🎀', PLUME: '🪶' };
   function equipIcon(equipClass, part) {
     return GROUP_EMOJI[equipClass] || PART_EMOJI[part] || '🎽';
   }
@@ -3267,12 +3292,88 @@ var TW = (function () {
     document.getElementById('confirmOverlay').classList.add('open');
   }
 
-  function openAllEquip() {
-    document.getElementById('allEquipOverlay').classList.add('open');
-    if (equipDirty) { renderEquipList(); equipDirty = false; }
+  // [2026-10-22] 장비 목록은 인벤토리 탭으로 옮겨졌다 -- 예전 진입점은 탭으로 보낸다.
+  function openAllEquip() { switchTab('inven'); }
+  function closeAllEquip() {}
+
+  // ---- 인벤토리 탭 ----
+  var invTab = 'equip';
+  function setInvTab(t) {
+    invTab = t;
+    document.querySelectorAll('.inv-tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.inv === t); });
+    document.getElementById('invEquipPane').style.display = t === 'equip' ? '' : 'none';
+    document.getElementById('invEtcPane').style.display = t === 'etc' ? '' : 'none';
+    document.getElementById('invSynthAllBtn').style.display = t === 'equip' ? '' : 'none';
+    if (t === 'equip') { renderEquipList(); equipDirty = false; } else renderInvEtc();
   }
-  function closeAllEquip() {
-    document.getElementById('allEquipOverlay').classList.remove('open');
+
+  // 장비 카드 옵션 -- 능력치 보너스(서버 OPTION_TEXT, 실제 계산과 같은 표), 전설이면 강화와 고유 효과.
+  function equipOptionHtml(e) {
+    var lines = [];
+    if (e.OPTION_TEXT) lines.push(String(e.OPTION_TEXT).split(' · ').join('<br>'));
+    if (e.LEGENDARY_ID != null) {
+      if (e.ENHANCE_LEVEL > 0) lines.push('강화 +' + e.ENHANCE_LEVEL + ' (능력치 +' + (e.ENHANCE_LEVEL * 6) + '%)');
+      var fn = LEGEND_EFFECT_LABEL[e.LEGENDARY_EFFECT_TYPE];
+      if (fn) lines.push('<span class="eq-leg">✨ ' + fn(e.LEGENDARY_EFFECT_PARAM1, e.LEGENDARY_EFFECT_PARAM2) + '</span>');
+    }
+    return lines.length ? '<div class="eq-opt">' + lines.join('<br>') + '</div>' : '';
+  }
+
+  // 기타 탭 -- 강화권, 전설의 조각, 등급별 뽑기권(상점 API), 선택권(진행 정보). 이미지는 등급 색 테두리를 두른 아이콘 타일.
+  function renderInvEtc() {
+    var box = document.getElementById('invEtcBox');
+    var u = userName();
+    if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
+    var p = state.progress || {};
+    var tickets = (lastParty.tickets || []).slice().sort(function (a, b) { return b.ENHANCE_LEVEL - a.ENHANCE_LEVEL; });
+    fetch(base + '/api/tower-shop?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (shop) {
+      var sections = [];
+      var enh = [];
+      tickets.forEach(function (t) {
+        enh.push({ icon: '🎫', cls: 'legend', name: '+' + t.ENHANCE_LEVEL + ' 강화권', qty: 1,
+                   sub: (t.SOURCE_ITEM_NAME ? t.SOURCE_ITEM_NAME + ' 해체 · ' : '') + '더 낮은 전설장비를 +' + t.ENHANCE_LEVEL + '로', btn: '전설강화로', act: openLegendEnhance });
+      });
+      if ((p.LEGEND_FRAGMENT || 0) > 0) {
+        enh.push({ icon: '🧩', cls: 'legend', name: '전설의 조각', qty: p.LEGEND_FRAGMENT, sub: '전설 제작·강화 재료', btn: '상점으로', act: function () { switchTab('shop'); } });
+      }
+      if (enh.length) sections.push(['🎫 강화 재료', enh]);
+      var tierNames = ['하급', '중급', '상급', '최상급'];
+      var pulls = [];
+      if ((shop.freeCompanionPullsLeft || 0) > 0) pulls.push({ icon: '🎁', cls: 't1', name: '튜토리얼 무료 동료뽑기', qty: shop.freeCompanionPullsLeft, sub: '상점 동료뽑기에 사용', btn: '상점으로', act: function () { switchTab('shop'); } });
+      [['companionVoucherByTier', '📜', '동료뽑기권'], ['equipVoucherByTier', '🧰', '장비뽑기권'], ['accessoryVoucherByTier', '💎', '악세뽑기권']].forEach(function (def) {
+        (shop[def[0]] || []).forEach(function (n, i) {
+          if (n > 0) pulls.push({ icon: def[1], cls: 't' + (i + 1), name: tierNames[i] + ' ' + def[2], qty: n, sub: tierNames[i] + ' 상자 뽑기에 사용', btn: '상점으로', act: function () { switchTab('shop'); } });
+        });
+      });
+      if (pulls.length) sections.push(['🎟️ 뽑기권', pulls]);
+      var choices = [];
+      [[3, ''], [4, '_G4'], [5, '_G5']].forEach(function (g) {
+        var c = p['COMPANION_CHOICE_TICKET' + g[1]] || 0, w = p['WEAPON_CHOICE_TICKET' + g[1]] || 0;
+        if (c > 0) choices.push({ icon: '🎟️', cls: 't' + (g[0] - 1), name: '★' + g[0] + ' 동료 선택권', qty: c, sub: '직업을 골라 ★' + g[0] + ' 동료 획득', btn: '상점으로', act: function () { switchTab('shop'); } });
+        if (w > 0) choices.push({ icon: '🗡️', cls: 't' + (g[0] - 1), name: '★' + g[0] + ' 무기 선택권', qty: w, sub: '직업을 골라 ★' + g[0] + ' 무기 획득', btn: '상점으로', act: function () { switchTab('shop'); } });
+      });
+      if (choices.length) sections.push(['🎯 선택권', choices]);
+
+      box.innerHTML = '';
+      if (!sections.length) { box.innerHTML = '<div class="sheet-empty">보유한 기타 아이템이 없습니다.</div>'; return; }
+      sections.forEach(function (sec) {
+        var t = document.createElement('div');
+        t.className = 'inv-etc-title';
+        t.textContent = sec[0];
+        box.appendChild(t);
+        var grid = document.createElement('div');
+        grid.className = 'inv-etc-grid';
+        sec[1].forEach(function (it) {
+          var el = document.createElement('div');
+          el.className = 'inv-item';
+          el.innerHTML = '<div class="inv-ico ' + it.cls + '">' + it.icon + (it.qty > 1 ? '<span class="inv-qty">x' + it.qty + '</span>' : '') + '</div>'
+              + '<div class="inv-body"><div class="inv-name">' + it.name + '</div><div class="inv-sub">' + it.sub + '</div><button type="button">' + it.btn + '</button></div>';
+          el.querySelector('button').onclick = it.act;
+          grid.appendChild(el);
+        });
+        box.appendChild(grid);
+      });
+    }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
   }
 
   // 캐릭터 확대/상세 카드에서 쓰려고 마지막으로 불러온 파티·장비 데이터를 기억해둔다
@@ -3816,6 +3917,7 @@ var TW = (function () {
         }
         card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + (e.QTY > 1 ? '<span class="eq-qty">x' + e.QTY + '</span>' : '') + '</div>'
+            + equipOptionHtml(e)
             + actionsHtml;
         grid.appendChild(card);
       });
@@ -3854,7 +3956,10 @@ var TW = (function () {
   var gridDirty = true, equipDirty = true;
   function renderHeavyListsIfOpen() {
     if (document.getElementById('allCompanionsOverlay').classList.contains('open')) { renderPartyGrid(); gridDirty = false; } else { gridDirty = true; }
-    if (document.getElementById('allEquipOverlay').classList.contains('open')) { renderEquipList(); equipDirty = false; } else { equipDirty = true; }
+    if (document.getElementById('panel-inven').classList.contains('active')) {
+      renderEquipList(); equipDirty = false;
+      if (invTab === 'etc') renderInvEtc();
+    } else { equipDirty = true; }
   }
 
   function loadPartyAndEquip() {
@@ -4767,7 +4872,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, closeDetail: closeDetail, closeConfirm: closeConfirm,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,

@@ -395,6 +395,9 @@ public interface BotS5Service {
     String growthInfoText(String userName);
     String growthRename(String userName, String name);
 
+    /** [2026-10-22] 인벤토리 화면용 장비 옵션 문구(실제 능력치 계산과 같은 V2 표 기준). */
+    String equipOptionText(String part, int grade);
+
     /** [2026-10-22] 전투 영향 패치 -- 주사위를 막아야 하면 {type: PATCH|LEGEND, text}, 아니면 null. */
     java.util.HashMap<String, Object> diceGate(String userName);
     /** [2026-10-22] 패치 내용 확인(웹 확인 버튼, 채팅 /패치확인). */
