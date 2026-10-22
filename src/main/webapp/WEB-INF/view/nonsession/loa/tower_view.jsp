@@ -4601,10 +4601,13 @@ var TW = (function () {
   var noticeSnoozeUntil = 0;
   var noticeCheckedUser = null; // 이 유저명으로는 이미 서버에 확인했음(loadStatus마다 재조회하지 않기 위한 가드)
   var NOTICE_STORAGE_KEY = 'loaAppVersionSeen';
+  var lastNoticeCheckAt = 0;
+  var NOTICE_RECHECK_MS = 10 * 60 * 1000;
 
   function checkAppVersion() {
     var u = userName();
     noticeCheckedUser = u;
+    lastNoticeCheckAt = Date.now();
     fetch(base + '/api/tower-notice' + (u ? '?userName=' + encodeURIComponent(u) : ''))
       .then(function (r) { return r.json(); }).then(function (data) {
         lastNotice = { version: String(data.version || ''), notice: data.notice || '', dismissed: !!data.dismissed };
@@ -4681,7 +4684,11 @@ var TW = (function () {
     if (saved) loadStatus();
 
     checkAppVersion();
-    setInterval(checkAppVersion, 3 * 60 * 1000); // 페이지를 오래 켜두는 유저도 놓치지 않게 3분마다 재확인
+    // [2026-10-22] "이거 왜 계속 호출해? 안 호출하게" 요청 -- 3분마다 무조건 부르던 타이머(setInterval)를 없앴다.
+    // 대신 다른 앱/탭에 갔다가 이 화면으로 돌아올 때만, 마지막 확인 뒤 10분이 지났으면 한 번 확인한다.
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && Date.now() - lastNoticeCheckAt > NOTICE_RECHECK_MS) checkAppVersion();
+    });
 
     // [2026-09-14] "마우스휠로 스크롤 못하게 하자" 요청으로 휠 이벤트를 막았었는데,
     // [2026-09-21 철회] "pc버전에선 스크롤이 마우스로 잘 안되고" 요청으로 다시 허용(마우스휠

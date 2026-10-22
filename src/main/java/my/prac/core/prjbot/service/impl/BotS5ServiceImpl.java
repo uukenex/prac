@@ -6221,9 +6221,9 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  (진행 기록이 없는 유저면 항상 false). */
     @Override
     public HashMap<String, Object> getNotice(String userName) {
-        HashMap<String, Object> row = dao.selectNotice();
+        HashMap<String, Object> row = cachedNoticeRow();
         HashMap<String, Object> result = new HashMap<>();
-        if (row == null) {
+        if (row.isEmpty()) {
             result.put("APP_VERSION", "0");
             result.put("NOTICE_TEXT", "");
             result.put("DISMISSED", false);
@@ -6232,12 +6232,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         result.putAll(row);
         boolean dismissed = false;
         if (userName != null && !userName.trim().isEmpty()) {
-            String seen = dao.selectNoticeSeenVersion(userName.trim());
+            String u = userName.trim();
+            String seen = NOTICE_SEEN_CACHE.get(u);
+            if (seen == null) {
+                seen = dao.selectNoticeSeenVersion(u);
+                if (seen == null) seen = "";
+                NOTICE_SEEN_CACHE.put(u, seen);
+            }
             String version = String.valueOf(row.get("APP_VERSION"));
             dismissed = version.equals(seen);
         }
         result.put("DISMISSED", dismissed);
         return result;
+    }
+
+    // [2026-10-22] "이거 왜 계속 호출해? 안 호출하게" 요청 -- 웹 화면이 탭마다 3분마다 /api/tower-notice를 불러서 그때마다
+    // 공지 행 + 그 유저의 NOTICE_SEEN_VERSION을 DB에서 읽었다(이미 열려 있는 탭은 새로고침 전까지 옛 화면 코드로 계속 부른다).
+    // 공지 행은 10분간 메모리에 두고(/공지등록 하면 즉시 갱신), 유저별 "다시 보지 않기" 값도 처음 한 번만 읽고 메모리에 기억한다
+    // (이 값은 dismissNotice로만 바뀌고, 바꿀 때 메모리도 같이 고친다). DB를 직접 고친 공지는 최대 10분 늦게 반영된다.
+    private static final long NOTICE_CACHE_TTL_MS = 10 * 60 * 1000L;
+    private static volatile HashMap<String, Object> noticeCache; // 빈 맵 = 공지 행 없음
+    private static volatile long noticeCacheAt;
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> NOTICE_SEEN_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private HashMap<String, Object> cachedNoticeRow() {
+        HashMap<String, Object> c = noticeCache;
+        if (c != null && System.currentTimeMillis() - noticeCacheAt < NOTICE_CACHE_TTL_MS) return new HashMap<>(c);
+        HashMap<String, Object> row = dao.selectNotice();
+        c = row == null ? new HashMap<String, Object>() : new HashMap<>(row);
+        noticeCache = c;
+        noticeCacheAt = System.currentTimeMillis();
+        return new HashMap<>(c);
     }
 
     /** 웹 SPA 전용: "다시 보지 않기" -- 현재 공지 버전을 그 유저의 NOTICE_SEEN_VERSION으로
@@ -6247,12 +6272,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public void dismissNotice(String userName) {
         if (userName == null || userName.trim().isEmpty()) return;
-        HashMap<String, Object> row = dao.selectNotice();
-        String version = (row == null) ? "0" : String.valueOf(row.get("APP_VERSION"));
+        HashMap<String, Object> row = cachedNoticeRow();
+        String version = row.isEmpty() ? "0" : String.valueOf(row.get("APP_VERSION"));
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName.trim());
         up.put("version", version);
         dao.updateNoticeSeenVersion(up);
+        NOTICE_SEEN_CACHE.put(userName.trim(), version);
     }
 
     /**
@@ -6276,6 +6302,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("version", version);
         up.put("text", text.trim());
         dao.updateNotice(up);
+        noticeCache = null; // 새 공지를 다음 확인부터 바로 보이게
         return "📢 공지 등록 완료! (버전 " + version + ") 웹 화면을 켜둔 접속자들에게 새로고침 안내 팝업이 순서대로 뜹니다.";
     }
 
