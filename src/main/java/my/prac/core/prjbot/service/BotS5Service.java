@@ -397,6 +397,9 @@ public interface BotS5Service {
     String growthInfoText(String userName);
     String growthRename(String userName, String name);
 
+    /** [2026-10-22] 연타 대응 -- 메모리로 판정한 주사위 쿨타임 거절 메시지(DB 미사용), 판정 못 하면 null. */
+    String diceCooldownFast(String userName);
+
     /** [2026-10-22] 하단 메뉴 순서/숨기기(유저별 저장). */
     String setDockLayout(String userName, String layout);
 

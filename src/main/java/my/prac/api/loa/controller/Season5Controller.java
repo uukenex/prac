@@ -58,7 +58,9 @@ public class Season5Controller {
 
     public String rollDice(HashMap<String, Object> map) {
         String userName = userNameOf(map);
-        String result = s5Service.rollDice(userName, "CHAT");
+        // [2026-10-22] 연타 대응 -- 쿨타임이면 DB/트랜잭션 없이 바로 거절(메모리 판정)
+        String fastCooldown = s5Service.diceCooldownFast(userName);
+        String result = fastCooldown != null ? fastCooldown : s5Service.rollDice(userName, "CHAT");
         // /탑통계용 활동 카운터(웹 쪽은 Season5ViewController.apiTowerAction에서 동일하게 적재)
         s5Service.bumpActivityStat(userName, "DICE_CHAT");
         if (result != null && result.contains("파티 전멸")) {

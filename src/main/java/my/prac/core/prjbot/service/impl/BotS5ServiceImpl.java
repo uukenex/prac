@@ -2467,7 +2467,45 @@ public class BotS5ServiceImpl implements BotS5Service {
             nextCooldownSec = MOVE_COOLDOWN_SEC;
         }
         touchDiceCooldown(userName, nextCooldownSec);
+        if (!"Y".equals(strVal(p.get("NO_COOLDOWN_YN"), "N"))) rememberDiceCooldown(userName, nextCooldownSec);
         return prependAutoHunt(autoHuntMsg, result);
+    }
+
+    // ---- [2026-10-22] 연타 대응: 쿨타임을 메모리에서 먼저 판정 ----
+    // 자주 누르는 유저의 주사위는 대부분 쿨타임에 막히는데, 예전엔 막히기 전에 진행 조회/전설 규칙 검사(장비 전체)/자동사냥 정산 조회를 다 하고
+    // 거절했다(거절 한 번에 쿼리 여러 개). 굴림이 커밋되면 "마지막 굴림 시각(초 단위로 자름), 쿨타임"을 메모리에 남기고,
+    // 컨트롤러가 서비스를 부르기 전에 이걸로 먼저 거절한다(DB/트랜잭션 없음). DB 판정과 어긋나지 않게 항상 1초 느슨하게 보고,
+    // 마지막 1초와 메모리에 없는 경우(서버 재시작 직후 등)는 기존 DB 판정(checkDiceCooldown)이 그대로 처리한다.
+    private static final java.util.concurrent.ConcurrentHashMap<String, long[]> DICE_COOLDOWN_MEM = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private void rememberDiceCooldown(final String userName, final long cooldownSec) {
+        if (cooldownSec <= 1) return;
+        final long now = System.currentTimeMillis();
+        final long[] v = { now - now % 1000, cooldownSec };
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            // 굴림이 롤백되면 DB엔 쿨타임이 안 남으니 메모리에도 남기지 않는다(커밋된 뒤에만 기록)
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronizationAdapter() {
+                        @Override
+                        public void afterCommit() { DICE_COOLDOWN_MEM.put(userName, v); }
+                    });
+        } else {
+            DICE_COOLDOWN_MEM.put(userName, v);
+        }
+    }
+
+    /** 메모리로 판정한 쿨타임 거절 메시지(checkDiceCooldown과 같은 문구), 판정 못 하면 null. DB를 쓰지 않는다. */
+    @Override
+    public String diceCooldownFast(String userName) {
+        if (userName == null) return null;
+        long[] c = DICE_COOLDOWN_MEM.get(userName);
+        if (c == null) return null;
+        long elapsedSec = (System.currentTimeMillis() - c[0]) / 1000;
+        if (elapsedSec >= c[1] - 1) { // 마지막 1초(DB 시각 반올림/시계 차이 여유)는 DB 판정에 맡긴다
+            DICE_COOLDOWN_MEM.remove(userName, c);
+            return null;
+        }
+        return "⏳" + userName + "님, 아직 쿨타임입니다! " + (c[1] - elapsedSec) + "초 후 다시 시도해주세요. (쿨타임 " + c[1] + "초)";
     }
 
     private String prependAutoHunt(String autoHuntMsg, String result) {

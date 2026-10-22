@@ -637,6 +637,12 @@ public class Season5ViewController {
         try {
             switch (type) {
                 case "DICE": {
+                    // [2026-10-22] 연타 대응 -- 쿨타임이면 DB 없이 바로 거절(메모리 판정)
+                    String fastCooldown = s5Service.diceCooldownFast(userName);
+                    if (fastCooldown != null) {
+                        message = fastCooldown;
+                        break;
+                    }
                     // [2026-10-22] 전투 영향 패치 확인 전/전설 규칙 위반이면 굴리지 않고 화면이 확인 팝업을 띄우도록 gate를 같이 내려준다.
                     HashMap<String, Object> gate = s5Service.diceGate(userName);
                     if (gate != null) {
