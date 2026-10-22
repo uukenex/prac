@@ -4417,10 +4417,19 @@ var TW = (function () {
   // [2026-09-21] "장비제작소 안에 장비해체 버튼을 누르면 어떤장비해체할지 띄우는방식으로
   // 하자" 요청 -- 보유(미착용) ★7 전설장비만 골라서 팝업 목록으로 보여주고, 각 항목의
   // "해체" 버튼을 누르면 바로 실행(조각 9개 환급).
+  // [2026-10-22] 해체가 첫 번째만 되고 나머지는 "★7만 분해 가능"으로 거절되던 문제 -- 팝업이 상점 탭에 있어서 해체 후 목록이 갱신되지 않은 채
+  // "미착용 N번"을 보내 다른 장비를 가리켰다. 열 때마다 목록을 새로 받아오고, 해체는 EQUIP_ID로 보낸다(DISENCHANT_LEGENDARY_ID).
   function openLegendDisenchant() {
     var overlay = document.getElementById('legendDisenchantOverlay');
     var list = document.getElementById('legendDisenchantList');
-    var legendItems = (lastParty.unequipped || []).filter(function (e) { return e.GRADE === 7; });
+    list.innerHTML = '<div class="sheet-empty">불러오는 중...</div>';
+    overlay.classList.add('open');
+    Promise.resolve(loadPartyAndEquip()).then(renderLegendDisenchant, renderLegendDisenchant);
+  }
+  function renderLegendDisenchant() {
+    var overlay = document.getElementById('legendDisenchantOverlay');
+    var list = document.getElementById('legendDisenchantList');
+    var legendItems = (lastParty.unequipped || []).filter(function (e) { return e.GRADE === 7 && e.LEGENDARY_ID != null; });
     if (!legendItems.length) {
       list.innerHTML = '<div class="sheet-empty">해체할 수 있는 ★7 전설장비(미착용)가 없습니다.</div>';
     } else {
@@ -4430,17 +4439,16 @@ var TW = (function () {
         el.className = 'legend-roster-item';
         var groupLabel = WEAPON_CLASS_NAME[e.CLASS] || (e.CLASS === 'COMMON' ? '공용' : e.CLASS);
         el.innerHTML = '<div class="lri-icon">' + equipIcon(e.CLASS, e.PART) + '</div>'
-            + '<div class="lri-body"><div class="lri-name">★7 ' + groupLabel + '</div></div>'
+            + '<div class="lri-body"><div class="lri-name">✨ ' + (e.LEGENDARY_ITEM_NAME || ('★7 ' + groupLabel)) + (e.ENHANCE_LEVEL > 0 ? ' +' + e.ENHANCE_LEVEL : '') + '</div></div>'
             + '<button class="legend-disenchant-item-btn" type="button">🧩 해체(+15' + (e.ENHANCE_LEVEL > 0 ? ' · 🎫+' + e.ENHANCE_LEVEL + '권' : '') + ')</button>';
         el.querySelector('.legend-disenchant-item-btn').onclick = function (ev) {
           ev.stopPropagation();
-          action('DISENCHANT_LEGENDARY', String(e.__idx));
+          action('DISENCHANT_LEGENDARY_ID', String(e.EQUIP_ID));
           closeLegendDisenchant();
         };
         list.appendChild(el);
       });
     }
-    overlay.classList.add('open');
   }
   function closeLegendDisenchant() {
     document.getElementById('legendDisenchantOverlay').classList.remove('open');
@@ -4874,6 +4882,7 @@ var TW = (function () {
         if (needFull) loadPartyAndEquip(); else loadPartyLight();
         if (msgTxt.indexOf('처치! 🎉') !== -1) showVictoryFlash();
       }
+      if (type === 'DISENCHANT_LEGENDARY_ID' || type === 'DISENCHANT_LEGENDARY') loadPartyAndEquip(); // [2026-10-22] 상점 탭에서도 장비 목록 갱신
       loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });
   }

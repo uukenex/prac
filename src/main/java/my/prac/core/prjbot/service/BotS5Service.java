@@ -217,6 +217,8 @@ public interface BotS5Service {
     /** [2026-09-21] "전설은 한번 만들어지면 전설의조각 9개로 바꿀수있도록도 해줘" -- 보유한
      *  ★7 전설장비(미착용 목록 N번)를 분해해서 조각 9개로 환급. */
     String disenchantLegendary(String userName, int equipIdx);
+    /** [2026-10-22] 웹 해체 팝업 -- EQUIP_ID 기준(목록 번호가 어긋나 다른 장비를 가리키던 문제). */
+    String disenchantLegendaryById(String userName, int equipId);
 
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);

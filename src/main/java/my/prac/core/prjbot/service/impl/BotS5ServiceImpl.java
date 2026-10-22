@@ -8463,8 +8463,29 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
         }
         if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
-        HashMap<String, Object> equip = unequipped.get(equipIdx - 1);
-        if (intVal(equip.get("GRADE"), 1) != 7) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
+        return disenchantRow(userName, progress, unequipped.get(equipIdx - 1));
+    }
+
+    /** [2026-10-22] 웹 해체 팝업 전용 -- "미착용 목록 N번" 대신 EQUIP_ID로 해체한다.
+     *  번호 방식은 팝업이 상점 탭에 있어 해체 후 목록이 새로 안 불려서, 두 번째 해체부터 옛 번호가 다른 장비(★6 등)를 가리켜
+     *  "★7 전설장비만 분해할 수 있습니다"로 거절됐다(무기 하나만 되고 나머지는 안 되는 것처럼 보이던 원인). */
+    @Override
+    @Transactional
+    public String disenchantLegendaryById(String userName, int equipId) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) {
+            return "전투 중에는 분해할 수 없습니다.";
+        }
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (intVal(e.get("EQUIP_ID"), 0) != equipId) continue;
+            if (e.get("EQUIPPED_COMPANION_ID") != null) return "착용 중인 장비는 해체할 수 없습니다. 먼저 해제하세요.";
+            return disenchantRow(userName, progress, e);
+        }
+        return "이미 해체했거나 없는 장비입니다.";
+    }
+
+    private String disenchantRow(String userName, HashMap<String, Object> progress, HashMap<String, Object> equip) {
+        if (intVal(equip.get("GRADE"), 1) != 7 || equip.get("LEGENDARY_ID") == null) return "★7 전설장비만 조각으로 분해할 수 있습니다.";
 
         // [2026-10-22] "강화된 장비 해체 시 전설의조각과 강화권을 돌려줘서 다른 장비에 덧입힐 수 있게" 요청 -- 예전의 "강화에 쓴 조각 절반 환급" 대신
         // 그 강화 수치의 강화권(예: +8 강화권)을 준다. 강화권은 강화 수치가 더 낮은 다른 전설장비에 쓰면 그 수치로 맞춰진다(useEnhanceTicket).

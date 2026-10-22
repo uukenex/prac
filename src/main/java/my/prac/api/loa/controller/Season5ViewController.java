@@ -723,8 +723,11 @@ public class Season5ViewController {
                 case "CRAFT_LEGENDARY":
                     message = s5Service.craftLegendary(userName, Integer.parseInt(param1));
                     break;
-                case "DISENCHANT_LEGENDARY":
+                case "DISENCHANT_LEGENDARY": // 예전 화면(번호 기준) 호환
                     message = s5Service.disenchantLegendary(userName, Integer.parseInt(param1));
+                    break;
+                case "DISENCHANT_LEGENDARY_ID":
+                    message = s5Service.disenchantLegendaryById(userName, Integer.parseInt(param1));
                     break;
                 case "ENHANCE_LEGENDARY":
                     message = s5Service.enhanceLegendary(userName, Integer.parseInt(param1));
