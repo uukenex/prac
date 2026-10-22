@@ -5046,3 +5046,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 굴림이 커밋되면(afterCommit, 트랜잭션 밖이면 즉시) "마지막 굴림 시각(초 단위로 자름), 쿨타임"을 메모리(DICE_COOLDOWN_MEM)에 남기고, 웹/채팅 컨트롤러가 서비스(트랜잭션) 호출 전에 `diceCooldownFast`로 먼저 거절한다(DB/커넥션 사용 없음, 문구는 checkDiceCooldown과 동일). DB 시각 절사/시계 차이로 원래 허용될 클릭을 막지 않게 항상 1초 느슨하게 보고, 마지막 1초와 메모리에 없는 경우(재시작 직후)는 기존 DB 판정이 처리. NO_COOLDOWN_YN 유저는 기록 안 함.
 - 관리자 계정 실측: 굴린 직후 연타 거절 DB 호출 0회, 쿨타임 끝나면 DB 판정 후 정상 굴림.
 - 테스트 준비로 관리자 계정의 전설 규칙 위반 8개를 해제하고 패치 확인 처리(관리자 계정은 실제 반영 허용).
+
+### 2026-10-22 요청 간 공유 캐시(자주 굴리는 유저의 반복 조회 절감)
+- `S5RequestCache`에 공유 캐시 추가: 기준 데이터(selectMonster/FloorInfo/TileMaster/Gacha/GachaList/AchievementList/LegendaryMaster(List)/Star7Portrait) 10분, 가끔 바뀌는 유저 데이터(selectUserEquip/selectEquipByCompanion/selectUserTileMaster) 60초. 진행 상태/HP/스탯 등 매 굴림 바뀌는 건 제외.
+- 일관성: 테이블별 버전 번호(쓰기마다 증가, 대상 모르는 쓰기는 전체 버전 증가), 항목은 읽을 당시 버전과 다르면 폐기. 트랜잭션 안에서 쓴 테이블은 그 트랜잭션 종료(커밋/롤백) 때 한 번 더 증가(커밋 전에 다른 요청이 저장한 옛 값 무효화), 쓰기를 한 트랜잭션은 자기가 쓴 테이블 조회를 공유 캐시에 넣지 않음. 상한 2만 항목(넘으면 비움). /갱신(refreshConfig)이 clearShared() 호출.
+- 관리자 계정 실측(429층, 8회): 전투 턴 DB 접근 17 -> 10~15회, 굴린 뒤 상태 조회 8 -> 5회. 직접 SQL로 고친 값은 /갱신 전까지 최대 60초(기준 데이터 10분) 지연(CLAUDE.md에 기록).

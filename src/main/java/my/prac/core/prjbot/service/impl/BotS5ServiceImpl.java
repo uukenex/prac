@@ -504,6 +504,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** /갱신 — TBOT_S5_CONFIG를 다시 읽어 메모리 값을 갱신 */
     @Override
     public String refreshConfig() {
+        my.prac.core.prjbot.dao.S5RequestCache.clearShared(); // [2026-10-22] 요청 간 공유 캐시(기준 데이터/장비 목록)도 즉시 비움
         loadConfig();
         loadBalanceV2();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC

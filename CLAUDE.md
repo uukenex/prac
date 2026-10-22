@@ -85,6 +85,8 @@ GET /loa/chat
   출력으로도 한 번 더 확인**할 것 — sqlplus 왕복 결과만 믿지 말 것.
   참고 예시: `src/main/resources/ddl/S5_MONSTER_RENAME_HEX.sql`
 - 조회(SELECT)만 할 땐 `export NLS_LANG=KOREAN_KOREA.AL32UTF8` 정도로 충분.
+- **(2026-10-22) S5 데이터를 SQL로 직접 고친 뒤에는 채팅 `/갱신`(관리자)으로 서버 공유 캐시를 비울 것.** 앱이 장비 목록/동료별 장비/유저 층 보드는 최대 60초,
+  몬스터/층/뽑기/업적/전설 마스터는 최대 10분 메모리에 들고 있다(`S5RequestCache` 공유 캐시). 앱을 거친 변경은 즉시 반영되고, 직접 SQL만 이 지연이 있다.
 - **이모지(surrogate pair, 4바이트 UTF-8)를 sqlplus로 직접 INSERT해서 왕복 테스트하면 그
   결과를 믿지 말 것** — 위 한글 CP949 함정과 같은 경로(git-bash↔sqlplus.exe↔Windows 콘솔
   코드페이지)에서 이모지도 깨진다(2026-09-05에 `NVARCHAR2`/`NCLOB` 컬럼으로 이미 바꿔둔
