@@ -8613,7 +8613,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int MINE_PICK_MAX = 200; // 곡괭이 기본(초기) 최대 내구도 -- 새로 들어온 유저도 200으로 시작(컬럼 기본값, 2026-10-23 1000 -> 200)
     /** 대장간 곡괭이 강화 {광석 등급, 필요 개수, 최대(+현재) 내구도 증가}. 캔 광석을 전부 강화에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
     private static final int[][] MINE_PICK_UPGRADE = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
-    private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
+    private static final double MINE_MAX_TILES_PER_SEC = 10.0; // 화면 이동 속도(약 7칸/초)보다 넉넉하게(2026-10-24 9 -> 10, 요청 지연 감안)
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
     /** 광산상점 상품: {광석 등급, 필요 개수, 처치당 PP 증가}. 광석 1개 값 = 구리 0.1 / 철 0.3 / 은 1 / 금 3 / 미스릴 10 / 별빛석 40 (PP/자동사냥 처치). */
@@ -8777,7 +8777,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int dist = Math.abs(x - from[0]) + Math.abs(y - from[1]);
         // 쉬는 시간은 최대 MINE_MOVE_WINDOW_MS까지만 친다 -- 오래 가만히 있다가 먼 곳으로 한 번에 옮기는 것 방지(화면은 이동 중 몇 초마다, 캘 때마다 위치를 저장)
         double perSec = MINE_MAX_TILES_PER_SEC * MINE_STEP_MS[0] / (double) stepMs;
-        double allowed = 2 + Math.min(MINE_MOVE_WINDOW_MS, Math.max(0, now - fromAt)) / 1000.0 * perSec;
+        double allowed = 6 + Math.min(MINE_MOVE_WINDOW_MS, Math.max(0, now - fromAt)) / 1000.0 * perSec;
         return dist <= allowed;
     }
 

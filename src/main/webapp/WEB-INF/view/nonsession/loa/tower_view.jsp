@@ -5341,7 +5341,7 @@ var TW = (function () {
  * 포탈 칸(지역 통로/동굴 입구/나가는 길/지하 문)으로 걸어 들어가면 서버가 대상 맵으로 옮겨 준다(잠긴 곳은 안내만).
  * 캐릭터 위치는 이동 중 몇 초마다, 캘 때, 포탈을 탈 때, 나갈 때(sendBeacon) 저장한다. 서버가 위치를 거절하면 서버 위치로 되돌린다. */
 var TowerMine = (function () {
-  var T = 16, STEP_MS = 140, SAVE_MS = 4000;
+  var T = 16, STEP_MS = 140, SAVE_MS = 2500; // [2026-10-24] 위치 저장 4초 -> 2.5초(걷는 중에도 저장)
   // [2026-10-23] 사막(d 모래, R 사암, C 선인장, 모래바람), 바닷가(b 모래사장, P 부두, q 배, B 배에 오르는 판자), NPC(N: 대장장이/선장)
   var WALK = '.,:VHcrdbPT', PORTALS = 'GMUSB'; // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음)
   var WIND_MS = 900; // 모래바람에 한 칸 밀리는 간격(가만히 있을 때)
@@ -6278,7 +6278,9 @@ var TowerMine = (function () {
     showCoord(); drawMini();
   }
   function savePos() {
-    if (!opened || P.moving || busy || !map) return;
+    // [2026-10-24] 걷는 중에도 저장(P.x/P.y = 마지막으로 다 걸은 칸) -- 예전엔 움직이는 동안 건너뛰어서, 오래 계속 걸으면 멈출 때 한꺼번에 먼 거리를 보내
+    //  서버 순간이동 검사(최근 15초 이동 가능 거리)에 걸려 되돌아갔다.
+    if (!opened || busy || !map) return;
     var cur = map.id + ':' + P.x + ',' + P.y;
     if (cur === lastSaved) return;
     lastSaved = cur;
