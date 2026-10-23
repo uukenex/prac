@@ -1115,16 +1115,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         return dao.selectLegendaryCodex();
     }
 
-    /** 파티(편성된 동료, PARTY_SLOT 있는 동료만) 합산 전투력. */
-    private long partyCombatPower(String userName) {
-        long total = 0;
-        for (HashMap<String, Object> c : companionsWithEffectiveStats(userName)) {
-            if (c.get("PARTY_SLOT") == null) continue;
-            total += combatPower(intVal(c.get("EFF_HP"), 0), intVal(c.get("EFF_ATK"), 0), intVal(c.get("EFF_DEF"), 0));
-        }
-        return total;
-    }
-
     /** 그 층 "일반" 몬스터(BOSS_YN='N')의 전투력 -- applyHardcoreFloorScale로 51층+ 구간 내
      *  선형 스케일(1번째 사냥터층 50% ~ 8번째 100%)까지 반영한 실제 그 층 기준값. */
     private long floorMonsterCombatPower(int floor) {
@@ -2031,30 +2021,35 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         sb.append(NL);
 
-        // ── PP + 최고 동료 ──
+        // ── PP + 편성 동료 ──
         PP totalEarned = PP.of(numVal(p.get("TOTAL_PP_EARNED_VALUE"), 0), strVal(p.get("TOTAL_PP_EARNED_EXT"), ""));
         sb.append("💰 보유 ").append(pp.format()).append(" PP · 누적획득 ").append(totalEarned.format()).append(" PP").append(NL);
         // [2026-09-10] "최고티어 동료 3명의 등급/직업도 표기해달라" 요청 -- 파티 편성 여부와
         // 무관하게 "보유한 동료 중" 등급이 가장 높은 3명을 뽑아서 "★등급직업" 형태로 보여준다.
         // [2026-09-17] "이름은 빼고 성급/직업만, 쉼표로만 구분해줘" 요청으로 이름 표기 제거.
+        // [2026-10-23] "최고동료 대신 현재 편성 동료 및 동료별 전투력" 요청 -- 보유 최고 등급 3명 대신 파티 슬롯 순서대로 편성 동료와 각자의 전투력.
         List<HashMap<String, Object>> allCompanions = dao.selectUserCompanions(target);
-        if (!allCompanions.isEmpty()) {
-            List<HashMap<String, Object>> topThree = new ArrayList<>(allCompanions);
-            topThree.removeIf(gc -> intVal(gc.get("GRADE"), 1) == GROWTH_GRADE); // 성장형(☆1)은 최고 등급 집계에서 제외
-            topThree.sort((a, b) -> intVal(b.get("GRADE"), 1) - intVal(a.get("GRADE"), 1));
-            if (topThree.size() > 3) topThree = topThree.subList(0, 3);
-            List<String> tags = new ArrayList<>();
-            for (HashMap<String, Object> c : topThree) {
-                tags.add("★" + intVal(c.get("GRADE"), 1) + JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "동료"));
+        List<HashMap<String, Object>> party = new ArrayList<>();
+        for (HashMap<String, Object> c : companionsWithEffectiveStats(target)) if (c.get("PARTY_SLOT") != null) party.add(c);
+        party.sort((a, b) -> intVal(a.get("PARTY_SLOT"), 0) - intVal(b.get("PARTY_SLOT"), 0));
+        long myPower = 0;
+        if (!party.isEmpty()) {
+            sb.append("🛡️ 편성 동료").append(NL);
+            for (HashMap<String, Object> c : party) {
+                long power = combatPower(intVal(c.get("EFF_HP"), 0), intVal(c.get("EFF_ATK"), 0), intVal(c.get("EFF_DEF"), 0));
+                myPower += power;
+                String job = JOB_NAME.getOrDefault(strVal(c.get("CLASS"), "WARRIOR"), "동료");
+                String name = strVal(c.get("NAME"), "");
+                sb.append(intVal(c.get("PARTY_SLOT"), 0)).append(". ").append(gradeMark(intVal(c.get("GRADE"), 1))).append(" ").append(job)
+                  .append(name.isEmpty() || name.equals(job) ? "" : "(" + name + ")").append(" · 전투력 ").append(power).append(NL);
             }
-            sb.append("🏆 최고 동료: ").append(String.join(",", tags)).append(NL);
         }
         sb.append(NL);
 
         // ── 전투력 + 누적 통계 ──
         // [2026-09-15 신설] "전투력을 수치화 시켜고, 그 수치를 보여주고, 층별 전투력을
         // 나타내 주고, 현재 몇층이 괜찮은 사냥터인지 추천해달라" 요청.
-        long myPower = partyCombatPower(target);
+        // [2026-10-23] 종합전투력은 위 편성 동료 목록에서 같이 합산(편성 동료 전투력의 합)
         if (myPower <= 0) {
             sb.append("⚡ 종합전투력: 0 (파티에 동료를 편성하면 계산됩니다)").append(NL);
         } else {
