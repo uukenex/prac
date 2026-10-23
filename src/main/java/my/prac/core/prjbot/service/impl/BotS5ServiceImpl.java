@@ -8598,16 +8598,20 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // ---- [2026-10-23] 웹 광산(공용 맵 여러 개, 2D 도트) ----
-    // 맵은 S5MineMap(맵마다 파일 하나)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
-    // 화면에는 지형/포탈만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 0시에 다시 생기지 않음).
-    // 한 번 캘 때 스태미너 1, 스태미너는 최대 100(2026-10-23 30 -> 100), 매시 정각 +10(2 -> 10), 0시(KST)에 최대치로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산).
+    // 맵은 S5MineMap(주기마다 시드로 서버가 만든다)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
+    // 화면에는 지형/포탈/NPC만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 맵 리셋 때만 초기화).
+    // [2026-10-23] "스태미너 대신 곡괭이 내구도, 처음 1000(모든 유저 현재/최대 1000), 마을 대장간 NPC에게 광석을 주면 내구도를 올린다" 요청 --
+    //   한 번 캘 때 곡괭이 내구도(TBOT_S5_MINE_USER.PICK_DUR) 1 소모, 시간 회복/0시 초기화 없음. 대장장이(평원 마을 NPC)에게 광석을 주면
+    //   MINE_REPAIR 비율로 수리(최대 내구도 PICK_DUR_MAX까지). 예전 스태미너 컬럼(STAMINA/STAMINA_AT_MS)은 더 이상 읽지 않는다.
+    // [2026-10-23] "전체 맵은 2일 주기로 리셋 후 셔플, 리셋 작업이 끝나기 전엔 리셋 중이라 접속 안 된다고 안내" 요청 -- mineGate 참고.
     // 캐릭터 위치(맵 + 좌표)는 광산을 나갈 때(와 이동 중 주기적으로, 캘 때, 포탈을 탈 때) 저장하고, 마지막 저장 위치에서 시간당 갈 수 있는
     // 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지). 포탈(지역 통로/동굴 입구/나가는 길/지하 문)은
     // 바로 옆 칸에서 들어가면 대상 맵으로 옮기고, 대상 맵이 아직 없으면(잠김) 안내만 한다.
     // 광산상점: 광석을 내고 자동사냥 처치당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 처치 수만큼 함께 지급(settleAutoHunt).
     //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
-    private static final int MINE_STAMINA_MAX = 100; // [2026-10-23] "채집 30회는 너무 적어, 100회로" 요청
-    private static final int MINE_REGEN_PER_HOUR = 10; // [2026-10-23] "시간당 회복도 10회로" 요청(2 -> 10)
+    private static final int MINE_PICK_MAX = 1000; // 곡괭이 기본 최대 내구도(새로 들어온 유저도 1000으로 시작 -- 컬럼 기본값)
+    /** 대장간 수리 {광석 등급, 필요 개수, 내구도 회복}. 캔 광석을 전부 수리에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
+    private static final int[][] MINE_REPAIR = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
     private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
@@ -8651,18 +8655,86 @@ public class BotS5ServiceImpl implements BotS5Service {
         return null;
     }
 
-    /** 저장된 스태미너를 지금 기준으로 -- 0시(KST)가 지났으면 30에서 다시 시작하고, 그 뒤 지난 정각 수만큼 +2(최대 30). */
-    static int mineStaminaNow(int stored, long atMs, long nowMs) {
-        long midnight = java.time.Instant.ofEpochMilli(nowMs).atZone(KST).toLocalDate().atStartOfDay(KST).toInstant().toEpochMilli();
-        int st = stored;
-        long from = atMs;
-        if (atMs < midnight) {
-            st = MINE_STAMINA_MAX;
-            from = midnight;
+    // ---- [2026-10-23] 2일 주기 맵 리셋 ----
+    // 리셋 시각은 S5MineMap.RESET_ANCHOR_MS(2026-10-25 05:00 KST)부터 2일마다. 주기가 바뀌면(매일 05:00 스케줄 또는 그 뒤 첫 광산 요청)
+    // 백그라운드로 리셋한다: 캔 칸 전부 삭제 -> 모든 유저 위치를 평원 마을로 -> 새 시드로 맵 생성 -> TBOT_S5_CONFIG.MINE_RESET_CYCLE 기록.
+    // 그 사이 광산 요청은 "리셋 중" 안내만 받는다(작업이 끝나면 바로 다시 들어갈 수 있음). 서버가 꺼져 있다 켜져도 DB의 주기를 보고 이어서 한다.
+    private static final java.util.concurrent.atomic.AtomicBoolean MINE_RESETTING = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private static volatile int mineAppliedCycle = Integer.MIN_VALUE; // 아직 DB에서 안 읽음
+    private static final String MINE_CYCLE_KEY = "MINE_RESET_CYCLE";
+
+    /** 지금 주기의 맵이 준비됐으면 null, 리셋 중이면 안내 응답. 주기가 바뀌었으면 리셋을 시작한다. */
+    private HashMap<String, Object> mineGate() {
+        int want = S5MineMap.cycleAt(System.currentTimeMillis());
+        if (!MINE_RESETTING.get() && mineAppliedCycle == want) return null;
+        if (!MINE_RESETTING.get()) {
+            if (mineAppliedCycle == Integer.MIN_VALUE) mineLoadCycle(want);
+            if (mineAppliedCycle == want) {
+                S5MineMap.setActiveCycle(want);
+                return null;
+            }
+            startMineReset(want);
         }
-        long ticks = Math.floorDiv(nowMs, 3_600_000L) - Math.floorDiv(from, 3_600_000L); // KST는 정시 단위 시차라 epoch 시 경계 = KST 정각
-        if (ticks > 0 && st < MINE_STAMINA_MAX) st = (int) Math.min(MINE_STAMINA_MAX, st + ticks * MINE_REGEN_PER_HOUR);
-        return Math.max(0, st);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        out.put("resetting", true);
+        out.put("error", "🔄 광산 맵을 새로 섞는 중이에요(2일마다 05:00 리셋). 잠시 후 다시 들어와 주세요.");
+        out.put("message", out.get("error"));
+        return out;
+    }
+
+    /** DB에 기록된 마지막 리셋 주기. 처음(기록 없음)이고 아직 첫 리셋 전(주기 0)이면 지금 맵(예전 맵 파일과 같음)을 그대로 주기 0으로 본다. */
+    private void mineLoadCycle(int want) {
+        try {
+            String v = dao.selectConfigValue(MINE_CYCLE_KEY);
+            if (v != null && !v.trim().isEmpty()) {
+                mineAppliedCycle = Integer.parseInt(v.trim());
+            } else if (want == 0) {
+                dao.upsertConfigValue(MINE_CYCLE_KEY, "0", "web mine map cycle applied (2-day reset, set by app)");
+                mineAppliedCycle = 0;
+            } else {
+                mineAppliedCycle = -1; // 기록 없이 첫 리셋 시각이 지났다 -- 리셋부터
+            }
+        } catch (Exception e) {
+            System.out.println("[광산] 리셋 주기 읽기 실패: " + e.getMessage());
+        }
+    }
+
+    private void startMineReset(final int want) {
+        if (!MINE_RESETTING.compareAndSet(false, true)) return;
+        Thread t = new Thread(() -> {
+            long t0 = System.currentTimeMillis();
+            try {
+                int dug = dao.deleteAllMineDug();
+                int users = dao.resetAllMinePos();
+                S5MineMap.setActiveCycle(want);
+                dao.upsertConfigValue(MINE_CYCLE_KEY, String.valueOf(want), "web mine map cycle applied (2-day reset, set by app)");
+                mineAppliedCycle = want;
+                System.out.println("[광산] 맵 리셋 완료: 주기 " + want + ", 캔 칸 " + dug + "건 삭제, 유저 " + users + "명 마을로, "
+                        + (System.currentTimeMillis() - t0) + "ms");
+            } catch (Exception e) {
+                System.out.println("[광산] 맵 리셋 실패(다음 요청/스케줄에서 다시 시도): " + e.getMessage());
+            } finally {
+                MINE_RESETTING.set(false);
+            }
+        }, "s5-mine-reset");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** 매일 05:00 -- 리셋 날이면 리셋을 시작한다(요청이 없어도 제시간에). @Scheduled라 BotS5Service 인터페이스에도 선언돼 있어야 한다. */
+    @Override
+    @Scheduled(cron = "0 0 5 * * *")
+    public void mineResetTick() {
+        try {
+            mineGate();
+        } catch (Exception e) {
+            System.out.println("[광산] 리셋 확인 실패: " + e.getMessage());
+        }
+    }
+
+    private static boolean mineStaleVersion(S5MineMap map, String ver) {
+        return ver != null && !ver.isEmpty() && !ver.equals(map.version());
     }
 
     private static long longOf(Object o, long def) {
@@ -8673,7 +8745,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = forUpdate ? dao.selectMineUserForUpdate(userName) : dao.selectMineUser(userName);
         if (row != null) return row;
         try {
-            dao.insertMineUserIfAbsent(userName, MINE_STAMINA_MAX, System.currentTimeMillis());
+            dao.insertMineUserIfAbsent(userName, 0, System.currentTimeMillis()); // 예전 스태미너 컬럼은 0, 곡괭이 내구도는 컬럼 기본값(1000)
         } catch (org.springframework.dao.DuplicateKeyException e) {
             // 동시에 처음 들어온 요청이 먼저 만들었다
         }
@@ -8715,20 +8787,54 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    private void putMineStamina(HashMap<String, Object> out, int st, long now) {
-        out.put("stamina", st);
-        out.put("staminaMax", MINE_STAMINA_MAX);
-        out.put("regenPerHour", MINE_REGEN_PER_HOUR);
-        out.put("nextRegenAt", st < MINE_STAMINA_MAX ? (Math.floorDiv(now, 3_600_000L) + 1) * 3_600_000L : null);
+    private int minePickMax(HashMap<String, Object> row) {
+        return intVal(row.get("PICK_DUR_MAX"), MINE_PICK_MAX);
+    }
+
+    private int minePickDur(HashMap<String, Object> row) {
+        return Math.max(0, intVal(row.get("PICK_DUR"), MINE_PICK_MAX));
+    }
+
+    private static void putMinePick(HashMap<String, Object> out, int dur, int max) {
+        out.put("durability", dur);
+        out.put("durabilityMax", max);
+    }
+
+    /** 대장간 수리 표(화면용). */
+    private static List<HashMap<String, Object>> mineRepairList() {
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (int[] r : MINE_REPAIR) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("grade", r[0]);
+            m.put("oreName", S5MineMap.ORE_NAMES[r[0] - 1]);
+            m.put("need", r[1]);
+            m.put("gain", r[2]);
+            out.add(m);
+        }
+        return out;
     }
 
     @Override
     public HashMap<String, Object> mineMap(String mapId) {
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         S5MineMap map = S5MineMap.get(mapId);
         HashMap<String, Object> out = new HashMap<>();
         out.put("id", map.id);
         out.put("name", map.name);
         out.put("dark", map.dark);
+        out.put("wind", map.wind()); // [2026-10-23] 모래바람(사막) -- 화면이 가만히 있어도 좌우로 민다
+        List<HashMap<String, Object>> npcs = new ArrayList<>();
+        for (S5MineMap.Npc n : map.npcs()) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("x", n.x);
+            m.put("y", n.y);
+            m.put("kind", n.kind);
+            m.put("name", n.name);
+            m.put("line", n.line);
+            npcs.add(m);
+        }
+        out.put("npcs", npcs);
         out.put("level", map.level());
         out.put("helmetNeed", mineHelmetNeed(map));
         out.put("w", map.w);
@@ -8754,11 +8860,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public HashMap<String, Object> mineState(String userName) {
         if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
         HashMap<String, Object> out = new HashMap<>();
-        putMineStamina(out, mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now), now);
+        putMinePick(out, minePickDur(row), minePickMax(row));
+        out.put("repairs", mineRepairList());
+        out.put("nextResetAt", S5MineMap.nextResetAt(now));
         int[] pos = minePos(row, map);
         out.put("mapId", map.id);
         out.put("mapName", map.name);
@@ -8803,18 +8913,20 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     @Transactional
-    public HashMap<String, Object> mineDig(String userName, String mapId, int x, int y) {
+    public HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y) {
         if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         long now = System.currentTimeMillis();
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         S5MineMap map = mineMapOf(row);
-        int st = mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now);
+        int st = minePickDur(row), stMax = minePickMax(row);
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
-        putMineStamina(out, st, now);
+        putMinePick(out, st, stMax);
         int[] pos = minePos(row, map);
-        if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) {
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
             out.put("reload", true);
             out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
             return out;
@@ -8845,13 +8957,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         if (st < 1) {
-            out.put("message", "스태미너가 없어요. 매시 정각마다 " + MINE_REGEN_PER_HOUR + "씩 차고, 0시에 " + MINE_STAMINA_MAX + "으로 초기화돼요.");
+            out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 고쳐 오세요.");
             return out;
         }
         dao.insertMineDug(userName, map.id, cell, g, now);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("stamina", st - 1);
+        up.put("pickDur", st - 1);
         up.put("atMs", now);
         up.put("x", x);
         up.put("y", y);
@@ -8861,7 +8973,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int qty = 0;
         for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) qty = intVal(r.get("QTY"), 0);
         out.put("ok", true);
-        putMineStamina(out, st - 1, now);
+        putMinePick(out, st - 1, stMax);
         out.put("x", x);
         out.put("y", y);
         out.put("grade", g);
@@ -8873,15 +8985,17 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     @Override
-    public HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y) {
+    public HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y) {
         if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
         int[] pos = minePos(row, map);
         HashMap<String, Object> out = new HashMap<>();
         out.put("mapName", map.name); // [2026-10-23] 퇴장 로그용
-        boolean sameMap = mapId == null || mapId.isEmpty() || map.id.equals(mapId);
+        boolean sameMap = (mapId == null || mapId.isEmpty() || map.id.equals(mapId)) && !mineStaleVersion(map, ver);
         if (sameMap && map.walkable(x, y) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("ok", true);
@@ -8899,8 +9013,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 포탈 타기 -- (x, y)에 서서 바로 옆 포탈 칸(px, py)으로 들어간다. 잠긴 포탈이면 안내만, 열린 포탈이면 대상 맵/좌표로 옮기고 새 상태를 돌려준다. */
     @Override
     @Transactional
-    public HashMap<String, Object> mineWarp(String userName, String mapId, int x, int y, int px, int py) {
+    public HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py) {
         if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         long now = System.currentTimeMillis();
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
@@ -8908,7 +9024,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         int[] pos = minePos(row, map);
-        if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) {
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
             out.put("reload", true);
             out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
             return out;
@@ -9034,6 +9150,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public HashMap<String, Object> mineGoVillage(String userName) {
         if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
         mineRow(userName, false);
         S5MineMap field = S5MineMap.get(S5MineMap.FIELD);
         dao.updateMinePos(userName, field.id, field.spawnX, field.spawnY, System.currentTimeMillis());
@@ -9041,6 +9159,51 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("message", "🏠 " + field.name + " 마을로 이동했어요.");
         out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** [2026-10-23] 대장간 -- 평원 마을 대장장이에게 광석(grade)을 주고 곡괭이를 고친다. times = 몇 번(남은 수리량/보유 광석 수만큼으로 줄인다). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineRepair(String userName, int grade, int times) {
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        int dur = minePickDur(row), max = minePickMax(row);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        putMinePick(out, dur, max);
+        int[] rep = null;
+        for (int[] r : MINE_REPAIR) if (r[0] == grade) rep = r;
+        if (rep == null) {
+            out.put("message", "그 광석으로는 고칠 수 없어요.");
+            return out;
+        }
+        String code = S5MineMap.ORE_CODES[grade - 1], name = S5MineMap.ORE_NAMES[grade - 1];
+        if (dur >= max) {
+            out.put("message", "🔨 곡괭이가 이미 멀쩡하다네. (내구도 " + dur + " / " + max + ")");
+            return out;
+        }
+        int have = 0;
+        for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) have = intVal(r.get("QTY"), 0);
+        int needTimes = (max - dur + rep[2] - 1) / rep[2];
+        int n = Math.min(Math.max(1, times), Math.min(needTimes, have / rep[1]));
+        if (n < 1) {
+            out.put("message", "광석이 부족해요. (" + name + " " + rep[1] + "개 필요, 보유 " + have + "개)");
+            return out;
+        }
+        if (dao.takeUserOre(userName, code, rep[1] * n) == 0) {
+            out.put("message", "광석이 부족해요. (" + name + " " + rep[1] * n + "개 필요)");
+            return out;
+        }
+        int gain = Math.min(max - dur, rep[2] * n);
+        dao.addMinePickDur(userName, gain);
+        putMinePick(out, dur + gain, max);
+        out.put("ok", true);
+        out.put("ores", mineOreList(userName));
+        out.put("message", "🔨 대장장이가 곡괭이를 손봐 줬어요! " + name + " " + rep[1] * n + "개 → 내구도 +" + gain + " (지금 " + (dur + gain) + " / " + max + ")");
         return out;
     }
 

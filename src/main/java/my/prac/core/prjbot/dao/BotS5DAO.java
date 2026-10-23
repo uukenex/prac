@@ -140,6 +140,12 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectMineDugRecent(@Param("userName") String userName, @Param("limit") int limit);
     int takeUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
     /** [2026-10-23] 광산 아이템(광부 투구 단계, 용왕반지 등) -- TBOT_S5_MINE_ITEM. */
+    // [2026-10-23] 곡괭이 수리(최대 내구도까지), 2일 주기 맵 리셋(캔 칸 전부 삭제, 모든 유저 위치를 평원 마을로), 설정값 읽기/쓰기
+    int addMinePickDur(@Param("userName") String userName, @Param("gain") int gain);
+    int deleteAllMineDug();
+    int resetAllMinePos();
+    String selectConfigValue(@Param("key") String key);
+    int upsertConfigValue(@Param("key") String key, @Param("value") String value, @Param("memo") String memo);
     List<HashMap<String, Object>> selectMineItems(@Param("userName") String userName);
     int upsertMineItem(@Param("userName") String userName, @Param("itemCode") String itemCode, @Param("level") int level);
     List<HashMap<String, Object>> selectUserOres(@Param("userName") String userName);

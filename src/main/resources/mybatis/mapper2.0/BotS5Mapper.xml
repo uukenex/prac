@@ -677,12 +677,12 @@
 
     <!-- [2026-10-23] 웹 광산: 스태미너/캐릭터 위치(맵)/광산상점 PP 보너스, 캔 칸(유저별 영구), 광석 보유 -->
     <select id="selectMineUser" resultType="hashmap">
-        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName}
     </select>
 
     <select id="selectMineUserForUpdate" resultType="hashmap">
-        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName} FOR UPDATE
     </select>
 
@@ -695,7 +695,7 @@
 
     <update id="updateMineUser">
         UPDATE TBOT_S5_MINE_USER
-           SET STAMINA = #{stamina}, STAMINA_AT_MS = #{atMs}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs}, TOTAL_DIG = TOTAL_DIG + 1
+           SET PICK_DUR = #{pickDur}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs}, TOTAL_DIG = TOTAL_DIG + 1
          WHERE USER_NAME = #{userName}
     </update>
 
@@ -725,6 +725,32 @@
             SELECT MAP_ID, CELL, ORE_GRADE, DUG_AT_MS FROM TBOT_S5_MINE_DUG WHERE USER_NAME = #{userName} ORDER BY DUG_AT_MS DESC
         ) WHERE ROWNUM &lt;= #{limit}
     </select>
+
+    <!-- [2026-10-23] 대장간 곡괭이 수리: 최대 내구도까지만 오른다. -->
+    <update id="addMinePickDur">
+        UPDATE TBOT_S5_MINE_USER SET PICK_DUR = LEAST(PICK_DUR + #{gain}, PICK_DUR_MAX) WHERE USER_NAME = #{userName}
+    </update>
+
+    <!-- [2026-10-23] 광산 맵 2일 주기 리셋: 맵이 새로 섞이므로 캔 칸 기록을 모두 지우고 모든 유저를 평원 마을(위치 NULL = 시작점)로 옮긴다. -->
+    <delete id="deleteAllMineDug">
+        DELETE FROM TBOT_S5_MINE_DUG
+    </delete>
+
+    <update id="resetAllMinePos">
+        UPDATE TBOT_S5_MINE_USER SET MAP_ID = NULL, POS_X = NULL, POS_Y = NULL, POS_AT_MS = NULL
+    </update>
+
+    <!-- [2026-10-23] 설정값 한 개 읽기/쓰기(앱이 관리하는 값, 예: MINE_RESET_CYCLE) -->
+    <select id="selectConfigValue" resultType="string">
+        SELECT CONFIG_VALUE FROM TBOT_S5_CONFIG WHERE CONFIG_KEY = #{key}
+    </select>
+
+    <update id="upsertConfigValue">
+        MERGE INTO TBOT_S5_CONFIG T
+        USING (SELECT #{key} AS K FROM DUAL) S ON (T.CONFIG_KEY = S.K)
+        WHEN MATCHED THEN UPDATE SET T.CONFIG_VALUE = #{value}, T.UPDATE_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (CONFIG_KEY, CONFIG_VALUE, MEMO, UPDATE_DATE) VALUES (S.K, #{value}, #{memo}, SYSDATE)
+    </update>
 
     <!-- [2026-10-23] 광산 아이템(광부 투구 단계, 용왕반지 등) -->
     <select id="selectMineItems" resultType="hashmap">

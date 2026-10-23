@@ -227,10 +227,15 @@ public interface BotS5Service {
     /** [2026-10-23] 광산/광산상점 사용 가능 여부(TBOT_S5_CONFIG MINE_OPEN_YN / MINE_ADMIN_USERS). */
     boolean mineAccess(String userName);
     HashMap<String, Object> mineState(String userName);
-    HashMap<String, Object> mineDig(String userName, String mapId, int x, int y);
-    HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y);
-    HashMap<String, Object> mineWarp(String userName, String mapId, int x, int y, int px, int py);
+    /** ver = 화면이 가진 맵 version(리셋 등으로 맵이 바뀌었으면 reload로 응답). 빈 값이면 확인하지 않는다. */
+    HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y);
+    HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
+    HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py);
     HashMap<String, Object> mineGoVillage(String userName);
+    /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 내구도 수리, times = 몇 번. */
+    HashMap<String, Object> mineRepair(String userName, int grade, int times);
+    /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
+    void mineResetTick();
     HashMap<String, Object> mineShop(String userName);
     String mineShopBuy(String userName, int no, int times);
     /** [2026-10-23] 광부 투구 구매/업그레이드. */

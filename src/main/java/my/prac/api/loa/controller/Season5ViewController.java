@@ -529,7 +529,7 @@ public class Season5ViewController {
         }
     }
 
-    /** [2026-10-23] 웹 광산 -- 내 스태미너/저장 위치/캔 칸/광석 보유. enter=1이면 광산 입장(화면을 열 때/다시 돌아왔을 때) 로그. */
+    /** [2026-10-23] 웹 광산 -- 내 곡괭이 내구도/저장 위치/캔 칸/광석 보유. enter=1이면 광산 입장(화면을 열 때/다시 돌아왔을 때) 로그. */
     @GetMapping("/api/tower-mine")
     @ResponseBody
     public ResponseEntity<?> apiTowerMine(@RequestParam(value = "userName", defaultValue = "") String userName,
@@ -541,23 +541,24 @@ public class Season5ViewController {
         }
         HashMap<String, Object> st = s5Service.mineState(userName);
         if ("1".equals(enter) && st.get("error") == null) {
-            mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 스태미너 "
-                    + st.get("stamina") + "/" + st.get("staminaMax"));
+            mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 곡괭이 내구도 "
+                    + st.get("durability") + "/" + st.get("durabilityMax"));
         }
         return ResponseEntity.ok(st);
     }
 
-    /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 스태미너 1). */
+    /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 곡괭이 내구도 1). v = 화면의 맵 version(바뀌었으면 reload). */
     @GetMapping("/api/tower-mine-dig")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineDig(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "v", defaultValue = "") String ver) {
         if (userName.trim().isEmpty()) {
             HashMap<String, Object> err = new HashMap<>();
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
         }
-        HashMap<String, Object> d = s5Service.mineDig(userName, mapId, x, y);
+        HashMap<String, Object> d = s5Service.mineDig(userName, mapId, ver, x, y);
         if (Boolean.TRUE.equals(d.get("ok"))) mineLog(userName, "[웹] 광산 채굴 (" + x + ", " + y + ")", String.valueOf(d.get("message")));
         return ResponseEntity.ok(d);
     }
@@ -567,9 +568,9 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMinePos(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam(value = "exit", defaultValue = "") String exit) {
+            @RequestParam(value = "exit", defaultValue = "") String exit, @RequestParam(value = "v", defaultValue = "") String ver) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineSavePos(userName, mapId, x, y);
+        HashMap<String, Object> out = s5Service.mineSavePos(userName, mapId, ver, x, y);
         if ("1".equals(exit) && out.get("error") == null) { // 광산을 나갈 때/화면을 벗어날 때 -- 서버가 받아들인 최종 위치로 기록
             mineLog(userName, "[웹] 광산 퇴장", out.get("mapName") + " (" + out.get("x") + ", " + out.get("y") + ")");
         }
@@ -581,9 +582,20 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMineWarp(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam("px") int px, @RequestParam("py") int py) {
+            @RequestParam("px") int px, @RequestParam("py") int py, @RequestParam(value = "v", defaultValue = "") String ver) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, x, y, px, py));
+        return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, ver, x, y, px, py));
+    }
+
+    /** [2026-10-23] 광산 대장간 -- 평원 마을 대장장이에게 광석(grade 1~6)을 주고 곡괭이 내구도를 고친다. times = 몇 번(남은 수리량/보유 광석만큼으로 줄어듦). */
+    @GetMapping("/api/tower-mine-repair")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineRepair(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("grade") int grade, @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineRepair(userName, grade, times);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 수리 " + grade + "등급 x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
     }
 
     /** [2026-10-23] 웹 광산 -- 마을로 이동(중앙 평원 시작점). */

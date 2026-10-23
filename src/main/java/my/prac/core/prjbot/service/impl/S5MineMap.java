@@ -1,11 +1,7 @@
 package my.prac.core.prjbot.service.impl;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,35 +10,73 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * [2026-10-23] 웹 광산 맵(모든 유저 공용). 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
- * 맵마다 파일 하나(classpath s5/...)가 기준이다 -- 처음 쓸 때 읽고, 칸마다 정해진 광석 등급이 있어 "(x, y)에 별빛석이 있다" 같은 정보를
- * 유저들끼리 공유할 수 있다. 광석 등급(ORE 층)은 서버만 알고 화면에는 지형(TERRAIN 층)과 포탈만 보낸다.
- * 파일 형식: "NAME 이름", "DARK 1"(어두운 맵, 선택), "LEVEL n"(광산 레벨, 선택 -- n이면 광부 투구 n-1단계 이상이어야 들어가고 움직일 수 있다),
- *   "REQUIRE 아이템코드"(그 광산 아이템이 있어야 들어갈 수 있는 맵, 선택 -- 예: 바다 던전 = DRAGON_RING), "SIZE w h", "SPAWN x y",
- *   "PORTAL x y 종류 대상맵 대상x 대상y 이름"(대상맵이 - 이면 잠긴 입구), "TERRAIN" 다음 h줄(w글자), "ORE" 다음 h줄(칸마다 0~6, 0 = 광석 없음).
- * 지형 문자: . 풀밭 / , 흙길 / : 바위 지대 / V 마을 / H 다리 / c 동굴 바닥 / r 자갈 바닥 (이상 이동 가능)
- *   ~ 물 / T 나무 / ^ 바위산 / # 동굴 벽 / h j k l 초가집(2x2: 왼위 오위 왼아래 오아래) (이동 불가) / G 지역 통로 / M 동굴 입구 / U 나가는 길 / S 지하로 가는 문 (포탈: 그 칸으로 들어가면 이동, 잠겼으면 안내).
- * 맵을 다시 만들 때: main(출력 폴더, 시드[, 미리보기 PNG 폴더]) -> 파일 교체(저장 위치가 못 서는 칸이 되면 그 맵 시작점으로 돌아간다).
+ * 칸마다 정해진 광석 등급이 있어 "(x, y)에 별빛석이 있다" 같은 정보를 유저들끼리 공유할 수 있다. 광석 등급(ORE 층)은 서버만 알고 화면에는
+ * 지형(TERRAIN 층), 포탈, NPC만 보낸다.
+ * [2026-10-23 v3] "전체 맵은 2일 주기로 리셋 후 셔플" 요청 -- 맵을 파일에서 읽지 않고 주기(cycle)마다 시드로 서버가 직접 만든다(같은 주기면 언제
+ *   만들어도 같은 맵). 주기 0(첫 리셋 전) 시드는 예전 맵 파일을 만든 시드(20261023)와 같아 평원/동굴 지형과 광석이 그대로다. 리셋 시각은
+ *   RESET_ANCHOR_MS(2026-10-25 05:00 KST)부터 2일마다이고, 실제 전환(캔 칸 초기화 + 위치 마을로)은 BotS5ServiceImpl.mineGate가 한다.
+ *   맵: 중앙 평원(field) / 광산 동굴 1층(cave1) / 북쪽 사막(desert, 모래바람으로 좌우로 밀림, 북쪽 끝에 잠긴 통로) /
+ *   남쪽 바닷가(beach, 정박한 배 + 선장 NPC, 배는 아직 잠김 -- 추후 배로만 다른 맵 이동). 평원 마을에는 대장장이 NPC(곡괭이 수리).
+ * 지형 문자: . 풀밭 / , 흙길 / : 바위 지대 / V 마을 / H 다리 / c 동굴 바닥 / r 자갈 바닥 / d 모래 / b 모래사장 / P 부두 (이상 이동 가능)
+ *   ~ 물 / T 나무 / ^ 바위산 / # 동굴 벽 / h j k l 초가집(2x2: 왼위 오위 왼아래 오아래) / R 사암 / C 선인장 / q 배 / N NPC (이동 불가)
+ *   G 지역 통로 / M 동굴 입구 / U 나가는 길 / S 지하로 가는 문 / B 배에 오르는 판자 (포탈: 바로 옆 칸에서 들어가면 이동, 잠겼으면 안내).
+ * 미리보기: main(출력 폴더[, 주기]) -> 맵별 텍스트와 PNG.
  */
 public final class S5MineMap {
 
     public static final String FIELD = "field";
     public static final String CAVE1 = "cave1";
-    /** 맵 ID -> 파일. 새 맵(동서남북 지역, 지하 2층 등)은 여기에 추가하고 입구 PORTAL의 대상맵을 채우면 열린다. */
-    private static final Map<String, String> RESOURCES = new LinkedHashMap<>();
-    static {
-        RESOURCES.put(FIELD, "s5/mine_map_255.txt");
-        RESOURCES.put(CAVE1, "s5/mine_cave1.txt");
-    }
+    public static final String DESERT = "desert";
+    public static final String BEACH = "beach";
+    /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH);
     public static final String[] ORE_CODES = { "COPPER", "IRON", "SILVER", "GOLD", "MITHRIL", "STARSTONE" };
     public static final String[] ORE_NAMES = { "구리 광석", "철광석", "은광석", "금광석", "미스릴 원석", "별빛석" };
     /** 등급별 칸 비율(이동 가능 칸 중, 높은 등급부터: 별빛석, 미스릴, 금, 은, 철, 나머지 구리). 동굴이 평원보다 풍부하다. */
     private static final double[] FIELD_SHARE = { 0.007, 0.033, 0.08, 0.15, 0.28 };
     private static final double[] CAVE_SHARE = { 0.02, 0.06, 0.12, 0.20, 0.30 };
+    /** 사막은 평원보다 조금 풍부하고 북쪽(끝)으로 갈수록 좋다. 바닷가는 평원과 같다. */
+    private static final double[] DESERT_SHARE = { 0.01, 0.045, 0.10, 0.16, 0.28 };
 
+    // ---------------------------------------------------------------- 2일 주기 리셋
+    private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
+    /** 주기 0의 시드 = 예전 맵 파일을 만든 시드(평원 = 시드, 동굴 = 시드 + 1). */
+    public static final long BASE_SEED = 20261023L;
+    /** 첫 리셋 시각(이후 2일마다 같은 시각). 그 전까지는 주기 0. */
+    public static final long RESET_ANCHOR_MS = java.time.ZonedDateTime.of(2026, 10, 25, 5, 0, 0, 0, KST).toInstant().toEpochMilli();
+    public static final long CYCLE_MS = 2L * 86_400_000L;
+
+    public static int cycleAt(long ms) {
+        return ms < RESET_ANCHOR_MS ? 0 : 1 + (int) ((ms - RESET_ANCHOR_MS) / CYCLE_MS);
+    }
+
+    /** 다음 리셋 시각(epoch ms). */
+    public static long nextResetAt(long ms) {
+        return RESET_ANCHOR_MS + (long) cycleAt(ms) * CYCLE_MS;
+    }
+
+    static long seedOf(int cycle) {
+        return BASE_SEED + cycle * 7919L;
+    }
+
+    private static volatile int activeCycle = 0;
+    private static volatile Map<String, S5MineMap> world = null;
+
+    /** 이 주기의 맵으로 바꾼다(리셋이 끝났을 때/서버 기동 후 DB의 주기를 확인했을 때). 같은 주기면 아무것도 안 한다. */
+    public static synchronized void setActiveCycle(int cycle) {
+        if (world != null && cycle == activeCycle) return;
+        world = buildWorld(seedOf(cycle));
+        activeCycle = cycle;
+    }
+
+    public static int activeCycle() {
+        return activeCycle;
+    }
+
+    // ---------------------------------------------------------------- 맵 객체
     public static final class Portal {
         public final int x, y, tx, ty;
         public final char kind;
@@ -51,7 +85,16 @@ public final class S5MineMap {
             this.x = x; this.y = y; this.kind = kind; this.target = target; this.tx = tx; this.ty = ty; this.label = label;
         }
         public boolean locked() {
-            return target == null || !RESOURCES.containsKey(target);
+            return target == null || !IDS.contains(target);
+        }
+    }
+
+    /** NPC(그 칸은 이동 불가, 부딪히면 말을 건다). kind: smith = 대장장이(곡괭이 수리), captain = 선장(대사만). */
+    public static final class Npc {
+        public final int x, y;
+        public final String kind, name, line;
+        Npc(int x, int y, String kind, String name, String line) {
+            this.x = x; this.y = y; this.kind = kind; this.name = name; this.line = line;
         }
     }
 
@@ -59,9 +102,13 @@ public final class S5MineMap {
     public final boolean dark;
     private int level;          // [2026-10-23] 광산 레벨(0 = 평원처럼 투구와 무관)
     private String requireItem; // [2026-10-23] 입장에 필요한 광산 아이템(없으면 null)
+    private boolean wind;       // [2026-10-23] 모래바람(가만히 있어도 좌우로 밀림, 화면이 처리)
+    private List<Npc> npcs = Collections.emptyList();
 
     public int level() { return level; }
     public String requireItem() { return requireItem; }
+    public boolean wind() { return wind; }
+    public List<Npc> npcs() { return npcs; }
     public final int w, h, spawnX, spawnY;
     private final char[][] terrain;
     private final byte[][] ore;
@@ -73,11 +120,11 @@ public final class S5MineMap {
     }
 
     public static boolean walkable(char c) {
-        return ".,:VHcr".indexOf(c) >= 0;
+        return ".,:VHcrdbP".indexOf(c) >= 0;
     }
 
     public static boolean portalChar(char c) {
-        return "GMUS".indexOf(c) >= 0;
+        return "GMUSB".indexOf(c) >= 0;
     }
 
     public boolean inside(int x, int y) {
@@ -102,15 +149,22 @@ public final class S5MineMap {
         return null;
     }
 
+    public Npc npcAt(int x, int y) {
+        for (Npc n : npcs) if (n.x == x && n.y == y) return n;
+        return null;
+    }
+
     private volatile String version;
 
-    /** 지형/포탈 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때만 다시 받는다. */
+    /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     public String version() {
         String v = version;
         if (v == null) {
             int hsh = 17;
             for (char[] row : terrain) hsh = 31 * hsh + Arrays.hashCode(row);
             for (Portal p : portals) hsh = 31 * hsh + (p.x + "," + p.y + p.target + p.label + p.locked()).hashCode();
+            for (Npc n : npcs) hsh = 31 * hsh + (n.x + "," + n.y + n.kind + n.name + n.line).hashCode();
+            hsh = 31 * hsh + (wind ? 1 : 0);
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
         }
         return v;
@@ -123,114 +177,95 @@ public final class S5MineMap {
     }
 
     public static String nameOf(String id) {
-        return RESOURCES.containsKey(id) ? get(id).name : id;
+        return get(id).name;
     }
 
-    // ---------------------------------------------------------------- 파일 읽기
-    private static final ConcurrentHashMap<String, S5MineMap> LOADED = new ConcurrentHashMap<>();
-
-    /** 맵 ID로 읽는다(없는 ID면 평원). */
+    /** 맵 ID로(없는 ID면 평원). 지금 주기의 맵. */
     public static S5MineMap get(String id) {
-        String key = id != null && RESOURCES.containsKey(id) ? id : FIELD;
-        S5MineMap m = LOADED.get(key);
-        if (m == null) {
+        Map<String, S5MineMap> wv = world;
+        if (wv == null) {
             synchronized (S5MineMap.class) {
-                m = LOADED.get(key);
-                if (m == null) {
-                    m = load(key, RESOURCES.get(key));
-                    LOADED.put(key, m);
-                }
+                if (world == null) world = buildWorld(seedOf(activeCycle));
+                wv = world;
             }
         }
-        return m;
+        S5MineMap m = id == null ? null : wv.get(id);
+        return m != null ? m : wv.get(FIELD);
     }
 
     public static S5MineMap get() {
         return get(FIELD);
     }
 
-    private static S5MineMap load(String id, String resource) {
-        try (InputStream in = S5MineMap.class.getClassLoader().getResourceAsStream(resource)) {
-            if (in == null) throw new IllegalStateException("광산 맵 파일이 없습니다: " + resource);
-            BufferedReader br = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
-            int w = 0, h = 0, sx = 0, sy = 0;
-            String name = id;
-            boolean dark = false;
-            int level = 0;
-            String require = null;
-            char[][] t = null;
-            byte[][] o = null;
-            List<Portal> portals = new ArrayList<>();
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.startsWith("#") || line.trim().isEmpty()) continue;
-                String[] p = line.trim().split("\\s+");
-                if ("NAME".equals(p[0])) name = line.trim().substring(4).trim();
-                else if ("DARK".equals(p[0])) dark = "1".equals(p[1]);
-                else if ("LEVEL".equals(p[0])) level = Integer.parseInt(p[1]);
-                else if ("REQUIRE".equals(p[0])) require = p[1];
-                else if ("SIZE".equals(p[0])) { w = Integer.parseInt(p[1]); h = Integer.parseInt(p[2]); }
-                else if ("SPAWN".equals(p[0])) { sx = Integer.parseInt(p[1]); sy = Integer.parseInt(p[2]); }
-                else if ("PORTAL".equals(p[0])) {
-                    String target = "-".equals(p[4]) ? null : p[4];
-                    int tx = "-".equals(p[5]) ? 0 : Integer.parseInt(p[5]), ty = "-".equals(p[6]) ? 0 : Integer.parseInt(p[6]);
-                    StringBuilder label = new StringBuilder();
-                    for (int i = 7; i < p.length; i++) label.append(i > 7 ? " " : "").append(p[i]);
-                    portals.add(new Portal(Integer.parseInt(p[1]), Integer.parseInt(p[2]), p[3].charAt(0), target, tx, ty, label.toString()));
-                } else if ("TERRAIN".equals(p[0])) {
-                    t = new char[h][];
-                    for (int y = 0; y < h; y++) t[y] = fixedRow(br.readLine(), w);
-                } else if ("ORE".equals(p[0])) {
-                    o = new byte[h][w];
-                    for (int y = 0; y < h; y++) {
-                        char[] r = fixedRow(br.readLine(), w);
-                        for (int x = 0; x < w; x++) o[y][x] = (byte) (r[x] >= '1' && r[x] <= '6' ? r[x] - '0' : 0);
-                    }
-                }
-            }
-            if (t == null || o == null) throw new IllegalStateException("광산 맵 파일 형식 오류: " + resource);
-            S5MineMap m = new S5MineMap(id, name, dark, w, h, sx, sy, t, o, portals);
-            m.level = level;
-            m.requireItem = require;
-            return m;
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException("광산 맵 파일 읽기 실패: " + e, e);
-        }
-    }
+    // ---------------------------------------------------------------- 맵 묶음 만들기(주기마다)
+    /** 대장장이 위치: 마을 가운데에서 (+3, -2) -- 북동쪽 초가집 바로 앞. */
+    private static final int SMITH_DX = 3, SMITH_DY = -2;
 
-    private static char[] fixedRow(String line, int w) {
-        char[] r = new char[w];
-        Arrays.fill(r, '^');
-        if (line != null) line.getChars(0, Math.min(w, line.length()), r, 0);
-        return r;
-    }
-
-    // ---------------------------------------------------------------- 생성기 (맵 파일을 새로 만들 때만)
-    private static final int[][] DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
-
-    /** 사용법: java ... S5MineMap 출력폴더(src/main/resources/s5) [시드] [미리보기 PNG 폴더] */
-    public static void main(String[] args) throws Exception {
-        long seed = args.length > 1 ? Long.parseLong(args[1]) : 20261023L;
-        File dir = new File(args[0]);
-        S5MineMap cave = generateCave(seed + 1);
+    static Map<String, S5MineMap> buildWorld(long seed) {
         S5MineMap field = generateField(seed);
-        // 평원 동굴 입구 <-> 동굴 나가는 길
-        Portal mouth = null;
-        for (Portal p : field.portals) if (p.kind == 'M') mouth = p;
+        S5MineMap cave = generateCave(seed + 1);
+        S5MineMap desert = generateDesert(seed + 2);
+        S5MineMap beach = generateBeach(seed + 3);
+
+        Portal mouth = null, north = null, south = null;
+        for (Portal p : field.portals) {
+            if (p.kind == 'M') mouth = p;
+            if (p.kind == 'G' && (north == null || p.y < north.y)) north = p;
+            if (p.kind == 'G' && (south == null || p.y > south.y)) south = p;
+        }
+        // 평원: 동굴 입구 -> 동굴, 북쪽 통로 -> 사막(남쪽 입구), 남쪽 통로 -> 바닷가(북쪽 입구). 동/서 통로는 아직 잠김.
         List<Portal> fp = new ArrayList<>();
-        for (Portal p : field.portals) fp.add(p.kind == 'M' ? new Portal(p.x, p.y, 'M', CAVE1, cave.spawnX, cave.spawnY, p.label) : p);
+        for (Portal p : field.portals) {
+            if (p == mouth) fp.add(new Portal(p.x, p.y, 'M', CAVE1, cave.spawnX, cave.spawnY, p.label));
+            else if (p == north) fp.add(new Portal(p.x, p.y, 'G', DESERT, desert.spawnX, desert.spawnY, "북쪽 사막으로 가는 길"));
+            else if (p == south) fp.add(new Portal(p.x, p.y, 'G', BEACH, beach.spawnX, beach.spawnY, "남쪽 바닷가로 가는 길"));
+            else fp.add(p);
+        }
         List<Portal> cp = new ArrayList<>();
         for (Portal p : cave.portals) cp.add(p.kind == 'U' ? new Portal(p.x, p.y, 'U', FIELD, mouth.x, mouth.y + 1, p.label) : p);
-        field = new S5MineMap(field.id, field.name, field.dark, field.w, field.h, field.spawnX, field.spawnY, field.terrain, field.ore, fp);
-        cave = new S5MineMap(cave.id, cave.name, cave.dark, cave.w, cave.h, cave.spawnX, cave.spawnY, cave.terrain, cave.ore, cp);
-        cave.level = 1; // 광산 동굴 1층 = 광산 레벨 1(투구 없이도 들어가지만 아주 어둡다)
-        write(field, new File(dir, "mine_map_255.txt"), seed);
-        write(cave, new File(dir, "mine_cave1.txt"), seed + 1);
-        if (args.length > 2) {
-            writePreview(field, new File(args[2]), "field");
-            writePreview(cave, new File(args[2]), "cave1");
+        List<Portal> dp = new ArrayList<>();
+        for (Portal p : desert.portals) dp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, north.x, north.y + 1, p.label) : p);
+        List<Portal> bp = new ArrayList<>();
+        for (Portal p : beach.portals) bp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, south.x, south.y - 1, p.label) : p);
+
+        // 마을 대장장이(곡괭이 수리) -- 마을 칸이라 원래 광석이 없고 다른 칸/광석 배치는 그대로다.
+        int sx = field.spawnX + SMITH_DX, sy = field.spawnY + SMITH_DY;
+        field.terrain[sy][sx] = 'N';
+        List<Npc> fn = new ArrayList<>();
+        fn.add(new Npc(sx, sy, "smith", "대장장이", "광석을 가져오면 곡괭이를 손봐 주지. 좋은 광석일수록 많이 고쳐 준다네."));
+
+        Map<String, S5MineMap> out = new LinkedHashMap<>();
+        out.put(FIELD, relink(field, fp, fn));
+        S5MineMap c2 = relink(cave, cp, null);
+        c2.level = 1; // 광산 동굴 1층 = 광산 레벨 1(투구 없이도 들어가지만 아주 어둡다)
+        out.put(CAVE1, c2);
+        S5MineMap d2 = relink(desert, dp, null);
+        d2.wind = true;
+        out.put(DESERT, d2);
+        out.put(BEACH, relink(beach, bp, beach.npcs));
+        return Collections.unmodifiableMap(out);
+    }
+
+    private static S5MineMap relink(S5MineMap m, List<Portal> portals, List<Npc> npcs) {
+        S5MineMap n = new S5MineMap(m.id, m.name, m.dark, m.w, m.h, m.spawnX, m.spawnY, m.terrain, m.ore, portals);
+        n.level = m.level;
+        n.requireItem = m.requireItem;
+        n.wind = m.wind;
+        n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
+        return n;
+    }
+
+    // ---------------------------------------------------------------- 미리보기
+    private static final int[][] DIRS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+
+    /** 사용법: java ... S5MineMap 출력폴더 [주기] -- 맵별 텍스트(지형/광석)와 PNG 미리보기. */
+    public static void main(String[] args) throws Exception {
+        int cycle = args.length > 1 ? Integer.parseInt(args[1]) : 0;
+        File dir = new File(args[0]);
+        dir.mkdirs();
+        for (S5MineMap m : buildWorld(seedOf(cycle)).values()) {
+            write(m, new File(dir, "mine_" + m.id + ".txt"), seedOf(cycle));
+            writePreview(m, dir, m.id);
         }
     }
 
@@ -466,6 +501,118 @@ public final class S5MineMap {
         return new S5MineMap(CAVE1, "광산 동굴 1층", true, w, h, sx, sy, t, o, portals);
     }
 
+
+    /** [2026-10-23] 북쪽 사막(150x150): 모래(d) 위에 사암(R) 무더기, 선인장(C), 오아시스(물 + 야자수). 남쪽 가운데가 평원으로 돌아가는 통로,
+     *  북쪽 끝까지 이어진 넓은 모래길 끝에 다음 지역으로 가는 통로(아직 잠김). 모래바람(wind)은 buildWorld가 켠다 -- 화면이 가만히 있어도 좌우로 민다.
+     *  광석은 평원보다 조금 풍부하고 북쪽일수록 좋다. */
+    static S5MineMap generateDesert(long seed) {
+        int w = 150, h = 150;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 11), dune = new Noise(seed * 31 + 12), rich = new Noise(seed * 31 + 13);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double rk = rock.fbm(x / 20.0, y / 20.0), du = dune.fbm(x / 12.0, y / 28.0);
+            char c = 'd';
+            if (rk > 0.70) c = 'R';
+            else if (rk > 0.64 && r.nextDouble() < 0.45) c = 'R';
+            else if (r.nextDouble() < 0.012 + (du > 0.62 ? 0.012 : 0)) c = 'C';
+            t[y][x] = c;
+        }
+        // 오아시스 3곳: 가운데 물, 둘레에 야자수(나무)
+        for (int k = 0; k < 3; k++) {
+            int ox = 20 + r.nextInt(w - 40), oy = 20 + r.nextInt(h - 50);
+            double rad = 2.5 + r.nextDouble() * 2;
+            for (int y = oy - 7; y <= oy + 7; y++) for (int x = ox - 7; x <= ox + 7; x++) {
+                if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1) continue;
+                double d = Math.hypot(x - ox, y - oy);
+                if (d < rad) t[y][x] = '~';
+                else if (d < rad + 2.2) t[y][x] = r.nextDouble() < 0.28 ? 'T' : 'd';
+            }
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = 'R'; t[h - 1][x] = 'R'; }
+        for (int y = 0; y < h; y++) { t[y][0] = 'R'; t[y][w - 1] = 'R'; }
+        // 남쪽 입구 -> 북쪽 끝까지 3칸 너비 모래길(바람에 밀려도 막히지 않게 넓게)
+        int sx = w / 2, sy = h - 2, px = sx;
+        for (int y = h - 2; y >= 1; y--) {
+            if (r.nextDouble() < 0.22) px += r.nextBoolean() ? 1 : -1;
+            px = Math.max(4, Math.min(w - 5, px));
+            for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'd';
+        }
+        int nx = px;
+        t[h - 1][sx] = 'G';
+        t[sy][sx] = 'd';
+        t[0][nx] = 'G';
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'R';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(sx, h - 1, 'G', FIELD, 0, 0, "중앙 평원으로 돌아가는 길"));
+        portals.add(new Portal(nx, 0, 'G', null, 0, 0, "북쪽 끝 너머 (준비 중)"));
+
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 16.0, y / 16.0) + 0.25 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, DESERT_SHARE, skip);
+        return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-10-23] 남쪽 바닷가(120x96): 북쪽은 풀밭/숲, 가운데 모래사장(b), 남쪽은 바다. 부두(P) 끝에 배(q)가 정박해 있고 배 앞(부두 위)에
+     *  선장 NPC. 배에 오르는 판자(B)는 아직 잠김 -- 추후 배를 통해서만 다른 맵으로 간다(바닷가에서 다른 새 맵으로 가는 길은 없음).
+     *  북쪽 가운데가 평원으로 돌아가는 통로. */
+    static S5MineMap generateBeach(long seed) {
+        int w = 120, h = 96;
+        Random r = new Random(seed);
+        Noise shore = new Noise(seed * 31 + 21), rich = new Noise(seed * 31 + 22), green = new Noise(seed * 31 + 23);
+        int pier = w / 2 + 10; // 부두 왼쪽 열
+        int[] coast = new int[w];   // 이 열의 첫 바다 칸 y
+        for (int x = 0; x < w; x++) coast[x] = (int) Math.round(h * 0.52 + (shore.fbm(x / 16.0, 3.7) - 0.5) * 16);
+        int pierCoast = coast[pier];
+        for (int x = Math.max(0, pier - 3); x <= Math.min(w - 1, pier + 14); x++) coast[x] = pierCoast; // 부두/배 근처 해안선은 반듯하게
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            char c;
+            if (y >= coast[x]) c = '~';
+            else if (y >= coast[x] - 7) c = 'b';
+            else c = green.fbm(x / 14.0, y / 14.0) > 0.58 && r.nextDouble() < 0.45 ? 'T' : (r.nextDouble() < 0.05 ? 'T' : '.');
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) t[0][x] = 'T';
+        for (int y = 0; y < h; y++) { if (t[y][0] != '~') t[y][0] = 'T'; if (t[y][w - 1] != '~') t[y][w - 1] = 'T'; }
+        // 북쪽 입구에서 모래사장까지 흙길
+        int sx = w / 2, sy = 1;
+        for (int y = 1; y < coast[sx] - 7; y++) t[y][sx] = ',';
+        t[0][sx] = 'G';
+        // 부두(3칸 폭, 해안에서 바다로 13칸) + 그 동쪽에 배(6x8) + 부두와 배 사이 판자(B)
+        int pierEnd = Math.min(h - 3, pierCoast + 12);
+        for (int y = pierCoast - 1; y <= pierEnd; y++) for (int x = pier; x <= pier + 2; x++) t[y][x] = 'P';
+        int shipX = pier + 4, shipY = pierCoast + 4, shipW = 6, shipH = 8;
+        for (int y = shipY; y < Math.min(h - 1, shipY + shipH); y++) for (int x = shipX; x < Math.min(w - 1, shipX + shipW); x++) t[y][x] = 'q';
+        int plankY = shipY + 3;
+        t[plankY][pier + 3] = 'B';
+        // 선장: 배 앞, 판자 바로 위 부두 칸(오른쪽 열) -- 판자 앞 칸(plankY)은 비워 둬서 배에 오를 수 있다.
+        int capX = pier + 2, capY = plankY - 1;
+        t[capY][capX] = 'N';
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = t[y][x] == 'P' ? '~' : 'T';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(sx, 0, 'G', FIELD, 0, 0, "중앙 평원으로 돌아가는 길"));
+        portals.add(new Portal(pier + 3, plankY, 'B', null, 0, 0, "배에 오르기 (준비 중)"));
+
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = t[y][x] == 'P' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.58 * rich.fbm(x / 15.0, y / 15.0) + (t[y][x] == 'b' ? 0.06 : 0) + 0.18 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, FIELD_SHARE, skip);
+        S5MineMap m = new S5MineMap(BEACH, "남쪽 바닷가", false, w, h, sx, sy, t, o, portals);
+        List<Npc> npcs = new ArrayList<>();
+        npcs.add(new Npc(capX, capY, "captain", "늙은 선장", "금광석 10개를 주면 신기한 걸 보여주지."));
+        m.npcs = npcs;
+        return m;
+    }
     /** 격자 값 노이즈(부드럽게 보간) 4옥타브 합, 0~1. */
     private static final class Noise {
         private final long seed;
@@ -510,7 +657,14 @@ public final class S5MineMap {
                 case 'c': c = 0x6b5b4b; break;
                 case 'r': c = 0x7d6d5c; break;
                 case '#': c = 0x2a221c; break;
-                case 'G': case 'M': case 'U': case 'S': c = 0xff2020; break;
+                case 'd': c = 0xe3c47a; break;
+                case 'b': c = 0xecd9a0; break;
+                case 'P': c = 0x8b5a2b; break;
+                case 'R': c = 0xb8875a; break;
+                case 'C': c = 0x3f8f3a; break;
+                case 'q': c = 0x6b4220; break;
+                case 'N': c = 0x2040ff; break;
+                case 'G': case 'M': case 'U': case 'S': case 'B': c = 0xff2020; break;
                 case 'h': case 'j': case 'k': case 'l': c = 0xd9b25a; break;
                 default: c = 0x5a4e44;
             }
