@@ -446,6 +446,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static volatile String EVENT_ADMIN_USERS = "";
     // [2026-10-22] "관리자 계정은 랭킹에서 안 나오도록" 요청 -- /탑랭킹 집계에서 뺄 유저명('|' 구분, TBOT_S5_CONFIG.RANK_EXCLUDE_USERS, /갱신으로 반영).
     private static volatile String RANK_EXCLUDE_USERS = "";
+    // [2026-10-23] "광산/광산상점은 관리자만 열고, config로 일반 유저 오픈 여부를 결정" 요청 -- TBOT_S5_CONFIG.MINE_OPEN_YN('Y'면 전체 오픈, 기본 N),
+    // MINE_ADMIN_USERS('|' 구분, 오픈 전에도 들어갈 수 있는 유저). /갱신으로 반영.
+    private static volatile boolean MINE_OPEN = false;
+    private static volatile String MINE_ADMIN_USERS = "";
 
     /** 서버 기동 시 TBOT_S5_CONFIG를 읽어 메모리(static 필드)에 반영. 실패해도 기본값으로 계속 동작. */
     @PostConstruct
@@ -460,6 +464,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 if ("RANK_EXCLUDE_USERS".equals(key)) {
                     RANK_EXCLUDE_USERS = val;
+                    continue;
+                }
+                if ("MINE_OPEN_YN".equals(key)) {
+                    MINE_OPEN = "Y".equalsIgnoreCase(val.trim());
+                    continue;
+                }
+                if ("MINE_ADMIN_USERS".equals(key)) {
+                    MINE_ADMIN_USERS = val;
                     continue;
                 }
                 try {
@@ -490,6 +502,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         } catch (Exception ignore) {
             // 서버 기동 시점에 DB 접속이 안 되거나 테이블이 없어도 기본값으로 계속 기동
         }
+    }
+
+    /** [2026-10-23] 광산/광산상점을 쓸 수 있는지 -- 전체 오픈(MINE_OPEN_YN=Y)이거나 MINE_ADMIN_USERS에 있는 유저. */
+    @Override
+    public boolean mineAccess(String userName) {
+        if (MINE_OPEN) return true;
+        if (userName == null || MINE_ADMIN_USERS == null) return false;
+        for (String u : MINE_ADMIN_USERS.split("\\|")) if (u.trim().equals(userName.trim())) return true;
+        return false;
+    }
+
+    private static HashMap<String, Object> mineClosed() {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        out.put("closed", true);
+        out.put("error", "⛏️ 광산은 아직 준비 중입니다.");
+        out.put("message", "⛏️ 광산은 아직 준비 중입니다.");
+        return out;
     }
 
     /** userName이 EVENT_ADMIN_USERS 목록에 있는지(=이벤트 지급 명령어 실행 권한이 있는지). */
@@ -597,7 +627,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean wardHit = RND.nextInt(100) < pct;
             boolean releaseHit = RND.nextInt(100) < pct;
             if (!wardHit && !releaseHit) continue;
-            int[] eff = computeEffectiveStat("SHAMAN", grade, dao.selectEquipByCompanion(cid), userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            int[] eff = slotPenalty(computeEffectiveStat("SHAMAN", grade, dao.selectEquipByCompanion(cid), userStat, intVal(c.get("LIMIT_BREAK"), 0)), c, userStat);
             double coef = grade >= 6 ? 0.7 : (grade >= 5 ? 0.6 : 0.5);
             if (mono) coef *= 1.5;
             int amount = Math.max(1, (int) Math.round(eff[1] * coef));
@@ -1198,7 +1228,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int grade = intVal(target.get("GRADE"), 1);
         String name = strVal(target.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(target.get("COMPANION_ID"), 0));
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0));
+        int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, intVal(target.get("LIMIT_BREAK"), 0)), target, userStat);
         // [2026-09-30] "100층이후에서는 기습데미지로 인한 즉사도 허용" -- 101층+는 사망방지 클램프 생략.
         if (!lethalAllowed) {
             int hardCap = (int) Math.floor(eff[0] * AMBUSH_DEATH_GUARD_PCT);
@@ -2098,13 +2128,41 @@ public class BotS5ServiceImpl implements BotS5Service {
      * @return "WARRIOR"/"MAGE"/"ROGUE"/"ARCHER"/"PRIEST"(해당 직업 모노 3인) 또는
      *         "RAINBOW"(3직업 전부 다름), 조건 미충족 시 null.
      */
+    // [2026-10-23] 4인 파티(80층+) -- "정확히 3명" 대신 3명 이상: 전원 같은 직업이면 모노, 전원 다른 직업이면 균형(4명이면 4직업 모두 달라야 함).
     private String detectPartySynergy(List<HashMap<String, Object>> party) {
-        if (party.size() != 3) return null;
+        if (party.size() < 3) return null;
         java.util.Set<String> jobs = new java.util.HashSet<>();
         for (HashMap<String, Object> c : party) jobs.add(strVal(c.get("CLASS"), "WARRIOR"));
         if (jobs.size() == 1) return jobs.iterator().next();
-        if (jobs.size() == 3) return "RAINBOW";
+        if (jobs.size() == party.size()) return "RAINBOW";
         return null;
+    }
+
+    // [2026-10-23] "동료를 4명까지, 80층 이상부터 열리는 기능" 요청 -- 최고 도달층(MAX_FLOOR_REACHED)이 80층 이상이면 파티 4번 슬롯이 열린다.
+    private static final int PARTY4_UNLOCK_FLOOR = 80;
+
+    private int partyMax(HashMap<String, Object> p) {
+        return p != null && intVal(p.get("MAX_FLOOR_REACHED"), 0) >= PARTY4_UNLOCK_FLOOR ? 4 : 3;
+    }
+
+    // [2026-10-23] "4번째 동료는 30% 약화된 채로 등장, 1층 등반 시마다 0.1%씩 해제(최대 0%)" 요청 -- 파티 4번 슬롯 동료의 체력/공격/방어에
+    // (1 - 약화율)을 곱한다. 약화율 = 30% - 0.1% x (최고 도달층 - 80), 0% 미만이 되면 0(380층 이상은 약화 없음). 최고 도달층은 userStat.GROWTH_MAXF.
+    private static final double PARTY4_PENALTY_START = 0.30;
+    private static final double PARTY4_PENALTY_PER_FLOOR = 0.001;
+
+    private double party4Penalty(HashMap<String, Object> userStat) {
+        int maxF = userStat == null ? 0 : intVal(userStat.get("GROWTH_MAXF"), 0);
+        return Math.max(0, PARTY4_PENALTY_START - PARTY4_PENALTY_PER_FLOOR * Math.max(0, maxF - PARTY4_UNLOCK_FLOOR));
+    }
+
+    /** computeEffectiveStat 결과에 4번 슬롯 약화를 반영(4번 슬롯이 아니거나 약화가 끝났으면 그대로). [hp, atk, def, ...] 중 앞 3개만. */
+    private int[] slotPenalty(int[] eff, HashMap<String, Object> c, HashMap<String, Object> userStat) {
+        if (eff == null || c == null || intVal(c.get("PARTY_SLOT"), 0) != 4) return eff;
+        double k = 1 - party4Penalty(userStat);
+        if (k >= 1) return eff;
+        int[] out = eff.clone();
+        for (int i = 0; i < 3 && i < out.length; i++) out[i] = Math.max(1, (int) Math.round(out[i] * k));
+        return out;
     }
 
     /** 시너지 발동 안내 한 줄(없으면 빈 문자열). 매 전투 턴마다 붙여서 지금 켜져 있는지 알 수 있게 함. */
@@ -3736,8 +3794,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!ambushAlive.isEmpty()) {
                 HashMap<String, Object> amTarget = ambushAlive.get(RND.nextInt(ambushAlive.size()));
                 List<HashMap<String, Object>> amEquips = dao.selectEquipByCompanion(intVal(amTarget.get("COMPANION_ID"), 0));
-                int[] amEff = computeEffectiveStat(strVal(amTarget.get("CLASS"), "WARRIOR"), intVal(amTarget.get("GRADE"), 1),
-                        amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0));
+                int[] amEff = slotPenalty(computeEffectiveStat(strVal(amTarget.get("CLASS"), "WARRIOR"), intVal(amTarget.get("GRADE"), 1),
+                        amEquips, userStat, intVal(amTarget.get("LIMIT_BREAK"), 0)), amTarget, userStat);
                 int amMonsterAtk = (int) Math.round(intVal(mon.get("ATK_VALUE"), 0) * eliteMult * trapAmbushDmgMult * AMBUSH_ATK_PCT);
                 // [2026-09-22] "60~70층 유저도 선공(기습)당할때 데미지가 너무 적어" 신고 --
                 // 반격과 동일하게 대상 본인의 투자배율만큼 기습 공격력도 같이 올린다.
@@ -3813,7 +3871,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         if (RND.nextInt(100) < skillRate(ambushReviver, arChance)) {
                             String vJob = strVal(vc.get("CLASS"), "WARRIOR");
                             int vGrade = intVal(vc.get("GRADE"), 1);
-                            int[] vEff = computeEffectiveStat(vJob, vGrade, dao.selectEquipByCompanion(deadCid), userStat, intVal(vc.get("LIMIT_BREAK"), 0));
+                            int[] vEff = slotPenalty(computeEffectiveStat(vJob, vGrade, dao.selectEquipByCompanion(deadCid), userStat, intVal(vc.get("LIMIT_BREAK"), 0)), vc, userStat);
                             PP vHp = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * arPct)));
                             writeCompanionHp(vc, vHp);
                             sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, strVal(vc.get("NAME"), JOB_NAME.getOrDefault(vJob, "동료"))))
@@ -3931,7 +3989,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             int grade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0)), c, userStat);
             // [2026-10-20] 전설 머리띠 "수선도사의 머리띠"(DICE_MIN_PLUS): 전투 중 이 동료의 공격/보호막 주사위 하한 +N. 전설 깃장식 "주작의 깃장식"(CRIT_DAMAGE): 크리티컬 배율 교체.
             boolean growthHalf = grade == GROWTH_GRADE; // [2026-10-22] 성장형은 장비 특수효과 50%
             HashMap<String, Object> diceMinEq = legendEquipEffect(equips, "DICE_MIN_PLUS");
@@ -4585,7 +4643,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 double revivePct = reviverGrade >= 6 ? 0.5 : 0.3;
                 if (RND.nextInt(100) < skillRate(reviver79, reviveChance)) {
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
-                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
+                    int[] vEff = slotPenalty(computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0)), victim, userStat);
                     vHpAfter = PP.fromPP(Math.max(1, (int) Math.round(vEff[0] * revivePct)));
                     sb.append("✨ 도사의 기적! ").append(jobTag(vGrade, vJob, vName))
                       .append(" 부활(HP ").append(plainNum(vHpAfter)).append("/").append(vEff[0]).append(")").append(NL);
@@ -4668,7 +4726,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         double revivePct2 = reviverGrade2 >= 6 ? 0.5 : 0.3;
                         if (RND.nextInt(100) < skillRate(reviverIv, reviveChance2)) {
                             List<HashMap<String, Object>> ivEquips = dao.selectEquipByCompanion(intVal(instaVictim.get("COMPANION_ID"), 0));
-                            int[] ivEff = computeEffectiveStat(ivJob, ivGrade, ivEquips, userStat, intVal(instaVictim.get("LIMIT_BREAK"), 0));
+                            int[] ivEff = slotPenalty(computeEffectiveStat(ivJob, ivGrade, ivEquips, userStat, intVal(instaVictim.get("LIMIT_BREAK"), 0)), instaVictim, userStat);
                             ivHpAfter = PP.fromPP(Math.max(1, (int) Math.round(ivEff[0] * revivePct2)));
                             sb.append("✨ 도사의 기적! ").append(jobTag(ivGrade, ivJob, ivName))
                               .append(" 부활(HP ").append(plainNum(ivHpAfter)).append("/").append(ivEff[0]).append(")").append(NL);
@@ -4706,7 +4764,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!"WARRIOR".equals(strVal(c.get("CLASS"), ""))) continue;
             int wGrade = intVal(c.get("GRADE"), 1);
             List<HashMap<String, Object>> wEquips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] wEff = computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            int[] wEff = slotPenalty(computeEffectiveStat("WARRIOR", wGrade, wEquips, userStat, intVal(c.get("LIMIT_BREAK"), 0)), c, userStat);
             PP wHp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             boolean over50 = PP.toBaseValue(wHp) * 2 >= wEff[0];
             int guardChance = 30;
@@ -4980,7 +5038,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String tJob = strVal(curTarget.get("CLASS"), "WARRIOR");
         int tGrade = intVal(curTarget.get("GRADE"), 1);
         List<HashMap<String, Object>> tEquips = dao.selectEquipByCompanion(intVal(curTarget.get("COMPANION_ID"), 0));
-        int[] tEff = computeEffectiveStat(tJob, tGrade, tEquips, userStat, intVal(curTarget.get("LIMIT_BREAK"), 0));
+        int[] tEff = slotPenalty(computeEffectiveStat(tJob, tGrade, tEquips, userStat, intVal(curTarget.get("LIMIT_BREAK"), 0)), curTarget, userStat);
         if ("RAINBOW".equals(synergy)) tEff[2] = (int) Math.round(tEff[2] * 1.1); // 시너지: 균형3인조 방어 +10%
         if (trapDefDown) tEff[2] = (int) Math.round(tEff[2] * 0.7); // 함정: 방어력 30% 약화(반격 피해 증가)
         if (luckyDefUp) tEff[2] = (int) Math.round(tEff[2] * luckyMult); // 럭키: 방어력 강화(반격 피해 감소)
@@ -5275,13 +5333,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                     int mGrade = intVal(minionC.get("GRADE"), 1);
                     String mName = strVal(minionC.get("NAME"), JOB_NAME.getOrDefault(mJob, "동료"));
                     List<HashMap<String, Object>> mEquips = dao.selectEquipByCompanion(minionCid);
-                    int[] mEff = computeEffectiveStat(mJob, mGrade, mEquips, userStat, intVal(minionC.get("LIMIT_BREAK"), 0));
+                    int[] mEff = slotPenalty(computeEffectiveStat(mJob, mGrade, mEquips, userStat, intVal(minionC.get("LIMIT_BREAK"), 0)), minionC, userStat);
 
                     HashMap<String, Object> victim = stillAlive.get(RND.nextInt(stillAlive.size()));
                     String vJob = strVal(victim.get("CLASS"), "WARRIOR");
                     int vGrade = intVal(victim.get("GRADE"), 1);
                     List<HashMap<String, Object>> vEquips = dao.selectEquipByCompanion(intVal(victim.get("COMPANION_ID"), 0));
-                    int[] vEff = computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0));
+                    int[] vEff = slotPenalty(computeEffectiveStat(vJob, vGrade, vEquips, userStat, intVal(victim.get("LIMIT_BREAK"), 0)), victim, userStat);
                     PP victimHp = PP.of(((Number) victim.get("CUR_HP_VALUE")).doubleValue(), strVal(victim.get("CUR_HP_EXT"), ""));
 
                     int mRoll = rollFace(monsterDiceMin(floor, monsterDiceMax), monsterDiceMax);
@@ -5328,7 +5386,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int grade = intVal(c.get("GRADE"), 1);
             String cName = strVal(c.get("NAME"), JOB_NAME.getOrDefault(job, "동료"));
             List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
+            int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0)), c, userStat);
             PP hp = PP.of(((Number) c.get("CUR_HP_VALUE")).doubleValue(), strVal(c.get("CUR_HP_EXT"), ""));
             boolean dead = PP.toBaseValue(hp) <= 0;
             if (i > 0) sb.append(NL);
@@ -5395,7 +5453,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = strVal(c.get("CLASS"), "WARRIOR");
         int grade = intVal(c.get("GRADE"), 1);
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(c.get("COMPANION_ID"), 0));
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0));
+        int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, intVal(c.get("LIMIT_BREAK"), 0)), c, userStat);
         HashMap<String, Object> up = new HashMap<>();
         up.put("companionId", intVal(c.get("COMPANION_ID"), 0));
         up.put("curHpValue", (double) eff[0]);
@@ -5408,7 +5466,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = strVal(companion.get("CLASS"), "WARRIOR");
         int grade = intVal(companion.get("GRADE"), 1);
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(intVal(companion.get("COMPANION_ID"), 0));
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat, intVal(companion.get("LIMIT_BREAK"), 0));
+        int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, intVal(companion.get("LIMIT_BREAK"), 0)), companion, userStat);
         return eff[0];
     }
 
@@ -6067,7 +6125,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         order.sort((a, b) -> a[0] != b[0] ? b[0] - a[0] : b[1] - a[1]); // 성급desc, 동점이면 한계돌파desc
         for (int[] o : order) sb.append(lines.get(o[2])).append(NL);
         if (hiddenCount > 0) sb.append("(숨긴 동료 ").append(hiddenCount).append("마리는 표시 생략, 웹에서 확인)").append(NL);
-        sb.append("/파티편성 N 으로 편성/해제 (최대 3명), /동료가리기 N 으로 목록 숨김/해제");
+        int max = partyMax(dao.selectUserProgress(userName));
+        sb.append("/파티편성 N 으로 편성/해제 (최대 ").append(max).append("명").append(max < 4 ? ", " + PARTY4_UNLOCK_FLOOR + "층 도달 시 4명" : "")
+          .append("), /동료가리기 N 으로 목록 숨김/해제");
         return sb.toString();
     }
 
@@ -6132,16 +6192,18 @@ public class BotS5ServiceImpl implements BotS5Service {
 
         int used = 0;
         for (HashMap<String, Object> c : companions) if (c.get("PARTY_SLOT") != null) used++;
-        if (used >= 3) {
-            return "파티는 최대 3명까지 편성 가능합니다. 다른 동료를 먼저 해제하세요.";
+        int max = partyMax(p);
+        if (used >= max) {
+            return "파티는 최대 " + max + "명까지 편성 가능합니다. 다른 동료를 먼저 해제하세요."
+                    + (max < 4 ? " (" + PARTY4_UNLOCK_FLOOR + "층에 도달하면 4명까지)" : "");
         }
-        boolean[] usedSlot = new boolean[4];
+        boolean[] usedSlot = new boolean[6];
         for (HashMap<String, Object> c : companions) {
             Object s = c.get("PARTY_SLOT");
-            if (s != null) usedSlot[((Number) s).intValue()] = true;
+            if (s != null && ((Number) s).intValue() >= 1 && ((Number) s).intValue() <= 5) usedSlot[((Number) s).intValue()] = true;
         }
         int slot = 1;
-        while (slot <= 3 && usedSlot[slot]) slot++;
+        while (slot <= max && usedSlot[slot]) slot++;
 
         HashMap<String, Object> up = new HashMap<>();
         up.put("companionId", intVal(target.get("COMPANION_ID"), 0));
@@ -6175,7 +6237,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (p != null && "IN_COMBAT".equals(strVal(p.get("STATUS"), "NORMAL"))) {
             return "전투 중에는 파티를 변경할 수 없습니다.";
         }
-        if (targetSlot < 1 || targetSlot > 3) {
+        if (targetSlot == 4 && partyMax(p) < 4) {
+            return "🔒 파티 4번 슬롯은 " + PARTY4_UNLOCK_FLOOR + "층에 도달하면 열립니다.";
+        }
+        if (targetSlot < 1 || targetSlot > partyMax(p)) {
             return "잘못된 슬롯 번호입니다.";
         }
         List<HashMap<String, Object>> companions = dao.selectUserCompanions(userName);
@@ -7899,8 +7964,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> equips = dao.selectEquipByCompanion(companionId);
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         int limitBreak = intVal(target.get("LIMIT_BREAK"), 0);
-        int[] eff = computeEffectiveStat(job, grade, equips, userStat, limitBreak);
-        int[] effBase = computeEffectiveStat(job, grade, equips, userStat, 0);
+        int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, limitBreak), target, userStat);
+        int[] effBase = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, 0), target, userStat);
         return new int[]{ eff[0], eff[1], eff[2], effBase[0], effBase[1], effBase[2] };
     }
 
@@ -7927,9 +7992,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             int limitBreak = intVal(c.get("LIMIT_BREAK"), 0);
             int cid = intVal(c.get("COMPANION_ID"), 0);
             List<HashMap<String, Object>> equips = equipsByCompanion.getOrDefault(cid, Collections.emptyList());
-            int[] eff = computeEffectiveStat(job, grade, equips, userStat, limitBreak);
-            int[] effBase = computeEffectiveStat(job, grade, equips, userStat, 0);
+            int[] eff = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, limitBreak), c, userStat);
+            int[] effBase = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, 0), c, userStat);
             c.put("EFF_HP", eff[0]); c.put("EFF_ATK", eff[1]); c.put("EFF_DEF", eff[2]);
+            if (intVal(c.get("PARTY_SLOT"), 0) == 4) c.put("WEAK_PCT", Math.round(party4Penalty(userStat) * 1000) / 10.0); // 화면 안내용(약화율 %)
             c.put("EFF_HP_BASE", effBase[0]); c.put("EFF_ATK_BASE", effBase[1]); c.put("EFF_DEF_BASE", effBase[2]);
         }
         return companions;
@@ -8070,7 +8136,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 장착 "전" 최대체력을 먼저 구해둔다.
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         int oldMaxHp = effMaxHpOf(targetCompanion, userStat);
-        // [2026-10-22] 같은 전설은 한 동료만 (2026-10-23: "동료당 1개" 제한은 반발이 커서 폐지 -- 한 동료가 여러 부위에 전설을 낄 수 있다)
+        // [2026-10-22] 전설 착용 규칙 확인 -- 2026-10-23에 "동료당 1개", "같은 전설은 한 동료만" 둘 다 폐지되어 지금은 항상 통과(legendWearBlock)
         String legendBlock = legendWearBlock(userName, equip, companionId);
         if (legendBlock != null) return legendBlock;
         // 같은 부위에 이미 장착된 게 있으면 해제 -- [2026-10-22] 수량(QTY) 때문에 장착을 먼저 하고 기존 장비 해제는 그 뒤에(unwearEquipOne 설명 참고)
@@ -8647,6 +8713,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     public HashMap<String, Object> mineState(String userName) {
+        if (!mineAccess(userName)) return mineClosed();
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
@@ -8695,6 +8762,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public HashMap<String, Object> mineDig(String userName, String mapId, int x, int y) {
+        if (!mineAccess(userName)) return mineClosed();
         long now = System.currentTimeMillis();
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
@@ -8759,6 +8827,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     public HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y) {
+        if (!mineAccess(userName)) return mineClosed();
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
@@ -8783,6 +8852,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public HashMap<String, Object> mineWarp(String userName, String mapId, int x, int y, int px, int py) {
+        if (!mineAccess(userName)) return mineClosed();
         long now = System.currentTimeMillis();
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
@@ -8823,6 +8893,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     public HashMap<String, Object> mineShop(String userName) {
+        if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> row = mineRow(userName, false);
         Map<Integer, Integer> have = new HashMap<>();
         for (HashMap<String, Object> o : mineOreList(userName)) have.put(intVal(o.get("grade"), 0), intVal(o.get("qty"), 0));
@@ -8849,6 +8920,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String mineShopBuy(String userName, int no, int times) {
+        if (!mineAccess(userName)) return "⛏️ 광산은 아직 준비 중입니다.";
         if (no < 1 || no > MINE_SHOP.length) return "잘못된 상품입니다.";
         if (times < 1) times = 1;
         mineRow(userName, false);
@@ -8971,7 +9043,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 패치를 확인(PATCH_ACK_VERSION)하기 전에는 주사위를 굴리지 않고 패치 내용을 보여준다. 다음 전투 영향 패치 때는 PATCH_VERSION과 PATCH_NOTES만 바꾸면 된다.
     private static final String PATCH_VERSION = "20261023";
     private static final String PATCH_NOTES = "📢 전투 밸런스 패치 안내 (2026-10-23)" + NL
-            + "1. 전설장비 착용 제한 완화: 동료 한 명이 여러 부위에 전설을 낄 수 있습니다(6부위 모두 가능). 단, 같은 전설장비를 여러 동료가 동시에 착용할 수는 없습니다." + NL
+            + "1. 전설장비 착용 제한 없음: 동료 한 명이 여러 부위에 전설을 낄 수 있고(6부위 모두 가능), 같은 전설장비를 여러 동료가 함께 착용할 수도 있습니다." + NL
             + "2. 전설장비 특수효과가 50%로 조정됩니다. (예: 연사 30%→15%, 받는 피해 감소 20%→10%, 불굴·시작 보호막은 50% 확률로 발동, 능력치 배율 x2→x1.5, 크리티컬 x2→x1.75) 장비 기본 능력치와 강화 효과는 그대로입니다." + NL
             + "3. 성장형 동료(☆1)는 장비 효과 50% 규칙이 그대로라 전설 특수효과는 원래의 25%가 적용됩니다. (최대 성장 x5.6)" + NL
             + "4. 강화된 전설장비를 해체하면 전설의조각 15개와 그 수치의 강화권(예: +8 강화권)을 돌려받습니다. 강화권은 강화 수치가 더 낮은 다른 전설장비에 써서 그 수치로 맞출 수 있습니다. (강화비 절반 환급은 강화권으로 대체)" + NL
@@ -9023,46 +9095,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 전설장비를 companionId에게 끼우면 규칙 위반인지 -- 위반이면 안내 문구, 아니면 null.
-     *  [2026-10-23] 규칙은 "같은 전설(LEGENDARY_ID)은 한 동료만"뿐이다("동료당 1개"는 폐지 -- 6부위 모두 전설 착용 가능). */
+     *  [2026-10-23] "중복전설 착용 가능하게" 요청으로 남은 규칙(같은 전설은 한 동료만)도 폐지 -- 이제 전설 착용 제한이 없다.
+     *  (예전 규칙: 10-22 동료당 1개 + 같은 전설 한 동료만 -> 10-23 오전 같은 전설 한 동료만 -> 10-23 오후 제한 없음) */
     private String legendWearBlock(String userName, HashMap<String, Object> equip, int companionId) {
-        if (equip.get("LEGENDARY_ID") == null) return null;
-        int lid = intVal(equip.get("LEGENDARY_ID"), 0);
-        int equipId = intVal(equip.get("EQUIP_ID"), 0);
-        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
-            if (e.get("LEGENDARY_ID") == null || e.get("EQUIPPED_COMPANION_ID") == null) continue;
-            if (intVal(e.get("EQUIP_ID"), 0) == equipId) continue;
-            int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
-            String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
-            if (cid != companionId && intVal(e.get("LEGENDARY_ID"), 0) == lid) {
-                return "⚠️ [" + nm + "]은(는) 이미 " + companionLabels(userName).getOrDefault(cid, "다른 동료")
-                        + "이(가) 착용 중입니다. 같은 전설장비는 한 동료만 착용할 수 있습니다.";
-            }
-        }
         return null;
     }
 
-    /** 지금 착용 상태의 전설 규칙 위반 목록(없으면 빈 목록) -- [2026-10-23] 같은 전설을 여러 동료가 낀 경우만. */
+    /** 지금 착용 상태의 전설 규칙 위반 목록 -- [2026-10-23] 규칙이 없어져 항상 빈 목록(주사위 전 전설 규칙 확인 팝업도 더는 안 뜬다). */
     private List<String> legendViolations(String userName) {
-        Map<Integer, List<Integer>> wearersByLegend = new LinkedHashMap<>();
-        Map<Integer, String> legendName = new HashMap<>();
-        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
-            if (e.get("LEGENDARY_ID") == null || e.get("EQUIPPED_COMPANION_ID") == null) continue;
-            int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
-            int lid = intVal(e.get("LEGENDARY_ID"), 0);
-            String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
-            wearersByLegend.computeIfAbsent(lid, k -> new ArrayList<>()).add(cid);
-            legendName.put(lid, nm);
-        }
-        List<String> out = new ArrayList<>();
-        Map<Integer, String> labels = null;
-        for (Map.Entry<Integer, List<Integer>> en : wearersByLegend.entrySet()) {
-            if (en.getValue().size() < 2) continue;
-            if (labels == null) labels = companionLabels(userName);
-            List<String> who = new ArrayList<>();
-            for (Integer cid : en.getValue()) who.add(labels.getOrDefault(cid, "동료"));
-            out.add("- [" + legendName.get(en.getKey()) + "]을(를) " + String.join(", ", who) + "이(가) 함께 착용 → 1명만 착용");
-        }
-        return out;
+        return new ArrayList<>();
     }
 
     @Override
@@ -9631,8 +9672,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         String job = strVal(comp.get("CLASS"), "WARRIOR");
         int grade = intVal(comp.get("GRADE"), 1);
         int lb = intVal(comp.get("LIMIT_BREAK"), 0);
-        int[] total = computeEffectiveStat(job, grade, equips, userStat, lb);
-        int[] charTotal = computeEffectiveStat(job, grade, new ArrayList<HashMap<String, Object>>(), userStat, lb);
+        int[] total = slotPenalty(computeEffectiveStat(job, grade, equips, userStat, lb), comp, userStat);
+        int[] charTotal = slotPenalty(computeEffectiveStat(job, grade, new ArrayList<HashMap<String, Object>>(), userStat, lb), comp, userStat);
         int[] base = calcBaseStat(job, grade);
         int atkMaxLv = userStat == null ? 0 : intVal(userStat.get("ATK_MAX_LV"), 0);
         int hpLv = userStat == null ? 0 : intVal(userStat.get("HP_LV"), 0);
@@ -9697,7 +9738,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int grade = intVal(comp.get("GRADE"), 1);
         int[] base = calcBaseStat(job, grade);
         double[] m = contribMultipliers(comp, userStat);
-        int[] total = computeEffectiveStat(job, grade, dao.selectEquipByCompanion(companionId), userStat, intVal(comp.get("LIMIT_BREAK"), 0));
+        int[] total = slotPenalty(computeEffectiveStat(job, grade, dao.selectEquipByCompanion(companionId), userStat, intVal(comp.get("LIMIT_BREAK"), 0)), comp, userStat);
         List<HashMap<String, Object>> rows = new ArrayList<>();
         int currentId = 0;
         long[] baseline = { total[0], total[1], total[2] };

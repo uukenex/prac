@@ -224,6 +224,8 @@ public interface BotS5Service {
     String dismantleEquipByIdx(String userName, int equipIdx, int qty);
     /** [2026-10-23] 웹 광산 -- 공용 맵 지형/포탈, 내 상태(스태미너/맵/위치/캔 칸/광석), 캐기, 위치 저장, 포탈 이동, 광산상점(광석 -> 시간당 PP). */
     HashMap<String, Object> mineMap(String mapId);
+    /** [2026-10-23] 광산/광산상점 사용 가능 여부(TBOT_S5_CONFIG MINE_OPEN_YN / MINE_ADMIN_USERS). */
+    boolean mineAccess(String userName);
     HashMap<String, Object> mineState(String userName);
     HashMap<String, Object> mineDig(String userName, String mapId, int x, int y);
     HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y);

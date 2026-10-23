@@ -269,6 +269,7 @@
     .party-slots{ display:flex; flex-direction:column; gap:10px; }
     .party-slot-card{ border:2px solid var(--line); border-radius:16px; padding:14px; background:#fff; }
     .party-slot-card.filled{ border-color:var(--gold); background:var(--gold-soft); }
+    .party-slot-card.locked{ opacity:.6; border-style:dashed; }
     .party-slot-card.empty{ display:flex; flex-direction:column; align-items:center; gap:10px;
                              padding:26px 14px; border-style:dashed; color:var(--ink-soft); }
     .ps-slot-label{ font-size:10px; color:var(--ink-soft); opacity:.8; }
@@ -1111,7 +1112,7 @@
     </div>
   </div>
 
-  <!-- 파티(동료 3명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리 -->
+  <!-- 파티(동료 3명, 80층 도달 시 4명)와 그 동료들에게 장착하는 장비는 한 화면에서 같이 관리 -->
   <div class="panel" id="panel-party">
     <div class="card">
       <div class="card-title-row">
@@ -1140,7 +1141,7 @@
       <div class="inv-tabs">
         <button type="button" class="on" data-inv="equip" onclick="TW.setInvTab('equip')">장비 · 악세서리</button>
         <button type="button" data-inv="etc" onclick="TW.setInvTab('etc')">기타</button>
-        <button type="button" data-inv="ore" onclick="TW.setInvTab('ore')">광석</button>
+        <button type="button" data-inv="ore" style="display:none;" onclick="TW.setInvTab('ore')">광석</button>
       </div>
       <div id="invEquipPane">
         <div id="equipListFilters"></div>
@@ -1515,8 +1516,8 @@
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
     <button class="dbtn" data-tab="settings" onclick="TW.switchTab('settings')"><span class="d-icn">⚙️</span>설정</button>
     <!-- [2026-10-23] 세 번째 줄: 광산(2D 광석 캐기), 광산상점(광석 -> 자동사냥 시간당 PP) -->
-    <button class="dbtn" data-tab="mine" onclick="TW.switchTab('mine')"><span class="d-icn">⛏️</span>광산</button>
-    <button class="dbtn" data-tab="mineshop" onclick="TW.switchTab('mineshop')"><span class="d-icn">🏪</span>광산상점</button>
+    <button class="dbtn" data-tab="mine" style="display:none;" onclick="TW.switchTab('mine')"><span class="d-icn">⛏️</span>광산</button>
+    <button class="dbtn" data-tab="mineshop" style="display:none;" onclick="TW.switchTab('mineshop')"><span class="d-icn">🏪</span>광산상점</button>
   </div>
 </nav>
 
@@ -2000,6 +2001,9 @@ var TW = (function () {
     var v = l.order.map(function (k) { return (l.hidden[k] ? '!' : '') + k; }).join(',');
     return v === DOCK_DEFAULT.join(',') ? '' : v;
   }
+  // [2026-10-23] 광산/광산상점은 서버가 허용한 유저(관리자 또는 전체 오픈)에게만 보인다(tower-status mineOpen).
+  var mineOpen = false;
+  var MINE_TABS = { mine: true, mineshop: true };
   function applyDockLayout(str) {
     lastDockStr = str || '';
     dockLayout = parseDockLayout(str);
@@ -2009,7 +2013,7 @@ var TW = (function () {
       var b = inner.querySelector('.dbtn[data-tab="' + k + '"]');
       if (!b) return;
       inner.appendChild(b); // 순서대로 다시 붙이면 그 순서가 된다
-      b.style.display = dockLayout.hidden[k] ? 'none' : '';
+      b.style.display = dockLayout.hidden[k] || (MINE_TABS[k] && !mineOpen) ? 'none' : '';
     });
     if (document.getElementById('panel-settings').classList.contains('active')) renderDockEdit();
   }
@@ -2019,6 +2023,7 @@ var TW = (function () {
     box.innerHTML = '';
     var inner = document.querySelector('.dock-inner');
     dockLayout.order.forEach(function (k, i) {
+      if (MINE_TABS[k] && !mineOpen) return; // 광산 미오픈이면 설정 목록에서도 숨김
       var b = inner && inner.querySelector('.dbtn[data-tab="' + k + '"]');
       var icn = b ? (b.querySelector('.d-icn') || {}).textContent : '';
       var name = b ? b.textContent.replace(icn, '').trim() : k;
@@ -2122,7 +2127,13 @@ var TW = (function () {
             + (p.AUTO_HUNT_YN === 'Y' ? ' · 자동사냥ON' : '');
         document.getElementById('ppVal').textContent = (p.PP_VALUE || 0).toFixed ? p.PP_VALUE.toFixed(2) + (p.PP_EXT || '') : p.PP_VALUE;
         state.progress = p; // [2026-09-18] 전설의조각 보유량 등, 다른 렌더 함수(renderEquipList)에서도 참조
-        if ((p.DOCK_LAYOUT || '') !== lastDockStr) applyDockLayout(p.DOCK_LAYOUT || ''); // [2026-10-22] 유저별 하단 메뉴 배치(바뀐 때만)
+        if ((p.DOCK_LAYOUT || '') !== lastDockStr || !!data.mineOpen !== mineOpen) { // [2026-10-22] 유저별 하단 메뉴 배치(바뀐 때만)
+          mineOpen = !!data.mineOpen;
+          var oreTabBtn = document.querySelector('.inv-tabs button[data-inv="ore"]');
+          if (oreTabBtn) oreTabBtn.style.display = mineOpen ? '' : 'none';
+          if (!mineOpen && invTab === 'ore') setInvTab('equip');
+          applyDockLayout(p.DOCK_LAYOUT || '');
+        }
         var legendFragmentEl = document.getElementById('legendFragmentVal');
         if (legendFragmentEl) legendFragmentEl.textContent = p.LEGEND_FRAGMENT || 0;
 
@@ -3888,6 +3899,7 @@ var TW = (function () {
   // 다시 그린다. 카드 자체에 모든 정보(초상화/이름/등급/HP/장비 3부위)와 버튼(동료변경/해제,
   // 부위별 OO변경)이 다 보여서 더 이상 "탭해서 열기"가 필요 없다 -- 각 버튼이 바로 해당
   // 동작(즉시 실행 또는 선택 팝업)을 한다.
+  var PARTY4_UNLOCK_FLOOR = 80;
   function renderPartySlots() {
     var companions = lastParty.companions || [];
     var byCompanion = lastParty.byCompanion || {};
@@ -3895,7 +3907,17 @@ var TW = (function () {
     box.innerHTML = '';
     var bySlot = {};
     companions.forEach(function (c) { if (c.PARTY_SLOT) bySlot[c.PARTY_SLOT] = c; });
-    for (var s = 1; s <= 3; s++) {
+    // [2026-10-23] 파티 4번 슬롯 -- 최고 도달층 80층 이상이면 열림(서버 partyMax와 같은 규칙), 아니면 잠긴 칸으로 보여준다.
+    var maxReached = (state.progress && state.progress.MAX_FLOOR_REACHED) || 0;
+    var slotCount = maxReached >= PARTY4_UNLOCK_FLOOR ? 4 : 3;
+    for (var s = 1; s <= 4; s++) {
+      if (s > slotCount && !bySlot[s]) {
+        var lockCard = document.createElement('div');
+        lockCard.className = 'party-slot-card empty locked';
+        lockCard.innerHTML = '<div class="ps-slot-label">파티 ' + s + '번</div><div class="ps-empty-msg">🔒 ' + PARTY4_UNLOCK_FLOOR + '층에 도달하면 열려요 (최고 ' + maxReached + '층)</div>';
+        box.appendChild(lockCard);
+        continue;
+      }
       var occ = bySlot[s];
       var occDown = occ && isIncapacitated(occ.CUR_HP_VALUE);
       var card = document.createElement('div');
@@ -3929,7 +3951,8 @@ var TW = (function () {
           + '<div class="ps-role">' + (JOB_KR[occ.CLASS] || occ.CLASS) + ' ' + gradeMark(occ.GRADE)
           + (occLb > 0 ? ' (+' + occLb + ')' : '') + '</div>'
           + (occDown ? '<div class="ps-hp incapacitated">💀 전투불능 (HP 0)</div>'
-                     : '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>');
+                     : '<div class="ps-hp">HP ' + fmtPP(occ.CUR_HP_VALUE, occ.CUR_HP_EXT) + '</div>')
+          + (occ.WEAK_PCT > 0 ? '<div class="ps-hp" style="color:var(--combat);">⚠️ 4번째 동료 약화 -' + occ.WEAK_PCT + '% (1층 오를 때마다 0.1%씩 풀림)</div>' : '');
       header.appendChild(info);
       card.appendChild(header);
       var detailEl = document.createElement('div');
