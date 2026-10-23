@@ -778,6 +778,10 @@
     .mine-smith-row button:disabled{ opacity:.4; cursor:default; }
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
+    .mine-smith-menu{ display:flex; gap:8px; }
+    .mine-smith-menu button{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px; font-size:15px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
+    .mine-smith-menu button small{ font-size:11px; font-weight:600; color:#cfc8e8; }
+    .mine-smith-menu button:hover, .mine-smith-menu button:focus-visible{ background:#4d3f72; }
     .mine-smith-sub{ margin-top:12px; padding-top:8px; border-top:2px solid rgba(244,240,230,.45); }
     .mine-smith-sub b{ color:#ffe14d; }
     .mine-smith-dur b{ color:#ffe14d; font-family:ui-monospace, Consolas, monospace; }
@@ -5752,8 +5756,8 @@ var TowerMine = (function () {
   }
   function showStamina() {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
-    el.regen.textContent = '🔨 마을 대장장이에게 광석으로 곡괭이 강화' + (st.nextResetAt ? ' · 맵 리셋 ' + resetText(st.nextResetAt) : '')
-        + (st.gems && st.gems.length ? ' · 💎 ' + st.gems.join('·') : '');
+    // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
+    el.regen.textContent = st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '';
     el.dig.disabled = busy || st.durability < 1;
   }
   function showCoord() {
@@ -5869,7 +5873,24 @@ var TowerMine = (function () {
     (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; });
     return q;
   }
+  // [2026-10-24] 대장장이에게 말 걸면 바로 강화 창 대신 [구매](광부 투구) / [강화](곡괭이) 선택부터
+  var smithView = 'menu';
   function renderSmith(n) {
+    var head = function (t, back) {
+      return '<div class="mine-smith-head">' + t + ' <span>' + (back ? '<button type="button" onclick="TowerMine.smithGo('menu')">뒤로</button> ' : '')
+          + '<button type="button" onclick="TowerMine.closeSmith()">닫기</button></span></div>';
+    };
+    if (smithView === 'menu') {
+      el.smith.innerHTML = head('🔨 대장간', false)
+          + '<div class="mine-smith-say">' + (n ? n.line : '') + '</div>'
+          + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.smithGo('buy')">⛑️ 구매<small>광부 투구</small></button>'
+          + '<button type="button" onclick="TowerMine.smithGo('upgrade')">⛏️ 강화<small>곡괭이 내구도</small></button></div>';
+      return;
+    }
+    if (smithView === 'buy') {
+      el.smith.innerHTML = head('⛑️ 대장간 · 구매', true) + helmetHtml();
+      return;
+    }
     var rows = (st.pickUpgrades || []).map(function (r) {
       var have = oreHave(r.grade), can = have >= r.need;
       return '<div class="mine-smith-row"><img src="' + oreIcon(r.grade) + '" alt=""><span class="nm">' + r.oreName + ' ' + r.need + '개 → 최대 +' + r.gain
@@ -5877,15 +5898,14 @@ var TowerMine = (function () {
           + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',1)">1회</button>'
           + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',9999)">최대</button></div>';
     });
-    el.smith.innerHTML = '<div class="mine-smith-head">🔨 대장간 · 곡괭이 강화 <button type="button" onclick="TowerMine.closeSmith()">닫기</button></div>'
-        + '<div class="mine-smith-say">' + (n ? n.line : '') + '</div>'
+    el.smith.innerHTML = head('⛏️ 대장간 · 곡괭이 강화', true)
         + '<div class="mine-smith-dur">⛏️ 곡괭이 내구도 <b>' + st.durability + ' / ' + st.durabilityMax + '</b></div>'
-        + rows.join('') + helmetHtml();
+        + rows.join('');
   }
   // [2026-10-24] 광부 투구 업그레이드(광산상점 탭에서 대장장이 창으로 옮김)
   function helmetHtml() {
     var hm = st.helmetInfo || {};
-    var h = '<div class="mine-smith-sub">⛑️ 광부 투구 <b>' + (hm.tier > 0 ? hm.tier + '단계' : '없음') + '</b></div>'
+    var h = '<div class="mine-smith-dur">⛑️ 광부 투구 <b>' + (hm.tier > 0 ? hm.tier + '단계' : '없음') + '</b></div>'
         + '<div class="mine-smith-say">어두운 동굴의 시야가 넓어져요(1단계 훨씬 잘 보임, 2단계 동굴 1층 전체). 더 깊은 광산은 더 높은 단계가 있어야 움직일 수 있어요.</div>';
     if (!hm.nextTier) return h + '<div class="mine-smith-say">지금 열린 최고 단계예요.</div>';
     return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
@@ -5908,10 +5928,12 @@ var TowerMine = (function () {
   function openSmith(n) {
     smithNpc = n;
     smithOpen = true;
+    smithView = 'menu';
     keys = []; drag = null;
     renderSmith(n);
     el.smith.style.display = 'block';
   }
+  function smithGo(v) { smithView = v; renderSmith(smithNpc); }
   function closeSmith() {
     smithOpen = false;
     el.smith.style.display = 'none';
@@ -6293,7 +6315,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith,
+  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo,
            ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

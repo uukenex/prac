@@ -8908,7 +8908,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("y", pos[1]);
         // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]
         List<Integer> dug = new ArrayList<>();
-        out.put("gems", S5MineMap.gemNamesFor(map.id)); // [2026-10-24] 이 맵에서 나오는 보석(화면 안내)
         if (S5MineMap.DUNGEON.equals(map.id)) { // [2026-10-23] 요일 던전 -- 오늘 나오는 돌
             int di = S5MineMap.dayIndex(now);
             out.put("dayLabel", S5MineMap.DAY_LABELS[di]);
