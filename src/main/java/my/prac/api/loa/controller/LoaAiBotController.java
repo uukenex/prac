@@ -838,11 +838,23 @@ public class LoaAiBotController {
     // =====================================================================
     // 3단계: 최종 답변 (USE_GEMINI는 TCONFIG DB에서 실시간 조회, 60초 캐시)
     // =====================================================================
+    private static final long FLOW_WINDOW_MS = 30 * 60_000L; // 앞 대화 표현이 없어도 항상 보여주는 최근 흐름 범위
+    private static final String FLOW_GUIDE = "아래는 이 방의 최근 대화야. 지금 말이 앞 얘기와 이어지거나, 앞에서 정한 놀이/약속"
+            + "(예: 'A라고 하면 B라고 해줘')에 해당하면 그 흐름대로 답해. 관계없는 새 말이면 앞 주제를 끌어오지 말고 지금 말에만 답해.";
+
     private String callGeminiForFinal(String userMsg, String userName,
                                        String searchSummary, String recall, FixedSizeMessageQueue queue, boolean withHistory) {
-        // 대화 히스토리 구성 (최대 8개) -- [2026-10-06] 지금 메시지가 앞 대화를 가리킬 때만 넣는다
+        // 대화 히스토리 구성 (최대 8개) -- [2026-10-06] 지금 메시지가 앞 대화를 가리킬 때만 넣었었다.
+        // [2026-10-23] "외쳐라는 말이 나오면 ㄷㅁ ㄷㅁㄹ!!! 라고 해줘" 직후의 "외쳐"처럼 앞 대화를 가리키는 표현이 없는 짧은 말은 흐름을 전혀 못 봐서
+        // 방금 정한 놀이/약속도 몰랐다. 최근 흐름(FLOW_WINDOW_MS 이내, 최대 8개)은 항상 넣고, 이어지는 얘기인지는 답하는 모델이 판단한다(FLOW_GUIDE).
+        // 앞 대화 참조 판정(withHistory)은 이제 30분보다 오래된 흐름까지 넣을지만 정한다(검색어 재작성/과거 대화 회상은 그대로 판정 결과를 따른다).
         java.util.List<Message> msgs = queue.getAll();
-        int start = withHistory ? Math.max(0, msgs.size() - 8) : Math.max(0, msgs.size() - 1);
+        int start = Math.max(0, msgs.size() - 8);
+        if (!withHistory) {
+            long cutoff = System.currentTimeMillis() - FLOW_WINDOW_MS;
+            while (start < msgs.size() - 1 && msgs.get(start).getTime() < cutoff) start++;
+        }
+        boolean hasFlow = start < msgs.size() - 1;
 
         if (isUseGemini()) {
             // ── Gemini 경로 ──────────────────────────────────────────────
@@ -856,7 +868,7 @@ public class LoaAiBotController {
                 StringBuilder prompt = new StringBuilder();
                 prompt.append("[캐릭터 설정]\n").append(SYSTEM_PERSONA).append("\n\n");
                 if (!recall.isEmpty()) prompt.append(recall).append("\n");
-                if (history.length() > 0) prompt.append("[대화 흐름]\n").append(history).append("\n");
+                if (history.length() > 0) prompt.append("[대화 흐름] ").append(FLOW_GUIDE).append("\n").append(history).append("\n");
                 prompt.append("[").append(userName).append("의 말] ").append(userMsg).append("\n\n");
                 if (!searchSummary.isEmpty()) {
                     prompt.append("[웹에서 찾은 정보]\n").append(searchSummary).append("\n\n");
@@ -879,6 +891,7 @@ public class LoaAiBotController {
             messages.add(makeMsg("system", SYSTEM_PERSONA));
             if (!recall.isEmpty()) messages.add(makeMsg("system", recall));
             // 히스토리
+            if (hasFlow) messages.add(makeMsg("system", "[대화 흐름] " + FLOW_GUIDE));
             for (int i = start; i < msgs.size() - 1; i++) {
                 Message m = msgs.get(i);
                 messages.add(makeMsg(m.getRole(), m.getContent()));
