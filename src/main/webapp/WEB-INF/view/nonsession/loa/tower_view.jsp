@@ -876,7 +876,8 @@
                 text-align:left; z-index:50; box-shadow:0 6px 18px rgba(0,0,0,.3); display:none;
                 white-space:pre-line; opacity:.96; }
 
-    .dock{ position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:center;
+    /* [2026-10-23] 하단 메뉴가 탑 마을 그림의 건물/라벨(z-index 2~3)과 주사위 영역(15)에 덮이던 것 -- 그보다 위, 팝업(200+)보다는 아래 */
+    .dock{ position:fixed; left:0; right:0; bottom:0; z-index:100; display:flex; justify-content:center;
            padding:10px 14px calc(10px + env(safe-area-inset-bottom));
            background:linear-gradient(180deg,rgba(251,243,223,0),var(--parchment) 22%); }
     /* [2026-10-21] "옆으로 쫙 있는 메뉴를 두 줄, 한 줄에 4칸씩" 요청 -- 탑/편성/상점/빈칸, 업적/도감/메시지/설정. */
