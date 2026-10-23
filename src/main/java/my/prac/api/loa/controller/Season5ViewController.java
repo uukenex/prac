@@ -606,6 +606,21 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineShop(userName));
     }
 
+    /** [2026-10-23] 광산상점 -- 광부 투구 구매/업그레이드. */
+    @GetMapping("/api/tower-mine-helmet")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineHelmet(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            out.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(out);
+        }
+        String msg = s5Service.mineHelmetUpgrade(userName);
+        mineLog(userName, "[웹] 광산상점 광부 투구", msg);
+        out.put("message", msg);
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-23] 광산상점 구매 -- no = 상품 번호(1~6), times = 몇 번 살지. */
     @GetMapping("/api/tower-mine-shop-buy")
     @ResponseBody

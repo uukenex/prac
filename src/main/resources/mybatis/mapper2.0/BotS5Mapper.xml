@@ -726,6 +726,19 @@
         ) WHERE ROWNUM &lt;= #{limit}
     </select>
 
+    <!-- [2026-10-23] 광산 아이템(광부 투구 단계, 용왕반지 등) -->
+    <select id="selectMineItems" resultType="hashmap">
+        SELECT ITEM_CODE, ITEM_LEVEL FROM TBOT_S5_MINE_ITEM WHERE USER_NAME = #{userName}
+    </select>
+
+    <insert id="upsertMineItem">
+        MERGE INTO TBOT_S5_MINE_ITEM T
+        USING (SELECT #{userName} AS USER_NAME, #{itemCode} AS ITEM_CODE FROM DUAL) S
+           ON (T.USER_NAME = S.USER_NAME AND T.ITEM_CODE = S.ITEM_CODE)
+        WHEN MATCHED THEN UPDATE SET T.ITEM_LEVEL = #{level}, T.UPDATE_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (USER_NAME, ITEM_CODE, ITEM_LEVEL, UPDATE_DATE) VALUES (S.USER_NAME, S.ITEM_CODE, #{level}, SYSDATE)
+    </insert>
+
     <update id="takeUserOre">
         UPDATE TBOT_S5_USER_ORE SET QTY = QTY - #{qty} WHERE USER_NAME = #{userName} AND ORE_CODE = #{oreCode} AND QTY &gt;= #{qty}
     </update>

@@ -3644,7 +3644,7 @@ var TW = (function () {
       var regen = m.nextRegenAt ? ('다음 회복 ' + new Date(m.nextRegenAt).getHours() + ':00 (+' + m.regenPerHour + ')') : '가득 참';
       var html = '<div class="ore-mine-card"><div><div class="ore-sta">⚡ 스태미너 ' + m.stamina + ' / ' + m.staminaMax + '</div>'
           + '<div class="ore-sub">' + regen + ' · 매일 0시 ' + m.staminaMax + '으로 초기화 · 한 번 캔 칸은 다시 못 캐요</div>'
-          + '<div class="ore-sub">📍 ' + m.mapName + ' (' + m.x + ', ' + m.y + ') · 누적 ' + (m.totalDig || 0) + '회</div></div>'
+          + '<div class="ore-sub">📍 ' + m.mapName + ' (' + m.x + ', ' + m.y + ') · 누적 ' + (m.totalDig || 0) + '회 · ⛑️ 광부 투구 ' + (m.helmet || 0) + '단계</div></div>'
           + '<button type="button" onclick="TW.openMine()">⛏️ 들어가기</button></div>';
       var rec = m.recent || [];
       html += '<div class="inv-etc-title">최근 캔 곳</div>';
@@ -3669,7 +3669,12 @@ var TW = (function () {
     fetch(base + '/api/tower-mine-shop?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
       if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
       var bonus = Math.round((d.ppBonus || 0) * 10) / 10;
-      var html = '<div class="mshop-bonus">광산 수익 <b>처치당 +' + bonus + ' PP</b>'
+      var hm = d.helmet || {};
+      var helmetHtml = '<div class="mshop-item"><div class="inv-ico t3" style="font-size:24px;">⛑️</div><div class="body"><div class="ttl">광부 투구 '
+          + (hm.tier > 0 ? hm.tier + '단계' : '(없음)') + '</div><div class="sub">어두운 광산 동굴의 시야가 넓어져요. 1단계 = 훨씬 잘 보임, 2단계 = 동굴 1층 전체가 보임. 더 깊은 광산은 더 높은 단계가 있어야 움직일 수 있어요.'
+          + (hm.nextTier ? '<br>다음: ' + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계 (보유 ' + hm.have + '개)' : '<br>지금 열린 최고 단계예요.') + '</div></div>'
+          + '<div class="btns">' + (hm.nextTier ? '<button type="button" ' + (hm.have < hm.need ? 'disabled' : '') + ' onclick="TW.buyMineHelmet()">' + (hm.tier > 0 ? '업그레이드' : '구매') + '</button>' : '') + '</div></div>';
+      var html = helmetHtml + '<div class="mshop-bonus">광산 수익 <b>처치당 +' + bonus + ' PP</b>'
           + '<div class="sub">탑 <b>자동사냥</b>으로 몬스터를 처치할 때마다 받아요(자동사냥 정산 때 처치 수만큼, 자동사냥이 꺼져 있으면 없음). 한 번 올린 수익은 영구히 유지돼요.</div></div>';
       (d.items || []).forEach(function (it) {
         html += '<div class="mshop-item"><div class="inv-ico ' + ['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][it.grade] + '"><img class="ore-ico" src="' + TowerMine.oreIcon(it.grade) + '" alt=""></div>'
@@ -3680,6 +3685,14 @@ var TW = (function () {
       });
       box.innerHTML = html;
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
+  }
+  function buyMineHelmet() {
+    var u = userName();
+    if (!u) return;
+    fetch(base + '/api/tower-mine-helmet?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
+      toast(d.message || d.error || '완료');
+      renderMineShop();
+    }).catch(function () { toast('요청 실패'); });
   }
   function buyMineShop(no, times) {
     var u = userName();
@@ -5289,7 +5302,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, buyMineShop: buyMineShop,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, buyMineShop: buyMineShop, buyMineHelmet: buyMineHelmet,
            openDismantle: openDismantle, closeDismantle: closeDismantle, dmStep: dmStep, dmSet: dmSet, doDismantle: doDismantle, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
@@ -5636,12 +5649,21 @@ var TowerMine = (function () {
     var c = cellAt(P.x, P.y), g = dug[P.x + ',' + P.y];
     el.terr.textContent = map.name + ' · ' + (TERR_NAME[c] || '') + (g ? ' · 캔 자리(' + ORE_NAME[g] + ')' : (c === 'V' ? ' · 여기선 못 캐요' : ''));
   }
+  // [2026-10-23] 광부 투구 시야 -- 어두운 맵(동굴)에서 투구 단계 - 필요 단계: 0 이하 아주 어둡게 / 1 잘 보임 / 2 이상 전체(서버 mineMapBlock과 같은 기준)
+  function sight() {
+    if (!map || !map.dark) return 9;
+    return (st && st.helmet || 0) - (map.helmetNeed || 0);
+  }
+  function helmetBlocked() {
+    return map && (st && st.helmet || 0) < (map.helmetNeed || 0);
+  }
   function buildMiniBase() {
     el.mini.width = map.w; el.mini.height = map.h;
     miniBase = mk(map.w, map.h);
     var g = miniBase.getContext('2d'), img = g.createImageData(map.w, map.h);
+    var blind = sight() <= 0; // 투구 없이 어두운 동굴 -- 미니맵에도 지형이 안 보인다
     for (var y = 0; y < map.h; y++) for (var x = 0; x < map.w; x++) {
-      var c = MINI_COL[map.rows[y].charAt(x)] || [255, 214, 64], i = (y * map.w + x) * 4;
+      var c = blind ? [10, 8, 6] : (MINI_COL[map.rows[y].charAt(x)] || [255, 214, 64]), i = (y * map.w + x) * 4;
       img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
     }
     g.putImageData(img, 0, 0);
@@ -5690,6 +5712,11 @@ var TowerMine = (function () {
     if (!P.moving && !busy && now - P.digT0 > 380) {
       var d = heldDir() || tapDir;
       tapDir = null;
+      if (d && helmetBlocked()) { // 광산 레벨에 비해 투구 단계가 낮으면 움직일 수 없다(마을로 버튼으로 나갈 수 있음)
+        if (now - lastBumpT > 2500 || lastBump !== 'helmet') msg('⛑️ 광부 투구 ' + map.helmetNeed + '단계 이상이 있어야 움직일 수 있어요. (🏠 마을로 나갈 수 있어요)');
+        lastBump = 'helmet'; lastBumpT = now;
+        d = null;
+      }
       if (d) {
         P.dir = d;
         var nx = P.x + (d === 'left' ? -1 : d === 'right' ? 1 : 0), ny = P.y + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
@@ -5760,12 +5787,14 @@ var TowerMine = (function () {
     var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
-    if (map.dark) {
-      var lx = cx + TS / 2, ly = cy + TS / 2, rad = TS * 5.2;
-      var grd = ctx.createRadialGradient(lx, ly, TS * 1.2, lx, ly, rad);
-      grd.addColorStop(0, 'rgba(8,5,3,0)');
-      grd.addColorStop(0.65, 'rgba(8,5,3,.55)');
-      grd.addColorStop(1, 'rgba(8,5,3,.93)');
+    var sv = sight();
+    if (sv < 2) { // 2단계 이상이면 어둠 없음(전체가 보임)
+      var lx = cx + TS / 2, ly = cy + TS / 2;
+      var dim = sv <= 0 ? { r0: 0.45, r1: 2.3, mid: 0.8, edge: 0.99 } : { r0: 1.6, r1: 6.0, mid: 0.5, edge: 0.9 };
+      var grd = ctx.createRadialGradient(lx, ly, TS * dim.r0, lx, ly, TS * dim.r1);
+      grd.addColorStop(0, 'rgba(6,4,2,0)');
+      grd.addColorStop(0.55, 'rgba(6,4,2,' + dim.mid + ')');
+      grd.addColorStop(1, 'rgba(6,4,2,' + dim.edge + ')');
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, W, H);
     }

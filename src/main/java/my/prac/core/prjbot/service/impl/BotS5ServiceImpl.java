@@ -8614,6 +8614,43 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 광산상점 상품: {광석 등급, 필요 개수, 처치당 PP 증가}. 광석 1개 값 = 구리 0.1 / 철 0.3 / 은 1 / 금 3 / 미스릴 10 / 별빛석 40 (PP/자동사냥 처치). */
     private static final int[][] MINE_SHOP = { { 1, 100, 10 }, { 2, 50, 15 }, { 3, 25, 25 }, { 4, 10, 30 }, { 5, 5, 50 }, { 6, 1, 40 } };
 
+    // [2026-10-23] 광산 아이템(TBOT_S5_MINE_ITEM) -- "어두운 동굴 + 광부 투구로 시야, 광산 레벨이 오르면 더 높은 투구 단계, 모자라면 못 움직임" 요청,
+    // "용왕반지 등 미리 만들어 두고 노출만 안 하기, 있으면 바다 던전 입장" 요청.
+    //  광부 투구(MINER_HELMET, 단계): 1단계 = 철광석 100개, 2단계 = 은광석 100개, 3단계 = 금광석 100개, 4단계 = 미스릴 100개, 5단계 = 별빛석 100개.
+    //   광산 레벨 L(맵 파일 LEVEL) 맵은 투구 L-1단계 이상이어야 들어가고 움직이고 캘 수 있다. 시야 = 투구 단계 - (L-1): 0 아주 어둡게 / 1 잘 보임 / 2 이상 전체.
+    //   지금은 광산 레벨 1(동굴 1층)뿐이라 상점에서 2단계까지만 판다(MINE_HELMET_OPEN_MAX) -- 아래층을 열 때 올린다.
+    //  용왕반지(DRAGON_RING): 숨김(상점/화면에 안 나오고 아직 얻는 곳 없음). 맵 파일에 "REQUIRE DRAGON_RING"이 있는 맵(바다 던전)은 이게 있어야 들어간다.
+    static final String MINE_ITEM_HELMET = "MINER_HELMET";
+    static final String MINE_ITEM_DRAGON_RING = "DRAGON_RING";
+    private static final Map<String, String> MINE_ITEM_NAMES = new LinkedHashMap<>();
+    static {
+        MINE_ITEM_NAMES.put(MINE_ITEM_HELMET, "광부 투구");
+        MINE_ITEM_NAMES.put(MINE_ITEM_DRAGON_RING, "용왕반지");
+    }
+    /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
+    private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 100 }, { 4, 100 }, { 5, 100 }, { 6, 100 } };
+    private static final int MINE_HELMET_OPEN_MAX = 2;
+
+    private Map<String, Integer> mineItems(String userName) {
+        Map<String, Integer> out = new HashMap<>();
+        for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
+        return out;
+    }
+
+    private static int mineHelmetNeed(S5MineMap m) {
+        return Math.max(0, m.level() - 1);
+    }
+
+    /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). */
+    private String mineMapBlock(S5MineMap m, Map<String, Integer> items) {
+        int need = mineHelmetNeed(m), have = items.getOrDefault(MINE_ITEM_HELMET, 0);
+        if (have < need) return "⛑️ " + m.name + "은(는) 광부 투구 " + need + "단계 이상이 있어야 움직일 수 있어요. (지금 " + have + "단계, 광산상점에서 업그레이드)";
+        if (m.requireItem() != null && items.getOrDefault(m.requireItem(), 0) < 1) {
+            return "🔒 " + m.name + "에 들어가려면 [" + MINE_ITEM_NAMES.getOrDefault(m.requireItem(), m.requireItem()) + "]이(가) 필요해요.";
+        }
+        return null;
+    }
+
     /** 저장된 스태미너를 지금 기준으로 -- 0시(KST)가 지났으면 30에서 다시 시작하고, 그 뒤 지난 정각 수만큼 +2(최대 30). */
     static int mineStaminaNow(int stored, long atMs, long nowMs) {
         long midnight = java.time.Instant.ofEpochMilli(nowMs).atZone(KST).toLocalDate().atStartOfDay(KST).toInstant().toEpochMilli();
@@ -8692,6 +8729,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("id", map.id);
         out.put("name", map.name);
         out.put("dark", map.dark);
+        out.put("level", map.level());
+        out.put("helmetNeed", mineHelmetNeed(map));
         out.put("w", map.w);
         out.put("h", map.h);
         out.put("spawnX", map.spawnX);
@@ -8739,6 +8778,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ores", mineOreList(userName));
         out.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
         out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
+        out.put("helmet", mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0)); // 숨김 아이템(용왕반지 등)은 내려주지 않는다
+        out.put("helmetNeed", mineHelmetNeed(map));
         return out;
     }
 
@@ -8786,6 +8827,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("resyncX", pos[0]);
             out.put("resyncY", pos[1]);
             out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        String block = mineMapBlock(map, mineItems(userName));
+        if (block != null) {
+            out.put("message", block);
             return out;
         }
         int g = map.oreAt(x, y);
@@ -8885,6 +8931,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         S5MineMap target = S5MineMap.get(p.target);
+        String block = mineMapBlock(target, mineItems(userName));
+        if (block != null) {
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("locked", true);
+            out.put("message", block);
+            return out;
+        }
         int tx = target.walkable(p.tx, p.ty) ? p.tx : target.spawnX, ty = target.walkable(p.tx, p.ty) ? p.ty : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         out.put("ok", true);
@@ -8916,7 +8969,37 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("items", items);
         out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
         out.put("ores", mineOreList(userName));
+        int tier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
+        HashMap<String, Object> helmet = new HashMap<>();
+        helmet.put("tier", tier);
+        helmet.put("openMax", MINE_HELMET_OPEN_MAX);
+        if (tier < MINE_HELMET_OPEN_MAX && tier < MINE_HELMET_COST.length) {
+            int cg = MINE_HELMET_COST[tier][0], cn = MINE_HELMET_COST[tier][1];
+            helmet.put("nextTier", tier + 1);
+            helmet.put("oreGrade", cg);
+            helmet.put("oreName", S5MineMap.ORE_NAMES[cg - 1]);
+            helmet.put("need", cn);
+            helmet.put("have", have.getOrDefault(cg, 0));
+        }
+        out.put("helmet", helmet);
         return out;
+    }
+
+    /** [2026-10-23] 광부 투구 구매/업그레이드 -- 다음 단계 비용(광석)을 내고 단계 +1. */
+    @Override
+    @Transactional
+    public String mineHelmetUpgrade(String userName) {
+        if (!mineAccess(userName)) return "⛏️ 광산은 아직 준비 중입니다.";
+        mineRow(userName, false);
+        dao.selectMineUserForUpdate(userName); // 같은 유저 동시 구매 직렬화
+        int tier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
+        if (tier >= MINE_HELMET_OPEN_MAX || tier >= MINE_HELMET_COST.length) return "⛑️ 광부 투구는 지금 최고 단계(" + tier + "단계)예요. 더 깊은 광산이 열리면 업그레이드할 수 있어요.";
+        int cg = MINE_HELMET_COST[tier][0], cn = MINE_HELMET_COST[tier][1];
+        String name = S5MineMap.ORE_NAMES[cg - 1];
+        if (dao.takeUserOre(userName, S5MineMap.ORE_CODES[cg - 1], cn) == 0) return "광석이 부족해요. (" + name + " " + cn + "개 필요)";
+        dao.upsertMineItem(userName, MINE_ITEM_HELMET, tier + 1);
+        return "⛑️ 광부 투구 " + (tier + 1) + "단계! (" + name + " " + cn + "개 사용) "
+                + (tier + 1 >= 2 ? "광산 동굴 1층 전체가 잘 보여요." : "동굴이 훨씬 잘 보여요.");
     }
 
     @Override

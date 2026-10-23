@@ -139,6 +139,9 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectMineDugCells(@Param("userName") String userName, @Param("mapId") String mapId);
     List<HashMap<String, Object>> selectMineDugRecent(@Param("userName") String userName, @Param("limit") int limit);
     int takeUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
+    /** [2026-10-23] 광산 아이템(광부 투구 단계, 용왕반지 등) -- TBOT_S5_MINE_ITEM. */
+    List<HashMap<String, Object>> selectMineItems(@Param("userName") String userName);
+    int upsertMineItem(@Param("userName") String userName, @Param("itemCode") String itemCode, @Param("level") int level);
     List<HashMap<String, Object>> selectUserOres(@Param("userName") String userName);
     int addUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
     /** [2026-10-08] 전설장비 강화 수치/연속 실패 횟수 저장. */

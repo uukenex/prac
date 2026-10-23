@@ -20,7 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * [2026-10-23] 웹 광산 맵(모든 유저 공용). 설계서: src/main/resources/ddl/S5_TOWER_DESIGN.md
  * 맵마다 파일 하나(classpath s5/...)가 기준이다 -- 처음 쓸 때 읽고, 칸마다 정해진 광석 등급이 있어 "(x, y)에 별빛석이 있다" 같은 정보를
  * 유저들끼리 공유할 수 있다. 광석 등급(ORE 층)은 서버만 알고 화면에는 지형(TERRAIN 층)과 포탈만 보낸다.
- * 파일 형식: "NAME 이름", "DARK 1"(어두운 맵, 선택), "SIZE w h", "SPAWN x y",
+ * 파일 형식: "NAME 이름", "DARK 1"(어두운 맵, 선택), "LEVEL n"(광산 레벨, 선택 -- n이면 광부 투구 n-1단계 이상이어야 들어가고 움직일 수 있다),
+ *   "REQUIRE 아이템코드"(그 광산 아이템이 있어야 들어갈 수 있는 맵, 선택 -- 예: 바다 던전 = DRAGON_RING), "SIZE w h", "SPAWN x y",
  *   "PORTAL x y 종류 대상맵 대상x 대상y 이름"(대상맵이 - 이면 잠긴 입구), "TERRAIN" 다음 h줄(w글자), "ORE" 다음 h줄(칸마다 0~6, 0 = 광석 없음).
  * 지형 문자: . 풀밭 / , 흙길 / : 바위 지대 / V 마을 / H 다리 / c 동굴 바닥 / r 자갈 바닥 (이상 이동 가능)
  *   ~ 물 / T 나무 / ^ 바위산 / # 동굴 벽 / h j k l 초가집(2x2: 왼위 오위 왼아래 오아래) (이동 불가) / G 지역 통로 / M 동굴 입구 / U 나가는 길 / S 지하로 가는 문 (포탈: 그 칸으로 들어가면 이동, 잠겼으면 안내).
@@ -56,6 +57,11 @@ public final class S5MineMap {
 
     public final String id, name;
     public final boolean dark;
+    private int level;          // [2026-10-23] 광산 레벨(0 = 평원처럼 투구와 무관)
+    private String requireItem; // [2026-10-23] 입장에 필요한 광산 아이템(없으면 null)
+
+    public int level() { return level; }
+    public String requireItem() { return requireItem; }
     public final int w, h, spawnX, spawnY;
     private final char[][] terrain;
     private final byte[][] ore;
@@ -150,6 +156,8 @@ public final class S5MineMap {
             int w = 0, h = 0, sx = 0, sy = 0;
             String name = id;
             boolean dark = false;
+            int level = 0;
+            String require = null;
             char[][] t = null;
             byte[][] o = null;
             List<Portal> portals = new ArrayList<>();
@@ -159,6 +167,8 @@ public final class S5MineMap {
                 String[] p = line.trim().split("\\s+");
                 if ("NAME".equals(p[0])) name = line.trim().substring(4).trim();
                 else if ("DARK".equals(p[0])) dark = "1".equals(p[1]);
+                else if ("LEVEL".equals(p[0])) level = Integer.parseInt(p[1]);
+                else if ("REQUIRE".equals(p[0])) require = p[1];
                 else if ("SIZE".equals(p[0])) { w = Integer.parseInt(p[1]); h = Integer.parseInt(p[2]); }
                 else if ("SPAWN".equals(p[0])) { sx = Integer.parseInt(p[1]); sy = Integer.parseInt(p[2]); }
                 else if ("PORTAL".equals(p[0])) {
@@ -179,7 +189,10 @@ public final class S5MineMap {
                 }
             }
             if (t == null || o == null) throw new IllegalStateException("광산 맵 파일 형식 오류: " + resource);
-            return new S5MineMap(id, name, dark, w, h, sx, sy, t, o, portals);
+            S5MineMap m = new S5MineMap(id, name, dark, w, h, sx, sy, t, o, portals);
+            m.level = level;
+            m.requireItem = require;
+            return m;
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
@@ -212,6 +225,7 @@ public final class S5MineMap {
         for (Portal p : cave.portals) cp.add(p.kind == 'U' ? new Portal(p.x, p.y, 'U', FIELD, mouth.x, mouth.y + 1, p.label) : p);
         field = new S5MineMap(field.id, field.name, field.dark, field.w, field.h, field.spawnX, field.spawnY, field.terrain, field.ore, fp);
         cave = new S5MineMap(cave.id, cave.name, cave.dark, cave.w, cave.h, cave.spawnX, cave.spawnY, cave.terrain, cave.ore, cp);
+        cave.level = 1; // 광산 동굴 1층 = 광산 레벨 1(투구 없이도 들어가지만 아주 어둡다)
         write(field, new File(dir, "mine_map_255.txt"), seed);
         write(cave, new File(dir, "mine_cave1.txt"), seed + 1);
         if (args.length > 2) {
@@ -228,6 +242,8 @@ public final class S5MineMap {
             pw.print("# ORE: 0 none, 1 COPPER 2 IRON 3 SILVER 4 GOLD 5 MITHRIL 6 STARSTONE\n");
             pw.print("NAME " + m.name + "\n");
             if (m.dark) pw.print("DARK 1\n");
+            if (m.level > 0) pw.print("LEVEL " + m.level + "\n");
+            if (m.requireItem != null) pw.print("REQUIRE " + m.requireItem + "\n");
             pw.print("SIZE " + m.w + " " + m.h + "\n");
             pw.print("SPAWN " + m.spawnX + " " + m.spawnY + "\n");
             for (Portal p : m.portals) {
