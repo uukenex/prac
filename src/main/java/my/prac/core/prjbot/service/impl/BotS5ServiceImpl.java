@@ -8533,6 +8533,225 @@ public class BotS5ServiceImpl implements BotS5Service {
         return disenchantRow(userName, progress, unequipped.get(equipIdx - 1));
     }
 
+    // ---- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) ----
+    // 맵은 파일 하나(S5MineMap, classpath s5/mine_map_255.txt)를 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
+    // 화면에는 지형만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 하루 한 번(0시 KST에 다시 생김). 한 번 캘 때 스태미너 1,
+    // 스태미너는 최대 30, 매시 정각 +2, 0시에 30으로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산). 캐릭터 위치는 광산을 나갈 때(와 이동 중 주기적으로) 저장하고,
+    // 캘 때/저장할 때 마지막 저장 위치에서 시간당 갈 수 있는 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지).
+    private static final int MINE_STAMINA_MAX = 30;
+    private static final int MINE_REGEN_PER_HOUR = 2;
+    private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
+    private static final long MINE_MOVE_WINDOW_MS = 15_000L;
+    private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
+    private static final java.time.format.DateTimeFormatter MINE_DAY_FMT = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    private static String mineDay(long ms) {
+        return java.time.Instant.ofEpochMilli(ms).atZone(KST).format(MINE_DAY_FMT);
+    }
+
+    /** 저장된 스태미너를 지금 기준으로 -- 0시(KST)가 지났으면 30에서 다시 시작하고, 그 뒤 지난 정각 수만큼 +2(최대 30). */
+    static int mineStaminaNow(int stored, long atMs, long nowMs) {
+        long midnight = java.time.Instant.ofEpochMilli(nowMs).atZone(KST).toLocalDate().atStartOfDay(KST).toInstant().toEpochMilli();
+        int st = stored;
+        long from = atMs;
+        if (atMs < midnight) {
+            st = MINE_STAMINA_MAX;
+            from = midnight;
+        }
+        long ticks = Math.floorDiv(nowMs, 3_600_000L) - Math.floorDiv(from, 3_600_000L); // KST는 정시 단위 시차라 epoch 시 경계 = KST 정각
+        if (ticks > 0 && st < MINE_STAMINA_MAX) st = (int) Math.min(MINE_STAMINA_MAX, st + ticks * MINE_REGEN_PER_HOUR);
+        return Math.max(0, st);
+    }
+
+    private static long longOf(Object o, long def) {
+        return o instanceof Number ? ((Number) o).longValue() : def;
+    }
+
+    private HashMap<String, Object> mineRow(String userName, boolean forUpdate) {
+        HashMap<String, Object> row = forUpdate ? dao.selectMineUserForUpdate(userName) : dao.selectMineUser(userName);
+        if (row != null) return row;
+        try {
+            dao.insertMineUserIfAbsent(userName, MINE_STAMINA_MAX, System.currentTimeMillis());
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 동시에 처음 들어온 요청이 먼저 만들었다
+        }
+        return forUpdate ? dao.selectMineUserForUpdate(userName) : dao.selectMineUser(userName);
+    }
+
+    /** 저장된 위치(없거나 지금 맵에서 못 서는 칸이면 마을). */
+    private int[] minePos(HashMap<String, Object> row, S5MineMap map) {
+        if (row.get("POS_X") != null && row.get("POS_Y") != null) {
+            int x = intVal(row.get("POS_X"), map.spawnX), y = intVal(row.get("POS_Y"), map.spawnY);
+            if (map.walkable(x, y)) return new int[] { x, y };
+        }
+        return new int[] { map.spawnX, map.spawnY };
+    }
+
+    private static boolean mineMoveOk(int[] from, long fromAt, int x, int y, long now) {
+        int dist = Math.abs(x - from[0]) + Math.abs(y - from[1]);
+        // 쉬는 시간은 최대 MINE_MOVE_WINDOW_MS까지만 친다 -- 오래 가만히 있다가 먼 곳으로 한 번에 옮기는 것 방지(화면은 이동 중 몇 초마다, 캘 때마다 위치를 저장)
+        double allowed = 2 + Math.min(MINE_MOVE_WINDOW_MS, Math.max(0, now - fromAt)) / 1000.0 * MINE_MAX_TILES_PER_SEC;
+        return dist <= allowed;
+    }
+
+    private Set<Integer> mineDugToday(HashMap<String, Object> row, String today) {
+        Set<Integer> out = new LinkedHashSet<>();
+        if (!today.equals(strVal(row.get("MAP_DAY"), ""))) return out;
+        for (String t : strVal(row.get("MINED"), "").split(",")) {
+            if (!t.trim().isEmpty()) {
+                try { out.add(Integer.parseInt(t.trim())); } catch (NumberFormatException ignore) { }
+            }
+        }
+        return out;
+    }
+
+    private List<HashMap<String, Object>> mineOreList(String userName) {
+        Map<String, Integer> have = new HashMap<>();
+        for (HashMap<String, Object> r : dao.selectUserOres(userName)) have.put(strVal(r.get("ORE_CODE"), ""), intVal(r.get("QTY"), 0));
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (int g = S5MineMap.ORE_CODES.length; g >= 1; g--) {
+            HashMap<String, Object> o = new HashMap<>();
+            o.put("grade", g);
+            o.put("code", S5MineMap.ORE_CODES[g - 1]);
+            o.put("name", S5MineMap.ORE_NAMES[g - 1]);
+            o.put("qty", have.getOrDefault(S5MineMap.ORE_CODES[g - 1], 0));
+            out.add(o);
+        }
+        return out;
+    }
+
+    private void putMineStamina(HashMap<String, Object> out, int st, long now) {
+        out.put("stamina", st);
+        out.put("staminaMax", MINE_STAMINA_MAX);
+        out.put("regenPerHour", MINE_REGEN_PER_HOUR);
+        out.put("nextRegenAt", st < MINE_STAMINA_MAX ? (Math.floorDiv(now, 3_600_000L) + 1) * 3_600_000L : null);
+    }
+
+    @Override
+    public HashMap<String, Object> mineMap() {
+        S5MineMap map = S5MineMap.get();
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("w", map.w);
+        out.put("h", map.h);
+        out.put("spawnX", map.spawnX);
+        out.put("spawnY", map.spawnY);
+        out.put("version", map.version());
+        out.put("rows", map.terrainRows());
+        return out;
+    }
+
+    @Override
+    public HashMap<String, Object> mineState(String userName) {
+        S5MineMap map = S5MineMap.get();
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = mineRow(userName, false);
+        HashMap<String, Object> out = new HashMap<>();
+        putMineStamina(out, mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now), now);
+        int[] pos = minePos(row, map);
+        out.put("x", pos[0]);
+        out.put("y", pos[1]);
+        out.put("mapVersion", map.version());
+        List<HashMap<String, Object>> dug = new ArrayList<>();
+        for (int idx : mineDugToday(row, mineDay(now))) {
+            int x = idx % map.w, y = idx / map.w, g = map.oreAt(x, y);
+            HashMap<String, Object> d = new HashMap<>();
+            d.put("x", x);
+            d.put("y", y);
+            d.put("grade", g);
+            d.put("name", g > 0 ? S5MineMap.ORE_NAMES[g - 1] : "");
+            dug.add(d);
+        }
+        out.put("dug", dug);
+        out.put("ores", mineOreList(userName));
+        out.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
+        return out;
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineDig(String userName, int x, int y) {
+        S5MineMap map = S5MineMap.get();
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        int st = mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        putMineStamina(out, st, now);
+        int[] pos = minePos(row, map);
+        if (!map.walkable(x, y)) {
+            out.put("message", "갈 수 없는 곳입니다.");
+            return out;
+        }
+        if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
+            out.put("resyncX", pos[0]);
+            out.put("resyncY", pos[1]);
+            out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        int g = map.oreAt(x, y);
+        if (g == 0) {
+            out.put("message", "마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.");
+            return out;
+        }
+        if (st < 1) {
+            out.put("message", "스태미너가 없어요. 매시 정각마다 " + MINE_REGEN_PER_HOUR + "씩 차고, 0시에 " + MINE_STAMINA_MAX + "으로 초기화돼요.");
+            return out;
+        }
+        String today = mineDay(now);
+        Set<Integer> dug = mineDugToday(row, today);
+        int idx = y * map.w + x;
+        if (!dug.add(idx)) {
+            out.put("message", "오늘 이미 캔 자리예요. 0시가 지나면 다시 캘 수 있어요.");
+            return out;
+        }
+        StringBuilder mined = new StringBuilder();
+        for (int i : dug) mined.append(mined.length() > 0 ? "," : "").append(i);
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("stamina", st - 1);
+        up.put("atMs", now);
+        up.put("x", x);
+        up.put("y", y);
+        up.put("mapDay", today);
+        up.put("mined", mined.toString());
+        dao.updateMineUser(up);
+        String code = S5MineMap.ORE_CODES[g - 1], name = S5MineMap.ORE_NAMES[g - 1];
+        dao.addUserOre(userName, code, 1);
+        int qty = 0;
+        for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) qty = intVal(r.get("QTY"), 0);
+        out.put("ok", true);
+        putMineStamina(out, st - 1, now);
+        out.put("x", x);
+        out.put("y", y);
+        out.put("grade", g);
+        out.put("oreCode", code);
+        out.put("oreName", name);
+        out.put("qty", qty);
+        out.put("message", "⛏️ (" + x + ", " + y + ") " + name + " 1개! (보유 " + qty + "개)");
+        return out;
+    }
+
+    @Override
+    public HashMap<String, Object> mineSavePos(String userName, int x, int y) {
+        S5MineMap map = S5MineMap.get();
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = mineRow(userName, false);
+        int[] pos = minePos(row, map);
+        HashMap<String, Object> out = new HashMap<>();
+        if (map.walkable(x, y) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
+            dao.updateMinePos(userName, x, y, now);
+            out.put("ok", true);
+            out.put("x", x);
+            out.put("y", y);
+        } else {
+            out.put("ok", false);
+            out.put("x", pos[0]);
+            out.put("y", pos[1]);
+        }
+        return out;
+    }
+
     // ---- [2026-10-23] 일반 장비/악세서리 분해(★1~★6) ----
     // "인벤토리에서 6성 이하 장비/악세 분해, 여러 개면 몇 개 분해할지 고르고, 분해 시 확률로 전설의조각. 6성 10%, 그 아래는 거의 안 나오게" 요청.
     // 개당 조각 확률(%), 인덱스 = 등급-1. 서버 전체 미착용 재고(★6 744/★5 2184/★4 2632 ...)를 다 분해해도 기대값 약 105개 수준.

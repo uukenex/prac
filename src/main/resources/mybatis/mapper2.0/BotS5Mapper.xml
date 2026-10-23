@@ -675,6 +675,47 @@
         DELETE FROM TBOT_S5_ENHANCE_TICKET WHERE TICKET_ID = #{ticketId} AND USER_NAME = #{userName}
     </delete>
 
+    <!-- [2026-10-23] 웹 광산: 스태미너/캐릭터 위치/오늘 캔 칸, 광석 보유 -->
+    <select id="selectMineUser" resultType="hashmap">
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, POS_X, POS_Y, POS_AT_MS, MAP_DAY, MINED, TOTAL_DIG
+          FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName}
+    </select>
+
+    <select id="selectMineUserForUpdate" resultType="hashmap">
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, POS_X, POS_Y, POS_AT_MS, MAP_DAY, MINED, TOTAL_DIG
+          FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName} FOR UPDATE
+    </select>
+
+    <insert id="insertMineUserIfAbsent">
+        MERGE INTO TBOT_S5_MINE_USER T
+        USING (SELECT #{userName} AS USER_NAME FROM DUAL) S ON (T.USER_NAME = S.USER_NAME)
+        WHEN NOT MATCHED THEN INSERT (USER_NAME, STAMINA, STAMINA_AT_MS, POS_X, POS_Y, POS_AT_MS, MAP_DAY, MINED, TOTAL_DIG)
+        VALUES (S.USER_NAME, #{stamina}, #{atMs}, NULL, NULL, #{atMs}, NULL, NULL, 0)
+    </insert>
+
+    <update id="updateMineUser">
+        UPDATE TBOT_S5_MINE_USER
+           SET STAMINA = #{stamina}, STAMINA_AT_MS = #{atMs}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs},
+               MAP_DAY = #{mapDay}, MINED = #{mined, jdbcType=VARCHAR}, TOTAL_DIG = TOTAL_DIG + 1
+         WHERE USER_NAME = #{userName}
+    </update>
+
+    <update id="updateMinePos">
+        UPDATE TBOT_S5_MINE_USER SET POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs} WHERE USER_NAME = #{userName}
+    </update>
+
+    <select id="selectUserOres" resultType="hashmap">
+        SELECT ORE_CODE, QTY FROM TBOT_S5_USER_ORE WHERE USER_NAME = #{userName} AND QTY &gt; 0
+    </select>
+
+    <insert id="addUserOre">
+        MERGE INTO TBOT_S5_USER_ORE T
+        USING (SELECT #{userName} AS USER_NAME, #{oreCode} AS ORE_CODE FROM DUAL) S
+           ON (T.USER_NAME = S.USER_NAME AND T.ORE_CODE = S.ORE_CODE)
+        WHEN MATCHED THEN UPDATE SET T.QTY = T.QTY + #{qty}
+        WHEN NOT MATCHED THEN INSERT (USER_NAME, ORE_CODE, QTY) VALUES (S.USER_NAME, S.ORE_CODE, #{qty})
+    </insert>
+
     <delete id="deleteEquip">
         DELETE FROM TBOT_S5_USER_EQUIP WHERE EQUIP_ID = #{equipId}
     </delete>

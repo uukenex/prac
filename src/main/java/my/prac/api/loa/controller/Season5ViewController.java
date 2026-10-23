@@ -505,6 +505,47 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.growthStatus(userName));
     }
 
+    /** [2026-10-23] 웹 광산 -- 공용 맵 지형(모든 유저 같음, 화면이 version으로 브라우저에 저장). 광석 등급은 보내지 않는다. */
+    @GetMapping("/api/tower-mine-map")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineMap() {
+        return ResponseEntity.ok(s5Service.mineMap());
+    }
+
+    /** [2026-10-23] 웹 광산 -- 내 스태미너/저장 위치/오늘 캔 칸/광석 보유. */
+    @GetMapping("/api/tower-mine")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMine(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.mineState(userName));
+    }
+
+    /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 스태미너 1). */
+    @GetMapping("/api/tower-mine-dig")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineDig(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("x") int x, @RequestParam("y") int y) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.mineDig(userName, x, y));
+    }
+
+    /** [2026-10-23] 웹 광산 -- 캐릭터 위치 저장(광산을 나갈 때 sendBeacon(POST)과 이동 중 주기적으로). */
+    @RequestMapping(value = "/api/tower-mine-pos", method = { org.springframework.web.bind.annotation.RequestMethod.GET, org.springframework.web.bind.annotation.RequestMethod.POST })
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMinePos(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("x") int x, @RequestParam("y") int y) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineSavePos(userName, x, y));
+    }
+
     /** [2026-10-20] 동료 상세 팝업용 -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여. */
     @GetMapping("/api/tower-companion-detail")
     @ResponseBody

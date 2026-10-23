@@ -222,6 +222,11 @@ public interface BotS5Service {
     /** [2026-10-23] ★1~★6 일반 장비/악세 분해(수량 지정, 확률로 전설의조각). */
     String dismantleEquip(String userName, int equipId, int qty);
     String dismantleEquipByIdx(String userName, int equipIdx, int qty);
+    /** [2026-10-23] 웹 광산 -- 공용 맵 지형, 내 상태(스태미너/위치/오늘 캔 칸/광석), 캐기, 위치 저장. */
+    HashMap<String, Object> mineMap();
+    HashMap<String, Object> mineState(String userName);
+    HashMap<String, Object> mineDig(String userName, int x, int y);
+    HashMap<String, Object> mineSavePos(String userName, int x, int y);
 
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);

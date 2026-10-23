@@ -742,6 +742,38 @@
     .equip-card .eq-opt{ font-size:10px; line-height:1.45; color:var(--ink-soft); background:var(--parchment); border-radius:8px; padding:4px 6px; margin:0 0 6px; text-align:left; word-break:keep-all; }
     .equip-card .eq-opt .eq-leg{ color:#8a5a00; font-weight:700; }
     .inv-tabs{ display:flex; gap:6px; margin-bottom:10px; }
+    /* [2026-10-23] 웹 광산(2D 도트) */
+    .mine-overlay{ position:fixed; inset:0; z-index:400; background:#0b0b10; display:none; touch-action:none; user-select:none; -webkit-user-select:none; overscroll-behavior:none; }
+    .mine-overlay.open{ display:block; }
+    #mineCanvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
+    .mpx{ background:rgba(20,16,30,.82); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); color:#fff; font-weight:800; border-radius:0; }
+    .mine-hud-tl{ position:absolute; left:10px; top:10px; pointer-events:none; }
+    .mine-coord{ font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; }
+    .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
+    .mine-hud-tr{ position:absolute; right:10px; top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .mine-sta{ font:800 15px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; color:#ffe14d; }
+    .mine-regen{ max-width:150px; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
+    #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; }
+    #mineMini.big{ width:min(78vw,360px); height:min(78vw,360px); }
+    .mine-dig{ position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; font-size:40px; line-height:1; background:#ffcf4a; border:3px solid #140d0a; box-shadow:0 5px 0 #8a5a00; cursor:pointer; }
+    .mine-dig:active{ transform:translateY(3px); box-shadow:0 2px 0 #8a5a00; }
+    .mine-dig:disabled{ filter:grayscale(1); opacity:.6; }
+    .mine-btn{ position:absolute; left:10px; padding:8px 12px; font-size:13px; cursor:pointer; }
+    .mine-exit{ bottom:calc(22px + env(safe-area-inset-bottom)); }
+    .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
+    .mine-log{ position:absolute; left:10px; bottom:calc(112px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
+    .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
+    .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
+    .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
+    .mine-log-row img{ width:16px; height:16px; image-rendering:pixelated; }
+    .mine-log-xy{ font-family:ui-monospace, Consolas, monospace; color:#ffe9a8; }
+    .mine-msg{ position:absolute; left:50%; top:calc(50% - 140px); transform:translateX(-50%); padding:7px 12px; font-size:13px; display:none; max-width:84vw; text-align:center; pointer-events:none; }
+    .mine-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
+    .ore-ico{ width:32px; height:32px; image-rendering:pixelated; }
+    .ore-mine-card{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px; margin-bottom:12px; border:1.5px solid var(--line); border-radius:12px; background:#fffaf0; }
+    .ore-mine-card .ore-sta{ font-weight:800; }
+    .ore-mine-card .ore-sub{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+    .ore-mine-card button{ border:none; border-radius:10px; padding:10px 14px; font-weight:800; background:var(--gold); color:#fff; cursor:pointer; white-space:nowrap; }
     .inv-tabs button{ flex:1; border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:7px 4px; font-size:12px; font-weight:800; color:var(--ink-soft); cursor:pointer; }
     .inv-tabs button.on{ background:var(--gold); border-color:var(--gold); color:#fff; }
     .inv-etc-title{ font-size:12px; font-weight:800; color:var(--ink-soft); margin:12px 0 6px; }
@@ -1092,12 +1124,14 @@
       <div class="inv-tabs">
         <button type="button" class="on" data-inv="equip" onclick="TW.setInvTab('equip')">장비 · 악세서리</button>
         <button type="button" data-inv="etc" onclick="TW.setInvTab('etc')">기타</button>
+        <button type="button" data-inv="ore" onclick="TW.setInvTab('ore')">광석</button>
       </div>
       <div id="invEquipPane">
         <div id="equipListFilters"></div>
         <div id="equipListBox"></div>
       </div>
       <div id="invEtcPane" style="display:none;"><div id="invEtcBox"></div></div>
+      <div id="invOrePane" style="display:none;"><div id="invOreBox"></div></div>
     </div>
   </div>
 
@@ -1450,6 +1484,23 @@
     <button class="dbtn" data-tab="settings" onclick="TW.switchTab('settings')"><span class="d-icn">⚙️</span>설정</button>
   </div>
 </nav>
+
+<!-- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) -- TowerMine 스크립트(맨 아래)가 그린다. -->
+<div class="mine-overlay" id="mineOverlay">
+  <canvas id="mineCanvas"></canvas>
+  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
+  <div class="mine-hud-tr">
+    <div class="mine-sta mpx" id="mineSta">⚡ 0 / 30</div>
+    <div class="mine-regen" id="mineRegen"></div>
+    <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
+  </div>
+  <div class="mine-log mpx" id="mineLog"></div>
+  <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 오늘 캔 곳</button>
+  <button type="button" class="mine-btn mine-exit mpx" onclick="TowerMine.close()">🚪 나가기</button>
+  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.dig()" aria-label="캐기">⛏️</button>
+  <div class="mine-msg mpx" id="mineMsg"></div>
+  <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
+</div>
 
 <script>
 var TW = (function () {
@@ -1993,6 +2044,7 @@ var TW = (function () {
     if (name === 'ach') loadAchievements();
     if (name === 'party' || name === 'inven') loadPartyAndEquip();
     if (name === 'inven' && invTab === 'etc') renderInvEtc();
+    if (name === 'inven' && invTab === 'ore') renderInvOre();
     if (name === 'settings') renderDockEdit();
     if (name === 'msg') loadMessages();
     if (name === 'codex') loadCodex();
@@ -3498,8 +3550,36 @@ var TW = (function () {
     document.querySelectorAll('.inv-tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.inv === t); });
     document.getElementById('invEquipPane').style.display = t === 'equip' ? '' : 'none';
     document.getElementById('invEtcPane').style.display = t === 'etc' ? '' : 'none';
+    document.getElementById('invOrePane').style.display = t === 'ore' ? '' : 'none';
     document.getElementById('invSynthAllBtn').style.display = t === 'equip' ? '' : 'none';
-    if (t === 'equip') { renderEquipList(); equipDirty = false; } else renderInvEtc();
+    if (t === 'equip') { renderEquipList(); equipDirty = false; } else if (t === 'ore') renderInvOre(); else renderInvEtc();
+  }
+
+  // [2026-10-23] 광석 탭 -- 광산 입장 + 스태미너 + 광석 보유(아이콘은 광산 도트와 같은 그림).
+  function renderInvOre() {
+    var box = document.getElementById('invOreBox');
+    var u = userName();
+    if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
+    fetch(base + '/api/tower-mine?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (m) {
+      if (m.error) { box.innerHTML = '<div class="sheet-empty">' + m.error + '</div>'; return; }
+      var regen = m.nextRegenAt ? ('다음 회복 ' + new Date(m.nextRegenAt).getHours() + ':00 (+' + m.regenPerHour + ')') : '가득 참';
+      var html = '<div class="ore-mine-card"><div><div class="ore-sta">⚡ 스태미너 ' + m.stamina + ' / ' + m.staminaMax + '</div>'
+          + '<div class="ore-sub">' + regen + ' · 매일 0시 ' + m.staminaMax + '으로 초기화 · 오늘 캔 곳 ' + (m.dug || []).length + '곳</div>'
+          + '<div class="ore-sub">📍 마지막 위치 (' + m.x + ', ' + m.y + ')</div></div>'
+          + '<button type="button" onclick="TW.openMine()">⛏️ 광산 들어가기</button></div>';
+      html += '<div class="inv-etc-title">⛏️ 광석 <span style="font-weight:600;color:var(--ink-soft);font-size:11px;">(사용처는 준비 중)</span></div><div class="inv-etc-grid">';
+      (m.ores || []).forEach(function (o) {
+        html += '<div class="inv-item"><div class="inv-ico ' + ['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
+            + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + o.grade + '등급 · 보유 ' + o.qty + '개</div></div></div>';
+      });
+      box.innerHTML = html + '</div>';
+    }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
+  }
+  function openMine() {
+    var u = userName();
+    if (!u) { toast('유저명을 입력하세요'); return; }
+    TowerMine.open({ base: base, user: u, onClose: function () { if (invTab === 'ore') renderInvOre(); } });
   }
 
   // 장비 카드 옵션 -- 능력치 보너스(서버 OPTION_TEXT, 실제 계산과 같은 표), 전설이면 강화와 고유 효과.
@@ -5088,7 +5168,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine,
            openDismantle: openDismantle, closeDismantle: closeDismantle, dmStep: dmStep, dmSet: dmSet, doDismantle: doDismantle, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
@@ -5102,6 +5182,485 @@ var TW = (function () {
            openGrowth: openGrowth, closeGrowth: closeGrowth, growthSaveName: growthSaveName, growthPickJob: growthPickJob,
            openStar7: openStar7, closeStar7: closeStar7, star7Pick: star7Pick, star7Do: star7Do, star7Release: star7Release,
            closeDungeon: closeDungeon };
+})();
+</script>
+<script>
+/* [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) -- 서버 BotS5ServiceImpl.mine*, 맵 파일 s5/mine_map_255.txt.
+ * 지형은 서버가 준 문자열(모든 유저 같은 맵, version으로 브라우저에 저장)을 16x16 도트 타일로 그린다. 광석은 캐 봐야 안다(서버만 앎).
+ * 이동: 방향키/WASD 또는 화면을 끌기(누른 곳 기준 방향으로 계속 이동). 캐기: ⛏️ 버튼/스페이스 -- 지금 서 있는 칸을 캔다(스태미너 1).
+ * 캐릭터 위치는 이동 중 몇 초마다, 캘 때, 나갈 때(sendBeacon) 저장한다. 서버가 위치를 거절하면 서버 위치로 되돌린다. */
+var TowerMine = (function () {
+  var T = 16, STEP_MS = 140, SAVE_MS = 4000;
+  var WALK = '.,:VH';
+  var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
+  var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
+  var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산' };
+  var MINI_COL = { '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212], 'T': [47, 125, 50], '^': [90, 78, 68] };
+
+  var cfg = null, map = null, st = null;
+  var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
+  var tiles = null, sprites = null, hole = null, oreIcons = {};
+  var P = { x: 0, y: 0, fx: 0, fy: 0, tx: 0, ty: 0, t0: 0, moving: false, dir: 'down', step: 0, digT0: 0 };
+  var keys = [], tapDir = null, drag = null, dug = {}, dugList = [], floats = [], flashT0 = 0;
+  var raf = 0, opened = false, busy = false, lastSaved = '', saveTimer = 0, msgTimer = 0, bound = false;
+
+  // ---------------------------------------------------------------- 도트 그리기
+  function mk(w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  function rng(seed) {
+    var s = (seed * 2654435761) >>> 0 || 1;
+    return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
+  }
+  function tile(base, specks, seed, extra) {
+    var c = mk(T, T), g = c.getContext('2d'), r = rng(seed);
+    g.fillStyle = base; g.fillRect(0, 0, T, T);
+    (specks || []).forEach(function (sp) {
+      g.fillStyle = sp[0];
+      for (var i = 0; i < sp[1]; i++) g.fillRect(Math.floor(r() * T), Math.floor(r() * T), sp[2] || 1, sp[3] || 1);
+    });
+    if (extra) extra(g, r);
+    return c;
+  }
+  function px(g, col, x, y, w, h) { g.fillStyle = col; g.fillRect(x, y, w || 1, h || 1); }
+  function grassTile(seed) { return tile('#5fae45', [['#4c9638', 16], ['#79c95a', 10], ['#3f8a2f', 5, 1, 2]], seed); }
+  function outline(c, col) {
+    var g = c.getContext('2d'), w = c.width, h = c.height, d = g.getImageData(0, 0, w, h), a = d.data, add = [];
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      if (a[(y * w + x) * 4 + 3]) continue;
+      var n = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(function (v) {
+        var nx = x + v[0], ny = y + v[1];
+        return nx >= 0 && ny >= 0 && nx < w && ny < h && a[(ny * w + nx) * 4 + 3] > 0;
+      });
+      if (n) add.push([x, y]);
+    }
+    g.fillStyle = col;
+    add.forEach(function (p) { g.fillRect(p[0], p[1], 1, 1); });
+    return c;
+  }
+  function buildTiles() {
+    tiles = {
+      grass: [grassTile(1), grassTile(2), grassTile(3)],
+      path: [tile('#c9a46a', [['#b48c55', 14], ['#dcbb82', 9], ['#9e7a48', 3]], 4), tile('#c9a46a', [['#b48c55', 14], ['#dcbb82', 9], ['#9e7a48', 3]], 5)],
+      rock: [tile('#8f8578', [['#7a7064', 12], ['#a59b8d', 9], ['#5f574e', 4, 2, 1]], 6), tile('#8f8578', [['#7a7064', 12], ['#a59b8d', 9], ['#5f574e', 4, 2, 1]], 7)],
+      village: tile('#d9c9a0', null, 8, function (g) {
+        for (var y = 0; y < T; y += 4) for (var x = (y / 4) % 2 ? 2 : 0; x < T; x += 4) { px(g, '#c8b68a', x, y, 3, 3); px(g, '#b29f72', x + 2, y + 2, 1, 1); }
+      }),
+      bridge: tile('#8b5a2b', null, 9, function (g) {
+        for (var y = 0; y < T; y += 4) { px(g, '#6b4220', 0, y + 3, T, 1); px(g, '#a8733d', 0, y, T, 1); px(g, '#3b2412', 3, y + 1); px(g, '#3b2412', 12, y + 1); }
+      }),
+      water: [0, 1].map(function (f) {
+        return tile('#3a78d4', [['#2f63b3', 10]], 10 + f, function (g) {
+          for (var y = 2 + f * 2; y < T; y += 5) { px(g, '#6aa4ef', (y * 3 + f * 5) % 12, y, 4, 1); px(g, '#6aa4ef', (y * 7 + 8 + f * 3) % 13, y + 2, 3, 1); }
+        });
+      }),
+      tree: [1, 2].map(function (s) {
+        var c = grassTile(s), g = c.getContext('2d');
+        px(g, 'rgba(0,0,0,.25)', 3, 13, 10, 2);
+        px(g, '#6b4220', 7, 10, 2, 5); px(g, '#4e2f16', 8, 10, 1, 5);
+        for (var y = 1; y < 12; y++) for (var x = 2; x < 14; x++) {
+          var dx = x - 7.5, dy = y - 6.2, d = dx * dx + dy * dy * 1.15;
+          if (d < 30) px(g, d > 22 ? '#1b4d1f' : (dx < -1 && dy < -1 ? '#4fae52' : '#2f7d32'), x, y);
+        }
+        px(g, '#6fc86f', 5, 3, 2, 1); px(g, '#6fc86f', 4, 4, 1, 1);
+        return c;
+      }),
+      cliff: [1, 2].map(function (s) {
+        return tile('#6d635a', [['#5a5149', 10]], 20 + s, function (g, r) {
+          for (var i = 0; i < 4; i++) {
+            var x = Math.floor(r() * 10), y = Math.floor(r() * 10), w = 4 + Math.floor(r() * 4), h = 3 + Math.floor(r() * 3);
+            px(g, '#8a7f74', x, y, w, h); px(g, '#a3998d', x, y, w, 1); px(g, '#4a423b', x, y + h, w, 1); px(g, '#4a423b', x + w, y, 1, h + 1);
+          }
+        });
+      })
+    };
+    hole = mk(T, T);
+    var hg = hole.getContext('2d');
+    for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
+      var dx = x - 7.5, dy = (y - 8) * 1.3, d = dx * dx + dy * dy;
+      if (d < 34) px(hg, d > 22 ? '#6b4a30' : (d > 14 ? '#3a281b' : '#1d140d'), x, y);
+    }
+    px(hg, '#8a6a4a', 2, 4, 2, 1); px(hg, '#8a6a4a', 12, 11, 2, 1);
+  }
+  function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
+  function tileFor(c, x, y, wf) {
+    var v = hashXY(x, y);
+    switch (c) {
+      case '.': return tiles.grass[v % 3];
+      case ',': return tiles.path[v % 2];
+      case ':': return tiles.rock[v % 2];
+      case 'V': return tiles.village;
+      case 'H': return tiles.bridge;
+      case '~': return tiles.water[(wf + (x + y) % 2) % 2];
+      case 'T': return tiles.tree[v % 2];
+      default: return tiles.cliff[v % 2];
+    }
+  }
+
+  // 캐릭터: 방향(down/up/right/left) x 걸음(0/1/2) x 캐기(0 없음, 1 들기, 2 내려치기). 왼쪽은 오른쪽을 뒤집어서.
+  function charSprite(dir, step, dig) {
+    if (dir === 'left') {
+      var src = charSprite('right', step, dig), c2 = mk(T, T), g2 = c2.getContext('2d');
+      g2.translate(T, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
+      return c2;
+    }
+    var c = mk(T, T), g = c.getContext('2d');
+    var skin = '#f6c9a0', hair = '#2b1d16', robe = '#3f5fd1', robeD = '#2c45a3', belt = '#7a4a1f', pants = '#3a2b22', boot = '#5b3a1e';
+    var side = dir === 'right';
+    var lx = side ? 6 : 5, rx = side ? 9 : 9;
+    var lh = step === 1 ? 2 : 3, rh = step === 2 ? 2 : 3;
+    px(g, pants, lx, 12, 2, lh); px(g, boot, lx, 12 + lh, 2, 1);
+    px(g, pants, rx, 12, 2, rh); px(g, boot, rx, 12 + rh, 2, 1);
+    px(g, robe, 4, 7, 8, 5); px(g, robeD, 4, 7, 1, 5); px(g, robeD, 11, 7, 1, 5); px(g, belt, 4, 10, 8, 1);
+    if (side) { px(g, robeD, 7, 8, 2, 3); px(g, skin, 8, 11); }
+    else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, skin, 3, 11); px(g, skin, 12, 11); }
+    px(g, skin, 4, 1, 8, 6);
+    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, '#3d2a20', 6, 1, 4, 1); }
+    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
+    else { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, 2); px(g, hair, 11, 3, 1, 2); px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5); }
+    var wood = '#8a5a2b', iron = '#c3cad1';
+    if (dig === 1) { // 들어 올림
+      if (side) { px(g, wood, 9, 1, 1, 7); px(g, iron, 7, 0, 5, 1); px(g, iron, 7, 1); px(g, iron, 11, 1); }
+      else { px(g, wood, 12, 1, 1, 8); px(g, iron, 10, 0, 5, 1); px(g, iron, 10, 1); px(g, iron, 14, 1); }
+    } else if (dig === 2) { // 내려치기
+      if (side) { px(g, wood, 10, 10, 5, 1); px(g, iron, 15, 8, 1, 5); }
+      else if (dir === 'up') { px(g, wood, 12, 2, 1, 6); px(g, iron, 10, 1, 5, 1); }
+      else { px(g, wood, 12, 11, 1, 4); px(g, iron, 10, 15, 5, 1); }
+    }
+    return outline(c, '#140d0a');
+  }
+  function buildSprites() {
+    sprites = {};
+    ['down', 'up', 'right', 'left'].forEach(function (d) {
+      for (var s = 0; s < 3; s++) for (var k = 0; k < 3; k++) sprites[d + s + k] = charSprite(d, s, k);
+    });
+  }
+  // 광석 아이콘(인벤토리 광석 탭에서도 씀)
+  function oreIcon(grade) {
+    if (oreIcons[grade]) return oreIcons[grade];
+    var c = mk(T, T), g = c.getContext('2d'), col = ORE_COL[grade] || ORE_COL[1], r = rng(grade * 97);
+    for (var y = 3; y < 15; y++) for (var x = 1; x < 15; x++) {
+      var dx = x - 7.5, dy = (y - 9) * 1.2, d = dx * dx + dy * dy;
+      if (d < 40) px(g, d > 28 ? '#5a524b' : (dy < -2 ? '#9c938a' : '#7b736b'), x, y);
+    }
+    var gems = [[4, 7], [9, 5], [7, 10], [11, 9], [5, 11]];
+    gems.slice(0, 3 + Math.min(2, Math.floor(grade / 2))).forEach(function (p) {
+      px(g, col[0], p[0], p[1], 2, 2); px(g, col[1], p[0], p[1]);
+    });
+    if (grade >= 5) { px(g, '#ffffff', 12, 2); px(g, '#ffffff', 11, 3, 3, 1); px(g, '#ffffff', 12, 4); }
+    outline(c, '#140d0a');
+    oreIcons[grade] = c.toDataURL();
+    return oreIcons[grade];
+  }
+
+  // ---------------------------------------------------------------- 화면
+  function $(id) { return document.getElementById(id); }
+  function bindDom() {
+    if (bound) return;
+    bound = true;
+    el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr');
+    el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn');
+    el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog');
+    ctx = el.cv.getContext('2d'); miniCtx = el.mini.getContext('2d');
+    el.cv.addEventListener('pointerdown', function (e) {
+      el.cv.setPointerCapture && el.cv.setPointerCapture(e.pointerId);
+      drag = { ox: e.clientX, oy: e.clientY, cx: e.clientX, cy: e.clientY };
+    });
+    el.cv.addEventListener('pointermove', function (e) { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; } });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { el.cv.addEventListener(t, function () { drag = null; }); });
+    window.addEventListener('resize', function () { if (opened) fit(); });
+    window.addEventListener('pagehide', function () { if (opened) saveBeacon(); });
+    document.addEventListener('visibilitychange', function () { if (opened && document.visibilityState === 'hidden') saveBeacon(); });
+    document.addEventListener('keydown', function (e) {
+      if (!opened) return;
+      var d = keyDir(e.key);
+      if (d) { e.preventDefault(); if (keys.indexOf(d) < 0) keys.push(d); tapDir = d; return; } // 짧게 눌렀다 떼도 한 칸은 움직이게
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); dig(); }
+      else if (e.key === 'Escape') close();
+    });
+    document.addEventListener('keyup', function (e) {
+      var d = keyDir(e.key);
+      if (d) keys = keys.filter(function (k) { return k !== d; });
+    });
+  }
+  function keyDir(k) {
+    switch (k) {
+      case 'ArrowUp': case 'w': case 'W': return 'up';
+      case 'ArrowDown': case 's': case 'S': return 'down';
+      case 'ArrowLeft': case 'a': case 'A': return 'left';
+      case 'ArrowRight': case 'd': case 'D': return 'right';
+    }
+    return null;
+  }
+  function fit() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    el.cv.width = Math.floor(el.cv.clientWidth * dpr);
+    el.cv.height = Math.floor(el.cv.clientHeight * dpr);
+    // 화면 짧은 변 기준 약 9칸이 보이도록 정수배(도트가 뭉개지지 않게)
+    scale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
+    ctx.imageSmoothingEnabled = false;
+  }
+  function msg(text, ms) {
+    el.msg.textContent = text;
+    el.msg.style.display = 'block';
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { el.msg.style.display = 'none'; }, ms || 2600);
+  }
+  function walk(x, y) {
+    if (!map || x < 0 || y < 0 || x >= map.w || y >= map.h) return false;
+    return WALK.indexOf(map.rows[y].charAt(x)) >= 0;
+  }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function showStamina() {
+    el.sta.textContent = '⚡ ' + st.stamina + ' / ' + st.staminaMax;
+    if (st.nextRegenAt) {
+      var d = new Date(st.nextRegenAt);
+      el.regen.textContent = '다음 회복 ' + pad2(d.getHours()) + ':00 (+' + st.regenPerHour + ') · 0시 ' + st.staminaMax + ' 초기화';
+    } else {
+      el.regen.textContent = '가득 참 · 매시 정각 +' + st.regenPerHour;
+    }
+    el.dig.disabled = busy || st.stamina < 1;
+  }
+  function showCoord() {
+    el.coord.textContent = '📍 ' + P.x + ', ' + P.y;
+    var c = map.rows[P.y].charAt(P.x);
+    el.terr.textContent = (TERR_NAME[c] || '') + (dug[P.x + ',' + P.y] ? ' · 오늘 캔 자리' : (c === 'V' ? ' · 여기선 못 캐요' : ''));
+  }
+  function buildMiniBase() {
+    miniBase = mk(map.w, map.h);
+    var g = miniBase.getContext('2d'), img = g.createImageData(map.w, map.h);
+    for (var y = 0; y < map.h; y++) for (var x = 0; x < map.w; x++) {
+      var c = MINI_COL[map.rows[y].charAt(x)] || MINI_COL['^'], i = (y * map.w + x) * 4;
+      img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+  }
+  function drawMini() {
+    miniCtx.drawImage(miniBase, 0, 0);
+    dugList.forEach(function (d) { miniCtx.fillStyle = (ORE_COL[d.grade] || ORE_COL[1])[0]; miniCtx.fillRect(d.x - 1, d.y - 1, 3, 3); });
+    miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - 3, P.y - 3, 7, 7);
+    miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - 1, P.y - 1, 3, 3);
+  }
+  function renderLog() {
+    if (!dugList.length) { el.log.innerHTML = '<div class="mine-log-empty">오늘 캔 곳이 없어요.</div>'; return; }
+    var rows = dugList.slice().reverse().map(function (d) {
+      return '<div class="mine-log-row"><span class="mine-log-xy">(' + d.x + ', ' + d.y + ')</span> <img src="' + oreIcon(d.grade) + '" alt=""> ' + ORE_NAME[d.grade] + '</div>';
+    });
+    el.log.innerHTML = '<div class="mine-log-head">오늘 캔 곳 ' + dugList.length + '곳 <button type="button" onclick="TowerMine.copyLog()">📋 복사</button></div>' + rows.join('');
+  }
+
+  // ---------------------------------------------------------------- 진행
+  function curPos(now) {
+    if (!P.moving) return { x: P.x, y: P.y };
+    var k = Math.min(1, (now - P.t0) / STEP_MS);
+    return { x: P.fx + (P.tx - P.fx) * k, y: P.fy + (P.ty - P.fy) * k };
+  }
+  function heldDir() {
+    if (keys.length) return keys[keys.length - 1];
+    if (!drag) return null;
+    var dx = drag.cx - drag.ox, dy = drag.cy - drag.oy;
+    if (dx * dx + dy * dy < 16 * 16) return null;
+    return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  }
+  function update(now) {
+    if (P.moving && now - P.t0 >= STEP_MS) {
+      P.moving = false; P.x = P.tx; P.y = P.ty;
+      showCoord(); drawMini();
+    }
+    if (!P.moving && now - P.digT0 > 380) {
+      var d = heldDir() || tapDir;
+      tapDir = null;
+      if (d) {
+        P.dir = d;
+        var nx = P.x + (d === 'left' ? -1 : d === 'right' ? 1 : 0), ny = P.y + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
+        if (walk(nx, ny)) {
+          P.fx = P.x; P.fy = P.y; P.tx = nx; P.ty = ny; P.t0 = now; P.moving = true; P.step = P.step === 1 ? 2 : 1;
+        }
+      }
+    }
+  }
+  function draw(now) {
+    var W = el.cv.width, H = el.cv.height, TS = T * scale, pos = curPos(now);
+    var camX = Math.round(pos.x * TS + TS / 2 - W / 2), camY = Math.round(pos.y * TS + TS / 2 - H / 2);
+    ctx.fillStyle = '#0b0b10';
+    ctx.fillRect(0, 0, W, H);
+    var x0 = Math.floor(camX / TS), y0 = Math.floor(camY / TS), x1 = Math.ceil((camX + W) / TS), y1 = Math.ceil((camY + H) / TS);
+    var wf = Math.floor(now / 520) % 2;
+    for (var y = y0; y <= y1; y++) {
+      if (y < 0 || y >= map.h) continue;
+      var row = map.rows[y];
+      for (var x = x0; x <= x1; x++) {
+        if (x < 0 || x >= map.w) continue;
+        var sx = x * TS - camX, sy = y * TS - camY;
+        ctx.drawImage(tileFor(row.charAt(x), x, y, wf), sx, sy, TS, TS);
+        if (dug[x + ',' + y]) ctx.drawImage(hole, sx, sy, TS, TS);
+      }
+    }
+    // 캐릭터
+    var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.fillRect(cx + 3 * scale, cy + 13 * scale, 10 * scale, 3 * scale);
+    var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
+    var sp = sprites[P.dir + (P.moving ? P.step : 0) + dk];
+    ctx.drawImage(sp, cx, cy - 3 * scale, TS, TS);
+    // 캔 광석 글자
+    floats = floats.filter(function (f) { return now - f.t0 < 1400; });
+    floats.forEach(function (f) {
+      var k = (now - f.t0) / 1400, fx = f.x * TS - camX + TS / 2, fy = f.y * TS - camY - k * 36 * dpr - 6 * dpr;
+      ctx.globalAlpha = 1 - k * k;
+      ctx.font = 'bold ' + Math.round((f.big ? 17 : 14) * dpr) + 'px monospace';
+      ctx.textAlign = 'center';
+      ctx.drawImage(f.icon, fx - 9 * dpr - ctx.measureText(f.text).width / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
+      ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(f.text, fx + 9 * dpr, fy);
+      ctx.fillStyle = f.color; ctx.fillText(f.text, fx + 9 * dpr, fy);
+      ctx.globalAlpha = 1;
+    });
+    if (now - flashT0 < 420) { ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * (1 - (now - flashT0) / 420)) + ')'; ctx.fillRect(0, 0, W, H); }
+    // 끌기 조이스틱
+    if (drag) {
+      var ox = drag.ox * dpr - el.cv.getBoundingClientRect().left * dpr, oy = drag.oy * dpr - el.cv.getBoundingClientRect().top * dpr;
+      ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 3 * dpr;
+      ctx.beginPath(); ctx.arc(ox, oy, 34 * dpr, 0, Math.PI * 2); ctx.stroke();
+      var ddx = (drag.cx - drag.ox) * dpr, ddy = (drag.cy - drag.oy) * dpr, len = Math.sqrt(ddx * ddx + ddy * ddy), lim = 34 * dpr;
+      if (len > lim) { ddx = ddx / len * lim; ddy = ddy / len * lim; }
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(ox + ddx, oy + ddy, 13 * dpr, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  function loop(now) {
+    if (!opened) return;
+    raf = requestAnimationFrame(loop);
+    update(now);
+    draw(now);
+  }
+
+  // ---------------------------------------------------------------- 서버
+  function api(path) {
+    return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); });
+  }
+  function ensureMap(ver) {
+    try {
+      var c = JSON.parse(localStorage.getItem('tw-mine-map') || 'null');
+      if (c && c.version === ver && c.rows) return Promise.resolve(c);
+    } catch (e) { }
+    return fetch(cfg.base + '/api/tower-mine-map').then(function (r) { return r.json(); }).then(function (m) {
+      try { localStorage.setItem('tw-mine-map', JSON.stringify(m)); } catch (e) { }
+      return m;
+    });
+  }
+  function setPos(x, y) {
+    P.x = P.tx = P.fx = x; P.y = P.ty = P.fy = y; P.moving = false;
+    lastSaved = x + ',' + y;
+    showCoord(); drawMini();
+  }
+  function savePos() {
+    if (!opened || P.moving) return;
+    var cur = P.x + ',' + P.y;
+    if (cur === lastSaved) return;
+    lastSaved = cur;
+    api('/api/tower-mine-pos?x=' + P.x + '&y=' + P.y).then(function (d) {
+      if (d && d.ok === false && d.x != null) { setPos(d.x, d.y); msg('이동 기록이 맞지 않아 (' + d.x + ', ' + d.y + ')로 돌아갔어요.'); }
+    }).catch(function () { lastSaved = ''; });
+  }
+  function saveBeacon() {
+    var x = P.moving ? P.fx : P.x, y = P.moving ? P.fy : P.y;
+    if (x + ',' + y === lastSaved) return;
+    lastSaved = x + ',' + y;
+    var body = new URLSearchParams();
+    body.append('userName', cfg.user); body.append('x', x); body.append('y', y);
+    try {
+      if (!(navigator.sendBeacon && navigator.sendBeacon(cfg.base + '/api/tower-mine-pos', body))) {
+        fetch(cfg.base + '/api/tower-mine-pos', { method: 'POST', body: body, keepalive: true });
+      }
+    } catch (e) { }
+  }
+  function refreshStamina() {
+    api('/api/tower-mine').then(function (d) { if (d && d.stamina != null) { st.stamina = d.stamina; st.nextRegenAt = d.nextRegenAt; showStamina(); } });
+  }
+  function dig() {
+    if (!opened || busy || !map) return;
+    if (P.moving) return;
+    var x = P.x, y = P.y, c = map.rows[y].charAt(x);
+    if (c === 'V') { msg('마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.'); return; }
+    if (dug[x + ',' + y]) { msg('오늘 이미 캔 자리예요. 0시가 지나면 다시 캘 수 있어요.'); return; }
+    if (st.stamina < 1) { msg('스태미너가 없어요. 매시 정각 +' + st.regenPerHour + ', 0시에 ' + st.staminaMax + '으로 초기화돼요.'); return; }
+    busy = true;
+    el.dig.disabled = true;
+    P.digT0 = performance.now();
+    api('/api/tower-mine-dig?x=' + x + '&y=' + y).then(function (d) {
+      busy = false;
+      if (d.stamina != null) { st.stamina = d.stamina; st.nextRegenAt = d.nextRegenAt; }
+      if (d.ok) {
+        lastSaved = x + ',' + y;
+        dug[x + ',' + y] = d.grade;
+        dugList.push({ x: x, y: y, grade: d.grade });
+        var img = new Image(); img.src = oreIcon(d.grade);
+        floats.push({ x: x, y: y, text: '+1 ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: d.grade >= 5, icon: img, t0: performance.now() });
+        if (d.grade >= 5) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! (' + x + ', ' + y + ')', 3200); }
+        showCoord(); drawMini(); renderLog();
+      } else {
+        if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+        msg(d.message || d.error || '캐지 못했어요.');
+      }
+      showStamina();
+    }).catch(function () { busy = false; showStamina(); msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+
+  function open(o) {
+    cfg = o;
+    bindDom();
+    if (!tiles) { buildTiles(); buildSprites(); }
+    el.ov.classList.add('open');
+    el.load.style.display = 'flex';
+    el.log.style.display = 'none';
+    document.body.style.overflow = 'hidden';
+    opened = true;
+    fit();
+    api('/api/tower-mine').then(function (s) {
+      if (s.error) throw new Error(s.error);
+      st = s;
+      return ensureMap(s.mapVersion);
+    }).then(function (m) {
+      if (!opened) return;
+      map = m;
+      dug = {}; dugList = [];
+      (st.dug || []).forEach(function (d) { dug[d.x + ',' + d.y] = d.grade; dugList.push({ x: d.x, y: d.y, grade: d.grade }); });
+      buildMiniBase();
+      P.dir = 'down'; keys = []; drag = null; floats = [];
+      setPos(st.x, st.y);
+      showStamina(); renderLog();
+      el.load.style.display = 'none';
+      msg('방향키·화면 끌기로 이동, ⛏️(스페이스)로 지금 서 있는 칸을 캐요.', 3500);
+      clearInterval(saveTimer);
+      saveTimer = setInterval(function () {
+        savePos();
+        if (st.nextRegenAt && Date.now() >= st.nextRegenAt) { st.nextRegenAt = null; refreshStamina(); }
+      }, SAVE_MS);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(loop);
+    }).catch(function (e) {
+      el.load.textContent = '광산을 불러오지 못했어요. (' + (e && e.message ? e.message : '오류') + ')';
+    });
+  }
+  function close() {
+    if (!opened) return;
+    if (map) saveBeacon();
+    opened = false;
+    cancelAnimationFrame(raf);
+    clearInterval(saveTimer);
+    keys = []; drag = null;
+    el.ov.classList.remove('open');
+    el.load.textContent = '광산으로 가는 중...';
+    document.body.style.overflow = '';
+    if (cfg && cfg.onClose) cfg.onClose();
+  }
+  function toggleMini() { el.mini.classList.toggle('big'); }
+  function toggleLog() { el.log.style.display = el.log.style.display === 'block' ? 'none' : 'block'; }
+  function copyLog() {
+    var text = '람쥐광산 오늘 캔 곳\n' + dugList.map(function (d) { return '(' + d.x + ', ' + d.y + ') ' + ORE_NAME[d.grade]; }).join('\n');
+    var done = function () { msg('복사했어요. 채팅방에 붙여 넣어 공유해 보세요.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { msg('복사에 실패했어요.'); });
+    else msg('이 브라우저는 복사를 지원하지 않아요.');
+  }
+
+  return { open: open, close: close, dig: dig, toggleMini: toggleMini, toggleLog: toggleLog, copyLog: copyLog, oreIcon: oreIcon, ORE_NAME: ORE_NAME };
 })();
 </script>
 </body>
