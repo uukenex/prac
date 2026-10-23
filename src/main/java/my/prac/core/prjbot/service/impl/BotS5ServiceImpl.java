@@ -8600,14 +8600,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ---- [2026-10-23] 웹 광산(공용 맵 여러 개, 2D 도트) ----
     // 맵은 S5MineMap(맵마다 파일 하나)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
     // 화면에는 지형/포탈만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 0시에 다시 생기지 않음).
-    // 한 번 캘 때 스태미너 1, 스태미너는 최대 30, 매시 정각 +2, 0시(KST)에 30으로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산).
+    // 한 번 캘 때 스태미너 1, 스태미너는 최대 100(2026-10-23 30 -> 100), 매시 정각 +10(2 -> 10), 0시(KST)에 최대치로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산).
     // 캐릭터 위치(맵 + 좌표)는 광산을 나갈 때(와 이동 중 주기적으로, 캘 때, 포탈을 탈 때) 저장하고, 마지막 저장 위치에서 시간당 갈 수 있는
     // 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지). 포탈(지역 통로/동굴 입구/나가는 길/지하 문)은
     // 바로 옆 칸에서 들어가면 대상 맵으로 옮기고, 대상 맵이 아직 없으면(잠김) 안내만 한다.
     // 광산상점: 광석을 내고 자동사냥 처치당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 처치 수만큼 함께 지급(settleAutoHunt).
     //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
-    private static final int MINE_STAMINA_MAX = 30;
-    private static final int MINE_REGEN_PER_HOUR = 2;
+    private static final int MINE_STAMINA_MAX = 100; // [2026-10-23] "채집 30회는 너무 적어, 100회로" 요청
+    private static final int MINE_REGEN_PER_HOUR = 10; // [2026-10-23] "시간당 회복도 10회로" 요청(2 -> 10)
     private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
