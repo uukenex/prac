@@ -19,7 +19,8 @@ import java.util.Random;
  *   만들어도 같은 맵). 주기 0(첫 리셋 전) 시드는 예전 맵 파일을 만든 시드(20261023)와 같아 평원/동굴 지형과 광석이 그대로다. 리셋 시각은
  *   RESET_ANCHOR_MS(2026-10-25 05:00 KST)부터 2일마다이고, 실제 전환(캔 칸 초기화 + 위치 마을로)은 BotS5ServiceImpl.mineGate가 한다.
  *   맵: 중앙 평원(field) / 광산 동굴 1층(cave1) / 북쪽 사막(desert, 모래바람으로 좌우로 밀림, 북쪽 끝에 잠긴 통로) /
- *   남쪽 바닷가(beach, 정박한 배 + 선장 NPC, 배는 아직 잠김 -- 추후 배로만 다른 맵 이동). 평원 마을에는 대장장이 NPC(곡괭이 강화).
+ *   남쪽 바닷가(beach, 정박한 배 + 선장 NPC, 배는 아직 잠김 -- 추후 배로만 다른 맵 이동) / 서쪽 동굴 = 요일 던전(dungeon, 캐면 그날 요일의 돌).
+ *   동쪽 통로는 아직 잠김(성곽 맵 구상 중). 평원 마을에는 대장장이 NPC(곡괭이 강화).
  * 지형 문자: . 풀밭 / , 흙길 / : 바위 지대 / V 마을 / H 다리 / c 동굴 바닥 / r 자갈 바닥 / d 모래 / b 모래사장 / P 부두 (이상 이동 가능)
  *   ~ 물 / T 나무 / ^ 바위산 / # 동굴 벽 / h j k l 초가집(2x2: 왼위 오위 왼아래 오아래) / R 사암 / C 선인장 / q 배 / N NPC (이동 불가)
  *   G 지역 통로 / M 동굴 입구 / U 나가는 길 / S 지하로 가는 문 / B 배에 오르는 판자 (포탈: 바로 옆 칸에서 들어가면 이동, 잠겼으면 안내).
@@ -31,8 +32,25 @@ public final class S5MineMap {
     public static final String CAVE1 = "cave1";
     public static final String DESERT = "desert";
     public static final String BEACH = "beach";
+    /** [2026-10-23] 서쪽 동굴 = 요일 던전(평원 서쪽 통로). 캐면 그날(KST) 요일의 돌이 나온다. */
+    public static final String DUNGEON = "dungeon";
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON);
+    /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
+    public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
+    public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
+    public static final String[] DAY_LABELS = { "월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일" };
+    public static final int DAY_STONE_GRADE_BASE = 11;
+
+    /** 그 시각의 요일 인덱스(0 = 월 ... 6 = 일, KST). */
+    public static int dayIndex(long ms) {
+        return java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Seoul")).getDayOfWeek().getValue() - 1;
+    }
+
+    /** 그 시각(KST) 날짜 yyyyMMdd -- 요일 던전의 캔 칸은 날마다 새로 시작한다(캔 칸 기록의 맵 키에 붙인다). */
+    public static String dayKey(long ms) {
+        return java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.of("Asia/Seoul")).toLocalDate().format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+    }
     public static final String[] ORE_CODES = { "COPPER", "IRON", "SILVER", "GOLD", "MITHRIL", "STARSTONE" };
     public static final String[] ORE_NAMES = { "구리 광석", "철광석", "은광석", "금광석", "미스릴 원석", "별빛석" };
     /** 등급별 칸 비율(이동 가능 칸 중, 높은 등급부터: 별빛석, 미스릴, 금, 은, 철, 나머지 구리). 동굴이 평원보다 풍부하다. */
@@ -206,12 +224,14 @@ public final class S5MineMap {
         S5MineMap cave = generateCave(seed + 1);
         S5MineMap desert = generateDesert(seed + 2);
         S5MineMap beach = generateBeach(seed + 3);
+        S5MineMap dungeon = generateDungeon(seed + 4);
 
-        Portal mouth = null, north = null, south = null;
+        Portal mouth = null, north = null, south = null, west = null;
         for (Portal p : field.portals) {
             if (p.kind == 'M') mouth = p;
             if (p.kind == 'G' && (north == null || p.y < north.y)) north = p;
             if (p.kind == 'G' && (south == null || p.y > south.y)) south = p;
+            if (p.kind == 'G' && (west == null || p.x < west.x)) west = p;
         }
         // 평원: 동굴 입구 -> 동굴, 북쪽 통로 -> 사막(남쪽 입구), 남쪽 통로 -> 바닷가(북쪽 입구). 동/서 통로는 아직 잠김.
         List<Portal> fp = new ArrayList<>();
@@ -219,6 +239,7 @@ public final class S5MineMap {
             if (p == mouth) fp.add(new Portal(p.x, p.y, 'M', CAVE1, cave.spawnX, cave.spawnY, p.label));
             else if (p == north) fp.add(new Portal(p.x, p.y, 'G', DESERT, desert.spawnX, desert.spawnY, "북쪽 사막으로 가는 길"));
             else if (p == south) fp.add(new Portal(p.x, p.y, 'G', BEACH, beach.spawnX, beach.spawnY, "남쪽 바닷가로 가는 길"));
+            else if (p == west) fp.add(new Portal(p.x, p.y, 'G', DUNGEON, dungeon.spawnX, dungeon.spawnY, "서쪽 동굴 (요일 던전)"));
             else fp.add(p);
         }
         List<Portal> cp = new ArrayList<>();
@@ -243,6 +264,9 @@ public final class S5MineMap {
         d2.wind = true;
         out.put(DESERT, d2);
         out.put(BEACH, relink(beach, bp, beach.npcs));
+        List<Portal> gp = new ArrayList<>();
+        for (Portal p : dungeon.portals) gp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, west.x + 1, west.y, p.label) : p);
+        out.put(DUNGEON, relink(dungeon, gp, null));
         return Collections.unmodifiableMap(out);
     }
 
@@ -556,6 +580,18 @@ public final class S5MineMap {
         }
         byte[][] o = assignOre(t, score, DESERT_SHARE, skip);
         return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-10-23] 서쪽 동굴 = 요일 던전: 광산 동굴과 같은 방식의 동굴(시드만 다름), 어둡지 않게(투구 없이도 보인다), 지하로 가는 문은 없앤다.
+     *  아래 가운데 나가는 길 -> 평원 서쪽 통로. 칸마다 광석 등급이 있지만(캔 칸 판정용) 캐면 그날 요일의 돌이 나온다(BotS5ServiceImpl.mineDig). */
+    static S5MineMap generateDungeon(long seed) {
+        S5MineMap c = generateCave(seed);
+        List<Portal> portals = new ArrayList<>();
+        for (Portal p : c.portals) {
+            if (p.kind == 'S') { c.terrain[p.y][p.x] = '#'; continue; }
+            portals.add(p.kind == 'U' ? new Portal(p.x, p.y, 'U', FIELD, 0, 0, "평원으로 나가기") : p);
+        }
+        return new S5MineMap(DUNGEON, "서쪽 동굴 · 요일 던전", false, c.w, c.h, c.spawnX, c.spawnY, c.terrain, c.ore, portals);
     }
 
     /** [2026-10-23] 남쪽 바닷가(120x96): 북쪽은 풀밭/숲, 가운데 모래사장(b), 남쪽은 바다. 부두(P) 끝에 배(q)가 정박해 있고 배 앞(부두 위)에

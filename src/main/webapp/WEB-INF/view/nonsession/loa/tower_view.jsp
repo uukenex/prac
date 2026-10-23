@@ -3632,9 +3632,9 @@ var TW = (function () {
           + '<button type="button" onclick="TW.switchTab(\'mineshop\')">🏪 광산상점</button></div>';
       html += '<div class="inv-etc-title">⛏️ 광석</div><div class="inv-etc-grid">';
       (m.ores || []).forEach(function (o) {
-        html += '<div class="inv-item"><div class="inv-ico ' + ['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
+        html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + o.grade + '등급 · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5346,6 +5346,10 @@ var TowerMine = (function () {
   var WIND_MS = 900; // 모래바람에 한 칸 밀리는 간격(가만히 있을 때)
   var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
   var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
+  // [2026-10-23] 요일 던전의 돌(등급 값 11~17 = 월~일): 월 은빛 달, 화 붉은 불, 수 푸른 물, 목 초록 나무, 금 금빛, 토 흙빛, 일 주황 해
+  ORE_NAME[11] = '월요석'; ORE_NAME[12] = '화요석'; ORE_NAME[13] = '수요석'; ORE_NAME[14] = '목요석'; ORE_NAME[15] = '금요석'; ORE_NAME[16] = '토요석'; ORE_NAME[17] = '일요석';
+  ORE_COL[11] = ['#b9c6ff', '#ffffff']; ORE_COL[12] = ['#ff4b2e', '#ffc0a8']; ORE_COL[13] = ['#2f8cff', '#b8dcff']; ORE_COL[14] = ['#33b34a', '#c4f5c8'];
+  ORE_COL[15] = ['#ffcf26', '#fff6b8']; ORE_COL[16] = ['#a8693a', '#e8c09a']; ORE_COL[17] = ['#ff8c12', '#ffe0a0'];
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC' };
@@ -5747,7 +5751,8 @@ var TowerMine = (function () {
   function showCoord() {
     el.coord.textContent = '📍 ' + P.x + ', ' + P.y;
     var c = cellAt(P.x, P.y), g = dug[P.x + ',' + P.y];
-    el.terr.textContent = map.name + ' · ' + (TERR_NAME[c] || '') + (g ? ' · 캔 자리(' + ORE_NAME[g] + ')' : (c === 'V' ? ' · 여기선 못 캐요' : ''));
+    el.terr.textContent = map.name + (st && st.dayStone ? ' (오늘 ' + st.dayLabel + ': ' + st.dayStone + ')' : '') + ' · ' + (TERR_NAME[c] || '')
+        + (g ? ' · 캔 자리(' + ORE_NAME[g] + ')' : (c === 'V' ? ' · 여기선 못 캐요' : ''));
   }
   // [2026-10-23] 광부 투구 시야 -- 어두운 맵(동굴)에서 투구 단계 - 필요 단계: 0 이하 아주 어둡게 / 1 잘 보임 / 2 이상 전체(서버 mineMapBlock과 같은 기준)
   function sight() {

@@ -8785,7 +8785,28 @@ public class BotS5ServiceImpl implements BotS5Service {
             o.put("qty", have.getOrDefault(S5MineMap.ORE_CODES[g - 1], 0));
             out.add(o);
         }
+        // [2026-10-23] 요일 던전의 돌(월요석~일요석) -- 등급 값은 11~17(일반 광석 1~6과 구분, 화면 아이콘/이름용)
+        for (int i = 0; i < S5MineMap.DAY_STONE_CODES.length; i++) {
+            HashMap<String, Object> o = new HashMap<>();
+            o.put("grade", S5MineMap.DAY_STONE_GRADE_BASE + i);
+            o.put("code", S5MineMap.DAY_STONE_CODES[i]);
+            o.put("name", S5MineMap.DAY_STONE_NAMES[i]);
+            o.put("qty", have.getOrDefault(S5MineMap.DAY_STONE_CODES[i], 0));
+            out.add(o);
+        }
         return out;
+    }
+
+    /** [2026-10-23] 캔 칸 기록의 맵 키 -- 요일 던전은 날마다 새로 캘 수 있게 날짜를 붙인다(dungeon-yyyyMMdd), 그 외 맵은 맵 ID. */
+    private static String mineDugKey(S5MineMap map, long now) {
+        return S5MineMap.DUNGEON.equals(map.id) ? S5MineMap.DUNGEON + "-" + S5MineMap.dayKey(now) : map.id;
+    }
+
+    /** 캔 칸 등급 값 -> 이름(1~6 일반 광석, 11~17 요일석). */
+    private static String mineGradeName(int g) {
+        if (g >= 1 && g <= S5MineMap.ORE_NAMES.length) return S5MineMap.ORE_NAMES[g - 1];
+        int d = g - S5MineMap.DAY_STONE_GRADE_BASE;
+        return d >= 0 && d < S5MineMap.DAY_STONE_NAMES.length ? S5MineMap.DAY_STONE_NAMES[d] : "";
     }
 
     private int minePickMax(HashMap<String, Object> row) {
@@ -8878,7 +8899,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("y", pos[1]);
         // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]
         List<Integer> dug = new ArrayList<>();
-        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, map.id)) {
+        if (S5MineMap.DUNGEON.equals(map.id)) { // [2026-10-23] 요일 던전 -- 오늘 나오는 돌
+            int di = S5MineMap.dayIndex(now);
+            out.put("dayLabel", S5MineMap.DAY_LABELS[di]);
+            out.put("dayStone", S5MineMap.DAY_STONE_NAMES[di]);
+        }
+        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, mineDugKey(map, now))) {
             int cell = intVal(d.get("CELL"), 0);
             dug.add(cell % map.w);
             dug.add(cell / map.w);
@@ -8898,14 +8924,15 @@ public class BotS5ServiceImpl implements BotS5Service {
     private List<HashMap<String, Object>> mineRecent(String userName) {
         List<HashMap<String, Object>> out = new ArrayList<>();
         for (HashMap<String, Object> d : dao.selectMineDugRecent(userName, 30)) {
-            S5MineMap m = S5MineMap.get(strVal(d.get("MAP_ID"), S5MineMap.FIELD));
+            String mid = strVal(d.get("MAP_ID"), S5MineMap.FIELD);
+            S5MineMap m = S5MineMap.get(mid.startsWith(S5MineMap.DUNGEON) ? S5MineMap.DUNGEON : mid); // 요일 던전 키는 dungeon-yyyyMMdd
             int cell = intVal(d.get("CELL"), 0), g = intVal(d.get("ORE_GRADE"), 0);
             HashMap<String, Object> r = new HashMap<>();
             r.put("mapName", m.name);
             r.put("x", cell % m.w);
             r.put("y", cell / m.w);
             r.put("grade", g);
-            r.put("name", g > 0 ? S5MineMap.ORE_NAMES[g - 1] : "");
+            r.put("name", mineGradeName(g));
             r.put("at", longOf(d.get("DUG_AT_MS"), 0L));
             out.add(r);
         }
@@ -8953,7 +8980,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         int cell = y * map.w + x;
-        if (dao.countMineDug(userName, map.id, cell) > 0) {
+        String dugKey = mineDugKey(map, now);
+        if (dao.countMineDug(userName, dugKey, cell) > 0) {
             out.put("message", "이미 캔 자리예요. 다른 곳을 찾아보세요.");
             return out;
         }
@@ -8961,7 +8989,18 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요(최대·현재 내구도가 함께 올라요).");
             return out;
         }
-        dao.insertMineDug(userName, map.id, cell, g, now);
+        // [2026-10-23] 요일 던전 -- 칸의 광석 등급과 상관없이 그날(KST) 요일의 돌 1개(월요석~일요석), 캔 칸 기록 등급은 11~17
+        String code, name;
+        if (S5MineMap.DUNGEON.equals(map.id)) {
+            int di = S5MineMap.dayIndex(now);
+            g = S5MineMap.DAY_STONE_GRADE_BASE + di;
+            code = S5MineMap.DAY_STONE_CODES[di];
+            name = S5MineMap.DAY_STONE_NAMES[di];
+        } else {
+            code = S5MineMap.ORE_CODES[g - 1];
+            name = S5MineMap.ORE_NAMES[g - 1];
+        }
+        dao.insertMineDug(userName, dugKey, cell, g, now);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("pickDur", st - 1);
@@ -8969,7 +9008,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         up.put("x", x);
         up.put("y", y);
         dao.updateMineUser(up);
-        String code = S5MineMap.ORE_CODES[g - 1], name = S5MineMap.ORE_NAMES[g - 1];
         dao.addUserOre(userName, code, 1);
         int qty = 0;
         for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) qty = intVal(r.get("QTY"), 0);
