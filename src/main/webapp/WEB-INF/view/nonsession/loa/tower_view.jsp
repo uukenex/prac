@@ -771,7 +771,7 @@
     .mine-log-xy{ font-family:ui-monospace, Consolas, monospace; color:#ffe9a8; }
     .mine-msg{ position:absolute; left:50%; top:calc(50% - 140px); transform:translateX(-50%); padding:7px 12px; font-size:13px; display:none; max-width:84vw; text-align:center; pointer-events:none; }
     .mine-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
-    /* [2026-10-23] 대장간(곡괭이 수리) 창 */
+    /* [2026-10-23] 대장간(곡괭이 강화) 창 */
     .mine-smith{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(340px,92vw); max-height:80vh; overflow:auto; padding:12px; font-size:13px; display:none; z-index:2; }
     .mine-smith-head{ display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom:6px; }
     .mine-smith-head button, .mine-smith-row button{ font-size:12px; padding:4px 8px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
@@ -3658,7 +3658,7 @@ var TW = (function () {
       var nr = m.nextResetAt ? new Date(m.nextResetAt) : null;
       var resetTxt = nr ? (nr.getMonth() + 1) + '/' + nr.getDate() + ' ' + (nr.getHours() < 10 ? '0' : '') + nr.getHours() + ':00' : '';
       var html = '<div class="ore-mine-card"><div><div class="ore-sta">⛏️ 곡괭이 내구도 ' + m.durability + ' / ' + m.durabilityMax + '</div>'
-          + '<div class="ore-sub">캘 때마다 1씩 닳고, 중앙 평원 마을의 대장장이에게 광석을 주면 고쳐요 · 맵은 2일마다 새로 섞여요' + (resetTxt ? '(다음 ' + resetTxt + ')' : '') + ' · 한 번 캔 칸은 리셋 전까지 다시 못 캐요</div>'
+          + '<div class="ore-sub">캘 때마다 1씩 닳고, 중앙 평원 마을의 대장장이에게 광석을 주면 곡괭이가 강화돼요(최대·현재 내구도 함께 증가) · 맵은 2일마다 새로 섞여요' + (resetTxt ? '(다음 ' + resetTxt + ')' : '') + ' · 한 번 캔 칸은 리셋 전까지 다시 못 캐요</div>'
           + '<div class="ore-sub">📍 ' + m.mapName + ' (' + m.x + ', ' + m.y + ') · 누적 ' + (m.totalDig || 0) + '회 · ⛑️ 광부 투구 ' + (m.helmet || 0) + '단계</div></div>'
           + '<button type="button" onclick="TW.openMine()">⛏️ 들어가기</button></div>';
       var rec = m.recent || [];
@@ -5733,7 +5733,7 @@ var TowerMine = (function () {
   function cellAt(x, y) { return map && x >= 0 && y >= 0 && x < map.w && y < map.h ? map.rows[y].charAt(x) : '^'; }
   function walk(x, y) { return WALK.indexOf(cellAt(x, y)) >= 0; }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
-  // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 수리)
+  // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 강화 = 최대/현재 함께 증가)
   function resetText(ms) {
     if (!ms) return '';
     var d = new Date(ms);
@@ -5741,7 +5741,7 @@ var TowerMine = (function () {
   }
   function showStamina() {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
-    el.regen.textContent = '🔨 마을 대장장이에게 광석으로 수리' + (st.nextResetAt ? ' · 맵 리셋 ' + resetText(st.nextResetAt) : '');
+    el.regen.textContent = '🔨 마을 대장장이에게 광석으로 곡괭이 강화' + (st.nextResetAt ? ' · 맵 리셋 ' + resetText(st.nextResetAt) : '');
     el.dig.disabled = busy || st.durability < 1;
   }
   function showCoord() {
@@ -5841,7 +5841,7 @@ var TowerMine = (function () {
     var ph = Math.floor(Date.now() / 7000);
     return (hashXY(ph, 7) % 2) ? 1 : -1;
   }
-  /** NPC에게 말 걸기 -- 머리 위 말풍선 + 대장장이면 수리 창. */
+  /** NPC에게 말 걸기 -- 머리 위 말풍선 + 대장장이면 강화 창. */
   function talk(n, now) {
     if (!n) return;
     var key = 'npc' + n.x + ',' + n.y;
@@ -5850,21 +5850,21 @@ var TowerMine = (function () {
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + n.line, t0: now };
     if (n.kind === 'smith') openSmith(n);
   }
-  // ---------------------------------------------------------------- 대장간(곡괭이 수리)
+  // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
     var q = 0;
     (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; });
     return q;
   }
   function renderSmith(n) {
-    var rows = (st.repairs || []).map(function (r) {
-      var have = oreHave(r.grade), can = have >= r.need && st.durability < st.durabilityMax;
-      return '<div class="mine-smith-row"><img src="' + oreIcon(r.grade) + '" alt=""><span class="nm">' + r.oreName + ' ' + r.need + '개 → +' + r.gain
+    var rows = (st.pickUpgrades || []).map(function (r) {
+      var have = oreHave(r.grade), can = have >= r.need;
+      return '<div class="mine-smith-row"><img src="' + oreIcon(r.grade) + '" alt=""><span class="nm">' + r.oreName + ' ' + r.need + '개 → 최대 +' + r.gain
           + '<small>보유 ' + have + '개</small></span>'
-          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.repair(' + r.grade + ',1)">1회</button>'
-          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.repair(' + r.grade + ',9999)">최대</button></div>';
+          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',1)">1회</button>'
+          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',9999)">최대</button></div>';
     });
-    el.smith.innerHTML = '<div class="mine-smith-head">🔨 대장간 <button type="button" onclick="TowerMine.closeSmith()">닫기</button></div>'
+    el.smith.innerHTML = '<div class="mine-smith-head">🔨 대장간 · 곡괭이 강화 <button type="button" onclick="TowerMine.closeSmith()">닫기</button></div>'
         + '<div class="mine-smith-say">' + (n ? n.line : '') + '</div>'
         + '<div class="mine-smith-dur">⛏️ 곡괭이 내구도 <b>' + st.durability + ' / ' + st.durabilityMax + '</b></div>'
         + rows.join('');
@@ -5881,16 +5881,16 @@ var TowerMine = (function () {
     smithOpen = false;
     el.smith.style.display = 'none';
   }
-  function repair(grade, times) {
+  function pickUpgrade(grade, times) {
     if (busy) return;
     busy = true;
-    api('/api/tower-mine-repair?grade=' + grade + '&times=' + times).then(function (d) {
+    api('/api/tower-mine-pick-upgrade?grade=' + grade + '&times=' + times).then(function (d) {
       busy = false;
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
       if (d.ores) st.ores = d.ores;
       showStamina();
       if (smithOpen) renderSmith(smithNpc);
-      msg(d.message || d.error || '고치지 못했어요.', 2800);
+      msg(d.message || d.error || '강화하지 못했어요.', 2800);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   /** 화면을 검게 덮으면서(FADE_OUT_MS) 서버 요청 work()를 함께 보내고, 둘 다 끝나면 응답을 넘긴다. */
@@ -6163,7 +6163,7 @@ var TowerMine = (function () {
     var x = P.x, y = P.y, c = cellAt(x, y);
     if (c === 'V') { msg('마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.'); return; }
     if (dug[x + ',' + y]) { msg('이미 캔 자리예요. 다른 곳을 찾아보세요.'); return; }
-    if (st.durability < 1) { msg('⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 고쳐 오세요.'); return; }
+    if (st.durability < 1) { msg('⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요.'); return; }
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now();
@@ -6250,7 +6250,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, repair: repair, closeSmith: closeSmith,
+  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, closeSmith: closeSmith,
            ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

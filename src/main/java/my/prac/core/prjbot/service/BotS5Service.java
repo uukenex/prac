@@ -232,8 +232,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
     HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py);
     HashMap<String, Object> mineGoVillage(String userName);
-    /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 내구도 수리, times = 몇 번. */
-    HashMap<String, Object> mineRepair(String userName, int grade, int times);
+    /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
+    HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
     void mineResetTick();
     HashMap<String, Object> mineShop(String userName);

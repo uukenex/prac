@@ -587,14 +587,14 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, ver, x, y, px, py));
     }
 
-    /** [2026-10-23] 광산 대장간 -- 평원 마을 대장장이에게 광석(grade 1~6)을 주고 곡괭이 내구도를 고친다. times = 몇 번(남은 수리량/보유 광석만큼으로 줄어듦). */
-    @GetMapping("/api/tower-mine-repair")
+    /** [2026-10-23] 광산 대장간 -- 평원 마을 대장장이에게 광석(grade 1~6)을 주고 곡괭이를 강화한다(최대/현재 내구도 함께 증가). times = 몇 번(보유 광석만큼으로 줄어듦). */
+    @GetMapping("/api/tower-mine-pick-upgrade")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineRepair(@RequestParam(value = "userName", defaultValue = "") String userName,
+    public ResponseEntity<?> apiTowerMinePickUpgrade(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam("grade") int grade, @RequestParam(value = "times", defaultValue = "1") int times) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineRepair(userName, grade, times);
-        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 수리 " + grade + "등급 x" + times, String.valueOf(out.get("message")));
+        HashMap<String, Object> out = s5Service.minePickUpgrade(userName, grade, times);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 곡괭이 강화 " + grade + "등급 x" + times, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
 

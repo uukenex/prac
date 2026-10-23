@@ -19,7 +19,7 @@ import java.util.Random;
  *   만들어도 같은 맵). 주기 0(첫 리셋 전) 시드는 예전 맵 파일을 만든 시드(20261023)와 같아 평원/동굴 지형과 광석이 그대로다. 리셋 시각은
  *   RESET_ANCHOR_MS(2026-10-25 05:00 KST)부터 2일마다이고, 실제 전환(캔 칸 초기화 + 위치 마을로)은 BotS5ServiceImpl.mineGate가 한다.
  *   맵: 중앙 평원(field) / 광산 동굴 1층(cave1) / 북쪽 사막(desert, 모래바람으로 좌우로 밀림, 북쪽 끝에 잠긴 통로) /
- *   남쪽 바닷가(beach, 정박한 배 + 선장 NPC, 배는 아직 잠김 -- 추후 배로만 다른 맵 이동). 평원 마을에는 대장장이 NPC(곡괭이 수리).
+ *   남쪽 바닷가(beach, 정박한 배 + 선장 NPC, 배는 아직 잠김 -- 추후 배로만 다른 맵 이동). 평원 마을에는 대장장이 NPC(곡괭이 강화).
  * 지형 문자: . 풀밭 / , 흙길 / : 바위 지대 / V 마을 / H 다리 / c 동굴 바닥 / r 자갈 바닥 / d 모래 / b 모래사장 / P 부두 (이상 이동 가능)
  *   ~ 물 / T 나무 / ^ 바위산 / # 동굴 벽 / h j k l 초가집(2x2: 왼위 오위 왼아래 오아래) / R 사암 / C 선인장 / q 배 / N NPC (이동 불가)
  *   G 지역 통로 / M 동굴 입구 / U 나가는 길 / S 지하로 가는 문 / B 배에 오르는 판자 (포탈: 바로 옆 칸에서 들어가면 이동, 잠겼으면 안내).
@@ -89,7 +89,7 @@ public final class S5MineMap {
         }
     }
 
-    /** NPC(그 칸은 이동 불가, 부딪히면 말을 건다). kind: smith = 대장장이(곡괭이 수리), captain = 선장(대사만). */
+    /** NPC(그 칸은 이동 불가, 부딪히면 말을 건다). kind: smith = 대장장이(곡괭이 강화), captain = 선장(대사만). */
     public static final class Npc {
         public final int x, y;
         public final String kind, name, line;
@@ -228,11 +228,11 @@ public final class S5MineMap {
         List<Portal> bp = new ArrayList<>();
         for (Portal p : beach.portals) bp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, south.x, south.y - 1, p.label) : p);
 
-        // 마을 대장장이(곡괭이 수리) -- 마을 칸이라 원래 광석이 없고 다른 칸/광석 배치는 그대로다.
+        // 마을 대장장이(곡괭이 강화) -- 마을 칸이라 원래 광석이 없고 다른 칸/광석 배치는 그대로다.
         int sx = field.spawnX + SMITH_DX, sy = field.spawnY + SMITH_DY;
         field.terrain[sy][sx] = 'N';
         List<Npc> fn = new ArrayList<>();
-        fn.add(new Npc(sx, sy, "smith", "대장장이", "광석을 가져오면 곡괭이를 손봐 주지. 좋은 광석일수록 많이 고쳐 준다네."));
+        fn.add(new Npc(sx, sy, "smith", "대장장이", "광석을 가져오면 곡괭이를 더 튼튼하게 만들어 주지. 좋은 광석일수록 크게 강화된다네."));
 
         Map<String, S5MineMap> out = new LinkedHashMap<>();
         out.put(FIELD, relink(field, fp, fn));

@@ -8602,7 +8602,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 화면에는 지형/포탈/NPC만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 맵 리셋 때만 초기화).
     // [2026-10-23] "스태미너 대신 곡괭이 내구도, 처음 1000(모든 유저 현재/최대 1000), 마을 대장간 NPC에게 광석을 주면 내구도를 올린다" 요청 --
     //   한 번 캘 때 곡괭이 내구도(TBOT_S5_MINE_USER.PICK_DUR) 1 소모, 시간 회복/0시 초기화 없음. 대장장이(평원 마을 NPC)에게 광석을 주면
-    //   MINE_REPAIR 비율로 수리(최대 내구도 PICK_DUR_MAX까지). 예전 스태미너 컬럼(STAMINA/STAMINA_AT_MS)은 더 이상 읽지 않는다.
+    //   MINE_PICK_UPGRADE 비율로 곡괭이 강화 -- 최대 내구도(PICK_DUR_MAX)와 현재 내구도(PICK_DUR)가 같은 양만큼 함께 오른다(상한 없음, 별도 수리 없음 --
+    //   2026-10-23 "회복은 최대치를 늘리는 것" 확인). 예전 스태미너 컬럼(STAMINA/STAMINA_AT_MS)은 더 이상 읽지 않는다.
     // [2026-10-23] "전체 맵은 2일 주기로 리셋 후 셔플, 리셋 작업이 끝나기 전엔 리셋 중이라 접속 안 된다고 안내" 요청 -- mineGate 참고.
     // 캐릭터 위치(맵 + 좌표)는 광산을 나갈 때(와 이동 중 주기적으로, 캘 때, 포탈을 탈 때) 저장하고, 마지막 저장 위치에서 시간당 갈 수 있는
     // 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지). 포탈(지역 통로/동굴 입구/나가는 길/지하 문)은
@@ -8610,8 +8611,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 광산상점: 광석을 내고 자동사냥 처치당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 처치 수만큼 함께 지급(settleAutoHunt).
     //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
     private static final int MINE_PICK_MAX = 1000; // 곡괭이 기본 최대 내구도(새로 들어온 유저도 1000으로 시작 -- 컬럼 기본값)
-    /** 대장간 수리 {광석 등급, 필요 개수, 내구도 회복}. 캔 광석을 전부 수리에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
-    private static final int[][] MINE_REPAIR = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
+    /** 대장간 곡괭이 강화 {광석 등급, 필요 개수, 최대(+현재) 내구도 증가}. 캔 광석을 전부 강화에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
+    private static final int[][] MINE_PICK_UPGRADE = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
     private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
@@ -8800,10 +8801,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("durabilityMax", max);
     }
 
-    /** 대장간 수리 표(화면용). */
-    private static List<HashMap<String, Object>> mineRepairList() {
+    /** 대장간 곡괭이 강화 표(화면용). */
+    private static List<HashMap<String, Object>> minePickUpgradeList() {
         List<HashMap<String, Object>> out = new ArrayList<>();
-        for (int[] r : MINE_REPAIR) {
+        for (int[] r : MINE_PICK_UPGRADE) {
             HashMap<String, Object> m = new HashMap<>();
             m.put("grade", r[0]);
             m.put("oreName", S5MineMap.ORE_NAMES[r[0] - 1]);
@@ -8867,7 +8868,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         HashMap<String, Object> out = new HashMap<>();
         putMinePick(out, minePickDur(row), minePickMax(row));
-        out.put("repairs", mineRepairList());
+        out.put("pickUpgrades", minePickUpgradeList());
         out.put("nextResetAt", S5MineMap.nextResetAt(now));
         int[] pos = minePos(row, map);
         out.put("mapId", map.id);
@@ -8957,7 +8958,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         if (st < 1) {
-            out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 고쳐 오세요.");
+            out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요(최대·현재 내구도가 함께 올라요).");
             return out;
         }
         dao.insertMineDug(userName, map.id, cell, g, now);
@@ -9162,10 +9163,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-10-23] 대장간 -- 평원 마을 대장장이에게 광석(grade)을 주고 곡괭이를 고친다. times = 몇 번(남은 수리량/보유 광석 수만큼으로 줄인다). */
+    /** [2026-10-23] 대장간 -- 평원 마을 대장장이에게 광석(grade)을 주고 곡괭이를 강화한다(최대/현재 내구도 함께 증가). times = 몇 번(보유 광석만큼으로 줄인다). */
     @Override
     @Transactional
-    public HashMap<String, Object> mineRepair(String userName, int grade, int times) {
+    public HashMap<String, Object> minePickUpgrade(String userName, int grade, int times) {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
@@ -9176,20 +9177,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", false);
         putMinePick(out, dur, max);
         int[] rep = null;
-        for (int[] r : MINE_REPAIR) if (r[0] == grade) rep = r;
+        for (int[] r : MINE_PICK_UPGRADE) if (r[0] == grade) rep = r;
         if (rep == null) {
-            out.put("message", "그 광석으로는 고칠 수 없어요.");
+            out.put("message", "그 광석으로는 강화할 수 없어요.");
             return out;
         }
         String code = S5MineMap.ORE_CODES[grade - 1], name = S5MineMap.ORE_NAMES[grade - 1];
-        if (dur >= max) {
-            out.put("message", "🔨 곡괭이가 이미 멀쩡하다네. (내구도 " + dur + " / " + max + ")");
-            return out;
-        }
         int have = 0;
         for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) have = intVal(r.get("QTY"), 0);
-        int needTimes = (max - dur + rep[2] - 1) / rep[2];
-        int n = Math.min(Math.max(1, times), Math.min(needTimes, have / rep[1]));
+        int n = Math.min(Math.max(1, times), have / rep[1]);
         if (n < 1) {
             out.put("message", "광석이 부족해요. (" + name + " " + rep[1] + "개 필요, 보유 " + have + "개)");
             return out;
@@ -9198,12 +9194,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "광석이 부족해요. (" + name + " " + rep[1] * n + "개 필요)");
             return out;
         }
-        int gain = Math.min(max - dur, rep[2] * n);
-        dao.addMinePickDur(userName, gain);
-        putMinePick(out, dur + gain, max);
+        int gain = rep[2] * n;
+        dao.addMinePickMax(userName, gain);
+        putMinePick(out, dur + gain, max + gain);
         out.put("ok", true);
         out.put("ores", mineOreList(userName));
-        out.put("message", "🔨 대장장이가 곡괭이를 손봐 줬어요! " + name + " " + rep[1] * n + "개 → 내구도 +" + gain + " (지금 " + (dur + gain) + " / " + max + ")");
+        out.put("message", "🔨 대장장이가 곡괭이를 강화해 줬어요! " + name + " " + rep[1] * n + "개 → 최대 내구도 +" + gain + " (지금 " + (dur + gain) + " / " + (max + gain) + ")");
         return out;
     }
 
