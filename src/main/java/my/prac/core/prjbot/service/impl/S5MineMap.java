@@ -41,6 +41,10 @@ public final class S5MineMap {
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
     public static final String[] DAY_LABELS = { "월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일" };
     public static final int DAY_STONE_GRADE_BASE = 11;
+    /** [2026-10-24] 칠요석 -- 요일석 7종(월~일) 1개씩을 대장장이 [합성]으로 합친 돌(등급 값 18). 용왕의 반지 재료. */
+    public static final String SEVEN_STONE_CODE = "SEVEN_STONE";
+    public static final String SEVEN_STONE_NAME = "칠요석";
+    public static final int SEVEN_STONE_GRADE = 18;
 
     /** 그 시각의 요일 인덱스(0 = 월 ... 6 = 일, KST). */
     public static int dayIndex(long ms) {

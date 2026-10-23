@@ -782,6 +782,13 @@
     .mine-smith-menu button{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px; font-size:15px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-smith-menu button small{ font-size:11px; font-weight:600; color:#cfc8e8; }
     .mine-smith-menu button:hover, .mine-smith-menu button:focus-visible{ background:#4d3f72; }
+    .mine-cost{ display:flex; flex-wrap:wrap; gap:2px 8px; margin-top:3px; font-size:11px; font-weight:700; }
+    .mine-cost span{ display:inline-flex; align-items:center; gap:2px; }
+    .mine-smith-row .mine-cost img{ width:16px; height:16px; }
+    .mine-cost .ok{ color:#a8f0c4; }
+    .mine-cost .no{ color:#ffa08f; }
+    .mine-worn{ font-size:11px; color:#a8f0c4; }
+    .mine-mini-btn{ font-size:11px; padding:2px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-smith-sub{ margin-top:12px; padding-top:8px; border-top:2px solid rgba(244,240,230,.45); }
     .mine-smith-sub b{ color:#ffe14d; }
     .mine-smith-dur b{ color:#ffe14d; font-family:ui-monospace, Consolas, monospace; }
@@ -3640,7 +3647,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade === 18 ? '요일석 7종 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5344,6 +5351,7 @@ var TowerMine = (function () {
   ORE_NAME[11] = '월요석'; ORE_NAME[12] = '화요석'; ORE_NAME[13] = '수요석'; ORE_NAME[14] = '목요석'; ORE_NAME[15] = '금요석'; ORE_NAME[16] = '토요석'; ORE_NAME[17] = '일요석';
   ORE_COL[11] = ['#b9c6ff', '#ffffff']; ORE_COL[12] = ['#ff4b2e', '#ffc0a8']; ORE_COL[13] = ['#2f8cff', '#b8dcff']; ORE_COL[14] = ['#33b34a', '#c4f5c8'];
   ORE_COL[15] = ['#ffcf26', '#fff6b8']; ORE_COL[16] = ['#a8693a', '#e8c09a']; ORE_COL[17] = ['#ff8c12', '#ffe0a0'];
+  ORE_NAME[18] = '칠요석'; ORE_COL[18] = ['#9b5cff', '#ffffff']; // [2026-10-24] 요일석 7종 합성
   // [2026-10-24] 보석(등급 값 21~29): 재스퍼, 루비, 스타 사파이어, 아쿠아마린, 토파즈, 가넷, 스피넬, 에메랄드, 다이아몬드
   ['재스퍼', '루비', '스타 사파이어', '아쿠아마린', '토파즈', '가넷', '스피넬', '에메랄드', '다이아몬드'].forEach(function (n, i) { ORE_NAME[21 + i] = n; });
   [['#a8452f', '#e8907a'], ['#d4104f', '#ff9ab8'], ['#2448b8', '#bcd0ff'], ['#4fc8d8', '#d4fbff'], ['#f0a530', '#ffe2a8'],
@@ -5746,7 +5754,10 @@ var TowerMine = (function () {
     msgTimer = setTimeout(function () { el.msg.style.display = 'none'; }, ms || 2600);
   }
   function cellAt(x, y) { return map && x >= 0 && y >= 0 && x < map.w && y < map.h ? map.rows[y].charAt(x) : '^'; }
-  function walk(x, y) { return WALK.indexOf(cellAt(x, y)) >= 0; }
+  function walk(x, y) {
+    var c = cellAt(x, y);
+    return WALK.indexOf(c) >= 0 || (c === '~' && !!(st && st.waterWalk)); // [2026-10-24] 용왕의 반지 = 물 위 걷기
+  }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 강화 = 최대/현재 함께 증가)
   function resetText(ms) {
@@ -5864,8 +5875,12 @@ var TowerMine = (function () {
     var key = 'npc' + n.x + ',' + n.y;
     if (lastBump === key && now - lastBumpT < 1200) return;
     lastBump = key; lastBumpT = now;
-    talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + n.line, t0: now };
-    if (n.kind === 'smith') openSmith(n);
+    var line = n.line, dg = st && st.dragon || {};
+    if (n.kind === 'captain' && dg.has) line = '물 위를 걷는 기분은 어떤가?';
+    else if (n.kind === 'captain' && dg.quest >= 1) line = '재료는 다 모았나?';
+    talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
+    if (n.kind === 'smith') openSmith(n, 'menu');
+    else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -5873,22 +5888,72 @@ var TowerMine = (function () {
     (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; });
     return q;
   }
-  // [2026-10-24] 대장장이에게 말 걸면 바로 강화 창 대신 [구매](광부 투구) / [강화](곡괭이) 선택부터
-  var smithView = 'menu';
+  // [2026-10-24] NPC 창 -- 대장장이: 메뉴 -> [구매](투구/장신구/장화) / [강화](곡괭이) / [합성](칠요석), 선장: 용왕의 반지 퀘스트.
+  //  smithView = 'menu' | 'buy' | 'upgrade' | 'synth' | 'captain'
+  var smithView = 'menu', captainSay = '';
+  var GEAR_ICON = { ring: '💍', necklace: '📿', boots: '👢' };
+  function npcHead(t, back) {
+    return '<div class="mine-smith-head">' + t + ' <span>' + (back ? '<button type="button" onclick="TowerMine.smithGo(\'menu\')">뒤로</button> ' : '')
+        + '<button type="button" onclick="TowerMine.closeSmith()">닫기</button></span></div>';
+  }
+  /** 재료 목록(아이콘 + 이름 보유/필요, 모자라면 붉게). */
+  function costHtml(costs) {
+    return '<span class="mine-cost">' + (costs || []).map(function (c) {
+      return '<span class="' + (c.have >= c.need ? 'ok' : 'no') + '"><img src="' + oreIcon(c.grade) + '" alt="">' + c.name + ' ' + c.have + '/' + c.need + '</span>';
+    }).join('') + '</span>';
+  }
+  function gearHtml() {
+    return (st.gear || []).map(function (g) {
+      var h = '<div class="mine-smith-sub">' + (GEAR_ICON[g.kind] || '💍') + ' ' + g.name + ' <b>' + (g.tier > 0 ? g.tier + '단계' : '없음') + '</b>'
+          + (g.kind === 'ring' && g.tier > 0 ? (g.worn ? ' <span class="mine-worn">착용 중</span>'
+              : ' <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>') : '') + '</div>';
+      if (g.effect) h += '<div class="mine-smith-say">지금: ' + g.effect + '</div>';
+      if (!g.nextTier) return h + '<div class="mine-smith-say">최고 단계예요.</div>';
+      return h + '<div class="mine-smith-row"><span class="nm">' + g.nextTier + '단계: ' + g.nextEffect + costHtml(g.costs) + '</span>'
+          + '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button></div>';
+    }).join('') + '<div class="mine-smith-say">반지는 하나만 낄 수 있어요. 목걸이와 장화는 가지고 있으면 바로 적용돼요.</div>';
+  }
+  function synthHtml() {
+    var stones = [];
+    for (var g = 11; g <= 17; g++) stones.push({ grade: g, name: ORE_NAME[g], have: oreHave(g), need: 1 });
+    var can = (st.sevenMax || 0) > 0 ? '' : 'disabled ';
+    return '<div class="mine-smith-say">요일석 7종(월요석~일요석)을 하나씩 가져오면 칠요석 하나로 합쳐 주지.</div>'
+        + '<div class="mine-smith-row"><img src="' + oreIcon(18) + '" alt=""><span class="nm">칠요석<small>보유 ' + oreHave(18) + '개 · 지금 ' + (st.sevenMax || 0) + '개 만들 수 있어요</small>'
+        + costHtml(stones) + '</span>'
+        + '<button type="button" ' + can + 'onclick="TowerMine.synth(1)">1개</button>'
+        + '<button type="button" ' + can + 'onclick="TowerMine.synth(9999)">최대</button></div>';
+  }
+  function captainHtml(n) {
+    var d = st.dragon || {}, h = npcHead('⚓ ' + (n ? n.name : '늙은 선장'), false);
+    if (d.has) return h + '<div class="mine-smith-say">' + (captainSay || '허허, 물 위를 걷는 기분은 어떤가? 🌊') + '</div>';
+    if (d.quest >= 1) {
+      return h + '<div class="mine-smith-say">' + (captainSay || d.story || '') + '</div>'
+          + '<div class="mine-smith-row"><span class="nm">🌊 용왕의 반지<small>가지고 있으면 물 위를 걸을 수 있어요</small>' + costHtml(d.costs) + '</span>'
+          + '<button type="button" ' + (d.can ? '' : 'disabled ') + 'onclick="TowerMine.captain(\'craft\')">만들어 주세요</button></div>';
+    }
+    return h + '<div class="mine-smith-say">' + (captainSay || (n ? n.line : '')) + '</div>'
+        + '<div class="mine-smith-row"><img src="' + oreIcon(4) + '" alt=""><span class="nm">금광석 ' + d.goldNeed + '개 주기<small>보유 ' + (d.gold || 0) + '개</small></span>'
+        + '<button type="button" ' + ((d.gold || 0) >= d.goldNeed ? '' : 'disabled ') + 'onclick="TowerMine.captain(\'give\')">주기</button></div>';
+  }
   function renderSmith(n) {
-    var head = function (t, back) {
-      return '<div class="mine-smith-head">' + t + ' <span>' + (back ? '<button type="button" onclick="TowerMine.smithGo('menu')">뒤로</button> ' : '')
-          + '<button type="button" onclick="TowerMine.closeSmith()">닫기</button></span></div>';
-    };
+    if (smithView === 'captain') {
+      el.smith.innerHTML = captainHtml(n);
+      return;
+    }
     if (smithView === 'menu') {
-      el.smith.innerHTML = head('🔨 대장간', false)
+      el.smith.innerHTML = npcHead('🔨 대장간', false)
           + '<div class="mine-smith-say">' + (n ? n.line : '') + '</div>'
-          + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.smithGo('buy')">⛑️ 구매<small>광부 투구</small></button>'
-          + '<button type="button" onclick="TowerMine.smithGo('upgrade')">⛏️ 강화<small>곡괭이 내구도</small></button></div>';
+          + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.smithGo(\'buy\')">⛑️ 구매<small>투구·장신구·장화</small></button>'
+          + '<button type="button" onclick="TowerMine.smithGo(\'upgrade\')">⛏️ 강화<small>곡괭이 내구도</small></button>'
+          + '<button type="button" onclick="TowerMine.smithGo(\'synth\')">🌈 합성<small>칠요석</small></button></div>';
       return;
     }
     if (smithView === 'buy') {
-      el.smith.innerHTML = head('⛑️ 대장간 · 구매', true) + helmetHtml();
+      el.smith.innerHTML = npcHead('⛑️ 대장간 · 구매', true) + helmetHtml() + gearHtml();
+      return;
+    }
+    if (smithView === 'synth') {
+      el.smith.innerHTML = npcHead('🌈 대장간 · 합성', true) + synthHtml();
       return;
     }
     var rows = (st.pickUpgrades || []).map(function (r) {
@@ -5898,7 +5963,7 @@ var TowerMine = (function () {
           + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',1)">1회</button>'
           + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',9999)">최대</button></div>';
     });
-    el.smith.innerHTML = head('⛏️ 대장간 · 곡괭이 강화', true)
+    el.smith.innerHTML = npcHead('⛏️ 대장간 · 곡괭이 강화', true)
         + '<div class="mine-smith-dur">⛏️ 곡괭이 내구도 <b>' + st.durability + ' / ' + st.durabilityMax + '</b></div>'
         + rows.join('');
   }
@@ -5920,15 +5985,39 @@ var TowerMine = (function () {
       return api('/api/tower-mine');
     }).then(function (s) {
       busy = false;
-      if (s && !s.error) { st.helmet = s.helmet; st.helmetInfo = s.helmetInfo; st.ores = s.ores; buildMiniBase(); drawMini(); }
+      if (s && !s.error) { st.helmet = s.helmet; st.helmetInfo = s.helmetInfo; applyGear(s); buildMiniBase(); drawMini(); }
       if (smithOpen) renderSmith(smithNpc);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
+  // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
+  function applyGear(d) {
+    if (!d) return;
+    ['gear', 'dragon', 'sevenMax', 'ores', 'waterWalk', 'stepMs'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    STEP_MS = st.stepMs || 140;
+  }
+  function gearAct(path) {
+    if (busy) return;
+    busy = true;
+    api(path).then(function (d) {
+      busy = false;
+      applyGear(d);
+      var text = d.message || d.error || '완료';
+      if (smithView === 'captain') captainSay = text; // 선장 대답은 창 안에(먹튀 대사 포함)
+      else msg(text, 3200);
+      if (d.craftedRing || d.questStarted) flashT0 = performance.now();
+      if (smithOpen) renderSmith(smithNpc);
+    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function craft(code) { gearAct('/api/tower-mine-craft?code=' + encodeURIComponent(code)); }
+  function equipRing(code) { gearAct('/api/tower-mine-ring?code=' + encodeURIComponent(code)); }
+  function synth(times) { gearAct('/api/tower-mine-synth?times=' + times); }
+  function captain(action) { gearAct('/api/tower-mine-captain?action=' + action); }
   var smithNpc = null;
-  function openSmith(n) {
+  function openSmith(n, view) {
     smithNpc = n;
     smithOpen = true;
-    smithView = 'menu';
+    smithView = view || 'menu';
+    captainSay = '';
     keys = []; drag = null;
     renderSmith(n);
     el.smith.style.display = 'block';
@@ -6151,6 +6240,7 @@ var TowerMine = (function () {
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {
     st = s;
+    STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
       portalAt = {};
@@ -6234,7 +6324,7 @@ var TowerMine = (function () {
         (st.ores || []).forEach(function (o) { if (o.grade === d.grade) o.qty = d.qty; }); // 대장간 창의 보유 수량도 맞춘다
         recent.unshift({ mapName: map.name, x: x, y: y, grade: d.grade, at: Date.now() });
         var img = new Image(); img.src = oreIcon(d.grade);
-        floats.push({ x: x, y: y, text: '+1 ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: d.grade >= 5, icon: img, t0: performance.now() });
+        floats.push({ x: x, y: y, text: '+' + (d.gain || 1) + ' ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: d.grade >= 5, icon: img, t0: performance.now() });
         if (d.grade >= 5) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3200); }
         if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
           (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
@@ -6315,7 +6405,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo,
+  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

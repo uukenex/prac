@@ -598,6 +598,47 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-24] 웹 광산 대장장이 [구매] -- 장신구/장화 만들기·올리기(code), [구매]의 반지 바꿔 끼기. */
+    @GetMapping("/api/tower-mine-craft")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineCraft(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("code") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineCraft(userName, code);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 장비 " + code, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    @GetMapping("/api/tower-mine-ring")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineRing(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("code") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineEquipRing(userName, code));
+    }
+
+    /** [2026-10-24] 웹 광산 대장장이 [합성] -- 요일석 7종 -> 칠요석. */
+    @GetMapping("/api/tower-mine-synth")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineSynth(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineSynthSeven(userName, times);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 칠요석 합성 x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 바닷가 선장 -- action = give(금광석 10개, 먹튀 가능) / craft(용왕의 반지). */
+    @GetMapping("/api/tower-mine-captain")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineCaptain(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "give") String action) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineCaptain(userName, action);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 선장 " + action, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-23] 웹 광산 -- 마을로 이동(중앙 평원 시작점). */
     @GetMapping("/api/tower-mine-village")
     @ResponseBody

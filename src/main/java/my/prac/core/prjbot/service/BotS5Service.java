@@ -240,6 +240,11 @@ public interface BotS5Service {
     String mineShopBuy(String userName, int no, int times);
     /** [2026-10-23] 광부 투구 구매/업그레이드. */
     String mineHelmetUpgrade(String userName);
+    /** [2026-10-24] 광산 장비(장신구/장화) 만들기·올리기, 반지 바꿔 끼기, 칠요석 합성, 선장 퀘스트(give/craft). */
+    HashMap<String, Object> mineCraft(String userName, String code);
+    HashMap<String, Object> mineEquipRing(String userName, String code);
+    HashMap<String, Object> mineSynthSeven(String userName, int times);
+    HashMap<String, Object> mineCaptain(String userName, String action);
 
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);
