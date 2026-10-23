@@ -127,12 +127,18 @@ public interface BotS5DAO {
     int insertEnhanceTicket(@Param("userName") String userName, @Param("level") int level, @Param("legendaryId") Integer legendaryId);
     List<HashMap<String, Object>> selectEnhanceTickets(@Param("userName") String userName);
     int deleteEnhanceTicket(@Param("ticketId") int ticketId, @Param("userName") String userName);
-    /** [2026-10-23] 웹 광산 -- 스태미너/캐릭터 위치/오늘 캔 칸(TBOT_S5_MINE_USER), 광석 보유(TBOT_S5_USER_ORE). */
+    /** [2026-10-23] 웹 광산 -- 스태미너/캐릭터 위치(맵)/광산상점 PP 보너스(TBOT_S5_MINE_USER), 캔 칸(TBOT_S5_MINE_DUG), 광석 보유(TBOT_S5_USER_ORE). */
     HashMap<String, Object> selectMineUser(@Param("userName") String userName);
     HashMap<String, Object> selectMineUserForUpdate(@Param("userName") String userName);
     int insertMineUserIfAbsent(@Param("userName") String userName, @Param("stamina") int stamina, @Param("atMs") long atMs);
     int updateMineUser(HashMap<String, Object> map);
-    int updateMinePos(@Param("userName") String userName, @Param("x") int x, @Param("y") int y, @Param("atMs") long atMs);
+    int updateMinePos(@Param("userName") String userName, @Param("mapId") String mapId, @Param("x") int x, @Param("y") int y, @Param("atMs") long atMs);
+    int addMinePpBonus(@Param("userName") String userName, @Param("add") double add);
+    int countMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell);
+    int insertMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell, @Param("grade") int grade, @Param("atMs") long atMs);
+    List<HashMap<String, Object>> selectMineDugCells(@Param("userName") String userName, @Param("mapId") String mapId);
+    List<HashMap<String, Object>> selectMineDugRecent(@Param("userName") String userName, @Param("limit") int limit);
+    int takeUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
     List<HashMap<String, Object>> selectUserOres(@Param("userName") String userName);
     int addUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
     /** [2026-10-08] 전설장비 강화 수치/연속 실패 횟수 저장. */

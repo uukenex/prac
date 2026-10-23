@@ -505,11 +505,11 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.growthStatus(userName));
     }
 
-    /** [2026-10-23] 웹 광산 -- 공용 맵 지형(모든 유저 같음, 화면이 version으로 브라우저에 저장). 광석 등급은 보내지 않는다. */
+    /** [2026-10-23] 웹 광산 -- 공용 맵 지형/포탈(모든 유저 같음, 화면이 version으로 브라우저에 저장). 광석 등급은 보내지 않는다. */
     @GetMapping("/api/tower-mine-map")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineMap() {
-        return ResponseEntity.ok(s5Service.mineMap());
+    public ResponseEntity<?> apiTowerMineMap(@RequestParam(value = "mapId", defaultValue = "field") String mapId) {
+        return ResponseEntity.ok(s5Service.mineMap(mapId));
     }
 
     /** [2026-10-23] 웹 광산 -- 내 스태미너/저장 위치/오늘 캔 칸/광석 보유. */
@@ -528,22 +528,58 @@ public class Season5ViewController {
     @GetMapping("/api/tower-mine-dig")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineDig(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam("x") int x, @RequestParam("y") int y) {
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
         if (userName.trim().isEmpty()) {
             HashMap<String, Object> err = new HashMap<>();
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
         }
-        return ResponseEntity.ok(s5Service.mineDig(userName, x, y));
+        return ResponseEntity.ok(s5Service.mineDig(userName, mapId, x, y));
     }
 
     /** [2026-10-23] 웹 광산 -- 캐릭터 위치 저장(광산을 나갈 때 sendBeacon(POST)과 이동 중 주기적으로). */
     @RequestMapping(value = "/api/tower-mine-pos", method = { org.springframework.web.bind.annotation.RequestMethod.GET, org.springframework.web.bind.annotation.RequestMethod.POST })
     @ResponseBody
     public ResponseEntity<?> apiTowerMinePos(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam("x") int x, @RequestParam("y") int y) {
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineSavePos(userName, x, y));
+        return ResponseEntity.ok(s5Service.mineSavePos(userName, mapId, x, y));
+    }
+
+    /** [2026-10-23] 웹 광산 -- (x, y)에 서서 바로 옆 포탈(px, py)로 들어가기(지역 통로/동굴 입구/나가는 길/지하 문). */
+    @GetMapping("/api/tower-mine-warp")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineWarp(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam("px") int px, @RequestParam("py") int py) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, x, y, px, py));
+    }
+
+    /** [2026-10-23] 광산상점 -- 광석으로 시간당 PP 올리기(상품/보유 광석/현재 보너스). */
+    @GetMapping("/api/tower-mine-shop")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineShop(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.mineShop(userName));
+    }
+
+    /** [2026-10-23] 광산상점 구매 -- no = 상품 번호(1~6), times = 몇 번 살지. */
+    @GetMapping("/api/tower-mine-shop-buy")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineShopBuy(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("no") int no, @RequestParam(value = "times", defaultValue = "1") int times) {
+        HashMap<String, Object> out = new HashMap<>();
+        if (userName.trim().isEmpty()) {
+            out.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(out);
+        }
+        out.put("message", s5Service.mineShopBuy(userName, no, times));
+        return ResponseEntity.ok(out);
     }
 
     /** [2026-10-20] 동료 상세 팝업용 -- 최종 능력치 분해(기본/한계돌파/장비)와 장비별 기여. */

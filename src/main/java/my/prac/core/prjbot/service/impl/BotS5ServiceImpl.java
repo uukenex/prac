@@ -5520,6 +5520,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
         PP reward = perKill.multiply(kills * floorPpMultiplier(floor) * autoHuntFloorBonusMultiplier(floor));
         addPp(userName, p, reward);
+        // [2026-10-23] 광산상점 수익(시간당 PP 보너스) -- 같은 정산 시간만큼 함께 지급(자동사냥 업적 누적에는 넣지 않음)
+        PP mineBonus = minePpBonus(userName, cappedMin);
+        if (mineBonus != null) addPp(userName, p, mineBonus);
 
         // [2026-09-08] "자동사냥으로 몇 회 처치, 관련 업적에 추가해달라" 요청 -- 자동사냥으로만
         // 처치한 누적치(AUTO_HUNT_KILL_TOTAL)를 TOTAL_KILL_COUNT와 별도로 함께 쌓는다. 자동사냥
@@ -5557,7 +5560,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // reward가 0일 일은 없어 보스전 같은 0PP 생략 케이스는 여기 해당 없음.
         PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
         return "💤 자동사냥 정산: " + floor + "층에서 " + kills + "마리 처치, " + reward.format()
-                + " PP 획득! (보유 " + curPp.format() + " PP)";
+                + " PP 획득!" + (mineBonus != null ? " ⛏️ 광산 수익 +" + mineBonus.format() + " PP" : "") + " (보유 " + curPp.format() + " PP)";
     }
 
     // ================================================================
@@ -7852,7 +7855,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-10-22] "설정에서 8개 탭 순서를 바꾸거나 가리기, 유저별로" 요청 -- 하단 메뉴 배치(TBOT_S5_USER_PROGRESS.DOCK_LAYOUT).
     // 순서대로 쉼표로 잇고 숨긴 탭은 앞에 '!'(예: board,party,!msg,...). 탑(board)과 설정(settings)은 숨길 수 없다(되돌릴 길/게임 진행이 막히지 않게).
     // 모르는 키/중복은 버리고, 빠진 키는 뒤에 붙인다(나중에 탭이 늘어나도 기존 저장값이 깨지지 않게). 기본 배치와 같으면 NULL로 저장.
-    private static final List<String> DOCK_KEYS = java.util.Arrays.asList("board", "party", "shop", "inven", "ach", "codex", "msg", "settings");
+    private static final List<String> DOCK_KEYS = java.util.Arrays.asList("board", "party", "shop", "inven", "ach", "codex", "msg", "settings", "mine", "mineshop");
 
     @Override
     @Transactional
@@ -8533,21 +8536,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         return disenchantRow(userName, progress, unequipped.get(equipIdx - 1));
     }
 
-    // ---- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) ----
-    // 맵은 파일 하나(S5MineMap, classpath s5/mine_map_255.txt)를 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
-    // 화면에는 지형만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 하루 한 번(0시 KST에 다시 생김). 한 번 캘 때 스태미너 1,
-    // 스태미너는 최대 30, 매시 정각 +2, 0시에 30으로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산). 캐릭터 위치는 광산을 나갈 때(와 이동 중 주기적으로) 저장하고,
-    // 캘 때/저장할 때 마지막 저장 위치에서 시간당 갈 수 있는 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지).
+    // ---- [2026-10-23] 웹 광산(공용 맵 여러 개, 2D 도트) ----
+    // 맵은 S5MineMap(맵마다 파일 하나)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
+    // 화면에는 지형/포탈만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 0시에 다시 생기지 않음).
+    // 한 번 캘 때 스태미너 1, 스태미너는 최대 30, 매시 정각 +2, 0시(KST)에 30으로 초기화(저장값 + 마지막 저장 시각으로 그때그때 계산).
+    // 캐릭터 위치(맵 + 좌표)는 광산을 나갈 때(와 이동 중 주기적으로, 캘 때, 포탈을 탈 때) 저장하고, 마지막 저장 위치에서 시간당 갈 수 있는
+    // 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지). 포탈(지역 통로/동굴 입구/나가는 길/지하 문)은
+    // 바로 옆 칸에서 들어가면 대상 맵으로 옮기고, 대상 맵이 아직 없으면(잠김) 안내만 한다.
+    // 광산상점: 광석을 내고 시간당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 정산 시간만큼 함께 지급(settleAutoHunt).
     private static final int MINE_STAMINA_MAX = 30;
     private static final int MINE_REGEN_PER_HOUR = 2;
     private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
-    private static final java.time.format.DateTimeFormatter MINE_DAY_FMT = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
-
-    private static String mineDay(long ms) {
-        return java.time.Instant.ofEpochMilli(ms).atZone(KST).format(MINE_DAY_FMT);
-    }
+    /** 광산상점 상품: {광석 등급, 필요 개수, 시간당 PP 증가}. 광석 1개 값 = 구리 0.1 / 철 0.3 / 은 1 / 금 3 / 미스릴 10 / 별빛석 40 (PP/시간). */
+    private static final int[][] MINE_SHOP = { { 1, 100, 10 }, { 2, 50, 15 }, { 3, 25, 25 }, { 4, 10, 30 }, { 5, 5, 50 }, { 6, 1, 40 } };
 
     /** 저장된 스태미너를 지금 기준으로 -- 0시(KST)가 지났으면 30에서 다시 시작하고, 그 뒤 지난 정각 수만큼 +2(최대 30). */
     static int mineStaminaNow(int stored, long atMs, long nowMs) {
@@ -8578,7 +8581,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         return forUpdate ? dao.selectMineUserForUpdate(userName) : dao.selectMineUser(userName);
     }
 
-    /** 저장된 위치(없거나 지금 맵에서 못 서는 칸이면 마을). */
+    private static S5MineMap mineMapOf(HashMap<String, Object> row) {
+        return S5MineMap.get(row == null ? null : (String) row.get("MAP_ID"));
+    }
+
+    /** 저장된 위치(없거나 지금 맵에서 못 서는 칸이면 그 맵 시작점). */
     private int[] minePos(HashMap<String, Object> row, S5MineMap map) {
         if (row.get("POS_X") != null && row.get("POS_Y") != null) {
             int x = intVal(row.get("POS_X"), map.spawnX), y = intVal(row.get("POS_Y"), map.spawnY);
@@ -8592,17 +8599,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 쉬는 시간은 최대 MINE_MOVE_WINDOW_MS까지만 친다 -- 오래 가만히 있다가 먼 곳으로 한 번에 옮기는 것 방지(화면은 이동 중 몇 초마다, 캘 때마다 위치를 저장)
         double allowed = 2 + Math.min(MINE_MOVE_WINDOW_MS, Math.max(0, now - fromAt)) / 1000.0 * MINE_MAX_TILES_PER_SEC;
         return dist <= allowed;
-    }
-
-    private Set<Integer> mineDugToday(HashMap<String, Object> row, String today) {
-        Set<Integer> out = new LinkedHashSet<>();
-        if (!today.equals(strVal(row.get("MAP_DAY"), ""))) return out;
-        for (String t : strVal(row.get("MINED"), "").split(",")) {
-            if (!t.trim().isEmpty()) {
-                try { out.add(Integer.parseInt(t.trim())); } catch (NumberFormatException ignore) { }
-            }
-        }
-        return out;
     }
 
     private List<HashMap<String, Object>> mineOreList(String userName) {
@@ -8628,57 +8624,96 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     @Override
-    public HashMap<String, Object> mineMap() {
-        S5MineMap map = S5MineMap.get();
+    public HashMap<String, Object> mineMap(String mapId) {
+        S5MineMap map = S5MineMap.get(mapId);
         HashMap<String, Object> out = new HashMap<>();
+        out.put("id", map.id);
+        out.put("name", map.name);
+        out.put("dark", map.dark);
         out.put("w", map.w);
         out.put("h", map.h);
         out.put("spawnX", map.spawnX);
         out.put("spawnY", map.spawnY);
         out.put("version", map.version());
         out.put("rows", map.terrainRows());
+        List<HashMap<String, Object>> portals = new ArrayList<>();
+        for (S5MineMap.Portal p : map.portals) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("x", p.x);
+            m.put("y", p.y);
+            m.put("kind", String.valueOf(p.kind));
+            m.put("label", p.label);
+            m.put("locked", p.locked());
+            portals.add(m);
+        }
+        out.put("portals", portals);
         return out;
     }
 
     @Override
     public HashMap<String, Object> mineState(String userName) {
-        S5MineMap map = S5MineMap.get();
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
+        S5MineMap map = mineMapOf(row);
         HashMap<String, Object> out = new HashMap<>();
         putMineStamina(out, mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now), now);
         int[] pos = minePos(row, map);
+        out.put("mapId", map.id);
+        out.put("mapName", map.name);
+        out.put("mapVersion", map.version());
         out.put("x", pos[0]);
         out.put("y", pos[1]);
-        out.put("mapVersion", map.version());
-        List<HashMap<String, Object>> dug = new ArrayList<>();
-        for (int idx : mineDugToday(row, mineDay(now))) {
-            int x = idx % map.w, y = idx / map.w, g = map.oreAt(x, y);
-            HashMap<String, Object> d = new HashMap<>();
-            d.put("x", x);
-            d.put("y", y);
-            d.put("grade", g);
-            d.put("name", g > 0 ? S5MineMap.ORE_NAMES[g - 1] : "");
-            dug.add(d);
+        // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]
+        List<Integer> dug = new ArrayList<>();
+        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, map.id)) {
+            int cell = intVal(d.get("CELL"), 0);
+            dug.add(cell % map.w);
+            dug.add(cell / map.w);
+            dug.add(intVal(d.get("ORE_GRADE"), 0));
         }
         out.put("dug", dug);
+        out.put("recent", mineRecent(userName));
         out.put("ores", mineOreList(userName));
         out.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
+        out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
+        return out;
+    }
+
+    /** 최근 캔 곳(모든 맵, 최신 30개) -- 좌표 공유용 목록. */
+    private List<HashMap<String, Object>> mineRecent(String userName) {
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (HashMap<String, Object> d : dao.selectMineDugRecent(userName, 30)) {
+            S5MineMap m = S5MineMap.get(strVal(d.get("MAP_ID"), S5MineMap.FIELD));
+            int cell = intVal(d.get("CELL"), 0), g = intVal(d.get("ORE_GRADE"), 0);
+            HashMap<String, Object> r = new HashMap<>();
+            r.put("mapName", m.name);
+            r.put("x", cell % m.w);
+            r.put("y", cell / m.w);
+            r.put("grade", g);
+            r.put("name", g > 0 ? S5MineMap.ORE_NAMES[g - 1] : "");
+            r.put("at", longOf(d.get("DUG_AT_MS"), 0L));
+            out.add(r);
+        }
         return out;
     }
 
     @Override
     @Transactional
-    public HashMap<String, Object> mineDig(String userName, int x, int y) {
-        S5MineMap map = S5MineMap.get();
+    public HashMap<String, Object> mineDig(String userName, String mapId, int x, int y) {
         long now = System.currentTimeMillis();
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap map = mineMapOf(row);
         int st = mineStaminaNow(intVal(row.get("STAMINA"), MINE_STAMINA_MAX), longOf(row.get("STAMINA_AT_MS"), now), now);
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         putMineStamina(out, st, now);
         int[] pos = minePos(row, map);
+        if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) {
+            out.put("reload", true);
+            out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
+            return out;
+        }
         if (!map.walkable(x, y)) {
             out.put("message", "갈 수 없는 곳입니다.");
             return out;
@@ -8691,30 +8726,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         int g = map.oreAt(x, y);
         if (g == 0) {
-            out.put("message", "마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.");
+            out.put("message", "여기서는 캘 수 없어요.");
+            return out;
+        }
+        int cell = y * map.w + x;
+        if (dao.countMineDug(userName, map.id, cell) > 0) {
+            out.put("message", "이미 캔 자리예요. 다른 곳을 찾아보세요.");
             return out;
         }
         if (st < 1) {
             out.put("message", "스태미너가 없어요. 매시 정각마다 " + MINE_REGEN_PER_HOUR + "씩 차고, 0시에 " + MINE_STAMINA_MAX + "으로 초기화돼요.");
             return out;
         }
-        String today = mineDay(now);
-        Set<Integer> dug = mineDugToday(row, today);
-        int idx = y * map.w + x;
-        if (!dug.add(idx)) {
-            out.put("message", "오늘 이미 캔 자리예요. 0시가 지나면 다시 캘 수 있어요.");
-            return out;
-        }
-        StringBuilder mined = new StringBuilder();
-        for (int i : dug) mined.append(mined.length() > 0 ? "," : "").append(i);
+        dao.insertMineDug(userName, map.id, cell, g, now);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
         up.put("stamina", st - 1);
         up.put("atMs", now);
         up.put("x", x);
         up.put("y", y);
-        up.put("mapDay", today);
-        up.put("mined", mined.toString());
         dao.updateMineUser(up);
         String code = S5MineMap.ORE_CODES[g - 1], name = S5MineMap.ORE_NAMES[g - 1];
         dao.addUserOre(userName, code, 1);
@@ -8728,28 +8758,124 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("oreCode", code);
         out.put("oreName", name);
         out.put("qty", qty);
-        out.put("message", "⛏️ (" + x + ", " + y + ") " + name + " 1개! (보유 " + qty + "개)");
+        out.put("message", "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " 1개! (보유 " + qty + "개)");
         return out;
     }
 
     @Override
-    public HashMap<String, Object> mineSavePos(String userName, int x, int y) {
-        S5MineMap map = S5MineMap.get();
+    public HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y) {
         long now = System.currentTimeMillis();
         HashMap<String, Object> row = mineRow(userName, false);
+        S5MineMap map = mineMapOf(row);
         int[] pos = minePos(row, map);
         HashMap<String, Object> out = new HashMap<>();
-        if (map.walkable(x, y) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
-            dao.updateMinePos(userName, x, y, now);
+        boolean sameMap = mapId == null || mapId.isEmpty() || map.id.equals(mapId);
+        if (sameMap && map.walkable(x, y) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
+            dao.updateMinePos(userName, map.id, x, y, now);
             out.put("ok", true);
             out.put("x", x);
             out.put("y", y);
         } else {
             out.put("ok", false);
+            out.put("reload", !sameMap);
             out.put("x", pos[0]);
             out.put("y", pos[1]);
         }
         return out;
+    }
+
+    /** 포탈 타기 -- (x, y)에 서서 바로 옆 포탈 칸(px, py)으로 들어간다. 잠긴 포탈이면 안내만, 열린 포탈이면 대상 맵/좌표로 옮기고 새 상태를 돌려준다. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineWarp(String userName, String mapId, int x, int y, int px, int py) {
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap map = mineMapOf(row);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        int[] pos = minePos(row, map);
+        if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) {
+            out.put("reload", true);
+            out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
+            return out;
+        }
+        S5MineMap.Portal p = map.portalAt(px, py);
+        if (p == null || Math.abs(x - px) + Math.abs(y - py) != 1 || !map.walkable(x, y)) {
+            out.put("message", "입구 바로 앞에서 들어가세요.");
+            return out;
+        }
+        if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
+            out.put("resyncX", pos[0]);
+            out.put("resyncY", pos[1]);
+            out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        if (p.locked()) {
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("locked", true);
+            out.put("message", "🔒 " + p.label + " -- 아직 갈 수 없어요. (준비 중)");
+            return out;
+        }
+        S5MineMap target = S5MineMap.get(p.target);
+        int tx = target.walkable(p.tx, p.ty) ? p.tx : target.spawnX, ty = target.walkable(p.tx, p.ty) ? p.ty : target.spawnY;
+        dao.updateMinePos(userName, target.id, tx, ty, now);
+        out.put("ok", true);
+        out.put("message", "🚪 " + target.name + "(으)로 이동했어요.");
+        out.put("state", mineState(userName));
+        return out;
+    }
+
+    @Override
+    public HashMap<String, Object> mineShop(String userName) {
+        HashMap<String, Object> row = mineRow(userName, false);
+        Map<Integer, Integer> have = new HashMap<>();
+        for (HashMap<String, Object> o : mineOreList(userName)) have.put(intVal(o.get("grade"), 0), intVal(o.get("qty"), 0));
+        List<HashMap<String, Object>> items = new ArrayList<>();
+        for (int i = 0; i < MINE_SHOP.length; i++) {
+            int g = MINE_SHOP[i][0], need = MINE_SHOP[i][1], add = MINE_SHOP[i][2];
+            HashMap<String, Object> it = new HashMap<>();
+            it.put("no", i + 1);
+            it.put("grade", g);
+            it.put("oreName", S5MineMap.ORE_NAMES[g - 1]);
+            it.put("need", need);
+            it.put("add", add);
+            it.put("have", have.getOrDefault(g, 0));
+            it.put("maxTimes", have.getOrDefault(g, 0) / need);
+            items.add(it);
+        }
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("items", items);
+        out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
+        out.put("ores", mineOreList(userName));
+        return out;
+    }
+
+    @Override
+    @Transactional
+    public String mineShopBuy(String userName, int no, int times) {
+        if (no < 1 || no > MINE_SHOP.length) return "잘못된 상품입니다.";
+        if (times < 1) times = 1;
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        int g = MINE_SHOP[no - 1][0], need = MINE_SHOP[no - 1][1] * times, add = MINE_SHOP[no - 1][2] * times;
+        String code = S5MineMap.ORE_CODES[g - 1], name = S5MineMap.ORE_NAMES[g - 1];
+        if (dao.takeUserOre(userName, code, need) == 0) return "광석이 부족해요. (" + name + " " + need + "개 필요)";
+        dao.addMinePpBonus(userName, add);
+        double total = numVal(row.get("PP_BONUS"), 0) + add;
+        return "⛏️ " + name + " " + need + "개로 시간당 PP +" + add + "! (광산 수익 시간당 " + fmtPpBonus(total) + " PP, 자동사냥 정산 때 함께 지급)";
+    }
+
+    private static String fmtPpBonus(double v) {
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.format("%.1f", v);
+    }
+
+    /** 자동사냥 정산 시간(분)만큼의 광산 수익. 광산 기록이 없거나 보너스가 0이면 null. */
+    private PP minePpBonus(String userName, long minutes) {
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        double perHour = row == null ? 0 : numVal(row.get("PP_BONUS"), 0);
+        if (perHour <= 0 || minutes <= 0) return null;
+        return PP.of(perHour * minutes / 60.0, "");
     }
 
     // ---- [2026-10-23] 일반 장비/악세서리 분해(★1~★6) ----
