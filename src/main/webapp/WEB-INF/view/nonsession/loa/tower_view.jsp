@@ -778,6 +778,8 @@
     .mine-smith-row button:disabled{ opacity:.4; cursor:default; }
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
+    .mine-smith-sub{ margin-top:12px; padding-top:8px; border-top:2px solid rgba(244,240,230,.45); }
+    .mine-smith-sub b{ color:#ffe14d; }
     .mine-smith-dur b{ color:#ffe14d; font-family:ui-monospace, Consolas, monospace; }
     .mine-smith-row{ display:flex; align-items:center; gap:6px; padding:5px 0; border-top:1px solid rgba(244,240,230,.25); }
     .mine-smith-row img{ width:24px; height:24px; image-rendering:pixelated; }
@@ -3684,12 +3686,8 @@ var TW = (function () {
     fetch(base + '/api/tower-mine-shop?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
       if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
       var bonus = Math.round((d.ppBonus || 0) * 10) / 10;
-      var hm = d.helmet || {};
-      var helmetHtml = '<div class="mshop-item"><div class="inv-ico t3" style="font-size:24px;">⛑️</div><div class="body"><div class="ttl">광부 투구 '
-          + (hm.tier > 0 ? hm.tier + '단계' : '(없음)') + '</div><div class="sub">어두운 광산 동굴의 시야가 넓어져요. 1단계 = 훨씬 잘 보임, 2단계 = 동굴 1층 전체가 보임. 더 깊은 광산은 더 높은 단계가 있어야 움직일 수 있어요.'
-          + (hm.nextTier ? '<br>다음: ' + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계 (보유 ' + hm.have + '개)' : '<br>지금 열린 최고 단계예요.') + '</div></div>'
-          + '<div class="btns">' + (hm.nextTier ? '<button type="button" ' + (hm.have < hm.need ? 'disabled' : '') + ' onclick="TW.buyMineHelmet()">' + (hm.tier > 0 ? '업그레이드' : '구매') + '</button>' : '') + '</div></div>';
-      var html = helmetHtml + '<div class="mshop-bonus">광산 수익 <b>처치당 +' + bonus + ' PP</b>'
+      // [2026-10-24] 광부 투구 업그레이드는 광산 안 대장장이 NPC에게서(이 탭에서는 뺐다)
+      var html = '<div class="mshop-bonus">광산 수익 <b>처치당 +' + bonus + ' PP</b>'
           + '<div class="sub">탑 <b>자동사냥</b>으로 몬스터를 처치할 때마다 받아요(자동사냥 정산 때 처치 수만큼, 자동사냥이 꺼져 있으면 없음). 한 번 올린 수익은 영구히 유지돼요.</div></div>';
       (d.items || []).forEach(function (it) {
         html += '<div class="mshop-item"><div class="inv-ico ' + ['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][it.grade] + '"><img class="ore-ico" src="' + TowerMine.oreIcon(it.grade) + '" alt=""></div>'
@@ -3700,14 +3698,6 @@ var TW = (function () {
       });
       box.innerHTML = html;
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
-  }
-  function buyMineHelmet() {
-    var u = userName();
-    if (!u) return;
-    fetch(base + '/api/tower-mine-helmet?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
-      toast(d.message || d.error || '완료');
-      renderMineShop();
-    }).catch(function () { toast('요청 실패'); });
   }
   function buyMineShop(no, times) {
     var u = userName();
@@ -5317,7 +5307,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, buyMineShop: buyMineShop, buyMineHelmet: buyMineHelmet,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, buyMineShop: buyMineShop,
            openDismantle: openDismantle, closeDismantle: closeDismantle, dmStep: dmStep, dmSet: dmSet, doDismantle: doDismantle, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
@@ -5342,7 +5332,7 @@ var TW = (function () {
 var TowerMine = (function () {
   var T = 16, STEP_MS = 140, SAVE_MS = 4000;
   // [2026-10-23] 사막(d 모래, R 사암, C 선인장, 모래바람), 바닷가(b 모래사장, P 부두, q 배, B 배에 오르는 판자), NPC(N: 대장장이/선장)
-  var WALK = '.,:VHcrdbP', PORTALS = 'GMUSB';
+  var WALK = '.,:VHcrdbPT', PORTALS = 'GMUSB'; // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음)
   var WIND_MS = 900; // 모래바람에 한 칸 밀리는 간격(가만히 있을 때)
   var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
   var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
@@ -5872,7 +5862,29 @@ var TowerMine = (function () {
     el.smith.innerHTML = '<div class="mine-smith-head">🔨 대장간 · 곡괭이 강화 <button type="button" onclick="TowerMine.closeSmith()">닫기</button></div>'
         + '<div class="mine-smith-say">' + (n ? n.line : '') + '</div>'
         + '<div class="mine-smith-dur">⛏️ 곡괭이 내구도 <b>' + st.durability + ' / ' + st.durabilityMax + '</b></div>'
-        + rows.join('');
+        + rows.join('') + helmetHtml();
+  }
+  // [2026-10-24] 광부 투구 업그레이드(광산상점 탭에서 대장장이 창으로 옮김)
+  function helmetHtml() {
+    var hm = st.helmetInfo || {};
+    var h = '<div class="mine-smith-sub">⛑️ 광부 투구 <b>' + (hm.tier > 0 ? hm.tier + '단계' : '없음') + '</b></div>'
+        + '<div class="mine-smith-say">어두운 동굴의 시야가 넓어져요(1단계 훨씬 잘 보임, 2단계 동굴 1층 전체). 더 깊은 광산은 더 높은 단계가 있어야 움직일 수 있어요.</div>';
+    if (!hm.nextTier) return h + '<div class="mine-smith-say">지금 열린 최고 단계예요.</div>';
+    return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
+        + '<small>보유 ' + hm.have + '개</small></span><button type="button" ' + (hm.have < hm.need ? 'disabled ' : '') + 'onclick="TowerMine.helmetUpgrade()">'
+        + (hm.tier > 0 ? '업그레이드' : '만들기') + '</button></div>';
+  }
+  function helmetUpgrade() {
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-helmet').then(function (d) {
+      msg(d.message || d.error || '완료', 3000);
+      return api('/api/tower-mine');
+    }).then(function (s) {
+      busy = false;
+      if (s && !s.error) { st.helmet = s.helmet; st.helmetInfo = s.helmetInfo; st.ores = s.ores; buildMiniBase(); drawMini(); }
+      if (smithOpen) renderSmith(smithNpc);
+    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   var smithNpc = null;
   function openSmith(n) {
@@ -6167,6 +6179,7 @@ var TowerMine = (function () {
     if (P.moving) return;
     var x = P.x, y = P.y, c = cellAt(x, y);
     if (c === 'V') { msg('마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.'); return; }
+    if (c === 'T') { msg('나무 밑은 캘 수 없어요. 옆 칸에서 캐 보세요.'); return; }
     if (dug[x + ',' + y]) { msg('이미 캔 자리예요. 다른 곳을 찾아보세요.'); return; }
     if (st.durability < 1) { msg('⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요.'); return; }
     busy = true;
@@ -6255,7 +6268,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, closeSmith: closeSmith,
+  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith,
            ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

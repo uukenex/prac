@@ -138,7 +138,7 @@ public final class S5MineMap {
     }
 
     public static boolean walkable(char c) {
-        return ".,:VHcrdbP".indexOf(c) >= 0;
+        return ".,:VHcrdbPT".indexOf(c) >= 0; // [2026-10-24] 나무(T)도 지나갈 수 있다("나무가 너무 많아") -- 광석은 없음(assignOre)
     }
 
     public static boolean portalChar(char c) {
@@ -267,7 +267,23 @@ public final class S5MineMap {
         List<Portal> gp = new ArrayList<>();
         for (Portal p : dungeon.portals) gp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, west.x + 1, west.y, p.label) : p);
         out.put(DUNGEON, relink(dungeon, gp, null));
+        // [2026-10-24] "맵에 따라 너무 좋은 금속은 안 나오면 좋겠어" -- 맵별 최고 광석 등급(넘는 칸은 그 등급으로 내림).
+        for (Map.Entry<String, Integer> e : ORE_CAP.entrySet()) capOre(out.get(e.getKey()), e.getValue());
         return Collections.unmodifiableMap(out);
+    }
+
+    /** 맵별 최고 광석 등급: 평원/바닷가 = 금광석까지, 사막 = 미스릴까지, 광산 동굴 = 별빛석까지(요일 던전은 요일석이라 해당 없음). */
+    static final Map<String, Integer> ORE_CAP = new LinkedHashMap<>();
+    static {
+        ORE_CAP.put(FIELD, 4);
+        ORE_CAP.put(BEACH, 4);
+        ORE_CAP.put(DESERT, 5);
+        ORE_CAP.put(CAVE1, 6);
+    }
+
+    private static void capOre(S5MineMap m, int cap) {
+        if (m == null) return;
+        for (byte[] row : m.ore) for (int x = 0; x < row.length; x++) if (row[x] > cap) row[x] = (byte) cap;
     }
 
     private static S5MineMap relink(S5MineMap m, List<Portal> portals, List<Npc> npcs) {
@@ -349,7 +365,7 @@ public final class S5MineMap {
         int h = t.length, w = t[0].length;
         List<double[]> cells = new ArrayList<>();
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            if (!walkable(t[y][x]) || (skip != null && skip[y][x])) continue;
+            if (!walkable(t[y][x]) || t[y][x] == 'T' || (skip != null && skip[y][x])) continue; // 나무 칸은 지나가기만(광석 없음)
             cells.add(new double[] { score[y][x], x, y });
         }
         cells.sort((a, b) -> Double.compare(b[0], a[0]));

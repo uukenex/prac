@@ -8915,7 +8915,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ores", mineOreList(userName));
         out.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
         out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
-        out.put("helmet", mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0)); // 숨김 아이템(용왕반지 등)은 내려주지 않는다
+        int helmetTier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
+        out.put("helmet", helmetTier); // 숨김 아이템(용왕반지 등)은 내려주지 않는다
+        out.put("helmetInfo", mineHelmetInfo(userName, helmetTier)); // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         return out;
     }
@@ -9124,20 +9126,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("items", items);
         out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
         out.put("ores", mineOreList(userName));
-        int tier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
+        // [2026-10-24] 광부 투구 업그레이드는 광산상점 탭에서 빼고 광산 안 대장장이 NPC 창으로 옮겼다(mineState의 helmetInfo).
+        return out;
+    }
+
+    /** [2026-10-24] 광부 투구 상태(대장장이 창용) -- 단계, 지금 열린 최고 단계, 다음 단계 비용(광석/개수/보유). */
+    private HashMap<String, Object> mineHelmetInfo(String userName, int tier) {
         HashMap<String, Object> helmet = new HashMap<>();
         helmet.put("tier", tier);
         helmet.put("openMax", MINE_HELMET_OPEN_MAX);
         if (tier < MINE_HELMET_OPEN_MAX && tier < MINE_HELMET_COST.length) {
             int cg = MINE_HELMET_COST[tier][0], cn = MINE_HELMET_COST[tier][1];
+            int have = 0;
+            for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (S5MineMap.ORE_CODES[cg - 1].equals(strVal(r.get("ORE_CODE"), ""))) have = intVal(r.get("QTY"), 0);
             helmet.put("nextTier", tier + 1);
             helmet.put("oreGrade", cg);
             helmet.put("oreName", S5MineMap.ORE_NAMES[cg - 1]);
             helmet.put("need", cn);
-            helmet.put("have", have.getOrDefault(cg, 0));
+            helmet.put("have", have);
         }
-        out.put("helmet", helmet);
-        return out;
+        return helmet;
     }
 
     /** [2026-10-23] 광부 투구 구매/업그레이드 -- 다음 단계 비용(광석)을 내고 단계 +1. */
