@@ -80,7 +80,7 @@ public final class S5RequestCache {
                 "selectAchievementList", "selectLegendaryMaster", "selectLegendaryMasterList", "selectStar7Portrait" }) {
             SHARED_TTL_MS.put(m, MASTER_TTL_MS);
         }
-        for (String m : new String[]{ "selectUserEquip", "selectEquipByCompanion", "selectUserTileMaster" }) {
+        for (String m : new String[]{ "selectUserEquip", "selectEquipByCompanion", "selectUserTileMaster", "selectUserFloorBestRange" }) {
             SHARED_TTL_MS.put(m, USER_TTL_MS);
         }
     }

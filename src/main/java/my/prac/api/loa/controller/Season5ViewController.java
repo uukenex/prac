@@ -147,8 +147,12 @@ public class Season5ViewController {
         HashMap<String, Object> huntLog = s5Dao.selectAutoHuntLog(userName);
         if (huntLog != null && huntLog.get("FLOOR") != null) result.put("lastBattleFloor", toInt(huntLog.get("FLOOR")));
         // 웹 SPA "층이동 탑 그림"에서 각 층(1~8, 사냥터만)의 탐사완료 여부를 보여주기 위함
-        int blockBase = floor - (floor % 10);
-        result.put("floorBest", s5Dao.selectUserFloorBestRange(userName, blockBase + 1, blockBase + 8));
+        // [2026-10-23] 100층 이상(마을/계단 구역)은 화면이 이 값을 안 쓰므로(renderStairZoneNav) 조회하지 않는다.
+        // 99층 이하도 굴릴 때마다 상태 조회로 같이 돌던 쿼리라 공유 캐시(60초, 탐사 기록이 바뀌면 즉시 무효)로 재사용한다.
+        if (floor < 100) {
+            int blockBase = floor - (floor % 10);
+            result.put("floorBest", s5Dao.selectUserFloorBestRange(userName, blockBase + 1, blockBase + 8));
+        }
         // [2026-09-05] 주사위 교체 위젯을 상점탭에서 '탑' 탭 보드 칸그리드 위 오버레이로
         // 옮기면서, 상태 조회(가장 자주 도는 호출)에 얹어 매번 최신 해금/사용중 정보를 준다.
         result.put("dice", s5Service.diceListInfo(userName));
