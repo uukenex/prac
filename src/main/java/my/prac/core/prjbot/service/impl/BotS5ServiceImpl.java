@@ -8834,6 +8834,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         int[] pos = minePos(row, map);
         HashMap<String, Object> out = new HashMap<>();
+        out.put("mapName", map.name); // [2026-10-23] 퇴장 로그용
         boolean sameMap = mapId == null || mapId.isEmpty() || map.id.equals(mapId);
         if (sameMap && map.walkable(x, y) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now)) {
             dao.updateMinePos(userName, map.id, x, y, now);

@@ -513,16 +513,38 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineMap(mapId));
     }
 
-    /** [2026-10-23] 웹 광산 -- 내 스태미너/저장 위치/오늘 캔 칸/광석 보유. */
+    /** [2026-10-23] "광산 접속/채굴/종료/광산상점 구매를 WEB으로 TBOT_S5_WORD_HIS에 쌓아줘" 요청 -- 시각은 INSERT_DATE.
+     *  입장: "[웹] 광산 입장" / 맵 (x, y), 채굴: "[웹] 광산 채굴 (x, y)" / 결과 문구(광석 종류 포함), 퇴장: "[웹] 광산 퇴장" / 맵 (x, y),
+     *  구매: "[웹] 광산상점 구매 N번 xM" / 결과 문구. 이동 중 위치 저장(몇 초마다)과 실패한 시도는 남기지 않는다. 로그 실패는 무시. */
+    private void mineLog(String userName, String req, String res) {
+        try {
+            HashMap<String, Object> logMap = new HashMap<>();
+            logMap.put("userName", userName);
+            logMap.put("roomName", "WEB");
+            logMap.put("req", req);
+            logMap.put("res", res);
+            botService.insertS5WordHisTx(logMap);
+        } catch (Exception e) {
+            // 로그 저장 실패는 무시
+        }
+    }
+
+    /** [2026-10-23] 웹 광산 -- 내 스태미너/저장 위치/캔 칸/광석 보유. enter=1이면 광산 입장(화면을 열 때/다시 돌아왔을 때) 로그. */
     @GetMapping("/api/tower-mine")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMine(@RequestParam(value = "userName", defaultValue = "") String userName) {
+    public ResponseEntity<?> apiTowerMine(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "enter", defaultValue = "") String enter) {
         if (userName.trim().isEmpty()) {
             HashMap<String, Object> err = new HashMap<>();
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
         }
-        return ResponseEntity.ok(s5Service.mineState(userName));
+        HashMap<String, Object> st = s5Service.mineState(userName);
+        if ("1".equals(enter) && st.get("error") == null) {
+            mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 스태미너 "
+                    + st.get("stamina") + "/" + st.get("staminaMax"));
+        }
+        return ResponseEntity.ok(st);
     }
 
     /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 스태미너 1). */
@@ -535,16 +557,23 @@ public class Season5ViewController {
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
         }
-        return ResponseEntity.ok(s5Service.mineDig(userName, mapId, x, y));
+        HashMap<String, Object> d = s5Service.mineDig(userName, mapId, x, y);
+        if (Boolean.TRUE.equals(d.get("ok"))) mineLog(userName, "[웹] 광산 채굴 (" + x + ", " + y + ")", String.valueOf(d.get("message")));
+        return ResponseEntity.ok(d);
     }
 
     /** [2026-10-23] 웹 광산 -- 캐릭터 위치 저장(광산을 나갈 때 sendBeacon(POST)과 이동 중 주기적으로). */
     @RequestMapping(value = "/api/tower-mine-pos", method = { org.springframework.web.bind.annotation.RequestMethod.GET, org.springframework.web.bind.annotation.RequestMethod.POST })
     @ResponseBody
     public ResponseEntity<?> apiTowerMinePos(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "exit", defaultValue = "") String exit) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineSavePos(userName, mapId, x, y));
+        HashMap<String, Object> out = s5Service.mineSavePos(userName, mapId, x, y);
+        if ("1".equals(exit) && out.get("error") == null) { // 광산을 나갈 때/화면을 벗어날 때 -- 서버가 받아들인 최종 위치로 기록
+            mineLog(userName, "[웹] 광산 퇴장", out.get("mapName") + " (" + out.get("x") + ", " + out.get("y") + ")");
+        }
+        return ResponseEntity.ok(out);
     }
 
     /** [2026-10-23] 웹 광산 -- (x, y)에 서서 바로 옆 포탈(px, py)로 들어가기(지역 통로/동굴 입구/나가는 길/지하 문). */
@@ -587,7 +616,9 @@ public class Season5ViewController {
             out.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(out);
         }
-        out.put("message", s5Service.mineShopBuy(userName, no, times));
+        String msg = s5Service.mineShopBuy(userName, no, times);
+        mineLog(userName, "[웹] 광산상점 구매 " + no + "번 x" + times, msg);
+        out.put("message", msg);
         return ResponseEntity.ok(out);
     }
 

@@ -5326,7 +5326,7 @@ var TowerMine = (function () {
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
   var tiles = null, sprites = null, hole = null, oreIcons = {};
   var P = { x: 0, y: 0, fx: 0, fy: 0, tx: 0, ty: 0, t0: 0, moving: false, dir: 'down', step: 0, digT0: 0 };
-  var keys = [], tapDir = null, drag = null, dug = {}, recent = [], floats = [], flashT0 = 0, lastBump = '', lastBumpT = 0;
+  var keys = [], tapDir = null, drag = null, dug = {}, recent = [], floats = [], flashT0 = 0, lastBump = '', lastBumpT = 0, exitSent = false;
   // [2026-10-23] 맵 이동/마을로 이동 화면 전환 -- 페이드 아웃(검게) -> 서버 이동 -> 새 맵으로 페이드 인 + 가운데 맵 이름.
   var FADE_OUT_MS = 380, FADE_IN_MS = 650, BANNER_MS = 1900;
   var fade = null, banner = null; // fade = { mode: 'out'|'in', t0 }, banner = { text, t0 }
@@ -5577,8 +5577,12 @@ var TowerMine = (function () {
     el.cv.addEventListener('pointermove', function (e) { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; } });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { el.cv.addEventListener(t, function () { drag = null; }); });
     window.addEventListener('resize', function () { if (opened) fit(); });
-    window.addEventListener('pagehide', function () { if (opened) saveBeacon(); });
-    document.addEventListener('visibilitychange', function () { if (opened && document.visibilityState === 'hidden') saveBeacon(); });
+    window.addEventListener('pagehide', function () { if (opened) saveBeacon(true); });
+    document.addEventListener('visibilitychange', function () {
+      if (!opened) return;
+      if (document.visibilityState === 'hidden') saveBeacon(true);
+      else if (exitSent && map) { exitSent = false; api('/api/tower-mine?enter=1').catch(function () { }); } // 다른 앱/탭에서 돌아옴 = 다시 입장
+    });
     document.addEventListener('keydown', function (e) {
       if (!opened) return;
       var d = keyDir(e.key);
@@ -5877,13 +5881,17 @@ var TowerMine = (function () {
       if (d && d.ok === false && d.x != null) { setPos(d.x, d.y); msg('이동 기록이 맞지 않아 (' + d.x + ', ' + d.y + ')로 돌아갔어요.'); }
     }).catch(function () { lastSaved = ''; });
   }
-  function saveBeacon() {
+  /** exit=true: 광산을 나가거나 화면을 벗어날 때 -- 위치가 그대로여도 보내서 서버가 퇴장 로그를 남긴다(한 번만). */
+  function saveBeacon(exit) {
     if (!map) return;
     var x = P.moving ? P.fx : P.x, y = P.moving ? P.fy : P.y;
-    if (map.id + ':' + x + ',' + y === lastSaved) return;
+    if (exit && exitSent) return;
+    if (!exit && map.id + ':' + x + ',' + y === lastSaved) return;
     lastSaved = map.id + ':' + x + ',' + y;
+    if (exit) exitSent = true;
     var body = new URLSearchParams();
     body.append('userName', cfg.user); body.append('mapId', map.id); body.append('x', x); body.append('y', y);
+    if (exit) body.append('exit', '1');
     try {
       if (!(navigator.sendBeacon && navigator.sendBeacon(cfg.base + '/api/tower-mine-pos', body))) {
         fetch(cfg.base + '/api/tower-mine-pos', { method: 'POST', body: body, keepalive: true });
@@ -5938,7 +5946,8 @@ var TowerMine = (function () {
     fit();
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
-    api('/api/tower-mine').then(function (s) {
+    exitSent = false;
+    api('/api/tower-mine?enter=1').then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
       if (s.error) throw new Error(s.error);
       return enterState(s);
     }).then(function () {
@@ -5957,7 +5966,7 @@ var TowerMine = (function () {
   }
   function close() {
     if (!opened) return;
-    if (map && !busy) saveBeacon();
+    if (map) saveBeacon(true);
     opened = false;
     cancelAnimationFrame(raf);
     clearInterval(saveTimer);
