@@ -749,7 +749,7 @@
     #mineCanvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
     .mpx{ background:rgba(20,16,30,.82); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); color:#fff; font-weight:800; border-radius:0; }
     .mine-hud-tl{ position:absolute; left:10px; top:10px; pointer-events:none; }
-    .mine-coord{ font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; }
+    .mine-coord{ display:inline-block; font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
     .mine-hud-tr{ position:absolute; right:10px; top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     .mine-sta{ font:800 15px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; color:#ffe14d; }
