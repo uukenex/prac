@@ -8533,6 +8533,56 @@ public class BotS5ServiceImpl implements BotS5Service {
         return disenchantRow(userName, progress, unequipped.get(equipIdx - 1));
     }
 
+    // ---- [2026-10-23] 일반 장비/악세서리 분해(★1~★6) ----
+    // "인벤토리에서 6성 이하 장비/악세 분해, 여러 개면 몇 개 분해할지 고르고, 분해 시 확률로 전설의조각. 6성 10%, 그 아래는 거의 안 나오게" 요청.
+    // 개당 조각 확률(%), 인덱스 = 등급-1. 서버 전체 미착용 재고(★6 744/★5 2184/★4 2632 ...)를 다 분해해도 기대값 약 105개 수준.
+    private static final double[] DISMANTLE_FRAGMENT_PCT = { 0.1, 0.1, 0.1, 0.3, 1.0, 10.0 };
+
+    @Override
+    @Transactional
+    public String dismantleEquip(String userName, int equipId, int qty) {
+        HashMap<String, Object> progress = getOrInitProgress(userName);
+        if ("IN_COMBAT".equals(strVal(progress.get("STATUS"), "NORMAL"))) return "전투 중에는 분해할 수 없습니다.";
+        HashMap<String, Object> equip = null;
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (intVal(e.get("EQUIP_ID"), 0) == equipId) { equip = e; break; }
+        }
+        if (equip == null) return "이미 없는 장비입니다.";
+        if (equip.get("EQUIPPED_COMPANION_ID") != null) return "착용 중인 장비는 분해할 수 없습니다. 먼저 해제하세요.";
+        int grade = intVal(equip.get("GRADE"), 1);
+        if (equip.get("LEGENDARY_ID") != null || grade >= 7) return "★7 전설장비는 상점의 [장비해체]로 해체하세요(조각 15개 + 강화권).";
+        int have = qtyOf(equip);
+        if (qty < 1) qty = 1;
+        if (qty > have) return "보유 수량(" + have + "개)보다 많이 분해할 수 없습니다.";
+        takeEquipUnits(equipId, qty);
+        double pct = DISMANTLE_FRAGMENT_PCT[Math.max(1, Math.min(6, grade)) - 1];
+        int frag = 0;
+        for (int i = 0; i < qty; i++) if (RND.nextDouble() * 100 < pct) frag++;
+        int total = intVal(progress.get("LEGEND_FRAGMENT"), 0);
+        if (frag > 0) {
+            total += frag;
+            HashMap<String, Object> up = new HashMap<>();
+            up.put("userName", userName);
+            up.put("legendFragment", total);
+            dao.updateUserProgress(up);
+        }
+        String label = equipFullLabel(strVal(equip.get("CLASS"), ""), strVal(equip.get("PART"), "")) + " ★" + grade;
+        return "🔨 " + label + " " + qty + "개 분해 완료!" + (have > qty ? " (남은 " + (have - qty) + "개)" : "")
+                + NL + (frag > 0 ? "🧩 전설의조각 " + frag + "개 획득! (보유 " + total + "개)" : "전설의조각은 나오지 않았습니다. (개당 확률 ★6 10% · ★5 1% · ★4 0.3% · 그 이하 0.1%)");
+    }
+
+    /** 채팅 /장비분해 N [개수] -- N = /장비목록 [미착용] 번호. */
+    @Override
+    @Transactional
+    public String dismantleEquipByIdx(String userName, int equipIdx, int qty) {
+        List<HashMap<String, Object>> unequipped = new ArrayList<>();
+        for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
+            if (e.get("EQUIPPED_COMPANION_ID") == null) unequipped.add(e);
+        }
+        if (equipIdx < 1 || equipIdx > unequipped.size()) return "잘못된 장비 번호입니다. /장비목록을 확인하세요.";
+        return dismantleEquip(userName, intVal(unequipped.get(equipIdx - 1).get("EQUIP_ID"), 0), qty);
+    }
+
     /** [2026-10-22] 웹 해체 팝업 전용 -- "미착용 목록 N번" 대신 EQUIP_ID로 해체한다.
      *  번호 방식은 팝업이 상점 탭에 있어 해체 후 목록이 새로 안 불려서, 두 번째 해체부터 옛 번호가 다른 장비(★6 등)를 가리켜
      *  "★7 전설장비만 분해할 수 있습니다"로 거절됐다(무기 하나만 되고 나머지는 안 되는 것처럼 보이던 원인). */

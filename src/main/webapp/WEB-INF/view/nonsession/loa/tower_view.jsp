@@ -394,6 +394,11 @@
     .gate-btns{ display:flex; gap:8px; }
     .gate-btns button{ flex:1; border-radius:12px; padding:11px 8px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); }
     .gate-btns button.primary{ background:var(--gold); border-color:var(--gold); color:#fff; }
+    .dm-qty-row{ display:flex; align-items:center; justify-content:center; gap:6px; margin:12px 0 8px; }
+    .dm-qty-row input{ width:80px; text-align:center; font-size:16px; font-weight:800; padding:6px; border:1px solid var(--line, #ccc); border-radius:8px; }
+    .dm-qty-row button, .dm-quick button{ min-width:40px; padding:6px 8px; }
+    .dm-quick{ display:flex; justify-content:center; gap:6px; margin-bottom:8px; }
+    .dm-info{ font-size:12px; text-align:center; opacity:.85; line-height:1.5; }
     .eq-qty{ display:inline-block; margin-left:4px; padding:0 6px; border-radius:999px; background:var(--gold); color:#fff; font-size:10px; font-weight:800; }
     .ticket-row{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; font-size:11px; }
     .ticket-chip{ background:#fff; border:1.5px solid var(--gold); color:var(--gold); border-radius:999px; padding:3px 9px; font-weight:800; }
@@ -1364,6 +1369,31 @@
     <div class="gate-btns">
       <button type="button" onclick="TW.closeGate()">닫기</button>
       <button type="button" class="primary" id="gateOkBtn">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- [2026-10-23] 일반 장비/악세 분해(★1~★6) -- 수량이 여러 개면 몇 개 분해할지 고른다. 개당 확률로 전설의조각. -->
+<div class="detail-overlay" id="dismantleOverlay" onclick="if(event.target===this) TW.closeDismantle();">
+  <div class="detail-card">
+    <div class="sheet-title" id="dmTitle">🔨 장비 분해</div>
+    <div class="dm-info" id="dmHave"></div>
+    <div class="dm-qty-row" id="dmQtyRow">
+      <button type="button" onclick="TW.dmStep(-10)">-10</button>
+      <button type="button" onclick="TW.dmStep(-1)">-1</button>
+      <input type="number" id="dmQty" min="1" value="1" oninput="TW.dmStep(0)">
+      <button type="button" onclick="TW.dmStep(1)">+1</button>
+      <button type="button" onclick="TW.dmStep(10)">+10</button>
+    </div>
+    <div class="dm-quick" id="dmQuick">
+      <button type="button" onclick="TW.dmSet(1)">1개</button>
+      <button type="button" onclick="TW.dmSet('half')">절반</button>
+      <button type="button" onclick="TW.dmSet('all')">전부</button>
+    </div>
+    <div class="dm-info" id="dmExpect"></div>
+    <div class="gate-btns">
+      <button type="button" onclick="TW.closeDismantle()">취소</button>
+      <button type="button" class="primary" id="dmOkBtn" onclick="TW.doDismantle()">분해</button>
     </div>
   </div>
 </div>
@@ -2376,6 +2406,51 @@ var TW = (function () {
     document.getElementById('gateOverlay').classList.add('open');
   }
   function closeGate() { document.getElementById('gateOverlay').classList.remove('open'); }
+
+  // [2026-10-23] 일반 장비 분해 팝업 -- 서버 dismantleEquip과 같은 확률표(개당, %).
+  var DISMANTLE_FRAGMENT_PCT = { 1: 0.1, 2: 0.1, 3: 0.1, 4: 0.3, 5: 1, 6: 10 };
+  var dismantleItems = {};
+  var dismantleCur = null;
+  function openDismantle(equipId) {
+    var it = dismantleItems[equipId];
+    if (!it) return;
+    dismantleCur = it;
+    document.getElementById('dmTitle').textContent = '🔨 ' + it.label + ' ★' + it.grade + ' 분해';
+    document.getElementById('dmHave').textContent = '보유 ' + it.qty + '개 · 개당 전설의조각 확률 ' + DISMANTLE_FRAGMENT_PCT[it.grade] + '%';
+    var multi = it.qty > 1;
+    document.getElementById('dmQtyRow').style.display = multi ? '' : 'none';
+    document.getElementById('dmQuick').style.display = multi ? '' : 'none';
+    document.getElementById('dmQty').max = it.qty;
+    dmSet(1);
+    document.getElementById('dismantleOverlay').classList.add('open');
+  }
+  function closeDismantle() { document.getElementById('dismantleOverlay').classList.remove('open'); dismantleCur = null; }
+  function dmQty() {
+    var n = parseInt(document.getElementById('dmQty').value, 10);
+    return isNaN(n) ? 1 : n;
+  }
+  function dmSet(v) {
+    if (!dismantleCur) return;
+    var n = v === 'all' ? dismantleCur.qty : v === 'half' ? Math.max(1, Math.floor(dismantleCur.qty / 2)) : v;
+    document.getElementById('dmQty').value = n;
+    dmStep(0);
+  }
+  function dmStep(d) {
+    if (!dismantleCur) return;
+    var n = Math.max(1, Math.min(dismantleCur.qty, dmQty() + d));
+    if (d !== 0 || String(n) !== document.getElementById('dmQty').value) document.getElementById('dmQty').value = n;
+    var pct = DISMANTLE_FRAGMENT_PCT[dismantleCur.grade] || 0;
+    var exp = n * pct / 100;
+    document.getElementById('dmExpect').textContent = n + '개 분해 · 기대 전설의조각 약 ' + (exp >= 1 ? exp.toFixed(1) : exp.toFixed(2)) + '개 (확률이라 0개일 수도 있어요)';
+    document.getElementById('dmOkBtn').textContent = n + '개 분해';
+  }
+  function doDismantle() {
+    if (!dismantleCur) return;
+    var n = Math.max(1, Math.min(dismantleCur.qty, dmQty()));
+    var id = dismantleCur.id;
+    closeDismantle();
+    action('EQUIP_DISMANTLE', String(id), String(n));
+  }
 
   function closeConfirm() {
     document.getElementById('confirmOverlay').classList.remove('open');
@@ -3983,6 +4058,7 @@ var TW = (function () {
 
     var box = document.getElementById('equipListBox');
     box.innerHTML = '';
+    dismantleItems = {};
     if (filtered.length === 0) {
       box.innerHTML = '<div class="sheet-empty">' + (allItems.length === 0 ? '보유한 장비가 없습니다.' : '조건에 맞는 장비가 없습니다.') + '</div>';
       return;
@@ -4033,7 +4109,13 @@ var TW = (function () {
           // [2026-09-21] "장비목록에서 말고, 장비제작소 안에 장비해체 버튼을 누르면 어떤장비
           // 해체할지 띄우는방식으로하자" 요청으로 여기(장비 카드)의 개별 분해 버튼은 제거하고
           // 상점 탭 전설제작 카드의 "장비해체" 버튼 -> 선택 팝업으로 옮김(openLegendDisenchant).
-          actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + '</div>';
+          // [2026-10-23] ★6 이하 일반 장비/악세는 인벤토리에서 바로 분해(수량 선택 팝업, 확률로 전설의조각).
+          var dmBtn = '';
+          if (!e.LEGENDARY_ID && e.GRADE <= 6) {
+            dismantleItems[e.EQUIP_ID] = { id: e.EQUIP_ID, grade: e.GRADE, qty: e.QTY || 1, label: eqLabel };
+            dmBtn = '<button class="ghost" onclick="TW.openDismantle(\'' + e.EQUIP_ID + '\')">분해</button>';
+          }
+          actionsHtml = '<div class="btn-group"><button onclick="TW.action(\'EQUIP_WEAR\',\'' + idx + '\')">장착</button>' + synthBtn + dmBtn + '</div>';
         }
         card.innerHTML = '<div class="eq-part">' + equipIcon(e.CLASS, e.PART) + '</div>'
             + '<div class="eq-grade">' + eqLabel + ' ★' + e.GRADE + (e.QTY > 1 ? '<span class="eq-qty">x' + e.QTY + '</span>' : '') + '</div>'
@@ -4887,7 +4969,7 @@ var TW = (function () {
         if (needFull) loadPartyAndEquip(); else loadPartyLight();
         if (msgTxt.indexOf('처치! 🎉') !== -1) showVictoryFlash();
       }
-      if (type === 'DISENCHANT_LEGENDARY_ID' || type === 'DISENCHANT_LEGENDARY') loadPartyAndEquip(); // [2026-10-22] 상점 탭에서도 장비 목록 갱신
+      if (type === 'DISENCHANT_LEGENDARY_ID' || type === 'DISENCHANT_LEGENDARY' || type === 'EQUIP_DISMANTLE') loadPartyAndEquip(); // [2026-10-22] 상점 탭에서도 장비 목록 갱신
       loadStatus(); // loadStatus()가 끝나면 refreshActivePanel()도 같이 불러서 중복 호출 없이 처리됨
     }).catch(function () { toast('요청 실패'); });
   }
@@ -5006,7 +5088,8 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab,
+           openDismantle: openDismantle, closeDismantle: closeDismantle, dmStep: dmStep, dmSet: dmSet, doDismantle: doDismantle, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
            openAllEquip: openAllEquip, closeAllEquip: closeAllEquip,

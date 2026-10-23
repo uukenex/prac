@@ -732,6 +732,9 @@ public class Season5ViewController {
                 case "DISENCHANT_LEGENDARY": // 예전 화면(번호 기준) 호환
                     message = s5Service.disenchantLegendary(userName, Integer.parseInt(param1));
                     break;
+                case "EQUIP_DISMANTLE": // [2026-10-23] param1=EQUIP_ID, param2=개수
+                    message = s5Service.dismantleEquip(userName, Integer.parseInt(param1), param2.isEmpty() ? 1 : Integer.parseInt(param2));
+                    break;
                 case "DISENCHANT_LEGENDARY_ID":
                     message = s5Service.disenchantLegendaryById(userName, Integer.parseInt(param1));
                     break;

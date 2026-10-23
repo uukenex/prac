@@ -332,6 +332,18 @@ public class Season5Controller {
         }
     }
 
+    /** [2026-10-23] /장비분해 N [개수] -- ★1~★6 일반 장비/악세 분해(확률로 전설의조각). */
+    public String dismantleEquip(HashMap<String, Object> map) {
+        String p1 = param1Of(map);
+        String p2 = param2Of(map);
+        if (p1.isEmpty()) return "사용법: /장비분해 N [개수] (N=/장비목록 [미착용] 번호, 개수 생략 시 1개, ★6 이하만, 개당 확률로 전설의조각: ★6 10% · ★5 1% · ★4 0.3% · 그 이하 0.1%)";
+        try {
+            return s5Service.dismantleEquipByIdx(userNameOf(map), Integer.parseInt(p1), p2.isEmpty() ? 1 : Integer.parseInt(p2));
+        } catch (NumberFormatException e) {
+            return "번호/개수는 숫자로 입력해주세요. (예: /장비분해 3 10)";
+        }
+    }
+
     /** [2026-10-22] /패치확인 -- 전투 영향 패치 내용을 확인해야 다시 주사위를 굴릴 수 있다. */
     public String patchAck(HashMap<String, Object> map) {
         return s5Service.ackPatch(userNameOf(map));
