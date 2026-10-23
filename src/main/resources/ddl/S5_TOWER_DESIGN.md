@@ -5051,3 +5051,9 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - `S5RequestCache`에 공유 캐시 추가: 기준 데이터(selectMonster/FloorInfo/TileMaster/Gacha/GachaList/AchievementList/LegendaryMaster(List)/Star7Portrait) 10분, 가끔 바뀌는 유저 데이터(selectUserEquip/selectEquipByCompanion/selectUserTileMaster) 60초. 진행 상태/HP/스탯 등 매 굴림 바뀌는 건 제외.
 - 일관성: 테이블별 버전 번호(쓰기마다 증가, 대상 모르는 쓰기는 전체 버전 증가), 항목은 읽을 당시 버전과 다르면 폐기. 트랜잭션 안에서 쓴 테이블은 그 트랜잭션 종료(커밋/롤백) 때 한 번 더 증가(커밋 전에 다른 요청이 저장한 옛 값 무효화), 쓰기를 한 트랜잭션은 자기가 쓴 테이블 조회를 공유 캐시에 넣지 않음. 상한 2만 항목(넘으면 비움). /갱신(refreshConfig)이 clearShared() 호출.
 - 관리자 계정 실측(429층, 8회): 전투 턴 DB 접근 17 -> 10~15회, 굴린 뒤 상태 조회 8 -> 5회. 직접 SQL로 고친 값은 /갱신 전까지 최대 60초(기준 데이터 10분) 지연(CLAUDE.md에 기록).
+
+### 2026-10-23 전설 착용 제한 완화 + 전설 특수효과 50%
+- "동료당 전설 1개" 제한 폐지(유저 반발: 계단을 못 오름) -- 같은 전설(LEGENDARY_ID)을 여러 동료가 동시에 착용하는 것만 금지(legendWearBlock/legendViolations). 6부위 모두 전설 착용 가능.
+- 전설 특수효과 전원 50%(`LEGEND_EFFECT_SCALE`): 확률(연사/수다쟁이/회피/시작 보호막/불굴)은 확률 x0.5, 수치(받는 피해 감소/처치 PP)는 x0.5, 배율의 증가분(능력치 배율 x2->x1.5, 크리티컬 x2->x1.75, 스킬 확률 x1.5->x1.25)은 증가분 x0.5, 주사위 하한 +1은 평균 +0.5(scaleInt), 방어 무시는 효과 없음과 온전한 효과의 중간. 장비 기본 능력치/강화 보너스는 그대로. 성장형은 GROWTH_EQUIP_EFFECT가 겹쳐 원래의 25%(legendScale). 화면 효과 설명(LEGEND_EFFECT_LABEL)도 실제 적용 수치로 표시.
+- 전투 영향 패치라 PATCH_VERSION 20261023으로 올림(모든 유저가 주사위 전에 새 안내를 한 번 확인).
+- 관리자 계정 검증: 연사 30%->14.98%(성장형 7.53%), 주사위 하한 평균 +0.502, 반지 x2->x1.494, 한 동료 여러 전설 허용/같은 전설 중복 차단, 게이트 새 버전.

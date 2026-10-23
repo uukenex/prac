@@ -4284,19 +4284,24 @@ var TW = (function () {
   // 누르는 즉시 실행(제작은 연출+결과까지 팝업 안에서 끝남, 해체는 즉시 실행). 로스터
   // (/api/tower-legendary-roster)는 유저 무관 고정 목록이라 한 번만 fetch해서 캐시.
   var legendaryRosterCache = null;
+  // [2026-10-23] 전설 특수효과 50% 조정 -- 서버 LEGEND_EFFECT_SCALE과 같은 값으로 "실제 적용되는 수치"를 보여준다(성장형은 여기서 한 번 더 50%).
+  var LEGEND_EFFECT_SCALE = 0.5;
+  function lfx(v) { var r = Math.round(v * 100) / 100; return String(r); }
+  function lscale(p) { return lfx((p || 0) * LEGEND_EFFECT_SCALE); }               // 확률/퍼센트
+  function lmult(p, base) { return lfx(base + ((p || 0) / 100 - base) * LEGEND_EFFECT_SCALE); } // 배율의 증가분만
   var LEGEND_EFFECT_LABEL = {
-    DEF_STEAL: function (p1) { return '적 방어력 ' + p1 + '% 무시 + 그만큼 데미지 가산'; },
-    DOUBLE_SHOT: function (p1) { return '공격 시 ' + p1 + '% 확률로 같은 눈금으로 한 번 더 연사'; },
-    START_BARRIER: function () { return '전투 시작 시 무적 보호막(다음 피해 1회 면역)을 두르고 시작'; },
-    STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + (p1 / 100) + '배'; },
-    CHATTER: function (p1, p2) { return '공격할 때 ' + p1 + '% 확률로 몬스터 스턴, ' + p2 + '% 확률로 내 데미지 두 배 (각각 따로 판정)'; },
-    LAST_STAND: function () { return '전투당 1번, 치명적인 피해를 받아도 HP 1로 생존 (불굴)'; },
-    DICE_MIN_PLUS: function (p1) { return '전투 중 공격/보호막 주사위의 최소 눈 +' + p1; },
-    CRIT_DAMAGE: function (p1) { return '크리티컬 피해 배율 x1.5 -> x' + (p1 / 100); },
-    DAMAGE_REDUCTION: function (p1) { return '착용한 동료가 받는 피해 ' + p1 + '% 감소'; },
-    EVADE_CHANCE: function (p1) { return '착용한 동료가 맞을 때 ' + p1 + '% 확률로 피해 무효'; },
-    KILL_PP_BONUS: function (p1) { return '파티에 착용한 동료가 있으면 몬스터 처치 PP +' + p1 + '%'; },
-    SKILL_RATE_MULT: function (p1) { return '장착한 캐릭터의 스킬 발동 확률 ' + (p1 / 100) + '배 (예: ★6 도사 부활 15% -> ' + Math.round(15 * p1 / 100) + '%). ★7 동료 보너스(x1.2)와는 곱하지 않고 증가분을 합산하며, 증가한 확률은 최대 90%까지'; }
+    DEF_STEAL: function (p1) { return '적 방어력 무시 + 방어력의 ' + lscale(p1) + '%만큼 데미지 가산 (효과 50%)'; },
+    DOUBLE_SHOT: function (p1) { return '공격 시 ' + lscale(p1) + '% 확률로 같은 눈금으로 한 번 더 연사'; },
+    START_BARRIER: function () { return '전투 시작 시 ' + lscale(100) + '% 확률로 무적 보호막(다음 피해 1회 면역)을 두르고 시작'; },
+    STAT_MULT: function (p1) { return '이 장비의 능력치 보너스 ' + lmult(p1, 1) + '배'; },
+    CHATTER: function (p1, p2) { return '공격할 때 ' + lscale(p1) + '% 확률로 몬스터 스턴, ' + lscale(p2) + '% 확률로 내 데미지 두 배 (각각 따로 판정)'; },
+    LAST_STAND: function () { return '전투당 1번, 치명적인 피해를 받으면 ' + lscale(100) + '% 확률로 HP 1로 생존 (불굴)'; },
+    DICE_MIN_PLUS: function (p1) { return '전투 중 공격/보호막 주사위의 최소 눈 +' + p1 + ' (' + lscale(100) + '% 확률로 적용)'; },
+    CRIT_DAMAGE: function (p1) { return '크리티컬 피해 배율 x1.5 -> x' + lmult(p1, 1.5); },
+    DAMAGE_REDUCTION: function (p1) { return '착용한 동료가 받는 피해 ' + lscale(p1) + '% 감소'; },
+    EVADE_CHANCE: function (p1) { return '착용한 동료가 맞을 때 ' + lscale(p1) + '% 확률로 피해 무효'; },
+    KILL_PP_BONUS: function (p1) { return '파티에 착용한 동료가 있으면 몬스터 처치 PP +' + lscale(p1) + '%'; },
+    SKILL_RATE_MULT: function (p1) { var m = 1 + ((p1 || 100) / 100 - 1) * LEGEND_EFFECT_SCALE; return '장착한 캐릭터의 스킬 발동 확률 ' + lfx(m) + '배 (예: ★6 도사 부활 15% -> ' + Math.round(15 * m) + '%). ★7 동료 보너스(x1.2)와는 곱하지 않고 증가분을 합산하며, 증가한 확률은 최대 90%까지'; }
   };
 
   function legendItemSummaryHtml(item) {

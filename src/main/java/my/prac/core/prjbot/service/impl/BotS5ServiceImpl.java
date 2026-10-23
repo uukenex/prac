@@ -619,7 +619,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     // 같은 동료가 여러 개를 껴도(쿼리가 GROUP BY 없이 행을 그대로 준다) 가장 큰 배율 하나만 적용한다
                     if (intVal(c.get("COMPANION_ID"), 0) == cid) {
                         // [2026-10-22] 성장형은 특수효과 50% -- 배율의 증가분만 절반(x1.5 -> x1.25)
-                        double cm = intVal(c.get("GRADE"), 1) == GROWTH_GRADE ? 1 + (mult - 1) * GROWTH_EQUIP_EFFECT : mult;
+                        double cm = 1 + (mult - 1) * legendScale(intVal(c.get("GRADE"), 1) == GROWTH_GRADE); // [2026-10-23] 증가분 50%(성장형 25%)
                         Object prev = c.get("SKILL_MULT");
                         if (!(prev instanceof Number) || cm > ((Number) prev).doubleValue()) c.put("SKILL_MULT", cm);
                     }
@@ -670,14 +670,25 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private double growthFullMult() { return 2.0 * (1 + limitBreakPct(LIMIT_BREAK_MAX)); }
 
-    /** 전설 특수효과 확률 굴림 -- 성장형(half)이면 확률을 절반으로. */
-    private static boolean legendRoll(int pct, boolean half) {
-        return pct > 0 && RND.nextInt(half ? 200 : 100) < pct;
+    // [2026-10-23] "전설장비 특수효과를 현재 대비 50%로" 요청 -- 모든 동료의 전설 특수효과(확률/수치/배율의 증가분)에 곱하는 배율.
+    // 성장형(☆1)은 여기에 GROWTH_EQUIP_EFFECT(50%)가 한 번 더 곱해져 원래의 25%. 능력치 보너스(장비 기본/강화)에는 적용하지 않는다(STAT_MULT의 증가분만).
+    private static final double LEGEND_EFFECT_SCALE = 0.5;
+
+    /** 이 동료가 받는 전설 특수효과 배율(전원 50%, 성장형은 그 절반). */
+    private static double legendScale(boolean growth) {
+        return LEGEND_EFFECT_SCALE * (growth ? GROWTH_EQUIP_EFFECT : 1.0);
     }
 
-    /** 정수 효과(+N)의 절반 -- 홀수면 남는 0.5는 50% 확률로 1이 된다(평균이 정확히 절반). */
-    private static int halfInt(int n) {
-        return n / 2 + (n % 2 != 0 && RND.nextBoolean() ? Integer.signum(n) : 0);
+    /** 전설 특수효과 확률 굴림 -- pct%에 legendScale을 곱한 확률(성장형이면 한 번 더 절반). */
+    private static boolean legendRoll(int pct, boolean growth) {
+        return pct > 0 && RND.nextDouble() * 100 < pct * legendScale(growth);
+    }
+
+    /** 정수 효과(+N)에 배율을 곱한 값 -- 소수부는 그 확률로 1이 된다(평균이 정확히 N x 배율). */
+    private static int scaleInt(int n, double scale) {
+        double x = n * scale;
+        int b = (int) Math.floor(x);
+        return b + (RND.nextDouble() < x - b ? 1 : 0);
     }
 
     /** 101층~maxFloor(최대 1000층) 중 100의 배수(마을)를 뺀 계단층 수. */
@@ -934,7 +945,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 String part = strVal(e.get("PART"), "");
                 // [2026-09-29] 전설 STAT_MULT 효과(예: 조던 링) -- 그 장비 한 개가 주는 보너스만 N% 배율.
                 double sm = "STAT_MULT".equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))
-                        ? intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 : 1.0;
+                        ? 1 + (intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 - 1) * LEGEND_EFFECT_SCALE : 1.0; // [2026-10-23] 증가분 50%
                 // [2026-10-08] 전설장비 강화 -- 강화 1단계마다 그 장비 한 개가 주는 보너스가 ENHANCE_STAT_PCT_PER_LV% 늘어난다(수치 제한 없음).
                 int enhLv = e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0);
                 if (enhLv > 0) sm *= 1 + enhLv * ENHANCE_STAT_PCT_PER_LV / 100.0;
@@ -3485,7 +3496,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     if ("START_BARRIER".equals(strVal(be.get("LEGENDARY_EFFECT_TYPE"), ""))) { barrierItem = strVal(be.get("LEGENDARY_ITEM_NAME"), "전설 로브"); break; }
                 }
                 if (barrierItem == null) continue;
-                if (intVal(bc.get("GRADE"), 1) == GROWTH_GRADE && !legendRoll(100, true)) continue; // [2026-10-22] 성장형은 특수효과 50%
+                if (!legendRoll(100, intVal(bc.get("GRADE"), 1) == GROWTH_GRADE)) continue; // [2026-10-23] 발동 확률 50%(성장형 25%)
                 int bcid = intVal(bc.get("COMPANION_ID"), 0);
                 HashMap<String, Object> wardUp = new HashMap<>();
                 wardUp.put("userName", userName);
@@ -3930,11 +3941,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean growthHalf = grade == GROWTH_GRADE; // [2026-10-22] 성장형은 장비 특수효과 50%
             HashMap<String, Object> diceMinEq = legendEquipEffect(equips, "DICE_MIN_PLUS");
             int diceMinPlus = diceMinEq == null ? 0 : intVal(diceMinEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
-            if (growthHalf && diceMinPlus != 0) diceMinPlus = halfInt(diceMinPlus);
+            if (diceMinPlus != 0) diceMinPlus = scaleInt(diceMinPlus, legendScale(growthHalf)); // [2026-10-23] 효과 50%(성장형 25%)
             int myDiceMin = diceMinFor(p) + diceMinPlus;
             HashMap<String, Object> critEq = legendEquipEffect(equips, "CRIT_DAMAGE");
             double critMult = critEq == null ? 1.5 : intVal(critEq.get("LEGENDARY_EFFECT_PARAM1"), 150) / 100.0;
-            if (growthHalf && critEq != null) critMult = 1.5 + (critMult - 1.5) * GROWTH_EQUIP_EFFECT;
+            if (critEq != null) critMult = 1.5 + (critMult - 1.5) * legendScale(growthHalf); // [2026-10-23] 증가분 50%(성장형 25%)
             if ("ARCHER".equals(synergy)) eff[1] = (int) Math.round(eff[1] * 1.3); // 시너지: 궁수3인조 공격력+30%
             // 균형3인조(RAINBOW)의 방어 +10%는 이 배열이 아니라 반격 파트에서 대상(tEff[2])에
             // 직접 적용한다(여기 eff[2]는 "내가 공격할 때" 값이라 방어 보너스는 안 쓰임).
@@ -3998,9 +4009,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (legWeapon != null && "DEF_STEAL".equals(strVal(legWeapon.get("EFFECT_TYPE"), ""))) {
                 int bonus = (int) Math.round(effMonsterDef * (intVal(legWeapon.get("EFFECT_PARAM1"), 0) / 100.0));
                 dmg = Math.max(1, eff[1] * roll) + bonus;
-                // [2026-10-22] 성장형은 효과 50% -- 효과 없을 때(방어 차감)와 온전한 효과의 정확히 중간
-                if (growthHalf) dmg = (Math.max(1, eff[1] * roll - effMonsterDef) + dmg) / 2;
-                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + bonus + (growthHalf ? "(효과 50%)" : "");
+                // [2026-10-23] 효과 50%(성장형 25%) -- 효과 없을 때(방어 차감)와 온전한 효과 사이를 배율만큼
+                int noEffectDmg = Math.max(1, eff[1] * roll - effMonsterDef);
+                dmg = (int) Math.round(noEffectDmg + (dmg - noEffectDmg) * legendScale(growthHalf));
+                legendaryWeaponTag = strVal(legWeapon.get("ITEM_NAME"), "") + "+" + Math.round(bonus * legendScale(growthHalf));
             } else {
                 dmg = Math.max(1, eff[1] * roll - effMonsterDef);
             }
@@ -4264,12 +4276,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             // [2026-09-09] "두 마리"라 실제로 2마리분 처치 보상을 준다(dualHpMult가 그대로 배율).
             PP reward = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), "")).multiply(floorPpMultiplier(floor) * eliteMult * dualHpMult);
             // [2026-10-20] 전설 목걸이 "군트람"(KILL_PP_BONUS): 파티에 착용한 동료가 있으면 처치 PP +PARAM1%(여러 개여도 한 번만, 가장 큰 값).
-            int killPpPct = 0;
+            double killPpPct = 0;
             String killPpItem = null;
             for (HashMap<String, Object> pc : party) {
                 HashMap<String, Object> kEq = legendEquipEffect(dao.selectEquipByCompanion(intVal(pc.get("COMPANION_ID"), 0)), "KILL_PP_BONUS");
-                int kPct = kEq == null ? 0 : intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0);
-                if (intVal(pc.get("GRADE"), 1) == GROWTH_GRADE) kPct = (int) Math.round(kPct * GROWTH_EQUIP_EFFECT); // [2026-10-22] 성장형은 특수효과 50%
+                double kPct = kEq == null ? 0 : intVal(kEq.get("LEGENDARY_EFFECT_PARAM1"), 0) * legendScale(intVal(pc.get("GRADE"), 1) == GROWTH_GRADE); // [2026-10-23] 효과 50%(성장형 25%)
                 if (kEq != null && kPct > killPpPct) {
                     killPpPct = kPct;
                     killPpItem = strVal(kEq.get("LEGENDARY_ITEM_NAME"), "목걸이");
@@ -4456,7 +4467,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 // [세 구간 분리 요청] "이번턴 남은" 자리를 처치 시에는 생존 동료 HP 대신 획득 PP로
                 // 대체 -- 처치한 마당에 파티 HP를 또 보여줄 필요는 없으므로.
                 PP curPp = PP.of(((Number) p.get("PP_VALUE")).doubleValue(), strVal(p.get("PP_EXT"), ""));
-                sb.append(NL).append(reward.format()).append(" PP 획득!").append(killPpItem != null ? " ✨[" + killPpItem + "] +" + killPpPct + "%" : "").append(" (보유 ").append(curPp.format()).append(" PP)");
+                sb.append(NL).append(reward.format()).append(" PP 획득!").append(killPpItem != null ? " ✨[" + killPpItem + "] +" + pct1(killPpPct) + "%" : "").append(" (보유 ").append(curPp.format()).append(" PP)");
             }
             // 승리하면 살아있는 동료는 자동으로 풀피 회복되지만, 전투불가(HP 0)가 된 동료는
             // 그대로 둔다 -- 부활은 마을 도착이나 럭키칸의 "완전회복" 효과로만 일어난다.
@@ -5094,7 +5105,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> drEq = legendEquipEffect(tEquips, "DAMAGE_REDUCTION");
             if (drEq != null && dmgToParty > 0) {
                 int before = dmgToParty;
-                double drPct = intVal(drEq.get("LEGENDARY_EFFECT_PARAM1"), 0) * (tGrade == GROWTH_GRADE ? GROWTH_EQUIP_EFFECT : 1.0); // [2026-10-22] 성장형은 특수효과 50%
+                double drPct = intVal(drEq.get("LEGENDARY_EFFECT_PARAM1"), 0) * legendScale(tGrade == GROWTH_GRADE); // [2026-10-23] 효과 50%(성장형 25%)
                 dmgToParty = (int) Math.round(dmgToParty * (1 - drPct / 100.0));
                 sb.append("🛡️ [").append(strVal(drEq.get("LEGENDARY_ITEM_NAME"), "갑주")).append("] 받는 피해 감소 (").append(before).append(" → ").append(dmgToParty).append(")").append(NL);
             }
@@ -8061,7 +8072,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // 장착 "전" 최대체력을 먼저 구해둔다.
         HashMap<String, Object> userStat = dao.selectUserStat(userName);
         int oldMaxHp = effMaxHpOf(targetCompanion, userStat);
-        // [2026-10-22] 전설장비는 동료당 1개, 같은 전설은 한 동료만
+        // [2026-10-22] 같은 전설은 한 동료만 (2026-10-23: "동료당 1개" 제한은 반발이 커서 폐지 -- 한 동료가 여러 부위에 전설을 낄 수 있다)
         String legendBlock = legendWearBlock(userName, equip, companionId);
         if (legendBlock != null) return legendBlock;
         // 같은 부위에 이미 장착된 게 있으면 해제 -- [2026-10-22] 수량(QTY) 때문에 장착을 먼저 하고 기존 장비 해제는 그 뒤에(unwearEquipOne 설명 참고)
@@ -8568,11 +8579,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-10-22] 전투 영향 패치 확인 게이트 + 전설장비 착용 규칙 + 강화권
     // ================================================================
     // 패치를 확인(PATCH_ACK_VERSION)하기 전에는 주사위를 굴리지 않고 패치 내용을 보여준다. 다음 전투 영향 패치 때는 PATCH_VERSION과 PATCH_NOTES만 바꾸면 된다.
-    private static final String PATCH_VERSION = "20261022";
-    private static final String PATCH_NOTES = "📢 전투 밸런스 패치 안내 (2026-10-22)" + NL
-            + "1. 성장형 동료(☆1) 최대 성장: ★7의 2배(x6.72) → ★6 한계돌파+6의 2배(x5.6)" + NL
-            + "2. 성장형 동료는 장비 효과(전설 특수효과 포함)를 50%만 받습니다." + NL
-            + "3. 전설장비는 동료 1명당 1개만 착용할 수 있고, 같은 전설장비를 여러 동료가 동시에 착용할 수 없습니다. 규칙에 어긋난 착용이 남아 있으면 해제하기 전까지 공격할 수 없습니다." + NL
+    private static final String PATCH_VERSION = "20261023";
+    private static final String PATCH_NOTES = "📢 전투 밸런스 패치 안내 (2026-10-23)" + NL
+            + "1. 전설장비 착용 제한 완화: 동료 한 명이 여러 부위에 전설을 낄 수 있습니다(6부위 모두 가능). 단, 같은 전설장비를 여러 동료가 동시에 착용할 수는 없습니다." + NL
+            + "2. 전설장비 특수효과가 50%로 조정됩니다. (예: 연사 30%→15%, 받는 피해 감소 20%→10%, 불굴·시작 보호막은 50% 확률로 발동, 능력치 배율 x2→x1.5, 크리티컬 x2→x1.75) 장비 기본 능력치와 강화 효과는 그대로입니다." + NL
+            + "3. 성장형 동료(☆1)는 장비 효과 50% 규칙이 그대로라 전설 특수효과는 원래의 25%가 적용됩니다. (최대 성장 x5.6)" + NL
             + "4. 강화된 전설장비를 해체하면 전설의조각 15개와 그 수치의 강화권(예: +8 강화권)을 돌려받습니다. 강화권은 강화 수치가 더 낮은 다른 전설장비에 써서 그 수치로 맞출 수 있습니다. (강화비 절반 환급은 강화권으로 대체)" + NL
             + "5. 보관함의 같은 종류 일반 장비/악세서리는 개수(xN)로 묶여 표시됩니다. (합성 규칙은 그대로)";
 
@@ -8592,7 +8603,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!v.isEmpty()) {
             g.put("type", "LEGEND");
             g.put("text", "⚠️ 전설장비 착용 규칙에 어긋난 장비가 있어 공격할 수 없습니다." + NL + String.join(NL, v) + NL
-                    + "👉 편성 탭(채팅: /장비해제 파티번호)에서 해제한 뒤 다시 시도하세요. (전설장비는 동료당 1개, 같은 전설은 한 동료만)");
+                    + "👉 편성 탭(채팅: /장비해제 파티번호)에서 해제한 뒤 다시 시도하세요. (같은 전설장비는 한 동료만 착용)");
             return g;
         }
         return null;
@@ -8621,20 +8632,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         return m;
     }
 
-    /** 전설장비를 companionId에게 끼우면 규칙 위반인지 -- 위반이면 안내 문구, 아니면 null. 같은 부위의 기존 전설을 빼고 끼우는 교체는 허용. */
+    /** 전설장비를 companionId에게 끼우면 규칙 위반인지 -- 위반이면 안내 문구, 아니면 null.
+     *  [2026-10-23] 규칙은 "같은 전설(LEGENDARY_ID)은 한 동료만"뿐이다("동료당 1개"는 폐지 -- 6부위 모두 전설 착용 가능). */
     private String legendWearBlock(String userName, HashMap<String, Object> equip, int companionId) {
         if (equip.get("LEGENDARY_ID") == null) return null;
         int lid = intVal(equip.get("LEGENDARY_ID"), 0);
-        String part = strVal(equip.get("PART"), "");
         int equipId = intVal(equip.get("EQUIP_ID"), 0);
         for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
             if (e.get("LEGENDARY_ID") == null || e.get("EQUIPPED_COMPANION_ID") == null) continue;
             if (intVal(e.get("EQUIP_ID"), 0) == equipId) continue;
             int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
             String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
-            if (cid == companionId && !part.equals(strVal(e.get("PART"), ""))) {
-                return "⚠️ 전설장비는 동료 1명당 1개만 착용할 수 있습니다. 이 동료는 이미 [" + nm + "]을(를) 착용 중입니다. (먼저 해제하세요)";
-            }
             if (cid != companionId && intVal(e.get("LEGENDARY_ID"), 0) == lid) {
                 return "⚠️ [" + nm + "]은(는) 이미 " + companionLabels(userName).getOrDefault(cid, "다른 동료")
                         + "이(가) 착용 중입니다. 같은 전설장비는 한 동료만 착용할 수 있습니다.";
@@ -8643,9 +8651,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return null;
     }
 
-    /** 지금 착용 상태의 전설 규칙 위반 목록(없으면 빈 목록). */
+    /** 지금 착용 상태의 전설 규칙 위반 목록(없으면 빈 목록) -- [2026-10-23] 같은 전설을 여러 동료가 낀 경우만. */
     private List<String> legendViolations(String userName) {
-        Map<Integer, List<String>> byCompanion = new LinkedHashMap<>();
         Map<Integer, List<Integer>> wearersByLegend = new LinkedHashMap<>();
         Map<Integer, String> legendName = new HashMap<>();
         for (HashMap<String, Object> e : dao.selectUserEquip(userName)) {
@@ -8653,18 +8660,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             int cid = intVal(e.get("EQUIPPED_COMPANION_ID"), 0);
             int lid = intVal(e.get("LEGENDARY_ID"), 0);
             String nm = strVal(e.get("LEGENDARY_ITEM_NAME"), "전설장비");
-            byCompanion.computeIfAbsent(cid, k -> new ArrayList<>()).add(nm);
             wearersByLegend.computeIfAbsent(lid, k -> new ArrayList<>()).add(cid);
             legendName.put(lid, nm);
         }
         List<String> out = new ArrayList<>();
         Map<Integer, String> labels = null;
-        for (Map.Entry<Integer, List<String>> en : byCompanion.entrySet()) {
-            if (en.getValue().size() < 2) continue;
-            if (labels == null) labels = companionLabels(userName);
-            out.add("- " + labels.getOrDefault(en.getKey(), "동료") + ": 전설 " + en.getValue().size() + "개 착용 ("
-                    + String.join(", ", en.getValue()) + ") → 1개만 남기고 해제");
-        }
         for (Map.Entry<Integer, List<Integer>> en : wearersByLegend.entrySet()) {
             if (en.getValue().size() < 2) continue;
             if (labels == null) labels = companionLabels(userName);
@@ -9085,7 +9085,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<Integer> used = parseMinionCids(strVal(p.get("LAST_STAND_USED_CIDS"), ""));
         if (used.contains(companionId)) return false;
         HashMap<String, Object> owner = findCompanionOf(userName, companionId);
-        if (owner != null && intVal(owner.get("GRADE"), 1) == GROWTH_GRADE && !legendRoll(100, true)) return false; // [2026-10-22] 성장형은 특수효과 50%(실패해도 기회는 남음)
+        if (!legendRoll(100, owner != null && intVal(owner.get("GRADE"), 1) == GROWTH_GRADE)) return false; // [2026-10-23] 발동 확률 50%(성장형 25%), 실패해도 기회는 남음
         used.add(companionId);
         String joined = joinMinionCids(used);
         HashMap<String, Object> up = new HashMap<>();
@@ -9106,7 +9106,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 ? equipV2[eg - 1] : EQUIP_BONUS[eg - 1];
         String part = strVal(e.get("PART"), "");
         double sm = "STAT_MULT".equals(strVal(e.get("LEGENDARY_EFFECT_TYPE"), ""))
-                ? intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 : 1.0;
+                ? 1 + (intVal(e.get("LEGENDARY_EFFECT_PARAM1"), 100) / 100.0 - 1) * LEGEND_EFFECT_SCALE : 1.0; // [2026-10-23] 증가분 50%
         int enhLv = e.get("LEGENDARY_ID") == null ? 0 : intVal(e.get("ENHANCE_LEVEL"), 0);
         if (withEnhance && enhLv > 0) sm *= 1 + enhLv * ENHANCE_STAT_PCT_PER_LV / 100.0;
         double hp = 0, atk = 0, def = 0;
