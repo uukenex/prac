@@ -53,11 +53,54 @@ public final class S5MineMap {
     }
     public static final String[] ORE_CODES = { "COPPER", "IRON", "SILVER", "GOLD", "MITHRIL", "STARSTONE" };
     public static final String[] ORE_NAMES = { "구리 광석", "철광석", "은광석", "금광석", "미스릴 원석", "별빛석" };
-    /** 등급별 칸 비율(이동 가능 칸 중, 높은 등급부터: 별빛석, 미스릴, 금, 은, 철, 나머지 구리). 동굴이 평원보다 풍부하다. */
-    private static final double[] FIELD_SHARE = { 0.007, 0.033, 0.08, 0.15, 0.28 };
-    private static final double[] CAVE_SHARE = { 0.02, 0.06, 0.12, 0.20, 0.30 };
-    /** 사막은 평원보다 조금 풍부하고 북쪽(끝)으로 갈수록 좋다. 바닷가는 평원과 같다. */
-    private static final double[] DESERT_SHARE = { 0.01, 0.045, 0.10, 0.16, 0.28 };
+    /** 등급별 칸 수(이동 가능 칸 중, 높은 등급부터: 별빛석, 미스릴, 금, 은, 철, 나머지 구리). 1 이상이면 그 맵의 칸 개수, 1 미만이면 비율.
+     *  [2026-10-24] "모든 광석은 원래처럼 나오되 확률 조정 -- 별빛석은 맵당 1개 이런 식으로" 요청: 별빛석 맵당 1칸, 미스릴은 맵마다 몇십 칸,
+     *  금은 1~4%로 크게 줄였다(예전엔 별빛석/미스릴/금이 각각 0.7~2% / 3~6% / 8~12%). 2일 주기 리셋마다 다른 자리에 생긴다. */
+    private static final double[] FIELD_SHARE = { 1, 20, 0.012, 0.07, 0.26 };
+    private static final double[] CAVE_SHARE = { 1, 15, 0.04, 0.14, 0.30 };
+    /** 사막은 평원보다 조금 풍부하고 북쪽(끝)으로 갈수록 좋다. 바닷가는 맵이 작아 미스릴 칸이 적다. */
+    private static final double[] DESERT_SHARE = { 1, 15, 0.03, 0.12, 0.28 };
+    private static final double[] BEACH_SHARE = { 1, 6, 0.012, 0.07, 0.26 };
+
+    // ---------------------------------------------------------------- 보석(채굴 때 추가로)
+    /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
+    public static final String[] GEM_CODES = { "GEM_JASPER", "GEM_RUBY", "GEM_STAR_SAPPHIRE", "GEM_AQUAMARINE", "GEM_TOPAZ", "GEM_GARNET", "GEM_SPINEL", "GEM_EMERALD", "GEM_DIAMOND" };
+    public static final String[] GEM_NAMES = { "재스퍼", "루비", "스타 사파이어", "아쿠아마린", "토파즈", "가넷", "스피넬", "에메랄드", "다이아몬드" };
+    public static final int GEM_GRADE_BASE = 21;
+    public static final int GEM_DIAMOND = 8;
+    /** 한 번 캘 때 다이아몬드 확률(천분율) -- 모든 맵(요일 던전 포함). */
+    public static final int DIAMOND_PERMILLE = 2;
+    /** 맵별 지역 보석 {보석 인덱스, 천분율}: 평원 = 재스퍼 5% / 에메랄드 1%, 바닷가 = 아쿠아마린 5% / 스타 사파이어 1%,
+     *  사막 = 토파즈 5% / 가넷 1%, 광산 동굴 = 스피넬 5% / 루비 1%. 요일 던전은 지역 보석 없음(요일석 + 다이아몬드만). */
+    private static final Map<String, int[][]> GEM_DROPS = new LinkedHashMap<>();
+    static {
+        GEM_DROPS.put(FIELD, new int[][] { { 0, 50 }, { 7, 10 } });
+        GEM_DROPS.put(BEACH, new int[][] { { 3, 50 }, { 2, 10 } });
+        GEM_DROPS.put(DESERT, new int[][] { { 4, 50 }, { 5, 10 } });
+        GEM_DROPS.put(CAVE1, new int[][] { { 6, 50 }, { 1, 10 } });
+    }
+
+    /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
+    public static int gemFor(String mapId, int roll) {
+        if (roll < DIAMOND_PERMILLE) return GEM_DIAMOND;
+        int acc = DIAMOND_PERMILLE;
+        int[][] drops = GEM_DROPS.get(mapId);
+        if (drops == null) return -1;
+        for (int[] d : drops) {
+            acc += d[1];
+            if (roll < acc) return d[0];
+        }
+        return -1;
+    }
+
+    /** 그 맵에서 나오는 보석 이름 목록(화면 안내용, 다이아몬드 포함). */
+    public static List<String> gemNamesFor(String mapId) {
+        List<String> out = new ArrayList<>();
+        int[][] drops = GEM_DROPS.get(mapId);
+        if (drops != null) for (int[] d : drops) out.add(GEM_NAMES[d[0]]);
+        out.add(GEM_NAMES[GEM_DIAMOND]);
+        return out;
+    }
 
     // ---------------------------------------------------------------- 2일 주기 리셋
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
@@ -267,23 +310,7 @@ public final class S5MineMap {
         List<Portal> gp = new ArrayList<>();
         for (Portal p : dungeon.portals) gp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, west.x + 1, west.y, p.label) : p);
         out.put(DUNGEON, relink(dungeon, gp, null));
-        // [2026-10-24] "맵에 따라 너무 좋은 금속은 안 나오면 좋겠어" -- 맵별 최고 광석 등급(넘는 칸은 그 등급으로 내림).
-        for (Map.Entry<String, Integer> e : ORE_CAP.entrySet()) capOre(out.get(e.getKey()), e.getValue());
         return Collections.unmodifiableMap(out);
-    }
-
-    /** 맵별 최고 광석 등급: 평원/바닷가 = 금광석까지, 사막 = 미스릴까지, 광산 동굴 = 별빛석까지(요일 던전은 요일석이라 해당 없음). */
-    static final Map<String, Integer> ORE_CAP = new LinkedHashMap<>();
-    static {
-        ORE_CAP.put(FIELD, 4);
-        ORE_CAP.put(BEACH, 4);
-        ORE_CAP.put(DESERT, 5);
-        ORE_CAP.put(CAVE1, 6);
-    }
-
-    private static void capOre(S5MineMap m, int cap) {
-        if (m == null) return;
-        for (byte[] row : m.ore) for (int x = 0; x < row.length; x++) if (row[x] > cap) row[x] = (byte) cap;
     }
 
     private static S5MineMap relink(S5MineMap m, List<Portal> portals, List<Npc> npcs) {
@@ -372,7 +399,8 @@ public final class S5MineMap {
         byte[][] o = new byte[h][w];
         int n = cells.size(), idx = 0;
         for (int g = 6; g >= 2; g--) {
-            int take = (int) Math.round(n * share[6 - g]);
+            double sh = share[6 - g];
+            int take = sh >= 1 ? (int) sh : (int) Math.round(n * sh); // 1 이상 = 칸 개수, 1 미만 = 비율
             for (int k = 0; k < take && idx < n; k++, idx++) o[(int) cells.get(idx)[2]][(int) cells.get(idx)[1]] = (byte) g;
         }
         for (; idx < n; idx++) o[(int) cells.get(idx)[2]][(int) cells.get(idx)[1]] = 1;
@@ -658,7 +686,7 @@ public final class S5MineMap {
             skip[y][x] = t[y][x] == 'P' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
             score[y][x] = 0.58 * rich.fbm(x / 15.0, y / 15.0) + (t[y][x] == 'b' ? 0.06 : 0) + 0.18 * r.nextDouble();
         }
-        byte[][] o = assignOre(t, score, FIELD_SHARE, skip);
+        byte[][] o = assignOre(t, score, BEACH_SHARE, skip);
         S5MineMap m = new S5MineMap(BEACH, "남쪽 바닷가", false, w, h, sx, sy, t, o, portals);
         List<Npc> npcs = new ArrayList<>();
         npcs.add(new Npc(capX, capY, "captain", "늙은 선장", "금광석 10개를 주면 신기한 걸 보여주지."));

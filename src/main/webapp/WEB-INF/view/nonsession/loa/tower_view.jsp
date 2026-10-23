@@ -3636,7 +3636,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5340,6 +5340,11 @@ var TowerMine = (function () {
   ORE_NAME[11] = '월요석'; ORE_NAME[12] = '화요석'; ORE_NAME[13] = '수요석'; ORE_NAME[14] = '목요석'; ORE_NAME[15] = '금요석'; ORE_NAME[16] = '토요석'; ORE_NAME[17] = '일요석';
   ORE_COL[11] = ['#b9c6ff', '#ffffff']; ORE_COL[12] = ['#ff4b2e', '#ffc0a8']; ORE_COL[13] = ['#2f8cff', '#b8dcff']; ORE_COL[14] = ['#33b34a', '#c4f5c8'];
   ORE_COL[15] = ['#ffcf26', '#fff6b8']; ORE_COL[16] = ['#a8693a', '#e8c09a']; ORE_COL[17] = ['#ff8c12', '#ffe0a0'];
+  // [2026-10-24] 보석(등급 값 21~29): 재스퍼, 루비, 스타 사파이어, 아쿠아마린, 토파즈, 가넷, 스피넬, 에메랄드, 다이아몬드
+  ['재스퍼', '루비', '스타 사파이어', '아쿠아마린', '토파즈', '가넷', '스피넬', '에메랄드', '다이아몬드'].forEach(function (n, i) { ORE_NAME[21 + i] = n; });
+  [['#a8452f', '#e8907a'], ['#d4104f', '#ff9ab8'], ['#2448b8', '#bcd0ff'], ['#4fc8d8', '#d4fbff'], ['#f0a530', '#ffe2a8'],
+   ['#7d1426', '#e0697c'], ['#e0508e', '#ffc4dc'], ['#159a4c', '#a8f0c4'], ['#cfefff', '#ffffff']].forEach(function (c, i) { ORE_COL[21 + i] = c; });
+  var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍)
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC' };
@@ -5652,6 +5657,18 @@ var TowerMine = (function () {
   function oreIcon(grade) {
     if (oreIcons[grade]) return oreIcons[grade];
     var c = mk(T, T), g = c.getContext('2d'), col = ORE_COL[grade] || ORE_COL[1];
+    if (grade >= 21) { // [2026-10-24] 보석: 깎은 보석 모양(위 테이블 + 아래 뾰족)
+      for (var gy = 3; gy < 14; gy++) {
+        var half = gy < 6 ? 3 + (gy - 3) : Math.max(0, 6 - Math.round((gy - 6) * 0.8));
+        for (var gx = 8 - half; gx < 8 + half; gx++) px(g, gy < 6 ? col[1] : ((gx + gy) % 3 === 0 ? col[1] : col[0]), gx, gy);
+      }
+      px(g, '#ffffff', 6, 4, 2, 1); px(g, '#ffffff', 5, 5);
+      if (grade === 23) { px(g, '#ffffff', 8, 8); px(g, '#ffffff', 7, 9, 3, 1); px(g, '#ffffff', 8, 10); } // 스타 사파이어의 별
+      if (RARE_GEM[grade]) { px(g, '#ffffff', 13, 1); px(g, '#ffffff', 12, 2, 3, 1); px(g, '#ffffff', 13, 3); }
+      outline(c, '#140d0a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
     for (var y = 3; y < 15; y++) for (var x = 1; x < 15; x++) {
       var dx = x - 7.5, dy = (y - 9) * 1.2, d = dx * dx + dy * dy;
       if (d < 40) px(g, d > 28 ? '#5a524b' : (dy < -2 ? '#9c938a' : '#7b736b'), x, y);
@@ -5735,7 +5752,8 @@ var TowerMine = (function () {
   }
   function showStamina() {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
-    el.regen.textContent = '🔨 마을 대장장이에게 광석으로 곡괭이 강화' + (st.nextResetAt ? ' · 맵 리셋 ' + resetText(st.nextResetAt) : '');
+    el.regen.textContent = '🔨 마을 대장장이에게 광석으로 곡괭이 강화' + (st.nextResetAt ? ' · 맵 리셋 ' + resetText(st.nextResetAt) : '')
+        + (st.gems && st.gems.length ? ' · 💎 ' + st.gems.join('·') : '');
     el.dig.disabled = busy || st.durability < 1;
   }
   function showCoord() {
@@ -6196,6 +6214,13 @@ var TowerMine = (function () {
         var img = new Image(); img.src = oreIcon(d.grade);
         floats.push({ x: x, y: y, text: '+1 ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: d.grade >= 5, icon: img, t0: performance.now() });
         if (d.grade >= 5) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3200); }
+        if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
+          (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
+          var gimg = new Image(); gimg.src = oreIcon(d.gemGrade);
+          floats.push({ x: x, y: y - 0.6, text: '+1 ' + d.gemName, color: (ORE_COL[d.gemGrade] || ORE_COL[1])[1], big: !!RARE_GEM[d.gemGrade], icon: gimg, t0: performance.now() + 250 });
+          if (RARE_GEM[d.gemGrade]) { flashT0 = performance.now(); msg('💎 ' + d.gemName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3600); }
+          else msg('💎 ' + d.gemName + '도 함께 나왔어요!', 2200);
+        }
         showCoord(); drawMini(); renderLog();
       } else {
         if (d.reload) { reload(); return; }

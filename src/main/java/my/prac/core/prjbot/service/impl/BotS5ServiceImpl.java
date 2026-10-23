@@ -8794,6 +8794,15 @@ public class BotS5ServiceImpl implements BotS5Service {
             o.put("qty", have.getOrDefault(S5MineMap.DAY_STONE_CODES[i], 0));
             out.add(o);
         }
+        // [2026-10-24] 보석(재스퍼~다이아몬드) -- 등급 값 21~29
+        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) {
+            HashMap<String, Object> o = new HashMap<>();
+            o.put("grade", S5MineMap.GEM_GRADE_BASE + i);
+            o.put("code", S5MineMap.GEM_CODES[i]);
+            o.put("name", S5MineMap.GEM_NAMES[i]);
+            o.put("qty", have.getOrDefault(S5MineMap.GEM_CODES[i], 0));
+            out.add(o);
+        }
         return out;
     }
 
@@ -8899,6 +8908,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("y", pos[1]);
         // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]
         List<Integer> dug = new ArrayList<>();
+        out.put("gems", S5MineMap.gemNamesFor(map.id)); // [2026-10-24] 이 맵에서 나오는 보석(화면 안내)
         if (S5MineMap.DUNGEON.equals(map.id)) { // [2026-10-23] 요일 던전 -- 오늘 나오는 돌
             int di = S5MineMap.dayIndex(now);
             out.put("dayLabel", S5MineMap.DAY_LABELS[di]);
@@ -9021,7 +9031,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("oreCode", code);
         out.put("oreName", name);
         out.put("qty", qty);
-        out.put("message", "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " 1개! (보유 " + qty + "개)");
+        String msg = "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " 1개! (보유 " + qty + "개)";
+        // [2026-10-24] 보석 -- 캘 때 확률로 지역 보석(맵별 2종) 또는 다이아몬드(모든 맵)가 함께 나온다(S5MineMap.gemFor).
+        int gi = S5MineMap.gemFor(map.id, RND.nextInt(1000));
+        if (gi >= 0) {
+            String gcode = S5MineMap.GEM_CODES[gi], gname = S5MineMap.GEM_NAMES[gi];
+            dao.addUserOre(userName, gcode, 1);
+            int gq = 0;
+            for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (gcode.equals(strVal(r.get("ORE_CODE"), ""))) gq = intVal(r.get("QTY"), 0);
+            out.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
+            out.put("gemName", gname);
+            out.put("gemQty", gq);
+            msg += " + 💎 " + gname + " 1개! (보유 " + gq + "개)";
+        }
+        out.put("message", msg);
         return out;
     }
 
