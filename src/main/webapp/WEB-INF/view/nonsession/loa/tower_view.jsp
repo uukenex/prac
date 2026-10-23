@@ -5326,7 +5326,10 @@ var TowerMine = (function () {
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
   var tiles = null, sprites = null, hole = null, oreIcons = {};
   var P = { x: 0, y: 0, fx: 0, fy: 0, tx: 0, ty: 0, t0: 0, moving: false, dir: 'down', step: 0, digT0: 0 };
-  var keys = [], tapDir = null, drag = null, dug = {}, recent = [], floats = [], flashT0 = 0, fadeT0 = 0, lastBump = '', lastBumpT = 0;
+  var keys = [], tapDir = null, drag = null, dug = {}, recent = [], floats = [], flashT0 = 0, lastBump = '', lastBumpT = 0;
+  // [2026-10-23] 맵 이동/마을로 이동 화면 전환 -- 페이드 아웃(검게) -> 서버 이동 -> 새 맵으로 페이드 인 + 가운데 맵 이름.
+  var FADE_OUT_MS = 380, FADE_IN_MS = 650, BANNER_MS = 1900;
+  var fade = null, banner = null; // fade = { mode: 'out'|'in', t0 }, banner = { text, t0 }
   var raf = 0, opened = false, busy = false, lastSaved = '', saveTimer = 0, msgTimer = 0, bound = false;
 
   // ---------------------------------------------------------------- 도트 그리기
@@ -5694,6 +5697,30 @@ var TowerMine = (function () {
       }
     }
   }
+  /** 화면을 검게 덮으면서(FADE_OUT_MS) 서버 요청 work()를 함께 보내고, 둘 다 끝나면 응답을 넘긴다. */
+  function fadeOutThen(work) {
+    fade = { mode: 'out', t0: performance.now() };
+    var wait = new Promise(function (r) { setTimeout(r, FADE_OUT_MS); });
+    return Promise.all([work(), wait]).then(function (res) { return res[0]; });
+  }
+  function fadeIn(label) {
+    fade = { mode: 'in', t0: performance.now() };
+    if (label) banner = { text: label, t0: performance.now() };
+  }
+  /** 이동 요청 공통 -- 성공하면 새 상태로 바꾼 뒤 페이드 인, 실패하면 원래 화면으로 페이드 인. */
+  function travel(path, failText) {
+    busy = true;
+    fadeOutThen(function () { return api(path); }).then(function (d) {
+      if (d.ok && d.state) {
+        return enterState(d.state).then(function () { fadeIn('🗺️ ' + map.name); msg(d.message || '', 2200); });
+      }
+      busy = false;
+      if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+      if (d.reload) return reload();
+      fadeIn(null);
+      msg(d.message || d.error || failText);
+    }).catch(function () { busy = false; fadeIn(null); msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function enterPortal(px2, py2, now) {
     var p = portalAt[px2 + ',' + py2];
     if (!p) return;
@@ -5703,15 +5730,7 @@ var TowerMine = (function () {
       lastBump = key; lastBumpT = now;
       return;
     }
-    busy = true;
-    fadeT0 = now;
-    api('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + px2 + '&py=' + py2).then(function (d) {
-      if (d.ok && d.state) return enterState(d.state).then(function () { msg(d.message || '', 2200); });
-      busy = false;
-      if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
-      if (d.reload) return reload();
-      msg(d.message || '들어갈 수 없어요.');
-    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+    travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + px2 + '&py=' + py2, '들어갈 수 없어요.');
   }
   function draw(now) {
     var W = el.cv.width, H = el.cv.height, TS = T * scale, pos = curPos(now);
@@ -5769,7 +5788,24 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1;
     });
     if (now - flashT0 < 420) { ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * (1 - (now - flashT0) / 420)) + ')'; ctx.fillRect(0, 0, W, H); }
-    if (now - fadeT0 < 500) { ctx.fillStyle = 'rgba(0,0,0,' + (1 - (now - fadeT0) / 500) + ')'; ctx.fillRect(0, 0, W, H); }
+    if (fade) {
+      var fe = now - fade.t0, fa;
+      if (fade.mode === 'out') fa = Math.min(1, fe / FADE_OUT_MS);
+      else { fa = 1 - fe / FADE_IN_MS; if (fa <= 0) { fade = null; fa = 0; } }
+      if (fa > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fa + ')'; ctx.fillRect(0, 0, W, H); }
+    }
+    if (banner) { // 새 맵 이름(가운데, 잠깐 보였다 사라짐)
+      var be = now - banner.t0;
+      if (be > BANNER_MS) banner = null;
+      else {
+        ctx.globalAlpha = be < 250 ? be / 250 : Math.max(0, 1 - (be - BANNER_MS * 0.6) / (BANNER_MS * 0.4));
+        ctx.font = 'bold ' + Math.round(22 * dpr) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 6 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(banner.text, W / 2, H * 0.32);
+        ctx.fillStyle = '#ffe9a8'; ctx.fillText(banner.text, W / 2, H * 0.32);
+        ctx.globalAlpha = 1;
+      }
+    }
     // 끌기 조이스틱
     if (drag) {
       var rc = el.cv.getBoundingClientRect(), ox = (drag.ox - rc.left) * dpr, oy = (drag.oy - rc.top) * dpr;
@@ -5819,12 +5855,12 @@ var TowerMine = (function () {
       setPos(s.x, s.y);
       busy = false; // showStamina보다 먼저 -- 안 그러면 ⛏️ 버튼이 비활성처럼 보인 채로 남는다
       showStamina(); renderLog();
-      fadeT0 = performance.now();
     });
   }
   function reload() {
     busy = true;
-    return api('/api/tower-mine').then(enterState).catch(function () { busy = false; msg('불러오기 실패 -- 다시 들어와 주세요.'); });
+    return api('/api/tower-mine').then(enterState).then(function () { fadeIn('🗺️ ' + map.name); })
+      .catch(function () { busy = false; fadeIn(null); msg('불러오기 실패 -- 다시 들어와 주세요.'); });
   }
   function setPos(x, y) {
     P.x = P.tx = P.fx = x; P.y = P.ty = P.fy = y; P.moving = false;
@@ -5898,6 +5934,7 @@ var TowerMine = (function () {
     opened = true;
     map = null;
     busy = true;
+    fade = null; banner = null;
     fit();
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
@@ -5907,6 +5944,7 @@ var TowerMine = (function () {
     }).then(function () {
       if (!opened) return;
       el.load.style.display = 'none';
+      fadeIn('🗺️ ' + map.name);
       msg('방향키·화면 끌기로 이동, ⛏️(스페이스)로 지금 서 있는 칸을 캐요.', 3500);
       clearInterval(saveTimer);
       saveTimer = setInterval(function () {
@@ -5934,13 +5972,7 @@ var TowerMine = (function () {
     if (!opened || busy || !map) return;
     if (map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
     if (!confirm('마을(중앙 평원 시작점)로 이동할까요?')) return;
-    busy = true;
-    fadeT0 = performance.now();
-    api('/api/tower-mine-village').then(function (d) {
-      if (d.ok && d.state) return enterState(d.state).then(function () { msg(d.message || '', 2200); });
-      busy = false;
-      msg(d.message || d.error || '이동하지 못했어요.');
-    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+    travel('/api/tower-mine-village', '이동하지 못했어요.');
   }
   function toggleMini() { el.mini.classList.toggle('big'); }
   function toggleLog() { el.log.style.display = el.log.style.display === 'block' ? 'none' : 'block'; }
