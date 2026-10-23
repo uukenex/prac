@@ -5573,8 +5573,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
         PP reward = perKill.multiply(kills * floorPpMultiplier(floor) * autoHuntFloorBonusMultiplier(floor));
         addPp(userName, p, reward);
-        // [2026-10-23] 광산상점 수익(시간당 PP 보너스) -- 같은 정산 시간만큼 함께 지급(자동사냥 업적 누적에는 넣지 않음)
-        PP mineBonus = minePpBonus(userName, cappedMin);
+        // [2026-10-23] 광산상점 수익(처치당 PP 보너스) -- 이번 정산의 자동사냥 처치 수만큼 함께 지급(자동사냥 업적 누적에는 넣지 않음)
+        PP mineBonus = minePpBonus(userName, kills);
         if (mineBonus != null) addPp(userName, p, mineBonus);
 
         // [2026-09-08] "자동사냥으로 몇 회 처치, 관련 업적에 추가해달라" 요청 -- 자동사냥으로만
@@ -8604,13 +8604,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 캐릭터 위치(맵 + 좌표)는 광산을 나갈 때(와 이동 중 주기적으로, 캘 때, 포탈을 탈 때) 저장하고, 마지막 저장 위치에서 시간당 갈 수 있는
     // 거리(MINE_MAX_TILES_PER_SEC)를 넘으면 거절하고 서버 위치로 되돌린다(순간이동 방지). 포탈(지역 통로/동굴 입구/나가는 길/지하 문)은
     // 바로 옆 칸에서 들어가면 대상 맵으로 옮기고, 대상 맵이 아직 없으면(잠김) 안내만 한다.
-    // 광산상점: 광석을 내고 시간당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 정산 시간만큼 함께 지급(settleAutoHunt).
+    // 광산상점: 광석을 내고 자동사냥 처치당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 처치 수만큼 함께 지급(settleAutoHunt).
+    //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
     private static final int MINE_STAMINA_MAX = 30;
     private static final int MINE_REGEN_PER_HOUR = 2;
     private static final double MINE_MAX_TILES_PER_SEC = 9.0; // 화면 이동 속도(약 7칸/초)보다 조금 넉넉하게
     private static final long MINE_MOVE_WINDOW_MS = 15_000L;
     private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
-    /** 광산상점 상품: {광석 등급, 필요 개수, 시간당 PP 증가}. 광석 1개 값 = 구리 0.1 / 철 0.3 / 은 1 / 금 3 / 미스릴 10 / 별빛석 40 (PP/시간). */
+    /** 광산상점 상품: {광석 등급, 필요 개수, 처치당 PP 증가}. 광석 1개 값 = 구리 0.1 / 철 0.3 / 은 1 / 금 3 / 미스릴 10 / 별빛석 40 (PP/자동사냥 처치). */
     private static final int[][] MINE_SHOP = { { 1, 100, 10 }, { 2, 50, 15 }, { 3, 25, 25 }, { 4, 10, 30 }, { 5, 5, 50 }, { 6, 1, 40 } };
 
     /** 저장된 스태미너를 지금 기준으로 -- 0시(KST)가 지났으면 30에서 다시 시작하고, 그 뒤 지난 정각 수만큼 +2(최대 30). */
@@ -8930,19 +8931,33 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (dao.takeUserOre(userName, code, need) == 0) return "광석이 부족해요. (" + name + " " + need + "개 필요)";
         dao.addMinePpBonus(userName, add);
         double total = numVal(row.get("PP_BONUS"), 0) + add;
-        return "⛏️ " + name + " " + need + "개로 시간당 PP +" + add + "! (광산 수익 시간당 " + fmtPpBonus(total) + " PP, 자동사냥 정산 때 함께 지급)";
+        return "⛏️ " + name + " " + need + "개로 처치당 PP +" + add + "! (광산 수익 처치당 " + fmtPpBonus(total) + " PP, 탑 자동사냥으로 처치한 수만큼 정산 때 함께 지급)";
     }
 
     private static String fmtPpBonus(double v) {
         return v == Math.floor(v) ? String.valueOf((long) v) : String.format("%.1f", v);
     }
 
-    /** 자동사냥 정산 시간(분)만큼의 광산 수익. 광산 기록이 없거나 보너스가 0이면 null. */
-    private PP minePpBonus(String userName, long minutes) {
+    /** 자동사냥 정산 처치 수만큼의 광산 수익(처치당 PP_BONUS). 광산 기록이 없거나 보너스가 0이면 null. */
+    private PP minePpBonus(String userName, long kills) {
         HashMap<String, Object> row = dao.selectMineUser(userName);
-        double perHour = row == null ? 0 : numVal(row.get("PP_BONUS"), 0);
-        if (perHour <= 0 || minutes <= 0) return null;
-        return PP.of(perHour * minutes / 60.0, "");
+        double perKill = row == null ? 0 : numVal(row.get("PP_BONUS"), 0);
+        if (perKill <= 0 || kills <= 0) return null;
+        return PP.of(perKill * kills, "");
+    }
+
+    /** [2026-10-23] "마을로 이동" 버튼 -- 어느 맵 어디에 있든 중앙 평원 마을(시작점)으로 바로 옮긴다(이동 기록 검사 없음, 스태미너 소모 없음). */
+    @Override
+    public HashMap<String, Object> mineGoVillage(String userName) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        S5MineMap field = S5MineMap.get(S5MineMap.FIELD);
+        dao.updateMinePos(userName, field.id, field.spawnX, field.spawnY, System.currentTimeMillis());
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", true);
+        out.put("message", "🏠 " + field.name + " 마을로 이동했어요.");
+        out.put("state", mineState(userName));
+        return out;
     }
 
     // ---- [2026-10-23] 일반 장비/악세서리 분해(★1~★6) ----

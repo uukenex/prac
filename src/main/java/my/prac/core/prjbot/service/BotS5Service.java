@@ -230,6 +230,7 @@ public interface BotS5Service {
     HashMap<String, Object> mineDig(String userName, String mapId, int x, int y);
     HashMap<String, Object> mineSavePos(String userName, String mapId, int x, int y);
     HashMap<String, Object> mineWarp(String userName, String mapId, int x, int y, int px, int py);
+    HashMap<String, Object> mineGoVillage(String userName);
     HashMap<String, Object> mineShop(String userName);
     String mineShopBuy(String userName, int no, int times);
 

@@ -762,7 +762,8 @@
     .mine-btn{ position:absolute; left:10px; padding:8px 12px; font-size:13px; cursor:pointer; }
     .mine-exit{ bottom:calc(22px + env(safe-area-inset-bottom)); }
     .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
-    .mine-log{ position:absolute; left:10px; bottom:calc(112px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
+    .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
+    .mine-log{ position:absolute; left:10px; bottom:calc(156px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
     .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
@@ -776,6 +777,8 @@
     .mine-recent-row:first-child{ border-top:none; }
     .mine-recent-row img{ width:20px; height:20px; image-rendering:pixelated; }
     .mine-recent-row .xy{ font-family:ui-monospace, Consolas, monospace; color:var(--ink-soft); }
+    .mine-recent-row .when{ margin-left:auto; font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+    .mine-log-when{ margin-left:auto; padding-left:6px; font-size:11px; color:#cfc6b0; white-space:nowrap; }
     .mshop-bonus{ padding:12px; border-radius:12px; background:#fffaf0; border:1.5px solid var(--gold); margin-bottom:12px; }
     .mshop-bonus b{ font-size:18px; color:var(--gold); }
     .mshop-bonus .sub{ font-size:11px; color:var(--ink-soft); margin-top:4px; line-height:1.5; }
@@ -1283,7 +1286,7 @@
     </div>
   </div>
 
-  <!-- [2026-10-23] 광산상점: 광석을 내고 자동사냥 시간당 PP를 영구히 올린다 -->
+  <!-- [2026-10-23] 광산상점: 광석을 내고 자동사냥 처치당 PP를 영구히 올린다 -->
   <div class="panel" id="panel-mineshop">
     <div class="card">
       <div class="card-title">🏪 광산상점</div>
@@ -1515,7 +1518,7 @@
     <button class="dbtn" data-tab="codex" onclick="TW.switchTab('codex')"><span class="d-icn">📖</span>도감</button>
     <button class="dbtn" data-tab="msg" onclick="TW.switchTab('msg')"><span class="d-icn">💬</span>메시지</button>
     <button class="dbtn" data-tab="settings" onclick="TW.switchTab('settings')"><span class="d-icn">⚙️</span>설정</button>
-    <!-- [2026-10-23] 세 번째 줄: 광산(2D 광석 캐기), 광산상점(광석 -> 자동사냥 시간당 PP) -->
+    <!-- [2026-10-23] 세 번째 줄: 광산(2D 광석 캐기), 광산상점(광석 -> 자동사냥 처치당 PP) -->
     <button class="dbtn" data-tab="mine" style="display:none;" onclick="TW.switchTab('mine')"><span class="d-icn">⛏️</span>광산</button>
     <button class="dbtn" data-tab="mineshop" style="display:none;" onclick="TW.switchTab('mineshop')"><span class="d-icn">🏪</span>광산상점</button>
   </div>
@@ -1531,7 +1534,8 @@
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
   </div>
   <div class="mine-log mpx" id="mineLog"></div>
-  <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 오늘 캔 곳</button>
+  <button type="button" class="mine-btn mine-home-btn mpx" onclick="TowerMine.goVillage()">🏠 마을로</button>
+  <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 최근 캔 곳</button>
   <button type="button" class="mine-btn mine-exit mpx" onclick="TowerMine.close()">🚪 나가기</button>
   <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.dig()" aria-label="캐기">⛏️</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
@@ -3610,7 +3614,7 @@ var TW = (function () {
     if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
     fetch(base + '/api/tower-mine?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (m) {
       if (m.error) { box.innerHTML = '<div class="sheet-empty">' + m.error + '</div>'; return; }
-      var html = '<div class="ore-mine-card"><div><div class="ore-sta">⛏️ 광석은 광산에서 캐고, 광산상점에서 자동사냥 시간당 PP로 바꿔요.</div></div>'
+      var html = '<div class="ore-mine-card"><div><div class="ore-sta">⛏️ 광석은 광산에서 캐고, 광산상점에서 자동사냥 처치당 PP로 바꿔요.</div></div>'
           + '<button type="button" onclick="TW.switchTab(\'mineshop\')">🏪 광산상점</button></div>';
       html += '<div class="inv-etc-title">⛏️ 광석</div><div class="inv-etc-grid">';
       (m.ores || []).forEach(function (o) {
@@ -3630,7 +3634,7 @@ var TW = (function () {
     } });
   }
 
-  // [2026-10-23] 광산 탭 -- 스태미너/현재 맵·위치/광산 수익 + 들어가기 + 최근 캔 곳(복사해서 공유)
+  // [2026-10-23] 광산 탭 -- 스태미너/현재 맵·위치 + 들어가기 + 최근 캔 곳(언제 캤는지 포함)
   function renderMinePanel() {
     var box = document.getElementById('mineBox');
     var u = userName();
@@ -3643,28 +3647,21 @@ var TW = (function () {
           + '<div class="ore-sub">📍 ' + m.mapName + ' (' + m.x + ', ' + m.y + ') · 누적 ' + (m.totalDig || 0) + '회</div></div>'
           + '<button type="button" onclick="TW.openMine()">⛏️ 들어가기</button></div>';
       var rec = m.recent || [];
-      html += '<div class="inv-etc-title" style="display:flex;justify-content:space-between;align-items:center;">최근 캔 곳 '
-          + (rec.length ? '<button type="button" class="set-btn" onclick="TW.copyMineRecent()">📋 복사해서 공유</button>' : '') + '</div>';
+      html += '<div class="inv-etc-title">최근 캔 곳</div>';
       if (!rec.length) html += '<div class="sheet-empty">아직 캔 곳이 없어요. 들어가서 캐 보세요!</div>';
       else {
         html += '<div class="mine-recent">';
         rec.forEach(function (d) {
-          html += '<div class="mine-recent-row"><img src="' + TowerMine.oreIcon(d.grade) + '" alt=""><b>' + d.name + '</b><span class="xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span></div>';
+          html += '<div class="mine-recent-row"><img src="' + TowerMine.oreIcon(d.grade) + '" alt=""><b>' + d.name + '</b><span class="xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span>'
+              + '<span class="when">' + TowerMine.digTime(d.at) + '</span></div>';
         });
         html += '</div>';
       }
-      lastMineRecent = rec;
       box.innerHTML = html;
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
   }
-  var lastMineRecent = [];
-  function copyMineRecent() {
-    TowerMine.copy(TowerMine.copyText(lastMineRecent.map(function (d) { return { mapName: d.mapName, x: d.x, y: d.y, grade: d.grade }; })), function (ok) {
-      toast(ok === false ? '복사에 실패했어요.' : '복사했어요. 채팅방에 붙여 넣어 공유해 보세요.');
-    });
-  }
 
-  // [2026-10-23] 광산상점 -- 광석을 내고 자동사냥 시간당 PP를 영구히 올린다(탑에서 자동사냥 정산 때만 지급).
+  // [2026-10-23] 광산상점 -- 광석을 내고 자동사냥 처치당 PP를 영구히 올린다(탑에서 자동사냥 정산 때 처치 수만큼).
   function renderMineShop() {
     var box = document.getElementById('mineShopBox');
     var u = userName();
@@ -3672,11 +3669,11 @@ var TW = (function () {
     fetch(base + '/api/tower-mine-shop?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (d) {
       if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
       var bonus = Math.round((d.ppBonus || 0) * 10) / 10;
-      var html = '<div class="mshop-bonus">광산 수익 <b>시간당 +' + bonus + ' PP</b>'
-          + '<div class="sub">탑에서 <b>자동사냥 정산</b> 때 정산 시간만큼 함께 받아요(자동사냥이 꺼져 있으면 쌓이지 않아요). 한 번 올린 수익은 영구히 유지돼요.</div></div>';
+      var html = '<div class="mshop-bonus">광산 수익 <b>처치당 +' + bonus + ' PP</b>'
+          + '<div class="sub">탑 <b>자동사냥</b>으로 몬스터를 처치할 때마다 받아요(자동사냥 정산 때 처치 수만큼, 자동사냥이 꺼져 있으면 없음). 한 번 올린 수익은 영구히 유지돼요.</div></div>';
       (d.items || []).forEach(function (it) {
         html += '<div class="mshop-item"><div class="inv-ico ' + ['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][it.grade] + '"><img class="ore-ico" src="' + TowerMine.oreIcon(it.grade) + '" alt=""></div>'
-            + '<div class="body"><div class="ttl">' + it.oreName + ' ' + it.need + '개 → 시간당 +' + it.add + ' PP</div>'
+            + '<div class="body"><div class="ttl">' + it.oreName + ' ' + it.need + '개 → 처치당 +' + it.add + ' PP</div>'
             + '<div class="sub">보유 ' + it.have + '개' + (it.maxTimes > 0 ? ' · 최대 ' + it.maxTimes + '번 (+' + (it.maxTimes * it.add) + ' PP)' : '') + '</div></div>'
             + '<div class="btns"><button type="button" ' + (it.maxTimes < 1 ? 'disabled' : '') + ' onclick="TW.buyMineShop(' + it.no + ',1)">1번</button>'
             + (it.maxTimes > 1 ? '<button type="button" class="max" onclick="TW.buyMineShop(' + it.no + ',' + it.maxTimes + ')">전부(' + it.maxTimes + ')</button>' : '') + '</div></div>';
@@ -5292,7 +5289,7 @@ var TW = (function () {
     // 계속 됐음).
   });
 
-  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, copyMineRecent: copyMineRecent, buyMineShop: buyMineShop,
+  return { load: loadStatus, action: action, switchTab: switchTab, closeImageSwap: closeImageSwap, closeGate: closeGate, setInvTab: setInvTab, openMine: openMine, buyMineShop: buyMineShop,
            openDismantle: openDismantle, closeDismantle: closeDismantle, dmStep: dmStep, dmSet: dmSet, doDismantle: doDismantle, resetDockLayout: resetDockLayout, closeDetail: closeDetail, closeConfirm: closeConfirm,
            closePicker: closePicker,
            openAllCompanions: openAllCompanions, closeAllCompanions: closeAllCompanions,
@@ -5320,9 +5317,10 @@ var TowerMine = (function () {
   var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
   var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
-                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문' };
+                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문' };
   var MINI_COL = { '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
-                   'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20] };
+                   'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20],
+                   'h': [190, 140, 60], 'j': [190, 140, 60], 'k': [190, 140, 60], 'l': [190, 140, 60] };
 
   var cfg = null, map = null, st = null, portalAt = {};
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
@@ -5444,6 +5442,7 @@ var TowerMine = (function () {
         });
       })
     };
+    tiles.house = thatchedHouse(tiles.village);
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -5451,6 +5450,34 @@ var TowerMine = (function () {
       if (d < 34) px(hg, d > 22 ? '#6b4a30' : (d > 14 ? '#3a281b' : '#1d140d'), x, y);
     }
     px(hg, '#8a6a4a', 2, 4, 2, 1); px(hg, '#8a6a4a', 12, 11, 2, 1);
+  }
+  // [2026-10-23] 마을 초가집(2x2 칸) -- 32x32로 한 채를 그려 16x16 네 조각(h 왼위, j 오위, k 왼아래, l 오아래)으로 나눈다. 바닥은 마을 타일.
+  function thatchedHouse(floor) {
+    var S = T * 2, c = mk(S, S), g = c.getContext('2d');
+    px(g, 'rgba(0,0,0,.22)', 4, 28, 25, 3);                       // 그림자
+    px(g, '#9a8f80', 4, 27, 24, 2);                               // 주춧돌
+    px(g, '#e8dcc0', 6, 15, 20, 12);                              // 흙벽
+    px(g, '#d6c8a8', 6, 15, 20, 1);
+    px(g, '#6b4a2a', 6, 15, 2, 12); px(g, '#6b4a2a', 24, 15, 2, 12); px(g, '#6b4a2a', 6, 20, 20, 1); // 기둥/인방
+    px(g, '#4a2f18', 13, 19, 6, 8); px(g, '#7a5230', 14, 20, 4, 7); px(g, '#4a2f18', 16, 20, 1, 7); px(g, '#d9b44a', 17, 23, 1, 1); // 문
+    px(g, '#3b2a1a', 20, 21, 3, 3); px(g, '#cdbf9e', 21, 21, 1, 3); px(g, '#cdbf9e', 20, 22, 3, 1); // 창
+    for (var y = 1; y <= 16; y++) {                               // 둥근 초가지붕
+      var t = (16 - y) / 15, half = Math.round(15 * Math.sqrt(Math.max(0, 1 - t * t)));
+      for (var x = 16 - half; x < 16 + half; x++) {
+        var col = (y % 4 === 0) ? '#a07c34' : ((x + y) % 5 === 0 ? '#c49a45' : (x < 12 && y < 10 ? '#ecd08a' : '#d9b25a'));
+        px(g, col, x, y);
+      }
+    }
+    px(g, '#8c6a2a', 1, 16, 30, 1);                               // 처마
+    px(g, '#7a5a20', 15, 0, 2, 2);                                // 용마루 끝
+    outline(c, '#2a1d10');
+    var parts = [[0, 0], [T, 0], [0, T], [T, T]].map(function (o) {
+      var p = mk(T, T), pg = p.getContext('2d');
+      pg.drawImage(floor, 0, 0);
+      pg.drawImage(c, o[0], o[1], T, T, 0, 0, T, T);
+      return p;
+    });
+    return { h: parts[0], j: parts[1], k: parts[2], l: parts[3] };
   }
   function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
   function tileFor(c, x, y, wf) {
@@ -5466,6 +5493,7 @@ var TowerMine = (function () {
       case 'c': return tiles.cave[v % 2];
       case 'r': return tiles.gravel;
       case '#': return tiles.wall[v % 2];
+      case 'h': case 'j': case 'k': case 'l': return tiles.house[c];
       case 'G': p = portalAt[x + ',' + y]; return tiles.gate[p && !p.locked ? 0 : 1];
       case 'M': return tiles.mouth;
       case 'U': return tiles.exit;
@@ -5628,9 +5656,10 @@ var TowerMine = (function () {
   function renderLog() {
     if (!recent.length) { el.log.innerHTML = '<div class="mine-log-empty">아직 캔 곳이 없어요.</div>'; return; }
     var rows = recent.slice(0, 30).map(function (d) {
-      return '<div class="mine-log-row"><span class="mine-log-xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span> <img src="' + oreIcon(d.grade) + '" alt=""> ' + ORE_NAME[d.grade] + '</div>';
+      return '<div class="mine-log-row"><span class="mine-log-xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span> <img src="' + oreIcon(d.grade) + '" alt=""> ' + ORE_NAME[d.grade]
+          + '<span class="mine-log-when">' + digTime(d.at) + '</span></div>';
     });
-    el.log.innerHTML = '<div class="mine-log-head">최근 캔 곳 <button type="button" onclick="TowerMine.copyLog()">📋 복사</button></div>' + rows.join('');
+    el.log.innerHTML = '<div class="mine-log-head">최근 캔 곳</div>' + rows.join('');
   }
 
   // ---------------------------------------------------------------- 진행
@@ -5788,8 +5817,8 @@ var TowerMine = (function () {
       buildMiniBase();
       P.dir = 'down'; keys = []; drag = null; floats = []; tapDir = null;
       setPos(s.x, s.y);
+      busy = false; // showStamina보다 먼저 -- 안 그러면 ⛏️ 버튼이 비활성처럼 보인 채로 남는다
       showStamina(); renderLog();
-      busy = false;
       fadeT0 = performance.now();
     });
   }
@@ -5844,7 +5873,7 @@ var TowerMine = (function () {
       if (d.ok) {
         lastSaved = map.id + ':' + x + ',' + y;
         dug[x + ',' + y] = d.grade;
-        recent.unshift({ mapName: map.name, x: x, y: y, grade: d.grade });
+        recent.unshift({ mapName: map.name, x: x, y: y, grade: d.grade, at: Date.now() });
         var img = new Image(); img.src = oreIcon(d.grade);
         floats.push({ x: x, y: y, text: '+1 ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: d.grade >= 5, icon: img, t0: performance.now() });
         if (d.grade >= 5) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3200); }
@@ -5900,21 +5929,31 @@ var TowerMine = (function () {
     document.body.style.overflow = '';
     if (cfg && cfg.onClose) cfg.onClose();
   }
+  // [2026-10-23] 마을로 이동 -- 어디에 있든 중앙 평원 마을(시작점)으로
+  function goVillage() {
+    if (!opened || busy || !map) return;
+    if (map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
+    if (!confirm('마을(중앙 평원 시작점)로 이동할까요?')) return;
+    busy = true;
+    fadeT0 = performance.now();
+    api('/api/tower-mine-village').then(function (d) {
+      if (d.ok && d.state) return enterState(d.state).then(function () { msg(d.message || '', 2200); });
+      busy = false;
+      msg(d.message || d.error || '이동하지 못했어요.');
+    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function toggleMini() { el.mini.classList.toggle('big'); }
   function toggleLog() { el.log.style.display = el.log.style.display === 'block' ? 'none' : 'block'; }
-  function copyText(list) {
-    return '람쥐광산 캔 곳\n' + list.slice(0, 30).map(function (d) { return d.mapName + ' (' + d.x + ', ' + d.y + ') ' + ORE_NAME[d.grade]; }).join('\n');
-  }
-  function copy(text, done) {
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { done(false); });
-    else done(false);
-  }
-  function copyLog() {
-    copy(copyText(recent), function (ok) { msg(ok === false ? '복사에 실패했어요.' : '복사했어요. 채팅방에 붙여 넣어 공유해 보세요.'); });
+  // 캔 시각: 오늘이면 "15:42", 아니면 "10/22 15:42"
+  function digTime(ms) {
+    if (!ms) return '';
+    var d = new Date(ms), now = new Date();
+    var hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, toggleMini: toggleMini, toggleLog: toggleLog, copyLog: copyLog, oreIcon: oreIcon,
-           ORE_NAME: ORE_NAME, copyText: copyText, copy: copy };
+  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon,
+           ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

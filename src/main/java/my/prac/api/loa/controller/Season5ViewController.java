@@ -557,7 +557,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, x, y, px, py));
     }
 
-    /** [2026-10-23] 광산상점 -- 광석으로 시간당 PP 올리기(상품/보유 광석/현재 보너스). */
+    /** [2026-10-23] 웹 광산 -- 마을로 이동(중앙 평원 시작점). */
+    @GetMapping("/api/tower-mine-village")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineVillage(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineGoVillage(userName));
+    }
+
+    /** [2026-10-23] 광산상점 -- 광석으로 자동사냥 처치당 PP 올리기(상품/보유 광석/현재 보너스). */
     @GetMapping("/api/tower-mine-shop")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineShop(@RequestParam(value = "userName", defaultValue = "") String userName) {
