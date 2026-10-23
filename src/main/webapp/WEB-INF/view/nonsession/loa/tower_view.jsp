@@ -1542,7 +1542,7 @@
   <canvas id="mineCanvas"></canvas>
   <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
-    <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 1000</div>
+    <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 200</div>
     <div class="mine-regen" id="mineRegen"></div>
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
   </div>
