@@ -28,7 +28,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -7403,6 +7402,10 @@ public class BossAttackController {
 	    return null;
 	}
 	
+	/** [2026-10-23] "현재 안 쓰는 쿼리 정리" 요청 -- 이 미니게임(시즌3 이전 포인트/보스 게임)은 최근 2주 사용 2건뿐이라
+	 *  서버 기동 때(@PostConstruct initCache)와 /갱신 때 전체를 미리 읽던 쿼리 5개(몬스터/업적 집계/아이템ID/아이템 상세·가격/오늘 가방 수)를 없앴다.
+	 *  캐시는 비우기만 하고, 각 조회 헬퍼(getMonsterCached 등)가 필요할 때 한 건씩 DB에서 채운다(기존 fallback 그대로).
+	 *  시즌3 헬보스 최근 처치 문구 복원(buildLastKillMsgFromDb)도 시즌3 종료로 뺐다. */
 	public String refreshCache() {
 	    MiniGameUtil.MONSTER_CACHE.clear();
 	    MiniGameUtil.ACHV_GLOBAL_CACHE = null;
@@ -7412,71 +7415,8 @@ public class BossAttackController {
 	    MiniGameUtil.MARKET_OWNED_CACHE.clear();
 	    MiniGameUtil.POTION_USE_CACHE.clear();
 	    MiniGameUtil.INV_BUFF_CACHE.clear();
-	    initCache();
-	    // 헬보스 최근 처치 결과 DB 재조회 (서버 재시작 후 캐시 복원)
-	    try {
-	        String freshKillMsg = botS3Service.buildLastKillMsgFromDb();
-	        if (freshKillMsg != null && !freshKillMsg.isEmpty()) {
-	            botS3Service.saveLastKillMsg(freshKillMsg);
-	        }
-	    } catch (Exception ignore) {}
-	    return "✅ 캐시 갱신 완료" + NL
-	         + "몬스터: " + MiniGameUtil.MONSTER_CACHE.size() + "건" + NL
-	         + "아이템ID: " + MiniGameUtil.ITEM_ID_CACHE.size() + "건" + NL
-	         + "아이템상세: " + MiniGameUtil.ITEM_DETAIL_CACHE.size() + "건" + NL
-	         + "아이템가격: " + MiniGameUtil.ITEM_PRICE_CACHE.size() + "건" + NL
-	         + "업적: " + (MiniGameUtil.ACHV_GLOBAL_CACHE != null ? MiniGameUtil.ACHV_GLOBAL_CACHE.size() : 0) + "건";
-	}
-	@PostConstruct
-	public void initCache() {
-	    try {
-	        // 몬스터 전체 로드
-	        List<Monster> monsters = botNewService.selectAllMonsters();
-	        if (monsters != null) {
-	            for (Monster m : monsters) {
-	                MiniGameUtil.MONSTER_CACHE.put(m.monNo, m);
-	            }
-	        }
-	        // 업적 글로벌 카운트 로드
-	        MiniGameUtil.ACHV_GLOBAL_CACHE = botNewService.selectAchvCountsGlobalAll();
-	        // 아이템ID 전체 로드
-	        List<HashMap<String, Object>> items = botNewService.selectAllItemIdMappings();
-	        if (items != null) {
-	            for (HashMap<String, Object> row : items) {
-	                String name = String.valueOf(row.get("ITEM_NAME"));
-	                Object id   = row.get("ITEM_ID");
-	                if (name != null && id != null) {
-	                    MiniGameUtil.ITEM_ID_CACHE.put(name, ((Number) id).intValue());
-	                }
-	            }
-	        }
-	        // 아이템 상세 + 가격 전체 프리로드 (MARKET/POTION 포함 전체)
-	        List<HashMap<String,Object>> marketItems = botNewService.selectMarketItems();
-	        if (marketItems != null) {
-	            for (HashMap<String,Object> row : marketItems) {
-	                Object idObj = row.get("ITEM_ID");
-	                if (idObj == null) continue;
-	                int id2 = ((Number) idObj).intValue();
-	                MiniGameUtil.ITEM_DETAIL_CACHE.put(id2, row);
-	                HashMap<String,Object> priceRow = new HashMap<>();
-	                priceRow.put("ITEM_SELL_PRICE",     row.get("ITEM_SELL_PRICE"));
-	                priceRow.put("ITEM_SELL_PRICE_EXT", row.get("ITEM_SELL_PRICE_EXT"));
-	                MiniGameUtil.ITEM_PRICE_CACHE.put(id2, priceRow);
-	            }
-	        }
-	        // 오늘 가방 획득 수 전체 유저 일괄 적재
-	        int today = Integer.parseInt(java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")));
-	        List<HashMap<String,Object>> bagRows = botNewService.selectAllTodayBagCounts();
-	        if (bagRows != null) {
-	            for (HashMap<String,Object> row : bagRows) {
-	                String uName = String.valueOf(row.get("USER_NAME"));
-	                int cnt = ((Number) row.getOrDefault("TODAY_COUNT", 0)).intValue();
-	                MiniGameUtil.DAILY_BAG_CACHE.put(uName, new int[]{cnt, today});
-	            }
-	        }
-	    } catch (Exception e) {
-	        System.out.println("[initCache] 캐시 초기화 실패: " + e.getMessage());
-	    }
+	    MiniGameUtil.DAILY_BAG_CACHE.clear();
+	    return "✅ 캐시 비움 (다음 사용 때 다시 읽음)";
 	}
 	// ─── 캐시 헬퍼 ─────────────────────────────────────────────────────────
 	private Monster getMonsterCached(int monNo) {

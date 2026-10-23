@@ -48,7 +48,6 @@ public interface BotNewService {
 
     int insertBattleLogsBatch(List<BattleLog> logs);
 
-    List<HashMap<String, Object>> selectAllItemIdMappings();
 
     /** 처치 시 진행중 전투 종료: NOW_YN=1 → 0 */
     int closeOngoingBattleTx(String userName, String roomName);
@@ -87,7 +86,6 @@ public interface BotNewService {
 
     HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room);
     
-    List<HashMap<String, Object>> selectMarketItems();
     HashMap<String, Object> selectItemDetailById(int itemId);
     
  // BotNewService
@@ -216,7 +214,6 @@ public interface BotNewService {
     int consumeBagBulkByItemIdAndGainTypeTx(String userName, String roomName, int itemId, String gainType, int count);
     
     int selectTodayBagCount(String userName);
-    List<HashMap<String,Object>> selectAllTodayBagCounts();
     HashMap<String,Object> selectActiveSpecialBuff();
 
     int insertSpecialBuff(HashMap<String,Object> param);

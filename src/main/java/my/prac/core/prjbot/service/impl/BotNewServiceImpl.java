@@ -124,10 +124,6 @@ public class BotNewServiceImpl implements BotNewService {
         return botNewDAO.insertBattleLogBatch(logs);
     }
 
-    @Override
-    public List<HashMap<String, Object>> selectAllItemIdMappings() {
-        return botNewDAO.selectAllItemIdMappings();
-    }
 
     @Override
     public int closeOngoingBattleTx(String userName, String roomName) {
@@ -237,10 +233,6 @@ public class BotNewServiceImpl implements BotNewService {
 	public HashMap<String, Number> selectOwnedMarketBuffTotals(String user, String room) {
 	    return botNewDAO.selectOwnedMarketBuffTotals(user, room);
 	}
-    @Override
-    public List<HashMap<String, Object>> selectMarketItems() {
-        return botNewDAO.selectMarketItems();
-    }
 
     @Override
     public HashMap<String, Object> selectItemDetailById(int itemId) {
@@ -787,9 +779,6 @@ public class BotNewServiceImpl implements BotNewService {
     }
     public int selectTodayBagCount(String userName){
     	return botNewDAO.selectTodayBagCount(userName);
-    }
-    public List<HashMap<String,Object>> selectAllTodayBagCounts(){
-    	return botNewDAO.selectAllTodayBagCounts();
     }
     public HashMap<String,Object> selectActiveSpecialBuff(){
     	return botNewDAO.selectActiveSpecialBuff();

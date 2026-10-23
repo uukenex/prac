@@ -52,7 +52,6 @@ public interface BotNewDAO {
 
     int insertBattleLogBatch(List<BattleLog> logs);
 
-    List<HashMap<String, Object>> selectAllItemIdMappings();
 
     int closeOngoingBattle(@Param("userName") String userName, @Param("roomName") String roomName);
 
@@ -109,8 +108,6 @@ public interface BotNewDAO {
     );
 
 
-    /** ITEM_TYPE='MARKET' 목록 (구매 리스트 노출용) */
-    List<HashMap<String, Object>> selectMarketItems();
 
     /** 아이템 단건 상세 (구매 처리/보너스 표기용) */
     HashMap<String, Object> selectItemDetailById(@Param("itemId") int itemId);
@@ -257,7 +254,6 @@ public interface BotNewDAO {
     int consumeBagBulkByItemIdAndGainType(HashMap<String,Object> param);
     
     int selectTodayBagCount(String userName);
-    List<HashMap<String,Object>> selectAllTodayBagCounts();
     HashMap<String,Object> selectActiveSpecialBuff();
 
     int insertSpecialBuff(HashMap<String,Object> param);

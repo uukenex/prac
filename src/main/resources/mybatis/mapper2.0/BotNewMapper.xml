@@ -334,11 +334,6 @@
     SELECT ITEM_ID FROM TBOT_POINT_NEW_ITEM WHERE ITEM_NAME = #{itemName}
   </select>
 
-  <select id="selectAllItemIdMappings" resultType="hashmap">
-    /* selectAllItemIdMappings */
-    SELECT ITEM_ID, ITEM_NAME FROM TBOT_POINT_NEW_ITEM
-  </select>
-
   <insert id="insertInventoryLog" parameterType="hashmap">
     /* insertInventoryLog */
     INSERT INTO TBOT_POINT_NEW_INVENTORY
@@ -691,28 +686,6 @@
 	    AND i.item_type in ('MARKET2','MARKET','BAG_OPEN','BAG_OPEN_NM','MASTER','ACHV')
 	</select>
 	
-	<select id="selectMarketItems" resultType="hashmap">
-	    /* selectMarketItems */
-	    SELECT
-	        i.ITEM_ID,
-	        i.ITEM_NAME,
-	        i.ITEM_SELL_PRICE,
-	        i.ITEM_SELL_PRICE_EXT,
-	        i.ITEM_TYPE,
-	        NVL(i.ATK_MIN,   0) AS ATK_MIN,
-	        NVL(i.ATK_MAX,   0) AS ATK_MAX,
-	        NVL(i.ATK_CRI,   0) AS ATK_CRI,
-	        NVL(i.HP_REGEN,  0) AS HP_REGEN,
-	        NVL(i.HP_MAX,    0) AS HP_MAX,
-	        NVL(i.CRI_DMG,   0) AS CRI_DMG,
-	        NVL(i.HP_MAX_RATE,   0) AS HP_MAX_RATE,
-	        NVL(i.ATK_MAX_RATE,   0) AS ATK_MAX_RATE,
-	        i.TARGET_LV,
-	        NVL(i.SET_ID, '') AS SET_ID
-	    FROM TBOT_POINT_NEW_ITEM i
-	    --WHERE i.ITEM_TYPE in ('MARKET','MARKET2')
-	    ORDER BY i.ITEM_ID
-	</select>
 	
 	<!--  B. 아이템 단건 상세  -->
 	<select id="selectItemDetailById" resultType="hashmap">
@@ -1966,15 +1939,6 @@
 	</update>
 	
 	
-	<select id="selectAllTodayBagCounts" resultType="hashmap">
-	    /* selectAllTodayBagCounts - 기동 시 전체 유저 오늘 가방 수 일괄 적재용 */
-	    SELECT USER_NAME, NVL(SUM(NVL(QTY,1)), 0) AS TODAY_COUNT
-	      FROM TBOT_POINT_NEW_INVENTORY
-	     WHERE INSERT_DATE >= TRUNC(SYSDATE)
-	       AND ITEM_ID IN (91, 92, 93)
-	       AND GAIN_TYPE IN ('BAG_DROP', 'PITY_BAG')
-	     GROUP BY USER_NAME
-	</select>
 
 	<select id="selectTodayBagCount"
 	        resultType="int">
