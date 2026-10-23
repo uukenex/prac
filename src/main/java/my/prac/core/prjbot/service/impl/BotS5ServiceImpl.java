@@ -9869,7 +9869,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (String cp : classPartCombos) {
             String[] cpArr = cp.split("\\|", 2);
             String clazz = cpArr[0], part = cpArr[1];
-            for (int grade = 1; grade <= 4; grade++) {
+            for (int grade = 1; grade <= 5; grade++) { // [2026-10-23] "6성으로의 일괄합성도 되도록" 요청 -- ★5 3개 -> ★6까지 다시 허용(★6은 상한이라 소모 안 함)
                 String key = clazz + "|" + part + "|" + grade;
                 List<Integer> realIds = realIdsByKey.getOrDefault(key, Collections.emptyList());
                 int realPos = 0; // realIds 중 아직 소모(삭제 예약)하지 않은 다음 인덱스
