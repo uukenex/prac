@@ -144,6 +144,8 @@ public interface BotS5DAO {
     /** [2026-10-23] 광산 아이템(광부 투구 단계, 용왕반지 등) -- TBOT_S5_MINE_ITEM. */
     // [2026-10-23] 곡괭이 강화(최대/현재 내구도 함께 증가), 2일 주기 맵 리셋(캔 칸 전부 삭제, 모든 유저 위치를 평원 마을로), 설정값 읽기/쓰기
     int addMinePickMax(@Param("userName") String userName, @Param("gain") int gain);
+    /** [2026-10-24] 매일 0시 모든 유저 곡괭이 내구도 가득. */
+    int refillAllMinePick();
     int deleteAllMineDug();
     int resetAllMinePos();
     String selectConfigValue(@Param("key") String key);

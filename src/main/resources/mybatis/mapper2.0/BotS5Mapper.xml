@@ -720,6 +720,11 @@
         UPDATE TBOT_S5_MINE_USER SET PICK_DUR = PICK_DUR + #{gain}, PICK_DUR_MAX = PICK_DUR_MAX + #{gain} WHERE USER_NAME = #{userName}
     </update>
 
+    <!-- [2026-10-24] 매일 0시 곡괭이 내구도 가득(현재 = 최대) -->
+    <update id="refillAllMinePick">
+        UPDATE TBOT_S5_MINE_USER SET PICK_DUR = PICK_DUR_MAX WHERE PICK_DUR &lt; PICK_DUR_MAX
+    </update>
+
     <!-- [2026-10-23] 광산 맵 2일 주기 리셋: 맵이 새로 섞이므로 캔 칸 기록을 모두 지우고 모든 유저를 평원 마을(위치 NULL = 시작점)로 옮긴다. -->
     <delete id="deleteAllMineDug">
         DELETE FROM TBOT_S5_MINE_DUG

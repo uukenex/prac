@@ -8608,7 +8608,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 맵은 S5MineMap(주기마다 시드로 서버가 만든다)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
     // 화면에는 지형/포탈/NPC만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 맵 리셋 때만 초기화).
     // [2026-10-23] "스태미너 대신 곡괭이 내구도, 처음 1000(모든 유저 현재/최대 1000 -- 같은 날 "초기 내구도 200"으로 변경), 마을 대장간 NPC에게 광석을 주면 내구도를 올린다" 요청 --
-    //   한 번 캘 때 곡괭이 내구도(TBOT_S5_MINE_USER.PICK_DUR) 1 소모, 시간 회복/0시 초기화 없음. 대장장이(평원 마을 NPC)에게 광석을 주면
+    //   한 번 캘 때 곡괭이 내구도(TBOT_S5_MINE_USER.PICK_DUR) 1 소모, 시간 회복 없음([2026-10-24] 매일 0시에 최대치까지 가득 -- minePickRefill). 대장장이(평원 마을 NPC)에게 광석을 주면
     //   MINE_PICK_UPGRADE 비율로 곡괭이 강화 -- 최대 내구도(PICK_DUR_MAX)와 현재 내구도(PICK_DUR)가 같은 양만큼 함께 오른다(상한 없음, 별도 수리 없음 --
     //   2026-10-23 "회복은 최대치를 늘리는 것" 확인). 예전 스태미너 컬럼(STAMINA/STAMINA_AT_MS)은 더 이상 읽지 않는다.
     // [2026-10-23] "전체 맵은 2일 주기로 리셋 후 셔플, 리셋 작업이 끝나기 전엔 리셋 중이라 접속 안 된다고 안내" 요청 -- mineGate 참고.
@@ -8700,6 +8700,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 지금 주기의 맵이 준비됐으면 null, 리셋 중이면 안내 응답. 주기가 바뀌었으면 리셋을 시작한다. */
     private HashMap<String, Object> mineGate() {
+        minePickRefill(); // [2026-10-24] 그날 아직 0시 내구도 회복을 안 했으면(서버가 0시에 꺼져 있었던 경우)
         int want = S5MineMap.cycleAt(System.currentTimeMillis());
         if (!MINE_RESETTING.get() && mineAppliedCycle == want) return null;
         if (!MINE_RESETTING.get()) {
@@ -8756,6 +8757,39 @@ public class BotS5ServiceImpl implements BotS5Service {
         }, "s5-mine-reset");
         t.setDaemon(true);
         t.start();
+    }
+
+    /** [2026-10-24] 매일 0시(KST) -- 곡괭이 내구도 가득. @Scheduled라 BotS5Service 인터페이스에도 선언돼 있어야 한다. */
+    @Override
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+    public void minePickRefillTick() {
+        try {
+            minePickRefill();
+        } catch (Exception e) {
+            System.out.println("[광산] 0시 곡괭이 내구도 회복 실패: " + e.getMessage());
+        }
+    }
+
+    // ---- [2026-10-24] "0시에 곡괭이 내구도 풀 회복" -- 매일 0시(KST) 모든 유저 현재 내구도 = 최대 내구도.
+    //  0시 스케줄(minePickRefillTick)과, 서버가 0시에 꺼져 있었을 때를 위해 그날 첫 광산 요청(mineGate)에서도 확인한다.
+    //  한 날짜에 한 번만: TBOT_S5_CONFIG.MINE_PICK_REFILL_DAY = yyyyMMdd.
+    private static final String MINE_PICK_REFILL_KEY = "MINE_PICK_REFILL_DAY";
+    private static volatile String minePickRefilledDay = null;
+
+    private synchronized void minePickRefill() {
+        String today = java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+        if (today.equals(minePickRefilledDay)) return;
+        try {
+            String done = dao.selectConfigValue(MINE_PICK_REFILL_KEY);
+            if (done == null || !today.equals(done.trim())) {
+                int n = dao.refillAllMinePick();
+                dao.upsertConfigValue(MINE_PICK_REFILL_KEY, today, "web mine pickaxe durability refilled at 00:00 KST (yyyyMMdd)");
+                System.out.println("[광산] 0시 곡괭이 내구도 회복: " + n + "명");
+            }
+            minePickRefilledDay = today;
+        } catch (Exception e) {
+            System.out.println("[광산] 곡괭이 내구도 회복 확인 실패: " + e.getMessage());
+        }
     }
 
     /** 매일 05:00 -- 리셋 날이면 리셋을 시작한다(요청이 없어도 제시간에). @Scheduled라 BotS5Service 인터페이스에도 선언돼 있어야 한다. */

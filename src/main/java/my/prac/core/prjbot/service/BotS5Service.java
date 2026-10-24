@@ -240,6 +240,8 @@ public interface BotS5Service {
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
     void mineResetTick();
+    /** [2026-10-24] 매일 0시 곡괭이 내구도 가득. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
+    void minePickRefillTick();
     HashMap<String, Object> mineShop(String userName);
     String mineShopBuy(String userName, int no, int times);
     /** [2026-10-23] 광부 투구 구매/업그레이드. */
