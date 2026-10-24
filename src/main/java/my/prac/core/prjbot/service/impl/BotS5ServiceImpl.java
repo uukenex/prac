@@ -8654,8 +8654,28 @@ public class BotS5ServiceImpl implements BotS5Service {
         return Math.max(0, m.level() - 1);
     }
 
-    /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). */
-    private String mineMapBlock(S5MineMap m, Map<String, Integer> items) {
+    /** [2026-10-24] 구역별 입장 레벨(광산 전투 레벨) -- "구역별 입장 레벨 제한" 요청. 그 구역의 가장 약한 몬스터 적정 레벨(1 + 4(단계-1))보다 4 낮게:
+     *  들어가서 캘 수는 있지만 몬스터는 아직 버겁다(한 단계 아래 레벨이면 한 마리 잡을 때 체력을 거의 다 쓴다 -- 앞 구역에서 레벨을 올리고 오게).
+     *  평원/요일 던전 1, 바닷가 5, 북쪽 사막/광산 동굴 9, 남쪽 섬 13, 동쪽 성곽 17, 북쪽 끝 설원 21. */
+    static final Map<String, Integer> MINE_MIN_LV = new LinkedHashMap<>();
+    static {
+        MINE_MIN_LV.put(S5MineMap.FIELD, 1);
+        MINE_MIN_LV.put(S5MineMap.DUNGEON, 1);
+        MINE_MIN_LV.put(S5MineMap.BEACH, 5);
+        MINE_MIN_LV.put(S5MineMap.DESERT, 9);
+        MINE_MIN_LV.put(S5MineMap.CAVE1, 9);
+        MINE_MIN_LV.put(S5MineMap.ISLAND, 13);
+        MINE_MIN_LV.put(S5MineMap.CASTLE, 17);
+        MINE_MIN_LV.put(S5MineMap.NORTH, 21);
+    }
+
+    static int mineMinLv(S5MineMap m) {
+        return MINE_MIN_LV.getOrDefault(m.id, 1);
+    }
+
+    /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨. */
+    private String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
+        if (lv < mineMinLv(m)) return "🔒 " + m.name + "은(는) 광산 레벨 " + mineMinLv(m) + " 이상부터 들어갈 수 있어요. (지금 Lv." + lv + " -- 몬스터를 잡아 레벨을 올려 주세요)";
         int need = mineHelmetNeed(m), have = items.getOrDefault(MINE_ITEM_HELMET, 0);
         if (have < need) return "⛑️ " + m.name + "은(는) 광부 투구 " + need + "단계 이상이 있어야 움직일 수 있어요. (지금 " + have + "단계, 평원 마을 대장장이에게서 업그레이드)";
         if (m.requireItem() != null && items.getOrDefault(m.requireItem(), 0) < 1) {
@@ -9059,7 +9079,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
             return out;
         }
-        String block = mineMapBlock(map, items);
+        String block = mineMapBlock(map, items, mineLv(row));
         if (block != null) { out.put("message", block); return out; }
         if (mobId < 0 || mobId >= map.mobs().size()) { out.put("message", "그 몬스터는 없어요."); return out; }
         S5MineMap.Mob mob = map.mobs().get(mobId);
@@ -9208,6 +9228,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
+        out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 입장 레벨(화면: 이동 막기, 전체 지도에 갈 수 있는 곳만)
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH }) {
@@ -9275,7 +9296,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
             return out;
         }
-        String block = mineMapBlock(map, items);
+        String block = mineMapBlock(map, items, mineLv(row));
         if (block != null) {
             out.put("message", block);
             return out;
@@ -9432,7 +9453,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         S5MineMap target = S5MineMap.get(ship ? dest : p.target);
-        String block = mineMapBlock(target, items);
+        String block = mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("locked", true);
