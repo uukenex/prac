@@ -8710,6 +8710,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int dug = dao.deleteAllMineDug();
                 int users = dao.resetAllMinePos();
                 S5MineMap.setActiveCycle(want);
+                MINE_MOB_STATE.clear(); // [2026-10-24] 새 맵 -- 몬스터 상태도 처음부터
                 dao.upsertConfigValue(MINE_CYCLE_KEY, String.valueOf(want), "web mine map cycle applied (2-day reset, set by app)");
                 mineAppliedCycle = want;
                 System.out.println("[광산] 맵 리셋 완료: 주기 " + want + ", 캔 칸 " + dug + "건 삭제, 유저 " + users + "명 마을로, "
@@ -8899,7 +8900,262 @@ public class BotS5ServiceImpl implements BotS5Service {
             portals.add(m);
         }
         out.put("portals", portals);
+        // [2026-10-24] 몬스터(집 칸 + 돌아다니는 칸, 위치는 시각으로 화면이 계산) + 종류 표 + 배 항로
+        List<HashMap<String, Object>> mobs = new ArrayList<>();
+        for (S5MineMap.Mob mb : map.mobs()) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", mb.id);
+            m.put("k", mb.type);
+            m.put("c", mb.cells);
+            mobs.add(m);
+        }
+        out.put("mobs", mobs);
+        out.put("mobTypes", mineMobTypes());
+        out.put("mobSlotMs", S5MineMobs.SLOT_MS);
+        if (S5MineMap.SHIP_PORTS.contains(map.id)) {
+            List<HashMap<String, Object>> ship = new ArrayList<>();
+            for (String port : S5MineMap.SHIP_PORTS) {
+                if (port.equals(map.id)) continue;
+                HashMap<String, Object> m = new HashMap<>();
+                m.put("id", port);
+                m.put("name", S5MineMap.nameOf(port));
+                ship.add(m);
+            }
+            out.put("shipTo", ship);
+        }
         return out;
+    }
+
+    private static List<HashMap<String, Object>> mineMobTypes() {
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (S5MineMobs.Type ty : S5MineMobs.TYPES) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("name", ty.name);
+            m.put("tier", ty.tier);
+            m.put("kind", ty.kind);
+            m.put("color", ty.color);
+            m.put("hp", ty.hp());
+            out.add(m);
+        }
+        return out;
+    }
+
+    // ---- [2026-10-24] 광산 전투(바람의나라식: 몬스터 바로 옆에서 공격, 몬스터 선공 없음 -- 맞으면 그 자리에 멈춰 반격) ----
+    // "광산 전용 레벨, 몬스터 보상은 광석/보석 드랍"(+ 레벨을 올릴 경험치). 몬스터 체력/죽음/멈춤은 서버 메모리(MINE_MOB_STATE, 맵 리셋 때 비움),
+    // 유저 레벨/경험치/체력은 TBOT_S5_MINE_USER(M_LV, M_EXP, M_HP, M_HP_AT_MS, M_KILLS -- S5_MINE_COMBAT.sql).
+    //  레벨 L: 최대 체력 40 x 1.18^(L-1), 공격력 6 x 1.18^(L-1), 다음 레벨까지 경험치 15 x 1.32^(L-1). 체력은 60초에 다 찬다. 쓰러지면 평원 마을에서 깨어난다(잃는 것 없음).
+    private static final int MINE_LV_MAX = 60;
+    private static final long MINE_HP_FULL_MS = 60_000L;
+    private static final long MINE_ATTACK_GAP_MS = 380L;
+    private static final long MINE_MOB_FREEZE_MS = 8_000L;
+    private static final long MINE_MOB_HEAL_MS = 30_000L;
+
+    private static final class MobState {
+        int hp;
+        long deadUntil, frozenUntil, lastHitAt;
+        int fx, fy;
+        MobState(int hp) { this.hp = hp; }
+    }
+
+    private static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_LAST_ATTACK = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static String mineMobKey(S5MineMap map, int id) {
+        return map.version() + ":" + id;
+    }
+
+    static int mineHpMax(int lv) { return (int) Math.round(40 * Math.pow(1.18, lv - 1)); }
+    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.18, lv - 1)); }
+    static long mineExpNeed(int lv) { return Math.round(15 * Math.pow(1.32, lv - 1)); }
+
+    private int mineLv(HashMap<String, Object> row) {
+        return Math.max(1, Math.min(MINE_LV_MAX, intVal(row.get("M_LV"), 1)));
+    }
+
+    /** 지금 체력(저장된 체력 + 저장 시각부터 회복). M_HP가 없으면 가득. */
+    private int mineHpNow(HashMap<String, Object> row, long now) {
+        int max = mineHpMax(mineLv(row));
+        if (row.get("M_HP") == null) return max;
+        int hp = intVal(row.get("M_HP"), max);
+        long at = longOf(row.get("M_HP_AT_MS"), now);
+        return (int) Math.min(max, hp + Math.max(0, now - at) * max / MINE_HP_FULL_MS);
+    }
+
+    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now) {
+        HashMap<String, Object> c = new HashMap<>();
+        c.put("lv", lv);
+        c.put("exp", exp);
+        c.put("expNeed", mineExpNeed(lv));
+        c.put("hp", hp);
+        c.put("hpMax", mineHpMax(lv));
+        c.put("atk", mineAtk(lv));
+        c.put("at", now);
+        c.put("fullMs", MINE_HP_FULL_MS);
+        return c;
+    }
+
+    /** 몬스터가 지금 있을 수 있는 칸들(멈춰 있으면 그 칸, 아니면 앞/지금/다음 시간 칸 -- 화면과 서버 시계 차이 허용). */
+    private static int[] mineMobCells(S5MineMap.Mob mob, MobState s, long now, S5MineMap map) {
+        if (s != null && s.frozenUntil > now) return new int[] { s.fy * map.w + s.fx };
+        return new int[] { S5MineMobs.cellAt(mob, now - S5MineMobs.SLOT_MS), S5MineMobs.cellAt(mob, now), S5MineMobs.cellAt(mob, now + S5MineMobs.SLOT_MS) };
+    }
+
+    /** 화면이 1.5초마다 묻는 맵의 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만): [id, hp, deadUntil, fx, fy, frozenUntil]. 오래 안 맞은 몬스터는 다 회복(목록에서 뺀다). */
+    @Override
+    public HashMap<String, Object> mineMobs(String mapId) {
+        HashMap<String, Object> out = new HashMap<>();
+        long now = System.currentTimeMillis();
+        out.put("now", now);
+        if (mineGate() != null) { out.put("mobs", Collections.emptyList()); return out; }
+        S5MineMap map = S5MineMap.get(mapId);
+        String prefix = map.version() + ":";
+        List<long[]> list = new ArrayList<>();
+        for (java.util.Map.Entry<String, MobState> e : MINE_MOB_STATE.entrySet()) {
+            if (!e.getKey().startsWith(prefix)) continue;
+            MobState s = e.getValue();
+            synchronized (s) {
+                if (s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS) { MINE_MOB_STATE.remove(e.getKey(), s); continue; }
+                list.add(new long[] { Long.parseLong(e.getKey().substring(prefix.length())), s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil });
+            }
+        }
+        out.put("mobs", list);
+        return out;
+    }
+
+    /** 공격 -- (x, y)에 서서 바로 옆(상하좌우) 몬스터 mobId를 때린다. 살아남으면 반격(몬스터 공격력), 쓰러뜨리면 경험치 + 광석/보석. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId) {
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        Long last = MINE_LAST_ATTACK.get(userName);
+        if (last != null && now - last < MINE_ATTACK_GAP_MS) { out.put("tooFast", true); return out; }
+        MINE_LAST_ATTACK.put(userName, now);
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        boolean water = mineWaterWalk(items);
+        int[] pos = minePos(row, map, water);
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
+            out.put("reload", true);
+            out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
+            return out;
+        }
+        if (!mineWalk(map, x, y, water) || !mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
+            out.put("resyncX", pos[0]);
+            out.put("resyncY", pos[1]);
+            out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        String block = mineMapBlock(map, items);
+        if (block != null) { out.put("message", block); return out; }
+        if (mobId < 0 || mobId >= map.mobs().size()) { out.put("message", "그 몬스터는 없어요."); return out; }
+        S5MineMap.Mob mob = map.mobs().get(mobId);
+        S5MineMobs.Type type = S5MineMobs.TYPES.get(mob.type);
+        int lv = mineLv(row);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int hp = mineHpNow(row, now);
+        out.put("mobId", mobId);
+        MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(type.hp()));
+        int dmg, counter = 0, kills = 0;
+        boolean killed = false, crit;
+        synchronized (s) {
+            if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
+            if (s.deadUntil > 0) { s.deadUntil = 0; s.hp = type.hp(); } // 다시 나타남
+            int hitCell = -1;
+            for (int c : mineMobCells(mob, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) == 1) { hitCell = c; break; }
+            if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
+            crit = RND.nextInt(100) < 10;
+            dmg = Math.max(1, (int) Math.round(mineAtk(lv) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)));
+            s.hp -= dmg;
+            s.lastHitAt = now;
+            if (s.hp <= 0) {
+                killed = true;
+                s.hp = 0;
+                s.deadUntil = now + type.respawnMs();
+                s.frozenUntil = 0;
+            } else {
+                s.fx = hitCell % map.w;
+                s.fy = hitCell / map.w;
+                s.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                counter = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4)));
+            }
+            out.put("mobHp", s.hp);
+            out.put("mobDeadUntil", s.deadUntil);
+            out.put("mobFx", s.fx);
+            out.put("mobFy", s.fy);
+            out.put("mobFrozenUntil", s.frozenUntil);
+        }
+        out.put("ok", true);
+        out.put("dmg", dmg);
+        out.put("crit", crit);
+        out.put("killed", killed);
+        out.put("mobHpMax", type.hp());
+        StringBuilder msg = new StringBuilder();
+        boolean died = false;
+        int levelUp = 0;
+        if (killed) {
+            kills = 1;
+            exp += type.exp();
+            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv)) { exp -= mineExpNeed(lv); lv++; levelUp++; }
+            if (levelUp > 0) hp = mineHpMax(lv); // 레벨이 오르면 체력이 다 찬다
+            msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
+            if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
+            out.put("expGain", type.exp());
+            out.put("drops", mineMobDrops(userName, map, type, msg));
+            out.put("ores", mineOreList(userName));
+        } else {
+            hp -= counter;
+            out.put("counter", counter);
+            if (hp <= 0) {
+                died = true;
+                hp = mineHpMax(lv);
+                S5MineMap field = S5MineMap.get(S5MineMap.FIELD);
+                dao.updateMinePos(userName, field.id, field.spawnX, field.spawnY, now);
+                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... 중앙 평원 마을에서 깨어났어요.");
+            }
+        }
+        if (!died) dao.updateMinePos(userName, map.id, x, y, now);
+        dao.updateMineCombat(userName, lv, exp, hp, now, kills);
+        out.put("levelUp", levelUp);
+        out.put("died", died);
+        out.put("combat", mineCombatInfo(lv, exp, hp, now));
+        if (msg.length() > 0) out.put("message", msg.toString());
+        if (died) out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** 처치 보상: 60% 광석(단계가 높을수록 좋은 광석, 별빛석은 안 나옴) + 지역 보석(캘 때의 2.5배 확률). */
+    private List<HashMap<String, Object>> mineMobDrops(String userName, S5MineMap map, S5MineMobs.Type type, StringBuilder msg) {
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        if (RND.nextInt(100) < 60) {
+            int g = Math.min(5, 1 + (type.tier - 1) / 2);
+            if (g < 5 && RND.nextInt(100) < 35) g++;
+            int qty = 1 + (RND.nextInt(100) < 25 ? 1 : 0);
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[g - 1], qty);
+            drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
+            msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
+        }
+        int gi = S5MineMap.gemFor(map.id, RND.nextInt(400));
+        if (gi >= 0) {
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
+            msg.append(" · 💎 ").append(S5MineMap.GEM_NAMES[gi]).append(" 1개");
+        }
+        return drops;
+    }
+
+    private static HashMap<String, Object> mineDrop(int grade, String name, int qty) {
+        HashMap<String, Object> d = new HashMap<>();
+        d.put("grade", grade);
+        d.put("name", name);
+        d.put("qty", qty);
+        return d;
     }
 
     @Override
@@ -8944,6 +9200,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier)); // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
+        out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
         return out;
     }
 
@@ -9006,12 +9263,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         int g = map.oreAt(x, y);
         if (g == 0) {
             out.put("message", "여기서는 캘 수 없어요.");
+            out.put("noOre", true); // [2026-10-24] 자동채광이 이 칸을 다시 고르지 않게
             return out;
         }
         int cell = y * map.w + x;
         String dugKey = mineDugKey(map, now);
         if (dao.countMineDug(userName, dugKey, cell) > 0) {
             out.put("message", "이미 캔 자리예요. 다른 곳을 찾아보세요.");
+            out.put("noOre", true);
             return out;
         }
         if (st < 1) {
@@ -9110,7 +9369,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 포탈 타기 -- (x, y)에 서서 바로 옆 포탈 칸(px, py)으로 들어간다. 잠긴 포탈이면 안내만, 열린 포탈이면 대상 맵/좌표로 옮기고 새 상태를 돌려준다. */
     @Override
     @Transactional
-    public HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py) {
+    public HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest) {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
@@ -9145,7 +9404,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "🔒 " + p.label + " -- 아직 갈 수 없어요. (준비 중)");
             return out;
         }
-        S5MineMap target = S5MineMap.get(p.target);
+        // [2026-10-24] 배(판자 B) -- 항구(바닷가/남쪽 섬/북쪽 끝 설원) 중 다른 곳을 골라 그 항구의 내리는 칸으로
+        boolean ship = S5MineMap.SHIP.equals(p.target);
+        if (ship && (dest == null || dest.equals(map.id) || !S5MineMap.SHIP_PORTS.contains(dest))) {
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("message", "⛵ 어디로 갈지 골라 주세요.");
+            return out;
+        }
+        S5MineMap target = S5MineMap.get(ship ? dest : p.target);
         String block = mineMapBlock(target, items);
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -9153,10 +9419,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        int tx = target.walkable(p.tx, p.ty) ? p.tx : target.spawnX, ty = target.walkable(p.tx, p.ty) ? p.ty : target.spawnY;
+        int ax = ship ? target.dockX() : p.tx, ay = ship ? target.dockY() : p.ty;
+        int tx = target.walkable(ax, ay) ? ax : target.spawnX, ty = target.walkable(ax, ay) ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         out.put("ok", true);
-        out.put("message", "🚪 " + target.name + "(으)로 이동했어요.");
+        out.put("message", ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : "🚪 " + target.name + "(으)로 이동했어요.");
         out.put("state", mineState(userName));
         return out;
     }
@@ -9483,6 +9750,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int sevenMax = Integer.MAX_VALUE;
         for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0));
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
+        mineLookPayload(items, have, out); // [2026-10-24] 명품상점(외형)
         out.put("ores", mineOreList(userName));
     }
 
@@ -9586,6 +9854,122 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = mineGearResult(userName, true, "늙은 선장: " + MINE_CAPTAIN_STORY);
         out.put("questStarted", true);
         return out;
+    }
+
+    // ---- [2026-10-24] 명품상점(광산 캐릭터 외형) ----
+    // "캐릭터 외형을 바꿀 수 있게, 대장장이 옆 건물에 명품상점 -- 부위별 치장 아이템, 성별 전환도 여기서" 요청. 능력치 없음(보이는 것만).
+    //  산 아이템: TBOT_S5_MINE_ITEM "COS_" + 코드(1), 부위별 착용: "LOOK_" + 부위(카탈로그 순번 + 1, 0 = 기본), 성별: "LOOK_GENDER"(0 남 / 1 여).
+    //  모양/색(look 값)은 화면(TowerMine.charSprite)이 그린다.
+    static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes" };
+    private static final String MINE_ITEM_GENDER = "LOOK_GENDER";
+    /** 성별 전환 비용. */
+    private static final String[][] MINE_GENDER_COST = { { S5MineMap.ORE_CODES[2], "10" } };
+
+    private static final class MineCos {
+        final String code, slot, name, look; // look = "색" 또는 "색|모양"
+        final String[][] cost;
+        MineCos(String code, String slot, String name, String look, String[][] cost) {
+            this.code = code; this.slot = slot; this.name = name; this.look = look; this.cost = cost;
+        }
+    }
+
+    private static String[] mineOre(int grade, int qty) {
+        return new String[] { S5MineMap.ORE_CODES[grade - 1], String.valueOf(qty) };
+    }
+
+    private static final List<MineCos> MINE_COS = java.util.Arrays.asList(
+        new MineCos("HAT_STRAW", "hat", "밀짚모자", "#e8c84a|straw", new String[][] { mineOre(1, 150) }),
+        new MineCos("HAT_MINER", "hat", "광부 헬멧", "#9aa3ad|helmet", new String[][] { mineOre(2, 80) }),
+        new MineCos("HAT_PIRATE", "hat", "해적 모자", "#222630|pirate", new String[][] { mineCost(3, 12) }),
+        new MineCos("HAT_WIZARD", "hat", "마법사 모자", "#4b3a9a|wizard", new String[][] { mineCost(4, 15) }),
+        new MineCos("HAT_CROWN", "hat", "황금 왕관", "#f2c230|crown", new String[][] { mineOre(4, 30), mineCost(8, 1) }),
+        new MineCos("HAIR_BROWN", "hair", "갈색 머리", "#7a4a26", new String[][] { mineOre(1, 100) }),
+        new MineCos("HAIR_BLOND", "hair", "금발", "#f0d060", new String[][] { mineOre(3, 20) }),
+        new MineCos("HAIR_SILVER", "hair", "은발", "#d8dde6", new String[][] { mineOre(3, 40) }),
+        new MineCos("HAIR_PINK", "hair", "분홍 머리", "#f58fb8", new String[][] { mineCost(0, 10) }),
+        new MineCos("HAIR_BLUE", "hair", "하늘색 머리", "#6fc8f0", new String[][] { mineCost(3, 10) }),
+        new MineCos("TOP_RED", "top", "붉은 도포", "#c0392b|robe", new String[][] { mineOre(2, 100) }),
+        new MineCos("TOP_GREEN", "top", "초록 도포", "#2e8b57|robe", new String[][] { mineCost(7, 3) }),
+        new MineCos("TOP_HANBOK", "top", "흰 한복", "#f4f1e8|hanbok", new String[][] { mineCost(6, 15) }),
+        new MineCos("TOP_ARMOR", "top", "검은 갑옷", "#3a3f4a|armor", new String[][] { mineOre(3, 50) }),
+        new MineCos("TOP_GOLD", "top", "황금 갑옷", "#e0b030|armor", new String[][] { mineOre(4, 30), mineCost(1, 3) }),
+        new MineCos("BOT_BLACK", "bottom", "검은 바지", "#1f1f24", new String[][] { mineOre(1, 120) }),
+        new MineCos("BOT_WHITE", "bottom", "흰 바지", "#e8e4da", new String[][] { mineOre(2, 60) }),
+        new MineCos("BOT_RED", "bottom", "붉은 치마바지", "#a8323a", new String[][] { mineCost(5, 3) }),
+        new MineCos("SHOE_LEATHER", "shoes", "가죽 장화", "#8a5a2b", new String[][] { mineOre(1, 100) }),
+        new MineCos("SHOE_RED", "shoes", "꽃신", "#e0507a", new String[][] { mineCost(5, 2) }),
+        new MineCos("SHOE_GOLD", "shoes", "황금 신", "#f2c230", new String[][] { mineOre(4, 20) })
+    );
+
+    private static MineCos mineCos(String code) {
+        for (MineCos c : MINE_COS) if (c.code.equals(code)) return c;
+        return null;
+    }
+
+    /** 외형(성별 + 부위별 착용 look 값) + 상점 목록을 out에 넣는다. */
+    private static void mineLookPayload(Map<String, Integer> items, Map<String, Integer> have, HashMap<String, Object> out) {
+        HashMap<String, Object> look = new HashMap<>();
+        look.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
+        for (String slot : MINE_LOOK_SLOTS) {
+            int idx = items.getOrDefault("LOOK_" + slot.toUpperCase(), 0) - 1;
+            MineCos c = idx >= 0 && idx < MINE_COS.size() ? MINE_COS.get(idx) : null;
+            look.put(slot, c != null && c.slot.equals(slot) ? c.look : "");
+            look.put(slot + "Code", c != null && c.slot.equals(slot) ? c.code : "");
+        }
+        out.put("look", look);
+        List<HashMap<String, Object>> shop = new ArrayList<>();
+        for (MineCos c : MINE_COS) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("code", c.code);
+            m.put("slot", c.slot);
+            m.put("name", c.name);
+            m.put("look", c.look);
+            boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0;
+            m.put("owned", owned);
+            if (!owned) {
+                m.put("costs", mineCostList(c.cost, have));
+                m.put("can", mineCostOk(c.cost, have));
+            }
+            shop.add(m);
+        }
+        out.put("cosShop", shop);
+        out.put("genderCosts", mineCostList(MINE_GENDER_COST, have));
+        out.put("genderCan", mineCostOk(MINE_GENDER_COST, have));
+    }
+
+    /** 명품상점 -- action: buy(code, 사면 바로 입음) / wear(code, 빈 값 + slot = 그 부위 기본으로) / gender(성별 전환, 은광석 10개). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineLook(String userName, String action, String code, String slot) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        dao.selectMineUserForUpdate(userName);
+        Map<String, Integer> items = mineItems(userName);
+        if ("gender".equals(action)) {
+            if (!mineCostOk(MINE_GENDER_COST, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 성별을 바꾸려면 " + mineCostText(MINE_GENDER_COST) + "가 필요해요.");
+            mineTakeCost(userName, MINE_GENDER_COST, 1);
+            int g = items.getOrDefault(MINE_ITEM_GENDER, 0) == 1 ? 0 : 1;
+            dao.upsertMineItem(userName, MINE_ITEM_GENDER, g);
+            return mineGearResult(userName, true, "✨ 명품상점: 짜잔~ " + (g == 1 ? "여성" : "남성") + " 캐릭터로 바뀌었어요! (" + mineCostText(MINE_GENDER_COST) + " 사용)");
+        }
+        if ("wear".equals(action) && (code == null || code.isEmpty())) {
+            if (slot == null || !java.util.Arrays.asList(MINE_LOOK_SLOTS).contains(slot)) return mineGearResult(userName, false, "잘못된 부위예요.");
+            dao.upsertMineItem(userName, "LOOK_" + slot.toUpperCase(), 0);
+            return mineGearResult(userName, true, "기본 모습으로 돌아갔어요.");
+        }
+        MineCos c = mineCos(code);
+        if (c == null) return mineGearResult(userName, false, "없는 상품이에요.");
+        boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0;
+        if ("buy".equals(action) && !owned) {
+            if (!mineCostOk(c.cost, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 재료가 모자라요. (" + mineCostText(c.cost) + " 필요)");
+            mineTakeCost(userName, c.cost, 1);
+            dao.upsertMineItem(userName, "COS_" + c.code, 1);
+            owned = true;
+        } else if (!owned) {
+            return mineGearResult(userName, false, c.name + "은(는) 아직 안 샀어요.");
+        }
+        dao.upsertMineItem(userName, "LOOK_" + c.slot.toUpperCase(), MINE_COS.indexOf(c) + 1);
+        return mineGearResult(userName, true, "✨ " + c.name + ("buy".equals(action) ? " 구매! 바로 입었어요. (" + mineCostText(c.cost) + " 사용)" : " 착용!"));
     }
 
     // ---- [2026-10-23] 일반 장비/악세서리 분해(★1~★6) ----

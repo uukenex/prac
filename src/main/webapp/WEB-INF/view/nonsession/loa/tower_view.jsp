@@ -763,7 +763,15 @@
     .mine-exit{ bottom:calc(22px + env(safe-area-inset-bottom)); }
     .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
-    .mine-log{ position:absolute; left:10px; bottom:calc(156px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
+    .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
+    .mine-auto-btn.on{ background:#1f6b3a; color:#d6ffe0; }
+    .mine-hp{ font:800 13px/1.2 ui-monospace, Consolas, monospace; padding:5px 8px; color:#ffd0d0; min-width:120px; }
+    .mine-hp:empty{ display:none; }
+    .mine-bar{ display:block; height:5px; margin-top:3px; background:#2a1d1d; border:1px solid #140d0a; }
+    .mine-bar i{ display:block; height:100%; }
+    .mine-bar.hp i{ background:#e8433a; }
+    .mine-bar.ex i{ background:#4fb4ff; }
+    .mine-log{ position:absolute; left:10px; bottom:calc(200px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
     .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
@@ -1556,14 +1564,16 @@
   <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
     <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 200</div>
+    <div class="mine-hp mpx" id="mineHp"></div>
     <div class="mine-regen" id="mineRegen"></div>
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
   </div>
   <div class="mine-log mpx" id="mineLog"></div>
+  <button type="button" class="mine-btn mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
   <button type="button" class="mine-btn mine-home-btn mpx" onclick="TowerMine.goVillage()">🏠 마을로</button>
   <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 최근 캔 곳</button>
   <button type="button" class="mine-btn mine-exit mpx" onclick="TowerMine.close()">🚪 나가기</button>
-  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.dig()" aria-label="캐기">⛏️</button>
+  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.act()" aria-label="캐기/공격">⛏️</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
   <div class="mine-smith mpx" id="mineSmith"></div>
   <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
@@ -5343,7 +5353,7 @@ var TW = (function () {
 var TowerMine = (function () {
   var T = 16, STEP_MS = 140, SAVE_MS = 2500; // [2026-10-24] 위치 저장 4초 -> 2.5초(걷는 중에도 저장)
   // [2026-10-23] 사막(d 모래, R 사암, C 선인장, 모래바람), 바닷가(b 모래사장, P 부두, q 배, B 배에 오르는 판자), NPC(N: 대장장이/선장)
-  var WALK = '.,:VHcrdbPT', PORTALS = 'GMUSB'; // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음)
+  var WALK = '.,:VHcrdbPTsnY', PORTALS = 'GMUSB'; // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음), s 성 바닥 / n 눈밭 / Y 눈 덮인 소나무
   var WIND_MS = 900; // 모래바람에 한 칸 밀리는 간격(가만히 있을 때)
   var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
   var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
@@ -5359,11 +5369,13 @@ var TowerMine = (function () {
   var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍)
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
-                    'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC' };
+                    'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
+                    's': '성 바닥', 'W': '성벽', 'n': '눈밭', 'Y': '눈 덮인 숲' };
   var MINI_COL = { '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
                    'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20],
                    'h': [190, 140, 60], 'j': [190, 140, 60], 'k': [190, 140, 60], 'l': [190, 140, 60],
-                   'd': [227, 196, 122], 'R': [184, 135, 90], 'C': [63, 143, 58], 'b': [236, 217, 160], 'P': [139, 90, 43], 'q': [107, 66, 32], 'N': [64, 120, 255] };
+                   'd': [227, 196, 122], 'R': [184, 135, 90], 'C': [63, 143, 58], 'b': [236, 217, 160], 'P': [139, 90, 43], 'q': [107, 66, 32], 'N': [64, 120, 255],
+                   's': [169, 164, 154], 'W': [74, 69, 64], 'n': [242, 246, 250], 'Y': [47, 93, 74] };
 
   var cfg = null, map = null, st = null, portalAt = {}, npcAt = {}, ship = null, lastWindT = 0, talkBubble = null, smithOpen = false;
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
@@ -5518,7 +5530,35 @@ var TowerMine = (function () {
         if (locked) { px(g, '#d9d0b8', 0, 3, T, 1); px(g, '#d9d0b8', 0, 12, T, 1); px(g, '#b5251f', 6, 6, 4, 4); } // 밧줄 + 빨간 표시(못 오름)
       });
     });
-    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain') };
+    // [2026-10-24] 성곽(돌바닥 s, 성벽 W) / 설원(눈밭 n, 눈 덮인 소나무 Y, 얼음 호수) 타일
+    tiles.stone = [1, 2].map(function (s) {
+      return tile('#a9a49a', [['#97928a', 10], ['#bdb8ae', 6]], 80 + s, function (g) {
+        for (var y = 0; y < T; y += 8) { px(g, '#87827a', 0, y + 7, T, 1); px(g, '#87827a', (y / 8) % 2 ? 4 : 11, y, 1, 7); }
+      });
+    });
+    tiles.castleWall = [1, 2].map(function (s) {
+      return tile('#4a4540', [['#3e3a35', 8]], 90 + s, function (g) {
+        for (var y = 0; y < T; y += 4) {
+          px(g, '#5e5852', 0, y, T, 1); px(g, '#2f2b28', 0, y + 3, T, 1);
+          for (var x = ((y / 4) % 2) * 4; x < T; x += 8) px(g, '#2f2b28', x, y, 1, 4);
+        }
+      });
+    });
+    tiles.snow = [1, 2].map(function (s) { return tile('#eef3f8', [['#dbe5ef', 12], ['#ffffff', 8], ['#c9d6e3', 3]], 100 + s); });
+    tiles.pine = [1, 2].map(function (s) {
+      var c = tile('#eef3f8', [['#dbe5ef', 10]], 110 + s), g = c.getContext('2d');
+      px(g, 'rgba(0,0,0,.18)', 4, 14, 9, 2);
+      px(g, '#5a3a1c', 7, 12, 2, 3);
+      for (var y = 1; y < 13; y++) {
+        var half = 1 + ((y - 1) % 4) + Math.floor((y - 1) / 4);
+        for (var x = 8 - half; x < 8 + half; x++) px(g, (y - 1) % 4 === 0 ? '#ffffff' : (x < 8 ? '#3d7a5e' : '#2f5d4a'), x, y);
+      }
+      return c;
+    });
+    tiles.ice = [1, 2].map(function (s) {
+      return tile('#bfe3f5', [['#a8d4ec', 10], ['#e6f6ff', 6, 3, 1]], 120 + s, function (g) { px(g, '#ffffff', 3 + s, 4, 5, 1); px(g, '#8fc4e0', 9, 10 - s, 4, 1); });
+    });
+    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique') };
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -5558,16 +5598,20 @@ var TowerMine = (function () {
   // [2026-10-23] NPC 그림 -- 대장장이(가죽 앞치마 + 망치), 선장(흰 제복 + 모자 + 수염). 칸 위에 서 있는 모습(바닥은 칸 타일).
   function npcSprite(kind) {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
-    var smith = kind === 'smith';
-    var body = smith ? '#7a4a1f' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : '#c9ccd6', pants = smith ? '#3a2b22' : '#22305e';
+    var smith = kind === 'smith', bq = kind === 'boutique'; // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염)
+    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
+    else if (bq) { px(g, '#f4f0e6', 7, 7, 2, 4); px(g, '#d4104f', 7, 7, 2, 1); px(g, '#d9b44a', 6, 9); px(g, '#d9b44a', 9, 9); }
     else { px(g, '#d9b44a', 7, 8, 1, 1); px(g, '#d9b44a', 7, 10, 1, 1); px(g, '#22305e', 4, 11, 8, 1); }
     px(g, skin, 3, 8, 1, 3); px(g, skin, 12, 8, 1, 3);
     px(g, skin, 4, 1, 8, 6);
     px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4);
-    if (smith) {
+    if (bq) {
+      px(g, '#1a1a1a', 5, 0, 6, 1); px(g, '#1a1a1a', 3, 1, 10, 1); px(g, '#d4af37', 5, 0, 6, 1); // 실크햇 + 금띠
+      px(g, '#3b2a1a', 6, 5, 4, 1); px(g, '#d4af37', 9, 3, 2, 2); // 콧수염 + 외알 안경
+    } else if (smith) {
       px(g, '#3b2a1a', 4, 0, 8, 2); px(g, '#3b2a1a', 4, 6, 8, 1); // 머리/수염
       px(g, '#8a8f98', 12, 4, 3, 2); px(g, '#6b4220', 13, 6, 1, 5);  // 망치
     } else {
@@ -5603,8 +5647,12 @@ var TowerMine = (function () {
       case ':': return tiles.rock[v % 2];
       case 'V': return tiles.village;
       case 'H': return tiles.bridge;
-      case '~': return tiles.water[(wf + (x + y) % 2) % 2];
+      case '~': return map && map.id === 'north' && y < map.h - 20 ? tiles.ice[v % 2] : tiles.water[(wf + (x + y) % 2) % 2]; // 설원 호수는 얼음
       case 'T': return tiles.tree[v % 2];
+      case 's': return tiles.stone[v % 2];
+      case 'W': return tiles.castleWall[v % 2];
+      case 'n': return tiles.snow[v % 2];
+      case 'Y': return tiles.pine[v % 2];
       case 'c': return tiles.cave[v % 2];
       case 'r': return tiles.gravel;
       case '#': return tiles.wall[v % 2];
@@ -5628,26 +5676,53 @@ var TowerMine = (function () {
   }
 
   // 캐릭터: 방향(down/up/right/left) x 걸음(0/1/2) x 캐기(0 없음, 1 들기, 2 내려치기). 왼쪽은 오른쪽을 뒤집어서.
-  function charSprite(dir, step, dig) {
+  /** 색을 밝게(f > 0)/어둡게(f < 0). */
+  function shade(hex, f) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
+    var m = function (v) { return Math.max(0, Math.min(255, Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f))); };
+    return 'rgb(' + m(r) + ',' + m(gg) + ',' + m(b) + ')';
+  }
+  // [2026-10-24] 명품상점 외형 -- lk = { gender 0 남/1 여, hat '색|모양', hair '색', top '색|모양', bottom '색', shoes '색' } (빈 값 = 기본)
+  function lookPart(v) { var p = (v || '').split('|'); return { c: p[0] || '', s: p[1] || '' }; }
+  function charSprite(dir, step, dig, lk) {
+    lk = lk || {};
     if (dir === 'left') {
-      var src = charSprite('right', step, dig), c2 = mk(T, T), g2 = c2.getContext('2d');
+      var src = charSprite('right', step, dig, lk), c2 = mk(T, T), g2 = c2.getContext('2d');
       g2.translate(T, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
       return c2;
     }
     var c = mk(T, T), g = c.getContext('2d');
-    var skin = '#f6c9a0', hair = '#2b1d16', robe = '#3f5fd1', robeD = '#2c45a3', belt = '#7a4a1f', pants = '#3a2b22', boot = '#5b3a1e';
+    var top = lookPart(lk.top), hat = lookPart(lk.hat), fem = lk.gender === 1;
+    var skin = '#f6c9a0', hair = lk.hair || '#2b1d16', robe = top.c || '#3f5fd1', robeD = top.c ? shade(top.c, -0.28) : '#2c45a3';
+    var belt = '#7a4a1f', pants = lk.bottom || '#3a2b22', boot = lk.shoes || '#5b3a1e';
     var side = dir === 'right';
     var lx = side ? 6 : 5, rx = 9;
     var lh = step === 1 ? 2 : 3, rh = step === 2 ? 2 : 3;
     px(g, pants, lx, 12, 2, lh); px(g, boot, lx, 12 + lh, 2, 1);
     px(g, pants, rx, 12, 2, rh); px(g, boot, rx, 12 + rh, 2, 1);
-    px(g, robe, 4, 7, 8, 5); px(g, robeD, 4, 7, 1, 5); px(g, robeD, 11, 7, 1, 5); px(g, belt, 4, 10, 8, 1);
+    px(g, robe, 4, 7, 8, 5); px(g, robeD, 4, 7, 1, 5); px(g, robeD, 11, 7, 1, 5);
+    if (top.s === 'armor') { px(g, shade(robe, 0.35), 5, 7, 6, 1); px(g, shade(robe, 0.2), 5, 9, 6, 1); px(g, '#d9d0b8', 4, 10, 8, 1); }
+    else if (top.s === 'hanbok') { px(g, '#c0392b', 6, 7, 4, 1); px(g, '#c0392b', 7, 8, 2, 2); px(g, '#2e5aa8', 4, 10, 8, 1); }
+    else px(g, belt, 4, 10, 8, 1);
+    if (fem) { px(g, robe, 3, 11, 10, 2); px(g, robeD, 3, 12, 10, 1); } // 치마처럼 퍼지는 아랫단
     if (side) { px(g, robeD, 7, 8, 2, 3); px(g, skin, 8, 11); }
     else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, skin, 3, 11); px(g, skin, 12, 11); }
     px(g, skin, 4, 1, 8, 6);
-    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, '#3d2a20', 6, 1, 4, 1); }
-    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
-    else { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, 2); px(g, hair, 11, 3, 1, 2); px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5); }
+    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, shade(hair, 0.15), 6, 1, 4, 1); if (fem) px(g, hair, 4, 6, 8, 3); }
+    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, fem ? 6 : 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
+    else {
+      px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, fem ? 6 : 2); px(g, hair, 11, 3, 1, fem ? 6 : 2);
+      px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5);
+      if (fem) { px(g, '#1a1a1a', 5, 3); px(g, '#1a1a1a', 10, 3); px(g, '#d9536f', 7, 6, 2, 1); } // 속눈썹 + 입술
+    }
+    if (hat.s) { // 모자는 머리 위에 덮어 그린다
+      var hc = hat.c, hd = shade(hc, -0.3);
+      if (hat.s === 'straw') { px(g, hc, 2, 2, 12, 1); px(g, hc, 5, 0, 6, 2); px(g, '#b5251f', 5, 1, 6, 1); }
+      else if (hat.s === 'helmet') { px(g, hc, 4, 0, 8, 2); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 7, 0, 2, 1); }
+      else if (hat.s === 'pirate') { px(g, hc, 3, 1, 10, 2); px(g, hc, 5, 0, 6, 1); px(g, '#ffffff', 7, 1, 2, 1); }
+      else if (hat.s === 'wizard') { px(g, hc, 7, 0, 2, 1); px(g, hc, 6, 1, 4, 1); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 8, 1); }
+      else if (hat.s === 'crown') { px(g, hc, 4, 1, 8, 1); px(g, hc, 4, 0); px(g, hc, 7, 0, 2, 1); px(g, hc, 11, 0); px(g, '#d4104f', 7, 1, 2, 1); }
+    }
     var wood = '#8a5a2b', iron = '#c3cad1';
     if (dig === 1) { // 들어 올림
       if (side) { px(g, wood, 9, 1, 1, 7); px(g, iron, 7, 0, 5, 1); px(g, iron, 7, 1); px(g, iron, 11, 1); }
@@ -5659,10 +5734,14 @@ var TowerMine = (function () {
     }
     return outline(c, '#140d0a');
   }
-  function buildSprites() {
+  var spriteKey = null;
+  function buildSprites(lk) {
+    var key = JSON.stringify(lk || {});
+    if (sprites && key === spriteKey) return;
+    spriteKey = key;
     sprites = {};
     ['down', 'up', 'right', 'left'].forEach(function (d) {
-      for (var s = 0; s < 3; s++) for (var k = 0; k < 3; k++) sprites[d + s + k] = charSprite(d, s, k);
+      for (var s = 0; s < 3; s++) for (var k = 0; k < 3; k++) sprites[d + s + k] = charSprite(d, s, k, lk);
     });
   }
   // 광석 아이콘(광석 탭/광산상점에서도 씀)
@@ -5695,6 +5774,78 @@ var TowerMine = (function () {
     return oreIcons[grade];
   }
 
+  // ---------------------------------------------------------------- [2026-10-24] 몬스터
+  // 위치는 시각으로 정한다(서버 S5MineMobs.cellAt과 같은 식) -- 체력/쓰러짐/멈춤만 서버에서 1.5초마다 받아 온다(mobSt).
+  var mobSt = {}, srvOff = 0, mobTimer = 0, mobSprites = {}, mobOcc = {}, atkBusy = false, lastAtkT = 0;
+  function mix(a, b) {
+    var h = (Math.imul(a, 0x9E3779B1 | 0) + Math.imul(b, 0x85EBCA77 | 0)) | 0;
+    h ^= h >>> 15; h = Math.imul(h, 0x2C1B3C6D); h ^= h >>> 12; h = Math.imul(h, 0x297A2D39); h ^= h >>> 15;
+    return h & 0x7fffffff;
+  }
+  function nowSrv() { return Date.now() + srvOff; }
+  /** 몬스터 화면 위치 {x, y(소수, 칸이 바뀔 때 0.6초 동안 옮겨 감), cx, cy(정수 칸)} -- 쓰러졌으면 null. */
+  function mobPos(m, t) {
+    var s = mobSt[m.id];
+    if (s && s.du > t) return null;
+    if (s && s.fu > t) return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
+    var SL = map.mobSlotMs || 3000, slot = Math.floor(t / SL);
+    var b = m.c[mix(m.id, slot) % m.c.length], a = m.c[mix(m.id, slot - 1) % m.c.length];
+    var k = Math.min(1, (t - slot * SL) / 600), bx = b % map.w, by = Math.floor(b / map.w), ax = a % map.w, ay = Math.floor(a / map.w);
+    return { x: ax + (bx - ax) * k, y: ay + (by - ay) * k, cx: bx, cy: by };
+  }
+  /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
+  function mobSprite(k) {
+    if (mobSprites[k]) return mobSprites[k];
+    var ty = map.mobTypes[k] || {}, c = mk(T, T), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3);
+    var eye = ty.tier >= 4 ? '#ff3b30' : '#1a1a1a';
+    switch (ty.kind) {
+      case 'small':
+        px(g, col, 4, 8, 8, 6); px(g, lt, 5, 9, 4, 2); px(g, col, 9, 5, 5, 5); px(g, dk, 10, 4, 1, 2); px(g, dk, 12, 4, 1, 2);
+        px(g, eye, 12, 7); px(g, dk, 2, 7, 2, 4); px(g, dk, 5, 14, 2, 1); px(g, dk, 9, 14, 2, 1); break;
+      case 'quad':
+        px(g, col, 2, 7, 10, 5); px(g, lt, 3, 7, 8, 1); px(g, col, 11, 4, 4, 5); px(g, dk, 12, 3, 1, 2); px(g, dk, 14, 3, 1, 2);
+        px(g, eye, 13, 6); px(g, dk, 15, 7, 1, 1); px(g, dk, 1, 6, 2, 2);
+        px(g, dk, 3, 12, 2, 3); px(g, dk, 6, 12, 2, 3); px(g, dk, 9, 12, 2, 3); px(g, dk, 11, 12, 1, 3); break;
+      case 'human':
+        px(g, dk, 5, 12, 2, 3); px(g, dk, 9, 12, 2, 3); px(g, col, 4, 7, 8, 5); px(g, lt, 5, 7, 6, 1); px(g, dk, 3, 8, 1, 3); px(g, dk, 12, 8, 1, 3);
+        px(g, lt, 4, 1, 8, 6); px(g, col, 4, 0, 8, 2); px(g, eye, 6, 4); px(g, eye, 9, 4); px(g, '#c3cad1', 13, 4, 1, 7); break; // 손에 든 칼
+      case 'flyer':
+        px(g, col, 6, 5, 4, 6); px(g, lt, 7, 5, 2, 2); px(g, dk, 1, 4, 5, 2); px(g, dk, 10, 4, 5, 2); px(g, dk, 2, 6, 3, 1); px(g, dk, 11, 6, 3, 1);
+        px(g, eye, 7, 7); px(g, eye, 8, 7); break;
+      case 'crab':
+        px(g, col, 3, 8, 10, 5); px(g, lt, 4, 8, 8, 1); px(g, dk, 1, 6, 3, 3); px(g, dk, 12, 6, 3, 3);
+        px(g, eye, 6, 7); px(g, eye, 9, 7); for (var i = 0; i < 3; i++) { px(g, dk, 2 + i * 2, 13, 1, 2); px(g, dk, 9 + i * 2, 13, 1, 2); } break;
+      case 'blob':
+        for (var y = 6; y < 15; y++) { var hw = Math.round(6 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 13) / 7, 2)))); px(g, y < 9 ? lt : col, 8 - hw, y, hw * 2, 1); }
+        px(g, eye, 6, 10); px(g, eye, 9, 10); px(g, '#ffffff', 5, 8, 2, 1); break;
+      case 'snake':
+        px(g, col, 2, 12, 6, 2); px(g, col, 6, 9, 2, 4); px(g, col, 6, 9, 6, 2); px(g, col, 10, 5, 2, 5); px(g, col, 10, 4, 4, 3);
+        px(g, lt, 3, 12, 4, 1); px(g, eye, 12, 5); px(g, '#e8433a', 14, 6, 1, 1); break;
+      default:
+        px(g, col, 4, 6, 8, 8); px(g, eye, 6, 9); px(g, eye, 9, 9);
+    }
+    mobSprites[k] = outline(c, '#140d0a');
+    return mobSprites[k];
+  }
+  /** 플레이어 옆(바라보는 칸 먼저) 살아 있는 몬스터 -- { m, dir }. */
+  function adjMob() {
+    var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, f = dirs[P.dir], m = f && mobOcc[(P.x + f[0]) + ',' + (P.y + f[1])];
+    if (m) return { m: m, dir: P.dir };
+    for (var key in dirs) { var v = dirs[key], mm = mobOcc[(P.x + v[0]) + ',' + (P.y + v[1])]; if (mm) return { m: mm, dir: key }; }
+    return null;
+  }
+  function pollMobs() {
+    if (!opened || !map || !map.mobs || !map.mobs.length) return;
+    var mid = map.id;
+    fetch(cfg.base + '/api/tower-mine-mobs?mapId=' + encodeURIComponent(mid)).then(function (r) { return r.json(); }).then(function (d) {
+      if (!map || map.id !== mid || !d) return;
+      if (d.now) srvOff = d.now - Date.now();
+      var ns = {};
+      (d.mobs || []).forEach(function (a) { ns[a[0]] = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5] }; });
+      mobSt = ns;
+    }).catch(function () { });
+  }
+
   // ---------------------------------------------------------------- 화면
   function $(id) { return document.getElementById(id); }
   function bindDom() {
@@ -5703,6 +5854,7 @@ var TowerMine = (function () {
     el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr');
     el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn');
     el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog'); el.smith = $('mineSmith');
+    el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
     ctx = el.cv.getContext('2d'); miniCtx = el.mini.getContext('2d');
     el.cv.addEventListener('pointerdown', function (e) {
       el.cv.setPointerCapture && el.cv.setPointerCapture(e.pointerId);
@@ -5722,7 +5874,7 @@ var TowerMine = (function () {
       var d = keyDir(e.key);
       if (d) { e.preventDefault(); if (keys.indexOf(d) < 0) keys.push(d); tapDir = d; return; } // 짧게 눌렀다 떼도 한 칸은 움직이게
       if (smithOpen) { if (e.key === 'Escape') closeSmith(); return; } // 대장간 창이 열려 있으면 이동/캐기 대신 창만
-      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); dig(); }
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
       else if (e.key === 'Escape') close();
     });
     document.addEventListener('keyup', function (e) {
@@ -5756,6 +5908,7 @@ var TowerMine = (function () {
   function cellAt(x, y) { return map && x >= 0 && y >= 0 && x < map.w && y < map.h ? map.rows[y].charAt(x) : '^'; }
   function walk(x, y) {
     var c = cellAt(x, y);
+    if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
     return WALK.indexOf(c) >= 0 || (c === '~' && !!(st && st.waterWalk)); // [2026-10-24] 용왕의 반지 = 물 위 걷기
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -5769,7 +5922,57 @@ var TowerMine = (function () {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     el.regen.textContent = st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '';
-    el.dig.disabled = busy || st.durability < 1;
+    el.dig.disabled = busy; // [2026-10-24] 공격 버튼도 겸해서 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
+  }
+  // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
+  var combatT0 = 0, hpShownT = 0;
+  function setCombat(c) { if (!c) return; st.combat = c; combatT0 = Date.now(); renderHp(); }
+  function hpNow() {
+    var c = st && st.combat;
+    return c ? Math.min(c.hpMax, Math.floor(c.hp + (Date.now() - combatT0) * c.hpMax / (c.fullMs || 60000))) : 0;
+  }
+  function renderHp() {
+    var c = st && st.combat;
+    if (!c || !el.hp) return;
+    var h = hpNow(), pct = Math.round(h * 100 / c.hpMax), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
+    var key = c.lv + ':' + h + ':' + ep;
+    if (el.hp._k === key) return;
+    el.hp._k = key;
+    el.hp.innerHTML = 'Lv.' + c.lv + ' ❤️ ' + h + '/' + c.hpMax
+        + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i></span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>';
+  }
+  // [2026-10-24] 자동채광 -- 켜 두면 캐릭터가 스스로 가장 가까운(30칸 안) 안 캔 칸으로 걸어가서 캔다. 방향키/끌기로 잠깐 직접 조작할 수 있다.
+  var auto = false, noOre = {};
+  function setAuto(on, text) {
+    auto = on;
+    if (el.auto) { el.auto.classList.toggle('on', on); el.auto.textContent = on ? '🤖 자동채광 ON' : '🤖 자동채광'; }
+    if (text) msg(text, 2800);
+  }
+  function toggleAuto() {
+    if (!opened || !map) return;
+    setAuto(!auto, !auto ? '🤖 자동채광 시작! 캐릭터가 알아서 주변을 돌며 캐요. (방향키로 잠깐 조작 가능)' : '🤖 자동채광을 껐어요.');
+  }
+  function minable(x, y) {
+    var c = cellAt(x, y), k = x + ',' + y;
+    return 'VTYPH~'.indexOf(c) < 0 && WALK.indexOf(c) >= 0 && !dug[k] && !noOre[k];
+  }
+  /** 가장 가까운 캘 칸으로 가는 첫 걸음 방향(넓이 우선 탐색, 30칸 안). 없으면 null. */
+  function autoStep() {
+    var W = map.w, start = P.x + P.y * W, seen = {}, first = {}, q = [start], head = 0;
+    var D = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
+    seen[start] = 1;
+    while (head < q.length && head < 5000) {
+      var cur = q[head++], cx = cur % W, cy = (cur - cx) / W;
+      for (var i = 0; i < 4; i++) {
+        var nx = cx + D[i][1], ny = cy + D[i][2], ni = nx + ny * W;
+        if (seen[ni] || Math.abs(nx - P.x) + Math.abs(ny - P.y) > 30 || !walk(nx, ny)) continue;
+        seen[ni] = 1;
+        first[ni] = cur === start ? D[i][0] : first[cur];
+        if (minable(nx, ny)) return first[ni];
+        q.push(ni);
+      }
+    }
+    return null;
   }
   function showCoord() {
     el.coord.textContent = '📍 ' + P.x + ', ' + P.y;
@@ -5833,6 +6036,18 @@ var TowerMine = (function () {
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   }
   function update(now) {
+    // [2026-10-24] 몬스터가 서 있는 칸(지나갈 수 없음, 공격 대상) + ⛏️/⚔️ 버튼 모양 + 체력 표시
+    mobOcc = {};
+    if (map.mobs) {
+      var tS = nowSrv();
+      for (var mi = 0; mi < map.mobs.length; mi++) {
+        var mm = map.mobs[mi], mp = mobPos(mm, tS);
+        if (mp) { mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm; } else mm._p = null;
+      }
+    }
+    var near = !P.moving && adjMob(), lab = near ? '⚔️' : '⛏️';
+    if (el.dig.textContent !== lab) el.dig.textContent = lab;
+    if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
     if (P.moving && now - P.t0 >= STEP_MS) {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
@@ -5841,6 +6056,14 @@ var TowerMine = (function () {
       var d = heldDir() || tapDir;
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
+      if (!d && auto && !smithOpen && !fade && !helmetBlocked()) { // [2026-10-24] 자동채광
+        if (st.durability < 1) setAuto(false, '⛏️ 곡괭이 내구도가 다 닳아 자동채광을 멈췄어요.');
+        else if (minable(P.x, P.y)) { dig(); return; }
+        else {
+          d = autoStep();
+          if (!d) setAuto(false, '🤖 근처(30칸)에 캘 곳이 없어 자동채광을 멈췄어요. 다른 곳으로 옮겨서 다시 켜 주세요.');
+        }
+      }
       if (d && helmetBlocked()) { // 광산 레벨에 비해 투구 단계가 낮으면 움직일 수 없다(마을로 버튼으로 나갈 수 있음)
         if (now - lastBumpT > 2500 || lastBump !== 'helmet') msg('⛑️ 광부 투구 ' + map.helmetNeed + '단계 이상이 있어야 움직일 수 있어요. (🏠 마을로 나갈 수 있어요)');
         lastBump = 'helmet'; lastBumpT = now;
@@ -5881,6 +6104,7 @@ var TowerMine = (function () {
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
     if (n.kind === 'smith') openSmith(n, 'menu');
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
+    else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -5935,9 +6159,55 @@ var TowerMine = (function () {
         + '<div class="mine-smith-row"><img src="' + oreIcon(4) + '" alt=""><span class="nm">금광석 ' + d.goldNeed + '개 주기<small>보유 ' + (d.gold || 0) + '개</small></span>'
         + '<button type="button" ' + ((d.gold || 0) >= d.goldNeed ? '' : 'disabled ') + 'onclick="TowerMine.captain(\'give\')">주기</button></div>';
   }
+  // [2026-10-24] 배 -- 다른 항구를 고르면 그곳 부두로
+  function shipHtml() {
+    return npcHead('⛵ 배 타기', false) + '<div class="mine-smith-say">어디로 갈까요? (뱃삯 없음)</div><div class="mine-smith-menu">'
+        + (map.shipTo || []).map(function (s) { return '<button type="button" onclick="TowerMine.sail(\'' + s.id + '\')">⛵ ' + s.name + '</button>'; }).join('') + '</div>';
+  }
+  function sail(dest) {
+    var n = smithNpc;
+    closeSmith();
+    if (!n || busy) return;
+    travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + n.px + '&py=' + n.py + '&dest=' + encodeURIComponent(dest) + verQ(), '배를 타지 못했어요.');
+  }
+  // [2026-10-24] 명품상점 -- 부위별 외형(능력치 없음) + 성별 전환
+  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발' };
+  function boutiqueHtml(n) {
+    var lk = st.look || {}, prev = sprites && sprites.down00 ? sprites.down00.toDataURL() : '';
+    var h = npcHead('👗 명품상점', false)
+        + '<div class="mine-look-top"><img class="mine-look-prev" src="' + prev + '" alt="내 모습"><div class="mine-smith-say">' + (n ? n.line : '') + '</div></div>'
+        + '<div class="mine-smith-row"><span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
+        + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
+    ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
+      var cur = lk[slot + 'Code'] || '';
+      h += '<div class="mine-smith-sub">' + LOOK_SLOT_NAME[slot] + (cur ? '' : ' <span class="mine-worn">기본 착용 중</span>')
+          + (cur ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">기본으로</button>' : '') + '</div>';
+      (st.cosShop || []).forEach(function (c) {
+        if (c.slot !== slot) return;
+        var sw = (c.look || '').split('|')[0], btn;
+        if (c.code === cur) btn = '<span class="mine-worn">착용 중</span>';
+        else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
+        else btn = '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
+        h += '<div class="mine-smith-row"><span class="mine-swatch" style="background:' + sw + '"></span><span class="nm">' + c.name
+            + (c.owned ? '<small>가지고 있어요</small>' : costHtml(c.costs)) + '</span>' + btn + '</div>';
+      });
+    });
+    return h;
+  }
+  function lookAct(action, code, slot) {
+    gearAct('/api/tower-mine-look?action=' + action + '&code=' + encodeURIComponent(code || '') + '&slot=' + encodeURIComponent(slot || ''));
+  }
   function renderSmith(n) {
     if (smithView === 'captain') {
       el.smith.innerHTML = captainHtml(n);
+      return;
+    }
+    if (smithView === 'ship') {
+      el.smith.innerHTML = shipHtml();
+      return;
+    }
+    if (smithView === 'boutique') {
+      el.smith.innerHTML = boutiqueHtml(n);
       return;
     }
     if (smithView === 'menu') {
@@ -5992,8 +6262,52 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'dragon', 'sevenMax', 'ores', 'waterWalk', 'stepMs'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'dragon', 'sevenMax', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     STEP_MS = st.stepMs || 140;
+    buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
+  }
+  /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
+  function act() {
+    var a = !P.moving && adjMob();
+    if (a) attack(a); else dig();
+  }
+  // [2026-10-24] 공격(바람의나라식: 바로 옆 몬스터를 때리고, 살아남은 몬스터는 그 자리에 멈춰 반격)
+  function attack(a) {
+    if (!opened || !map || atkBusy || busy || fade) return;
+    var now = performance.now();
+    if (now - lastAtkT < 420) return;
+    lastAtkT = now; atkBusy = true;
+    P.dir = a.dir; P.digT0 = now;
+    var m = a.m, mp = m._p;
+    api('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + verQ()).then(function (d) {
+      atkBusy = false;
+      if (!d || d.tooFast) return;
+      if (d.reload) { reload(); return; }
+      if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+      if (d.mobDeadUntil != null) mobSt[m.id] = { hp: d.mobHp, du: d.mobDeadUntil, fx: d.mobFx, fy: d.mobFy, fu: d.mobFrozenUntil };
+      if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
+      lastSaved = map.id + ':' + P.x + ',' + P.y;
+      var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
+      floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
+      if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: '-' + d.counter, color: '#ff9a3a', t0: t + 180 });
+      setCombat(d.combat);
+      if (d.killed) {
+        if (d.ores) st.ores = d.ores;
+        (d.drops || []).forEach(function (dr, i) {
+          var img = new Image(); img.src = oreIcon(dr.grade);
+          floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, t0: t + 200 + i * 150 });
+        });
+        floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
+        msg(d.message || '', 2600);
+      }
+      if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
+      if (d.died && d.state) {
+        setAuto(false);
+        busy = true;
+        fadeOutThen(function () { return Promise.resolve(d); }).then(function () { return enterState(d.state); })
+          .then(function () { fadeIn('💫 마을에서 깨어났어요'); msg(d.message || '', 3600); });
+      }
+    }).catch(function () { atkBusy = false; });
   }
   function gearAct(path) {
     if (busy) return;
@@ -6066,6 +6380,14 @@ var TowerMine = (function () {
   function enterPortal(px2, py2, now) {
     var p = portalAt[px2 + ',' + py2];
     if (!p) return;
+    if (p.kind === 'B' && !p.locked && map.shipTo) { // [2026-10-24] 배 -- 갈 항구 고르기
+      var bk = 'ship' + px2 + ',' + py2;
+      if (lastBump === bk && now - lastBumpT < 1200) return;
+      lastBump = bk; lastBumpT = now;
+      setAuto(false);
+      openSmith({ name: '배', line: '', kind: 'ship', px: px2, py: py2 }, 'ship');
+      return;
+    }
     if (p.locked) {
       var key = px2 + ',' + py2;
       if (lastBump !== key || now - lastBumpT > 2500) msg('🔒 ' + p.label + ' -- 아직 갈 수 없어요. (준비 중)');
@@ -6094,6 +6416,29 @@ var TowerMine = (function () {
         else if (ch === 'N') {
           var np = npcAt[x + ',' + y];
           if (np && tiles.npc[np.kind]) ctx.drawImage(tiles.npc[np.kind], sx, sy - 3 * scale, TS, TS);
+        }
+      }
+    }
+    // [2026-10-24] 몬스터(그림 + 맞은 몬스터 체력 막대 + 가까우면 이름)
+    if (map.mobs) {
+      for (var mi = 0; mi < map.mobs.length; mi++) {
+        var mb = map.mobs[mi], mp = mb._p;
+        if (!mp) continue;
+        var mx = mp.x * TS - camX, my = mp.y * TS - camY;
+        if (mx < -TS || my < -TS || mx > W || my > H) continue;
+        var ty = map.mobTypes[mb.k] || {}, bob = ty.kind === 'flyer' ? Math.sin(now / 260 + mb.id) * 2 * scale : Math.abs(Math.sin(now / 420 + mb.id)) * scale;
+        ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
+        ctx.drawImage(mobSprite(mb.k), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
+        var ms = mobSt[mb.id];
+        if (ms && ms.hp > 0 && ms.hp < ty.hp) {
+          ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + 1 * scale, my - 4 * scale, 14 * scale, 3 * scale);
+          ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / ty.hp), scale);
+        }
+        if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
+          ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+          var nm = ty.name + ' Lv.' + (1 + 4 * (ty.tier - 1));
+          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - 6 * scale);
+          ctx.fillStyle = ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - 6 * scale);
         }
       }
     }
@@ -6172,7 +6517,7 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1 - k * k;
       ctx.font = 'bold ' + Math.round((f.big ? 17 : 14) * dpr) + 'px monospace';
       ctx.textAlign = 'center';
-      ctx.drawImage(f.icon, fx - 9 * dpr - ctx.measureText(f.text).width / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
+      if (f.icon) ctx.drawImage(f.icon, fx - 9 * dpr - ctx.measureText(f.text).width / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
       ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(f.text, fx + 9 * dpr, fy);
       ctx.fillStyle = f.color; ctx.fillText(f.text, fx + 9 * dpr, fy);
       ctx.globalAlpha = 1;
@@ -6241,6 +6586,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
       portalAt = {};
@@ -6339,7 +6685,8 @@ var TowerMine = (function () {
       } else {
         if (d.reload) { reload(); return; }
         if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
-        msg(d.message || d.error || '캐지 못했어요.');
+        if (d.noOre || auto) noOre[x + ',' + y] = 1; // [2026-10-24] 자동채광이 같은 칸을 다시 고르지 않게
+        if (!(auto && d.noOre)) msg(d.message || d.error || '캐지 못했어요.');
       }
       showStamina();
     }).catch(function () { busy = false; showStamina(); msg('요청 실패 -- 다시 시도해주세요.'); });
@@ -6368,7 +6715,8 @@ var TowerMine = (function () {
       if (!opened) return;
       el.load.style.display = 'none';
       fadeIn('🗺️ ' + map.name);
-      msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 지금 서 있는 칸을 캐요. NPC에게 걸어가면 말을 걸어요.', 3500);
+      msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
+      clearInterval(mobTimer); mobTimer = setInterval(pollMobs, 1500); // [2026-10-24] 몬스터 체력/쓰러짐 조회
       clearInterval(saveTimer);
       saveTimer = setInterval(function () {
         savePos();
@@ -6384,6 +6732,7 @@ var TowerMine = (function () {
     opened = false;
     cancelAnimationFrame(raf);
     clearInterval(saveTimer);
+    clearInterval(mobTimer); setAuto(false); // [2026-10-24]
     keys = []; drag = null;
     el.ov.classList.remove('open');
     el.load.textContent = '광산으로 가는 중...';
@@ -6408,7 +6757,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

@@ -230,7 +230,11 @@ public interface BotS5Service {
     /** ver = 화면이 가진 맵 version(리셋 등으로 맵이 바뀌었으면 reload로 응답). 빈 값이면 확인하지 않는다. */
     HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y);
     HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
-    HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py);
+    /** dest = 배(판자) 포탈일 때 갈 항구 맵 ID(그 외 null). */
+    HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest);
+    /** [2026-10-24] 광산 몬스터 상태 조회 / 공격. */
+    HashMap<String, Object> mineMobs(String mapId);
+    HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId);
     HashMap<String, Object> mineGoVillage(String userName);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
@@ -245,6 +249,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineEquipRing(String userName, String code);
     HashMap<String, Object> mineSynthSeven(String userName, int times);
     HashMap<String, Object> mineCaptain(String userName, String action);
+    /** [2026-10-24] 명품상점 -- action buy/wear/gender. */
+    HashMap<String, Object> mineLook(String userName, String action, String code, String slot);
 
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);

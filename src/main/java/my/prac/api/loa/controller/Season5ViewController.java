@@ -582,9 +582,31 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMineWarp(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam("px") int px, @RequestParam("py") int py, @RequestParam(value = "v", defaultValue = "") String ver) {
+            @RequestParam("px") int px, @RequestParam("py") int py, @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam(value = "dest", defaultValue = "") String dest) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineWarp(userName, mapId, ver, x, y, px, py));
+        HashMap<String, Object> out = s5Service.mineWarp(userName, mapId, ver, x, y, px, py, dest.isEmpty() ? null : dest);
+        if (!dest.isEmpty() && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 배 -> " + dest, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만) -- 화면이 1.5초마다. */
+    @GetMapping("/api/tower-mine-mobs")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineMobs(@RequestParam(value = "mapId", defaultValue = "") String mapId) {
+        return ResponseEntity.ok(s5Service.mineMobs(mapId));
+    }
+
+    /** [2026-10-24] 웹 광산 공격 -- (x, y)에 서서 바로 옆 몬스터(mob = 맵 안 번호)를 때린다. 처치/레벨 업/쓰러짐만 로그. */
+    @GetMapping("/api/tower-mine-attack")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineAttack(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam("mob") int mob, @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob);
+        if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
     }
 
     /** [2026-10-23] 광산 대장간 -- 평원 마을 대장장이에게 광석(grade 1~6)을 주고 곡괭이를 강화한다(최대/현재 내구도 함께 증가). times = 몇 번(보유 광석만큼으로 줄어듦). */
@@ -636,6 +658,18 @@ public class Season5ViewController {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineCaptain(userName, action);
         if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 선장 " + action, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 명품상점 -- action = buy(code) / wear(code, 빈 code + slot = 기본) / gender. */
+    @GetMapping("/api/tower-mine-look")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineLook(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "wear") String action, @RequestParam(value = "code", defaultValue = "") String code,
+            @RequestParam(value = "slot", defaultValue = "") String slot) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineLook(userName, action, code, slot);
+        if (Boolean.TRUE.equals(out.get("ok")) && !"wear".equals(action)) mineLog(userName, "[웹] 광산 명품상점 " + action + " " + code, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
 

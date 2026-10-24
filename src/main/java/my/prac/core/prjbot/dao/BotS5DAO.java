@@ -133,6 +133,9 @@ public interface BotS5DAO {
     int insertMineUserIfAbsent(@Param("userName") String userName, @Param("stamina") int stamina, @Param("atMs") long atMs);
     int updateMineUser(HashMap<String, Object> map);
     int updateMinePos(@Param("userName") String userName, @Param("mapId") String mapId, @Param("x") int x, @Param("y") int y, @Param("atMs") long atMs);
+    /** [2026-10-24] 광산 전투 레벨/경험치/체력 저장(kills = 이번에 더할 처치 수). */
+    int updateMineCombat(@Param("userName") String userName, @Param("lv") int lv, @Param("exp") long exp, @Param("hp") int hp,
+            @Param("hpAt") long hpAt, @Param("kills") int kills);
     int addMinePpBonus(@Param("userName") String userName, @Param("add") double add);
     int countMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell);
     int insertMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell, @Param("grade") int grade, @Param("atMs") long atMs);

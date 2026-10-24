@@ -677,12 +677,12 @@
 
     <!-- [2026-10-23] 웹 광산: 스태미너/캐릭터 위치(맵)/광산상점 PP 보너스, 캔 칸(유저별 영구), 광석 보유 -->
     <select id="selectMineUser" resultType="hashmap">
-        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX, M_LV, M_EXP, M_HP, M_HP_AT_MS, M_KILLS
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName}
     </select>
 
     <select id="selectMineUserForUpdate" resultType="hashmap">
-        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX
+        SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX, M_LV, M_EXP, M_HP, M_HP_AT_MS, M_KILLS
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName} FOR UPDATE
     </select>
 
@@ -701,6 +701,13 @@
 
     <update id="updateMinePos">
         UPDATE TBOT_S5_MINE_USER SET MAP_ID = #{mapId}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs} WHERE USER_NAME = #{userName}
+    </update>
+
+    <!-- [2026-10-24] 광산 전투 레벨/경험치/체력(체력 저장 시각부터 시간 회복), 처치 수 -->
+    <update id="updateMineCombat">
+        UPDATE TBOT_S5_MINE_USER
+           SET M_LV = #{lv}, M_EXP = #{exp}, M_HP = #{hp}, M_HP_AT_MS = #{hpAt}, M_KILLS = M_KILLS + #{kills}
+         WHERE USER_NAME = #{userName}
     </update>
 
     <update id="addMinePpBonus">
