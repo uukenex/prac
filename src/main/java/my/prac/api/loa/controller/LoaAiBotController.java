@@ -68,7 +68,7 @@ public class LoaAiBotController {
         "대화 속 이름에 '/'가 들어 있어도(예: 일어난다람쥐/카단) 그 전체가 한 사람의 이름이야. 쪼개거나 일부만 부르지 말고 전체에 '님'을 붙여 불러.\n" +
         "답변은 200자 이내. 쓸데없는 인사말('안녕하세요!' 같은 것) 붙이지 마.\n" +
         "카톡으로 읽기 편하게 문장 단위로 줄바꿈해서 2~4줄로 써줘(줄바꿈은 그냥 엔터). 목록이 필요하면 줄마다 '- '로 시작해.\n" +
-        "웹 검색 결과가 있으면 '찾아봤는데~' 같은 말투로 자연스럽게 녹여서 얘기해줘.";
+        "웹 검색 결과가 있으면 원래 알던 것처럼 자연스럽게 녹여서 얘기해줘. '찾아봤는데', '검색해보니', '찾아보니' 같은 말은 붙이지 마."; // [2026-10-24] 검색한 답이 "찾아봤는데,"로 시작하지 않게
 
     // 의도 분석 프롬프트 — GPT-4o-mini 에 보낼 시스템 지시
     private static final String INTENT_SYSTEM =
@@ -296,6 +296,9 @@ public class LoaAiBotController {
         }
         String finalAnswer = callGeminiForFinal(reqMsg, nick, searchSummary, recall, queue, usePrev);
         finalAnswer = finalAnswer.replace("\\\"", "\"").trim();
+        // [2026-10-24] "검색한 경우 '찾아봤는데,'라고 안 했으면" -- 프롬프트로 막고, 그래도 맨 앞에 붙으면 잘라낸다.
+        String trimmed = finalAnswer.replaceFirst("^(찾아봤는데|찾아보니|검색해\\s?봤는데|검색해\\s?보니)[,~!.…\\s]*", "").trim();
+        if (!trimmed.isEmpty()) finalAnswer = trimmed;
 
         queue.add(new Message("assistant", finalAnswer));
         saveChat(roomName, userName, reqMsg, finalAnswer, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
@@ -872,7 +875,7 @@ public class LoaAiBotController {
                 prompt.append("[").append(userName).append("의 말] ").append(userMsg).append("\n\n");
                 if (!searchSummary.isEmpty()) {
                     prompt.append("[웹에서 찾은 정보]\n").append(searchSummary).append("\n\n");
-                    prompt.append("위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘.");
+                    prompt.append("위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘. '찾아봤는데', '검색해보니'로 시작하지 마.");
                 } else {
                     prompt.append("람쥐봇 캐릭터로 자연스럽게 답해줘. 잡담이면 같이 놀아주고, 질문이면 핵심만 짧게.");
                 }
@@ -900,7 +903,7 @@ public class LoaAiBotController {
             String userContent = userMsg;
             if (!searchSummary.isEmpty()) {
                 userContent = userMsg + "\n\n[참고 검색결과]\n" + searchSummary
-                        + "\n\n위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘.";
+                        + "\n\n위 검색 결과를 자연스럽게 녹여서 람쥐봇 말투로 답해줘. '찾아봤는데', '검색해보니'로 시작하지 마.";
             }
             messages.add(makeMsg("user", userName + ": " + userContent));
 
