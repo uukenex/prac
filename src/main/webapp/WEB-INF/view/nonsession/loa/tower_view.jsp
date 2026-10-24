@@ -6003,10 +6003,9 @@ var TowerMine = (function () {
   function helmetBlocked() {
     return map && (st && st.helmet || 0) < (map.helmetNeed || 0);
   }
-  // [2026-10-24] 구역별 입장 레벨(서버 MINE_MIN_LV와 같은 값을 st.mapMinLv로 받는다)
+  // [2026-10-24] 구역별 권장 레벨(서버 MINE_MIN_LV를 st.mapMinLv로 받는다) -- 막지 않고 전체 지도에 표시만("레벨 모자라도 갈 수 있게")
   function myLv() { return st && st.combat ? st.combat.lv : 1; }
   function minLvOf(id) { return st && st.mapMinLv && st.mapMinLv[id] || 1; }
-  function levelBlocked() { return map && myLv() < minLvOf(map.id); }
   function buildMiniBase() {
     el.mini.width = map.w; el.mini.height = map.h;
     miniBase = mk(map.w, map.h);
@@ -6075,18 +6074,13 @@ var TowerMine = (function () {
       var d = heldDir() || tapDir;
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
-      if (!d && auto && !smithOpen && !fade && !helmetBlocked() && !levelBlocked()) { // [2026-10-24] 자동채광
+      if (!d && auto && !smithOpen && !fade && !helmetBlocked()) { // [2026-10-24] 자동채광
         if (st.durability < 1) setAuto(false, '⛏️ 곡괭이 내구도가 다 닳아 자동채광을 멈췄어요.');
         else if (minable(P.x, P.y)) { dig(); return; }
         else {
           d = autoStep();
           if (!d) setAuto(false, '🤖 근처(30칸)에 캘 곳이 없어 자동채광을 멈췄어요. 다른 곳으로 옮겨서 다시 켜 주세요.');
         }
-      }
-      if (d && levelBlocked()) { // [2026-10-24] 레벨이 모자란 구역에 있으면(예: 제한이 생기기 전에 들어와 있던 곳) 움직일 수 없다 -- 마을로 버튼으로 나간다
-        if (now - lastBumpT > 2500 || lastBump !== 'level') msg('🔒 ' + map.name + '은(는) 광산 레벨 ' + minLvOf(map.id) + ' 이상부터예요. (지금 Lv.' + myLv() + ' · 🏠 마을로 나갈 수 있어요)');
-        lastBump = 'level'; lastBumpT = now;
-        d = null;
       }
       if (d && helmetBlocked()) { // 광산 레벨에 비해 투구 단계가 낮으면 움직일 수 없다(마을로 버튼으로 나갈 수 있음)
         if (now - lastBumpT > 2500 || lastBump !== 'helmet') msg('⛑️ 광부 투구 ' + map.helmetNeed + '단계 이상이 있어야 움직일 수 있어요. (🏠 마을로 나갈 수 있어요)');
@@ -6282,10 +6276,10 @@ var TowerMine = (function () {
     { id: 'island', name: '남쪽 섬', x: 60, y: 378, fill: '#3fa36b', ink: '#fff' }
   ];
   function worldHtml() {
-    // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳(지하 2층, 모래폭풍 길)과 레벨이 모자란 구역은 숨긴다(지금 있는 곳은 항상 보임). 레벨이 오르면 하나씩 나타난다.
-    var N = {}, W = 96, H = 32, lv = myLv(), hidden = 0;
+    // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳(지하 2층)과 못 지나가는 길(사막-설원 모래폭풍)은 그리지 않는다. 구역마다 권장 레벨(모자라면 붉게).
+    var N = {}, W = 96, H = 32, lv = myLv();
     WORLD_NODES.forEach(function (n) {
-      if ((n.locked || minLvOf(n.id) > lv) && !(map && map.id === n.id)) { hidden++; return; }
+      if (n.locked) return;
       N[n.id] = n;
     });
     var line = function (a, b, style, label) {
@@ -6296,9 +6290,9 @@ var TowerMine = (function () {
           + (label ? '<text x="' + (mx + 6) + '" y="' + (my + 4) + '" class="wl">' + label + '</text>' : '');
     };
     var walk = 'stroke="#f4f0e6" stroke-width="3"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
-    var svg = '<svg viewBox="0 0 320 404" class="mine-world" role="img" aria-label="광산 전체 지도">'
-        + '<rect x="0" y="0" width="320" height="404" fill="#1d1730"/>'
-        + line('field', 'desert', walk) + line('field', 'cave1', walk, '동굴 입구') + line('field', 'dungeon', walk) + line('field', 'castle', walk)
+    var svg = '<svg viewBox="0 0 320 418" class="mine-world" role="img" aria-label="광산 전체 지도">'
+        + '<rect x="0" y="0" width="320" height="418" fill="#1d1730"/>'
+        + line('field', 'desert', walk) + line('field', 'cave1', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 300 H314 V28 H208" fill="none" ' + sea + '/><text x="272" y="160" class="wl">⛵ 배</text>' : '');
     WORLD_NODES.forEach(function (n) {
@@ -6307,11 +6301,12 @@ var TowerMine = (function () {
       svg += '<rect x="' + (n.x - W / 2) + '" y="' + (n.y - H / 2) + '" width="' + W + '" height="' + H + '" fill="' + n.fill + '"'
           + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
-          + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '');
+          + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
+          + (minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
     });
     svg += '</svg>';
     return npcHead('🗺️ 전체 지도', false) + svg
-        + '<div class="mine-smith-say">흰 선 = 걸어서(통로) · 파란 점선 = 배(부두끼리)' + (hidden ? '<br>🔒 아직 못 가는 곳 ' + hidden + '곳은 숨겨져 있어요. 광산 레벨이 오르면 나타나요. (지금 Lv.' + lv + ')' : '') + '</div>';
+        + '<div class="mine-smith-say">흰 선 = 걸어서(통로) · 파란 점선 = 배(바닷가·남쪽 섬·북쪽 끝 설원 부두끼리)<br>북쪽 끝 설원은 사막과 이어지지 않고 배로만 가요. 붉은 권장 레벨 = 지금 Lv.' + lv + '보다 높은 곳(들어갈 수는 있어요)</div>';
   }
   function openWorld() {
     if (!opened || !map) return;

@@ -8654,8 +8654,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return Math.max(0, m.level() - 1);
     }
 
-    /** [2026-10-24] 구역별 입장 레벨(광산 전투 레벨) -- "구역별 입장 레벨 제한" 요청. 그 구역의 가장 약한 몬스터 적정 레벨(1 + 4(단계-1))보다 4 낮게:
-     *  들어가서 캘 수는 있지만 몬스터는 아직 버겁다(한 단계 아래 레벨이면 한 마리 잡을 때 체력을 거의 다 쓴다 -- 앞 구역에서 레벨을 올리고 오게).
+    /** [2026-10-24] 구역별 권장 레벨(광산 전투 레벨) -- 처음엔 "입장 레벨 제한"으로 막았다가 같은 날 "레벨 모자라도 갈 수 있게"로 바뀌어
+     *  막지 않고 안내만 한다(통로/배로 들어갈 때 경고 문구, 전체 지도에 "권장 Lv."). 그 구역 가장 약한 몬스터의 적정 레벨(1 + 4(단계-1))보다 4 낮게:
      *  평원/요일 던전 1, 바닷가 5, 북쪽 사막/광산 동굴 9, 남쪽 섬 13, 동쪽 성곽 17, 북쪽 끝 설원 21. */
     static final Map<String, Integer> MINE_MIN_LV = new LinkedHashMap<>();
     static {
@@ -8673,9 +8673,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return MINE_MIN_LV.getOrDefault(m.id, 1);
     }
 
-    /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨. */
+    /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     private String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
-        if (lv < mineMinLv(m)) return "🔒 " + m.name + "은(는) 광산 레벨 " + mineMinLv(m) + " 이상부터 들어갈 수 있어요. (지금 Lv." + lv + " -- 몬스터를 잡아 레벨을 올려 주세요)";
         int need = mineHelmetNeed(m), have = items.getOrDefault(MINE_ITEM_HELMET, 0);
         if (have < need) return "⛑️ " + m.name + "은(는) 광부 투구 " + need + "단계 이상이 있어야 움직일 수 있어요. (지금 " + have + "단계, 평원 마을 대장장이에게서 업그레이드)";
         if (m.requireItem() != null && items.getOrDefault(m.requireItem(), 0) < 1) {
@@ -9228,7 +9227,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
-        out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 입장 레벨(화면: 이동 막기, 전체 지도에 갈 수 있는 곳만)
+        out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH }) {
@@ -9464,7 +9463,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tx = target.walkable(ax, ay) ? ax : target.spawnX, ty = target.walkable(ax, ay) ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         out.put("ok", true);
-        out.put("message", ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : "🚪 " + target.name + "(으)로 이동했어요.");
+        out.put("message", (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : "🚪 " + target.name + "(으)로 이동했어요.")
+                + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ") -- 몬스터가 강하니 조심하세요!" : ""));
         out.put("state", mineState(userName));
         return out;
     }
