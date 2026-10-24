@@ -765,11 +765,15 @@
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
     .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
     .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
+    .mine-look-top{ display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+    .mine-look-prevs{ display:flex; gap:4px; flex-shrink:0; }
+    .mine-look-prev{ width:52px; height:52px; image-rendering:pixelated; background:#2a2340; border:2px solid #f4f0e6; }
+    .mine-look-mini{ width:36px; height:36px; image-rendering:pixelated; background:#2a2340; border:1px solid #f4f0e6; cursor:pointer; flex-shrink:0; }
     .mine-world{ display:block; width:100%; height:auto; border:2px solid #f4f0e6; margin-bottom:8px; }
     .mine-world .wn{ font:800 12px sans-serif; }
     .mine-world .wl{ font:700 11px sans-serif; fill:#cfe9ff; }
     .mine-world .wh{ font:800 12px sans-serif; fill:#ffe14d; }
-    .mine-coord.admin{ pointer-events:auto; cursor:pointer; text-decoration:underline dotted; }
+    .mine-coord.admin{ pointer-events:auto; cursor:pointer; }
     .mine-warp{ display:flex; flex-direction:column; gap:8px; }
     .mine-warp label{ display:flex; align-items:center; gap:8px; font-weight:800; }
     .mine-warp select, .mine-warp input{ flex:1; min-width:0; font:700 14px/1.2 ui-monospace, Consolas, monospace; padding:5px 6px; border:2px solid #f4f0e6; background:#1d1730; color:#fff; }
@@ -6183,11 +6187,35 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 명품상점 -- 부위별 외형(능력치 없음) + 성별 전환
   var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발' };
+  // [2026-10-24] "치장 아이템을 착용했을 때 모습을 이미지로" -- 목록마다 그 아이템을 입은 내 캐릭터, 누르면 위에 크게 입어보기(앞/옆/뒤)
+  var lookImgCache = {}, tryLook = null, tryName = '';
+  function lookImg(lk, dir) {
+    var key = JSON.stringify(lk) + dir;
+    if (!lookImgCache[key]) lookImgCache[key] = charSprite(dir, 0, 0, lk).toDataURL();
+    return lookImgCache[key];
+  }
+  function lookWith(slot, look) {
+    var lk = {}, cur = st.look || {};
+    for (var k in cur) lk[k] = cur[k];
+    lk[slot] = look;
+    return lk;
+  }
+  function tryOn(code) {
+    var lk = st.look || {};
+    if (code === 'gender') { tryLook = lookWith('gender', lk.gender === 1 ? 0 : 1); tryName = lk.gender === 1 ? '남성' : '여성'; }
+    else if (code === 'me') { tryLook = null; tryName = ''; }
+    else (st.cosShop || []).forEach(function (c) { if (c.code === code) { tryLook = lookWith(c.slot, c.look); tryName = c.name; } });
+    renderSmith(smithNpc);
+  }
   function boutiqueHtml(n) {
-    var lk = st.look || {}, prev = sprites && sprites.down00 ? sprites.down00.toDataURL() : '';
+    var lk = st.look || {}, show = tryLook || lk;
     var h = npcHead('👗 명품상점', false)
-        + '<div class="mine-look-top"><img class="mine-look-prev" src="' + prev + '" alt="내 모습"><div class="mine-smith-say">' + (n ? n.line : '') + '</div></div>'
-        + '<div class="mine-smith-row"><span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
+        + '<div class="mine-look-top"><div class="mine-look-prevs">'
+        + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(show, d) + '" alt="">'; }).join('') + '</div>'
+        + '<div class="mine-smith-say">' + (tryLook ? '👀 입어보기: <b>' + tryName + '</b> <button type="button" class="mine-mini-btn" onclick="TowerMine.tryOn(\'me\')">내 모습</button>' : (n ? n.line : ''))
+        + '<br><small>아이템 그림을 누르면 입어 볼 수 있어요.</small></div></div>'
+        + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImg(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
+        + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
     ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
       var cur = lk[slot + 'Code'] || '';
@@ -6195,17 +6223,18 @@ var TowerMine = (function () {
           + (cur ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">기본으로</button>' : '') + '</div>';
       (st.cosShop || []).forEach(function (c) {
         if (c.slot !== slot) return;
-        var sw = (c.look || '').split('|')[0], btn;
+        var btn;
         if (c.code === cur) btn = '<span class="mine-worn">착용 중</span>';
         else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
         else btn = '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
-        h += '<div class="mine-smith-row"><span class="mine-swatch" style="background:' + sw + '"></span><span class="nm">' + c.name
+        h += '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')"><span class="nm">' + c.name
             + (c.owned ? '<small>가지고 있어요</small>' : costHtml(c.costs)) + '</span>' + btn + '</div>';
       });
     });
     return h;
   }
   function lookAct(action, code, slot) {
+    tryLook = null; // 사거나 입으면 입어보기 대신 실제 모습
     gearAct('/api/tower-mine-look?action=' + action + '&code=' + encodeURIComponent(code || '') + '&slot=' + encodeURIComponent(slot || ''));
   }
   // [2026-10-24] 관리자 전용 좌표 이동 -- 왼쪽 위 좌표를 누르면 맵/X/Y 입력, 확인(또는 Enter)으로 이동
@@ -6415,6 +6444,7 @@ var TowerMine = (function () {
     smithNpc = n;
     smithOpen = true;
     smithView = view || 'menu';
+    tryLook = null; // [2026-10-24] 명품상점 입어보기 초기화
     captainSay = '';
     keys = []; drag = null;
     renderSmith(n);
@@ -6842,7 +6872,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>
