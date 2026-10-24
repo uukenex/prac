@@ -570,6 +570,27 @@ public class Season5ViewController {
         if ("1".equals(exit) && out.get("error") == null) { // 광산을 나갈 때/화면을 벗어날 때 -- 서버가 받아들인 최종 위치로 기록
             mineLog(userName, "[웹] 광산 퇴장", out.get("mapName") + " (" + out.get("x") + ", " + out.get("y") + ")");
         }
+        if ("1".equals(exit)) s5Service.mineLeave(userName); // [2026-10-24] 다른 유저 화면에서 바로 사라지게
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 함께 보기 -- 내 위치/방향 알리기 + 같은 맵 다른 유저(이름 없이 익명 번호, 외형, 말풍선). 화면이 1초마다. 로그 없음. */
+    @GetMapping("/api/tower-mine-presence")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMinePresence(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "d", defaultValue = "down") String dir) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.minePresence(userName, mapId, x, y, dir));
+    }
+
+    /** [2026-10-24] 웹 광산 "안녕하세요" -- 근처 다른 유저에게 말풍선, 하루 1회 오늘 요일석 5개. 보상 받을 때만 로그. */
+    @GetMapping("/api/tower-mine-greet")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineGreet(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineGreet(userName);
+        if (Boolean.TRUE.equals(out.get("reward"))) mineLog(userName, "[웹] 광산 인사 보상", String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
 

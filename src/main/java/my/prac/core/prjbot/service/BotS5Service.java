@@ -259,6 +259,10 @@ public interface BotS5Service {
     HashMap<String, Object> mineBossHit(String userName, String mapId, String ver, int x, int y);
     /** [2026-10-24] 탐지 곡괭이 -- 주변 3x3 광석 미리 보기(읽기만). */
     HashMap<String, Object> mineScan(String userName, String mapId, int x, int y);
+    /** [2026-10-24] 광산 함께 보기(내 위치 알리기 + 같은 맵 다른 유저), 나갈 때 지우기, "안녕하세요"(하루 1회 요일석 5개). */
+    HashMap<String, Object> minePresence(String userName, String mapId, int x, int y, String dir);
+    void mineLeave(String userName);
+    HashMap<String, Object> mineGreet(String userName);
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 

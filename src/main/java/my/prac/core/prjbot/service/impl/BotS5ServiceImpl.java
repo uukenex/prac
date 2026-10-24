@@ -10270,6 +10270,99 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
+    // ---- [2026-10-24] 광산에서 다른 유저 만나기 -- "접속한 유저끼리 만나게, 캐릭터명은 안 보이게, 근처에 오면 '안녕하세요' 버튼, 하루 1회 요일석 5개" ----
+    //  서버 메모리(MINE_PRESENCE)에 유저별 맵/칸/방향/외형/말풍선을 들고, 화면이 1초마다 내 위치를 보내며 같은 맵의 다른 유저(최근 10초)를 받아 간다.
+    //  다른 유저는 이름 대신 익명 번호(id)로만 내려준다. 인사 보상은 서버가 저장 위치 기준 4칸 안에 다른 유저가 실제로 있는지 확인한 뒤에만.
+    private static final class MinePresence {
+        final String id;
+        volatile String mapId;
+        volatile int x, y;
+        volatile String dir = "down";
+        volatile long at, lookAt, bubbleAt;
+        volatile HashMap<String, Object> look;
+        MinePresence(String id) { this.id = id; }
+    }
+    private static final java.util.concurrent.ConcurrentHashMap<String, MinePresence> MINE_PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long MINE_PRESENCE_TTL_MS = 10_000L;
+    private static final long MINE_BUBBLE_MS = 4_000L;
+    private static final int MINE_GREET_RANGE = 4;
+    private static final int MINE_GREET_STONES = 5;
+    static final String MINE_ITEM_GREET_DAY = "GREET_DAY";
+
+    private MinePresence minePresenceOf(String userName) {
+        return MINE_PRESENCE.computeIfAbsent(userName, u -> new MinePresence(Integer.toHexString((u + "|s5-mine-presence").hashCode() & 0x7fffffff)));
+    }
+
+    /** 내 위치 알리기 + 같은 맵 다른 유저 목록 [{id, x, y, d, look, bubble}] (이름 없음). 화면 표시용이라 DB를 거치지 않는다. */
+    @Override
+    public HashMap<String, Object> minePresence(String userName, String mapId, int x, int y, String dir) {
+        HashMap<String, Object> out = new HashMap<>();
+        long now = System.currentTimeMillis();
+        List<HashMap<String, Object>> others = new ArrayList<>();
+        out.put("others", others);
+        if (!mineAccess(userName) || mapId == null || mapId.isEmpty()) return out;
+        MinePresence me = minePresenceOf(userName);
+        me.mapId = mapId; me.x = x; me.y = y; me.at = now;
+        if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
+        if (me.look == null || now - me.lookAt > 30_000L) { me.look = mineLookOf(mineItems(userName)); me.lookAt = now; } // 외형은 30초마다 다시 읽는다
+        for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
+            MinePresence o = e.getValue();
+            if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", o.id);
+            m.put("x", o.x);
+            m.put("y", o.y);
+            m.put("d", o.dir);
+            m.put("look", o.look);
+            if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
+            others.add(m);
+        }
+        return out;
+    }
+
+    /** 광산을 나갈 때 -- 다른 유저 화면에서 바로 사라지게. */
+    @Override
+    public void mineLeave(String userName) {
+        MINE_PRESENCE.remove(userName);
+    }
+
+    /** "안녕하세요" -- 저장 위치 4칸 안에 같은 맵의 다른 유저가 있으면 말풍선, 하루 1회 오늘 요일석 5개. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineGreet(String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        int[] pos = minePos(row, map, mineWaterWalk(items));
+        MinePresence me = minePresenceOf(userName);
+        boolean near = false;
+        for (MinePresence o : MINE_PRESENCE.values()) {
+            if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !map.id.equals(o.mapId)) continue;
+            if (Math.abs(o.x - pos[0]) + Math.abs(o.y - pos[1]) <= MINE_GREET_RANGE + 2) near = true; // 저장 위치는 최대 2.5초 늦다 -- 2칸 여유
+        }
+        if (!near) { out.put("message", "근처에 인사할 사람이 없어요."); return out; }
+        if (now - me.bubbleAt < 3_000L) { out.put("message", "조금 있다가 다시 인사해요."); return out; }
+        me.bubbleAt = now;
+        out.put("ok", true);
+        int today = Integer.parseInt(java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
+        if (items.getOrDefault(MINE_ITEM_GREET_DAY, 0) != today) {
+            int di = S5MineMap.dayIndex(now);
+            dao.upsertMineItem(userName, MINE_ITEM_GREET_DAY, today);
+            dao.addUserOre(userName, S5MineMap.DAY_STONE_CODES[di], MINE_GREET_STONES);
+            out.put("reward", true);
+            out.put("ores", mineOreList(userName));
+            out.put("message", "👋 안녕하세요! 오늘의 첫 인사 -- " + S5MineMap.DAY_STONE_NAMES[di] + " " + MINE_GREET_STONES + "개를 받았어요.");
+        } else out.put("message", "👋 안녕하세요! (인사 보상은 하루 한 번 -- 오늘은 이미 받았어요)");
+        return out;
+    }
+
     // ---- [2026-10-24] 명품상점(광산 캐릭터 외형) ----
     // "캐릭터 외형을 바꿀 수 있게, 대장장이 옆 건물에 명품상점 -- 부위별 치장 아이템, 성별 전환도 여기서" 요청. 능력치 없음(보이는 것만).
     //  산 아이템: TBOT_S5_MINE_ITEM "COS_" + 코드(1), 부위별 착용: "LOOK_" + 부위(카탈로그 순번 + 1, 0 = 기본), 성별: "LOOK_GENDER"(0 남 / 1 여).
@@ -10321,7 +10414,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 외형(성별 + 부위별 착용 look 값) + 상점 목록을 out에 넣는다. */
-    private static void mineLookPayload(Map<String, Integer> items, Map<String, Integer> have, HashMap<String, Object> out) {
+    /** 외형(성별 + 부위별 look 값과 코드) -- 내 화면(look)과 다른 유저에게 보이는 모습(광산 함께 보기)에 같이 쓴다. */
+    private static HashMap<String, Object> mineLookOf(Map<String, Integer> items) {
         HashMap<String, Object> look = new HashMap<>();
         look.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
         for (String slot : MINE_LOOK_SLOTS) {
@@ -10330,7 +10424,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             look.put(slot, c != null && c.slot.equals(slot) ? c.look : "");
             look.put(slot + "Code", c != null && c.slot.equals(slot) ? c.code : "");
         }
-        out.put("look", look);
+        return look;
+    }
+
+    private static void mineLookPayload(Map<String, Integer> items, Map<String, Integer> have, HashMap<String, Object> out) {
+        out.put("look", mineLookOf(items));
         List<HashMap<String, Object>> shop = new ArrayList<>();
         for (MineCos c : MINE_COS) {
             HashMap<String, Object> m = new HashMap<>();
@@ -10356,6 +10454,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Transactional
     public HashMap<String, Object> mineLook(String userName, String action, String code, String slot) {
         if (!mineAccess(userName)) return mineClosed();
+        MinePresence pr = MINE_PRESENCE.get(userName);
+        if (pr != null) pr.lookAt = 0; // 다른 유저에게 보이는 외형도 다음 위치 알림 때 다시 읽기
         mineRow(userName, false);
         dao.selectMineUserForUpdate(userName);
         Map<String, Integer> items = mineItems(userName);

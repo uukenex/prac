@@ -765,6 +765,8 @@
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
     .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
     .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
+    .mine-greet{ position:absolute; right:18px; bottom:calc(118px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
+    @keyframes mineGreetPop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
     /* [2026-10-24] NPC 초상화(마비노기처럼): 미끄러져 들어오기 + 숨쉬기 */
     .mine-npc-talk{ display:flex; align-items:flex-end; gap:10px; margin:2px 0 10px; }
     .mine-portrait{ width:120px; height:144px; flex-shrink:0; image-rendering:pixelated; transform-origin:50% 100%; animation:minePortraitBreath 2.6s ease-in-out infinite; }
@@ -1598,6 +1600,7 @@
   <button type="button" class="mine-btn mine-home-btn mpx" onclick="TowerMine.goVillage()">🏠 마을로</button>
   <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 최근 캔 곳</button>
   <button type="button" class="mine-btn mine-exit mpx" onclick="TowerMine.close()">🚪 나가기</button>
+  <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
   <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.act()" aria-label="캐기/공격">⛏️</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
   <div class="mine-smith mpx" id="mineSmith"></div>
@@ -5960,6 +5963,7 @@ var TowerMine = (function () {
     el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn');
     el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog'); el.smith = $('mineSmith');
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
+    el.greet = $('mineGreetBtn'); // [2026-10-24] 안녕하세요
     ctx = el.cv.getContext('2d'); miniCtx = el.mini.getContext('2d');
     el.cv.addEventListener('pointerdown', function (e) {
       el.cv.setPointerCapture && el.cv.setPointerCapture(e.pointerId);
@@ -6158,6 +6162,7 @@ var TowerMine = (function () {
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
     bossTick(now); // [2026-10-24] 동굴 3층 보스 선공
     scanTick(); // [2026-10-24] 탐지 곡괭이
+    var ng = nearOther(); if (el.greet && (el.greet.style.display === "block") !== ng) el.greet.style.display = ng ? "block" : "none"; // [2026-10-24] 근처에 다른 유저가 있으면 👋
     if (P.moving && now - P.t0 >= STEP_MS) {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
@@ -6662,6 +6667,60 @@ var TowerMine = (function () {
     if (!scanImgs[g]) { scanImgs[g] = new Image(); scanImgs[g].src = oreIcon(g > 0 ? g : 24); }
     return scanImgs[g];
   }
+  // [2026-10-24] 광산에서 다른 유저 만나기 -- 1초마다 내 위치를 알리고 같은 맵 다른 유저(이름 없이)를 받아 그린다.
+  //  근처(4칸)에 다른 유저가 있으면 👋 안녕하세요 버튼(말풍선이 서로 보임, 하루 1회 오늘 요일석 5개).
+  var others = {}, presTimer = 0, presBusy = false, otherSprites = {}, myBubbleT0 = 0, greetBusy = false;
+  function presTick() {
+    if (!opened || !map || presBusy) return;
+    presBusy = true;
+    var mid = map.id;
+    api('/api/tower-mine-presence?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir).then(function (d) {
+      presBusy = false;
+      if (!map || map.id !== mid || !d) return;
+      var now = performance.now(), seen = {};
+      (d.others || []).forEach(function (o) {
+        seen[o.id] = 1;
+        var cur = others[o.id];
+        if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
+        else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
+        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || '';
+      });
+      for (var id in others) if (!seen[id]) delete others[id];
+    }).catch(function () { presBusy = false; });
+  }
+  function otherPos(o, now) {
+    var k = Math.min(1, (now - o.t0) / 950);
+    return { x: o.fx + (o.x - o.fx) * k, y: o.fy + (o.y - o.fy) * k, moving: k < 1 };
+  }
+  function otherSprite(look, dir, step) {
+    var key = JSON.stringify(look || {});
+    if (!otherSprites[key]) otherSprites[key] = {};
+    var c = otherSprites[key], sk = dir + step;
+    if (!c[sk]) c[sk] = charSprite(dir, step, 0, look || {});
+    return c[sk];
+  }
+  function nearOther() {
+    for (var id in others) { var o = others[id]; if (Math.abs(o.x - P.x) + Math.abs(o.y - P.y) <= 4) return true; }
+    return false;
+  }
+  function drawBubble(text, px0, py0) {
+    ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
+    var w = ctx.measureText(text).width + 14 * dpr, h = 20 * dpr, bx = Math.round(px0 - w / 2), by = Math.round(py0 - h);
+    ctx.fillStyle = 'rgba(255,253,240,0.96)'; ctx.fillRect(bx, by, w, h);
+    ctx.strokeStyle = '#140d0a'; ctx.lineWidth = 2 * dpr; ctx.strokeRect(bx, by, w, h);
+    ctx.fillStyle = '#2a1d10'; ctx.textAlign = 'center'; ctx.fillText(text, px0, by + 14 * dpr);
+  }
+  function greet() {
+    if (!opened || greetBusy) return;
+    greetBusy = true;
+    api('/api/tower-mine-greet').then(function (d) {
+      greetBusy = false;
+      if (d && d.ok) myBubbleT0 = performance.now();
+      if (d && d.ores) st.ores = d.ores;
+      if (d && d.reward) flashT0 = performance.now();
+      msg((d && (d.message || d.error)) || '인사하지 못했어요.', 3200);
+    }).catch(function () { greetBusy = false; });
+  }
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
   function act() {
     var a = !P.moving && adjMob();
@@ -6861,12 +6920,21 @@ var TowerMine = (function () {
         }
       }
     }
+    // [2026-10-24] 다른 유저(이름 없이) -- 1초마다 받은 칸 사이를 걸어서, 인사하면 말풍선
+    for (var oid in others) {
+      var ou = others[oid], op = otherPos(ou, now), ox = Math.round(op.x * TS - camX), oy = Math.round(op.y * TS - camY);
+      if (ox < -TS || oy < -TS || ox > W || oy > H) continue;
+      ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
+      ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
+      if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
+    }
     // 캐릭터
     var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
     ctx.fillStyle = 'rgba(0,0,0,.28)';
     ctx.fillRect(cx + 3 * scale, cy + 13 * scale, 10 * scale, 3 * scale);
     var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
+    if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
     if (sv < 2) { // 2단계 이상이면 어둠 없음(전체가 보임)
@@ -7015,7 +7083,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
@@ -7161,6 +7229,7 @@ var TowerMine = (function () {
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
       clearInterval(mobTimer); mobTimer = setInterval(pollMobs, 1500); // [2026-10-24] 몬스터 체력/쓰러짐 조회
+      clearInterval(presTimer); presTimer = setInterval(presTick, 1000); // [2026-10-24] 다른 유저 위치 주고받기
       clearInterval(saveTimer);
       saveTimer = setInterval(function () {
         savePos();
@@ -7177,6 +7246,7 @@ var TowerMine = (function () {
     cancelAnimationFrame(raf);
     clearInterval(saveTimer);
     clearInterval(mobTimer); setAuto(false); // [2026-10-24]
+    clearInterval(presTimer); others = {}; // [2026-10-24] 함께 보기
     keys = []; drag = null;
     el.ov.classList.remove('open');
     el.load.textContent = '광산으로 가는 중...';
@@ -7201,7 +7271,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>
