@@ -9201,6 +9201,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
+        if (isEventAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
+            List<HashMap<String, Object>> maps = new ArrayList<>();
+            for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH }) {
+                S5MineMap m = S5MineMap.get(id);
+                HashMap<String, Object> e = new HashMap<>();
+                e.put("id", m.id);
+                e.put("name", m.name);
+                e.put("w", m.w);
+                e.put("h", m.h);
+                maps.add(e);
+            }
+            out.put("adminMaps", maps);
+        }
         return out;
     }
 
@@ -9516,6 +9529,33 @@ public class BotS5ServiceImpl implements BotS5Service {
         double perKill = row == null ? 0 : numVal(row.get("PP_BONUS"), 0);
         if (perKill <= 0 || kills <= 0) return null;
         return PP.of(perKill * kills, "");
+    }
+
+    /** [2026-10-24] 관리자 전용 좌표 이동(EVENT_ADMIN_USERS) -- 화면 좌표를 누르면 맵/좌표 입력. 못 서는 칸이면 가장 가까운 설 수 있는 칸으로. */
+    @Override
+    public HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!isEventAdmin(userName)) { out.put("message", "권한이 없습니다."); return out; }
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        mineRow(userName, false);
+        S5MineMap map = S5MineMap.get(mapId);
+        boolean water = mineWaterWalk(mineItems(userName));
+        int[] p = null;
+        for (int r = 0; r <= 30 && p == null; r++) { // 가까운 칸부터(마름모 둘레)
+            for (int dx = -r; dx <= r && p == null; dx++) {
+                int dy = r - Math.abs(dx);
+                if (mineWalk(map, x + dx, y + dy, water)) p = new int[] { x + dx, y + dy };
+                else if (dy != 0 && mineWalk(map, x + dx, y - dy, water)) p = new int[] { x + dx, y - dy };
+            }
+        }
+        if (p == null) { out.put("message", map.name + " (" + x + ", " + y + ") 근처에 설 수 있는 칸이 없어요."); return out; }
+        dao.updateMinePos(userName, map.id, p[0], p[1], System.currentTimeMillis());
+        out.put("ok", true);
+        out.put("message", "🛠️ " + map.name + " (" + p[0] + ", " + p[1] + ")로 이동했어요." + (p[0] != x || p[1] != y ? " (입력한 칸에 설 수 없어 가장 가까운 칸으로)" : ""));
+        out.put("state", mineState(userName));
+        return out;
     }
 
     /** [2026-10-23] "마을로 이동" 버튼 -- 어느 맵 어디에 있든 중앙 평원 마을(시작점)으로 바로 옮긴다(이동 기록 검사 없음, 스태미너 소모 없음). */

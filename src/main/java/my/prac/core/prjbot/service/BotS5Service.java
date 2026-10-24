@@ -251,6 +251,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineCaptain(String userName, String action);
     /** [2026-10-24] 명품상점 -- action buy/wear/gender. */
     HashMap<String, Object> mineLook(String userName, String action, String code, String slot);
+    /** [2026-10-24] 관리자 전용 광산 좌표 이동(EVENT_ADMIN_USERS). */
+    HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);

@@ -764,6 +764,11 @@
     .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
     .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
+    .mine-coord.admin{ pointer-events:auto; cursor:pointer; text-decoration:underline dotted; }
+    .mine-warp{ display:flex; flex-direction:column; gap:8px; }
+    .mine-warp label{ display:flex; align-items:center; gap:8px; font-weight:800; }
+    .mine-warp select, .mine-warp input{ flex:1; min-width:0; font:700 14px/1.2 ui-monospace, Consolas, monospace; padding:5px 6px; border:2px solid #f4f0e6; background:#1d1730; color:#fff; }
+    .mine-warp button{ padding:8px; font-size:14px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-auto-btn.on{ background:#1f6b3a; color:#d6ffe0; }
     .mine-hp{ font:800 13px/1.2 ui-monospace, Consolas, monospace; padding:5px 8px; color:#ffd0d0; min-width:120px; }
     .mine-hp:empty{ display:none; }
@@ -1561,7 +1566,7 @@
 <!-- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) -- TowerMine 스크립트(맨 아래)가 그린다. -->
 <div class="mine-overlay" id="mineOverlay">
   <canvas id="mineCanvas"></canvas>
-  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
+  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
     <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 200</div>
     <div class="mine-hp mpx" id="mineHp"></div>
@@ -5873,7 +5878,7 @@ var TowerMine = (function () {
       if (!opened) return;
       var d = keyDir(e.key);
       if (d) { e.preventDefault(); if (keys.indexOf(d) < 0) keys.push(d); tapDir = d; return; } // 짧게 눌렀다 떼도 한 칸은 움직이게
-      if (smithOpen) { if (e.key === 'Escape') closeSmith(); return; } // 대장간 창이 열려 있으면 이동/캐기 대신 창만
+      if (smithOpen) { if (e.key === 'Escape') closeSmith(); else if (e.key === 'Enter' && smithView === 'warp') adminWarp(); return; } // 대장간 창이 열려 있으면 이동/캐기 대신 창만
       if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
       else if (e.key === 'Escape') close();
     });
@@ -6197,7 +6202,34 @@ var TowerMine = (function () {
   function lookAct(action, code, slot) {
     gearAct('/api/tower-mine-look?action=' + action + '&code=' + encodeURIComponent(code || '') + '&slot=' + encodeURIComponent(slot || ''));
   }
+  // [2026-10-24] 관리자 전용 좌표 이동 -- 왼쪽 위 좌표를 누르면 맵/X/Y 입력, 확인(또는 Enter)으로 이동
+  function warpHtml() {
+    return npcHead('🛠️ 관리자 좌표 이동', false)
+        + '<div class="mine-warp"><label>맵 <select id="mineWarpMap">' + (st.adminMaps || []).map(function (m) {
+          return '<option value="' + m.id + '"' + (m.id === map.id ? ' selected' : '') + '>' + m.name + ' (' + m.w + 'x' + m.h + ')</option>';
+        }).join('') + '</select></label>'
+        + '<label>X <input id="mineWarpX" type="number" inputmode="numeric" value="' + P.x + '"></label>'
+        + '<label>Y <input id="mineWarpY" type="number" inputmode="numeric" value="' + P.y + '"></label>'
+        + '<button type="button" onclick="TowerMine.adminWarp()">확인</button></div>';
+  }
+  function openWarp() {
+    if (!opened || !map || busy || !st || !st.adminMaps) return;
+    openSmith({ name: '좌표 이동', line: '', kind: 'warp' }, 'warp');
+    var ix = $('mineWarpX');
+    if (ix) { ix.focus(); ix.select(); }
+  }
+  function adminWarp() {
+    var mid = $('mineWarpMap').value, x = parseInt($('mineWarpX').value, 10), y = parseInt($('mineWarpY').value, 10);
+    if (isNaN(x) || isNaN(y)) { msg('좌표를 숫자로 입력해 주세요.'); return; }
+    closeSmith();
+    setAuto(false);
+    travel('/api/tower-mine-admin-warp?mapId=' + encodeURIComponent(mid) + '&x=' + x + '&y=' + y, '이동하지 못했어요.');
+  }
   function renderSmith(n) {
+    if (smithView === 'warp') {
+      el.smith.innerHTML = warpHtml();
+      return;
+    }
     if (smithView === 'captain') {
       el.smith.innerHTML = captainHtml(n);
       return;
@@ -6587,6 +6619,7 @@ var TowerMine = (function () {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
     buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록
+    el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
       portalAt = {};
@@ -6757,7 +6790,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

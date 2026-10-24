@@ -673,6 +673,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-24] 웹 광산 관리자 전용 좌표 이동. */
+    @GetMapping("/api/tower-mine-admin-warp")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineAdminWarp(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineAdminWarp(userName, mapId, x, y);
+        mineLog(userName, "[웹] 광산 관리자 좌표 이동 " + mapId + " (" + x + ", " + y + ")", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-23] 웹 광산 -- 마을로 이동(중앙 평원 시작점). */
     @GetMapping("/api/tower-mine-village")
     @ResponseBody

@@ -5250,3 +5250,7 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - **명품상점**(평원 마을 북서쪽 초가집 앞 NPC): 모자/머리/상의/하의/신발 21종(광석/보석으로 구매, 능력치 없음), 산 것은 언제든 다시 입기/기본으로. 성별 전환 은광석 10개.
   저장: TBOT_S5_MINE_ITEM `COS_코드`(보유), `LOOK_부위`(착용 순번+1), `LOOK_GENDER`(0 남/1 여). 그림은 화면 charSprite가 look 값(색|모양)으로 그린다.
 - API: `/api/tower-mine-mobs`, `/api/tower-mine-attack`, `/api/tower-mine-look`, `/api/tower-mine-warp`에 `dest`(배).
+
+### 2026-10-24 광산: 관리자 전용 좌표 이동
+- 관리자(TBOT_S5_CONFIG.EVENT_ADMIN_USERS)면 광산 화면 왼쪽 위 좌표가 눌린다 -> 맵/X/Y 입력창 -> 확인(Enter)으로 이동(`/api/tower-mine-admin-warp`).
+  못 서는 칸이면 30칸 안에서 가장 가까운 설 수 있는 칸으로. 이동 검사(순간이동 방지)를 거치지 않는다. 웹 로그에 남김.
