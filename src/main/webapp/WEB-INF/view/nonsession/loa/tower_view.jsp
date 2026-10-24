@@ -6119,6 +6119,7 @@ var TowerMine = (function () {
       if (g >= 4) { miniCtx.fillStyle = ORE_COL[g][0]; miniCtx.fillRect(+p[0] - k, +p[1] - k, 2 * k + 1, 2 * k + 1); }
     });
     (map.portals || []).forEach(function (p) {
+      if (p.kind === 'Z') return; // [2026-10-24] 숨은 입구(바닷길)는 미니맵에도 안 찍는다
       miniCtx.fillStyle = p.locked ? '#9a9a9a' : '#ffd23f';
       miniCtx.fillRect(p.x - 2 * k, p.y - 2 * k, 4 * k + 1, 4 * k + 1);
     });
@@ -6381,10 +6382,10 @@ var TowerMine = (function () {
     { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' }
   ];
   function worldHtml() {
-    // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원 -- 관리자만 "개발 중"으로 보임)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
-    var N = {}, W = 96, H = 32, lv = myLv(), admin = !!(st && st.adminMaps);
+    // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
+    var N = {}, W = 96, H = 32, lv = myLv();
     WORLD_NODES.forEach(function (n) {
-      if (n.locked || (n.dev && !admin)) return;
+      if (n.locked || n.dev) return; // [2026-10-24] 개발 중인 곳(왕도/초원)은 관리자에게도 안 보인다
       N[n.id] = n;
     });
     var line = function (a, b, style, label) {
@@ -6407,8 +6408,7 @@ var TowerMine = (function () {
           + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
           + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
-          + (n.dev ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl" style="fill:#ffd27a">🚧 개발 중 (관리자만)</text>'
-            : minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
+          + (minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
     });
     svg += '</svg>';
     return npcHead('🗺️ 전체 지도', false) + svg; // [2026-10-24] 아래 안내 문구는 뺐다("이 멘트도 없애주고")

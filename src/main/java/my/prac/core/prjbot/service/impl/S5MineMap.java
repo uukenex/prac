@@ -1125,7 +1125,8 @@ public final class S5MineMap {
 
     /** [2026-10-24] 바닷길(90x120, 바람의나라 용궁 느낌의 바닷속): 푸른 바다 모래(u) 위에 해초(e, 지나갈 수 있음)와 산호 무더기(O),
      *  남쪽 입구에서 북쪽 용궁까지 붉은 궁궐 길(p, 양옆에 붉은 기둥 L), 북쪽 끝 용궁 성벽(L)과 굳게 닫힌 용궁 문. 바닷속(underwater) -- 화면이 푸르게 물들이고 거품을 띄운다.
-     *  "바닷길에서는 보석만" -- 바다 모래 칸 일부(약 12%)에만 보석 줄기(ore = 1)가 있고 캐면 광석 대신 보석이 나온다(searoadGem). 부두 끝 숨은 입구로만 들어온다. */
+     *  "바닷길에서는 보석만" -- [2026-10-24] "캐면 내구도를 쓰고 100% 보석": 바다 모래/용궁 길 칸 전부(입구 3칸 안 제외)가 보석 칸(ore = 1),
+     *  캐면 광석 대신 보석이 나온다(searoadGem). 해초 칸은 못 캔다. 부두 끝 숨은 입구로만 들어온다. */
     static S5MineMap generateSearoad(long seed) {
         int w = 90, h = 120, c = w / 2;
         Random r = new Random(seed);
@@ -1154,7 +1155,7 @@ public final class S5MineMap {
         portals.add(new Portal(c, py1, 'G', null, 0, 0, "용궁 (굳게 닫혀 있다)"));
         byte[][] o = new byte[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            if (t[y][x] == 'u' && Math.abs(x - sx) + Math.abs(y - sy) > 3 && r.nextDouble() < 0.12) o[y][x] = 1; // 보석 줄기
+            if ((t[y][x] == 'u' || t[y][x] == 'p') && Math.abs(x - sx) + Math.abs(y - sy) > 3) o[y][x] = 1; // 보석 칸(캐면 100% 보석)
         }
         S5MineMap m = new S5MineMap(SEAROAD, "바닷길", false, w, h, sx, sy, t, o, portals);
         m.underwater = true;
