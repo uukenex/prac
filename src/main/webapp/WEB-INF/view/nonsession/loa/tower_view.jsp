@@ -764,6 +764,11 @@
     .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
     .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
+    .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
+    .mine-world{ display:block; width:100%; height:auto; border:2px solid #f4f0e6; margin-bottom:8px; }
+    .mine-world .wn{ font:800 12px sans-serif; }
+    .mine-world .wl{ font:700 11px sans-serif; fill:#cfe9ff; }
+    .mine-world .wh{ font:800 12px sans-serif; fill:#ffe14d; }
     .mine-coord.admin{ pointer-events:auto; cursor:pointer; text-decoration:underline dotted; }
     .mine-warp{ display:flex; flex-direction:column; gap:8px; }
     .mine-warp label{ display:flex; align-items:center; gap:8px; font-weight:800; }
@@ -1572,6 +1577,7 @@
     <div class="mine-hp mpx" id="mineHp"></div>
     <div class="mine-regen" id="mineRegen"></div>
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
+    <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
   </div>
   <div class="mine-log mpx" id="mineLog"></div>
   <button type="button" class="mine-btn mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
@@ -6225,7 +6231,53 @@ var TowerMine = (function () {
     setAuto(false);
     travel('/api/tower-mine-admin-warp?mapId=' + encodeURIComponent(mid) + '&x=' + x + '&y=' + y, '이동하지 못했어요.');
   }
+  // [2026-10-24] 전체 지도 -- 지역이 어떻게 이어졌는지(걸어서 / 배 / 잠김)와 지금 있는 곳. 구조는 S5MineMap.buildWorld와 같다.
+  var WORLD_NODES = [
+    { id: 'north', name: '북쪽 끝 설원', x: 160, y: 28, fill: '#eef3f8', ink: '#2a3440' },
+    { id: 'cave2', name: '지하 2층 🔒', x: 52, y: 78, fill: '#3a3530', ink: '#bbb', locked: true },
+    { id: 'desert', name: '북쪽 사막', x: 160, y: 108, fill: '#e3c47a', ink: '#3b2a10' },
+    { id: 'cave1', name: '광산 동굴 1층', x: 52, y: 148, fill: '#6b5b4b', ink: '#fff' },
+    { id: 'dungeon', name: '요일 던전', x: 52, y: 208, fill: '#5b4d40', ink: '#fff' },
+    { id: 'field', name: '중앙 평원 🏠', x: 160, y: 208, fill: '#5fae45', ink: '#10300a' },
+    { id: 'castle', name: '동쪽 성곽', x: 258, y: 208, fill: '#8a857c', ink: '#fff' },
+    { id: 'beach', name: '남쪽 바닷가', x: 160, y: 300, fill: '#ecd9a0', ink: '#3b2a10' },
+    { id: 'island', name: '남쪽 섬', x: 60, y: 378, fill: '#3fa36b', ink: '#fff' }
+  ];
+  function worldHtml() {
+    var N = {}, W = 96, H = 32;
+    WORLD_NODES.forEach(function (n) { N[n.id] = n; });
+    var line = function (a, b, style, label) {
+      var p = N[a], q = N[b], mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+      return '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + style + '/>'
+          + (label ? '<text x="' + (mx + 6) + '" y="' + (my + 4) + '" class="wl">' + label + '</text>' : '');
+    };
+    var walk = 'stroke="#f4f0e6" stroke-width="3"', lock = 'stroke="#888" stroke-width="2" stroke-dasharray="4 4"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
+    var svg = '<svg viewBox="0 0 320 404" class="mine-world" role="img" aria-label="광산 전체 지도">'
+        + '<rect x="0" y="0" width="320" height="404" fill="#1d1730"/>'
+        + line('field', 'desert', walk) + line('field', 'cave1', walk, '동굴 입구') + line('field', 'dungeon', walk) + line('field', 'castle', walk)
+        + line('field', 'beach', walk) + line('cave1', 'cave2', lock) + line('desert', 'north', lock, '모래폭풍 🔒')
+        + line('beach', 'island', sea, '⛵')
+        + '<path d="M208 300 H314 V28 H208" fill="none" ' + sea + '/><text x="272" y="160" class="wl">⛵ 배</text>';
+    WORLD_NODES.forEach(function (n) {
+      var here = map && map.id === n.id;
+      svg += '<rect x="' + (n.x - W / 2) + '" y="' + (n.y - H / 2) + '" width="' + W + '" height="' + H + '" fill="' + n.fill + '"'
+          + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
+          + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
+          + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '');
+    });
+    svg += '</svg>';
+    return npcHead('🗺️ 전체 지도', false) + svg
+        + '<div class="mine-smith-say">흰 선 = 걸어서(통로) · 파란 점선 = 배(바닷가·남쪽 섬·북쪽 끝 설원 부두끼리) · 회색 점선 = 아직 못 감</div>';
+  }
+  function openWorld() {
+    if (!opened || !map) return;
+    openSmith({ name: '전체 지도', line: '', kind: 'world' }, 'world');
+  }
   function renderSmith(n) {
+    if (smithView === 'world') {
+      el.smith.innerHTML = worldHtml();
+      return;
+    }
     if (smithView === 'warp') {
       el.smith.innerHTML = warpHtml();
       return;
@@ -6790,7 +6842,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>
