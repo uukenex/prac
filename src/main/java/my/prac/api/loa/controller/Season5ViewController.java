@@ -669,6 +669,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-24] 웹 광산 왕도 성당 신부 -- action = heal(체력 회복) / save(부활 지점 = 성당) / reset(부활 지점 = 평원 마을). */
+    @GetMapping("/api/tower-mine-priest")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMinePriest(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "heal") String action) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.minePriest(userName, action);
+        if (!"heal".equals(action)) mineLog(userName, "[웹] 광산 성당 " + action, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-24] 웹 광산 관리자 전용 좌표 이동. */
     @GetMapping("/api/tower-mine-admin-warp")
     @ResponseBody

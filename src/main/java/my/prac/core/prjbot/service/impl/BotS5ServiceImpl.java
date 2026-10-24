@@ -8667,6 +8667,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.ISLAND, 13);
         MINE_MIN_LV.put(S5MineMap.CASTLE, 17);
         MINE_MIN_LV.put(S5MineMap.NORTH, 21);
+        MINE_MIN_LV.put(S5MineMap.STEPPE, 17); // [2026-10-24] 모래폭풍 너머 초원(몬스터 6~7단계) -- 왕도도 같은 길이라 17
+        MINE_MIN_LV.put(S5MineMap.CITY, 17);
     }
 
     static int mineMinLv(S5MineMap m) {
@@ -8949,6 +8951,19 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             out.put("shipTo", ship);
         }
+        boolean hasTele = false;
+        for (S5MineMap.Portal pt : map.portals) if (S5MineMap.TELE.equals(pt.target)) hasTele = true;
+        if (hasTele) { // [2026-10-24] 왕도 텔레포트 게이트 목적지 + 비용
+            List<HashMap<String, Object>> tl = new ArrayList<>();
+            for (String d : S5MineMap.TELE_DESTS) {
+                HashMap<String, Object> m = new HashMap<>();
+                m.put("id", d);
+                m.put("name", S5MineMap.nameOf(d));
+                tl.add(m);
+            }
+            out.put("teleTo", tl);
+            out.put("teleGold", MINE_TELE_GOLD);
+        }
         return out;
     }
 
@@ -9141,9 +9156,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (hp <= 0) {
                 died = true;
                 hp = mineHpMax(lv);
-                S5MineMap field = S5MineMap.get(S5MineMap.FIELD);
-                dao.updateMinePos(userName, field.id, field.spawnX, field.spawnY, now);
-                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... 중앙 평원 마을에서 깨어났어요.");
+                boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
+                S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
+                int[] hp0 = church ? mineCityChurch(home) : new int[] { home.spawnX, home.spawnY };
+                dao.updateMinePos(userName, home.id, hp0[0], hp0[1], now);
+                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(church ? "왕도 아스테리아 성당에서" : "중앙 평원 마을에서").append(" 깨어났어요.");
             }
         }
         if (!died) dao.updateMinePos(userName, map.id, x, y, now);
@@ -9156,18 +9173,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** 처치 보상: 60% 광석(단계가 높을수록 좋은 광석, 별빛석은 안 나옴) + 지역 보석(캘 때의 2.5배 확률). */
+    /** 처치 보상 -- [2026-10-24] "낮은 게 조금 더 잘 나오는 느낌으로" 조정(처음엔 60% + 높은 등급 35%라 Lv.33 몬스터에서 미스릴이 시간당 100개 넘게 나왔다).
+     *  55% 확률로 광석: 기준 등급 b = 1 + (단계-1)/2(구리~미스릴). 55% = 한 등급 아래(1~2개), 37% = 기준(금광석까지), 8% = 한 등급 위(금광석까지,
+     *  미스릴은 9단계 몬스터의 8%뿐), 별빛석은 안 나옴. 보석은 캘 때와 같은 확률에 흔한 보석만 1.5배(5% -> 7.5%), 다이아 0.2%. */
     private List<HashMap<String, Object>> mineMobDrops(String userName, S5MineMap map, S5MineMobs.Type type, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (RND.nextInt(100) < 60) {
-            int g = Math.min(5, 1 + (type.tier - 1) / 2);
-            if (g < 5 && RND.nextInt(100) < 35) g++;
-            int qty = 1 + (RND.nextInt(100) < 25 ? 1 : 0);
+        if (RND.nextInt(100) < 55) {
+            int b = Math.min(5, 1 + (type.tier - 1) / 2), r = RND.nextInt(100), g, qty = 1;
+            if (r < 55) { g = Math.max(1, b - 1); qty += RND.nextInt(2); }
+            else if (r < 92) g = Math.min(b, 4);
+            else g = type.tier >= 9 ? 5 : Math.min(b + 1, 4);
             dao.addUserOre(userName, S5MineMap.ORE_CODES[g - 1], qty);
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
         }
-        int gi = S5MineMap.gemFor(map.id, RND.nextInt(400));
+        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000), 1.5);
         if (gi >= 0) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
@@ -9228,9 +9248,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
+        out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
-            for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH }) {
+            for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY }) {
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -9451,7 +9472,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "⛵ 어디로 갈지 골라 주세요.");
             return out;
         }
-        S5MineMap target = S5MineMap.get(ship ? dest : p.target);
+        // [2026-10-24] 왕도 텔레포트 게이트(X) -- "대도시에서 다른 지역으로는 어렵게": 금광석 MINE_TELE_GOLD개를 내고 고른 지역의 시작점으로
+        boolean tele = S5MineMap.TELE.equals(p.target);
+        if (tele) {
+            if (dest == null || !S5MineMap.TELE_DESTS.contains(dest)) {
+                dao.updateMinePos(userName, map.id, x, y, now);
+                out.put("message", "🌀 어디로 갈지 골라 주세요.");
+                return out;
+            }
+            if (dao.takeUserOre(userName, S5MineMap.ORE_CODES[3], MINE_TELE_GOLD) == 0) {
+                dao.updateMinePos(userName, map.id, x, y, now);
+                out.put("message", "🌀 텔레포트 게이트를 움직이려면 금광석 " + MINE_TELE_GOLD + "개가 필요해요.");
+                return out;
+            }
+        }
+        S5MineMap target = S5MineMap.get(ship || tele ? dest : p.target);
         String block = mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -9459,11 +9494,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        int ax = ship ? target.dockX() : p.tx, ay = ship ? target.dockY() : p.ty;
+        int ax = ship ? target.dockX() : tele ? target.spawnX : p.tx, ay = ship ? target.dockY() : tele ? target.spawnY : p.ty;
         int tx = target.walkable(ax, ay) ? ax : target.spawnX, ty = target.walkable(ax, ay) ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         out.put("ok", true);
-        out.put("message", (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : "🚪 " + target.name + "(으)로 이동했어요.")
+        out.put("message", (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요. (금광석 " + MINE_TELE_GOLD + "개 사용)" : "🚪 " + target.name + "(으)로 이동했어요.")
                 + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ") -- 몬스터가 강하니 조심하세요!" : ""));
         out.put("state", mineState(userName));
         return out;
@@ -9921,6 +9956,42 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertMineItem(userName, MINE_ITEM_DRAGON_QUEST, 1);
         HashMap<String, Object> out = mineGearResult(userName, true, "늙은 선장: " + MINE_CAPTAIN_STORY);
         out.put("questStarted", true);
+        return out;
+    }
+
+    // ---- [2026-10-24] 왕도 아스테리아: 텔레포트 게이트 비용, 성당 신부(치료 + 부활 지점) ----
+    /** 텔레포트 게이트 한 번 = 금광석 개수("대도시에서 다른 지역으로는 어렵게"). */
+    static final int MINE_TELE_GOLD = 5;
+    /** 부활 지점: 1 = 왕도 성당(신부에게 기도), 없으면 평원 마을. */
+    static final String MINE_ITEM_RESPAWN = "RESPAWN";
+
+    /** 왕도 성당 앞(신부 바로 아래 칸). */
+    private static int[] mineCityChurch(S5MineMap city) {
+        for (S5MineMap.Npc n : city.npcs()) if ("priest".equals(n.kind) && city.walkable(n.x, n.y + 1)) return new int[] { n.x, n.y + 1 };
+        return new int[] { city.spawnX, city.spawnY };
+    }
+
+    /** 성당 신부 -- action: heal(체력 가득, 무료) / save(쓰러지면 왕도 성당에서 깨어나기) / reset(부활 지점을 평원 마을로). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> minePriest(String userName, String action) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", true);
+        if ("save".equals(action) || "reset".equals(action)) {
+            boolean save = "save".equals(action);
+            dao.upsertMineItem(userName, MINE_ITEM_RESPAWN, save ? 1 : 0);
+            out.put("respawnCity", save);
+            out.put("message", save ? "🙏 성당 신부: 기도했습니다. 쓰러지면 이 성당에서 깨어날 거예요." : "🙏 성당 신부: 이제 쓰러지면 중앙 평원 마을에서 깨어날 거예요.");
+            return out;
+        }
+        int lv = mineLv(row);
+        dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now, 0);
+        out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now));
+        out.put("message", "✨ 성당 신부: 여신의 축복을! 체력이 모두 회복됐어요.");
         return out;
     }
 

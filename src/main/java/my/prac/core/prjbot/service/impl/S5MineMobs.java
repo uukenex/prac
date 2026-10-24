@@ -60,7 +60,11 @@ public final class S5MineMobs {
         new Type("흑기사", 8, "human", "#2a2a3a", S5MineMap.CASTLE),
         new Type("눈늑대", 7, "quad", "#f0f4ff", S5MineMap.NORTH),
         new Type("설인", 8, "human", "#e8f0ff", S5MineMap.NORTH),
-        new Type("얼음 정령", 9, "flyer", "#8fe8ff", S5MineMap.NORTH)
+        new Type("얼음 정령", 9, "flyer", "#8fe8ff", S5MineMap.NORTH),
+        // [2026-10-24] 모래폭풍 너머 초원(왕도 가는 길) -- 목록 끝에만 덧붙인다(앞 번호는 화면 그림 번호라 그대로)
+        new Type("들소", 6, "quad", "#5a3a26", S5MineMap.STEPPE),
+        new Type("오크 전사", 7, "human", "#5a7a3a", S5MineMap.STEPPE),
+        new Type("하피", 7, "flyer", "#c08a8a", S5MineMap.STEPPE)
     ));
 
     /** 그 칸의 몬스터 단계(0 = 몬스터 없음). 평원은 마을에서 멀수록 강하다. */
@@ -80,6 +84,7 @@ public final class S5MineMobs {
             case S5MineMap.CASTLE: return S5MineMap.inRect(S5MineMap.CASTLE_KEEP, x, y) ? 8 : S5MineMap.inRect(S5MineMap.CASTLE_WALL, x, y) ? 7 : 6;
             case S5MineMap.ISLAND: return Math.hypot(x - m.spawnX, y - m.spawnY) < 30 ? 5 : 6;
             case S5MineMap.NORTH: return y > m.h * 0.66 ? 7 : y > m.h * 0.33 ? 8 : 9;
+            case S5MineMap.STEPPE: return y > m.h * 0.5 ? 6 : 7; // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0)
             default: return 0;
         }
     }

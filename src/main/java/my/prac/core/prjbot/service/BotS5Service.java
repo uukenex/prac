@@ -251,6 +251,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineCaptain(String userName, String action);
     /** [2026-10-24] 명품상점 -- action buy/wear/gender. */
     HashMap<String, Object> mineLook(String userName, String action, String code, String slot);
+    /** [2026-10-24] 왕도 성당 신부 -- action heal/save/reset. */
+    HashMap<String, Object> minePriest(String userName, String action);
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 

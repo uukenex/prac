@@ -41,8 +41,15 @@ public final class S5MineMap {
     /** 배에 오르는 판자(B) 포탈의 대상 -- 대상 맵 대신 항로(SHIP_PORTS 중 하나)를 고른다. */
     public static final String SHIP = "ship";
     public static final List<String> SHIP_PORTS = Collections.unmodifiableList(Arrays.asList(BEACH, ISLAND, NORTH));
+    /** [2026-10-24] "모래폭풍을 지나면 평원 하나, 그다음 대도시(성당, 텔레포트 게이트) -- 웅장하게, 라그나로크 프론테라 느낌, 대도시에서 다른 지역으로는 어렵게" 요청.
+     *  사막 북쪽 통로 -> 모래폭풍 너머 초원(STEPPE) -> 왕도(CITY). 왕도의 동/서문은 잠김, 텔레포트 게이트(X)는 금광석을 내고 다른 지역으로. */
+    public static final String STEPPE = "steppe";
+    public static final String CITY = "city";
+    /** 텔레포트 게이트(X) 포탈의 대상 -- 목적지(TELE_DESTS)를 고른다. */
+    public static final String TELE = "tele";
+    public static final List<String> TELE_DESTS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE));
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY);
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
@@ -76,6 +83,7 @@ public final class S5MineMap {
     private static final double[] CASTLE_SHARE = { 1, 20, 0.05, 0.15, 0.30 };
     private static final double[] ISLAND_SHARE = { 1, 15, 0.04, 0.14, 0.30 };
     private static final double[] NORTH_SHARE = { 2, 30, 0.06, 0.18, 0.30 };
+    private static final double[] STEPPE_SHARE = { 1, 20, 0.04, 0.14, 0.30 };
 
     // ---------------------------------------------------------------- 보석(채굴 때 추가로)
     /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
@@ -97,6 +105,7 @@ public final class S5MineMap {
         GEM_DROPS.put(CASTLE, new int[][] { { 5, 50 }, { 1, 10 } });
         GEM_DROPS.put(ISLAND, new int[][] { { 3, 50 }, { 7, 10 } });
         GEM_DROPS.put(NORTH, new int[][] { { 2, 30 }, { 8, 5 } });
+        GEM_DROPS.put(STEPPE, new int[][] { { 0, 50 }, { 7, 10 } }); // [2026-10-24] 초원 = 재스퍼 5% / 에메랄드 1%(왕도는 못 캔다)
     }
 
     /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
@@ -108,6 +117,19 @@ public final class S5MineMap {
         for (int[] d : drops) {
             acc += d[1];
             if (roll < acc) return d[0];
+        }
+        return -1;
+    }
+
+    /** [2026-10-24] 몬스터 처치 보상용 -- 캘 때(gemFor)와 같지만 그 맵의 흔한 보석(첫째)만 commonMult배. */
+    public static int gemForMob(String mapId, int roll, double commonMult) {
+        if (roll < DIAMOND_PERMILLE) return GEM_DIAMOND;
+        int acc = DIAMOND_PERMILLE;
+        int[][] drops = GEM_DROPS.get(mapId);
+        if (drops == null) return -1;
+        for (int i = 0; i < drops.length; i++) {
+            acc += i == 0 ? (int) Math.round(drops[i][1] * commonMult) : drops[i][1];
+            if (roll < acc) return drops[i][0];
         }
         return -1;
     }
@@ -165,7 +187,7 @@ public final class S5MineMap {
             this.x = x; this.y = y; this.kind = kind; this.target = target; this.tx = tx; this.ty = ty; this.label = label;
         }
         public boolean locked() {
-            return target == null || (!IDS.contains(target) && !SHIP.equals(target));
+            return target == null || (!IDS.contains(target) && !SHIP.equals(target) && !TELE.equals(target));
         }
     }
 
@@ -220,7 +242,7 @@ public final class S5MineMap {
     }
 
     public static boolean portalChar(char c) {
-        return "GMUSB".indexOf(c) >= 0;
+        return "GMUSBX".indexOf(c) >= 0; // X = 텔레포트 게이트(왕도)
     }
 
     public boolean inside(int x, int y) {
@@ -309,6 +331,8 @@ public final class S5MineMap {
         S5MineMap castle = generateCastle(seed + 5);
         S5MineMap island = generateIsland(seed + 6);
         S5MineMap northEnd = generateNorth(seed + 7);
+        S5MineMap steppe = generateSteppe(seed + 8);
+        S5MineMap city = generateCity(seed + 9);
 
         Portal mouth = null, north = null, south = null, west = null, east = null;
         for (Portal p : field.portals) {
@@ -330,12 +354,23 @@ public final class S5MineMap {
         }
         List<Portal> cp = new ArrayList<>();
         for (Portal p : cave.portals) cp.add(p.kind == 'U' ? new Portal(p.x, p.y, 'U', FIELD, mouth.x, mouth.y + 1, p.label) : p);
-        // 사막 북쪽 끝 통로는 계속 잠김 -- 북쪽 끝 설원은 배로만 간다("추후 배를 통해서만 이동").
+        // 사막 북쪽 끝 통로 -> 모래폭풍 너머 초원(2026-10-24 개방). 북쪽 끝 설원은 여전히 배로만.
         List<Portal> dp = new ArrayList<>();
+        Portal dNorth = null;
         for (Portal p : desert.portals) {
             if (FIELD.equals(p.target)) dp.add(new Portal(p.x, p.y, p.kind, FIELD, north.x, north.y + 1, p.label));
-            else dp.add(new Portal(p.x, p.y, p.kind, null, 0, 0, "모래폭풍 너머 (배로만 갈 수 있어요)"));
+            else { dNorth = p; dp.add(new Portal(p.x, p.y, p.kind, STEPPE, steppe.spawnX, steppe.spawnY, "모래폭풍을 지나 북쪽 초원으로")); }
         }
+        // 초원: 남쪽 통로 -> 사막 북쪽 끝, 북쪽 통로 -> 왕도 남문. 왕도: 남문 -> 초원 북쪽 끝(동/서문은 잠김).
+        Portal sNorth = null;
+        for (Portal p : steppe.portals) if (p.y == 0) sNorth = p;
+        List<Portal> sp = new ArrayList<>();
+        for (Portal p : steppe.portals) {
+            if (p == sNorth) sp.add(new Portal(p.x, p.y, p.kind, CITY, city.spawnX, city.spawnY, "왕도 아스테리아 남문"));
+            else sp.add(new Portal(p.x, p.y, p.kind, DESERT, dNorth.x, dNorth.y + 1, "모래폭풍 너머 사막으로"));
+        }
+        List<Portal> tp = new ArrayList<>();
+        for (Portal p : city.portals) tp.add(STEPPE.equals(p.target) ? new Portal(p.x, p.y, p.kind, STEPPE, sNorth.x, sNorth.y + 1, p.label) : p);
         List<Portal> bp = new ArrayList<>();
         int beachDockX = beach.spawnX, beachDockY = beach.spawnY;
         for (Portal p : beach.portals) {
@@ -374,6 +409,8 @@ public final class S5MineMap {
         out.put(CASTLE, relink(castle, kp, null));
         out.put(ISLAND, island);
         out.put(NORTH, northEnd);
+        out.put(STEPPE, relink(steppe, sp, null));
+        out.put(CITY, relink(city, tp, city.npcs));
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -917,6 +954,104 @@ public final class S5MineMap {
         return m;
     }
 
+    /** [2026-10-24] 모래폭풍 너머 초원(140x140): 풀밭, 드문드문 숲과 바위. 남쪽 가운데 -> 사막 북쪽 끝, 남에서 북으로 굽이치는 흙길 끝 -> 왕도 남문. */
+    static S5MineMap generateSteppe(long seed) {
+        int w = 140, h = 140;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 71), grove = new Noise(seed * 31 + 72), rich = new Noise(seed * 31 + 73);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double rk = rock.fbm(x / 16.0, y / 16.0), gv = grove.fbm(x / 12.0, y / 12.0);
+            t[y][x] = rk > 0.72 ? '^' : rk > 0.66 ? ':' : gv > 0.62 ? (r.nextDouble() < 0.4 ? 'T' : '.') : (r.nextDouble() < 0.02 ? 'T' : (gv < 0.3 ? ',' : '.'));
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        int sx = w / 2, px = sx;
+        for (int y = h - 2; y >= 1; y--) {
+            if (r.nextDouble() < 0.25) px += r.nextBoolean() ? 1 : -1;
+            px = Math.max(5, Math.min(w - 6, px));
+            for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = ',';
+        }
+        for (int dx = -1; dx <= 1; dx++) t[h - 2][sx + dx] = ',';
+        t[h - 1][sx] = 'G';
+        t[0][px] = 'G';
+        int sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(sx, h - 1, 'G', DESERT, 0, 0, "모래폭풍 너머 사막으로"));
+        portals.add(new Portal(px, 0, 'G', CITY, 0, 0, "왕도 아스테리아 남문"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, STEPPE_SHARE, skip);
+        return new S5MineMap(STEPPE, "모래폭풍 너머 초원", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-10-24] 왕도 아스테리아(120x120, 라그나로크 프론테라 느낌): 두꺼운 성벽(W)으로 둘러싼 정사각 도시, 성문 셋(남문만 열림, 동/서문은 잠김),
+     *  성문에서 가운데까지 넓은 십자 대로(돌바닥 s), 가운데 둥근 광장과 분수(~), 광장 남쪽 텔레포트 게이트(X), 북쪽 대로 끝에 성당(Q, 신부 NPC),
+     *  네 구역에 붉은 지붕 건물(K)과 정원(풀/나무). 몬스터와 광석은 없다(안전 지대). */
+    static S5MineMap generateCity(long seed) {
+        int w = 120, h = 120, c = w / 2, wt = 3, road = 3;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = 's';
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (x < wt || y < wt || x >= w - wt || y >= h - wt) t[y][x] = 'W';
+        // 네 구역: 정원(풀/나무) 바탕, 십자 대로와 광장 둘레는 돌바닥
+        for (int y = wt + 2; y < h - wt - 2; y++) for (int x = wt + 2; x < w - wt - 2; x++) {
+            if (Math.abs(x - c) <= road + 1 || Math.abs(y - c) <= road + 1) continue;
+            if (Math.hypot(x - c, y - c) < 17) continue;
+            t[y][x] = r.nextDouble() < 0.08 ? 'T' : '.';
+        }
+        // 붉은 지붕 건물 블록(대로/광장에서 떨어진 곳), 건물 앞은 돌길
+        for (int by = wt + 4; by < h - wt - 8; by += 11) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
+            int bw = 6 + r.nextInt(2), bh = 5 + r.nextInt(2);
+            boolean clear = true;
+            for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++) {
+                if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
+            }
+            if (!clear) continue;
+            for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
+            for (int x = bx - 1; x <= bx + bw; x++) t[by + bh][x] = 's';
+        }
+        // 가운데 광장(돌바닥 원) + 분수
+        for (int y = c - 16; y <= c + 16; y++) for (int x = c - 16; x <= c + 16; x++) if (Math.hypot(x - c, y - c) < 16) t[y][x] = 's';
+        for (int y = c - 3; y <= c + 3; y++) for (int x = c - 3; x <= c + 3; x++) if (Math.hypot(x - c, y - c) < 3.2) t[y][x] = '~';
+        // 성당: 북쪽 대로 끝(성벽 안쪽)에 큰 건물, 문 앞에 신부
+        int qx0 = c - 9, qx1 = c + 9, qy0 = wt + 3, qy1 = wt + 16;
+        for (int y = qy0; y <= qy1; y++) for (int x = qx0; x <= qx1; x++) t[y][x] = 'Q';
+        for (int y = qy1 + 1; y <= qy1 + 2; y++) for (int x = qx0 - 1; x <= qx1 + 1; x++) t[y][x] = 's';
+        int px = c, py = qy1 + 1;
+        t[py][px] = 'N';
+        // 텔레포트 게이트: 광장 남쪽
+        int gx = c, gy = c + 9;
+        t[gy][gx] = 'X';
+        // 성문: 남문(열림), 동문/서문(잠김) -- 북쪽은 성당이 막고 있다
+        for (int y = h - wt; y < h; y++) for (int dx = -1; dx <= 1; dx++) t[y][c + dx] = 's';
+        t[h - 1][c] = 'G';
+        for (int x = w - wt; x < w; x++) for (int dy = -1; dy <= 1; dy++) t[c + dy][x] = 's';
+        t[c][w - 1] = 'G';
+        for (int x = 0; x < wt; x++) for (int dy = -1; dy <= 1; dy++) t[c + dy][x] = 's';
+        t[c][0] = 'G';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 초원으로 나가기"));
+        portals.add(new Portal(w - 1, c, 'G', null, 0, 0, "동문 (굳게 닫혀 있다)"));
+        portals.add(new Portal(0, c, 'G', null, 0, 0, "서문 (굳게 닫혀 있다)"));
+        portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
+        int sx = c, sy = h - wt - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'K';
+        byte[][] o = new byte[h][w]; // 광석 없음(도시)
+        S5MineMap m = new S5MineMap(CITY, "왕도 아스테리아", false, w, h, sx, sy, t, o, portals);
+        List<Npc> npcs = new ArrayList<>();
+        npcs.add(new Npc(px, py, "priest", "성당 신부", "여신의 가호가 함께하기를. 상처를 치료하고, 쓰러지면 이곳에서 깨어나도록 기도해 드리지요."));
+        m.npcs = npcs;
+        return m;
+    }
+
     /** 격자 값 노이즈(부드럽게 보간) 4옥타브 합, 0~1. */
     private static final class Noise {
         private final long seed;
@@ -970,6 +1105,9 @@ public final class S5MineMap {
                 case 'N': c = 0x2040ff; break;
                 case 's': c = 0xa9a49a; break;
                 case 'W': c = 0x4a4540; break;
+                case 'K': c = 0xa8443a; break;
+                case 'Q': c = 0xdfe6f2; break;
+                case 'X': c = 0x7a5cff; break;
                 case 'n': c = 0xf2f6fa; break;
                 case 'Y': c = 0x2f5d4a; break;
                 case 'G': case 'M': case 'U': case 'S': case 'B': c = 0xff2020; break;
