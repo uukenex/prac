@@ -9489,6 +9489,15 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요(최대·현재 내구도가 함께 올라요).");
             return out;
         }
+        // [2026-10-24] 바닷길은 하루 보석 MINE_SEA_DAILY개까지(광역 곡괭이로 함께 캔 칸도 센다) -- 다 캤으면 내구도도 안 쓴다
+        boolean sea = S5MineMap.SEAROAD.equals(map.id);
+        int today = Integer.parseInt(java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
+        int seaUsed = sea && items.getOrDefault(MINE_ITEM_SEA_DAY, 0) == today ? items.getOrDefault(MINE_ITEM_SEA_CNT, 0) : 0;
+        if (sea && seaUsed >= MINE_SEA_DAILY) {
+            out.put("message", "🌊 오늘은 바닷길에서 보석을 " + MINE_SEA_DAILY + "개 다 캤어요. 내일 다시 와 주세요.");
+            out.put("seaLimit", true);
+            return out;
+        }
         // 칸 하나 캐기(요일석/바닷길 보석/광석 + 반지/목걸이 효과 + 보석) -- [2026-10-24] 광역 곡괭이(주변 3x3)도 같은 계산을 칸마다 한다.
         HashMap<String, Object> one = mineDigCell(userName, map, items, x, y, g, now, dugKey);
         int used = 1;
@@ -9496,7 +9505,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> wide = new ArrayList<>();
         if (items.getOrDefault(MINE_ITEM_WIDE_PICK, 0) > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 1) {
             for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-                if ((dx == 0 && dy == 0) || st - used < 1) continue;
+                if ((dx == 0 && dy == 0) || st - used < 1 || (sea && seaUsed + used >= MINE_SEA_DAILY)) continue;
                 int nx = x + dx, ny = y + dy, ng = map.oreAt(nx, ny);
                 if (ng == 0 || !map.walkable(nx, ny) || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
                 HashMap<String, Object> w = mineDigCell(userName, map, items, nx, ny, ng, now, dugKey);
@@ -9505,6 +9514,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 wide.add(w);
                 used++;
             }
+        }
+        if (sea) {
+            dao.upsertMineItem(userName, MINE_ITEM_SEA_DAY, today);
+            dao.upsertMineItem(userName, MINE_ITEM_SEA_CNT, seaUsed + used);
+            out.put("seaLeft", MINE_SEA_DAILY - seaUsed - used);
         }
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
@@ -9717,6 +9731,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         S5MineMap target = S5MineMap.get(ship || tele ? dest : p.target);
+        if (S5MineMap.SEAROAD.equals(target.id) && !water) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("silent", true);
+            return out;
+        }
         if (!ship && !tele && (S5MineMap.STEPPE.equals(target.id) || S5MineMap.CITY.equals(target.id)) && !isMineAdmin(userName)) { // [2026-10-24] 아직 개발 중 -- 관리자만
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("locked", true);
@@ -10288,6 +10307,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int MINE_GREET_RANGE = 4;
     private static final int MINE_GREET_STONES = 5;
     static final String MINE_ITEM_GREET_DAY = "GREET_DAY";
+    /** [2026-10-24] 바닷길 하루 보석 한도("바닷길 안에서는 하루 보석 50개까지") -- SEA_DAY = yyyyMMdd, SEA_CNT = 그날 캔 칸 수. */
+    static final int MINE_SEA_DAILY = 50;
+    static final String MINE_ITEM_SEA_DAY = "SEA_DAY";
+    static final String MINE_ITEM_SEA_CNT = "SEA_CNT";
 
     private MinePresence minePresenceOf(String userName) {
         return MINE_PRESENCE.computeIfAbsent(userName, u -> new MinePresence(Integer.toHexString((u + "|s5-mine-presence").hashCode() & 0x7fffffff)));

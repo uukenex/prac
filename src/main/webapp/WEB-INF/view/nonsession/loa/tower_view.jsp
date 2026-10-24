@@ -6837,6 +6837,7 @@ var TowerMine = (function () {
   function enterPortal(px2, py2, now) {
     var p = portalAt[px2 + ',' + py2];
     if (!p) return;
+    if (p.kind === 'Z' && !(st && st.waterWalk)) return; // [2026-10-24] 숨은 입구 -- 용왕의 반지가 없으면 그냥 물(아무 반응 없음)
     if (p.kind === 'X' && map.teleTo) { // [2026-10-24] 왕도 텔레포트 게이트 -- 목적지 고르기
       var tk = 'tele' + px2 + ',' + py2;
       if (lastBump === tk && now - lastBumpT < 1200) return;
@@ -7197,6 +7198,7 @@ var TowerMine = (function () {
       } else {
         if (d.reload) { reload(); return; }
         if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+        if (d.seaLimit) setAuto(false); // [2026-10-24] 바닷길 하루 보석 한도
         if (d.noOre || auto) noOre[x + ',' + y] = 1; // [2026-10-24] 자동채광이 같은 칸을 다시 고르지 않게
         if (!(auto && d.noOre)) msg(d.message || d.error || '캐지 못했어요.');
       }
