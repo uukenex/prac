@@ -21,7 +21,6 @@ public interface BotS5DAO {
     int insertBattleStat(HashMap<String, Object> map);
     /** [2026-09-30] 시즌5 전용 카카오 로그인 회원(키값+닉네임만) upsert. */
     int upsertKakaoMember(HashMap<String, Object> map);
-    List<HashMap<String, Object>> selectBattleStatAgg(@Param("days") double days);
 
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);

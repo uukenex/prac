@@ -73,6 +73,8 @@
     .log-chip{ display:inline-block; padding:2px 8px; border-radius:999px; font-weight:700; font-size:10px; }
     .log-chip.web{ background:var(--pp-soft); color:var(--pp); }
     .log-chip.chat{ background:var(--gold-soft); color:var(--gold); }
+    .log-chip.mine{ background:#E3DDF3; color:#5B3FA0; }
+    .cat-row .time-btn{ font-size:13px; padding:7px 16px; }
     .log-req{ font-weight:700; font-size:13px; margin-bottom:4px; word-break:break-all; }
     .log-res{ font-size:12.5px; color:var(--ink); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
 
@@ -106,11 +108,14 @@
   <div class="wrap">
     <h1>📜 람쥐탑 로그 뷰어</h1>
     <div class="sub">채팅 명령어 + 웹 액션을 유저별로 조회(관리자용, SPA와 별도 페이지) -- 최근 24시간 이내만</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;">
-      <a href="/loa/tower-balance-stats" style="color:#6B5E82;text-decoration:none;border:1.5px solid #E5D3A1;background:#fff;padding:5px 12px;border-radius:999px;font-weight:700;">⚖️ 밸런스 통계</a>
-    </div>
 
     <div class="card">
+      <!-- [2026-10-24] "광산 로그랑 탑 로그 분리, 필터 버튼도 분리" 요청 -- 아래 목록과 사용자 요약 모두 이 구분을 따른다 -->
+      <div class="time-row cat-row" id="catRow" style="margin-bottom:8px;">
+        <button type="button" class="time-btn active" data-cat="tower">🗼 탑 로그</button>
+        <button type="button" class="time-btn" data-cat="mine">⛏️ 광산 로그</button>
+        <button type="button" class="time-btn" data-cat="all">전체</button>
+      </div>
       <div class="search-row">
         <select id="userNameSelect"><option value="">전체 유저</option></select>
         <input type="text" id="keywordInput" placeholder="검색어(선택, 요청/응답 부분일치)">
@@ -153,7 +158,13 @@
     // 서버에서 한 번 불러온 "최근 24시간" 전체 로그(선택된 유저 기준). 시간대 버튼/검색어는
     // 전부 이 배열 안에서 필터링만 한다(추가 fetch 없음).
     var allItems = [];
-    var state = { userName: '', windowMin: 1440, keyword: '' };
+    var state = { userName: '', windowMin: 1440, keyword: '', cat: 'tower' };
+    // [2026-10-24] 로그 구분: 광산 = ROOM_NAME 'MINE'(이후) 또는 예전에 'WEB'으로 쌓인 광산 로그(요청이 "[웹] 광산"으로 시작),
+    //  웹 = 그 밖의 'WEB'(탑 웹 액션), 채팅 = 그 외 방 이름. 탑 로그 = 채팅 + 웹.
+    function catOf(it) {
+      if (it.ROOM_NAME === 'MINE' || (it.ROOM_NAME === 'WEB' && String(it.REQ || '').indexOf('[웹] 광산') === 0)) return 'mine';
+      return it.ROOM_NAME === 'WEB' ? 'web' : 'chat';
+    }
     // 최근 명령어 사용자 요약(서버에서 3일치를 한 번에 집계해 받아오고, 1시간/24시간/3일 전환은 JS로만).
     var sumUsers = [];
     var sumHours = 24;
@@ -192,18 +203,22 @@
     function renderSummary() {
       var k = sumKey(sumHours);
       var rows = sumUsers.map(function (u) {
-        var total = Number(u['CNT_' + k] || 0), web = Number(u['WEB_' + k] || 0);
-        return { name: u.USER_NAME, total: total, web: web, chat: total - web, last: u.LAST_DATE };
+        var all = Number(u['CNT_' + k] || 0), web = Number(u['WEB_' + k] || 0), mine = Number(u['MINE_' + k] || 0), chat = all - web - mine;
+        var total = state.cat === 'mine' ? mine : state.cat === 'tower' ? chat + web : all;
+        return { name: u.USER_NAME, total: total, web: web, chat: chat, mine: mine, last: u.LAST_DATE };
       }).filter(function (r) { return r.total > 0; });
       rows.sort(function (a, b) { return b.total - a.total || (a.last < b.last ? 1 : -1); });
       var body = qs('sumBody');
       if (rows.length === 0) { body.innerHTML = '<div class="log-empty">이 기간에 명령어를 사용한 사람이 없습니다.</div>'; return; }
       var totalAll = rows.reduce(function (s, r) { return s + r.total; }, 0);
-      body.innerHTML = '<table class="sum-table"><thead><tr><th>유저</th><th class="num">합계</th><th class="num">채팅</th><th class="num">웹</th><th>마지막 사용</th></tr></thead><tbody>'
+      var showTower = state.cat !== 'mine', showMine = state.cat !== 'tower';
+      body.innerHTML = '<table class="sum-table"><thead><tr><th>유저</th><th class="num">합계</th>'
+        + (showTower ? '<th class="num">채팅</th><th class="num">웹</th>' : '') + (showMine ? '<th class="num">광산</th>' : '') + '<th>마지막 사용</th></tr></thead><tbody>'
         + rows.map(function (r) {
           return '<tr class="sum-row' + (state.userName === r.name ? ' active' : '') + '" data-user="' + escapeHtml(r.name).replace(/"/g, '&quot;') + '">'
             + '<td>' + escapeHtml(r.name) + '</td><td class="num"><b>' + r.total + '회</b></td>'
-            + '<td class="num">' + r.chat + '</td><td class="num">' + r.web + '</td>'
+            + (showTower ? '<td class="num">' + r.chat + '</td><td class="num">' + r.web + '</td>' : '')
+            + (showMine ? '<td class="num">' + r.mine + '</td>' : '')
             + '<td class="sum-sub">' + escapeHtml((r.last || '').substring(5, 16)) + '</td></tr>';
         }).join('')
         + '</tbody></table><div class="sum-sub" style="margin-top:6px;">' + rows.length + '명 · 총 ' + totalAll + '회</div>';
@@ -235,6 +250,8 @@
       var filtered = allItems.filter(function (it) {
         var d = parseLogDate(it.INSERT_DATE);
         if (d && (now - d.getTime()) > windowMs) return false;
+        var cat = catOf(it);
+        if (state.cat === 'mine' ? cat !== 'mine' : state.cat === 'tower' ? cat === 'mine' : false) return false;
         if (kw) {
           var hay = ((it.REQ || '') + ' ' + (it.RES || '')).toLowerCase();
           if (hay.indexOf(kw) === -1) return false;
@@ -247,8 +264,9 @@
         list.innerHTML = '<div class="log-empty">표시할 로그가 없습니다.</div>';
       } else {
         list.innerHTML = filtered.map(function (it) {
-          var isWeb = it.ROOM_NAME === 'WEB';
-          var chip = isWeb ? '<span class="log-chip web">WEB</span>' : '<span class="log-chip chat">' + escapeHtml(it.ROOM_NAME || '채팅') + '</span>';
+          var cat = catOf(it);
+          var chip = cat === 'mine' ? '<span class="log-chip mine">⛏️ 광산</span>' : cat === 'web' ? '<span class="log-chip web">WEB</span>'
+              : '<span class="log-chip chat">' + escapeHtml(it.ROOM_NAME || '채팅') + '</span>';
           var who = state.userName ? '' : '<span class="who">' + escapeHtml(it.USER_NAME) + '</span>';
           return '<div class="log-item">'
             + '<div class="log-item-head">' + who + chip + '<span>' + escapeHtml(it.INSERT_DATE) + '</span></div>'
@@ -268,7 +286,7 @@
       qs('logList').innerHTML = '';
       qs('metaRow').style.display = 'none';
 
-      var url = base + '/loa/api/tower-battle-log-recent?userName=' + encodeURIComponent(state.userName) + '&hours=24';
+      var url = base + '/loa/api/tower-battle-log-recent?userName=' + encodeURIComponent(state.userName) + '&hours=24&cat=' + state.cat;
       fetch(url).then(function (r) { return r.json(); }).then(function (data) {
         qs('loadingEl').style.display = 'none';
         allItems = data.items || [];
@@ -290,6 +308,15 @@
         btn.classList.add('active');
         sumHours = parseInt(btn.getAttribute('data-h'), 10);
         renderSummary(); // 이미 받아온 3일치 집계 안에서만 전환(서버 재조회 없음)
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#catRow .time-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#catRow .time-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        state.cat = btn.getAttribute('data-cat');
+        renderSummary();
+        fetchFromServer(); // 광산 로그가 많아 개수 상한에 밀리지 않게 구분별로 서버에서 다시 받는다
       });
     });
     qs('keywordInput').addEventListener('input', function () {

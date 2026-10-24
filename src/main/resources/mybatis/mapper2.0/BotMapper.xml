@@ -434,6 +434,13 @@
 			<if test="userName != null and userName != ''">
 			   AND A.USER_NAME = #{userName, jdbcType=VARCHAR}
 			</if>
+			<!-- [2026-10-24] 탑/광산 로그 분리(광산 채굴 로그가 많아 개수 상한 안에서 탑 로그가 밀리지 않게 SQL에서 거른다) -->
+			<if test="cat == 'mine'">
+			   AND (A.ROOM_NAME = 'MINE' OR (A.ROOM_NAME = 'WEB' AND A.REQ LIKE N'[웹] 광산%'))
+			</if>
+			<if test="cat == 'tower'">
+			   AND A.ROOM_NAME != 'MINE' AND NOT (A.ROOM_NAME = 'WEB' AND A.REQ LIKE N'[웹] 광산%')
+			</if>
 			 ORDER BY A.INSERT_DATE DESC
 		) WHERE ROWNUM &lt;= #{maxRows, jdbcType=INTEGER}
 	</select>
@@ -448,12 +455,18 @@
 		       COUNT(*) AS CNT_3D,
 		       SUM(CASE WHEN A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS CNT_24H,
 		       SUM(CASE WHEN A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS CNT_1H,
-		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' THEN 1 ELSE 0 END) AS WEB_3D,
-		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS WEB_24H,
-		       SUM(CASE WHEN A.ROOM_NAME = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS WEB_1H,
+		       SUM(CASE WHEN A.CAT = 'WEB' THEN 1 ELSE 0 END) AS WEB_3D,
+		       SUM(CASE WHEN A.CAT = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS WEB_24H,
+		       SUM(CASE WHEN A.CAT = 'WEB' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS WEB_1H,
+		       SUM(CASE WHEN A.CAT = 'MINE' THEN 1 ELSE 0 END) AS MINE_3D,
+		       SUM(CASE WHEN A.CAT = 'MINE' AND A.INSERT_DATE >= SYSDATE - 1 THEN 1 ELSE 0 END) AS MINE_24H,
+		       SUM(CASE WHEN A.CAT = 'MINE' AND A.INSERT_DATE >= SYSDATE - 1/24 THEN 1 ELSE 0 END) AS MINE_1H,
 		       TO_CHAR(MAX(A.INSERT_DATE), 'YYYY-MM-DD HH24:MI:SS') AS LAST_DATE
 		  FROM (
-		        SELECT S.USER_NAME AS USER_NAME, S.ROOM_NAME AS ROOM_NAME, S.INSERT_DATE AS INSERT_DATE
+		        <!-- [2026-10-24] 광산 로그 분리: ROOM_NAME 'MINE'(이후) 또는 예전에 WEB으로 쌓인 광산 로그(REQ가 '[웹] 광산'으로 시작) = MINE -->
+		        SELECT S.USER_NAME AS USER_NAME, S.INSERT_DATE AS INSERT_DATE,
+		               CASE WHEN S.ROOM_NAME = 'MINE' OR (S.ROOM_NAME = 'WEB' AND S.REQ LIKE N'[웹] 광산%') THEN 'MINE'
+		                    WHEN S.ROOM_NAME = 'WEB' THEN 'WEB' ELSE 'CHAT' END AS CAT
 		          FROM TBOT_S5_WORD_HIS S
 		         WHERE S.INSERT_DATE >= SYSDATE - 3
 		       ) A

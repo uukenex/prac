@@ -68,13 +68,7 @@ public class Season5ViewController {
         return "nonsession/loa/s5_battle_log_view";
     }
 
-    /** [2026-09-30] /로그 페이지에서 연결되는 관리자용 DB 뷰 2종(SPA 밖 독립 페이지). 로그 뷰어 포함 3페이지와 그 API는
-     *  시즌5 카카오 로그인(Season5KakaoLoginController)이 된 사람만 볼 수 있다(페이지=로그인 화면으로 리다이렉트, API=401). */
-    @GetMapping("/tower-balance-stats")
-    public String balanceStatsViewPage(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-balance-stats";
-        return "nonsession/loa/s5_balance_stats_view";
-    }
+    // [2026-10-24] "밸런스 화면은 없애줘" -- /tower-balance-stats 페이지와 API를 지웠다(전투 결과 수집 TBOT_S5_BATTLE_STAT 쓰기는 그대로).
 
     // ─────────────────────────────────────────────
     // REST API
@@ -445,7 +439,8 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerBattleLogRecent(
             @RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "hours", defaultValue = "24") int hours, HttpSession session) {
+            @RequestParam(value = "hours", defaultValue = "24") int hours,
+            @RequestParam(value = "cat", defaultValue = "all") String cat, HttpSession session) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
         if (hours < 1) hours = 1;
         if (hours > 24) hours = 24; // 이 페이지가 보장하는 최대 범위(버튼 중 가장 넓은 게 24시간)
@@ -453,6 +448,7 @@ public class Season5ViewController {
         HashMap<String, Object> params = new HashMap<>();
         params.put("userName", userName.trim());
         params.put("hours", hours);
+        params.put("cat", "mine".equals(cat) || "tower".equals(cat) ? cat : "all"); // [2026-10-24] 탑/광산 로그 분리
         params.put("maxRows", 1000); // 소규모 유저(21명) 기준 24시간 트래픽 상한 -- 안전장치
 
         List<HashMap<String, Object>> items = botDao.selectWordHisRecent(params);
@@ -520,7 +516,7 @@ public class Season5ViewController {
         try {
             HashMap<String, Object> logMap = new HashMap<>();
             logMap.put("userName", userName);
-            logMap.put("roomName", "WEB");
+            logMap.put("roomName", "MINE"); // [2026-10-24] 로그 뷰어에서 탑(WEB/채팅)과 광산 로그를 나눠 보도록
             logMap.put("req", req);
             logMap.put("res", res);
             botService.insertS5WordHisTx(logMap);
@@ -793,20 +789,6 @@ public class Season5ViewController {
     public ResponseEntity<?> apiTowerCodexItems() {
         HashMap<String, Object> result = new HashMap<>();
         result.put("items", s5Service.legendaryCodex());
-        return ResponseEntity.ok(result);
-    }
-
-    /** 밸런스 통계 -- 최근 days일치 전투 결과(TBOT_S5_BATTLE_STAT)를 조합/층/종류/전투력비율 버킷 단위로 집계해서 내려주고
-     *  층 구간/조합별 등 다른 축 재집계는 프론트가 한다. */
-    @GetMapping("/api/tower-balance-stats")
-    @ResponseBody
-    public ResponseEntity<?> apiTowerBalanceStats(@RequestParam(value = "days", defaultValue = "7") double days, HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
-        if (days < 0.01) days = 0.01;
-        if (days > 90) days = 90;
-        HashMap<String, Object> result = new HashMap<>();
-        result.put("days", days);
-        result.put("rows", s5Dao.selectBattleStatAgg(days));
         return ResponseEntity.ok(result);
     }
 
