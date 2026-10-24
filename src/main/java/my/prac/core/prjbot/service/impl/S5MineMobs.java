@@ -10,7 +10,7 @@ import java.util.Random;
  * 종류 표(TYPES)와 맵별 배치(spawn)만 여기 둔다. 전투/체력/보상은 BotS5ServiceImpl.mineAttack.
  *
  * 위치: 몬스터는 집 칸 주변 2칸 안(cells)을 돌아다니는데, 칸은 시각으로 정해진다 -- cellAt(mob, ms) = cells[mix(id, ms / SLOT_MS) % cells.length].
- *   서버와 화면(tower_view.jsp TowerMine.mobCell)이 같은 식을 써서 위치를 주고받지 않는다. 맞은 몬스터는 그 자리에 잠깐 멈춘다(서버 메모리, 화면은 주기 조회).
+ *   서버와 화면(tower_view.jsp TowerMine.mobPos)이 같은 식을 써서 위치를 주고받지 않는다. 맞은 몬스터는 그 자리에 잠깐 멈춘다(서버 메모리, 화면은 주기 조회).
  * 단계(tier) 1~9: 체력 18 x 2^(t-1), 공격 4 x 1.94^(t-1), 경험치 6 x 2.7^(t-1). 광산 레벨(1 + 4(t-1))의 공격력으로 3번쯤 때리면 쓰러진다.
  */
 public final class S5MineMobs {
@@ -22,12 +22,15 @@ public final class S5MineMobs {
         public final String name, kind, color;
         public final int tier;
         public final String[] maps;
+        /** [2026-10-24] 보스: 먼저 공격(가까이 가면), 체력 x12 / 공격 x1.4 / 경험치 x15, 맵 리셋 때만 나타나고 잡히면 다음 리셋까지 없다. */
+        public boolean boss;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
-        public int hp() { return (int) Math.round(18 * Math.pow(2.0, tier - 1)); }
-        public int atk() { return (int) Math.round(4 * Math.pow(1.94, tier - 1)); }
-        public int exp() { return (int) Math.round(6 * Math.pow(2.7, tier - 1)); }
+        Type asBoss() { boss = true; return this; }
+        public int hp() { return (int) Math.round(18 * Math.pow(2.0, tier - 1) * (boss ? 12 : 1)); }
+        public int atk() { return (int) Math.round(4 * Math.pow(1.94, tier - 1) * (boss ? 1.4 : 1)); }
+        public int exp() { return (int) Math.round(6 * Math.pow(2.7, tier - 1) * (boss ? 15 : 1)); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). */
         public long respawnMs() { return 20_000L + tier * 4_000L; }
     }
@@ -64,8 +67,21 @@ public final class S5MineMobs {
         // [2026-10-24] 모래폭풍 너머 초원(왕도 가는 길) -- 목록 끝에만 덧붙인다(앞 번호는 화면 그림 번호라 그대로)
         new Type("들소", 6, "quad", "#5a3a26", S5MineMap.STEPPE),
         new Type("오크 전사", 7, "human", "#5a7a3a", S5MineMap.STEPPE),
-        new Type("하피", 7, "flyer", "#c08a8a", S5MineMap.STEPPE)
+        new Type("하피", 7, "flyer", "#c08a8a", S5MineMap.STEPPE),
+        // [2026-10-24] 광산 동굴 2층/3층, 바닷길(용궁), 3층 보스
+        new Type("어둠 거미", 6, "crab", "#3a2a4a", S5MineMap.CAVE2),
+        new Type("망령 광부", 7, "human", "#8a9a8a", S5MineMap.CAVE2),
+        new Type("수정 골렘", 8, "human", "#8fd8ff", S5MineMap.CAVE3),
+        new Type("심연 박쥐", 9, "flyer", "#3a1a5a", S5MineMap.CAVE3),
+        new Type("꽃게", 4, "crab", "#e0603a", S5MineMap.SEAROAD),
+        new Type("해마", 4, "small", "#f0b030", S5MineMap.SEAROAD),
+        new Type("문어", 5, "blob", "#c0508a", S5MineMap.SEAROAD),
+        new Type("바다뱀", 5, "snake", "#2f7ab0", S5MineMap.SEAROAD),
+        new Type("고대 광석 골렘", 9, "human", "#5a4a6a").asBoss()
     ));
+
+    /** 보스 종류 번호(TYPES 안). */
+    public static final int BOSS_TYPE = TYPES.size() - 1;
 
     /** 그 칸의 몬스터 단계(0 = 몬스터 없음). 평원은 마을에서 멀수록 강하다. */
     static int tierAt(S5MineMap m, int x, int y) {
@@ -84,6 +100,9 @@ public final class S5MineMobs {
             case S5MineMap.CASTLE: return S5MineMap.inRect(S5MineMap.CASTLE_KEEP, x, y) ? 8 : S5MineMap.inRect(S5MineMap.CASTLE_WALL, x, y) ? 7 : 6;
             case S5MineMap.ISLAND: return Math.hypot(x - m.spawnX, y - m.spawnY) < 30 ? 5 : 6;
             case S5MineMap.NORTH: return y > m.h * 0.66 ? 7 : y > m.h * 0.33 ? 8 : 9;
+            case S5MineMap.CAVE2: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 6 : 7;
+            case S5MineMap.CAVE3: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 8 : 9;
+            case S5MineMap.SEAROAD: return y > m.h * 0.5 ? 4 : 5; // 용궁(북쪽)에 가까울수록
             case S5MineMap.STEPPE: return y > m.h * 0.5 ? 6 : 7; // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0)
             default: return 0;
         }
@@ -149,10 +168,12 @@ public final class S5MineMobs {
             List<Integer> types = typesFor(m.id, tierAt(m, x, y));
             if (types.isEmpty()) continue;
             int type = types.get(r.nextInt(types.size()));
+            // [2026-10-24] "공격할 때 몬스터가 순간이동하는 것 같다" -- 돌아다니는 칸을 집 주변 1칸(상하좌우)으로 줄이고 집 칸을 맨 앞에(cellAt이 절반은 집에 머문다)
             List<Integer> cells = new ArrayList<>();
-            for (int dy = -2; dy <= 2; dy++) for (int dx = -2; dx <= 2; dx++) {
-                int nx = x + dx, ny = y + dy;
-                if (Math.abs(dx) + Math.abs(dy) > 2 || nx < 1 || ny < 1 || nx >= m.w - 1 || ny >= m.h - 1 || !mobCell(t[ny][nx])) continue;
+            cells.add(y * m.w + x);
+            for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
+                int dx = dv[0], dy = dv[1], nx = x + dx, ny = y + dy;
+                if (nx < 1 || ny < 1 || nx >= m.w - 1 || ny >= m.h - 1 || !mobCell(t[ny][nx])) continue;
                 if (Math.abs(nx - m.spawnX) + Math.abs(ny - m.spawnY) < 7) continue;
                 cells.add(ny * m.w + nx);
             }
@@ -160,6 +181,17 @@ public final class S5MineMobs {
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
             taken[y][x] = true;
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca));
+        }
+        if (m.bossX() >= 0) {
+            List<Integer> cells = new ArrayList<>();
+            cells.add(m.bossY() * m.w + m.bossX());
+            for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
+                int nx = m.bossX() + dv[0], ny = m.bossY() + dv[1];
+                if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
+            }
+            int[] ca = new int[cells.size()];
+            for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
+            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), BOSS_TYPE, m.bossX(), m.bossY(), ca));
         }
         return out;
     }
@@ -178,6 +210,7 @@ public final class S5MineMobs {
     /** 그 시각 몬스터가 있는 칸(y * w + x). */
     public static int cellAt(S5MineMap.Mob mob, long ms) {
         int slot = (int) (ms / SLOT_MS);
-        return mob.cells[mix(mob.id, slot) % mob.cells.length];
+        int r = mix(mob.id, slot) % (mob.cells.length * 2);
+        return mob.cells[r < mob.cells.length ? r : 0]; // 절반 넘게 집 칸(0)에 머문다 -- 화면 TowerMine.mobPos와 같은 식
     }
 }

@@ -8617,6 +8617,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     // 바로 옆 칸에서 들어가면 대상 맵으로 옮기고, 대상 맵이 아직 없으면(잠김) 안내만 한다.
     // 광산상점: 광석을 내고 자동사냥 처치당 PP 보너스(PP_BONUS)를 영구히 올린다 -- 자동사냥 정산 때 처치 수만큼 함께 지급(settleAutoHunt).
     //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
+    /** [2026-10-24] "대장장이 곡괭이 강화 최대치 제한" -- 최대 내구도 상한. 상한에 닿으면 더 강화하지 않는다(수리는 없음 -- 같은 날 "수리는 없애도 될 것 같아"). */
+    static final int MINE_PICK_CAP = 1000;
     private static final int MINE_PICK_MAX = 200; // 곡괭이 기본(초기) 최대 내구도 -- 새로 들어온 유저도 200으로 시작(컬럼 기본값, 2026-10-23 1000 -> 200)
     /** 대장간 곡괭이 강화 {광석 등급, 필요 개수, 최대(+현재) 내구도 증가}. 캔 광석을 전부 강화에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
     private static final int[][] MINE_PICK_UPGRADE = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
@@ -8642,7 +8644,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
     /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
     private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 100 }, { 4, 100 }, { 5, 100 }, { 6, 100 } };
-    private static final int MINE_HELMET_OPEN_MAX = 2;
+    private static final int MINE_HELMET_OPEN_MAX = 3; // [2026-10-24] 동굴 3층(레벨 3)이 열려 3단계(금광석 100개)까지
 
     private Map<String, Integer> mineItems(String userName) {
         Map<String, Integer> out = new HashMap<>();
@@ -8669,6 +8671,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.NORTH, 21);
         MINE_MIN_LV.put(S5MineMap.STEPPE, 17); // [2026-10-24] 모래폭풍 너머 초원(몬스터 6~7단계) -- 왕도도 같은 길이라 17
         MINE_MIN_LV.put(S5MineMap.CITY, 17);
+        MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
+        MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
+        MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
     }
 
     static int mineMinLv(S5MineMap m) {
@@ -8854,8 +8859,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return S5MineMap.DUNGEON.equals(map.id) ? S5MineMap.DUNGEON + "-" + S5MineMap.dayKey(now) : map.id;
     }
 
-    /** 캔 칸 등급 값 -> 이름(1~6 일반 광석, 11~17 요일석). */
+    /** 캔 칸 등급 값 -> 이름(1~6 일반 광석, 11~17 요일석, 18 칠요석, 21~29 보석 -- 바닷길에서 캔 칸). */
     private static String mineGradeName(int g) {
+        if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
+        if (g >= S5MineMap.GEM_GRADE_BASE && g < S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_NAMES.length) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g >= 1 && g <= S5MineMap.ORE_NAMES.length) return S5MineMap.ORE_NAMES[g - 1];
         int d = g - S5MineMap.DAY_STONE_GRADE_BASE;
         return d >= 0 && d < S5MineMap.DAY_STONE_NAMES.length ? S5MineMap.DAY_STONE_NAMES[d] : "";
@@ -8898,6 +8905,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("name", map.name);
         out.put("dark", map.dark);
         out.put("wind", map.wind()); // [2026-10-23] 모래바람(사막) -- 화면이 가만히 있어도 좌우로 민다
+        out.put("underwater", map.underwater()); // [2026-10-24] 바닷길(화면이 푸르게 + 거품)
         List<HashMap<String, Object>> npcs = new ArrayList<>();
         for (S5MineMap.Npc n : map.npcs()) {
             HashMap<String, Object> m = new HashMap<>();
@@ -8976,6 +8984,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("kind", ty.kind);
             m.put("color", ty.color);
             m.put("hp", ty.hp());
+            m.put("boss", ty.boss);
             out.add(m);
         }
         return out;
@@ -9059,14 +9068,118 @@ public class BotS5ServiceImpl implements BotS5Service {
                 list.add(new long[] { Long.parseLong(e.getKey().substring(prefix.length())), s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil });
             }
         }
+        if (!map.mobs().isEmpty() && S5MineMobs.TYPES.get(map.mobs().get(map.mobs().size() - 1).type).boss && mineBossDead()) {
+            long bid = map.mobs().size() - 1;
+            list.removeIf(r -> r[0] == bid);
+            list.add(new long[] { bid, 0, Long.MAX_VALUE / 2, 0, 0, 0 });
+        }
         out.put("mobs", list);
         return out;
+    }
+
+    // ---- [2026-10-24] 동굴 3층 보스 -- "선공하는 보스, 잡으면 미스릴 또는 별빛석, 맵 초기화 때만 나오고 잡히면 안 나오게" ----
+    //  맵 리셋(2일 주기)마다 한 번만 나타난다. 잡히면 TBOT_S5_CONFIG.MINE_BOSS_KILLED = "주기|유저"(서버를 다시 켜도 그 주기엔 안 나옴).
+    //  선공: 보스 2칸 안에 들어오면 화면이 1.5초마다 mineBossHit를 부르고 서버가 거리/쿨다운을 확인해 때린다.
+    private static final String MINE_BOSS_KEY = "MINE_BOSS_KILLED";
+    private static volatile int mineBossKilledCycle = Integer.MIN_VALUE;
+    private static final long MINE_BOSS_HIT_GAP_MS = 1_500L;
+    private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_BOSS_LAST_HIT = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private boolean mineBossDead() {
+        if (mineBossKilledCycle == Integer.MIN_VALUE) {
+            try {
+                String v = dao.selectConfigValue(MINE_BOSS_KEY);
+                mineBossKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
+            } catch (Exception e) {
+                mineBossKilledCycle = -1;
+            }
+        }
+        return mineBossKilledCycle == S5MineMap.activeCycle();
+    }
+
+    private static S5MineMap.Mob mineBossOf(S5MineMap map) {
+        if (map.mobs().isEmpty()) return null;
+        S5MineMap.Mob m = map.mobs().get(map.mobs().size() - 1);
+        return S5MineMobs.TYPES.get(m.type).boss ? m : null;
+    }
+
+    /** 쓰러졌을 때 깨어나는 곳으로 옮기고 그곳 이름을 돌려준다(성당에서 기도했으면 왕도 성당, 아니면 평원 마을). */
+    private String mineRespawn(String userName, Map<String, Integer> items, long now) {
+        boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
+        S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
+        int[] hp0 = church ? mineCityChurch(home) : new int[] { home.spawnX, home.spawnY };
+        dao.updateMinePos(userName, home.id, hp0[0], hp0[1], now);
+        return church ? "왕도 아스테리아 성당에서" : "중앙 평원 마을에서";
+    }
+
+    /** 보스 선공 -- (x, y)가 보스 2칸 안이면 보스가 때린다(유저마다 1.5초에 한 번). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineBossHit(String userName, String mapId, String ver, int x, int y) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName) || mineGate() != null) return out;
+        long now = System.currentTimeMillis();
+        Long last = MINE_BOSS_LAST_HIT.get(userName);
+        if (last != null && now - last < MINE_BOSS_HIT_GAP_MS) return out;
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap map = mineMapOf(row);
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) return out;
+        S5MineMap.Mob boss = mineBossOf(map);
+        if (boss == null || mineBossDead()) return out;
+        Map<String, Integer> items = mineItems(userName);
+        int[] pos = minePos(row, map, mineWaterWalk(items));
+        if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        MobState s = MINE_MOB_STATE.get(mineMobKey(map, boss.id));
+        if (s != null && s.deadUntil > now) return out;
+        boolean near = false;
+        for (int c : mineMobCells(boss, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= 2) near = true;
+        if (!near) return out;
+        MINE_BOSS_LAST_HIT.put(userName, now);
+        S5MineMobs.Type type = S5MineMobs.TYPES.get(boss.type);
+        int lv = mineLv(row), dmg = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4)));
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int hp = mineHpNow(row, now) - dmg;
+        boolean died = hp <= 0;
+        out.put("ok", true);
+        out.put("bossDmg", dmg);
+        if (died) {
+            hp = mineHpMax(lv);
+            out.put("message", "💫 " + type.name + "에게 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
+        } else dao.updateMinePos(userName, map.id, x, y, now);
+        dao.updateMineCombat(userName, lv, exp, hp, now, 0);
+        out.put("died", died);
+        out.put("combat", mineCombatInfo(lv, exp, hp, now));
+        if (died) out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** 보스 보상: 25% 별빛석 1개, 아니면 미스릴 3~5개 + 30% 다이아몬드. */
+    private List<HashMap<String, Object>> mineBossDrops(String userName, StringBuilder msg) {
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        if (RND.nextInt(100) < 25) {
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[5], 1);
+            drops.add(mineDrop(6, S5MineMap.ORE_NAMES[5], 1));
+            msg.append(" · ✨ ").append(S5MineMap.ORE_NAMES[5]).append(" 1개");
+        } else {
+            int q = 3 + RND.nextInt(3);
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[4], q);
+            drops.add(mineDrop(5, S5MineMap.ORE_NAMES[4], q));
+            msg.append(" · ").append(S5MineMap.ORE_NAMES[4]).append(' ').append(q).append("개");
+        }
+        if (RND.nextInt(100) < 30) {
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 1);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 1));
+            msg.append(" · 💎 다이아몬드 1개");
+        }
+        return drops;
     }
 
     /** 공격 -- (x, y)에 서서 바로 옆(상하좌우) 몬스터 mobId를 때린다. 살아남으면 반격(몬스터 공격력), 쓰러뜨리면 경험치 + 광석/보석. */
     @Override
     @Transactional
-    public HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId) {
+    public HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc) {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
@@ -9098,6 +9211,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mobId < 0 || mobId >= map.mobs().size()) { out.put("message", "그 몬스터는 없어요."); return out; }
         S5MineMap.Mob mob = map.mobs().get(mobId);
         S5MineMobs.Type type = S5MineMobs.TYPES.get(mob.type);
+        if (type.boss && mineBossDead()) { out.put("message", "이번 맵에서는 이미 쓰러진 보스예요. 다음 맵 리셋 때 다시 나타나요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int hp = mineHpNow(row, now);
@@ -9109,7 +9223,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (s.deadUntil > 0) { s.deadUntil = 0; s.hp = type.hp(); } // 다시 나타남
             int hitCell = -1;
-            for (int c : mineMobCells(mob, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) == 1) { hitCell = c; break; }
+            for (int c : mineMobCells(mob, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
             dmg = Math.max(1, (int) Math.round(mineAtk(lv) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)));
@@ -9118,7 +9232,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (s.hp <= 0) {
                 killed = true;
                 s.hp = 0;
-                s.deadUntil = now + type.respawnMs();
+                s.deadUntil = type.boss ? Long.MAX_VALUE / 2 : now + type.respawnMs(); // 보스는 다음 맵 리셋까지
                 s.frozenUntil = 0;
             } else {
                 s.fx = hitCell % map.w;
@@ -9148,7 +9262,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
             out.put("expGain", type.exp());
-            out.put("drops", mineMobDrops(userName, map, type, msg));
+            if (type.boss) { // [2026-10-24] 보스 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
+                mineBossKilledCycle = S5MineMap.activeCycle();
+                dao.upsertConfigValue(MINE_BOSS_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine cave3 boss killed (cycle|user)");
+                msg.insert(0, "👑 보스 처치! ");
+                out.put("bossKilled", true);
+            }
+            out.put("drops", type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
             out.put("ores", mineOreList(userName));
         } else {
             hp -= counter;
@@ -9156,11 +9276,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (hp <= 0) {
                 died = true;
                 hp = mineHpMax(lv);
-                boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
-                S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
-                int[] hp0 = church ? mineCityChurch(home) : new int[] { home.spawnX, home.spawnY };
-                dao.updateMinePos(userName, home.id, hp0[0], hp0[1], now);
-                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(church ? "왕도 아스테리아 성당에서" : "중앙 평원 마을에서").append(" 깨어났어요.");
+                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawn(userName, items, now)).append(" 깨어났어요.");
             }
         }
         if (!died) dao.updateMinePos(userName, map.id, x, y, now);
@@ -9215,6 +9331,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         putMinePick(out, minePickDur(row), minePickMax(row));
         out.put("pickUpgrades", minePickUpgradeList());
+        out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
         out.put("nextResetAt", S5MineMap.nextResetAt(now));
         Map<String, Integer> items = mineItems(userName);
         int[] pos = minePos(row, map, mineWaterWalk(items));
@@ -9251,7 +9368,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
-            for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY }) {
+            for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD }) {
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -9338,18 +9455,118 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요(최대·현재 내구도가 함께 올라요).");
             return out;
         }
-        // [2026-10-23] 요일 던전 -- 칸의 광석 등급과 상관없이 그날(KST) 요일의 돌 1개(월요석~일요석), 캔 칸 기록 등급은 11~17
+        // 칸 하나 캐기(요일석/바닷길 보석/광석 + 반지/목걸이 효과 + 보석) -- [2026-10-24] 광역 곡괭이(주변 3x3)도 같은 계산을 칸마다 한다.
+        HashMap<String, Object> one = mineDigCell(userName, map, items, x, y, g, now, dugKey);
+        int used = 1;
+        // [2026-10-24] 광역 곡괭이 -- 끼고 있으면 주변 8칸 중 광석이 있고 안 캔 칸을 남은 내구도만큼 함께 캔다(칸마다 내구도 1).
+        List<HashMap<String, Object>> wide = new ArrayList<>();
+        if (items.getOrDefault(MINE_ITEM_WIDE_PICK, 0) > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 1) {
+            for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+                if ((dx == 0 && dy == 0) || st - used < 1) continue;
+                int nx = x + dx, ny = y + dy, ng = map.oreAt(nx, ny);
+                if (ng == 0 || !map.walkable(nx, ny) || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
+                HashMap<String, Object> w = mineDigCell(userName, map, items, nx, ny, ng, now, dugKey);
+                w.put("x", nx);
+                w.put("y", ny);
+                wide.add(w);
+                used++;
+            }
+        }
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("userName", userName);
+        up.put("pickDur", st - used);
+        up.put("atMs", now);
+        up.put("x", x);
+        up.put("y", y);
+        dao.updateMineUser(up);
+        String code = (String) one.get("oreCode"), name = (String) one.get("oreName");
+        int gain = (Integer) one.get("gain");
+        boolean upgraded = Boolean.TRUE.equals(one.get("upgraded"));
+        int qty = 0;
+        for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) qty = intVal(r.get("QTY"), 0);
+        out.put("ok", true);
+        putMinePick(out, st - used, stMax);
+        out.put("x", x);
+        out.put("y", y);
+        out.put("grade", one.get("grade"));
+        out.put("oreCode", code);
+        out.put("oreName", name);
+        out.put("qty", qty);
+        out.put("gain", gain);
+        out.put("upgraded", upgraded);
+        String msg = "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " " + gain + "개! (보유 " + qty + "개)"
+                + (upgraded ? " 💍 심연의 반지: 한 등급 위!" : "") + (gain > 1 ? " 💍 풍요의 반지: 2개!" : "");
+        if (one.get("gemGrade") != null) {
+            out.put("gemGrade", one.get("gemGrade"));
+            out.put("gemName", one.get("gemName"));
+            msg += " + 💎 " + one.get("gemName") + " 1개!";
+        }
+        // [2026-10-24] 탐지 곡괭이로 별빛석을 캐면 빛을 잃는다(이번 맵 주기 동안 탐지 꺼짐)
+        if (Integer.valueOf(6).equals(one.get("grade")) && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 2 && items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) > 0 && !mineDetectDim(items)) {
+            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, S5MineMap.activeCycle() + 1);
+            out.put("detectDim", true);
+            msg += " 🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 맵 리셋 때 다시 빛나요.";
+        }
+        if (!wide.isEmpty()) {
+            out.put("wide", wide);
+            out.put("ores", mineOreList(userName));
+            msg += " ⛏️ 광역 +" + wide.size() + "칸";
+        }
+        out.put("message", msg);
+        return out;
+    }
+
+    /** [2026-10-24] 탐지 곡괭이 -- (x, y) 주변 3x3칸 중 내가 안 캔 광석 칸: [dx, dy, 등급 값](요일 던전 = 오늘 요일석, 바닷길 = -1 보석 줄기).
+     *  탐지 곡괭이를 끼고 있고 (x, y)가 저장 위치에서 갈 수 있는 거리일 때만. 읽기만 한다. */
+    @Override
+    public HashMap<String, Object> mineScan(String userName, String mapId, int x, int y) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName) || mineGate() != null) return out;
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        Map<String, Integer> items = mineItems(userName);
+        if (items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) < 1 || items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) != 2) return out;
+        if (mineDetectDim(items)) { out.put("dim", true); return out; } // 별빛석을 캐서 빛을 잃음 -- 맵 리셋 때 회복
+        S5MineMap map = mineMapOf(row);
+        if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) return out;
+        long now = System.currentTimeMillis();
+        if (!mineMoveOk(minePos(row, map, mineWaterWalk(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        String dugKey = mineDugKey(map, now);
+        List<int[]> cells = new ArrayList<>();
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+            int nx = x + dx, ny = y + dy, g = map.oreAt(nx, ny);
+            if (g == 0 || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
+            if (S5MineMap.DUNGEON.equals(map.id)) g = S5MineMap.DAY_STONE_GRADE_BASE + S5MineMap.dayIndex(now);
+            else if (S5MineMap.SEAROAD.equals(map.id)) g = -1;
+            cells.add(new int[] { dx, dy, g });
+        }
+        out.put("ok", true);
+        out.put("x", x);
+        out.put("y", y);
+        out.put("cells", cells);
+        return out;
+    }
+
+    /** 칸 하나에서 얻기 -- 캔 칸 기록 + 광석/요일석/보석 지급. 결과: grade, oreCode, oreName, gain, upgraded, (gemGrade, gemName). 내구도/위치는 부른 쪽이 저장. */
+    private HashMap<String, Object> mineDigCell(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, int g, long now, String dugKey) {
         String code, name;
         boolean upgraded = false;
+        // [2026-10-23] 요일 던전 -- 칸의 광석 등급과 상관없이 그날(KST) 요일의 돌 1개(월요석~일요석), 캔 칸 기록 등급은 11~17
         if (S5MineMap.DUNGEON.equals(map.id)) {
             int di = S5MineMap.dayIndex(now);
             g = S5MineMap.DAY_STONE_GRADE_BASE + di;
             code = S5MineMap.DAY_STONE_CODES[di];
             name = S5MineMap.DAY_STONE_NAMES[di];
+        } else if (S5MineMap.SEAROAD.equals(map.id)) { // [2026-10-24] 바닷길 -- 보석 줄기 칸에서 보석만(캔 칸 기록 등급 21~29)
+            int gi2 = S5MineMap.searoadGem(RND.nextInt(100));
+            g = S5MineMap.GEM_GRADE_BASE + gi2;
+            code = S5MineMap.GEM_CODES[gi2];
+            name = S5MineMap.GEM_NAMES[gi2];
         } else {
             // [2026-10-24] 심연의 반지 -- 확률로 한 등급 위 광석(미스릴까지, 별빛석은 맵당 1칸 희귀성 유지를 위해 제외). 캔 칸 기록도 받은 등급으로.
-            int up = MINE_ABYSS_UP_PCT[mineRingTier(items, MINE_ITEM_ABYSS_RING)];
-            if (g < 5 && up > 0 && RND.nextInt(100) < up) {
+            int upPct = MINE_ABYSS_UP_PCT[mineRingTier(items, MINE_ITEM_ABYSS_RING)];
+            if (g < 5 && upPct > 0 && RND.nextInt(100) < upPct) {
                 g++;
                 upgraded = true;
             }
@@ -9359,44 +9576,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-24] 풍요의 반지 -- 확률로 2개
         int dbl = MINE_PLENTY_DOUBLE_PCT[mineRingTier(items, MINE_ITEM_PLENTY_RING)];
         int gain = dbl > 0 && RND.nextInt(100) < dbl ? 2 : 1;
-        dao.insertMineDug(userName, dugKey, cell, g, now);
-        HashMap<String, Object> up = new HashMap<>();
-        up.put("userName", userName);
-        up.put("pickDur", st - 1);
-        up.put("atMs", now);
-        up.put("x", x);
-        up.put("y", y);
-        dao.updateMineUser(up);
+        dao.insertMineDug(userName, dugKey, y * map.w + x, g, now);
         dao.addUserOre(userName, code, gain);
-        int qty = 0;
-        for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) qty = intVal(r.get("QTY"), 0);
-        out.put("ok", true);
-        putMinePick(out, st - 1, stMax);
-        out.put("x", x);
-        out.put("y", y);
-        out.put("grade", g);
-        out.put("oreCode", code);
-        out.put("oreName", name);
-        out.put("qty", qty);
-        out.put("gain", gain);
-        out.put("upgraded", upgraded);
-        String msg = "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " " + gain + "개! (보유 " + qty + "개)"
-                + (upgraded ? " 💍 심연의 반지: 한 등급 위!" : "") + (gain > 1 ? " 💍 풍요의 반지: 2개!" : "");
-        // [2026-10-24] 보석 -- 캘 때 확률로 지역 보석(맵별 2종) 또는 다이아몬드(모든 맵)가 함께 나온다(S5MineMap.gemFor).
+        HashMap<String, Object> r = new HashMap<>();
+        r.put("grade", g);
+        r.put("oreCode", code);
+        r.put("oreName", name);
+        r.put("gain", gain);
+        r.put("upgraded", upgraded);
+        // [2026-10-24] 보석 -- 캘 때 확률로 지역 보석(맵별 2종) 또는 다이아몬드(모든 맵)가 함께 나온다(S5MineMap.gemFor). 바닷길은 이미 보석.
         //  사막의 목걸이는 보석 확률 배수(난수를 배수로 나눠 문턱 아래로 들어올 확률을 키운다, 다이아몬드 포함).
-        int gi = S5MineMap.gemFor(map.id, (int) (RND.nextInt(1000) / MINE_SAND_GEM_MULT[Math.min(items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0), MINE_SAND_GEM_MULT.length - 1)]));
+        int gi = S5MineMap.SEAROAD.equals(map.id) ? -1 : S5MineMap.gemFor(map.id, (int) (RND.nextInt(1000) / MINE_SAND_GEM_MULT[Math.min(items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0), MINE_SAND_GEM_MULT.length - 1)]));
         if (gi >= 0) {
-            String gcode = S5MineMap.GEM_CODES[gi], gname = S5MineMap.GEM_NAMES[gi];
-            dao.addUserOre(userName, gcode, 1);
-            int gq = 0;
-            for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (gcode.equals(strVal(r.get("ORE_CODE"), ""))) gq = intVal(r.get("QTY"), 0);
-            out.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
-            out.put("gemName", gname);
-            out.put("gemQty", gq);
-            msg += " + 💎 " + gname + " 1개! (보유 " + gq + "개)";
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
+            r.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
+            r.put("gemName", S5MineMap.GEM_NAMES[gi]);
         }
-        out.put("message", msg);
-        return out;
+        return r;
     }
 
     @Override
@@ -9487,6 +9683,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         S5MineMap target = S5MineMap.get(ship || tele ? dest : p.target);
+        if (!ship && !tele && (S5MineMap.STEPPE.equals(target.id) || S5MineMap.CITY.equals(target.id)) && !isMineAdmin(userName)) { // [2026-10-24] 아직 개발 중 -- 관리자만
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("locked", true);
+            out.put("message", "🌪️ 모래폭풍이 너무 거세서 지나갈 수 없어요. (개발 중)");
+            return out;
+        }
         String block = mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -9659,21 +9861,28 @@ public class BotS5ServiceImpl implements BotS5Service {
         String code = S5MineMap.ORE_CODES[grade - 1], name = S5MineMap.ORE_NAMES[grade - 1];
         int have = 0;
         for (HashMap<String, Object> r : dao.selectUserOres(userName)) if (code.equals(strVal(r.get("ORE_CODE"), ""))) have = intVal(r.get("QTY"), 0);
-        int n = Math.min(Math.max(1, times), have / rep[1]);
-        if (n < 1) {
+        int limit = Math.min(Math.max(1, times), have / rep[1]);
+        if (limit < 1) {
             out.put("message", "광석이 부족해요. (" + name + " " + rep[1] + "개 필요, 보유 " + have + "개)");
             return out;
         }
+        // [2026-10-24] 최대 내구도는 MINE_PICK_CAP까지 -- 넘치는 횟수는 쓰지 않는다(광석도 안 받음)
+        if (max >= MINE_PICK_CAP) {
+            out.put("message", "🔨 곡괭이가 이미 최대치예요. (최대 내구도 " + MINE_PICK_CAP + ", 지금 " + dur + " / " + max + ")");
+            return out;
+        }
+        int n = Math.min(limit, (MINE_PICK_CAP - max + rep[2] - 1) / rep[2]);
         if (dao.takeUserOre(userName, code, rep[1] * n) == 0) {
             out.put("message", "광석이 부족해요. (" + name + " " + rep[1] * n + "개 필요)");
             return out;
         }
-        int gain = rep[2] * n;
+        int gain = Math.min(rep[2] * n, MINE_PICK_CAP - max), newMax = max + gain, newDur = dur + gain;
         dao.addMinePickMax(userName, gain);
-        putMinePick(out, dur + gain, max + gain);
+        putMinePick(out, newDur, newMax);
         out.put("ok", true);
         out.put("ores", mineOreList(userName));
-        out.put("message", "🔨 대장장이가 곡괭이를 강화해 줬어요! " + name + " " + rep[1] * n + "개 → 최대 내구도 +" + gain + " (지금 " + (dur + gain) + " / " + (max + gain) + ")");
+        out.put("message", "🔨 대장장이가 곡괭이를 강화해 줬어요! " + name + " " + rep[1] * n + "개 → 최대 내구도 +" + gain
+                + " (지금 " + newDur + " / " + newMax + (newMax >= MINE_PICK_CAP ? ", 최대치" : "") + ")");
         return out;
     }
 
@@ -9688,6 +9897,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_SWIFT_BOOTS = "SWIFT_BOOTS";
     static final String MINE_ITEM_RING_SLOT = "RING_SLOT";
     static final String MINE_ITEM_DRAGON_QUEST = "DRAGON_QUEST";
+    /** [2026-10-24] 칠요석 곡괭이 -- "주변 3x3칸을 한 번에 캐는 곡괭이(다이아몬드 + 칠요석 여러 개)", "주변 3x3에 어떤 광물이 있는지 미리 보여 주는 곡괭이",
+     *  "구매 후엔 변경 자유롭게". 곡괭이 칸 PICK_SLOT: 0 = 기본, 1 = 광역 곡괭이, 2 = 탐지 곡괭이(대장장이 [구매]에서 언제든 바꿔 낀다). */
+    static final String MINE_ITEM_WIDE_PICK = "WIDE_PICK";
+    static final String MINE_ITEM_DETECT_PICK = "DETECT_PICK";
+    static final String MINE_ITEM_PICK_SLOT = "PICK_SLOT";
+    /** 탐지 곡괭이가 빛을 잃은 주기 + 1("별빛석을 캐면 효과 꺼짐, 맵 리셋 때 회복"). 지금 주기 + 1과 같으면 꺼짐. */
+    static final String MINE_ITEM_DETECT_OFF = "DETECT_OFF";
+
+    private static boolean mineDetectDim(Map<String, Integer> items) {
+        return items.getOrDefault(MINE_ITEM_DETECT_OFF, 0) == S5MineMap.activeCycle() + 1;
+    }
+
+    private static int minePickSlotOf(String code) {
+        return MINE_ITEM_WIDE_PICK.equals(code) ? 1 : MINE_ITEM_DETECT_PICK.equals(code) ? 2 : 0;
+    }
     /** 단계별 효과(인덱스 = 단계, 0 = 없음). 장화 = 화면 한 칸 이동 시간(ms, 기본 140 -> 약 +11% / +25% / +40%). */
     private static final int[] MINE_PLENTY_DOUBLE_PCT = { 0, 3, 8 };
     private static final int[] MINE_ABYSS_UP_PCT = { 0, 2, 5 };
@@ -9731,7 +9955,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배" }),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
             new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 3) } },
-            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%" })
+            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%" }),
+        new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
+            new String[][][] { { mineCost(8, 3), { S5MineMap.SEVEN_STONE_CODE, "5" } } },
+            new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
+        new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
+            new String[][][] { { mineCost(8, 8), { S5MineMap.SEVEN_STONE_CODE, "10" }, { S5MineMap.ORE_CODES[4], "10" } } }, // "많이 비싸게"
+            new String[] { "서 있는 곳 주변 3x3칸의 광석이 미리 보여요 (별빛석을 캐면 빛을 잃고 맵 리셋 때 다시 빛나요)" })
     );
 
     private static final String[][] MINE_DRAGON_RING_COST = {
@@ -9826,6 +10056,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("tier", tier);
             m.put("maxTier", g.cost.length);
             m.put("effect", tier > 0 ? g.effect[tier - 1] : "");
+            if ("tool".equals(g.kind)) m.put("on", tier > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == minePickSlotOf(g.code)); // 끼고 있는 곡괭이
+            if (MINE_ITEM_DETECT_PICK.equals(g.code)) m.put("dim", mineDetectDim(items)); // 빛을 잃음(맵 리셋 때 회복)
             m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code)) : tier > 0);
             if (tier < g.cost.length) {
                 m.put("nextTier", tier + 1);
@@ -9882,6 +10114,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineTakeCost(userName, cost, 1);
         dao.upsertMineItem(userName, g.code, tier + 1);
         String wear = "";
+        if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 꼈어요."; }
         if ("ring".equals(g.kind) && items.getOrDefault(MINE_ITEM_RING_SLOT, 0) == 0) {
             dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, MINE_ITEM_PLENTY_RING.equals(g.code) ? 1 : 2);
             wear = " 바로 끼었어요.";
@@ -9895,6 +10128,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     public HashMap<String, Object> mineEquipRing(String userName, String code) {
         if (!mineAccess(userName)) return mineClosed();
         MineGear g = mineGear(code);
+        if (g != null && "tool".equals(g.kind)) { // [2026-10-24] 곡괭이 바꿔 끼기(같은 걸 다시 누르면 기본 곡괭이로)
+            Map<String, Integer> it = mineItems(userName);
+            if (it.getOrDefault(g.code, 0) < 1) return mineGearResult(userName, false, g.name + "이(가) 없어요. 먼저 만들어 주세요.");
+            int slot = minePickSlotOf(g.code), now = it.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+            boolean on = now != slot;
+            dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, on ? slot : 0);
+            return mineGearResult(userName, true, "⛏️ " + (on ? g.name + "을(를) 꼈어요. " + g.effect[0] : "기본 곡괭이로 바꿨어요."));
+        }
         if (g == null || !"ring".equals(g.kind)) return mineGearResult(userName, false, "낄 수 없는 물건이에요.");
         if (mineItems(userName).getOrDefault(g.code, 0) < 1) return mineGearResult(userName, false, g.name + "이(가) 없어요. 먼저 만들어 주세요.");
         dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, MINE_ITEM_PLENTY_RING.equals(g.code) ? 1 : 2);

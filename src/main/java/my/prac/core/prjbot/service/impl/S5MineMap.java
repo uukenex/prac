@@ -47,9 +47,14 @@ public final class S5MineMap {
     public static final String CITY = "city";
     /** 텔레포트 게이트(X) 포탈의 대상 -- 목적지(TELE_DESTS)를 고른다. */
     public static final String TELE = "tele";
+    /** [2026-10-24] 광산 동굴 2층(1층 "지하 2층 문", 광산 레벨 2 = 1층보다 한 단계 어둡다), 바닷길(바닷가 부두 끝 한 칸 아래 숨은 입구, 용궁 느낌, 보석만). */
+    public static final String CAVE2 = "cave2";
+    public static final String SEAROAD = "searoad";
+    /** [2026-10-24] 광산 동굴 3층(마지막 층, 광산 레벨 3) -- 가장 깊은 곳에 선공 보스(맵 리셋 때만 나타나고 잡히면 다음 리셋까지 없음). */
+    public static final String CAVE3 = "cave3";
     public static final List<String> TELE_DESTS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE));
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3);
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
@@ -84,6 +89,8 @@ public final class S5MineMap {
     private static final double[] ISLAND_SHARE = { 1, 15, 0.04, 0.14, 0.30 };
     private static final double[] NORTH_SHARE = { 2, 30, 0.06, 0.18, 0.30 };
     private static final double[] STEPPE_SHARE = { 1, 20, 0.04, 0.14, 0.30 };
+    private static final double[] CAVE2_SHARE = { 2, 25, 0.06, 0.18, 0.30 };
+    private static final double[] CAVE3_SHARE = { 3, 35, 0.08, 0.20, 0.30 };
 
     // ---------------------------------------------------------------- 보석(채굴 때 추가로)
     /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
@@ -105,6 +112,9 @@ public final class S5MineMap {
         GEM_DROPS.put(CASTLE, new int[][] { { 5, 50 }, { 1, 10 } });
         GEM_DROPS.put(ISLAND, new int[][] { { 3, 50 }, { 7, 10 } });
         GEM_DROPS.put(NORTH, new int[][] { { 2, 30 }, { 8, 5 } });
+        GEM_DROPS.put(CAVE2, new int[][] { { 6, 60 }, { 1, 15 } }); // [2026-10-24] 동굴 2층 = 스피넬 6% / 루비 1.5%
+        GEM_DROPS.put(CAVE3, new int[][] { { 1, 40 }, { 8, 5 } }); // [2026-10-24] 동굴 3층 = 루비 4% + 다이아 0.5% 추가
+        GEM_DROPS.put(SEAROAD, new int[][] { { 3, 50 }, { 2, 10 } }); // 바닷길 몬스터 보상용(캐면 searoadGem)
         GEM_DROPS.put(STEPPE, new int[][] { { 0, 50 }, { 7, 10 } }); // [2026-10-24] 초원 = 재스퍼 5% / 에메랄드 1%(왕도는 못 캔다)
     }
 
@@ -215,17 +225,22 @@ public final class S5MineMap {
     private int level;          // [2026-10-23] 광산 레벨(0 = 평원처럼 투구와 무관)
     private String requireItem; // [2026-10-23] 입장에 필요한 광산 아이템(없으면 null)
     private boolean wind;       // [2026-10-23] 모래바람(가만히 있어도 좌우로 밀림, 화면이 처리)
+    private boolean underwater; // [2026-10-24] 바닷속(화면이 푸르게 물들이고 거품)
     private List<Npc> npcs = Collections.emptyList();
     private List<Mob> mobs = Collections.emptyList();
     private int dockX = -1, dockY = -1; // [2026-10-24] 배에서 내리는 칸(항구 맵만)
+    private int bossX = -1, bossY = -1; // [2026-10-24] 보스 자리(동굴 3층만, S5MineMobs.spawn이 보스를 둔다)
 
     public int level() { return level; }
     public String requireItem() { return requireItem; }
     public boolean wind() { return wind; }
+    public boolean underwater() { return underwater; }
     public List<Npc> npcs() { return npcs; }
     public List<Mob> mobs() { return mobs; }
     public int dockX() { return dockX; }
     public int dockY() { return dockY; }
+    public int bossX() { return bossX; }
+    public int bossY() { return bossY; }
     public final int w, h, spawnX, spawnY;
     private final char[][] terrain;
     private final byte[][] ore;
@@ -238,11 +253,11 @@ public final class S5MineMap {
 
     public static boolean walkable(char c) {
         // [2026-10-24] 나무(T)도 지나갈 수 있다("나무가 너무 많아") -- 광석은 없음(assignOre). s 성 바닥 / n 눈밭 / Y 눈 덮인 소나무(T처럼 통과, 광석 없음)
-        return ".,:VHcrdbPTsnY".indexOf(c) >= 0;
+        return ".,:VHcrdbPTsnYupe".indexOf(c) >= 0; // [2026-10-24] u 바다 모래 / p 용궁 길 / e 해초(통과, 광석 없음)
     }
 
     public static boolean portalChar(char c) {
-        return "GMUSBX".indexOf(c) >= 0; // X = 텔레포트 게이트(왕도)
+        return "GMUSBXZ".indexOf(c) >= 0; // X = 텔레포트 게이트(왕도), Z = 숨은 입구(물처럼 보임)
     }
 
     public boolean inside(int x, int y) {
@@ -283,7 +298,7 @@ public final class S5MineMap {
             for (Portal p : portals) hsh = 31 * hsh + (p.x + "," + p.y + p.target + p.label + p.locked()).hashCode();
             for (Npc n : npcs) hsh = 31 * hsh + (n.x + "," + n.y + n.kind + n.name + n.line).hashCode();
             for (Mob mb : mobs) hsh = 31 * hsh + (mb.id * 7 + mb.type) * 131 + mb.y * 1009 + mb.x + Arrays.hashCode(mb.cells); // 몬스터 배치가 바뀌면 화면도 다시 받게
-            hsh = 31 * hsh + (wind ? 1 : 0) + dockX * 3 + dockY * 5;
+            hsh = 31 * hsh + (wind ? 1 : 0) + (underwater ? 2 : 0) + dockX * 3 + dockY * 5;
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
         }
         return v;
@@ -333,6 +348,9 @@ public final class S5MineMap {
         S5MineMap northEnd = generateNorth(seed + 7);
         S5MineMap steppe = generateSteppe(seed + 8);
         S5MineMap city = generateCity(seed + 9);
+        S5MineMap cave2 = generateCave(seed + 10, CAVE2, "광산 동굴 2층", CAVE2_SHARE);
+        S5MineMap searoad = generateSearoad(seed + 11);
+        S5MineMap cave3 = generateCave(seed + 12, CAVE3, "광산 동굴 3층", CAVE3_SHARE);
 
         Portal mouth = null, north = null, south = null, west = null, east = null;
         for (Portal p : field.portals) {
@@ -353,7 +371,32 @@ public final class S5MineMap {
             else fp.add(p);
         }
         List<Portal> cp = new ArrayList<>();
-        for (Portal p : cave.portals) cp.add(p.kind == 'U' ? new Portal(p.x, p.y, 'U', FIELD, mouth.x, mouth.y + 1, p.label) : p);
+        Portal sDoor = null;
+        for (Portal p : cave.portals) {
+            if (p.kind == 'U') cp.add(new Portal(p.x, p.y, 'U', FIELD, mouth.x, mouth.y + 1, p.label));
+            else { sDoor = p; cp.add(new Portal(p.x, p.y, 'S', CAVE2, cave2.spawnX, cave2.spawnY, "지하 2층으로 내려가는 문")); } // [2026-10-24] 개방
+        }
+        // [2026-10-24] 동굴 2층: 나가는 길 -> 1층 지하 문 옆 칸, 지하 3층 문은 잠김
+        int[] doorSide = { cave.spawnX, cave.spawnY };
+        for (int[] dv : DIRS) if (cave.walkable(sDoor.x + dv[0], sDoor.y + dv[1])) { doorSide = new int[] { sDoor.x + dv[0], sDoor.y + dv[1] }; break; }
+        List<Portal> c2p = new ArrayList<>();
+        Portal c2Door = null;
+        for (Portal p : cave2.portals) {
+            if (p.kind == 'U') c2p.add(new Portal(p.x, p.y, 'U', CAVE1, doorSide[0], doorSide[1], "광산 동굴 1층으로 올라가기"));
+            else { c2Door = p; c2p.add(new Portal(p.x, p.y, 'S', CAVE3, cave3.spawnX, cave3.spawnY, "지하 3층으로 내려가는 문")); }
+        }
+        // [2026-10-24] 동굴 3층(마지막): 나가는 길 -> 2층 지하 문 옆 칸. 3층의 지하 문은 막고(벽) 그 앞 칸을 보스 자리로.
+        int[] door2Side = { cave2.spawnX, cave2.spawnY };
+        for (int[] dv : DIRS) if (cave2.walkable(c2Door.x + dv[0], c2Door.y + dv[1])) { door2Side = new int[] { c2Door.x + dv[0], c2Door.y + dv[1] }; break; }
+        List<Portal> c3p = new ArrayList<>();
+        int bossX = cave3.spawnX, bossY = cave3.spawnY;
+        for (Portal p : cave3.portals) {
+            if (p.kind == 'U') c3p.add(new Portal(p.x, p.y, 'U', CAVE2, door2Side[0], door2Side[1], "광산 동굴 2층으로 올라가기"));
+            else {
+                cave3.terrain[p.y][p.x] = '#';
+                for (int[] dv : DIRS) if (cave3.walkable(p.x + dv[0], p.y + dv[1])) { bossX = p.x + dv[0]; bossY = p.y + dv[1]; break; }
+            }
+        }
         // 사막 북쪽 끝 통로 -> 모래폭풍 너머 초원(2026-10-24 개방). 북쪽 끝 설원은 여전히 배로만.
         List<Portal> dp = new ArrayList<>();
         Portal dNorth = null;
@@ -378,6 +421,17 @@ public final class S5MineMap {
             else if (p.kind == 'B') { bp.add(new Portal(p.x, p.y, 'B', SHIP, 0, 0, "배에 오르기")); beachDockX = p.x - 1; beachDockY = p.y; }
             else bp.add(p);
         }
+        // [2026-10-24] 부두 끝 한 칸 아래 숨은 입구(Z, 물처럼 보임) -> 바닷길. 바닷길의 올라가는 길 -> 부두 끝.
+        Portal plank = null;
+        for (Portal p : beach.portals) if (p.kind == 'B') plank = p;
+        int pierMid = plank.x - 2, pierEndY = plank.y;
+        while (pierEndY + 1 < beach.h && beach.terrain[pierEndY + 1][pierMid] == 'P') pierEndY++;
+        if (pierEndY + 1 < beach.h - 1) {
+            beach.terrain[pierEndY + 1][pierMid] = 'Z';
+            bp.add(new Portal(pierMid, pierEndY + 1, 'Z', SEAROAD, searoad.spawnX, searoad.spawnY, "???"));
+        }
+        List<Portal> wp = new ArrayList<>();
+        for (Portal p : searoad.portals) wp.add(BEACH.equals(p.target) ? new Portal(p.x, p.y, p.kind, BEACH, pierMid, pierEndY, p.label) : p);
         List<Portal> kp = new ArrayList<>();
         for (Portal p : castle.portals) kp.add(FIELD.equals(p.target) ? new Portal(p.x, p.y, p.kind, FIELD, east.x - 1, east.y, p.label) : p);
 
@@ -411,6 +465,15 @@ public final class S5MineMap {
         out.put(NORTH, northEnd);
         out.put(STEPPE, relink(steppe, sp, null));
         out.put(CITY, relink(city, tp, city.npcs));
+        S5MineMap cv2 = relink(cave2, c2p, null);
+        cv2.level = 2; // 광산 레벨 2 -- 투구 1단계 이상이어야 움직이고, 시야는 1층보다 한 단계 어둡다(투구 단계 - 1)
+        out.put(CAVE2, cv2);
+        out.put(SEAROAD, relink(searoad, wp, null));
+        S5MineMap cv3 = relink(cave3, c3p, null);
+        cv3.level = 3; // 광산 레벨 3 -- 투구 2단계 이상, 시야는 2층보다 한 단계 더 어둡다
+        cv3.bossX = bossX;
+        cv3.bossY = bossY;
+        out.put(CAVE3, cv3);
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -422,8 +485,11 @@ public final class S5MineMap {
         n.level = m.level;
         n.requireItem = m.requireItem;
         n.wind = m.wind;
+        n.underwater = m.underwater;
         n.dockX = m.dockX;
         n.dockY = m.dockY;
+        n.bossX = m.bossX;
+        n.bossY = m.bossY;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
     }
@@ -503,7 +569,7 @@ public final class S5MineMap {
         int h = t.length, w = t[0].length;
         List<double[]> cells = new ArrayList<>();
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            if (!walkable(t[y][x]) || t[y][x] == 'T' || t[y][x] == 'Y' || (skip != null && skip[y][x])) continue; // 나무 칸은 지나가기만(광석 없음)
+            if (!walkable(t[y][x]) || t[y][x] == 'T' || t[y][x] == 'Y' || t[y][x] == 'e' || (skip != null && skip[y][x])) continue; // 나무 칸은 지나가기만(광석 없음)
             cells.add(new double[] { score[y][x], x, y });
         }
         cells.sort((a, b) -> Double.compare(b[0], a[0]));
@@ -604,6 +670,11 @@ public final class S5MineMap {
 
     /** 광산 동굴 1층(96x96, 어두움): 셀룰러 오토마타 동굴. 아래 가운데가 나가는 길, 가장 먼 곳 벽에 지하로 가는 문(아직 잠김). 평원보다 광석이 풍부하고 안쪽일수록 좋다. */
     static S5MineMap generateCave(long seed) {
+        return generateCave(seed, CAVE1, "광산 동굴 1층", CAVE_SHARE);
+    }
+
+    /** [2026-10-24] 동굴 2층도 같은 방식(시드/이름/광석 비율만 다름). */
+    static S5MineMap generateCave(long seed, String id, String name, double[] share) {
         int w = 96, h = 96;
         Random r = new Random(seed);
         Noise rich = new Noise(seed * 31 + 7);
@@ -676,8 +747,8 @@ public final class S5MineMap {
             double d = dist[y][x] < 0 ? 0 : (double) dist[y][x] / maxDist;
             score[y][x] = 0.50 * rich.fbm(x / 12.0, y / 12.0) + 0.32 * d + (t[y][x] == 'r' ? 0.05 : 0) + 0.15 * r.nextDouble();
         }
-        byte[][] o = assignOre(t, score, CAVE_SHARE, skip);
-        return new S5MineMap(CAVE1, "광산 동굴 1층", true, w, h, sx, sy, t, o, portals);
+        byte[][] o = assignOre(t, score, share, skip);
+        return new S5MineMap(id, name, true, w, h, sx, sy, t, o, portals);
     }
 
 
@@ -1052,6 +1123,52 @@ public final class S5MineMap {
         return m;
     }
 
+    /** [2026-10-24] 바닷길(90x120, 바람의나라 용궁 느낌의 바닷속): 푸른 바다 모래(u) 위에 해초(e, 지나갈 수 있음)와 산호 무더기(O),
+     *  남쪽 입구에서 북쪽 용궁까지 붉은 궁궐 길(p, 양옆에 붉은 기둥 L), 북쪽 끝 용궁 성벽(L)과 굳게 닫힌 용궁 문. 바닷속(underwater) -- 화면이 푸르게 물들이고 거품을 띄운다.
+     *  "바닷길에서는 보석만" -- 바다 모래 칸 일부(약 12%)에만 보석 줄기(ore = 1)가 있고 캐면 광석 대신 보석이 나온다(searoadGem). 부두 끝 숨은 입구로만 들어온다. */
+    static S5MineMap generateSearoad(long seed) {
+        int w = 90, h = 120, c = w / 2;
+        Random r = new Random(seed);
+        Noise weed = new Noise(seed * 31 + 81), coral = new Noise(seed * 31 + 82);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double cr = coral.fbm(x / 10.0, y / 10.0), wd = weed.fbm(x / 8.0, y / 8.0);
+            t[y][x] = cr > 0.70 ? 'O' : (wd > 0.62 && r.nextDouble() < 0.55) ? 'e' : 'u';
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = 'O'; t[1][x] = 'O'; t[h - 1][x] = 'O'; }
+        for (int y = 0; y < h; y++) { t[y][0] = 'O'; t[y][w - 1] = 'O'; }
+        // 용궁(북쪽): 붉은 성벽 블록, 가운데 문(잠김)
+        int py0 = 3, py1 = 22;
+        for (int y = py0; y <= py1; y++) for (int x = c - 22; x <= c + 22; x++) t[y][x] = 'L';
+        for (int y = py1 + 1; y <= py1 + 3; y++) for (int x = c - 24; x <= c + 24; x++) t[y][x] = 'p'; // 궁 앞 마당
+        t[py1][c] = 'G';
+        // 궁궐 길: 남쪽 입구 -> 용궁 문(5칸 폭), 양옆 6칸마다 붉은 기둥
+        for (int y = py1 + 1; y < h - 1; y++) for (int dx = -2; dx <= 2; dx++) t[y][c + dx] = 'p';
+        for (int y = py1 + 6; y < h - 4; y += 6) { t[y][c - 4] = 'L'; t[y][c + 4] = 'L'; t[y][c - 3] = 'p'; t[y][c + 3] = 'p'; }
+        t[h - 1][c] = 'U';
+        int sx = c, sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'O';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(sx, h - 1, 'U', BEACH, 0, 0, "물 위로 올라가기"));
+        portals.add(new Portal(c, py1, 'G', null, 0, 0, "용궁 (굳게 닫혀 있다)"));
+        byte[][] o = new byte[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            if (t[y][x] == 'u' && Math.abs(x - sx) + Math.abs(y - sy) > 3 && r.nextDouble() < 0.12) o[y][x] = 1; // 보석 줄기
+        }
+        S5MineMap m = new S5MineMap(SEAROAD, "바닷길", false, w, h, sx, sy, t, o, portals);
+        m.underwater = true;
+        return m;
+    }
+
+    /** [2026-10-24] 바닷길 보석(캘 때마다 하나): 아쿠아마린 35 / 재스퍼 15 / 토파즈 15 / 스피넬 15 / 에메랄드 6 / 가넷 5 / 루비 4 / 스타 사파이어 4 / 다이아몬드 1 (%). 반환 = GEM 인덱스. */
+    private static final int[][] SEAROAD_GEMS = { { 3, 35 }, { 0, 15 }, { 4, 15 }, { 6, 15 }, { 7, 6 }, { 5, 5 }, { 1, 4 }, { 2, 4 }, { 8, 1 } };
+    public static int searoadGem(int roll100) {
+        int acc = 0;
+        for (int[] g : SEAROAD_GEMS) { acc += g[1]; if (roll100 < acc) return g[0]; }
+        return 3;
+    }
+
     /** 격자 값 노이즈(부드럽게 보간) 4옥타브 합, 0~1. */
     private static final class Noise {
         private final long seed;
@@ -1108,6 +1225,12 @@ public final class S5MineMap {
                 case 'K': c = 0xa8443a; break;
                 case 'Q': c = 0xdfe6f2; break;
                 case 'X': c = 0x7a5cff; break;
+                case 'u': c = 0x6f9fc0; break;
+                case 'p': c = 0xb8483a; break;
+                case 'e': c = 0x2f7a6a; break;
+                case 'O': c = 0xe07a8a; break;
+                case 'L': c = 0x8a1e1e; break;
+                case 'Z': c = 0x3b7dd8; break;
                 case 'n': c = 0xf2f6fa; break;
                 case 'Y': c = 0x2f5d4a; break;
                 case 'G': case 'M': case 'U': case 'S': case 'B': c = 0xff2020; break;

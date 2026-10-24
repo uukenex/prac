@@ -598,9 +598,10 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMineAttack(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam("mob") int mob, @RequestParam(value = "v", defaultValue = "") String ver) {
+            @RequestParam("mob") int mob, @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam(value = "mc", defaultValue = "-1") int mc) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob);
+        HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob, mc); // mc = 화면이 보던 몬스터 칸(y * w + x)
         if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
@@ -678,6 +679,27 @@ public class Season5ViewController {
         HashMap<String, Object> out = s5Service.minePriest(userName, action);
         if (!"heal".equals(action)) mineLog(userName, "[웹] 광산 성당 " + action, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 동굴 3층 보스 선공 -- 보스 2칸 안에 있으면 화면이 1.5초마다 부른다. 쓰러짐만 로그. */
+    @GetMapping("/api/tower-mine-boss-hit")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineBossHit(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineBossHit(userName, mapId, ver, x, y);
+        if (Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 보스에게 쓰러짐", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-24] 웹 광산 탐지 곡괭이 -- (x, y) 주변 3x3의 안 캔 광석 칸(화면이 멈춰 선 칸이 바뀔 때). 로그 없음. */
+    @GetMapping("/api/tower-mine-scan")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineScan(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineScan(userName, mapId, x, y));
     }
 
     /** [2026-10-24] 웹 광산 관리자 전용 좌표 이동. */

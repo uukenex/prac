@@ -234,7 +234,7 @@ public interface BotS5Service {
     HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest);
     /** [2026-10-24] 광산 몬스터 상태 조회 / 공격. */
     HashMap<String, Object> mineMobs(String mapId);
-    HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId);
+    HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc);
     HashMap<String, Object> mineGoVillage(String userName);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
@@ -253,6 +253,10 @@ public interface BotS5Service {
     HashMap<String, Object> mineLook(String userName, String action, String code, String slot);
     /** [2026-10-24] 왕도 성당 신부 -- action heal/save/reset. */
     HashMap<String, Object> minePriest(String userName, String action);
+    /** [2026-10-24] 동굴 3층 보스 선공(화면이 보스 2칸 안에서 1.5초마다). */
+    HashMap<String, Object> mineBossHit(String userName, String mapId, String ver, int x, int y);
+    /** [2026-10-24] 탐지 곡괭이 -- 주변 3x3 광석 미리 보기(읽기만). */
+    HashMap<String, Object> mineScan(String userName, String mapId, int x, int y);
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 
