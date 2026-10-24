@@ -513,6 +513,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         return false;
     }
 
+    /** [2026-10-24] 광산 관리자(좌표 이동) -- MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS에 있는 유저. */
+    private boolean isMineAdmin(String userName) {
+        if (userName == null) return false;
+        if (MINE_ADMIN_USERS != null) for (String u : MINE_ADMIN_USERS.split("\\|")) if (!u.trim().isEmpty() && u.trim().equals(userName.trim())) return true;
+        return isEventAdmin(userName);
+    }
+
     private static HashMap<String, Object> mineClosed() {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
@@ -9201,7 +9208,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now)); // [2026-10-24] 광산 전투 레벨
-        if (isEventAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
+        if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH }) {
                 S5MineMap m = S5MineMap.get(id);
@@ -9531,12 +9538,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         return PP.of(perKill * kills, "");
     }
 
-    /** [2026-10-24] 관리자 전용 좌표 이동(EVENT_ADMIN_USERS) -- 화면 좌표를 누르면 맵/좌표 입력. 못 서는 칸이면 가장 가까운 설 수 있는 칸으로. */
+    /** [2026-10-24] 관리자 전용 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS) -- 화면 좌표를 누르면 맵/좌표 입력. 못 서는 칸이면 가장 가까운 설 수 있는 칸으로. */
     @Override
     public HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
-        if (!isEventAdmin(userName)) { out.put("message", "권한이 없습니다."); return out; }
+        if (!isMineAdmin(userName)) { out.put("message", "권한이 없습니다."); return out; }
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         mineRow(userName, false);

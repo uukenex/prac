@@ -5252,5 +5252,5 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - API: `/api/tower-mine-mobs`, `/api/tower-mine-attack`, `/api/tower-mine-look`, `/api/tower-mine-warp`에 `dest`(배).
 
 ### 2026-10-24 광산: 관리자 전용 좌표 이동
-- 관리자(TBOT_S5_CONFIG.EVENT_ADMIN_USERS)면 광산 화면 왼쪽 위 좌표가 눌린다 -> 맵/X/Y 입력창 -> 확인(Enter)으로 이동(`/api/tower-mine-admin-warp`).
+- 관리자(TBOT_S5_CONFIG.MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS)면 광산 화면 왼쪽 위 좌표가 눌린다 -> 맵/X/Y 입력창 -> 확인(Enter)으로 이동(`/api/tower-mine-admin-warp`).
   못 서는 칸이면 30칸 안에서 가장 가까운 설 수 있는 칸으로. 이동 검사(순간이동 방지)를 거치지 않는다. 웹 로그에 남김.
