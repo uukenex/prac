@@ -797,6 +797,10 @@
     .mine-bar i{ display:block; height:100%; }
     .mine-bar.hp i{ background:#e8433a; }
     .mine-bar.ex i{ background:#4fb4ff; }
+    /* [2026-10-25] 잠긴 최대 체력(오른쪽 회색 빗금) */
+    .mine-bar.hp{ position:relative; }
+    .mine-bar.hp b{ position:absolute; right:0; top:0; bottom:0; background:repeating-linear-gradient(45deg,#5a5560 0 3px,#3a3640 3px 6px); }
+    .mine-hp .lock{ color:#c9c3d6; font-size:11px; margin-left:4px; }
     .mine-log{ position:absolute; left:10px; bottom:calc(200px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
     .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
@@ -6066,12 +6070,14 @@ var TowerMine = (function () {
   function renderHp() {
     var c = st && st.combat;
     if (!c || !el.hp) return;
-    var h = hpNow(), pct = Math.round(h * 100 / c.hpMax), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
-    var key = c.lv + ':' + h + ':' + ep;
+    // [2026-10-25] 최대 체력 잠금 -- 막대는 원래 최대 체력 기준, 잠긴 몫은 오른쪽 회색 빗금
+    var base = c.hpBase || c.hpMax, lk = c.hpLock || 0;
+    var h = hpNow(), pct = Math.round(h * 100 / base), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
+    var key = c.lv + ':' + h + ':' + ep + ':' + lk;
     if (el.hp._k === key) return;
     el.hp._k = key;
-    el.hp.innerHTML = 'Lv.' + c.lv + ' ❤️ ' + h + '/' + c.hpMax
-        + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i></span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>';
+    el.hp.innerHTML = 'Lv.' + c.lv + ' ❤️ ' + h + '/' + c.hpMax + (lk ? '<span class="lock">🔒-' + lk + '%</span>' : '')
+        + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>';
   }
   // [2026-10-24] 자동채광 -- 켜 두면 캐릭터가 스스로 가장 가까운(30칸 안) 안 캔 칸으로 걸어가서 캔다. 방향키/끌기로 잠깐 직접 조작할 수 있다.
   var auto = false, noOre = {};
@@ -6277,8 +6283,10 @@ var TowerMine = (function () {
               : ' <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>') + (g.dim ? ' <span class="mine-worn" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</span>' : '') : '') + '</div>';
       if (g.effect) h += '<div class="mine-smith-say">지금: ' + g.effect + '</div>';
       if (!g.nextTier) return h + '<div class="mine-smith-say">최고 단계예요.</div>';
-      return h + '<div class="mine-smith-row"><span class="nm">' + g.nextTier + '단계: ' + g.nextEffect + costHtml(g.costs) + '</span>'
-          + '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button></div>';
+      var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
+      return h + '<div class="mine-smith-row"><span class="nm">' + (g.cityOnly ? '🏰 ' : '') + g.nextTier + '단계: ' + g.nextEffect + costHtml(g.costs) + '</span>'
+          + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
+              : '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button>') + '</div>';
     }).join('') + '<div class="mine-smith-say">반지와 곡괭이는 하나만 낄 수 있어요(산 뒤엔 언제든 바꿔 끼기). 목걸이와 장화는 가지고 있으면 바로 적용돼요.</div>';
   }
   function synthHtml() {
@@ -6640,7 +6648,7 @@ var TowerMine = (function () {
       return;
     }
     if (smithView === 'menu') {
-      el.smith.innerHTML = npcHead('🔨 대장간', false)
+      el.smith.innerHTML = npcHead(map && map.id === 'city' ? '🏰 왕도 대장간' : '🔨 대장간', false) // [2026-10-25] 왕도 대장장이(더 높은 단계)
           + talkBlock(n, n ? n.line : '')
           + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.smithGo(\'buy\')">⛑️ 구매<small>투구·장신구·장화</small></button>'
           + '<button type="button" onclick="TowerMine.smithGo(\'upgrade\')">⛏️ 강화<small>곡괭이 내구도</small></button>'
@@ -6674,9 +6682,11 @@ var TowerMine = (function () {
     var h = '<div class="mine-smith-dur">⛑️ 광부 투구 <b>' + (hm.tier > 0 ? hm.tier + '단계' : '없음') + '</b></div>'
         + '<div class="mine-smith-say">어두운 동굴의 시야가 넓어져요. 동굴 N층은 투구 N-1단계부터 움직일 수 있고, 단계가 그보다 높을수록 더 밝게 보여요(3층까지).</div>';
     if (!hm.nextTier) return h + '<div class="mine-smith-say">지금 열린 최고 단계예요.</div>';
-    return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
-        + '<small>보유 ' + hm.have + '개</small></span><button type="button" ' + (hm.have < hm.need ? 'disabled ' : '') + 'onclick="TowerMine.helmetUpgrade()">'
-        + (hm.tier > 0 ? '업그레이드' : '만들기') + '</button></div>';
+    var away = hm.cityOnly && map.id !== 'city', ok = hm.have >= hm.need && (!hm.cityOnly || hm.extraOk); // [2026-10-25] 4단계 = 왕도 대장장이 + 칠요석
+    return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + (hm.cityOnly ? '🏰 ' : '') + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
+        + '<small>보유 ' + hm.have + '개' + (hm.cityOnly ? ' · 동굴 3층까지 환하게' : '') + '</small>' + (hm.extra ? costHtml(hm.extra) : '') + '</span>'
+        + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
+            : '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.helmetUpgrade()">' + (hm.tier > 0 ? '업그레이드' : '만들기') + '</button>') + '</div>';
   }
   function helmetUpgrade() {
     if (busy) return;
@@ -6713,6 +6723,7 @@ var TowerMine = (function () {
       bossBusy = false;
       if (!d || !d.ok) return;
       if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
+      if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: '-' + h.dmg, color: '#ff4a4a', big: true, t0: t + k * 160 }); });
@@ -6841,6 +6852,9 @@ var TowerMine = (function () {
         msg(d.message || '', 2600);
       }
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
+      // [2026-10-25] 최대 체력 잠금 -- 새 전투마다 10%(최대 50%), 레벨업하면 풀림
+      if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: t + 300 });
+      if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
       if (d.died && d.state) {
         setAuto(false);
         busy = true;
@@ -6942,7 +6956,7 @@ var TowerMine = (function () {
     }
     if (p.locked) {
       var key = px2 + ',' + py2;
-      if (lastBump !== key || now - lastBumpT > 2500) msg('🔒 ' + p.label + ' -- 아직 갈 수 없어요. (준비 중)');
+      if (lastBump !== key || now - lastBumpT > 2500) msg(p.label.indexOf('눈바람') >= 0 ? '🌨️ ' + p.label + '.' : '🔒 ' + p.label + ' -- 아직 갈 수 없어요. (준비 중)'); // [2026-10-25] 설원 마을 문
       lastBump = key; lastBumpT = now;
       return;
     }
@@ -7088,7 +7102,7 @@ var TowerMine = (function () {
     (map.portals || []).forEach(function (p) {
       if (p.kind === 'Z' || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
       var tx = p.x * TS - camX + TS / 2, ty = p.y * TS - camY - 4 * dpr;
-      var label = (p.locked ? '🔒 ' : '🚪 ') + p.label;
+      var label = (p.locked ? (p.label.indexOf('눈바람') >= 0 ? '🌨️ ' : '🔒 ') : '🚪 ') + p.label;
       ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(label, tx, ty);
@@ -7248,7 +7262,7 @@ var TowerMine = (function () {
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now();
-    api('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + verQ()).then(function (d) {
+    api('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
       busy = false;
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
       if (d.ok) {

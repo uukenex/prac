@@ -565,13 +565,14 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMineDig(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam(value = "v", defaultValue = "") String ver) {
+            @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam(value = "dir", defaultValue = "down") String dir) {
         if (userName.trim().isEmpty()) {
             HashMap<String, Object> err = new HashMap<>();
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
         }
-        HashMap<String, Object> d = s5Service.mineDig(userName, mapId, ver, x, y);
+        HashMap<String, Object> d = s5Service.mineDig(userName, mapId, ver, x, y, dir);
         if (Boolean.TRUE.equals(d.get("ok"))) mineLog(userName, "[웹] 광산 채굴 (" + x + ", " + y + ")", String.valueOf(d.get("message")));
         return ResponseEntity.ok(d);
     }

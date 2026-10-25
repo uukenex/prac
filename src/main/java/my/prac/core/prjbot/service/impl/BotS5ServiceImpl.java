@@ -8645,7 +8645,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
     //  [2026-10-25] 한때 2단계 은 250 / 3단계 금 250으로 올렸다가 같은 날 "이미 단계업한 사람이 있으면 그렇게 올리면 안 된다" -- 3단계까지 산 유저가 있어 원래 값으로 되돌렸다.
     private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 100 }, { 4, 100 }, { 5, 100 }, { 6, 100 } };
-    private static final int MINE_HELMET_OPEN_MAX = 3; // [2026-10-24] 동굴 3층(레벨 3)이 열려 3단계(금광석 100개)까지
+    private static final int MINE_HELMET_OPEN_MAX = 4; // [2026-10-24] 동굴 3층(레벨 3)이 열려 3단계(금광석 100개)까지, [2026-10-25] 4단계는 왕도 대장장이(3층도 환하게)
+    private static final int MINE_HELMET_FIELD_MAX = 3; // 마을 대장장이는 3단계까지
+    /** [2026-10-25] 4단계 추가 재료("고급템은 칠요석"). */
+    private static final String[][] MINE_HELMET_EXTRA4 = { { S5MineMap.SEVEN_STONE_CODE, "2" } };
 
     private Map<String, Integer> mineItems(String userName) {
         Map<String, Integer> out = new HashMap<>();
@@ -9014,7 +9017,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (d.equals(map.id)) continue;
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", d);
-                m.put("name", S5MineMap.nameOf(d));
+                m.put("name", S5MineMap.townName(d)); // [2026-10-25] 마을 이름(설원 = 설원 마을)
                 if (S5MineMap.CITY.equals(d)) m.put("dev", true);
                 gl.add(m);
             }
@@ -9072,9 +9075,25 @@ public class BotS5ServiceImpl implements BotS5Service {
         return Math.max(1, Math.min(MINE_LV_MAX, intVal(row.get("M_LV"), 1)));
     }
 
-    /** 지금 체력(저장된 체력 + 저장 시각부터 회복). M_HP가 없으면 가득. */
-    private int mineHpNow(HashMap<String, Object> row, long now) {
-        int max = mineHpMax(mineLv(row));
+    // [2026-10-25] "몬스터와 전투 시 최대 체력 10%씩 잠겨 최대 50%까지, 레벨업하거나 대도시 성당 신부에게 치료받으면 정상으로" --
+    //  새 전투가 시작될 때(인식이 없던 상태에서 몬스터를 때리거나 보스가 덤벼들 때)마다 HP_LOCK(0~5) +1. 최대 체력 = 원래 x (10 - 잠금) / 10.
+    static final String MINE_ITEM_HP_LOCK = "HP_LOCK";
+    private static final int MINE_HP_LOCK_MAX = 5;
+
+    static int mineHpCap(int lv, int lock) { return Math.max(1, mineHpMax(lv) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
+
+    /** 새 전투 시작 -- 최대 체력 10% 더 잠금(최대 50%). 바뀐 잠금 단계를 돌려준다. */
+    private int mineLockUp(String userName, int lock, HashMap<String, Object> out) {
+        if (lock >= MINE_HP_LOCK_MAX) return lock;
+        lock++;
+        dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, lock);
+        out.put("hpLockUp", lock * 10);
+        return lock;
+    }
+
+    /** 지금 체력(저장된 체력 + 저장 시각부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계. */
+    private int mineHpNow(HashMap<String, Object> row, long now, int lock) {
+        int max = mineHpCap(mineLv(row), lock);
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
         if (mineEngaged(strVal(row.get("USER_NAME"), null), now)) return Math.min(max, hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
@@ -9082,9 +9101,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (int) Math.min(max, hp + Math.max(0, now - at) * max / MINE_HP_FULL_MS);
     }
 
-    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight) {
+    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock) {
         HashMap<String, Object> c = mineCombatInfo(lv, exp, hp, now);
         c.put("fight", fight); // [2026-10-25] 인식 중(화면도 체력을 안 올리고 1초마다 전투 턴을 부른다)
+        c.put("hpMax", mineHpCap(lv, lock)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
+        c.put("hpBase", mineHpMax(lv));
+        c.put("hpLock", Math.min(MINE_HP_LOCK_MAX, lock) * 10);
         return c;
     }
 
@@ -9224,7 +9246,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         int[] pos = minePos(row, map, mineWaterWalk(items));
         if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        int hp = mineHpNow(row, now); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
+        boolean wasFight = mineEngaged(userName, now);
+        int hp = mineHpNow(row, now, lock); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
         MineEngage e = MINE_ENGAGE.get(userName);
         if (e != null && !map.version().equals(e.mapVer)) { mineDisengageAll(userName); e = null; }
         // 보스 선공 -- 2칸 안에 들어오면 인식
@@ -9247,6 +9271,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             e = MINE_ENGAGE.get(userName);
         }
+        if (out.containsKey("bossAggro") && !wasFight) { lock = mineLockUp(userName, lock, out); hp = Math.min(hp, mineHpCap(mineLv(row), lock)); } // 새 전투
         if (e == null || e.mobs.isEmpty()) { mineDisengageAll(userName); out.put("ok", true); out.put("fight", false); return out; }
         e.at = now;
         int lv = mineLv(row);
@@ -9304,12 +9329,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("hits", hits);
         out.put("mobs", mobs);
         boolean fight = !e.mobs.isEmpty();
-        if (dmgSum == 0 && fight && !out.containsKey("bossAggro")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
+        if (dmgSum == 0 && fight && !out.containsKey("bossAggro")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
         if (dmgSum > 0) {
             hp -= dmgSum;
             if (hp <= 0) {
-                hp = mineHpMax(lv);
+                hp = mineHpCap(lv, lock);
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
@@ -9326,7 +9351,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, lv, exp, hp, now, 0);
         out.put("fight", fight);
-        out.put("combat", mineCombatInfo(lv, exp, hp, now, fight));
+        out.put("combat", mineCombatInfo(lv, exp, hp, now, fight, lock));
         if (out.containsKey("died")) out.put("state", mineState(userName));
         return out;
     }
@@ -9397,7 +9422,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (type.boss && mineBossDead()) { out.put("message", "이번 맵에서는 이미 쓰러진 보스예요. 다음 맵 리셋 때 다시 나타나요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
-        int hp = mineHpNow(row, now);
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
+        boolean wasFight = mineEngaged(userName, now); // [2026-10-25] 인식이 없던 상태에서 때리면 새 전투(최대 체력 잠금 +1)
+        int hp = mineHpNow(row, now, lock);
         out.put("mobId", mobId);
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(type.hp()));
         int dmg, counter = 0, kills = 0;
@@ -9436,6 +9463,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("crit", crit);
         out.put("killed", killed);
         out.put("mobHpMax", type.hp());
+        if (!wasFight) { lock = mineLockUp(userName, lock, out); hp = Math.min(hp, mineHpCap(lv, lock)); }
         StringBuilder msg = new StringBuilder();
         boolean died = false;
         int levelUp = 0;
@@ -9443,7 +9471,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             kills = 1;
             exp += type.exp();
             while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv)) { exp -= mineExpNeed(lv); lv++; levelUp++; }
-            if (levelUp > 0) hp = mineHpMax(lv); // 레벨이 오르면 체력이 다 찬다
+            if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
+                hp = mineHpMax(lv);
+                if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
+            }
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
             out.put("expGain", type.exp());
@@ -9460,7 +9491,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("counter", counter);
             if (hp <= 0) {
                 died = true;
-                hp = mineHpMax(lv);
+                hp = mineHpCap(lv, lock);
                 msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawn(userName, items, now)).append(" 깨어났어요.");
             }
         }
@@ -9469,7 +9500,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateMineCombat(userName, lv, exp, hp, now, kills);
         out.put("levelUp", levelUp);
         out.put("died", died);
-        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now)));
+        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock));
         if (msg.length() > 0) out.put("message", msg.toString());
         if (died) out.put("state", mineState(userName));
         return out;
@@ -9549,7 +9580,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier)); // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
-        out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now), now, mineEngaged(userName, now))); // [2026-10-24] 광산 전투 레벨
+        out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0))); // [2026-10-24] 광산 전투 레벨
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
@@ -9589,7 +9620,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     @Override
     @Transactional
-    public HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y) {
+    public HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y, String dir) {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
@@ -9654,10 +9685,21 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> one = mineDigCell(userName, map, items, x, y, g, now, dugKey);
         int used = 1;
         // [2026-10-24] 광역 곡괭이 -- 끼고 있으면 주변 8칸 중 광석이 있고 안 캔 칸을 남은 내구도만큼 함께 캔다(칸마다 내구도 1).
+        // [2026-10-25] 쌍날 곡괭이 -- 끼고 있으면 바라보는 방향(dir)의 앞 칸과 뒤 칸을 같은 규칙으로 함께 캔다.
         List<HashMap<String, Object>> wide = new ArrayList<>();
-        if (items.getOrDefault(MINE_ITEM_WIDE_PICK, 0) > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 1) {
-            for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-                if ((dx == 0 && dy == 0) || st - used < 1 || (sea && seaUsed + used >= MINE_SEA_DAILY)) continue;
+        int pickSlot = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+        List<int[]> around = new ArrayList<>();
+        if (pickSlot == 1 && items.getOrDefault(MINE_ITEM_WIDE_PICK, 0) > 0) {
+            for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) if (dx != 0 || dy != 0) around.add(new int[] { dx, dy });
+        } else if (pickSlot == 3 && items.getOrDefault(MINE_ITEM_LINE_PICK, 0) > 0) {
+            int[] v = "up".equals(dir) ? new int[] { 0, -1 } : "left".equals(dir) ? new int[] { -1, 0 } : "right".equals(dir) ? new int[] { 1, 0 } : new int[] { 0, 1 };
+            around.add(v);
+            around.add(new int[] { -v[0], -v[1] });
+        }
+        {
+            for (int[] off : around) {
+                int dx = off[0], dy = off[1];
+                if (st - used < 1 || (sea && seaUsed + used >= MINE_SEA_DAILY)) continue;
                 int nx = x + dx, ny = y + dy, ng = map.oreAt(nx, ny);
                 if (ng == 0 || !map.walkable(nx, ny) || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
                 HashMap<String, Object> w = mineDigCell(userName, map, items, nx, ny, ng, now, dugKey);
@@ -9710,7 +9752,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!wide.isEmpty()) {
             out.put("wide", wide);
             out.put("ores", mineOreList(userName));
-            msg += " ⛏️ 광역 +" + wide.size() + "칸";
+            msg += (pickSlot == 3 ? " ⛏️ 쌍날 +" : " ⛏️ 광역 +") + wide.size() + "칸";
         }
         out.put("message", msg);
         return out;
@@ -9858,7 +9900,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (p.locked()) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("locked", true);
-            out.put("message", "🔒 " + p.label + " -- 아직 갈 수 없어요. (준비 중)");
+            out.put("message", p.label.contains("눈바람") ? "🌨️ " + p.label + "." : "🔒 " + p.label + " -- 아직 갈 수 없어요. (준비 중)"); // [2026-10-25] 설원 마을 문
             return out;
         }
         // [2026-10-24] 배(판자 B) -- 항구(바닷가/남쪽 섬/북쪽 끝 설원) 중 다른 곳을 골라 그 항구의 내리는 칸으로
@@ -9953,6 +9995,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             helmet.put("oreName", S5MineMap.ORE_NAMES[cg - 1]);
             helmet.put("need", cn);
             helmet.put("have", have);
+            if (tier + 1 > MINE_HELMET_FIELD_MAX) { // [2026-10-25] 왕도 대장장이 단계 -- 칠요석도
+                Map<String, Integer> hv = mineOreHave(userName);
+                helmet.put("cityOnly", true);
+                helmet.put("extra", mineCostList(MINE_HELMET_EXTRA4, hv));
+                helmet.put("extraOk", mineCostOk(MINE_HELMET_EXTRA4, hv));
+            }
         }
         return helmet;
     }
@@ -9963,13 +10011,18 @@ public class BotS5ServiceImpl implements BotS5Service {
     public String mineHelmetUpgrade(String userName) {
         if (!mineAccess(userName)) return "⛏️ 광산은 아직 준비 중입니다.";
         mineRow(userName, false);
-        dao.selectMineUserForUpdate(userName); // 같은 유저 동시 구매 직렬화
+        HashMap<String, Object> hrow = dao.selectMineUserForUpdate(userName); // 같은 유저 동시 구매 직렬화
         int tier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
+        boolean city4 = tier + 1 > MINE_HELMET_FIELD_MAX && tier < MINE_HELMET_OPEN_MAX; // [2026-10-25] 4단계 = 왕도 대장장이 + 칠요석
+        if (city4 && !S5MineMap.CITY.equals(strVal(hrow.get("MAP_ID"), ""))) return "🔨 광부 투구 " + (tier + 1) + "단계는 왕도 아스테리아의 대장장이만 만들 수 있어요.";
+        if (city4 && !mineCostOk(MINE_HELMET_EXTRA4, mineOreHave(userName))) return "재료가 부족해요. (" + mineCostText(MINE_HELMET_EXTRA4) + "도 필요)";
         if (tier >= MINE_HELMET_OPEN_MAX || tier >= MINE_HELMET_COST.length) return "⛑️ 광부 투구는 지금 최고 단계(" + tier + "단계)예요. 더 깊은 광산이 열리면 업그레이드할 수 있어요.";
         int cg = MINE_HELMET_COST[tier][0], cn = MINE_HELMET_COST[tier][1];
         String name = S5MineMap.ORE_NAMES[cg - 1];
         if (dao.takeUserOre(userName, S5MineMap.ORE_CODES[cg - 1], cn) == 0) return "광석이 부족해요. (" + name + " " + cn + "개 필요)";
+        if (city4) mineTakeCost(userName, MINE_HELMET_EXTRA4, 1);
         dao.upsertMineItem(userName, MINE_ITEM_HELMET, tier + 1);
+        if (city4) return "⛑️ 광부 투구 " + (tier + 1) + "단계! (" + name + " " + cn + "개, " + mineCostText(MINE_HELMET_EXTRA4) + " 사용) 동굴 3층까지 환하게 보여요.";
         return "⛑️ 광부 투구 " + (tier + 1) + "단계! (" + name + " " + cn + "개 사용) "
                 + (tier + 1 >= 2 ? "광산 동굴 1층 전체가 잘 보여요." : "동굴이 훨씬 잘 보여요.");
     }
@@ -10092,7 +10145,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName);
         out.put("ok", true);
-        out.put("message", "🧭 이동 안내원: " + target.name + "에 도착했어요! 즐거운 여행 되세요."
+        out.put("message", "🧭 이동 안내원: " + S5MineMap.townName(target.id) + "에 도착했어요! 즐거운 여행 되세요."
                 + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ")" : ""));
         out.put("state", mineState(userName));
         return out;
@@ -10160,6 +10213,8 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  "구매 후엔 변경 자유롭게". 곡괭이 칸 PICK_SLOT: 0 = 기본, 1 = 광역 곡괭이, 2 = 탐지 곡괭이(대장장이 [구매]에서 언제든 바꿔 낀다). */
     static final String MINE_ITEM_WIDE_PICK = "WIDE_PICK";
     static final String MINE_ITEM_DETECT_PICK = "DETECT_PICK";
+    /** [2026-10-25] 쌍날 곡괭이 -- 바라보는 방향 앞뒤 칸도 함께(PICK_SLOT 3). */
+    static final String MINE_ITEM_LINE_PICK = "LINE_PICK";
     static final String MINE_ITEM_PICK_SLOT = "PICK_SLOT";
     /** 탐지 곡괭이가 빛을 잃은 주기 + 1("별빛석을 캐면 효과 꺼짐, 맵 리셋 때 회복"). 지금 주기 + 1과 같으면 꺼짐. */
     static final String MINE_ITEM_DETECT_OFF = "DETECT_OFF";
@@ -10169,13 +10224,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private static int minePickSlotOf(String code) {
-        return MINE_ITEM_WIDE_PICK.equals(code) ? 1 : MINE_ITEM_DETECT_PICK.equals(code) ? 2 : 0;
+        return MINE_ITEM_WIDE_PICK.equals(code) ? 1 : MINE_ITEM_DETECT_PICK.equals(code) ? 2 : MINE_ITEM_LINE_PICK.equals(code) ? 3 : 0;
     }
     /** 단계별 효과(인덱스 = 단계, 0 = 없음). 장화 = 화면 한 칸 이동 시간(ms, 기본 140 -> 약 +11% / +25% / +40%). */
-    private static final int[] MINE_PLENTY_DOUBLE_PCT = { 0, 3, 8 };
-    private static final int[] MINE_ABYSS_UP_PCT = { 0, 2, 5 };
-    private static final double[] MINE_SAND_GEM_MULT = { 1.0, 1.3, 1.6 };
-    private static final int[] MINE_STEP_MS = { 140, 126, 112, 100 };
+    //  [2026-10-25] 왕도 대장장이 단계 추가: 반지/목걸이 3단계, 장화 4단계(88ms = 약 +60%).
+    private static final int[] MINE_PLENTY_DOUBLE_PCT = { 0, 3, 8, 15 };
+    private static final int[] MINE_ABYSS_UP_PCT = { 0, 2, 5, 10 };
+    private static final double[] MINE_SAND_GEM_MULT = { 1.0, 1.3, 1.6, 2.2 };
+    private static final int[] MINE_STEP_MS = { 140, 126, 112, 100, 88 };
     /** 선장이 금광석만 받고 아무것도 안 알려줄 확률(%). */
     private static final int MINE_CAPTAIN_SCAM_PCT = 40;
     private static final int MINE_CAPTAIN_GOLD = 10;
@@ -10197,8 +10253,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         final String code, name, kind;
         final String[][][] cost; // [목표 단계 - 1][재료] = {코드, 개수}
         final String[] effect;   // [단계 - 1]
+        final int fieldMax;      // [2026-10-25] 마을 대장장이가 만드는 마지막 단계 -- 그 위 단계는 왕도 대장장이만
         MineGear(String code, String name, String kind, String[][][] cost, String[] effect) {
-            this.code = code; this.name = name; this.kind = kind; this.cost = cost; this.effect = effect;
+            this(code, name, kind, cost, effect, cost.length);
+        }
+        MineGear(String code, String name, String kind, String[][][] cost, String[] effect, int fieldMax) {
+            this.code = code; this.name = name; this.kind = kind; this.cost = cost; this.effect = effect; this.fieldMax = fieldMax;
         }
     }
 
@@ -10207,29 +10267,40 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new String[] { S5MineMap.ORE_CODES[5], String.valueOf(qty) };
     }
 
+    /** [2026-10-25] 칠요석 n개(재료) -- "고급템은 칠요석이 들어가게". 칠요석 = 요일석 7종 + 별빛석(mineSynthSeven). */
+    private static String[] mineSeven(int qty) {
+        return new String[] { S5MineMap.SEVEN_STONE_CODE, String.valueOf(qty) };
+    }
+
     // [2026-10-25] "성장이 빨라 상점 아이템을 너무 빨리 달성 -- 1단계 구매는 그대로, 2단계부터 비싸게" + "별빛석 필요처" 요청:
     //  라이브 확인(10-25) 2일 만에 상위 유저가 1단계 장신구/장화를 다 샀고 2단계(희귀 보석 5 + 다이아 1)도 하루치였다.
     //  2단계부터 희귀 보석 5 -> 25, 다이아 1 -> 4, 별빛석 1 추가(장신구), 장화 2단계 다이아 2 -> 6 + 미스릴 10, 3단계 다이아 3 -> 12 + 별빛석 2로 올렸다가 같은 날
     //  "이미 단계업한 사람이 있으면 그렇게 올리면 안 된다" -- 이미 누가 산 단계(장신구 2단계, 장화 2단계)는 원래 값으로 되돌리고 아무도 없는 장화 3단계만 올린 값 유지.
+    // [2026-10-25] "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템, 고급템은 칠요석" -- 반지/목걸이 3단계, 장화 4단계는 왕도 대장장이만(fieldMax),
+    //  효과 폭을 크게(2개 8% -> 15%, 한 등급 위 5% -> 10%, 보석 1.6배 -> 2.2배, 이동 +40% -> +60%) 하고 재료에 칠요석.
+    //  "곡괭이는 모든 대장장이 공통, 앞뒤가 같이 캐지는 곡괭이(칠요석 하나)" -- 쌍날 곡괭이(PICK_SLOT 3).
     private static final List<MineGear> MINE_GEAR = java.util.Arrays.asList(
         new MineGear(MINE_ITEM_PLENTY_RING, "풍요의 반지", "ring",
-            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) } },
-            new String[] { "캘 때 2개 나올 확률 3%", "캘 때 2개 나올 확률 8%" }),
+            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) }, { mineCost(7, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[] { "캘 때 2개 나올 확률 3%", "캘 때 2개 나올 확률 8%", "캘 때 2개 나올 확률 15%" }, 2),
         new MineGear(MINE_ITEM_ABYSS_RING, "심연의 반지", "ring",
-            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) } },
-            new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)" }),
+            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) }, { mineCost(1, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)", "한 등급 위 광석이 나올 확률 10% (미스릴까지)" }, 2),
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
-            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) } },
-            new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배" }),
+            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배", "보석이 나올 확률 2.2배" }, 2),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
-            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2) } },
-            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%" }),
+            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2) }, { mineCost(8, 15), mineSeven(3) } },
+            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%", "이동 속도 +60%" }, 3),
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
-            new String[][][] { { mineCost(8, 3), { S5MineMap.SEVEN_STONE_CODE, "5" } } },
+            new String[][][] { { mineCost(8, 3), mineSeven(5) } },
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
         new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
-            new String[][][] { { mineCost(8, 8), { S5MineMap.SEVEN_STONE_CODE, "10" }, { S5MineMap.ORE_CODES[4], "10" } } }, // "많이 비싸게"
-            new String[] { "서 있는 곳 주변 3x3칸의 광석이 미리 보여요 (별빛석을 캐면 빛을 잃고 맵 리셋 때 다시 빛나요)" })
+            new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" } } }, // "많이 비싸게"
+            new String[] { "서 있는 곳 주변 3x3칸의 광석이 미리 보여요 (별빛석을 캐면 빛을 잃고 맵 리셋 때 다시 빛나요)" }),
+        new MineGear(MINE_ITEM_LINE_PICK, "쌍날 곡괭이", "tool",
+            new String[][][] { { mineSeven(1) } },
+            new String[] { "캘 때 바라보는 방향의 앞 칸과 뒤 칸도 함께 (칸마다 내구도 1)" })
     );
 
     private static final String[][] MINE_DRAGON_RING_COST = {
@@ -10245,7 +10316,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static int mineRingTier(Map<String, Integer> items, String ringCode) {
         int slot = items.getOrDefault(MINE_ITEM_RING_SLOT, 0);
         boolean worn = (slot == 1 && MINE_ITEM_PLENTY_RING.equals(ringCode)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(ringCode));
-        return worn ? Math.min(items.getOrDefault(ringCode, 0), 2) : 0;
+        return worn ? Math.min(items.getOrDefault(ringCode, 0), MINE_PLENTY_DOUBLE_PCT.length - 1) : 0;
     }
 
     private static int mineStepMs(Map<String, Integer> items) {
@@ -10327,8 +10398,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if ("tool".equals(g.kind)) m.put("on", tier > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == minePickSlotOf(g.code)); // 끼고 있는 곡괭이
             if (MINE_ITEM_DETECT_PICK.equals(g.code)) m.put("dim", mineDetectDim(items)); // 빛을 잃음(맵 리셋 때 회복)
             m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code)) : tier > 0);
+            m.put("fieldMax", g.fieldMax); // [2026-10-25] 이 단계까지 마을 대장장이, 그 위는 왕도 대장장이
             if (tier < g.cost.length) {
                 m.put("nextTier", tier + 1);
+                m.put("cityOnly", tier + 1 > g.fieldMax);
                 m.put("nextEffect", g.effect[tier]);
                 m.put("costs", mineCostList(g.cost[tier], have));
                 m.put("can", mineCostOk(g.cost[tier], have));
@@ -10374,10 +10447,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         MineGear g = mineGear(code);
         if (g == null) return mineGearResult(userName, false, "만들 수 없는 물건이에요.");
         mineRow(userName, false);
-        dao.selectMineUserForUpdate(userName); // 같은 유저 동시 요청 직렬화
+        HashMap<String, Object> crow = dao.selectMineUserForUpdate(userName); // 같은 유저 동시 요청 직렬화
         Map<String, Integer> items = mineItems(userName);
         int tier = items.getOrDefault(g.code, 0);
         if (tier >= g.cost.length) return mineGearResult(userName, false, g.name + "은(는) 이미 최고 단계(" + tier + "단계)예요.");
+        if (tier + 1 > g.fieldMax && !S5MineMap.CITY.equals(strVal(crow.get("MAP_ID"), ""))) // [2026-10-25] 높은 단계는 왕도 대장장이만
+            return mineGearResult(userName, false, "🔨 " + g.name + " " + (tier + 1) + "단계는 왕도 아스테리아의 대장장이만 만들 수 있어요.");
         String[][] cost = g.cost[tier];
         if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "재료가 부족해요. (" + mineCostText(cost) + " 필요)");
         mineTakeCost(userName, cost, 1);
@@ -10502,9 +10577,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         int lv = mineLv(row);
+        boolean locked = mineItems(userName).getOrDefault(MINE_ITEM_HP_LOCK, 0) > 0;
+        if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); // [2026-10-25] 잠긴 최대 체력도 정상으로
         dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now, 0);
         out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now));
-        out.put("message", "✨ 성당 신부: 여신의 축복을! 체력이 모두 회복됐어요.");
+        out.put("message", "✨ 성당 신부: 여신의 축복을! 체력이 모두 회복됐어요." + (locked ? " 🔓 잠겼던 최대 체력도 풀렸어요." : ""));
         return out;
     }
 
@@ -10612,7 +10689,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (mineWaterWalk(items)) gear.add(mineOverviewGear("용왕의 반지", "dragon", 1, 1, true));
             m.put("gear", gear);
-            m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : "기본 곡괭이");
+            m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
             m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
             // 외형(부위별 착용 치장 이름, 성별), 산 치장 아이템 수
             HashMap<String, Object> look = mineLookOf(items);

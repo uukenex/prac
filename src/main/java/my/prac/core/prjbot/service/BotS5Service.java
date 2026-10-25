@@ -228,7 +228,8 @@ public interface BotS5Service {
     boolean mineAccess(String userName);
     HashMap<String, Object> mineState(String userName);
     /** ver = 화면이 가진 맵 version(리셋 등으로 맵이 바뀌었으면 reload로 응답). 빈 값이면 확인하지 않는다. */
-    HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y);
+    /** dir = 바라보는 방향(up/down/left/right) -- [2026-10-25] 쌍날 곡괭이(앞뒤 칸)용. */
+    HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y, String dir);
     HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
     /** dest = 배(판자) 포탈일 때 갈 항구 맵 ID(그 외 null). */
     HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest);

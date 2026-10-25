@@ -223,21 +223,32 @@ public final class S5MineMap {
 
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
     //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, CITY));
+    //  [2026-10-25] 설원 북쪽 작은 마을(설원 마을)도 마을이라 안내원을 둔다.
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, NORTH, CITY));
+    /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
+    public static String townName(String id) {
+        return FIELD.equals(id) ? "중앙 평원 마을" : NORTH.equals(id) ? "설원 마을" : CITY.equals(id) ? "왕도 아스테리아" : nameOf(id);
+    }
 
     /** 시작점 근처의 탁 트인 칸(주변 8칸이 다 걸을 수 있고 포탈/NPC에서 2칸 넘게 떨어진 곳)에 이동 안내원을 세운다 -- 길을 막지 않게. */
     private static void placeGuide(S5MineMap m) {
+        int cx = m.villageX >= 0 ? m.villageX : m.spawnX, cy = m.villageX >= 0 ? m.villageY : m.spawnY; // [2026-10-25] 설원은 마을 가운데 근처
+        placeNpc(m, cx, cy, "guide", "이동 안내원", "어디로 모실까요? 마을과 마을 사이는 제가 공짜로 데려다 드려요!");
+    }
+
+    /** (cx, cy) 근처 탁 트인 칸에 NPC를 세운다(위 이동 안내원과 같은 규칙). */
+    private static void placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line) {
         for (int d = 2; d <= 12; d++) {
             for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
                 if (Math.abs(dx) + Math.abs(dy) != d) continue;
-                int x = m.spawnX + dx, y = m.spawnY + dy;
+                int x = cx + dx, y = cy + dy;
                 if (x < 1 || y < 1 || x >= m.w - 1 || y >= m.h - 1 || !walkable(m.terrain[y][x]) || m.terrain[y][x] == 'P') continue;
                 boolean open = true;
                 for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (!walkable(m.terrain[yy][xx])) { open = false; break; }
                 for (Portal pt : m.portals) if (Math.abs(pt.x - x) + Math.abs(pt.y - y) <= 2) open = false;
                 for (Npc n : m.npcs) if (Math.abs(n.x - x) + Math.abs(n.y - y) <= 2) open = false;
                 if (!open) continue;
-                Npc g = new Npc(x, y, "guide", "이동 안내원", "어디로 모실까요? 마을과 마을 사이는 제가 공짜로 데려다 드려요!");
+                Npc g = new Npc(x, y, kind, name, line);
                 g.ground = m.terrain[y][x];
                 m.terrain[y][x] = 'N';
                 m.ore[y][x] = 0;
@@ -262,6 +273,8 @@ public final class S5MineMap {
     private boolean wind;       // [2026-10-23] 모래바람(가만히 있어도 좌우로 밀림, 화면이 처리)
     private boolean underwater; // [2026-10-24] 바닷속(화면이 푸르게 물들이고 거품)
     private List<Npc> npcs = Collections.emptyList();
+    /** [2026-10-25] 맵 안 작은 마을 가운데(설원 마을) -- 없으면 -1. */
+    int villageX = -1, villageY = -1;
     private List<Mob> mobs = Collections.emptyList();
     private int dockX = -1, dockY = -1; // [2026-10-24] 배에서 내리는 칸(항구 맵만)
     private int bossX = -1, bossY = -1; // [2026-10-24] 보스 자리(동굴 3층만, S5MineMobs.spawn이 보스를 둔다)
@@ -510,6 +523,9 @@ public final class S5MineMap {
         cv3.bossY = bossY;
         out.put(CAVE3, cv3);
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
+        // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
+        S5MineMap ct = out.get(CITY);
+        placeNpc(ct, ct.spawnX - 6, ct.spawnY - 4, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -526,6 +542,8 @@ public final class S5MineMap {
         n.dockY = m.dockY;
         n.bossX = m.bossX;
         n.bossY = m.bossY;
+        n.villageX = m.villageX;
+        n.villageY = m.villageY;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
     }
@@ -1039,25 +1057,48 @@ public final class S5MineMap {
         int sx = pier + 2, sy = plank[1];
         // 부두에서 북쪽 끝까지 눈길(3칸)
         int px = pier + 1;
+        int[] pathX = new int[h];
         for (int y = coast[pier] - 1; y >= 1; y--) {
             if (r.nextDouble() < 0.2) px += r.nextBoolean() ? 1 : -1;
             px = Math.max(3, Math.min(w - 4, px));
             for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'n';
+            pathX[y] = px;
         }
+        // [2026-10-25] "설원 북쪽에 조그마한 마을, 북/동/서쪽은 눈바람이 심해 갈 수 없다(문은 있음)" -- 눈길 북쪽 끝에 돌담(W)으로 두른 둥근 마을(V).
+        //  남쪽은 눈길이 들어오는 자리만 열고, 북/동/서 돌담 가운데에 잠긴 문(G). 마을 가운데 줄 위쪽 바깥은 눈 덮인 바위산(문 밖으로 돌아가지도 못하게).
+        //  난수를 더 쓰지 않아 다른 칸 배치는 그대로다.
+        final int vr = 6, vy = 10;
+        int vx = Math.max(vr + 3, Math.min(w - vr - 4, pathX[vy]));
+        for (int y = vy - vr - 2; y <= vy + vr + 2; y++) for (int x = vx - vr - 2; x <= vx + vr + 2; x++) {
+            if (y < 1 || y >= h - 1 || x < 1 || x >= w - 1) continue;
+            double d = Math.hypot(x - vx, y - vy);
+            if (d <= vr) t[y][x] = 'V';
+            else if (d <= vr + 1.2) t[y][x] = y > vy && Math.abs(x - pathX[y]) <= 1 ? 'n' : 'W'; // 남쪽 눈길 자리만 열림
+        }
+        for (int[] hs : new int[][] { { vx - 4, vy - 3 }, { vx + 3, vy - 3 } }) { // 초가집 두 채
+            t[hs[1]][hs[0]] = 'h'; t[hs[1]][hs[0] + 1] = 'j'; t[hs[1] + 1][hs[0]] = 'k'; t[hs[1] + 1][hs[0] + 1] = 'l';
+        }
+        int[][] gates = { { vx, vy - vr - 1 }, { vx + vr + 1, vy }, { vx - vr - 1, vy } };
+        for (int[] g : gates) t[g[1]][g[0]] = 'G';
+        for (int y = 1; y <= vy + 1; y++) for (int x = 1; x < w - 1; x++) if (Math.hypot(x - vx, y - vy) > vr + 1.2) t[y][x] = '^';
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(plank[0], plank[1], 'B', SHIP, 0, 0, "배에 오르기"));
+        String[] gateNames = { "북문", "동문", "서문" };
+        for (int i = 0; i < gates.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
         double[][] score = new double[h][w];
         boolean[][] skip = new boolean[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            skip[y][x] = t[y][x] == 'P' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            skip[y][x] = t[y][x] == 'P' || t[y][x] == 'V' || Math.abs(x - sx) + Math.abs(y - sy) <= 2; // 마을 칸엔 광석 없음
             score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.28 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, NORTH_SHARE, skip);
         S5MineMap m = new S5MineMap(NORTH, "북쪽 끝 설원", false, w, h, sx, sy, t, o, portals);
         m.dockX = sx;
         m.dockY = sy;
+        m.villageX = vx;
+        m.villageY = vy;
         return m;
     }
 
