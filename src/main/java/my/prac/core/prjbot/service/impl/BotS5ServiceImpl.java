@@ -8643,7 +8643,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_ITEM_NAMES.put(MINE_ITEM_DRAGON_RING, "용왕의 반지");
     }
     /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
-    private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 100 }, { 4, 100 }, { 5, 100 }, { 6, 100 } };
+    //  [2026-10-25] "성장이 빨라 상점 아이템을 너무 빨리 달성 -- 1단계는 그대로, 2단계부터 비싸게": 2단계 은광석 100 -> 250, 3단계 금광석 100 -> 250.
+    private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 250 }, { 4, 250 }, { 5, 100 }, { 6, 100 } };
     private static final int MINE_HELMET_OPEN_MAX = 3; // [2026-10-24] 동굴 3층(레벨 3)이 열려 3단계(금광석 100개)까지
 
     private Map<String, Integer> mineItems(String userName) {
@@ -9996,18 +9997,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
     }
 
+    /** [2026-10-25] 별빛석 n개(재료). */
+    private static String[] mineStar(int qty) {
+        return new String[] { S5MineMap.ORE_CODES[5], String.valueOf(qty) };
+    }
+
+    // [2026-10-25] "성장이 빨라 상점 아이템을 너무 빨리 달성 -- 1단계 구매는 그대로, 2단계부터 비싸게" + "별빛석 필요처" 요청:
+    //  라이브 확인(10-25) 2일 만에 상위 유저가 1단계 장신구/장화를 다 샀고 2단계(희귀 보석 5 + 다이아 1)도 하루치였다.
+    //  2단계부터 희귀 보석 5 -> 25, 다이아 1 -> 4, 별빛석 1 추가(장신구). 장화 2단계 다이아 2 -> 6 + 미스릴 10, 3단계 다이아 3 -> 12 + 별빛석 2.
     private static final List<MineGear> MINE_GEAR = java.util.Arrays.asList(
         new MineGear(MINE_ITEM_PLENTY_RING, "풍요의 반지", "ring",
-            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) } },
+            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 25), mineCost(8, 4), mineStar(1) } },
             new String[] { "캘 때 2개 나올 확률 3%", "캘 때 2개 나올 확률 8%" }),
         new MineGear(MINE_ITEM_ABYSS_RING, "심연의 반지", "ring",
-            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) } },
+            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 25), mineCost(8, 4), mineStar(1) } },
             new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)" }),
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
-            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) } },
+            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 25), mineCost(8, 4), mineStar(1) } },
             new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배" }),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
-            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 3) } },
+            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 6), { S5MineMap.ORE_CODES[4], "10" } }, { mineCost(8, 12), mineStar(2) } },
             new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%" }),
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
             new String[][][] { { mineCost(8, 3), { S5MineMap.SEVEN_STONE_CODE, "5" } } },
@@ -10137,6 +10146,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("dragon", dragon);
         int sevenMax = Integer.MAX_VALUE;
         for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0));
+        sevenMax = Math.min(sevenMax, have.getOrDefault(S5MineMap.ORE_CODES[5], 0)); // [2026-10-25] 칠요석 하나에 별빛석 1개
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
         mineLookPayload(items, have, out); // [2026-10-24] 명품상점(외형)
         out.put("ores", mineOreList(userName));
@@ -10195,7 +10205,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return mineGearResult(userName, true, "💍 " + g.name + "을(를) 끼었어요.");
     }
 
-    /** 대장장이 [합성] -- 요일석 7종(월~일) 1개씩 -> 칠요석 1개. times = 몇 개(가진 만큼으로 줄인다). */
+    /** 대장장이 [합성] -- 요일석 7종(월~일) 1개씩 + 별빛석 1개 -> 칠요석 1개. times = 몇 개(가진 만큼으로 줄인다).
+     *  [2026-10-25] "별빛석 필요처 -- 칠요석 만들 때 들어가도록" 요청으로 별빛석 1개 추가. */
     @Override
     @Transactional
     public HashMap<String, Object> mineSynthSeven(String userName, int times) {
@@ -10205,12 +10216,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> have = mineOreHave(userName);
         int n = Math.max(1, times);
         for (String c : S5MineMap.DAY_STONE_CODES) n = Math.min(n, have.getOrDefault(c, 0));
-        if (n < 1) return mineGearResult(userName, false, "요일석 7종(월요석~일요석)이 하나씩 있어야 칠요석을 만들 수 있어요.");
-        String[][] cost = new String[S5MineMap.DAY_STONE_CODES.length][];
-        for (int i = 0; i < cost.length; i++) cost[i] = new String[] { S5MineMap.DAY_STONE_CODES[i], "1" };
+        n = Math.min(n, have.getOrDefault(S5MineMap.ORE_CODES[5], 0));
+        if (n < 1) return mineGearResult(userName, false, "요일석 7종(월요석~일요석) 하나씩과 별빛석 1개가 있어야 칠요석을 만들 수 있어요.");
+        String[][] cost = new String[S5MineMap.DAY_STONE_CODES.length + 1][];
+        for (int i = 0; i < S5MineMap.DAY_STONE_CODES.length; i++) cost[i] = new String[] { S5MineMap.DAY_STONE_CODES[i], "1" };
+        cost[S5MineMap.DAY_STONE_CODES.length] = mineStar(1);
         mineTakeCost(userName, cost, n);
         dao.addUserOre(userName, S5MineMap.SEVEN_STONE_CODE, n);
-        return mineGearResult(userName, true, "🌈 요일석 7종을 합쳐 칠요석 " + n + "개를 만들었어요! (보유 " + (have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0) + n) + "개)");
+        return mineGearResult(userName, true, "🌈 요일석 7종과 별빛석을 합쳐 칠요석 " + n + "개를 만들었어요! (보유 " + (have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0) + n) + "개)");
     }
 
     /** 바닷가 선장 -- action "give" = 금광석 10개 주기(MINE_CAPTAIN_SCAM_PCT 확률로 먹튀, 아니면 용왕의 반지 이야기 = 퀘스트 시작),
@@ -10347,6 +10360,81 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public void mineLeave(String userName) {
         MINE_PRESENCE.remove(userName);
+    }
+
+    /** [2026-10-25] 관리자 광산 캐릭터 현황 -- "캐릭터별 현재 위치, 장착 아이템들, 레벨, 보유 수량 보이는 페이지" 요청.
+     *  지금 광산 화면을 띄운 유저(최근 10초 위치 알림)는 실시간 위치, 아니면 마지막 저장 위치. 읽기만 한다(행 생성/잠금 없음). */
+    @Override
+    public List<HashMap<String, Object>> mineUserOverview() {
+        long now = System.currentTimeMillis();
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (HashMap<String, Object> row : dao.selectAllMineUsers()) {
+            String u = strVal(row.get("USER_NAME"), "");
+            Map<String, Integer> items = mineItems(u);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("userName", u);
+            MinePresence p = MINE_PRESENCE.get(u);
+            boolean online = p != null && p.mapId != null && now - p.at <= MINE_PRESENCE_TTL_MS;
+            S5MineMap map = online ? S5MineMap.get(p.mapId) : mineMapOf(row);
+            int[] pos = online ? new int[] { p.x, p.y } : minePos(row, map, mineWaterWalk(items));
+            m.put("online", online);
+            m.put("mapId", map.id);
+            m.put("mapName", map.name);
+            m.put("x", pos[0]);
+            m.put("y", pos[1]);
+            m.put("lastAt", online ? p.at : longOf(row.get("POS_AT_MS"), 0L));
+            int lv = mineLv(row);
+            m.put("lv", lv);
+            m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
+            m.put("expNeed", mineExpNeed(lv));
+            m.put("kills", intVal(row.get("M_KILLS"), 0));
+            m.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
+            m.put("pickDur", minePickDur(row));
+            m.put("pickMax", minePickMax(row));
+            // 장착/보유 장비: 투구, 장신구/장화/곡괭이(단계, 끼고 있는지), 용왕의 반지
+            List<HashMap<String, Object>> gear = new ArrayList<>();
+            int helmet = items.getOrDefault(MINE_ITEM_HELMET, 0);
+            if (helmet > 0) gear.add(mineOverviewGear("광부 투구", "helmet", helmet, MINE_HELMET_COST.length, true));
+            int slot = items.getOrDefault(MINE_ITEM_RING_SLOT, 0), pickSlot = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+            for (MineGear g : MINE_GEAR) {
+                int tier = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
+                if (tier < 1) continue;
+                boolean worn = "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
+                        : "tool".equals(g.kind) ? pickSlot == minePickSlotOf(g.code) : true;
+                gear.add(mineOverviewGear(g.name, g.kind, tier, g.cost.length, worn));
+            }
+            if (mineWaterWalk(items)) gear.add(mineOverviewGear("용왕의 반지", "dragon", 1, 1, true));
+            m.put("gear", gear);
+            m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : "기본 곡괭이");
+            m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
+            // 외형(부위별 착용 치장 이름, 성별), 산 치장 아이템 수
+            HashMap<String, Object> look = mineLookOf(items);
+            HashMap<String, Object> wear = new HashMap<>();
+            for (String s : MINE_LOOK_SLOTS) {
+                MineCos c = mineCos(strVal(look.get(s + "Code"), ""));
+                wear.put(s, c == null ? "" : c.name);
+            }
+            m.put("look", wear);
+            m.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
+            int cosOwned = 0;
+            for (MineCos c : MINE_COS) if (items.getOrDefault("COS_" + c.code, 0) > 0) cosOwned++;
+            m.put("cosOwned", cosOwned);
+            List<HashMap<String, Object>> ores = new ArrayList<>();
+            for (HashMap<String, Object> o : mineOreList(u)) if (intVal(o.get("qty"), 0) > 0) ores.add(o);
+            m.put("ores", ores);
+            out.add(m);
+        }
+        return out;
+    }
+
+    private static HashMap<String, Object> mineOverviewGear(String name, String kind, int tier, int maxTier, boolean worn) {
+        HashMap<String, Object> g = new HashMap<>();
+        g.put("name", name);
+        g.put("kind", kind);
+        g.put("tier", tier);
+        g.put("maxTier", maxTier);
+        g.put("worn", worn);
+        return g;
     }
 
     /** "안녕하세요" -- 저장 위치 4칸 안에 같은 맵의 다른 유저가 있으면 말풍선, 하루 1회 오늘 요일석 5개. */

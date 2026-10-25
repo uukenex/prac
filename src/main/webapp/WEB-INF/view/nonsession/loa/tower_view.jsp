@@ -3685,7 +3685,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade === 18 ? '요일석 7종 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -6260,8 +6260,9 @@ var TowerMine = (function () {
   function synthHtml() {
     var stones = [];
     for (var g = 11; g <= 17; g++) stones.push({ grade: g, name: ORE_NAME[g], have: oreHave(g), need: 1 });
+    stones.push({ grade: 6, name: ORE_NAME[6], have: oreHave(6), need: 1 }); // [2026-10-25] 칠요석 하나에 별빛석 1개
     var can = (st.sevenMax || 0) > 0 ? '' : 'disabled ';
-    return '<div class="mine-smith-say">요일석 7종(월요석~일요석)을 하나씩 가져오면 칠요석 하나로 합쳐 주지.</div>'
+    return '<div class="mine-smith-say">요일석 7종(월요석~일요석) 하나씩에 별빛석 하나를 더 가져오면, 별빛으로 묶어 칠요석 하나로 합쳐 주지.</div>'
         + '<div class="mine-smith-row"><img src="' + oreIcon(18) + '" alt=""><span class="nm">칠요석<small>보유 ' + oreHave(18) + '개 · 지금 ' + (st.sevenMax || 0) + '개 만들 수 있어요</small>'
         + costHtml(stones) + '</span>'
         + '<button type="button" ' + can + 'onclick="TowerMine.synth(1)">1개</button>'

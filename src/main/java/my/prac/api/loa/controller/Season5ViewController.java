@@ -68,6 +68,23 @@ public class Season5ViewController {
         return "nonsession/loa/s5_battle_log_view";
     }
 
+    /** [2026-10-25] "캐릭터별 현재 위치, 장착 아이템들, 레벨, 보유 수량 보이는 페이지" 요청 -- 로그 뷰어처럼 카카오 로그인 필요. 데이터는 /api/tower-mine-users. */
+    @GetMapping("/tower-mine-users")
+    public String mineUsersViewPage(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-mine-users";
+        return "nonsession/loa/s5_mine_users_view";
+    }
+
+    @GetMapping("/api/tower-mine-users")
+    @ResponseBody
+    public ResponseEntity<?> apiMineUsers(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("users", s5Service.mineUserOverview());
+        result.put("now", System.currentTimeMillis());
+        return ResponseEntity.ok(result);
+    }
+
     // [2026-10-24] "밸런스 화면은 없애줘" -- /tower-balance-stats 페이지와 API를 지웠다(전투 결과 수집 TBOT_S5_BATTLE_STAT 쓰기는 그대로).
 
     // ─────────────────────────────────────────────

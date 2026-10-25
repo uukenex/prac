@@ -106,14 +106,15 @@
 </script>
 
   <div class="wrap">
-    <h1>📜 람쥐탑 로그 뷰어</h1>
+    <h1>📜 람쥐탑 로그 뷰어 <a href="/loa/tower-mine-users" style="margin-left:auto;font-size:12px;font-weight:700;color:#5B3FA0;text-decoration:none;background:#E3DDF3;border-radius:999px;padding:5px 12px;">⛏️ 광산 캐릭터 현황 →</a></h1>
     <div class="sub">채팅 명령어 + 웹 액션을 유저별로 조회(관리자용, SPA와 별도 페이지) -- 최근 24시간 이내만</div>
 
     <div class="card">
       <!-- [2026-10-24] "광산 로그랑 탑 로그 분리, 필터 버튼도 분리" 요청 -- 아래 목록과 사용자 요약 모두 이 구분을 따른다 -->
       <div class="time-row cat-row" id="catRow" style="margin-bottom:8px;">
-        <button type="button" class="time-btn active" data-cat="tower">🗼 탑 로그</button>
-        <button type="button" class="time-btn" data-cat="mine">⛏️ 광산 로그</button>
+        <!-- [2026-10-25] "광산이 먼저 나오게" -- 광산 로그를 첫 버튼이자 기본 선택으로 -->
+        <button type="button" class="time-btn active" data-cat="mine">⛏️ 광산 로그</button>
+        <button type="button" class="time-btn" data-cat="tower">🗼 탑 로그</button>
         <button type="button" class="time-btn" data-cat="all">전체</button>
       </div>
       <div class="search-row">
@@ -158,7 +159,7 @@
     // 서버에서 한 번 불러온 "최근 24시간" 전체 로그(선택된 유저 기준). 시간대 버튼/검색어는
     // 전부 이 배열 안에서 필터링만 한다(추가 fetch 없음).
     var allItems = [];
-    var state = { userName: '', windowMin: 1440, keyword: '', cat: 'tower' };
+    var state = { userName: '', windowMin: 1440, keyword: '', cat: 'mine' };
     // [2026-10-24] 로그 구분: 광산 = ROOM_NAME 'MINE'(이후) 또는 예전에 'WEB'으로 쌓인 광산 로그(요청이 "[웹] 광산"으로 시작),
     //  웹 = 그 밖의 'WEB'(탑 웹 액션), 채팅 = 그 외 방 이름. 탑 로그 = 채팅 + 웹.
     function catOf(it) {

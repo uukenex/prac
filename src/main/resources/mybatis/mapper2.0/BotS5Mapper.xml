@@ -663,6 +663,12 @@
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName}
     </select>
 
+    <!-- [2026-10-25] 관리자 광산 캐릭터 현황(전체 유저) -->
+    <select id="selectAllMineUsers" resultType="hashmap">
+        SELECT USER_NAME, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PICK_DUR, PICK_DUR_MAX, M_LV, M_EXP, M_KILLS
+          FROM TBOT_S5_MINE_USER ORDER BY NVL(POS_AT_MS, 0) DESC
+    </select>
+
     <select id="selectMineUserForUpdate" resultType="hashmap">
         SELECT USER_NAME, STAMINA, STAMINA_AT_MS, MAP_ID, POS_X, POS_Y, POS_AT_MS, TOTAL_DIG, PP_BONUS, PICK_DUR, PICK_DUR_MAX, M_LV, M_EXP, M_HP, M_HP_AT_MS, M_KILLS
           FROM TBOT_S5_MINE_USER WHERE USER_NAME = #{userName} FOR UPDATE
