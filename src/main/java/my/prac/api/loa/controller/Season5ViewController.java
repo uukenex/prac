@@ -75,6 +75,16 @@ public class Season5ViewController {
         return "nonsession/loa/s5_mine_users_view";
     }
 
+    /** [2026-10-25] 로그 뷰어 -- 광산 로그 옆 캐릭터 그림용 외형 {유저명: look}(카카오 로그인 필요). */
+    @GetMapping("/api/tower-mine-looks")
+    @ResponseBody
+    public ResponseEntity<?> apiMineLooks(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("looks", s5Service.mineLooks());
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/api/tower-mine-users")
     @ResponseBody
     public ResponseEntity<?> apiMineUsers(HttpSession session) {

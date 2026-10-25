@@ -74,6 +74,10 @@
     .log-chip.web{ background:var(--pp-soft); color:var(--pp); }
     .log-chip.chat{ background:var(--gold-soft); color:var(--gold); }
     .log-chip.mine{ background:#E3DDF3; color:#5B3FA0; }
+    /* [2026-10-25] 광산 캐릭터 그림(16x16 도트를 2배로) */
+    .mchar{ width:32px; height:32px; image-rendering:pixelated; vertical-align:middle; margin-right:4px; background:#F3E6C4; border:1.5px solid var(--line); border-radius:8px; }
+    .sum-table .mchar{ width:24px; height:24px; border-radius:6px; }
+    .who-wrap{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
     .cat-row .time-btn{ font-size:13px; padding:7px 16px; }
     .log-req{ font-weight:700; font-size:13px; margin-bottom:4px; word-break:break-all; }
     .log-res{ font-size:12.5px; color:var(--ink); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
@@ -153,9 +157,16 @@
     <div class="log-list" id="logList"></div>
   </div>
 
+  <%@ include file="_mine_char.jsp" %>
   <script>
   (function () {
     var base = ''; // 같은 오리진(/loa/...)이라 상대경로로 충분.
+    // [2026-10-25] "광산 로그 보여주는 곳에 캐릭터 이미지" -- 광산 유저별 외형을 한 번 받아 MineChar(_mine_char.jsp, 광산 화면과 같은 그림)로 그린다.
+    var looks = {};
+    function face(name) {
+      var lk = looks[name];
+      return lk && window.MineChar ? '<img class="mchar" src="' + MineChar.dataUrl(lk) + '" alt="" title="' + escapeHtml(name) + '">' : '';
+    }
     // 서버에서 한 번 불러온 "최근 24시간" 전체 로그(선택된 유저 기준). 시간대 버튼/검색어는
     // 전부 이 배열 안에서 필터링만 한다(추가 fetch 없음).
     var allItems = [];
@@ -217,7 +228,7 @@
         + (showTower ? '<th class="num">채팅</th><th class="num">웹</th>' : '') + (showMine ? '<th class="num">광산</th>' : '') + '<th>마지막 사용</th></tr></thead><tbody>'
         + rows.map(function (r) {
           return '<tr class="sum-row' + (state.userName === r.name ? ' active' : '') + '" data-user="' + escapeHtml(r.name).replace(/"/g, '&quot;') + '">'
-            + '<td>' + escapeHtml(r.name) + '</td><td class="num"><b>' + r.total + '회</b></td>'
+            + '<td>' + (state.cat === 'mine' ? face(r.name) : '') + escapeHtml(r.name) + '</td><td class="num"><b>' + r.total + '회</b></td>'
             + (showTower ? '<td class="num">' + r.chat + '</td><td class="num">' + r.web + '</td>' : '')
             + (showMine ? '<td class="num">' + r.mine + '</td>' : '')
             + '<td class="sum-sub">' + escapeHtml((r.last || '').substring(5, 16)) + '</td></tr>';
@@ -270,7 +281,7 @@
               : '<span class="log-chip chat">' + escapeHtml(it.ROOM_NAME || '채팅') + '</span>';
           var who = state.userName ? '' : '<span class="who">' + escapeHtml(it.USER_NAME) + '</span>';
           return '<div class="log-item">'
-            + '<div class="log-item-head">' + who + chip + '<span>' + escapeHtml(it.INSERT_DATE) + '</span></div>'
+            + '<div class="log-item-head"><span class="who-wrap">' + (cat === 'mine' ? face(it.USER_NAME) : '') + who + chip + '</span>' + '<span>' + escapeHtml(it.INSERT_DATE) + '</span></div>'
             + '<div class="log-req">' + escapeHtml(it.REQ) + '</div>'
             + '<div class="log-res">' + escapeHtml(it.RES) + '</div>'
             + '</div>';
@@ -342,6 +353,11 @@
     loadUserOptions(initialUser);
     fetchFromServer();
     fetchSummary();
+    fetch(base + '/loa/api/tower-mine-looks').then(function (r) { return r.json(); }).then(function (d) {
+      looks = (d && d.looks) || {};
+      if (sumUsers.length) renderSummary();
+      if (allItems.length) renderItems();
+    }).catch(function () { /* 그림이 없어도 로그는 그대로 보인다 */ });
   })();
   </script>
 </body>

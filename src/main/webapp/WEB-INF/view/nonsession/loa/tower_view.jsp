@@ -5382,6 +5382,7 @@ var TW = (function () {
            closeDungeon: closeDungeon };
 })();
 </script>
+<%@ include file="_mine_char.jsp" %>
 <script>
 /* [2026-10-23] 웹 광산(공용 맵 여러 개, 2D 도트) -- 서버 BotS5ServiceImpl.mine*, 맵 파일 s5/*.txt(S5MineMap).
  * 지형/포탈은 서버가 준 문자열(모든 유저 같은 맵, 맵별 version으로 브라우저에 저장)을 16x16 도트 타일로 그린다. 광석은 캐 봐야 안다(서버만 앎).
@@ -5800,57 +5801,8 @@ var TowerMine = (function () {
     return 'rgb(' + m(r) + ',' + m(gg) + ',' + m(b) + ')';
   }
   // [2026-10-24] 명품상점 외형 -- lk = { gender 0 남/1 여, hat '색|모양', hair '색', top '색|모양', bottom '색', shoes '색' } (빈 값 = 기본)
-  function lookPart(v) { var p = (v || '').split('|'); return { c: p[0] || '', s: p[1] || '' }; }
-  function charSprite(dir, step, dig, lk) {
-    lk = lk || {};
-    if (dir === 'left') {
-      var src = charSprite('right', step, dig, lk), c2 = mk(T, T), g2 = c2.getContext('2d');
-      g2.translate(T, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
-      return c2;
-    }
-    var c = mk(T, T), g = c.getContext('2d');
-    var top = lookPart(lk.top), hat = lookPart(lk.hat), fem = lk.gender === 1;
-    var skin = '#f6c9a0', hair = lk.hair || '#2b1d16', robe = top.c || '#3f5fd1', robeD = top.c ? shade(top.c, -0.28) : '#2c45a3';
-    var belt = '#7a4a1f', pants = lk.bottom || '#3a2b22', boot = lk.shoes || '#5b3a1e';
-    var side = dir === 'right';
-    var lx = side ? 6 : 5, rx = 9;
-    var lh = step === 1 ? 2 : 3, rh = step === 2 ? 2 : 3;
-    px(g, pants, lx, 12, 2, lh); px(g, boot, lx, 12 + lh, 2, 1);
-    px(g, pants, rx, 12, 2, rh); px(g, boot, rx, 12 + rh, 2, 1);
-    px(g, robe, 4, 7, 8, 5); px(g, robeD, 4, 7, 1, 5); px(g, robeD, 11, 7, 1, 5);
-    if (top.s === 'armor') { px(g, shade(robe, 0.35), 5, 7, 6, 1); px(g, shade(robe, 0.2), 5, 9, 6, 1); px(g, '#d9d0b8', 4, 10, 8, 1); }
-    else if (top.s === 'hanbok') { px(g, '#c0392b', 6, 7, 4, 1); px(g, '#c0392b', 7, 8, 2, 2); px(g, '#2e5aa8', 4, 10, 8, 1); }
-    else px(g, belt, 4, 10, 8, 1);
-    if (fem) { px(g, robe, 3, 11, 10, 2); px(g, robeD, 3, 12, 10, 1); } // 치마처럼 퍼지는 아랫단
-    if (side) { px(g, robeD, 7, 8, 2, 3); px(g, skin, 8, 11); }
-    else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, skin, 3, 11); px(g, skin, 12, 11); }
-    px(g, skin, 4, 1, 8, 6);
-    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, shade(hair, 0.15), 6, 1, 4, 1); if (fem) px(g, hair, 4, 6, 8, 3); }
-    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, fem ? 6 : 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
-    else {
-      px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, fem ? 6 : 2); px(g, hair, 11, 3, 1, fem ? 6 : 2);
-      px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5);
-      if (fem) { px(g, '#1a1a1a', 5, 3); px(g, '#1a1a1a', 10, 3); px(g, '#d9536f', 7, 6, 2, 1); } // 속눈썹 + 입술
-    }
-    if (hat.s) { // 모자는 머리 위에 덮어 그린다
-      var hc = hat.c, hd = shade(hc, -0.3);
-      if (hat.s === 'straw') { px(g, hc, 2, 2, 12, 1); px(g, hc, 5, 0, 6, 2); px(g, '#b5251f', 5, 1, 6, 1); }
-      else if (hat.s === 'helmet') { px(g, hc, 4, 0, 8, 2); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 7, 0, 2, 1); }
-      else if (hat.s === 'pirate') { px(g, hc, 3, 1, 10, 2); px(g, hc, 5, 0, 6, 1); px(g, '#ffffff', 7, 1, 2, 1); }
-      else if (hat.s === 'wizard') { px(g, hc, 7, 0, 2, 1); px(g, hc, 6, 1, 4, 1); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 8, 1); }
-      else if (hat.s === 'crown') { px(g, hc, 4, 1, 8, 1); px(g, hc, 4, 0); px(g, hc, 7, 0, 2, 1); px(g, hc, 11, 0); px(g, '#d4104f', 7, 1, 2, 1); }
-    }
-    var wood = '#8a5a2b', iron = '#c3cad1';
-    if (dig === 1) { // 들어 올림
-      if (side) { px(g, wood, 9, 1, 1, 7); px(g, iron, 7, 0, 5, 1); px(g, iron, 7, 1); px(g, iron, 11, 1); }
-      else { px(g, wood, 12, 1, 1, 8); px(g, iron, 10, 0, 5, 1); px(g, iron, 10, 1); px(g, iron, 14, 1); }
-    } else if (dig === 2) { // 내려치기
-      if (side) { px(g, wood, 10, 10, 5, 1); px(g, iron, 15, 8, 1, 5); }
-      else if (dir === 'up') { px(g, wood, 12, 2, 1, 6); px(g, iron, 10, 1, 5, 1); }
-      else { px(g, wood, 12, 11, 1, 4); px(g, iron, 10, 15, 5, 1); }
-    }
-    return outline(c, '#140d0a');
-  }
+  // [2026-10-25] 그리는 코드는 로그 뷰어와 같이 쓰려고 _mine_char.jsp(window.MineChar)로 옮겼다.
+  function charSprite(dir, step, dig, lk) { return MineChar.sprite(dir, step, dig, lk); }
   var spriteKey = null;
   function buildSprites(lk) {
     var key = JSON.stringify(lk || {});

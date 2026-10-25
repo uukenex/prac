@@ -36,6 +36,7 @@
     .ch.on{ border-color:#9fd3b4; }
     .ch-head{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
     .ch-name{ font-weight:800; font-size:14.5px; word-break:break-all; }
+    .mchar{ width:40px; height:40px; image-rendering:pixelated; align-self:center; background:#F3E6C4; border:1.5px solid var(--line); border-radius:10px; flex-shrink:0; }
     .dot{ width:8px; height:8px; border-radius:50%; background:#c9bfa4; display:inline-block; flex-shrink:0; align-self:center; }
     .ch.on .dot{ background:var(--pp); box-shadow:0 0 0 3px var(--pp-soft); }
     .lv{ margin-left:auto; font-weight:800; font-size:13px; color:var(--mine); background:var(--mine-soft); border-radius:999px; padding:2px 10px; font-variant-numeric:tabular-nums; }
@@ -97,6 +98,7 @@
     <div class="meta" id="meta"></div>
     <div class="list" id="list"><div class="loading">불러오는 중…</div></div>
   </div>
+<%@ include file="_mine_char.jsp" %>
 <script>
 (function () {
   var users = [], serverNow = Date.now(), timer = null;
@@ -134,7 +136,8 @@
       return '<span class="ore ' + oreClass(o.grade) + '">' + esc(o.name) + '<b>' + n(o.qty) + '</b></span>';
     }).join('');
     return '<div class="ch' + (u.online ? ' on' : '') + '">'
-      + '<div class="ch-head"><span class="dot" title="' + (u.online ? '광산 접속 중' : '접속 안 함') + '"></span><span class="ch-name">' + esc(u.userName) + '</span>'
+      + '<div class="ch-head">' + (window.MineChar ? '<img class="mchar" src="' + MineChar.dataUrl(u.lookRaw || {}) + '" alt="">' : '') // [2026-10-25] 광산 화면과 같은 캐릭터 그림
+      + '<span class="dot" title="' + (u.online ? '광산 접속 중' : '접속 안 함') + '"></span><span class="ch-name">' + esc(u.userName) + '</span>'
       + '<span class="lv">Lv.' + u.lv + '</span></div>'
       + '<div class="where">📍 <b>' + esc(u.mapName) + '</b><span class="xy">' + u.x + ', ' + u.y + '</span>'
       + '<span class="ago">' + (u.online ? '지금 접속 중' : '마지막 활동 ' + ago(u.lastAt)) + '</span></div>'

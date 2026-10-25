@@ -270,6 +270,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineGreet(String userName);
     /** [2026-10-25] 관리자 광산 캐릭터 현황(위치/장착/레벨/보유 수량, 읽기만). */
     List<HashMap<String, Object>> mineUserOverview();
+    /** [2026-10-25] 광산 유저별 외형 {유저명: look} -- 로그 뷰어 캐릭터 그림용(읽기만). */
+    HashMap<String, Object> mineLooks();
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 

@@ -10699,6 +10699,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 wear.put(s, c == null ? "" : c.name);
             }
             m.put("look", wear);
+            m.put("lookRaw", look); // [2026-10-25] 화면 캐릭터 그림(MineChar)용
             m.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
             int cosOwned = 0;
             for (MineCos c : MINE_COS) if (items.getOrDefault("COS_" + c.code, 0) > 0) cosOwned++;
@@ -10707,6 +10708,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (HashMap<String, Object> o : mineOreList(u)) if (intVal(o.get("qty"), 0) > 0) ores.add(o);
             m.put("ores", ores);
             out.add(m);
+        }
+        return out;
+    }
+
+    /** [2026-10-25] "로그의 광산 로그에 캐릭터 이미지" -- 광산 유저별 외형(mineLookOf 모양, 화면 MineChar가 그린다). 읽기만. */
+    @Override
+    public HashMap<String, Object> mineLooks() {
+        HashMap<String, Object> out = new HashMap<>();
+        for (HashMap<String, Object> row : dao.selectAllMineUsers()) {
+            String u = strVal(row.get("USER_NAME"), "");
+            if (!u.isEmpty()) out.put(u, mineLookOf(mineItems(u)));
         }
         return out;
     }
