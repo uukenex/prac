@@ -23,8 +23,9 @@
     h1 a{ margin-left:auto; font-size:12px; font-weight:700; color:var(--gold); text-decoration:none; background:var(--gold-soft); border-radius:999px; padding:5px 12px; }
     .sub{ font-size:12px; color:var(--ink-soft); margin:0; }
     .bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .bar input, .bar select{ padding:8px 12px; border:1.5px solid var(--line); border-radius:14px; background:#fff; font-size:13px; color:var(--ink); }
-    .bar input{ flex:1 1 160px; min-width:0; }
+    .bar input[type=text], .bar select{ padding:8px 12px; border:1.5px solid var(--line); border-radius:14px; background:#fff; font-size:13px; color:var(--ink); }
+    .bar input[type=text]{ flex:1 1 160px; min-width:0; }
+    .bar label{ white-space:nowrap; }
     .bar button{ background:var(--gold); color:#fff; border:none; padding:8px 16px; border-radius:14px; font-size:13px; font-weight:700; cursor:pointer; }
     .bar label{ font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:4px; }
     .meta{ font-size:12px; color:var(--ink-soft); }

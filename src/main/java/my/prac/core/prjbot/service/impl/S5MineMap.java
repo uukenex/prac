@@ -215,9 +215,43 @@ public final class S5MineMap {
     public static final class Npc {
         public final int x, y;
         public final String kind, name, line;
+        public char ground; // [2026-10-25] NPC 칸('N') 원래 바닥(화면이 그 바닥 타일을 그린다), 0이면 화면 기본값
         Npc(int x, int y, String kind, String name, String line) {
             this.x = x; this.y = y; this.kind = kind; this.name = name; this.line = line;
         }
+    }
+
+    /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE, CITY));
+
+    /** 시작점 근처의 탁 트인 칸(주변 8칸이 다 걸을 수 있고 포탈/NPC에서 2칸 넘게 떨어진 곳)에 이동 안내원을 세운다 -- 길을 막지 않게. */
+    private static void placeGuide(S5MineMap m) {
+        for (int d = 2; d <= 12; d++) {
+            for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) != d) continue;
+                int x = m.spawnX + dx, y = m.spawnY + dy;
+                if (x < 1 || y < 1 || x >= m.w - 1 || y >= m.h - 1 || !walkable(m.terrain[y][x]) || m.terrain[y][x] == 'P') continue;
+                boolean open = true;
+                for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (!walkable(m.terrain[yy][xx])) { open = false; break; }
+                for (Portal pt : m.portals) if (Math.abs(pt.x - x) + Math.abs(pt.y - y) <= 2) open = false;
+                for (Npc n : m.npcs) if (Math.abs(n.x - x) + Math.abs(n.y - y) <= 2) open = false;
+                if (!open) continue;
+                Npc g = new Npc(x, y, "guide", "이동 안내원", "어디로 모실까요? 마을과 마을 사이는 제가 공짜로 데려다 드려요!");
+                g.ground = m.terrain[y][x];
+                m.terrain[y][x] = 'N';
+                m.ore[y][x] = 0;
+                List<Npc> l = new ArrayList<>(m.npcs);
+                l.add(g);
+                m.npcs = Collections.unmodifiableList(l);
+                return;
+            }
+        }
+    }
+
+    /** 이동 안내원(없으면 null). */
+    public Npc guide() {
+        for (Npc n : npcs) if ("guide".equals(n.kind)) return n;
+        return null;
     }
 
     public final String id, name;
@@ -474,6 +508,7 @@ public final class S5MineMap {
         cv3.bossX = bossX;
         cv3.bossY = bossY;
         out.put(CAVE3, cv3);
+        for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));

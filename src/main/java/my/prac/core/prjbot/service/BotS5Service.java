@@ -236,6 +236,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineMobs(String mapId);
     HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc);
     HashMap<String, Object> mineGoVillage(String userName);
+    /** [2026-10-25] 이동 안내원 -- 안내원 맵끼리 무료 이동. */
+    HashMap<String, Object> mineGuide(String userName, String mapId, String ver, int x, int y, String dest);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
@@ -257,6 +259,8 @@ public interface BotS5Service {
     HashMap<String, Object> minePriest(String userName, String action);
     /** [2026-10-24] 동굴 3층 보스 선공(화면이 보스 2칸 안에서 1.5초마다). */
     HashMap<String, Object> mineBossHit(String userName, String mapId, String ver, int x, int y);
+    /** [2026-10-25] 전투 턴(몬스터 인식 중 1초마다) -- 쫓아와 때리기, 5칸 이상 멀어지면 인식 해제 + 체력 가득. */
+    HashMap<String, Object> mineCombatTick(String userName, String mapId, String ver, int x, int y);
     /** [2026-10-24] 탐지 곡괭이 -- 주변 3x3 광석 미리 보기(읽기만). */
     HashMap<String, Object> mineScan(String userName, String mapId, int x, int y);
     /** [2026-10-24] 광산 함께 보기(내 위치 알리기 + 같은 맵 다른 유저), 나갈 때 지우기, "안녕하세요"(하루 1회 요일석 5개). */

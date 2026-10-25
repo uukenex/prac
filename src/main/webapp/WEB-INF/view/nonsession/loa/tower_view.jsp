@@ -808,6 +808,12 @@
     /* [2026-10-23] 대장간(곡괭이 강화) 창 */
     .mine-smith{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(340px,92vw); max-height:80vh; overflow:auto; padding:12px; font-size:13px; display:none; z-index:2; }
     .mine-smith-head{ display:flex; justify-content:space-between; align-items:center; font-size:15px; margin-bottom:6px; }
+    /* [2026-10-25] "상점 닫기를 항상 누를 수 있는 위치로" -- 창을 아래로 내려도 머리줄(닫기)은 위에 붙어 있다 */
+    .mine-smith .mine-smith-head{ position:sticky; top:-12px; z-index:3; margin:-12px -12px 8px; padding:10px 12px 8px; background:rgba(20,16,30,.97); border-bottom:2px solid rgba(244,240,230,.35); }
+    .mine-smith-head .mine-close{ font-size:14px; padding:6px 14px; background:#a33a3a; }
+    /* [2026-10-25] "상점 대화 중 게임 나가기 없애줘(닫기랑 헷갈림)" -- NPC 창이 열려 있는 동안 왼쪽 아래 버튼을 숨긴다 */
+    .mine-overlay.npc-open .mine-btn{ display:none; }
+    .mine-ask{ font-size:14px; font-weight:700; line-height:1.5; margin:4px 0 12px; }
     .mine-smith-head button, .mine-smith-row button{ font-size:12px; padding:4px 8px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-smith-row button:disabled{ opacity:.4; cursor:default; }
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
@@ -5647,7 +5653,7 @@ var TowerMine = (function () {
         if (s === 1) { px(g, '#3a7ad8', 6, 5, 4, 6); px(g, '#e8c25a', 7, 6, 2, 1); } // 청기와 문양
       });
     });
-    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest') };
+    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide') };
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -5687,12 +5693,14 @@ var TowerMine = (function () {
   // [2026-10-23] NPC 그림 -- 대장장이(가죽 앞치마 + 망치), 선장(흰 제복 + 모자 + 수염). 칸 위에 서 있는 모습(바닥은 칸 타일).
   function npcSprite(kind) {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
-    var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest'; // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
-    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : '#22305e';
+    var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
+     // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
+    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
     else if (bq) { px(g, '#f4f0e6', 7, 7, 2, 4); px(g, '#d4104f', 7, 7, 2, 1); px(g, '#d9b44a', 6, 9); px(g, '#d9b44a', 9, 9); }
+    else if (gd) { px(g, '#e8c84a', 4, 9, 8, 1); px(g, '#6b4220', 9, 10, 2, 2); } // 노란 띠 + 가죽 주머니
     else if (pr) { px(g, '#24212b', 4, 12, 8, 3); px(g, '#f4f0e6', 6, 7, 4, 1); px(g, '#d9b44a', 7, 8, 2, 4); px(g, '#d9b44a', 6, 9, 4, 1); } // 긴 사제복 + 흰 깃 + 십자가
     else { px(g, '#d9b44a', 7, 8, 1, 1); px(g, '#d9b44a', 7, 10, 1, 1); px(g, '#22305e', 4, 11, 8, 1); }
     px(g, skin, 3, 8, 1, 3); px(g, skin, 12, 8, 1, 3);
@@ -5701,6 +5709,9 @@ var TowerMine = (function () {
     if (bq) {
       px(g, '#1a1a1a', 5, 0, 6, 1); px(g, '#1a1a1a', 3, 1, 10, 1); px(g, '#d4af37', 5, 0, 6, 1); // 실크햇 + 금띠
       px(g, '#3b2a1a', 6, 5, 4, 1); px(g, '#d4af37', 9, 3, 2, 2); // 콧수염 + 외알 안경
+    } else if (gd) {
+      px(g, '#c0392b', 3, 0, 10, 2); px(g, '#8e2a20', 4, 2, 8, 1); px(g, '#7a4a26', 4, 3, 1, 2); px(g, '#7a4a26', 11, 3, 1, 2); // 붉은 여행 모자 + 갈색 머리
+      px(g, '#8a5a2b', 13, 1, 1, 13); px(g, '#ffd23f', 14, 1, 2, 3); px(g, '#e8433a', 14, 2, 2, 1); // 깃발 지팡이
     } else if (pr) {
       px(g, '#8a8f98', 4, 0, 8, 2); px(g, '#8a8f98', 4, 2, 1, 2); px(g, '#8a8f98', 11, 2, 1, 2); // 은발
     } else if (smith) {
@@ -5771,6 +5782,7 @@ var TowerMine = (function () {
       case 'B': p = portalAt[x + ',' + y]; return tiles.plank[p && !p.locked ? 0 : 1];
       case 'N': // NPC 바닥: 마을이면 마을, 부두 위면 부두, 그 외 모래(NPC 그림은 draw()에서 위에)
         p = npcAt[x + ',' + y];
+        if (p && p.ground && p.ground !== 'N') return tileFor(p.ground, x, y, wf); // [2026-10-25] 이동 안내원 등 -- 원래 바닥
         return map && map.id === 'field' ? tiles.village : (p && p.kind === 'captain' ? tiles.bridge : p && p.kind === 'priest' ? tiles.stone[0] : tiles.sand[0]);
       default: return tiles.cliff[v % 2];
     }
@@ -5894,7 +5906,10 @@ var TowerMine = (function () {
   function mobPos(m, t) {
     var s = mobSt[m.id];
     if (s && s.du > t) return null;
-    if (s && s.fu > t) return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
+    if (s && s.fu > t) {
+      if (s.ox != null && t - s.mt < 450) { var q = Math.max(0, (t - s.mt) / 450); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
+      return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
+    }
     var SL = map.mobSlotMs || 3000, slot = Math.floor(t / SL);
     var b = mobCell(m, slot), a = mobCell(m, slot - 1);
     var bx = b % map.w, by = Math.floor(b / map.w), ax = a % map.w, ay = Math.floor(a / map.w), k = Math.min(1, (t - slot * SL) / 900);
@@ -5942,6 +5957,13 @@ var TowerMine = (function () {
     for (var key in dirs) { var v = dirs[key], mm = mobOcc[(P.x + v[0]) + ',' + (P.y + v[1])]; if (mm) return { m: mm, dir: key }; }
     return null;
   }
+  /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
+  function mobStOf(a, old) {
+    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5] }, t = nowSrv();
+    if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) { n.ox = old.fx; n.oy = old.fy; n.mt = t; }
+    else if (old && old.mt != null && t - old.mt < 450) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; }
+    return n;
+  }
   function pollMobs() {
     if (!opened || !map || !map.mobs || !map.mobs.length) return;
     var mid = map.id;
@@ -5949,7 +5971,7 @@ var TowerMine = (function () {
       if (!map || map.id !== mid || !d) return;
       if (d.now) srvOff = d.now - Date.now();
       var ns = {};
-      (d.mobs || []).forEach(function (a) { ns[a[0]] = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5] }; });
+      (d.mobs || []).forEach(function (a) { ns[a[0]] = mobStOf(a, mobSt[a[0]]); });
       mobSt = ns;
     }).catch(function () { });
   }
@@ -6038,6 +6060,7 @@ var TowerMine = (function () {
   function setCombat(c) { if (!c) return; st.combat = c; combatT0 = Date.now(); renderHp(); }
   function hpNow() {
     var c = st && st.combat;
+    if (c && c.fight) return Math.min(c.hpMax, c.hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
     return c ? Math.min(c.hpMax, Math.floor(c.hp + (Date.now() - combatT0) * c.hpMax / (c.fullMs || 60000))) : 0;
   }
   function renderHp() {
@@ -6161,7 +6184,7 @@ var TowerMine = (function () {
     var near = !P.moving && adjMob(), lab = near ? '⚔️' : '⛏️';
     if (el.dig.textContent !== lab) el.dig.textContent = lab;
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
-    bossTick(now); // [2026-10-24] 동굴 3층 보스 선공
+    bossTick(now); // [2026-10-24] 동굴 3층 보스 선공 + [2026-10-25] 몬스터 인식 중 전투 턴
     scanTick(); // [2026-10-24] 탐지 곡괭이
     var ng = nearOther(); if (el.greet && (el.greet.style.display === "block") !== ng) el.greet.style.display = ng ? "block" : "none"; // [2026-10-24] 근처에 다른 유저가 있으면 👋
     if (P.moving && now - P.t0 >= STEP_MS) {
@@ -6222,6 +6245,7 @@ var TowerMine = (function () {
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
     else if (n.kind === 'priest') openSmith(n, 'priest'); // [2026-10-24] 왕도 성당 신부
+    else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -6235,7 +6259,7 @@ var TowerMine = (function () {
   var GEAR_ICON = { ring: '💍', necklace: '📿', boots: '👢', tool: '⛏️' };
   function npcHead(t, back) {
     return '<div class="mine-smith-head">' + t + ' <span>' + (back ? '<button type="button" onclick="TowerMine.smithGo(\'menu\')">뒤로</button> ' : '')
-        + '<button type="button" onclick="TowerMine.closeSmith()">닫기</button></span></div>';
+        + '<button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span></div>';
   }
   /** 재료 목록(아이콘 + 이름 보유/필요, 모자라면 붉게). */
   function costHtml(costs) {
@@ -6442,10 +6466,43 @@ var TowerMine = (function () {
   function teleHtml() {
     var gold = 0;
     (st.ores || []).forEach(function (o) { if (o.grade === 4) gold = o.qty; });
-    var need = map.teleGold || 5, can = gold >= need ? '' : 'disabled ';
+    var need = map.teleGold != null ? map.teleGold : 5, can = gold >= need ? '' : 'disabled ';
     return npcHead('🌀 텔레포트 게이트', false)
-        + '<div class="mine-smith-say">금광석 ' + need + '개를 바치면 마법진이 빛나며 먼 곳으로 데려다줘요. (보유 ' + gold + '개)</div><div class="mine-smith-menu">'
+        + '<div class="mine-smith-say">' + (need > 0 ? '금광석 ' + need + '개를 바치면 마법진이 빛나며 먼 곳으로 데려다줘요. (보유 ' + gold + '개)' : '마법진에 올라서면 먼 곳으로 데려다줘요. (무료)') + '</div><div class="mine-smith-menu" style="flex-wrap:wrap">'
         + (map.teleTo || []).map(function (d) { return '<button type="button" ' + can + 'onclick="TowerMine.teleport(\'' + d.id + '\')">🌀 ' + d.name + '</button>'; }).join('') + '</div>';
+  }
+  // [2026-10-25] 이동 안내원 -- 안내원이 있는 마을끼리 무료로(왕도는 관리자만 보임)
+  function guideHtml(n) {
+    var admin = !!(st && st.adminMaps);
+    var dests = (map.guideTo || []).filter(function (d) { return !d.dev || admin; });
+    return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
+        + talkBlock(n, n ? n.line : '')
+        + '<div class="mine-smith-menu" style="flex-wrap:wrap">' + dests.map(function (d) {
+          return '<button type="button" style="flex:1 1 40%" onclick="TowerMine.guideGo(\'' + d.id + '\')">🧭 ' + d.name + '<small>무료</small></button>';
+        }).join('') + '</div>';
+  }
+  function guideGo(dest) {
+    closeSmith();
+    if (busy || !map) return;
+    travel('/api/tower-mine-guide?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&dest=' + encodeURIComponent(dest) + verQ(), '이동하지 못했어요.');
+  }
+  // [2026-10-25] "마을 이동을 누르면 브라우저 알림창이 뜬다" -- 게임 화면 안의 확인 창(NPC 창 모양)
+  var askCfg = null;
+  function ask(title, text, okLabel, onOk) {
+    askCfg = { title: title, text: text, ok: okLabel, fn: onOk };
+    openSmith({ name: title, line: '', kind: 'ask' }, 'ask');
+  }
+  function askHtml() {
+    var c = askCfg || {};
+    return npcHead(c.title || '확인', false) + '<div class="mine-ask">' + (c.text || '') + '</div>'
+        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.askYes()">' + (c.ok || '확인') + '</button>'
+        + '<button type="button" onclick="TowerMine.closeSmith()">취소</button></div>';
+  }
+  function askYes() {
+    var c = askCfg;
+    askCfg = null;
+    closeSmith();
+    if (c && c.fn) c.fn();
   }
   function teleport(dest) {
     var n = smithNpc;
@@ -6459,7 +6516,8 @@ var TowerMine = (function () {
     smith: { skin: '#e8b48a', hair: '#3b2a1a', cloth: '#7a4a1f', clothD: '#5a3a1c' },
     captain: { skin: '#f2c194', hair: '#e8e8e8', cloth: '#f4f4f0', clothD: '#c9ccd6' },
     boutique: { skin: '#f2c194', hair: '#2a1d10', cloth: '#7b3fa0', clothD: '#5a2a78' },
-    priest: { skin: '#f0c8a0', hair: '#b8bec8', cloth: '#24212b', clothD: '#141218' }
+    priest: { skin: '#f0c8a0', hair: '#b8bec8', cloth: '#24212b', clothD: '#141218' },
+    guide: { skin: '#f2c194', hair: '#7a4a26', cloth: '#2f8a5a', clothD: '#1f6342' }
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -6498,6 +6556,11 @@ var TowerMine = (function () {
       px(g, '#3b2a1a', 13, 24, 14, 2); px(g, '#3b2a1a', 11, 22, 2, 2); px(g, '#3b2a1a', 27, 22, 2, 2); // 말아 올린 콧수염
       px(g, '#d4af37', 21, 15, 7, 1); px(g, '#d4af37', 21, 21, 7, 1); px(g, '#d4af37', 21, 15, 1, 7); px(g, '#d4af37', 27, 15, 1, 7); px(g, '#d4af37', 28, 22, 1, 8); // 외알 안경
       px(g, '#f4f0e6', 15, 34, 10, 3); px(g, '#d4104f', 16, 35, 8, 3); px(g, '#ffd0e0', 19, 36, 2, 1); // 나비넥타이
+    } else if (kind === 'guide') {
+      px(g, q.hair, 9, 7, 22, 5); px(g, q.hair, 8, 10, 3, 8); px(g, q.hair, 29, 10, 3, 8);   // 갈색 머리
+      px(g, '#c0392b', 8, 1, 24, 7); px(g, '#8e2a20', 5, 7, 30, 2); px(g, '#ffd23f', 25, 2, 3, 3); // 붉은 여행 모자 + 노란 깃털
+      px(g, '#e8c84a', 5, 38, 30, 2); px(g, '#6b4220', 26, 40, 5, 5);           // 노란 띠 + 가죽 주머니
+      px(g, '#e8f0ff', 9, 34, 22, 2);                                            // 흰 깃
     } else if (kind === 'priest') {
       px(g, q.hair, 9, 5, 22, 6); px(g, q.hair, 8, 9, 3, 9); px(g, q.hair, 29, 9, 3, 9);  // 은발
       px(g, '#f4f0e6', 15, 33, 10, 3);                                           // 흰 깃
@@ -6543,6 +6606,14 @@ var TowerMine = (function () {
     }
     if (smithView === 'tele') {
       el.smith.innerHTML = teleHtml();
+      return;
+    }
+    if (smithView === 'guide') {
+      el.smith.innerHTML = guideHtml(n);
+      return;
+    }
+    if (smithView === 'ask') {
+      el.smith.innerHTML = askHtml();
       return;
     }
     if (smithView === 'world') {
@@ -6623,19 +6694,28 @@ var TowerMine = (function () {
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
   }
-  // [2026-10-24] 동굴 3층 보스 선공 -- 보스 2칸 안에 있으면 1.5초마다 서버에 맞았는지 묻는다(서버가 거리/쿨다운 확인)
+  // [2026-10-25] 전투 턴 -- "전투 중엔 체력 회복 없이, 안 때려도 몬스터가 일정 턴마다 공격, 5칸 이상 벌어지면 인식이 풀리고 체력 가득" 요청.
+  //  몬스터에게 인식돼 있거나(st.combat.fight) 동굴 3층 보스 2칸 안이면 1초마다 서버에 묻는다(쫓아온 칸, 맞은 피해, 인식 해제).
   var lastBossT = 0, bossBusy = false, bossWarned = false;
   function bossTick(now) {
-    if (!map || !map.mobs || !map.mobs.length || busy || bossBusy || fade || smithOpen || now - lastBossT < 1500) return;
-    var boss = map.mobs[map.mobs.length - 1], bt = map.mobTypes[boss.k];
-    if (!bt || !bt.boss || !boss._p || Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) > 2) return;
+    if (!map || busy || bossBusy || fade || now - lastBossT < 1000) return;
+    var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
+    if (map.mobs && map.mobs.length) {
+      var boss = map.mobs[map.mobs.length - 1]; bt = map.mobTypes[boss.k];
+      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= 2);
+    }
+    if (!fight && !nearBoss) return;
     lastBossT = now; bossBusy = true;
-    if (!bossWarned) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 가까이 있으면 계속 맞아요.', 3200); }
-    api('/api/tower-mine-boss-hit?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
+    api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       bossBusy = false;
       if (!d || !d.ok) return;
-      floats.push({ x: P.x, y: P.y - 0.3, text: '-' + d.bossDmg, color: '#ff4a4a', big: true, t0: performance.now() });
-      setCombat(d.combat);
+      if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
+      (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
+      var t = performance.now();
+      (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: '-' + h.dmg, color: '#ff4a4a', big: true, t0: t + k * 160 }); });
+      if (d.combat) setCombat(d.combat);
+      else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
+      if (d.released) { flashT0 = t; msg(d.message || '', 2800); }
       if (d.died && d.state) fallDown(d);
     }).catch(function () { bossBusy = false; });
   }
@@ -6741,7 +6821,7 @@ var TowerMine = (function () {
       if (!d || d.tooFast) return;
       if (d.reload) { reload(); return; }
       if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
-      if (d.mobDeadUntil != null) mobSt[m.id] = { hp: d.mobHp, du: d.mobDeadUntil, fx: d.mobFx, fy: d.mobFy, fu: d.mobFrozenUntil };
+      if (d.mobDeadUntil != null) mobSt[m.id] = mobStOf([m.id, d.mobHp, d.mobDeadUntil, d.mobFx, d.mobFy, d.mobFrozenUntil], mobSt[m.id]);
       if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
       lastSaved = map.id + ':' + P.x + ',' + P.y;
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
@@ -6793,11 +6873,13 @@ var TowerMine = (function () {
     keys = []; drag = null;
     renderSmith(n);
     el.smith.style.display = 'block';
+    el.ov.classList.add('npc-open'); // [2026-10-25] 나가기 버튼 등을 숨긴다
   }
   function smithGo(v) { smithView = v; renderSmith(smithNpc); }
   function closeSmith() {
     smithOpen = false;
     el.smith.style.display = 'none';
+    if (el.ov) el.ov.classList.remove('npc-open');
   }
   function pickUpgrade(grade, times) {
     if (busy) return;
@@ -7259,9 +7341,12 @@ var TowerMine = (function () {
   // [2026-10-23] 마을로 이동 -- 어디에 있든 중앙 평원 마을(시작점)으로
   function goVillage() {
     if (!opened || busy || !map) return;
-    if (map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
-    if (!confirm('마을(중앙 평원 시작점)로 이동할까요?')) return;
-    travel('/api/tower-mine-village', '이동하지 못했어요.');
+    var city = !!(st && st.respawnCity); // [2026-10-25] 부활 지점(성당에서 기도했으면 왕도 성당)으로
+    if (!city && map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
+    if (st && st.combat && st.combat.fight) { msg('⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어진 뒤에 이동할 수 있어요.', 2800); return; }
+    ask('🏠 마을로', (city ? '부활 지점인 <b>왕도 아스테리아 성당</b>' : '<b>중앙 평원 마을</b>') + '(으)로 이동할까요?', '이동', function () {
+      travel('/api/tower-mine-village', '이동하지 못했어요.');
+    });
   }
   function toggleMini() { el.mini.classList.toggle('big'); }
   function toggleLog() { el.log.style.display = el.log.style.display === 'block' ? 'none' : 'block'; }
@@ -7274,7 +7359,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

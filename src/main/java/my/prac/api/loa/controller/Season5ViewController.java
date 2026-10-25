@@ -731,6 +731,18 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-25] 웹 광산 전투 턴 -- 몬스터에게 인식돼 있거나 보스 2칸 안이면 화면이 1초마다 부른다. 쓰러짐만 로그. */
+    @GetMapping("/api/tower-mine-combat-tick")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineCombatTick(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineCombatTick(userName, mapId, ver, x, y);
+        if (Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 몬스터에게 쓰러짐", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-24] 웹 광산 탐지 곡괭이 -- (x, y) 주변 3x3의 안 캔 광석 칸(화면이 멈춰 선 칸이 바뀔 때). 로그 없음. */
     @GetMapping("/api/tower-mine-scan")
     @ResponseBody
@@ -751,12 +763,24 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
-    /** [2026-10-23] 웹 광산 -- 마을로 이동(중앙 평원 시작점). */
+    /** [2026-10-23] 웹 광산 -- 마을로 이동([2026-10-25] 부활 지점: 성당에서 기도했으면 왕도 성당, 아니면 중앙 평원 시작점). */
     @GetMapping("/api/tower-mine-village")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineVillage(@RequestParam(value = "userName", defaultValue = "") String userName) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         return ResponseEntity.ok(s5Service.mineGoVillage(userName));
+    }
+
+    /** [2026-10-25] 웹 광산 이동 안내원 -- 안내원 맵(평원 마을/바닷가/사막/성곽, 왕도는 관리자)끼리 무료 이동. */
+    @GetMapping("/api/tower-mine-guide")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineGuide(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "dest", defaultValue = "") String dest, @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineGuide(userName, mapId, ver, x, y, dest);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 이동 안내원 " + mapId + " -> " + dest, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
     }
 
     /** [2026-10-23] 광산상점 -- 광석으로 자동사냥 처치당 PP 올리기(상품/보유 광석/현재 보너스). */
