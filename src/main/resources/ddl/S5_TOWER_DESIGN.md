@@ -5375,3 +5375,9 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 ### 2026-10-25 로그 뷰어 광산 로그에 캐릭터 그림
 - 캐릭터 그리는 코드를 `TowerMine.charSprite`에서 공통 조각 `_mine_char.jsp`(`window.MineChar.sprite / dataUrl`)로 옮겨 광산 화면, 로그 뷰어, 광산 캐릭터 현황이 같이 쓴다.
 - `GET /api/tower-mine-looks`(카카오 로그인, `mineLooks`) = {유저명: 외형}. 로그 뷰어는 광산 로그 항목 머리와 (광산 탭) 사용자 요약 표에 32/24px 그림, 현황 페이지는 카드 머리에 40px 그림(`lookRaw`).
+
+### 2026-10-26 최대 체력 잠금은 쓰러질 때만, 예전 화면이 남는 문제
+- `HP_LOCK`은 새 전투마다가 아니라 몬스터에게 쓰러질 때만 +1(공격 반격 / 전투 턴 둘 다). 쓰러짐 메시지에 잠금 안내.
+- 화면이 예전 버전으로 남는 문제: `/loa/tower-view`(와 로그 뷰어/광산 현황)에 `Cache-Control: no-cache, no-store` 헤더.
+  배포마다 바뀌는 `Season5ViewController.PAGE_BUILD`를 화면에 박고 `GET /api/tower-page-build`와 비교 -- 열자마자 다르면 `?_b=번호`로 바로 다시 불러오고
+  (한 번만), 보는 중 새 배포면 위쪽 "새 버전" 띠(누르면 새로고침). 5분마다와 앱으로 돌아올 때 확인.

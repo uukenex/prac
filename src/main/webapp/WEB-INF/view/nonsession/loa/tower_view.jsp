@@ -1011,6 +1011,40 @@
   </style>
 </head>
 <body>
+<!-- [2026-10-26] "구버전에서 업데이트 안 되는 사람, 새로고침해도 신버전이 안 된다" -- 이 화면의 빌드 번호를 서버(/api/tower-page-build, 배포마다 바뀜)와 비교.
+     열자마자 다르면(브라우저/카톡 웹뷰가 예전 화면을 저장해 둠) 주소에 ?_b=새번호를 붙여 바로 다시 불러오고(주소가 달라 저장본을 못 씀),
+     보는 도중 새로 배포되면 위쪽에 "새 버전" 띠를 띄워 누르면 다시 불러온다(놀이 중에 갑자기 끊지 않게). 다른 스크립트와 따로 돌아 예전 화면이 깨져 있어도 동작. -->
+<script>
+(function () {
+  var MY = '<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>';
+  function freshUrl(b) {
+    var u = location.pathname + location.search.replace(/([?&])_b=[^&]*&?/, '$1').replace(/[?&]$/, '');
+    return u + (u.indexOf('?') >= 0 ? '&' : '?') + '_b=' + encodeURIComponent(b) + location.hash;
+  }
+  function bar(b) {
+    if (document.getElementById('newBuildBar')) return;
+    var el = document.createElement('div');
+    el.id = 'newBuildBar';
+    el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#2F8F5C;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border:2px solid #fff;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer;';
+    el.textContent = '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
+    el.onclick = function () { location.replace(freshUrl(b)); };
+    document.body.appendChild(el);
+  }
+  function check(first) {
+    if (!window.fetch) return;
+    fetch('/loa/api/tower-page-build?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.build || d.build === MY) return;
+        if (first && location.search.indexOf('_b=' + d.build) < 0) location.replace(freshUrl(d.build)); // 한 번만(같은 번호로 다시 왔는데도 다르면 멈춤)
+        else bar(d.build);
+      }).catch(function () { });
+  }
+  check(true);
+  setInterval(function () { if (!document.hidden) check(false); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(false); });
+})();
+</script>
 <div class="wrap">
 
   <div class="top-controls">

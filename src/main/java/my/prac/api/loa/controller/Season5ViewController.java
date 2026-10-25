@@ -8,6 +8,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.http.CacheControl;
@@ -55,23 +57,47 @@ public class Season5ViewController {
     // ─────────────────────────────────────────────
     // JSP 뷰 페이지
     // ─────────────────────────────────────────────
+    /** [2026-10-26] "구버전에서 업데이트 안 되는 사람, 새로고침해도 신버전이 안 된다" -- 배포(앱 시작)마다 바뀌는 화면 빌드 번호.
+     *  화면에 박아 두고(pageBuild), 화면이 /api/tower-page-build로 물어 다르면 새 주소(?_b=번호)로 다시 불러온다. */
+    static final String PAGE_BUILD = Long.toString(System.currentTimeMillis(), 36);
+
+    /** 화면 HTML은 브라우저/카톡 웹뷰가 저장해 두지 않게(항상 서버에 다시 묻기). */
+    private static void noStore(HttpServletResponse resp) {
+        resp.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        resp.setHeader("Pragma", "no-cache");
+        resp.setDateHeader("Expires", 0);
+    }
+
     @GetMapping("/tower-view")
-    public String towerViewPage() {
+    public String towerViewPage(HttpServletRequest req, HttpServletResponse resp) {
+        noStore(resp);
+        req.setAttribute("pageBuild", PAGE_BUILD);
         return "nonsession/loa/tower_view";
+    }
+
+    /** [2026-10-26] 지금 배포된 화면 빌드 번호 -- 화면이 자기 번호와 다르면 새로 불러온다. */
+    @GetMapping("/api/tower-page-build")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerPageBuild() {
+        HashMap<String, Object> result = new HashMap<>();
+        result.put("build", PAGE_BUILD);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
     }
 
     /** [2026-09-22] "전체 web포함 전투로그를 유저별로 볼수있게 페이지 구성해줘" 요청 -- tower-view
      *  SPA와는 별도의 독립 페이지(URL/파일 둘 다 분리). 데이터는 /api/tower-battle-log. */
     @GetMapping("/tower-battle-log")
-    public String battleLogViewPage(HttpSession session) {
+    public String battleLogViewPage(HttpSession session, HttpServletResponse resp) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-battle-log";
+        noStore(resp); // [2026-10-26] 새로 배포한 화면이 바로 보이게
         return "nonsession/loa/s5_battle_log_view";
     }
 
     /** [2026-10-25] "캐릭터별 현재 위치, 장착 아이템들, 레벨, 보유 수량 보이는 페이지" 요청 -- 로그 뷰어처럼 카카오 로그인 필요. 데이터는 /api/tower-mine-users. */
     @GetMapping("/tower-mine-users")
-    public String mineUsersViewPage(HttpSession session) {
+    public String mineUsersViewPage(HttpSession session, HttpServletResponse resp) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-mine-users";
+        noStore(resp);
         return "nonsession/loa/s5_mine_users_view";
     }
 

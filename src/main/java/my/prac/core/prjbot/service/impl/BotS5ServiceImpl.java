@@ -9076,13 +9076,20 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // [2026-10-25] "몬스터와 전투 시 최대 체력 10%씩 잠겨 최대 50%까지, 레벨업하거나 대도시 성당 신부에게 치료받으면 정상으로" --
-    //  새 전투가 시작될 때(인식이 없던 상태에서 몬스터를 때리거나 보스가 덤벼들 때)마다 HP_LOCK(0~5) +1. 최대 체력 = 원래 x (10 - 잠금) / 10.
+    //  HP_LOCK(0~5), 최대 체력 = 원래 x (10 - 잠금) / 10. 처음엔 새 전투마다 +1이었으나 [2026-10-26] "죽으면 처리되어야 하는데 전투 때마다 깎인다" --
+    //  몬스터에게 쓰러질 때만 +1.
     static final String MINE_ITEM_HP_LOCK = "HP_LOCK";
     private static final int MINE_HP_LOCK_MAX = 5;
 
     static int mineHpCap(int lv, int lock) { return Math.max(1, mineHpMax(lv) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
 
-    /** 새 전투 시작 -- 최대 체력 10% 더 잠금(최대 50%). 바뀐 잠금 단계를 돌려준다. */
+    /** 쓰러진 뒤 붙이는 안내(잠금이 늘었을 때만). */
+    private static String mineLockText(HashMap<String, Object> out) {
+        Object v = out.get("hpLockUp");
+        return v == null ? "" : " 🔒 최대 체력이 잠겼어요(지금 -" + v + "%). 레벨업하거나 왕도 성당 신부에게 치료받으면 풀려요.";
+    }
+
+    /** 쓰러짐 -- 최대 체력 10% 더 잠금(최대 50%). 바뀐 잠금 단계를 돌려준다. */
     private int mineLockUp(String userName, int lock, HashMap<String, Object> out) {
         if (lock >= MINE_HP_LOCK_MAX) return lock;
         lock++;
@@ -9247,7 +9254,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         int[] pos = minePos(row, map, mineWaterWalk(items));
         if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
-        boolean wasFight = mineEngaged(userName, now);
         int hp = mineHpNow(row, now, lock); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
         MineEngage e = MINE_ENGAGE.get(userName);
         if (e != null && !map.version().equals(e.mapVer)) { mineDisengageAll(userName); e = null; }
@@ -9271,7 +9277,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             e = MINE_ENGAGE.get(userName);
         }
-        if (out.containsKey("bossAggro") && !wasFight) { lock = mineLockUp(userName, lock, out); hp = Math.min(hp, mineHpCap(mineLv(row), lock)); } // 새 전투
         if (e == null || e.mobs.isEmpty()) { mineDisengageAll(userName); out.put("ok", true); out.put("fight", false); return out; }
         e.at = now;
         int lv = mineLv(row);
@@ -9334,11 +9339,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (dmgSum > 0) {
             hp -= dmgSum;
             if (hp <= 0) {
+                lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
                 hp = mineHpCap(lv, lock);
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
-                out.put("message", "💫 " + killerName + "에게 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
+                out.put("message", "💫 " + killerName + "에게 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out));
             }
         }
         if (!fight && !out.containsKey("died")) {
@@ -9423,7 +9429,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
-        boolean wasFight = mineEngaged(userName, now); // [2026-10-25] 인식이 없던 상태에서 때리면 새 전투(최대 체력 잠금 +1)
         int hp = mineHpNow(row, now, lock);
         out.put("mobId", mobId);
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(type.hp()));
@@ -9463,7 +9468,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("crit", crit);
         out.put("killed", killed);
         out.put("mobHpMax", type.hp());
-        if (!wasFight) { lock = mineLockUp(userName, lock, out); hp = Math.min(hp, mineHpCap(lv, lock)); }
         StringBuilder msg = new StringBuilder();
         boolean died = false;
         int levelUp = 0;
@@ -9491,8 +9495,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("counter", counter);
             if (hp <= 0) {
                 died = true;
+                lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
                 hp = mineHpCap(lv, lock);
-                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawn(userName, items, now)).append(" 깨어났어요.");
+                msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawn(userName, items, now)).append(" 깨어났어요.").append(mineLockText(out));
             }
         }
         if (killed) { MineEngage me = MINE_ENGAGE.get(userName); if (me != null) me.mobs.remove(mobId); }
