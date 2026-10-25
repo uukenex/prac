@@ -6475,6 +6475,9 @@ var TowerMine = (function () {
   function guideHtml(n) {
     var admin = !!(st && st.adminMaps);
     var dests = (map.guideTo || []).filter(function (d) { return !d.dev || admin; });
+    // [2026-10-25] 마을(평원 마을/왕도)끼리만 -- 왕도 길이 아직 안 열린 유저에겐 갈 곳이 없다고 안내
+    if (!dests.length) return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
+        + talkBlock(n, '지금은 모셔다 드릴 다른 마을이 없어요. 새 마을로 가는 길이 열리면 그때 꼭 찾아 주세요!');
     return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
         + talkBlock(n, n ? n.line : '')
         + '<div class="mine-smith-menu" style="flex-wrap:wrap">' + dests.map(function (d) {

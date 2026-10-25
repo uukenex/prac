@@ -222,7 +222,8 @@ public final class S5MineMap {
     }
 
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE, CITY));
+    //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, CITY));
 
     /** 시작점 근처의 탁 트인 칸(주변 8칸이 다 걸을 수 있고 포탈/NPC에서 2칸 넘게 떨어진 곳)에 이동 안내원을 세운다 -- 길을 막지 않게. */
     private static void placeGuide(S5MineMap m) {

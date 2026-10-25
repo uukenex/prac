@@ -8643,8 +8643,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_ITEM_NAMES.put(MINE_ITEM_DRAGON_RING, "용왕의 반지");
     }
     /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
-    //  [2026-10-25] "성장이 빨라 상점 아이템을 너무 빨리 달성 -- 1단계는 그대로, 2단계부터 비싸게": 2단계 은광석 100 -> 250, 3단계 금광석 100 -> 250.
-    private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 250 }, { 4, 250 }, { 5, 100 }, { 6, 100 } };
+    //  [2026-10-25] 한때 2단계 은 250 / 3단계 금 250으로 올렸다가 같은 날 "이미 단계업한 사람이 있으면 그렇게 올리면 안 된다" -- 3단계까지 산 유저가 있어 원래 값으로 되돌렸다.
+    private static final int[][] MINE_HELMET_COST = { { 2, 100 }, { 3, 100 }, { 4, 100 }, { 5, 100 }, { 6, 100 } };
     private static final int MINE_HELMET_OPEN_MAX = 3; // [2026-10-24] 동굴 3층(레벨 3)이 열려 3단계(금광석 100개)까지
 
     private Map<String, Integer> mineItems(String userName) {
@@ -9172,7 +9172,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  5칸 이상 벌어지면 인식이 풀리고 체력이 가득 차도록" 요청.
     //  때린 몬스터(와 2칸 안에 들어온 보스)는 그 유저를 인식한다(MINE_ENGAGE). 인식 중엔 체력이 저절로 차지 않고(mineHpNow),
     //  화면이 1초마다 mineCombatTick을 부르면 서버가 몬스터를 한 칸씩 쫓아오게 하고(MINE_CHASE_STEP_MS) 바로 옆이면 MINE_MOB_STRIKE_GAP_MS마다 때린다
-    //  (때릴 때마다 받는 반격도 한 턴으로 친다). 몬스터와 MINE_AGGRO_RANGE칸 이상 벌어지면 인식이 풀리고, 인식이 모두 풀리면 체력이 가득 찬다.
+    //  (때릴 때마다 받는 반격도 한 턴으로 친다). 몬스터와 MINE_AGGRO_RANGE칸 이상 벌어지면 인식이 풀리고, 인식이 모두 풀리면 그때부터 체력이 서서히 찬다(10-25 "가득" -> "서서히").
     //  몬스터를 쓰러뜨려 인식이 끝나면 그때부터 다시 저절로 찬다. 화면을 닫아 10초 넘게 소식이 없으면 인식 중이 아닌 것으로 본다.
     private static final int MINE_AGGRO_RANGE = 5;
     private static final long MINE_MOB_STRIKE_GAP_MS = 1_500L;
@@ -9209,7 +9209,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-10-25] 전투 턴 -- 화면이 인식 중이거나 보스 2칸 안일 때 1초마다 부른다. 보스는 2칸 안에 들어오면 먼저 인식(선공).
-     *  인식한 몬스터는 쫓아와서 바로 옆이면 때리고, MINE_AGGRO_RANGE칸 이상 멀어지면 인식이 풀린다(다 풀리면 체력 가득). */
+     *  인식한 몬스터는 쫓아와서 바로 옆이면 때리고, MINE_AGGRO_RANGE칸 이상 멀어지면 인식이 풀린다(다 풀리면 그때부터 서서히 회복). */
     @Override
     @Transactional
     public HashMap<String, Object> mineCombatTick(String userName, String mapId, String ver, int x, int y) {
@@ -9318,10 +9318,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (!fight && !out.containsKey("died")) {
             mineDisengageAll(userName);
-            if (released > 0) {
-                hp = mineHpMax(lv);
+            if (released > 0) { // [2026-10-25] "인식이 풀리면 서서히 회복" -- 바로 가득 채우지 않고 지금부터 다시 저절로 찬다(아래 저장 시각부터)
                 out.put("released", true);
-                out.put("message", "🏃 몬스터가 더는 쫓아오지 않아요. 숨을 고르니 체력이 가득 찼어요.");
+                out.put("message", "🏃 몬스터가 더는 쫓아오지 않아요. 숨을 고르니 체력이 서서히 돌아와요.");
             }
         }
         if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
@@ -10050,7 +10049,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private static final String MINE_FIGHT_BLOCK = "⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어져 인식을 풀고 나서 이동할 수 있어요.";
 
-    /** [2026-10-25] 이동 안내원 -- "마을 간 이동이 활성화되는 느낌, NPC로": 안내원 2칸 안에서 다른 안내원 맵(평원 마을/바닷가/사막/성곽, 왕도는 관리자만)의
+    /** [2026-10-25] 이동 안내원 -- "마을 간 이동이 활성화되는 느낌, NPC로": 안내원 2칸 안에서 다른 안내원 맵(마을만: 평원 마을/왕도, 왕도는 아직 관리자만)의
      *  안내원 옆으로 무료로 옮긴다. 전투 중(몬스터 인식)엔 안 된다. */
     @Override
     @Transactional
@@ -10210,19 +10209,20 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // [2026-10-25] "성장이 빨라 상점 아이템을 너무 빨리 달성 -- 1단계 구매는 그대로, 2단계부터 비싸게" + "별빛석 필요처" 요청:
     //  라이브 확인(10-25) 2일 만에 상위 유저가 1단계 장신구/장화를 다 샀고 2단계(희귀 보석 5 + 다이아 1)도 하루치였다.
-    //  2단계부터 희귀 보석 5 -> 25, 다이아 1 -> 4, 별빛석 1 추가(장신구). 장화 2단계 다이아 2 -> 6 + 미스릴 10, 3단계 다이아 3 -> 12 + 별빛석 2.
+    //  2단계부터 희귀 보석 5 -> 25, 다이아 1 -> 4, 별빛석 1 추가(장신구), 장화 2단계 다이아 2 -> 6 + 미스릴 10, 3단계 다이아 3 -> 12 + 별빛석 2로 올렸다가 같은 날
+    //  "이미 단계업한 사람이 있으면 그렇게 올리면 안 된다" -- 이미 누가 산 단계(장신구 2단계, 장화 2단계)는 원래 값으로 되돌리고 아무도 없는 장화 3단계만 올린 값 유지.
     private static final List<MineGear> MINE_GEAR = java.util.Arrays.asList(
         new MineGear(MINE_ITEM_PLENTY_RING, "풍요의 반지", "ring",
-            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 25), mineCost(8, 4), mineStar(1) } },
+            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) } },
             new String[] { "캘 때 2개 나올 확률 3%", "캘 때 2개 나올 확률 8%" }),
         new MineGear(MINE_ITEM_ABYSS_RING, "심연의 반지", "ring",
-            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 25), mineCost(8, 4), mineStar(1) } },
+            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) } },
             new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)" }),
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
-            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 25), mineCost(8, 4), mineStar(1) } },
+            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) } },
             new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배" }),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
-            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 6), { S5MineMap.ORE_CODES[4], "10" } }, { mineCost(8, 12), mineStar(2) } },
+            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2) } },
             new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%" }),
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
             new String[][][] { { mineCost(8, 3), { S5MineMap.SEVEN_STONE_CODE, "5" } } },

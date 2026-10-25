@@ -771,7 +771,7 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineGoVillage(userName));
     }
 
-    /** [2026-10-25] 웹 광산 이동 안내원 -- 안내원 맵(평원 마을/바닷가/사막/성곽, 왕도는 관리자)끼리 무료 이동. */
+    /** [2026-10-25] 웹 광산 이동 안내원 -- 마을(평원 마을/왕도, 왕도는 아직 관리자만)끼리 무료 이동. */
     @GetMapping("/api/tower-mine-guide")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineGuide(@RequestParam(value = "userName", defaultValue = "") String userName,
