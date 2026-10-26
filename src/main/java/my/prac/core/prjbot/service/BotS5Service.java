@@ -239,6 +239,10 @@ public interface BotS5Service {
     HashMap<String, Object> mineGoVillage(String userName);
     /** [2026-10-25] 이동 안내원 -- 안내원 맵끼리 무료 이동. */
     HashMap<String, Object> mineGuide(String userName, String mapId, String ver, int x, int y, String dest);
+    /** [2026-10-26] 한기 턴(한기 맵에서 1초마다) -- 한기/눈바람 피해, 안전지대, 다음 눈바람 시각. */
+    HashMap<String, Object> mineColdTick(String userName, String mapId, String ver, int x, int y);
+    /** [2026-10-26] 방한 외투 -- action list/buy/wear (설산 마을 털옷 장인 / 설원 정박장 암상인). */
+    HashMap<String, Object> mineCoat(String userName, String action, String code);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */

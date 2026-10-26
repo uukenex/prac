@@ -53,8 +53,14 @@ public final class S5MineMap {
     /** [2026-10-24] 광산 동굴 3층(마지막 층, 광산 레벨 3) -- 가장 깊은 곳에 선공 보스(맵 리셋 때만 나타나고 잡히면 다음 리셋까지 없음). */
     public static final String CAVE3 = "cave3";
     public static final List<String> TELE_DESTS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE));
+    /** [2026-10-26] "레벨 40대가 많아져 설산부터 강한 몬스터, 북쪽 끝 설원에서 설산으로 오르는 입구, 3층 설산을 지나면 설산 마을" 요청.
+     *  설원 북쪽 끝 입구 -> 설산 1층 -> 2층 -> 3층 -> 설산 마을(작은 마을, 북/동/서 문은 눈바람으로 잠김). 한기(cold): 설원 1, 설산 1~3층 = 2~4(초당 최대 체력 %). */
+    public static final String SNOW1 = "snow1";
+    public static final String SNOW2 = "snow2";
+    public static final String SNOW3 = "snow3";
+    public static final String SNOWTOWN = "snowtown";
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN);
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
@@ -91,6 +97,8 @@ public final class S5MineMap {
     private static final double[] STEPPE_SHARE = { 1, 20, 0.04, 0.14, 0.30 };
     private static final double[] CAVE2_SHARE = { 2, 25, 0.06, 0.18, 0.30 };
     private static final double[] CAVE3_SHARE = { 3, 35, 0.08, 0.20, 0.30 };
+    /** [2026-10-26] 설산 1~3층 -- 위층일수록 풍부하다. */
+    private static final double[][] SNOW_SHARE = { { 2, 30, 0.07, 0.20, 0.30 }, { 3, 35, 0.08, 0.20, 0.30 }, { 4, 40, 0.09, 0.22, 0.30 } };
 
     // ---------------------------------------------------------------- 보석(채굴 때 추가로)
     /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
@@ -116,6 +124,9 @@ public final class S5MineMap {
         GEM_DROPS.put(CAVE3, new int[][] { { 1, 40 }, { 8, 5 } }); // [2026-10-24] 동굴 3층 = 루비 4% + 다이아 0.5% 추가
         GEM_DROPS.put(SEAROAD, new int[][] { { 3, 50 }, { 2, 10 } }); // 바닷길 몬스터 보상용(캐면 searoadGem)
         GEM_DROPS.put(STEPPE, new int[][] { { 0, 50 }, { 7, 10 } }); // [2026-10-24] 초원 = 재스퍼 5% / 에메랄드 1%(왕도는 못 캔다)
+        GEM_DROPS.put(SNOW1, new int[][] { { 2, 40 }, { 8, 6 } }); // [2026-10-26] 설산 = 스타 사파이어 4% + 다이아 0.6~1% 추가(위층일수록)
+        GEM_DROPS.put(SNOW2, new int[][] { { 2, 40 }, { 8, 8 } });
+        GEM_DROPS.put(SNOW3, new int[][] { { 2, 40 }, { 8, 10 } });
     }
 
     /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
@@ -223,11 +234,84 @@ public final class S5MineMap {
 
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
     //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
-    //  [2026-10-25] 설원 북쪽 작은 마을(설원 마을)도 마을이라 안내원을 둔다.
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, NORTH, CITY));
+    //  [2026-10-25] 설원 북쪽 작은 마을도 마을이라 안내원을 둔다. [2026-10-26] 그 마을은 설산 3층 너머 "설산 마을"(SNOWTOWN)로 옮겼다.
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY));
     /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
     public static String townName(String id) {
-        return FIELD.equals(id) ? "중앙 평원 마을" : NORTH.equals(id) ? "설원 마을" : CITY.equals(id) ? "왕도 아스테리아" : nameOf(id);
+        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : nameOf(id);
+    }
+
+    // ---------------------------------------------------------------- [2026-10-26] 한기 / 눈바람 / 안전지대
+    /** 눈바람: 한기 맵마다 2분 칸 안의 정해진 한 때(맵/칸마다 다름). 서버(BotS5ServiceImpl.mineColdTick)가 다음 시각을 화면에 알려 준다. */
+    public static final long BLIZZARD_SLOT_MS = 120_000L;
+
+    static long blizzardAt(String mapId, long slot) {
+        return slot * BLIZZARD_SLOT_MS + 20_000L + S5MineMobs.mix(mapId.hashCode(), (int) slot) % 80_000;
+    }
+
+    /** after 다음의 눈바람 시각. */
+    public static long nextBlizzard(String mapId, long after) {
+        for (long s = after / BLIZZARD_SLOT_MS; ; s++) {
+            long t = blizzardAt(mapId, s);
+            if (t > after) return t;
+        }
+    }
+
+    /** (from, to] 사이에 분 눈바람 시각(없으면 -1). */
+    public static long blizzardBetween(String mapId, long from, long to) {
+        long t = nextBlizzard(mapId, from);
+        return t <= to ? t : -1;
+    }
+
+    /** 안전지대(모닥불) -- {x, y, 반지름}. 한기와 눈바람이 없다. */
+    public List<int[]> safeZones() { return Collections.unmodifiableList(safe); }
+
+    public int cold() { return cold; }
+
+    public boolean safeAt(int x, int y) {
+        return nearSafe(x, y, 0);
+    }
+
+    /** 안전지대 margin칸 안(몬스터를 두지 않을 때). */
+    public boolean nearSafe(int x, int y, int margin) {
+        for (int[] z : safe) {
+            int r = z[2] + margin;
+            if ((x - z[0]) * (x - z[0]) + (y - z[1]) * (y - z[1]) <= r * r) return true;
+        }
+        return false;
+    }
+
+    /** 모닥불 배치: 눈길(pathX, 열린 줄 y0~y1) 위 every줄마다 + 18칸 격자마다 갈 수 있는 칸 -- 서로 10칸 넘게 떨어지게.
+     *  눈바람 예고(5초) 동안 걸어서 닿을 수 있게 촘촘히(어느 칸에서든 가장 가까운 모닥불까지 대체로 20칸 안팎). */
+    private static void campfires(char[][] t, int[] pathX, int y0, int y1, int every, List<int[]> safe) {
+        int h = t.length, w = t[0].length;
+        for (int y = y1 - every; y > y0 + 4; y -= every) if (pathX[y] > 0 && walkable(t[y][pathX[y]])) safe.add(new int[] { pathX[y], y, 3 });
+        for (int gy = 9; gy < h - 4; gy += 18) for (int gx = 9; gx < w - 4; gx += 18) {
+            int[] best = null;
+            for (int d = 0; d <= 8 && best == null; d++) for (int dy = -d; dy <= d && best == null; dy++) for (int dx = -d; dx <= d; dx++) {
+                int x = gx + dx, y = gy + dy;
+                if (x < 1 || y < 1 || x >= w - 1 || y >= h - 1 || !walkable(t[y][x]) || t[y][x] == 'Y') continue;
+                best = new int[] { x, y, 3 };
+                break;
+            }
+            if (best == null) continue;
+            boolean far = true;
+            for (int[] z : safe) if (Math.abs(z[0] - best[0]) + Math.abs(z[1] - best[1]) < 10) { far = false; break; }
+            if (far) safe.add(best);
+        }
+    }
+
+    /** 대상(target)으로 가는 포탈 옆 칸(맨 위 줄 포탈이면 아래 칸, 맨 아래 줄이면 위 칸) -- 반대쪽에서 내려오거나 올라올 때 서는 곳. */
+    private static int[] besidePortal(S5MineMap m, String target) {
+        for (Portal p : m.portals) if (target.equals(p.target)) return p.y == 0 ? new int[] { p.x, 1 } : p.y == m.h - 1 ? new int[] { p.x, m.h - 2 } : new int[] { p.x, p.y + 1 };
+        return new int[] { m.spawnX, m.spawnY };
+    }
+
+    /** 포탈 대상 좌표 바꿔 끼우기(target -> (tx, ty)). */
+    private static List<Portal> retarget(S5MineMap m, String target, int[] to) {
+        List<Portal> out = new ArrayList<>();
+        for (Portal p : m.portals) out.add(target.equals(p.target) ? new Portal(p.x, p.y, p.kind, target, to[0], to[1], p.label) : p);
+        return out;
     }
 
     /** 시작점 근처의 탁 트인 칸(주변 8칸이 다 걸을 수 있고 포탈/NPC에서 2칸 넘게 떨어진 곳)에 이동 안내원을 세운다 -- 길을 막지 않게. */
@@ -273,8 +357,10 @@ public final class S5MineMap {
     private boolean wind;       // [2026-10-23] 모래바람(가만히 있어도 좌우로 밀림, 화면이 처리)
     private boolean underwater; // [2026-10-24] 바닷속(화면이 푸르게 물들이고 거품)
     private List<Npc> npcs = Collections.emptyList();
-    /** [2026-10-25] 맵 안 작은 마을 가운데(설원 마을) -- 없으면 -1. */
+    /** [2026-10-25] 맵 안 작은 마을 가운데(설산 마을) -- 없으면 -1. */
     int villageX = -1, villageY = -1;
+    private int cold;                                  // [2026-10-26] 한기 단계(초당 최대 체력 %), 0 = 없음
+    private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
     private List<Mob> mobs = Collections.emptyList();
     private int dockX = -1, dockY = -1; // [2026-10-24] 배에서 내리는 칸(항구 맵만)
     private int bossX = -1, bossY = -1; // [2026-10-24] 보스 자리(동굴 3층만, S5MineMobs.spawn이 보스를 둔다)
@@ -347,6 +433,7 @@ public final class S5MineMap {
             for (Npc n : npcs) hsh = 31 * hsh + (n.x + "," + n.y + n.kind + n.name + n.line).hashCode();
             for (Mob mb : mobs) hsh = 31 * hsh + (mb.id * 7 + mb.type) * 131 + mb.y * 1009 + mb.x + Arrays.hashCode(mb.cells); // 몬스터 배치가 바뀌면 화면도 다시 받게
             hsh = 31 * hsh + (wind ? 1 : 0) + (underwater ? 2 : 0) + dockX * 3 + dockY * 5;
+            for (int[] z : safe) hsh = 31 * hsh + z[0] * 7 + z[1] * 13 + z[2] + cold * 17; // [2026-10-26] 한기/모닥불
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
         }
         return v;
@@ -399,6 +486,10 @@ public final class S5MineMap {
         S5MineMap cave2 = generateCave(seed + 10, CAVE2, "광산 동굴 2층", CAVE2_SHARE);
         S5MineMap searoad = generateSearoad(seed + 11);
         S5MineMap cave3 = generateCave(seed + 12, CAVE3, "광산 동굴 3층", CAVE3_SHARE);
+        S5MineMap snow1 = generateSnowMountain(seed + 13, SNOW1, "설산 1층", 1); // [2026-10-26] 설산 1~3층, 설산 마을
+        S5MineMap snow2 = generateSnowMountain(seed + 14, SNOW2, "설산 2층", 2);
+        S5MineMap snow3 = generateSnowMountain(seed + 15, SNOW3, "설산 3층", 3);
+        S5MineMap snowTown = generateSnowTown(seed + 16);
 
         Portal mouth = null, north = null, south = null, west = null, east = null;
         for (Portal p : field.portals) {
@@ -510,7 +601,8 @@ public final class S5MineMap {
         out.put(DUNGEON, relink(dungeon, gp, null));
         out.put(CASTLE, relink(castle, kp, null));
         out.put(ISLAND, island);
-        out.put(NORTH, northEnd);
+        // [2026-10-26] 설원 입구 -> 설산 1층 아래 -> ... -> 3층 위 -> 설산 마을(남쪽 길 끝 -> 3층 맨 위 아래 칸)
+        out.put(NORTH, relink(northEnd, retarget(northEnd, SNOW1, new int[] { snow1.spawnX, snow1.spawnY }), northEnd.npcs));
         out.put(STEPPE, relink(steppe, sp, null));
         out.put(CITY, relink(city, tp, city.npcs));
         S5MineMap cv2 = relink(cave2, c2p, null);
@@ -522,10 +614,27 @@ public final class S5MineMap {
         cv3.bossX = bossX;
         cv3.bossY = bossY;
         out.put(CAVE3, cv3);
+        // 설산은 맨 뒤에 넣는다(몬스터 배치 시드가 넣은 순서를 따라서, 앞 맵들의 몬스터 자리는 그대로)
+        S5MineMap[] snows = { snow1, snow2, snow3 };
+        String[] belowIds = { NORTH, SNOW1, SNOW2 }, aboveIds = { SNOW2, SNOW3, SNOWTOWN };
+        S5MineMap[] belowMaps = { northEnd, snow1, snow2 }, aboveMaps = { snow2, snow3, snowTown };
+        for (int i = 0; i < 3; i++) {
+            S5MineMap sm = snows[i];
+            int[] downTo = besidePortal(belowMaps[i], sm.id); // 아래 맵에서 나를 가리키는 포탈 옆 칸
+            S5MineMap tmp = relink(sm, retarget(sm, belowIds[i], downTo), null);
+            out.put(sm.id, relink(tmp, retarget(tmp, aboveIds[i], new int[] { aboveMaps[i].spawnX, aboveMaps[i].spawnY }), null));
+        }
+        out.put(SNOWTOWN, relink(snowTown, retarget(snowTown, SNOW3, besidePortal(snow3, SNOWTOWN)), null));
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
         placeNpc(ct, ct.spawnX - 6, ct.spawnY - 4, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
+        // [2026-10-26] 방한 외투: 설산 마을 털옷 장인(제값), 설원 정박장 암상인(세 배, 매시 정각~15분에만 -- 화면/서버가 시각으로 판단, 칸은 늘 노점)
+        S5MineMap tw = out.get(SNOWTOWN);
+        placeNpc(tw, tw.villageX + 3, tw.villageY + 1, "furrier", "털옷 장인", "설산 바람은 뼈까지 파고들지. 내 외투면 버틸 만할 거요. 대신 몸이 둔해져서 몬스터한테는 더 아프게 맞을 거요.");
+        S5MineMap nm = out.get(NORTH);
+        placeNpc(nm, nm.dockX(), nm.dockY() - 3, "blackmarket", "암상인", "쉿... 설산 마을 장인 물건이지. 값은 세 배. 싫으면 올라가서 사든가. 15분이 되면 난 사라진다네.");
+        for (Npc n : nm.npcs) if ("blackmarket".equals(n.kind)) nm.safe.add(new int[] { n.x, n.y, 3 }); // 노점 앞도 안전지대
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -544,6 +653,8 @@ public final class S5MineMap {
         n.bossY = m.bossY;
         n.villageX = m.villageX;
         n.villageY = m.villageY;
+        n.cold = m.cold;
+        n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
     }
@@ -1064,41 +1175,113 @@ public final class S5MineMap {
             for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'n';
             pathX[y] = px;
         }
-        // [2026-10-25] "설원 북쪽에 조그마한 마을, 북/동/서쪽은 눈바람이 심해 갈 수 없다(문은 있음)" -- 눈길 북쪽 끝에 돌담(W)으로 두른 둥근 마을(V).
-        //  남쪽은 눈길이 들어오는 자리만 열고, 북/동/서 돌담 가운데에 잠긴 문(G). 마을 가운데 줄 위쪽 바깥은 눈 덮인 바위산(문 밖으로 돌아가지도 못하게).
-        //  난수를 더 쓰지 않아 다른 칸 배치는 그대로다.
-        final int vr = 6, vy = 10;
-        int vx = Math.max(vr + 3, Math.min(w - vr - 4, pathX[vy]));
-        for (int y = vy - vr - 2; y <= vy + vr + 2; y++) for (int x = vx - vr - 2; x <= vx + vr + 2; x++) {
-            if (y < 1 || y >= h - 1 || x < 1 || x >= w - 1) continue;
-            double d = Math.hypot(x - vx, y - vy);
-            if (d <= vr) t[y][x] = 'V';
-            else if (d <= vr + 1.2) t[y][x] = y > vy && Math.abs(x - pathX[y]) <= 1 ? 'n' : 'W'; // 남쪽 눈길 자리만 열림
-        }
-        for (int[] hs : new int[][] { { vx - 4, vy - 3 }, { vx + 3, vy - 3 } }) { // 초가집 두 채
-            t[hs[1]][hs[0]] = 'h'; t[hs[1]][hs[0] + 1] = 'j'; t[hs[1] + 1][hs[0]] = 'k'; t[hs[1] + 1][hs[0] + 1] = 'l';
-        }
-        int[][] gates = { { vx, vy - vr - 1 }, { vx + vr + 1, vy }, { vx - vr - 1, vy } };
-        for (int[] g : gates) t[g[1]][g[0]] = 'G';
-        for (int y = 1; y <= vy + 1; y++) for (int x = 1; x < w - 1; x++) if (Math.hypot(x - vx, y - vy) > vr + 1.2) t[y][x] = '^';
+        // [2026-10-26] 눈길 북쪽 끝 = 설산으로 오르는 입구(G). 위쪽 줄은 바위산, 입구 앞은 모닥불 공터. 전날 여기 둔 작은 마을은
+        //  "3층 설산을 지나면 설산 마을" 요청으로 설산 3층 너머(generateSnowTown)로 옮겼다. 난수를 더 쓰지 않아 다른 칸 배치는 그대로다.
+        final int gy = 6;
+        int gx = pathX[gy + 1];
+        for (int y = 1; y <= gy; y++) for (int x = 1; x < w - 1; x++) t[y][x] = '^';
+        for (int y = gy + 1; y <= gy + 4; y++) for (int x = Math.max(1, gx - 3); x <= Math.min(w - 2, gx + 3); x++) t[y][x] = 'n';
+        t[gy][gx] = 'G';
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(plank[0], plank[1], 'B', SHIP, 0, 0, "배에 오르기"));
-        String[] gateNames = { "북문", "동문", "서문" };
-        for (int i = 0; i < gates.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
+        portals.add(new Portal(gx, gy, 'G', SNOW1, 0, 0, "설산으로 오르는 길")); // 대상 좌표는 buildWorld가 채운다
         double[][] score = new double[h][w];
         boolean[][] skip = new boolean[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            skip[y][x] = t[y][x] == 'P' || t[y][x] == 'V' || Math.abs(x - sx) + Math.abs(y - sy) <= 2; // 마을 칸엔 광석 없음
+            skip[y][x] = t[y][x] == 'P' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
             score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.28 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, NORTH_SHARE, skip);
         S5MineMap m = new S5MineMap(NORTH, "북쪽 끝 설원", false, w, h, sx, sy, t, o, portals);
         m.dockX = sx;
         m.dockY = sy;
+        // [2026-10-26] 한기 1단계. 안전지대: 정박장("여긴 피해 없음"), 설산 입구 앞 공터, 눈길과 격자 모닥불.
+        m.cold = 1;
+        m.safe.add(new int[] { sx, sy, 6 });
+        m.safe.add(new int[] { gx, gy + 2, 3 });
+        campfires(t, pathX, gy + 4, coast[pier] - 8, 22, m.safe);
+        return m;
+    }
+
+    /** [2026-10-26] 설산 floor층(90x120, 한기 floor + 1): 눈밭/눈 덮인 소나무/바위산(위층일수록 바위가 많아 길이 좁다)/얼음.
+     *  아래 가운데 입구(G, 내려가는 길)에서 위로 굽이치는 3칸 눈길, 맨 위 G = 다음 층(3층은 설산 마을). 입구/출구/눈길/격자에 모닥불. */
+    static S5MineMap generateSnowMountain(long seed, String id, String name, int floor) {
+        int w = 90, h = 120;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 81), pine = new Noise(seed * 31 + 82), lake = new Noise(seed * 31 + 83), rich = new Noise(seed * 31 + 84);
+        double rockTh = 0.56 - floor * 0.02; // 바위산이 두껍게(층마다 더) -- 눈길 따라 오르는 느낌, 3층은 좁은 능선
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            char c;
+            if (lake.fbm(x / 20.0, y / 20.0) > 0.76) c = '~';
+            else if (rock.fbm(x / 14.0, y / 14.0) > rockTh) c = '^';
+            else if (pine.fbm(x / 11.0, y / 11.0) > 0.62) c = r.nextDouble() < 0.3 ? 'Y' : 'n';
+            else c = r.nextDouble() < 0.03 ? 'Y' : 'n';
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        int px = w / 2;
+        int[] pathX = new int[h];
+        for (int y = h - 2; y >= 1; y--) {
+            if (r.nextDouble() < 0.3) px += r.nextBoolean() ? 1 : -1;
+            px = Math.max(4, Math.min(w - 5, px));
+            for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'n';
+            pathX[y] = px;
+        }
+        int bx = pathX[h - 2], tx = pathX[1];
+        t[h - 1][bx] = 'G';
+        t[0][tx] = 'G';
+        int sx = bx, sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        String down = floor == 1 ? NORTH : floor == 2 ? SNOW1 : SNOW2, up = floor == 1 ? SNOW2 : floor == 2 ? SNOW3 : SNOWTOWN;
+        portals.add(new Portal(bx, h - 1, 'G', down, 0, 0, floor == 1 ? "북쪽 끝 설원으로 내려가기" : "설산 " + (floor - 1) + "층으로 내려가기"));
+        portals.add(new Portal(tx, 0, 'G', up, 0, 0, floor == 3 ? "설산 마을로 가는 길" : "설산 " + (floor + 1) + "층으로 오르기"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 13.0, y / 13.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, SNOW_SHARE[floor - 1], skip);
+        S5MineMap m = new S5MineMap(id, name, false, w, h, sx, sy, t, o, portals);
+        m.cold = floor + 1;
+        m.safe.add(new int[] { bx, h - 3, 4 });
+        m.safe.add(new int[] { pathX[3], 3, 4 });
+        campfires(t, pathX, 3, h - 3, 22, m.safe);
+        return m;
+    }
+
+    /** [2026-10-26] 설산 마을(44x42) -- 설산 3층 너머. 전날 설원 북쪽 끝에 만들었던 작은 마을(돌담 W로 두른 둥근 마을 V, 북/동/서 문은 눈바람으로 잠김)을
+     *  여기로 옮기고 조금 키웠다(초가집 네 채). 바깥은 바위산, 남쪽 문에서 아래로 난 눈길 끝 G = 설산 3층으로 내려가기. 마을 전체가 안전지대(한기 없음). */
+    static S5MineMap generateSnowTown(long seed) {
+        int w = 44, h = 42, vx = 22, vy = 17, vr = 9;
+        char[][] t = new char[h][w];
+        for (char[] row : t) Arrays.fill(row, '^');
+        for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++) {
+            double d = Math.hypot(x - vx, y - vy);
+            if (d <= vr) t[y][x] = 'V';
+            else if (d <= vr + 1.2) t[y][x] = 'W';
+        }
+        for (int y = vy + vr - 1; y <= h - 2; y++) for (int x = vx - 1; x <= vx + 1; x++) if (t[y][x] != 'V') t[y][x] = 'n'; // 남쪽 문 + 눈길
+        for (int[] hs : new int[][] { { vx - 6, vy - 5 }, { vx + 4, vy - 5 }, { vx - 6, vy + 2 }, { vx + 4, vy + 2 } }) { // 초가집 네 채
+            t[hs[1]][hs[0]] = 'h'; t[hs[1]][hs[0] + 1] = 'j'; t[hs[1] + 1][hs[0]] = 'k'; t[hs[1] + 1][hs[0] + 1] = 'l';
+        }
+        int[][] gates = { { vx, vy - vr - 1 }, { vx + vr + 1, vy }, { vx - vr - 1, vy } };
+        for (int[] g : gates) t[g[1]][g[0]] = 'G';
+        t[h - 1][vx] = 'G';
+        List<Portal> portals = new ArrayList<>();
+        String[] gateNames = { "북문", "동문", "서문" };
+        for (int i = 0; i < gates.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
+        portals.add(new Portal(vx, h - 1, 'G', SNOW3, 0, 0, "설산 3층으로 내려가기"));
+        S5MineMap m = new S5MineMap(SNOWTOWN, "설산 마을", false, w, h, vx, vy + vr + 2, t, new byte[h][w], portals);
         m.villageX = vx;
         m.villageY = vy;
+        m.safe.add(new int[] { vx, vy, 30 });
         return m;
     }
 

@@ -77,11 +77,25 @@ public final class S5MineMobs {
         new Type("해마", 4, "small", "#f0b030", S5MineMap.SEAROAD),
         new Type("문어", 5, "blob", "#c0508a", S5MineMap.SEAROAD),
         new Type("바다뱀", 5, "snake", "#2f7ab0", S5MineMap.SEAROAD),
-        new Type("고대 광석 골렘", 9, "human", "#5a4a6a").asBoss()
+        new Type("고대 광석 골렘", 9, "human", "#5a4a6a").asBoss(),
+        // [2026-10-26] 설산 1~3층 -- "레벨 40대가 많아져 설산부터 강한 몬스터". 10~13단계(적정 Lv.37~49). 보스 뒤에 덧붙이고 보스 번호는 찾아서 쓴다.
+        new Type("설산 늑대", 10, "quad", "#dce6f2", S5MineMap.SNOW1),
+        new Type("서리 설인", 10, "human", "#cfe0f5", S5MineMap.SNOW1),
+        new Type("얼음 박쥐", 11, "flyer", "#9fd0ff", S5MineMap.SNOW1, S5MineMap.SNOW2),
+        new Type("빙결 트롤", 11, "human", "#a8c8e0", S5MineMap.SNOW2),
+        new Type("서리 뱀", 12, "snake", "#8fb8e0", S5MineMap.SNOW2, S5MineMap.SNOW3),
+        new Type("눈보라 정령", 12, "flyer", "#e8f4ff", S5MineMap.SNOW2, S5MineMap.SNOW3),
+        new Type("서리 거인", 13, "human", "#7fa8d0", S5MineMap.SNOW3),
+        new Type("얼음 골렘", 13, "human", "#bfe6ff", S5MineMap.SNOW3)
     ));
 
-    /** 보스 종류 번호(TYPES 안). */
-    public static final int BOSS_TYPE = TYPES.size() - 1;
+    /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. */
+    public static final int BOSS_TYPE = bossIndex();
+
+    private static int bossIndex() {
+        for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).boss) return i;
+        return TYPES.size() - 1;
+    }
 
     /** 그 칸의 몬스터 단계(0 = 몬스터 없음). 평원은 마을에서 멀수록 강하다. */
     static int tierAt(S5MineMap m, int x, int y) {
@@ -104,6 +118,9 @@ public final class S5MineMobs {
             case S5MineMap.CAVE3: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 8 : 9;
             case S5MineMap.SEAROAD: return y > m.h * 0.5 ? 4 : 5; // 용궁(북쪽)에 가까울수록
             case S5MineMap.STEPPE: return y > m.h * 0.5 ? 6 : 7; // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0)
+            case S5MineMap.SNOW1: return y > m.h * 0.5 ? 10 : 11; // [2026-10-26] 설산 -- 위로 오를수록 강하다(설산 마을은 없음)
+            case S5MineMap.SNOW2: return y > m.h * 0.5 ? 11 : 12;
+            case S5MineMap.SNOW3: return y > m.h * 0.5 ? 12 : 13;
             default: return 0;
         }
     }
@@ -114,6 +131,7 @@ public final class S5MineMobs {
             case S5MineMap.FIELD: return 200;
             case S5MineMap.DUNGEON: return 320;
             case S5MineMap.CAVE1: return 130;
+            case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 120; // [2026-10-26] 설산은 빽빽하게
             default: return 160;
         }
     }
@@ -147,7 +165,7 @@ public final class S5MineMobs {
             walk++;
             if (!mobCell(t[y][x]) || Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 9) continue;
             if (m.dockX() >= 0 && Math.abs(x - m.dockX()) + Math.abs(y - m.dockY()) < 9) continue;
-            boolean nearGate = false;
+            boolean nearGate = m.nearSafe(x, y, 1); // [2026-10-26] 모닥불(안전지대) 근처엔 몬스터를 두지 않는다
             for (S5MineMap.Portal p : m.portals) if (Math.abs(x - p.x) + Math.abs(y - p.y) < 5) { nearGate = true; break; }
             for (S5MineMap.Npc n : m.npcs()) if (Math.abs(x - n.x) + Math.abs(y - n.y) < 5) { nearGate = true; break; }
             if (!nearGate) cand.add(new int[] { x, y });

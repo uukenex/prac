@@ -113,7 +113,7 @@
     if (s < 86400) return Math.floor(s / 3600) + '시간 전';
     return Math.floor(s / 86400) + '일 전';
   }
-  var KIND = { helmet: '⛑️', ring: '💍', necklace: '📿', boots: '👢', tool: '⛏️', dragon: '🌊' };
+  var KIND = { helmet: '⛑️', ring: '💍', necklace: '📿', boots: '👢', tool: '⛏️', dragon: '🌊', coat: '🧥' };
   var SLOT = { hat: '모자', hair: '머리', top: '상의', bottom: '하의', shoes: '신발' };
   function oreClass(g) {
     if (g === 29) return 'dia';

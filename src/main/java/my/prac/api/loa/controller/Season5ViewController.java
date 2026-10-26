@@ -808,7 +808,30 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineGoVillage(userName));
     }
 
-    /** [2026-10-25] 웹 광산 이동 안내원 -- 마을(평원 마을/왕도, 왕도는 아직 관리자만)끼리 무료 이동. */
+    /** [2026-10-26] 웹 광산 한기 턴 -- 한기 맵(설원/설산)에서 화면이 1초마다 부른다. 쓰러짐만 로그. */
+    @GetMapping("/api/tower-mine-cold-tick")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineColdTick(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineColdTick(userName, mapId, ver, x, y);
+        if (Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 추위에 쓰러짐", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-26] 웹 광산 방한 외투 -- action list/buy/wear. 사기/입기만 로그. */
+    @GetMapping("/api/tower-mine-coat")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineCoat(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "code", defaultValue = "") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineCoat(userName, action, code);
+        if (!"list".equals(action)) mineLog(userName, "[웹] 광산 방한 외투 " + action + " " + code, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-25] 웹 광산 이동 안내원 --마을(평원 마을/왕도, 왕도는 아직 관리자만)끼리 무료 이동. */
     @GetMapping("/api/tower-mine-guide")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineGuide(@RequestParam(value = "userName", defaultValue = "") String userName,
