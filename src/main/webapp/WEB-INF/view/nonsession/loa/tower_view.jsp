@@ -6476,14 +6476,14 @@ var TowerMine = (function () {
   // [2026-10-24] 사막 북쪽 모래폭풍 너머 초원 -> 왕도 아스테리아 추가(설원은 오른쪽 위로, 배로만)
   // [2026-10-26] 설원 위로 설산 1~3층과 설산 마을(지도를 위로 늘렸다)
   var WORLD_NODES = [
-    { id: 'snowtown', name: '설산 마을', x: 262, y: -124, fill: '#d9c9a0', ink: '#2a1d10' },
+    { id: 'snowtown', name: '설산 마을', x: 262, y: -124, fill: '#d9c9a0', ink: '#2a1d10', town: true }, // [2026-10-28] 마을은 전체 지도에 레벨 표시 안 함
     { id: 'snow3', name: '설산 3층', x: 262, y: -68, fill: '#c8d8ea', ink: '#1a2a3a' },
     { id: 'snow2', name: '설산 2층', x: 262, y: -12, fill: '#d6e2f0', ink: '#1a2a3a' },
     { id: 'snow1', name: '설산 1층', x: 262, y: 44, fill: '#e2ebf5', ink: '#1a2a3a' },
     { id: 'ruins', name: '성당 옛터 👿', x: 160, y: -110, fill: '#5a4a6a', ink: '#f0e0ff' }, // [2026-10-28] 왕도 가는 길 북쪽 샛길
-    { id: 'royalroad', name: '왕도 가는 길', x: 160, y: -40, fill: '#b8a27a', ink: '#2a1d10' }, // [2026-10-27] 설산 마을 서문 -> 왕도 동문
-    { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10' }, // [2026-10-27] 일반 플레이어에게 열림
-    { id: 'steppe', name: '북쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a' },
+    { id: 'royalroad', name: '왕도 북쪽 샛길', x: 160, y: -40, fill: '#b8a27a', ink: '#2a1d10' }, // [2026-10-27] 설산 마을 서문 -> 왕도 동문
+    { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10', town: true }, // [2026-10-27] 일반 플레이어에게 열림, [2026-10-28] 레벨 표시 없음
+    { id: 'steppe', name: '왕도 남쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a' },
     { id: 'cave3', name: '광산 동굴 3층', x: 52, y: 52, fill: '#2a2230', ink: '#e8d8ff' },
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
@@ -6524,7 +6524,7 @@ var TowerMine = (function () {
           + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
           + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
-          + (minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
+          + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
     });
     svg += '</svg>';
     return npcHead('🗺️ 전체 지도', false) + svg; // [2026-10-24] 아래 안내 문구는 뺐다("이 멘트도 없애주고")
@@ -6539,8 +6539,8 @@ var TowerMine = (function () {
     return npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, n ? n.line : '')
         + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
-        + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 이 성당</small></button>'
-                : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 여기서 깨어나기</small></button>') + '</div>';
+        + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
+                : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>') + '</div>';
   }
   function priestAct(action) {
     if (busy) return;
@@ -6918,12 +6918,18 @@ var TowerMine = (function () {
       var boss = map.mobs[map.mobs.length - 1]; bt = map.mobTypes[boss.k];
       nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.stay ? 4 : 2)); // [2026-10-28] 대주교는 4칸
     }
-    if (!fight && !nearBoss) return;
+    // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
+    var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
+      var ty = map.mobTypes[mb.k];
+      return ty && !ty.boss && !ty.minion && mb._p && 1 + 4 * (ty.tier - 1) - myLv() >= 20 && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
+    });
+    if (!fight && !nearBoss && !nearStrong) return;
     lastBossT = now; bossBusy = true;
     api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       bossBusy = false;
       if (!d || !d.ok) return;
       if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
+      if (d.preempt && !d.bossAggro) msg('⚠️ ' + d.preempt + '이(가) 먼저 덤벼들어요! (레벨 차이 20 이상) 7칸 이상 떨어지면 따돌릴 수 있어요.', 3200);
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
@@ -7728,7 +7734,7 @@ var TowerMine = (function () {
     var city = !!(st && st.respawnCity); // [2026-10-25] 부활 지점(성당에서 기도했으면 왕도 성당)으로
     if (!city && map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
     if (st && st.combat && st.combat.fight) { msg('⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어진 뒤에 이동할 수 있어요.', 2800); return; }
-    ask('🏠 마을로', (city ? '부활 지점인 <b>왕도 아스테리아 성당</b>' : '<b>중앙 평원 마을</b>') + '(으)로 이동할까요?', '이동', function () {
+    ask('🏠 마을로', (city ? '부활 지점인 <b>왕도 아스테리아 광장</b>' : '<b>중앙 평원 마을</b>') + '(으)로 이동할까요?', '이동', function () {
       travel('/api/tower-mine-village', '이동하지 못했어요.');
     });
   }

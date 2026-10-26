@@ -141,6 +141,9 @@ public final class S5MineMap {
         GEM_DROPS.put(ROYALROAD, new int[][] { { 1, 40 }, { 8, 8 } }); // [2026-10-27] 왕도 가는 길 = 루비 4% + 다이아 0.8%
     }
 
+    /** [2026-10-28] "보석 드랍률 소폭 낮춰줘" -- 맵별 지역 보석(과 추가 다이아) 천분율에 곱하는 백분율. 모든 맵 공통 다이아(DIAMOND_PERMILLE)는 그대로. */
+    static final int GEM_SCALE_PCT = 80;
+
     /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
     public static int gemFor(String mapId, int roll) {
         if (roll < DIAMOND_PERMILLE) return GEM_DIAMOND;
@@ -148,7 +151,7 @@ public final class S5MineMap {
         int[][] drops = GEM_DROPS.get(mapId);
         if (drops == null) return -1;
         for (int[] d : drops) {
-            acc += d[1];
+            acc += d[1] * GEM_SCALE_PCT / 100;
             if (roll < acc) return d[0];
         }
         return -1;
@@ -161,7 +164,7 @@ public final class S5MineMap {
         int[][] drops = GEM_DROPS.get(mapId);
         if (drops == null) return -1;
         for (int i = 0; i < drops.length; i++) {
-            acc += i == 0 ? (int) Math.round(drops[i][1] * commonMult) : drops[i][1];
+            acc += (i == 0 ? (int) Math.round(drops[i][1] * commonMult) : drops[i][1]) * GEM_SCALE_PCT / 100;
             if (roll < acc) return drops[i][0];
         }
         return -1;
@@ -588,7 +591,7 @@ public final class S5MineMap {
         Portal dNorth = null;
         for (Portal p : desert.portals) {
             if (FIELD.equals(p.target)) dp.add(new Portal(p.x, p.y, p.kind, FIELD, north.x, north.y + 1, p.label));
-            else { dNorth = p; dp.add(new Portal(p.x, p.y, p.kind, STEPPE, steppe.spawnX, steppe.spawnY, "모래폭풍을 지나 북쪽 초원으로")); }
+            else { dNorth = p; dp.add(new Portal(p.x, p.y, p.kind, STEPPE, steppe.spawnX, steppe.spawnY, "모래폭풍을 지나 왕도 남쪽 초원으로")); }
         }
         // 초원: 남쪽 통로 -> 사막 북쪽 끝, 북쪽 통로 -> 왕도 남문. 왕도: 남문 -> 초원 북쪽 끝(동/서문은 잠김).
         Portal sNorth = null;
@@ -1338,7 +1341,7 @@ public final class S5MineMap {
         List<Portal> portals = new ArrayList<>();
         String[] gateNames = { "북문", "동문" };
         for (int i = 0; i < gateNames.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
-        portals.add(new Portal(gates[2][0], gates[2][1], 'G', ROYALROAD, 0, 0, "서문 -- 왕도 가는 길")); // [2026-10-27] 설산에서 내려가 왕도로(좌표는 buildWorld)
+        portals.add(new Portal(gates[2][0], gates[2][1], 'G', ROYALROAD, 0, 0, "서문 -- 왕도 북쪽 샛길")); // [2026-10-27] 설산에서 내려가 왕도로(좌표는 buildWorld)
         portals.add(new Portal(vx, h - 1, 'G', SNOW3, 0, 0, "설산 3층으로 내려가기"));
         S5MineMap m = new S5MineMap(SNOWTOWN, "설산 마을", false, w, h, vx, vy + vr + 2, t, new byte[h][w], portals);
         m.villageX = vx;
@@ -1396,7 +1399,7 @@ public final class S5MineMap {
             score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * ((double) x / w) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
-        return new S5MineMap(ROYALROAD, "왕도 가는 길", false, w, h, sx, sy, t, o, portals);
+        return new S5MineMap(ROYALROAD, "왕도 북쪽 샛길", false, w, h, sx, sy, t, o, portals);
     }
 
     /** [2026-10-28] 성당 옛터(120x110): 넓은 풀밭 평지 가운데 무너진 대성당 터 -- 돌바닥(s) 위로 잔해(r, 지나갈 수 있음)가 흩어지고,
@@ -1426,7 +1429,7 @@ public final class S5MineMap {
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(c, h - 1, 'G', ROYALROAD, 0, 0, "왕도 가는 길로"));
+        portals.add(new Portal(c, h - 1, 'G', ROYALROAD, 0, 0, "왕도 북쪽 샛길로"));
         S5MineMap m = new S5MineMap(RUINS, "성당 옛터", false, w, h, sx, sy, t, new byte[h][w], portals);
         m.bossX = c;
         m.bossY = y0 + 6;
@@ -1467,7 +1470,7 @@ public final class S5MineMap {
             score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, STEPPE_SHARE, skip);
-        return new S5MineMap(STEPPE, "모래폭풍 너머 초원", false, w, h, sx, sy, t, o, portals);
+        return new S5MineMap(STEPPE, "왕도 남쪽 초원", false, w, h, sx, sy, t, o, portals);
     }
 
     /** [2026-10-24] 왕도 아스테리아(120x120, 라그나로크 프론테라 느낌): 두꺼운 성벽(W)으로 둘러싼 정사각 도시, 성문 셋(남문만 열림, 동/서문은 잠김),
@@ -1517,8 +1520,8 @@ public final class S5MineMap {
         for (int x = 0; x < wt; x++) for (int dy = -1; dy <= 1; dy++) t[c + dy][x] = 's';
         t[c][0] = 'G';
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 초원으로 나가기"));
-        portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 설산으로 가는 길")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
+        portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 왕도 남쪽 초원으로"));
+        portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
         portals.add(new Portal(0, c, 'G', null, 0, 0, "서문 (굳게 닫혀 있다)"));
         portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
         int sx = c, sy = h - wt - 2;

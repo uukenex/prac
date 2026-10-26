@@ -99,12 +99,13 @@ public final class S5MineMobs {
         // [2026-10-27] "사막 횡단 후 왕도까지 이어지는 곳 더 강하게"(초원 9~11단계) + 왕도 가는 길(11~13단계, 설산 쪽일수록 강함)
         new Type("켄타우로스", 9, "quad", "#a07a4a", S5MineMap.STEPPE),
         new Type("오크 족장", 10, "human", "#4a6a2a", S5MineMap.STEPPE),
-        new Type("그리폰", 11, "flyer", "#c8a060", S5MineMap.STEPPE, S5MineMap.ROYALROAD),
-        new Type("몰락한 기사", 11, "human", "#6a6a7a", S5MineMap.ROYALROAD),
-        new Type("산악 오우거", 12, "human", "#8a7a5a", S5MineMap.ROYALROAD),
-        new Type("와이번", 12, "flyer", "#5a8a5a", S5MineMap.ROYALROAD),
-        new Type("서리 와이번", 13, "flyer", "#9fc8e8", S5MineMap.ROYALROAD),
-        new Type("바위 거인", 13, "human", "#7a7268", S5MineMap.ROYALROAD),
+        // [2026-10-28] "왕도 북쪽 샛길은 더 강하게(성당 옛터보다 살짝 약한 정도)" -- 샛길 몬스터 11~13단계 -> 17~19단계(그리폰은 초원 11단계 그대로)
+        new Type("그리폰", 11, "flyer", "#c8a060", S5MineMap.STEPPE),
+        new Type("몰락한 기사", 17, "human", "#6a6a7a", S5MineMap.ROYALROAD),
+        new Type("산악 오우거", 18, "human", "#8a7a5a", S5MineMap.ROYALROAD),
+        new Type("와이번", 18, "flyer", "#5a8a5a", S5MineMap.ROYALROAD),
+        new Type("서리 와이번", 19, "flyer", "#9fc8e8", S5MineMap.ROYALROAD),
+        new Type("바위 거인", 19, "human", "#7a7268", S5MineMap.ROYALROAD),
         // [2026-10-28] 성당 옛터 -- 일반 몬스터 없이 대주교(21단계 보스, 제자리, 수하 소환 + 불벼락/어둠가스)와 그 수하(20단계, 3배 빠름)만
         new Type("타락한 대주교", 21, "human", "#3a1a4a").asBoss().asStay(),
         new Type("타락한 성기사", 20, "human", "#8a7a9a").asMinion()
@@ -145,7 +146,7 @@ public final class S5MineMobs {
             case S5MineMap.SEAROAD: return y > m.h * 0.5 ? 4 : 5; // 용궁(북쪽)에 가까울수록
             // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0). [2026-10-27] 6~7단계 -> 9~11단계("사막 횡단 후 왕도까지 더 강하게")
             case S5MineMap.STEPPE: return y > m.h * 0.66 ? 9 : y > m.h * 0.33 ? 10 : 11;
-            case S5MineMap.ROYALROAD: return x > m.w * 0.66 ? 13 : x > m.w * 0.33 ? 12 : 11; // [2026-10-27] 설산(동쪽) 쪽일수록 강하다
+            case S5MineMap.ROYALROAD: return x > m.w * 0.66 ? 19 : x > m.w * 0.33 ? 18 : 17; // [2026-10-27] 설산(동쪽) 쪽일수록 강하다, [2026-10-28] 11~13 -> 17~19
             case S5MineMap.SNOW1: return y > m.h * 0.5 ? 10 : 11; // [2026-10-26] 설산 -- 위로 오를수록 강하다(설산 마을은 없음)
             case S5MineMap.SNOW2: return y > m.h * 0.5 ? 11 : 12;
             case S5MineMap.SNOW3: return y > m.h * 0.5 ? 12 : 13;
@@ -154,13 +155,14 @@ public final class S5MineMobs {
     }
 
     /** 맵별 몬스터 밀도(이동 가능 칸 몇 칸에 한 마리). */
+    // [2026-10-28] "맵 전체적으로 몹 개체수를 조금 늘려줘" -- 모든 맵 약 25% 더(칸 수 / 마리를 0.8배로).
     private static int density(String mapId) {
         switch (mapId) {
-            case S5MineMap.FIELD: return 200;
-            case S5MineMap.DUNGEON: return 320;
-            case S5MineMap.CAVE1: return 130;
-            case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 120; // [2026-10-26] 설산은 빽빽하게
-            default: return 160;
+            case S5MineMap.FIELD: return 160;
+            case S5MineMap.DUNGEON: return 256;
+            case S5MineMap.CAVE1: return 104;
+            case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
+            default: return 128;
         }
     }
 

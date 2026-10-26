@@ -8676,7 +8676,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-24] 모래폭풍 너머 초원(몬스터 6~7단계) -- 왕도도 같은 길이라 17. [2026-10-27] 초원 9~11단계로 강해져 33, 왕도도 33.
         MINE_MIN_LV.put(S5MineMap.STEPPE, 33);
         MINE_MIN_LV.put(S5MineMap.CITY, 33);
-        MINE_MIN_LV.put(S5MineMap.ROYALROAD, 45); // [2026-10-27] 왕도 가는 길(11~13단계) -- "레벨 제한 조금 높게"
+        MINE_MIN_LV.put(S5MineMap.ROYALROAD, 70); // [2026-10-27] 왕도 가는 길(11~13단계, 45), [2026-10-28] 왕도 북쪽 샛길로 이름을 바꾸고 17~19단계(성당 옛터보다 살짝 약하게) 70
         MINE_MIN_LV.put(S5MineMap.RUINS, 80); // [2026-10-28] 성당 옛터 -- 타락한 대주교("80레벨 이상 권장")
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
@@ -9111,6 +9111,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("hp", ty.hp());
             m.put("boss", ty.boss);
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
+            if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             out.add(m);
         }
         return out;
@@ -9323,9 +9324,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
-        int[] hp0 = church ? mineCityChurch(home) : new int[] { home.spawnX, home.spawnY };
+        int[] hp0 = church ? mineCityPlaza(home) : new int[] { home.spawnX, home.spawnY };
         dao.updateMinePos(userName, home.id, hp0[0], hp0[1], now);
-        return church ? "왕도 아스테리아 성당에서" : "중앙 평원 마을에서";
+        return church ? "왕도 아스테리아 광장에서" : "중앙 평원 마을에서";
     }
 
     // ---- [2026-10-25] 전투 중 몬스터 인식(어그로) -- "전투 시 자동 체력 회복을 막고, 안 때리더라도 일정 턴마다 몬스터가 플레이어를 공격,
@@ -9338,6 +9339,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final long MINE_MOB_STRIKE_GAP_MS = 1_500L;
     private static final long MINE_CHASE_STEP_MS = 600L;
     private static final long MINE_ENGAGE_TTL_MS = 10_000L;
+    // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 MINE_PREEMPT_LV_GAP 이상 높으면 MINE_PREEMPT_RANGE칸 안에서 먼저 인식(7칸부터 풀림)
+    private static final int MINE_PREEMPT_LV_GAP = 20;
+    private static final int MINE_PREEMPT_RANGE = 6;
+
+    private static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
+        return 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP;
+    }
 
     private static final class MineEngage {
         volatile String mapVer;
@@ -9410,9 +9418,29 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             e = MINE_ENGAGE.get(userName);
         }
+        int lv = mineLv(row);
+        // [2026-10-28] "레벨 차이가 20 이상 나면 선공, 인식 범위 6칸" -- 몬스터 레벨(1+4(단계-1))이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(보스/수하 제외)
+        for (S5MineMap.Mob mb : map.mobs()) {
+            S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
+            if (mt.boss || mt.minion || !mineMobPreempts(mt, lv) || (e != null && e.mobs.containsKey(mb.id))) continue;
+            MobState cur = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
+            if (cur == null && Math.abs(mb.x - x) + Math.abs(mb.y - y) > MINE_PREEMPT_RANGE + 1) continue; // 상태가 없으면 집 칸 주변 1칸만 돌아다닌다(빠른 거르기)
+            int near = -1;
+            for (int c : mineMobCells(mb, cur, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= MINE_PREEMPT_RANGE) near = c;
+            if (near < 0) continue;
+            MobState ms = cur != null ? cur : MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mb.id), k -> new MobState(mt.hp()));
+            synchronized (ms) {
+                if (ms.deadUntil > now) continue;
+                if (ms.frozenUntil <= now) { ms.fx = near % map.w; ms.fy = near / map.w; }
+                ms.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                if (ms.target == null) ms.target = userName;
+                mineEngage(userName, map, mb.id, now, 0L);
+                if (!out.containsKey("preempt")) out.put("preempt", mt.name);
+            }
+            e = MINE_ENGAGE.get(userName);
+        }
         if (e == null || e.mobs.isEmpty()) { mineDisengageAll(userName); out.put("ok", true); out.put("fight", false); return out; }
         e.at = now;
-        int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int dmgSum = 0, released = 0;
         List<HashMap<String, Object>> hits = new ArrayList<>();
@@ -9430,7 +9458,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
-                if (dist >= MINE_AGGRO_RANGE) {
+                if (dist >= (!type.boss && mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = now; } // 다시 제자리로 걸어간다
@@ -9475,7 +9503,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("hits", hits);
         out.put("mobs", mobs);
         boolean fight = !e.mobs.isEmpty();
-        if (dmgSum == 0 && fight && !out.containsKey("bossAggro")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
+        if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
         if (dmgSum > 0) {
             hp -= dmgSum;
@@ -9753,7 +9781,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
         }
-        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000), 1.5);
+        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000), 1.3);
         if (gi >= 0) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
@@ -10397,7 +10425,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap.Npc g = map.guide();
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
-        if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 초원이나 왕도 가는 길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
+        if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
         if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 설산을 넘어 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
         if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
         S5MineMap target = S5MineMap.get(dest);
@@ -11032,7 +11060,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  APP_VERSION = 번호)에 두고 관리자 채팅 /광산공지 [내용]으로 바꾼다(번호가 올라가 모두에게 한 번씩 다시 뜸, " / "는 줄바꿈, "끄기" = 안 띄움).
     //  행이 없으면 아래 기본 글(1번).
     static final String MINE_ITEM_NOTICE = "NOTICE_SEEN";
-    private static final String MINE_NOTICE_DEFAULT = "⚖️ 체력·공격력·경험치 숫자가 작아졌어요(레벨·밸런스는 그대로)\n🏔️ 새 지역: 설산 → 설산 마을 → 왕도 가는 길 → 왕도, 성당 옛터";
+    private static final String MINE_NOTICE_DEFAULT = "⚖️ 체력·공격력·경험치 숫자가 작아졌어요(레벨·밸런스는 그대로)\n🏔️ 새 지역: 설산 → 설산 마을 → 왕도 북쪽 샛길 → 왕도, 성당 옛터";
     private static volatile Object[] mineNoticeCache = null; // {번호, 글, 읽은 시각}
 
     /** 지금 광산 소식 {번호, 글}(1분 기억). 번호 0 또는 글이 비면 안 띄운다. */
@@ -11173,9 +11201,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 부활 지점: 1 = 왕도 성당(신부에게 기도), 없으면 평원 마을. */
     static final String MINE_ITEM_RESPAWN = "RESPAWN";
 
-    /** 왕도 성당 앞(신부 바로 아래 칸). */
-    private static int[] mineCityChurch(S5MineMap city) {
-        for (S5MineMap.Npc n : city.npcs()) if ("priest".equals(n.kind) && city.walkable(n.x, n.y + 1)) return new int[] { n.x, n.y + 1 };
+    /** [2026-10-28] "왕도에서 마을 저장하면 맵 가운데서 부활" -- 왕도 한가운데 광장(분수 바로 남쪽 칸, 게이트보다 위). 막혀 있으면 가운데에서 가까운 빈 칸. */
+    private static int[] mineCityPlaza(S5MineMap city) {
+        int cx = city.w / 2, cy = city.h / 2;
+        for (int d = 5; d < 20; d++) for (int[] t : new int[][] { { cx, cy + d }, { cx + d, cy }, { cx - d, cy }, { cx, cy - d } })
+            if (city.walkable(t[0], t[1]) && city.npcAt(t[0], t[1]) == null) return t;
         return new int[] { city.spawnX, city.spawnY };
     }
 
@@ -11193,7 +11223,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean save = "save".equals(action);
             dao.upsertMineItem(userName, MINE_ITEM_RESPAWN, save ? 1 : 0);
             out.put("respawnCity", save);
-            out.put("message", save ? "🙏 성당 신부: 기도했습니다. 쓰러지면 이 성당에서 깨어날 거예요." : "🙏 성당 신부: 이제 쓰러지면 중앙 평원 마을에서 깨어날 거예요.");
+            out.put("message", save ? "🙏 성당 신부: 기도했습니다. 쓰러지면 왕도 한가운데 광장에서 깨어날 거예요." : "🙏 성당 신부: 이제 쓰러지면 중앙 평원 마을에서 깨어날 거예요.");
             return out;
         }
         int lv = mineLv(row);
