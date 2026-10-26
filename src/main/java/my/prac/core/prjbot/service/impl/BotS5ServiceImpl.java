@@ -11315,7 +11315,34 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
             others.add(m);
         }
+        if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
         return out;
+    }
+
+    // ---- [2026-10-28] 패치 전 공지 -- "패치 전 공지 문구 띄우는 기능, 인게임에만" 요청.
+    //  관리자가 /패치공지 [내용]을 치면 지금 광산에 있는 사람 화면 맨 위에 띠로 뜬다(1초마다 오가는 위치 알림 minePresence에 실어 보낸다).
+    //  메모리에만 두므로 배포(서버 재시작)하면 저절로 사라진다. "끄기"로 미리 내릴 수도 있다.
+    private static volatile String minePatchText = "";
+    private static volatile long minePatchId = 0;
+
+    @Override
+    public String setMinePatchNotice(String userName, String text) {
+        if (!isEventAdmin(userName) && !isMineAdmin(userName)) return "권한이 없습니다.";
+        if (text == null || text.trim().isEmpty())
+            return "사용법: /패치공지 [내용] (\" / \"로 줄바꿈, \"끄기\"면 내림)\n지금 패치 공지: " + (minePatchId > 0 ? minePatchText : "(없음)");
+        if ("끄기".equals(text.trim())) {
+            minePatchId = 0;
+            minePatchText = "";
+            return "📢 패치 공지를 내렸어요.";
+        }
+        String body = text.trim().replace(" / ", "\n");
+        minePatchText = body.length() > 300 ? body.substring(0, 300) : body;
+        minePatchId = System.currentTimeMillis();
+        long now = minePatchId;
+        int inMine = 0;
+        for (MinePresence p : MINE_PRESENCE.values()) if (now - p.at <= MINE_PRESENCE_TTL_MS) inMine++;
+        return "📢 패치 공지를 띄웠어요. 지금 광산에 있는 " + inMine + "명 화면 맨 위에 바로 보이고, 새로 들어오는 사람에게도 보여요."
+                + "\n배포(서버 재시작)하면 저절로 사라져요. 미리 내리려면 /패치공지 끄기\n" + minePatchText;
     }
 
     /** 광산을 나갈 때 -- 다른 유저 화면에서 바로 사라지게. */

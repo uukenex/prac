@@ -465,6 +465,14 @@ public class Season5Controller {
         return s5Service.setMineNotice(userNameOf(map), text);
     }
 
+    /** [2026-10-28] /패치공지 [내용] (관리자 전용) -- 광산 화면 맨 위 띠 공지(뒤 전체가 내용, " / "로 줄바꿈, "끄기"로 내림). */
+    public String setMinePatchNotice(HashMap<String, Object> map) {
+        String fulltxt = Objects.toString(map.get("fulltxt"), "");
+        int sp = fulltxt.indexOf(' ');
+        String text = sp >= 0 ? fulltxt.substring(sp + 1).trim() : "";
+        return s5Service.setMinePatchNotice(userNameOf(map), text);
+    }
+
     public String equipUnwearAll(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";

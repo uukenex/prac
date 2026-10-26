@@ -748,10 +748,10 @@
     .mine-overlay.open{ display:block; }
     #mineCanvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
     .mpx{ background:rgba(20,16,30,.82); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); color:#fff; font-weight:800; border-radius:0; }
-    .mine-hud-tl{ position:absolute; left:10px; top:10px; pointer-events:none; }
+    .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + var(--patch-h, 0px)); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
     .mine-coord{ display:inline-block; font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
-    .mine-hud-tr{ position:absolute; right:10px; top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .mine-hud-tr{ position:absolute; right:10px; top:calc(10px + var(--patch-h, 0px)); display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     .mine-sta{ font:800 15px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; color:#ffe14d; }
     .mine-regen{ max-width:150px; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
     #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; object-fit:contain; } /* [2026-10-28] 정사각이 아닌 맵은 늘리지 않고 비율 그대로 */
@@ -809,6 +809,10 @@
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
     .mine-log-row img{ width:16px; height:16px; image-rendering:pixelated; }
     .mine-log-xy{ font-family:ui-monospace, Consolas, monospace; color:#ffe9a8; }
+    /* [2026-10-28] 패치 전 공지(/패치공지) -- 화면 맨 위를 가로지르는 띠, 은은하게 깜빡임 */
+    .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:7px 12px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
+    @keyframes minePatchGlow{ 50%{ filter:brightness(1.25); } }
+    @media (prefers-reduced-motion: reduce){ .mine-patch{ animation:none; } }
     .mine-msg{ position:absolute; left:50%; top:calc(50% - 140px); transform:translateX(-50%); padding:7px 12px; font-size:13px; display:none; max-width:84vw; text-align:center; pointer-events:none; }
     .mine-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
     /* [2026-10-23] 대장간(곡괭이 강화) 창 */
@@ -1633,6 +1637,7 @@
 <!-- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) -- TowerMine 스크립트(맨 아래)가 그린다. -->
 <div class="mine-overlay" id="mineOverlay">
   <canvas id="mineCanvas"></canvas>
+  <div class="mine-patch" id="minePatch" role="status" aria-live="polite"></div>
   <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
     <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 200</div>
@@ -6036,6 +6041,7 @@ var TowerMine = (function () {
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
     el.cold = $('mineCold'); // [2026-10-26] 한기/안전지대/눈바람 남은 시간
     el.greet = $('mineGreetBtn'); // [2026-10-24] 안녕하세요
+    el.patch = $('minePatch'); // [2026-10-28] 패치 전 공지 띠
     ctx = el.cv.getContext('2d'); miniCtx = el.mini.getContext('2d');
     el.cv.addEventListener('pointerdown', function (e) {
       el.cv.setPointerCapture && el.cv.setPointerCapture(e.pointerId);
@@ -7087,12 +7093,27 @@ var TowerMine = (function () {
   // [2026-10-24] 광산에서 다른 유저 만나기 -- 1초마다 내 위치를 알리고 같은 맵 다른 유저(이름 없이)를 받아 그린다.
   //  근처(4칸)에 다른 유저가 있으면 👋 안녕하세요 버튼(말풍선이 서로 보임, 하루 1회 오늘 요일석 5개).
   var others = {}, presTimer = 0, presBusy = false, otherSprites = {}, myBubbleT0 = 0, greetBusy = false;
+  // [2026-10-28] 패치 전 공지(/패치공지) -- 위치 알림 응답에 실려 오면 화면 맨 위 띠로 계속 띄우고, 새 공지면 한 번 크게 알린다.
+  //  공지가 내려가면(끄기/배포) 띠도 내린다. 띠 높이만큼 좌표/미니맵을 아래로(--patch-h).
+  var patchShownId = 0;
+  function patchShow(d) {
+    var box = el.patch;
+    if (!box) return;
+    if (d.patchId) {
+      var text = '📢 ' + d.patchText;
+      if (box.textContent !== text) box.textContent = text;
+      box.style.display = 'block';
+      if (d.patchId !== patchShownId) { patchShownId = d.patchId; flashT0 = performance.now(); msg('📢 패치 공지: ' + d.patchText, 5000); }
+    } else box.style.display = 'none';
+    el.ov.style.setProperty('--patch-h', box.style.display === 'block' ? (box.offsetHeight + 4) + 'px' : '0px');
+  }
   function presTick() {
     if (!opened || !map || presBusy) return;
     presBusy = true;
     var mid = map.id;
     api('/api/tower-mine-presence?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir).then(function (d) {
       presBusy = false;
+      if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (!map || map.id !== mid || !d) return;
       var now = performance.now(), seen = {};
       (d.others || []).forEach(function (o) {
