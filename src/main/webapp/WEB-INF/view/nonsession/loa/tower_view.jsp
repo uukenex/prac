@@ -783,7 +783,7 @@
     .mine-look-mini{ width:36px; height:36px; image-rendering:pixelated; background:#2a2340; border:1px solid #f4f0e6; cursor:pointer; flex-shrink:0; }
     .mine-world{ display:block; width:100%; height:auto; border:2px solid #f4f0e6; margin-bottom:8px; }
     .mine-world .wn{ font:800 12px sans-serif; }
-    .mine-world .wl{ font:700 11px sans-serif; fill:#cfe9ff; }
+    .mine-world .wl{ font:700 11px sans-serif; fill:#cfe9ff; paint-order:stroke; stroke:#1d1730; stroke-width:4px; stroke-linejoin:round; } /* [2026-10-27] 연결선 위에서도 읽히게 */
     .mine-world .wh{ font:800 12px sans-serif; fill:#ffe14d; }
     .mine-coord.admin{ pointer-events:auto; cursor:pointer; }
     .mine-warp{ display:flex; flex-direction:column; gap:8px; }
