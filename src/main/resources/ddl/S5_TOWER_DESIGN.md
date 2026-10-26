@@ -5447,3 +5447,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   (`GET /api/tower-mine-daygate?day=0~6`, `mineDayGate`, 평원에서만, 전투 중 불가). 고른 요일은 오늘 하루만(`DUNGEON_DAY` = yyyyMMdd*10+요일) --
   요일 던전에서 그 요일의 돌이 나오고 캔 칸 기록도 그 요일로 따로(`mineDugKey(map, now, items)` = dungeon-yyyyMMdd-d요일).
   같은 요일로 다시 들어가기와 오늘 요일로 되돌리기는 무료.
+
+### 2026-10-28 로그 뷰어/광산 현황은 관리자만
+- `/loa/tower-battle-log`, `/loa/tower-mine-users` 페이지와 그 API(로그 목록/유저/요약/광산 외형/광산 현황)는 카카오 로그인 + 관리자만(`Season5ViewController.isLogAdmin`).
+  관리자 = `TBOT_S5_CONFIG.LOG_ADMIN_KAKAO_IDS`(카카오 회원번호, 쉼표 구분). 비어 있으면 임시로 카카오 닉네임 "전태환"(닉네임은 누구나 바꿀 수 있어 회원번호를 넣어 둘 것).
+  로그인했지만 관리자가 아니면 페이지는 `s5_denied.jsp`(로그아웃 버튼), API는 403.

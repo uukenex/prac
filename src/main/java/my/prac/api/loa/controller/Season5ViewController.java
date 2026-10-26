@@ -89,6 +89,7 @@ public class Season5ViewController {
     @GetMapping("/tower-battle-log")
     public String battleLogViewPage(HttpSession session, HttpServletResponse resp) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-battle-log";
+        if (!isLogAdmin(session)) return "nonsession/loa/s5_denied"; // [2026-10-28] 관리자만
         noStore(resp); // [2026-10-26] 새로 배포한 화면이 바로 보이게
         return "nonsession/loa/s5_battle_log_view";
     }
@@ -97,6 +98,7 @@ public class Season5ViewController {
     @GetMapping("/tower-mine-users")
     public String mineUsersViewPage(HttpSession session, HttpServletResponse resp) {
         if (!Season5KakaoLoginController.isLoggedIn(session)) return "redirect:/loa/s5/login?next=/loa/tower-mine-users";
+        if (!isLogAdmin(session)) return "nonsession/loa/s5_denied"; // [2026-10-28] 관리자만
         noStore(resp);
         return "nonsession/loa/s5_mine_users_view";
     }
@@ -105,7 +107,7 @@ public class Season5ViewController {
     @GetMapping("/api/tower-mine-looks")
     @ResponseBody
     public ResponseEntity<?> apiMineLooks(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         HashMap<String, Object> result = new HashMap<>();
         result.put("looks", s5Service.mineLooks());
         return ResponseEntity.ok(result);
@@ -114,7 +116,7 @@ public class Season5ViewController {
     @GetMapping("/api/tower-mine-users")
     @ResponseBody
     public ResponseEntity<?> apiMineUsers(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         HashMap<String, Object> result = new HashMap<>();
         result.put("users", s5Service.mineUserOverview());
         result.put("now", System.currentTimeMillis());
@@ -445,7 +447,7 @@ public class Season5ViewController {
             @RequestParam(value = "keyword", defaultValue = "") String keyword,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "pageSize", defaultValue = "50") int pageSize, HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         HashMap<String, Object> result = new HashMap<>();
         if (userName.trim().isEmpty()) {
             result.put("error", "유저명을 입력하세요.");
@@ -478,7 +480,7 @@ public class Season5ViewController {
     @GetMapping("/api/tower-battle-log-users")
     @ResponseBody
     public ResponseEntity<?> apiTowerBattleLogUsers(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         HashMap<String, Object> result = new HashMap<>();
         result.put("userNames", s5Dao.selectAllS5UserNames());
         return ResponseEntity.ok(result);
@@ -494,7 +496,7 @@ public class Season5ViewController {
             @RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "hours", defaultValue = "24") int hours,
             @RequestParam(value = "cat", defaultValue = "all") String cat, HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         if (hours < 1) hours = 1;
         if (hours > 24) hours = 24; // 이 페이지가 보장하는 최대 범위(버튼 중 가장 넓은 게 24시간)
 
@@ -520,7 +522,7 @@ public class Season5ViewController {
     @GetMapping("/api/tower-battle-log-summary")
     @ResponseBody
     public ResponseEntity<?> apiTowerBattleLogSummary(HttpSession session) {
-        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        if (!isLogAdmin(session)) return logDenied(session);
         HashMap<String, Object> result = new HashMap<>();
         result.put("users", botDao.selectWordHisUserSummary(new HashMap<String, Object>()));
         return ResponseEntity.ok(result);
@@ -532,6 +534,43 @@ public class Season5ViewController {
         r.put("error", "카카오 로그인이 필요합니다.");
         r.put("login", "/loa/s5/login");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(r);
+    }
+
+    // [2026-10-28] "로그 뷰는 관리자(전태환)만 볼 수 있도록" -- 로그 뷰어/광산 캐릭터 현황 페이지와 그 API는 카카오 로그인 + 관리자만.
+    //  관리자 = TBOT_S5_CONFIG.LOG_ADMIN_KAKAO_IDS(카카오 회원번호, 쉼표/공백 구분)에 있는 계정. 이 값이 비어 있으면 카카오 닉네임이
+    //  LOG_ADMIN_NICK인 계정(닉네임은 누구나 바꿀 수 있어 임시 -- 회원번호를 넣어 두면 닉네임은 보지 않는다). 설정값은 1분 기억.
+    private static final String LOG_ADMIN_KEY = "LOG_ADMIN_KAKAO_IDS";
+    private static final String LOG_ADMIN_NICK = "전태환";
+    private volatile String logAdminIds = null;
+    private volatile long logAdminAt = 0;
+
+    @SuppressWarnings("unchecked")
+    private boolean isLogAdmin(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return false;
+        Object o = session.getAttribute(Season5KakaoLoginController.SESSION_KEY);
+        if (!(o instanceof java.util.Map)) return false;
+        java.util.Map<String, String> me = (java.util.Map<String, String>) o;
+        long now = System.currentTimeMillis();
+        if (logAdminIds == null || now - logAdminAt > 60_000L) {
+            String v = null;
+            try { v = s5Dao.selectConfigValue(LOG_ADMIN_KEY); } catch (Exception e) { /* 못 읽으면 닉네임 기준 */ }
+            logAdminIds = v == null ? "" : v.trim();
+            logAdminAt = now;
+        }
+        String id = String.valueOf(me.get("kakaoId"));
+        if (!logAdminIds.isEmpty()) {
+            for (String a : logAdminIds.split("[,|\\s]+")) if (a.equals(id)) return true;
+            return false;
+        }
+        return LOG_ADMIN_NICK.equals(me.get("nickname"));
+    }
+
+    /** 로그인 안 했으면 401(로그인 화면으로), 로그인했지만 관리자가 아니면 403. */
+    private ResponseEntity<?> logDenied(HttpSession session) {
+        if (!Season5KakaoLoginController.isLoggedIn(session)) return unauthorized();
+        HashMap<String, Object> r = new HashMap<>();
+        r.put("error", "관리자만 볼 수 있어요.");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(r);
     }
 
     /** [2026-10-08] 웹 도감 탭 -- 몬스터도감(층별 몬스터 스펙). 예전 /로그의 "몬스터 정보" 페이지(카카오 로그인 필요)를 웹 UI로 옮겼고 누구나 볼 수 있다. */
