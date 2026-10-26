@@ -10236,7 +10236,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tx = target.walkable(ax, ay) ? ax : target.spawnX, ty = target.walkable(ax, ay) ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
-        if (S5MineMap.SNOWTOWN.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) // [2026-10-26] 설산을 넘어 처음 도착 -- 이제 이동 안내원으로 오갈 수 있다
+        // [2026-10-28] "설산 1,2,3층 순서대로 밟아야 설산에 간 걸로 인정" -- 북쪽 끝 설원 -> 1층 -> 2층 -> 3층으로 올라온 만큼(SNOW_PATH 1~3)을 적고,
+        //  3층까지 올라온 뒤 3층에서 마을로 들어가야 설산 마을 방문(이동 안내원 목적지). 왕도 북쪽 샛길로 거꾸로 들어오거나 마을에서 내려간 층은 안 친다.
+        int snowPath = items.getOrDefault(MINE_ITEM_SNOW_PATH, 0), snowNext = snowPath;
+        if (S5MineMap.SNOW1.equals(target.id) && S5MineMap.NORTH.equals(map.id)) snowNext = Math.max(snowPath, 1);
+        else if (S5MineMap.SNOW2.equals(target.id) && S5MineMap.SNOW1.equals(map.id) && snowPath >= 1) snowNext = Math.max(snowPath, 2);
+        else if (S5MineMap.SNOW3.equals(target.id) && S5MineMap.SNOW2.equals(map.id) && snowPath >= 2) snowNext = Math.max(snowPath, 3);
+        if (snowNext != snowPath) dao.upsertMineItem(userName, MINE_ITEM_SNOW_PATH, snowNext);
+        if (S5MineMap.SNOWTOWN.equals(target.id) && S5MineMap.SNOW3.equals(map.id) && snowNext >= 3 && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) // [2026-10-26] 설산을 넘어 처음 도착 -- 이제 이동 안내원으로 오갈 수 있다
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_SNOWTOWN, 1);
         if (S5MineMap.CITY.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1) // [2026-10-27] 왕도도 걸어서 한 번 도착해야 이동 안내원 목적지
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_CITY, 1);
@@ -10426,7 +10433,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
         if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
-        if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 설산을 넘어 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
+        if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 북쪽 끝 설원에서 설산 1, 2, 3층을 차례로 올라 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
         if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
         S5MineMap target = S5MineMap.get(dest);
         String block = mineMapBlock(target, items, mineLv(row));
@@ -10453,6 +10460,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  그 사이 눈바람(S5MineMap.blizzardBetween)이 불었는데 안전지대(map.safeAt) 밖이면 최대 체력 10%를 더 깎는다. 깎을 때마다 체력을 저장하므로
     //  추위 속에선 자연 회복도 없다(저장 + 대기). 추위로 쓰러지면 부활 지점에서 깨어난다(최대 체력 잠금은 몬스터에게 쓰러질 때만).
     static final String MINE_ITEM_VISIT_SNOWTOWN = "VISIT_SNOWTOWN";
+    static final String MINE_ITEM_SNOW_PATH = "SNOW_PATH"; // [2026-10-28] 설산을 아래층부터 순서대로 올라온 층(1~3)
     static final String MINE_ITEM_VISIT_CITY = "VISIT_CITY"; // [2026-10-27] 왕도에 한 번 걸어서 도착(이동 안내원 목적지)
     static final String MINE_ITEM_COAT1 = "COAT1";
     static final String MINE_ITEM_COAT2 = "COAT2";
