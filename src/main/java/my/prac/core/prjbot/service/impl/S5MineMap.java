@@ -363,7 +363,7 @@ public final class S5MineMap {
     }
 
     /** (cx, cy) 근처 탁 트인 칸에 NPC를 세운다(위 이동 안내원과 같은 규칙). */
-    private static void placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line) {
+    private static boolean placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line) {
         for (int d = 2; d <= 12; d++) {
             for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
                 if (Math.abs(dx) + Math.abs(dy) != d) continue;
@@ -381,9 +381,10 @@ public final class S5MineMap {
                 List<Npc> l = new ArrayList<>(m.npcs);
                 l.add(g);
                 m.npcs = Collections.unmodifiableList(l);
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     /** 이동 안내원(없으면 null). */
@@ -690,6 +691,11 @@ public final class S5MineMap {
         placeNpc(nm, nm.dockX(), nm.dockY() - 3, "blackmarket", "암상인", "쉿... 설산 마을 장인 물건이지. 값은 세 배. 싫으면 올라가서 사든가. 15분이 되면 난 사라진다네.");
         for (Npc n : nm.npcs) if ("blackmarket".equals(n.kind)) nm.safe.add(new int[] { n.x, n.y, 3 }); // 노점 앞도 안전지대
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
+        // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽
+        S5MineMap fd = out.get(FIELD);
+        int[] wg = besidePortal(fd, DUNGEON);
+        for (int off = 3; off <= 33; off += 10) // 통로 둘레가 좁으면 안쪽(동쪽)으로 더 들어가 자리를 찾는다
+            if (placeNpc(fd, wg[0] + off, wg[1], "daykeeper", "요일 동굴 문지기", "오늘의 요일석 20개를 내면 다른 요일의 동굴 문을 열어 주지. 한 번 열면 오늘 하루는 그대로라네.")) break;
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));

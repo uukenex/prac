@@ -5708,7 +5708,7 @@ var TowerMine = (function () {
       });
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
-      blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite() }; // [2026-10-26]
+      blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite() }; // [2026-10-26], [2026-10-28] 요일 동굴 문지기
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -5760,6 +5760,14 @@ var TowerMine = (function () {
     px(g, '#8a5a32', 3, 7, 10, 6); px(g, '#e8dcc8', 3, 7, 10, 1); px(g, '#e8dcc8', 7, 8, 2, 5);
     px(g, skin, 4, 2, 8, 5); px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5);
     px(g, '#e8dcc8', 3, 0, 10, 3); px(g, '#c8b8a0', 4, 1, 8, 1);
+    return outline(c, '#140d0a');
+  }
+  // [2026-10-28] 요일 동굴 문지기 -- 잿빛 두건 망토 노인, 손에 든 등불
+  function keeperSprite() {
+    var c = mk(T, T), g = c.getContext('2d'), skin = '#e8c09a';
+    px(g, '#5a5560', 3, 5, 10, 10); px(g, '#46424c', 3, 5, 1, 10); px(g, '#46424c', 12, 5, 1, 10);
+    px(g, '#6a6470', 4, 0, 8, 6); px(g, skin, 5, 2, 6, 4); px(g, '#1a1a1a', 6, 3); px(g, '#1a1a1a', 9, 3); px(g, '#e8e8e8', 5, 5, 6, 2);
+    px(g, '#8a5a2b', 13, 6, 1, 4); px(g, '#ffd23f', 12, 10, 3, 3); px(g, '#fff3b0', 13, 11);
     return outline(c, '#140d0a');
   }
   function stallSprite() {
@@ -6303,6 +6311,7 @@ var TowerMine = (function () {
     else if (n.kind === 'priest') openSmith(n, 'priest'); // [2026-10-24] 왕도 성당 신부
     else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
+    else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -6585,6 +6594,24 @@ var TowerMine = (function () {
     closeSmith();
     if (d && d.id) api('/api/tower-mine-notice-ack?id=' + d.id).catch(function () { });
   }
+  // [2026-10-28] 요일 동굴 문지기 -- 오늘의 요일석 20개로 다른 요일 동굴(오늘 하루 그대로), 같은 요일 다시 들어가기/오늘 요일로 되돌리기는 무료
+  var DAY_KO = ['월', '화', '수', '목', '금', '토', '일'];
+  function dayGateHtml(n) {
+    var today = st.todayDay != null ? st.todayDay : 0, cur = st.dungeonDay != null ? st.dungeonDay : today, have = oreHave(11 + today);
+    var btns = DAY_KO.map(function (k, d) {
+      var free = d === today || d === cur, can = free || have >= 20;
+      var sub = d === today ? '오늘 · 무료' : d === cur ? '열어 둔 동굴 · 무료' : ORE_NAME[11 + today] + ' 20개';
+      return '<button type="button" style="flex:1 1 30%" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.dayGo(' + d + ')">🕳️ ' + k + '요일<small>' + sub + '</small></button>';
+    }).join('');
+    return npcHead('🕳️ ' + (n ? n.name : '요일 동굴 문지기'), false) + talkBlock(n, n ? n.line : '')
+        + '<div class="mine-smith-dur">' + ORE_NAME[11 + today] + ' 보유 <b>' + have + '</b>개 · 지금 열린 동굴 <b>' + DAY_KO[cur] + '요일</b></div>'
+        + '<div class="mine-smith-menu" style="flex-wrap:wrap">' + btns + '</div>';
+  }
+  function dayGo(d) {
+    closeSmith();
+    if (busy) return;
+    travel('/api/tower-mine-daygate?day=' + d, '들어가지 못했어요.');
+  }
   // [2026-10-25] "마을 이동을 누르면 브라우저 알림창이 뜬다" -- 게임 화면 안의 확인 창(NPC 창 모양)
   var askCfg = null;
   function ask(title, text, okLabel, onOk) {
@@ -6681,7 +6708,8 @@ var TowerMine = (function () {
     priest: { skin: '#f0c8a0', hair: '#b8bec8', cloth: '#24212b', clothD: '#141218' },
     guide: { skin: '#f2c194', hair: '#7a4a26', cloth: '#2f8a5a', clothD: '#1f6342' },
     blackmarket: { skin: '#c8a080', hair: '#1a1322', cloth: '#2a1f33', clothD: '#1a1322' }, // [2026-10-26]
-    furrier: { skin: '#f2c194', hair: '#5a3a22', cloth: '#8a5a32', clothD: '#6a4222' }
+    furrier: { skin: '#f2c194', hair: '#5a3a22', cloth: '#8a5a32', clothD: '#6a4222' },
+    daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' } // [2026-10-28] 요일 동굴 문지기
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -6789,6 +6817,10 @@ var TowerMine = (function () {
     }
     if (smithView === 'notice') { // [2026-10-28] 광산 소식
       el.smith.innerHTML = noticeHtml();
+      return;
+    }
+    if (smithView === 'daygate') { // [2026-10-28] 요일 동굴 문지기
+      el.smith.innerHTML = dayGateHtml(n);
       return;
     }
     if (smithView === 'ask') {
@@ -7711,7 +7743,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

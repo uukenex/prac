@@ -831,6 +831,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-28] 웹 광산 요일 동굴 문지기 -- day 0(월) ~ 6(일). */
+    @GetMapping("/api/tower-mine-daygate")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineDayGate(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "day", defaultValue = "-1") int day) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineDayGate(userName, day);
+        mineLog(userName, "[웹] 광산 요일 동굴 문지기 " + day, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 진입 공지 확인. */
     @GetMapping("/api/tower-mine-notice-ack")
     @ResponseBody

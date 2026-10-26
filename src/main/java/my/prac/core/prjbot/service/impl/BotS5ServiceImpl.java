@@ -8911,8 +8911,58 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-10-23] 캔 칸 기록의 맵 키 -- 요일 던전은 날마다 새로 캘 수 있게 날짜를 붙인다(dungeon-yyyyMMdd), 그 외 맵은 맵 ID. */
-    private static String mineDugKey(S5MineMap map, long now) {
-        return S5MineMap.DUNGEON.equals(map.id) ? S5MineMap.DUNGEON + "-" + S5MineMap.dayKey(now) : map.id;
+    private static String mineDugKey(S5MineMap map, long now, Map<String, Integer> items) {
+        if (!S5MineMap.DUNGEON.equals(map.id)) return map.id;
+        int dd = mineDungeonDay(items, now); // [2026-10-28] 문지기에게 다른 요일 동굴을 열었으면 그 요일 칸 기록을 따로
+        return S5MineMap.DUNGEON + "-" + S5MineMap.dayKey(now) + (dd != S5MineMap.dayIndex(now) ? "-d" + dd : "");
+    }
+
+    // [2026-10-28] "요일 동굴 앞에 NPC, 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 요일 동굴 문지기(평원 서쪽 통로 안쪽).
+    //  고른 요일은 오늘 하루만(DUNGEON_DAY = yyyyMMdd * 10 + 요일 0~6) -- 그동안 요일 던전에서 그 요일의 돌이 나오고 캔 칸 기록도 그 요일로 따로.
+    //  같은 요일로 다시 들어가기와 오늘 요일로 되돌리기는 무료.
+    static final String MINE_ITEM_DUNGEON_DAY = "DUNGEON_DAY";
+    private static final int MINE_DAYGATE_COST = 20;
+
+    /** 요일 동굴 문지기 -- day(0 = 월 ... 6 = 일)의 요일 동굴로 들어간다. 오늘이 아닌 요일을 처음 열 때만 오늘의 요일석 MINE_DAYGATE_COST개.
+     *  오늘 요일을 고르면 무료로 되돌린다. 평원에서만(문지기가 평원 서쪽 통로 안쪽에 있다), 전투 중엔 안 됨. 성공하면 요일 던전 시작점으로 옮긴다. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineDayGate(String userName, int day) {
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (day < 0 || day > 6) { out.put("message", "어느 요일 동굴로 갈지 골라 주게."); return out; }
+        if (!S5MineMap.FIELD.equals(strVal(row.get("MAP_ID"), S5MineMap.FIELD))) { out.put("message", "요일 동굴 문지기는 중앙 평원 서쪽 통로 앞에 있어요."); return out; }
+        if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        int today = S5MineMap.dayIndex(now), cur = mineDungeonDay(items, now);
+        String paid = "";
+        if (day == today) dao.upsertMineItem(userName, MINE_ITEM_DUNGEON_DAY, 0); // 오늘 요일로 되돌리기(무료)
+        else if (day != cur) {
+            String[][] cost = { { S5MineMap.DAY_STONE_CODES[today], String.valueOf(MINE_DAYGATE_COST) } };
+            if (!mineCostOk(cost, mineOreHave(userName))) { out.put("message", "🕳️ " + S5MineMap.DAY_STONE_NAMES[today] + " " + MINE_DAYGATE_COST + "개가 있어야 다른 요일 동굴 문을 열어 줄 수 있네."); return out; }
+            mineTakeCost(userName, cost, 1);
+            dao.upsertMineItem(userName, MINE_ITEM_DUNGEON_DAY, mineToday() * 10 + day);
+            paid = " (" + S5MineMap.DAY_STONE_NAMES[today] + " " + MINE_DAYGATE_COST + "개)";
+        }
+        S5MineMap dg = S5MineMap.get(S5MineMap.DUNGEON);
+        dao.updateMinePos(userName, dg.id, dg.spawnX, dg.spawnY, now);
+        mineDisengageAll(userName);
+        out.put("ok", true);
+        out.put("message", "🕳️ " + S5MineMap.DAY_LABELS[day] + " 동굴로 들어왔어요! 여기선 " + S5MineMap.DAY_STONE_NAMES[day] + "이 나와요." + paid);
+        out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** 이 유저의 오늘 요일 던전 요일(문지기로 바꿨으면 그 요일, 아니면 오늘). */
+    private static int mineDungeonDay(Map<String, Integer> items, long now) {
+        int v = items == null ? 0 : items.getOrDefault(MINE_ITEM_DUNGEON_DAY, 0);
+        return v / 10 == mineToday() ? v % 10 : S5MineMap.dayIndex(now);
     }
 
     /** 캔 칸 등급 값 -> 이름(1~6 일반 광석, 11~17 요일석, 18 칠요석, 21~29 보석 -- 바닷길에서 캔 칸). */
@@ -9749,12 +9799,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("y", pos[1]);
         // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]
         List<Integer> dug = new ArrayList<>();
-        if (S5MineMap.DUNGEON.equals(map.id)) { // [2026-10-23] 요일 던전 -- 오늘 나오는 돌
-            int di = S5MineMap.dayIndex(now);
+        if (S5MineMap.DUNGEON.equals(map.id)) { // [2026-10-23] 요일 던전 -- 오늘 나오는 돌([2026-10-28] 문지기로 바꾼 요일이면 그 요일)
+            int di = mineDungeonDay(items, now);
             out.put("dayLabel", S5MineMap.DAY_LABELS[di]);
             out.put("dayStone", S5MineMap.DAY_STONE_NAMES[di]);
         }
-        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, mineDugKey(map, now))) {
+        out.put("todayDay", S5MineMap.dayIndex(now)); // [2026-10-28] 요일 동굴 문지기 창
+        out.put("dungeonDay", mineDungeonDay(items, now));
+        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, mineDugKey(map, now, items))) {
             int cell = intVal(d.get("CELL"), 0);
             dug.add(cell % map.w);
             dug.add(cell / map.w);
@@ -9863,7 +9915,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         int cell = y * map.w + x;
-        String dugKey = mineDugKey(map, now);
+        String dugKey = mineDugKey(map, now, items);
         if (dao.countMineDug(userName, dugKey, cell) > 0) {
             out.put("message", "이미 캔 자리예요. 다른 곳을 찾아보세요.");
             out.put("noOre", true);
@@ -9982,12 +10034,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) return out;
         long now = System.currentTimeMillis();
         if (!mineMoveOk(minePos(row, map, mineWaterWalk(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        String dugKey = mineDugKey(map, now);
+        String dugKey = mineDugKey(map, now, items);
         List<int[]> cells = new ArrayList<>();
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
             int nx = x + dx, ny = y + dy, g = map.oreAt(nx, ny);
             if (g == 0 || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
-            if (S5MineMap.DUNGEON.equals(map.id)) g = S5MineMap.DAY_STONE_GRADE_BASE + S5MineMap.dayIndex(now);
+            if (S5MineMap.DUNGEON.equals(map.id)) g = S5MineMap.DAY_STONE_GRADE_BASE + mineDungeonDay(items, now);
             else if (S5MineMap.SEAROAD.equals(map.id)) g = -1;
             cells.add(new int[] { dx, dy, g });
         }
@@ -10004,7 +10056,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean upgraded = false;
         // [2026-10-23] 요일 던전 -- 칸의 광석 등급과 상관없이 그날(KST) 요일의 돌 1개(월요석~일요석), 캔 칸 기록 등급은 11~17
         if (S5MineMap.DUNGEON.equals(map.id)) {
-            int di = S5MineMap.dayIndex(now);
+            int di = mineDungeonDay(items, now); // [2026-10-28] 문지기로 바꾼 요일이면 그 요일의 돌
             g = S5MineMap.DAY_STONE_GRADE_BASE + di;
             code = S5MineMap.DAY_STONE_CODES[di];
             name = S5MineMap.DAY_STONE_NAMES[di];

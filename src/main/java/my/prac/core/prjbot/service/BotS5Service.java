@@ -250,6 +250,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineNoticeAck(String userName, int id);
     /** [2026-10-28] /광산공지 [내용] (관리자) -- 광산 소식 바꾸기(번호가 올라가 모두에게 한 번씩 다시 뜸), "끄기" = 안 띄움, 빈 내용 = 지금 공지 보기. */
     String setMineNotice(String userName, String text);
+    /** [2026-10-28] 요일 동굴 문지기 -- 오늘의 요일석 20개로 다른 요일 동굴(오늘 하루), 오늘 요일로 되돌리기 무료. */
+    HashMap<String, Object> mineDayGate(String userName, int day);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */
