@@ -55,6 +55,33 @@
             VALUES (#{kakaoId}, #{nickname, jdbcType=NVARCHAR, typeHandler=my.prac.core.util.NCharStringTypeHandler}, SYSDATE, SYSDATE)
     </insert>
 
+    <!-- [2026-10-28] 카카오 로그인 오래 기억하기(브라우저 쿠키의 SHA-256 해시만 저장, 기간이 지나면 무효) -->
+    <insert id="insertKakaoRemember">
+        INSERT INTO TBOT_S5_KAKAO_REMEMBER (TOKEN_HASH, KAKAO_ID, REG_DATE, LAST_USED, EXPIRE_DATE)
+        VALUES (#{tokenHash}, #{kakaoId}, SYSDATE, SYSDATE, SYSDATE + #{days})
+    </insert>
+
+    <select id="selectKakaoRemember" resultType="hashmap">
+        SELECT R.KAKAO_ID, M.NICKNAME, CASE WHEN R.LAST_USED &lt; SYSDATE - 1 THEN 1 ELSE 0 END AS STALE
+          FROM TBOT_S5_KAKAO_REMEMBER R
+          JOIN TBOT_S5_KAKAO_MEMBER M ON M.KAKAO_ID = R.KAKAO_ID
+         WHERE R.TOKEN_HASH = #{tokenHash}
+           AND R.EXPIRE_DATE &gt; SYSDATE
+    </select>
+
+    <!-- 쓰는 동안은 기간을 다시 늘린다(하루에 한 번만 쓰기) -->
+    <update id="touchKakaoRemember">
+        UPDATE TBOT_S5_KAKAO_REMEMBER SET LAST_USED = SYSDATE, EXPIRE_DATE = SYSDATE + #{days} WHERE TOKEN_HASH = #{tokenHash}
+    </update>
+
+    <delete id="deleteKakaoRemember">
+        DELETE FROM TBOT_S5_KAKAO_REMEMBER WHERE TOKEN_HASH = #{tokenHash}
+    </delete>
+
+    <delete id="deleteExpiredKakaoRemember">
+        DELETE FROM TBOT_S5_KAKAO_REMEMBER WHERE EXPIRE_DATE &lt; SYSDATE
+    </delete>
+
     <insert id="insertBattleStat" parameterType="hashmap">
         INSERT INTO TBOT_S5_BATTLE_STAT
             (USER_NAME, FLOOR, KIND, COMBO, PARTY_SIZE, PARTY_POWER, MON_POWER, RESULT, TURNS, DEAD_CNT)

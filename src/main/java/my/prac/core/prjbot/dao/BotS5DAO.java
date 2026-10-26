@@ -21,6 +21,12 @@ public interface BotS5DAO {
     int insertBattleStat(HashMap<String, Object> map);
     /** [2026-09-30] 시즌5 전용 카카오 로그인 회원(키값+닉네임만) upsert. */
     int upsertKakaoMember(HashMap<String, Object> map);
+    /** [2026-10-28] 카카오 로그인 오래 기억하기(쿠키 해시 -> 카카오 회원). */
+    int insertKakaoRemember(@Param("tokenHash") String tokenHash, @Param("kakaoId") String kakaoId, @Param("days") int days);
+    HashMap<String, Object> selectKakaoRemember(@Param("tokenHash") String tokenHash);
+    int touchKakaoRemember(@Param("tokenHash") String tokenHash, @Param("days") int days);
+    int deleteKakaoRemember(@Param("tokenHash") String tokenHash);
+    int deleteExpiredKakaoRemember();
 
     // ── 층 보드 ──
     HashMap<String, Object> selectFloorInfo(@Param("floor") int floor);

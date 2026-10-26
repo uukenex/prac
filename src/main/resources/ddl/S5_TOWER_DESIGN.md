@@ -5478,3 +5478,8 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
   링크를 주기 전에 `initUser`로 만든다(웹 tower-status의 앞부분 일치 검색이 다른 계정으로 들어가지 않게). go=mine을 앞에 둬서 채팅앱이 한글에서 링크를 끊어도 남게.
 - 탑 화면: `?go=mine`이면 상태를 불러온 뒤 광산을 바로 연다(`TW` DOMContentLoaded).
 - 매일 4시 미사용 계정 정리(`deleteJunkZeroFloorUsers`)에서 광산 기록(TBOT_S5_MINE_USER)이 있는 계정은 뺀다 -- 광산만 하는 유저는 CUR_FLOOR가 0이라.
+
+### 2026-10-28 로그 페이지 카카오 로그인 오래 기억하기
+- 로그인이 세션에만 있어(60분, 배포마다 사라짐, 카톡 안 브라우저는 창을 닫으면 세션 쿠키를 버림) 로그 페이지가 매번 로그인을 물었다.
+- 로그인에 성공하면 브라우저에 180일짜리 무작위 쿠키 `s5_keep`(HttpOnly, SameSite=Lax, Expires 함께)를 주고 SHA-256 해시만 `TBOT_S5_KAKAO_REMEMBER`(S5_KAKAO_REMEMBER.sql)에 둔다.
+  세션이 없으면 `Season5KakaoLoginController.isLoggedIn`이 그 쿠키로 세션을 되살리고, 하루에 한 번 기간을 180일로 다시 늘린다. 로그아웃하면 그 브라우저의 기억도 지운다.

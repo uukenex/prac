@@ -10,8 +10,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.http.MediaType;
@@ -21,6 +24,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +43,9 @@ import my.prac.core.util.PropsUtil;
  *   등록하지 않아도 바로 동작). 구분은 OAuth state("s5-랜덤")로 하고, S4WebController.kakaoCallback이 그 state를
  *   보면 이 컨트롤러의 /loa/s5/kakao/callback 으로 forward 한다. 카카오 토큰 교환 시 redirect_uri는 인가 요청 때와
  *   같아야 하므로 여기서도 S4 콜백 URI 문자열을 그대로 쓴다.
+ * - [2026-10-28] "로그 페이지도 매번 로그인 창이 뜬다" -- 로그인이 세션에만 있어서(60분, 배포마다 사라짐, 카톡 안 브라우저는 창을 닫으면
+ *   세션 쿠키를 버림) 거의 매번 다시 물었다. 로그인에 성공하면 브라우저에 REMEMBER_DAYS일짜리 무작위 쿠키(REMEMBER_COOKIE)를 주고
+ *   그 SHA-256 해시만 TBOT_S5_KAKAO_REMEMBER에 둔다. 세션이 없으면 isLoggedIn이 그 쿠키로 세션을 되살린다(쓰는 동안은 기간 연장).
  */
 @Controller
 @RequestMapping("/loa/s5")
@@ -56,6 +64,17 @@ public class Season5KakaoLoginController {
     @Resource(name = "core.prjbot.BotS5DAO")
     BotS5DAO s5Dao;
 
+    private static final String REMEMBER_COOKIE = "s5_keep";
+    private static final int REMEMBER_DAYS = 180;
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+    /** isLoggedIn(static, 다른 컨트롤러가 부름)이 쿠키로 세션을 되살릴 때 쓰는 DAO. */
+    private static volatile BotS5DAO rememberDao;
+
+    @PostConstruct
+    void initRemember() {
+        rememberDao = s5Dao;
+    }
+
     /** 로그인 후 돌아갈 수 있는 곳(오픈 리다이렉트 방지) -- 보호 대상 3페이지만. */
     private static boolean allowedNext(String next) {
         return "/loa/tower-battle-log".equals(next) || "/loa/tower-mine-users".equals(next); // [2026-10-25] 광산 캐릭터 현황
@@ -63,7 +82,55 @@ public class Season5KakaoLoginController {
 
     /** 다른 컨트롤러(Season5ViewController)가 페이지/API 보호에 쓴다. */
     public static boolean isLoggedIn(HttpSession session) {
-        return session != null && session.getAttribute(SESSION_KEY) != null;
+        if (session != null && session.getAttribute(SESSION_KEY) != null) return true;
+        return restoreFromCookie(session); // [2026-10-28] 세션이 없으면 오래 기억하기 쿠키로
+    }
+
+    /** 오래 기억하기 쿠키가 살아 있으면 그 카카오 회원으로 세션을 다시 채운다. 하루에 한 번 DB 기간과 쿠키 기간을 다시 늘린다. */
+    private static boolean restoreFromCookie(HttpSession session) {
+        BotS5DAO dao = rememberDao;
+        ServletRequestAttributes attrs = RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes
+                ? (ServletRequestAttributes) RequestContextHolder.getRequestAttributes() : null;
+        if (dao == null || attrs == null) return false;
+        HttpServletRequest req = attrs.getRequest();
+        String token = cookieValue(req, REMEMBER_COOKIE);
+        if (token == null || token.length() < 20 || token.length() > 100) return false;
+        try {
+            String hash = sha256(token);
+            HashMap<String, Object> row = dao.selectKakaoRemember(hash);
+            if (row == null || row.get("KAKAO_ID") == null) return false;
+            HashMap<String, String> me = new HashMap<>();
+            me.put("kakaoId", String.valueOf(row.get("KAKAO_ID")));
+            me.put("nickname", row.get("NICKNAME") == null ? "익명" : String.valueOf(row.get("NICKNAME")));
+            (session != null ? session : req.getSession(true)).setAttribute(SESSION_KEY, me);
+            if (row.get("STALE") instanceof Number && ((Number) row.get("STALE")).intValue() == 1) {
+                dao.touchKakaoRemember(hash, REMEMBER_DAYS);
+                if (attrs.getResponse() != null) setRememberCookie(attrs.getResponse(), token, REMEMBER_DAYS * 86400);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String cookieValue(HttpServletRequest req, String name) {
+        Cookie[] cs = req.getCookies();
+        if (cs != null) for (Cookie c : cs) if (name.equals(c.getName())) return c.getValue();
+        return null;
+    }
+
+    /** Set-Cookie를 직접 쓴다(servlet-api가 옛 버전이라 HttpOnly/SameSite 설정 메서드가 없다). maxAge 0 = 지우기.
+     *  Expires도 함께 붙인다(오래된 웹뷰는 Max-Age만 있으면 세션 쿠키로 취급하기도 한다). */
+    private static void setRememberCookie(HttpServletResponse resp, String value, int maxAge) {
+        String expires = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(maxAge));
+        resp.addHeader("Set-Cookie", REMEMBER_COOKIE + "=" + value + "; Max-Age=" + maxAge + "; Expires=" + expires + "; Path=/; HttpOnly; SameSite=Lax");
+    }
+
+    private static String sha256(String s) throws Exception {
+        byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(s.getBytes("UTF-8"));
+        StringBuilder sb = new StringBuilder();
+        for (byte b : d) sb.append(String.format("%02x", b));
+        return sb.toString();
     }
 
     @GetMapping("/login")
@@ -93,7 +160,7 @@ public class Season5KakaoLoginController {
     public String kakaoCallback(@RequestParam(value = "code", required = false) String code,
             @RequestParam(value = "error", required = false) String error,
             @RequestParam(value = "state", required = false) String state,
-            HttpServletRequest request, HttpSession session) throws Exception {
+            HttpServletRequest request, HttpServletResponse response, HttpSession session) throws Exception {
         String expected = (String) session.getAttribute(STATE_KEY);
         session.removeAttribute(STATE_KEY);
         if (error != null || code == null) return "redirect:/loa/s5/login?err=cancel";
@@ -140,6 +207,17 @@ public class Season5KakaoLoginController {
         me.put("kakaoId", kakaoId);
         me.put("nickname", nickname);
         session.setAttribute(SESSION_KEY, me);
+        // [2026-10-28] 오래 기억하기 -- 이 브라우저에 무작위 쿠키, DB엔 그 해시만(기간 지난 것은 이때 같이 지운다)
+        try {
+            byte[] raw = new byte[32];
+            RANDOM.nextBytes(raw);
+            String token = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+            s5Dao.deleteExpiredKakaoRemember();
+            s5Dao.insertKakaoRemember(sha256(token), kakaoId, REMEMBER_DAYS);
+            setRememberCookie(response, token, REMEMBER_DAYS * 86400);
+        } catch (Exception e) {
+            // 기억하기에 실패해도 이번 로그인(세션)은 그대로 쓴다
+        }
 
         String next = (String) session.getAttribute(NEXT_KEY);
         session.removeAttribute(NEXT_KEY);
@@ -151,6 +229,7 @@ public class Season5KakaoLoginController {
     @ResponseBody
     public Map<String, Object> me(HttpSession session) {
         Map<String, Object> out = new HashMap<>();
+        isLoggedIn(session); // 세션이 없으면 오래 기억하기 쿠키로 먼저 되살린다
         @SuppressWarnings("unchecked")
         HashMap<String, String> me = session == null ? null : (HashMap<String, String>) session.getAttribute(SESSION_KEY);
         out.put("loggedIn", me != null);
@@ -159,8 +238,13 @@ public class Season5KakaoLoginController {
     }
 
     @GetMapping("/logout")
-    public String logout(HttpSession session) {
+    public String logout(HttpServletRequest request, HttpServletResponse response, HttpSession session) {
         session.removeAttribute(SESSION_KEY);
+        String token = cookieValue(request, REMEMBER_COOKIE); // [2026-10-28] 오래 기억하기도 끊는다(이 브라우저만)
+        if (token != null) {
+            try { s5Dao.deleteKakaoRemember(sha256(token)); } catch (Exception e) { /* 쿠키만이라도 지운다 */ }
+            setRememberCookie(response, "", 0);
+        }
         return "redirect:/loa/s5/login";
     }
 
