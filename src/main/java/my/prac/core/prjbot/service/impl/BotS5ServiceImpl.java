@@ -10866,6 +10866,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private static int mineStepMs(Map<String, Integer> items) {
+        MineCos shoes = mineWornCos(items, "shoes");
+        if (shoes != null && MINE_COS_SPEED.equals(shoes.code)) return MINE_STEP_MS[0] / MINE_COS_SPEED_DIV; // [2026-10-28] 바람의 신(운영자) -- 5배
         return MINE_STEP_MS[Math.min(items.getOrDefault(MINE_ITEM_SWIFT_BOOTS, 0), MINE_STEP_MS.length - 1)];
     }
 
@@ -10978,7 +10980,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sevenMax = Math.min(sevenMax, have.getOrDefault(S5MineMap.ORE_CODES[5], 0)); // [2026-10-25] 칠요석 하나에 별빛석 1개
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
         out.put("deliverDone", items.getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == mineToday()); // [2026-10-28] 오늘 구리 납품 했는지
-        mineLookPayload(items, have, out); // [2026-10-24] 명품상점(외형)
+        mineLookPayload(items, have, out, isMineAdmin(userName)); // [2026-10-24] 명품상점(외형)
         out.put("ores", mineOreList(userName));
     }
 
@@ -11444,9 +11446,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final class MineCos {
         final String code, slot, name, look; // look = "색" 또는 "색|모양"
         final String[][] cost;
+        /** [2026-10-28] 운영자 전용(살 수 없음, 관리자는 처음부터 가짐, 입으면 화면에 "운영자" 표시 + 반짝이) / 상점에 덧붙이는 설명. */
+        boolean admin;
+        String note;
         MineCos(String code, String slot, String name, String look, String[][] cost) {
             this.code = code; this.slot = slot; this.name = name; this.look = look; this.cost = cost;
         }
+        MineCos asAdmin(String note) { admin = true; this.note = note; return this; }
     }
 
     private static String[] mineOre(int grade, int qty) {
@@ -11474,12 +11480,41 @@ public class BotS5ServiceImpl implements BotS5Service {
         new MineCos("BOT_RED", "bottom", "붉은 치마바지", "#a8323a", new String[][] { mineCost(5, 3) }),
         new MineCos("SHOE_LEATHER", "shoes", "가죽 장화", "#8a5a2b", new String[][] { mineOre(1, 100) }),
         new MineCos("SHOE_RED", "shoes", "꽃신", "#e0507a", new String[][] { mineCost(5, 2) }),
-        new MineCos("SHOE_GOLD", "shoes", "황금 신", "#f2c230", new String[][] { mineOre(4, 20) })
+        new MineCos("SHOE_GOLD", "shoes", "황금 신", "#f2c230", new String[][] { mineOre(4, 20) }),
+        // [2026-10-28] "치장 아이템 추가" -- 착용 칸(LOOK_부위)이 카탈로그 순번이라 새 아이템은 항상 맨 뒤에 붙인다.
+        new MineCos("HAT_CAT", "hat", "고양이 귀", "#3b3b44|cat", new String[][] { mineOre(2, 120) }),
+        new MineCos("HAT_FLOWER", "hat", "꽃 화관", "#f58fb8|flower", new String[][] { mineCost(5, 5) }),
+        new MineCos("HAT_SANTA", "hat", "산타 모자", "#d42a2a|santa", new String[][] { mineOre(3, 60) }),
+        new MineCos("HAT_HORN", "hat", "도깨비 뿔", "#efe6d2|horn", new String[][] { mineCost(1, 5) }),
+        new MineCos("HAIR_RED", "hair", "붉은 머리", "#c8402a", new String[][] { mineCost(1, 3) }),
+        new MineCos("HAIR_PURPLE", "hair", "보라 머리", "#9a5ad8", new String[][] { mineCost(6, 5) }),
+        new MineCos("HAIR_MINT", "hair", "민트 머리", "#7fe0c0", new String[][] { mineCost(7, 2) }),
+        new MineCos("TOP_CAPE", "top", "기사 망토", "#2c4a8a|cape", new String[][] { mineOre(4, 40), mineOre(5, 10) }),
+        new MineCos("TOP_FUR", "top", "눈꽃 털옷", "#f4f6fa|fur", new String[][] { { S5MineMap.ICE_STONE_CODE, "5" } }),
+        new MineCos("TOP_STAR", "top", "별빛 로브", "#2a2a6a|star", new String[][] { mineOre(6, 2), mineCost(2, 5) }),
+        new MineCos("BOT_BLUE", "bottom", "청바지", "#3a5a9a", new String[][] { mineOre(2, 80) }),
+        new MineCos("BOT_PURPLE", "bottom", "보라 치마바지", "#6a3a9a", new String[][] { mineCost(6, 3) }),
+        new MineCos("SHOE_ICE", "shoes", "얼음 장화", "#9fd8f0", new String[][] { { S5MineMap.ICE_STONE_CODE, "3" } }),
+        new MineCos("SHOE_WHITE", "shoes", "흰 운동화", "#f4f4f4", new String[][] { mineOre(3, 30) }),
+        // [2026-10-28] "운영자 전용 장비 -- 누가 봐도 운영진" + "이속 5배 신발, 화려하게 반짝이는 이펙트". 상점에서 못 사고 관리자(isMineAdmin)만 가진다.
+        new MineCos("HAT_GM", "hat", "운영자 왕관", "#ffd84a|gmcrown", new String[0][]).asAdmin("운영자 전용"),
+        new MineCos("TOP_GM", "top", "운영자 제복", "#5b1fa8|gm", new String[0][]).asAdmin("운영자 전용"),
+        new MineCos("SHOE_GM", "shoes", "바람의 신", "#7ff0ff|wing", new String[0][]).asAdmin("운영자 전용 · 이동 속도 5배")
     );
+    /** [2026-10-28] 바람의 신 -- 화면 한 칸 이동 시간을 기본(140ms)의 1/5로. */
+    private static final String MINE_COS_SPEED = "SHOE_GM";
+    private static final int MINE_COS_SPEED_DIV = 5;
 
     private static MineCos mineCos(String code) {
         for (MineCos c : MINE_COS) if (c.code.equals(code)) return c;
         return null;
+    }
+
+    /** 그 부위에 입고 있는 치장 아이템(기본이면 null). */
+    private static MineCos mineWornCos(Map<String, Integer> items, String slot) {
+        int idx = items.getOrDefault("LOOK_" + slot.toUpperCase(), 0) - 1;
+        MineCos c = idx >= 0 && idx < MINE_COS.size() ? MINE_COS.get(idx) : null;
+        return c != null && c.slot.equals(slot) ? c : null;
     }
 
     /** 외형(성별 + 부위별 착용 look 값) + 상점 목록을 out에 넣는다. */
@@ -11487,25 +11522,29 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static HashMap<String, Object> mineLookOf(Map<String, Integer> items) {
         HashMap<String, Object> look = new HashMap<>();
         look.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
+        boolean gm = false;
         for (String slot : MINE_LOOK_SLOTS) {
-            int idx = items.getOrDefault("LOOK_" + slot.toUpperCase(), 0) - 1;
-            MineCos c = idx >= 0 && idx < MINE_COS.size() ? MINE_COS.get(idx) : null;
-            look.put(slot, c != null && c.slot.equals(slot) ? c.look : "");
-            look.put(slot + "Code", c != null && c.slot.equals(slot) ? c.code : "");
+            MineCos c = mineWornCos(items, slot);
+            look.put(slot, c != null ? c.look : "");
+            look.put(slot + "Code", c != null ? c.code : "");
+            if (c != null && c.admin) gm = true;
         }
+        if (gm) look.put("gm", true); // [2026-10-28] 운영자 장비를 입었으면 화면이 "운영자" 표시 + 반짝이
         return look;
     }
 
-    private static void mineLookPayload(Map<String, Integer> items, Map<String, Integer> have, HashMap<String, Object> out) {
+    private static void mineLookPayload(Map<String, Integer> items, Map<String, Integer> have, HashMap<String, Object> out, boolean admin) {
         out.put("look", mineLookOf(items));
         List<HashMap<String, Object>> shop = new ArrayList<>();
         for (MineCos c : MINE_COS) {
+            if (c.admin && !admin) continue; // [2026-10-28] 운영자 전용은 관리자에게만 보인다
             HashMap<String, Object> m = new HashMap<>();
             m.put("code", c.code);
             m.put("slot", c.slot);
             m.put("name", c.name);
             m.put("look", c.look);
-            boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0;
+            if (c.note != null) m.put("note", c.note);
+            boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0 || c.admin;
             m.put("owned", owned);
             if (!owned) {
                 m.put("costs", mineCostList(c.cost, have));
@@ -11541,8 +11580,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             return mineGearResult(userName, true, "기본 모습으로 돌아갔어요.");
         }
         MineCos c = mineCos(code);
-        if (c == null) return mineGearResult(userName, false, "없는 상품이에요.");
-        boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0;
+        if (c == null || (c.admin && !isMineAdmin(userName))) return mineGearResult(userName, false, "없는 상품이에요.");
+        boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0 || c.admin; // [2026-10-28] 운영자 전용은 관리자가 처음부터 가진다
         if ("buy".equals(action) && !owned) {
             if (!mineCostOk(c.cost, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 재료가 모자라요. (" + mineCostText(c.cost) + " 필요)");
             mineTakeCost(userName, c.cost, 1);
