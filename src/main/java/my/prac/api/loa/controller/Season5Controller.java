@@ -452,6 +452,14 @@ public class Season5Controller {
         return s5Service.setNotice(userNameOf(map), text);
     }
 
+    /** [2026-10-28] /광산공지 [내용] (관리자 전용) -- 뒤 전체가 내용(/공지등록과 같은 방식). 줄바꿈은 " / "로 구분. 내용 없이 쓰면 지금 공지를 보여 준다. */
+    public String setMineNotice(HashMap<String, Object> map) {
+        String fulltxt = Objects.toString(map.get("fulltxt"), "");
+        int sp = fulltxt.indexOf(' ');
+        String text = sp >= 0 ? fulltxt.substring(sp + 1).trim() : "";
+        return s5Service.setMineNotice(userNameOf(map), text);
+    }
+
     public String equipUnwearAll(HashMap<String, Object> map) {
         String param1 = param1Of(map);
         if (param1.isEmpty()) return "사용법: /장비해제 M (M=파티원 번호, /파티편성에서 확인)";

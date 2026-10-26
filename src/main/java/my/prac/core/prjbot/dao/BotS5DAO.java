@@ -152,6 +152,9 @@ public interface BotS5DAO {
     int rescaleMineExp();
     /** [2026-10-28] 곡괭이 현재 내구도만(구리 납품 보상). */
     int setMinePickDur(@Param("userName") String userName, @Param("dur") int dur);
+    /** [2026-10-28] 광산 소식(TBOT_S5_NOTICE NOTICE_ID 2) -- APP_VERSION = 소식 번호, NOTICE_TEXT = 글(NCLOB). */
+    HashMap<String, Object> selectMineNotice();
+    int upsertMineNotice(HashMap<String, Object> map);
     int deleteAllMineDug();
     int resetAllMinePos();
     String selectConfigValue(@Param("key") String key);

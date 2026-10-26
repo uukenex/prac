@@ -754,7 +754,7 @@
     .mine-hud-tr{ position:absolute; right:10px; top:10px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     .mine-sta{ font:800 15px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; color:#ffe14d; }
     .mine-regen{ max-width:150px; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
-    #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; }
+    #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; object-fit:contain; } /* [2026-10-28] 정사각이 아닌 맵은 늘리지 않고 비율 그대로 */
     #mineMini.big{ width:min(78vw,360px); height:min(78vw,360px); }
     .mine-dig{ position:absolute; right:18px; bottom:calc(22px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; font-size:40px; line-height:1; background:#ffcf4a; border:3px solid #140d0a; box-shadow:0 5px 0 #8a5a00; cursor:pointer; }
     .mine-dig:active{ transform:translateY(3px); box-shadow:0 2px 0 #8a5a00; }
@@ -6166,8 +6166,17 @@ var TowerMine = (function () {
   // [2026-10-24] 구역별 권장 레벨(서버 MINE_MIN_LV를 st.mapMinLv로 받는다) -- 막지 않고 전체 지도에 표시만("레벨 모자라도 갈 수 있게")
   function myLv() { return st && st.combat ? st.combat.lv : 1; }
   function minLvOf(id) { return st && st.mapMinLv && st.mapMinLv[id] || 1; }
+  // [2026-10-28] "설산에서 왕도 통로 미니맵이 늘려 퍼져서 마음에 안 든다" -- 미니맵 칸은 정사각인데 긴 맵(왕도 가는 길 260x44)을 통째로 넣어 옆으로 늘어났다.
+  //  가로세로 1.8배 넘게 긴 맵은 플레이어 주변 정사각 창만 보여 주고(따라 움직임), 그 밖의 정사각이 아닌 맵은 늘리지 않고 비율 그대로(CSS object-fit).
+  function miniView() {
+    var w = map.w, h = map.h;
+    if (w > h * 1.8) return { x0: Math.max(0, Math.min(w - h, Math.round(P.x - h / 2))), y0: 0, w: h, h: h };
+    if (h > w * 1.8) return { x0: 0, y0: Math.max(0, Math.min(h - w, Math.round(P.y - w / 2))), w: w, h: w };
+    return { x0: 0, y0: 0, w: w, h: h };
+  }
   function buildMiniBase() {
-    el.mini.width = map.w; el.mini.height = map.h;
+    var mv = miniView();
+    el.mini.width = mv.w; el.mini.height = mv.h;
     miniBase = mk(map.w, map.h);
     var g = miniBase.getContext('2d'), img = g.createImageData(map.w, map.h);
     var blind = sight() <= 0; // 투구 없이 어두운 동굴 -- 미니맵에도 지형이 안 보인다
@@ -6178,19 +6187,21 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   function drawMini() {
-    var k = Math.max(1, Math.round(map.w / 128)); // 큰 맵은 점을 크게
-    miniCtx.drawImage(miniBase, 0, 0);
+    var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
+    var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
+    miniCtx.clearRect(0, 0, v.w, v.h);
+    miniCtx.drawImage(miniBase, -ox, -oy);
     Object.keys(dug).forEach(function (key) {
       var p = key.split(','), g = dug[key];
-      if (g >= 4) { miniCtx.fillStyle = ORE_COL[g][0]; miniCtx.fillRect(+p[0] - k, +p[1] - k, 2 * k + 1, 2 * k + 1); }
+      if (g >= 4 && ORE_COL[g]) { miniCtx.fillStyle = ORE_COL[g][0]; miniCtx.fillRect(+p[0] - ox - k, +p[1] - oy - k, 2 * k + 1, 2 * k + 1); }
     });
     (map.portals || []).forEach(function (p) {
       if (p.kind === 'Z') return; // [2026-10-24] 숨은 입구(바닷길)는 미니맵에도 안 찍는다
       miniCtx.fillStyle = p.locked ? '#9a9a9a' : '#ffd23f';
-      miniCtx.fillRect(p.x - 2 * k, p.y - 2 * k, 4 * k + 1, 4 * k + 1);
+      miniCtx.fillRect(p.x - ox - 2 * k, p.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
-    miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - 3 * k, P.y - 3 * k, 6 * k + 1, 6 * k + 1);
-    miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - k, P.y - k, 2 * k + 1, 2 * k + 1);
+    miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - ox - 3 * k, P.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
+    miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - ox - k, P.y - oy - k, 2 * k + 1, 2 * k + 1);
   }
   function renderLog() {
     if (!recent.length) { el.log.innerHTML = '<div class="mine-log-empty">아직 캔 곳이 없어요.</div>'; return; }

@@ -9778,9 +9778,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("visitedSnowtown", items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0); // [2026-10-26] 이동 안내원 목적지
         out.put("visitedCity", items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0 || isMineAdmin(userName)); // [2026-10-27]
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
-        if (items.getOrDefault(MINE_ITEM_NOTICE, 0) < MINE_NOTICE_ID) { // [2026-10-28] 아직 안 본 광산 소식(확인을 누르면 mineNoticeAck)
-            out.put("noticeId", MINE_NOTICE_ID);
-            out.put("notice", MINE_NOTICE_TEXT);
+        Object[] nt = mineNotice(); // [2026-10-28] 아직 안 본 광산 소식(확인을 누르면 mineNoticeAck, 글은 /광산공지로)
+        if (!((String) nt[1]).isEmpty() && items.getOrDefault(MINE_ITEM_NOTICE, 0) < (Integer) nt[0]) {
+            out.put("noticeId", nt[0]);
+            out.put("notice", nt[1]);
         }
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
@@ -10974,19 +10975,57 @@ public class BotS5ServiceImpl implements BotS5Service {
         return mineGearResult(userName, true, "🔥 구리 광석 " + (n * MINE_REFINE_COPPER) + "개를 녹여 철광석 " + n + "개를 얻었어요!");
     }
 
-    // [2026-10-28] "광산 진입 시 다운스케일링과 신규 맵이 추가되었다고 간략한 공지 한 번" -- 유저마다 한 번(NOTICE_SEEN < MINE_NOTICE_ID면 mineState가 내려 준다).
-    //  새 소식을 띄우려면 MINE_NOTICE_ID를 올리고 글을 바꾼다.
+    // [2026-10-28] "광산 진입 시 다운스케일링과 신규 맵이 추가되었다고 간략한 공지 한 번" -- 유저마다 한 번(NOTICE_SEEN < 소식 번호면 mineState가 내려 준다).
+    //  같은 날 "공지가 너무 길다, 수정하려면 소스를 건드려야 하나" -- 글과 번호를 TBOT_S5_NOTICE의 NOTICE_ID 2 행(글 NCLOB -- 이모지/한글 안전,
+    //  APP_VERSION = 번호)에 두고 관리자 채팅 /광산공지 [내용]으로 바꾼다(번호가 올라가 모두에게 한 번씩 다시 뜸, " / "는 줄바꿈, "끄기" = 안 띄움).
+    //  행이 없으면 아래 기본 글(1번).
     static final String MINE_ITEM_NOTICE = "NOTICE_SEEN";
-    static final int MINE_NOTICE_ID = 1;
-    static final String MINE_NOTICE_TEXT = "⚖️ 전체 다운스케일 -- 체력·공격력·경험치 숫자가 작아졌어요. 레벨과 밸런스는 그대로, 쌓인 경험치는 새 기준으로 바꿔 두었어요.\n"
-            + "🏔️ 새 지역 -- 북쪽 끝 설원 → 설산 1~3층 → 설산 마을 → 왕도 가는 길 → 왕도 아스테리아(이제 누구나), 왕도 가는 길 북쪽 성당 옛터(타락한 대주교, 권장 Lv.80)\n"
-            + "❄️ 설산엔 한기와 눈바람이 있어요. 🔥 모닥불 곁이 안전지대예요!";
+    private static final String MINE_NOTICE_DEFAULT = "⚖️ 체력·공격력·경험치 숫자가 작아졌어요(레벨·밸런스는 그대로)\n🏔️ 새 지역: 설산 → 설산 마을 → 왕도 가는 길 → 왕도, 성당 옛터";
+    private static volatile Object[] mineNoticeCache = null; // {번호, 글, 읽은 시각}
+
+    /** 지금 광산 소식 {번호, 글}(1분 기억). 번호 0 또는 글이 비면 안 띄운다. */
+    private Object[] mineNotice() {
+        Object[] c = mineNoticeCache;
+        if (c != null && System.currentTimeMillis() - (Long) c[2] < 60_000L) return c;
+        int id = 1;
+        String text = MINE_NOTICE_DEFAULT;
+        try {
+            HashMap<String, Object> r = dao.selectMineNotice();
+            if (r != null) {
+                id = Integer.parseInt(strVal(r.get("APP_VERSION"), "1").trim());
+                text = r.get("NOTICE_TEXT") == null ? "" : String.valueOf(r.get("NOTICE_TEXT"));
+            }
+        } catch (Exception e) {
+            System.out.println("[광산] 소식 읽기 실패: " + e.getMessage());
+        }
+        c = new Object[] { id, text, System.currentTimeMillis() };
+        mineNoticeCache = c;
+        return c;
+    }
+
+    @Override
+    @Transactional
+    public String setMineNotice(String userName, String text) {
+        if (!isEventAdmin(userName) && !isMineAdmin(userName)) return "권한이 없습니다.";
+        Object[] cur = mineNotice();
+        if (text == null || text.trim().isEmpty())
+            return "사용법: /광산공지 [내용] (\" / \"로 줄바꿈, \"끄기\"면 안 띄움)\n지금 광산 소식(" + cur[0] + "번):\n" + (((String) cur[1]).isEmpty() ? "(없음)" : cur[1]);
+        boolean off = "끄기".equals(text.trim());
+        int id = (Integer) cur[0] + 1;
+        String body = off ? "" : text.trim().replace(" / ", "\n");
+        HashMap<String, Object> up = new HashMap<>();
+        up.put("version", String.valueOf(id));
+        up.put("text", body);
+        dao.upsertMineNotice(up);
+        mineNoticeCache = null;
+        return off ? "📢 광산 소식을 껐어요." : "📢 광산 소식(" + id + "번) 등록 완료! 광산에 들어오는 사람마다 한 번씩 떠요.\n" + body;
+    }
 
     /** 광산 소식 확인 -- 다시 안 띄운다. */
     @Override
     public HashMap<String, Object> mineNoticeAck(String userName, int id) {
         HashMap<String, Object> out = new HashMap<>();
-        out.put("ok", mineAccess(userName) && id > 0 && id <= MINE_NOTICE_ID);
+        out.put("ok", mineAccess(userName) && id > 0 && id <= (Integer) mineNotice()[0]);
         if (Boolean.TRUE.equals(out.get("ok"))) dao.upsertMineItem(userName, MINE_ITEM_NOTICE, id);
         return out;
     }

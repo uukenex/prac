@@ -903,6 +903,20 @@
         SELECT APP_VERSION, TO_NCHAR(NOTICE_TEXT) AS NOTICE_TEXT FROM TBOT_S5_NOTICE WHERE NOTICE_ID = 1
     </select>
 
+    <!-- [2026-10-28] 광산 소식(/광산공지) = 같은 표의 NOTICE_ID 2 행. APP_VERSION = 소식 번호. 이모지/한글 때문에 NCLOB + TO_NCHAR -->
+    <select id="selectMineNotice" resultType="hashmap">
+        SELECT APP_VERSION, TO_NCHAR(NOTICE_TEXT) AS NOTICE_TEXT FROM TBOT_S5_NOTICE WHERE NOTICE_ID = 2
+    </select>
+
+    <update id="upsertMineNotice" parameterType="hashmap">
+        MERGE INTO TBOT_S5_NOTICE T
+        USING (SELECT 2 AS ID FROM DUAL) S ON (T.NOTICE_ID = S.ID)
+        WHEN MATCHED THEN UPDATE SET T.APP_VERSION = #{version},
+            T.NOTICE_TEXT = #{text, jdbcType=NCLOB, typeHandler=my.prac.core.util.NCharClobTypeHandler}, T.UPDATE_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (NOTICE_ID, APP_VERSION, NOTICE_TEXT, UPDATE_DATE)
+            VALUES (2, #{version}, #{text, jdbcType=NCLOB, typeHandler=my.prac.core.util.NCharClobTypeHandler}, SYSDATE)
+    </update>
+
     <update id="updateNotice" parameterType="hashmap">
         UPDATE TBOT_S5_NOTICE
         SET APP_VERSION = #{version},

@@ -136,9 +136,8 @@ public final class S5MineMap {
         GEM_DROPS.put(CAVE3, new int[][] { { 1, 40 }, { 8, 5 } }); // [2026-10-24] 동굴 3층 = 루비 4% + 다이아 0.5% 추가
         GEM_DROPS.put(SEAROAD, new int[][] { { 3, 50 }, { 2, 10 } }); // 바닷길 몬스터 보상용(캐면 searoadGem)
         GEM_DROPS.put(STEPPE, new int[][] { { 0, 50 }, { 7, 10 } }); // [2026-10-24] 초원 = 재스퍼 5% / 에메랄드 1%(왕도는 못 캔다)
-        GEM_DROPS.put(SNOW1, new int[][] { { 2, 40 }, { 8, 6 } }); // [2026-10-26] 설산 = 스타 사파이어 4% + 다이아 0.6~1% 추가(위층일수록)
-        GEM_DROPS.put(SNOW2, new int[][] { { 2, 40 }, { 8, 8 } });
-        GEM_DROPS.put(SNOW3, new int[][] { { 2, 40 }, { 8, 10 } });
+        // [2026-10-26] 설산 = 스타 사파이어 4% + 다이아 추가였다가 [2026-10-28] "설산에선 보석 대신 빙석" -- 지역 보석 없음(빙석은 BotS5ServiceImpl.mineDigCell,
+        //  모든 맵 공통 다이아몬드 0.2%만 남음)
         GEM_DROPS.put(ROYALROAD, new int[][] { { 1, 40 }, { 8, 8 } }); // [2026-10-27] 왕도 가는 길 = 루비 4% + 다이아 0.8%
     }
 
