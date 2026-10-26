@@ -6630,7 +6630,7 @@ var TowerMine = (function () {
     closeSmith();
     if (c && c.fn) c.fn();
   }
-  // [2026-10-26] 방한 외투 -- 설산 마을 털옷 장인(제값), 설원 정박장 암상인(3배, 매시 정각~15분, 대화 중에도 15분이 되면 사라짐)
+  // [2026-10-26] 방한 외투 -- 설산 마을 털옷 장인, 설원 정박장 암상인(매시 정각~15분, 대화 중에도 15분이 되면 사라짐)
   var coatData = null, blackTimer = 0;
   function blackOpen() { return new Date(nowSrv()).getUTCMinutes() < 15; } // 분은 KST와 UTC가 같다
   function openCoat(n) {
@@ -6661,7 +6661,7 @@ var TowerMine = (function () {
         + (bm ? '<div class="mine-smith-say" id="mineBlackLeft"></div>' : '');
     if (!d) return h + '<div class="mine-smith-say">물건을 꺼내는 중...</div>';
     var wear = d.coatDef === 1 ? '방한 외투' : d.coatDef === 2 ? '두꺼운 방한 외투' : '없음';
-    h += '<div class="mine-smith-dur">🧥 입고 있는 외투 <b>' + wear + '</b>' + (bm ? ' <small>(값은 설산 마을의 3배)</small>' : '') + '</div>';
+    h += '<div class="mine-smith-dur">🧥 입고 있는 외투 <b>' + wear + '</b></div>'; // [2026-10-28] 암상인 값이 더 비싼 건 비공개(문구 없음)
     return h + (d.coats || []).map(function (c) {
       return '<div class="mine-smith-row"><span class="nm">' + c.name + '<small>' + c.effect + (c.owned ? ' · 보유' : '') + '</small>' + (c.owned ? '' : costHtml(c.costs)) + '</span>'
           + (c.owned ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + c.code + '\')">' + (c.worn ? '벗기' : '입기') + '</button>'
