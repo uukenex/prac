@@ -10237,13 +10237,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
         // [2026-10-28] "설산 1,2,3층 순서대로 밟아야 설산에 간 걸로 인정" -- 북쪽 끝 설원 -> 1층 -> 2층 -> 3층으로 올라온 만큼(SNOW_PATH 1~3)을 적고,
-        //  3층까지 올라온 뒤 3층에서 마을로 들어가야 설산 마을 방문(이동 안내원 목적지). 왕도 북쪽 샛길로 거꾸로 들어오거나 마을에서 내려간 층은 안 친다.
+        //  3층까지 올라온 뒤 3층에서 마을로 들어가야 설산 마을 방문(이동 안내원 목적지). 마을에서 내려간 층은 안 친다.
+        //  같은 날 "왕도 북쪽 샛길로 와도 인정" -- 샛길에서 서문으로 들어와도 방문.
         int snowPath = items.getOrDefault(MINE_ITEM_SNOW_PATH, 0), snowNext = snowPath;
         if (S5MineMap.SNOW1.equals(target.id) && S5MineMap.NORTH.equals(map.id)) snowNext = Math.max(snowPath, 1);
         else if (S5MineMap.SNOW2.equals(target.id) && S5MineMap.SNOW1.equals(map.id) && snowPath >= 1) snowNext = Math.max(snowPath, 2);
         else if (S5MineMap.SNOW3.equals(target.id) && S5MineMap.SNOW2.equals(map.id) && snowPath >= 2) snowNext = Math.max(snowPath, 3);
         if (snowNext != snowPath) dao.upsertMineItem(userName, MINE_ITEM_SNOW_PATH, snowNext);
-        if (S5MineMap.SNOWTOWN.equals(target.id) && S5MineMap.SNOW3.equals(map.id) && snowNext >= 3 && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) // [2026-10-26] 설산을 넘어 처음 도착 -- 이제 이동 안내원으로 오갈 수 있다
+        if (S5MineMap.SNOWTOWN.equals(target.id) && ((S5MineMap.SNOW3.equals(map.id) && snowNext >= 3) || S5MineMap.ROYALROAD.equals(map.id)) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) // [2026-10-26] 설산을 넘어 처음 도착 -- 이제 이동 안내원으로 오갈 수 있다
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_SNOWTOWN, 1);
         if (S5MineMap.CITY.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1) // [2026-10-27] 왕도도 걸어서 한 번 도착해야 이동 안내원 목적지
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_CITY, 1);
@@ -10433,7 +10434,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
         if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
-        if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 북쪽 끝 설원에서 설산 1, 2, 3층을 차례로 올라 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
+        if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 설산 1, 2, 3층을 차례로 오르거나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
         if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
         S5MineMap target = S5MineMap.get(dest);
         String block = mineMapBlock(target, items, mineLv(row));
@@ -10467,9 +10468,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_COAT_SLOT = "COAT_SLOT"; // 0 = 안 입음, 1 = 방한 외투, 2 = 두꺼운 방한 외투
     private static final int MINE_BLIZZARD_PCT = 10;
     private static final long MINE_COLD_MAX_GAP_MS = 3_000L;
-    private static final int MINE_BLACK_MULT = 3;
+    private static final int MINE_BLACK_PCT = 150; // [2026-10-28] "암상인은 설산 상점 대비 1.5배" (예전 3배), 나누어떨어지지 않으면 올림
     private static final int MINE_BLACK_OPEN_MIN = 15; // 매시 정각 ~ 15분
-    /** 설산 마을 값(암상인은 MINE_BLACK_MULT배). */
+    /** 설산 마을 값(암상인은 MINE_BLACK_PCT%). */
     private static final String[][] MINE_COAT1_COST = { { S5MineMap.ORE_CODES[4], "20" }, { S5MineMap.ORE_CODES[3], "80" }, mineCost(8, 3) };
     private static final String[][] MINE_COAT2_COST = { { S5MineMap.ORE_CODES[4], "50" }, { S5MineMap.SEVEN_STONE_CODE, "3" }, mineCost(8, 8) };
 
@@ -10509,9 +10510,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         return mineBlackOpen(now) ? z.withMinute(MINE_BLACK_OPEN_MIN).toInstant().toEpochMilli() : z.withMinute(0).plusHours(1).toInstant().toEpochMilli();
     }
 
-    private static String[][] mineCostTimes(String[][] cost, int mult) {
+    private static String[][] mineCostTimes(String[][] cost, int pct) {
         String[][] out = new String[cost.length][];
-        for (int i = 0; i < cost.length; i++) out[i] = new String[] { cost[i][0], String.valueOf(Integer.parseInt(cost[i][1]) * mult) };
+        for (int i = 0; i < cost.length; i++) out[i] = new String[] { cost[i][0], String.valueOf((Integer.parseInt(cost[i][1]) * pct + 99) / 100) };
         return out;
     }
 
@@ -10599,7 +10600,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 방한 외투 -- action: list(보기) / buy(code) / wear(code, 다시 누르면 벗기). 파는 곳은 저장 위치 맵으로 정한다:
-     *  설산 마을 = 털옷 장인(제값), 북쪽 끝 설원 = 암상인(세 배, 매시 정각~15분에만). */
+     *  설산 마을 = 털옷 장인(제값), 북쪽 끝 설원 = 암상인(1.5배, 매시 정각~15분에만). */
     @Override
     @Transactional
     public HashMap<String, Object> mineCoat(String userName, String action, String code) {
@@ -10620,7 +10621,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             else if ("black".equals(seller) && !mineBlackOpen(now)) { ok = false; msg = "🕶️ 암상인이 어느새 사라졌어요... 매시 정각부터 15분까지만 나타나요."; }
             else if (items.getOrDefault(item, 0) > 0) { ok = false; msg = nm + "은(는) 이미 가지고 있어요."; }
             else {
-                String[][] cost = mineCostTimes(MINE_ITEM_COAT1.equals(item) ? MINE_COAT1_COST : MINE_COAT2_COST, "black".equals(seller) ? MINE_BLACK_MULT : 1);
+                String[][] cost = mineCostTimes(MINE_ITEM_COAT1.equals(item) ? MINE_COAT1_COST : MINE_COAT2_COST, "black".equals(seller) ? MINE_BLACK_PCT : 100);
                 if (!mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(cost) + " 필요)"; }
                 else {
                     mineTakeCost(userName, cost, 1);
@@ -10674,7 +10675,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> coats = new ArrayList<>();
         for (int i = 1; i <= 2; i++) {
             String c = i == 1 ? MINE_ITEM_COAT1 : MINE_ITEM_COAT2;
-            String[][] cost = mineCostTimes(i == 1 ? MINE_COAT1_COST : MINE_COAT2_COST, "black".equals(seller) ? MINE_BLACK_MULT : 1);
+            String[][] cost = mineCostTimes(i == 1 ? MINE_COAT1_COST : MINE_COAT2_COST, "black".equals(seller) ? MINE_BLACK_PCT : 100);
             HashMap<String, Object> m = new HashMap<>();
             m.put("code", c);
             m.put("name", i == 1 ? "방한 외투" : "두꺼운 방한 외투");
