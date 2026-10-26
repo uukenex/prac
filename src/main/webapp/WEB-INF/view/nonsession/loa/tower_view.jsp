@@ -6361,10 +6361,11 @@ var TowerMine = (function () {
   }
   function synthHtml() {
     var stones = [];
-    for (var g = 11; g <= 17; g++) stones.push({ grade: g, name: ORE_NAME[g], have: oreHave(g), need: 1 });
+    var dayNeed = st.sevenDayNeed || 30; // [2026-10-28] 요일석 종류마다 30개(서버 MINE_SEVEN_DAY_STONES)
+    for (var g = 11; g <= 17; g++) stones.push({ grade: g, name: ORE_NAME[g], have: oreHave(g), need: dayNeed });
     stones.push({ grade: 6, name: ORE_NAME[6], have: oreHave(6), need: 1 }); // [2026-10-25] 칠요석 하나에 별빛석 1개
     var can = (st.sevenMax || 0) > 0 ? '' : 'disabled ';
-    return '<div class="mine-smith-say">요일석 7종(월요석~일요석) 하나씩에 별빛석 하나를 더 가져오면, 별빛으로 묶어 칠요석 하나로 합쳐 주지.</div>'
+    return '<div class="mine-smith-say">요일석 7종(월요석~일요석)을 ' + dayNeed + '개씩, 거기에 별빛석 하나를 더 가져오면 별빛으로 묶어 칠요석 하나로 합쳐 주지.</div>'
         + '<div class="mine-smith-row"><img src="' + oreIcon(18) + '" alt=""><span class="nm">칠요석<small>보유 ' + oreHave(18) + '개 · 지금 ' + (st.sevenMax || 0) + '개 만들 수 있어요</small>'
         + costHtml(stones) + '</span>'
         + '<button type="button" ' + can + 'onclick="TowerMine.synth(1)">1개</button>'
@@ -6914,7 +6915,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'dragon', 'sevenMax', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시

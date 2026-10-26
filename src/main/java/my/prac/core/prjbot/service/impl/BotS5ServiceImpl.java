@@ -10994,9 +10994,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         out.put("dragon", dragon);
         int sevenMax = Integer.MAX_VALUE;
-        for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0));
+        for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0) / MINE_SEVEN_DAY_STONES);
         sevenMax = Math.min(sevenMax, have.getOrDefault(S5MineMap.ORE_CODES[5], 0)); // [2026-10-25] 칠요석 하나에 별빛석 1개
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
+        out.put("sevenDayNeed", MINE_SEVEN_DAY_STONES); // [2026-10-28] 칠요석 하나에 요일석 종류마다 몇 개
         out.put("deliverDone", items.getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == mineToday()); // [2026-10-28] 오늘 구리 납품 했는지
         mineLookPayload(items, have, out, isMineAdmin(userName)); // [2026-10-24] 명품상점(외형)
         out.put("ores", mineOreList(userName));
@@ -11163,7 +11164,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** 대장장이 [합성] -- 요일석 7종(월~일) 1개씩 + 별빛석 1개 -> 칠요석 1개. times = 몇 개(가진 만큼으로 줄인다).
+    /** [2026-10-28] "칠요석 재료비를 올리고 싶어, 요일석이 30개씩은 있어야" -- 칠요석 하나에 요일석 7종 각각 이만큼(예전 1개). */
+    static final int MINE_SEVEN_DAY_STONES = 30;
+
+    /** 대장장이 [합성] -- 요일석 7종(월~일) MINE_SEVEN_DAY_STONES개씩 + 별빛석 1개 -> 칠요석 1개. times = 몇 개(가진 만큼으로 줄인다).
      *  [2026-10-25] "별빛석 필요처 -- 칠요석 만들 때 들어가도록" 요청으로 별빛석 1개 추가. */
     @Override
     @Transactional
@@ -11173,11 +11177,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.selectMineUserForUpdate(userName);
         Map<String, Integer> have = mineOreHave(userName);
         int n = Math.max(1, times);
-        for (String c : S5MineMap.DAY_STONE_CODES) n = Math.min(n, have.getOrDefault(c, 0));
+        for (String c : S5MineMap.DAY_STONE_CODES) n = Math.min(n, have.getOrDefault(c, 0) / MINE_SEVEN_DAY_STONES);
         n = Math.min(n, have.getOrDefault(S5MineMap.ORE_CODES[5], 0));
-        if (n < 1) return mineGearResult(userName, false, "요일석 7종(월요석~일요석) 하나씩과 별빛석 1개가 있어야 칠요석을 만들 수 있어요.");
+        if (n < 1) return mineGearResult(userName, false, "요일석 7종(월요석~일요석) " + MINE_SEVEN_DAY_STONES + "개씩과 별빛석 1개가 있어야 칠요석을 만들 수 있어요.");
         String[][] cost = new String[S5MineMap.DAY_STONE_CODES.length + 1][];
-        for (int i = 0; i < S5MineMap.DAY_STONE_CODES.length; i++) cost[i] = new String[] { S5MineMap.DAY_STONE_CODES[i], "1" };
+        for (int i = 0; i < S5MineMap.DAY_STONE_CODES.length; i++) cost[i] = new String[] { S5MineMap.DAY_STONE_CODES[i], String.valueOf(MINE_SEVEN_DAY_STONES) };
         cost[S5MineMap.DAY_STONE_CODES.length] = mineStar(1);
         mineTakeCost(userName, cost, n);
         dao.addUserOre(userName, S5MineMap.SEVEN_STONE_CODE, n);
