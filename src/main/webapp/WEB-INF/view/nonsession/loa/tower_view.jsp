@@ -6051,7 +6051,10 @@ var TowerMine = (function () {
   function hpNow() {
     var c = st && st.combat;
     if (c && c.fight) return Math.min(c.hpMax, c.hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
-    return c ? Math.min(c.hpMax, Math.floor(c.hp + (Date.now() - combatT0) * c.hpMax / (c.fullMs || 60000))) : 0;
+    if (!c) return 0;
+    // [2026-10-26] 서버와 같이 마지막 전투 뒤 대기(regenFrom, 서버 시각)가 지나야 차오른다. c.hp = 서버 시각 c.at 때의 체력.
+    var tSrv = c.at + (Date.now() - combatT0), from = Math.max(c.at, c.regenFrom || 0);
+    return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax / (c.fullMs || 60000)));
   }
   function renderHp() {
     var c = st && st.combat;

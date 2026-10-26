@@ -9098,18 +9098,24 @@ public class BotS5ServiceImpl implements BotS5Service {
         return lock;
     }
 
-    /** 지금 체력(저장된 체력 + 저장 시각부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계. */
+    /** [2026-10-26] "전투 중엔 체력 회복이 안 돼야 하는데 되는 것 같다" -- 몬스터를 쓰러뜨려 인식이 끝나면 곧바로 회복이 다시 시작돼서
+     *  다음 몬스터로 가는 동안(과 한 방에 잡는 사냥 내내) 체력이 찼다. 체력을 저장하는 일(때림/맞음/쓰러뜨림/인식 해제)이 마지막으로 있은 뒤
+     *  이만큼 지나야 회복이 시작된다. */
+    private static final long MINE_REGEN_DELAY_MS = 10_000L;
+
+    /** 지금 체력(저장된 체력 + 저장 시각 + MINE_REGEN_DELAY_MS부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계. */
     private int mineHpNow(HashMap<String, Object> row, long now, int lock) {
         int max = mineHpCap(mineLv(row), lock);
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
         if (mineEngaged(strVal(row.get("USER_NAME"), null), now)) return Math.min(max, hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
-        long at = longOf(row.get("M_HP_AT_MS"), now);
-        return (int) Math.min(max, hp + Math.max(0, now - at) * max / MINE_HP_FULL_MS);
+        long from = longOf(row.get("M_HP_AT_MS"), now) + MINE_REGEN_DELAY_MS;
+        return (int) Math.min(max, hp + Math.max(0, now - from) * max / MINE_HP_FULL_MS);
     }
 
     private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock) {
         HashMap<String, Object> c = mineCombatInfo(lv, exp, hp, now);
+        c.put("regenFrom", now + MINE_REGEN_DELAY_MS); // [2026-10-26] 화면도 이때부터 체력을 올린다(지금 저장했으니 지금 + 대기)
         c.put("fight", fight); // [2026-10-25] 인식 중(화면도 체력을 안 올리고 1초마다 전투 턴을 부른다)
         c.put("hpMax", mineHpCap(lv, lock)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
         c.put("hpBase", mineHpMax(lv));
@@ -9586,6 +9592,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0))); // [2026-10-24] 광산 전투 레벨
+        if (row.get("M_HP") != null) // [2026-10-26] 여기선 저장하지 않으니 회복 시작은 마지막 저장 시각 + 대기
+            ((HashMap<String, Object>) out.get("combat")).put("regenFrom", longOf(row.get("M_HP_AT_MS"), now) + MINE_REGEN_DELAY_MS);
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
