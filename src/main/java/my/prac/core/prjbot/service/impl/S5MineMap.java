@@ -59,8 +59,10 @@ public final class S5MineMap {
     public static final String SNOW2 = "snow2";
     public static final String SNOW3 = "snow3";
     public static final String SNOWTOWN = "snowtown";
+    /** [2026-10-27] "설산에서 내려가면 왕도 아스테리아, 왕도 가는 길을 긴 길로" -- 설산 마을 서문 -> 왕도 가는 길(260칸) -> 왕도 동문. */
+    public static final String ROYALROAD = "royalroad";
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD);
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
@@ -99,6 +101,7 @@ public final class S5MineMap {
     private static final double[] CAVE3_SHARE = { 3, 35, 0.08, 0.20, 0.30 };
     /** [2026-10-26] 설산 1~3층 -- 위층일수록 풍부하다. */
     private static final double[][] SNOW_SHARE = { { 2, 30, 0.07, 0.20, 0.30 }, { 3, 35, 0.08, 0.20, 0.30 }, { 4, 40, 0.09, 0.22, 0.30 } };
+    private static final double[] ROAD_SHARE = { 3, 35, 0.08, 0.20, 0.30 }; // [2026-10-27] 왕도 가는 길
 
     // ---------------------------------------------------------------- 보석(채굴 때 추가로)
     /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
@@ -127,6 +130,7 @@ public final class S5MineMap {
         GEM_DROPS.put(SNOW1, new int[][] { { 2, 40 }, { 8, 6 } }); // [2026-10-26] 설산 = 스타 사파이어 4% + 다이아 0.6~1% 추가(위층일수록)
         GEM_DROPS.put(SNOW2, new int[][] { { 2, 40 }, { 8, 8 } });
         GEM_DROPS.put(SNOW3, new int[][] { { 2, 40 }, { 8, 10 } });
+        GEM_DROPS.put(ROYALROAD, new int[][] { { 1, 40 }, { 8, 8 } }); // [2026-10-27] 왕도 가는 길 = 루비 4% + 다이아 0.8%
     }
 
     /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
@@ -301,10 +305,40 @@ public final class S5MineMap {
         }
     }
 
-    /** 대상(target)으로 가는 포탈 옆 칸(맨 위 줄 포탈이면 아래 칸, 맨 아래 줄이면 위 칸) -- 반대쪽에서 내려오거나 올라올 때 서는 곳. */
+    /** 대상(target)으로 가는 포탈 옆의 걸을 수 있는 칸 -- 반대쪽에서 오면 서는 곳(맵 가장자리 포탈은 안쪽 칸, 성벽 문은 성 안쪽 칸). */
     private static int[] besidePortal(S5MineMap m, String target) {
-        for (Portal p : m.portals) if (target.equals(p.target)) return p.y == 0 ? new int[] { p.x, 1 } : p.y == m.h - 1 ? new int[] { p.x, m.h - 2 } : new int[] { p.x, p.y + 1 };
+        for (Portal p : m.portals) {
+            if (!target.equals(p.target)) continue;
+            for (int[] dv : DIRS) if (m.walkable(p.x + dv[0], p.y + dv[1])) return new int[] { p.x + dv[0], p.y + dv[1] };
+        }
         return new int[] { m.spawnX, m.spawnY };
+    }
+
+    /** [2026-10-27] 왕도 주민(말풍선만, 대화 없음) -- 사람마다 돌바닥/풀밭을 오가는 길(칸 목록, y * w + x). 화면이 시각으로 그 길을 왕복한다. */
+    public List<int[]> citizens() { return citizens; }
+
+    private static List<int[]> cityCitizens(S5MineMap m, long seed) {
+        Random r = new Random(seed * 17 + 5);
+        List<int[]> out = new ArrayList<>();
+        for (int tries = 0; out.size() < 18 && tries < 4000; tries++) {
+            int x = 4 + r.nextInt(m.w - 8), y = 4 + r.nextInt(m.h - 8);
+            if (m.terrain[y][x] != 's') continue;
+            List<Integer> route = new ArrayList<>();
+            route.add(y * m.w + x);
+            int dir = r.nextInt(4), cx = x, cy = y;
+            for (int k = 0; k < 40 && route.size() < 16; k++) {
+                if (r.nextDouble() < 0.25) dir = r.nextInt(4);
+                int nx = cx + DIRS[dir][0], ny = cy + DIRS[dir][1];
+                if (!m.inside(nx, ny) || (m.terrain[ny][nx] != 's' && m.terrain[ny][nx] != '.')) { dir = r.nextInt(4); continue; }
+                cx = nx; cy = ny;
+                route.add(cy * m.w + cx);
+            }
+            if (route.size() < 8) continue;
+            int[] a = new int[route.size()];
+            for (int i = 0; i < a.length; i++) a[i] = route.get(i);
+            out.add(a);
+        }
+        return out;
     }
 
     /** 포탈 대상 좌표 바꿔 끼우기(target -> (tx, ty)). */
@@ -361,6 +395,7 @@ public final class S5MineMap {
     int villageX = -1, villageY = -1;
     private int cold;                                  // [2026-10-26] 한기 단계(초당 최대 체력 %), 0 = 없음
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
+    private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
     private int dockX = -1, dockY = -1; // [2026-10-24] 배에서 내리는 칸(항구 맵만)
     private int bossX = -1, bossY = -1; // [2026-10-24] 보스 자리(동굴 3층만, S5MineMobs.spawn이 보스를 둔다)
@@ -434,6 +469,7 @@ public final class S5MineMap {
             for (Mob mb : mobs) hsh = 31 * hsh + (mb.id * 7 + mb.type) * 131 + mb.y * 1009 + mb.x + Arrays.hashCode(mb.cells); // 몬스터 배치가 바뀌면 화면도 다시 받게
             hsh = 31 * hsh + (wind ? 1 : 0) + (underwater ? 2 : 0) + dockX * 3 + dockY * 5;
             for (int[] z : safe) hsh = 31 * hsh + z[0] * 7 + z[1] * 13 + z[2] + cold * 17; // [2026-10-26] 한기/모닥불
+            for (int[] cz : citizens) hsh = 31 * hsh + Arrays.hashCode(cz); // [2026-10-27] 왕도 주민
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
         }
         return v;
@@ -490,6 +526,7 @@ public final class S5MineMap {
         S5MineMap snow2 = generateSnowMountain(seed + 14, SNOW2, "설산 2층", 2);
         S5MineMap snow3 = generateSnowMountain(seed + 15, SNOW3, "설산 3층", 3);
         S5MineMap snowTown = generateSnowTown(seed + 16);
+        S5MineMap road = generateRoyalRoad(seed + 17); // [2026-10-27] 왕도 가는 길
 
         Portal mouth = null, north = null, south = null, west = null, east = null;
         for (Portal p : field.portals) {
@@ -625,6 +662,12 @@ public final class S5MineMap {
             out.put(sm.id, relink(tmp, retarget(tmp, aboveIds[i], new int[] { aboveMaps[i].spawnX, aboveMaps[i].spawnY }), null));
         }
         out.put(SNOWTOWN, relink(snowTown, retarget(snowTown, SNOW3, besidePortal(snow3, SNOWTOWN)), null));
+        // [2026-10-27] 설산 마을 서문 <-> 왕도 가는 길 <-> 왕도 동문(맨 뒤에 넣어 앞 맵들의 몬스터 자리는 그대로)
+        S5MineMap twn = out.get(SNOWTOWN), cty = out.get(CITY);
+        S5MineMap rd = relink(road, retarget(road, SNOWTOWN, besidePortal(twn, ROYALROAD)), null);
+        out.put(ROYALROAD, relink(rd, retarget(rd, CITY, besidePortal(cty, ROYALROAD)), null));
+        out.put(SNOWTOWN, relink(twn, retarget(twn, ROYALROAD, besidePortal(road, SNOWTOWN)), twn.npcs));
+        out.put(CITY, relink(cty, retarget(cty, ROYALROAD, besidePortal(road, CITY)), cty.npcs));
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
@@ -635,6 +678,7 @@ public final class S5MineMap {
         S5MineMap nm = out.get(NORTH);
         placeNpc(nm, nm.dockX(), nm.dockY() - 3, "blackmarket", "암상인", "쉿... 설산 마을 장인 물건이지. 값은 세 배. 싫으면 올라가서 사든가. 15분이 되면 난 사라진다네.");
         for (Npc n : nm.npcs) if ("blackmarket".equals(n.kind)) nm.safe.add(new int[] { n.x, n.y, 3 }); // 노점 앞도 안전지대
+        ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -1275,14 +1319,62 @@ public final class S5MineMap {
         for (int[] g : gates) t[g[1]][g[0]] = 'G';
         t[h - 1][vx] = 'G';
         List<Portal> portals = new ArrayList<>();
-        String[] gateNames = { "북문", "동문", "서문" };
-        for (int i = 0; i < gates.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
+        String[] gateNames = { "북문", "동문" };
+        for (int i = 0; i < gateNames.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
+        portals.add(new Portal(gates[2][0], gates[2][1], 'G', ROYALROAD, 0, 0, "서문 -- 왕도 가는 길")); // [2026-10-27] 설산에서 내려가 왕도로(좌표는 buildWorld)
         portals.add(new Portal(vx, h - 1, 'G', SNOW3, 0, 0, "설산 3층으로 내려가기"));
         S5MineMap m = new S5MineMap(SNOWTOWN, "설산 마을", false, w, h, vx, vy + vr + 2, t, new byte[h][w], portals);
         m.villageX = vx;
         m.villageY = vy;
         m.safe.add(new int[] { vx, vy, 30 });
         return m;
+    }
+
+    /** [2026-10-27] 왕도 가는 길(260x44) -- "설산에서 내려가면 왕도 아스테리아, 왕도 가는 길을 긴 길로". 동쪽 끝 G = 설산 마을 서문, 서쪽 끝 G = 왕도 동문.
+     *  동쪽 3할은 눈 덮인 산길(눈밭/소나무/바위), 가운데는 바위 고원과 숲(흙길), 왕도에 가까운 서쪽 3할 남짓은 들판 사이 돌 포장 대로.
+     *  동에서 서로 굽이치는 3칸 길이 끝까지 이어진다. 한기 없음. 몬스터는 설산 쪽일수록 강하다(S5MineMobs.tierAt). */
+    static S5MineMap generateRoyalRoad(long seed) {
+        int w = 260, h = 44;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 91), wood = new Noise(seed * 31 + 92), rich = new Noise(seed * 31 + 93);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double e = (double) x / w, rk = rock.fbm(x / 14.0, y / 14.0), wd = wood.fbm(x / 11.0, y / 11.0);
+            char c;
+            if (e > 0.7) c = rk > 0.6 ? '^' : wd > 0.6 ? (r.nextDouble() < 0.3 ? 'Y' : 'n') : (r.nextDouble() < 0.03 ? 'Y' : 'n');
+            else if (e > 0.35) c = rk > 0.64 ? '^' : rk > 0.58 ? ':' : wd > 0.6 ? (r.nextDouble() < 0.35 ? 'T' : '.') : '.';
+            else c = rk > 0.7 ? ':' : wd > 0.66 ? (r.nextDouble() < 0.3 ? 'T' : '.') : '.';
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        int py = h / 2;
+        int[] pathY = new int[w];
+        for (int x = w - 2; x >= 1; x--) {
+            if (r.nextDouble() < 0.22) py += r.nextBoolean() ? 1 : -1;
+            py = Math.max(4, Math.min(h - 5, py));
+            double e = (double) x / w;
+            char rc = e > 0.7 ? 'n' : e > 0.35 ? ',' : 's';
+            for (int dy = -1; dy <= 1; dy++) t[py + dy][x] = rc;
+            pathY[x] = py;
+        }
+        int ey = pathY[w - 2], wy = pathY[1];
+        t[ey][w - 1] = 'G';
+        t[wy][0] = 'G';
+        int sx = w - 2, sy = ey;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(w - 1, ey, 'G', SNOWTOWN, 0, 0, "설산 마을 서문으로"));
+        portals.add(new Portal(0, wy, 'G', CITY, 0, 0, "왕도 아스테리아 동문"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2 || x <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * ((double) x / w) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
+        return new S5MineMap(ROYALROAD, "왕도 가는 길", false, w, h, sx, sy, t, o, portals);
     }
 
     /** [2026-10-24] 모래폭풍 너머 초원(140x140): 풀밭, 드문드문 숲과 바위. 남쪽 가운데 -> 사막 북쪽 끝, 남에서 북으로 굽이치는 흙길 끝 -> 왕도 남문. */
@@ -1338,8 +1430,9 @@ public final class S5MineMap {
             t[y][x] = r.nextDouble() < 0.08 ? 'T' : '.';
         }
         // 붉은 지붕 건물 블록(대로/광장에서 떨어진 곳), 건물 앞은 돌길
-        for (int by = wt + 4; by < h - wt - 8; by += 11) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
-            int bw = 6 + r.nextInt(2), bh = 5 + r.nextInt(2);
+        // [2026-10-27] "왕도 내 건물 높게, 대도시처럼" -- 블록을 세로로 길게(8~10칸): 화면이 위 두 줄은 지붕, 그 아래는 층마다 창이 난 벽, 맨 아래는 1층 앞면으로 그린다.
+        for (int by = wt + 4; by < h - wt - 12; by += 14) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
+            int bw = 6 + r.nextInt(3), bh = 8 + r.nextInt(3);
             boolean clear = true;
             for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++) {
                 if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
@@ -1369,7 +1462,7 @@ public final class S5MineMap {
         t[c][0] = 'G';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 초원으로 나가기"));
-        portals.add(new Portal(w - 1, c, 'G', null, 0, 0, "동문 (굳게 닫혀 있다)"));
+        portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 설산으로 가는 길")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
         portals.add(new Portal(0, c, 'G', null, 0, 0, "서문 (굳게 닫혀 있다)"));
         portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
         int sx = c, sy = h - wt - 2;

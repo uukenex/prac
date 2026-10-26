@@ -8673,8 +8673,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.ISLAND, 13);
         MINE_MIN_LV.put(S5MineMap.CASTLE, 17);
         MINE_MIN_LV.put(S5MineMap.NORTH, 21);
-        MINE_MIN_LV.put(S5MineMap.STEPPE, 17); // [2026-10-24] 모래폭풍 너머 초원(몬스터 6~7단계) -- 왕도도 같은 길이라 17
-        MINE_MIN_LV.put(S5MineMap.CITY, 17);
+        // [2026-10-24] 모래폭풍 너머 초원(몬스터 6~7단계) -- 왕도도 같은 길이라 17. [2026-10-27] 초원 9~11단계로 강해져 33, 왕도도 33.
+        MINE_MIN_LV.put(S5MineMap.STEPPE, 33);
+        MINE_MIN_LV.put(S5MineMap.CITY, 33);
+        MINE_MIN_LV.put(S5MineMap.ROYALROAD, 45); // [2026-10-27] 왕도 가는 길(11~13단계) -- "레벨 제한 조금 높게"
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
@@ -9022,8 +9024,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", d);
                 m.put("name", S5MineMap.townName(d)); // [2026-10-25] 마을 이름(설원 = 설원 마을)
-                if (S5MineMap.CITY.equals(d)) m.put("dev", true);
-                if (S5MineMap.SNOWTOWN.equals(d)) m.put("needVisit", true); // [2026-10-26] 설산을 넘어 한 번 가 본 뒤에만(화면도 그때만 보여 준다)
+                if (S5MineMap.SNOWTOWN.equals(d) || S5MineMap.CITY.equals(d)) m.put("needVisit", true); // [2026-10-26] 한 번 걸어서 가 본 뒤에만(화면도 그때만), [2026-10-27] 왕도도
                 gl.add(m);
             }
             out.put("guideTo", gl);
@@ -9031,6 +9032,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-26] 한기 단계와 안전지대(모닥불) {x, y, 반지름} -- 화면이 모닥불을 그리고, 한기 맵이면 1초마다 mineColdTick
         out.put("cold", map.cold());
         out.put("safe", map.safeZones());
+        out.put("citizens", map.citizens()); // [2026-10-27] 왕도 주민이 오가는 길(말풍선만)
         return out;
     }
 
@@ -9606,11 +9608,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         out.put("visitedSnowtown", items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0); // [2026-10-26] 이동 안내원 목적지
+        out.put("visitedCity", items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0 || isMineAdmin(userName)); // [2026-10-27]
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
-                    S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN }) {
+                    S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD }) {
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -9955,12 +9958,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("silent", true);
             return out;
         }
-        if (!ship && !tele && (S5MineMap.STEPPE.equals(target.id) || S5MineMap.CITY.equals(target.id)) && !isMineAdmin(userName)) { // [2026-10-24] 아직 개발 중 -- 관리자만
-            dao.updateMinePos(userName, map.id, x, y, now);
-            out.put("locked", true);
-            out.put("message", "🌪️ 모래폭풍이 너무 거세서 지나갈 수 없어요. (개발 중)");
-            return out;
-        }
+        // [2026-10-24] 초원/왕도는 관리자만이었다가 [2026-10-27] "왕도 일반 플레이어들에게 오픈" -- 막지 않는다.
         String block = mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -9974,6 +9972,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
         if (S5MineMap.SNOWTOWN.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) // [2026-10-26] 설산을 넘어 처음 도착 -- 이제 이동 안내원으로 오갈 수 있다
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_SNOWTOWN, 1);
+        if (S5MineMap.CITY.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1) // [2026-10-27] 왕도도 걸어서 한 번 도착해야 이동 안내원 목적지
+            dao.upsertMineItem(userName, MINE_ITEM_VISIT_CITY, 1);
         out.put("ok", true);
         out.put("message", (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요." + (MINE_TELE_GOLD > 0 ? " (금광석 " + MINE_TELE_GOLD + "개 사용)" : "") : "🚪 " + target.name + "(으)로 이동했어요.")
                 + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ") -- 몬스터가 강하니 조심하세요!" : ""));
@@ -10159,7 +10159,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap.Npc g = map.guide();
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
-        if (S5MineMap.CITY.equals(dest) && !isMineAdmin(userName)) { out.put("message", "🧭 그곳으로 가는 길은 아직 열리지 않았어요."); return out; }
+        if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 초원이나 왕도 가는 길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
         if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 설산을 넘어 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
         if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
         S5MineMap target = S5MineMap.get(dest);
@@ -10187,6 +10187,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  그 사이 눈바람(S5MineMap.blizzardBetween)이 불었는데 안전지대(map.safeAt) 밖이면 최대 체력 10%를 더 깎는다. 깎을 때마다 체력을 저장하므로
     //  추위 속에선 자연 회복도 없다(저장 + 대기). 추위로 쓰러지면 부활 지점에서 깨어난다(최대 체력 잠금은 몬스터에게 쓰러질 때만).
     static final String MINE_ITEM_VISIT_SNOWTOWN = "VISIT_SNOWTOWN";
+    static final String MINE_ITEM_VISIT_CITY = "VISIT_CITY"; // [2026-10-27] 왕도에 한 번 걸어서 도착(이동 안내원 목적지)
     static final String MINE_ITEM_COAT1 = "COAT1";
     static final String MINE_ITEM_COAT2 = "COAT2";
     static final String MINE_ITEM_COAT_SLOT = "COAT_SLOT"; // 0 = 안 입음, 1 = 방한 외투, 2 = 두꺼운 방한 외투

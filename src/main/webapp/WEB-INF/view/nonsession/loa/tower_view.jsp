@@ -5647,6 +5647,15 @@ var TowerMine = (function () {
         else { px(g, '#3b5a7a', 3, 5, 4, 4); px(g, '#3b5a7a', 9, 5, 4, 4); px(g, '#efe4c8', 5, 5, 1, 4); px(g, '#efe4c8', 11, 5, 1, 4); }
       });
     });
+    // [2026-10-27] "왕도 건물 높게, 대도시처럼" -- 높은 건물의 층(창 두 개가 난 벽 + 층 띠, 몇몇 창은 불이 켜져 있다)
+    tiles.facade = [1, 2].map(function (s) {
+      return tile('#e6d9b8', [['#d9caa3', 6]], 170 + s, function (g) {
+        px(g, '#b8a47a', 0, 0, T, 1); px(g, '#cdbb90', 0, 15, T, 1);
+        px(g, '#4a5a70', 2, 3, 4, 8); px(g, '#4a5a70', 10, 3, 4, 8);
+        px(g, s === 2 ? '#ffd66b' : '#7aa0c8', 3, 4, 2, 6); px(g, s === 2 ? '#ffe9a8' : '#9cc0e0', 11, 4, 2, 6);
+        px(g, '#8c7a58', 1, 11, 6, 1); px(g, '#8c7a58', 9, 11, 6, 1);
+      });
+    });
     tiles.church = [1, 2].map(function (s) {
       return tile('#6f7f99', [['#61708a', 8]], 150 + s, function (g) {
         for (var y = 2; y < T; y += 4) px(g, '#55637c', 0, y, T, 1);
@@ -5820,8 +5829,15 @@ var TowerMine = (function () {
       case 'T': return tiles.tree[v % 2];
       case 's': return tiles.stone[v % 2];
       case 'W': return tiles.castleWall[v % 2];
-      case 'K': return cellAt(x, y + 1) === 'K' ? tiles.roof[v % 2] : tiles.house2[v % 2]; // 아래가 길이면 건물 앞면
-      case 'Q': return cellAt(x, y + 1) === 'Q' ? tiles.church[cellAt(x, y - 1) !== 'Q' && (x - (map.w >> 1)) % 6 === 0 ? 1 : 0] : tiles.churchWall[v % 2]; // 십자가는 지붕 맨 윗줄에 6칸마다
+      case 'K': { // 아래가 길이면 1층 앞면, [2026-10-27] 위 두 줄은 지붕, 그 사이는 층마다 창(높은 건물)
+        if (cellAt(x, y + 1) !== 'K') return tiles.house2[v % 2];
+        var ku = 0; while (ku < 2 && cellAt(x, y - ku - 1) === 'K') ku++;
+        return ku < 2 ? tiles.roof[v % 2] : tiles.facade[v % 5 === 0 ? 1 : 0];
+      }
+      case 'Q': { // 십자가는 지붕 맨 윗줄에 6칸마다, [2026-10-27] 위 세 줄만 지붕, 그 아래는 아치 창이 줄지은 높은 벽면
+        var qu = 0; while (qu < 3 && cellAt(x, y - qu - 1) === 'Q') qu++;
+        return qu < 3 && cellAt(x, y + 1) === 'Q' ? tiles.church[qu === 0 && (x - (map.w >> 1)) % 6 === 0 ? 1 : 0] : tiles.churchWall[v % 2];
+      }
       case 'X': return tiles.tele[wf];
       case 'u': return tiles.seaSand[v % 2];
       case 'p': return tiles.palace[v % 2];
@@ -6426,8 +6442,9 @@ var TowerMine = (function () {
     { id: 'snow3', name: '설산 3층', x: 262, y: -68, fill: '#c8d8ea', ink: '#1a2a3a' },
     { id: 'snow2', name: '설산 2층', x: 262, y: -12, fill: '#d6e2f0', ink: '#1a2a3a' },
     { id: 'snow1', name: '설산 1층', x: 262, y: 44, fill: '#e2ebf5', ink: '#1a2a3a' },
-    { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10', dev: true },
-    { id: 'steppe', name: '북쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a', dev: true },
+    { id: 'royalroad', name: '왕도 가는 길', x: 160, y: -40, fill: '#b8a27a', ink: '#2a1d10' }, // [2026-10-27] 설산 마을 서문 -> 왕도 동문
+    { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10' }, // [2026-10-27] 일반 플레이어에게 열림
+    { id: 'steppe', name: '북쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a' },
     { id: 'cave3', name: '광산 동굴 3층', x: 52, y: 52, fill: '#2a2230', ink: '#e8d8ff' },
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
@@ -6457,6 +6474,7 @@ var TowerMine = (function () {
     var svg = '<svg viewBox="0 -150 320 610" class="mine-world" role="img" aria-label="광산 전체 지도">'
         + '<rect x="0" y="-150" width="320" height="610" fill="#1d1730"/>'
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
+        + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk)
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
@@ -6508,7 +6526,8 @@ var TowerMine = (function () {
   // [2026-10-25] 이동 안내원 -- 안내원이 있는 마을끼리 무료로(왕도는 관리자만 보임)
   function guideHtml(n) {
     var admin = !!(st && st.adminMaps);
-    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && st.visitedSnowtown)); }); // [2026-10-26] 설산 마을은 한 번 가 본 뒤
+    // [2026-10-26] 설산 마을, [2026-10-27] 왕도는 한 번 걸어서 가 본 뒤에만
+    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && (d.id === 'city' ? st.visitedCity : st.visitedSnowtown))); });
     // [2026-10-25] 마을(평원 마을/왕도)끼리만 -- 왕도 길이 아직 안 열린 유저에겐 갈 곳이 없다고 안내
     if (!dests.length) return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
         + talkBlock(n, '지금은 모셔다 드릴 다른 마을이 없어요. 새 마을로 가는 길이 열리면 그때 꼭 찾아 주세요!');
@@ -6874,6 +6893,31 @@ var TowerMine = (function () {
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
   }
+  // [2026-10-27] 왕도 주민 -- "왕도 내 움직이는 NPC(말풍선으로만 말하고 대화 창 없음)". 서버가 준 길(칸 목록)을 시각으로 왕복해서
+  //  모든 화면에서 같은 자리에 보인다. 길을 막지 않고(지나갈 수 있음), 7초마다 셋 중 하나꼴로 3.6초 말풍선. 외형은 번호로 정해진다.
+  var CIT_LINES = ['왕도 아스테리아에 오신 걸 환영해요!', '분수대 물이 오늘따라 맑네요~', '성당 신부님께 기도하면 여기서 깨어난대요.', '텔레포트 게이트가 공짜래요!',
+    '동문 밖 길엔 와이번이 나온대요...', '초원 오크들이 요즘 부쩍 사나워졌어요.', '왕도 대장장이 솜씨가 최고예요!', '설산을 넘어오셨다고요? 대단해요!',
+    '빵 사러 가는 길이에요~', '기사단이 순찰 중이니 안심하세요.', '어젯밤 별빛석이 떨어지는 걸 봤어요!', '광산에서 미스릴을 캤다는 소문이 있어요.',
+    '오늘 장 서는 날인가요?', '서문은 왜 늘 닫혀 있을까요?'];
+  var citCache = {};
+  function citPos(route, i, t) {
+    var SL = 1400, n = route.length, period = Math.max(1, (n - 1) * 2), s = Math.floor(t / SL) + mix(i, 99) % period, f = (t % SL) / SL;
+    function at(k) { k = ((k % period) + period) % period; return route[k < n ? k : period - k]; }
+    var a = at(s), b = at(s + 1), ax = a % map.w, ay = Math.floor(a / map.w), bx = b % map.w, by = Math.floor(b / map.w), k2 = Math.min(1, f / 0.8);
+    var dir = bx > ax ? 'right' : bx < ax ? 'left' : by < ay ? 'up' : 'down';
+    return { x: ax + (bx - ax) * k2, y: ay + (by - ay) * k2, dir: dir, moving: k2 < 1 && (ax !== bx || ay !== by) };
+  }
+  function citLook(i) {
+    var HAIR = ['#2b1d16', '#7a4a26', '#f0d060', '#d8dde6', '#a83a2a', '#3a3a3a'],
+        TOP = ['#c0392b|robe', '#2e8b57|robe', '#3f5fd1', '#f4f1e8|hanbok', '#7b3fa0', '#e0b030', '#3a3f4a|armor', '#8a5a32'],
+        HAT = ['', '', '', '#e8c84a|straw', '#222630|pirate', '#9aa3ad|helmet', '#4b3a9a|wizard'], BOT = ['#1f1f24', '#e8e4da', '#a8323a', '#3a2b22', '#2c45a3'];
+    return { gender: mix(i, 1) % 2, hair: HAIR[mix(i, 2) % HAIR.length], top: TOP[mix(i, 3) % TOP.length], hat: HAT[mix(i, 4) % HAT.length], bottom: BOT[mix(i, 5) % BOT.length], shoes: '' };
+  }
+  function citSprite(i, dir, step) {
+    var k = i + dir + step;
+    if (!citCache[k]) citCache[k] = MineChar.sprite(dir, step, 0, citLook(i));
+    return citCache[k];
+  }
   /** 모닥불(안전지대 가운데) -- 장작 + 일렁이는 불꽃. */
   function drawFire(cx, cy, TS, now) {
     var s = TS / 16, f = Math.sin(now / 90) * 0.6 + Math.sin(now / 53) * 0.6;
@@ -7179,6 +7223,17 @@ var TowerMine = (function () {
           ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - 6 * scale);
           ctx.fillStyle = ty.boss ? '#ff4a4a' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
         }
+      }
+    }
+    // [2026-10-27] 왕도 주민(길을 왕복, 가끔 말풍선)
+    if (map.citizens && map.citizens.length) {
+      var tc = nowSrv(), cwin = Math.floor(tc / 7000);
+      for (var ci = 0; ci < map.citizens.length; ci++) {
+        var cp = citPos(map.citizens[ci], ci, tc), cxp = Math.round(cp.x * TS - camX), cyp = Math.round(cp.y * TS - camY);
+        if (cxp < -TS || cyp < -TS * 2 || cxp > W || cyp > H) continue;
+        ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(cxp + 3 * scale, cyp + 13 * scale, 10 * scale, 3 * scale);
+        ctx.drawImage(citSprite(ci, cp.dir, cp.moving ? 1 + Math.floor(now / 170) % 2 : 0), cxp, cyp - 3 * scale, TS, TS);
+        if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) drawBubble(CIT_LINES[mix(ci + 7, cwin) % CIT_LINES.length], cxp + TS / 2, cyp - 6 * scale);
       }
     }
     // [2026-10-24] 다른 유저(이름 없이) -- 1초마다 받은 칸 사이를 걸어서, 인사하면 말풍선

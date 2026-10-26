@@ -86,7 +86,16 @@ public final class S5MineMobs {
         new Type("서리 뱀", 12, "snake", "#8fb8e0", S5MineMap.SNOW2, S5MineMap.SNOW3),
         new Type("눈보라 정령", 12, "flyer", "#e8f4ff", S5MineMap.SNOW2, S5MineMap.SNOW3),
         new Type("서리 거인", 13, "human", "#7fa8d0", S5MineMap.SNOW3),
-        new Type("얼음 골렘", 13, "human", "#bfe6ff", S5MineMap.SNOW3)
+        new Type("얼음 골렘", 13, "human", "#bfe6ff", S5MineMap.SNOW3),
+        // [2026-10-27] "사막 횡단 후 왕도까지 이어지는 곳 더 강하게"(초원 9~11단계) + 왕도 가는 길(11~13단계, 설산 쪽일수록 강함)
+        new Type("켄타우로스", 9, "quad", "#a07a4a", S5MineMap.STEPPE),
+        new Type("오크 족장", 10, "human", "#4a6a2a", S5MineMap.STEPPE),
+        new Type("그리폰", 11, "flyer", "#c8a060", S5MineMap.STEPPE, S5MineMap.ROYALROAD),
+        new Type("몰락한 기사", 11, "human", "#6a6a7a", S5MineMap.ROYALROAD),
+        new Type("산악 오우거", 12, "human", "#8a7a5a", S5MineMap.ROYALROAD),
+        new Type("와이번", 12, "flyer", "#5a8a5a", S5MineMap.ROYALROAD),
+        new Type("서리 와이번", 13, "flyer", "#9fc8e8", S5MineMap.ROYALROAD),
+        new Type("바위 거인", 13, "human", "#7a7268", S5MineMap.ROYALROAD)
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. */
@@ -117,7 +126,9 @@ public final class S5MineMobs {
             case S5MineMap.CAVE2: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 6 : 7;
             case S5MineMap.CAVE3: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 8 : 9;
             case S5MineMap.SEAROAD: return y > m.h * 0.5 ? 4 : 5; // 용궁(북쪽)에 가까울수록
-            case S5MineMap.STEPPE: return y > m.h * 0.5 ? 6 : 7; // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0)
+            // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0). [2026-10-27] 6~7단계 -> 9~11단계("사막 횡단 후 왕도까지 더 강하게")
+            case S5MineMap.STEPPE: return y > m.h * 0.66 ? 9 : y > m.h * 0.33 ? 10 : 11;
+            case S5MineMap.ROYALROAD: return x > m.w * 0.66 ? 13 : x > m.w * 0.33 ? 12 : 11; // [2026-10-27] 설산(동쪽) 쪽일수록 강하다
             case S5MineMap.SNOW1: return y > m.h * 0.5 ? 10 : 11; // [2026-10-26] 설산 -- 위로 오를수록 강하다(설산 마을은 없음)
             case S5MineMap.SNOW2: return y > m.h * 0.5 ? 11 : 12;
             case S5MineMap.SNOW3: return y > m.h * 0.5 ? 12 : 13;
