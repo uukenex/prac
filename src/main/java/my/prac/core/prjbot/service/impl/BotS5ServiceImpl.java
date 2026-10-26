@@ -9469,7 +9469,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //   - 어둠가스(전맵기): 30초마다, 성당 옛터 어디에 있든 공격력 x1.2.
     //   마법 피해는 화면이 1초마다 부르는 mineColdTick(환경 턴)에서 계산한다(방한 외투면 2배). 마법으로 쓰러지면 전투 사망(최대 체력 잠금 +1).
     //  같은 날 "보스 공통 맵 초기화 때 1번만" -- 처음엔 1시간 뒤 다시였다가 주기마다 한 번(mineBossDead(type), MINE_RAID_KILLED).
-    //  보상: 타락한 대주교의 인장 1 + 50% 다이아몬드 2 + 30% 별빛석(성유물 조각은 없앴다).
+    //  보상: 15% 타락한 대주교의 인장 1 + 50% 다이아몬드 2 + 30% 별빛석(성유물 조각은 없앴다).
     private static final long MINE_FAST_STEP_MS = 50L;
     private static final long MINE_RAID_AWAKE_MS = 15_000L;
     private static final long MINE_RAID_SUMMON_MS = 20_000L;
@@ -9512,12 +9512,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (n > 0) { out.put("summoned", n); out.put("message", "👿 타락한 대주교가 수하 " + n + "명을 불러냈어요! 엄청 빠르게 쫓아와요!"); }
     }
 
-    /** 타락한 대주교 보상: 인장 1(반드시) + 50% 다이아몬드 2 + 30% 별빛석 1. [2026-10-28] 같은 날 성유물 조각은 없앴다("성유물 조각은 없애자"). */
+    /** 타락한 대주교 보상: 15% 인장 1 + 50% 다이아몬드 2 + 30% 별빛석 1. [2026-10-28] 성유물 조각은 없앴고("성유물 조각은 없애자"),
+     *  인장은 처음 반드시였다가 같은 날 "확률 드랍 15% 정도". */
+    private static final int MINE_SEAL_PCT = 15;
+
     private List<HashMap<String, Object>> mineRaidDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        dao.addUserOre(userName, S5MineMap.SEAL_CODE, 1);
-        drops.add(mineDrop(S5MineMap.SEAL_GRADE, S5MineMap.SEAL_NAME, 1));
-        msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!");
+        if (RND.nextInt(100) < MINE_SEAL_PCT) {
+            dao.addUserOre(userName, S5MineMap.SEAL_CODE, 1);
+            drops.add(mineDrop(S5MineMap.SEAL_GRADE, S5MineMap.SEAL_NAME, 1));
+            msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!!");
+        }
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 2));
@@ -9773,6 +9778,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("visitedSnowtown", items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0); // [2026-10-26] 이동 안내원 목적지
         out.put("visitedCity", items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0 || isMineAdmin(userName)); // [2026-10-27]
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
+        if (items.getOrDefault(MINE_ITEM_NOTICE, 0) < MINE_NOTICE_ID) { // [2026-10-28] 아직 안 본 광산 소식(확인을 누르면 mineNoticeAck)
+            out.put("noticeId", MINE_NOTICE_ID);
+            out.put("notice", MINE_NOTICE_TEXT);
+        }
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
@@ -10963,6 +10972,23 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineTakeCost(userName, new String[][] { { S5MineMap.ORE_CODES[0], String.valueOf(MINE_REFINE_COPPER) } }, n);
         dao.addUserOre(userName, S5MineMap.ORE_CODES[1], n);
         return mineGearResult(userName, true, "🔥 구리 광석 " + (n * MINE_REFINE_COPPER) + "개를 녹여 철광석 " + n + "개를 얻었어요!");
+    }
+
+    // [2026-10-28] "광산 진입 시 다운스케일링과 신규 맵이 추가되었다고 간략한 공지 한 번" -- 유저마다 한 번(NOTICE_SEEN < MINE_NOTICE_ID면 mineState가 내려 준다).
+    //  새 소식을 띄우려면 MINE_NOTICE_ID를 올리고 글을 바꾼다.
+    static final String MINE_ITEM_NOTICE = "NOTICE_SEEN";
+    static final int MINE_NOTICE_ID = 1;
+    static final String MINE_NOTICE_TEXT = "⚖️ 전체 다운스케일 -- 체력·공격력·경험치 숫자가 작아졌어요. 레벨과 밸런스는 그대로, 쌓인 경험치는 새 기준으로 바꿔 두었어요.\n"
+            + "🏔️ 새 지역 -- 북쪽 끝 설원 → 설산 1~3층 → 설산 마을 → 왕도 가는 길 → 왕도 아스테리아(이제 누구나), 왕도 가는 길 북쪽 성당 옛터(타락한 대주교, 권장 Lv.80)\n"
+            + "❄️ 설산엔 한기와 눈바람이 있어요. 🔥 모닥불 곁이 안전지대예요!";
+
+    /** 광산 소식 확인 -- 다시 안 띄운다. */
+    @Override
+    public HashMap<String, Object> mineNoticeAck(String userName, int id) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", mineAccess(userName) && id > 0 && id <= MINE_NOTICE_ID);
+        if (Boolean.TRUE.equals(out.get("ok"))) dao.upsertMineItem(userName, MINE_ITEM_NOTICE, id);
+        return out;
     }
 
     /** 오늘의 구리 납품 -- 하루 한 번 구리 MINE_DELIVER_COPPER개 -> 오늘 요일석 + 곡괭이 내구도. */

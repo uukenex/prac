@@ -6561,6 +6561,19 @@ var TowerMine = (function () {
     if (busy || !map) return;
     travel('/api/tower-mine-guide?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&dest=' + encodeURIComponent(dest) + verQ(), '이동하지 못했어요.');
   }
+  // [2026-10-28] "광산 진입 시 다운스케일링과 신규 맵 추가 간략 공지 한 번" -- 서버가 아직 안 본 소식을 주면 들어올 때 한 번 띄우고, 확인을 누르면 서버에 기록(다시 안 뜸)
+  var noticeShown = false, noticeData = null;
+  function noticeHtml() {
+    var d = noticeData || {};
+    return npcHead('📢 광산 소식', false)
+        + '<div class="mine-ask" style="font-size:13px;font-weight:600;line-height:1.7">' + escAttr(d.text || '').replace(/\n/g, '<br>') + '</div>'
+        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.noticeOk()">확인</button></div>';
+  }
+  function noticeOk() {
+    var d = noticeData;
+    closeSmith();
+    if (d && d.id) api('/api/tower-mine-notice-ack?id=' + d.id).catch(function () { });
+  }
   // [2026-10-25] "마을 이동을 누르면 브라우저 알림창이 뜬다" -- 게임 화면 안의 확인 창(NPC 창 모양)
   var askCfg = null;
   function ask(title, text, okLabel, onOk) {
@@ -6761,6 +6774,10 @@ var TowerMine = (function () {
     }
     if (smithView === 'coat') { // [2026-10-26] 방한 외투
       el.smith.innerHTML = coatHtml(n);
+      return;
+    }
+    if (smithView === 'notice') { // [2026-10-28] 광산 소식
+      el.smith.innerHTML = noticeHtml();
       return;
     }
     if (smithView === 'ask') {
@@ -7485,7 +7502,9 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; /* [2026-10-26] 한기, [2026-10-28] 대주교 */ others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; /* [2026-10-26] 한기, [2026-10-28] 대주교 */
+    if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
+    others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
@@ -7681,7 +7700,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

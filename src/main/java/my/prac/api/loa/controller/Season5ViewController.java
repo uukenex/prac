@@ -831,6 +831,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-28] 웹 광산 진입 공지 확인. */
+    @GetMapping("/api/tower-mine-notice-ack")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineNoticeAck(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "id", defaultValue = "0") int id) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineNoticeAck(userName, id));
+    }
+
     @GetMapping("/api/tower-mine-deliver")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineDeliver(@RequestParam(value = "userName", defaultValue = "") String userName) {
