@@ -8712,6 +8712,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 지금 주기의 맵이 준비됐으면 null, 리셋 중이면 안내 응답. 주기가 바뀌었으면 리셋을 시작한다. */
     private HashMap<String, Object> mineGate() {
         minePickRefill(); // [2026-10-24] 그날 아직 0시 내구도 회복을 안 했으면(서버가 0시에 꺼져 있었던 경우)
+        mineRescaleOnce(); // [2026-10-28] 다운스케일 경험치 1회 변환
         int want = S5MineMap.cycleAt(System.currentTimeMillis());
         if (!MINE_RESETTING.get() && mineAppliedCycle == want) return null;
         if (!MINE_RESETTING.get()) {
@@ -8897,7 +8898,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.RELIC_CODES[0], S5MineMap.RELIC_CODES[1] };
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.SEAL_CODE };
         for (String c : sc) {
             HashMap<String, Object> o = new HashMap<>();
             o.put("grade", mineCodeGrade(c));
@@ -9068,10 +9069,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ---- [2026-10-24] 광산 전투(바람의나라식: 몬스터 바로 옆에서 공격, 몬스터 선공 없음 -- 맞으면 그 자리에 멈춰 반격) ----
     // "광산 전용 레벨, 몬스터 보상은 광석/보석 드랍"(+ 레벨을 올릴 경험치). 몬스터 체력/죽음/멈춤은 서버 메모리(MINE_MOB_STATE, 맵 리셋 때 비움),
     // 유저 레벨/경험치/체력은 TBOT_S5_MINE_USER(M_LV, M_EXP, M_HP, M_HP_AT_MS, M_KILLS -- S5_MINE_COMBAT.sql).
-    //  레벨 L: 최대 체력 40 x 1.18^(L-1), 공격력 6 x 1.18^(L-1), 다음 레벨까지 경험치 15 x 1.32^(L-1). 체력은 60초에 다 찬다. 쓰러지면 평원 마을에서 깨어난다(잃는 것 없음).
-    // [2026-10-28] 60 -> 90("성당 옛터 대주교 80레벨 이상 권장"). 90에서 멈춘다 -- 레벨 안 경험치(M_EXP NUMBER(12) = 1조 미만)가
-    //  89레벨 필요치(약 6천억)까지만 쌓여 넘치지 않는다(92레벨쯤부터 넘침, 더 올리려면 컬럼을 늘려야 함).
-    private static final int MINE_LV_MAX = 90;
+    //  레벨 L: 최대 체력 40 x 1.09^(L-1), 공격력 6 x 1.09^(L-1), 다음 레벨까지 경험치 15 x 1.12^(L-1). 체력은 60초에 다 찬다. 쓰러지면 평원 마을에서 깨어난다(잃는 것 없음).
+    //  [2026-10-28] "체력 최대치/한 번에 얻는 경험치를 낮추고 전체적 다운스케일" -- 예전 1.18 / 1.18 / 1.32에서 줄였다(몬스터도 S5MineMobs에서 같은 비율로).
+    //  저장된 레벨 안 경험치는 처음 한 번 새 필요치 비율로 바꾼다(mineRescaleOnce). 레벨 상한 60 -> 99(숫자가 작아져 M_EXP NUMBER(12) 걱정 없음).
+    private static final int MINE_LV_MAX = 99;
     private static final long MINE_HP_FULL_MS = 60_000L;
     private static final long MINE_ATTACK_GAP_MS = 380L;
     private static final long MINE_MOB_FREEZE_MS = 8_000L;
@@ -9093,9 +9094,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         return map.version() + ":" + id;
     }
 
-    static int mineHpMax(int lv) { return (int) Math.round(40 * Math.pow(1.18, lv - 1)); }
-    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.18, lv - 1)); }
-    static long mineExpNeed(int lv) { return Math.round(15 * Math.pow(1.32, lv - 1)); }
+    static int mineHpMax(int lv) { return (int) Math.round(40 * Math.pow(1.09, lv - 1)); }
+    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
+    static long mineExpNeed(int lv) { return Math.round(15 * Math.pow(1.12, lv - 1)); }
+
+    // [2026-10-28] 다운스케일 1회 변환 -- 레벨 안 경험치를 (새 필요치 / 예전 필요치) 비율로(바꾸지 않으면 다음 처치 때 레벨이 몇십씩 오른다).
+    //  배포 뒤 첫 광산 요청(mineGate)에서 한 번만 DB로 바꾸고 설정값 MINE_SCALE_VER = 2를 남긴다(서버를 다시 켜도 다시 안 함).
+    private static final String MINE_SCALE_KEY = "MINE_SCALE_VER";
+    private static volatile boolean mineScaleDone = false;
+
+    private void mineRescaleOnce() {
+        if (mineScaleDone) return;
+        synchronized (BotS5ServiceImpl.class) {
+            if (mineScaleDone) return;
+            try {
+                if (!"2".equals(dao.selectConfigValue(MINE_SCALE_KEY))) {
+                    int n = dao.rescaleMineExp();
+                    dao.upsertConfigValue(MINE_SCALE_KEY, "2", "web mine stat downscale (exp in level x 1.12^(L-1) / 1.32^(L-1)) done");
+                    System.out.println("[광산] 다운스케일 경험치 변환 " + n + "명");
+                }
+                mineScaleDone = true;
+            } catch (Exception e) {
+                System.out.println("[광산] 다운스케일 변환 실패: " + e.getMessage());
+            }
+        }
+    }
 
     private int mineLv(HashMap<String, Object> row) {
         return Math.max(1, Math.min(MINE_LV_MAX, intVal(row.get("M_LV"), 1)));
@@ -9193,7 +9216,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-28] 대주교 수하는 불러내기 전엔 없다(쓰러진 것으로 보낸다)
         for (S5MineMap.Mob mb : map.mobs()) if (S5MineMobs.TYPES.get(mb.type).minion && !seen.contains((long) mb.id)) list.add(new long[] { mb.id, 0, Long.MAX_VALUE / 2, mb.x, mb.y, 0 });
-        if (!map.mobs().isEmpty() && map.mobs().get(map.mobs().size() - 1).type == S5MineMobs.BOSS_TYPE && mineBossDead()) { // 동굴 3층 보스만(맵 리셋까지)
+        if (!map.mobs().isEmpty() && mineBossDead(map.mobs().get(map.mobs().size() - 1).type)) { // 보스(동굴 3층/대주교)는 맵 리셋까지
             long bid = map.mobs().size() - 1;
             list.removeIf(r -> r[0] == bid);
             list.add(new long[] { bid, 0, Long.MAX_VALUE / 2, 0, 0, 0 });
@@ -9218,6 +9241,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         return mineBossKilledCycle == S5MineMap.activeCycle();
+    }
+
+    // [2026-10-28] "젠은 맵 초기화 시점 1회만(보스 공통)" -- 타락한 대주교도 동굴 3층 보스처럼 주기마다 한 번(MINE_RAID_KILLED = "주기|유저").
+    private static final String MINE_RAID_KEY = "MINE_RAID_KILLED";
+    private static volatile int mineRaidKilledCycle = Integer.MIN_VALUE;
+
+    /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
+    private boolean mineBossDead(int type) {
+        if (type == S5MineMobs.BOSS_TYPE) return mineBossDead();
+        if (type != S5MineMobs.RAID_BOSS_TYPE) return false;
+        if (mineRaidKilledCycle == Integer.MIN_VALUE) {
+            try {
+                String v = dao.selectConfigValue(MINE_RAID_KEY);
+                mineRaidKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
+            } catch (Exception e) {
+                mineRaidKilledCycle = -1;
+            }
+        }
+        return mineRaidKilledCycle == S5MineMap.activeCycle();
     }
 
     private static S5MineMap.Mob mineBossOf(S5MineMap map) {
@@ -9298,7 +9340,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (e != null && !map.version().equals(e.mapVer)) { mineDisengageAll(userName); e = null; }
         // 보스 선공 -- 2칸 안에 들어오면 인식
         S5MineMap.Mob boss = mineBossOf(map);
-        if (boss != null && !(boss.type == S5MineMobs.BOSS_TYPE && mineBossDead()) && (e == null || !e.mobs.containsKey(boss.id))) {
+        if (boss != null && !mineBossDead(boss.type) && (e == null || !e.mobs.containsKey(boss.id))) {
             S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
             MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bt.hp()));
             int aggro = bt.stay ? 4 : 2; // [2026-10-28] 대주교는 4칸(풀리는 거리 5칸보다 안쪽)
@@ -9426,7 +9468,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     //   - 불벼락(화면 전체기): 12초마다, 대주교 12칸 안의 모든 유저에게 공격력 x2.5. 12칸 밖으로 피하면 안 맞는다.
     //   - 어둠가스(전맵기): 30초마다, 성당 옛터 어디에 있든 공격력 x1.2.
     //   마법 피해는 화면이 1초마다 부르는 mineColdTick(환경 턴)에서 계산한다(방한 외투면 2배). 마법으로 쓰러지면 전투 사망(최대 체력 잠금 +1).
-    //  대주교는 쓰러지면 1시간 뒤 다시 나타난다. 보상: 성유물 조각 3~5 + 25% 대주교의 인장 + 50% 다이아몬드 2 + 30% 별빛석.
+    //  같은 날 "보스 공통 맵 초기화 때 1번만" -- 처음엔 1시간 뒤 다시였다가 주기마다 한 번(mineBossDead(type), MINE_RAID_KILLED).
+    //  보상: 타락한 대주교의 인장 1 + 50% 다이아몬드 2 + 30% 별빛석(성유물 조각은 없앴다).
     private static final long MINE_FAST_STEP_MS = 50L;
     private static final long MINE_RAID_AWAKE_MS = 15_000L;
     private static final long MINE_RAID_SUMMON_MS = 20_000L;
@@ -9469,18 +9512,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (n > 0) { out.put("summoned", n); out.put("message", "👿 타락한 대주교가 수하 " + n + "명을 불러냈어요! 엄청 빠르게 쫓아와요!"); }
     }
 
-    /** 대주교 보상: 성유물 조각 3~5 + 25% 대주교의 인장 + 50% 다이아몬드 2 + 30% 별빛석 1. */
+    /** 타락한 대주교 보상: 인장 1(반드시) + 50% 다이아몬드 2 + 30% 별빛석 1. [2026-10-28] 같은 날 성유물 조각은 없앴다("성유물 조각은 없애자"). */
     private List<HashMap<String, Object>> mineRaidDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        int q = 3 + RND.nextInt(3);
-        dao.addUserOre(userName, S5MineMap.RELIC_CODES[0], q);
-        drops.add(mineDrop(S5MineMap.RELIC_GRADE_BASE, S5MineMap.RELIC_NAMES[0], q));
-        msg.append(" · ✝️ ").append(S5MineMap.RELIC_NAMES[0]).append(' ').append(q).append("개");
-        if (RND.nextInt(100) < 25) {
-            dao.addUserOre(userName, S5MineMap.RELIC_CODES[1], 1);
-            drops.add(mineDrop(S5MineMap.RELIC_GRADE_BASE + 1, S5MineMap.RELIC_NAMES[1], 1));
-            msg.append(" · 📜 ").append(S5MineMap.RELIC_NAMES[1]).append(" 1개!");
-        }
+        dao.addUserOre(userName, S5MineMap.SEAL_CODE, 1);
+        drops.add(mineDrop(S5MineMap.SEAL_GRADE, S5MineMap.SEAL_NAME, 1));
+        msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!");
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 2));
@@ -9550,7 +9587,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mobId < 0 || mobId >= map.mobs().size()) { out.put("message", "그 몬스터는 없어요."); return out; }
         S5MineMap.Mob mob = map.mobs().get(mobId);
         S5MineMobs.Type type = S5MineMobs.TYPES.get(mob.type);
-        if (mob.type == S5MineMobs.BOSS_TYPE && mineBossDead()) { out.put("message", "이번 맵에서는 이미 쓰러진 보스예요. 다음 맵 리셋 때 다시 나타나요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
+        if (mineBossDead(mob.type)) { out.put("message", "이번 맵에서는 이미 쓰러진 보스예요. 다음 맵 리셋 때 다시 나타나요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
         if (type.minion && MINE_MOB_STATE.get(mineMobKey(map, mobId)) == null) { out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); out.put("far", true); return out; } // [2026-10-28] 불려 나오지 않은 수하
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
@@ -9573,8 +9610,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (s.hp <= 0) {
                 killed = true;
                 s.hp = 0;
-                // 동굴 3층 보스는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지, 대주교는 1시간(respawnMs)
-                s.deadUntil = mob.type == S5MineMobs.BOSS_TYPE || type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs();
+                // 보스(동굴 3층/타락한 대주교)는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지
+                s.deadUntil = type.boss || type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs();
                 s.frozenUntil = 0;
             } else {
                 s.fx = hitCell % map.w;
@@ -9610,8 +9647,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
             out.put("expGain", type.exp());
-            if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 대주교 처치 -- 1시간 뒤 다시, 마법/소환 멈춤
+            if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
+                mineRaidKilledCycle = S5MineMap.activeCycle();
+                dao.upsertConfigValue(MINE_RAID_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine ruins raid boss killed (cycle|user)");
                 msg.insert(0, "👑 타락한 대주교를 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
@@ -9665,17 +9704,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
             msg.append(" · 💎 ").append(S5MineMap.GEM_NAMES[gi]).append(" 1개");
         }
-        // [2026-10-28] 설산 몬스터 15% 빙석, 대주교 수하 10% 성유물 조각
+        // [2026-10-28] 설산 몬스터 빙석 -- 같은 날 "더 안 나오게(득템 느낌)" 15% -> 3%
         boolean snow = S5MineMap.SNOW1.equals(map.id) || S5MineMap.SNOW2.equals(map.id) || S5MineMap.SNOW3.equals(map.id);
-        if (snow && RND.nextInt(100) < 15) {
+        if (snow && RND.nextInt(100) < 3) {
             dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
             drops.add(mineDrop(S5MineMap.ICE_STONE_GRADE, S5MineMap.ICE_STONE_NAME, 1));
-            msg.append(" · 🧊 ").append(S5MineMap.ICE_STONE_NAME).append(" 1개");
-        }
-        if (type.minion && RND.nextInt(100) < 10) {
-            dao.addUserOre(userName, S5MineMap.RELIC_CODES[0], 1);
-            drops.add(mineDrop(S5MineMap.RELIC_GRADE_BASE, S5MineMap.RELIC_NAMES[0], 1));
-            msg.append(" · ✝️ ").append(S5MineMap.RELIC_NAMES[0]).append(" 1개");
+            msg.append(" · 🧊 ").append(S5MineMap.ICE_STONE_NAME).append(" 1개!");
         }
         return drops;
     }
@@ -9998,9 +10032,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             r.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
             r.put("gemName", S5MineMap.GEM_NAMES[gi]);
         }
-        // [2026-10-28] 설산 빙석 -- 1/2/3층에서 캘 때 8/10/12% 확률로 함께
-        int icePct = S5MineMap.SNOW1.equals(map.id) ? 8 : S5MineMap.SNOW2.equals(map.id) ? 10 : S5MineMap.SNOW3.equals(map.id) ? 12 : 0;
-        if (icePct > 0 && RND.nextInt(100) < icePct) {
+        // [2026-10-28] 설산 빙석 -- 1/2/3층에서 캘 때 함께. 처음 8/10/12%였다가 같은 날 "더 안 나오게(득템 느낌)" 1.5/2/2.5%(천분율)
+        int icePm = S5MineMap.SNOW1.equals(map.id) ? 15 : S5MineMap.SNOW2.equals(map.id) ? 20 : S5MineMap.SNOW3.equals(map.id) ? 25 : 0;
+        if (icePm > 0 && RND.nextInt(1000) < icePm) {
             dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
             r.put("iceGain", 1);
         }
@@ -10360,7 +10394,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  빙석 MINE_GLOVES_ICE개를 내면 방한 장갑(GLOVES): 한기 방어 +1(외투와 합쳐짐), 받는 피해는 그대로(외투처럼 2배가 아님).
     static final String MINE_ITEM_GLOVES = "GLOVES";
     static final String MINE_ITEM_GLOVES_QUEST = "GLOVES_QUEST";
-    private static final int MINE_GLOVES_ICE = 30;
+    private static final int MINE_GLOVES_ICE = 10; // [2026-10-28] 빙석이 귀해져서 30 -> 10
 
     /** 한기 방어 합계 = 외투 + 방한 장갑. */
     private static int mineColdDef(Map<String, Integer> items) {
@@ -10427,7 +10461,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (raid) { // [2026-10-28] 대주교 마법 -- 깨어 있을 때(누가 싸우는 중)만. 불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체
             S5MineMap.Mob boss = mineBossOf(map);
             MobState bs = boss == null ? null : MINE_MOB_STATE.get(mineMobKey(map, boss.id));
-            boolean awake = boss != null && (bs == null || bs.deadUntil <= now) && mineRaidAwakeUntil > now;
+            boolean awake = boss != null && !mineBossDead(boss.type) && (bs == null || bs.deadUntil <= now) && mineRaidAwakeUntil > now;
             out.put("raidAwake", awake);
             if (awake) {
                 long nf = mineRaidNext(MINE_RAID_FIRE_MS, MINE_RAID_FIRE_OFF, from), ng = mineRaidNext(MINE_RAID_GAS_MS, MINE_RAID_GAS_OFF, from);
@@ -10747,14 +10781,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (S5MineMap.SEVEN_STONE_CODE.equals(code)) return S5MineMap.SEVEN_STONE_GRADE;
         if (S5MineMap.ICE_STONE_CODE.equals(code)) return S5MineMap.ICE_STONE_GRADE; // [2026-10-28]
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.GEM_CODES[i].equals(code)) return S5MineMap.GEM_GRADE_BASE + i;
-        for (int i = 0; i < S5MineMap.RELIC_CODES.length; i++) if (S5MineMap.RELIC_CODES[i].equals(code)) return S5MineMap.RELIC_GRADE_BASE + i;
+        if (S5MineMap.SEAL_CODE.equals(code)) return S5MineMap.SEAL_GRADE;
         return 0;
     }
 
     private static String mineCodeName(String code) {
         int g = mineCodeGrade(code);
         if (g == S5MineMap.ICE_STONE_GRADE) return S5MineMap.ICE_STONE_NAME; // [2026-10-28]
-        if (g >= S5MineMap.RELIC_GRADE_BASE) return S5MineMap.RELIC_NAMES[g - S5MineMap.RELIC_GRADE_BASE];
+        if (g == S5MineMap.SEAL_GRADE) return S5MineMap.SEAL_NAME;
         if (g >= S5MineMap.GEM_GRADE_BASE) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
         return mineGradeName(g);
@@ -10844,6 +10878,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0));
         sevenMax = Math.min(sevenMax, have.getOrDefault(S5MineMap.ORE_CODES[5], 0)); // [2026-10-25] 칠요석 하나에 별빛석 1개
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
+        out.put("deliverDone", items.getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == mineToday()); // [2026-10-28] 오늘 구리 납품 했는지
         mineLookPayload(items, have, out); // [2026-10-24] 명품상점(외형)
         out.put("ores", mineOreList(userName));
     }
@@ -10901,6 +10936,57 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineItems(userName).getOrDefault(g.code, 0) < 1) return mineGearResult(userName, false, g.name + "이(가) 없어요. 먼저 만들어 주세요.");
         dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, MINE_ITEM_PLENTY_RING.equals(g.code) ? 1 : 2);
         return mineGearResult(userName, true, "💍 " + g.name + "을(를) 끼었어요.");
+    }
+
+    // [2026-10-28] "구리 광석 사용처를 늘려줘 -- 초보자들이 바로 상위 구역으로 가서 구리 채광을 잘 안 한다":
+    //  대장장이 [합성]에 구리 정련(구리 MINE_REFINE_COPPER개 -> 철광석 1개, 여러 번)과
+    //  하루 한 번 구리 납품(구리 MINE_DELIVER_COPPER개 -> 오늘 요일석 MINE_DELIVER_STONES개 + 곡괭이 내구도 +MINE_DELIVER_DUR, 최대치까지).
+    private static final int MINE_REFINE_COPPER = 20;
+    private static final int MINE_DELIVER_COPPER = 100;
+    private static final int MINE_DELIVER_STONES = 3;
+    private static final int MINE_DELIVER_DUR = 50;
+    static final String MINE_ITEM_DELIVER_DAY = "DELIVER_DAY";
+
+    private static int mineToday() {
+        return Integer.parseInt(java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
+    }
+
+    /** 구리 정련 -- 구리 MINE_REFINE_COPPER개마다 철광석 1개. times = 몇 번(가진 만큼으로 줄인다). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineRefine(String userName, int times) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        dao.selectMineUserForUpdate(userName);
+        int n = Math.min(Math.max(1, times), mineOreHave(userName).getOrDefault(S5MineMap.ORE_CODES[0], 0) / MINE_REFINE_COPPER);
+        if (n < 1) return mineGearResult(userName, false, "구리 광석 " + MINE_REFINE_COPPER + "개가 있어야 철광석 1개로 정련할 수 있어요.");
+        mineTakeCost(userName, new String[][] { { S5MineMap.ORE_CODES[0], String.valueOf(MINE_REFINE_COPPER) } }, n);
+        dao.addUserOre(userName, S5MineMap.ORE_CODES[1], n);
+        return mineGearResult(userName, true, "🔥 구리 광석 " + (n * MINE_REFINE_COPPER) + "개를 녹여 철광석 " + n + "개를 얻었어요!");
+    }
+
+    /** 오늘의 구리 납품 -- 하루 한 번 구리 MINE_DELIVER_COPPER개 -> 오늘 요일석 + 곡괭이 내구도. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineDeliver(String userName) {
+        if (!mineAccess(userName)) return mineClosed();
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        int today = mineToday();
+        if (mineItems(userName).getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == today) return mineGearResult(userName, false, "오늘은 이미 구리를 납품했어요. 내일 다시 가져와 주게.");
+        String[][] cost = { { S5MineMap.ORE_CODES[0], String.valueOf(MINE_DELIVER_COPPER) } };
+        if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "구리 광석 " + MINE_DELIVER_COPPER + "개를 가져오면 받아 주겠네.");
+        mineTakeCost(userName, cost, 1);
+        int di = S5MineMap.dayIndex(now);
+        dao.addUserOre(userName, S5MineMap.DAY_STONE_CODES[di], MINE_DELIVER_STONES);
+        int max = minePickMax(row), dur = Math.min(max, minePickDur(row) + MINE_DELIVER_DUR);
+        dao.setMinePickDur(userName, dur);
+        dao.upsertMineItem(userName, MINE_ITEM_DELIVER_DAY, today);
+        HashMap<String, Object> out = mineGearResult(userName, true, "📦 구리 " + MINE_DELIVER_COPPER + "개 납품 완료! " + S5MineMap.DAY_STONE_NAMES[di] + " "
+                + MINE_DELIVER_STONES + "개와 곡괭이 손질(내구도 " + dur + "/" + max + ")을 받았어요.");
+        putMinePick(out, dur, max);
+        return out;
     }
 
     /** 대장장이 [합성] -- 요일석 7종(월~일) 1개씩 + 별빛석 1개 -> 칠요석 1개. times = 몇 개(가진 만큼으로 줄인다).

@@ -243,6 +243,9 @@ public interface BotS5Service {
     HashMap<String, Object> mineColdTick(String userName, String mapId, String ver, int x, int y);
     /** [2026-10-26] 방한 외투 -- action list/buy/wear (설산 마을 털옷 장인 / 설원 정박장 암상인). */
     HashMap<String, Object> mineCoat(String userName, String action, String code);
+    /** [2026-10-28] 구리 정련(구리 20 -> 철 1), 오늘의 구리 납품(하루 1번 구리 100 -> 요일석 3 + 곡괭이 내구도). */
+    HashMap<String, Object> mineRefine(String userName, int times);
+    HashMap<String, Object> mineDeliver(String userName);
     /** [2026-10-23] 대장간 -- 광석(grade)으로 곡괭이 강화(최대/현재 내구도 함께 증가), times = 몇 번. */
     HashMap<String, Object> minePickUpgrade(String userName, int grade, int times);
     /** [2026-10-23] 매일 05:00 광산 맵 2일 주기 리셋 확인. @Scheduled 메서드라 인터페이스에도 반드시 선언(누락 시 컨텍스트 기동 실패). */

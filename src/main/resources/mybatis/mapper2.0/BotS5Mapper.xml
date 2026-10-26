@@ -727,6 +727,16 @@
     </update>
 
     <!-- [2026-10-24] 매일 0시 곡괭이 내구도 가득(현재 = 최대) -->
+    <!-- [2026-10-28] 곡괭이 현재 내구도만 바꾸기(구리 납품 보상) -->
+    <update id="setMinePickDur">
+        UPDATE TBOT_S5_MINE_USER SET PICK_DUR = #{dur} WHERE USER_NAME = #{userName}
+    </update>
+
+    <!-- [2026-10-28] 광산 다운스케일 1회 변환: 레벨 안 경험치 x (1.12 / 1.32)^(레벨 - 1) -->
+    <update id="rescaleMineExp">
+        UPDATE TBOT_S5_MINE_USER SET M_EXP = FLOOR(M_EXP * POWER(1.12 / 1.32, M_LV - 1)) WHERE M_EXP &gt; 0
+    </update>
+
     <update id="refillAllMinePick">
         UPDATE TBOT_S5_MINE_USER SET PICK_DUR = PICK_DUR_MAX WHERE PICK_DUR &lt; PICK_DUR_MAX
     </update>

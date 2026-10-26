@@ -11,7 +11,8 @@ import java.util.Random;
  *
  * 위치: 몬스터는 집 칸 주변 2칸 안(cells)을 돌아다니는데, 칸은 시각으로 정해진다 -- cellAt(mob, ms) = cells[mix(id, ms / SLOT_MS) % cells.length].
  *   서버와 화면(tower_view.jsp TowerMine.mobPos)이 같은 식을 써서 위치를 주고받지 않는다. 맞은 몬스터는 그 자리에 잠깐 멈춘다(서버 메모리, 화면은 주기 조회).
- * 단계(tier) 1~9: 체력 18 x 2^(t-1), 공격 4 x 1.94^(t-1), 경험치 6 x 2.7^(t-1). 광산 레벨(1 + 4(t-1))의 공격력으로 3번쯤 때리면 쓰러진다.
+ * 단계(tier): 체력 18 x 1.457^(t-1), 공격 4 x 1.413^(t-1), 경험치 6 x 1.40^(t-1)([2026-10-28] 다운스케일, 예전 2 / 1.94 / 2.7).
+ * 광산 레벨(1 + 4(t-1))의 공격력으로 3번쯤 때리면 쓰러진다.
  */
 public final class S5MineMobs {
     private S5MineMobs() { }
@@ -33,12 +34,14 @@ public final class S5MineMobs {
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
-        public int hp() { return (int) Math.round(18 * Math.pow(2.0, tier - 1) * (boss ? 12 : 1)); }
-        public int atk() { return (int) Math.round(4 * Math.pow(1.94, tier - 1) * (boss ? 1.4 : 1)); }
-        /** [2026-10-28] long -- 21단계 보스는 int를 넘는다. */
-        public long exp() { return Math.round(6 * Math.pow(2.7, tier - 1) * (boss ? 15 : 1)); }
-        /** 쓰러진 뒤 다시 나타날 때까지(ms). [2026-10-28] 보스는 1시간(동굴 3층 보스는 따로 -- 맵 리셋까지). */
-        public long respawnMs() { return boss ? 3_600_000L : 20_000L + tier * 4_000L; }
+        // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
+        //  플레이어(BotS5ServiceImpl: 레벨마다 체력/공격 x1.09, 필요 경험치 x1.12)와 같은 비율로 줄여 적정 레벨에서 3번쯤 때리면 쓰러지는 것과
+        //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
+        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1)); }
+        public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1)); }
+        public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1)); }
+        /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
+        public long respawnMs() { return 20_000L + tier * 4_000L; }
     }
 
     /** kind(화면 도트 모양): small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */

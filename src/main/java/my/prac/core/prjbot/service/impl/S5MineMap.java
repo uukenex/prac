@@ -65,13 +65,13 @@ public final class S5MineMap {
     public static final String RUINS = "ruins";
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS);
-    /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 대주교 보상 성유물 조각(30)/대주교의 인장(31). */
+    /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
     public static final int ICE_STONE_GRADE = 19;
-    public static final String[] RELIC_CODES = { "RELIC_SHARD", "ARCH_SEAL" };
-    public static final String[] RELIC_NAMES = { "성유물 조각", "대주교의 인장" };
-    public static final int RELIC_GRADE_BASE = 30;
+    public static final String SEAL_CODE = "ARCH_SEAL";
+    public static final String SEAL_NAME = "타락한 대주교의 인장";
+    public static final int SEAL_GRADE = 31;
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };

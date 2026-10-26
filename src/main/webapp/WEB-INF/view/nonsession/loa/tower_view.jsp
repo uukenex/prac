@@ -3732,7 +3732,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 30 ? '성당 옛터 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5442,11 +5442,10 @@ var TowerMine = (function () {
   ['재스퍼', '루비', '스타 사파이어', '아쿠아마린', '토파즈', '가넷', '스피넬', '에메랄드', '다이아몬드'].forEach(function (n, i) { ORE_NAME[21 + i] = n; });
   [['#a8452f', '#e8907a'], ['#d4104f', '#ff9ab8'], ['#2448b8', '#bcd0ff'], ['#4fc8d8', '#d4fbff'], ['#f0a530', '#ffe2a8'],
    ['#7d1426', '#e0697c'], ['#e0508e', '#ffc4dc'], ['#159a4c', '#a8f0c4'], ['#cfefff', '#ffffff']].forEach(function (c, i) { ORE_COL[21 + i] = c; });
-  var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1, 30: 1, 31: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍), [2026-10-28] 성유물 조각/대주교의 인장
-  // [2026-10-28] 특수 재료: 빙석(19, 설산), 성유물 조각(30)/대주교의 인장(31, 성당 옛터 대주교)
+  var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1, 31: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍), [2026-10-28] 타락한 대주교의 인장
+  // [2026-10-28] 특수 재료: 빙석(19, 설산), 타락한 대주교의 인장(31, 성당 옛터) -- 성유물 조각(30)은 없앴다
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
-  ORE_NAME[30] = '성유물 조각'; ORE_COL[30] = ['#e8d090', '#fff8dc'];
-  ORE_NAME[31] = '대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
+  ORE_NAME[31] = '타락한 대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -6339,8 +6338,22 @@ var TowerMine = (function () {
         + '<div class="mine-smith-row"><img src="' + oreIcon(18) + '" alt=""><span class="nm">칠요석<small>보유 ' + oreHave(18) + '개 · 지금 ' + (st.sevenMax || 0) + '개 만들 수 있어요</small>'
         + costHtml(stones) + '</span>'
         + '<button type="button" ' + can + 'onclick="TowerMine.synth(1)">1개</button>'
-        + '<button type="button" ' + can + 'onclick="TowerMine.synth(9999)">최대</button></div>';
+        + '<button type="button" ' + can + 'onclick="TowerMine.synth(9999)">최대</button></div>'
+        + copperHtml();
   }
+  // [2026-10-28] "구리 광석 사용처를 늘려줘" -- 구리 정련(구리 20 -> 철광석 1), 오늘의 구리 납품(하루 1번 구리 100 -> 오늘 요일석 3 + 곡괭이 내구도 +50)
+  function copperHtml() {
+    var cu = oreHave(1), canR = cu >= 20 ? '' : 'disabled ', canD = cu >= 100 && !st.deliverDone ? '' : 'disabled ';
+    return '<div class="mine-smith-sub"><b>🔥 구리 정련 · 📦 오늘의 납품</b></div>'
+        + '<div class="mine-smith-row"><img src="' + oreIcon(1) + '" alt=""><span class="nm">구리 광석 20개 → 철광석 1개<small>보유 구리 ' + cu + '개</small></span>'
+        + '<button type="button" ' + canR + 'onclick="TowerMine.refine(1)">1번</button>'
+        + '<button type="button" ' + canR + 'onclick="TowerMine.refine(9999)">최대</button></div>'
+        + '<div class="mine-smith-row"><img src="' + oreIcon(11 + ((new Date(nowSrv() + 9 * 3600000).getUTCDay() + 6) % 7)) + '" alt=""><span class="nm">구리 100개 납품 (하루 1번)'
+        + '<small>오늘 요일석 3개 + 곡괭이 내구도 +50' + (st.deliverDone ? ' · 오늘은 납품 완료' : '') + '</small></span>'
+        + '<button type="button" ' + canD + 'onclick="TowerMine.deliver()">납품</button></div>';
+  }
+  function refine(times) { gearAct('/api/tower-mine-refine?times=' + times); }
+  function deliver() { gearAct('/api/tower-mine-deliver'); }
   function captainHtml(n) {
     var d = st.dragon || {}, h = npcHead('⚓ ' + (n ? n.name : '늙은 선장'), false);
     if (d.has) return h + talkBlock(n, captainSay || '허허, 물 위를 걷는 기분은 어떤가? 🌊');
@@ -6779,7 +6792,7 @@ var TowerMine = (function () {
           + talkBlock(n, n ? n.line : '')
           + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.smithGo(\'buy\')">⛑️ 구매<small>투구·장신구·장화</small></button>'
           + '<button type="button" onclick="TowerMine.smithGo(\'upgrade\')">⛏️ 강화<small>곡괭이 내구도</small></button>'
-          + '<button type="button" onclick="TowerMine.smithGo(\'synth\')">🌈 합성<small>칠요석</small></button></div>';
+          + '<button type="button" onclick="TowerMine.smithGo(\'synth\')">🌈 합성<small>칠요석 · 구리</small></button></div>';
       return;
     }
     if (smithView === 'buy') {
@@ -6830,7 +6843,8 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'dragon', 'sevenMax', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'dragon', 'sevenMax', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
   }
@@ -6851,7 +6865,7 @@ var TowerMine = (function () {
       if (!d || !d.ok) return;
       if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
-      if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
+      if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: '-' + h.dmg, color: '#ff4a4a', big: true, t0: t + k * 160 }); });
@@ -6956,9 +6970,9 @@ var TowerMine = (function () {
     else {
       var lf = raid.nextFire - ts, lg = raid.nextGas - ts, boss = map.mobs && map.mobs[map.mobs.length - 1], bp = boss && boss._p;
       var far = bp ? Math.max(Math.abs(bp.cx - P.x), Math.abs(bp.cy - P.y)) > 12 : false;
-      if (lf > 0 && lf <= 2000 && raidWarned.f !== raid.nextFire) { raidWarned.f = raid.nextFire; msg(far ? '🔥 대주교가 불벼락을 모은다! (멀리 있어 안전)' : '🔥 대주교가 불벼락을 모은다! 12칸 밖으로 피하세요!', 2200); }
+      if (lf > 0 && lf <= 2000 && raidWarned.f !== raid.nextFire) { raidWarned.f = raid.nextFire; msg(far ? '🔥 타락한 대주교가 불벼락을 모은다! (멀리 있어 안전)' : '🔥 타락한 대주교가 불벼락을 모은다! 12칸 밖으로 피하세요!', 2200); }
       if (lg > 0 && lg <= 3000 && raidWarned.g !== raid.nextGas) { raidWarned.g = raid.nextGas; msg('☠️ 어둠가스가 퍼지려 한다! 성당 옛터 어디에도 피할 곳이 없어요!', 3000); }
-      txt = '👿 대주교 분노 · 🔥 ' + Math.max(0, Math.ceil(lf / 1000)) + '초 · ☠️ ' + Math.max(0, Math.ceil(lg / 1000)) + '초';
+      txt = '👿 타락한 대주교 분노 · 🔥 ' + Math.max(0, Math.ceil(lf / 1000)) + '초 · ☠️ ' + Math.max(0, Math.ceil(lg / 1000)) + '초';
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
@@ -7667,7 +7681,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

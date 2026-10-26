@@ -148,6 +148,10 @@ public interface BotS5DAO {
     int addMinePickMax(@Param("userName") String userName, @Param("gain") int gain);
     /** [2026-10-24] 매일 0시 모든 유저 곡괭이 내구도 가득. */
     int refillAllMinePick();
+    /** [2026-10-28] 다운스케일 1회 -- 레벨 안 경험치를 1.12^(L-1) / 1.32^(L-1) 비율로. */
+    int rescaleMineExp();
+    /** [2026-10-28] 곡괭이 현재 내구도만(구리 납품 보상). */
+    int setMinePickDur(@Param("userName") String userName, @Param("dur") int dur);
     int deleteAllMineDug();
     int resetAllMinePos();
     String selectConfigValue(@Param("key") String key);

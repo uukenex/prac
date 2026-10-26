@@ -820,6 +820,26 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-28] 웹 광산 구리 정련 / 오늘의 구리 납품(대장장이 [합성]). */
+    @GetMapping("/api/tower-mine-refine")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineRefine(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineRefine(userName, times);
+        mineLog(userName, "[웹] 광산 구리 정련 x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    @GetMapping("/api/tower-mine-deliver")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineDeliver(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineDeliver(userName);
+        mineLog(userName, "[웹] 광산 구리 납품", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-26] 웹 광산 방한 외투 -- action list/buy/wear. 사기/입기만 로그. */
     @GetMapping("/api/tower-mine-coat")
     @ResponseBody
