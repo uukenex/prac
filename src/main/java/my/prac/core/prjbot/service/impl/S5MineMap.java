@@ -61,8 +61,17 @@ public final class S5MineMap {
     public static final String SNOWTOWN = "snowtown";
     /** [2026-10-27] "설산에서 내려가면 왕도 아스테리아, 왕도 가는 길을 긴 길로" -- 설산 마을 서문 -> 왕도 가는 길(260칸) -> 왕도 동문. */
     public static final String ROYALROAD = "royalroad";
+    /** [2026-10-28] "왕도 가는 길 북쪽에 성당 옛터, 아주 센 보스 한 마리(수하 소환, 광역 마법), 다른 몬스터 없음, 넓은 평지 + 지날 수 있는 무너진 성당 잔해" */
+    public static final String RUINS = "ruins";
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS);
+    /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 대주교 보상 성유물 조각(30)/대주교의 인장(31). */
+    public static final String ICE_STONE_CODE = "ICE_STONE";
+    public static final String ICE_STONE_NAME = "빙석";
+    public static final int ICE_STONE_GRADE = 19;
+    public static final String[] RELIC_CODES = { "RELIC_SHARD", "ARCH_SEAL" };
+    public static final String[] RELIC_NAMES = { "성유물 조각", "대주교의 인장" };
+    public static final int RELIC_GRADE_BASE = 30;
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
     public static final String[] DAY_STONE_NAMES = { "월요석", "화요석", "수요석", "목요석", "금요석", "토요석", "일요석" };
@@ -527,6 +536,7 @@ public final class S5MineMap {
         S5MineMap snow3 = generateSnowMountain(seed + 15, SNOW3, "설산 3층", 3);
         S5MineMap snowTown = generateSnowTown(seed + 16);
         S5MineMap road = generateRoyalRoad(seed + 17); // [2026-10-27] 왕도 가는 길
+        S5MineMap ruins = generateRuins(seed + 18); // [2026-10-28] 성당 옛터
 
         Portal mouth = null, north = null, south = null, west = null, east = null;
         for (Portal p : field.portals) {
@@ -665,7 +675,9 @@ public final class S5MineMap {
         // [2026-10-27] 설산 마을 서문 <-> 왕도 가는 길 <-> 왕도 동문(맨 뒤에 넣어 앞 맵들의 몬스터 자리는 그대로)
         S5MineMap twn = out.get(SNOWTOWN), cty = out.get(CITY);
         S5MineMap rd = relink(road, retarget(road, SNOWTOWN, besidePortal(twn, ROYALROAD)), null);
+        rd = relink(rd, retarget(rd, RUINS, new int[] { ruins.spawnX, ruins.spawnY }), null); // [2026-10-28] 북쪽 샛길 -> 성당 옛터
         out.put(ROYALROAD, relink(rd, retarget(rd, CITY, besidePortal(cty, ROYALROAD)), null));
+        out.put(RUINS, relink(ruins, retarget(ruins, ROYALROAD, besidePortal(road, RUINS)), null));
         out.put(SNOWTOWN, relink(twn, retarget(twn, ROYALROAD, besidePortal(road, SNOWTOWN)), twn.npcs));
         out.put(CITY, relink(cty, retarget(cty, ROYALROAD, besidePortal(road, CITY)), cty.npcs));
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
@@ -1361,12 +1373,17 @@ public final class S5MineMap {
         int ey = pathY[w - 2], wy = pathY[1];
         t[ey][w - 1] = 'G';
         t[wy][0] = 'G';
+        // [2026-10-28] 가운데에서 북쪽으로 갈라지는 샛길 -> 맨 위 G = 성당 옛터(난수를 더 쓰지 않아 다른 칸 배치는 그대로)
+        int nx = w / 2;
+        for (int y = pathY[nx] - 1; y >= 1; y--) for (int dx = -1; dx <= 1; dx++) t[y][nx + dx] = ',';
+        t[0][nx] = 'G';
         int sx = w - 2, sy = ey;
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(w - 1, ey, 'G', SNOWTOWN, 0, 0, "설산 마을 서문으로"));
         portals.add(new Portal(0, wy, 'G', CITY, 0, 0, "왕도 아스테리아 동문"));
+        portals.add(new Portal(nx, 0, 'G', RUINS, 0, 0, "북쪽 -- 성당 옛터")); // [2026-10-28]
         double[][] score = new double[h][w];
         boolean[][] skip = new boolean[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
@@ -1375,6 +1392,40 @@ public final class S5MineMap {
         }
         byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
         return new S5MineMap(ROYALROAD, "왕도 가는 길", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-10-28] 성당 옛터(120x110): 넓은 풀밭 평지 가운데 무너진 대성당 터 -- 돌바닥(s) 위로 잔해(r, 지나갈 수 있음)가 흩어지고,
+     *  둘레 벽(W)은 군데군데 무너져 드나들 수 있고, 두 줄로 섰던 기둥은 몇 개만 남았다(^, 못 지나감). 북쪽 제단에 대주교(보스), 남쪽 끝 G = 왕도 가는 길.
+     *  일반 몬스터와 광석은 없다(S5MineMobs: 대주교 + 수하 자리만). */
+    static S5MineMap generateRuins(long seed) {
+        int w = 120, h = 110, c = w / 2, x0 = c - 18, x1 = c + 18, y0 = 18, y1 = 70;
+        Random r = new Random(seed);
+        Noise rub = new Noise(seed * 31 + 101);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = r.nextDouble() < 0.015 ? 'T' : r.nextDouble() < 0.08 ? ',' : '.';
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) {
+            boolean edge = y == y0 || y == y1 || x == x0 || x == x1;
+            t[y][x] = edge ? (r.nextDouble() < 0.55 ? 'W' : 'r') : 's';
+        }
+        for (int y = y0 - 8; y <= y1 + 8; y++) for (int x = x0 - 8; x <= x1 + 8; x++) { // 무너진 잔해(성당 안팎)
+            if (y < 1 || x < 1 || y >= h - 1 || x >= w - 1 || t[y][x] == 'W') continue;
+            if (rub.fbm(x / 6.0, y / 6.0) > 0.58 && r.nextDouble() < 0.7) t[y][x] = 'r';
+        }
+        for (int py = y0 + 8; py < y1 - 4; py += 9) for (int px : new int[] { c - 10, c + 10 }) t[py][px] = r.nextDouble() < 0.6 ? '^' : 'r'; // 남은 기둥
+        for (int y = y0 + 4; y <= y0 + 12; y++) for (int x = c - 4; x <= c + 4; x++) t[y][x] = 's'; // 제단 앞
+        for (int y = y1; y <= h - 2; y++) for (int dx = -1; dx <= 1; dx++) t[y][c + dx] = ','; // 남쪽 입구에서 성당 터까지
+        t[h - 1][c] = 'G';
+        int sx = c, sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(c, h - 1, 'G', ROYALROAD, 0, 0, "왕도 가는 길로"));
+        S5MineMap m = new S5MineMap(RUINS, "성당 옛터", false, w, h, sx, sy, t, new byte[h][w], portals);
+        m.bossX = c;
+        m.bossY = y0 + 6;
+        return m;
     }
 
     /** [2026-10-24] 모래폭풍 너머 초원(140x140): 풀밭, 드문드문 숲과 바위. 남쪽 가운데 -> 사막 북쪽 끝, 남에서 북으로 굽이치는 흙길 끝 -> 왕도 남문. */

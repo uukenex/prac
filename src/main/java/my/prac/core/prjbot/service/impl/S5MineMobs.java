@@ -24,15 +24,21 @@ public final class S5MineMobs {
         public final String[] maps;
         /** [2026-10-24] 보스: 먼저 공격(가까이 가면), 체력 x12 / 공격 x1.4 / 경험치 x15, 맵 리셋 때만 나타나고 잡히면 다음 리셋까지 없다. */
         public boolean boss;
+        /** [2026-10-28] 성당 옛터: minion = 대주교의 수하(평소엔 없고 보스가 불러낼 때만, 쓰러지면 다시 부를 때까지 없음), fast = 플레이어보다 3배쯤 빨리 쫓아옴,
+         *  stay = 제자리(쫓아오지 않음 -- 대주교). */
+        public boolean minion, fast, stay;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
         Type asBoss() { boss = true; return this; }
+        Type asMinion() { minion = true; fast = true; return this; }
+        Type asStay() { stay = true; return this; }
         public int hp() { return (int) Math.round(18 * Math.pow(2.0, tier - 1) * (boss ? 12 : 1)); }
         public int atk() { return (int) Math.round(4 * Math.pow(1.94, tier - 1) * (boss ? 1.4 : 1)); }
-        public int exp() { return (int) Math.round(6 * Math.pow(2.7, tier - 1) * (boss ? 15 : 1)); }
-        /** 쓰러진 뒤 다시 나타날 때까지(ms). */
-        public long respawnMs() { return 20_000L + tier * 4_000L; }
+        /** [2026-10-28] long -- 21단계 보스는 int를 넘는다. */
+        public long exp() { return Math.round(6 * Math.pow(2.7, tier - 1) * (boss ? 15 : 1)); }
+        /** 쓰러진 뒤 다시 나타날 때까지(ms). [2026-10-28] 보스는 1시간(동굴 3층 보스는 따로 -- 맵 리셋까지). */
+        public long respawnMs() { return boss ? 3_600_000L : 20_000L + tier * 4_000L; }
     }
 
     /** kind(화면 도트 모양): small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
@@ -95,15 +101,23 @@ public final class S5MineMobs {
         new Type("산악 오우거", 12, "human", "#8a7a5a", S5MineMap.ROYALROAD),
         new Type("와이번", 12, "flyer", "#5a8a5a", S5MineMap.ROYALROAD),
         new Type("서리 와이번", 13, "flyer", "#9fc8e8", S5MineMap.ROYALROAD),
-        new Type("바위 거인", 13, "human", "#7a7268", S5MineMap.ROYALROAD)
+        new Type("바위 거인", 13, "human", "#7a7268", S5MineMap.ROYALROAD),
+        // [2026-10-28] 성당 옛터 -- 일반 몬스터 없이 대주교(21단계 보스, 제자리, 수하 소환 + 불벼락/어둠가스)와 그 수하(20단계, 3배 빠름)만
+        new Type("타락한 대주교", 21, "human", "#3a1a4a").asBoss().asStay(),
+        new Type("타락한 성기사", 20, "human", "#8a7a9a").asMinion()
     ));
 
-    /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. */
-    public static final int BOSS_TYPE = bossIndex();
+    /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
+    public static final int BOSS_TYPE = indexOf("고대 광석 골렘");
+    /** [2026-10-28] 성당 옛터 대주교와 그 수하. */
+    public static final int RAID_BOSS_TYPE = indexOf("타락한 대주교");
+    public static final int MINION_TYPE = indexOf("타락한 성기사");
+    /** 대주교가 한 번에 거느릴 수 있는 수하 자리(맵 몬스터 목록에 미리 두고 평소엔 없는 것으로 친다). */
+    static final int MINION_SLOTS = 6;
 
-    private static int bossIndex() {
-        for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).boss) return i;
-        return TYPES.size() - 1;
+    private static int indexOf(String name) {
+        for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
+        throw new IllegalStateException("mob type " + name);
     }
 
     /** 그 칸의 몬스터 단계(0 = 몬스터 없음). 평원은 마을에서 멀수록 강하다. */
@@ -211,16 +225,25 @@ public final class S5MineMobs {
             taken[y][x] = true;
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca));
         }
+        boolean raid = S5MineMap.RUINS.equals(m.id);
+        if (raid && m.bossX() >= 0) { // [2026-10-28] 대주교 수하 자리 -- 제단 둘레(평소엔 없음, 보스가 불러내면 그 자리에서 나타나 쫓아온다)
+            for (int i = 0; i < MINION_SLOTS; i++) {
+                double a = Math.PI * 2 * i / MINION_SLOTS;
+                int x = m.bossX() + (int) Math.round(Math.cos(a) * 4), y = m.bossY() + 2 + (int) Math.round(Math.sin(a) * 3);
+                if (x < 1 || y < 1 || x >= m.w - 1 || y >= m.h - 1 || !mobCell(t[y][x])) { x = m.bossX(); y = m.bossY() + 3; }
+                out.add(new S5MineMap.Mob(out.size(), MINION_TYPE, x, y, new int[] { y * m.w + x }));
+            }
+        }
         if (m.bossX() >= 0) {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
-            for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
+            if (!raid) for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) { // 대주교는 제단에서 움직이지 않는다
                 int nx = m.bossX() + dv[0], ny = m.bossY() + dv[1];
                 if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), BOSS_TYPE, m.bossX(), m.bossY(), ca));
+            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), raid ? RAID_BOSS_TYPE : BOSS_TYPE, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
     }

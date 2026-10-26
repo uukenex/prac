@@ -3732,7 +3732,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 21 ? '보석' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 30 ? '성당 옛터 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5442,7 +5442,11 @@ var TowerMine = (function () {
   ['재스퍼', '루비', '스타 사파이어', '아쿠아마린', '토파즈', '가넷', '스피넬', '에메랄드', '다이아몬드'].forEach(function (n, i) { ORE_NAME[21 + i] = n; });
   [['#a8452f', '#e8907a'], ['#d4104f', '#ff9ab8'], ['#2448b8', '#bcd0ff'], ['#4fc8d8', '#d4fbff'], ['#f0a530', '#ffe2a8'],
    ['#7d1426', '#e0697c'], ['#e0508e', '#ffc4dc'], ['#159a4c', '#a8f0c4'], ['#cfefff', '#ffffff']].forEach(function (c, i) { ORE_COL[21 + i] = c; });
-  var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍)
+  var RARE_GEM = { 22: 1, 23: 1, 26: 1, 28: 1, 29: 1, 30: 1, 31: 1 }; // 루비, 스타 사파이어, 가넷, 에메랄드, 다이아몬드(나오면 번쩍), [2026-10-28] 성유물 조각/대주교의 인장
+  // [2026-10-28] 특수 재료: 빙석(19, 설산), 성유물 조각(30)/대주교의 인장(31, 성당 옛터 대주교)
+  ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
+  ORE_NAME[30] = '성유물 조각'; ORE_COL[30] = ['#e8d090', '#fff8dc'];
+  ORE_NAME[31] = '대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -5939,6 +5943,7 @@ var TowerMine = (function () {
   function mobPos(m, t) {
     var s = mobSt[m.id];
     if (s && s.du > t) return null;
+    if (m.d && !s) return null; // [2026-10-28] 대주교 수하 -- 불려 나오기 전엔 없다
     if (s && s.fu > t) {
       if (s.ox != null && t - s.mt < 450) { var q = Math.max(0, (t - s.mt) / 450); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
       return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
@@ -6442,6 +6447,7 @@ var TowerMine = (function () {
     { id: 'snow3', name: '설산 3층', x: 262, y: -68, fill: '#c8d8ea', ink: '#1a2a3a' },
     { id: 'snow2', name: '설산 2층', x: 262, y: -12, fill: '#d6e2f0', ink: '#1a2a3a' },
     { id: 'snow1', name: '설산 1층', x: 262, y: 44, fill: '#e2ebf5', ink: '#1a2a3a' },
+    { id: 'ruins', name: '성당 옛터 👿', x: 160, y: -110, fill: '#5a4a6a', ink: '#f0e0ff' }, // [2026-10-28] 왕도 가는 길 북쪽 샛길
     { id: 'royalroad', name: '왕도 가는 길', x: 160, y: -40, fill: '#b8a27a', ink: '#2a1d10' }, // [2026-10-27] 설산 마을 서문 -> 왕도 동문
     { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10' }, // [2026-10-27] 일반 플레이어에게 열림
     { id: 'steppe', name: '북쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a' },
@@ -6474,7 +6480,7 @@ var TowerMine = (function () {
     var svg = '<svg viewBox="0 -150 320 610" class="mine-world" role="img" aria-label="광산 전체 지도">'
         + '<rect x="0" y="-150" width="320" height="610" fill="#1d1730"/>'
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
-        + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk)
+        + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
@@ -6596,7 +6602,19 @@ var TowerMine = (function () {
       return '<div class="mine-smith-row"><span class="nm">' + c.name + '<small>' + c.effect + (c.owned ? ' · 보유' : '') + '</small>' + (c.owned ? '' : costHtml(c.costs)) + '</span>'
           + (c.owned ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + c.code + '\')">' + (c.worn ? '벗기' : '입기') + '</button>'
               : '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'buy\',\'' + c.code + '\')">사기</button>') + '</div>';
-    }).join('') + '<div class="mine-smith-say">한기 방어 1단계마다 한기가 1단계씩 약해져요(설원 1단계는 1단계 외투면 없음). 몸이 둔해져 몬스터에게 받는 피해는 2배, 눈바람은 막지 못해요.</div>';
+    }).join('') + '<div class="mine-smith-say">한기 방어 1단계마다 한기가 1단계씩 약해져요(설원 1단계는 1단계 외투면 없음). 몸이 둔해져 몬스터에게 받는 피해는 2배, 눈바람은 막지 못해요.</div>'
+      + (bm ? '' : gloveQuestHtml(d));
+  }
+  // [2026-10-28] 털옷 장인 의뢰 -- "빙석을 모아 오면 방한 장갑"(한기 방어 +1, 받는 피해 그대로)
+  function gloveQuestHtml(d) {
+    var q = d.gloveQuest || 0, h = '<div class="mine-smith-sub"><b>📜 의뢰: 손이 얼지 않는 장갑</b></div>';
+    if (q >= 2 || d.hasGloves) return h + '<div class="mine-smith-say">🧤 방한 장갑을 받았어요. 한기 방어 +1 (외투와 함께 적용)</div>';
+    if (q < 1) return h + '<div class="mine-smith-say">설산 얼음 속에 박힌 빙석을 모아 오면 장갑을 떠 주겠대요. (보상: 방한 장갑 -- 한기 방어 +1, 받는 피해는 그대로)</div>'
+        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.coatAct(\'quest\',\'\')">📜 의뢰 받기</button></div>';
+    var ok = (d.iceHave || 0) >= (d.iceNeed || 30);
+    return h + '<div class="mine-smith-row"><img src="' + oreIcon(19) + '" alt=""><span class="nm">빙석 ' + (d.iceHave || 0) + ' / ' + (d.iceNeed || 30)
+        + '<small>설산 1~3층에서 캘 때, 설산 몬스터에게서</small></span>'
+        + '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'gloves\',\'\')">건네기</button></div>';
   }
   function coatAct(action, code) {
     if (busy) return;
@@ -6824,7 +6842,7 @@ var TowerMine = (function () {
     var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
     if (map.mobs && map.mobs.length) {
       var boss = map.mobs[map.mobs.length - 1]; bt = map.mobTypes[boss.k];
-      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= 2);
+      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.stay ? 4 : 2)); // [2026-10-28] 대주교는 4칸
     }
     if (!fight && !nearBoss) return;
     lastBossT = now; bossBusy = true;
@@ -6833,6 +6851,7 @@ var TowerMine = (function () {
       if (!d || !d.ok) return;
       if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
+      if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: '-' + h.dmg, color: '#ff4a4a', big: true, t0: t + k * 160 }); });
@@ -6855,8 +6874,10 @@ var TowerMine = (function () {
     var dx = best[0] - P.x, dy = best[1] - P.y, ns = dy < -2 ? '북' : dy > 2 ? '남' : '', ew = dx > 2 ? '동' : dx < -2 ? '서' : '';
     return '가장 가까운 모닥불: ' + (ns + ew || '바로 옆') + (ns + ew ? '쪽 ' + Math.max(1, Math.round(bd)) + '칸' : '');
   }
+  // [2026-10-28] 성당 옛터 -- 같은 환경 턴으로 대주교 마법(불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체)을 받는다. 예고 후 화면 효과.
+  var raid = null, raidFx = { fire: 0, gas: 0 }, raidWarned = {};
   function coldTick(now) {
-    if (!map || !map.cold || busy || coldBusy || fade || now - lastColdT < 1000) return;
+    if (!map || !(map.cold || map.raid) || busy || coldBusy || fade || now - lastColdT < 1000) return;
     lastColdT = now; coldBusy = true;
     var mid = map.id;
     api('/api/tower-mine-cold-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
@@ -6868,12 +6889,21 @@ var TowerMine = (function () {
       if (d.coldDmg) floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.coldDmg + '❄', color: '#9fd8ff', t0: t });
       if (d.blizzardDmg) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.7, text: '🌨️ -' + d.blizzardDmg, color: '#ffffff', big: true, t0: t }); msg('🌨️ 눈바람에 휩쓸렸어요! 최대 체력의 10%를 잃었어요.', 2800); }
       else if (d.blizzardSafe) msg('🔥 모닥불 곁에서 눈바람을 피했어요!', 2200);
+      if (map.raid) {
+        raid = { awake: !!d.raidAwake, nextFire: d.nextFireAt || 0, nextGas: d.nextGasAt || 0 };
+        if (d.fireAt) raidFx.fire = performance.now();
+        if (d.gasAt) raidFx.gas = performance.now();
+        if (d.fireDmg) { floats.push({ x: P.x, y: P.y - 0.7, text: '🔥 -' + d.fireDmg, color: '#ff6a3a', big: true, t0: t }); msg('🔥 불벼락에 맞았어요! (-' + d.fireDmg + ')', 2600); }
+        else if (d.fireAt) msg('🔥 불벼락이 떨어졌지만 멀리 있어 피했어요!', 2200);
+        if (d.gasDmg) { floats.push({ x: P.x, y: P.y - 1.1, text: '☠️ -' + d.gasDmg, color: '#c08aff', big: true, t0: t + 150 }); if (!d.fireDmg) msg('☠️ 어둠가스가 성당 옛터를 뒤덮었어요! (-' + d.gasDmg + ')', 2600); }
+      }
       if (d.combat) setCombat(d.combat);
       renderCold();
       if (d.died && d.state) fallDown(d);
     }).catch(function () { coldBusy = false; });
   }
   function coldWarn() {
+    if (map && map.raid) { raidWarn(); return; } // [2026-10-28]
     if (!map || !map.cold) { if (el.cold && el.cold.style.display !== 'none') el.cold.style.display = 'none'; return; }
     if (cold && cold.nextBz) {
       var left = cold.nextBz - nowSrv();
@@ -6885,7 +6915,7 @@ var TowerMine = (function () {
     renderCold();
   }
   function renderCold() {
-    if (!el.cold) return;
+    if (!el.cold || (map && map.raid)) return; // 성당 옛터는 raidWarn이 쓴다
     if (!map || !map.cold) { el.cold.style.display = 'none'; return; }
     var eff = cold ? cold.eff : map.cold, left = cold && cold.nextBz ? cold.nextBz - nowSrv() : 0;
     var txt = inSafe() ? '🔥 안전지대 · 한기 없음' : eff > 0 ? '🥶 한기 ' + eff + '단계 · 초당 -' + eff + '%' : '🧥 외투 덕에 한기 없음';
@@ -6917,6 +6947,21 @@ var TowerMine = (function () {
     var k = i + dir + step;
     if (!citCache[k]) citCache[k] = MineChar.sprite(dir, step, 0, citLook(i));
     return citCache[k];
+  }
+  /** [2026-10-28] 대주교 마법 예고(불벼락 2초 전, 어둠가스 3초 전) + 위쪽 표시(깨어 있음/잠듦, 다음 마법까지 초). */
+  function raidWarn() {
+    if (!el.cold) return;
+    var ts = nowSrv(), txt;
+    if (!raid || !raid.awake) txt = '👿 타락한 대주교가 제단에서 기다린다 · 권장 Lv.80';
+    else {
+      var lf = raid.nextFire - ts, lg = raid.nextGas - ts, boss = map.mobs && map.mobs[map.mobs.length - 1], bp = boss && boss._p;
+      var far = bp ? Math.max(Math.abs(bp.cx - P.x), Math.abs(bp.cy - P.y)) > 12 : false;
+      if (lf > 0 && lf <= 2000 && raidWarned.f !== raid.nextFire) { raidWarned.f = raid.nextFire; msg(far ? '🔥 대주교가 불벼락을 모은다! (멀리 있어 안전)' : '🔥 대주교가 불벼락을 모은다! 12칸 밖으로 피하세요!', 2200); }
+      if (lg > 0 && lg <= 3000 && raidWarned.g !== raid.nextGas) { raidWarned.g = raid.nextGas; msg('☠️ 어둠가스가 퍼지려 한다! 성당 옛터 어디에도 피할 곳이 없어요!', 3000); }
+      txt = '👿 대주교 분노 · 🔥 ' + Math.max(0, Math.ceil(lf / 1000)) + '초 · ☠️ ' + Math.max(0, Math.ceil(lg / 1000)) + '초';
+    }
+    if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
+    if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
   }
   /** 모닥불(안전지대 가운데) -- 장작 + 일렁이는 불꽃. */
   function drawFire(cx, cy, TS, now) {
@@ -7291,6 +7336,21 @@ var TowerMine = (function () {
         ctx.fillRect(fxp, fyp, (bzOn ? 4 : 2) * dpr, 2 * dpr);
       }
     }
+    // [2026-10-28] 대주교 마법 -- 불벼락(붉게 번쩍 + 하늘에서 내리치는 번개 줄기), 어둠가스(보랏빛이 퍼졌다 걷힘)
+    if (map.raid) {
+      var pf = performance.now() - raidFx.fire, pg = performance.now() - raidFx.gas;
+      if (pf < 900) {
+        ctx.fillStyle = 'rgba(255,90,40,' + (0.45 * (1 - pf / 900)) + ')'; ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = 'rgba(255,230,140,' + (1 - pf / 900) + ')'; ctx.lineWidth = 3 * dpr;
+        for (var li = 0; li < 6; li++) {
+          var lx0 = (li * 173 + 97) % W;
+          ctx.beginPath(); ctx.moveTo(lx0, 0);
+          for (var sg = 1; sg <= 6; sg++) ctx.lineTo(lx0 + Math.sin(li * 7 + sg * 3) * 30 * dpr, H * sg / 6);
+          ctx.stroke();
+        }
+      }
+      if (pg < 2500) { ctx.fillStyle = 'rgba(70,20,100,' + (0.5 * (1 - pg / 2500)) + ')'; ctx.fillRect(0, 0, W, H); }
+    }
     // [2026-10-24] 바닷길(용궁) -- 화면이 푸르게 물들고 거품이 올라간다
     if (map.underwater) {
       ctx.fillStyle = 'rgba(30,110,190,0.18)';
@@ -7411,7 +7471,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; /* [2026-10-26] 한기 */ others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; /* [2026-10-26] 한기, [2026-10-28] 대주교 */ others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
@@ -7509,6 +7569,10 @@ var TowerMine = (function () {
           floats.push({ x: w.x, y: w.y, text: '+' + (w.gain || 1) + ' ' + w.oreName, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: wi, t0: performance.now() + 60 * (i + 1) });
         });
         if (d.ores) st.ores = d.ores;
+        if (d.iceGain) { // [2026-10-28] 설산 빙석
+          var iimg = new Image(); iimg.src = oreIcon(19);
+          floats.push({ x: x, y: y - 1.0, text: '+1 빙석', color: '#bfefff', icon: iimg, t0: performance.now() + 350 });
+        }
         if (d.detectDim) { // 탐지 곡괭이가 별빛석에 빛을 잃음 -- 맵 리셋 때 회복
           (st.gear || []).forEach(function (g) { if (g.code === 'DETECT_PICK') g.dim = true; });
           scan = null;
