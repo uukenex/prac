@@ -7120,6 +7120,7 @@ var TowerMine = (function () {
   //  gmAura: 캐릭터 뒤 금빛/보랏빛 후광(숨 쉬듯). gmSparkle: 주위를 도는 십자 반짝이 + 발밑에서 피어오르는 금가루 + 머리 위 "운영자" 이름표.
   var GM_COLORS = ['#ffe14d', '#7ff0ff', '#ff8ad8', '#ffffff', '#b07cff'];
   function gmAura(x, y, now) {
+    var TS = T * scale; // draw()의 TS는 지역 변수라 여기서 다시 구한다(없으면 ReferenceError로 화면 그리기가 멈춘다)
     var mx = x + TS / 2, my = y + TS * 0.55, pulse = 0.5 + 0.5 * Math.sin(now / 320);
     var grd = ctx.createRadialGradient(mx, my, TS * 0.1, mx, my, TS * (0.95 + pulse * 0.15));
     grd.addColorStop(0, 'rgba(255,225,77,' + (0.45 + pulse * 0.2) + ')');
@@ -7135,6 +7136,7 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
   }
   function gmSparkle(x, y, now, seed) {
+    var TS = T * scale;
     var mx = x + TS / 2, my = y + TS * 0.55, u = TS / 16;
     for (var i = 0; i < 6; i++) { // 주위를 도는 반짝이
       var an = now / 650 + i * Math.PI / 3 + seed, rr = TS * (0.62 + 0.08 * Math.sin(now / 260 + i));
@@ -7401,9 +7403,9 @@ var TowerMine = (function () {
       var ou = others[oid], op = otherPos(ou, now), ox = Math.round(op.x * TS - camX), oy = Math.round(op.y * TS - camY);
       if (ox < -TS || oy < -TS || ox > W || oy > H) continue;
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
-      if (ou.look && ou.look.gm) gmAura(ox, oy - 3 * scale, now);
+      if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
-      if (ou.look && ou.look.gm) gmSparkle(ox, oy - 3 * scale, now, +oid || 1);
+      if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
     }
     // 캐릭터
@@ -7412,9 +7414,9 @@ var TowerMine = (function () {
     ctx.fillRect(cx + 3 * scale, cy + 13 * scale, 10 * scale, 3 * scale);
     var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
     var meGm = !!(st && st.look && st.look.gm); // [2026-10-28] 운영자 장비 -- 반짝이 + "운영자" 표시
-    if (meGm) gmAura(cx, cy - 3 * scale, now);
+    if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
-    if (meGm) gmSparkle(cx, cy - 3 * scale, now, 0);
+    if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
