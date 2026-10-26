@@ -435,6 +435,9 @@ public interface BotS5Service {
      */
     String battleLogLink(String userName);
 
+    /** [2026-10-28] /광산 -- 광산 바로 들어가기 링크(계정이 없으면 지금 이름으로 만든다). */
+    String mineLink(String userName);
+
     /** [2026-09-30] 몬스터 정보 표(웹 도감 탭 몬스터도감의 원본)용 -- 층별 일반/보스 몬스터의
      *  HP/ATK/DEF/처치 PP/전투력/안전기준을 실제 전투와 같은 계산(applyHardcoreFloorScale 등)으로 만든 표. */
     java.util.List<java.util.HashMap<String, Object>> monsterInfoTable();

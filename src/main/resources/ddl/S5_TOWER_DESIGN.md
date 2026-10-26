@@ -5472,3 +5472,9 @@ AskUserQuestion으로 확정: (1) 고대의 유적 = 기존 무너진 사원(SPE
 - 운영자 전용(`MineCos.asAdmin`, 순번 36~38): 운영자 왕관(HAT_GM), 운영자 제복(TOP_GM), 바람의 신(SHOE_GM, 이동 속도 5배 = 한 칸 28ms, `mineStepMs`).
   상점에서 살 수 없고 관리자(`isMineAdmin`)에게만 보이며 처음부터 가진 것으로 친다. 하나라도 입으면 외형에 `gm` -> 화면이 금빛 후광 + 도는 반짝이 + 금가루 + "★ 운영자 ★" 이름표(나/다른 유저 모두).
   관리자 일어난다람쥐/카단에게 COS_*_GM 1 + LOOK_HAT 36 / LOOK_TOP 37 / LOOK_SHOES 38로 입혀 둠(2026-10-28).
+
+### 2026-10-28 /광산 바로 들어가기
+- 채팅 `/광산` -> `BotS5ServiceImpl.mineLink`: 광산이 열려 있으면(`mineAccess`) `tower-view?go=mine&userName=이름` 링크. 시즌5 계정이 정확히 같은 이름으로 없으면
+  링크를 주기 전에 `initUser`로 만든다(웹 tower-status의 앞부분 일치 검색이 다른 계정으로 들어가지 않게). go=mine을 앞에 둬서 채팅앱이 한글에서 링크를 끊어도 남게.
+- 탑 화면: `?go=mine`이면 상태를 불러온 뒤 광산을 바로 연다(`TW` DOMContentLoaded).
+- 매일 4시 미사용 계정 정리(`deleteJunkZeroFloorUsers`)에서 광산 기록(TBOT_S5_MINE_USER)이 있는 계정은 뺀다 -- 광산만 하는 유저는 CUR_FLOOR가 0이라.

@@ -5388,7 +5388,11 @@ var TW = (function () {
     var fromUrl = qs.get('userName') || qs.get('user_name') || qs.get('username') || qs.get('name');
     var saved = fromUrl || sessionStorage.getItem('loaUserName');
     if (saved) document.getElementById('userNameInput').value = saved;
-    if (saved) loadStatus();
+    var loaded = saved ? loadStatus() : null;
+    // [2026-10-28] 채팅 "/광산" 링크(?go=mine) -- 상태를 불러와 계정이 확정되면 광산을 바로 연다
+    if (qs.get('go') === 'mine' && loaded) loaded.then(function () {
+      if (mineOpen) openMine(); else toast('⛏️ 광산은 아직 준비 중입니다.');
+    });
 
     checkAppVersion();
     // [2026-10-22] "이거 왜 계속 호출해? 안 호출하게" 요청 -- 3분마다 무조건 부르던 타이머(setInterval)를 없앴다.

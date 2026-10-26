@@ -83,9 +83,11 @@
          CUR_FLOOR이 0에서 벗어나므로, "가입 후 하루가 지나도 CUR_FLOOR=0"이면 안전하게 정리
          대상으로 판단(방금 막 만들어진 계정을 레이스로 지우지 않도록 REG_DATE 하루 여유를 둠). -->
     <delete id="deleteJunkZeroFloorUsers">
-        DELETE FROM TBOT_S5_USER_PROGRESS
+        DELETE FROM TBOT_S5_USER_PROGRESS P
         WHERE CUR_FLOOR = 0
           AND REG_DATE &lt; SYSDATE - 1
+          <!-- [2026-10-28] /광산으로 계정을 만들고 광산만 하는 유저는 탑을 안 올라도 정리하지 않는다 -->
+          AND NOT EXISTS (SELECT 1 FROM TBOT_S5_MINE_USER M WHERE M.USER_NAME = P.USER_NAME)
     </delete>
 
     <!-- map에 담긴 키만 동적으로 SET (부분 업데이트) -->

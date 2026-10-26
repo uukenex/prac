@@ -130,6 +130,11 @@ public class Season5Controller {
         return s5Service.battleLogLink(userNameOf(map)); // 관리자 권한 체크는 서비스에서
     }
 
+    /** [2026-10-28] /광산 -- 광산 게임 바로 들어가기 링크(계정이 없으면 지금 이름으로 만든다). */
+    public String mineLink(HashMap<String, Object> map) {
+        return s5Service.mineLink(userNameOf(map));
+    }
+
     /** /갱신 — 다른 시즌들의 /갱신과 같이 눌리는 공용 명령어에 얹어서 호출됨(LoaChatController 참고) */
     public String refreshConfig() {
         return s5Service.refreshConfig();

@@ -2207,6 +2207,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         sb.append("/계단내려가기 (/탑내려가기, /계단다운)").append(NL);
         sb.append("/탑올라가기 (/탑업)").append(NL);
         sb.append("/탑현황 [닉네임]").append(NL);
+        sb.append("/광산 (광산 게임 바로 들어가기)").append(NL); // [2026-10-28]
         sb.append("/파티편성 [N]").append(NL);
         sb.append("/동료가리기 N").append(NL);
         sb.append("/동료뽑기N [10]").append(NL);
@@ -6485,6 +6486,23 @@ public class BotS5ServiceImpl implements BotS5Service {
             return "권한이 없습니다.";
         }
         return "📜 유저별 전투/웹 로그 뷰어: http://rgb-tns.dev-apc.com/loa/tower-battle-log";
+    }
+
+    /** [2026-10-28] "/광산" -- 광산에 바로 들어가는 링크(탑 화면이 ?go=mine을 보고 광산을 연다).
+     *  시즌5 계정이 정확히 같은 이름으로 없으면 지금 이름으로 만든다(웹 /api/tower-status의 앞부분 일치 검색이
+     *  다른 사람 계정으로 잘못 들어가지 않게, 링크를 주기 전에 서버에서 먼저 만든다). 기존 유저도 그대로 바로 들어간다.
+     *  go=mine을 userName보다 앞에 둔다 -- 채팅앱이 한글에서 링크를 끊어도 광산 바로가기는 남게. */
+    @Override
+    public String mineLink(String userName) {
+        if (userName == null || userName.trim().isEmpty()) return "유저명을 확인할 수 없어요.";
+        if (!mineAccess(userName)) return "⛏️ 광산은 아직 준비 중입니다.";
+        boolean created = false;
+        if (dao.selectUserProgress(userName) == null) {
+            initUser(userName);
+            created = true;
+        }
+        return (created ? "🎉 " + userName + " 님의 계정을 새로 만들었어요!" + NL : "")
+                + "⛏️ 광산 바로 들어가기: " + TOWER_VIEW_URL + "?go=mine&userName=" + userName;
     }
 
     @Override
