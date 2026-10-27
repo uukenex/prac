@@ -6022,11 +6022,19 @@ var TowerMine = (function () {
     return { x: ax + (bx - ax) * k, y: ay + (by - ay) * k, cx: k < 0.5 ? ax : bx, cy: k < 0.5 ? ay : by };
   }
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
-  function mobSprite(k) {
-    if (mobSprites[k]) return mobSprites[k];
+  function mobSprite(k, pose) {
+    var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
+    if (mobSprites[ck]) return mobSprites[ck];
     var ty = map.mobTypes[k] || {}, c = mk(T, T), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3);
     var eye = ty.tier >= 4 ? '#ff3b30' : '#1a1a1a';
     switch (ty.kind) {
+      case 'ninja': // [2026-10-28] 닌자 -- 두건 + 눈가만 드러난 복면, 붉은 목도리. 보통은 팔을 내리고 쿠나이, pose면 가슴 앞에서 두 손을 모아 인을 맺는다
+        px(g, dk, 5, 12, 2, 3); px(g, dk, 9, 12, 2, 3); px(g, col, 4, 7, 8, 5); px(g, lt, 5, 8, 1, 3);
+        px(g, col, 4, 1, 8, 6); px(g, dk, 4, 0, 8, 1); px(g, '#e8c8a0', 5, 3, 6, 2); px(g, eye, 6, 3); px(g, eye, 9, 3);
+        px(g, '#c0283a', 4, 7, 8, 1); px(g, '#c0283a', 12, 6, 2, 1); px(g, '#c0283a', 13, 7, 2, 1);
+        if (pose) { px(g, dk, 4, 8, 3, 1); px(g, dk, 9, 8, 3, 1); px(g, '#e8c8a0', 7, 7, 2, 3); px(g, '#e8c8a0', 7, 5, 1, 2); px(g, '#b48aff', 6, 4, 1, 1); px(g, '#b48aff', 9, 5, 1, 1); }
+        else { px(g, dk, 3, 8, 1, 3); px(g, dk, 12, 8, 1, 3); px(g, '#c3cad1', 13, 9, 1, 3); px(g, '#c3cad1', 12, 11, 3, 1); }
+        break;
       case 'small':
         px(g, col, 4, 8, 8, 6); px(g, lt, 5, 9, 4, 2); px(g, col, 9, 5, 5, 5); px(g, dk, 10, 4, 1, 2); px(g, dk, 12, 4, 1, 2);
         px(g, eye, 12, 7); px(g, dk, 2, 7, 2, 4); px(g, dk, 5, 14, 2, 1); px(g, dk, 9, 14, 2, 1); break;
@@ -6052,8 +6060,8 @@ var TowerMine = (function () {
       default:
         px(g, col, 4, 6, 8, 8); px(g, eye, 6, 9); px(g, eye, 9, 9);
     }
-    mobSprites[k] = outline(c, '#140d0a');
-    return mobSprites[k];
+    mobSprites[ck] = outline(c, '#140d0a');
+    return mobSprites[ck];
   }
   /** 플레이어 옆(바라보는 칸 먼저) 살아 있는 몬스터 -- { m, dir }. */
   function adjMob() {
@@ -6064,7 +6072,7 @@ var TowerMine = (function () {
   }
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
   function mobStOf(a, old) {
-    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5] }, t = nowSrv();
+    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중
     if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) { n.ox = old.fx; n.oy = old.fy; n.mt = t; }
     else if (old && old.mt != null && t - old.mt < 450) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; }
     return n;
@@ -6556,7 +6564,13 @@ var TowerMine = (function () {
         + '<label>Y <input id="mineWarpY" type="number" inputmode="numeric" value="' + P.y + '"></label>'
         + '<button type="button" onclick="TowerMine.adminWarp()">확인</button></div>';
   }
+  // [2026-10-28] "좌표를 누르면 맵/X/Y 입력 대신 전체 지도에서 지역을 눌러 이동" -- 좌표를 누르면 전체 지도(관리자는 지역을 눌러 이동),
+  //  좌표 입력 창은 전체 지도 아래 [좌표 입력] 버튼으로(openWarpForm)
   function openWarp() {
+    if (!opened || !map || busy || !st || !st.adminMaps) return;
+    openWorld();
+  }
+  function openWarpForm() {
     if (!opened || !map || busy || !st || !st.adminMaps) return;
     openSmith({ name: '좌표 이동', line: '', kind: 'warp' }, 'warp');
     var ix = $('mineWarpX');
@@ -6593,7 +6607,20 @@ var TowerMine = (function () {
     { id: 'castle', name: '동쪽 성곽', x: 258, y: 252, fill: '#8a857c', ink: '#fff' },
     { id: 'beach', name: '남쪽 바닷가', x: 160, y: 344, fill: '#ecd9a0', ink: '#3b2a10' },
     { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' },
-    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' } // [2026-10-28] 다도해 -- 본섬은 모두에게(신궁/뱃길/일곱 섬은 아직 운영자만)
+    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' }, // [2026-10-28] 다도해 -- 본섬은 모두에게(신궁/뱃길/일곱 섬은 아직 운영자만)
+    // [2026-10-28] 다도해 안쪽(운영자만, 지도 아래로 늘려서) -- 관리자가 지역을 눌러 바로 이동할 수 있게
+    { id: 'shrine', name: '신궁 1층', x: 52, y: 490, fill: '#8a1e1e', ink: '#fff', admin: true, sub: true },
+    { id: 'shrine2', name: '신궁 2층', x: 160, y: 490, fill: '#7a1a1a', ink: '#fff', admin: true, sub: true },
+    { id: 'shrine3', name: '신궁 3층', x: 268, y: 490, fill: '#6a1414', ink: '#fff', admin: true, sub: true },
+    { id: 'shrineboss', name: '닌자 두목 🥷', x: 106, y: 550, fill: '#3a0f1a', ink: '#ffd8e0', admin: true, sub: true },
+    { id: 'archisea', name: '다도해 뱃길', x: 214, y: 550, fill: '#2f6a9a', ink: '#fff', admin: true, sub: true },
+    { id: 'isle1', name: '동백섬', x: 44, y: 625, fill: '#3f8a4a', ink: '#fff', admin: true, sub: true, w: 72 },
+    { id: 'isle2', name: '갈매기섬', x: 120, y: 625, fill: '#7a8a8a', ink: '#fff', admin: true, sub: true, w: 72 },
+    { id: 'isle3', name: '거북섬', x: 196, y: 625, fill: '#c8b070', ink: '#2a1d10', admin: true, sub: true, w: 72 },
+    { id: 'isle4', name: '안개섬', x: 272, y: 625, fill: '#5a6a6a', ink: '#fff', admin: true, sub: true, w: 72 },
+    { id: 'isle5', name: '산호섬', x: 82, y: 675, fill: '#e07a8a', ink: '#2a1010', admin: true, sub: true, w: 72 },
+    { id: 'isle6', name: '달맞이섬', x: 160, y: 675, fill: '#8a9ac8', ink: '#fff', admin: true, sub: true, w: 72 },
+    { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', admin: true, sub: true, w: 72 }
   ];
   function worldHtml() {
     // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
@@ -6611,9 +6638,11 @@ var TowerMine = (function () {
           + (label ? '<text x="' + (mx + 6) + '" y="' + (my + 4) + '" class="wl">' + label + '</text>' : '');
     };
     var walk = 'stroke="#f4f0e6" stroke-width="3"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
-    var svg = '<svg viewBox="0 -290 320 750" class="mine-world" role="img" aria-label="광산 전체 지도">' // [2026-10-28] 설산 봉우리까지 위로 늘렸다
-        + '<rect x="0" y="-290" width="320" height="750" fill="#1d1730"/>'
+    var adminW = !!(st && st.adminMaps), vh = adminW ? 1005 : 750; // [2026-10-28] 위로 설산 봉우리까지, 관리자는 아래로 다도해 안쪽 지역까지(지역을 누르면 이동)
+    var svg = '<svg viewBox="0 -290 320 ' + vh + '" class="mine-world" role="img" aria-label="광산 전체 지도">'
+        + '<rect x="0" y="-290" width="320" height="' + vh + '" fill="#1d1730"/>'
         + line('snowtown', 'snowroad', walk) + line('snowroad', 'snowpeak', walk)
+        + line('archi', 'shrine', walk) + line('shrine', 'shrine2', walk) + line('shrine2', 'shrine3', walk) + line('archi', 'shrineboss', walk) + line('archi', 'archisea', sea, '⛵')
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
         + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
@@ -6625,21 +6654,36 @@ var TowerMine = (function () {
     var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
     WORLD_NODES.forEach(function (n) {
       if (!N[n.id] || !bossOf[n.id]) return;
-      var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - W / 2 + 2; // 왼쪽 끝 맵(동굴 3층)에서 안 잘리게 왼쪽 맞춤
+      var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - (n.w || W) / 2 + 2; // 왼쪽 끝 맵(동굴 3층)에서 안 잘리게 왼쪽 맞춤
       svg += b.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
           : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(b.nextAt) + '</text>';
     });
     WORLD_NODES.forEach(function (n) {
       if (!N[n.id]) return;
-      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi)); // [2026-10-28] 다도해 맵은 모두 다도해 칸
-      svg += '<rect x="' + (n.x - W / 2) + '" y="' + (n.y - H / 2) + '" width="' + W + '" height="' + H + '" fill="' + n.fill + '"'
+      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi && !N[map.id])); // [2026-10-28] 다도해 맵은 다도해 칸(관리자는 안쪽 지역 칸)
+      var nw = n.w || W;
+      // [2026-10-28] "관리자 좌표 이동 -- 전체 지도에서 지역을 누르면 그곳으로" -- 관리자만 칸을 누를 수 있다(그 맵 시작점으로, 서버도 관리자만)
+      svg += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
+          + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
           + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
+          + (adminW ? '</g>' : '')
           + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
           + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
     });
     svg += '</svg>';
+    if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
+        + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
     return npcHead('🗺️ 전체 지도', false) + svg; // [2026-10-24] 아래 안내 문구는 뺐다("이 멘트도 없애주고")
+  }
+  /** [2026-10-28] 관리자 -- 전체 지도에서 누른 지역(맵) 시작점으로 이동(서버 mineAdminWarp가 관리자인지 다시 확인). */
+  function worldWarp(id) {
+    if (!st || !st.adminMaps || busy) return;
+    var e = st.adminMaps.filter(function (m) { return m.id === id; })[0];
+    if (!e) { msg('이동할 수 없는 곳이에요.'); return; }
+    closeSmith();
+    setAuto(false);
+    travel('/api/tower-mine-admin-warp?mapId=' + encodeURIComponent(id) + '&x=' + (e.sx != null ? e.sx : 0) + '&y=' + (e.sy != null ? e.sy : 0), '이동하지 못했어요.');
   }
   // [2026-10-28] 🎒 장비 -- "반지류 하나, 옷류 하나, 장갑류 하나": 칸마다 가진 장비를 보여 주고 끼기/빼기(같은 칸의 다른 장비는 저절로 빠진다).
   var EQ_SLOTS = [
@@ -6670,13 +6714,16 @@ var TowerMine = (function () {
     if (!st.archi) return npcHead(n.kind === 'ninjaquest' ? '🥷 신궁 수문장' : n.kind === 'boatwright' ? '🔨 배 목수' : '⛵ 뱃사공', false) + talkBlock(n, n.line)
         + '<div class="mine-smith-say">🚧 아직 준비 중이에요. 곧 열려요!</div>'; // [2026-10-28] 본섬만 열림 -- 신궁 임무/배/뱃길은 아직 운영자만
     var a = st.archi || {}, h = npcHead(n.kind === 'ninjaquest' ? '🥷 신궁 수문장' : n.kind === 'boatwright' ? '🔨 배 목수' : '⛵ 뱃사공', false) + talkBlock(n, n.line);
-    var have = '<div class="mine-smith-say">🌙 달빛석 ' + (a.moon || 0) + '개 · 📜 비급서 ' + (a.books || 0) + '권 · ⛵ 1인용 배 ' + (a.boat ? '있음' : '없음') + '</div>';
-    if (n.kind === 'ninjaquest') {
-      if (!a.quest) return h + have + '<div class="mine-smith-row"><span class="nm">신궁 내부 수색<small>닌자 ' + (a.need || 100) + '명 처치 -> 닌자의 비급서 + 달빛석(되풀이 가능)</small></span><button type="button" onclick="TowerMine.archiAct(\'quest\')">임무 받기</button></div>';
+    var have = '<div class="mine-smith-say">🌙 달빛석 ' + (a.moon || 0) + '개 · 📜 비급서 ' + (a.books || 0) + '권 · ⛵ 1인용 배 ' + (a.boat ? '있음' : '없음') + (a.key ? ' · 🗝️ 신궁 열쇠' : '') + '</div>';
+    if (n.kind === 'ninjaquest') { // [2026-10-28] 수색 임무 보상 = 닌자 두목의 방 열쇠(비급서/달빛석은 두목 첫 처치 보상)
+      var boss = '<div class="mine-smith-say">🗝️ 신궁 열쇠가 있으면 동쪽 문(닌자 두목의 방)에 들어갈 수 있어요. 두목은 은신과 분신술을 써요 -- 다섯 중 <b>자세가 다른 하나</b>가 진짜!'
+          + (a.bossReward ? ' (첫 처치 보상은 이미 받았어요)' : ' 처음 쓰러뜨리면 📜 비급서 + 🌙 달빛석 확정!') + '</div>';
+      if (a.key) return h + have + boss;
+      if (!a.quest) return h + have + '<div class="mine-smith-row"><span class="nm">신궁 수색<small>신궁 1~3층의 닌자 ' + (a.need || 100) + '명 처치 -> 🗝️ 닌자 두목의 방 열쇠</small></span><button type="button" onclick="TowerMine.archiAct(\'quest\')">임무 받기</button></div>';
       var done = (a.kills || 0) >= (a.need || 100), pct = Math.min(100, Math.round((a.kills || 0) * 100 / (a.need || 100)));
       return h + have + '<div class="mine-smith-row"><span class="nm">🥷 수색 중 ' + (a.kills || 0) + ' / ' + (a.need || 100) + '<span class="mine-bar hp" style="margin-top:4px"><i style="width:' + pct + '%"></i></span>'
-          + '<small>' + (done ? '다 처치했어요! 보상을 받으세요.' : '신궁 문(본섬 가운데)으로 들어가 닌자를 처치하세요.') + '</small></span>'
-          + '<button type="button" ' + (done ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'claim\')">보상 받기</button></div>';
+          + '<small>' + (done ? '다 처치했어요! 열쇠를 받으세요.' : '신궁 서쪽 문으로 들어가 1~3층의 닌자를 처치하세요. 닌자는 가끔 은신해 피하고 다음 공격이 2배예요.') + '</small></span>'
+          + '<button type="button" ' + (done ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'claim\')">열쇠 받기</button></div>';
     }
     if (n.kind === 'boatwright') {
       if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>';
@@ -7146,7 +7193,8 @@ var TowerMine = (function () {
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       var t = performance.now();
-      (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: '-' + h.dmg, color: '#ff4a4a', big: true, t0: t + k * 160 }); });
+      (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); }); // [2026-10-28] 은신했던 닌자의 기습
+      if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
       if (d.released) { flashT0 = t; msg(d.message || '', 2800); }
@@ -7490,12 +7538,18 @@ var TowerMine = (function () {
       if (!d || d.tooFast) return;
       if (d.reload) { reload(); return; }
       if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
-      if (d.mobDeadUntil != null) mobSt[m.id] = mobStOf([m.id, d.mobHp, d.mobDeadUntil, d.mobFx, d.mobFy, d.mobFrozenUntil], mobSt[m.id]);
+      if (d.mobDeadUntil != null) mobSt[m.id] = mobStOf([m.id, d.mobHp, d.mobDeadUntil, d.mobFx, d.mobFy, d.mobFrozenUntil, d.mobStealth ? 1 : 0], mobSt[m.id]);
+      (d.mobRows || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); }); // [2026-10-28] 분신술 -- 분신/두목 상태
       if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
       lastSaved = map.id + ':' + P.x + ',' + P.y;
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
-      floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
-      if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: '-' + d.counter, color: '#ff9a3a', t0: t + 180 });
+      // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
+      if (d.evade) floats.push({ x: fxp, y: fyp, text: '💨 은신!', color: '#c8c8ff', big: true, t0: t });
+      else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
+      else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
+      if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });
+      if (d.split) { flashT0 = t; msg(d.message || '', 4200); }
+      else if ((d.clone || d.splitEnd) && !d.killed) msg(d.message || '', 2800);
       setCombat(d.combat);
       if (d.killed) {
         if (d.ores) st.ores = d.ores;
@@ -7676,18 +7730,26 @@ var TowerMine = (function () {
     }
     // [2026-10-24] 몬스터(그림 + 맞은 몬스터 체력 막대 + 가까우면 이름)
     if (map.mobs) {
+      // [2026-10-28] 닌자 두목 분신술 -- 분신은 두목과 똑같이(그림/크기/이름/체력 막대) 그리고, 분신이 나와 있는 동안 진짜만 인을 맺은 자세
+      var bossM = map.mobs[map.mobs.length - 1], bossT = bossM && map.mobTypes[bossM.k], splitOn = false;
+      if (bossT && bossT.boss) for (var si = 0; si < map.mobs.length; si++) { var stt = map.mobTypes[map.mobs[si].k]; if (stt && stt.clone && map.mobs[si]._p) { splitOn = true; break; } }
       for (var mi = 0; mi < map.mobs.length; mi++) {
         var mb = map.mobs[mi], mp = mb._p;
         if (!mp) continue;
         var mx = mp.x * TS - camX, my = mp.y * TS - camY;
         if (mx < -TS || my < -TS || mx > W || my > H) continue;
-        var ty = map.mobTypes[mb.k] || {}, bob = ty.kind === 'flyer' ? Math.sin(now / 260 + mb.id) * 2 * scale : Math.abs(Math.sin(now / 420 + mb.id)) * scale;
+        var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = false;
+        if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
+        var bob = ty.kind === 'flyer' ? Math.sin(now / 260 + bid) * 2 * scale : Math.abs(Math.sin(now / 420 + bid)) * scale;
+        var ms = mobSt[mb.id];
+        if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
         ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
         if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
           ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS / 2, my + TS / 2, TS * 1.1, 0, Math.PI * 2); ctx.fill();
-          ctx.drawImage(mobSprite(mb.k), Math.round(mx - TS * 0.4), Math.round(my - TS * 0.8 - bob), TS * 1.8, TS * 1.8);
-        } else ctx.drawImage(mobSprite(mb.k), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
-        var ms = mobSt[mb.id];
+          ctx.drawImage(mobSprite(sk, pose), Math.round(mx - TS * 0.4), Math.round(my - TS * 0.8 - bob), TS * 1.8, TS * 1.8);
+        } else ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
+        ctx.globalAlpha = 1;
+        if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         if (ms && ms.hp > 0 && ms.hp < ty.hp) {
           ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + 1 * scale, my - 4 * scale, 14 * scale, 3 * scale);
           ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / ty.hp), scale);
@@ -7751,7 +7813,7 @@ var TowerMine = (function () {
       ctx.fillRect(0, 0, W, H);
     }
     // [2026-10-28] 다도해 밤 -- 푸르스름하게 어둡게(낮엔 햇살이 살짝 노랗게)
-    if (map.archi && map.dayCycleMs && map.id !== 'shrine') {
+    if (map.archi && map.dayCycleMs && map.id.indexOf('shrine') !== 0) { // [2026-10-28] 신궁 1~3층/닌자 두목의 방은 실내
       ctx.fillStyle = archiDay(nowSrv()) ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -8116,7 +8178,7 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, openEquip: openEquip, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
 </body>

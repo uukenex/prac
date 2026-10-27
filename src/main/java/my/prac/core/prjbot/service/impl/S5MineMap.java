@@ -84,7 +84,14 @@ public final class S5MineMap {
     /** 섬마다 낮 햇빛 피해(초당 최대 체력 %), 크기. 뒤 섬일수록 덥고 크고 몬스터가 세다(S5MineMobs.tierAt). */
     static final int[] ISLE_SUN = { 1, 2, 2, 1, 3, 4, 5 };
     static final int[] ISLE_SIZE = { 110, 120, 130, 120, 130, 140, 150 };
-    public static final List<String> ARCHI_MAPS = Collections.unmodifiableList(Arrays.asList(ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7));
+    /** [2026-10-28] "신궁 건물 크게, 입구 두 개(일반 방 / 보스 방), 일반은 3층까지 더 넓게" -- 신궁 1층(SHRINE 그대로) -> 2층 -> 3층(계단),
+     *  닌자 두목의 방(SHRINE_BOSS, 신궁 열쇠 SHRINE_KEY가 있어야 들어감 -- 수문장 수색 임무 보상). */
+    public static final String SHRINE2 = "shrine2", SHRINE3 = "shrine3", SHRINE_BOSS = "shrineboss";
+    public static final List<String> SHRINE_FLOORS = Collections.unmodifiableList(Arrays.asList(SHRINE, SHRINE2, SHRINE3));
+    public static final String SHRINE_KEY_ITEM = "SHRINE_KEY";
+    public static boolean isShrineFloor(String id) { return SHRINE_FLOORS.contains(id); }
+    public static final List<String> ARCHI_MAPS = Collections.unmodifiableList(Arrays.asList(ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7,
+            SHRINE2, SHRINE3, SHRINE_BOSS));
     public static boolean isArchi(String id) { return ARCHI_MAPS.contains(id); }
     /** 1인용 배(광산 아이템 코드) -- 뱃길에 들어가려면 있어야 한다(requireItem). */
     public static final String BOAT_ITEM = "BOAT";
@@ -107,7 +114,7 @@ public final class S5MineMap {
     }
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
-            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK);
+            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS);
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -759,32 +766,45 @@ public final class S5MineMap {
         out.put(SNOWTOWN, relink(twn, retarget(twn, ROYALROAD, besidePortal(road, SNOWTOWN)), twn.npcs));
         out.put(CITY, relink(cty, retarget(cty, ROYALROAD, besidePortal(road, CITY)), cty.npcs));
         // [2026-10-28] 다도해(운영자만) -- 본섬/신궁 내부/뱃길/섬 7개. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로).
-        S5MineMap shrine = generateShrine(seed + 40);
+        S5MineMap shrine = generateShrine(seed + 40, 1);
         S5MineMap archi = generateArchiMain(seed + 41);
         S5MineMap sea = generateArchiSea(seed + 42);
         S5MineMap[] isles = new S5MineMap[ISLE_IDS.length];
         for (int i = 0; i < isles.length; i++) isles[i] = generateIsle(seed + 43 + i, i);
+        // [2026-10-28] 신궁 2/3층, 닌자 두목의 방 -- 섬들 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로)
+        S5MineMap shrine2 = generateShrine(seed + 50, 2), shrine3 = generateShrine(seed + 51, 3), shrineBoss = generateShrineBoss(seed + 52);
         S5MineMap ar = relink(archi, retarget(archi, SHRINE, new int[] { shrine.spawnX, shrine.spawnY }), null);
+        ar = relink(ar, retarget(ar, SHRINE_BOSS, new int[] { shrineBoss.spawnX, shrineBoss.spawnY }), null);
         out.put(ARCHI, ar);
-        out.put(SHRINE, relink(shrine, retarget(shrine, ARCHI, besidePortal(ar, SHRINE)), null));
+        S5MineMap sh1 = relink(shrine, retarget(shrine, ARCHI, besidePortal(ar, SHRINE)), null);
+        sh1 = relink(sh1, retarget(sh1, SHRINE2, new int[] { shrine2.spawnX, shrine2.spawnY }), null);
+        out.put(SHRINE, sh1);
         S5MineMap sv = relink(sea, retarget(sea, ARCHI, new int[] { ar.villageX, ar.villageY + 2 }), null);
         for (int i = 0; i < isles.length; i++) sv = relink(sv, retarget(sv, ISLE_IDS[i], new int[] { isles[i].spawnX, isles[i].spawnY }), null);
         out.put(ARCHISEA, sv);
         for (int i = 0; i < isles.length; i++) out.put(ISLE_IDS[i], relink(isles[i], retarget(isles[i], ARCHISEA, seaDockBeside(sv, ISLE_IDS[i])), null));
         // [2026-10-28] 설산 마을 북문 <-> 설산 봉우리 가는 길 <-> 설산 봉우리. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로, 설산 마을은 자리 그대로 다시 넣음).
-        S5MineMap sroad = generateSnowRoad(seed + 50);
-        S5MineMap peak = generatePeak(seed + 51);
+        S5MineMap sroad = generateSnowRoad(seed + 60);
+        S5MineMap peak = generatePeak(seed + 61);
         S5MineMap tw0 = out.get(SNOWTOWN);
         S5MineMap sr = relink(sroad, retarget(sroad, SNOWTOWN, besidePortal(tw0, SNOWROAD)), null);
         sr = relink(sr, retarget(sr, PEAK, new int[] { peak.spawnX, peak.spawnY }), null);
         out.put(SNOWROAD, sr);
         out.put(PEAK, relink(peak, retarget(peak, SNOWROAD, besidePortal(sr, PEAK)), null));
         out.put(SNOWTOWN, relink(tw0, retarget(tw0, SNOWROAD, new int[] { sr.spawnX, sr.spawnY }), tw0.npcs));
+        S5MineMap sh2 = relink(shrine2, retarget(shrine2, SHRINE, besidePortal(sh1, SHRINE2)), null);
+        sh2 = relink(sh2, retarget(sh2, SHRINE3, new int[] { shrine3.spawnX, shrine3.spawnY }), null);
+        out.put(SHRINE2, sh2);
+        out.put(SHRINE3, relink(shrine3, retarget(shrine3, SHRINE2, besidePortal(sh2, SHRINE3)), null));
+        out.put(SHRINE_BOSS, relink(shrineBoss, retarget(shrineBoss, ARCHI, besidePortal(ar, SHRINE_BOSS)), null));
         S5MineMap an = out.get(ARCHI); // 본섬 NPC -- 마을 광장(배 목수, 뱃사공), 신궁 문 앞(신궁 수문장)
-        placeNpc(an, an.villageX - 4, an.villageY - 1, "boatwright", "배 목수", "달빛석 하나만 가져오면 혼자 타는 배를 뚝딱 만들어 주지. 달빛을 머금은 돌이라야 파도를 타거든.");
+        // [2026-10-28] 배 목수 대사 -- 배 값이 달빛석 + 보석 아홉 가지(BotS5ServiceImpl.MINE_BOAT_COST)로 바뀌어서
+        placeNpc(an, an.villageX - 4, an.villageY - 1, "boatwright", "배 목수", "달빛석 하나에 보석 아홉 가지를 골고루 가져오면 혼자 타는 배를 뚝딱 만들어 주지. 달빛을 머금은 돌이라야 파도를 타거든.");
         placeNpc(an, an.villageX + 4, an.villageY - 1, "ferry", "뱃사공", "배가 있으면 뱃길로 데려다주지. 일곱 섬이 뱃길을 따라 늘어서 있다네. 한낮의 햇볕은 조심하게!");
-        for (Portal pt : an.portals) if (SHRINE.equals(pt.target))
-            placeNpc(an, pt.x + 4, pt.y + 3, "ninjaquest", "신궁 수문장", "신궁 안에 닌자들이 숨어들었소. 수색을 맡아 주시겠소? 100명을 처치하면 비급서와 달빛석을 드리리다.");
+        // [2026-10-28] 수문장은 두 문(신궁 1층 / 닌자 두목의 방) 사이 광장에. 보상은 비급서/달빛석 대신 닌자 두목의 방 열쇠.
+        int qx = 0, qy = 0, qn = 0;
+        for (Portal pt : an.portals) if (SHRINE.equals(pt.target) || SHRINE_BOSS.equals(pt.target)) { qx += pt.x; qy = pt.y; qn++; }
+        if (qn > 0) placeNpc(an, qx / qn, qy + 4, "ninjaquest", "신궁 수문장", "신궁 안에 닌자들이 숨어들었소. 수색을 맡아 주시겠소? 100명을 처치하면 닌자 두목의 방 열쇠를 드리리다.");
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
@@ -1343,12 +1363,17 @@ public final class S5MineMap {
         for (int x = 0; x < w; x++) { t[0][x] = '~'; t[h - 1][x] = '~'; }
         for (int y = 0; y < h; y++) { t[y][0] = '~'; t[y][w - 1] = '~'; }
         // 신궁: 둘레 돌바닥, 붉은 건물, 남쪽 가운데 문, 문 앞 참배길
-        int sx0 = cx - 14, sx1 = cx + 14, sy0 = cy - 12, sy1 = cy + 8;
+        // [2026-10-28] "신궁 건물 더 크게, 입구 두 개" -- 29x21 -> 51x37, 남쪽 벽에 문 둘(서쪽 = 신궁 1층, 동쪽 = 닌자 두목의 방).
+        //  두 문에서 내려온 참배길이 문 앞 광장에서 만나 남쪽으로 이어진다.
+        int sx0 = cx - 25, sx1 = cx + 25, sy0 = cy - 24, sy1 = cy + 12;
         for (int y = sy0 - 3; y <= sy1 + 3; y++) for (int x = sx0 - 3; x <= sx1 + 3; x++) t[y][x] = 's';
         for (int y = sy0; y <= sy1; y++) for (int x = sx0; x <= sx1; x++) t[y][x] = 'L';
-        int doorX = cx, doorY = sy1;
+        int doorX = cx - 11, doorY = sy1, bossDoorX = cx + 11;
         t[doorY][doorX] = 'S';
-        for (int y = doorY + 1; y <= doorY + 30; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = 'p';
+        t[doorY][bossDoorX] = 'S';
+        for (int dxx : new int[] { doorX, bossDoorX }) for (int y = doorY + 1; y <= doorY + 7; y++) for (int x = dxx - 1; x <= dxx + 1; x++) t[y][x] = 'p';
+        for (int y = doorY + 6; y <= doorY + 8; y++) for (int x = doorX - 1; x <= bossDoorX + 1; x++) t[y][x] = 'p';
+        for (int y = doorY + 8; y <= doorY + 30; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = 'p';
         // 남쪽 해안 부두와 배
         int pier = cx - 1, land = h - 2;
         while (land > 1 && t[land][pier + 1] == '~') land--;
@@ -1363,7 +1388,8 @@ public final class S5MineMap {
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '~';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(plank[0], plank[1], 'B', SHIP, 0, 0, "배에 오르기(남쪽 섬으로)"));
-        portals.add(new Portal(doorX, doorY, 'S', SHRINE, 0, 0, "신궁 안으로"));
+        portals.add(new Portal(doorX, doorY, 'S', SHRINE, 0, 0, "신궁 안으로 (1층)"));
+        portals.add(new Portal(bossDoorX, doorY, 'S', SHRINE_BOSS, 0, 0, "닌자 두목의 방 (신궁 열쇠 필요)"));
         double[][] score = new double[h][w];
         boolean[][] skip = new boolean[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
@@ -1378,7 +1404,7 @@ public final class S5MineMap {
         m.villageY = vy;
         m.sun = 1;
         m.safe.add(new int[] { vx, vy, 7 });
-        m.safe.add(new int[] { cx, doorY + 5, 4 });
+        m.safe.add(new int[] { cx, doorY + 7, 6 }); // [2026-10-28] 두 문 앞 광장
         addShadeGroves(m, r, 10);
         return m;
     }
@@ -1397,36 +1423,84 @@ public final class S5MineMap {
         }
     }
 
-    /** 신궁 내부(96x78): 붉은 기둥 벽(L) 사이로 방 4x3개와 3칸 너비 복도, 바닥은 붉은 길(p), 방마다 기둥. 아래 가운데 방 밑으로 나가는 길(U). 광석 없음, 닌자만. */
-    static S5MineMap generateShrine(long seed) {
-        int w = 96, h = 78, rw = 18, rh = 16;
+    /** 신궁 층(130x100): 붉은 기둥 벽(L) 사이로 방 5x4개(20x18)와 3칸 너비 복도, 바닥은 붉은 길(p), 방마다 기둥. 아래 가운데 방 밑으로 나가는 길(U --
+     *  1층은 본섬, 2/3층은 아래층 계단 옆). 1/2층은 맨 위 구석 방(1층 오른쪽, 2층 왼쪽) 위 벽에 올라가는 계단(S). 광석 없음, 닌자만.
+     *  [2026-10-28] 예전 신궁 내부(96x78, 방 4x3, 한 층)를 "더 넓게, 3층까지"로 바꿨다(1층 id는 SHRINE 그대로). floor = 1~3. */
+    static S5MineMap generateShrine(long seed, int floor) {
+        int cols = 5, rows = 4, rw = 20, rh = 18, gx = 25, gy = 24, w = 4 + cols * gx + 1, h = 4 + rows * gy;
         Random r = new Random(seed);
         char[][] t = new char[h][w];
         for (char[] row : t) Arrays.fill(row, 'L');
-        int[][] rc = new int[12][];
-        for (int row = 0; row < 3; row++) for (int col = 0; col < 4; col++) {
-            int x0 = 4 + col * 23, y0 = 4 + row * 24;
-            rc[row * 4 + col] = new int[] { x0, y0 };
+        int entRow = rows - 1, entCol = cols / 2;
+        int[][] rc = new int[rows * cols][];
+        for (int row = 0; row < rows; row++) for (int col = 0; col < cols; col++) {
+            int x0 = 4 + col * gx, y0 = 4 + row * gy;
+            rc[row * cols + col] = new int[] { x0, y0 };
             for (int y = y0; y < y0 + rh; y++) for (int x = x0; x < x0 + rw; x++) t[y][x] = 'p';
-            if (!(row == 2 && col == 1)) for (int[] pp : new int[][] { { 4, 4 }, { 12, 4 }, { 4, 10 }, { 12, 10 } }) // 기둥(들어오는 방은 비움)
-                if (r.nextDouble() < 0.8) for (int yy = 0; yy < 2; yy++) for (int xx = 0; xx < 2; xx++) t[y0 + pp[1] + yy][x0 + pp[0] + xx] = 'L';
+            if (!(row == entRow && col == entCol)) for (int[] pp : new int[][] { { 4, 4 }, { 14, 4 }, { 4, 12 }, { 14, 12 }, { 9, 8 } }) // 기둥(들어오는 방은 비움)
+                if (r.nextDouble() < 0.7) for (int yy = 0; yy < 2; yy++) for (int xx = 0; xx < 2; xx++) t[y0 + pp[1] + yy][x0 + pp[0] + xx] = 'L';
         }
-        for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) { // 가로 복도
-            int[] a = rc[row * 4 + col];
-            for (int x = a[0] + rw; x < a[0] + 23; x++) for (int y = a[1] + rh / 2 - 1; y <= a[1] + rh / 2 + 1; y++) t[y][x] = 'p';
+        for (int row = 0; row < rows; row++) for (int col = 0; col < cols - 1; col++) { // 가로 복도(층마다 몇 개는 막혀 있다 -- 아래에서 이어지는지 확인)
+            if (row != entRow && r.nextDouble() < 0.2) continue;
+            int[] a = rc[row * cols + col];
+            for (int x = a[0] + rw; x < a[0] + gx; x++) for (int y = a[1] + rh / 2 - 1; y <= a[1] + rh / 2 + 1; y++) t[y][x] = 'p';
         }
-        for (int row = 0; row < 2; row++) for (int col = 0; col < 4; col++) { // 세로 복도
-            int[] a = rc[row * 4 + col];
-            for (int y = a[1] + rh; y < a[1] + 24; y++) for (int x = a[0] + rw / 2 - 1; x <= a[0] + rw / 2 + 1; x++) t[y][x] = 'p';
+        for (int row = 0; row < rows - 1; row++) for (int col = 0; col < cols; col++) { // 세로 복도
+            int[] a = rc[row * cols + col];
+            for (int y = a[1] + rh; y < a[1] + gy; y++) for (int x = a[0] + rw / 2 - 1; x <= a[0] + rw / 2 + 1; x++) t[y][x] = 'p';
         }
-        int[] ent = rc[2 * 4 + 1];
+        int[] ent = rc[entRow * cols + entCol];
         int ex = ent[0] + rw / 2;
         for (int y = ent[1] + rh; y < h - 1; y++) for (int x = ex - 1; x <= ex + 1; x++) t[y][x] = 'p';
         t[h - 2][ex] = 'U';
         for (int x = 0; x < w; x++) { t[0][x] = 'L'; t[h - 1][x] = 'L'; }
+        int sx = ex, sy = h - 5;
+        // 막힌 가로 복도 때문에 못 가는 방이 있으면 그 방 위 세로 복도는 늘 있으니 실제로는 다 이어진다 -- 그래도 혹시 모를 고립 칸은 벽으로
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'L';
+        String id = floor == 1 ? SHRINE : floor == 2 ? SHRINE2 : SHRINE3;
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(ex, h - 2, 'U', ARCHI, 0, 0, "신궁 밖으로"));
-        return new S5MineMap(SHRINE, "신궁 내부", false, w, h, ex, h - 5, t, new byte[h][w], portals);
+        portals.add(new Portal(ex, h - 2, 'U', floor == 1 ? ARCHI : floor == 2 ? SHRINE : SHRINE2, 0, 0, floor == 1 ? "신궁 밖으로" : "아래층으로 내려가는 계단"));
+        if (floor < 3) {
+            int[] up = rc[floor == 1 ? cols - 1 : 0];
+            int ux = up[0] + rw / 2, uy = up[1] - 1;
+            t[uy][ux] = 'S';
+            portals.add(new Portal(ux, uy, 'S', floor == 1 ? SHRINE2 : SHRINE3, 0, 0, "신궁 " + (floor + 1) + "층으로 올라가는 계단"));
+        }
+        return new S5MineMap(id, "신궁 " + floor + "층", false, w, h, sx, sy, t, new byte[h][w], portals);
+    }
+
+    /** [2026-10-28] 닌자 두목의 방(64x50): 붉은 벽(L)으로 둘러싼 넓은 홀(p), 가장자리에 기둥 두 줄, 북쪽 단상에 닌자 두목(보스). 아래 가운데 U = 본섬 신궁 동쪽 문.
+     *  신궁 열쇠(SHRINE_KEY)가 있어야 들어온다(requireItem). 일반 몬스터/광석 없음 -- S5MineMobs: 분신 자리 + 두목만. */
+    static S5MineMap generateShrineBoss(long seed) {
+        int w = 64, h = 50, c = w / 2;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (char[] row : t) Arrays.fill(row, 'L');
+        for (int y = 3; y < h - 4; y++) for (int x = 3; x < w - 3; x++) t[y][x] = 'p';
+        for (int y = 8; y < h - 8; y += 6) for (int x : new int[] { 8, w - 10 }) if (r.nextDouble() < 0.85) for (int yy = 0; yy < 2; yy++) for (int xx = 0; xx < 2; xx++) t[y + yy][x + xx] = 'L'; // 기둥 두 줄
+        for (int y = h - 4; y < h - 1; y++) for (int x = c - 1; x <= c + 1; x++) t[y][x] = 'p';
+        t[h - 2][c] = 'U';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(c, h - 2, 'U', ARCHI, 0, 0, "신궁 밖으로"));
+        S5MineMap m = new S5MineMap(SHRINE_BOSS, "닌자 두목의 방", false, w, h, c, h - 5, t, new byte[h][w], portals);
+        m.bossX = c;
+        m.bossY = 10;
+        m.requireItem = SHRINE_KEY_ITEM;
+        return m;
+    }
+
+    /** [2026-10-28] 닌자 두목 분신술 자리 -- 홀 가운데 둘레(반지름 8) 다섯 칸, 첫 칸 각도는 rot(0~4)마다 돈다. 못 서는 칸이면 가까운 칸으로. */
+    public int[][] shrineSplitSpots(int rot) {
+        int cx = bossX, cy = bossY + 10;
+        int[][] out = new int[5][];
+        for (int i = 0; i < 5; i++) {
+            double a = Math.PI * 2 * (i + rot / 5.0) / 5 - Math.PI / 2;
+            int x = cx + (int) Math.round(Math.cos(a) * 9), y = cy + (int) Math.round(Math.sin(a) * 7);
+            for (int d = 0; d < 4 && !walkable(x, y); d++) { x += Integer.signum(cx - x); y += Integer.signum(cy - y); }
+            out[i] = new int[] { x, y };
+        }
+        return out;
     }
 
     /** 다도해 뱃길(44x330, 세로): 온통 바다(배로만 다닌다 -- boat), 가장자리에 바위. 아래 가운데 = 본섬 부두, 위로 42칸마다 왼쪽/오른쪽 번갈아 섬 부두(판자 B) 7곳.
