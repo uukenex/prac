@@ -9094,7 +9094,6 @@ public class BotS5ServiceImpl implements BotS5Service {
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", S5MineMap.ARCHI);
                 m.put("name", S5MineMap.nameOf(S5MineMap.ARCHI));
-                m.put("admin", true);
                 ship.add(m);
             }
             out.put("shipTo", ship);
@@ -10262,7 +10261,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-24] 배(판자 B) -- 항구(바닷가/남쪽 섬/북쪽 끝 설원) 중 다른 곳을 골라 그 항구의 내리는 칸으로
         boolean ship = S5MineMap.SHIP.equals(p.target);
         // [2026-10-28] 다도해 -- 남쪽 섬 배에서만 본섬으로(운영자만), 본섬 배는 남쪽 섬으로만
-        boolean archiShip = ship && ((S5MineMap.ISLAND.equals(map.id) && S5MineMap.ARCHI.equals(dest) && mineArchiOpen(userName))
+        boolean archiShip = ship && ((S5MineMap.ISLAND.equals(map.id) && S5MineMap.ARCHI.equals(dest) && mineArchiMapOpen(userName, S5MineMap.ARCHI))
                 || (S5MineMap.ARCHI.equals(map.id) && S5MineMap.ISLAND.equals(dest)));
         if (ship && !archiShip && (S5MineMap.ARCHI.equals(map.id) || dest == null || dest.equals(map.id) || !S5MineMap.SHIP_PORTS.contains(dest))) {
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -10290,7 +10289,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         // [2026-10-24] 초원/왕도는 관리자만이었다가 [2026-10-27] "왕도 일반 플레이어들에게 오픈" -- 막지 않는다.
-        String block = S5MineMap.isArchi(target.id) && !mineArchiOpen(userName) ? "🌊 아직 열리지 않은 바다예요." : mineMapBlock(target, items, mineLv(row)); // [2026-10-28] 다도해는 운영자만
+        String block = S5MineMap.isArchi(target.id) && !mineArchiMapOpen(userName, target.id) // [2026-10-28] 다도해 -- 본섬만 모두에게, 나머지는 운영자만
+                ? (S5MineMap.SHRINE.equals(target.id) ? "🔒 신궁은 아직 준비 중이에요. 곧 열려요!" : "🌊 아직 열리지 않은 바다예요.") : mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("locked", true);
@@ -11051,6 +11051,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             mineCost(4, 15), mineCost(5, 15), mineCost(6, 15), mineCost(7, 8), mineCost(8, 3) };
 
     /** 다도해를 쓸 수 있는지 -- 아직 운영자(광산 관리자)만. 열 때는 여기만 바꾸면 된다. */
+    /** [2026-10-28] "본섬만 열어줘" -- 다도해 본섬(ARCHI)은 모두에게, 신궁/뱃길/섬은 아직 운영자만(mineArchiOpen). */
+    private boolean mineArchiMapOpen(String userName, String mapId) {
+        return S5MineMap.ARCHI.equals(mapId) || mineArchiOpen(userName);
+    }
+
     private boolean mineArchiOpen(String userName) {
         return isMineAdmin(userName);
     }
@@ -11062,7 +11067,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
-        if (!mineArchiOpen(userName)) return mineGearResult(userName, false, "🌊 아직 열리지 않은 곳이에요.");
+        if (!mineArchiOpen(userName)) return mineGearResult(userName, false, "🚧 아직 준비 중이에요. 곧 열려요!"); // 본섬 NPC 일(신궁 임무/배/뱃길)은 아직 운영자만
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!S5MineMap.ARCHI.equals(strVal(row.get("MAP_ID"), ""))) return mineGearResult(userName, false, "다도해 본섬에서만 할 수 있어요.");

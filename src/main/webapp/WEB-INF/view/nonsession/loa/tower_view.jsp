@@ -6547,7 +6547,7 @@ var TowerMine = (function () {
     { id: 'castle', name: '동쪽 성곽', x: 258, y: 252, fill: '#8a857c', ink: '#fff' },
     { id: 'beach', name: '남쪽 바닷가', x: 160, y: 344, fill: '#ecd9a0', ink: '#3b2a10' },
     { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' },
-    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff', admin: true } // [2026-10-28] 다도해(본섬/신궁/뱃길/일곱 섬) -- 운영자만
+    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' } // [2026-10-28] 다도해 -- 본섬은 모두에게(신궁/뱃길/일곱 섬은 아직 운영자만)
   ];
   function worldHtml() {
     // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
@@ -6620,6 +6620,8 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 다도해 NPC -- 신궁 수문장(수색 임무: 닌자 100명 -> 비급서 + 달빛석), 배 목수(달빛석 -> 1인용 배), 뱃사공(배 타기 -> 뱃길)
   function archiHtml(n) {
+    if (!st.archi) return npcHead(n.kind === 'ninjaquest' ? '🥷 신궁 수문장' : n.kind === 'boatwright' ? '🔨 배 목수' : '⛵ 뱃사공', false) + talkBlock(n, n.line)
+        + '<div class="mine-smith-say">🚧 아직 준비 중이에요. 곧 열려요!</div>'; // [2026-10-28] 본섬만 열림 -- 신궁 임무/배/뱃길은 아직 운영자만
     var a = st.archi || {}, h = npcHead(n.kind === 'ninjaquest' ? '🥷 신궁 수문장' : n.kind === 'boatwright' ? '🔨 배 목수' : '⛵ 뱃사공', false) + talkBlock(n, n.line);
     var have = '<div class="mine-smith-say">🌙 달빛석 ' + (a.moon || 0) + '개 · 📜 비급서 ' + (a.books || 0) + '권 · ⛵ 1인용 배 ' + (a.boat ? '있음' : '없음') + '</div>';
     if (n.kind === 'ninjaquest') {
