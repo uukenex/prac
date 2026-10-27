@@ -3759,7 +3759,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade === 32 ? '신궁 닌자 수색 보상' : o.grade === 20 ? '1인용 배 재료(다도해)' : o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade === 33 ? '설산 봉우리 얼음 여왕의 특수 재료' : o.grade === 32 ? '신궁 닌자 수색 보상' : o.grade === 20 ? '1인용 배 재료(다도해)' : o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5479,6 +5479,7 @@ var TowerMine = (function () {
   ORE_NAME[31] = '타락한 대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
   ORE_NAME[20] = '달빛석'; ORE_COL[20] = ['#8fa8e8', '#f4f8ff']; // [2026-10-28] 다도해 -- 1인용 배 재료
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
+  ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -5939,6 +5940,15 @@ var TowerMine = (function () {
   function oreIcon(grade) {
     if (oreIcons[grade]) return oreIcons[grade];
     var c = mk(T, T), g = c.getContext('2d'), col = ORE_COL[grade] || ORE_COL[1];
+    if (grade === 33) { // [2026-10-28] 얼음의 심장 -- 얼음 결정 안에 뛰는 심장
+      [[7, 1, 2, 1], [5, 2, 6, 1], [3, 3, 10, 2], [2, 5, 12, 5], [3, 10, 10, 2], [5, 12, 6, 1], [7, 13, 2, 2]].forEach(function (r) { px(g, col[0], r[0], r[1], r[2], r[3]); });
+      px(g, '#d8f6ff', 4, 4, 2, 2); px(g, '#ffffff', 4, 4); px(g, '#ffffff', 11, 11);
+      px(g, '#e8466a', 5, 6, 2, 1); px(g, '#e8466a', 9, 6, 2, 1); px(g, '#e8466a', 4, 7, 8, 2); px(g, '#e8466a', 5, 9, 6, 1); px(g, '#e8466a', 6, 10, 4, 1); px(g, '#e8466a', 7, 11, 2, 1);
+      px(g, '#ffb0c0', 5, 7);
+      outline(c, '#0a2a3a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
     if (grade === 32) { // [2026-10-28] 닌자의 비급서 -- 두루마리 책
       px(g, '#e8d8a8', 3, 4, 10, 9); px(g, '#3a2a1a', 3, 3, 10, 1); px(g, '#3a2a1a', 3, 13, 10, 1); px(g, '#c0392b', 7, 4, 2, 9);
       px(g, '#3a2a1a', 5, 6, 1, 1); px(g, '#3a2a1a', 10, 6, 1, 1); px(g, '#3a2a1a', 5, 9, 1, 1); px(g, '#3a2a1a', 10, 9, 1, 1);
@@ -6301,6 +6311,11 @@ var TowerMine = (function () {
       var d = heldDir() || tapDir;
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
+      if (d && frozenMe()) { // [2026-10-28] 얼음 여왕 빙결 -- 못 움직인다
+        if (now - lastBumpT > 2500 || lastBump !== 'ice') msg('🧊 얼어붙어서 움직일 수 없어요! 동료가 곁(2칸)에 오면 풀려요.');
+        lastBump = 'ice'; lastBumpT = now;
+        d = null;
+      }
       if (!d && auto && !smithOpen && !fade && !helmetBlocked()) { // [2026-10-24] 자동채광
         if (st.durability < 1) setAuto(false, '⛏️ 곡괭이 내구도가 다 닳아 자동채광을 멈췄어요.');
         else if (minable(P.x, P.y)) { dig(); return; }
@@ -6528,6 +6543,8 @@ var TowerMine = (function () {
   // [2026-10-24] 사막 북쪽 모래폭풍 너머 초원 -> 왕도 아스테리아 추가(설원은 오른쪽 위로, 배로만)
   // [2026-10-26] 설원 위로 설산 1~3층과 설산 마을(지도를 위로 늘렸다)
   var WORLD_NODES = [
+    { id: 'snowpeak', name: '설산 봉우리 🧊', x: 262, y: -264, fill: '#9fd8f0', ink: '#0a2a3a' }, // [2026-10-28] 설산 마을 북문 -> 봉우리 가는 길 -> 봉우리(얼음 여왕)
+    { id: 'snowroad', name: '봉우리 가는 길', x: 262, y: -194, fill: '#d0e4f4', ink: '#1a2a3a' },
     { id: 'snowtown', name: '설산 마을', x: 262, y: -124, fill: '#d9c9a0', ink: '#2a1d10', town: true }, // [2026-10-28] 마을은 전체 지도에 레벨 표시 안 함
     { id: 'snow3', name: '설산 3층', x: 262, y: -68, fill: '#c8d8ea', ink: '#1a2a3a' },
     { id: 'snow2', name: '설산 2층', x: 262, y: -12, fill: '#d6e2f0', ink: '#1a2a3a' },
@@ -6564,8 +6581,9 @@ var TowerMine = (function () {
           + (label ? '<text x="' + (mx + 6) + '" y="' + (my + 4) + '" class="wl">' + label + '</text>' : '');
     };
     var walk = 'stroke="#f4f0e6" stroke-width="3"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
-    var svg = '<svg viewBox="0 -150 320 610" class="mine-world" role="img" aria-label="광산 전체 지도">'
-        + '<rect x="0" y="-150" width="320" height="610" fill="#1d1730"/>'
+    var svg = '<svg viewBox="0 -290 320 750" class="mine-world" role="img" aria-label="광산 전체 지도">' // [2026-10-28] 설산 봉우리까지 위로 늘렸다
+        + '<rect x="0" y="-290" width="320" height="750" fill="#1d1730"/>'
+        + line('snowtown', 'snowroad', walk) + line('snowroad', 'snowpeak', walk)
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
         + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
@@ -7053,14 +7071,14 @@ var TowerMine = (function () {
     var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
     if (map.mobs && map.mobs.length) {
       var boss = map.mobs[map.mobs.length - 1]; bt = map.mobTypes[boss.k];
-      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.stay ? 4 : 2)); // [2026-10-28] 대주교는 4칸
+      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.aggro || (bt.stay ? 4 : 2))); // [2026-10-28] 대주교/얼음 여왕은 4칸
     }
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
     var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
       var ty = map.mobTypes[mb.k];
       return ty && !ty.boss && !ty.minion && mb._p && 1 + 4 * (ty.tier - 1) - myLv() >= 20 && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
     });
-    if (!fight && !nearBoss && !nearStrong) return;
+    if (!fight && !nearBoss && !nearStrong && !frozenMe()) return; // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
     api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       bossBusy = false;
@@ -7115,13 +7133,45 @@ var TowerMine = (function () {
         else if (d.fireAt) msg('🔥 불벼락이 떨어졌지만 멀리 있어 피했어요!', 2200);
         if (d.gasDmg) { floats.push({ x: P.x, y: P.y - 1.1, text: '☠️ -' + d.gasDmg, color: '#c08aff', big: true, t0: t + 150 }); if (!d.fireDmg) msg('☠️ 어둠가스가 성당 옛터를 뒤덮었어요! (-' + d.gasDmg + ')', 2600); }
       }
+      if (map.ice) iceApply(d, t); // [2026-10-28] 설산 봉우리 -- 빙결/얼음땡
       if (d.combat) setCombat(d.combat);
       renderCold();
       if (d.died && d.state) fallDown(d);
     }).catch(function () { coldBusy = false; });
   }
   var heatWarned = false;
+  // [2026-10-28] 설산 봉우리 -- 얼음 여왕이 18초마다 한 명씩 얼린다(최대 15초). 언 동안 못 움직이고(서버도 막음), 여왕에게 맞으면 즉사.
+  //  얼지 않은 동료가 2칸 안에 오면 풀린다(얼음땡). 서버가 환경 턴으로 알려 준다: iceAwake, nextFreezeAt, frozen {x, y, until}, thawed.
+  var iceSt = null, iceWarned = 0;
+  function frozenMe() { return !!(iceSt && iceSt.frozen && iceSt.frozen.until > nowSrv() && map && map.ice); }
+  function iceApply(d, t) {
+    var was = frozenMe();
+    iceSt = { awake: !!d.iceAwake, next: d.nextFreezeAt || 0, frozen: d.frozen || null };
+    if (d.frozen && !was) {
+      setAuto(false); keys = []; drag = null; tapDir = null;
+      setPos(d.frozen.x, d.frozen.y);
+      flashT0 = t;
+      msg('🧊 얼음 여왕이 당신을 얼렸어요! 꼼짝할 수 없어요. 동료가 곁(2칸)에 오면 풀려요 -- 얼어 있는 동안 여왕에게 맞으면 즉사!', 4200);
+    } else if (d.froze && !d.frozen) msg('🧊 얼음 여왕이 누군가를 얼렸어요! 곁(2칸)에 가서 얼음을 깨 주세요!', 3200);
+    if (d.thawed === 'saved') { floats.push({ x: P.x, y: P.y - 0.7, text: '🧊 얼음땡!', color: '#bfefff', big: true, t0: t }); msg('🧊 얼음땡! 얼어붙은 동료를 구했어요!', 2800); }
+    else if (d.thawed === 'rescued' && !d.frozen) { floats.push({ x: P.x, y: P.y - 0.7, text: '🧊 땡!', color: '#bfefff', big: true, t0: t }); msg('🧊 동료가 얼음을 깨 줬어요! 다시 움직일 수 있어요.', 2800); }
+    else if (d.thawed === 'melted' && !d.frozen) msg('🧊 얼음이 녹았어요. 다시 움직일 수 있어요.', 2400);
+  }
+  function iceWarn() {
+    if (!iceSt || !iceSt.awake || !iceSt.next || frozenMe()) return;
+    var left = iceSt.next - nowSrv();
+    if (left > 0 && left <= 3000 && iceWarned !== iceSt.next) { iceWarned = iceSt.next; msg('❄️ 얼음 여왕이 냉기를 모은다! 곧 누군가 얼어붙어요. (🔥 모닥불 곁은 안전)', 2800); }
+  }
+  /** 얼음 덩어리(언 캐릭터 위) -- (x, y) = 캐릭터 그림 왼쪽 위. draw()의 TS는 지역 변수라 여기서 다시 구한다. */
+  function drawIce(x, y, now) {
+    var TS = T * scale, u = TS / 16, sh = 0.5 + 0.2 * Math.sin(now / 260);
+    ctx.fillStyle = 'rgba(170,230,255,0.55)'; ctx.fillRect(x - u, y - 2 * u, TS + 2 * u, TS + 3 * u);
+    ctx.strokeStyle = 'rgba(235,250,255,0.95)'; ctx.lineWidth = Math.max(1, u); ctx.strokeRect(x - u, y - 2 * u, TS + 2 * u, TS + 3 * u);
+    ctx.fillStyle = 'rgba(255,255,255,' + sh + ')'; ctx.fillRect(x + u, y - u, 2 * u, 6 * u); ctx.fillRect(x + 3 * u, y - u, 4 * u, u);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x + TS - 3 * u, y + TS - 6 * u, u, 3 * u);
+  }
   function coldWarn() {
+    if (map && map.ice) iceWarn(); // [2026-10-28] 설산 봉우리
     if (map && map.raid) { raidWarn(); return; } // [2026-10-28]
     if (map && map.hot) { renderCold(); return; } // [2026-10-28] 더운 곳
     if (!map || !map.cold) { if (el.cold && el.cold.style.display !== 'none') el.cold.style.display = 'none'; return; }
@@ -7153,6 +7203,10 @@ var TowerMine = (function () {
     var eff = cold ? cold.eff : map.cold, left = cold && cold.nextBz ? cold.nextBz - nowSrv() : 0;
     var txt = inSafe() ? '🔥 안전지대' : eff > 0 ? '🥶 한기 -' + eff + '%/초' : '🧥 한기 막음'; // [2026-10-28] 짧게(화면 가림)
     if (left > 0 && left <= 10000) txt += ' 🌨️' + Math.ceil(left / 1000) + '초';
+    if (map.ice) { // [2026-10-28] 설산 봉우리 -- 언 동안 남은 초 / 여왕이 깨어 있으면 다음 빙결까지
+      if (frozenMe()) txt = '🧊 빙결 ' + Math.max(0, Math.ceil((iceSt.frozen.until - nowSrv()) / 1000)) + '초';
+      else if (iceSt && iceSt.awake && iceSt.next > nowSrv()) txt += ' ❄️' + Math.ceil((iceSt.next - nowSrv()) / 1000) + '초';
+    }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
   }
@@ -7278,7 +7332,7 @@ var TowerMine = (function () {
         var cur = others[o.id];
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
-        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || '';
+        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; // [2026-10-28] 얼음 여왕 빙결
       });
       for (var id in others) if (!seen[id]) delete others[id];
     }).catch(function () { presBusy = false; });
@@ -7354,6 +7408,7 @@ var TowerMine = (function () {
   }
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
   function act() {
+    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; } // [2026-10-28]
     var a = !P.moving && adjMob();
     if (a) attack(a); else dig();
   }
@@ -7574,7 +7629,7 @@ var TowerMine = (function () {
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
-          var nm = (ty.boss ? '👑 보스 ' : '') + ty.name + ' Lv.' + (1 + 4 * (ty.tier - 1));
+          var nm = (ty.boss ? '👑 보스 ' : '') + ty.name + ' Lv.' + (ty.lv || (1 + 4 * (ty.tier - 1))); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95)
           ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - 6 * scale);
           ctx.fillStyle = ty.boss ? '#ff4a4a' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
         }
@@ -7600,6 +7655,7 @@ var TowerMine = (function () {
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
+      if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
     }
     // 캐릭터
@@ -7612,6 +7668,7 @@ var TowerMine = (function () {
     if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
+    if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
@@ -7793,7 +7850,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위 */
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
@@ -7842,7 +7899,7 @@ var TowerMine = (function () {
     lastSaved = cur;
     api('/api/tower-mine-pos?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       if (d && d.reload) { reload(); return; }
-      if (d && d.ok === false && d.x != null) { setPos(d.x, d.y); msg('이동 기록이 맞지 않아 (' + d.x + ', ' + d.y + ')로 돌아갔어요.'); }
+      if (d && d.ok === false && d.x != null) { setPos(d.x, d.y); msg(d.frozen ? '🧊 얼어붙어서 움직일 수 없어요!' : '이동 기록이 맞지 않아 (' + d.x + ', ' + d.y + ')로 돌아갔어요.'); }
     }).catch(function () { lastSaved = ''; });
   }
   /** exit=true: 광산을 나가거나 화면을 벗어날 때 -- 위치가 그대로여도 보내서 서버가 퇴장 로그를 남긴다(한 번만). */
