@@ -108,7 +108,27 @@ public final class S5MineMobs {
         new Type("바위 거인", 19, "human", "#7a7268", S5MineMap.ROYALROAD),
         // [2026-10-28] 성당 옛터 -- 일반 몬스터 없이 대주교(21단계 보스, 제자리, 수하 소환 + 불벼락/어둠가스)와 그 수하(20단계, 3배 빠름)만
         new Type("타락한 대주교", 21, "human", "#3a1a4a").asBoss().asStay(),
-        new Type("타락한 성기사", 20, "human", "#8a7a9a").asMinion()
+        new Type("타락한 성기사", 20, "human", "#8a7a9a").asMinion(),
+        // [2026-10-28] 다도해(운영자만) -- 본섬 16~17, 신궁 내부 닌자 18~19, 섬은 뒤로 갈수록 16 -> 20단계(S5MineMap.ISLE_IDS 순서)
+        new Type("야자게", 16, "crab", "#c86a3a", S5MineMap.ARCHI),
+        new Type("해적 원숭이", 16, "small", "#8a5a2a", S5MineMap.ARCHI),
+        new Type("바다 도적", 17, "human", "#3a4a6a", S5MineMap.ARCHI),
+        new Type("닌자", 18, "human", "#22222e", S5MineMap.SHRINE),
+        new Type("상급 닌자", 19, "human", "#4a1a2a", S5MineMap.SHRINE),
+        new Type("동백 정령", 16, "blob", "#d4104f", S5MineMap.ISLE1),
+        new Type("들고양이", 16, "quad", "#c8a070", S5MineMap.ISLE1),
+        new Type("괭이갈매기", 16, "flyer", "#e8e8f0", S5MineMap.ISLE2),
+        new Type("바위게", 17, "crab", "#8a7a6a", S5MineMap.ISLE2),
+        new Type("늙은 바다거북", 17, "quad", "#5a7a4a", S5MineMap.ISLE3),
+        new Type("소라게", 17, "crab", "#e0a0a0", S5MineMap.ISLE3),
+        new Type("안개 유령", 17, "flyer", "#c8d0e0", S5MineMap.ISLE4),
+        new Type("늪 뱀", 18, "snake", "#4a6a3a", S5MineMap.ISLE4),
+        new Type("산호 골렘", 18, "human", "#ff7a8a", S5MineMap.ISLE5),
+        new Type("독해파리", 18, "blob", "#b07cff", S5MineMap.ISLE5),
+        new Type("달토끼", 19, "small", "#f4f0e0", S5MineMap.ISLE6),
+        new Type("달빛 늑대", 19, "quad", "#b8c8e8", S5MineMap.ISLE6),
+        new Type("용암 도마뱀", 20, "snake", "#e84a1a", S5MineMap.ISLE7),
+        new Type("화염 정령", 20, "blob", "#ff6a2a", S5MineMap.ISLE7)
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -150,6 +170,16 @@ public final class S5MineMobs {
             case S5MineMap.SNOW1: return y > m.h * 0.5 ? 10 : 11; // [2026-10-26] 설산 -- 위로 오를수록 강하다(설산 마을은 없음)
             case S5MineMap.SNOW2: return y > m.h * 0.5 ? 11 : 12;
             case S5MineMap.SNOW3: return y > m.h * 0.5 ? 12 : 13;
+            // [2026-10-28] 다도해 -- 본섬은 마을(부두)에서 멀수록, 신궁은 입구에서 멀수록, 섬은 부두(북쪽)에서 남쪽으로 갈수록
+            case S5MineMap.ARCHI: return Math.hypot(x - m.spawnX, y - m.spawnY) < 110 ? 16 : 17;
+            case S5MineMap.SHRINE: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 45 ? 18 : 19;
+            case S5MineMap.ISLE1: return 16;
+            case S5MineMap.ISLE2: return y < m.h * 0.5 ? 16 : 17;
+            case S5MineMap.ISLE3: return 17;
+            case S5MineMap.ISLE4: return y < m.h * 0.5 ? 17 : 18;
+            case S5MineMap.ISLE5: return 18;
+            case S5MineMap.ISLE6: return 19;
+            case S5MineMap.ISLE7: return 20;
             default: return 0;
         }
     }
@@ -162,6 +192,7 @@ public final class S5MineMobs {
             case S5MineMap.DUNGEON: return 256;
             case S5MineMap.CAVE1: return 104;
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
+            case S5MineMap.SHRINE: return 60; // [2026-10-28] 신궁 내부는 닌자가 빽빽하게(수색 임무 100마리)
             default: return 128;
         }
     }

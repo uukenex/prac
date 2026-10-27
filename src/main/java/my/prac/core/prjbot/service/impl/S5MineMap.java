@@ -63,8 +63,43 @@ public final class S5MineMap {
     public static final String ROYALROAD = "royalroad";
     /** [2026-10-28] "왕도 가는 길 북쪽에 성당 옛터, 아주 센 보스 한 마리(수하 소환, 광역 마법), 다른 몬스터 없음, 넓은 평지 + 지날 수 있는 무너진 성당 잔해" */
     public static final String RUINS = "ruins";
+    /** [2026-10-28] 다도해(아직 운영자만 -- BotS5ServiceImpl.mineArchiOpen). "남쪽 섬에서만 배 타고 갈 수 있는 특별한 지역, 그중 다도해 본섬(300x300, 가운데 신궁),
+     *  신궁 앞 NPC에게 신궁 내부 수색 임무(닌자 100마리 -> 비급서 + 달빛석), 달빛석 1개로 본섬 NPC가 1인용 배, 배 타기 요청 -> 7개 섬으로 가는 세로 뱃길(배 탄 모습,
+     *  섬마다 내림), 낮과 밤이 있어 낮에는 지역별 햇빛 피해(초당 1~5%)".
+     *  남쪽 섬 배(운영자만) -> 본섬(ARCHI) -- 신궁 문 -> 신궁 내부(SHRINE). 본섬 뱃사공 -> 뱃길(ARCHISEA, 1인용 배 필요) -> 섬 7개(ISLE_IDS). 본섬 배는 남쪽 섬으로만. */
+    public static final String ARCHI = "archi";
+    public static final String SHRINE = "shrine";
+    public static final String ARCHISEA = "archisea";
+    public static final String ISLE1 = "isle1", ISLE2 = "isle2", ISLE3 = "isle3", ISLE4 = "isle4", ISLE5 = "isle5", ISLE6 = "isle6", ISLE7 = "isle7";
+    public static final String[] ISLE_IDS = { ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7 };
+    public static final String[] ISLE_NAMES = { "동백섬", "갈매기섬", "거북섬", "안개섬", "산호섬", "달맞이섬", "용암섬" };
+    /** 섬마다 낮 햇빛 피해(초당 최대 체력 %), 크기. 뒤 섬일수록 덥고 크고 몬스터가 세다(S5MineMobs.tierAt). */
+    static final int[] ISLE_SUN = { 1, 2, 2, 1, 3, 4, 5 };
+    static final int[] ISLE_SIZE = { 110, 120, 130, 120, 130, 140, 150 };
+    public static final List<String> ARCHI_MAPS = Collections.unmodifiableList(Arrays.asList(ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7));
+    public static boolean isArchi(String id) { return ARCHI_MAPS.contains(id); }
+    /** 1인용 배(광산 아이템 코드) -- 뱃길에 들어가려면 있어야 한다(requireItem). */
+    public static final String BOAT_ITEM = "BOAT";
+    /** 달빛석(등급 값 20, 1인용 배 재료), 닌자의 비급서(32) -- 신궁 수색 임무 보상. */
+    public static final String MOON_STONE_CODE = "MOON_STONE";
+    public static final String MOON_STONE_NAME = "달빛석";
+    public static final int MOON_STONE_GRADE = 20;
+    public static final String NINJA_BOOK_CODE = "NINJA_BOOK";
+    public static final String NINJA_BOOK_NAME = "닌자의 비급서";
+    public static final int NINJA_BOOK_GRADE = 32;
+    /** 다도해 낮과 밤 -- 리셋 기준 시각부터 40분마다 낮 25분 + 밤 15분(모든 화면이 같은 시각으로 판단). */
+    public static final long ARCHI_DAY_MS = 25 * 60_000L, ARCHI_CYCLE_MS = 40 * 60_000L;
+    public static boolean archiDay(long ms) {
+        return Math.floorMod(ms - RESET_ANCHOR_MS, ARCHI_CYCLE_MS) < ARCHI_DAY_MS;
+    }
+    /** 다음에 낮/밤이 바뀌는 시각. */
+    public static long archiNextChange(long ms) {
+        long p = Math.floorMod(ms - RESET_ANCHOR_MS, ARCHI_CYCLE_MS);
+        return ms + (p < ARCHI_DAY_MS ? ARCHI_DAY_MS - p : ARCHI_CYCLE_MS - p);
+    }
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS);
+    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
+            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7);
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -139,6 +174,15 @@ public final class S5MineMap {
         // [2026-10-26] 설산 = 스타 사파이어 4% + 다이아 추가였다가 [2026-10-28] "설산에선 보석 대신 빙석" -- 지역 보석 없음(빙석은 BotS5ServiceImpl.mineDigCell,
         //  모든 맵 공통 다이아몬드 0.2%만 남음)
         GEM_DROPS.put(ROYALROAD, new int[][] { { 1, 40 }, { 8, 8 } }); // [2026-10-27] 왕도 가는 길 = 루비 4% + 다이아 0.8%
+        // [2026-10-28] 다도해 -- 바다는 아쿠아마린, 섬마다 다른 보석(용암섬은 루비 + 다이아)
+        GEM_DROPS.put(ARCHI, new int[][] { { 3, 35 }, { 8, 6 } });
+        GEM_DROPS.put(ISLE1, new int[][] { { 1, 35 } });
+        GEM_DROPS.put(ISLE2, new int[][] { { 3, 35 } });
+        GEM_DROPS.put(ISLE3, new int[][] { { 7, 25 } });
+        GEM_DROPS.put(ISLE4, new int[][] { { 2, 30 } });
+        GEM_DROPS.put(ISLE5, new int[][] { { 6, 35 }, { 3, 15 } });
+        GEM_DROPS.put(ISLE6, new int[][] { { 2, 30 }, { 8, 8 } });
+        GEM_DROPS.put(ISLE7, new int[][] { { 1, 45 }, { 8, 10 } });
     }
 
     /** [2026-10-28] "보석 드랍률 소폭 낮춰줘" -- 맵별 지역 보석(과 추가 다이아) 천분율에 곱하는 백분율. 모든 맵 공통 다이아(DIAMOND_PERMILLE)는 그대로. */
@@ -282,6 +326,8 @@ public final class S5MineMap {
     public List<int[]> safeZones() { return Collections.unmodifiableList(safe); }
 
     public int cold() { return cold; }
+    public int sun() { return sun; }
+    public boolean boat() { return boat; }
 
     public boolean safeAt(int x, int y) {
         return nearSafe(x, y, 0);
@@ -406,6 +452,8 @@ public final class S5MineMap {
     /** [2026-10-25] 맵 안 작은 마을 가운데(설산 마을) -- 없으면 -1. */
     int villageX = -1, villageY = -1;
     private int cold;                                  // [2026-10-26] 한기 단계(초당 최대 체력 %), 0 = 없음
+    private int sun;                                   // [2026-10-28] 다도해 낮 햇빛 피해(초당 최대 체력 %), 0 = 없음
+    private boolean boat;                              // [2026-10-28] 다도해 뱃길 -- 배를 타고 물 위로 다닌다(물 칸이 길)
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
     private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
@@ -698,6 +746,24 @@ public final class S5MineMap {
         out.put(RUINS, relink(ruins, retarget(ruins, ROYALROAD, besidePortal(road, RUINS)), null));
         out.put(SNOWTOWN, relink(twn, retarget(twn, ROYALROAD, besidePortal(road, SNOWTOWN)), twn.npcs));
         out.put(CITY, relink(cty, retarget(cty, ROYALROAD, besidePortal(road, CITY)), cty.npcs));
+        // [2026-10-28] 다도해(운영자만) -- 본섬/신궁 내부/뱃길/섬 7개. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로).
+        S5MineMap shrine = generateShrine(seed + 40);
+        S5MineMap archi = generateArchiMain(seed + 41);
+        S5MineMap sea = generateArchiSea(seed + 42);
+        S5MineMap[] isles = new S5MineMap[ISLE_IDS.length];
+        for (int i = 0; i < isles.length; i++) isles[i] = generateIsle(seed + 43 + i, i);
+        S5MineMap ar = relink(archi, retarget(archi, SHRINE, new int[] { shrine.spawnX, shrine.spawnY }), null);
+        out.put(ARCHI, ar);
+        out.put(SHRINE, relink(shrine, retarget(shrine, ARCHI, besidePortal(ar, SHRINE)), null));
+        S5MineMap sv = relink(sea, retarget(sea, ARCHI, new int[] { ar.villageX, ar.villageY + 2 }), null);
+        for (int i = 0; i < isles.length; i++) sv = relink(sv, retarget(sv, ISLE_IDS[i], new int[] { isles[i].spawnX, isles[i].spawnY }), null);
+        out.put(ARCHISEA, sv);
+        for (int i = 0; i < isles.length; i++) out.put(ISLE_IDS[i], relink(isles[i], retarget(isles[i], ARCHISEA, seaDockBeside(sv, ISLE_IDS[i])), null));
+        S5MineMap an = out.get(ARCHI); // 본섬 NPC -- 마을 광장(배 목수, 뱃사공), 신궁 문 앞(신궁 수문장)
+        placeNpc(an, an.villageX - 4, an.villageY - 1, "boatwright", "배 목수", "달빛석 하나만 가져오면 혼자 타는 배를 뚝딱 만들어 주지. 달빛을 머금은 돌이라야 파도를 타거든.");
+        placeNpc(an, an.villageX + 4, an.villageY - 1, "ferry", "뱃사공", "배가 있으면 뱃길로 데려다주지. 일곱 섬이 뱃길을 따라 늘어서 있다네. 한낮의 햇볕은 조심하게!");
+        for (Portal pt : an.portals) if (SHRINE.equals(pt.target))
+            placeNpc(an, pt.x + 4, pt.y + 3, "ninjaquest", "신궁 수문장", "신궁 안에 닌자들이 숨어들었소. 수색을 맡아 주시겠소? 100명을 처치하면 비급서와 달빛석을 드리리다.");
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
@@ -736,6 +802,8 @@ public final class S5MineMap {
         n.villageX = m.villageX;
         n.villageY = m.villageY;
         n.cold = m.cold;
+        n.sun = m.sun;
+        n.boat = m.boat;
         n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
@@ -814,7 +882,7 @@ public final class S5MineMap {
     /** 이동 가능 칸마다 점수를 매겨 순위대로 등급을 나눈다(share = 높은 등급부터 비율). skip = 광석 없는 칸(마을 등). */
     private static byte[][] assignOre(char[][] t, double[][] score, double[] share, boolean[][] skip) {
         if (STAR_UNIFIED.get() && share[0] >= 1) { // 위 STAR_UNIFY_CYCLE 참고
-            int star = share == ROAD_SHARE ? 2 : 1;
+            int star = share == ROAD_SHARE || share == ARCHI_SHARE || share == ISLE_SHARE ? 2 : 1;
             share = share.clone();
             share[0] = star;
         }
@@ -1226,6 +1294,204 @@ public final class S5MineMap {
         S5MineMap m = new S5MineMap(ISLAND, "남쪽 섬", false, w, h, sx, sy, t, o, portals);
         m.dockX = sx;
         m.dockY = sy;
+        return m;
+    }
+
+    // ---------------------------------------------------------------- [2026-10-28] 다도해
+    static final double[] ARCHI_SHARE = { 2, 40, 0.08, 0.20, 0.30 };
+    static final double[] ISLE_SHARE = { 2, 30, 0.08, 0.20, 0.30 };
+
+    /** 다도해 본섬(300x300): 큰 섬 가운데 붉은 신궁(L, 남쪽 문 S -> 신궁 내부, 앞은 붉은 참배길 p), 남쪽 해안 부두와 배(남쪽 섬으로),
+     *  부두 위 돌바닥 마을 광장(배 목수/뱃사공). 그늘(안전지대 -- 햇빛 피해 없음): 마을, 신궁 앞, 섬 곳곳 야자수 그늘. */
+    static S5MineMap generateArchiMain(long seed) {
+        int w = 300, h = 300, cx = 150, cy = 140;
+        Random r = new Random(seed);
+        Noise shape = new Noise(seed * 31 + 91), green = new Noise(seed * 31 + 92), rich = new Noise(seed * 31 + 93);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double d = Math.hypot(x - cx, (y - cy) * 1.05) / 128.0 + (shape.fbm(x / 30.0, y / 30.0) - 0.5) * 0.35;
+            double gr = green.fbm(x / 16.0, y / 16.0);
+            char c;
+            if (d >= 1.0) c = '~';
+            else if (d >= 0.9) c = 'b';
+            else if (gr > 0.62) c = r.nextDouble() < 0.4 ? 'T' : '.';
+            else if (gr < 0.28) c = r.nextDouble() < 0.4 ? ':' : '.';
+            else c = r.nextDouble() < 0.04 ? 'T' : '.';
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '~'; t[h - 1][x] = '~'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '~'; t[y][w - 1] = '~'; }
+        // 신궁: 둘레 돌바닥, 붉은 건물, 남쪽 가운데 문, 문 앞 참배길
+        int sx0 = cx - 14, sx1 = cx + 14, sy0 = cy - 12, sy1 = cy + 8;
+        for (int y = sy0 - 3; y <= sy1 + 3; y++) for (int x = sx0 - 3; x <= sx1 + 3; x++) t[y][x] = 's';
+        for (int y = sy0; y <= sy1; y++) for (int x = sx0; x <= sx1; x++) t[y][x] = 'L';
+        int doorX = cx, doorY = sy1;
+        t[doorY][doorX] = 'S';
+        for (int y = doorY + 1; y <= doorY + 30; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = 'p';
+        // 남쪽 해안 부두와 배
+        int pier = cx - 1, land = h - 2;
+        while (land > 1 && t[land][pier + 1] == '~') land--;
+        for (int y = land - 2; y <= land; y++) for (int x = pier; x <= pier + 2; x++) if (t[y][x] == '~') t[y][x] = 'b';
+        int[] plank = pierAndShip(t, pier, land + 1, 1);
+        int sx = pier + 2, sy = plank[1];
+        // 부두 위 마을 광장
+        int vx = pier + 1, vy = land - 7;
+        for (int y = vy - 5; y <= vy + 4; y++) for (int x = vx - 9; x <= vx + 9; x++) t[y][x] = 's';
+        for (int y = vy + 5; y <= land; y++) for (int x = pier; x <= pier + 2; x++) if (t[y][x] != 'P') t[y][x] = 's'; // 부두와 광장을 잇는 길
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '~';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(plank[0], plank[1], 'B', SHIP, 0, 0, "배에 오르기(남쪽 섬으로)"));
+        portals.add(new Portal(doorX, doorY, 'S', SHRINE, 0, 0, "신궁 안으로"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = t[y][x] == 'P' || t[y][x] == 's' || t[y][x] == 'p' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * Math.min(1, Math.hypot(x - vx, y - vy) / 140.0) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, ARCHI_SHARE, skip);
+        S5MineMap m = new S5MineMap(ARCHI, "다도해 본섬", false, w, h, sx, sy, t, o, portals);
+        m.dockX = sx;
+        m.dockY = sy;
+        m.villageX = vx;
+        m.villageY = vy;
+        m.sun = 1;
+        m.safe.add(new int[] { vx, vy, 7 });
+        m.safe.add(new int[] { cx, doorY + 5, 4 });
+        addShadeGroves(m, r, 10);
+        return m;
+    }
+
+    /** 그늘(야자수 숲) -- 풀밭/모래 칸에 서로 떨어지게 n곳, 반지름 3. 햇빛 피해가 없는 안전지대(화면이 야자수 그늘로 그린다). */
+    private static void addShadeGroves(S5MineMap m, Random r, int n) {
+        for (int tries = 0, made = 0; made < n && tries < 4000; tries++) {
+            int x = 3 + r.nextInt(m.w - 6), y = 3 + r.nextInt(m.h - 6);
+            char c = m.terrain[y][x];
+            if (c != '.' && c != 'b' && c != 'u') continue;
+            boolean far = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) > 12;
+            for (int[] z : m.safe) if (Math.abs(z[0] - x) + Math.abs(z[1] - y) < Math.max(18, m.w / 6)) far = false;
+            if (!far) continue;
+            m.safe.add(new int[] { x, y, 3 });
+            made++;
+        }
+    }
+
+    /** 신궁 내부(96x78): 붉은 기둥 벽(L) 사이로 방 4x3개와 3칸 너비 복도, 바닥은 붉은 길(p), 방마다 기둥. 아래 가운데 방 밑으로 나가는 길(U). 광석 없음, 닌자만. */
+    static S5MineMap generateShrine(long seed) {
+        int w = 96, h = 78, rw = 18, rh = 16;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (char[] row : t) Arrays.fill(row, 'L');
+        int[][] rc = new int[12][];
+        for (int row = 0; row < 3; row++) for (int col = 0; col < 4; col++) {
+            int x0 = 4 + col * 23, y0 = 4 + row * 24;
+            rc[row * 4 + col] = new int[] { x0, y0 };
+            for (int y = y0; y < y0 + rh; y++) for (int x = x0; x < x0 + rw; x++) t[y][x] = 'p';
+            if (!(row == 2 && col == 1)) for (int[] pp : new int[][] { { 4, 4 }, { 12, 4 }, { 4, 10 }, { 12, 10 } }) // 기둥(들어오는 방은 비움)
+                if (r.nextDouble() < 0.8) for (int yy = 0; yy < 2; yy++) for (int xx = 0; xx < 2; xx++) t[y0 + pp[1] + yy][x0 + pp[0] + xx] = 'L';
+        }
+        for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) { // 가로 복도
+            int[] a = rc[row * 4 + col];
+            for (int x = a[0] + rw; x < a[0] + 23; x++) for (int y = a[1] + rh / 2 - 1; y <= a[1] + rh / 2 + 1; y++) t[y][x] = 'p';
+        }
+        for (int row = 0; row < 2; row++) for (int col = 0; col < 4; col++) { // 세로 복도
+            int[] a = rc[row * 4 + col];
+            for (int y = a[1] + rh; y < a[1] + 24; y++) for (int x = a[0] + rw / 2 - 1; x <= a[0] + rw / 2 + 1; x++) t[y][x] = 'p';
+        }
+        int[] ent = rc[2 * 4 + 1];
+        int ex = ent[0] + rw / 2;
+        for (int y = ent[1] + rh; y < h - 1; y++) for (int x = ex - 1; x <= ex + 1; x++) t[y][x] = 'p';
+        t[h - 2][ex] = 'U';
+        for (int x = 0; x < w; x++) { t[0][x] = 'L'; t[h - 1][x] = 'L'; }
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(ex, h - 2, 'U', ARCHI, 0, 0, "신궁 밖으로"));
+        return new S5MineMap(SHRINE, "신궁 내부", false, w, h, ex, h - 5, t, new byte[h][w], portals);
+    }
+
+    /** 다도해 뱃길(44x330, 세로): 온통 바다(배로만 다닌다 -- boat), 가장자리에 바위. 아래 가운데 = 본섬 부두, 위로 42칸마다 왼쪽/오른쪽 번갈아 섬 부두(판자 B) 7곳.
+     *  부두 둘레는 모래 몇 칸. 광석/몬스터 없음. 1인용 배가 있어야 들어온다(requireItem). */
+    static S5MineMap generateArchiSea(long seed) {
+        int w = 44, h = 330;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = Math.abs(x - w / 2) > 6 && r.nextDouble() < 0.02 ? '^' : '~';
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; }
+        List<Portal> portals = new ArrayList<>();
+        for (int k = 0; k <= ISLE_IDS.length; k++) {
+            int[] d = seaDock(w, h, k);
+            for (int y = d[1] - 2; y <= d[1] + 2; y++) for (int x = d[0] - 2; x <= d[0] + 2; x++) if (x >= 0 && x < w && y > 0 && y < h) t[y][x] = (x == 0 || x == w - 1 || y == h - 1) ? 'b' : '~';
+            for (int y = d[1] - 2; y <= d[1] + 2; y++) { int sx = d[0] <= 1 ? 0 : d[0] >= w - 2 ? w - 1 : -1; if (sx >= 0) t[y][sx] = 'b'; }
+            t[d[1]][d[0]] = 'B';
+            portals.add(k == 0 ? new Portal(d[0], d[1], 'B', ARCHI, 0, 0, "다도해 본섬에 내리기")
+                    : new Portal(d[0], d[1], 'B', ISLE_IDS[k - 1], 0, 0, ISLE_NAMES[k - 1] + "에 내리기"));
+        }
+        S5MineMap m = new S5MineMap(ARCHISEA, "다도해 뱃길", false, w, h, w / 2, h - 7, t, new byte[h][w], portals);
+        m.boat = true;
+        m.sun = 1;
+        m.requireItem = BOAT_ITEM;
+        return m;
+    }
+
+    /** 뱃길 부두 판자 칸: k = 0 본섬(아래 가운데), 1~7 섬(위로 42칸마다, 홀수 왼쪽/짝수 오른쪽 가장자리). */
+    private static int[] seaDock(int w, int h, int k) {
+        if (k == 0) return new int[] { w / 2, h - 2 };
+        return new int[] { k % 2 == 1 ? 1 : w - 2, h - 10 - k * 42 };
+    }
+
+    /** 뱃길에서 그 섬 부두 판자 바로 옆 물 칸(섬에서 배를 타면 여기로). */
+    private static int[] seaDockBeside(S5MineMap sea, String isle) {
+        for (Portal p : sea.portals) if (isle.equals(p.target)) return new int[] { p.x <= 1 ? p.x + 1 : p.x - 1, p.y };
+        return new int[] { sea.spawnX, sea.spawnY };
+    }
+
+    /** 다도해 섬(크기 ISLE_SIZE): 바다 가운데 섬, 북쪽 해안에 부두와 배(뱃길로). 섬마다 모습이 다르다 -- 0 동백(숲), 1 갈매기(바위), 2 거북(모래톱),
+     *  3 안개(짙은 숲), 4 산호(바다 모래/해초), 5 달맞이(풀밭/바위), 6 용암(자갈/바위산). 그늘(야자수) 몇 곳 + 부두 앞. */
+    static S5MineMap generateIsle(long seed, int idx) {
+        int size = ISLE_SIZE[idx], w = size, h = size, cx = w / 2, cy = h / 2 + 4;
+        Random r = new Random(seed);
+        Noise shape = new Noise(seed * 31 + 71), green = new Noise(seed * 31 + 72), rich = new Noise(seed * 31 + 73);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double d = Math.hypot(x - cx, (y - cy) * 1.1) / (size * 0.4) + (shape.fbm(x / 16.0, y / 16.0) - 0.5) * 0.4;
+            double gr = green.fbm(x / 12.0, y / 12.0), q = r.nextDouble();
+            char c;
+            if (d >= 1.0) c = '~';
+            else if (d >= 0.84) c = idx == 4 ? 'u' : 'b';
+            else switch (idx) {
+                case 0: c = gr > 0.5 ? (q < 0.5 ? 'T' : '.') : (q < 0.06 ? 'T' : '.'); break;
+                case 1: c = gr > 0.66 ? '^' : gr < 0.4 ? (q < 0.5 ? ':' : '.') : '.'; break;
+                case 2: c = gr > 0.55 ? 'b' : (q < 0.05 ? 'T' : '.'); break;
+                case 3: c = gr > 0.42 ? (q < 0.55 ? 'T' : '.') : '.'; break;
+                case 4: c = gr > 0.6 ? 'e' : gr < 0.3 ? 'O' : 'u'; break;
+                case 5: c = gr > 0.68 ? '^' : gr < 0.35 ? (q < 0.4 ? ':' : '.') : '.'; break;
+                default: c = gr > 0.62 ? '^' : gr < 0.35 ? 'r' : (q < 0.3 ? 'r' : ':'); break;
+            }
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '~'; t[h - 1][x] = '~'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '~'; t[y][w - 1] = '~'; }
+        int pier = cx - 1, land = 1;
+        while (land < h - 1 && t[land][pier + 1] == '~') land++;
+        for (int y = land; y < land + 3; y++) for (int x = pier; x <= pier + 2; x++) if (!walkable(t[y][x])) t[y][x] = idx == 4 ? 'u' : 'b';
+        int[] plank = pierAndShip(t, pier, land - 1, -1);
+        int sx = pier + 2, sy = plank[1];
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '~';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(plank[0], plank[1], 'B', ARCHISEA, 0, 0, "배를 타고 뱃길로"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = t[y][x] == 'P' || Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 13.0, y / 13.0) + 0.2 * Math.min(1, Math.hypot(x - sx, y - sy) / (size * 0.7)) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, ISLE_SHARE, skip);
+        S5MineMap m = new S5MineMap(ISLE_IDS[idx], ISLE_NAMES[idx], false, w, h, sx, sy, t, o, portals);
+        m.dockX = sx;
+        m.dockY = sy;
+        m.sun = ISLE_SUN[idx];
+        m.safe.add(new int[] { pier + 1, land + 2, 4 }); // 부두 앞 그늘
+        addShadeGroves(m, r, 3 + size / 40);
         return m;
     }
 

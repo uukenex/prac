@@ -3759,7 +3759,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade === 32 ? '신궁 닌자 수색 보상' : o.grade === 20 ? '1인용 배 재료(다도해)' : o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
@@ -5477,6 +5477,8 @@ var TowerMine = (function () {
   // [2026-10-28] 특수 재료: 빙석(19, 설산), 타락한 대주교의 인장(31, 성당 옛터) -- 성유물 조각(30)은 없앴다
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '타락한 대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
+  ORE_NAME[20] = '달빛석'; ORE_COL[20] = ['#8fa8e8', '#f4f8ff']; // [2026-10-28] 다도해 -- 1인용 배 재료
+  ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -5812,7 +5814,8 @@ var TowerMine = (function () {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
-    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : '#22305e';
+    var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry'; // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
+    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
@@ -5936,6 +5939,13 @@ var TowerMine = (function () {
   function oreIcon(grade) {
     if (oreIcons[grade]) return oreIcons[grade];
     var c = mk(T, T), g = c.getContext('2d'), col = ORE_COL[grade] || ORE_COL[1];
+    if (grade === 32) { // [2026-10-28] 닌자의 비급서 -- 두루마리 책
+      px(g, '#e8d8a8', 3, 4, 10, 9); px(g, '#3a2a1a', 3, 3, 10, 1); px(g, '#3a2a1a', 3, 13, 10, 1); px(g, '#c0392b', 7, 4, 2, 9);
+      px(g, '#3a2a1a', 5, 6, 1, 1); px(g, '#3a2a1a', 10, 6, 1, 1); px(g, '#3a2a1a', 5, 9, 1, 1); px(g, '#3a2a1a', 10, 9, 1, 1);
+      outline(c, '#140d0a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
     if (grade >= 21) { // [2026-10-24] 보석: 깎은 보석 모양(위 테이블 + 아래 뾰족)
       for (var gy = 3; gy < 14; gy++) {
         var half = gy < 6 ? 3 + (gy - 3) : Math.max(0, 6 - Math.round((gy - 6) * 0.8));
@@ -6118,7 +6128,7 @@ var TowerMine = (function () {
   function walk(x, y) {
     var c = cellAt(x, y);
     if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
-    return WALK.indexOf(c) >= 0 || (c === '~' && !!(st && st.waterWalk)); // [2026-10-24] 용왕의 반지 = 물 위 걷기
+    return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 강화 = 최대/현재 함께 증가)
@@ -6345,6 +6355,7 @@ var TowerMine = (function () {
     else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
+    else if (n.kind === 'ninjaquest' || n.kind === 'boatwright' || n.kind === 'ferry') { setAuto(false); openSmith(n, 'archi'); } // [2026-10-28] 다도해
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -6423,7 +6434,8 @@ var TowerMine = (function () {
   // [2026-10-24] 배 -- 다른 항구를 고르면 그곳 부두로
   function shipHtml() {
     return npcHead('⛵ 배 타기', false) + '<div class="mine-smith-say">어디로 갈까요? (뱃삯 없음)</div><div class="mine-smith-menu">'
-        + (map.shipTo || []).map(function (s) { return '<button type="button" onclick="TowerMine.sail(\'' + s.id + '\')">⛵ ' + s.name + '</button>'; }).join('') + '</div>';
+        + (map.shipTo || []).filter(function (s) { return !s.admin || (st && st.adminMaps); }) // [2026-10-28] 다도해는 운영자만
+          .map(function (s) { return '<button type="button" onclick="TowerMine.sail(\'' + s.id + '\')">⛵ ' + s.name + (s.admin ? ' 🏯' : '') + '</button>'; }).join('') + '</div>';
   }
   function sail(dest) {
     var n = smithNpc;
@@ -6533,13 +6545,15 @@ var TowerMine = (function () {
     { id: 'field', name: '중앙 평원 🏠', x: 160, y: 252, fill: '#5fae45', ink: '#10300a' },
     { id: 'castle', name: '동쪽 성곽', x: 258, y: 252, fill: '#8a857c', ink: '#fff' },
     { id: 'beach', name: '남쪽 바닷가', x: 160, y: 344, fill: '#ecd9a0', ink: '#3b2a10' },
-    { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' }
+    { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' },
+    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff', admin: true } // [2026-10-28] 다도해(본섬/신궁/뱃길/일곱 섬) -- 운영자만
   ];
   function worldHtml() {
     // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
     var N = {}, W = 96, H = 32, lv = myLv();
     WORLD_NODES.forEach(function (n) {
       if (n.locked || n.dev) return; // [2026-10-24] 개발 중인 곳(왕도/초원)은 관리자에게도 안 보인다
+      if (n.admin && !(st && st.adminMaps)) return; // [2026-10-28] 다도해는 운영자에게만
       N[n.id] = n;
     });
     var line = function (a, b, style, label) {
@@ -6555,7 +6569,7 @@ var TowerMine = (function () {
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
         + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
-        + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵')
+        + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵') + line('island', 'archi', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
     // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)
     var bossOf = {};
@@ -6569,7 +6583,7 @@ var TowerMine = (function () {
     });
     WORLD_NODES.forEach(function (n) {
       if (!N[n.id]) return;
-      var here = map && map.id === n.id;
+      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi)); // [2026-10-28] 다도해 맵은 모두 다도해 칸
       svg += '<rect x="' + (n.x - W / 2) + '" y="' + (n.y - H / 2) + '" width="' + W + '" height="' + H + '" fill="' + n.fill + '"'
           + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
@@ -6603,6 +6617,32 @@ var TowerMine = (function () {
     if (!opened || !map) return;
     openSmith({ name: '내 장비', line: '', kind: 'equip' }, 'equip');
   }
+  // [2026-10-28] 다도해 NPC -- 신궁 수문장(수색 임무: 닌자 100명 -> 비급서 + 달빛석), 배 목수(달빛석 -> 1인용 배), 뱃사공(배 타기 -> 뱃길)
+  function archiHtml(n) {
+    var a = st.archi || {}, h = npcHead(n.kind === 'ninjaquest' ? '🥷 신궁 수문장' : n.kind === 'boatwright' ? '🔨 배 목수' : '⛵ 뱃사공', false) + talkBlock(n, n.line);
+    var have = '<div class="mine-smith-say">🌙 달빛석 ' + (a.moon || 0) + '개 · 📜 비급서 ' + (a.books || 0) + '권 · ⛵ 1인용 배 ' + (a.boat ? '있음' : '없음') + '</div>';
+    if (n.kind === 'ninjaquest') {
+      if (!a.quest) return h + have + '<div class="mine-smith-row"><span class="nm">신궁 내부 수색<small>닌자 ' + (a.need || 100) + '명 처치 -> 닌자의 비급서 + 달빛석(되풀이 가능)</small></span><button type="button" onclick="TowerMine.archiAct(\'quest\')">임무 받기</button></div>';
+      var done = (a.kills || 0) >= (a.need || 100), pct = Math.min(100, Math.round((a.kills || 0) * 100 / (a.need || 100)));
+      return h + have + '<div class="mine-smith-row"><span class="nm">🥷 수색 중 ' + (a.kills || 0) + ' / ' + (a.need || 100) + '<span class="mine-bar hp" style="margin-top:4px"><i style="width:' + pct + '%"></i></span>'
+          + '<small>' + (done ? '다 처치했어요! 보상을 받으세요.' : '신궁 문(본섬 가운데)으로 들어가 닌자를 처치하세요.') + '</small></span>'
+          + '<button type="button" ' + (done ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'claim\')">보상 받기</button></div>';
+    }
+    if (n.kind === 'boatwright') {
+      if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>';
+      return h + have + '<div class="mine-smith-row"><span class="nm">⛵ 1인용 배<small>뱃길로 나가 일곱 섬에 내릴 수 있어요</small>' + costHtml(a.boatCosts) + '</span>'
+          + '<button type="button" ' + (a.boatCan ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
+    }
+    return h + have + '<div class="mine-smith-menu"><button type="button" ' + (a.boat ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'board\')">⛵ 배 타기<small>' + (a.boat ? '다도해 뱃길로' : '1인용 배가 있어야 해요') + '</small></button></div>'
+        + '<div class="mine-smith-say">☀️ 다도해는 낮(25분)과 밤(15분)이 번갈아 와요. 낮에는 섬마다 햇볕에 초당 1~5%씩 체력이 깎이니, 야자수 그늘(🌴)에서 쉬어 가세요.</div>';
+  }
+  function archiAct(action) {
+    if (action === 'board') { closeSmith(); travel('/api/tower-mine-archi?action=board', '배를 타지 못했어요.'); return; }
+    gearAct('/api/tower-mine-archi?action=' + action);
+  }
+  /** 다도해 낮/밤 -- 서버와 같은 식(리셋 기준 시각부터 dayCycleMs마다 앞 dayMs가 낮). */
+  function archiDay(t) { return !map || !map.dayCycleMs || ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs < map.dayMs; }
+  function archiLeftMin(t) { var p = ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs; return Math.max(1, Math.ceil(((p < map.dayMs ? map.dayMs : map.dayCycleMs) - p) / 60000)); }
   function openWorld() {
     if (!opened || !map) return;
     openSmith({ name: '전체 지도', line: '', kind: 'world' }, 'world');
@@ -6778,6 +6818,9 @@ var TowerMine = (function () {
   var PORTRAIT = {
     smith: { skin: '#e8b48a', hair: '#3b2a1a', cloth: '#7a4a1f', clothD: '#5a3a1c' },
     captain: { skin: '#f2c194', hair: '#e8e8e8', cloth: '#f4f4f0', clothD: '#c9ccd6' },
+    ninjaquest: { skin: '#e8b48a', hair: '#1a1a22', cloth: '#a8202a', clothD: '#6a1018' }, // [2026-10-28] 다도해
+    boatwright: { skin: '#e0a878', hair: '#6a4a22', cloth: '#8a6a3a', clothD: '#6a4a22' },
+    ferry: { skin: '#e8b48a', hair: '#2a2a2a', cloth: '#2a5aa8', clothD: '#1a3a78' },
     boutique: { skin: '#f2c194', hair: '#2a1d10', cloth: '#7b3fa0', clothD: '#5a2a78' },
     priest: { skin: '#f0c8a0', hair: '#b8bec8', cloth: '#24212b', clothD: '#141218' },
     guide: { skin: '#f2c194', hair: '#7a4a26', cloth: '#2f8a5a', clothD: '#1f6342' },
@@ -6905,6 +6948,10 @@ var TowerMine = (function () {
       el.smith.innerHTML = worldHtml();
       return;
     }
+    if (smithView === 'archi') { // [2026-10-28] 다도해 NPC
+      el.smith.innerHTML = archiHtml(n);
+      return;
+    }
     if (smithView === 'equip') { // [2026-10-28] 🎒 장비
       el.smith.innerHTML = equipHtml();
       return;
@@ -6993,7 +7040,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'archi', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -7057,7 +7104,7 @@ var TowerMine = (function () {
       cold = { eff: d.coldEff, lv: d.cold, def: d.coatDef, nextBz: d.nextBlizzardAt, heat: d.heat || 0 };
       var t = performance.now();
       if (d.coldDmg) floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.coldDmg + '❄', color: '#9fd8ff', t0: t });
-      if (d.heatDmg) { floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.heatDmg + '☀', color: '#ffb347', t0: t }); if (!heatWarned) { heatWarned = true; msg('🥵 방한 장비를 낀 채로는 너무 더워요! 🎒 장비에서 벗으면 괜찮아요.', 3600); } }
+      if (d.heatDmg) { floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.heatDmg + '☀', color: '#ffb347', t0: t }); if (!heatWarned) { heatWarned = true; msg(map.archi ? '☀️ 한낮의 햇볕이 뜨거워요! 🌴 야자수 그늘에서는 괜찮아요.' : '🥵 방한 장비를 낀 채로는 너무 더워요! 🎒 장비에서 벗으면 괜찮아요.', 3600); } }
       if (d.blizzardDmg) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.7, text: '🌨️ -' + d.blizzardDmg, color: '#ffffff', big: true, t0: t }); msg('🌨️ 눈바람에 휩쓸렸어요! 최대 체력의 10%를 잃었어요.', 2800); }
       else if (d.blizzardSafe) msg('🔥 모닥불 곁에서 눈바람을 피했어요!', 2200);
       if (map.raid) {
@@ -7089,6 +7136,13 @@ var TowerMine = (function () {
   }
   function renderCold() {
     if (!el.cold || (map && map.raid)) return; // 성당 옛터는 raidWarn이 쓴다
+    if (map && map.archi && map.sun) { // [2026-10-28] 다도해 -- 낮(햇빛 %)/밤, 남은 분
+      var tn = nowSrv(), day = archiDay(tn), heat = cold ? cold.heat : 0;
+      var at = (inSafe() ? '🌴 그늘' : day ? '☀️ -' + (heat || map.sun) + '%/초' : '🌙 밤') + ' ' + archiLeftMin(tn) + '분';
+      if (el.cold._t !== at) { el.cold._t = at; el.cold.textContent = at; }
+      el.cold.style.display = 'block';
+      return;
+    }
     if (map && map.hot) { // [2026-10-28] 더위 -- 방한 장비를 끼고 있을 때만 보인다
       var ht = cold && cold.heat ? (inSafe() ? '🌴 그늘' : '🥵 더위 -' + cold.heat + '%/초') : '';
       if (el.cold._t !== ht) { el.cold._t = ht; el.cold.textContent = ht; }
@@ -7141,6 +7195,21 @@ var TowerMine = (function () {
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
+  }
+  /** [2026-10-28] 야자수(다도해 그늘 가운데) -- 줄기 + 바람에 살짝 흔들리는 잎. */
+  function drawPalm(cx, cy, TS, now) {
+    var s = TS / 16, sw = Math.sin(now / 700) * s;
+    ctx.fillStyle = '#7a5530'; ctx.fillRect(cx - s, cy - 6 * s, 2 * s, 10 * s);
+    ctx.fillStyle = '#2f8a4a';
+    [[-7, -1], [7, -1], [-5, -4], [5, -4], [0, -5]].forEach(function (l) { ctx.beginPath(); ctx.moveTo(cx, cy - 7 * s); ctx.quadraticCurveTo(cx + l[0] * 0.5 * s + sw, cy + (l[1] - 9) * s, cx + l[0] * s + sw, cy + l[1] * s - 4 * s); ctx.lineTo(cx + l[0] * s * 0.8 + sw, cy + l[1] * s - 2 * s); ctx.closePath(); ctx.fill(); });
+  }
+  /** [2026-10-28] 1인용 배(다도해 뱃길) -- 캐릭터 발밑 나무 배, 물결에 살짝 흔들린다. (x, y) = 캐릭터 그림 왼쪽 위. */
+  function drawBoat(x, y, now) {
+    var TS = T * scale, u = TS / 16, bob = Math.round(Math.sin(now / 300) * u);
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(x - 2 * u, y + 11 * u + bob, TS + 4 * u, 3 * u);
+    ctx.fillStyle = '#8a5a2b'; ctx.fillRect(x - u, y + 9 * u + bob, TS + 2 * u, 3 * u);
+    ctx.fillStyle = '#c49a45'; ctx.fillRect(x, y + 9 * u + bob, TS, u);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(x - 3 * u + ((now / 90) % 4) * u, y + 14 * u + bob, 2 * u, u); ctx.fillRect(x + TS + ((now / 110) % 3) * u, y + 14 * u + bob, 2 * u, u);
   }
   /** 모닥불(안전지대 가운데) -- 장작 + 일렁이는 불꽃. */
   function drawFire(cx, cy, TS, now) {
@@ -7453,6 +7522,17 @@ var TowerMine = (function () {
         }
       }
     }
+    // [2026-10-28] 다도해 그늘(야자수) -- 시원한 그늘 둘레 + 가운데 야자수
+    if (map.archi && map.safe) {
+      map.safe.forEach(function (z) {
+        var zx = (z[0] + 0.5) * TS - camX, zy = (z[1] + 0.5) * TS - camY, rr = (z[2] + 0.5) * TS;
+        if (zx < -rr || zy < -rr || zx > W + rr || zy > H + rr) return;
+        var gr = ctx.createRadialGradient(zx, zy, TS * 0.3, zx, zy, rr);
+        gr.addColorStop(0, 'rgba(20,60,40,0.30)'); gr.addColorStop(0.8, 'rgba(20,60,40,0.14)'); gr.addColorStop(1, 'rgba(20,60,40,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(zx, zy, rr, 0, Math.PI * 2); ctx.fill();
+        if (!npcAt[z[0] + ',' + z[1]]) drawPalm(zx, zy, TS, now);
+      });
+    }
     // [2026-10-26] 안전지대(모닥불) -- 따뜻한 빛 둘레 + 가운데 모닥불(NPC 노점 칸이면 불은 안 그린다)
     if (map.cold && map.safe) {
       map.safe.forEach(function (z) {
@@ -7517,6 +7597,7 @@ var TowerMine = (function () {
       if (ox < -TS || oy < -TS || ox > W || oy > H) continue;
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
+      if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
@@ -7528,6 +7609,7 @@ var TowerMine = (function () {
     var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
     var meGm = !!(st && st.look && st.look.gm); // [2026-10-28] 운영자 장비 -- 반짝이 + "운영자" 표시
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
+    if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
@@ -7541,6 +7623,11 @@ var TowerMine = (function () {
       grd.addColorStop(0.55, 'rgba(6,4,2,' + dim.mid + ')');
       grd.addColorStop(1, 'rgba(6,4,2,' + dim.edge + ')');
       ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W, H);
+    }
+    // [2026-10-28] 다도해 밤 -- 푸르스름하게 어둡게(낮엔 햇살이 살짝 노랗게)
+    if (map.archi && map.dayCycleMs && map.id !== 'shrine') {
+      ctx.fillStyle = archiDay(nowSrv()) ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
       ctx.fillRect(0, 0, W, H);
     }
     // [2026-10-23] 모래바람 -- 화면이 누렇게 흐려지고 바람 방향으로 모래가 날린다.
@@ -7903,7 +7990,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, openEquip: openEquip, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, openEquip: openEquip, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

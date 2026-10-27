@@ -910,6 +910,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-28] 웹 광산 다도해(운영자만) -- 신궁 수문장/배 목수/뱃사공. 받기/보상/배 만들기/배 타기 로그. */
+    @GetMapping("/api/tower-mine-archi")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineArchi(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "") String action) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineArchi(userName, action);
+        mineLog(userName, "[웹] 광산 다도해 " + action, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-25] 웹 광산 이동 안내원 --마을(평원 마을/왕도, 왕도는 아직 관리자만)끼리 무료 이동. */
     @GetMapping("/api/tower-mine-guide")
     @ResponseBody
