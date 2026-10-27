@@ -10079,7 +10079,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("qty", qty);
         out.put("gain", gain);
         out.put("upgraded", upgraded);
-        String msg = "⛏️ " + map.name + " (" + x + ", " + y + ") " + name + " " + gain + "개! (보유 " + qty + "개)"
+        String msg = "⛏️ " + map.name + " " + name + " " + gain + "개! (보유 " + qty + "개)" // [2026-10-28] "보석 캘 때 좌표 나오는 거 지워줘" -- 좌표 빼기
                 + (upgraded ? " 💍 심연의 반지: 한 등급 위!" : "") + (gain > 1 ? " 💍 풍요의 반지: 2개!" : "");
         if (one.get("gemGrade") != null) {
             out.put("gemGrade", one.get("gemGrade"));
@@ -11690,10 +11690,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         int[] pos = minePos(row, map, mineWaterWalk(items));
         MinePresence me = minePresenceOf(userName);
+        // [2026-10-28] "3명 모이면 인사가 잘 안 된다" -- 저장 위치(DB, 움직이는 중 2.5초마다)로 재면 화면과 어긋나서 근처 판정이 자주 빗나갔다.
+        //  1초마다 오는 위치 알림(화면이 보는 것과 같은 위치)이 있으면 그걸로 잰다.
+        int gx = pos[0], gy = pos[1];
+        if (map.id.equals(me.mapId) && now - me.at <= 3_000L) { gx = me.x; gy = me.y; }
         boolean near = false;
         for (MinePresence o : MINE_PRESENCE.values()) {
             if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !map.id.equals(o.mapId)) continue;
-            if (Math.abs(o.x - pos[0]) + Math.abs(o.y - pos[1]) <= MINE_GREET_RANGE + 2) near = true; // 저장 위치는 최대 2.5초 늦다 -- 2칸 여유
+            if (Math.abs(o.x - gx) + Math.abs(o.y - gy) <= MINE_GREET_RANGE + 2) near = true; // 위치 알림도 최대 1초 늦다 -- 2칸 여유
         }
         if (!near) { out.put("message", "근처에 인사할 사람이 없어요."); return out; }
         if (now - me.bubbleAt < 3_000L) { out.put("message", "조금 있다가 다시 인사해요."); return out; }

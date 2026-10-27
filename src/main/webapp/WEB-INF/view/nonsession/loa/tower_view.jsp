@@ -7884,7 +7884,7 @@ var TowerMine = (function () {
         var img = new Image(); img.src = oreIcon(d.grade);
         var rare = (d.grade >= 5 && d.grade <= 6) || !!RARE_GEM[d.grade]; // 미스릴/별빛석, 귀한 보석(바닷길에서 캔 칸은 보석)
         floats.push({ x: x, y: y, text: '+' + (d.gain || 1) + ' ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: rare, icon: img, t0: performance.now() });
-        if (rare) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3200); }
+        if (rare) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name, 3200); } // [2026-10-28] 좌표 빼기
         // [2026-10-24] 광역 곡괭이 -- 주변 칸도 함께 캔 결과
         (d.wide || []).forEach(function (w, i) {
           dug[w.x + ',' + w.y] = w.grade;
@@ -7906,7 +7906,7 @@ var TowerMine = (function () {
           (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
           var gimg = new Image(); gimg.src = oreIcon(d.gemGrade);
           floats.push({ x: x, y: y - 0.6, text: '+1 ' + d.gemName, color: (ORE_COL[d.gemGrade] || ORE_COL[1])[1], big: !!RARE_GEM[d.gemGrade], icon: gimg, t0: performance.now() + 250 });
-          if (RARE_GEM[d.gemGrade]) { flashT0 = performance.now(); msg('💎 ' + d.gemName + '! ' + map.name + ' (' + x + ', ' + y + ')', 3600); }
+          if (RARE_GEM[d.gemGrade]) { flashT0 = performance.now(); msg('💎 ' + d.gemName + '! ' + map.name, 3600); } // [2026-10-28] 좌표 빼기 }
           else msg('💎 ' + d.gemName + '도 함께 나왔어요!', 2200);
         }
         showCoord(); drawMini(); renderLog();
