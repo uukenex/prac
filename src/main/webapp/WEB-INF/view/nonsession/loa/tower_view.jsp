@@ -764,6 +764,10 @@
     .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
     .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
     .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
+    .mine-equip-btn{ bottom:calc(198px + env(safe-area-inset-bottom)); } /* [2026-10-28] 🎒 장비(반지 하나, 옷 하나, 장갑 하나) */
+    .mine-eq-slot{ margin:10px 0 4px; font-weight:800; font-size:13px; }
+    .mine-eq-slot small{ font-weight:600; opacity:.7; margin-left:4px; }
+    .mine-eq-empty{ font-size:12px; opacity:.7; padding:4px 2px 8px; }
     .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
     .mine-greet{ position:absolute; right:18px; bottom:calc(118px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
     @keyframes mineGreetPop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
@@ -780,6 +784,21 @@
     .mine-look-top{ display:flex; gap:10px; align-items:center; margin-bottom:8px; }
     .mine-look-prevs{ display:flex; gap:4px; flex-shrink:0; }
     .mine-look-prev{ width:52px; height:52px; image-rendering:pixelated; background:#2a2340; border:2px solid #f4f0e6; }
+    /* [2026-10-28] 명품상점 부위별 캐러셀 */
+    .cos-slot{ margin-top:10px; }
+    .cos-slot-h{ display:flex; align-items:center; gap:6px; font-weight:800; font-size:13px; margin-bottom:5px; }
+    .cos-slot-h small{ opacity:.7; font-weight:600; margin-right:auto; }
+    .cos-car{ display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x proximity; padding:2px 2px 8px; touch-action:pan-x pan-y; overscroll-behavior-x:contain; scrollbar-width:thin; }
+    .cos-card{ flex:0 0 92px; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; background:rgba(255,255,255,.06); border:2px solid rgba(244,240,230,.3); text-align:center; }
+    .cos-card.worn{ border-color:#ffe14d; background:rgba(255,225,77,.12); }
+    .cos-card.gm{ border-color:#b07cff; }
+    .cos-card > img{ width:48px; height:48px; image-rendering:pixelated; background:#2a2340; cursor:pointer; }
+    .cos-nm{ font-size:11px; font-weight:800; line-height:1.2; min-height:2.4em; display:flex; align-items:center; }
+    .cos-note{ font-size:10px; color:#c9a8ff; font-weight:700; }
+    .cos-own{ font-size:10px; color:#a8f0c4; }
+    .cos-card .mine-cost{ justify-content:center; font-size:10px; gap:1px 4px; margin-top:0; }
+    .cos-card .mine-cost img{ width:12px; height:12px; }
+    .cos-card button{ font-size:11px; padding:3px 8px; margin-top:auto; }
     .mine-look-mini{ width:36px; height:36px; image-rendering:pixelated; background:#2a2340; border:1px solid #f4f0e6; cursor:pointer; flex-shrink:0; }
     .mine-world{ display:block; width:100%; height:auto; border:2px solid #f4f0e6; margin-bottom:8px; }
     .mine-world .wn{ font:800 12px sans-serif; }
@@ -791,7 +810,9 @@
     .mine-warp select, .mine-warp input{ flex:1; min-width:0; font:700 14px/1.2 ui-monospace, Consolas, monospace; padding:5px 6px; border:2px solid #f4f0e6; background:#1d1730; color:#fff; }
     .mine-warp button{ padding:8px; font-size:14px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-auto-btn.on{ background:#1f6b3a; color:#d6ffe0; }
-    .mine-hp{ font:800 13px/1.2 ui-monospace, Consolas, monospace; padding:5px 8px; color:#ffd0d0; min-width:120px; }
+    .mine-hp{ font:800 12px/1.15 ui-monospace, Consolas, monospace; padding:4px 7px; color:#ffd0d0; width:112px; box-sizing:border-box; } /* [2026-10-28] "체력바가 너무 길어서 화면을 가린다" -- 폭 고정, 숫자는 현재 체력만 */
+    .mine-hp .hp-l{ display:flex; justify-content:space-between; align-items:baseline; gap:4px; white-space:nowrap; }
+    .mine-hp .hp-n{ font-size:11px; color:#fff; }
     .mine-hp:empty{ display:none; }
     .mine-bar{ display:block; height:5px; margin-top:3px; background:#2a1d1d; border:1px solid #140d0a; }
     .mine-bar i{ display:block; height:100%; }
@@ -802,8 +823,8 @@
     .mine-bar.hp b{ position:absolute; right:0; top:0; bottom:0; background:repeating-linear-gradient(45deg,#5a5560 0 3px,#3a3640 3px 6px); }
     .mine-hp .lock{ color:#c9c3d6; font-size:11px; margin-left:4px; }
     /* [2026-10-26] 한기 표시 */
-    .mine-cold{ display:none; font-size:12px; padding:4px 8px; color:#cfe8ff; }
-    .mine-log{ position:absolute; left:10px; bottom:calc(200px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
+    .mine-cold{ display:none; font-size:12px; padding:4px 8px; color:#cfe8ff; max-width:112px; box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* [2026-10-28] 체력 칸과 같은 폭 */
+    .mine-log{ position:absolute; left:10px; bottom:calc(244px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
     .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
@@ -1648,6 +1669,7 @@
     <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
   </div>
   <div class="mine-log mpx" id="mineLog"></div>
+  <button type="button" class="mine-btn mine-equip-btn mpx" onclick="TowerMine.openEquip()">🎒 장비</button>
   <button type="button" class="mine-btn mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
   <button type="button" class="mine-btn mine-home-btn mpx" onclick="TowerMine.goVillage()">🏠 마을로</button>
   <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 최근 캔 곳</button>
@@ -6131,7 +6153,8 @@ var TowerMine = (function () {
     var key = c.lv + ':' + h + ':' + ep + ':' + lk;
     if (el.hp._k === key) return;
     el.hp._k = key;
-    el.hp.innerHTML = 'Lv.' + c.lv + ' ❤️ ' + h + '/' + c.hpMax + (lk ? '<span class="lock">🔒-' + lk + '%</span>' : '')
+    el.hp.title = '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '');
+    el.hp.innerHTML = '<span class="hp-l"><span>Lv.' + c.lv + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + h + '</span></span>' // [2026-10-28] 짧게
         + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>';
   }
   // [2026-10-24] 자동채광 -- 켜 두면 캐릭터가 스스로 가장 가까운(30칸 안) 안 캔 칸으로 걸어가서 캔다. 방향키/끌기로 잠깐 직접 조작할 수 있다.
@@ -6440,20 +6463,25 @@ var TowerMine = (function () {
         + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImg(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
         + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
+    // [2026-10-28] "치장상점 UI -- 부위별 캐러셀" -- 부위마다 가로로 넘기는 카드 줄(그림을 누르면 입어 보기). 다시 그려도 넘긴 자리는 그대로(renderSmithView).
     ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
-      var cur = lk[slot + 'Code'] || '';
-      h += '<div class="mine-smith-sub">' + LOOK_SLOT_NAME[slot] + (cur ? '' : ' <span class="mine-worn">기본 착용 중</span>')
-          + (cur ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">기본으로</button>' : '') + '</div>';
-      (st.cosShop || []).forEach(function (c) {
-        if (c.slot !== slot) return;
+      var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot; });
+      var owned = list.filter(function (c) { return c.owned; }).length;
+      h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + owned + '/' + list.length + ' 보유</small>'
+          + (cur ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">기본으로</button>' : ' <span class="mine-worn">기본 착용 중</span>') + '</div>'
+          + '<div class="cos-car" data-slot="' + slot + '">';
+      list.forEach(function (c) {
         var btn;
         if (c.code === cur) btn = '<span class="mine-worn">착용 중</span>';
         else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
         else btn = '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
-        h += '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')"><span class="nm">' + c.name
-            + (c.note ? '<small style="color:#9a5ad8;font-weight:700">✨ ' + c.note + '</small>' : '') // [2026-10-28] 운영자 전용 설명
-            + (c.owned ? '<small>가지고 있어요</small>' : costHtml(c.costs)) + '</span>' + btn + '</div>';
+        h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '">'
+            + '<img src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
+            + '<div class="cos-nm">' + c.name + '</div>'
+            + (c.note ? '<small class="cos-note">✨ ' + c.note + '</small>' : '') // [2026-10-28] 운영자 전용 설명
+            + (c.owned ? '<small class="cos-own">가지고 있어요</small>' : costHtml(c.costs)) + btn + '</div>';
       });
+      h += '</div></div>';
     });
     return h;
   }
@@ -6529,6 +6557,16 @@ var TowerMine = (function () {
         + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
+    // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)
+    var bossOf = {};
+    ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map] = b; });
+    var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
+    WORLD_NODES.forEach(function (n) {
+      if (!N[n.id] || !bossOf[n.id]) return;
+      var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - W / 2 + 2; // 왼쪽 끝 맵(동굴 3층)에서 안 잘리게 왼쪽 맞춤
+      svg += b.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
+          : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(b.nextAt) + '</text>';
+    });
     WORLD_NODES.forEach(function (n) {
       if (!N[n.id]) return;
       var here = map && map.id === n.id;
@@ -6540,6 +6578,30 @@ var TowerMine = (function () {
     });
     svg += '</svg>';
     return npcHead('🗺️ 전체 지도', false) + svg; // [2026-10-24] 아래 안내 문구는 뺐다("이 멘트도 없애주고")
+  }
+  // [2026-10-28] 🎒 장비 -- "반지류 하나, 옷류 하나, 장갑류 하나": 칸마다 가진 장비를 보여 주고 끼기/빼기(같은 칸의 다른 장비는 저절로 빠진다).
+  var EQ_SLOTS = [
+    { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
+    { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
+    { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' }
+  ];
+  function equipHtml() {
+    var h = npcHead('🎒 내 장비', false);
+    EQ_SLOTS.forEach(function (sl) {
+      var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
+      h += '<div class="mine-eq-slot">' + sl.name + (sl.hint ? '<small>' + sl.hint + '</small>' : '') + '</div>';
+      if (!rows.length) { h += '<div class="mine-eq-empty">' + sl.none + '</div>'; return; }
+      rows.forEach(function (e) {
+        h += '<div class="mine-smith-row"><span class="nm">' + e.name + '<small>' + e.effect + '</small></span>'
+            + (e.worn ? '<span class="mine-worn">착용 중</span> <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">빼기</button>'
+                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + (sl.id === 'coat' ? '입기' : '끼기') + '</button>') + '</div>';
+      });
+    });
+    return h + '<div class="mine-smith-say">방한 장비(외투·장갑)는 설산에선 든든하지만, 사막과 남쪽 섬에선 더워서 하나에 초당 1%씩 체력이 깎여요.</div>';
+  }
+  function openEquip() {
+    if (!opened || !map) return;
+    openSmith({ name: '내 장비', line: '', kind: 'equip' }, 'equip');
   }
   function openWorld() {
     if (!opened || !map) return;
@@ -6843,6 +6905,10 @@ var TowerMine = (function () {
       el.smith.innerHTML = worldHtml();
       return;
     }
+    if (smithView === 'equip') { // [2026-10-28] 🎒 장비
+      el.smith.innerHTML = equipHtml();
+      return;
+    }
     if (smithView === 'warp') {
       el.smith.innerHTML = warpHtml();
       return;
@@ -6856,7 +6922,19 @@ var TowerMine = (function () {
       return;
     }
     if (smithView === 'boutique') {
+      var keep = {}, keepY = el.smith.scrollTop; // [2026-10-28] 캐러셀 -- 입어 보기/사기로 다시 그려도 넘겨 둔 자리 그대로
+      Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) { keep[c.getAttribute('data-slot')] = c.scrollLeft; });
       el.smith.innerHTML = boutiqueHtml(n);
+      var place = function () { // 그림이 그려진 뒤(다음 프레임)에 넘긴다 -- 바로 넘기면 칸 맞춤이 첫 카드로 되돌린다
+        Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) {
+          var v = keep[c.getAttribute('data-slot')], worn = c.querySelector('.cos-card.worn');
+          if (v != null) c.scrollLeft = v;
+          else if (worn) c.scrollLeft = Math.max(0, worn.offsetLeft - c.offsetLeft - 8); // 처음 열면 입고 있는 카드가 보이게
+        });
+        el.smith.scrollTop = keepY;
+      };
+      place();
+      requestAnimationFrame(place);
       return;
     }
     if (smithView === 'menu') {
@@ -6915,7 +6993,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -6969,16 +7047,17 @@ var TowerMine = (function () {
   // [2026-10-28] 성당 옛터 -- 같은 환경 턴으로 대주교 마법(불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체)을 받는다. 예고 후 화면 효과.
   var raid = null, raidFx = { fire: 0, gas: 0 }, raidWarned = {};
   function coldTick(now) {
-    if (!map || !(map.cold || map.raid) || busy || coldBusy || fade || now - lastColdT < 1000) return;
+    if (!map || !(map.cold || map.raid || map.hot) || busy || coldBusy || fade || now - lastColdT < 1000) return; // [2026-10-28] 더운 곳(hot)도
     lastColdT = now; coldBusy = true;
     var mid = map.id;
     api('/api/tower-mine-cold-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       coldBusy = false;
       if (!d || !d.ok || !map || map.id !== mid) return;
       if (cold && cold.nextBz && d.nextBlizzardAt && d.nextBlizzardAt !== cold.nextBz) lastBz = cold.nextBz;
-      cold = { eff: d.coldEff, lv: d.cold, def: d.coatDef, nextBz: d.nextBlizzardAt };
+      cold = { eff: d.coldEff, lv: d.cold, def: d.coatDef, nextBz: d.nextBlizzardAt, heat: d.heat || 0 };
       var t = performance.now();
       if (d.coldDmg) floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.coldDmg + '❄', color: '#9fd8ff', t0: t });
+      if (d.heatDmg) { floats.push({ x: P.x + 0.3, y: P.y - 0.2, text: '-' + d.heatDmg + '☀', color: '#ffb347', t0: t }); if (!heatWarned) { heatWarned = true; msg('🥵 방한 장비를 낀 채로는 너무 더워요! 🎒 장비에서 벗으면 괜찮아요.', 3600); } }
       if (d.blizzardDmg) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.7, text: '🌨️ -' + d.blizzardDmg, color: '#ffffff', big: true, t0: t }); msg('🌨️ 눈바람에 휩쓸렸어요! 최대 체력의 10%를 잃었어요.', 2800); }
       else if (d.blizzardSafe) msg('🔥 모닥불 곁에서 눈바람을 피했어요!', 2200);
       if (map.raid) {
@@ -6994,8 +7073,10 @@ var TowerMine = (function () {
       if (d.died && d.state) fallDown(d);
     }).catch(function () { coldBusy = false; });
   }
+  var heatWarned = false;
   function coldWarn() {
     if (map && map.raid) { raidWarn(); return; } // [2026-10-28]
+    if (map && map.hot) { renderCold(); return; } // [2026-10-28] 더운 곳
     if (!map || !map.cold) { if (el.cold && el.cold.style.display !== 'none') el.cold.style.display = 'none'; return; }
     if (cold && cold.nextBz) {
       var left = cold.nextBz - nowSrv();
@@ -7008,10 +7089,16 @@ var TowerMine = (function () {
   }
   function renderCold() {
     if (!el.cold || (map && map.raid)) return; // 성당 옛터는 raidWarn이 쓴다
+    if (map && map.hot) { // [2026-10-28] 더위 -- 방한 장비를 끼고 있을 때만 보인다
+      var ht = cold && cold.heat ? (inSafe() ? '🌴 그늘' : '🥵 더위 -' + cold.heat + '%/초') : '';
+      if (el.cold._t !== ht) { el.cold._t = ht; el.cold.textContent = ht; }
+      el.cold.style.display = ht ? 'block' : 'none';
+      return;
+    }
     if (!map || !map.cold) { el.cold.style.display = 'none'; return; }
     var eff = cold ? cold.eff : map.cold, left = cold && cold.nextBz ? cold.nextBz - nowSrv() : 0;
-    var txt = inSafe() ? '🔥 안전지대 · 한기 없음' : eff > 0 ? '🥶 한기 ' + eff + '단계 · 초당 -' + eff + '%' : '🧥 외투 덕에 한기 없음';
-    if (left > 0 && left <= 10000) txt += ' · 🌨️ ' + Math.ceil(left / 1000) + '초';
+    var txt = inSafe() ? '🔥 안전지대' : eff > 0 ? '🥶 한기 -' + eff + '%/초' : '🧥 한기 막음'; // [2026-10-28] 짧게(화면 가림)
+    if (left > 0 && left <= 10000) txt += ' 🌨️' + Math.ceil(left / 1000) + '초';
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
   }
@@ -7044,13 +7131,13 @@ var TowerMine = (function () {
   function raidWarn() {
     if (!el.cold) return;
     var ts = nowSrv(), txt;
-    if (!raid || !raid.awake) txt = '👿 타락한 대주교가 제단에서 기다린다 · 권장 Lv.80';
+    if (!raid || !raid.awake) txt = '👿 대주교 대기 중'; // [2026-10-28] 짧게(체력 칸과 같은 폭)
     else {
       var lf = raid.nextFire - ts, lg = raid.nextGas - ts, boss = map.mobs && map.mobs[map.mobs.length - 1], bp = boss && boss._p;
       var far = bp ? Math.max(Math.abs(bp.cx - P.x), Math.abs(bp.cy - P.y)) > 12 : false;
       if (lf > 0 && lf <= 2000 && raidWarned.f !== raid.nextFire) { raidWarned.f = raid.nextFire; msg(far ? '🔥 타락한 대주교가 불벼락을 모은다! (멀리 있어 안전)' : '🔥 타락한 대주교가 불벼락을 모은다! 12칸 밖으로 피하세요!', 2200); }
       if (lg > 0 && lg <= 3000 && raidWarned.g !== raid.nextGas) { raidWarned.g = raid.nextGas; msg('☠️ 어둠가스가 퍼지려 한다! 성당 옛터 어디에도 피할 곳이 없어요!', 3000); }
-      txt = '👿 타락한 대주교 분노 · 🔥 ' + Math.max(0, Math.ceil(lf / 1000)) + '초 · ☠️ ' + Math.max(0, Math.ceil(lg / 1000)) + '초';
+      txt = '🔥' + Math.max(0, Math.ceil(lf / 1000)) + '초 ☠️' + Math.max(0, Math.ceil(lg / 1000)) + '초';
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
@@ -7619,7 +7706,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; /* [2026-10-26] 한기, [2026-10-28] 대주교 */
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
@@ -7816,7 +7903,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, openEquip: openEquip, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

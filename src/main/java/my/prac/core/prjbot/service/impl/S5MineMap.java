@@ -520,7 +520,22 @@ public final class S5MineMap {
     /** [2026-10-24] 명품상점 위치: 마을 가운데에서 (-4, -2) -- 북서쪽 초가집 바로 앞. */
     private static final int BOUTIQUE_DX = -4, BOUTIQUE_DY = -2;
 
+    // [2026-10-28] "별빛석은 하위 구간(왕도 이전 레벨)은 맵당 1개씩, 왕도 이후 구간은 맵당 2개씩" + "다음 맵 변경 때부터" --
+    //  주기 STAR_UNIFY_CYCLE(10/29 05:00 리셋)부터 만드는 맵은 별빛석 칸 수를 assignOre에서 맞춘다(그 전 주기 맵은 예전 그대로:
+    //  북쪽 끝 설원 2, 동굴 2층 2, 3층 3, 설산 2/3/4, 샛길 3). 왕도 이후 = 왕도 북쪽 샛길과 다도해(처음부터 2개).
+    static final int STAR_UNIFY_CYCLE = 3;
+    private static final ThreadLocal<Boolean> STAR_UNIFIED = ThreadLocal.withInitial(() -> false);
+
     static Map<String, S5MineMap> buildWorld(long seed) {
+        STAR_UNIFIED.set((seed - BASE_SEED) / 7919L >= STAR_UNIFY_CYCLE);
+        try {
+            return buildWorld0(seed);
+        } finally {
+            STAR_UNIFIED.remove();
+        }
+    }
+
+    private static Map<String, S5MineMap> buildWorld0(long seed) {
         S5MineMap field = generateField(seed);
         S5MineMap cave = generateCave(seed + 1);
         S5MineMap desert = generateDesert(seed + 2);
@@ -686,7 +701,10 @@ public final class S5MineMap {
         for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
-        placeNpc(ct, ct.spawnX - 6, ct.spawnY - 4, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
+        // [2026-10-28] "왕도 대장장이, 치장상점은 가운데로(너무 아래쪽)" -- 남문 앞에서 가운데 광장 분수 남쪽 양옆으로(부활 칸 (c, c+5) 둘레는 비워 둔다)
+        int cc = ct.w / 2;
+        placeNpc(ct, cc - 5, cc + 6, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
+        placeNpc(ct, cc + 5, cc + 6, "boutique", "왕도 명품상점", "어서 오세요~ 왕도에서만 파는 반짝반짝 새 옷도 있어요. 성별도 바꿔 드려요.");
         // [2026-10-26] 방한 외투: 설산 마을 털옷 장인(제값), 설원 정박장 암상인(세 배, 매시 정각~15분에만 -- 화면/서버가 시각으로 판단, 칸은 늘 노점)
         S5MineMap tw = out.get(SNOWTOWN);
         placeNpc(tw, tw.villageX + 3, tw.villageY + 1, "furrier", "털옷 장인", "설산 바람은 뼈까지 파고들지. 내 외투면 버틸 만할 거요. 대신 몸이 둔해져서 몬스터한테는 더 아프게 맞을 거요.");
@@ -795,6 +813,11 @@ public final class S5MineMap {
 
     /** 이동 가능 칸마다 점수를 매겨 순위대로 등급을 나눈다(share = 높은 등급부터 비율). skip = 광석 없는 칸(마을 등). */
     private static byte[][] assignOre(char[][] t, double[][] score, double[] share, boolean[][] skip) {
+        if (STAR_UNIFIED.get() && share[0] >= 1) { // 위 STAR_UNIFY_CYCLE 참고
+            int star = share == ROAD_SHARE ? 2 : 1;
+            share = share.clone();
+            share[0] = star;
+        }
         int h = t.length, w = t[0].length;
         List<double[]> cells = new ArrayList<>();
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
