@@ -8697,6 +8697,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.CITY, 33);
         MINE_MIN_LV.put(S5MineMap.ROYALROAD, 70); // [2026-10-27] 왕도 가는 길(11~13단계, 45), [2026-10-28] 왕도 북쪽 샛길로 이름을 바꾸고 17~19단계(성당 옛터보다 살짝 약하게) 70
         MINE_MIN_LV.put(S5MineMap.RUINS, 80); // [2026-10-28] 성당 옛터 -- 타락한 대주교("80레벨 이상 권장")
+        MINE_MIN_LV.put(S5MineMap.SNOWROAD, 80); // [2026-10-28] 설산 봉우리 가는 길(20~21단계를 더 세게), 봉우리(얼음 여왕 Lv.95)
+        MINE_MIN_LV.put(S5MineMap.PEAK, 90);
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
@@ -8923,7 +8925,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE }; // [2026-10-28] 달빛석(20), 비급서(32)
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE }; // [2026-10-28] 달빛석(20), 비급서(32), 얼음의 심장(33)
         for (String c : sc) {
             HashMap<String, Object> o = new HashMap<>();
             o.put("grade", mineCodeGrade(c));
@@ -9128,6 +9130,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("safe", map.safeZones());
         out.put("citizens", map.citizens()); // [2026-10-27] 왕도 주민이 오가는 길(말풍선만)
         out.put("raid", S5MineMap.RUINS.equals(map.id)); // [2026-10-28] 성당 옛터 -- 화면이 1초마다 환경 턴(대주교 마법)
+        out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
@@ -9152,6 +9155,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("boss", ty.boss);
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
+            if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
+            if (ty.aggro > 0) m.put("aggro", ty.aggro); // [2026-10-28] 보스 선공 거리
             out.add(m);
         }
         return out;
@@ -9351,6 +9356,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
     private boolean mineBossDead(int type) {
         if (type == S5MineMobs.BOSS_TYPE) return mineBossDead();
+        if (type == S5MineMobs.ICE_BOSS_TYPE) return mineIceBossDead(); // [2026-10-28] 얼음 여왕
         if (type != S5MineMobs.RAID_BOSS_TYPE) return false;
         if (mineRaidKilledCycle == Integer.MIN_VALUE) {
             try {
@@ -9372,6 +9378,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 쓰러졌을 때 깨어나는 곳으로 옮기고 그곳 이름을 돌려준다(성당에서 기도했으면 왕도 성당, 아니면 평원 마을). */
     private String mineRespawn(String userName, Map<String, Integer> items, long now) {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
+        MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
+        MINE_ICE_THAWED.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
         int[] hp0 = church ? mineCityPlaza(home) : new int[] { home.spawnX, home.spawnY };
@@ -9451,7 +9459,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (boss != null && !mineBossDead(boss.type) && (e == null || !e.mobs.containsKey(boss.id))) {
             S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
             MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bt.hp()));
-            int aggro = bt.stay ? 4 : 2; // [2026-10-28] 대주교는 4칸(풀리는 거리 5칸보다 안쪽)
+            int aggro = bt.aggro > 0 ? bt.aggro : bt.stay ? 4 : 2; // [2026-10-28] 대주교는 4칸(풀리는 거리 5칸보다 안쪽), 얼음 여왕도 4칸(aggroRange)
             synchronized (bs) {
                 if (bs.deadUntil > 0 && bs.deadUntil <= now) { bs.deadUntil = 0; bs.hp = bt.hp(); } // 다시 나타남(대주교 1시간)
                 if (bs.deadUntil <= now) {
@@ -9493,6 +9501,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         e.at = now;
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int dmgSum = 0, released = 0;
+        // [2026-10-28] 얼음 여왕에게 얼어 있으면 -- 여왕의 인식이 거리와 상관없이 안 풀리고(쫓아온다), 여왕에게 맞으면 즉사
+        boolean iceHeld = boss != null && boss.type == S5MineMobs.ICE_BOSS_TYPE && mineFrozen(userName, now) != null, shattered = false;
         List<HashMap<String, Object>> hits = new ArrayList<>();
         List<long[]> mobs = new ArrayList<>();
         String killerName = null;
@@ -9508,7 +9518,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
-                if (dist >= (!type.boss && mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다
+                if (dist >= (!type.boss && mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE) && !(iceHeld && id == boss.id)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = now; } // 다시 제자리로 걸어간다
@@ -9537,6 +9547,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 Long last = e.mobs.get(id);
                 if (dist <= 1 && (last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
                     int d = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4))) * (mineCoatDef(items) > 0 ? 2 : 1); // [2026-10-26] 방한 외투 = 2배
+                    if (iceHeld && id == boss.id) { d = Math.max(d, hp - dmgSum); shattered = true; } // [2026-10-28] 언 채로 맞으면 즉사
                     dmgSum += d;
                     e.mobs.put(id, now);
                     HashMap<String, Object> h = new HashMap<>();
@@ -9549,6 +9560,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         if (boss != null && boss.type == S5MineMobs.RAID_BOSS_TYPE && e.mobs.containsKey(boss.id)) mineRaidSummon(userName, map, boss, now, out, mobs); // [2026-10-28]
+        if (boss != null && boss.type == S5MineMobs.ICE_BOSS_TYPE && e.mobs.containsKey(boss.id)) mineIceAwakeUntil = now + MINE_ICE_AWAKE_MS; // [2026-10-28] 얼음 여왕이 깨어 있다(빙결)
         out.put("ok", true);
         out.put("hits", hits);
         out.put("mobs", mobs);
@@ -9563,7 +9575,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
-                out.put("message", "💫 " + killerName + "에게 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out));
+                out.put("message", (shattered ? "🧊 얼어붙은 채로 " + killerName + "의 일격을 맞아 산산조각 났어요... " : "💫 " + killerName + "에게 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out));
+                if (shattered) out.put("shattered", true);
             }
         }
         if (!fight && !out.containsKey("died")) {
@@ -9664,6 +9677,157 @@ public class BotS5ServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // ---- [2026-10-28] 설산 봉우리 -- 얼음 여왕(보스) ----
+    // "보스는 95레벨, 잡으면 얼음의 심장. 강하고 주기적으로 플레이어 한 명씩 얼린다. 얼어 있는 플레이어를 보스가 공격하면 즉사.
+    //  얼면 다른 플레이어가 근처로 와야만 풀린다(얼음땡)" 요청.
+    //  얼음 여왕(24단계 보스, 화면 Lv.95, 체력 x1.5 / 공격 x1.1)은 4칸 안에 들어오면 먼저 인식하고 쫓아온다. 누가 여왕과 싸우는 동안(마지막 전투 턴/공격 + 15초 = 깨어 있음):
+    //   - 빙결: 깨어난 뒤 8초, 그 뒤 18초마다 봉우리에 있는(최근 3초 위치 알림, 모닥불 밖, 아직 안 언) 플레이어 중 한 명을 그 자리에 얼린다(최대 15초).
+    //     언 동안은 움직이기/캐기/공격/포탈/마을로를 서버가 막고, 여왕은 언 사람을 노려 쫓아간다(멀어도 인식이 안 풀림).
+    //   - 여왕이 언 사람을 때리면 즉사(남은 체력 전부 -- 몬스터에게 쓰러진 것과 같아 최대 체력 잠금 +1).
+    //   - 얼지 않은 다른 플레이어가 언 사람 2칸 안(위치 알림 기준)에 오면 풀린다(얼음땡). 혼자면 15초 뒤 저절로 녹는다(갇히지 않게).
+    //   판정은 봉우리에 있는 모든 화면이 1초마다 부르는 환경 턴(mineColdTick)에서 한다. 언 동안엔 한기/눈바람 피해가 없다.
+    //  보스 공통: 맵 주기마다 한 번(MINE_ICE_KILLED = "주기|유저"). 보상: 얼음의 심장 1(반드시) + 50% 다이아몬드 2 + 40% 별빛석 1.
+    private static final String MINE_ICE_KEY = "MINE_ICE_KILLED";
+    private static volatile int mineIceKilledCycle = Integer.MIN_VALUE;
+    private static final long MINE_ICE_AWAKE_MS = 15_000L;
+    private static final long MINE_ICE_FIRST_MS = 8_000L, MINE_ICE_PERIOD_MS = 18_000L, MINE_ICE_FREEZE_MS = 15_000L;
+    private static final int MINE_ICE_RESCUE_RANGE = 2;
+    private static final long MINE_ICE_FRESH_MS = 3_000L;
+    private static final String MINE_FROZEN_BLOCK = "🧊 얼어붙어서 꼼짝할 수 없어요! 동료가 곁(2칸)에 오면 풀려요. (혼자면 잠시 뒤 녹아요)";
+    private static volatile long mineIceAwakeUntil = 0;
+    private static volatile long mineIceNextFreeze = 0;
+    private static final Object MINE_ICE_LOCK = new Object();
+
+    private static final class IceFreeze {
+        final String mapVer;
+        final int x, y;
+        final long until;
+        IceFreeze(String mapVer, int x, int y, long until) { this.mapVer = mapVer; this.x = x; this.y = y; this.until = until; }
+    }
+    /** 언 유저 -> 얼음(맵 버전, 언 칸, 녹는 시각). */
+    private static final java.util.concurrent.ConcurrentHashMap<String, IceFreeze> MINE_ICE_FROZEN = new java.util.concurrent.ConcurrentHashMap<>();
+    /** 다음 환경 턴에 화면에 알릴 일: rescued(동료가 풀어 줌) / melted(저절로 녹음) / saved(내가 동료를 풀어 줌). */
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_ICE_THAWED = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private boolean mineIceBossDead() {
+        if (mineIceKilledCycle == Integer.MIN_VALUE) {
+            try {
+                String v = dao.selectConfigValue(MINE_ICE_KEY);
+                mineIceKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
+            } catch (Exception e) {
+                mineIceKilledCycle = -1;
+            }
+        }
+        return mineIceKilledCycle == S5MineMap.activeCycle();
+    }
+
+    /** 지금 얼어 있으면 그 얼음(없으면 null). 다 녹았거나 맵이 바뀌었으면 지운다. */
+    private static IceFreeze mineFrozen(String userName, long now) {
+        IceFreeze f = userName == null ? null : MINE_ICE_FROZEN.get(userName);
+        if (f == null) return null;
+        if (f.until <= now || !f.mapVer.equals(S5MineMap.get(S5MineMap.PEAK).version())) {
+            if (MINE_ICE_FROZEN.remove(userName, f)) MINE_ICE_THAWED.put(userName, "melted");
+            return null;
+        }
+        return f;
+    }
+
+    /** 얼음을 모두 녹인다(여왕이 쓰러졌을 때). */
+    private static void mineIceThawAll() {
+        for (String fu : new ArrayList<>(MINE_ICE_FROZEN.keySet())) if (MINE_ICE_FROZEN.remove(fu) != null) MINE_ICE_THAWED.put(fu, "melted");
+    }
+
+    /** 설산 봉우리 환경 턴(mineColdTick 안) -- 얼음땡 판정, 빙결 시각이 되면 한 명 얼리기, 내 얼음 상태. 내가 얼어 있으면 true.
+     *  결과: iceAwake, nextFreezeAt(깨어 있을 때), frozen {x, y, until}, thawed(rescued/melted/saved), froze(이번에 누가 얼었음). */
+    private boolean mineIceTick(String userName, S5MineMap map, long now, HashMap<String, Object> out) {
+        S5MineMap.Mob boss = mineBossOf(map);
+        MobState bs = boss == null ? null : MINE_MOB_STATE.get(mineMobKey(map, boss.id));
+        boolean awake = boss != null && !mineBossDead(boss.type) && (bs == null || bs.deadUntil <= now) && mineIceAwakeUntil > now;
+        out.put("iceAwake", awake);
+        // 얼음땡 -- 언 사람 2칸 안에 얼지 않은 다른 사람이 있으면 풀린다
+        for (String fu : new ArrayList<>(MINE_ICE_FROZEN.keySet())) {
+            IceFreeze f = mineFrozen(fu, now);
+            if (f == null) continue;
+            for (java.util.Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) {
+                MinePresence o = pe.getValue();
+                if (pe.getKey().equals(fu) || !map.id.equals(o.mapId) || now - o.at > MINE_ICE_FRESH_MS) continue;
+                if (Math.abs(o.x - f.x) + Math.abs(o.y - f.y) > MINE_ICE_RESCUE_RANGE || mineFrozen(pe.getKey(), now) != null) continue;
+                if (MINE_ICE_FROZEN.remove(fu, f)) {
+                    MINE_ICE_THAWED.put(fu, "rescued");
+                    MINE_ICE_THAWED.put(pe.getKey(), "saved");
+                }
+                break;
+            }
+        }
+        // 빙결 -- 깨어 있는 동안 18초마다 한 명(처음 깨어나면 8초 뒤부터)
+        if (awake) {
+            String pick = null;
+            synchronized (MINE_ICE_LOCK) {
+                if (mineIceNextFreeze == 0 || now - mineIceNextFreeze > MINE_ICE_PERIOD_MS) mineIceNextFreeze = now + MINE_ICE_FIRST_MS; // 막 깨어남(또는 오래 잠들었다 깨어남)
+                else if (now >= mineIceNextFreeze) {
+                    mineIceNextFreeze = now + MINE_ICE_PERIOD_MS;
+                    List<String> cand = new ArrayList<>();
+                    for (java.util.Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) {
+                        MinePresence o = pe.getValue();
+                        if (!map.id.equals(o.mapId) || now - o.at > MINE_ICE_FRESH_MS || map.safeAt(o.x, o.y) || !map.walkable(o.x, o.y) || mineFrozen(pe.getKey(), now) != null) continue;
+                        cand.add(pe.getKey());
+                    }
+                    if (!cand.isEmpty()) {
+                        pick = cand.get(RND.nextInt(cand.size()));
+                        MinePresence o = MINE_PRESENCE.get(pick);
+                        if (o != null) {
+                            MINE_ICE_FROZEN.put(pick, new IceFreeze(map.version(), o.x, o.y, now + MINE_ICE_FREEZE_MS));
+                            MINE_ICE_THAWED.remove(pick);
+                        } else pick = null;
+                    }
+                }
+            }
+            if (pick != null && bs != null) { // 여왕이 언 사람을 노린다(멀어도 인식이 안 풀림 -- mineCombatTick)
+                synchronized (bs) {
+                    if (bs.frozenUntil <= now) {
+                        int[] cs = mineMobCells(boss, bs, now, map);
+                        bs.fx = cs[cs.length / 2] % map.w; bs.fy = cs[cs.length / 2] / map.w;
+                    }
+                    bs.target = pick;
+                    bs.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                }
+                mineEngage(pick, map, boss.id, now, 0L);
+            }
+            if (pick != null) out.put("froze", true);
+            out.put("nextFreezeAt", mineIceNextFreeze);
+        }
+        IceFreeze me = mineFrozen(userName, now);
+        if (me != null) {
+            HashMap<String, Object> fz = new HashMap<>();
+            fz.put("x", me.x);
+            fz.put("y", me.y);
+            fz.put("until", me.until);
+            out.put("frozen", fz);
+        }
+        String th = MINE_ICE_THAWED.remove(userName);
+        if (th != null && (me == null || "saved".equals(th))) out.put("thawed", th);
+        return me != null;
+    }
+
+    /** 얼음 여왕 보상: 얼음의 심장 1(반드시) + 50% 다이아몬드 2 + 40% 별빛석 1. */
+    private List<HashMap<String, Object>> mineIceDrops(String userName, StringBuilder msg) {
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        dao.addUserOre(userName, S5MineMap.ICE_HEART_CODE, 1);
+        drops.add(mineDrop(S5MineMap.ICE_HEART_GRADE, S5MineMap.ICE_HEART_NAME, 1));
+        msg.append(" · 💠 ").append(S5MineMap.ICE_HEART_NAME).append(" 1개!!");
+        if (RND.nextInt(100) < 50) {
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 2));
+            msg.append(" · 💎 다이아몬드 2개");
+        }
+        if (RND.nextInt(100) < 40) {
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[5], 1);
+            drops.add(mineDrop(6, S5MineMap.ORE_NAMES[5], 1));
+            msg.append(" · ✨ ").append(S5MineMap.ORE_NAMES[5]).append(" 1개");
+        }
+        return drops;
+    }
+
     /** 보스 보상: 25% 별빛석 1개, 아니면 미스릴 3~5개 + 30% 다이아몬드. */
     private List<HashMap<String, Object>> mineBossDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
@@ -9698,6 +9862,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         Long last = MINE_LAST_ATTACK.get(userName);
         if (last != null && now - last < MINE_ATTACK_GAP_MS) { out.put("tooFast", true); return out; }
         MINE_LAST_ATTACK.put(userName, now);
+        if (mineFrozen(userName, now) != null) { out.put("frozen", true); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         S5MineMap map = mineMapOf(row);
@@ -9754,6 +9919,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (s.target == null || !mineEngaged(s.target, now)) s.target = userName; // [2026-10-25] 이 유저를 쫓는다
                 mineEngage(userName, map, mobId, now, now); // 반격도 한 턴
                 if (mob.type == S5MineMobs.RAID_BOSS_TYPE) mineRaidAwakeUntil = now + MINE_RAID_AWAKE_MS; // [2026-10-28] 대주교가 깨어난다(마법)
+                if (mob.type == S5MineMobs.ICE_BOSS_TYPE) mineIceAwakeUntil = now + MINE_ICE_AWAKE_MS; // [2026-10-28] 얼음 여왕이 깨어난다(빙결)
             }
             out.put("mobHp", s.hp);
             out.put("mobDeadUntil", s.deadUntil);
@@ -9792,6 +9958,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 msg.insert(0, "👑 타락한 대주교를 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
+            if (mob.type == S5MineMobs.ICE_BOSS_TYPE) { // [2026-10-28] 얼음 여왕 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 빙결 멈추고 얼음을 모두 녹인다
+                mineIceAwakeUntil = 0;
+                mineIceNextFreeze = 0;
+                mineIceThawAll();
+                mineIceKilledCycle = S5MineMap.activeCycle();
+                dao.upsertConfigValue(MINE_ICE_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine snow peak ice queen killed (cycle|user)");
+                msg.insert(0, "👑 얼음 여왕을 쓰러뜨렸어요! ");
+                out.put("bossKilled", true);
+            }
             if (mob.type == S5MineMobs.BOSS_TYPE) { // [2026-10-24] 보스 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineBossKilledCycle = S5MineMap.activeCycle();
                 dao.upsertConfigValue(MINE_BOSS_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine cave3 boss killed (cycle|user)");
@@ -9805,7 +9980,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 보상을 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
-            out.put("drops", mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
+            out.put("drops", mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
             out.put("ores", mineOreList(userName));
         } else {
             if (mineCoatDef(items) > 0) counter *= 2; // [2026-10-26] 방한 외투 -- 받는 피해 2배
@@ -9850,7 +10025,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             msg.append(" · 💎 ").append(S5MineMap.GEM_NAMES[gi]).append(" 1개");
         }
         // [2026-10-28] 설산 몬스터 빙석 -- 같은 날 "더 안 나오게(득템 느낌)" 15% -> 3%
-        boolean snow = S5MineMap.SNOW1.equals(map.id) || S5MineMap.SNOW2.equals(map.id) || S5MineMap.SNOW3.equals(map.id);
+        boolean snow = S5MineMap.SNOW1.equals(map.id) || S5MineMap.SNOW2.equals(map.id) || S5MineMap.SNOW3.equals(map.id) || S5MineMap.SNOWROAD.equals(map.id); // [2026-10-28] 봉우리 가는 길도
         if (snow && RND.nextInt(100) < 3) {
             dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
             drops.add(mineDrop(S5MineMap.ICE_STONE_GRADE, S5MineMap.ICE_STONE_NAME, 1));
@@ -9883,7 +10058,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         List<HashMap<String, Object>> bosses = new ArrayList<>();
-        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS }) {
+        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK }) { // [2026-10-28] 설산 봉우리(얼음 여왕)
             S5MineMap.Mob bmob = mineBossOf(S5MineMap.get(bm));
             if (bmob == null) continue;
             HashMap<String, Object> b = new HashMap<>();
@@ -9942,7 +10117,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (isMineAdmin(userName)) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
-                    S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS }) {
+                    S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK }) {
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -9997,6 +10172,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
             return out;
         }
+        if (mineFrozen(userName, now) != null) { out.put("frozen", true); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
         if (!mineWalk(map, x, y, water)) {
             out.put("message", "갈 수 없는 곳입니다.");
             return out;
@@ -10199,7 +10375,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             r.put("gemName", S5MineMap.GEM_NAMES[gi]);
         }
         // [2026-10-28] 설산 빙석 -- 1/2/3층에서 캘 때 함께. 처음 8/10/12%였다가 같은 날 "더 안 나오게(득템 느낌)" 1.5/2/2.5%(천분율)
-        int icePm = S5MineMap.SNOW1.equals(map.id) ? 15 : S5MineMap.SNOW2.equals(map.id) ? 20 : S5MineMap.SNOW3.equals(map.id) ? 25 : 0;
+        int icePm = S5MineMap.SNOW1.equals(map.id) ? 15 : S5MineMap.SNOW2.equals(map.id) ? 20 : S5MineMap.SNOW3.equals(map.id) ? 25 : S5MineMap.SNOWROAD.equals(map.id) || S5MineMap.PEAK.equals(map.id) ? 25 : 0; // [2026-10-28] 봉우리 가는 길/봉우리 2.5%
         if (icePm > 0 && RND.nextInt(1000) < icePm) {
             dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
             r.put("iceGain", 1);
@@ -10221,6 +10397,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         out.put("mapName", map.name); // [2026-10-23] 퇴장 로그용
         boolean sameMap = (mapId == null || mapId.isEmpty() || map.id.equals(mapId)) && !mineStaleVersion(map, ver);
+        IceFreeze fz = sameMap ? mineFrozen(userName, now) : null; // [2026-10-28] 얼어 있으면 언 칸에서 못 움직인다
+        if (fz != null && (x != fz.x || y != fz.y)) {
+            out.put("ok", false);
+            out.put("frozen", true);
+            out.put("x", fz.x);
+            out.put("y", fz.y);
+            return out;
+        }
         if (sameMap && mineWalk(map, x, y, water) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("ok", true);
@@ -10256,6 +10440,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요.");
             return out;
         }
+        if (mineFrozen(userName, now) != null) { out.put("frozen", true); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
         S5MineMap.Portal p = map.portalAt(px, py);
         if (p == null || Math.abs(x - px) + Math.abs(y - py) != 1 || !mineWalk(map, x, y, water)) {
             out.put("message", "입구 바로 앞에서 들어가세요.");
@@ -10472,6 +10657,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineRow(userName, false);
         long now = System.currentTimeMillis();
         HashMap<String, Object> out = new HashMap<>();
+        if (mineFrozen(userName, now) != null) { out.put("ok", false); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
         if (mineEngaged(userName, now)) { out.put("ok", false); out.put("message", MINE_FIGHT_BLOCK); return out; } // [2026-10-25]
         // [2026-10-25] "부활 거점을 골랐는데 마을 이동을 누르면 거점으로 안 간다" -- 성당에서 기도했으면 왕도 성당으로(mineRespawn과 같은 곳)
         String where = mineRespawn(userName, mineItems(userName), now);
@@ -10631,6 +10817,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("coldEff", eff);
         out.put("coatDef", def);
         out.put("safe", safe);
+        boolean iceFrozen = S5MineMap.PEAK.equals(map.id) && mineIceTick(userName, map, now, out); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결/얼음땡(언 동안 한기 없음)
         if (map.cold() <= 0 && !raid && !hot) { MINE_COLD.remove(userName); return out; }
         if (map.cold() > 0) out.put("nextBlizzardAt", S5MineMap.nextBlizzard(map.id, now));
         ColdState cs = MINE_COLD.computeIfAbsent(userName, u -> new ColdState());
@@ -10648,7 +10835,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         if (map.cold() > 0) {
-            if (safe) cs.frac = 0;
+            if (safe || iceFrozen) cs.frac = 0;
             else {
                 double drain = cap * eff / 100.0 * Math.max(0, now - from) / 1000.0 + cs.frac;
                 coldDmg = (int) drain;
@@ -10656,7 +10843,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (S5MineMap.blizzardBetween(map.id, from, now) > 0) {
                 if (safe) out.put("blizzardSafe", true);
-                else bzDmg = Math.max(1, cap * MINE_BLIZZARD_PCT / 100);
+                else if (!iceFrozen) bzDmg = Math.max(1, cap * MINE_BLIZZARD_PCT / 100);
             }
         }
         if (raid) { // [2026-10-28] 대주교 마법 -- 깨어 있을 때(누가 싸우는 중)만. 불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체
@@ -11004,6 +11191,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (S5MineMap.SEAL_CODE.equals(code)) return S5MineMap.SEAL_GRADE;
         if (S5MineMap.MOON_STONE_CODE.equals(code)) return S5MineMap.MOON_STONE_GRADE; // [2026-10-28]
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
+        if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
         return 0;
     }
 
@@ -11013,6 +11201,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g == S5MineMap.SEAL_GRADE) return S5MineMap.SEAL_NAME;
         if (g == S5MineMap.MOON_STONE_GRADE) return S5MineMap.MOON_STONE_NAME; // [2026-10-28]
         if (g == S5MineMap.NINJA_BOOK_GRADE) return S5MineMap.NINJA_BOOK_NAME;
+        if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g >= S5MineMap.GEM_GRADE_BASE) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
         return mineGradeName(g);
@@ -11604,6 +11793,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("d", o.dir);
             m.put("look", o.look);
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
+            if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true); // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
             others.add(m);
         }
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지

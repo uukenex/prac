@@ -28,18 +28,27 @@ public final class S5MineMobs {
         /** [2026-10-28] 성당 옛터: minion = 대주교의 수하(평소엔 없고 보스가 불러낼 때만, 쓰러지면 다시 부를 때까지 없음), fast = 플레이어보다 3배쯤 빨리 쫓아옴,
          *  stay = 제자리(쫓아오지 않음 -- 대주교). */
         public boolean minion, fast, stay;
+        /** [2026-10-28] 설산 봉우리 -- "80레벨 몬스터인데 더 강하게": 체력/공격 배수(경험치는 체력 배수만큼), 화면 레벨 표시(0 = 1 + 4(단계-1)),
+         *  보스 선공 거리(0 = 대주교 4칸 / 그 밖 보스 2칸). */
+        public double hpMul = 1, atkMul = 1;
+        public int lvShow, aggro;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
+        Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
+        Type showLv(int lv) { lvShow = lv; return this; }
+        Type aggroRange(int r) { aggro = r; return this; }
+        /** 화면/안내에 보이는 레벨. */
+        public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
         //  플레이어(BotS5ServiceImpl: 레벨마다 체력/공격 x1.09, 필요 경험치 x1.12)와 같은 비율로 줄여 적정 레벨에서 3번쯤 때리면 쓰러지는 것과
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
-        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1)); }
-        public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1)); }
-        public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1)); }
+        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1) * hpMul); }
+        public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul); }
+        public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
         public long respawnMs() { return 20_000L + tier * 4_000L; }
     }
@@ -128,7 +137,15 @@ public final class S5MineMobs {
         new Type("달토끼", 19, "small", "#f4f0e0", S5MineMap.ISLE6),
         new Type("달빛 늑대", 19, "quad", "#b8c8e8", S5MineMap.ISLE6),
         new Type("용암 도마뱀", 20, "snake", "#e84a1a", S5MineMap.ISLE7),
-        new Type("화염 정령", 20, "blob", "#ff6a2a", S5MineMap.ISLE7)
+        new Type("화염 정령", 20, "blob", "#ff6a2a", S5MineMap.ISLE7),
+        // [2026-10-28] 설산 봉우리 가는 길 -- 20~21단계(Lv.77~81)를 체력 x1.5 / 공격 x1.3으로 더 세게("80레벨 몬스터, 더 강하게"). 봉우리 쪽(북쪽)일수록 21단계.
+        new Type("빙하 늑대", 20, "quad", "#cfe8ff", S5MineMap.SNOWROAD).strong(1.5, 1.3),
+        new Type("눈보라 하피", 20, "flyer", "#e0f0ff", S5MineMap.SNOWROAD).strong(1.5, 1.3),
+        new Type("설원 맘모스", 21, "quad", "#8a7a6a", S5MineMap.SNOWROAD).strong(1.5, 1.3),
+        new Type("빙하 거인", 21, "human", "#9fc8f0", S5MineMap.SNOWROAD).strong(1.5, 1.3),
+        new Type("얼음 망령", 21, "flyer", "#bfe8ff", S5MineMap.SNOWROAD).strong(1.5, 1.3),
+        // [2026-10-28] 설산 봉우리 보스 -- 24단계(1 + 4(단계-1) = 93)라 화면엔 Lv.95로, 체력 x1.5 / 공격 x1.1, 4칸 안에서 선공. 주기적으로 한 명씩 얼린다(BotS5ServiceImpl)
+        new Type("얼음 여왕", 24, "human", "#bfefff").asBoss().strong(1.5, 1.1).showLv(95).aggroRange(4)
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -136,6 +153,8 @@ public final class S5MineMobs {
     /** [2026-10-28] 성당 옛터 대주교와 그 수하. */
     public static final int RAID_BOSS_TYPE = indexOf("타락한 대주교");
     public static final int MINION_TYPE = indexOf("타락한 성기사");
+    /** [2026-10-28] 설산 봉우리 보스. */
+    public static final int ICE_BOSS_TYPE = indexOf("얼음 여왕");
     /** 대주교가 한 번에 거느릴 수 있는 수하 자리(맵 몬스터 목록에 미리 두고 평소엔 없는 것으로 친다). */
     static final int MINION_SLOTS = 6;
 
@@ -180,6 +199,7 @@ public final class S5MineMobs {
             case S5MineMap.ISLE5: return 18;
             case S5MineMap.ISLE6: return 19;
             case S5MineMap.ISLE7: return 20;
+            case S5MineMap.SNOWROAD: return y > m.h * 0.5 ? 20 : 21; // [2026-10-28] 설산 봉우리 가는 길 -- 봉우리(북쪽) 쪽일수록 강하다. 봉우리는 보스만(0)
             default: return 0;
         }
     }
@@ -192,6 +212,7 @@ public final class S5MineMobs {
             case S5MineMap.DUNGEON: return 256;
             case S5MineMap.CAVE1: return 104;
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
+            case S5MineMap.SNOWROAD: return 96; // [2026-10-28] 설산 봉우리 가는 길
             case S5MineMap.SHRINE: return 60; // [2026-10-28] 신궁 내부는 닌자가 빽빽하게(수색 임무 100마리)
             default: return 128;
         }
@@ -280,7 +301,8 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), raid ? RAID_BOSS_TYPE : BOSS_TYPE, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
+            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕
+            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
     }

@@ -72,6 +72,14 @@ public final class S5MineMap {
     public static final String ARCHISEA = "archisea";
     public static final String ISLE1 = "isle1", ISLE2 = "isle2", ISLE3 = "isle3", ISLE4 = "isle4", ISLE5 = "isle5", ISLE6 = "isle6", ISLE7 = "isle7";
     public static final String[] ISLE_IDS = { ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7 };
+    /** [2026-10-28] "설산 마을 북쪽에 설산 봉우리 가는 길(80레벨 몬스터, 더 강하게), 그 북쪽에 설산 봉우리(가운데 큰 호수, 보스 한 마리만 -- 95레벨, 얼음의 심장,
+     *  주기적으로 한 명씩 얼리고 얼어 있는 사람을 때리면 즉사, 다른 사람이 곁에 와야 풀림(얼음땡))" -- 설산 마을 북문 -> 봉우리 가는 길 -> 봉우리. */
+    public static final String SNOWROAD = "snowroad";
+    public static final String PEAK = "snowpeak";
+    /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
+    public static final String ICE_HEART_CODE = "ICE_HEART";
+    public static final String ICE_HEART_NAME = "얼음의 심장";
+    public static final int ICE_HEART_GRADE = 33;
     public static final String[] ISLE_NAMES = { "동백섬", "갈매기섬", "거북섬", "안개섬", "산호섬", "달맞이섬", "용암섬" };
     /** 섬마다 낮 햇빛 피해(초당 최대 체력 %), 크기. 뒤 섬일수록 덥고 크고 몬스터가 세다(S5MineMobs.tierAt). */
     static final int[] ISLE_SUN = { 1, 2, 2, 1, 3, 4, 5 };
@@ -99,7 +107,7 @@ public final class S5MineMap {
     }
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
-            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7);
+            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK);
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -146,6 +154,8 @@ public final class S5MineMap {
     /** [2026-10-26] 설산 1~3층 -- 위층일수록 풍부하다. */
     private static final double[][] SNOW_SHARE = { { 2, 30, 0.07, 0.20, 0.30 }, { 3, 35, 0.08, 0.20, 0.30 }, { 4, 40, 0.09, 0.22, 0.30 } };
     private static final double[] ROAD_SHARE = { 3, 35, 0.08, 0.20, 0.30 }; // [2026-10-27] 왕도 가는 길
+    private static final double[] SNOWROAD_SHARE = { 2, 40, 0.09, 0.22, 0.30 }; // [2026-10-28] 설산 봉우리 가는 길 / 봉우리(왕도 이후 구간 = 별빛석 2칸)
+    private static final double[] PEAK_SHARE = { 2, 30, 0.10, 0.22, 0.30 };
 
     // ---------------------------------------------------------------- 보석(채굴 때 추가로)
     /** [2026-10-24] "보석은 일반 채집 시 추가로 같이 나오게, 지역별 보석" + "다이아몬드는 어디서든" 요청. 인덱스 순서 고정(등급 값 = GEM_GRADE_BASE + 인덱스). */
@@ -183,6 +193,8 @@ public final class S5MineMap {
         GEM_DROPS.put(ISLE5, new int[][] { { 6, 35 }, { 3, 15 } });
         GEM_DROPS.put(ISLE6, new int[][] { { 2, 30 }, { 8, 8 } });
         GEM_DROPS.put(ISLE7, new int[][] { { 1, 45 }, { 8, 10 } });
+        GEM_DROPS.put(SNOWROAD, new int[][] { { 2, 40 }, { 8, 8 } }); // [2026-10-28] 설산 봉우리 가는 길 = 스타 사파이어 4% + 다이아 0.8%
+        GEM_DROPS.put(PEAK, new int[][] { { 2, 45 }, { 8, 10 } });
     }
 
     /** [2026-10-28] "보석 드랍률 소폭 낮춰줘" -- 맵별 지역 보석(과 추가 다이아) 천분율에 곱하는 백분율. 모든 맵 공통 다이아(DIAMOND_PERMILLE)는 그대로. */
@@ -759,6 +771,15 @@ public final class S5MineMap {
         for (int i = 0; i < isles.length; i++) sv = relink(sv, retarget(sv, ISLE_IDS[i], new int[] { isles[i].spawnX, isles[i].spawnY }), null);
         out.put(ARCHISEA, sv);
         for (int i = 0; i < isles.length; i++) out.put(ISLE_IDS[i], relink(isles[i], retarget(isles[i], ARCHISEA, seaDockBeside(sv, ISLE_IDS[i])), null));
+        // [2026-10-28] 설산 마을 북문 <-> 설산 봉우리 가는 길 <-> 설산 봉우리. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로, 설산 마을은 자리 그대로 다시 넣음).
+        S5MineMap sroad = generateSnowRoad(seed + 50);
+        S5MineMap peak = generatePeak(seed + 51);
+        S5MineMap tw0 = out.get(SNOWTOWN);
+        S5MineMap sr = relink(sroad, retarget(sroad, SNOWTOWN, besidePortal(tw0, SNOWROAD)), null);
+        sr = relink(sr, retarget(sr, PEAK, new int[] { peak.spawnX, peak.spawnY }), null);
+        out.put(SNOWROAD, sr);
+        out.put(PEAK, relink(peak, retarget(peak, SNOWROAD, besidePortal(sr, PEAK)), null));
+        out.put(SNOWTOWN, relink(tw0, retarget(tw0, SNOWROAD, new int[] { sr.spawnX, sr.spawnY }), tw0.npcs));
         S5MineMap an = out.get(ARCHI); // 본섬 NPC -- 마을 광장(배 목수, 뱃사공), 신궁 문 앞(신궁 수문장)
         placeNpc(an, an.villageX - 4, an.villageY - 1, "boatwright", "배 목수", "달빛석 하나만 가져오면 혼자 타는 배를 뚝딱 만들어 주지. 달빛을 머금은 돌이라야 파도를 타거든.");
         placeNpc(an, an.villageX + 4, an.villageY - 1, "ferry", "뱃사공", "배가 있으면 뱃길로 데려다주지. 일곱 섬이 뱃길을 따라 늘어서 있다네. 한낮의 햇볕은 조심하게!");
@@ -882,7 +903,7 @@ public final class S5MineMap {
     /** 이동 가능 칸마다 점수를 매겨 순위대로 등급을 나눈다(share = 높은 등급부터 비율). skip = 광석 없는 칸(마을 등). */
     private static byte[][] assignOre(char[][] t, double[][] score, double[] share, boolean[][] skip) {
         if (STAR_UNIFIED.get() && share[0] >= 1) { // 위 STAR_UNIFY_CYCLE 참고
-            int star = share == ROAD_SHARE || share == ARCHI_SHARE || share == ISLE_SHARE ? 2 : 1;
+            int star = share == ROAD_SHARE || share == ARCHI_SHARE || share == ISLE_SHARE || share == SNOWROAD_SHARE || share == PEAK_SHARE ? 2 : 1;
             share = share.clone();
             share[0] = star;
         }
@@ -1628,8 +1649,8 @@ public final class S5MineMap {
         for (int[] g : gates) t[g[1]][g[0]] = 'G';
         t[h - 1][vx] = 'G';
         List<Portal> portals = new ArrayList<>();
-        String[] gateNames = { "북문", "동문" };
-        for (int i = 0; i < gateNames.length; i++) portals.add(new Portal(gates[i][0], gates[i][1], 'G', null, 0, 0, gateNames[i] + " -- 눈바람이 너무 심해 나갈 수 없어요"));
+        portals.add(new Portal(gates[0][0], gates[0][1], 'G', SNOWROAD, 0, 0, "북문 -- 설산 봉우리 가는 길")); // [2026-10-28] 북문 개방(좌표는 buildWorld)
+        portals.add(new Portal(gates[1][0], gates[1][1], 'G', null, 0, 0, "동문 -- 눈바람이 너무 심해 나갈 수 없어요"));
         portals.add(new Portal(gates[2][0], gates[2][1], 'G', ROYALROAD, 0, 0, "서문 -- 왕도 북쪽 샛길")); // [2026-10-27] 설산에서 내려가 왕도로(좌표는 buildWorld)
         portals.add(new Portal(vx, h - 1, 'G', SNOW3, 0, 0, "설산 3층으로 내려가기"));
         S5MineMap m = new S5MineMap(SNOWTOWN, "설산 마을", false, w, h, vx, vy + vr + 2, t, new byte[h][w], portals);
@@ -1689,6 +1710,122 @@ public final class S5MineMap {
         }
         byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
         return new S5MineMap(ROYALROAD, "왕도 북쪽 샛길", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-10-28] 설산 봉우리 가는 길(84x200, 한기 4) -- 설산 마을 북문(아래 G)에서 봉우리(위 G)까지 길게 굽이치는 3칸 눈길.
+     *  설산 3층보다 바위가 많아 좁고, 얼음 호수가 군데군데. 눈길과 격자에 모닥불. 몬스터는 20~21단계(Lv.77~81)를 더 세게(S5MineMobs.Type.strong). */
+    static S5MineMap generateSnowRoad(long seed) {
+        int w = 84, h = 200;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 111), pine = new Noise(seed * 31 + 112), lake = new Noise(seed * 31 + 113), rich = new Noise(seed * 31 + 114);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            char c;
+            if (lake.fbm(x / 18.0, y / 18.0) > 0.74) c = '~';
+            else if (rock.fbm(x / 13.0, y / 13.0) > 0.5) c = '^';
+            else if (pine.fbm(x / 11.0, y / 11.0) > 0.6) c = r.nextDouble() < 0.3 ? 'Y' : 'n';
+            else c = r.nextDouble() < 0.03 ? 'Y' : 'n';
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        int px = w / 2;
+        int[] pathX = new int[h];
+        for (int y = h - 2; y >= 1; y--) {
+            if (r.nextDouble() < 0.3) px += r.nextBoolean() ? 1 : -1;
+            px = Math.max(5, Math.min(w - 6, px));
+            for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'n';
+            pathX[y] = px;
+        }
+        int bx = pathX[h - 2], tx = pathX[1];
+        t[h - 1][bx] = 'G';
+        t[0][tx] = 'G';
+        int sx = bx, sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(bx, h - 1, 'G', SNOWTOWN, 0, 0, "설산 마을 북문으로 내려가기"));
+        portals.add(new Portal(tx, 0, 'G', PEAK, 0, 0, "설산 봉우리로 오르기"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 13.0, y / 13.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, SNOWROAD_SHARE, skip);
+        S5MineMap m = new S5MineMap(SNOWROAD, "설산 봉우리 가는 길", false, w, h, sx, sy, t, o, portals);
+        m.cold = 4;
+        m.safe.add(new int[] { bx, h - 3, 4 });
+        m.safe.add(new int[] { pathX[3], 3, 4 });
+        campfires(t, pathX, 3, h - 3, 22, m.safe);
+        return m;
+    }
+
+    /** [2026-10-28] 설산 봉우리(130x130, 한기 4) -- 가운데 큰 얼음 호수(~, 못 지나감)를 눈밭 고리가 둘러싸고 바깥은 바위 절벽.
+     *  남쪽 끝 G = 봉우리 가는 길로 내려가기(입구 앞 모닥불), 호수 북쪽 고리에 보스(얼음 여왕) 한 마리만(일반 몬스터 없음). 호수 동/서쪽 고리에 모닥불 하나씩. */
+    static S5MineMap generatePeak(long seed) {
+        int w = 130, h = 130, cx = w / 2, cy = 60;
+        Random r = new Random(seed);
+        Noise edge = new Noise(seed * 31 + 121), pine = new Noise(seed * 31 + 122), rich = new Noise(seed * 31 + 123);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double dx = x - cx, dy = (y - cy) * 1.1, d = Math.hypot(dx, dy), wob = (edge.fbm(x / 14.0, y / 14.0) - 0.5) * 10;
+            char c;
+            if (d < 30 + wob) c = '~';                       // 가운데 얼음 호수
+            else if (d > 54 + wob * 1.4) c = '^';            // 바깥 절벽
+            else if (pine.fbm(x / 10.0, y / 10.0) > 0.66) c = r.nextDouble() < 0.3 ? 'Y' : 'n';
+            else c = r.nextDouble() < 0.02 ? 'Y' : r.nextDouble() < 0.03 ? '^' : 'n';
+            t[y][x] = c;
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        // 고리가 끊기지 않게 호수 둘레 바로 바깥(호수에서 3~5칸) 바위/나무는 눈밭으로
+        char[][] t0 = new char[h][];
+        for (int y = 0; y < h; y++) t0[y] = t[y].clone();
+        for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++) {
+            if (t0[y][x] == '~') continue;
+            int near = 99;
+            for (int k = 1; k <= 5 && near == 99; k++)
+                if ((x - k >= 0 && t0[y][x - k] == '~') || (x + k < w && t0[y][x + k] == '~') || (y - k >= 0 && t0[y - k][x] == '~') || (y + k < h && t0[y + k][x] == '~')) near = k;
+            if (near >= 2 && near <= 5) t[y][x] = 'n';
+        }
+        // 남쪽 입구 -- 맨 아래 G에서 호수 둘레 고리까지 3칸 눈길
+        int ringS = cy + 1;
+        while (ringS < h - 2 && t[ringS][cx] == '~') ringS++;
+        for (int y = ringS; y <= h - 2; y++) for (int dx = -1; dx <= 1; dx++) if (t[y][cx + dx] != '~') t[y][cx + dx] = 'n';
+        t[h - 1][cx] = 'G';
+        int sx = cx, sy = h - 2;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        // 보스 자리 -- 호수 북쪽 고리(호수 가장자리에서 4칸 바깥)
+        int bx = cx, by = cy - 1;
+        while (by > 6 && t[by][bx] == '~') by--;
+        by -= 4;
+        if (!walkable(t[by][bx])) for (int d = 1; d < 20; d++) {
+            if (walkable(t[by][bx + d])) { bx += d; break; }
+            if (walkable(t[by][bx - d])) { bx -= d; break; }
+        }
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(cx, h - 1, 'G', SNOWROAD, 0, 0, "설산 봉우리 가는 길로 내려가기"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 13.0, y / 13.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, PEAK_SHARE, skip);
+        S5MineMap m = new S5MineMap(PEAK, "설산 봉우리", false, w, h, sx, sy, t, o, portals);
+        m.cold = 4;
+        m.bossX = bx;
+        m.bossY = by;
+        m.safe.add(new int[] { cx, h - 4, 4 }); // 입구 앞
+        for (int side : new int[] { -1, 1 }) { // 호수 동/서쪽 고리
+            int x = cx + side;
+            while (x > 1 && x < w - 2 && t[cy][x] == '~') x += side;
+            x += side * 3;
+            if (x > 1 && x < w - 2 && walkable(t[cy][x])) m.safe.add(new int[] { x, cy, 3 });
+        }
+        return m;
     }
 
     /** [2026-10-28] 성당 옛터(120x110): 넓은 풀밭 평지 가운데 무너진 대성당 터 -- 돌바닥(s) 위로 잔해(r, 지나갈 수 있음)가 흩어지고,
