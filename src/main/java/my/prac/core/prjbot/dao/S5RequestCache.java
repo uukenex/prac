@@ -69,7 +69,37 @@ public final class S5RequestCache {
             "selectUserTileMaster", "selectVisitedTileNos", "countFullyExploredFloors", "selectAutoHuntLog", "selectUserSpecialVisit",
             "selectMonster", "selectFloorInfo", "selectTileMaster", "selectGacha", "selectGachaList", "selectAchievementList",
             "selectLegendaryMaster", "selectLegendaryMasterList", "selectStar7Portrait", "selectCompanionImageUrl",
-            "selectNotice", "selectNoticeSeenVersion"));
+            "selectNotice", "selectNoticeSeenVersion",
+            // [2026-10-28] 광산 -- 유저 단위 공유 캐시(아래 USER_READS)
+            "selectMineUser", "selectMineItems", "selectUserOres"));
+
+    // ---- [2026-10-28] "여러 명이 동시에 하면 서버가 부하 걸리는 것 같다, 빠르게(캐시 등)" -- 광산 유저 단위 공유 캐시 ----
+    //  광산 요청은 거의 매번 selectMineItems(아이템 전부)/selectMineUser/selectUserOres를 다시 읽는다(위치 알림 1초, 전투/한기 턴 1초, 위치 저장 2.5초, 캐기마다).
+    //  이 세 조회를 요청 사이에서도 재사용하되, 무효화는 테이블 전체가 아니라 "테이블|유저" 단위로 한다(다른 유저가 캐도 내 캐시는 그대로).
+    //  - 쓰기 메서드에 userName 인자(@Param("userName") 또는 맵의 userName)가 있으면 그 유저 키만, 없으면(전체 리셋/0시 회복 등) 테이블 키를 올린다.
+    //    유저 단위 항목은 테이블 키와 유저 키 버전을 둘 다 들고 있어서 어느 쪽이 올라가도 버린다.
+    //  - 커밋 전 쓰기가 진행 중인 유저 키(PENDING > 0)에는 새 항목을 넣지 않는다 -- 쓰기 트랜잭션이 커밋된 직후 끝날 때 버전을 올리기 전의
+    //    아주 짧은 틈에 다른 요청이 옛 값을 넣어 두는 일이 없게(잠금을 잡고 다시 읽는 흐름이 옛 값을 받으면 덮어쓰기가 사라질 수 있다).
+    //  - 이 세 테이블을 읽는 다른 조회는 공유 캐시에 넣지 않는다(유저 키로 무효화되지 않으므로).
+    private static final Set<String> USER_TABLES = new HashSet<String>(Arrays.asList("TBOT_S5_MINE_USER", "TBOT_S5_MINE_ITEM", "TBOT_S5_USER_ORE"));
+    private static final Set<String> USER_READS = new HashSet<String>(Arrays.asList("selectMineUser", "selectMineItems", "selectUserOres"));
+    private static final long MINE_USER_TTL_MS = 60 * 1000L;
+    /** 유저 키("테이블|유저") -> 커밋 전인 쓰기 수(트랜잭션 안이면 끝날 때, 밖이면 쓰기 직후 줄인다). */
+    private static final ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> PENDING = new ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger>();
+    private static final ConcurrentHashMap<Method, String[]> PARAM_NAMES = new ConcurrentHashMap<Method, String[]>();
+
+    /** [2026-10-28] 광석 증감 알림(광산 접속 기록 S5MineSessionLog) -- 커밋된 것만 알린다(롤백된 지급/차감은 알리지 않음). */
+    public interface OreListener {
+        void ore(String userName, String oreCode, int delta);
+        /** 요청이 끝날 때(필터) -- 그 요청에서 쓰다 남은 스레드 값 정리. */
+        void requestEnd();
+    }
+    private static volatile OreListener oreListener;
+    private static final ThreadLocal<List<Object[]>> TX_ORE = new ThreadLocal<List<Object[]>>();
+
+    public static void setOreListener(OreListener l) {
+        oreListener = l;
+    }
 
     // ---- [2026-10-22] 공유(요청 간) 캐시 ----
     private static final long MASTER_TTL_MS = 10 * 60 * 1000L;
@@ -83,6 +113,7 @@ public final class S5RequestCache {
         for (String m : new String[]{ "selectUserEquip", "selectEquipByCompanion", "selectUserTileMaster", "selectUserFloorBestRange" }) {
             SHARED_TTL_MS.put(m, USER_TTL_MS);
         }
+        for (String m : USER_READS) SHARED_TTL_MS.put(m, MINE_USER_TTL_MS); // [2026-10-28]
     }
     private static final int SHARED_MAX = 20000;
     private static final ConcurrentHashMap<String, SharedEntry> SHARED = new ConcurrentHashMap<String, SharedEntry>();
@@ -173,6 +204,11 @@ public final class S5RequestCache {
         STAT.remove();
         TX_ARMED.remove();
         TX_DIRTY.remove();
+        TX_ORE.remove();
+        OreListener ol = oreListener;
+        if (ol != null) {
+            try { ol.requestEnd(); } catch (Throwable t) { logger.warn("S5RequestCache: ore listener requestEnd failed", t); }
+        }
         if (st != null && st[0] > 0 && logger.isDebugEnabled()) {
             logger.debug("S5 request cache hit={} miss={}", st[0], st[1]);
         }
@@ -192,14 +228,30 @@ public final class S5RequestCache {
     static Object call(Object target, Method method, Object[] args) throws Throwable {
         if (method.getDeclaringClass() == Object.class) return invoke(target, method, args);
         String name = method.getName();
+        Object r = callCached(target, method, args, name);
+        // [2026-10-28] 광산 위치 저장을 모아 쓰는 동안(S5MinePosBuffer) 광산 유저 행 조회에 아직 안 쓴 최신 위치를 덮어 준다.
+        if (S5MinePosBuffer.POS_READS.contains(name)) r = S5MinePosBuffer.overlay(r);
+        return r;
+    }
+
+    private static Object callCached(Object target, Method method, Object[] args, String name) throws Throwable {
         if (!CACHED_READS.contains(name)) {
             boolean write = !name.startsWith("select") && !name.startsWith("count");
+            String user = write ? userArg(method, args) : null;
+            List<String> held = write ? preWrite(name, user) : null;
+            if ("resetAllMinePos".equals(name)) S5MinePosBuffer.clear(); // 맵 리셋 -- 모아 둔 위치는 버린다(쓰기 전/후 모두)
             try {
-                return invoke(target, method, args);
+                Object res = invoke(target, method, args);
+                if (write) afterWriteOk(name, method, args, res, user);
+                return res;
             } finally {
                 if (write) {
                     invalidate(name); // 쓰기가 예외를 던져도(일부만 반영됐을 수 있어) 비운다
-                    sharedWrite(name);
+                    sharedWrite(name, user);
+                    for (String k : held) pending(k).decrementAndGet(); // 트랜잭션 밖 쓰기 -- 버전을 올린 뒤 풀어 준다
+                    if ("resetAllMinePos".equals(name)) S5MinePosBuffer.clear();
+                } else if ("selectMineUserForUpdate".equals(name)) {
+                    dropScopeTables(USER_TABLES); // 잠근 뒤엔 같은 요청에서 잠그기 전에 읽어 둔 광산 값을 쓰지 않는다
                 }
             }
         }
@@ -207,6 +259,16 @@ public final class S5RequestCache {
         Map<String, Entry> scope = SCOPE.get();
         Set<String> tables = READ_TABLES.get(name);
         Long sharedTtl = tables == null ? null : SHARED_TTL_MS.get(name);
+        // [2026-10-28] 광산 유저 단위 조회는 유저 키를 붙여 둔다(유저를 모르면 공유하지 않음). 다른 조회가 그 테이블을 읽으면 공유하지 않는다.
+        String user = null;
+        if (sharedTtl != null) {
+            if (USER_READS.contains(name)) {
+                user = userArg(method, args);
+                if (user == null) sharedTtl = null;
+            } else if (intersects(tables, USER_TABLES)) {
+                sharedTtl = null;
+            }
+        }
         if (tables == null || (scope == null && sharedTtl == null)) return invoke(target, method, args);
         String key = name + Arrays.deepToString(args);
         int[] st = STAT.get();
@@ -227,12 +289,13 @@ public final class S5RequestCache {
         }
         if (scope != null) armClearOnRollback();
         // 공유 캐시에 넣을 때 쓸 버전은 조회 "전"에 잡는다 -- 조회 도중 다른 쓰기가 끼면 그 항목은 바로 무효가 된다.
-        long[] vers = sharedTtl == null ? null : versionsOf(tables);
+        Set<String> vkeys = sharedTtl == null ? null : versionKeys(tables, user);
+        long[] vers = vkeys == null ? null : versionsOf(vkeys);
         long global = GLOBAL_VER.get();
         Object r = invoke(target, method, args);
         Object stored = r == null ? NULL : copy(r);
         if (scope != null) scope.put(key, new Entry(stored, tables));
-        if (sharedTtl != null && !dirtyIntersects(tables)) sharedPut(key, stored, tables, vers, global, sharedTtl);
+        if (sharedTtl != null && !dirtyIntersects(vkeys) && !anyPending(vkeys)) sharedPut(key, stored, vkeys, vers, global, sharedTtl);
         if (st != null) st[1]++;
         return r;
     }
@@ -282,10 +345,17 @@ public final class S5RequestCache {
     }
 
     /** 쓰기 -- 그 테이블 버전을 올린다(대상을 모르면 전체). 트랜잭션 안이면 끝날 때 한 번 더 올리도록 기록한다. */
-    private static void sharedWrite(String writer) {
-        final Set<String> written = WRITE_TABLES.get(writer);
+    private static void sharedWrite(String writer, String user) {
+        final Set<String> written = writeKeys(WRITE_TABLES.get(writer), user);
         bump(written);
         if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        Set<String> dirty = txDirty();
+        if (written == null) dirty.add("*");
+        else dirty.addAll(written);
+    }
+
+    /** 현재 트랜잭션에서 쓴 키 모음(처음 쓸 때 끝날 때의 정리를 등록한다). 트랜잭션 동기화가 켜져 있을 때만 부른다. */
+    private static Set<String> txDirty() {
         Set<String> dirty = TX_DIRTY.get();
         if (dirty == null) {
             dirty = new HashSet<String>();
@@ -298,11 +368,157 @@ public final class S5RequestCache {
                     if (d == null) return;
                     if (d.contains("*")) GLOBAL_VER.incrementAndGet();
                     for (String t : d) if (!"*".equals(t)) ver(t).incrementAndGet();
+                    for (String t : d) if (t.indexOf('|') > 0) pending(t).decrementAndGet(); // [2026-10-28] 버전을 올린 뒤에 풀어 준다
                 }
             });
         }
-        if (written == null) dirty.add("*");
-        else dirty.addAll(written);
+        return dirty;
+    }
+
+    // ---------------------------------------------------------------- [2026-10-28] 광산 유저 단위 키
+    /** 쓰는 테이블 -> 버전 키(광산 유저 테이블이고 유저를 알면 "테이블|유저", 아니면 테이블). null이면 대상을 모르는 쓰기. */
+    private static Set<String> writeKeys(Set<String> written, String user) {
+        if (written == null || user == null || !intersects(written, USER_TABLES)) return written;
+        Set<String> out = new HashSet<String>();
+        for (String t : written) out.add(USER_TABLES.contains(t) ? t + "|" + user : t);
+        return out;
+    }
+
+    /** 읽는 테이블 -> 확인할 버전 키(광산 유저 테이블은 테이블 키와 유저 키 둘 다). */
+    private static Set<String> versionKeys(Set<String> tables, String user) {
+        if (user == null || !intersects(tables, USER_TABLES)) return tables;
+        Set<String> out = new HashSet<String>(tables);
+        for (String t : tables) if (USER_TABLES.contains(t)) out.add(t + "|" + user);
+        return out;
+    }
+
+    private static boolean intersects(Set<String> a, Set<String> b) {
+        if (a == null) return false;
+        for (String t : a) if (b.contains(t)) return true;
+        return false;
+    }
+
+    private static java.util.concurrent.atomic.AtomicInteger pending(String key) {
+        java.util.concurrent.atomic.AtomicInteger p = PENDING.get(key);
+        if (p == null) {
+            PENDING.putIfAbsent(key, new java.util.concurrent.atomic.AtomicInteger());
+            p = PENDING.get(key);
+        }
+        return p;
+    }
+
+    private static boolean anyPending(Set<String> keys) {
+        for (String k : keys) {
+            if (k.indexOf('|') < 0) continue;
+            java.util.concurrent.atomic.AtomicInteger p = PENDING.get(k);
+            if (p != null && p.get() > 0) return true;
+        }
+        return false;
+    }
+
+    /** 쓰기 직전 -- 광산 유저 키를 "쓰는 중"으로 표시한다(버전 올리기보다 먼저). 트랜잭션 안이면 끝날 때 풀고(같은 키는 한 번만),
+     *  밖이면 돌려준 키를 부른 쪽이 쓰기 직후 푼다. */
+    private static List<String> preWrite(String writer, String user) {
+        List<String> held = new ArrayList<String>();
+        Set<String> keys = writeKeys(WRITE_TABLES.get(writer), user);
+        if (keys == null) return held;
+        boolean tx = TransactionSynchronizationManager.isSynchronizationActive();
+        for (String k : keys) {
+            if (k.indexOf('|') < 0) continue;
+            if (tx) {
+                if (txDirty().add(k)) pending(k).incrementAndGet();
+            } else {
+                pending(k).incrementAndGet();
+                held.add(k);
+            }
+        }
+        return held;
+    }
+
+    /** 이 요청 범위 캐시에서 tables를 읽은 항목을 지운다. */
+    private static void dropScopeTables(Set<String> tables) {
+        Map<String, Entry> scope = SCOPE.get();
+        if (scope == null || scope.isEmpty()) return;
+        for (Iterator<Map.Entry<String, Entry>> it = scope.entrySet().iterator(); it.hasNext();) {
+            if (intersects(it.next().getValue().tables, tables)) it.remove();
+        }
+    }
+
+    /** 매퍼 메서드의 인자 이름(@Param). 못 찾으면 null 칸. */
+    private static String[] paramNames(Method m) {
+        String[] names = PARAM_NAMES.get(m);
+        if (names != null) return names;
+        java.lang.annotation.Annotation[][] pa = m.getParameterAnnotations();
+        names = new String[pa.length];
+        for (int i = 0; i < pa.length; i++) {
+            for (java.lang.annotation.Annotation a : pa[i]) {
+                if (a instanceof org.apache.ibatis.annotations.Param) names[i] = ((org.apache.ibatis.annotations.Param) a).value();
+            }
+        }
+        PARAM_NAMES.put(m, names);
+        return names;
+    }
+
+    /** 인자 하나 -- @Param(name) 또는 맵 하나를 받는 메서드면 그 맵의 name 값. */
+    @SuppressWarnings("rawtypes")
+    static Object argOf(Method m, Object[] args, String name) {
+        if (args == null) return null;
+        String[] names = paramNames(m);
+        for (int i = 0; i < names.length && i < args.length; i++) if (name.equals(names[i])) return args[i];
+        if (args.length == 1 && args[0] instanceof Map) return ((Map) args[0]).get(name);
+        return null;
+    }
+
+    static String userArg(Method m, Object[] args) {
+        Object u = argOf(m, args, "userName");
+        return u instanceof String ? (String) u : null;
+    }
+
+    /** 쓰기가 성공한 뒤 -- 광석 증감 알림(커밋 후), 위치 버퍼 정리. */
+    private static void afterWriteOk(String name, Method method, Object[] args, Object res, String user) {
+        if ("addUserOre".equals(name) || "takeUserOre".equals(name)) {
+            if (user == null || oreListener == null) return;
+            Object code = argOf(method, args, "oreCode"), qty = argOf(method, args, "qty");
+            if (!(code instanceof String) || !(qty instanceof Number)) return;
+            if ("takeUserOre".equals(name) && !(res instanceof Number && ((Number) res).intValue() > 0)) return; // 모자라서 안 빠졌다
+            int q = ((Number) qty).intValue();
+            oreDelta(user, (String) code, "addUserOre".equals(name) ? q : -q);
+        } else if (S5MinePosBuffer.POS_WRITES.contains(name)) {
+            Object at = argOf(method, args, "atMs");
+            if (user != null && at instanceof Number) S5MinePosBuffer.written(user, ((Number) at).longValue());
+        }
+    }
+
+    private static void oreDelta(String user, String code, int delta) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            fireOre(user, code, delta);
+            return;
+        }
+        List<Object[]> l = TX_ORE.get();
+        if (l == null) {
+            l = new ArrayList<Object[]>();
+            TX_ORE.set(l);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronizationAdapter() {
+                @Override
+                public void afterCompletion(int status) {
+                    List<Object[]> d = TX_ORE.get();
+                    TX_ORE.remove();
+                    if (d == null || status != STATUS_COMMITTED) return; // 롤백된 증감은 없던 일
+                    for (Object[] o : d) fireOre((String) o[0], (String) o[1], (Integer) o[2]);
+                }
+            });
+        }
+        l.add(new Object[] { user, code, delta });
+    }
+
+    private static void fireOre(String user, String code, int delta) {
+        OreListener ol = oreListener;
+        if (ol == null) return;
+        try {
+            ol.ore(user, code, delta);
+        } catch (Throwable t) {
+            logger.warn("S5RequestCache: ore listener failed", t);
+        }
     }
 
     private static void bump(Set<String> tables) {

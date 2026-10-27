@@ -512,6 +512,8 @@ public class Season5ViewController {
         result.put("items", items);
         result.put("hours", hours);
         result.put("capped", items.size() >= 1000);
+        // [2026-10-28] 광산 접속 기록 -- 지금 플레이 중인 세션의 아직 안 쓴 부분(뷰어가 같은 sid의 DB 줄과 합쳐 "플레이 중" 카드로)
+        if (!"tower".equals(params.get("cat"))) result.put("live", my.prac.core.prjbot.service.impl.S5MineSessionLog.liveRows(userName.trim()));
         return ResponseEntity.ok(result);
     }
 
@@ -605,7 +607,14 @@ public class Season5ViewController {
      *  입장: "[웹] 광산 입장" / 맵 (x, y), 채굴: "[웹] 광산 채굴 (x, y)" / 결과 문구(광석 종류 포함), 퇴장: "[웹] 광산 퇴장" / 맵 (x, y),
      *  구매: "[웹] 광산상점 구매 N번 xM" / 결과 문구. 이동 중 위치 저장(몇 초마다)과 실패한 시도는 남기지 않는다. 로그 실패는 무시. */
     private void mineLog(String userName, String req, String res) {
+        mineLog(userName, req, res, null);
+    }
+
+    /** [2026-10-28] "한 판(입장 -> 한 일 -> 퇴장)을 묶어서" + 서버 부하 -- 광산 화면의 행동은 메모리의 접속(세션)에 모았다가 몇 줄로 묶어 쓴다
+     *  (S5MineSessionLog: 퇴장/30초 무응답/2분마다/서버 종료 때). 세션이 없는 광산상점 구매(탑 화면)만 예전처럼 바로 한 줄. out = 서비스 결과(처치 경험치/레벨). */
+    private void mineLog(String userName, String req, String res, java.util.Map<String, Object> out) {
         try {
+            if (my.prac.core.prjbot.service.impl.S5MineSessionLog.action(userName, req, res, out)) return;
             HashMap<String, Object> logMap = new HashMap<>();
             logMap.put("userName", userName);
             logMap.put("roomName", "MINE"); // [2026-10-24] 로그 뷰어에서 탑(WEB/채팅)과 광산 로그를 나눠 보도록
@@ -659,6 +668,7 @@ public class Season5ViewController {
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
             @RequestParam(value = "exit", defaultValue = "") String exit, @RequestParam(value = "v", defaultValue = "") String ver) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName); // [2026-10-28] 접속 기록 -- 화면이 살아 있음
         HashMap<String, Object> out = s5Service.mineSavePos(userName, mapId, ver, x, y);
         if ("1".equals(exit) && out.get("error") == null) { // 광산을 나갈 때/화면을 벗어날 때 -- 서버가 받아들인 최종 위치로 기록
             mineLog(userName, "[웹] 광산 퇴장", out.get("mapName") + " (" + out.get("x") + ", " + out.get("y") + ")");
@@ -674,6 +684,7 @@ public class Season5ViewController {
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
             @RequestParam(value = "d", defaultValue = "down") String dir) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName); // [2026-10-28] 접속 기록 -- 화면이 살아 있음(30초 넘게 없으면 강제 종료로 본다)
         return ResponseEntity.ok(s5Service.minePresence(userName, mapId, x, y, dir));
     }
 
@@ -716,7 +727,7 @@ public class Season5ViewController {
             @RequestParam(value = "mc", defaultValue = "-1") int mc) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob, mc); // mc = 화면이 보던 몬스터 칸(y * w + x)
-        if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")));
+        if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")), out);
         return ResponseEntity.ok(out);
     }
 

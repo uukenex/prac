@@ -82,6 +82,23 @@
     .log-req{ font-weight:700; font-size:13px; margin-bottom:4px; word-break:break-all; }
     .log-res{ font-size:12.5px; color:var(--ink); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
 
+    /* [2026-10-28] 광산 한 판(입장 -> 한 일 -> 퇴장) 묶음 카드 */
+    .sess{ border-color:#C9BCE8; }
+    .sess .log-req{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .live-chip{ background:#D6EEDF; color:#2F8F5C; }
+    .sess-line{ font-size:12px; color:var(--ink-soft); margin:2px 0; word-break:break-all; }
+    .sess-chips{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; }
+    .sess-chip{ background:#F3EEFB; border:1px solid #DCD2F0; border-radius:999px; padding:3px 9px; font-size:12px; font-weight:700; }
+    .ore-row{ font-size:12.5px; margin:3px 0; line-height:1.6; word-break:break-all; }
+    .ore-plus{ color:#2F8F5C; font-weight:700; }
+    .ore-minus{ color:#A31F2B; font-weight:700; }
+    .buy-list{ margin:4px 0 0; padding-left:16px; font-size:12.5px; line-height:1.55; }
+    .sess details{ margin-top:6px; }
+    .sess summary{ cursor:pointer; font-size:12px; font-weight:700; color:#5B3FA0; }
+    .ev-list{ list-style:none; margin:6px 0 0; padding:0; font-size:12px; line-height:1.5; }
+    .ev-list li{ padding:3px 0; border-bottom:1px dashed var(--gold-soft); word-break:break-all; }
+    .ev-t{ color:var(--ink-soft); font-variant-numeric:tabular-nums; margin-right:6px; }
+
     .loading{ text-align:center; color:var(--ink-soft); font-size:13px; padding:20px 0; }
   </style>
 </head>
@@ -145,7 +162,7 @@
         </div>
       </div>
       <div class="sum-scroll" id="sumBody"><div class="log-empty">불러오는 중...</div></div>
-      <div class="sum-sub" style="margin-top:6px;">사용자 줄을 누르면 그 유저의 로그(최근 24시간)를 아래에 보여줍니다.</div>
+      <div class="sum-sub" style="margin-top:6px;">사용자 줄을 누르면 그 유저의 로그(최근 24시간)를 아래에 보여줍니다. 광산은 한 판을 몇 줄로 묶어 저장해서 행동 수가 아니라 저장된 줄 수예요(2026-10-28부터).</div>
     </div>
 
     <div class="meta-row" id="metaRow" style="display:none;">
@@ -255,13 +272,85 @@
       });
     }
 
+    // ---- [2026-10-28] 광산 한 판(접속 기록) -- 서버(S5MineSessionLog)가 한 판을 몇 줄로 나눠 쓴다:
+    //  REQ "[웹] 광산 기록 #sid ...", RES = JSON {sid, seq, start, sm(입장 위치), ev[{t, k, a, m, n, x, lv, o{이름: 증감}}], end, em, why}.
+    //  k: in 입장 / out 퇴장 / dig 채굴(n회 묶음) / kill 처치(n마리 묶음, x 경험치, lv 레벨 업) / boss 보스 처치 / died 쓰러짐 / move 이동 / act 구매·제작·강화 등 / etc 광석 변동.
+    var SESS_PREFIX = '[웹] 광산 기록';
+    var EV_ICON = { 'in': '🚪', out: '🚪', dig: '⛏️', kill: '⚔️', boss: '👑', died: '💫', move: '🧭', act: '🛒', etc: '🔁' };
+    function sessOf(it) {
+      if (catOf(it) !== 'mine' || String(it.REQ || '').indexOf(SESS_PREFIX) !== 0) return null;
+      try {
+        var j = JSON.parse(it.RES);
+        if (!j || !j.sid) return null;
+        if (it.LIVE) j.live = true;
+        return j;
+      } catch (e) { return null; }
+    }
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function hms(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
+    function mdhm(ms) { var d = new Date(ms); return pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+    function addOre(acc, o) { Object.keys(o || {}).forEach(function (k) { acc[k] = (acc[k] || 0) + Number(o[k] || 0); }); }
+    function oreText(o, sign) { // sign: 1 = 얻은 것만, -1 = 쓴 것만, 0 = 둘 다
+      return Object.keys(o || {}).filter(function (k) { var v = o[k]; return v !== 0 && (sign === 0 || (sign > 0 ? v > 0 : v < 0)); })
+        .map(function (k) { var v = o[k]; return '<span class="' + (v > 0 ? 'ore-plus' : 'ore-minus') + '">' + escapeHtml(k) + ' ' + (v > 0 ? '+' : '−') + Math.abs(v) + '</span>'; })
+        .join(' · ');
+    }
+    function renderSession(g) {
+      var chunks = Object.keys(g.chunks).map(function (k) { return g.chunks[k]; }).sort(function (a, b) { return a.seq - b.seq; });
+      var first = chunks[0], ev = [], endC = null, live = false, dropped = 0;
+      chunks.forEach(function (c) { ev = ev.concat(c.ev || []); if (c.end) endC = c; if (c.live) live = true; dropped += Number(c.dropped || 0); });
+      if (endC) live = false;
+      var dig = 0, kill = 0, died = 0, move = 0, exp = 0, lv = 0, gain = {}, spend = {}, buys = [];
+      ev.forEach(function (e) {
+        if (e.k === 'dig') dig += e.n || 0;
+        else if (e.k === 'kill') kill += e.n || 0;
+        else if (e.k === 'boss') kill++;
+        else if (e.k === 'died') died++;
+        else if (e.k === 'move') move++;
+        exp += Number(e.x || 0);
+        if (e.lv) lv = Math.max(lv, e.lv);
+        var o = e.o || {}, neg = false;
+        Object.keys(o).forEach(function (k) { if (o[k] > 0) gain[k] = (gain[k] || 0) + o[k]; else if (o[k] < 0) { spend[k] = (spend[k] || 0) + o[k]; neg = true; } });
+        if (e.k === 'act' || neg) buys.push(e);
+      });
+      var lastT = endC ? endC.end : (ev.length ? ev[ev.length - 1].t : first.start);
+      var mins = Math.max(0, Math.round((lastT - first.start) / 60000));
+      var head = '<div class="log-item-head"><span class="who-wrap">' + face(g.user) + (state.userName ? '' : '<span class="who">' + escapeHtml(g.user) + '</span>')
+        + '<span class="log-chip mine">⛏️ 광산 한 판</span>' + (live ? '<span class="log-chip live-chip">🟢 플레이 중</span>' : '') + '</span>'
+        + '<span>' + escapeHtml(mdhm(first.start)) + ' ~ ' + (live ? '지금' : escapeHtml(hms(lastT))) + ' (' + mins + '분)</span></div>';
+      var chips = [];
+      if (dig) chips.push('⛏️ 채굴 ' + dig + '회');
+      if (kill) chips.push('⚔️ 처치 ' + kill + (exp ? ' · 경험치 +' + exp : '') + (lv ? ' · Lv.' + lv + ' 달성' : ''));
+      if (died) chips.push('💫 쓰러짐 ' + died);
+      if (move) chips.push('🧭 이동 ' + move);
+      if (buys.length) chips.push('🛒 구매·사용 ' + buys.length);
+      var body = '<div class="log-req">' + escapeHtml(SESS_PREFIX) + ' <span class="sum-sub">#' + escapeHtml(first.sid) + '</span></div>'
+        + '<div class="sess-line">📍 입장: ' + escapeHtml(first.sm || '-') + '</div>'
+        + (endC ? '<div class="sess-line">🚪 퇴장: ' + escapeHtml(endC.em || '-') + ' (' + escapeHtml(endC.why || '') + ')</div>' : '')
+        + (chips.length ? '<div class="sess-chips">' + chips.map(function (c) { return '<span class="sess-chip">' + escapeHtml(c) + '</span>'; }).join('') + '</div>' : '')
+        + (Object.keys(gain).length ? '<div class="ore-row">📦 얻음: ' + oreText(gain, 1) + '</div>' : '')
+        + (Object.keys(spend).length ? '<div class="ore-row">💸 씀: ' + oreText(spend, -1) + '</div>' : '')
+        + (buys.length ? '<ul class="buy-list">' + buys.map(function (e) {
+            var ot = oreText(e.o, 0);
+            return '<li><span class="ev-t">' + hms(e.t) + '</span>' + escapeHtml(e.a || '') + (e.m ? ' -- ' + escapeHtml(e.m) : '') + (ot ? ' <span class="sum-sub">[' + ot + ']</span>' : '') + '</li>';
+          }).join('') + '</ul>' : '')
+        + '<details><summary>자세히 보기 (' + ev.length + '건' + (dropped ? ', 너무 많아 앞 ' + dropped + '건 생략' : '') + ')</summary><ul class="ev-list">'
+        + ev.map(function (e) {
+            var ot = oreText(e.o, 0);
+            var what = e.k === 'dig' ? '채굴 ' + (e.n || 0) + '회' : e.k === 'kill' ? '처치 ' + (e.n || 0) + '마리' + (e.x ? ' (경험치 +' + e.x + ')' : '') + (e.lv ? ' Lv.' + e.lv + ' 달성' : '') : (e.a || e.k);
+            return '<li><span class="ev-t">' + hms(e.t) + '</span>' + (EV_ICON[e.k] || '•') + ' ' + escapeHtml(what)
+              + (e.m ? ' -- ' + escapeHtml(e.m) : '') + (ot ? '<br><span class="sum-sub">' + ot + '</span>' : '') + '</li>';
+          }).join('') + '</ul></details>';
+      return '<div class="log-item sess">' + head + body + '</div>';
+    }
+
     function renderItems() {
       var now = Date.now();
       var windowMs = state.windowMin * 60 * 1000;
       var kw = state.keyword.toLowerCase();
       var filtered = allItems.filter(function (it) {
         var d = parseLogDate(it.INSERT_DATE);
-        if (d && (now - d.getTime()) > windowMs) return false;
+        if (!it.LIVE && d && (now - d.getTime()) > windowMs) return false; // 진행 중 세션은 시간 필터와 무관
         var cat = catOf(it);
         if (state.cat === 'mine' ? cat !== 'mine' : state.cat === 'tower' ? cat === 'mine' : false) return false;
         if (kw) {
@@ -271,11 +360,23 @@
         return true;
       });
 
+      // [2026-10-28] 광산 한 판 묶기 -- 같은 유저·같은 sid의 "[웹] 광산 기록" 줄(과 진행 중인 부분)을 카드 하나로. 카드는 가장 최근 줄 자리에 놓는다.
+      var cards = [], groups = {};
+      filtered.forEach(function (it) {
+        var j = sessOf(it);
+        if (!j) { cards.push(it); return; }
+        var key = it.USER_NAME + '|' + j.sid, g = groups[key];
+        if (!g) { g = groups[key] = { sess: true, user: it.USER_NAME, chunks: {} }; cards.push(g); }
+        var prev = g.chunks[j.seq];
+        if (!prev || (prev.live && !j.live)) g.chunks[j.seq] = j; // 같은 조각이면 DB에 쓴 쪽
+      });
+
       var list = qs('logList');
-      if (filtered.length === 0) {
+      if (cards.length === 0) {
         list.innerHTML = '<div class="log-empty">표시할 로그가 없습니다.</div>';
       } else {
-        list.innerHTML = filtered.map(function (it) {
+        list.innerHTML = cards.map(function (it) {
+          if (it.sess) return renderSession(it);
           var cat = catOf(it);
           var chip = cat === 'mine' ? '<span class="log-chip mine">⛏️ 광산</span>' : cat === 'web' ? '<span class="log-chip web">WEB</span>'
               : '<span class="log-chip chat">' + escapeHtml(it.ROOM_NAME || '채팅') + '</span>';
@@ -289,7 +390,7 @@
       }
 
       qs('metaRow').style.display = '';
-      qs('totalLabel').textContent = '표시 ' + filtered.length + '건';
+      qs('totalLabel').textContent = '표시 ' + cards.length + '건' + (cards.length !== filtered.length ? ' (광산 한 판은 묶어서 1건)' : '');
       qs('fetchedLabel').textContent = '(전체 불러온 ' + allItems.length + '건 중, 최근 24시간)';
     }
 
@@ -301,7 +402,7 @@
       var url = base + '/loa/api/tower-battle-log-recent?userName=' + encodeURIComponent(state.userName) + '&hours=24&cat=' + state.cat;
       fetch(url).then(function (r) { return r.json(); }).then(function (data) {
         qs('loadingEl').style.display = 'none';
-        allItems = data.items || [];
+        allItems = (data.live || []).concat(data.items || []); // [2026-10-28] 진행 중인 광산 한 판(아직 안 쓴 부분)도 함께
         renderItems();
       }).catch(function () {
         qs('loadingEl').style.display = 'none';

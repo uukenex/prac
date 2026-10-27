@@ -8813,8 +8813,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final String MINE_PICK_REFILL_KEY = "MINE_PICK_REFILL_DAY";
     private static volatile String minePickRefilledDay = null;
 
-    private synchronized void minePickRefill() {
+    private void minePickRefill() {
         String today = java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+        if (today.equals(minePickRefilledDay)) return; // [2026-10-28] 성능 -- 광산 요청마다(모든 유저) 잠금을 잡던 것을, 오늘 이미 했으면 잠금 없이 바로 돌아간다
+        synchronized (this) {
         if (today.equals(minePickRefilledDay)) return;
         try {
             String done = dao.selectConfigValue(MINE_PICK_REFILL_KEY);
@@ -8826,6 +8828,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             minePickRefilledDay = today;
         } catch (Exception e) {
             System.out.println("[광산] 곡괭이 내구도 회복 확인 실패: " + e.getMessage());
+        }
         }
     }
 
@@ -8857,6 +8860,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             // 동시에 처음 들어온 요청이 먼저 만들었다
         }
         return forUpdate ? dao.selectMineUserForUpdate(userName) : dao.selectMineUser(userName);
+    }
+
+    /** [2026-10-28] 잠금 조회 먼저(행이 있으면 한 번으로 끝), 없을 때만 만들고 다시 잠금 조회. */
+    private HashMap<String, Object> mineRowLocked(String userName) {
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        return row != null ? row : mineRow(userName, true);
     }
 
     private static S5MineMap mineMapOf(HashMap<String, Object> row) {
@@ -9688,8 +9697,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         Long last = MINE_LAST_ATTACK.get(userName);
         if (last != null && now - last < MINE_ATTACK_GAP_MS) { out.put("tooFast", true); return out; }
         MINE_LAST_ATTACK.put(userName, now);
-        mineRow(userName, false);
-        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        HashMap<String, Object> row = mineRowLocked(userName); // [2026-10-28] 성능 -- 행 확인(mineRow) + 잠금 조회 두 번을 잠금 조회 한 번으로
         S5MineMap map = mineMapOf(row);
         Map<String, Integer> items = mineItems(userName);
         boolean water = mineWaterWalk(items);
@@ -9967,8 +9975,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
-        mineRow(userName, false);
-        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        HashMap<String, Object> row = mineRowLocked(userName); // [2026-10-28] 성능 -- 행 확인(mineRow) + 잠금 조회 두 번을 잠금 조회 한 번으로
         S5MineMap map = mineMapOf(row);
         int st = minePickDur(row), stMax = minePickMax(row);
         HashMap<String, Object> out = new HashMap<>();
@@ -10207,7 +10214,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("mapName", map.name); // [2026-10-23] 퇴장 로그용
         boolean sameMap = (mapId == null || mapId.isEmpty() || map.id.equals(mapId)) && !mineStaleVersion(map, ver);
         if (sameMap && mineWalk(map, x, y, water) && mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
-            dao.updateMinePos(userName, map.id, x, y, now);
+            // [2026-10-28] 성능 -- 걷는 중 2.5초마다 오던 UPDATE를 바로 쓰지 않고 모아서 쓴다(15초마다/멈추면 5초 뒤/나가면/서버 종료 때).
+            //  모아 둔 위치는 광산 유저 행 조회에 덮여 나오므로 이동 검사(mineMoveOk)와 다른 요청은 그대로 최신 위치를 본다(S5MinePosBuffer).
+            my.prac.core.prjbot.dao.S5MinePosBuffer.put(userName, map.id, x, y, now);
             out.put("ok", true);
             out.put("x", x);
             out.put("y", y);
@@ -10992,7 +11001,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return 0;
     }
 
-    private static String mineCodeName(String code) {
+    static String mineCodeName(String code) { // [2026-10-28] 광산 접속 기록(S5MineSessionLog)도 쓴다
         int g = mineCodeGrade(code);
         if (g == S5MineMap.ICE_STONE_GRADE) return S5MineMap.ICE_STONE_NAME; // [2026-10-28]
         if (g == S5MineMap.SEAL_GRADE) return S5MineMap.SEAL_NAME;

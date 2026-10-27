@@ -140,6 +140,8 @@ public interface BotS5DAO {
     int insertMineUserIfAbsent(@Param("userName") String userName, @Param("stamina") int stamina, @Param("atMs") long atMs);
     int updateMineUser(HashMap<String, Object> map);
     int updateMinePos(@Param("userName") String userName, @Param("mapId") String mapId, @Param("x") int x, @Param("y") int y, @Param("atMs") long atMs);
+    /** [2026-10-28] 모아 둔 위치 저장 쓰기(S5MinePosBuffer) -- 저장된 위치가 더 오래됐을 때만. */
+    int updateMinePosIfNewer(@Param("userName") String userName, @Param("mapId") String mapId, @Param("x") int x, @Param("y") int y, @Param("atMs") long atMs);
     /** [2026-10-24] 광산 전투 레벨/경험치/체력 저장(kills = 이번에 더할 처치 수). */
     int updateMineCombat(@Param("userName") String userName, @Param("lv") int lv, @Param("exp") long exp, @Param("hp") int hp,
             @Param("hpAt") long hpAt, @Param("kills") int kills);
