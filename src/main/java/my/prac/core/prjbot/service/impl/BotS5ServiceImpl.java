@@ -8660,6 +8660,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_ITEM_NAMES.put(MINE_ITEM_HELMET, "광부 투구");
         MINE_ITEM_NAMES.put(MINE_ITEM_DRAGON_RING, "용왕의 반지");
         MINE_ITEM_NAMES.put(S5MineMap.BOAT_ITEM, "1인용 배"); // [2026-10-28] 다도해 뱃길
+        MINE_ITEM_NAMES.put(S5MineMap.SHRINE_KEY_ITEM, "신궁 열쇠"); // [2026-10-28] 닌자 두목의 방(신궁 수문장 수색 임무 보상)
     }
     /** 투구 단계별 업그레이드 비용 {광석 등급, 개수}, 인덱스 = 목표 단계 - 1. */
     //  [2026-10-25] 한때 2단계 은 250 / 3단계 금 250으로 올렸다가 같은 날 "이미 단계업한 사람이 있으면 그렇게 올리면 안 된다" -- 3단계까지 산 유저가 있어 원래 값으로 되돌렸다.
@@ -8707,6 +8708,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-28] 다도해(본섬 16~17단계, 신궁 18~19, 섬은 뒤로 갈수록 16 -> 20)
         MINE_MIN_LV.put(S5MineMap.ARCHI, 65);
         MINE_MIN_LV.put(S5MineMap.SHRINE, 70);
+        MINE_MIN_LV.put(S5MineMap.SHRINE2, 74); // [2026-10-28] 신궁 2층(19단계), 3층(20단계), 닌자 두목의 방(21단계 보스)
+        MINE_MIN_LV.put(S5MineMap.SHRINE3, 78);
+        MINE_MIN_LV.put(S5MineMap.SHRINE_BOSS, 82);
         MINE_MIN_LV.put(S5MineMap.ARCHISEA, 65);
         int[] isleLv = { 61, 65, 65, 69, 70, 73, 77 };
         for (int i = 0; i < S5MineMap.ISLE_IDS.length; i++) MINE_MIN_LV.put(S5MineMap.ISLE_IDS[i], isleLv[i]);
@@ -9153,6 +9157,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("boss", ty.boss);
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
+            if (ty.ninja) m.put("ninja", true); // [2026-10-28] 은신(화면은 반투명)
+            if (ty.clone) m.put("clone", true); // [2026-10-28] 닌자 두목의 분신 -- 화면은 두목(맵 마지막 몬스터)과 똑같이 그린다
             out.add(m);
         }
         return out;
@@ -9176,7 +9182,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         int fx, fy;
         String target;   // [2026-10-25] 쫓아가는 유저(인식 중)
         long lastMoveAt; // 마지막으로 한 칸 쫓아온 시각
+        boolean stealth;  // [2026-10-28] 닌자 은신 중(공격을 피했고 다음 한 방이 2배)
+        long splitUntil;  // [2026-10-28] 닌자 두목 분신술이 끝나는 시각(그 전엔 제자리, 안 때림)
+        int splitStage;   // 지금까지 쓴 분신술 횟수(체력 75/50/25% 아래로 내려갈 때마다 한 번)
+        java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
         MobState(int hp) { this.hp = hp; }
+        /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
+        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; splitUntil = 0; splitStage = 0; hitters = null; }
     }
 
     private static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -9302,7 +9314,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (minion && s.deadUntil <= now && s.frozenUntil <= now) s.deadUntil = Long.MAX_VALUE / 2; // [2026-10-28] 아무도 안 싸우면 수하는 물러난다
                 if (!minion && s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS) { MINE_MOB_STATE.remove(e.getKey(), s); continue; }
-                list.add(new long[] { id, s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil });
+                list.add(mineMobRow((int) id, s)); // [2026-10-28] 7번째 = 은신 중(1)
                 seen.add(id);
             }
         }
@@ -9414,7 +9426,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private static long[] mineMobRow(int id, MobState s) {
-        return new long[] { id, s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil };
+        return new long[] { id, s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil, s.stealth ? 1 : 0 }; // [2026-10-28] 7번째 = 닌자 은신 중
     }
 
     /** [2026-10-25] 전투 턴 -- 화면이 인식 중이거나 보스 2칸 안일 때 1초마다 부른다. 보스는 2칸 안에 들어오면 먼저 인식(선공).
@@ -9444,13 +9456,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bt.hp()));
             int aggro = bt.stay ? 4 : 2; // [2026-10-28] 대주교는 4칸(풀리는 거리 5칸보다 안쪽)
             synchronized (bs) {
-                if (bs.deadUntil > 0 && bs.deadUntil <= now) { bs.deadUntil = 0; bs.hp = bt.hp(); } // 다시 나타남(대주교 1시간)
-                if (bs.deadUntil <= now) {
+                if (bs.deadUntil > 0 && bs.deadUntil <= now) bs.respawn(bt.hp()); // 다시 나타남(대주교 1시간, [2026-10-28] 닌자 두목 10분)
+                if (bs.deadUntil <= now && bs.splitUntil <= now) { // [2026-10-28] 분신술 중엔 다가가도 먼저 덤비지 않는다(들키지 않게)
                     int near = -1;
                     for (int c : mineMobCells(boss, bs, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= aggro) near = c;
                     if (near >= 0) {
                         if (bs.frozenUntil <= now) { bs.fx = near % map.w; bs.fy = near / map.w; }
-                        bs.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                        bs.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, bs.splitUntil); // [2026-10-28] 분신술 자리 유지
                         if (bs.target == null) bs.target = userName;
                         mineEngage(userName, map, boss.id, now, 0L);
                         out.put("bossAggro", true);
@@ -9502,14 +9514,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (dist >= (!type.boss && mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다
                     e.mobs.remove(id);
                     released++;
-                    if (userName.equals(s.target)) { s.target = null; s.frozenUntil = now; } // 다시 제자리로 걸어간다
+                    if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
                     mobs.add(mineMobRow(id, s));
                     continue;
                 }
                 if (s.target == null) s.target = userName;
+                boolean splitting = s.splitUntil > now; // [2026-10-28] 닌자 두목 분신술 중엔 제자리에서 안 때린다(자세로 찾게)
                 // 쫓아온다(한 칸) -- [2026-10-28] 대주교는 제자리, 수하(fast)는 플레이어보다 3배쯤 빨리(초당 약 20칸) 여러 칸
                 long stepGap = type.fast ? MINE_FAST_STEP_MS : MINE_CHASE_STEP_MS;
-                if (!type.stay && userName.equals(s.target) && dist > 1 && now - s.lastMoveAt >= stepGap) {
+                if (!type.stay && !splitting && userName.equals(s.target) && dist > 1 && now - s.lastMoveAt >= stepGap) {
                     int steps = type.fast ? (int) Math.min(dist - 1, Math.min(25, (now - s.lastMoveAt) / stepGap)) : 1;
                     for (int st = 0; st < steps; st++) {
                         int dx = Integer.signum(x - s.fx), dy = Integer.signum(y - s.fy);
@@ -9524,15 +9537,18 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.lastMoveAt = now;
                     dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 }
-                s.frozenUntil = now + MINE_MOB_FREEZE_MS; // 인식 중엔 서버가 위치를 쥔다
+                s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
                 Long last = e.mobs.get(id);
-                if (dist <= 1 && (last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
+                if (dist <= 1 && !splitting && (last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
                     int d = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4))) * (mineCoatDef(items) > 0 ? 2 : 1); // [2026-10-26] 방한 외투 = 2배
+                    boolean x2 = s.stealth; // [2026-10-28] 은신했던 닌자의 기습 -- 2배
+                    if (x2) { d *= MINE_NINJA_STEALTH_MULT; s.stealth = false; }
                     dmgSum += d;
                     e.mobs.put(id, now);
                     HashMap<String, Object> h = new HashMap<>();
                     h.put("mobId", id);
                     h.put("dmg", d);
+                    if (x2) h.put("x2", true);
                     hits.add(h);
                     killerName = type.name;
                 }
@@ -9543,6 +9559,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("hits", hits);
         out.put("mobs", mobs);
+        String rwMsg = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 다른 사람이 닌자 두목을 쓰러뜨렸을 때 함께 싸운 보상 소식
+        if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
         if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
@@ -9655,6 +9673,48 @@ public class BotS5ServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // ---- [2026-10-28] 다도해 신궁 -- 닌자 은신, 닌자 두목(분신술) ----
+    // "닌자가 전투 중 가끔 은신 스킬 -- 회피 후 2배 강한 공격": 닌자(Type.ninja)를 때릴 때 MINE_NINJA_STEALTH_PCT% 확률로 은신해 피한다(피해 0, 그 턴 반격 없음).
+    //  은신한 닌자의 다음 한 방(반격이든 전투 턴 공격이든)은 2배, 그러면 은신이 풀린다. 화면은 은신 중인 닌자를 반투명하게 그린다(몬스터 상태 7번째 칸).
+    // "보스는 분신술 -- 다섯으로 나뉘고 하나만 자세가 다름, 은신도 함, 비급서/달빛석 한 사람에 한 번 확정":
+    //  닌자 두목(21단계 보스, 닌자 두목의 방)은 체력이 75/50/25% 아래로 내려갈 때마다 분신술 -- 홀 가운데 둘레 다섯 칸 중 하나로 옮겨 가고 나머지 넷에
+    //  분신(맵 몬스터 목록의 분신 자리, 분신술 때만 있음)이 선다. 분신술 동안(MINE_SPLIT_MS) 두목은 제자리에서 안 때린다. 진짜를 때리면 분신이 다 사라지고,
+    //  분신을 때리면 펑 사라지며 함정 반격(두목 공격력 x MINE_CLONE_TRAP_MULT) + 두목이 최대 체력의 MINE_CLONE_HEAL_PCT%를 되찾는다. 시간이 지나면 분신은 저절로 사라진다.
+    //  분신과 진짜는 화면에 똑같이 그려지고 진짜만 손을 모은 자세(인을 맺음)다.
+    //  보상: 두목을 때린 유저마다(처치한 사람 + 함께 때린 사람) 처음 한 번만 닌자의 비급서 1 + 달빛석 1 확정(광산 아이템 SHRINE_BOSS_REWARD = 1).
+    //  이미 받은 사람은 일반 몬스터 보상(광석/보석). 보상이 한 사람에 한 번이라 다른 보스처럼 맵 리셋마다 한 번이 아니라 10분 뒤 다시 나타난다.
+    static final int MINE_NINJA_STEALTH_PCT = 15;
+    static final int MINE_NINJA_STEALTH_MULT = 2;
+    private static final long MINE_SPLIT_MS = 30_000L;
+    private static final double MINE_CLONE_TRAP_MULT = 1.0;
+    private static final int MINE_CLONE_HEAL_PCT = 5;
+    private static final long MINE_SHRINE_BOSS_RESPAWN_MS = 10 * 60_000L;
+    static final String MINE_ITEM_SHRINE_BOSS_REWARD = "SHRINE_BOSS_REWARD";
+    /** 함께 싸운 유저에게 다음 전투 턴에 보여 줄 보상 소식. */
+    private static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_SHRINE_REWARD_MSG = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private List<HashMap<String, Object>> mineShrineBossDrops(String userName, S5MineMap map, S5MineMobs.Type type, java.util.Set<String> hitters, StringBuilder msg) {
+        List<HashMap<String, Object>> drops = null;
+        java.util.Set<String> all = new java.util.LinkedHashSet<>();
+        all.add(userName);
+        if (hitters != null) all.addAll(hitters);
+        for (String u : all) {
+            if (mineItems(u).getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0) continue; // 이미 받았다
+            dao.upsertMineItem(u, MINE_ITEM_SHRINE_BOSS_REWARD, 1);
+            dao.addUserOre(u, S5MineMap.NINJA_BOOK_CODE, 1);
+            dao.addUserOre(u, S5MineMap.MOON_STONE_CODE, 1);
+            if (u.equals(userName)) {
+                drops = new ArrayList<>();
+                drops.add(mineDrop(S5MineMap.NINJA_BOOK_GRADE, S5MineMap.NINJA_BOOK_NAME, 1));
+                drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1));
+                msg.append(" · 📜 ").append(S5MineMap.NINJA_BOOK_NAME).append(" 1권 · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 1개!! (첫 처치 보상)");
+            } else {
+                MINE_SHRINE_REWARD_MSG.put(u, "👑 닌자 두목이 쓰러졌어요! 함께 싸운 보상으로 📜 " + S5MineMap.NINJA_BOOK_NAME + " 1권과 🌙 " + S5MineMap.MOON_STONE_NAME + " 1개를 받았어요!");
+            }
+        }
+        return drops != null ? drops : mineMobDrops(userName, map, type, msg);
+    }
+
     /** 보스 보상: 25% 별빛석 1개, 아니면 미스릴 3~5개 + 30% 다이아몬드. */
     private List<HashMap<String, Object>> mineBossDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
@@ -9721,37 +9781,130 @@ public class BotS5ServiceImpl implements BotS5Service {
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(type.hp()));
         int dmg, counter = 0, kills = 0;
         boolean killed = false, crit;
+        // [2026-10-28] 닌자 -- evade = 은신으로 피함(피해 0, 반격 없음, 다음 한 방 2배), stealthHit = 은신했던 닌자의 2배 반격,
+        //  cloneHit = 닌자 두목의 분신을 때림(펑 사라지고 두목 회복 + 함정 반격), splitEnd = 분신술 중 진짜를 때림, split = 이번에 분신술을 씀(자리 다섯)
+        boolean evade = false, stealthHit = false, cloneHit = false, splitEnd = false, shrineBoss = mob.type == S5MineMobs.SHRINE_BOSS_TYPE;
+        int[][] split = null;
+        java.util.Set<String> bossHitters = null;
         synchronized (s) {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
-            if (s.deadUntil > 0) { s.deadUntil = 0; s.hp = type.hp(); } // 다시 나타남
+            if (s.deadUntil > 0) s.respawn(type.hp()); // 다시 나타남
             int hitCell = -1;
             for (int c : mineMobCells(mob, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
             dmg = Math.max(1, (int) Math.round(mineAtk(lv) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)));
-            s.hp -= dmg;
-            s.lastHitAt = now;
-            if (s.hp <= 0) {
-                killed = true;
+            if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
+                cloneHit = true;
+                dmg = 0;
+                crit = false;
                 s.hp = 0;
-                // 보스(동굴 3층/타락한 대주교)는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지
-                s.deadUntil = type.boss || type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs();
+                s.deadUntil = Long.MAX_VALUE / 2;
                 s.frozenUntil = 0;
-            } else {
+                counter = Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4)));
+            } else if (type.ninja && !s.stealth && s.splitUntil <= now && RND.nextInt(100) < MINE_NINJA_STEALTH_PCT) { // [2026-10-28] 은신 -- 공격을 피한다
+                evade = true;
+                dmg = 0;
+                crit = false;
+                s.stealth = true;
+                s.lastHitAt = now;
                 s.fx = hitCell % map.w;
                 s.fy = hitCell / map.w;
                 s.frozenUntil = now + MINE_MOB_FREEZE_MS;
-                counter = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4)));
-                if (s.target == null || !mineEngaged(s.target, now)) s.target = userName; // [2026-10-25] 이 유저를 쫓는다
-                mineEngage(userName, map, mobId, now, now); // 반격도 한 턴
-                if (mob.type == S5MineMobs.RAID_BOSS_TYPE) mineRaidAwakeUntil = now + MINE_RAID_AWAKE_MS; // [2026-10-28] 대주교가 깨어난다(마법)
+                if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
+                mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
+            } else {
+                s.hp -= dmg;
+                s.lastHitAt = now;
+                if (shrineBoss) { if (s.hitters == null) s.hitters = new java.util.HashSet<>(); s.hitters.add(userName); }
+                if (s.hp <= 0) {
+                    killed = true;
+                    s.hp = 0;
+                    // 보스(동굴 3층/타락한 대주교)는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지, 닌자 두목은 10분 뒤(보상은 한 사람에 한 번)
+                    s.deadUntil = shrineBoss ? now + MINE_SHRINE_BOSS_RESPAWN_MS : type.boss || type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs();
+                    s.frozenUntil = 0;
+                    splitEnd = s.splitUntil > now;
+                    s.splitUntil = 0;
+                    s.stealth = false;
+                    if (shrineBoss) bossHitters = s.hitters == null ? new java.util.HashSet<>() : new java.util.HashSet<>(s.hitters);
+                } else {
+                    s.fx = hitCell % map.w;
+                    s.fy = hitCell / map.w;
+                    s.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                    counter = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4)));
+                    if (s.stealth) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
+                    if (s.target == null || !mineEngaged(s.target, now)) s.target = userName; // [2026-10-25] 이 유저를 쫓는다
+                    mineEngage(userName, map, mobId, now, now); // 반격도 한 턴
+                    if (mob.type == S5MineMobs.RAID_BOSS_TYPE) mineRaidAwakeUntil = now + MINE_RAID_AWAKE_MS; // [2026-10-28] 대주교가 깨어난다(마법)
+                    if (shrineBoss) {
+                        if (s.splitUntil > now) { splitEnd = true; s.splitUntil = 0; } // 진짜를 찾았다 -- 분신이 사라진다
+                        else {
+                            long max = type.hp();
+                            int stage = s.hp * 4L <= max ? 3 : s.hp * 4L <= max * 2 ? 2 : s.hp * 4L <= max * 3 ? 1 : 0;
+                            if (stage > s.splitStage) { // [2026-10-28] 분신술 -- 다섯 자리 중 하나로 두목이 옮겨 가고 나머지 넷에 분신
+                                s.splitStage = stage;
+                                s.splitUntil = now + MINE_SPLIT_MS;
+                                int[][] spots = map.shrineSplitSpots(RND.nextInt(5));
+                                int real = RND.nextInt(spots.length);
+                                for (int k = 0; k < spots.length; k++) if (spots[k][0] == x && spots[k][1] == y) { // 때린 플레이어가 선 칸은 비킨다
+                                    int nx = spots[k][0] + (spots[k][0] < map.bossX() ? 1 : -1);
+                                    if (map.walkable(nx, spots[k][1])) spots[k] = new int[] { nx, spots[k][1] };
+                                }
+                                s.fx = spots[real][0];
+                                s.fy = spots[real][1];
+                                s.frozenUntil = s.splitUntil;
+                                s.stealth = false;
+                                counter = 0; // 연막을 터뜨리며 빠진다(반격 없음)
+                                split = new int[spots.length - 1][];
+                                for (int k = 0, j = 0; k < spots.length; k++) if (k != real) split[j++] = spots[k];
+                            }
+                        }
+                    }
+                }
             }
             out.put("mobHp", s.hp);
             out.put("mobDeadUntil", s.deadUntil);
             out.put("mobFx", s.fx);
             out.put("mobFy", s.fy);
             out.put("mobFrozenUntil", s.frozenUntil);
+            out.put("mobStealth", s.stealth);
         }
+        // [2026-10-28] 분신술 시작/끝(분신 상태는 두목 잠금 밖에서 -- 잠금을 겹쳐 잡지 않는다)
+        if (split != null || splitEnd || cloneHit) {
+            List<long[]> rows = new ArrayList<>();
+            S5MineMap.Mob boss = mineBossOf(map);
+            int ci = 0;
+            for (S5MineMap.Mob mb : map.mobs()) {
+                if (!S5MineMobs.TYPES.get(mb.type).clone) continue;
+                String key = mineMobKey(map, mb.id);
+                if (split != null && ci < split.length) {
+                    MobState cs = new MobState(1);
+                    cs.fx = split[ci][0]; cs.fy = split[ci][1];
+                    cs.frozenUntil = now + MINE_SPLIT_MS;
+                    cs.lastHitAt = now;
+                    MINE_MOB_STATE.put(key, cs);
+                    rows.add(mineMobRow(mb.id, cs));
+                    ci++;
+                } else if (splitEnd) {
+                    MobState cs = MINE_MOB_STATE.get(key);
+                    if (cs == null) continue;
+                    synchronized (cs) { if (cs.deadUntil <= now) { cs.hp = 0; cs.deadUntil = Long.MAX_VALUE / 2; cs.frozenUntil = 0; } rows.add(mineMobRow(mb.id, cs)); }
+                }
+            }
+            if (cloneHit && boss != null) { // 분신을 때리면 두목이 최대 체력의 5%를 되찾는다
+                MobState bs = MINE_MOB_STATE.get(mineMobKey(map, boss.id));
+                if (bs != null) synchronized (bs) {
+                    if (bs.deadUntil <= now) { int bm = S5MineMobs.TYPES.get(boss.type).hp(); bs.hp = Math.min(bm, bs.hp + bm * MINE_CLONE_HEAL_PCT / 100); }
+                    rows.add(mineMobRow(boss.id, bs));
+                }
+            }
+            out.put("mobRows", rows);
+            if (split != null) { out.put("split", true); out.put("message", "🥷 닌자 두목이 분신술을 썼어요! 다섯 중 자세가 다른 하나가 진짜예요. 분신을 때리면 두목이 기운을 되찾아요!"); }
+            else if (splitEnd && !killed) { out.put("splitEnd", true); out.put("message", "🎯 진짜를 찾았어요! 분신들이 연기처럼 사라졌어요."); }
+            else if (cloneHit) { out.put("clone", true); out.put("message", "💨 분신이었어요! 펑 터지며 반격당했고, 닌자 두목이 기운을 조금 되찾았어요."); }
+        }
+        if (evade) { out.put("evade", true); out.put("message", "💨 " + type.name + "이(가) 은신해 공격을 피했어요! 다음 공격이 아플 거예요."); }
+        if (stealthHit) out.put("stealthHit", true);
         out.put("ok", true);
         out.put("dmg", dmg);
         out.put("crit", crit);
@@ -9784,14 +9937,20 @@ public class BotS5ServiceImpl implements BotS5Service {
                 msg.insert(0, "👑 보스 처치! ");
                 out.put("bossKilled", true);
             }
-            if (S5MineMap.SHRINE.equals(map.id) && items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0) == 1) { // [2026-10-28] 신궁 수색 임무 -- 닌자 처치 수
+            if (shrineBoss) { // [2026-10-28] 닌자 두목 처치 -- 10분 뒤 다시 나타난다, 처음 잡는 사람(함께 때린 사람 포함)에게 비급서 + 달빛석
+                msg.insert(0, "👑 보스 처치! ");
+                out.put("bossKilled", true);
+            }
+            // [2026-10-28] 신궁 수색 임무 -- 닌자 처치 수(1~3층 어디서든, 열쇠 보상)
+            if (S5MineMap.isShrineFloor(map.id) && type.ninja && items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0) == 1) {
                 int nk = items.getOrDefault(MINE_ITEM_NINJA_KILLS, 0) + 1;
                 dao.upsertMineItem(userName, MINE_ITEM_NINJA_KILLS, nk);
                 out.put("ninjaKills", nk);
-                if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 보상을 받으세요.");
+                if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
-            out.put("drops", mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
+            out.put("drops", shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
+                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
             out.put("ores", mineOreList(userName));
         } else {
             if (mineCoatDef(items) > 0) counter *= 2; // [2026-10-26] 방한 외투 -- 받는 피해 2배
@@ -9879,6 +10038,20 @@ public class BotS5ServiceImpl implements BotS5Service {
             b.put("nextAt", S5MineMap.nextResetAt(now));
             bosses.add(b);
         }
+        if (mineArchiOpen(userName)) { // [2026-10-28] 닌자 두목 -- 맵 리셋이 아니라 쓰러지고 10분 뒤 다시(전체 지도에 다음 시각)
+            S5MineMap sbm = S5MineMap.get(S5MineMap.SHRINE_BOSS);
+            S5MineMap.Mob smob = mineBossOf(sbm);
+            if (smob != null) {
+                MobState ss = MINE_MOB_STATE.get(mineMobKey(sbm, smob.id));
+                long du = ss == null ? 0 : ss.deadUntil;
+                HashMap<String, Object> b = new HashMap<>();
+                b.put("map", S5MineMap.SHRINE_BOSS);
+                b.put("name", S5MineMobs.TYPES.get(smob.type).name);
+                b.put("alive", du <= now);
+                b.put("nextAt", du);
+                bosses.add(b);
+            }
+        }
         out.put("bosses", bosses);
         Map<String, Integer> items = mineItems(userName);
         int[] pos = minePos(row, map, mineWaterWalk(items));
@@ -9935,6 +10108,19 @@ public class BotS5ServiceImpl implements BotS5Service {
                 e.put("name", m.name);
                 e.put("w", m.w);
                 e.put("h", m.h);
+                e.put("sx", m.spawnX); // [2026-10-28] 전체 지도에서 지역을 누르면 그 맵 시작점으로
+                e.put("sy", m.spawnY);
+                maps.add(e);
+            }
+            for (String id : S5MineMap.ARCHI_MAPS) { // [2026-10-28] 다도해(본섬/신궁 1~3층/닌자 두목의 방/뱃길/섬)도 관리자 이동 목록에
+                S5MineMap m = S5MineMap.get(id);
+                HashMap<String, Object> e = new HashMap<>();
+                e.put("id", m.id);
+                e.put("name", m.name);
+                e.put("w", m.w);
+                e.put("h", m.h);
+                e.put("sx", m.spawnX);
+                e.put("sy", m.spawnY);
                 maps.add(e);
             }
             out.put("adminMaps", maps);
@@ -11069,28 +11255,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         int q = items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0), kills = items.getOrDefault(MINE_ITEM_NINJA_KILLS, 0);
         long now = System.currentTimeMillis();
+        // [2026-10-28] "100마리 잡으면 보상 대신 보스 방 열쇠" -- 수색 임무 보상은 신궁 열쇠(한 번 받으면 계속, 임무도 더는 없음).
+        //  비급서/달빛석은 닌자 두목 첫 처치 보상(mineShrineBossDrops)으로 옮겼다.
+        boolean hasKey = items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) > 0;
         if ("quest".equals(action)) {
+            if (hasKey) return mineGearResult(userName, false, "🥷 신궁 수문장: 이미 열쇠를 드렸소. 동쪽 문으로 들어가 닌자 두목을 쓰러뜨려 주시오.");
             if (q == 1) return mineGearResult(userName, false, "🥷 신궁 수문장: 이미 수색 중이오. (" + kills + "/" + MINE_NINJA_NEED + ")");
             dao.upsertMineItem(userName, MINE_ITEM_NINJA_QUEST, 1);
             dao.upsertMineItem(userName, MINE_ITEM_NINJA_KILLS, 0);
-            return mineGearResult(userName, true, "🥷 신궁 수문장: 고맙소! 신궁 안의 닌자 " + MINE_NINJA_NEED + "명을 처치하고 돌아오시오. 비급서와 달빛석을 드리리다.");
+            return mineGearResult(userName, true, "🥷 신궁 수문장: 고맙소! 신궁 1~3층의 닌자 " + MINE_NINJA_NEED + "명을 처치하고 돌아오시오. 닌자 두목의 방 열쇠를 드리리다.");
         }
         if ("claim".equals(action)) {
+            if (hasKey) return mineGearResult(userName, false, "🥷 신궁 수문장: 이미 열쇠를 드렸소.");
             if (q != 1) return mineGearResult(userName, false, "🥷 신궁 수문장: 먼저 수색 임무를 받아 주시오.");
             if (kills < MINE_NINJA_NEED) return mineGearResult(userName, false, "🥷 신궁 수문장: 아직 닌자가 남아 있소. (" + kills + "/" + MINE_NINJA_NEED + ")");
-            dao.addUserOre(userName, S5MineMap.NINJA_BOOK_CODE, 1);
-            dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1);
+            dao.upsertMineItem(userName, S5MineMap.SHRINE_KEY_ITEM, 1);
             dao.upsertMineItem(userName, MINE_ITEM_NINJA_QUEST, 0);
             dao.upsertMineItem(userName, MINE_ITEM_NINJA_KILLS, 0);
-            HashMap<String, Object> out = mineGearResult(userName, true, "📜 닌자의 비급서와 🌙 달빛석을 받았어요! (수색 임무는 다시 받을 수 있어요)");
-            out.put("ores", mineOreList(userName));
+            HashMap<String, Object> out = mineGearResult(userName, true, "🗝️ 신궁 열쇠를 받았어요! 신궁 동쪽 문(닌자 두목의 방)으로 들어갈 수 있어요. 두목을 처음 쓰러뜨리면 📜 비급서와 🌙 달빛석!");
             out.put("rewardFlash", true);
             return out;
         }
         if ("boat".equals(action)) {
             if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0) return mineGearResult(userName, false, "⛵ 배 목수: 이미 배가 있잖나. 뱃사공에게 가 보게.");
             String[][] cost = MINE_BOAT_COST;
-            if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 배 목수: 재료가 모자라네. (" + mineCostText(cost) + ") 달빛석은 신궁 수문장의 수색 임무로 얻을 수 있다네.");
+            if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 배 목수: 재료가 모자라네. (" + mineCostText(cost) + ") 달빛석은 신궁 깊은 곳 닌자 두목이 지니고 있다더군."); // [2026-10-28]
             mineTakeCost(userName, cost, 1);
             dao.upsertMineItem(userName, S5MineMap.BOAT_ITEM, 1);
             HashMap<String, Object> out = mineGearResult(userName, true, "⛵ 1인용 배가 완성됐어요! 뱃사공에게 배 타기를 부탁하면 뱃길로 나갈 수 있어요.");
@@ -11172,6 +11361,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             ar.put("quest", items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0));
             ar.put("kills", items.getOrDefault(MINE_ITEM_NINJA_KILLS, 0));
             ar.put("need", MINE_NINJA_NEED);
+            ar.put("key", items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) > 0); // [2026-10-28] 신궁 열쇠(수색 임무 보상)
+            ar.put("bossReward", items.getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0); // 닌자 두목 첫 처치 보상을 받았는지
             ar.put("boat", items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0);
             ar.put("moon", have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0));
             ar.put("books", have.getOrDefault(S5MineMap.NINJA_BOOK_CODE, 0));

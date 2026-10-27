@@ -28,9 +28,14 @@ public final class S5MineMobs {
         /** [2026-10-28] 성당 옛터: minion = 대주교의 수하(평소엔 없고 보스가 불러낼 때만, 쓰러지면 다시 부를 때까지 없음), fast = 플레이어보다 3배쯤 빨리 쫓아옴,
          *  stay = 제자리(쫓아오지 않음 -- 대주교). */
         public boolean minion, fast, stay;
+        /** [2026-10-28] 다도해 신궁: ninja = 싸우는 중 가끔 은신(공격을 피하고 다음 한 방이 2배 -- BotS5ServiceImpl.mineAttack/mineCombatTick),
+         *  clone = 닌자 두목의 분신(평소엔 없고 분신술 때만 나타남, 한 대 맞으면 사라짐 -- minion처럼 다룬다, 쫓아오지 않음). */
+        public boolean ninja, clone;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
+        Type asNinja() { ninja = true; return this; }
+        Type asClone() { minion = true; clone = true; ninja = true; return this; }
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
@@ -113,8 +118,9 @@ public final class S5MineMobs {
         new Type("야자게", 16, "crab", "#c86a3a", S5MineMap.ARCHI),
         new Type("해적 원숭이", 16, "small", "#8a5a2a", S5MineMap.ARCHI),
         new Type("바다 도적", 17, "human", "#3a4a6a", S5MineMap.ARCHI),
-        new Type("닌자", 18, "human", "#22222e", S5MineMap.SHRINE),
-        new Type("상급 닌자", 19, "human", "#4a1a2a", S5MineMap.SHRINE),
+        // [2026-10-28] 닌자는 은신(asNinja), 도트도 닌자 모양(kind ninja -- 복면/목도리). 상급 닌자는 신궁 2층에도.
+        new Type("닌자", 18, "ninja", "#22222e", S5MineMap.SHRINE).asNinja(),
+        new Type("상급 닌자", 19, "ninja", "#4a1a2a", S5MineMap.SHRINE, S5MineMap.SHRINE2).asNinja(),
         new Type("동백 정령", 16, "blob", "#d4104f", S5MineMap.ISLE1),
         new Type("들고양이", 16, "quad", "#c8a070", S5MineMap.ISLE1),
         new Type("괭이갈매기", 16, "flyer", "#e8e8f0", S5MineMap.ISLE2),
@@ -128,7 +134,11 @@ public final class S5MineMobs {
         new Type("달토끼", 19, "small", "#f4f0e0", S5MineMap.ISLE6),
         new Type("달빛 늑대", 19, "quad", "#b8c8e8", S5MineMap.ISLE6),
         new Type("용암 도마뱀", 20, "snake", "#e84a1a", S5MineMap.ISLE7),
-        new Type("화염 정령", 20, "blob", "#ff6a2a", S5MineMap.ISLE7)
+        new Type("화염 정령", 20, "blob", "#ff6a2a", S5MineMap.ISLE7),
+        // [2026-10-28] 신궁 3층 그림자 닌자(20단계), 닌자 두목의 방 -- 닌자 두목(21단계 보스, 은신 + 분신술)과 그 분신(분신술 때만, 두목과 똑같이 그린다)
+        new Type("그림자 닌자", 20, "ninja", "#14141c", S5MineMap.SHRINE3).asNinja(),
+        new Type("닌자 두목", 21, "ninja", "#2a0f1a").asBoss().asNinja(),
+        new Type("닌자 두목의 분신", 21, "ninja", "#2a0f1a").asClone()
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -138,6 +148,10 @@ public final class S5MineMobs {
     public static final int MINION_TYPE = indexOf("타락한 성기사");
     /** 대주교가 한 번에 거느릴 수 있는 수하 자리(맵 몬스터 목록에 미리 두고 평소엔 없는 것으로 친다). */
     static final int MINION_SLOTS = 6;
+    /** [2026-10-28] 닌자 두목과 분신(분신술 때 다섯 중 넷 -- 맵 몬스터 목록에 자리를 미리 두고 평소엔 없는 것으로 친다). */
+    public static final int SHRINE_BOSS_TYPE = indexOf("닌자 두목");
+    public static final int CLONE_TYPE = indexOf("닌자 두목의 분신");
+    public static final int CLONE_SLOTS = 4;
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -172,7 +186,9 @@ public final class S5MineMobs {
             case S5MineMap.SNOW3: return y > m.h * 0.5 ? 12 : 13;
             // [2026-10-28] 다도해 -- 본섬은 마을(부두)에서 멀수록, 신궁은 입구에서 멀수록, 섬은 부두(북쪽)에서 남쪽으로 갈수록
             case S5MineMap.ARCHI: return Math.hypot(x - m.spawnX, y - m.spawnY) < 110 ? 16 : 17;
-            case S5MineMap.SHRINE: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 45 ? 18 : 19;
+            case S5MineMap.SHRINE: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 100 ? 18 : 19; // [2026-10-28] 130x100으로 넓어져 45 -> 100(대부분 18, 맨 위 구석만 19)
+            case S5MineMap.SHRINE2: return 19; // [2026-10-28] 층마다 한 단계씩(1층 18 -> 2층 19 -> 3층 20)
+            case S5MineMap.SHRINE3: return 20;
             case S5MineMap.ISLE1: return 16;
             case S5MineMap.ISLE2: return y < m.h * 0.5 ? 16 : 17;
             case S5MineMap.ISLE3: return 17;
@@ -192,7 +208,7 @@ public final class S5MineMobs {
             case S5MineMap.DUNGEON: return 256;
             case S5MineMap.CAVE1: return 104;
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
-            case S5MineMap.SHRINE: return 60; // [2026-10-28] 신궁 내부는 닌자가 빽빽하게(수색 임무 100마리)
+            case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 60; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
             default: return 128;
         }
     }
@@ -271,6 +287,13 @@ public final class S5MineMobs {
                 out.add(new S5MineMap.Mob(out.size(), MINION_TYPE, x, y, new int[] { y * m.w + x }));
             }
         }
+        if (S5MineMap.SHRINE_BOSS.equals(m.id) && m.bossX() >= 0) { // [2026-10-28] 닌자 두목 분신 자리(평소엔 없음, 분신술 때 서버가 자리를 정해 세운다)
+            int[][] spots = m.shrineSplitSpots(0);
+            for (int i = 0; i < CLONE_SLOTS; i++) {
+                int x = spots[i + 1][0], y = spots[i + 1][1];
+                out.add(new S5MineMap.Mob(out.size(), CLONE_TYPE, x, y, new int[] { y * m.w + x }));
+            }
+        }
         if (m.bossX() >= 0) {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
@@ -280,7 +303,8 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), raid ? RAID_BOSS_TYPE : BOSS_TYPE, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
+            int bt = raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 닌자 두목의 방
+            if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
     }
