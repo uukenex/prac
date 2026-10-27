@@ -2,7 +2,7 @@
   [2026-10-25] 광산 캐릭터 그림(16x16 도트) -- 광산 화면(tower_view.jsp, TowerMine.charSprite)과 로그 뷰어(s5_battle_log_view.jsp)가 같이 쓴다.
   "로그에 광산 로그 보여주는 곳에 캐릭터 이미지도" 요청으로 TowerMine 안에 있던 그리는 코드를 그대로 옮겼다.
   쓰는 곳에서 <%@ include file="_mine_char.jsp" %> 로 포함 -> window.MineChar.sprite(dir, step, dig, look) = canvas, MineChar.dataUrl(look) = 정면 그림 data URL.
-  look = { gender 0 남/1 여, hat '색|모양', hair '색', top '색|모양', bottom '색', shoes '색' 또는 '색|모양', gm(운영자 장비 착용) } (빈 값 = 기본) -- 서버 mineLookOf와 같은 모양.
+  look = { gender 0 남/1 여, hat '색|모양', hair '색', top '색|모양', bottom '색', shoes '색' 또는 '색|모양', gm(운영자 장비 착용), rebirth(환생 횟수 -- 날개, [2026-10-28]) } (빈 값 = 기본) -- 서버 mineLookOf와 같은 모양.
 --%>
 <script>
 window.MineChar = (function () {
@@ -118,12 +118,74 @@ window.MineChar = (function () {
     }
     return outline(c, '#140d0a');
   }
-  /** 정면(서 있는 모습) 그림 data URL -- 외형이 같으면 한 번만 그린다. */
-  function dataUrl(lk) {
-    var key = JSON.stringify(lk || {});
-    if (!urlCache[key]) urlCache[key] = charSprite('down', 0, 0, lk).toDataURL();
+  // [2026-10-28] 환생 날개(1~5단계) -- "환생하면 캐릭터에 작은 날개, 환생 단계가 오를수록 날개가 커지게". 사용자가 고른 시안 그대로.
+  //  wingSprite(stage) = { c: 캔버스(폭 16 + 2*ext, 높이 18), ext } -- 날개만 그린다. 캐릭터는 그 위 (ext, 2)에 겹쳐 그린다(어깨 = 캔버스 y 9).
+  //  side = true: 옆모습(left/right) -- 등 쪽 날개 하나만, 조금 작게(바깥 길이 60%), 어깨 대신 등(캐릭터 x 3~4)에 붙인다. 오른쪽을 보는 기준(날개는 왼쪽), 왼쪽은 뒤집는다.
+  var WING_PAL = [null,
+    { base: '#ffffff', edge: '#c8d6ea', line: '#e4ecf6', tip: '#ffffff' },   // 1 하얀 아기 날개
+    { base: '#eef8ff', edge: '#8cc4ee', line: '#cfe8fa', tip: '#ffffff' },   // 2 하늘빛
+    { base: '#fffaf0', edge: '#e8b830', line: '#f6dc8a', tip: '#ffffff' },   // 3 금빛 테두리
+    { base: '#ffe27a', edge: '#d08a18', line: '#f2c240', tip: '#fff6c8' },   // 4 황금 날개
+    { base: '#f2e6ff', edge: '#9a6cf0', line: '#d6c0ff', tip: '#7ff0ff' }];  // 5 별빛(보라 + 하늘빛 끝)
+  var wingCache = {};
+  function wingSprite(stage, side) {
+    stage = Math.max(1, Math.min(5, stage | 0));
+    var FULL = [0, 4, 6, 8, 10, 12][stage], EXT = side ? Math.max(3, Math.round(FULL * 0.6)) : FULL, W = 16 + EXT * 2, H = 18, SY = 9, SHIFT = side ? 3 : 0;
+    var c = mk(W, H), g = c.getContext('2d');
+    var p = WING_PAL[stage], rise = 0.45 + stage * 0.06, drop = 0.55;
+    function wpx(x, y, col) { if (x >= 0 && y >= 0 && x < W && y < H) { g.fillStyle = col; g.fillRect(x, y, 1, 1); } }
+    // 어깨에서 바깥으로 한 칸씩(i): 위 끝은 바깥일수록 높이 솟고, 아래 끝은 바깥일수록 짧아지며 깃털처럼 들쭉날쭉
+    function wing(sd) {
+      for (var i = 0; i < EXT + 2; i++) {
+        var x = sd < 0 ? EXT + 1 - i + SHIFT : EXT + 14 + i; // 어깨 쪽 2칸은 몸 뒤에 겹친다
+        var top = SY - Math.round(Math.max(0, i - 1) * rise);
+        var bot = SY + Math.round((EXT + 2 - i) * drop) - (i % 2 === 1 && i > 1 ? 1 : 0);
+        if (bot < top + 1) bot = top + 1;
+        for (var y = top; y <= bot; y++) {
+          var col = y === top ? (i >= EXT ? p.tip : p.edge) : y === bot ? p.edge : (stage >= 3 && (y - top) % 3 === 2 ? p.line : p.base);
+          wpx(x, y, col);
+        }
+      }
+      if (stage >= 4) { var tx = sd < 0 ? SHIFT : W - 1, ty = SY - Math.round((EXT) * rise); wpx(tx, ty - 1, p.tip); } // 높이 솟은 깃 끝
+      if (stage === 5) { var sx = sd < 0 ? 1 + SHIFT : W - 2, sy2 = SY - Math.round((EXT - 1) * rise) - 3; wpx(sx, sy2, '#ffffff'); wpx(sx + (sd < 0 ? 1 : -1), sy2 + 1, p.tip); } // 별빛 반짝이
+    }
+    wing(-1);
+    if (!side) wing(1);
+    outline(c, '#140d0a');
+    return { c: c, ext: EXT };
+  }
+  /** 방향에 맞는 날개(캐시). dir = down/up(양쪽 날개 다) / right(등 쪽 = 왼쪽 날개 하나) / left(뒤집기). */
+  function wings(stage, dir) {
+    stage = Math.max(1, Math.min(5, stage | 0));
+    var key = stage + (dir === 'left' || dir === 'right' ? dir : 'full');
+    if (wingCache[key]) return wingCache[key];
+    var w = wingSprite(stage, dir === 'left' || dir === 'right');
+    if (dir === 'left') { // 왼쪽을 보면 등이 오른쪽 -- 뒤집는다(캔버스 폭이 16 + 2ext로 좌우 대칭이라 ext는 그대로)
+      var f = mk(w.c.width, w.c.height), fg = f.getContext('2d');
+      fg.translate(f.width, 0); fg.scale(-1, 1); fg.drawImage(w.c, 0, 0);
+      w = { c: f, ext: w.ext };
+    }
+    wingCache[key] = w;
+    return w;
+  }
+  /** 날개 + 캐릭터를 한 장으로(폭 16 + 2ext, 높이 18 -- 16x16보다 크다). 환생 안 했으면 그냥 16x16 캐릭터. */
+  function withWings(dir, step, dig, lk) {
+    var rb = lk ? lk.rebirth | 0 : 0, ch = charSprite(dir, step, dig, lk);
+    if (rb < 1) return ch;
+    var w = wings(rb, dir), c = mk(w.c.width, w.c.height), g = c.getContext('2d');
+    g.drawImage(w.c, 0, 0);
+    g.drawImage(ch, w.ext, 2);
+    return c;
+  }
+  /** 정면(서 있는 모습) 그림 data URL -- 외형이 같으면 한 번만 그린다.
+   *  [2026-10-28] wings = true면 환생 날개까지 그린 그림(환생했으면 16x16보다 넓다 -- 쓰는 곳이 가로세로 비율을 지켜야 함, wide(lk)로 확인). */
+  function dataUrl(lk, wingsOn) {
+    var key = (wingsOn ? 'w' : '') + JSON.stringify(lk || {});
+    if (!urlCache[key]) urlCache[key] = (wingsOn ? withWings('down', 0, 0, lk) : charSprite('down', 0, 0, lk)).toDataURL();
     return urlCache[key];
   }
-  return { sprite: charSprite, dataUrl: dataUrl };
+  /** 날개 때문에 그림이 16x16보다 넓은지(환생 1 이상). */
+  function wide(lk) { return !!(lk && (lk.rebirth | 0) > 0); }
+  return { sprite: charSprite, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
 })();
 </script>

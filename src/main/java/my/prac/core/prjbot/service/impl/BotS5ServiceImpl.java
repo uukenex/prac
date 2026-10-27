@@ -9186,9 +9186,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         return map.version() + ":" + id;
     }
 
-    static int mineHpMax(int lv) { return (int) Math.round(40 * Math.pow(1.09, lv - 1)); }
+    // [2026-10-28] "99레벨 경험치 꽉 차면 왕도 12시 성당 신부에게 환생, 환생하면 체력 1.5배, 필요 경험치 3배, 레벨 1로(Lv1(환생1)), 날개 이펙트" --
+    //  환생 횟수 rb(0~5, TBOT_S5_MINE_ITEM의 REBIRTH)만큼 겹쳐 곱한다: 최대 체력 x 1.5^rb, 필요 경험치 x 3^rb. 공격력은 그대로.
+    static final String MINE_ITEM_REBIRTH = "REBIRTH";
+    static final int MINE_REBIRTH_MAX = 5;
+
+    static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * Math.pow(1.5, rb)); }
     static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
-    static long mineExpNeed(int lv) { return Math.round(15 * Math.pow(1.12, lv - 1)); }
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(3, rb)); }
+    /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
+    static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && exp >= mineExpNeed(MINE_LV_MAX, rb); }
 
     // [2026-10-28] 다운스케일 1회 변환 -- 레벨 안 경험치를 (새 필요치 / 예전 필요치) 비율로(바꾸지 않으면 다음 처치 때 레벨이 몇십씩 오른다).
     //  배포 뒤 첫 광산 요청(mineGate)에서 한 번만 DB로 바꾸고 설정값 MINE_SCALE_VER = 2를 남긴다(서버를 다시 켜도 다시 안 함).
@@ -9222,7 +9230,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_HP_LOCK = "HP_LOCK";
     private static final int MINE_HP_LOCK_MAX = 5;
 
-    static int mineHpCap(int lv, int lock) { return Math.max(1, mineHpMax(lv) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
+    static int mineHpCap(int lv, int lock, int rb) { return Math.max(1, mineHpMax(lv, rb) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
 
     /** 쓰러진 뒤 붙이는 안내(잠금이 늘었을 때만). */
     private static String mineLockText(HashMap<String, Object> out) {
@@ -9244,9 +9252,9 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  이만큼 지나야 회복이 시작된다. */
     private static final long MINE_REGEN_DELAY_MS = 10_000L;
 
-    /** 지금 체력(저장된 체력 + 저장 시각 + MINE_REGEN_DELAY_MS부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계. */
-    private int mineHpNow(HashMap<String, Object> row, long now, int lock) {
-        int max = mineHpCap(mineLv(row), lock);
+    /** 지금 체력(저장된 체력 + 저장 시각 + MINE_REGEN_DELAY_MS부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계, rb = 환생 횟수. */
+    private int mineHpNow(HashMap<String, Object> row, long now, int lock, int rb) {
+        int max = mineHpCap(mineLv(row), lock, rb);
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
         if (mineEngaged(strVal(row.get("USER_NAME"), null), now)) return Math.min(max, hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
@@ -9254,24 +9262,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (int) Math.min(max, hp + Math.max(0, now - from) * max / MINE_HP_FULL_MS);
     }
 
-    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock) {
-        HashMap<String, Object> c = mineCombatInfo(lv, exp, hp, now);
+    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock, int rb) {
+        HashMap<String, Object> c = mineCombatInfo(lv, exp, hp, now, rb);
         c.put("regenFrom", now + MINE_REGEN_DELAY_MS); // [2026-10-26] 화면도 이때부터 체력을 올린다(지금 저장했으니 지금 + 대기)
         c.put("fight", fight); // [2026-10-25] 인식 중(화면도 체력을 안 올리고 1초마다 전투 턴을 부른다)
-        c.put("hpMax", mineHpCap(lv, lock)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
-        c.put("hpBase", mineHpMax(lv));
+        c.put("hpMax", mineHpCap(lv, lock, rb)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
+        c.put("hpBase", mineHpMax(lv, rb));
         c.put("hpLock", Math.min(MINE_HP_LOCK_MAX, lock) * 10);
         return c;
     }
 
-    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now) {
+    private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, int rb) {
         HashMap<String, Object> c = new HashMap<>();
         c.put("lv", lv);
         c.put("exp", exp);
-        c.put("expNeed", mineExpNeed(lv));
+        c.put("expNeed", mineExpNeed(lv, rb));
         c.put("hp", hp);
-        c.put("hpMax", mineHpMax(lv));
+        c.put("hpMax", mineHpMax(lv, rb));
         c.put("atk", mineAtk(lv));
+        c.put("rebirth", rb); // [2026-10-28] 환생 횟수(화면 "Lv.1(환생1)" + 날개)
+        c.put("rebirthReady", mineRebirthReady(lv, exp, rb));
         c.put("at", now);
         c.put("fullMs", MINE_HP_FULL_MS);
         return c;
@@ -9433,8 +9443,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         int[] pos = minePos(row, map, mineWaterWalk(items));
         if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
-        int hp = mineHpNow(row, now, lock); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        int hp = mineHpNow(row, now, lock, rb); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
         MineEngage e = MINE_ENGAGE.get(userName);
         if (e != null && !map.version().equals(e.mapVer)) { mineDisengageAll(userName); e = null; }
         // 보스 선공 -- 2칸 안에 들어오면 인식
@@ -9544,13 +9554,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("hits", hits);
         out.put("mobs", mobs);
         boolean fight = !e.mobs.isEmpty();
-        if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
+        if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
         if (dmgSum > 0) {
             hp -= dmgSum;
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
-                hp = mineHpCap(lv, lock);
+                hp = mineHpCap(lv, lock, rb);
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
@@ -9567,7 +9577,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, lv, exp, hp, now, 0);
         out.put("fight", fight);
-        out.put("combat", mineCombatInfo(lv, exp, hp, now, fight, lock));
+        out.put("combat", mineCombatInfo(lv, exp, hp, now, fight, lock, rb));
         if (out.containsKey("died")) out.put("state", mineState(userName));
         return out;
     }
@@ -9715,8 +9725,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (type.minion && MINE_MOB_STATE.get(mineMobKey(map, mobId)) == null) { out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); out.put("far", true); return out; } // [2026-10-28] 불려 나오지 않은 수하
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
-        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
-        int hp = mineHpNow(row, now, lock);
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        int hp = mineHpNow(row, now, lock, rb);
         out.put("mobId", mobId);
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(type.hp()));
         int dmg, counter = 0, kills = 0;
@@ -9762,14 +9772,19 @@ public class BotS5ServiceImpl implements BotS5Service {
         int levelUp = 0;
         if (killed) {
             kills = 1;
+            boolean wasReady = mineRebirthReady(lv, exp, rb);
             exp += type.exp();
-            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv)) { exp -= mineExpNeed(lv); lv++; levelUp++; }
+            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; }
+            // [2026-10-28] 99레벨에선 경험치를 다음 레벨 필요치(= 환생 조건)에서 멈춘다(막대가 가득 찬 채로, 숫자가 끝없이 쌓이지 않게)
+            if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb));
+            if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
             if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
-                hp = mineHpMax(lv);
+                hp = mineHpMax(lv, rb);
                 if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
             }
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
+            if (out.containsKey("rebirthReadyNow")) msg.append(" ✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.");
             out.put("expGain", type.exp());
             if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
@@ -9800,7 +9815,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (hp <= 0) {
                 died = true;
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
-                hp = mineHpCap(lv, lock);
+                hp = mineHpCap(lv, lock, rb);
                 msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawn(userName, items, now)).append(" 깨어났어요.").append(mineLockText(out));
             }
         }
@@ -9809,7 +9824,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateMineCombat(userName, lv, exp, hp, now, kills);
         out.put("levelUp", levelUp);
         out.put("died", died);
-        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock));
+        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock, rb));
         if (msg.length() > 0) out.put("message", msg.toString());
         if (died) out.put("state", mineState(userName));
         return out;
@@ -9912,7 +9927,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier)); // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
-        out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0))); // [2026-10-24] 광산 전투 레벨
+        out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items))); // [2026-10-24] 광산 전투 레벨
         if (row.get("M_HP") != null) // [2026-10-26] 여기선 저장하지 않으니 회복 시작은 마지막 저장 시각 + 대기
             ((HashMap<String, Object>) out.get("combat")).put("regenFrom", longOf(row.get("M_HP_AT_MS"), now) + MINE_REGEN_DELAY_MS);
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
@@ -10622,7 +10637,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         long from = map.version().equals(cs.mapVer) ? Math.max(cs.at, now - MINE_COLD_MAX_GAP_MS) : now;
         cs.mapVer = map.version();
         cs.at = now;
-        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), lv = mineLv(row), cap = mineHpCap(lv, lock);
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), lv = mineLv(row), rb = mineRebirth(items), cap = mineHpCap(lv, lock, rb);
         int coldDmg = 0, bzDmg = 0, fireDmg = 0, gasDmg = 0, heatDmg = 0;
         if (heat > 0) { // [2026-10-28] 더위 -- 한기처럼 초당 깎는다(그늘/안전지대에선 없음)
             if (safe) cs.frac = 0;
@@ -10665,7 +10680,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg <= 0) return out;
         HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
         long exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
-        int hp = mineHpNow(lrow, now, lock) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg;
+        int hp = mineHpNow(lrow, now, lock, rb) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg;
         if (coldDmg > 0) out.put("coldDmg", coldDmg);
         if (heatDmg > 0) out.put("heatDmg", heatDmg);
         if (bzDmg > 0) out.put("blizzardDmg", bzDmg);
@@ -10674,7 +10689,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (hp <= 0) {
             boolean spell = fireDmg + gasDmg > 0;
             if (spell) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금)
-            hp = mineHpCap(lv, lock);
+            hp = mineHpCap(lv, lock, rb);
             mineDisengageAll(userName);
             MINE_COLD.remove(userName);
             out.put("died", true);
@@ -10683,7 +10698,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     : "🥶 " + (bzDmg > 0 ? "눈바람에 휩쓸려" : "추위를 견디지 못하고") + " 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
         }
         dao.updateMineCombat(userName, lv, exp, hp, now, 0);
-        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock));
+        out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock, rb));
         if (out.containsKey("died")) out.put("state", mineState(userName));
         return out;
     }
@@ -11470,7 +11485,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new int[] { city.spawnX, city.spawnY };
     }
 
-    /** 성당 신부 -- action: heal(체력 가득, 무료) / save(쓰러지면 왕도 성당에서 깨어나기) / reset(부활 지점을 평원 마을로). */
+    /** 성당 신부 -- action: heal(체력 가득, 무료) / save(쓰러지면 왕도 성당에서 깨어나기) / reset(부활 지점을 평원 마을로) / [2026-10-28] rebirth(환생). */
     @Override
     @Transactional
     public HashMap<String, Object> minePriest(String userName, String action) {
@@ -11488,12 +11503,51 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         int lv = mineLv(row);
-        boolean locked = mineItems(userName).getOrDefault(MINE_ITEM_HP_LOCK, 0) > 0;
+        Map<String, Integer> items = mineItems(userName);
+        int rb = mineRebirth(items);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        boolean locked = items.getOrDefault(MINE_ITEM_HP_LOCK, 0) > 0;
+        if ("rebirth".equals(action)) return minePriestRebirth(userName, row, items, lv, exp, rb, locked, now, out);
         if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); // [2026-10-25] 잠긴 최대 체력도 정상으로
-        dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now, 0);
-        out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpMax(lv), now));
+        dao.updateMineCombat(userName, lv, exp, mineHpMax(lv, rb), now, 0);
+        out.put("combat", mineCombatInfo(lv, exp, mineHpMax(lv, rb), now, rb));
         out.put("message", "✨ 성당 신부: 여신의 축복을! 체력이 모두 회복됐어요." + (locked ? " 🔓 잠겼던 최대 체력도 풀렸어요." : ""));
         return out;
+    }
+
+    /** [2026-10-28] 환생 -- 왕도에서, 99레벨 경험치 가득일 때만. 환생 +1(최대 5), 레벨 1 / 경험치 0, 체력은 새 최대치로 가득, 최대 체력 잠금도 풀린다. */
+    private HashMap<String, Object> minePriestRebirth(String userName, HashMap<String, Object> row, Map<String, Integer> items, int lv, long exp, int rb,
+            boolean locked, long now, HashMap<String, Object> out) {
+        out.put("ok", false);
+        if (!S5MineMap.CITY.equals(mineMapOf(row).id)) { out.put("message", "🙏 성당 신부: 환생 의식은 왕도 성당에서만 올릴 수 있어요."); return out; }
+        if (rb >= MINE_REBIRTH_MAX) { out.put("message", "🙏 성당 신부: 이미 " + MINE_REBIRTH_MAX + "번의 환생을 마쳤어요. 더 오를 곳이 없답니다."); return out; }
+        if (!mineRebirthReady(lv, exp, rb)) {
+            out.put("message", "🙏 성당 신부: 아직 때가 아니에요. Lv." + MINE_LV_MAX + "에서 경험치를 가득 채우면 다시 오세요. (지금 Lv." + lv
+                    + (lv >= MINE_LV_MAX ? ", 경험치 " + exp + " / " + mineExpNeed(MINE_LV_MAX, rb) : "") + ")");
+            return out;
+        }
+        if (mineEngaged(userName, now)) { out.put("message", "🙏 성당 신부: 싸움이 끝난 뒤에 오세요."); return out; }
+        int nrb = rb + 1;
+        dao.upsertMineItem(userName, MINE_ITEM_REBIRTH, nrb);
+        if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0);
+        int hp = mineHpMax(1, nrb);
+        dao.updateMineCombat(userName, 1, 0L, hp, now, 0);
+        MinePresence p = MINE_PRESENCE.get(userName);
+        if (p != null) p.look = null; // 다른 유저 화면에도 바로 날개가 보이게(다음 위치 알림 때 외형을 다시 읽는다)
+        items.put(MINE_ITEM_REBIRTH, nrb);
+        out.put("ok", true);
+        out.put("rebirth", nrb);
+        out.put("rebirthDone", true);
+        out.put("look", mineLookOf(items));
+        out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
+        out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! 환생 " + nrb + "단계 -- Lv.1(환생" + nrb + ")로 다시 태어났어요. "
+                + "최대 체력 x" + mineRebirthMulText(1.5, nrb) + ", 필요 경험치 x" + mineRebirthMulText(3, nrb) + ".");
+        return out;
+    }
+
+    private static String mineRebirthMulText(double base, int rb) {
+        double v = Math.pow(base, rb);
+        return v == Math.rint(v) ? String.valueOf((long) v) : String.format("%.2f", v).replaceAll("0+$", "");
     }
 
     // ---- [2026-10-24] 광산에서 다른 유저 만나기 -- "접속한 유저끼리 만나게, 캐릭터명은 안 보이게, 근처에 오면 '안녕하세요' 버튼, 하루 1회 요일석 5개" ----
@@ -11605,10 +11659,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("x", pos[0]);
             m.put("y", pos[1]);
             m.put("lastAt", online ? p.at : longOf(row.get("POS_AT_MS"), 0L));
-            int lv = mineLv(row);
+            int lv = mineLv(row), rb = mineRebirth(items);
             m.put("lv", lv);
+            m.put("rebirth", rb); // [2026-10-28] 환생 횟수("Lv.1(환생1)")
             m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
-            m.put("expNeed", mineExpNeed(lv));
+            m.put("expNeed", mineExpNeed(lv, rb));
             m.put("kills", intVal(row.get("M_KILLS"), 0));
             m.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
             m.put("pickDur", minePickDur(row));
@@ -11842,6 +11897,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (c != null && c.admin) gm = true;
         }
         if (gm) look.put("gm", true); // [2026-10-28] 운영자 장비를 입었으면 화면이 "운영자" 표시 + 반짝이
+        int rb = mineRebirth(items);
+        if (rb > 0) look.put("rebirth", rb); // [2026-10-28] 환생 날개(단계별로 커진다) -- 다른 유저 화면/관리자 페이지 그림에도
         return look;
     }
 
