@@ -37,6 +37,7 @@
     .ch-head{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
     .ch-name{ font-weight:800; font-size:14.5px; word-break:break-all; }
     .mchar{ width:40px; height:40px; image-rendering:pixelated; align-self:center; background:#F3E6C4; border:1.5px solid var(--line); border-radius:10px; flex-shrink:0; }
+    .mchar.wide{ width:auto; } /* [2026-10-28] 환생 날개가 있으면 그림이 넓다(16+2ext x 18) -- 높이만 맞추고 비율 유지 */
     .dot{ width:8px; height:8px; border-radius:50%; background:#c9bfa4; display:inline-block; flex-shrink:0; align-self:center; }
     .ch.on .dot{ background:var(--pp); box-shadow:0 0 0 3px var(--pp-soft); }
     .lv{ margin-left:auto; font-weight:800; font-size:13px; color:var(--mine); background:var(--mine-soft); border-radius:999px; padding:2px 10px; font-variant-numeric:tabular-nums; }
@@ -136,9 +137,9 @@
       return '<span class="ore ' + oreClass(o.grade) + '">' + esc(o.name) + '<b>' + n(o.qty) + '</b></span>';
     }).join('');
     return '<div class="ch' + (u.online ? ' on' : '') + '">'
-      + '<div class="ch-head">' + (window.MineChar ? '<img class="mchar" src="' + MineChar.dataUrl(u.lookRaw || {}) + '" alt="">' : '') // [2026-10-25] 광산 화면과 같은 캐릭터 그림
+      + '<div class="ch-head">' + (window.MineChar ? '<img class="mchar' + (MineChar.wide && MineChar.wide(u.lookRaw) ? ' wide' : '') + '" src="' + MineChar.dataUrl(u.lookRaw || {}, true) + '" alt="">' : '') // [2026-10-25] 광산 화면과 같은 캐릭터 그림 ([2026-10-28] 환생 날개 포함)
       + '<span class="dot" title="' + (u.online ? '광산 접속 중' : '접속 안 함') + '"></span><span class="ch-name">' + esc(u.userName) + '</span>'
-      + '<span class="lv">Lv.' + u.lv + '</span></div>'
+      + '<span class="lv">Lv.' + u.lv + (u.rebirth > 0 ? '(환생' + u.rebirth + ')' : '') + '</span></div>'
       + '<div class="where">📍 <b>' + esc(u.mapName) + '</b><span class="xy">' + u.x + ', ' + u.y + '</span>'
       + '<span class="ago">' + (u.online ? '지금 접속 중' : '마지막 활동 ' + ago(u.lastAt)) + '</span></div>'
       + '<div class="stats">'
@@ -157,7 +158,7 @@
     var list = users.filter(function (u) { return !q || String(u.userName).toLowerCase().indexOf(q) >= 0; });
     list.sort(function (a, b) {
       if (a.online !== b.online) return a.online ? -1 : 1;
-      if (sort === 'lv') return b.lv - a.lv || b.exp - a.exp;
+      if (sort === 'lv') return (b.rebirth || 0) - (a.rebirth || 0) || b.lv - a.lv || b.exp - a.exp; // [2026-10-28] 환생이 먼저
       if (sort === 'dig') return b.totalDig - a.totalDig;
       if (sort === 'kills') return b.kills - a.kills;
       return (b.lastAt || 0) - (a.lastAt || 0);

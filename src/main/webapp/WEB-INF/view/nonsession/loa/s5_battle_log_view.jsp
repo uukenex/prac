@@ -77,6 +77,7 @@
     /* [2026-10-25] 광산 캐릭터 그림(16x16 도트를 2배로) */
     .mchar{ width:32px; height:32px; image-rendering:pixelated; vertical-align:middle; margin-right:4px; background:#F3E6C4; border:1.5px solid var(--line); border-radius:8px; }
     .sum-table .mchar{ width:24px; height:24px; border-radius:6px; }
+    .mchar.wide, .sum-table .mchar.wide{ width:auto; } /* [2026-10-28] 환생 날개(그림이 넓다) -- 높이만 맞추고 비율 유지 */
     .who-wrap{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
     .cat-row .time-btn{ font-size:13px; padding:7px 16px; }
     .log-req{ font-weight:700; font-size:13px; margin-bottom:4px; word-break:break-all; }
@@ -165,7 +166,8 @@
     var looks = {};
     function face(name) {
       var lk = looks[name];
-      return lk && window.MineChar ? '<img class="mchar" src="' + MineChar.dataUrl(lk) + '" alt="" title="' + escapeHtml(name) + '">' : '';
+      // [2026-10-28] 환생 날개까지(날개가 있으면 그림이 넓어 .mchar.wide로 비율 유지)
+      return lk && window.MineChar ? '<img class="mchar' + (MineChar.wide && MineChar.wide(lk) ? ' wide' : '') + '" src="' + MineChar.dataUrl(lk, true) + '" alt="" title="' + escapeHtml(name) + (lk.rebirth > 0 ? ' (환생' + lk.rebirth + ')' : '') + '">' : '';
     }
     // 서버에서 한 번 불러온 "최근 24시간" 전체 로그(선택된 유저 기준). 시간대 버튼/검색어는
     // 전부 이 배열 안에서 필터링만 한다(추가 fetch 없음).

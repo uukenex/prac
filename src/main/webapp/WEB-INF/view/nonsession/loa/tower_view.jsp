@@ -822,6 +822,14 @@
     .mine-bar.hp{ position:relative; }
     .mine-bar.hp b{ position:absolute; right:0; top:0; bottom:0; background:repeating-linear-gradient(45deg,#5a5560 0 3px,#3a3640 3px 6px); }
     .mine-hp .lock{ color:#c9c3d6; font-size:11px; margin-left:4px; }
+    /* [2026-10-28] 환생 -- "Lv.1(환생1)" 꼬리표, 99레벨 경험치 가득(환생 가능)이면 경험치 막대가 금빛으로 깜빡이고 아래 안내 한 줄 */
+    .mine-hp .rb{ font-size:10px; color:#e6d2ff; }
+    .mine-bar.ex.ready i{ background:#ffd84a; animation:mineRbPulse 1.2s ease-in-out infinite; }
+    @keyframes mineRbPulse{ 50%{ background:#fff3b0; } }
+    .mine-hp .hp-rb{ display:block; margin-top:3px; font-size:10px; color:#ffe58a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .mine-smith-menu button.rb-on{ background:#5a3f8a; }
+    .mine-rb-box{ margin-top:8px; padding:8px; border:2px solid #b89cff; background:#241a3a; font-size:12px; line-height:1.5; }
+    .mine-rb-box b{ color:#ffe58a; }
     /* [2026-10-26] 한기 표시 */
     .mine-cold{ display:none; font-size:12px; padding:4px 8px; color:#cfe8ff; max-width:112px; box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* [2026-10-28] 체력 칸과 같은 폭 */
     .mine-log{ position:absolute; left:10px; bottom:calc(244px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
@@ -6146,7 +6154,19 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
   var combatT0 = 0, hpShownT = 0;
-  function setCombat(c) { if (!c) return; st.combat = c; combatT0 = Date.now(); renderHp(); }
+  function setCombat(c) {
+    if (!c) return;
+    st.combat = c; combatT0 = Date.now(); renderHp();
+    // [2026-10-28] 환생 가능(99레벨 경험치 가득) -- 화면을 연 뒤 처음 한 번만 안내(잡는 순간엔 서버 처치 메시지에도 같은 안내가 붙는다)
+    if (c.rebirthReady && !rbHintShown) { rbHintShown = true; msg('✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.', 4200); }
+  }
+  var rbHintShown = false;
+  /** [2026-10-28] "Lv.1(환생1)" -- 칸이 좁으면(체력 숫자가 길면) "Lv.1✦1"로 줄인다(마우스를 올리면 전체). */
+  function lvLabel(c, compact) {
+    var rb = c.rebirth | 0;
+    if (!rb) return 'Lv.' + c.lv;
+    return 'Lv.' + c.lv + '<span class="rb">' + (compact ? '✦' + rb : '(환생' + rb + ')') + '</span>';
+  }
   function hpNow() {
     var c = st && st.combat;
     if (c && c.fight) return Math.min(c.hpMax, c.hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
@@ -6161,12 +6181,21 @@ var TowerMine = (function () {
     // [2026-10-25] 최대 체력 잠금 -- 막대는 원래 최대 체력 기준, 잠긴 몫은 오른쪽 회색 빗금
     var base = c.hpBase || c.hpMax, lk = c.hpLock || 0;
     var h = hpNow(), pct = Math.round(h * 100 / base), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
-    var key = c.lv + ':' + h + ':' + ep + ':' + lk;
+    var rb = c.rebirth | 0, ready = !!c.rebirthReady;
+    var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready;
     if (el.hp._k === key) return;
     el.hp._k = key;
-    el.hp.title = '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '');
-    el.hp.innerHTML = '<span class="hp-l"><span>Lv.' + c.lv + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + h + '</span></span>' // [2026-10-28] 짧게
-        + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>';
+    el.hp.title = (rb ? 'Lv.' + c.lv + '(환생' + rb + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
+        + (ready ? ' -- 환생 가능! 왕도 12시 방향 성당 신부님께' : '');
+    // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
+    for (var fit = 0; fit < 3; fit++) {
+      var hs = fit === 2 && h >= 100000 ? Math.floor(h / 1000) + 'k' : String(h);
+      el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
+          + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex' + (ready ? ' ready' : '') + '"><i style="width:' + ep + '%"></i></span>'
+          + (ready ? '<span class="hp-rb">✨ 환생 가능!</span>' : '');
+      var hl = el.hp.firstChild;
+      if (!rb || !hl || hl.scrollWidth <= hl.clientWidth + 1) break;
+    }
   }
   // [2026-10-24] 자동채광 -- 켜 두면 캐릭터가 스스로 가장 가까운(30칸 안) 안 캔 칸으로 걸어가서 캔다. 방향키/끌기로 잠깐 직접 조작할 수 있다.
   var auto = false, noOre = {};
@@ -6352,7 +6381,7 @@ var TowerMine = (function () {
     if (n.kind === 'smith') openSmith(n, 'menu');
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
-    else if (n.kind === 'priest') openSmith(n, 'priest'); // [2026-10-24] 왕도 성당 신부
+    else if (n.kind === 'priest') { priestConfirm = false; openSmith(n, 'priest'); } // [2026-10-24] 왕도 성당 신부 ([2026-10-28] 환생 확인 창은 닫힌 채로)
     else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
@@ -6651,23 +6680,48 @@ var TowerMine = (function () {
     openSmith({ name: '전체 지도', line: '', kind: 'world' }, 'world');
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
+  // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
+  var priestConfirm = false, RB_MAX = 5;
+  function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   function priestHtml(n) {
-    var city = !!(st && st.respawnCity);
-    return npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
-        + talkBlock(n, n ? n.line : '')
+    var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
+    var line = ready ? '때가 되었군요. 수많은 고비를 넘은 영혼이여, 원한다면 여신의 이름으로 새 날개를 달아 다시 태어나게 해 드리지요.' : (n ? n.line : '');
+    var rbSub = rb >= RB_MAX ? '환생 ' + RB_MAX + '단계 완료' : ready ? '지금 환생할 수 있어요!' : 'Lv.99 + 경험치 가득일 때';
+    var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
+        + talkBlock(n, line)
         + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
-                : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>') + '</div>';
+                : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
+        + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 환생' + rb + ')' : '') + '<small>' + rbSub + '</small></button></div>';
+    if (priestConfirm && ready) {
+      var nrb = rb + 1;
+      html += '<div class="mine-rb-box">🕊️ <b>환생 ' + nrb + '단계</b>로 다시 태어날까요?<br>'
+          + '· 레벨이 <b>Lv.1(환생' + nrb + ')</b>로 돌아가고 경험치는 0이 돼요.<br>'
+          + '· 최대 체력 <b>x1.5</b> (환생 전체 x' + rbMul(1.5, nrb) + ')<br>'
+          + '· 다음 레벨까지 필요 경험치 <b>x3</b> (환생 전체 x' + rbMul(3, nrb) + ')<br>'
+          + '· 공격력은 레벨에 따라 처음부터 다시 올라요. 광석·장비·치장은 그대로예요.<br>'
+          + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계).'
+          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirth\')">🕊️ 환생하기</button>'
+          + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
+    }
+    return html;
   }
   function priestAct(action) {
+    if (action === 'rebirthAsk' || action === 'rebirthNo') { priestConfirm = action === 'rebirthAsk'; if (smithOpen) renderSmith(smithNpc); return; }
     if (busy) return;
     busy = true;
+    priestConfirm = false;
     api('/api/tower-mine-priest?action=' + action).then(function (d) {
       busy = false;
       if (d.combat) setCombat(d.combat);
       if (d.respawnCity != null) st.respawnCity = d.respawnCity;
       if (action === 'heal') flashT0 = performance.now();
-      msg(d.message || d.error || '완료', 3000);
+      if (d.rebirthDone) { // [2026-10-28] 환생 -- 날개는 st.combat.rebirth로 그린다(외형도 같이 갱신)
+        if (d.look) st.look = d.look;
+        flashT0 = performance.now();
+        banner = { text: '🕊️ 환생 ' + d.rebirth + '단계! Lv.1(환생' + d.rebirth + ')', t0: performance.now() };
+      }
+      msg(d.message || d.error || '완료', d.rebirthDone ? 5000 : 3000);
       if (smithOpen) renderSmith(smithNpc);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
@@ -7337,6 +7391,13 @@ var TowerMine = (function () {
     ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#3a0f6e'; ctx.strokeText(label, mx, y - 2 * u);
     ctx.fillStyle = GM_COLORS[Math.floor(now / 250) % 2 ? 0 : 3]; ctx.fillText(label, mx, y - 2 * u);
   }
+  // [2026-10-28] 환생 날개 -- 캐릭터 그림(16x16, 왼쪽 위 (x, y)) 뒤에 MineChar.wings(단계, 방향)을 깐다. 날개 캔버스의 (ext, 2)가 캐릭터 자리.
+  //  가끔(1.6초마다 0.25초) 한 칸 들썩여 날갯짓처럼. draw()의 TS/scale 대신 scale만 쓴다(전역).
+  function drawWings(x, y, rb, dir, now, seed) {
+    if (!(rb > 0) || !window.MineChar || !MineChar.wings) return;
+    var w = MineChar.wings(rb, dir || 'down'), up = ((now + (seed || 0) * 397) % 1600) < 250 ? scale : 0;
+    ctx.drawImage(w.c, x - w.ext * scale, y - 2 * scale - up, w.c.width * scale, w.c.height * scale);
+  }
   function drawBubble(text, px0, py0) {
     ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
     var w = ctx.measureText(text).width + 14 * dpr, h = 20 * dpr, bx = Math.round(px0 - w / 2), by = Math.round(py0 - h);
@@ -7391,6 +7452,7 @@ var TowerMine = (function () {
         msg(d.message || '', 2600);
       }
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
+      if (d.rebirthReadyNow) { rbHintShown = true; flashT0 = t; banner = { text: '✨ 환생 가능! 왕도 성당 신부님께', t0: t }; } // [2026-10-28] 99레벨 경험치가 방금 가득
       // [2026-10-25] 최대 체력 잠금 -- 새 전투마다 10%(최대 50%), 레벨업하면 풀림
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: t + 300 });
       if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
@@ -7601,6 +7663,7 @@ var TowerMine = (function () {
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+      if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1); } catch (e) { } } // [2026-10-28] 환생 날개
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
@@ -7613,6 +7676,8 @@ var TowerMine = (function () {
     var meGm = !!(st && st.look && st.look.gm); // [2026-10-28] 운영자 장비 -- 반짝이 + "운영자" 표시
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+    var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
+    if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0); } catch (e) { } }
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
