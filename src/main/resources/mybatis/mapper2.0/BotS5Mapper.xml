@@ -378,6 +378,8 @@
                    TO_CHAR(A.INSERT_DATE, 'YYYY-MM-DD HH24:MI:SS') AS INSERT_DATE
               FROM TBOT_S5_WORD_HIS A
              WHERE A.USER_NAME = #{userName, jdbcType=VARCHAR}
+               <!-- [2026-10-28] 광산 접속 기록(한 판을 묶은 JSON, 관리자 로그 뷰어용)은 유저 메시지 목록에서 뺀다 -->
+               AND NOT (NVL(A.ROOM_NAME, ' ') = 'MINE' AND NVL(A.REQ, N' ') LIKE N'[웹] 광산 기록%')
              ORDER BY A.INSERT_DATE DESC
         ) WHERE ROWNUM &lt;= #{limit, jdbcType=INTEGER}
     </select>
@@ -718,6 +720,12 @@
 
     <update id="updateMinePos">
         UPDATE TBOT_S5_MINE_USER SET MAP_ID = #{mapId}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs} WHERE USER_NAME = #{userName}
+    </update>
+
+    <!-- [2026-10-28] 모아 둔 위치 저장(S5MinePosBuffer) 쓰기: 그 사이 바로 쓴 더 새 위치(포탈/부활/캐기)가 있으면 덮지 않는다 -->
+    <update id="updateMinePosIfNewer">
+        UPDATE TBOT_S5_MINE_USER SET MAP_ID = #{mapId}, POS_X = #{x}, POS_Y = #{y}, POS_AT_MS = #{atMs}
+         WHERE USER_NAME = #{userName} AND NVL(POS_AT_MS, 0) &lt; #{atMs}
     </update>
 
     <!-- [2026-10-24] 광산 전투 레벨/경험치/체력(체력 저장 시각부터 시간 회복), 처치 수 -->
