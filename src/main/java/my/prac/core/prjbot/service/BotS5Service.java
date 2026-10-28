@@ -438,7 +438,7 @@ public interface BotS5Service {
      */
     String battleLogLink(String userName);
 
-    /** [2026-10-28] /패치공지 [내용] (관리자) -- 광산에 있는 사람 화면 맨 위 띠 공지, "끄기" = 내림, 배포하면 사라짐. */
+    /** [2026-10-28] /패치 [내용] (관리자) -- 광산에 있는 사람 화면 맨 위 띠 공지(내용 없으면 "곧 패치가 시작됩니다."), "끄기" = 내림, 배포하면 사라짐. */
     String setMinePatchNotice(String userName, String text);
 
     /** [2026-10-28] /광산 -- 광산 바로 들어가기 링크(계정이 없으면 지금 이름으로 만든다). */

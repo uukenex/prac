@@ -465,7 +465,7 @@ public class Season5Controller {
         return s5Service.setMineNotice(userNameOf(map), text);
     }
 
-    /** [2026-10-28] /패치공지 [내용] (관리자 전용) -- 광산 화면 맨 위 띠 공지(뒤 전체가 내용, " / "로 줄바꿈, "끄기"로 내림). */
+    /** [2026-10-28] /패치 [내용] (관리자 전용) -- 광산 화면 맨 위 띠 공지(뒤 전체가 내용, 없으면 "곧 패치가 시작됩니다.", " / "로 줄바꿈, "끄기"로 내림). */
     public String setMinePatchNotice(HashMap<String, Object> map) {
         String fulltxt = Objects.toString(map.get("fulltxt"), "");
         int sp = fulltxt.indexOf(' ');
