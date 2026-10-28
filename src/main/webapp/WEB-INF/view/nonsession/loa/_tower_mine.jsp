@@ -1501,12 +1501,11 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
-    ['⛏️ 광석', function (g) { return g >= 1 && g <= 6; }],
+    ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20; }], // [2026-10-28] 빙석, 달빛석도 광석
     ['💎 보석', function (g) { return (g >= 21 && g <= 29) || (g >= 34 && g <= 38); }],
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['🧊 특수 재료', function (g) { return g === 19 || g === 20; }],
     ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }]
   ];
   function invEtcHtml() {
