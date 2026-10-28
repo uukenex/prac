@@ -1356,7 +1356,7 @@ var TowerMine = (function () {
           + '· 기본 최대 체력 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
           + '· 다음 레벨까지 필요 경험치 <b>x' + Math.pow(5, nrb) + '</b> (5의 ' + nrb + '제곱)<br>'
           + '· 채굴·전투로 얻는 광물 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
-          + '· 한기·눈바람·햇빛 피해 <b>초당 -' + nrb + '%</b> 경감<br>'
+          + '· 한기·눈바람·햇빛으로 입는 피해량 <b>-' + nrb + '%</b><br>'
           + '· 공격력은 레벨에 따라 처음부터 다시 올라요. 광석·장비·치장은 그대로예요.<br>'
           + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계).'
           + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirthFinal\')">다음</button>'

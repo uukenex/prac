@@ -9227,7 +9227,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감"
-    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/햇빛 초당 피해 -rb %포인트(0 아래로는 안 감).
+    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/햇빛(더위) 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
     static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
@@ -11004,7 +11004,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 더운 맵에서 초당 깎이는 최대 체력 %: 끼고 있는 방한 장비(외투, 장갑) 하나에 1%. */
     private static int mineHeatPct(S5MineMap map, Map<String, Integer> items, long now) {
-        int sun = map.sun() > 0 && S5MineMap.archiDay(now) ? Math.max(0, map.sun() - mineRebirth(items)) : 0; // [2026-10-28] 다도해 낮 햇빛(지역별 1~5%), 밤엔 없음, 환생 회차만큼 경감
+        int sun = map.sun() > 0 && S5MineMap.archiDay(now) ? map.sun() : 0; // [2026-10-28] 다도해 낮 햇빛(지역별 1~5%), 밤엔 없음
         return sun + (mineCoatDef(items) > 0 ? 1 : 0) + (mineGlovesOn(items) ? 1 : 0);
     }
 
@@ -11043,8 +11043,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) return out;
         Map<String, Integer> items = mineItems(userName);
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        int rbx = mineRebirth(items); // [2026-10-28] 환생 -- 한기/햇빛 초당 피해 회차만큼 %포인트 경감
-        int def = mineColdDef(items), eff = Math.max(0, map.cold() - def - rbx); // [2026-10-28] 외투 + 방한 장갑
+        double rbCut = 1 - 0.01 * mineRebirth(items); // [2026-10-28] 환생 -- 한기/눈바람/햇빛(더위)로 입는 피해량 회차당 1% 경감
+        int def = mineColdDef(items), eff = Math.max(0, map.cold() - def); // [2026-10-28] 외투 + 방한 장갑
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
         int heat = hot ? mineHeatPct(map, items, now) : 0; // [2026-10-28] 더위(초당 최대 체력 %)
         out.put("heat", heat);
@@ -11066,7 +11066,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (heat > 0) { // [2026-10-28] 더위 -- 한기처럼 초당 깎는다(그늘/안전지대에선 없음)
             if (safe) cs.frac = 0;
             else {
-                double drain = cap * heat / 100.0 * Math.max(0, now - from) / 1000.0 + cs.frac;
+                double drain = cap * heat / 100.0 * rbCut * Math.max(0, now - from) / 1000.0 + cs.frac;
                 heatDmg = (int) drain;
                 cs.frac = drain - heatDmg;
             }
@@ -11074,13 +11074,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (map.cold() > 0) {
             if (safe || iceFrozen) cs.frac = 0;
             else {
-                double drain = cap * eff / 100.0 * Math.max(0, now - from) / 1000.0 + cs.frac;
+                double drain = cap * eff / 100.0 * rbCut * Math.max(0, now - from) / 1000.0 + cs.frac;
                 coldDmg = (int) drain;
                 cs.frac = drain - coldDmg;
             }
             if (S5MineMap.blizzardBetween(map.id, from, now) > 0) {
                 if (safe) out.put("blizzardSafe", true);
-                else if (!iceFrozen && MINE_BLIZZARD_PCT > rbx) bzDmg = Math.max(1, cap * (MINE_BLIZZARD_PCT - rbx) / 100); // [2026-10-28] 환생 회차만큼 눈바람도 경감
+                else if (!iceFrozen) bzDmg = Math.max(1, (int) (cap * MINE_BLIZZARD_PCT / 100 * rbCut)); // [2026-10-28] 환생 회차당 1% 경감
             }
         }
         if (raid) { // [2026-10-28] 대주교 마법 -- 깨어 있을 때(누가 싸우는 중)만. 불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체
