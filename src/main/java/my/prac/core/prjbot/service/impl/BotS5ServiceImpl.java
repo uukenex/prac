@@ -11088,7 +11088,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-10-28] 피라미드 보상 상자 -- 상자 2칸 안에서 열면 사막의 심장 1개. 맵 주기마다 한 번(DESERT_CHEST = 주기 + 1). */
+    /** [2026-10-28] 피라미드 보상 상자 -- 상자 2칸 안에서 열면 사막의 심장 1개 + "보석 많이, 골고루": 보석 아홉 가지 모두 2~4개씩(다이아몬드는 1~2개).
+     *  맵 주기마다 한 번(DESERT_CHEST = 주기 + 1). */
     static final String MINE_ITEM_DESERT_CHEST = "DESERT_CHEST";
 
     private static String mineResetText() {
@@ -11117,9 +11118,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         dao.upsertMineItem(userName, MINE_ITEM_DESERT_CHEST, cyc);
         dao.addUserOre(userName, S5MineMap.DESERT_HEART_CODE, 1);
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        StringBuilder gm = new StringBuilder();
+        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) {
+            int q = i == S5MineMap.GEM_DIAMOND ? 1 + RND.nextInt(2) : 2 + RND.nextInt(3);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[i], q);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + i, S5MineMap.GEM_NAMES[i], q));
+            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[i]).append(' ').append(q);
+        }
         out.put("ok", true);
         out.put("grade", S5MineMap.DESERT_HEART_GRADE);
-        out.put("message", "📦 상자가 열렸어요! 모래빛으로 고동치는 🧡 " + S5MineMap.DESERT_HEART_NAME + "을(를) 얻었어요!");
+        out.put("drops", drops);
+        out.put("message", "📦 상자가 열렸어요! 모래빛으로 고동치는 🧡 " + S5MineMap.DESERT_HEART_NAME + " + 💎 보석이 와르르! (" + gm + ")");
         out.put("ores", mineOreList(userName));
         return out;
     }

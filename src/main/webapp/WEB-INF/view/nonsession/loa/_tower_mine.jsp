@@ -2344,6 +2344,10 @@ var TowerMine = (function () {
         flashT0 = performance.now();
         var im = new Image(); im.src = oreIcon(d.grade || 39);
         floats.push({ x: n.x, y: n.y - 0.6, text: '+1 사막의 심장', color: '#ffc04a', big: true, icon: im, t0: performance.now() });
+        (d.drops || []).forEach(function (w, i) { // 보석이 차례로 솟는다
+          var gi = new Image(); gi.src = oreIcon(w.grade);
+          floats.push({ x: n.x + ((i % 3) - 1) * 0.9, y: n.y - 1.2 - Math.floor(i / 3) * 0.5, text: '+' + w.qty + ' ' + w.name, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: gi, t0: performance.now() + 220 + i * 120 });
+        });
       }
       msg((d && (d.message || d.error)) || '상자를 열지 못했어요.', 4200);
     }).catch(function () { chestBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
