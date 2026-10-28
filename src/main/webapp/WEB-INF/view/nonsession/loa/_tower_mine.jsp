@@ -1422,7 +1422,7 @@ var TowerMine = (function () {
   function guideHtml(n) {
     var admin = !!(st && st.adminMaps);
     // [2026-10-26] 설산 마을, [2026-10-27] 왕도는 한 번 걸어서 가 본 뒤에만
-    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && (d.id === 'city' ? st.visitedCity : st.visitedSnowtown))); });
+    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && (d.id === 'city' ? st.visitedCity : d.id === 'archi' ? st.visitedArchi : st.visitedSnowtown))); });
     // [2026-10-25] 마을(평원 마을/왕도)끼리만 -- 왕도 길이 아직 안 열린 유저에겐 갈 곳이 없다고 안내
     if (!dests.length) return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
         + talkBlock(n, '지금은 모셔다 드릴 다른 마을이 없어요. 새 마을로 가는 길이 열리면 그때 꼭 찾아 주세요!');
@@ -1785,6 +1785,7 @@ var TowerMine = (function () {
   // [2026-10-25] 전투 턴 -- "전투 중엔 체력 회복 없이, 안 때려도 몬스터가 일정 턴마다 공격, 5칸 이상 벌어지면 인식이 풀리고 체력 가득" 요청.
   //  몬스터에게 인식돼 있거나(st.combat.fight) 동굴 3층 보스 2칸 안이면 1초마다 서버에 묻는다(쫓아온 칸, 맞은 피해, 인식 해제).
   var lastBossT = 0, bossBusy = false, bossWarned = false;
+  var bolts = [], BOLT_MS = 420, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
   function bossTick(now) {
     if (!map || busy || bossBusy || fade || now - lastBossT < 1000) return;
     var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
@@ -1807,7 +1808,15 @@ var TowerMine = (function () {
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       var t = performance.now();
-      (d.hits || []).forEach(function (h, k) { floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); }); // [2026-10-28] 은신했던 닌자의 기습
+      (d.hits || []).forEach(function (h, k) {
+        if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
+          bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t });
+          floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
+          if (!boltWarned) { boltWarned = true; msg('☄️ 용암 거신이 불덩이를 던져요! 떨어져 있어도 맞아요.', 3200); }
+          return;
+        }
+        floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
+      }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
@@ -2538,6 +2547,17 @@ var TowerMine = (function () {
       ctx.textAlign = 'center';
       ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(label, tx, ty);
       ctx.fillStyle = p.locked ? '#d0d0d0' : '#ffe14d'; ctx.fillText(label, tx, ty);
+    });
+    // [2026-10-28] 불덩이 -- 보스 칸에서 내 칸으로 BOLT_MS 동안 날아가며 꼬리를 남긴다
+    bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + 150; });
+    bolts.forEach(function (b) {
+      var k = Math.min(1, (now - b.t0) / BOLT_MS);
+      for (var tr = 3; tr >= 0; tr--) {
+        var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (b.tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (b.ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 1.2;
+        ctx.globalAlpha = k >= 1 ? Math.max(0, 1 - (now - b.t0 - BOLT_MS) / 150) : 1 - tr * 0.22;
+        ctx.fillStyle = tr ? '#ff7a1a' : '#ffe08a'; ctx.beginPath(); ctx.arc(bx, by, TS * (0.22 - tr * 0.04), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     });
     // 캔 광석 글자
     floats = floats.filter(function (f) { return now - f.t0 < 1400; });

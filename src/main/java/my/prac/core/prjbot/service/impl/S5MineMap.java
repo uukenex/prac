@@ -331,10 +331,10 @@ public final class S5MineMap {
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
     //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
     //  [2026-10-25] 설원 북쪽 작은 마을도 마을이라 안내원을 둔다. [2026-10-26] 그 마을은 설산 3층 너머 "설산 마을"(SNOWTOWN)로 옮겼다.
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY));
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI)); // [2026-10-28] 다도해 마을(본섬)도
     /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
     public static String townName(String id) {
-        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : nameOf(id);
+        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : ARCHI.equals(id) ? "다도해 마을" : nameOf(id);
     }
 
     // ---------------------------------------------------------------- [2026-10-26] 한기 / 눈바람 / 안전지대
@@ -1413,9 +1413,15 @@ public final class S5MineMap {
         int[] plank = pierAndShip(t, pier, land + 1, 1);
         int sx = pier + 2, sy = plank[1];
         // 부두 위 마을 광장
-        int vx = pier + 1, vy = land - 7;
-        for (int y = vy - 5; y <= vy + 4; y++) for (int x = vx - 9; x <= vx + 9; x++) t[y][x] = 's';
-        for (int y = vy + 5; y <= land; y++) for (int x = pier; x <= pier + 2; x++) if (t[y][x] != 'P') t[y][x] = 's'; // 부두와 광장을 잇는 길
+        // [2026-10-28] "다도해 본섬에 마을 추가" -- 광장(19x10)을 다도해 마을(35x16, 돌바닥)로 넓히고 초가집 여섯 채, 이동 안내원(GUIDE_MAPS).
+        //  바다 칸은 그대로 둔다(해안선을 따라 마을이 끝난다). 마을 전체가 그늘(안전지대).
+        int vx = pier + 1, vy = land - 9;
+        for (int y = vy - 10; y <= vy + 5; y++) for (int x = vx - 17; x <= vx + 17; x++) if (t[y][x] != '~') t[y][x] = 's';
+        for (int y = vy + 6; y <= land; y++) for (int x = pier; x <= pier + 2; x++) if (t[y][x] != 'P') t[y][x] = 's'; // 부두와 광장을 잇는 길
+        for (int[] hs : new int[][] { { vx - 15, vy - 9 }, { vx - 8, vy - 9 }, { vx + 7, vy - 9 }, { vx + 14, vy - 9 }, { vx - 15, vy - 3 }, { vx + 14, vy - 3 } }) { // 초가집 여섯 채
+            if (t[hs[1]][hs[0]] != 's' || t[hs[1]][hs[0] + 1] != 's' || t[hs[1] + 1][hs[0]] != 's' || t[hs[1] + 1][hs[0] + 1] != 's') continue; // 해안에 걸리면 빼고
+            t[hs[1]][hs[0]] = 'h'; t[hs[1]][hs[0] + 1] = 'j'; t[hs[1] + 1][hs[0]] = 'k'; t[hs[1] + 1][hs[0] + 1] = 'l';
+        }
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '~';
         List<Portal> portals = new ArrayList<>();
@@ -1435,7 +1441,7 @@ public final class S5MineMap {
         m.villageX = vx;
         m.villageY = vy;
         m.sun = 3; // [2026-10-28] 1 -> 3
-        m.safe.add(new int[] { vx, vy, 7 });
+        m.safe.add(new int[] { vx, vy - 2, 13 }); // [2026-10-28] 다도해 마을 전체(예전 광장 반지름 7)
         m.safe.add(new int[] { cx, doorY + 7, 6 }); // [2026-10-28] 두 문 앞 광장
         addShadeGroves(m, r);
         return m;
@@ -1610,6 +1616,22 @@ public final class S5MineMap {
         int sx = pier + 2, sy = plank[1];
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '~';
+        // [2026-10-28] "마지막 섬엔 보스" -- 용암섬 남쪽 끝(부두 반대편) 탁 트인 칸에서 4칸 안쪽 = 용암 거신 자리, 둘레(반지름 4)는 자갈 화구(걸을 수 있는 칸만)
+        int bossX = -1, bossY = -1;
+        if (idx == ISLE_IDS.length - 1) {
+            for (int y = h - 3; y > h / 2 && bossX < 0; y--) for (int dx = 0; dx <= w / 3 && bossX < 0; dx++) for (int sg = -1; sg <= 1; sg += 2) {
+                int x = cx + sg * dx;
+                if (x < 2 || x >= w - 2) continue;
+                boolean open = true;
+                for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (!walkable(t[yy][xx])) { open = false; break; }
+                if (open) { bossX = x; bossY = y; break; }
+            }
+            if (bossX >= 0) {
+                for (int k = 0; k < 4 && walkable(t[bossY - 1][bossX]); k++) bossY--;
+                for (int y = bossY - 4; y <= bossY + 4; y++) for (int x = bossX - 4; x <= bossX + 4; x++)
+                    if (y > 0 && x > 0 && y < h - 1 && x < w - 1 && walkable(t[y][x]) && Math.hypot(x - bossX, y - bossY) <= 4.2) t[y][x] = 'r';
+            }
+        }
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(plank[0], plank[1], 'B', ARCHISEA, 0, 0, "배를 타고 뱃길로"));
         double[][] score = new double[h][w];
@@ -1624,7 +1646,9 @@ public final class S5MineMap {
         m.dockY = sy;
         m.sun = ISLE_SUN[idx];
         m.safe.add(new int[] { pier + 1, land + 2, 4 }); // 부두 앞 그늘
+        if (bossX >= 0) { m.bossX = bossX; m.bossY = bossY; m.safe.add(new int[] { bossX, bossY, -100 }); } // 보스 자리(그늘 고르기에서 멀리 -- 반지름 음수라 안전지대는 아님)
         addShadeGroves(m, r);
+        m.safe.removeIf(z -> z[2] < 0);
         return m;
     }
 

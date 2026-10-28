@@ -35,10 +35,13 @@ public final class S5MineMobs {
         /** [2026-10-28] 다도해 신궁: ninja = 싸우는 중 가끔 은신(공격을 피하고 다음 한 방이 2배 -- BotS5ServiceImpl.mineAttack/mineCombatTick),
          *  clone = 닌자 두목의 분신(평소엔 없고 분신술 때만 나타남, 한 대 맞으면 사라짐 -- minion처럼 다룬다, 쫓아오지 않음). */
         public boolean ninja, clone;
+        /** [2026-10-28] 용암섬 보스 -- "원거리 공격을 가끔씩": 인식 중 떨어져 있어도 6~10초마다 불덩이를 던진다(BotS5ServiceImpl.mineCombatTick). */
+        public boolean ranged;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
         Type asNinja() { ninja = true; return this; }
+        Type asRanged() { ranged = true; return this; }
         Type asClone() { minion = true; clone = true; ninja = true; return this; }
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
@@ -155,7 +158,9 @@ public final class S5MineMobs {
         // [2026-10-28] 신궁 3층 그림자 닌자(20단계), 닌자 두목의 방 -- 닌자 두목(21단계 보스, 은신 + 분신술)과 그 분신(분신술 때만, 두목과 똑같이 그린다)
         new Type("그림자 닌자", 24, "ninja", "#14141c", S5MineMap.SHRINE3).asNinja(),
         new Type("닌자 두목", 25, "ninja", "#2a0f1a").asBoss().asNinja(),
-        new Type("닌자 두목의 분신", 25, "ninja", "#2a0f1a").asClone()
+        new Type("닌자 두목의 분신", 25, "ninja", "#2a0f1a").asClone(),
+        // [2026-10-28] "마지막 섬엔 보스, 원거리 공격을 가끔씩" -- 용암섬 남쪽 끝 화구의 용암 거신(26단계 보스, Lv.101)
+        new Type("용암 거신", 26, "human", "#ff5a1a").asBoss().asRanged()
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -171,6 +176,8 @@ public final class S5MineMobs {
     public static final int SHRINE_BOSS_TYPE = indexOf("닌자 두목");
     public static final int CLONE_TYPE = indexOf("닌자 두목의 분신");
     public static final int CLONE_SLOTS = 4;
+    /** [2026-10-28] 용암섬(다도해 마지막 섬) 보스. */
+    public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -324,7 +331,7 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
