@@ -9227,7 +9227,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감"
-    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/햇빛(더위) 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
+    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
+    //  [2026-10-28] 햇빛(다도해)만 x (1 - 0.2 rb)(mineSunCut) -- 5환생이면 햇빛을 완전히 막는다.
     static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
@@ -10524,8 +10525,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-10-24] 탐지 곡괭이 -- (x, y) 주변 3x3칸 중 내가 안 캔 광석 칸: [dx, dy, 등급 값](요일 던전 = 오늘 요일석, 바닷길 = -1 보석 줄기).
-     *  탐지 곡괭이를 끼고 있고 (x, y)가 저장 위치에서 갈 수 있는 거리일 때만. 읽기만 한다. */
+    /** [2026-10-24] 탐지 곡괭이 -- (x, y) 주변 칸 중 내가 안 캔 광석 칸: [dx, dy, 등급 값](요일 던전 = 오늘 요일석, 바닷길 = -1 보석 줄기).
+     *  탐지 곡괭이를 끼고 있고 (x, y)가 저장 위치에서 갈 수 있는 거리일 때만.
+     *  [2026-10-28] 범위 3x3 -> 사방 MINE_DETECT_R칸("주변 8x8", 내 칸이 가운데라 9x9). 캔 칸은 한 번에 읽는다(칸마다 조회 X).
+     *  범위 안에 빛나는 돌(별빛석/달빛석)이 있으면 이번 결과까지 보여 주고 기능이 멈춘다(DETECT_OFF, 맵 리셋 때 회복). */
+    static final int MINE_DETECT_R = 4;
     @Override
     public HashMap<String, Object> mineScan(String userName, String mapId, int x, int y) {
         HashMap<String, Object> out = new HashMap<>();
@@ -10541,14 +10545,26 @@ public class BotS5ServiceImpl implements BotS5Service {
         long now = System.currentTimeMillis();
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         String dugKey = mineDugKey(map, now, items);
+        Set<Integer> dug = new LinkedHashSet<>();
+        for (HashMap<String, Object> d : dao.selectMineDugCells(userName, dugKey)) dug.add(intVal(d.get("CELL"), -1));
         List<int[]> cells = new ArrayList<>();
-        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-            int nx = x + dx, ny = y + dy, g = map.oreAt(nx, ny);
-            if (g == 0 || dao.countMineDug(userName, dugKey, ny * map.w + nx) > 0) continue;
+        boolean glow = false;
+        for (int dy = -MINE_DETECT_R; dy <= MINE_DETECT_R; dy++) for (int dx = -MINE_DETECT_R; dx <= MINE_DETECT_R; dx++) {
+            int nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h) continue;
+            int g = map.oreAt(nx, ny);
+            if (g == 0 || dug.contains(ny * map.w + nx)) continue;
             if (S5MineMap.DUNGEON.equals(map.id)) g = S5MineMap.DAY_STONE_GRADE_BASE + mineDungeonDay(items, now);
             else if (S5MineMap.SEAROAD.equals(map.id)) g = -1;
+            if (g == 6 || g == S5MineMap.MOON_STONE_GRADE) glow = true;
             cells.add(new int[] { dx, dy, g });
         }
+        if (glow) { // 빛나는 돌을 탐지 -- 이번 결과까지 보여 주고 멈춤
+            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, S5MineMap.activeCycle() + 1);
+            out.put("dim", true);
+            out.put("message", "주변에 빛나는 돌이 있어 기능이 멈추었습니다.");
+        }
+        out.put("r", MINE_DETECT_R);
         out.put("ok", true);
         out.put("x", x);
         out.put("y", y);
@@ -11004,8 +11020,23 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 더운 맵에서 초당 깎이는 최대 체력 %: 끼고 있는 방한 장비(외투, 장갑) 하나에 1%. */
     private static int mineHeatPct(S5MineMap map, Map<String, Integer> items, long now) {
-        int sun = map.sun() > 0 && S5MineMap.archiDay(now) ? map.sun() : 0; // [2026-10-28] 다도해 낮 햇빛(지역별 1~5%), 밤엔 없음
-        return sun + (mineCoatDef(items) > 0 ? 1 : 0) + (mineGlovesOn(items) ? 1 : 0);
+        return mineSunPct(map, now) + mineGearHeatPct(items);
+    }
+
+    /** [2026-10-28] 다도해 낮 햇빛(지역별 초당 %), 밤엔 없음. */
+    private static int mineSunPct(S5MineMap map, long now) {
+        return map.sun() > 0 && S5MineMap.archiDay(now) ? map.sun() : 0;
+    }
+
+    private static int mineGearHeatPct(Map<String, Integer> items) {
+        return (mineCoatDef(items) > 0 ? 1 : 0) + (mineGlovesOn(items) ? 1 : 0);
+    }
+
+    /** [2026-10-28] "환생 단계가 어느 정도 되어야 햇빛 피해를 상쇄할 수 있도록" -- 햇빛만 환생 1회당 20% 경감, 5환생(최대)이면 완전히 막는다.
+     *  (한기/눈바람/방한 장비 더위는 그대로 회차당 1%.) */
+    static final double MINE_SUN_RB_CUT = 0.2;
+    private static double mineSunCut(int rb) {
+        return Math.max(0, 1 - MINE_SUN_RB_CUT * rb);
     }
 
     /** 한기 방어 합계 = 외투 + 방한 장갑. */
@@ -11047,11 +11078,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         int def = mineColdDef(items), eff = Math.max(0, map.cold() - def); // [2026-10-28] 외투 + 방한 장갑
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
         int heat = hot ? mineHeatPct(map, items, now) : 0; // [2026-10-28] 더위(초당 최대 체력 %)
+        // [2026-10-28] 환생 경감을 뺀 실제 초당 % -- 화면 표시용(햇빛 = 회차당 20%, 한기/장비 더위 = 회차당 1%)
+        double heatRate = hot ? mineSunPct(map, now) * mineSunCut(mineRebirth(items)) + mineGearHeatPct(items) * rbCut : 0;
         out.put("heat", heat);
+        out.put("heatRate", Math.round(heatRate * 100) / 100.0);
         if (map.sun() > 0) { out.put("day", S5MineMap.archiDay(now)); out.put("dayChangeAt", S5MineMap.archiNextChange(now)); out.put("sun", map.sun()); }
         out.put("ok", true);
         out.put("cold", map.cold());
         out.put("coldEff", eff);
+        out.put("coldRate", Math.round(eff * rbCut * 100) / 100.0);
+        out.put("rebirth", mineRebirth(items));
         out.put("coatDef", def);
         out.put("safe", safe);
         boolean iceFrozen = S5MineMap.PEAK.equals(map.id) && mineIceTick(userName, map, now, out); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결/얼음땡(언 동안 한기 없음)
@@ -11066,7 +11102,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (heat > 0) { // [2026-10-28] 더위 -- 한기처럼 초당 깎는다(그늘/안전지대에선 없음)
             if (safe) cs.frac = 0;
             else {
-                double drain = cap * heat / 100.0 * rbCut * Math.max(0, now - from) / 1000.0 + cs.frac;
+                double drain = cap * heatRate / 100.0 * Math.max(0, now - from) / 1000.0 + cs.frac; // 환생 경감 적용된 비율
                 heatDmg = (int) drain;
                 cs.frac = drain - heatDmg;
             }
@@ -11373,7 +11409,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
         new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
             new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" } } }, // "많이 비싸게"
-            new String[] { "서 있는 곳 주변 3x3칸의 광석이 미리 보여요 (별빛석을 캐면 빛을 잃고 맵 리셋 때 다시 빛나요)" }),
+            new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (맵 리셋 때 다시 빛나요)" }),
         new MineGear(MINE_ITEM_LINE_PICK, "쌍날 곡괭이", "tool",
             new String[][][] { { mineSeven(1) } },
             new String[] { "캘 때 바라보는 방향의 앞 칸과 뒤 칸도 함께 (칸마다 내구도 1)" })

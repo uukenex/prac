@@ -100,7 +100,7 @@ public final class S5MineMap {
     }
     public static final String[] ISLE_NAMES = { "동백섬", "갈매기섬", "거북섬", "안개섬", "산호섬", "달맞이섬", "용암섬" };
     /** 섬마다 낮 햇빛 피해(초당 최대 체력 %), 크기. 뒤 섬일수록 덥고 크고 몬스터가 세다(S5MineMobs.tierAt). */
-    static final int[] ISLE_SUN = { 1, 2, 2, 1, 3, 4, 5 };
+    static final int[] ISLE_SUN = { 3, 4, 4, 3, 5, 6, 8 }; // [2026-10-28] "기본 햇빛 피해 올려줘" -- 예전 1, 2, 2, 1, 3, 4, 5 (환생으로 경감: BotS5ServiceImpl.mineSunCut)
     static final int[] ISLE_SIZE = { 110, 120, 130, 120, 130, 140, 150 };
     /** [2026-10-28] "신궁 건물 크게, 입구 두 개(일반 방 / 보스 방), 일반은 3층까지 더 넓게" -- 신궁 1층(SHRINE 그대로) -> 2층 -> 3층(계단),
      *  닌자 두목의 방(SHRINE_BOSS, 신궁 열쇠 SHRINE_KEY가 있어야 들어감 -- 수문장 수색 임무 보상). */
@@ -121,7 +121,7 @@ public final class S5MineMap {
     public static final String NINJA_BOOK_NAME = "닌자의 비급서";
     public static final int NINJA_BOOK_GRADE = 32;
     /** 다도해 낮과 밤 -- 리셋 기준 시각부터 40분마다 낮 25분 + 밤 15분(모든 화면이 같은 시각으로 판단). */
-    public static final long ARCHI_DAY_MS = 25 * 60_000L, ARCHI_CYCLE_MS = 40 * 60_000L;
+    public static final long ARCHI_DAY_MS = 30 * 60_000L, ARCHI_CYCLE_MS = 60 * 60_000L; // [2026-10-28] 낮/밤 30분씩(예전 25/15분)
     public static boolean archiDay(long ms) {
         return Math.floorMod(ms - RESET_ANCHOR_MS, ARCHI_CYCLE_MS) < ARCHI_DAY_MS;
     }
@@ -1420,7 +1420,7 @@ public final class S5MineMap {
         m.dockY = sy;
         m.villageX = vx;
         m.villageY = vy;
-        m.sun = 1;
+        m.sun = 3; // [2026-10-28] 1 -> 3
         m.safe.add(new int[] { vx, vy, 7 });
         m.safe.add(new int[] { cx, doorY + 7, 6 }); // [2026-10-28] 두 문 앞 광장
         addShadeGroves(m, r, 10);
@@ -1540,7 +1540,7 @@ public final class S5MineMap {
         }
         S5MineMap m = new S5MineMap(ARCHISEA, "다도해 뱃길", false, w, h, w / 2, h - 7, t, new byte[h][w], portals);
         m.boat = true;
-        m.sun = 1;
+        m.sun = 3; // [2026-10-28] 1 -> 3
         m.requireItem = BOAT_ITEM;
         return m;
     }
