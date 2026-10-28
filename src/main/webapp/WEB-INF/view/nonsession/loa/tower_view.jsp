@@ -7430,6 +7430,7 @@ var TowerMine = (function () {
     api('/api/tower-mine-presence?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir).then(function (d) {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
+      if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
       if (!map || map.id !== mid || !d) return;
       var now = performance.now(), seen = {};
       (d.others || []).forEach(function (o) {

@@ -9593,7 +9593,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
         if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
-        dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
+        HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
+        if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
+            lv = mineLv(lrow);
+            exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
+            hp = mineHpNow(lrow, now, lock, rb);
+        }
         if (dmgSum > 0) {
             hp -= dmgSum;
             if (hp <= 0) {
@@ -9977,6 +9982,20 @@ public class BotS5ServiceImpl implements BotS5Service {
             crit = RND.nextInt(100) < 10;
             dmg = Math.max(1, (int) Math.round(mineAtk(lv) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)));
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
+                S5MineMap.Mob bm = mineBossOf(map);
+                MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
+                if (bst == null || bst.splitUntil <= now) { // 분신술이 이미 끝났다(화면이 아직 몰랐을 뿐) -- 함정/회복 없이 사라진 것으로
+                    s.hp = 0;
+                    s.deadUntil = Long.MAX_VALUE / 2;
+                    s.frozenUntil = 0;
+                    out.put("message", "💨 분신이 이미 사라졌어요.");
+                    out.put("mobHp", 0);
+                    out.put("mobDeadUntil", s.deadUntil);
+                    out.put("mobFx", s.fx);
+                    out.put("mobFy", s.fy);
+                    out.put("mobFrozenUntil", 0);
+                    return out;
+                }
                 cloneHit = true;
                 dmg = 0;
                 crit = false;
@@ -10685,7 +10704,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-24] 초원/왕도는 관리자만이었다가 [2026-10-27] "왕도 일반 플레이어들에게 오픈" -- 막지 않는다.
         String block = S5MineMap.isArchi(target.id) && !mineArchiMapOpen(userName, target.id) // [2026-10-28] 다도해 -- 본섬만 모두에게, 나머지는 운영자만
-                ? (S5MineMap.SHRINE.equals(target.id) ? "🔒 신궁은 아직 준비 중이에요. 곧 열려요!" : "🌊 아직 열리지 않은 바다예요.") : mineMapBlock(target, items, mineLv(row));
+                ? (S5MineMap.isShrineFloor(target.id) || S5MineMap.SHRINE_BOSS.equals(target.id) ? "🔒 신궁은 아직 준비 중이에요. 곧 열려요!" : "🌊 아직 열리지 않은 바다예요.") : mineMapBlock(target, items, mineLv(row));
         if (block != null) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("locked", true);
@@ -10837,6 +10856,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (p == null) { out.put("message", map.name + " (" + x + ", " + y + ") 근처에 설 수 있는 칸이 없어요."); return out; }
         dao.updateMinePos(userName, map.id, p[0], p[1], System.currentTimeMillis());
+        MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 관리자 이동 -- 얼어 있었으면 녹인다(다른 맵에서도 막히지 않게)
         out.put("ok", true);
         out.put("message", "🛠️ " + map.name + " (" + p[0] + ", " + p[1] + ")로 이동했어요." + (p[0] != x || p[1] != y ? " (입력한 칸에 설 수 없어 가장 가까운 칸으로)" : ""));
         out.put("state", mineState(userName));
@@ -11061,6 +11081,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg <= 0) return out;
         HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
+        lv = mineLv(lrow); // [2026-10-28] 잠근 행의 레벨로(그 사이 레벨업했으면 옛 레벨로 덮어쓰지 않게)
         long exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
         int hp = mineHpNow(lrow, now, lock, rb) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg;
         if (coldDmg > 0) out.put("coldDmg", coldDmg);
@@ -11997,6 +12018,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             others.add(m);
         }
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
+        String rw = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 닌자 두목을 함께 쓰러뜨린 보상 소식 -- 전투 중이 아니어도 1초 위치 알림으로 받는다
+        if (rw != null) out.put("rewardMsg", rw);
         return out;
     }
 
