@@ -1425,7 +1425,9 @@ var TowerMine = (function () {
       var ids = Object.keys(pts);
       if (ids.length === 2 && pinch) {
         var p1 = pts[ids[0]], p2 = pts[ids[1]], d = Math.hypot(p1.x - p2.x, p1.y - p2.y), m = toMap((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
-        worldZoomAt((pinch.w / worldVB.w) * (d / pinch.d), m.x, m.y);
+        // [2026-10-28] "두 손가락으로 확대하면 너무 한 번에 커진다" -- 예전엔 (처음 폭 / 지금 폭)을 곱해서 움직일 때마다 확대가 눈덩이처럼 불었다.
+        //  목표 폭 = 처음 폭 / (손가락 간격 비율^0.8) -- 손가락을 벌린 만큼보다 조금 덜(0.8제곱) 커진다.
+        worldZoomAt((worldVB.w / pinch.w) * Math.pow(d / pinch.d, 0.8), m.x, m.y);
         wMoved = true;
         e.preventDefault();
         return;
