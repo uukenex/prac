@@ -771,7 +771,6 @@ var TowerMine = (function () {
   function setAuto(on, text) {
     auto = on;
     if (el.auto) { el.auto.classList.toggle('on', on); el.auto.textContent = on ? '🤖 자동채광 ON' : '🤖 자동채광'; }
-    if (el.menuBtn) el.menuBtn.classList.toggle('auto-on', on); // [2026-10-28] 메뉴를 닫아도 켜져 있는 게 보이게
     if (text) msg(text, 2800);
   }
   function toggleAuto() {
@@ -2178,7 +2177,7 @@ var TowerMine = (function () {
     var a = !P.moving && adjMob();
     if (a) attack(a); else msg('⚔️ 바로 옆(상하좌우)에 몬스터가 없어요.', 1600);
   }
-  // [2026-10-28] ☰ 메뉴 -- 장비/자동채광/마을로/최근 캔 곳/나가기(고르면 닫힌다)
+  // [2026-10-28] ☰ 메뉴 -- 장비/마을로/최근 캔 곳/나가기(고르면 닫힌다). 자동채광은 채광 버튼 아래로 뺐다.
   function setMenu(on) {
     if (!el.menu) return;
     el.menu.classList.toggle('open', on);
@@ -2189,7 +2188,6 @@ var TowerMine = (function () {
   function menuGo(k) {
     setMenu(false);
     if (k === 'equip') openEquip();
-    else if (k === 'auto') toggleAuto();
     else if (k === 'home') goVillage();
     else if (k === 'log') toggleLog();
     else if (k === 'exit') close();
