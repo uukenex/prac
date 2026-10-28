@@ -297,6 +297,11 @@ public interface BotS5Service {
     /** [2026-10-28] 사막 서쪽에서 개미굴로 떨어지기. */
     HashMap<String, Object> mineAntFall(String userName, String mapId, int x, int y);
 
+    /** [2026-10-28] 광석 전문가(광석 100 -> 괴, 45%), 보석 세공사(보석 5 -> 세공된 보석, 25%), 왕도 장인(세공된 보석 -> 최대 내구도 +30). */
+    HashMap<String, Object> mineSmelt(String userName, int grade, int times);
+    HashMap<String, Object> mineGemCut(String userName, int gemIdx, int times);
+    HashMap<String, Object> mineArtisan(String userName, int gemIdx);
+
     /** [2026-10-28] 개미굴 보물 상자(상자마다 맵 주기에 한 번, 보석). */
     HashMap<String, Object> mineAntChest(String userName);
 

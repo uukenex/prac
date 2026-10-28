@@ -37,6 +37,9 @@ var TowerMine = (function () {
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
+  // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
+  ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
+  for (var cgi = 0; cgi < 9; cgi++) { ORE_NAME[45 + cgi] = '세공된 ' + ORE_NAME[21 + cgi]; ORE_COL[45 + cgi] = ORE_COL[21 + cgi]; RARE_GEM[45 + cgi] = 1; }
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -307,7 +310,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -388,8 +391,9 @@ var TowerMine = (function () {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
-    var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry'; // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
-    var body = smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
+    var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry';
+    var so = kind === 'smelter', gc = kind === 'gemcutter', ar = kind === 'artisan'; // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
+    var body = so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
@@ -538,6 +542,12 @@ var TowerMine = (function () {
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
+    if (grade >= 40 && grade <= 44) { // [2026-10-28] 괴 -- 사다리꼴 주괴(윗면 밝게)
+      px(g, col[1], 5, 4, 6, 2); px(g, col[0], 3, 6, 10, 6); px(g, col[1], 4, 6, 8, 1); px(g, shade(col[0], -0.35), 3, 11, 10, 1); px(g, '#ffffff', 6, 4, 2, 1);
+      outline(c, '#140d0a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
     if (grade >= 21) { // [2026-10-24] 보석: 깎은 보석 모양(위 테이블 + 아래 뾰족)
       for (var gy = 3; gy < 14; gy++) {
         var half = gy < 6 ? 3 + (gy - 3) : Math.max(0, 6 - Math.round((gy - 6) * 0.8));
@@ -545,6 +555,7 @@ var TowerMine = (function () {
       }
       px(g, '#ffffff', 6, 4, 2, 1); px(g, '#ffffff', 5, 5);
       if (grade === 23) { px(g, '#ffffff', 8, 8); px(g, '#ffffff', 7, 9, 3, 1); px(g, '#ffffff', 8, 10); } // 스타 사파이어의 별
+      if (grade >= 45 && grade <= 53) { px(g, '#ffffff', 1, 1); px(g, '#ffffff', 0, 2, 3, 1); px(g, '#ffffff', 1, 3); px(g, '#fff6b8', 13, 11); px(g, '#fff6b8', 12, 12, 3, 1); px(g, '#fff6b8', 13, 13); } // [2026-10-28] 세공된 보석 -- 반짝임 둘
       if (RARE_GEM[grade]) { px(g, '#ffffff', 13, 1); px(g, '#ffffff', 12, 2, 3, 1); px(g, '#ffffff', 13, 3); }
       outline(c, '#140d0a');
       oreIcons[grade] = c.toDataURL();
@@ -867,7 +878,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f' };
+    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1033,6 +1044,7 @@ var TowerMine = (function () {
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
     else if (n.kind === 'ninjaquest' || n.kind === 'boatwright' || n.kind === 'ferry') { setAuto(false); openSmith(n, 'archi'); } // [2026-10-28] 다도해
     else if (n.kind === 'chest' || n.kind === 'antchest') openChest(n); // [2026-10-28] 피라미드 보상 상자, 개미굴 보물 상자
+    else if (n.kind === 'smelter' || n.kind === 'gemcutter' || n.kind === 'artisan') { setAuto(false); openSmith(n, n.kind); } // [2026-10-28] 광석 전문가 / 보석 세공사 / 왕도 장인
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -1785,6 +1797,10 @@ var TowerMine = (function () {
       el.smith.innerHTML = noticeHtml();
       return;
     }
+    if (smithView === 'smelter' || smithView === 'gemcutter' || smithView === 'artisan') { // [2026-10-28]
+      el.smith.innerHTML = craftNpcHtml(n);
+      return;
+    }
     if (smithView === 'daygate') { // [2026-10-28] 요일 동굴 문지기
       el.smith.innerHTML = dayGateHtml(n);
       return;
@@ -2360,6 +2376,36 @@ var TowerMine = (function () {
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function craft(code) { gearAct('/api/tower-mine-craft?code=' + encodeURIComponent(code)); }
+  // [2026-10-28] 광석 전문가(광석 100 -> 괴, 45%) / 보석 세공사(보석 5 -> 세공된 보석, 25%) / 왕도 장인(세공된 보석 -> 최대 내구도 +30, 1000 이상일 때)
+  function smelt(grade, times) { gearAct('/api/tower-mine-smelt?grade=' + grade + '&times=' + times); }
+  function gemCut(gem, times) { gearAct('/api/tower-mine-gemcut?gem=' + gem + '&times=' + times); }
+  function artisan(gem) { gearAct('/api/tower-mine-artisan?gem=' + gem); }
+  function craftNpcHtml(n) {
+    var h = npcHead((n.kind === 'smelter' ? '🔥 ' : n.kind === 'gemcutter' ? '💎 ' : '🔨 ') + n.name, false) + talkBlock(n, n.line);
+    var row = function (icon, name, sub, btns) { return '<div class="mine-smith-row"><img src="' + oreIcon(icon) + '" alt=""><span class="nm">' + name + '<small>' + sub + '</small></span>' + btns + '</div>'; };
+    var btn = function (fn, a, t, ok) { return '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.' + fn + '(' + a + ', ' + t + ')">' + t + '번</button>'; };
+    if (n.kind === 'smelter') {
+      h += '<div class="mine-smith-say">광석 100개 -> 괴 1개 (성공 45%, 실패해도 광석은 녹아요). 괴는 좋은 장비의 재료예요.</div>';
+      for (var g = 1; g <= 5; g++) { var have = oreHave(g); h += row(39 + g, ORE_NAME[g] + ' 100 -> ' + ORE_NAME[39 + g], '보유 ' + have + ' · ' + ORE_NAME[39 + g] + ' ' + oreHave(39 + g) + '개', btn('smelt', g, 1, have >= 100) + btn('smelt', g, 10, have >= 1000)); }
+      return h;
+    }
+    if (n.kind === 'gemcutter') {
+      h += '<div class="mine-smith-say">보석 5개 -> 세공된 보석 1개 (성공 25%, 실패하면 보석이 깨져요). 세공된 보석은 고급 장비와 왕도 장인에게 쓰여요.</div>';
+      for (var i = 0; i < 9; i++) { var hv = oreHave(21 + i); h += row(45 + i, ORE_NAME[21 + i] + ' 5 -> ' + ORE_NAME[45 + i], '보유 ' + hv + ' · 세공 ' + oreHave(45 + i) + '개', btn('gemCut', i, 1, hv >= 5) + btn('gemCut', i, 10, hv >= 50)); }
+      return h;
+    }
+    var mx = st.durabilityMax || 0;
+    h += '<div class="mine-smith-say">곡괭이 최대 내구도가 1000 이상이면, 세공된 보석 하나에 최대 내구도 +30 (지금 ' + (st.durability || 0) + ' / ' + mx + ')</div>';
+    var any = false;
+    for (var j = 0; j < 9; j++) {
+      var c = oreHave(45 + j);
+      if (!c) continue;
+      any = true;
+      h += row(45 + j, ORE_NAME[45 + j], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'disabled ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
+    }
+    if (!any) h += '<div class="mine-smith-say">세공된 보석이 없어요. 마을의 보석 세공사에게서 만들 수 있어요.</div>';
+    return h;
+  }
   function equipRing(code) { gearAct('/api/tower-mine-ring?code=' + encodeURIComponent(code)); }
   function synth(times) { gearAct('/api/tower-mine-synth?times=' + times); }
   function captain(action) { gearAct('/api/tower-mine-captain?action=' + action); }
@@ -3048,7 +3094,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

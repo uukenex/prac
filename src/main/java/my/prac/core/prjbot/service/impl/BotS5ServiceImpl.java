@@ -8949,6 +8949,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
         String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE };
+        { // [2026-10-28] 괴 / 세공된 보석
+            List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
+            scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
+            for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) scl.add(S5MineMap.cutCode(i));
+            sc = scl.toArray(new String[0]);
+        }
         sc = mineWithSeaGems(sc); // [2026-10-28] 다도해 바다 보석(34~38) // [2026-10-28] 달빛석(20), 비급서(32), 얼음의 심장(33)
         for (String c : sc) {
             HashMap<String, Object> o = new HashMap<>();
@@ -11195,6 +11201,79 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
+    // ---- [2026-10-28] 광석 전문가 / 보석 세공사(마을마다) / 장인(왕도) ----
+    static final int MINE_SMELT_NEED = 100, MINE_SMELT_PCT = 45, MINE_CUT_NEED = 5, MINE_CUT_PCT = 25, MINE_ARTISAN_MIN = 1000, MINE_ARTISAN_GAIN = 30;
+
+    private boolean mineAtNpc(HashMap<String, Object> row, String kind) {
+        for (S5MineMap.Npc n : mineMapOf(row).npcs()) if (kind.equals(n.kind)) return true;
+        return false;
+    }
+
+    /** 광석 전문가 -- 광석(등급 1~5) MINE_SMELT_NEED개마다 한 번, MINE_SMELT_PCT% 확률로 괴 하나(실패해도 광석은 녹아 없어진다). times = 시도 횟수. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineSmelt(String userName, int grade, int times) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!mineAtNpc(row, "smelter")) return mineGearResult(userName, false, "광석 전문가가 있는 마을에서만 할 수 있어요.");
+        if (grade < 1 || grade > S5MineMap.BAR_CODES.length) return mineGearResult(userName, false, "녹일 수 없는 광석이에요.");
+        String code = S5MineMap.ORE_CODES[grade - 1];
+        int have = mineOreHave(userName).getOrDefault(code, 0), n = Math.min(Math.max(1, times), have / MINE_SMELT_NEED);
+        if (n < 1) return mineGearResult(userName, false, "🔥 " + S5MineMap.ORE_NAMES[grade - 1] + "이(가) " + MINE_SMELT_NEED + "개 있어야 해요. (보유 " + have + ")");
+        if (dao.takeUserOre(userName, code, MINE_SMELT_NEED * n) == 0) return mineGearResult(userName, false, "광석이 모자라요.");
+        int ok = 0;
+        for (int i = 0; i < n; i++) if (RND.nextInt(100) < MINE_SMELT_PCT) ok++;
+        if (ok > 0) dao.addUserOre(userName, S5MineMap.BAR_CODES[grade - 1], ok);
+        HashMap<String, Object> out = mineGearResult(userName, true, "🔥 " + S5MineMap.ORE_NAMES[grade - 1] + " " + (MINE_SMELT_NEED * n) + "개를 녹여 " + n + "번 시도 -> "
+                + (ok > 0 ? S5MineMap.BAR_NAMES[grade - 1] + " " + ok + "개 성공!" : "모두 실패했어요...") + " (성공 " + MINE_SMELT_PCT + "%)");
+        if (ok > 0) out.put("craftedRing", true); // 화면 번쩍
+        return out;
+    }
+
+    /** 보석 세공사 -- 보석(GEM_CODES 순서) MINE_CUT_NEED개마다 한 번, MINE_CUT_PCT% 확률로 세공된 보석 하나(실패하면 보석은 부서진다). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineGemCut(String userName, int gemIdx, int times) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!mineAtNpc(row, "gemcutter")) return mineGearResult(userName, false, "보석 세공사가 있는 마을에서만 할 수 있어요.");
+        if (gemIdx < 0 || gemIdx >= S5MineMap.GEM_CODES.length) return mineGearResult(userName, false, "세공할 수 없는 보석이에요.");
+        String code = S5MineMap.GEM_CODES[gemIdx];
+        int have = mineOreHave(userName).getOrDefault(code, 0), n = Math.min(Math.max(1, times), have / MINE_CUT_NEED);
+        if (n < 1) return mineGearResult(userName, false, "💎 " + S5MineMap.GEM_NAMES[gemIdx] + "이(가) " + MINE_CUT_NEED + "개 있어야 해요. (보유 " + have + ")");
+        if (dao.takeUserOre(userName, code, MINE_CUT_NEED * n) == 0) return mineGearResult(userName, false, "보석이 모자라요.");
+        int ok = 0;
+        for (int i = 0; i < n; i++) if (RND.nextInt(100) < MINE_CUT_PCT) ok++;
+        if (ok > 0) dao.addUserOre(userName, S5MineMap.cutCode(gemIdx), ok);
+        HashMap<String, Object> out = mineGearResult(userName, true, "💎 " + S5MineMap.GEM_NAMES[gemIdx] + " " + (MINE_CUT_NEED * n) + "개로 " + n + "번 세공 -> "
+                + (ok > 0 ? S5MineMap.cutName(gemIdx) + " " + ok + "개 성공!" : "모두 깨졌어요...") + " (성공 " + MINE_CUT_PCT + "%)");
+        if (ok > 0) out.put("craftedRing", true);
+        return out;
+    }
+
+    /** 왕도 장인 -- 곡괭이 최대 내구도가 MINE_ARTISAN_MIN 이상이면 세공된 보석 하나에 최대(와 지금) 내구도 +MINE_ARTISAN_GAIN(대장장이 상한 위로). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineArtisan(String userName, int gemIdx) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!mineAtNpc(row, "artisan")) return mineGearResult(userName, false, "왕도 장인에게서만 할 수 있어요.");
+        int dur = minePickDur(row), max = minePickMax(row);
+        if (max < MINE_ARTISAN_MIN) return mineGearResult(userName, false, "🔨 곡괭이 최대 내구도가 " + MINE_ARTISAN_MIN + " 이상이어야 해요. (지금 " + max + " -- 대장장이에게서 먼저 올려 주세요)");
+        if (gemIdx < 0 || gemIdx >= S5MineMap.GEM_CODES.length || dao.takeUserOre(userName, S5MineMap.cutCode(gemIdx), 1) == 0)
+            return mineGearResult(userName, false, "세공된 보석이 있어야 해요. (보석 세공사에게서 만들 수 있어요)");
+        dao.addMinePickMax(userName, MINE_ARTISAN_GAIN);
+        HashMap<String, Object> out = mineGearResult(userName, true, "🔨 " + S5MineMap.cutName(gemIdx) + "을(를) 곡괭이에 박아 넣었어요! 최대 내구도 +" + MINE_ARTISAN_GAIN
+                + " (지금 " + (dur + MINE_ARTISAN_GAIN) + " / " + (max + MINE_ARTISAN_GAIN) + ")");
+        out.put("durability", dur + MINE_ARTISAN_GAIN);
+        out.put("durabilityMax", max + MINE_ARTISAN_GAIN);
+        out.put("craftedRing", true);
+        return out;
+    }
+
     /** [2026-10-28] 개미굴 보물 상자(구석진 방) -- "인당 3개씩만, 보상이 아주 적은 것(1개)부터 지금 보상까지 골고루":
      *  한 사람이 맵 주기마다 MINE_ANT_CHEST_LIMIT개까지. 상자마다 담긴 양 q(0~1000, S5MineMap.chestRich) -- 보석 1 + q*3/1000번(1~4번),
      *  한 번에 1 ~ 1 + q*2/1000개(가장 적은 상자 = 보석 1개), 다이아몬드 q*25/1000 %(가장 많은 상자 = 예전 보상: 네 번 1~3개 + 25% 다이아).
@@ -11275,8 +11354,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (chest == null || Math.abs(pos[0] - chest.x) + Math.abs(pos[1] - chest.y) > 2) { out.put("message", "상자 바로 앞에서 열어 주세요."); return out; }
         Map<String, Integer> items = mineItems(userName);
         int cyc = S5MineMap.activeCycle() + 1;
-        if (items.getOrDefault(MINE_ITEM_DESERT_CHEST, 0) == cyc) {
-            out.put("message", "📦 이미 열어 본 상자예요. 텅 비어 있어요... 맵 리셋(" + mineResetText() + ") 뒤에 다시 개미굴을 빠져나오면 또 열려요.");
+        if (items.getOrDefault(MINE_ITEM_DESERT_CHEST, 0) > 0) { // [2026-10-28] "피라미드 상자는 1회만, 맵 초기화 때도 못 먹게" -- 한 번 열면 끝(주기와 상관없이)
+            out.put("message", "📦 이미 열어 본 상자예요. 텅 비어 있어요... 피라미드 상자는 한 사람에 한 번뿐이에요.");
             return out;
         }
         dao.upsertMineItem(userName, MINE_ITEM_DESERT_CHEST, cyc);
@@ -11789,6 +11868,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-10-25] 별빛석 n개(재료). */
+    /** [2026-10-28] 괴 n개(0 = 동괴 ~ 4 = 미스릴괴). */
+    private static String[] mineBar(int oreIdx, int qty) {
+        return new String[] { S5MineMap.BAR_CODES[oreIdx], String.valueOf(qty) };
+    }
+
+    /** [2026-10-28] 세공된 보석 n개(GEM_CODES 순서). */
+    private static String[] mineCut(int gemIdx, int qty) {
+        return new String[] { S5MineMap.cutCode(gemIdx), String.valueOf(qty) };
+    }
+
     private static String[] mineStar(int qty) {
         return new String[] { S5MineMap.ORE_CODES[5], String.valueOf(qty) };
     }
@@ -11807,22 +11896,22 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  "곡괭이는 모든 대장장이 공통, 앞뒤가 같이 캐지는 곡괭이(칠요석 하나)" -- 쌍날 곡괭이(PICK_SLOT 3).
     private static final List<MineGear> MINE_GEAR = java.util.Arrays.asList(
         new MineGear(MINE_ITEM_PLENTY_RING, "풍요의 반지", "ring",
-            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) }, { mineCost(7, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[][][] { { mineCost(0, 20) }, { mineCost(7, 5), mineCost(8, 1) }, { mineCost(7, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(7, 1) } }, // [2026-10-28] 3단계 = 괴 + 세공 보석
             new String[] { "캘 때 2개 나올 확률 3%", "캘 때 2개 나올 확률 8%", "캘 때 2개 나올 확률 15%" }, 2),
         new MineGear(MINE_ITEM_ABYSS_RING, "심연의 반지", "ring",
-            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) }, { mineCost(1, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) }, { mineCost(1, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(1, 1) } },
             new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)", "한 등급 위 광석이 나올 확률 10% (미스릴까지)" }, 2),
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
-            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2) } },
+            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(4, 1) } },
             new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배", "보석이 나올 확률 2.2배" }, 2),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
-            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2) }, { mineCost(8, 15), mineSeven(3) } },
+            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2), mineBar(1, 1) }, { mineCost(8, 15), mineSeven(3), mineBar(4, 1), mineBar(1, 2), mineCut(3, 1) } },
             new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%", "이동 속도 +60%" }, 3),
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
-            new String[][][] { { mineCost(8, 3), mineSeven(5) } },
+            new String[][][] { { mineCost(8, 3), mineSeven(5), mineBar(0, 1), mineBar(1, 1) } },
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
         new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
-            new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" } } }, // "많이 비싸게"
+            new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" }, mineBar(4, 1), mineBar(3, 1), mineCut(2, 1) } }, // "많이 비싸게"
             new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (맵 리셋 때 다시 빛나요)" }),
         new MineGear(MINE_ITEM_LINE_PICK, "쌍날 곡괭이", "tool",
             new String[][][] { { mineSeven(1) } },
@@ -11831,10 +11920,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         //  재생의 장갑 = "회복 속도가 빨라지는 컨셉, 전투 중에도 꽤 빠르게 -- 전투에서 받은 피해의 80%를 4초에 걸쳐 회복",
         //  광전사의 장갑 = "자연 회복이 멈추는 대신 데미지 50% 추가"
         new MineGear("REGEN_GLOVES", "재생의 장갑", "gloves", // = MINE_ITEM_REGEN_GLOVES(아래 -- 앞에서 쓰면 forward reference)
-            new String[][][] { { mineCost(1, 15), mineCost(8, 2), mineStar(2), { S5MineMap.ORE_CODES[4], "20" } } },
+            new String[][][] { { mineCost(1, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(1, 1) } }, // [2026-10-28] "유저 최고가 구매할 만큼 비싸게"
             new String[] { "전투에서 받은 피해의 80%를 4초에 걸쳐 회복" }, 0),
         new MineGear("BERSERK_GLOVES", "광전사의 장갑", "gloves", // = MINE_ITEM_BERSERK_GLOVES
-            new String[][][] { { mineCost(5, 15), mineCost(8, 2), mineStar(2), { S5MineMap.ORE_CODES[4], "20" } } },
+            new String[][][] { { mineCost(5, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(5, 1) } },
             new String[] { "공격력 +50% · 체력이 저절로 차지 않음" }, 0)
     );
     static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
@@ -11945,6 +12034,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
         if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
         if (S5MineMap.DESERT_HEART_CODE.equals(code)) return S5MineMap.DESERT_HEART_GRADE; // [2026-10-28] 피라미드 보상 상자
+        for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
+        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         return 0;
     }
 
@@ -11957,6 +12048,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g >= S5MineMap.SEA_GEM_GRADE_BASE && g < S5MineMap.SEA_GEM_GRADE_BASE + S5MineMap.SEA_GEM_CODES.length) return S5MineMap.SEA_GEM_NAMES[g - S5MineMap.SEA_GEM_GRADE_BASE]; // [2026-10-28] 바다 보석(보석 줄보다 먼저)
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g == S5MineMap.DESERT_HEART_GRADE) return S5MineMap.DESERT_HEART_NAME; // [2026-10-28]
+        if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
+        if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g >= S5MineMap.GEM_GRADE_BASE) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
         return mineGradeName(g);

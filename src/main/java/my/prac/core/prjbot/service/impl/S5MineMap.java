@@ -87,6 +87,13 @@ public final class S5MineMap {
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
     public static final String DESERT_HEART_CODE = "DESERT_HEART";
+    /** [2026-10-28] "광석 전문가 NPC를 마을마다 -- 구리 광석 100개 = 동괴 1개처럼(성공 45%), 보석 세공사 NPC도 마을마다 -- 세공된 루비 같은 것(성공 25%),
+     *  옵션이 좋은 장비엔 괴와 세공된 보석이 들어가게" -- 괴(등급 값 40~44 = 구리~미스릴), 세공된 보석(45~53 = GEM_CODES 순서). */
+    public static final String[] BAR_CODES = { "BAR_COPPER", "BAR_IRON", "BAR_SILVER", "BAR_GOLD", "BAR_MITHRIL" };
+    public static final String[] BAR_NAMES = { "동괴", "철괴", "은괴", "금괴", "미스릴괴" };
+    public static final int BAR_GRADE_BASE = 40, CUT_GRADE_BASE = 45;
+    public static String cutCode(int gemIdx) { return "CUT_" + GEM_CODES[gemIdx]; }
+    public static String cutName(int gemIdx) { return "세공된 " + GEM_NAMES[gemIdx]; }
     public static final String DESERT_HEART_NAME = "사막의 심장";
     public static final int DESERT_HEART_GRADE = 39;
     public static final String PEAK = "snowpeak";
@@ -881,6 +888,22 @@ public final class S5MineMap {
         S5MineMap nm = out.get(NORTH);
         placeNpc(nm, nm.dockX(), nm.dockY() - 3, "blackmarket", "암상인", "쉿... 아무 데서나 못 구하는 물건이지. 살 거면 서두르게. 15분이 되면 난 사라진다네.");
         for (Npc n : nm.npcs) if ("blackmarket".equals(n.kind)) nm.safe.add(new int[] { n.x, n.y, 3 }); // 노점 앞도 안전지대
+        // [2026-10-28] 광석 전문가(광석 100개 -> 괴, 45%) / 보석 세공사(보석 5개 -> 세공된 보석, 25%) -- 마을마다(평원 마을, 설산 마을, 왕도, 다도해 마을).
+        //  장인(최대 내구도 1000 이상에서 세공된 보석 하나 -> 최대 내구도 +30) -- 왕도.
+        String smLine = "광석 백 개를 녹이면 괴 하나가 나오지. 다만 불이 까다로워서 반은 날아가네.";
+        String gcLine = "보석 다섯 알을 깎아 하나를 빛나게 만들지. 네 번에 한 번 꼴로만 성공한다네.";
+        S5MineMap fv = out.get(FIELD);
+        placeNpc(fv, fv.spawnX + 5, fv.spawnY + 3, "smelter", "광석 전문가", smLine);
+        placeNpc(fv, fv.spawnX - 5, fv.spawnY + 3, "gemcutter", "보석 세공사", gcLine);
+        S5MineMap tw3 = out.get(SNOWTOWN);
+        placeNpc(tw3, tw3.villageX - 3, tw3.villageY + 4, "smelter", "광석 전문가", smLine);
+        placeNpc(tw3, tw3.villageX + 3, tw3.villageY + 5, "gemcutter", "보석 세공사", gcLine);
+        placeNpc(ct, cc - 10, cc + 6, "smelter", "광석 전문가", smLine);
+        placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
+        placeNpc(ct, cc, cc + 10, "artisan", "왕도 장인", "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
+        S5MineMap av = out.get(ARCHI);
+        placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
+        placeNpc(av, av.villageX + 10, av.villageY - 5, "gemcutter", "보석 세공사", gcLine);
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽
         S5MineMap fd = out.get(FIELD);

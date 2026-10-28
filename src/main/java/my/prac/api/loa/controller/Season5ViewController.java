@@ -839,6 +839,36 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineScan(userName, mapId, x, y));
     }
 
+    /** [2026-10-28] 웹 광산 광석 전문가 / 보석 세공사 / 왕도 장인. */
+    @GetMapping("/api/tower-mine-smelt")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineSmelt(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("grade") int grade, @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineSmelt(userName, grade, Math.min(times, 50));
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 광석 전문가 괴 " + grade + " x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    @GetMapping("/api/tower-mine-gemcut")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineGemCut(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("gem") int gem, @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineGemCut(userName, gem, Math.min(times, 50));
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 보석 세공 " + gem + " x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    @GetMapping("/api/tower-mine-artisan")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineArtisan(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam("gem") int gem) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineArtisan(userName, gem);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 왕도 장인 내구도", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 최근 획득/구매(📜 최근 기록 창을 열 때). 읽기만. */
     @GetMapping("/api/tower-mine-recent-get")
     @ResponseBody
