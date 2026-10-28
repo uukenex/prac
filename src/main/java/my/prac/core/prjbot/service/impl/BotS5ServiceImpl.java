@@ -9255,9 +9255,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
-    /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5 + 양산 0.2(곱하지 않고 더한다). */
+    /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
     static double mineAtkMul(Map<String, Integer> items) {
-        return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? MINE_BERSERK_MULT - 1 : 0) + (mineParasolOn(items) ? MINE_PARASOL_ATK : 0);
+        return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? MINE_BERSERK_MULT - 1 : 0);
     }
     static final double MINE_RB_ATK_BONUS = 0.5;
     /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
@@ -10170,7 +10170,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round(mineAtk(lv) * mineAtkMul(items) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0))); // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
+            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + (mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0))); // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -10621,7 +10621,6 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        if (mineParasolOn(items)) { out.put("message", MINE_PARASOL_NO_DIG); out.put("noOre", true); return out; } // [2026-10-28] 양산을 들면 곡괭이질 못 함
         int g = map.oreAt(x, y);
         if (g == 0) {
             out.put("message", "여기서는 캘 수 없어요.");
@@ -11151,7 +11150,6 @@ public class BotS5ServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         if (Math.abs(tx - x) + Math.abs(ty - y) != 1 || map.terrainAt(tx, ty) != 'I') { out.put("message", "💠 얼음 광맥 바로 앞에서 그쪽을 보고 캐요."); return out; }
-        if (mineParasolOn(items)) { out.put("message", MINE_PARASOL_NO_DIG); return out; } // [2026-10-28]
         if (mineFrozen(userName, now) != null) { out.put("message", MINE_FROZEN_BLOCK); return out; }
         VeinState v = MINE_VEIN.computeIfAbsent(userName, u -> new VeinState());
         int count;
@@ -11570,9 +11568,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final int MINE_PARASOL_CUT = 2;
     // [2026-10-28] "조금 더 저렴하게, 다도해 보석이 아니어도" -- 진주 10 + 산호석 10 + 금 50 -> 금광석 30 + 은광석 20
     private static final String[][] MINE_PARASOL_COST = { { S5MineMap.ORE_CODES[3], "30" }, { S5MineMap.ORE_CODES[2], "20" } };
-    /** [2026-10-28] "양산 들면 곡괭이질이 안 되게, 공격력 +20%" -- 양산을 든 채로는 광석/광맥을 캘 수 없다(무기라서). */
-    static final String MINE_PARASOL_NO_DIG = "⛱️ 양산을 들고는 곡괭이질을 할 수 없어요! 🎒 장비 창 무기 칸에서 칼로 바꿔 드세요.";
-    static final double MINE_PARASOL_ATK = 0.2;
+    /** [2026-10-28] "무기와 채집 도구를 별도로 관리" -- 무기(칼/양산)와 곡괭이(채집 도구)는 칸이 따로라 양산을 들어도 캘 수 있다. "양산은 공격력 20% 대신 +10" -- 고정 +10. */
+    static final int MINE_PARASOL_ATK_FLAT = 10;
 
     static boolean mineParasolOn(Map<String, Integer> items) {
         return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 1 && items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0;
@@ -11597,7 +11594,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 mineTakeCost(userName, MINE_PARASOL_COST, 1);
                 dao.upsertMineItem(userName, MINE_ITEM_PARASOL, 1);
                 dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 1);
-                msg = "⛱️ 양산을 사서 들었어요! 공격력 +20%, 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계 -- 들고 있는 동안 곡괭이질은 못 해요 (" + mineCostText(MINE_PARASOL_COST) + " 사용)";
+                msg = "⛱️ 양산을 사서 들었어요! 공격력 +" + MINE_PARASOL_ATK_FLAT + ", 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계 (" + mineCostText(MINE_PARASOL_COST) + " 사용)";
             }
         }
         HashMap<String, Object> out = mineGearResult(userName, ok, msg == null ? "" : msg);
@@ -12289,7 +12286,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
         boolean pon = mineParasolOn(items); // [2026-10-28] 무기 칸 -- 칼(기본), 양산
         out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon));
-        if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "공격력 +20% · 다도해 햇빛 -" + MINE_PARASOL_CUT + "단계 · 곡괭이질 못 함", pon));
+        if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "공격력 +" + MINE_PARASOL_ATK_FLAT + " · 다도해 햇빛 -" + MINE_PARASOL_CUT + "단계", pon));
         int ct = mineCoatTier(items); // [2026-10-28] 외투는 하나(단계)
         if (ct > 0) out.add(mineEquipRow("coat", "COAT", MINE_COAT_NAMES[ct - 1] + " " + ct + "단계", mineCoatEffect(ct), items.getOrDefault(MINE_ITEM_COAT_SLOT, 0) > 0));
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT2, "두꺼운 방한 외투", "한기 방어 2 · 받는 피해 2배", coat == 2));
@@ -12299,6 +12296,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (MineGear g : MINE_GEAR) if ("gloves".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) out.add(mineEquipRow("gloves", g.code, g.name, g.effect[0], g.code.equals(gw)));
         // [2026-10-28] "장비창에서 곡괭이도 선택" -- 가진 특수 곡괭이(광역/탐지/쌍날), 끼기/빼기는 반지와 같은 /api/tower-mine-ring
         int pick = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+        boolean special = false; // [2026-10-28] 채집 도구 칸 -- 기본 곡괭이도 한 줄(특수 곡괭이를 안 쓰면 기본)
+        for (MineGear g : MINE_GEAR) if ("tool".equals(g.kind) && items.getOrDefault(g.code, 0) > 0 && pick == minePickSlotOf(g.code)) special = true;
+        out.add(mineEquipRow("tool", "BASIC_PICK", "기본 곡괭이", "한 칸씩 캔다", !special));
         for (MineGear g : MINE_GEAR) if ("tool".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) {
             int t = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
             boolean dim = MINE_ITEM_DETECT_PICK.equals(g.code) && mineDetectDim(items);
@@ -12352,7 +12352,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> ps = new HashMap<>();
         ps.put("code", MINE_ITEM_PARASOL);
         ps.put("name", "양산");
-        ps.put("effect", "들고 있으면 공격력 +20% · 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계 · 든 채로는 곡괭이질 못 함");
+        ps.put("effect", "들고 있으면 공격력 +" + MINE_PARASOL_ATK_FLAT + " · 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계");
         ps.put("owned", items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0);
         Map<String, Integer> shave = mineOreHave(userName);
         ps.put("costs", mineCostList(MINE_PARASOL_COST, shave));
@@ -12470,12 +12470,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 꼈어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 벗었어요.");
         }
+        if ("BASIC_PICK".equals(code)) { // [2026-10-28] 채집 도구 칸 -- 기본 곡괭이로
+            dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, 0);
+            return mineGearResult(userName, true, "⛏️ 기본 곡괭이로 바꿨어요.");
+        }
         if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
             boolean pa = MINE_ITEM_PARASOL.equals(code);
             if (pa && it.getOrDefault(MINE_ITEM_PARASOL, 0) < 1) return mineGearResult(userName, false, "양산이 없어요. 다도해 마을 다도해 상인에게서 살 수 있어요.");
             pa = pa && !mineParasolOn(it); // 양산을 든 채로 다시 누르면 칼로
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, pa ? 1 : 0);
-            return mineGearResult(userName, true, pa ? "⛱️ 양산을 들었어요. 공격력 +20%, 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계 (곡괭이질은 못 해요)" : "🗡️ 칼을 들었어요.");
+            return mineGearResult(userName, true, pa ? "⛱️ 양산을 들었어요. 공격력 +" + MINE_PARASOL_ATK_FLAT + ", 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계" : "🗡️ 칼을 들었어요.");
         }
         if ("COAT".equals(code) || MINE_ITEM_COAT1.equals(code) || MINE_ITEM_COAT2.equals(code)) { // [2026-10-28] 외투는 하나(단계)
             int cs = mineCoatTier(it);

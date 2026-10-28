@@ -1375,11 +1375,11 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 🎒 장비 -- "반지류 하나, 옷류 하나, 장갑류 하나": 칸마다 가진 장비를 보여 주고 끼기/빼기(같은 칸의 다른 장비는 저절로 빠진다).
   var EQ_SLOTS = [
-    { id: 'weapon', name: '⚔️ 무기', hint: '하나만 들 수 있어요', none: '' }, // [2026-10-28] 칼(기본), 양산(다도해 상인)
+    { id: 'weapon', name: '⚔️ 무기', hint: '하나만 들 수 있어요 -- 싸울 때', none: '' }, // [2026-10-28] 칼(기본), 양산(다도해 상인)
     { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
     { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
-    { id: 'tool', name: '⛏️ 곡괭이', hint: '하나만 낄 수 있어요(빼면 기본 곡괭이)', none: '특수 곡괭이가 없어요. 대장장이에게서 광역/탐지/쌍날 곡괭이를 만들 수 있어요.' } // [2026-10-28] 곡괭이도 장비 창에서
+    { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 쓸 수 있어요 -- 무기와 따로', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
   ];
   // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
   var equipTab = 'gear';
@@ -1412,13 +1412,13 @@ var TowerMine = (function () {
       h += '<div class="cos-car" data-slot="e-' + sl.id + '">' + rows.map(function (e) {
         return '<div class="cos-card gear-card' + (e.worn ? ' worn' : '') + '" data-code="' + e.code + '" onclick="TowerMine.eqInfo(this, event)"><div class="gear-ico">' + sl.name.split(' ')[0] + '</div><div class="cos-nm">' + e.name + '</div><small class="gear-eff">' + e.effect + '</small>'
             + (e.worn ? '<span class="mine-worn">착용 중</span><button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">빼기</button>'
-                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + (sl.id === 'coat' ? '입기' : sl.id === 'weapon' ? '들기' : '끼기') + '</button>') + '</div>';
+                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + (sl.id === 'coat' ? '입기' : sl.id === 'weapon' ? '들기' : sl.id === 'tool' ? '쓰기' : '끼기') + '</button>') + '</div>';
       }).join('') + '</div></div>';
     });
     return h + '<div class="mine-smith-say">장비를 누르면 설명이 나와요.</div>'; // [2026-10-28] 방한 장비 안내는 카드 설명으로
   }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
-  var EQ_TIPS = { SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +20%(환생·광전사 보너스와 더해서), 다도해 햇빛 피해 2단계 줄어요. 대신 든 채로는 곡괭이질(캐기)을 못 해요 -- 캘 땐 칼로 바꿔 들기. 다도해 마을 다도해 상인에게서 살 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+  var EQ_TIPS = { SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
@@ -2990,7 +2990,6 @@ var TowerMine = (function () {
     msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 다시 20번을 캐야 해요.', 2400);
   }
   function dig() {
-    if (st && st.look && st.look.weapon === 'parasol') { setAuto(false); msg('⛱️ 양산을 들고는 곡괭이질을 할 수 없어요! 🎒 장비 창 무기 칸에서 칼로 바꿔 드세요.', 2200); return; } // [2026-10-28]
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
     if (P.moving) return;
