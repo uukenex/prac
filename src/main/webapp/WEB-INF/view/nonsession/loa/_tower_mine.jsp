@@ -941,7 +941,7 @@ var TowerMine = (function () {
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
     var digShow = map.noDig ? 'none' : '';
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
-    if (el.auto) { var autoShow = map.noDig || map.vein ? 'none' : ''; // [2026-10-28] 설산 동굴은 자동채광 없음 if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if ((map.noDig || map.vein) && auto) setAuto(false); } }
+    if (el.auto) { var autoShow = map.noDig || map.vein ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if ((map.noDig || map.vein) && auto) setAuto(false); } } // [2026-10-28] 설산 동굴은 자동채광 없음
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
     bossTick(now); // [2026-10-24] 동굴 3층 보스 선공 + [2026-10-25] 몬스터 인식 중 전투 턴
     coldTick(now); coldWarn(); // [2026-10-26] 한기/눈바람
