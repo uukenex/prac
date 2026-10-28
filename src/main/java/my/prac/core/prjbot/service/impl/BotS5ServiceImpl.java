@@ -9314,7 +9314,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         int max = mineHpCap(mineLv(row), lock, rb);
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
-        boolean fight = mineEngaged(strVal(row.get("USER_NAME"), null), now);
+        String un = strVal(row.get("USER_NAME"), null);
+        if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) return Math.min(max, hp); // [2026-10-28] 광전사의 장갑 -- 자연 회복 없음
+        boolean fight = mineEngaged(un, now);
         long from = longOf(row.get("M_HP_AT_MS"), now) + (fight ? 0 : MINE_REGEN_DELAY_MS);
         double mul = fight ? MINE_REGEN_FIGHT_MUL : 1;
         S5MineMap m = mineMapOf(row);
@@ -9487,6 +9489,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
         MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
+        MINE_HEAL.remove(userName); // [2026-10-28] 재생의 장갑 회복도 끝
         MINE_ICE_THAWED.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
@@ -9606,7 +9609,24 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             e = MINE_ENGAGE.get(userName);
         }
-        if (e == null || e.mobs.isEmpty()) { mineDisengageAll(userName); out.put("ok", true); out.put("fight", false); return out; }
+        int healed = mineHealDue(userName, now); // [2026-10-28] 재생의 장갑 -- 지난 1초만큼 회복
+        if (e == null || e.mobs.isEmpty()) {
+            mineDisengageAll(userName);
+            out.put("ok", true);
+            out.put("fight", false);
+            if (healed > 0) { // 싸움이 끝난 뒤에도 4초 동안은 회복을 받아 저장
+                HashMap<String, Object> hrow = dao.selectMineUserForUpdate(userName);
+                if (hrow != null) {
+                    int hlv = mineLv(hrow), hhp = Math.min(mineHpCap(hlv, lock, rb), mineHpNow(hrow, now, lock, rb) + healed);
+                    long hexp = Math.max(0, longOf(hrow.get("M_EXP"), 0L));
+                    dao.updateMineCombat(userName, hlv, hexp, hhp, now, 0);
+                    out.put("combat", mineCombatInfo(hlv, hexp, hhp, now, false, lock, rb));
+                    out.put("healed", healed);
+                }
+            }
+            out.put("healUntil", mineHealUntil(userName));
+            return out;
+        }
         e.at = now;
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int dmgSum = 0, released = 0;
@@ -9726,15 +9746,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         String rwMsg = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 다른 사람이 닌자 두목을 쓰러뜨렸을 때 함께 싸운 보상 소식
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
-        if (dmgSum == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
+        if (dmgSum == 0 && healed == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
         if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
             lv = mineLv(lrow);
             exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
             hp = mineHpNow(lrow, now, lock, rb);
         }
+        if (healed > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + healed); out.put("healed", healed); } // [2026-10-28] 재생의 장갑
         if (dmgSum > 0) {
             if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
+            if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * MINE_REGEN_GLOVE_PCT), now); // [2026-10-28] 재생의 장갑
             hp -= dmgSum;
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
@@ -9757,6 +9779,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.updateMineCombat(userName, lv, exp, hp, now, 0);
         out.put("fight", fight);
         out.put("combat", mineCombatInfo(lv, exp, hp, now, fight, lock, rb));
+        out.put("healUntil", mineHealUntil(userName)); // [2026-10-28] 재생의 장갑
         if (out.containsKey("died")) out.put("state", mineState(userName));
         return out;
     }
@@ -10138,7 +10161,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round(mineAtk(lv, rb) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0))); // [2026-10-28] 환생 공격력 보너스
+            dmg = Math.max(1, (int) Math.round(mineAtk(lv, rb) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)
+                    * (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? MINE_BERSERK_MULT : 1))); // [2026-10-28] 환생 공격력 보너스, 광전사의 장갑 +50%
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -10357,6 +10381,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         } else {
             if (mineCoatDef(items) > 0) counter *= 2; // [2026-10-26] 방한 외투 -- 받는 피해 2배
             if (counter > 0 && mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 반격에 맞아도 끊긴다
+            if (counter > 0 && MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(counter * MINE_REGEN_GLOVE_PCT), now); // [2026-10-28] 재생의 장갑
             hp -= counter;
             out.put("counter", counter);
             if (hp <= 0) {
@@ -10372,6 +10397,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("levelUp", levelUp);
         out.put("died", died);
         out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock, rb));
+        out.put("healUntil", mineHealUntil(userName)); // [2026-10-28] 재생의 장갑 -- 이때까지 화면이 전투 턴을 부른다
         if (msg.length() > 0) out.put("message", msg.toString());
         if (died) out.put("state", mineState(userName));
         return out;
@@ -11643,6 +11669,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("gloveQuest", items.getOrDefault(MINE_ITEM_GLOVES_QUEST, 0)); // [2026-10-28] 털옷 장인 의뢰
         out.put("hasGloves", items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0);
         out.put("glovesOn", mineGlovesOn(items));
+        out.put("gloveCode", mineGloveCode(items)); // [2026-10-28]
         out.put("iceHave", have.getOrDefault(S5MineMap.ICE_STONE_CODE, 0));
         out.put("iceNeed", MINE_GLOVES_ICE);
         out.put("coldDef", mineColdDef(items));
@@ -11799,8 +11826,65 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (맵 리셋 때 다시 빛나요)" }),
         new MineGear(MINE_ITEM_LINE_PICK, "쌍날 곡괭이", "tool",
             new String[][][] { { mineSeven(1) } },
-            new String[] { "캘 때 바라보는 방향의 앞 칸과 뒤 칸도 함께 (칸마다 내구도 1)" })
+            new String[] { "캘 때 바라보는 방향의 앞 칸과 뒤 칸도 함께 (칸마다 내구도 1)" }),
+        // [2026-10-28] 장갑 둘(왕도 대장장이만, 장갑 칸 하나 -- 방한 장갑과 바꿔 낀다)
+        //  재생의 장갑 = "회복 속도가 빨라지는 컨셉, 전투 중에도 꽤 빠르게 -- 전투에서 받은 피해의 80%를 4초에 걸쳐 회복",
+        //  광전사의 장갑 = "자연 회복이 멈추는 대신 데미지 50% 추가"
+        new MineGear("REGEN_GLOVES", "재생의 장갑", "gloves", // = MINE_ITEM_REGEN_GLOVES(아래 -- 앞에서 쓰면 forward reference)
+            new String[][][] { { mineCost(1, 15), mineCost(8, 2), mineStar(2), { S5MineMap.ORE_CODES[4], "20" } } },
+            new String[] { "전투에서 받은 피해의 80%를 4초에 걸쳐 회복" }, 0),
+        new MineGear("BERSERK_GLOVES", "광전사의 장갑", "gloves", // = MINE_ITEM_BERSERK_GLOVES
+            new String[][][] { { mineCost(5, 15), mineCost(8, 2), mineStar(2), { S5MineMap.ORE_CODES[4], "20" } } },
+            new String[] { "공격력 +50% · 체력이 저절로 차지 않음" }, 0)
     );
+    static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
+    /** [2026-10-28] 장갑 칸: 2 = 재생의 장갑, 3 = 광전사의 장갑, 그 밖(0/없음) = 방한 장갑(GLOVES_OFF로 벗음). */
+    static final String MINE_ITEM_GLOVE_SLOT = "GLOVE_SLOT";
+    static final double MINE_REGEN_GLOVE_PCT = 0.8, MINE_BERSERK_MULT = 1.5;
+    static final long MINE_REGEN_GLOVE_MS = 4_000L;
+
+    /** 끼고 있는 장갑 코드(없으면 null). */
+    static String mineGloveCode(Map<String, Integer> items) {
+        int s = items.getOrDefault(MINE_ITEM_GLOVE_SLOT, 0);
+        if (s == 2 && items.getOrDefault(MINE_ITEM_REGEN_GLOVES, 0) > 0) return MINE_ITEM_REGEN_GLOVES;
+        if (s == 3 && items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) > 0) return MINE_ITEM_BERSERK_GLOVES;
+        return items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0 && items.getOrDefault(MINE_ITEM_GLOVES_OFF, 0) != 1 ? MINE_ITEM_GLOVES : null;
+    }
+
+    // [2026-10-28] 재생의 장갑 -- 전투에서 받은 피해마다 80%를 4초에 걸쳐 나눠 회복(유저별 메모리, 전투 턴이 1초마다 지난 만큼 체력에 더해 저장).
+    private static final class HealChunk { final int amt; final long start; int given; HealChunk(int amt, long start) { this.amt = amt; this.start = start; } }
+    private static final java.util.concurrent.ConcurrentHashMap<String, List<HealChunk>> MINE_HEAL = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static void mineHealAdd(String userName, int amt, long now) {
+        if (amt <= 0) return;
+        List<HealChunk> l = MINE_HEAL.computeIfAbsent(userName, u -> new ArrayList<>());
+        synchronized (l) { l.add(new HealChunk(amt, now)); }
+    }
+
+    /** 지금까지 회복할 몫(이미 준 만큼 빼고) -- 부르면 준 것으로 친다. */
+    private static int mineHealDue(String userName, long now) {
+        List<HealChunk> l = MINE_HEAL.get(userName);
+        if (l == null) return 0;
+        int sum = 0;
+        synchronized (l) {
+            for (java.util.Iterator<HealChunk> it = l.iterator(); it.hasNext();) {
+                HealChunk c = it.next();
+                double p = Math.min(1.0, (now - c.start) / (double) MINE_REGEN_GLOVE_MS);
+                int due = (int) Math.round(c.amt * p) - c.given;
+                if (due > 0) { c.given += due; sum += due; }
+                if (p >= 1.0) it.remove();
+            }
+        }
+        return sum;
+    }
+
+    private static long mineHealUntil(String userName) {
+        List<HealChunk> l = MINE_HEAL.get(userName);
+        if (l == null) return 0;
+        long u = 0;
+        synchronized (l) { for (HealChunk c : l) u = Math.max(u, c.start + MINE_REGEN_GLOVE_MS); }
+        return u;
+    }
 
     private static final String[][] MINE_DRAGON_RING_COST = {
         mineCost(3, 30), mineCost(2, 5), { S5MineMap.SEVEN_STONE_CODE, "1" }, mineCost(8, 1)
@@ -11839,7 +11923,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private static boolean mineGlovesOn(Map<String, Integer> items) {
-        return items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0 && items.getOrDefault(MINE_ITEM_GLOVES_OFF, 0) != 1;
+        return MINE_ITEM_GLOVES.equals(mineGloveCode(items)); // [2026-10-28] 재생/광전사 장갑을 끼면 방한 장갑은 벗은 것
     }
 
     /** 재료 코드 -> 화면 등급 값(아이콘)과 이름. */
@@ -12010,6 +12094,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (items.getOrDefault(MINE_ITEM_COAT1, 0) > 0) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
         if (items.getOrDefault(MINE_ITEM_COAT2, 0) > 0) out.add(mineEquipRow("coat", MINE_ITEM_COAT2, "두꺼운 방한 외투", "한기 방어 2 · 받는 피해 2배", coat == 2));
         if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) out.add(mineEquipRow("gloves", MINE_ITEM_GLOVES, "방한 장갑", "한기 방어 +1", mineGlovesOn(items)));
+        String gw = mineGloveCode(items); // [2026-10-28] 재생/광전사의 장갑
+        for (MineGear g : MINE_GEAR) if ("gloves".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) out.add(mineEquipRow("gloves", g.code, g.name, g.effect[0], g.code.equals(gw)));
         // [2026-10-28] "장비창에서 곡괭이도 선택" -- 가진 특수 곡괭이(광역/탐지/쌍날), 끼기/빼기는 반지와 같은 /api/tower-mine-ring
         int pick = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
         for (MineGear g : MINE_GEAR) if ("tool".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) {
@@ -12045,7 +12131,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("effect", tier > 0 ? g.effect[tier - 1] : "");
             if ("tool".equals(g.kind)) m.put("on", tier > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == minePickSlotOf(g.code)); // 끼고 있는 곡괭이
             if (MINE_ITEM_DETECT_PICK.equals(g.code)) m.put("dim", mineDetectDim(items)); // 빛을 잃음(맵 리셋 때 회복)
-            m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code)) : tier > 0);
+            m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
+                    : "gloves".equals(g.kind) ? g.code.equals(mineGloveCode(items)) : tier > 0); // [2026-10-28] 장갑
             m.put("fieldMax", g.fieldMax); // [2026-10-25] 이 단계까지 마을 대장장이, 그 위는 왕도 대장장이
             if (tier < g.cost.length) {
                 m.put("nextTier", tier + 1);
@@ -12058,6 +12145,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         out.put("gear", gear);
         out.put("equip", mineEquipList(items)); // [2026-10-28] 🎒 장비 창(반지 하나, 옷 하나, 장갑 하나)
+        out.put("gloveCode", mineGloveCode(items)); // [2026-10-28] 광전사의 장갑이면 화면도 체력을 안 올린다
         if (mineArchiOpen(userName)) { // [2026-10-28] 다도해 -- 신궁 수색 임무 / 1인용 배 / 달빛석·비급서
             HashMap<String, Object> ar = new HashMap<>();
             ar.put("quest", items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0));
@@ -12124,6 +12212,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertMineItem(userName, g.code, tier + 1);
         String wear = "";
         if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 꼈어요."; }
+        if ("gloves".equals(g.kind)) { // [2026-10-28] 재생/광전사의 장갑 -- 만들면 바로 낀다(방한 장갑은 벗음)
+            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, MINE_ITEM_REGEN_GLOVES.equals(g.code) ? 2 : 3);
+            if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
+            wear = " 바로 꼈어요.";
+        }
         if ("ring".equals(g.kind) && items.getOrDefault(MINE_ITEM_RING_SLOT, 0) == 0) {
             dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, MINE_ITEM_PLENTY_RING.equals(g.code) ? 1 : 2);
             wear = " 바로 끼었어요.";
@@ -12147,10 +12240,20 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-28] 장비 칸(반지 하나, 옷 하나, 장갑 하나) -- 🎒 장비 창. 같은 걸 다시 누르면 뺀다.
         Map<String, Integer> it = mineItems(userName);
+        if (MINE_ITEM_REGEN_GLOVES.equals(code) || MINE_ITEM_BERSERK_GLOVES.equals(code)) { // [2026-10-28] 장갑 칸은 하나 -- 끼면 방한 장갑은 벗는다
+            MineGear gg = mineGear(code);
+            if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, gg.name + "이(가) 없어요. 왕도 대장장이에게서 만들 수 있어요.");
+            boolean on = !code.equals(mineGloveCode(it));
+            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, on ? (MINE_ITEM_REGEN_GLOVES.equals(code) ? 2 : 3) : 0);
+            if (on && it.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
+            if (!on) MINE_HEAL.remove(userName);
+            return mineGearResult(userName, true, "🧤 " + gg.name + (on ? "을(를) 꼈어요. " + gg.effect[0] : "을(를) 뺐어요."));
+        }
         if (MINE_ITEM_GLOVES.equals(code)) {
             if (it.getOrDefault(MINE_ITEM_GLOVES, 0) < 1) return mineGearResult(userName, false, "방한 장갑이 없어요. 설산 마을 털옷 장인의 의뢰로 받을 수 있어요.");
             boolean on = !mineGlovesOn(it);
             dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, on ? 0 : 1);
+            if (on) dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, 0); // [2026-10-28] 다른 장갑은 벗는다
             return mineGearResult(userName, true, on ? "🧤 방한 장갑을 꼈어요. 한기 방어 +1 (사막·남쪽 섬에선 더워요!)" : "🧤 방한 장갑을 벗었어요.");
         }
         if (MINE_ITEM_COAT1.equals(code) || MINE_ITEM_COAT2.equals(code)) {

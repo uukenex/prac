@@ -203,6 +203,8 @@ public final class S5MineMobs {
     public static final int SHRINE_BOSS_TYPE = indexOf("닌자 두목");
     public static final int CLONE_TYPE = indexOf("닌자 두목의 분신");
     public static final int CLONE_SLOTS = 4;
+    /** [2026-10-28] 보스가 돌아다니는 거리(집에서 마름모 칸 수). */
+    static final int BOSS_ROAM = 3;
     /** [2026-10-28] 다도해 몬스터(본섬/신궁/섬, 닌자 두목, 용암 거신) 체력 배수. */
     static final double ARCHI_HP_CUT = 0.7, ARCHI_ATK_CUT = 0.7; // [2026-10-28] 0.85 -> 체력/공격 모두 0.7
     /** [2026-10-28] 개미굴 보스. */
@@ -371,8 +373,10 @@ public final class S5MineMobs {
         if (m.bossX() >= 0) {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
-            if (!raid) for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) { // 대주교는 제단에서 움직이지 않는다
-                int nx = m.bossX() + dv[0], ny = m.bossY() + dv[1];
+            // [2026-10-28] "보스도 움직이게" -- 집 둘레 BOSS_ROAM칸(마름모) 안의 칸을 돌아다닌다(예전: 상하좌우 한 칸). 대주교는 제단에서 움직이지 않는다
+            if (!raid) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) {
+                int nx = m.bossX() + dx, ny = m.bossY() + dy;
+                if ((dx == 0 && dy == 0) || Math.abs(dx) + Math.abs(dy) > BOSS_ROAM) continue;
                 if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
             }
             int[] ca = new int[cells.size()];

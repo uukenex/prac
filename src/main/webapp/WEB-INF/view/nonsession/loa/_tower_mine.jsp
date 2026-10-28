@@ -770,6 +770,7 @@ var TowerMine = (function () {
     // [2026-10-28] 전투 중에도 1/4 속도로(대기 없이), 그늘/모닥불 등 안전지대에선 x1.5(서버 mineHpNow와 같은 식)
     var tSrv = c.at + (Date.now() - combatT0), from = c.fight ? c.at : Math.max(c.at, c.regenFrom || 0);
     var mul = (c.fight ? (c.regenFight != null ? c.regenFight : 0) : 1) * (inSafe() ? (c.regenSafe || 1) : 1);
+    if (st && st.gloveCode === 'BERSERK_GLOVES') mul = 0; // [2026-10-28] 광전사의 장갑 -- 자연 회복 없음
     return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000)));
   }
   function renderHp() {
@@ -894,6 +895,12 @@ var TowerMine = (function () {
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(n.x - ox - 2 * k - 1, n.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
       miniCtx.fillStyle = col; miniCtx.fillRect(n.x - ox - 2 * k, n.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
+    // [2026-10-28] "미니맵에서 보스 위치도" -- 맵 맨 끝 몬스터가 보스면(살아 있을 때) 붉은 점(흰 테두리, 크게)
+    var bm = map.mobs && map.mobs[map.mobs.length - 1], bty = bm && map.mobTypes[bm.k];
+    if (bty && bty.boss && bm._p) {
+      miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(bm._p.cx - ox - 3 * k - 1, bm._p.cy - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3);
+      miniCtx.fillStyle = '#e8202a'; miniCtx.fillRect(bm._p.cx - ox - 3 * k, bm._p.cy - oy - 3 * k, 6 * k + 1, 6 * k + 1);
+    }
     // [2026-10-28] "플레이어 위치가 맵에 나오면 좋겠어, 서로 볼 수 있게" -- 같은 맵의 다른 유저(1초 위치 알림) 하늘색 점, 운영자는 보라
     for (var oid in others) {
       var o = others[oid];
@@ -1036,7 +1043,7 @@ var TowerMine = (function () {
   // [2026-10-24] NPC 창 -- 대장장이: 메뉴 -> [구매](투구/장신구/장화) / [강화](곡괭이) / [합성](칠요석), 선장: 용왕의 반지 퀘스트.
   //  smithView = 'menu' | 'buy' | 'upgrade' | 'synth' | 'captain'
   var smithView = 'menu', captainSay = '';
-  var GEAR_ICON = { ring: '💍', necklace: '📿', boots: '👢', tool: '⛏️' };
+  var GEAR_ICON = { ring: '💍', necklace: '📿', boots: '👢', tool: '⛏️', gloves: '🧤' };
   function npcHead(t, back) {
     return '<div class="mine-smith-head">' + t + ' <span>' + (back ? '<button type="button" onclick="TowerMine.smithGo(\'menu\')">뒤로</button> ' : '')
         + '<button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span></div>';
@@ -1048,15 +1055,15 @@ var TowerMine = (function () {
     }).join('') + '</span>';
   }
   // [2026-10-28] "마을 장비 상점(대장장이)도 캐러셀 형태로(부위별)" -- 반지/목걸이/장화/곡괭이 줄마다 가로로 넘기는 카드
-  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '가지고 있으면 바로 적용'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요']];
+  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '가지고 있으면 바로 적용'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요'], ['gloves', '🧤 장갑', '왕도 대장장이 · 하나만 낄 수 있어요']]; // [2026-10-28] 재생/광전사의 장갑
   function gearCard(g) {
-    var worn = g.kind === 'ring' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
+    var worn = g.kind === 'ring' || g.kind === 'gloves' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
     var h = '<div class="cos-card gear-card' + (worn ? ' worn' : '') + '"><div class="gear-ico">' + (GEAR_ICON[g.kind] || '💍') + '</div>'
         + '<div class="cos-nm">' + g.name + '</div><small class="gear-tier">' + (g.tier > 0 ? g.tier + '단계' + (g.maxTier ? ' / ' + g.maxTier : '') : '없음') + '</small>';
     if (g.effect) h += '<small class="gear-eff">지금: ' + g.effect + '</small>';
     if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</small>';
-    if ((g.kind === 'ring' || g.kind === 'tool') && g.tier > 0)
-      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
+    if ((g.kind === 'ring' || g.kind === 'tool' || g.kind === 'gloves') && g.tier > 0)
+      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
           : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>';
     if (!g.nextTier) return h + '<small class="gear-eff">최고 단계예요.</small></div>';
     var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
@@ -1391,7 +1398,9 @@ var TowerMine = (function () {
   var EQ_TIPS = { COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     GLOVES: '한기 방어 +1(외투와 함께 적용, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
-    DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).' };
+    DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).',
+    REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 되찾아요(전투 중에도). 장갑은 하나만 -- 끼면 방한 장갑은 벗어요.',
+    BERSERK_GLOVES: '공격력이 50% 올라가지만 체력이 저절로 차지 않아요(성당 신부의 회복이나 쓰러진 뒤 깨어날 때만). 장갑은 하나만.' };
   function eqInfo(elm, ev) {
     if (ev && ev.target && ev.target.tagName === 'BUTTON') return; // 끼기/빼기 버튼은 그대로
     var code = elm.getAttribute('data-code'), e = null;
@@ -1859,7 +1868,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'archi', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'gloveCode', 'archi', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -1869,6 +1878,7 @@ var TowerMine = (function () {
   var lastBossT = 0, bossBusy = false, bossWarned = false;
   var bolts = [], BOLT_MS = 420, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
   var slowUntil = 0, venomWarned = false; // [2026-10-28] 여왕개미 독산 -- 느려짐(서버 시각까지 걸음 2배)
+  var healUntil = 0; // [2026-10-28] 재생의 장갑 -- 이때까지(서버 시각) 전투 턴으로 회복을 받는다
   function stepMs() { return nowSrv() < slowUntil ? STEP_MS * 2 : STEP_MS; }
   // [2026-10-28] 용암 칸(불덩이가 떨어진 칸, "y * w + x") -- 서버가 전투/환경 턴마다 알려 준다. 전투가 끝나면 빈 목록(식음).
   var lavaCells = {};
@@ -1889,17 +1899,19 @@ var TowerMine = (function () {
       var ty = map.mobTypes[mb.k];
       return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
     });
-    if (!fight && !nearBoss && !nearStrong && !frozenMe()) return; // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
+    if (!fight && !nearBoss && !nearStrong && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
     api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       bossBusy = false;
       if (!d || !d.ok) return;
       // [2026-10-28] "몬스터가 인식했을 때 나오는 문구 없애줘, 벗어났을 때도 필요 없어" -- 보스 선공/레벨 차이 선공/인식 풀림 안내는 띄우지 않는다
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
-      if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
+      if (d.summoned) flashT0 = performance.now(); // [2026-10-28] "보스 스킬 쓸 때 가운데 멘트 없애줘, 특히 성당 보스" -- 번쩍임만
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
+      if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
+      if (d.healed) floats.push({ x: P.x - 0.2, y: P.y - 0.5, text: '+' + d.healed + ' 💚', color: '#7cf08a', t0: performance.now() });
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
@@ -1907,13 +1919,11 @@ var TowerMine = (function () {
         if (h.venom) { // [2026-10-28] 여왕개미 독산 -- 초록 덩이, 맞으면 느려지고 중독
           bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t, venom: true });
           floats.push({ x: P.x, y: P.y - 0.3, text: '🧪 -' + h.dmg + ' 느려짐·중독', color: '#9ad84a', big: true, t0: t + BOLT_MS });
-          if (!venomWarned) { venomWarned = true; msg('🧪 여왕개미가 독산을 뱉어요! 맞으면 잠시 느려지고 독이 퍼져요.', 3200); }
           return;
         }
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
           bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t });
           floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
-          if (!boltWarned) { boltWarned = true; msg('☄️ 용암 거신의 불덩이! 서 있던 땅이 🌋 용암이 됐어요 -- 얼른 비켜요! (전투가 끝나면 식어요)', 3600); }
           return;
         }
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
@@ -1958,9 +1968,8 @@ var TowerMine = (function () {
         raid = { awake: !!d.raidAwake, nextFire: d.nextFireAt || 0, nextGas: d.nextGasAt || 0 };
         if (d.fireAt) raidFx.fire = performance.now();
         if (d.gasAt) raidFx.gas = performance.now();
-        if (d.fireDmg) { floats.push({ x: P.x, y: P.y - 0.7, text: '🔥 -' + d.fireDmg, color: '#ff6a3a', big: true, t0: t }); msg('🔥 불벼락에 맞았어요! (-' + d.fireDmg + ')', 2600); }
-        else if (d.fireAt) msg('🔥 불벼락이 떨어졌지만 멀리 있어 피했어요!', 2200);
-        if (d.gasDmg) { floats.push({ x: P.x, y: P.y - 1.1, text: '☠️ -' + d.gasDmg, color: '#c08aff', big: true, t0: t + 150 }); if (!d.fireDmg) msg('☠️ 어둠가스가 성당 옛터를 뒤덮었어요! (-' + d.gasDmg + ')', 2600); }
+        if (d.fireDmg) floats.push({ x: P.x, y: P.y - 0.7, text: '🔥 -' + d.fireDmg, color: '#ff6a3a', big: true, t0: t }); // [2026-10-28] 가운데 멘트 없이 숫자만
+        if (d.gasDmg) floats.push({ x: P.x, y: P.y - 1.1, text: '☠️ -' + d.gasDmg, color: '#c08aff', big: true, t0: t + 150 });
       }
       if (map.ice) iceApply(d, t); // [2026-10-28] 설산 봉우리 -- 빙결/얼음땡
       if (d.lava) lavaSet(d.lava); // [2026-10-28] 용암섬
@@ -1982,8 +1991,8 @@ var TowerMine = (function () {
       setAuto(false); keys = []; drag = null; tapDir = null;
       setPos(d.frozen.x, d.frozen.y);
       flashT0 = t;
-      msg('🧊 얼음 여왕이 당신을 얼렸어요! 꼼짝할 수 없어요. 동료가 곁(2칸)에 오면 풀려요 -- 얼어 있는 동안 여왕에게 맞으면 즉사!', 4200);
-    } else if (d.froze && !d.frozen) msg('🧊 얼음 여왕이 누군가를 얼렸어요! 곁(2칸)에 가서 얼음을 깨 주세요!', 3200);
+      floats.push({ x: P.x, y: P.y - 0.9, text: '🧊 빙결!', color: '#bfefff', big: true, t0: t }); // [2026-10-28] 가운데 멘트 대신(위 HUD에 "빙결 -- 동료가 와야 풀려요")
+    }
     if (d.thawed === 'saved') { floats.push({ x: P.x, y: P.y - 0.7, text: '🧊 얼음땡!', color: '#bfefff', big: true, t0: t }); msg('🧊 얼음땡! 얼어붙은 동료를 구했어요!', 2800); }
     else if (d.thawed === 'rescued' && !d.frozen) { floats.push({ x: P.x, y: P.y - 0.7, text: '🧊 땡!', color: '#bfefff', big: true, t0: t }); msg('🧊 동료가 얼음을 깨 줬어요! 다시 움직일 수 있어요.', 2800); }
     else if (d.thawed === 'melted' && !d.frozen) msg('🧊 얼음이 녹았어요. 다시 움직일 수 있어요.', 2400);
@@ -1991,7 +2000,7 @@ var TowerMine = (function () {
   function iceWarn() {
     if (!iceSt || !iceSt.awake || !iceSt.next || frozenMe()) return;
     var left = iceSt.next - nowSrv();
-    if (left > 0 && left <= 3000 && iceWarned !== iceSt.next) { iceWarned = iceSt.next; msg('❄️ 얼음 여왕이 냉기를 모은다! 곧 누군가 얼어붙어요. (🔥 모닥불 곁은 안전)', 2800); }
+    // [2026-10-28] 빙결 예고 멘트는 없앴다(위 HUD에 남은 초)
   }
   /** 얼음 덩어리(언 캐릭터 위) -- (x, y) = 캐릭터 그림 왼쪽 위. draw()의 TS는 지역 변수라 여기서 다시 구한다. */
   function drawIce(x, y, now) {
@@ -2076,8 +2085,7 @@ var TowerMine = (function () {
     else {
       var lf = raid.nextFire - ts, lg = raid.nextGas - ts, boss = map.mobs && map.mobs[map.mobs.length - 1], bp = boss && boss._p;
       var far = bp ? Math.max(Math.abs(bp.cx - P.x), Math.abs(bp.cy - P.y)) > 12 : false;
-      if (lf > 0 && lf <= 2000 && raidWarned.f !== raid.nextFire) { raidWarned.f = raid.nextFire; msg(far ? '🔥 타락한 대주교가 불벼락을 모은다! (멀리 있어 안전)' : '🔥 타락한 대주교가 불벼락을 모은다! 12칸 밖으로 피하세요!', 2200); }
-      if (lg > 0 && lg <= 3000 && raidWarned.g !== raid.nextGas) { raidWarned.g = raid.nextGas; msg('☠️ 어둠가스가 퍼지려 한다! 성당 옛터 어디에도 피할 곳이 없어요!', 3000); }
+      // [2026-10-28] 불벼락/어둠가스 예고 멘트는 없앴다(위 HUD에 남은 초)
       txt = '🔥' + Math.max(0, Math.ceil(lf / 1000)) + '초 ☠️' + Math.max(0, Math.ceil(lg / 1000)) + '초';
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
@@ -2306,6 +2314,7 @@ var TowerMine = (function () {
       (d.mobRows || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); }); // [2026-10-28] 분신술 -- 분신/두목 상태
       if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴 -- 반격에 맞음
+      if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       lastSaved = map.id + ':' + P.x + ',' + P.y;
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
@@ -2313,8 +2322,7 @@ var TowerMine = (function () {
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
       else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
       if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });
-      if (d.split) { flashT0 = t; msg(d.message || '', 4200); }
-      else if ((d.clone || d.splitEnd) && !d.killed) msg(d.message || '', 2800);
+      if (d.split) flashT0 = t; // [2026-10-28] 분신술 -- 가운데 멘트 없이 번쩍임만
       setCombat(d.combat);
       if (d.killed) {
         if (d.ores) st.ores = d.ores;
