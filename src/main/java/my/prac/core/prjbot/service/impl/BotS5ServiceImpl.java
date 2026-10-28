@@ -12964,6 +12964,15 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (oct > 0) gear.add(mineOverviewGear(MINE_COAT_NAMES[oct - 1], "coat", oct, 3, mineCoatDef(items) > 0));
             if (ogt > 0) gear.add(mineOverviewGear(MINE_GLOVE_NAMES[ogt - 1], "coat", ogt, 3, mineGlovesOn(items)));
             m.put("gear", gear);
+            // [2026-10-28] "광산 캐릭터 현황을 인게임과 비슷하게" -- 인벤토리 장비 칸(무기/반지/장갑/옷/목걸이/신발/채집 도구)과 같은 목록, 전투 수치
+            m.put("equip", mineEquipList(items));
+            m.put("helmet", helmet);
+            m.put("helmetMax", MINE_HELMET_OPEN_MAX);
+            int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
+            m.put("hpMax", mineHpCap(lv, lock, rb));
+            m.put("hp", mineHpNow(row, now, lock, rb));
+            m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + (mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0)));
+            m.put("coldDef", mineColdDef(items));
             m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
             m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
             // 외형(부위별 착용 치장 이름, 성별), 산 치장 아이템 수

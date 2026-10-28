@@ -16,89 +16,99 @@
        없음). 유저 콤보박스를 바꿀 때만 새로 서버에 요청. 기존 페이지네이션 API
        (/api/tower-battle-log)는 남겨뒀지만 이 페이지는 더 이상 안 씀. -->
   <style>
+    /* [2026-10-28] "로그 페이지도 리뉴얼 -- 인게임과 비슷하게, 한눈에 정보가 많이" -- 광산 화면 창과 같은 어두운 판 + 금색 숫자,
+       넓은 화면에선 왼쪽(필터 + 사용자 요약, 고정) | 오른쪽(로그 2열) 배치. */
     :root{
-      --parchment:#FBF3DF; --parchment-deep:#F3E6C4; --ink:#2E2440; --ink-soft:#6B5E82;
-      --line:#E5D3A1; --gold:#C68A2E; --gold-soft:#EAD9AC;
-      --pp:#2F8F5C; --pp-soft:#D6EEDF;
-      --shadow: 0 3px 0 rgba(46,36,64,.14), 0 10px 22px -12px rgba(46,36,64,.35);
+      --bg:#14101e; --panel:#1d1730; --slot:#2a2340; --edge:rgba(244,240,230,.35); --edge-soft:rgba(244,240,230,.14);
+      --ink:#f4f0e6; --ink-soft:#b9b0c9; --cream:#ffe9a8; --gold:#ffe14d; --on:#5fd38a; --red:#ff7a7a; --mine:#c9b4ff;
     }
     *,*::before,*::after{box-sizing:border-box;}
-    body{
-      margin:0;
-      background: radial-gradient(1100px 500px at 50% -8%, #FFFDF6 0%, var(--parchment) 46%, var(--parchment-deep) 100%);
-      color:var(--ink); font-family:'Malgun Gothic','Segoe UI',sans-serif;
+    body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Malgun Gothic','Segoe UI',sans-serif; }
+    .wrap{ max-width:1400px; margin:0 auto; padding:14px 16px 60px; display:flex; flex-direction:column; gap:12px; }
+    h1{ font-size:17px; font-weight:800; margin:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-right:150px; }
+    h1 a{ font-size:12px; font-weight:700; color:var(--cream); text-decoration:none; border:2px solid var(--edge); padding:4px 10px; background:var(--slot); }
+    .sub{ font-size:12px; color:var(--ink-soft); margin:-6px 0 0; }
+    .layout{ display:grid; grid-template-columns:1fr; gap:12px; align-items:start; }
+    @media (min-width:980px){
+      .layout{ grid-template-columns:360px minmax(0,1fr); }
+      .side{ position:sticky; top:10px; max-height:calc(100vh - 20px); overflow:auto; }
+      .sum-scroll{ max-height:none !important; }
     }
-    .wrap{ max-width:820px; margin:0 auto; padding:20px 16px 60px; display:flex; flex-direction:column; gap:14px; }
+    .side{ display:flex; flex-direction:column; gap:10px; min-width:0; }
+    .main{ display:flex; flex-direction:column; gap:8px; min-width:0; }
 
-    h1{ font-size:18px; font-weight:800; margin:4px 0 0; display:flex; align-items:center; gap:6px; }
-    .sub{ font-size:12px; color:var(--ink-soft); margin:0 0 4px; }
+    .card{ background:var(--panel); border:2px solid var(--edge); padding:10px; }
 
-    .card{ background:linear-gradient(180deg,#FFFCF3,var(--parchment-deep)); border:2px solid var(--line);
-           border-radius:18px; padding:14px 16px; box-shadow:var(--shadow); }
+    .search-row{ display:flex; gap:6px; flex-wrap:wrap; }
+    .search-row input, .search-row select{ padding:7px 10px; border:2px solid var(--edge); background:var(--slot); color:var(--ink); font-size:13px; flex:1 1 130px; min-width:0; font-family:inherit; }
+    .search-row button{ background:var(--slot); color:var(--gold); border:2px solid var(--gold); padding:7px 14px; font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; font-family:inherit; }
+    .search-row button:active, .time-btn:active{ transform:scale(.96); }
 
-    .search-row{ display:flex; gap:8px; flex-wrap:wrap; }
-    .search-row input, .search-row select{ padding:9px 13px; border:1.5px solid var(--line); border-radius:14px;
-                        background:#fff; font-size:13px; flex:1 1 140px; min-width:0; }
-    .search-row button{ background:var(--gold); color:#fff; border:none; padding:9px 18px; border-radius:14px;
-                         font-size:13px; font-weight:700; cursor:pointer; flex-shrink:0; }
-    .search-row button:active{ transform:scale(.96); }
-    .search-row button.secondary{ background:#fff; color:var(--ink); border:1.5px solid var(--line); }
+    .time-row{ display:flex; gap:4px; flex-wrap:wrap; }
+    .time-btn{ background:var(--slot); color:var(--ink-soft); border:2px solid var(--edge-soft); padding:4px 9px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .time-btn.active{ color:var(--gold); border-color:var(--gold); }
+    button:focus-visible, input:focus-visible, select:focus-visible{ outline:2px solid var(--gold); outline-offset:1px; }
 
-    .time-row{ display:flex; gap:6px; flex-wrap:wrap; }
-    .time-btn{ background:#fff; color:var(--ink-soft); border:1.5px solid var(--line); border-radius:999px;
-               padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; }
-    .time-btn.active{ background:var(--gold); color:#fff; border-color:var(--gold); }
-    .time-btn:active{ transform:scale(.95); }
-
-    .sum-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
-    .sum-title{ font-size:13px; font-weight:800; }
-    .sum-table{ width:100%; border-collapse:collapse; font-size:12.5px; }
-    .sum-table th{ text-align:left; font-size:11px; color:var(--ink-soft); font-weight:700; padding:4px 6px; border-bottom:1.5px solid var(--line); }
-    .sum-table td{ padding:7px 6px; border-bottom:1px solid var(--gold-soft); }
-    .sum-table th.num, .sum-table td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+    .sum-head{ display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+    .sum-title{ font-size:13px; font-weight:800; color:var(--cream); }
+    .sum-table{ width:100%; border-collapse:collapse; font-size:12px; }
+    .sum-table th{ text-align:left; font-size:11px; color:var(--ink-soft); font-weight:700; padding:4px 5px; border-bottom:2px solid var(--edge); }
+    .sum-table td{ padding:3px 5px; border-bottom:1px solid var(--edge-soft); }
+    .sum-table th.num, .sum-table td.num{ text-align:right; font-family:ui-monospace, Consolas, monospace; font-variant-numeric:tabular-nums; }
+    .sum-table td.num b{ color:var(--gold); }
     .sum-row{ cursor:pointer; }
-    .sum-row:hover{ background:var(--gold-soft); }
-    .sum-row.active{ background:var(--pp-soft); }
+    .sum-row:hover{ background:rgba(255,255,255,.05); }
+    .sum-row.active{ background:rgba(95,211,138,.14); box-shadow:inset 3px 0 0 var(--on); }
     .sum-sub{ color:var(--ink-soft); font-size:11px; }
     .sum-scroll{ max-height:280px; overflow-y:auto; }
 
     .meta-row{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-soft); flex-wrap:wrap; gap:4px; }
 
-    .log-list{ display:flex; flex-direction:column; gap:10px; }
-    .log-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 0; }
-    .log-item{ background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:12px 14px; }
-    .log-item-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;
-                     font-size:11px; color:var(--ink-soft); flex-wrap:wrap; }
-    .log-item-head .who{ font-weight:700; color:var(--ink); }
-    .log-chip{ display:inline-block; padding:2px 8px; border-radius:999px; font-weight:700; font-size:10px; }
-    .log-chip.web{ background:var(--pp-soft); color:var(--pp); }
-    .log-chip.chat{ background:var(--gold-soft); color:var(--gold); }
-    .log-chip.mine{ background:#E3DDF3; color:#5B3FA0; }
-    /* [2026-10-25] 광산 캐릭터 그림(16x16 도트를 2배로) */
-    .mchar{ width:32px; height:32px; image-rendering:pixelated; vertical-align:middle; margin-right:4px; background:#F3E6C4; border:1.5px solid var(--line); border-radius:8px; }
-    .sum-table .mchar{ width:24px; height:24px; border-radius:6px; }
+    .log-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 430px), 1fr)); gap:8px; align-items:start; }
+    .log-empty{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 0; grid-column:1 / -1; }
+    .log-item{ background:var(--panel); border:2px solid var(--edge-soft); padding:8px 10px; min-width:0; }
+    .log-item-head{ display:flex; justify-content:space-between; align-items:center; gap:6px; margin-bottom:4px; font-size:11px; color:var(--ink-soft); flex-wrap:wrap; }
+    .log-item-head .who{ font-weight:800; color:var(--ink); font-size:12.5px; }
+    .log-item-head > span:last-child{ font-family:ui-monospace, Consolas, monospace; }
+    .log-chip{ display:inline-block; padding:1px 6px; font-weight:700; font-size:10px; border:1px solid currentColor; }
+    .log-chip.web{ color:var(--on); }
+    .log-chip.chat{ color:var(--cream); }
+    .log-chip.mine{ color:var(--mine); }
+    /* [2026-10-25] 광산 캐릭터 그림(16x16 도트) */
+    .mchar{ width:30px; height:30px; image-rendering:pixelated; vertical-align:middle; background:rgba(255,255,255,.05); border:1px solid var(--edge-soft); }
+    .sum-table .mchar{ width:22px; height:22px; margin-right:4px; }
     .mchar.wide, .sum-table .mchar.wide{ width:auto; } /* [2026-10-28] 환생 날개(그림이 넓다) -- 높이만 맞추고 비율 유지 */
-    .who-wrap{ display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
-    .cat-row .time-btn{ font-size:13px; padding:7px 16px; }
-    .log-req{ font-weight:700; font-size:13px; margin-bottom:4px; word-break:break-all; }
-    .log-res{ font-size:12.5px; color:var(--ink); white-space:pre-wrap; word-break:break-all; line-height:1.5; }
+    .who-wrap{ display:inline-flex; align-items:center; gap:5px; flex-wrap:wrap; }
+    .cat-row .time-btn{ font-size:13px; padding:6px 12px; }
+    .log-req{ font-weight:700; font-size:12.5px; margin-bottom:3px; word-break:break-all; color:var(--cream); }
+    .log-res{ font-size:12px; color:var(--ink); white-space:pre-wrap; word-break:break-all; line-height:1.45; }
 
     /* [2026-10-28] 광산 한 판(입장 -> 한 일 -> 퇴장) 묶음 카드 */
-    .sess{ border-color:#C9BCE8; }
-    .sess .log-req{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-    .live-chip{ background:#D6EEDF; color:#2F8F5C; }
-    .sess-line{ font-size:12px; color:var(--ink-soft); margin:2px 0; word-break:break-all; }
-    .sess-chips{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; }
-    .sess-chip{ background:#F3EEFB; border:1px solid #DCD2F0; border-radius:999px; padding:3px 9px; font-size:12px; font-weight:700; }
-    .ore-row{ font-size:12.5px; margin:3px 0; line-height:1.6; word-break:break-all; }
-    .ore-plus{ color:#2F8F5C; font-weight:700; }
-    .ore-minus{ color:#A31F2B; font-weight:700; }
-    .buy-list{ margin:4px 0 0; padding-left:16px; font-size:12.5px; line-height:1.55; }
-    .sess details{ margin-top:6px; }
-    .sess summary{ cursor:pointer; font-size:12px; font-weight:700; color:#5B3FA0; }
-    .ev-list{ list-style:none; margin:6px 0 0; padding:0; font-size:12px; line-height:1.5; }
-    .ev-list li{ padding:3px 0; border-bottom:1px dashed var(--gold-soft); word-break:break-all; }
-    .ev-t{ color:var(--ink-soft); font-variant-numeric:tabular-nums; margin-right:6px; }
+    .sess{ border-color:var(--edge); }
+    .sess.live{ border-color:var(--on); }
+    .live-chip{ color:var(--on) !important; }
+    .sess-line{ font-size:11.5px; color:var(--ink-soft); word-break:break-all; display:flex; gap:10px; flex-wrap:wrap; }
+    .sess-line b{ color:var(--ink); font-weight:700; }
+    .sess-stats{ display:grid; grid-template-columns:repeat(auto-fill, minmax(76px, 1fr)); gap:3px; margin:5px 0; }
+    .sess-stats div{ background:var(--slot); border:1px solid var(--edge-soft); padding:2px 5px; }
+    .sess-stats small{ display:block; font-size:9.5px; color:var(--ink-soft); }
+    .sess-stats b{ font-size:12.5px; color:var(--gold); font-family:ui-monospace, Consolas, monospace; }
+    .ore-row{ display:flex; gap:6px; align-items:flex-start; margin:3px 0; }
+    .ore-row > b{ font-size:10.5px; color:var(--ink-soft); width:34px; flex-shrink:0; padding-top:2px; }
+    .ore-items{ display:flex; flex-wrap:wrap; gap:3px; min-width:0; }
+    .it{ display:inline-flex; align-items:center; gap:3px; font-size:11.5px; background:rgba(255,255,255,.06); border:1px solid var(--edge-soft); padding:1px 5px 1px 3px; white-space:nowrap; }
+    .it b{ font-family:ui-monospace, Consolas, monospace; }
+    .ore-plus, .it.plus b{ color:var(--on); font-weight:700; }
+    .ore-minus, .it.minus b{ color:var(--red); font-weight:700; }
+    .ore-sw{ width:10px; height:10px; display:inline-block; transform:rotate(45deg) scale(.82); border:1px solid rgba(0,0,0,.6); flex-shrink:0; }
+    .ore-sw.cut{ box-shadow:0 0 0 1px #fff; }
+    .buy-list{ list-style:none; margin:4px 0 0; padding:0; font-size:11.5px; line-height:1.5; border-top:1px solid var(--edge-soft); }
+    .buy-list li{ padding:2px 0; word-break:break-all; }
+    .sess details{ margin-top:4px; }
+    .sess summary{ cursor:pointer; font-size:11.5px; font-weight:700; color:var(--mine); }
+    .ev-list{ list-style:none; margin:4px 0 0; padding:0; font-size:11.5px; line-height:1.45; max-height:320px; overflow:auto; }
+    .ev-list li{ padding:2px 0; border-bottom:1px dashed var(--edge-soft); word-break:break-all; }
+    .ev-t{ color:var(--ink-soft); font-family:ui-monospace, Consolas, monospace; margin-right:5px; }
 
     .loading{ text-align:center; color:var(--ink-soft); font-size:13px; padding:20px 0; }
   </style>
@@ -117,10 +127,10 @@
   of('/loa/s5/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
     if (!d || !d.loggedIn) return;
     var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;top:8px;right:10px;z-index:50;font-size:11px;background:rgba(255,255,255,.92);border:1.5px solid #E5D3A1;border-radius:999px;padding:4px 10px;color:#6B5E82;';
+    el.style.cssText = 'position:fixed;top:8px;right:10px;z-index:50;font-size:11px;background:#2a2340;border:2px solid rgba(244,240,230,.35);padding:3px 8px;color:#b9b0c9;';
     el.appendChild(document.createTextNode('🟡 ' + (d.nickname || '') + ' · '));
     var a = document.createElement('a');
-    a.href = '/loa/s5/logout'; a.textContent = '로그아웃'; a.style.cssText = 'color:#A31F2B;font-weight:700;text-decoration:none;';
+    a.href = '/loa/s5/logout'; a.textContent = '로그아웃'; a.style.cssText = 'color:#ff7a7a;font-weight:700;text-decoration:none;';
     el.appendChild(a);
     document.body.appendChild(el);
   }).catch(function () {});
@@ -128,9 +138,10 @@
 </script>
 
   <div class="wrap">
-    <h1>📜 람쥐탑 로그 뷰어 <a href="/loa/tower-mine-users" style="margin-left:auto;font-size:12px;font-weight:700;color:#5B3FA0;text-decoration:none;background:#E3DDF3;border-radius:999px;padding:5px 12px;">⛏️ 광산 캐릭터 현황 →</a></h1>
+    <h1>📜 람쥐탑 로그 뷰어 <a href="/loa/tower-mine-users">⛏️ 광산 캐릭터 현황 →</a></h1>
     <div class="sub">채팅 명령어 + 웹 액션을 유저별로 조회(관리자용, SPA와 별도 페이지) -- 최근 24시간 이내만</div>
 
+    <div class="layout"><div class="side">
     <div class="card">
       <!-- [2026-10-24] "광산 로그랑 탑 로그 분리, 필터 버튼도 분리" 요청 -- 아래 목록과 사용자 요약 모두 이 구분을 따른다 -->
       <div class="time-row cat-row" id="catRow" style="margin-bottom:8px;">
@@ -163,8 +174,9 @@
         </div>
       </div>
       <div class="sum-scroll" id="sumBody"><div class="log-empty">불러오는 중...</div></div>
-      <div class="sum-sub" style="margin-top:6px;">사용자 줄을 누르면 그 유저의 로그(최근 24시간)를 아래에 보여줍니다. 광산은 한 판을 몇 줄로 묶어 저장해서 행동 수가 아니라 저장된 줄 수예요(2026-10-28부터).</div>
+      <div class="sum-sub" style="margin-top:6px;">사용자 줄을 누르면 그 유저의 로그(최근 24시간)를 보여줍니다. 광산은 한 판을 몇 줄로 묶어 저장해서 행동 수가 아니라 저장된 줄 수예요(2026-10-28부터).</div>
     </div>
+    </div><div class="main">
 
     <div class="meta-row" id="metaRow" style="display:none;">
       <span id="totalLabel"></span>
@@ -173,9 +185,11 @@
 
     <div id="loadingEl" class="loading" style="display:none;">불러오는 중...</div>
     <div class="log-list" id="logList"></div>
+    </div></div>
   </div>
 
   <%@ include file="_mine_char.jsp" %>
+  <%@ include file="_mine_ore.jsp" %>
   <script>
   (function () {
     var base = ''; // 같은 오리진(/loa/...)이라 상대경로로 충분.
@@ -292,6 +306,13 @@
     function hms(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
     function mdhm(ms) { var d = new Date(ms); return pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
     function addOre(acc, o) { Object.keys(o || {}).forEach(function (k) { acc[k] = (acc[k] || 0) + Number(o[k] || 0); }); }
+    // [2026-10-28] 얻음/씀을 광산 인벤토리처럼(색 보석 + 수량, 분류 순서대로)
+    function oreItems(o, sign) {
+      return Object.keys(o || {}).filter(function (k) { var v = o[k]; return v !== 0 && (sign > 0 ? v > 0 : v < 0); })
+        .sort(function (x, y) { var gx = MineOre.byName(x), gy = MineOre.byName(y); return MineOre.cat(gx) - MineOre.cat(gy) || gx - gy; })
+        .map(function (k) { var v = o[k], g = MineOre.byName(k); return '<span class="it ' + (v > 0 ? 'plus' : 'minus') + '">' + (g ? MineOre.swatch(g) : '') + escapeHtml(k) + ' <b>' + (v > 0 ? '+' : '−') + Math.abs(v) + '</b></span>'; })
+        .join('');
+    }
     function oreText(o, sign) { // sign: 1 = 얻은 것만, -1 = 쓴 것만, 0 = 둘 다
       return Object.keys(o || {}).filter(function (k) { var v = o[k]; return v !== 0 && (sign === 0 || (sign > 0 ? v > 0 : v < 0)); })
         .map(function (k) { var v = o[k]; return '<span class="' + (v > 0 ? 'ore-plus' : 'ore-minus') + '">' + escapeHtml(k) + ' ' + (v > 0 ? '+' : '−') + Math.abs(v) + '</span>'; })
@@ -318,20 +339,16 @@
       var lastT = endC ? endC.end : (ev.length ? ev[ev.length - 1].t : first.start);
       var mins = Math.max(0, Math.round((lastT - first.start) / 60000));
       var head = '<div class="log-item-head"><span class="who-wrap">' + face(g.user) + (state.userName ? '' : '<span class="who">' + escapeHtml(g.user) + '</span>')
-        + '<span class="log-chip mine">⛏️ 광산 한 판</span>' + (live ? '<span class="log-chip live-chip">🟢 플레이 중</span>' : '') + '</span>'
+        + '<span class="log-chip mine">⛏️ 한 판</span>' + (live ? '<span class="log-chip live-chip">🟢 플레이 중</span>' : '') + '</span>'
         + '<span>' + escapeHtml(mdhm(first.start)) + ' ~ ' + (live ? '지금' : escapeHtml(hms(lastT))) + ' (' + mins + '분)</span></div>';
-      var chips = [];
-      if (dig) chips.push('⛏️ 채굴 ' + dig + '회');
-      if (kill) chips.push('⚔️ 처치 ' + kill + (exp ? ' · 경험치 +' + exp : '') + (lv ? ' · Lv.' + lv + ' 달성' : ''));
-      if (died) chips.push('💫 쓰러짐 ' + died);
-      if (move) chips.push('🧭 이동 ' + move);
-      if (buys.length) chips.push('🛒 구매·사용 ' + buys.length);
-      var body = '<div class="log-req">' + escapeHtml(SESS_PREFIX) + ' <span class="sum-sub">#' + escapeHtml(first.sid) + '</span></div>'
-        + '<div class="sess-line">📍 입장: ' + escapeHtml(first.sm || '-') + '</div>'
-        + (endC ? '<div class="sess-line">🚪 퇴장: ' + escapeHtml(endC.em || '-') + ' (' + escapeHtml(endC.why || '') + ')</div>' : '')
-        + (chips.length ? '<div class="sess-chips">' + chips.map(function (c) { return '<span class="sess-chip">' + escapeHtml(c) + '</span>'; }).join('') + '</div>' : '')
-        + (Object.keys(gain).length ? '<div class="ore-row">📦 얻음: ' + oreText(gain, 1) + '</div>' : '')
-        + (Object.keys(spend).length ? '<div class="ore-row">💸 씀: ' + oreText(spend, -1) + '</div>' : '')
+      // [2026-10-28] 한 일은 숫자 칸으로(인게임 창처럼 금색 숫자), 0인 칸은 뺀다
+      var stats = [['⛏️ 채굴', dig], ['⚔️ 처치', kill], ['✨ 경험치', exp ? '+' + exp : 0], ['⬆️ 레벨', lv ? 'Lv.' + lv : 0], ['💫 쓰러짐', died], ['🧭 이동', move], ['🛒 구매·사용', buys.length]]
+        .filter(function (x) { return x[1]; });
+      var body = '<div class="sess-line"><span>📍 <b>' + escapeHtml(first.sm || '-') + '</b></span>'
+        + (endC ? '<span>🚪 <b>' + escapeHtml(endC.em || '-') + '</b> (' + escapeHtml(endC.why || '') + ')</span>' : '') + '<span>#' + escapeHtml(first.sid) + '</span></div>'
+        + (stats.length ? '<div class="sess-stats">' + stats.map(function (x) { return '<div><small>' + x[0] + '</small><b>' + escapeHtml(x[1]) + '</b></div>'; }).join('') + '</div>' : '')
+        + (Object.keys(gain).length ? '<div class="ore-row"><b>얻음</b><div class="ore-items">' + oreItems(gain, 1) + '</div></div>' : '')
+        + (Object.keys(spend).length ? '<div class="ore-row"><b>씀</b><div class="ore-items">' + oreItems(spend, -1) + '</div></div>' : '')
         + (buys.length ? '<ul class="buy-list">' + buys.map(function (e) {
             var ot = oreText(e.o, 0);
             return '<li><span class="ev-t">' + hms(e.t) + '</span>' + escapeHtml(e.a || '') + (e.m ? ' -- ' + escapeHtml(e.m) : '') + (ot ? ' <span class="sum-sub">[' + ot + ']</span>' : '') + '</li>';
@@ -343,7 +360,7 @@
             return '<li><span class="ev-t">' + hms(e.t) + '</span>' + (EV_ICON[e.k] || '•') + ' ' + escapeHtml(what)
               + (e.m ? ' -- ' + escapeHtml(e.m) : '') + (ot ? '<br><span class="sum-sub">' + ot + '</span>' : '') + '</li>';
           }).join('') + '</ul></details>';
-      return '<div class="log-item sess">' + head + body + '</div>';
+      return '<div class="log-item sess' + (live ? ' live' : '') + '">' + head + body + '</div>';
     }
 
     function renderItems() {
