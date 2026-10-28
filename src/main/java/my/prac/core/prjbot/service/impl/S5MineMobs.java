@@ -31,6 +31,8 @@ public final class S5MineMobs {
         /** [2026-10-28] 설산 봉우리 -- "80레벨 몬스터인데 더 강하게": 체력/공격 배수(경험치는 체력 배수만큼), 화면 레벨 표시(0 = 1 + 4(단계-1)),
          *  보스 선공 거리(0 = 대주교 4칸 / 그 밖 보스 2칸). */
         public double hpMul = 1, atkMul = 1;
+        /** [2026-10-28] "다도해 몬스터 체력 소폭 낮춰줘" -- 체력만 곱한다(경험치는 그대로, hpMul과 달리). */
+        public double hpCut = 1;
         public int lvShow, aggro;
         /** [2026-10-28] 다도해 신궁: ninja = 싸우는 중 가끔 은신(공격을 피하고 다음 한 방이 2배 -- BotS5ServiceImpl.mineAttack/mineCombatTick),
          *  clone = 닌자 두목의 분신(평소엔 없고 분신술 때만 나타남, 한 대 맞으면 사라짐 -- minion처럼 다룬다, 쫓아오지 않음). */
@@ -48,13 +50,14 @@ public final class S5MineMobs {
         Type asStay() { stay = true; return this; }
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
         Type showLv(int lv) { lvShow = lv; return this; }
+        Type hpCut(double c) { hpCut = c; return this; }
         Type aggroRange(int r) { aggro = r; return this; }
         /** 화면/안내에 보이는 레벨. */
         public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
         //  플레이어(BotS5ServiceImpl: 레벨마다 체력/공격 x1.09, 필요 경험치 x1.12)와 같은 비율로 줄여 적정 레벨에서 3번쯤 때리면 쓰러지는 것과
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
-        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1) * hpMul); }
+        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1) * hpMul * hpCut); }
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
@@ -127,26 +130,26 @@ public final class S5MineMobs {
         new Type("타락한 대주교", 21, "human", "#3a1a4a").asBoss().asStay(),
         new Type("타락한 성기사", 20, "human", "#8a7a9a").asMinion(),
         // [2026-10-28] 다도해(운영자만) -- 본섬 16~17, 신궁 내부 닌자 18~19, 섬은 뒤로 갈수록 16 -> 20단계(S5MineMap.ISLE_IDS 순서)
-        new Type("야자게", 20, "crab", "#c86a3a", S5MineMap.ARCHI),
-        new Type("해적 원숭이", 20, "small", "#8a5a2a", S5MineMap.ARCHI),
-        new Type("바다 도적", 21, "human", "#3a4a6a", S5MineMap.ARCHI),
+        new Type("야자게", 20, "crab", "#c86a3a", S5MineMap.ARCHI).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("해적 원숭이", 20, "small", "#8a5a2a", S5MineMap.ARCHI).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("바다 도적", 21, "human", "#3a4a6a", S5MineMap.ARCHI).hpCut(S5MineMobs.ARCHI_HP_CUT),
         // [2026-10-28] 닌자는 은신(asNinja), 도트도 닌자 모양(kind ninja -- 복면/목도리). 상급 닌자는 신궁 2층에도.
-        new Type("닌자", 22, "ninja", "#22222e", S5MineMap.SHRINE).asNinja(),
-        new Type("상급 닌자", 23, "ninja", "#4a1a2a", S5MineMap.SHRINE, S5MineMap.SHRINE2).asNinja(),
-        new Type("동백 정령", 20, "blob", "#d4104f", S5MineMap.ISLE1),
-        new Type("들고양이", 20, "quad", "#c8a070", S5MineMap.ISLE1),
-        new Type("괭이갈매기", 20, "flyer", "#e8e8f0", S5MineMap.ISLE2),
-        new Type("바위게", 21, "crab", "#8a7a6a", S5MineMap.ISLE2),
-        new Type("늙은 바다거북", 21, "quad", "#5a7a4a", S5MineMap.ISLE3),
-        new Type("소라게", 21, "crab", "#e0a0a0", S5MineMap.ISLE3),
-        new Type("안개 유령", 21, "flyer", "#c8d0e0", S5MineMap.ISLE4),
-        new Type("늪 뱀", 22, "snake", "#4a6a3a", S5MineMap.ISLE4),
-        new Type("산호 골렘", 22, "human", "#ff7a8a", S5MineMap.ISLE5),
-        new Type("독해파리", 22, "blob", "#b07cff", S5MineMap.ISLE5),
-        new Type("달토끼", 23, "small", "#f4f0e0", S5MineMap.ISLE6),
-        new Type("달빛 늑대", 23, "quad", "#b8c8e8", S5MineMap.ISLE6),
-        new Type("용암 도마뱀", 24, "snake", "#e84a1a", S5MineMap.ISLE7),
-        new Type("화염 정령", 24, "blob", "#ff6a2a", S5MineMap.ISLE7),
+        new Type("닌자", 22, "ninja", "#22222e", S5MineMap.SHRINE).asNinja().hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("상급 닌자", 23, "ninja", "#4a1a2a", S5MineMap.SHRINE, S5MineMap.SHRINE2).asNinja().hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("동백 정령", 20, "blob", "#d4104f", S5MineMap.ISLE1).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("들고양이", 20, "quad", "#c8a070", S5MineMap.ISLE1).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("괭이갈매기", 20, "flyer", "#e8e8f0", S5MineMap.ISLE2).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("바위게", 21, "crab", "#8a7a6a", S5MineMap.ISLE2).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("늙은 바다거북", 21, "quad", "#5a7a4a", S5MineMap.ISLE3).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("소라게", 21, "crab", "#e0a0a0", S5MineMap.ISLE3).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("안개 유령", 21, "flyer", "#c8d0e0", S5MineMap.ISLE4).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("늪 뱀", 22, "snake", "#4a6a3a", S5MineMap.ISLE4).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("산호 골렘", 22, "human", "#ff7a8a", S5MineMap.ISLE5).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("독해파리", 22, "blob", "#b07cff", S5MineMap.ISLE5).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("달토끼", 23, "small", "#f4f0e0", S5MineMap.ISLE6).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("달빛 늑대", 23, "quad", "#b8c8e8", S5MineMap.ISLE6).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("용암 도마뱀", 24, "snake", "#e84a1a", S5MineMap.ISLE7).hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("화염 정령", 24, "blob", "#ff6a2a", S5MineMap.ISLE7).hpCut(S5MineMobs.ARCHI_HP_CUT),
         // [2026-10-28] 설산 봉우리 가는 길 -- 20~21단계(Lv.77~81)를 체력 x1.5 / 공격 x1.3으로 더 세게("80레벨 몬스터, 더 강하게"). 봉우리 쪽(북쪽)일수록 21단계.
         new Type("빙하 늑대", 20, "quad", "#cfe8ff", S5MineMap.SNOWROAD).strong(1.5, 1.3),
         new Type("눈보라 하피", 20, "flyer", "#e0f0ff", S5MineMap.SNOWROAD).strong(1.5, 1.3),
@@ -156,11 +159,11 @@ public final class S5MineMobs {
         // [2026-10-28] 설산 봉우리 보스 -- 24단계(1 + 4(단계-1) = 93)라 화면엔 Lv.95로, 체력 x1.5 / 공격 x1.1, 4칸 안에서 선공. 주기적으로 한 명씩 얼린다(BotS5ServiceImpl)
         new Type("얼음 여왕", 24, "human", "#bfefff").asBoss().strong(1.5, 1.1).showLv(95).aggroRange(4),
         // [2026-10-28] 신궁 3층 그림자 닌자(20단계), 닌자 두목의 방 -- 닌자 두목(21단계 보스, 은신 + 분신술)과 그 분신(분신술 때만, 두목과 똑같이 그린다)
-        new Type("그림자 닌자", 24, "ninja", "#14141c", S5MineMap.SHRINE3).asNinja(),
-        new Type("닌자 두목", 25, "ninja", "#2a0f1a").asBoss().asNinja(),
-        new Type("닌자 두목의 분신", 25, "ninja", "#2a0f1a").asClone(),
+        new Type("그림자 닌자", 24, "ninja", "#14141c", S5MineMap.SHRINE3).asNinja().hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("닌자 두목", 25, "ninja", "#2a0f1a").asBoss().asNinja().hpCut(S5MineMobs.ARCHI_HP_CUT),
+        new Type("닌자 두목의 분신", 25, "ninja", "#2a0f1a").asClone().hpCut(S5MineMobs.ARCHI_HP_CUT),
         // [2026-10-28] "마지막 섬엔 보스, 원거리 공격을 가끔씩" -- 용암섬 남쪽 끝 화구의 용암 거신(26단계 보스, Lv.101)
-        new Type("용암 거신", 26, "human", "#ff5a1a").asBoss().asRanged()
+        new Type("용암 거신", 26, "human", "#ff5a1a").asBoss().asRanged().hpCut(S5MineMobs.ARCHI_HP_CUT)
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -176,6 +179,8 @@ public final class S5MineMobs {
     public static final int SHRINE_BOSS_TYPE = indexOf("닌자 두목");
     public static final int CLONE_TYPE = indexOf("닌자 두목의 분신");
     public static final int CLONE_SLOTS = 4;
+    /** [2026-10-28] 다도해 몬스터(본섬/신궁/섬, 닌자 두목, 용암 거신) 체력 배수. */
+    static final double ARCHI_HP_CUT = 0.85;
     /** [2026-10-28] 용암섬(다도해 마지막 섬) 보스. */
     public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
 

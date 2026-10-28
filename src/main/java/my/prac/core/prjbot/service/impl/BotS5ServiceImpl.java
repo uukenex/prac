@@ -11694,7 +11694,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private boolean mineArchiOpen(String userName) {
-        return isMineAdmin(userName);
+        return true; // [2026-10-28] "다도해 전부 오픈" -- 신궁/뱃길/섬/본섬 NPC 일(수색 임무, 배)까지 모두에게(예전: 운영자만)
     }
 
     /** action: quest(수색 임무 받기) / claim(닌자 100명 -> 비급서 + 달빛석) / boat(달빛석 1개 -> 1인용 배) / board(배 타고 뱃길로). 본섬에서만. */

@@ -1188,18 +1188,18 @@ var TowerMine = (function () {
     { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' },
     { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' }, // [2026-10-28] 다도해 -- 본섬은 모두에게(신궁/뱃길/일곱 섬은 아직 운영자만)
     // [2026-10-28] 다도해 안쪽(운영자만, 지도 아래로 늘려서) -- 관리자가 지역을 눌러 바로 이동할 수 있게
-    { id: 'shrine', name: '신궁 1층', x: 52, y: 490, fill: '#8a1e1e', ink: '#fff', admin: true, sub: true },
-    { id: 'shrine2', name: '신궁 2층', x: 160, y: 490, fill: '#7a1a1a', ink: '#fff', admin: true, sub: true },
-    { id: 'shrine3', name: '신궁 3층', x: 268, y: 490, fill: '#6a1414', ink: '#fff', admin: true, sub: true },
-    { id: 'shrineboss', name: '닌자 두목 🥷', x: 106, y: 550, fill: '#3a0f1a', ink: '#ffd8e0', admin: true, sub: true },
-    { id: 'archisea', name: '다도해 뱃길', x: 214, y: 550, fill: '#2f6a9a', ink: '#fff', admin: true, sub: true },
-    { id: 'isle1', name: '동백섬', x: 44, y: 625, fill: '#3f8a4a', ink: '#fff', admin: true, sub: true, w: 72 },
-    { id: 'isle2', name: '갈매기섬', x: 120, y: 625, fill: '#7a8a8a', ink: '#fff', admin: true, sub: true, w: 72 },
-    { id: 'isle3', name: '거북섬', x: 196, y: 625, fill: '#c8b070', ink: '#2a1d10', admin: true, sub: true, w: 72 },
-    { id: 'isle4', name: '안개섬', x: 272, y: 625, fill: '#5a6a6a', ink: '#fff', admin: true, sub: true, w: 72 },
-    { id: 'isle5', name: '산호섬', x: 82, y: 675, fill: '#e07a8a', ink: '#2a1010', admin: true, sub: true, w: 72 },
-    { id: 'isle6', name: '달맞이섬', x: 160, y: 675, fill: '#8a9ac8', ink: '#fff', admin: true, sub: true, w: 72 },
-    { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', admin: true, sub: true, w: 72 }
+    { id: 'shrine', name: '신궁 1층', x: 52, y: 490, fill: '#8a1e1e', ink: '#fff', sub: true },
+    { id: 'shrine2', name: '신궁 2층', x: 160, y: 490, fill: '#7a1a1a', ink: '#fff', sub: true },
+    { id: 'shrine3', name: '신궁 3층', x: 268, y: 490, fill: '#6a1414', ink: '#fff', sub: true },
+    { id: 'shrineboss', name: '닌자 두목 🥷', x: 106, y: 550, fill: '#3a0f1a', ink: '#ffd8e0', sub: true },
+    { id: 'archisea', name: '다도해 뱃길', x: 214, y: 550, fill: '#2f6a9a', ink: '#fff', sub: true },
+    { id: 'isle1', name: '동백섬', x: 44, y: 625, fill: '#3f8a4a', ink: '#fff', sub: true, w: 72 },
+    { id: 'isle2', name: '갈매기섬', x: 120, y: 625, fill: '#7a8a8a', ink: '#fff', sub: true, w: 72 },
+    { id: 'isle3', name: '거북섬', x: 196, y: 625, fill: '#c8b070', ink: '#2a1d10', sub: true, w: 72 },
+    { id: 'isle4', name: '안개섬', x: 272, y: 625, fill: '#5a6a6a', ink: '#fff', sub: true, w: 72 },
+    { id: 'isle5', name: '산호섬', x: 82, y: 675, fill: '#e07a8a', ink: '#2a1010', sub: true, w: 72 },
+    { id: 'isle6', name: '달맞이섬', x: 160, y: 675, fill: '#8a9ac8', ink: '#fff', sub: true, w: 72 },
+    { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', sub: true, w: 72 }
   ];
   function worldHtml() {
     // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
