@@ -643,7 +643,7 @@ var TowerMine = (function () {
     if (bound) return;
     bound = true;
     el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr');
-    el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn');
+    el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn'); el.atk = $('mineAtkBtn'); el.menu = $('mineMenu'); el.menuBtn = $('mineMenuBtn'); // [2026-10-28] 공격 버튼 분리, ☰ 메뉴
     el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog'); el.smith = $('mineSmith');
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
     el.cold = $('mineCold'); // [2026-10-26] 한기/안전지대/눈바람 남은 시간
@@ -717,7 +717,8 @@ var TowerMine = (function () {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     el.regen.textContent = st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '';
-    el.dig.disabled = busy; // [2026-10-24] 공격 버튼도 겸해서 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
+    el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
+    if (el.atk) el.atk.disabled = busy;
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
   var combatT0 = 0, hpShownT = 0;
@@ -770,6 +771,7 @@ var TowerMine = (function () {
   function setAuto(on, text) {
     auto = on;
     if (el.auto) { el.auto.classList.toggle('on', on); el.auto.textContent = on ? '🤖 자동채광 ON' : '🤖 자동채광'; }
+    if (el.menuBtn) el.menuBtn.classList.toggle('auto-on', on); // [2026-10-28] 메뉴를 닫아도 켜져 있는 게 보이게
     if (text) msg(text, 2800);
   }
   function toggleAuto() {
@@ -898,10 +900,11 @@ var TowerMine = (function () {
         if (mp) { mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm; } else mm._p = null;
       }
     }
-    var near = !P.moving && adjMob(), lab = near ? '⚔️' : '⛏️';
-    if (el.dig.textContent !== lab) el.dig.textContent = lab;
-    // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 옆에 몬스터가 있을 때만 ⚔️ 버튼, 자동채광 숨김
-    var digShow = !map.noDig || !!near ? '' : 'none';
+    // [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- ⛏️는 캐기만, ⚔️는 바로 옆 몬스터가 있을 때 또렷해진다
+    var near = !P.moving && adjMob();
+    if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
+    // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
+    var digShow = map.noDig ? 'none' : '';
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
     if (el.auto) { var autoShow = map.noDig ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if (map.noDig && auto) setAuto(false); } }
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
@@ -2165,6 +2168,32 @@ var TowerMine = (function () {
     }).catch(function () { greetBusy = false; });
   }
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
+  // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
+  function digBtn() {
+    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    dig();
+  }
+  function atkBtn() {
+    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    var a = !P.moving && adjMob();
+    if (a) attack(a); else msg('⚔️ 바로 옆(상하좌우)에 몬스터가 없어요.', 1600);
+  }
+  // [2026-10-28] ☰ 메뉴 -- 장비/자동채광/마을로/최근 캔 곳/나가기(고르면 닫힌다)
+  function setMenu(on) {
+    if (!el.menu) return;
+    el.menu.classList.toggle('open', on);
+    el.menuBtn.classList.toggle('open', on);
+    el.menuBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  }
+  function toggleMenu() { setMenu(!el.menu.classList.contains('open')); }
+  function menuGo(k) {
+    setMenu(false);
+    if (k === 'equip') openEquip();
+    else if (k === 'auto') toggleAuto();
+    else if (k === 'home') goVillage();
+    else if (k === 'log') toggleLog();
+    else if (k === 'exit') close();
+  }
   function act() {
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; } // [2026-10-28]
     var a = !P.moving && adjMob();
@@ -2819,6 +2848,7 @@ var TowerMine = (function () {
   }
   function close() {
     if (!opened) return;
+    setMenu(false);
     if (map) saveBeacon(true);
     closeSmith();
     opened = false;
@@ -2852,7 +2882,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

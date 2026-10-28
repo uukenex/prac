@@ -760,16 +760,25 @@
     .mine-dig:active{ transform:translateY(3px); box-shadow:0 2px 0 #8a5a00; }
     .mine-dig:disabled{ filter:grayscale(1); opacity:.6; }
     .mine-btn{ position:absolute; left:10px; padding:8px 12px; font-size:13px; cursor:pointer; }
-    .mine-exit{ bottom:calc(22px + env(safe-area-inset-bottom)); }
-    .mine-log-btn{ bottom:calc(66px + env(safe-area-inset-bottom)); }
-    .mine-home-btn{ bottom:calc(110px + env(safe-area-inset-bottom)); }
-    .mine-auto-btn{ bottom:calc(154px + env(safe-area-inset-bottom)); }
-    .mine-equip-btn{ bottom:calc(198px + env(safe-area-inset-bottom)); } /* [2026-10-28] 🎒 장비(반지 하나, 옷 하나, 장갑 하나) */
+    /* [2026-10-28] "왼쪽의 많은 메뉴를 메뉴 버튼 하나로" -- 왼쪽 아래 ☰ 메뉴, 누르면 위로 장비/자동채광/마을로/최근 캔 곳/나가기 */
+    .mine-menu-btn{ bottom:calc(22px + env(safe-area-inset-bottom)); font-size:14px; padding:9px 14px; }
+    .mine-menu-btn.open{ background:#3a2f55; }
+    .mine-menu-btn.auto-on::after{ content:' 🤖'; } /* 자동채광 켜짐 표시(메뉴를 닫아도 보이게) */
+    .mine-menu{ position:absolute; left:10px; bottom:calc(68px + env(safe-area-inset-bottom)); z-index:5; display:none; flex-direction:column; gap:6px; padding:8px; }
+    .mine-menu.open{ display:flex; }
+    .mine-menu-item{ padding:8px 14px; font-size:13px; text-align:left; white-space:nowrap; cursor:pointer; }
+    .mine-overlay.npc-open .mine-menu{ display:none; }
+    /* [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- 채광(⛏️) 위에 ⚔️. 바로 옆(상하좌우)에 몬스터가 있을 때만 또렷하게 */
+    .mine-atk{ position:absolute; right:24px; bottom:calc(120px + env(safe-area-inset-bottom)); width:72px; height:72px; border-radius:50%; font-size:34px; line-height:1; background:#e8564a; border:3px solid #140d0a; box-shadow:0 5px 0 #7a1a12; cursor:pointer; filter:grayscale(.75); opacity:.7; }
+    .mine-atk.near{ filter:none; opacity:1; animation:mineAtkPulse 1s ease-in-out infinite; }
+    .mine-atk:active{ transform:translateY(3px); box-shadow:0 2px 0 #7a1a12; }
+    .mine-atk:disabled{ filter:grayscale(1); opacity:.5; animation:none; }
+    @keyframes mineAtkPulse{ 0%,100%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 0 rgba(255,90,70,.6); } 50%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 8px rgba(255,90,70,0); } }
     .mine-eq-slot{ margin:10px 0 4px; font-weight:800; font-size:13px; }
     .mine-eq-slot small{ font-weight:600; opacity:.7; margin-left:4px; }
     .mine-eq-empty{ font-size:12px; opacity:.7; padding:4px 2px 8px; }
     .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
-    .mine-greet{ position:absolute; right:18px; bottom:calc(118px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
+    .mine-greet{ position:absolute; right:112px; bottom:calc(36px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
     @keyframes mineGreetPop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
     /* [2026-10-24] NPC 초상화(마비노기처럼): 미끄러져 들어오기 + 숨쉬기 */
     .mine-npc-talk{ display:flex; align-items:flex-end; gap:10px; margin:2px 0 10px; }
@@ -841,7 +850,7 @@
     .mine-rb-box b{ color:#ffe58a; }
     /* [2026-10-26] 한기 표시 */
     .mine-cold{ display:none; font-size:12px; padding:4px 8px; color:#cfe8ff; max-width:112px; box-sizing:border-box; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* [2026-10-28] 체력 칸과 같은 폭 */
-    .mine-log{ position:absolute; left:10px; bottom:calc(244px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
+    .mine-log{ position:absolute; left:10px; bottom:calc(68px + env(safe-area-inset-bottom)); width:min(270px,70vw); max-height:42vh; overflow:auto; padding:8px; font-size:12px; font-weight:600; display:none; }
     .mine-log-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-weight:800; }
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
@@ -1686,13 +1695,18 @@
     <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
   </div>
   <div class="mine-log mpx" id="mineLog"></div>
-  <button type="button" class="mine-btn mine-equip-btn mpx" onclick="TowerMine.openEquip()">🎒 장비</button>
-  <button type="button" class="mine-btn mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
-  <button type="button" class="mine-btn mine-home-btn mpx" onclick="TowerMine.goVillage()">🏠 마을로</button>
-  <button type="button" class="mine-btn mine-log-btn mpx" onclick="TowerMine.toggleLog()">📜 최근 캔 곳</button>
-  <button type="button" class="mine-btn mine-exit mpx" onclick="TowerMine.close()">🚪 나가기</button>
+  <!-- [2026-10-28] 왼쪽 버튼 다섯 개를 ☰ 메뉴 하나로 -->
+  <button type="button" class="mine-btn mine-menu-btn mpx" id="mineMenuBtn" onclick="TowerMine.toggleMenu()" aria-expanded="false" aria-controls="mineMenu">☰ 메뉴</button>
+  <div class="mine-menu mpx" id="mineMenu">
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 장비</button>
+    <button type="button" class="mine-menu-item mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.menuGo('auto')">🤖 자동채광</button>
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('home')">🏠 마을로</button>
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 캔 곳</button>
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>
+  </div>
   <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
-  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.act()" aria-label="캐기/공격">⛏️</button>
+  <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격">⚔️</button>
+  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기">⛏️</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
   <div class="mine-smith mpx" id="mineSmith"></div>
   <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
