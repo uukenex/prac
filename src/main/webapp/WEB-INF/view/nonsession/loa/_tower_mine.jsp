@@ -1083,15 +1083,15 @@ var TowerMine = (function () {
     }).join('') + '</span>';
   }
   // [2026-10-28] "마을 장비 상점(대장장이)도 캐러셀 형태로(부위별)" -- 반지/목걸이/장화/곡괭이 줄마다 가로로 넘기는 카드
-  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '가지고 있으면 바로 적용'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요'], ['gloves', '🧤 장갑', '왕도 대장장이 · 하나만 낄 수 있어요']]; // [2026-10-28] 재생/광전사의 장갑
+  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '하나만 걸 수 있어요'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요'], ['gloves', '🧤 장갑', '왕도 대장장이 · 하나만 낄 수 있어요']]; // [2026-10-28] 재생/광전사의 장갑
   function gearCard(g) {
-    var worn = g.kind === 'ring' || g.kind === 'gloves' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
+    var worn = g.kind === 'ring' || g.kind === 'gloves' || g.kind === 'necklace' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
     var h = '<div class="cos-card gear-card' + (worn ? ' worn' : '') + '"><div class="gear-ico">' + (GEAR_ICON[g.kind] || '💍') + '</div>'
         + '<div class="cos-nm">' + g.name + '</div><small class="gear-tier">' + (g.tier > 0 ? g.tier + '단계' + (g.maxTier ? ' / ' + g.maxTier : '') : '없음') + '</small>';
     if (g.effect) h += '<small class="gear-eff">지금: ' + g.effect + '</small>';
     if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</small>';
-    if ((g.kind === 'ring' || g.kind === 'tool' || g.kind === 'gloves') && g.tier > 0)
-      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
+    if ((g.kind === 'ring' || g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace') && g.tier > 0)
+      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
           : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>';
     if (!g.nextTier) return h + '<small class="gear-eff">최고 단계예요.</small></div>';
     var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
@@ -1459,7 +1459,7 @@ var TowerMine = (function () {
     { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
     { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
-    { id: 'necklace', name: '📿 목걸이', hint: '', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이를 만들 수 있어요.' },
+    { id: 'necklace', name: '📿 목걸이', hint: '하나만 걸 수 있어요', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이나 정신의 목걸이(싸요!)를 만들 수 있어요.' },
     { id: 'boots', name: '👢 신발', hint: '', none: '신발이 없어요. 대장장이에게서 신속의 장화를 만들 수 있어요.' }, // [2026-10-28] "신발이 빠져서 추가"
     { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 쓸 수 있어요 -- 무기와 따로', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
   ];
@@ -1560,7 +1560,7 @@ var TowerMine = (function () {
     return h || '<div class="mine-smith-say">아직 가진 게 없어요.</div>';
   }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
-  var EQ_TIPS = { SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+  var EQ_TIPS = { MIND_NECKLACE: '걸고 있으면 몬스터를 쓰러뜨릴 때 경험치가 더 들어와요(1~3단계 +10/20/30%). 1단계는 구리 30 + 철 20으로 싸게 만들 수 있어요.', SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',

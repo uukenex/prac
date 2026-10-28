@@ -10331,7 +10331,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (killed) {
             kills = 1;
             boolean wasReady = mineRebirthReady(lv, exp, rb);
-            exp += type.exp();
+            int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
+            long expGain = type.exp() + type.exp() * mindPct / 100;
+            exp += expGain;
             while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; }
             // [2026-10-28] 99레벨에선 경험치를 다음 레벨 필요치(= 환생 조건)에서 멈춘다(막대가 가득 찬 채로, 숫자가 끝없이 쌓이지 않게)
             if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb));
@@ -10340,10 +10342,10 @@ public class BotS5ServiceImpl implements BotS5Service {
                 hp = mineHpMax(lv, rb);
                 if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
             }
-            msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(type.exp());
+            msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(expGain).append(mindPct > 0 ? " (📿+" + mindPct + "%)" : "");
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
             if (out.containsKey("rebirthReadyNow")) msg.append(" ✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.");
-            out.put("expGain", type.exp());
+            out.put("expGain", expGain);
             if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
                 mineBossKilledNow(MINE_RAID_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
@@ -11919,6 +11921,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_PLENTY_RING = "PLENTY_RING";
     static final String MINE_ITEM_ABYSS_RING = "ABYSS_RING";
     static final String MINE_ITEM_SAND_NECKLACE = "SAND_NECKLACE";
+    /** [2026-10-28] "정신의 목걸이 -- 추가 경험치 획득, 초보자도 살 수 있을 만큼 싸게" -- 처치 경험치 +10/20/30%. 목걸이는 하나만(NECK_SLOT 1 = 사막, 2 = 정신). */
+    static final String MINE_ITEM_MIND_NECKLACE = "MIND_NECKLACE", MINE_ITEM_NECK_SLOT = "NECK_SLOT";
+    static final int[] MINE_MIND_EXP_PCT = { 0, 10, 20, 30 };
     static final String MINE_ITEM_SWIFT_BOOTS = "SWIFT_BOOTS";
     static final String MINE_ITEM_RING_SLOT = "RING_SLOT";
     static final String MINE_ITEM_DRAGON_QUEST = "DRAGON_QUEST";
@@ -12012,6 +12017,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
             new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(4, 1) } },
             new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배", "보석이 나올 확률 2.2배" }, 2),
+        new MineGear("MIND_NECKLACE", "정신의 목걸이", "necklace", // = MINE_ITEM_MIND_NECKLACE(아래 -- 앞에서 쓰면 forward reference)
+            new String[][][] { { { S5MineMap.ORE_CODES[0], "30" }, { S5MineMap.ORE_CODES[1], "20" } }, { { S5MineMap.ORE_CODES[2], "40" }, { S5MineMap.ORE_CODES[3], "15" } },
+                    { { S5MineMap.ORE_CODES[3], "60" }, { S5MineMap.ORE_CODES[4], "15" }, mineCost(0, 5) } }, // 1단계 = 구리 30 + 철 20(초보자도), 2단계 은 40 + 금 15, 3단계 금 60 + 미스릴 15 + 재스퍼 5
+            new String[] { "몬스터를 쓰러뜨리면 경험치 +10%", "몬스터를 쓰러뜨리면 경험치 +20%", "몬스터를 쓰러뜨리면 경험치 +30%" }),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
             new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2), mineBar(1, 1) }, { mineCost(8, 15), mineSeven(3), mineBar(4, 1), mineBar(1, 2), mineCut(3, 1) } },
             new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%", "이동 속도 +60%" }, 3),
@@ -12108,7 +12117,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     // [2026-10-28] "인벤토리에 부위별 장착 장비, 누르면 장착/해제 + 신발이 빠져서 추가" -- 신속의 장화(신발)와 사막의 목걸이도 벗을 수 있게(BOOTS_OFF / NECK_OFF = 1이면 벗음).
     static final String MINE_ITEM_BOOTS_OFF = "BOOTS_OFF", MINE_ITEM_NECK_OFF = "NECK_OFF";
     static int mineBootsTier(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_BOOTS_OFF, 0) == 1 ? 0 : items.getOrDefault(MINE_ITEM_SWIFT_BOOTS, 0); }
-    static int mineNeckTier(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_NECK_OFF, 0) == 1 ? 0 : items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0); }
+    /** 걸고 있는 목걸이 코드(없으면 null) -- NECK_SLOT 2 = 정신, 그 밖 = 사막(예전엔 사막 목걸이만 있었다). NECK_OFF = 1이면 풀었음. */
+    static String mineNeckCode(Map<String, Integer> items) {
+        if (items.getOrDefault(MINE_ITEM_NECK_OFF, 0) == 1) return null;
+        boolean sand = items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0) > 0, mind = items.getOrDefault(MINE_ITEM_MIND_NECKLACE, 0) > 0;
+        int s = items.getOrDefault(MINE_ITEM_NECK_SLOT, 0);
+        if (s == 2 && mind) return MINE_ITEM_MIND_NECKLACE;
+        if (sand) return MINE_ITEM_SAND_NECKLACE;
+        return mind ? MINE_ITEM_MIND_NECKLACE : null;
+    }
+    /** 사막의 목걸이 단계(걸고 있을 때만). */
+    static int mineNeckTier(Map<String, Integer> items) { return MINE_ITEM_SAND_NECKLACE.equals(mineNeckCode(items)) ? items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0) : 0; }
+    /** 정신의 목걸이 경험치 보너스 %(걸고 있을 때만). */
+    static int mineMindExpPct(Map<String, Integer> items) {
+        return MINE_ITEM_MIND_NECKLACE.equals(mineNeckCode(items)) ? MINE_MIND_EXP_PCT[Math.min(MINE_MIND_EXP_PCT.length - 1, items.getOrDefault(MINE_ITEM_MIND_NECKLACE, 0))] : 0;
+    }
 
     // [2026-10-28] "방한 외투, 방한 장갑, 용왕의 반지도 다른 장비와 중첩 적용은 안 되게 -- 반지류 하나, 옷류 하나, 장갑류 하나" --
     //  반지 칸(RING_SLOT): 1 풍요 / 2 심연 / 3 용왕의 반지(물 위 걷기는 이걸 낄 때만). 옷 칸(COAT_SLOT): 방한 외투 1/2.
@@ -12302,12 +12325,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineHasDragonRing(items)) out.add(mineEquipRow("ring", MINE_ITEM_DRAGON_RING, "용왕의 반지", "물 위를 걸을 수 있음", ring == MINE_RING_DRAGON));
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
-        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
+        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
             MineGear g = mineGear(bc);
             int t = g == null ? 0 : Math.min(items.getOrDefault(bc, 0), g.cost.length);
             if (t < 1) continue;
-            boolean neck = MINE_ITEM_SAND_NECKLACE.equals(bc);
-            out.add(mineEquipRow(neck ? "necklace" : "boots", bc, g.name + " " + t + "단계", g.effect[t - 1], (neck ? mineNeckTier(items) : mineBootsTier(items)) > 0));
+            boolean neck = !MINE_ITEM_SWIFT_BOOTS.equals(bc);
+            out.add(mineEquipRow(neck ? "necklace" : "boots", bc, g.name + " " + t + "단계", g.effect[t - 1], neck ? bc.equals(mineNeckCode(items)) : mineBootsTier(items) > 0));
         }
         boolean pon = mineParasolOn(items); // [2026-10-28] 무기 칸 -- 칼(기본), 양산
         out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon));
@@ -12358,7 +12381,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if ("tool".equals(g.kind)) m.put("on", tier > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == minePickSlotOf(g.code)); // 끼고 있는 곡괭이
             if (MINE_ITEM_DETECT_PICK.equals(g.code)) m.put("dim", mineDetectDim(items)); // 빛을 잃음(맵 리셋 때 회복)
             m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
-                    : "gloves".equals(g.kind) ? g.code.equals(mineGloveCode(items)) : tier > 0); // [2026-10-28] 장갑
+                    : "gloves".equals(g.kind) ? g.code.equals(mineGloveCode(items)) : "necklace".equals(g.kind) ? g.code.equals(mineNeckCode(items)) : tier > 0); // [2026-10-28] 장갑, 목걸이
             m.put("fieldMax", g.fieldMax); // [2026-10-25] 이 단계까지 마을 대장장이, 그 위는 왕도 대장장이
             if (tier < g.cost.length) {
                 m.put("nextTier", tier + 1);
@@ -12450,6 +12473,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         dao.upsertMineItem(userName, g.code, tier + 1);
         String wear = "";
         if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 꼈어요."; }
+        if ("necklace".equals(g.kind) && tier == 0) { // [2026-10-28] 목걸이는 하나 -- 처음 만들면 그걸 건다
+            dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(g.code) ? 2 : 1);
+            dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, 0);
+            wear = " 바로 걸었어요.";
+        }
         if ("gloves".equals(g.kind)) { // [2026-10-28] 재생/광전사의 장갑 -- 만들면 바로 낀다(방한 장갑은 벗음)
             dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, MINE_ITEM_REGEN_GLOVES.equals(g.code) ? 2 : 3);
             if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
@@ -12495,9 +12523,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 꼈어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 벗었어요.");
         }
-        if (MINE_ITEM_SWIFT_BOOTS.equals(code) || MINE_ITEM_SAND_NECKLACE.equals(code)) { // [2026-10-28] 신발 / 목걸이 -- 신기/벗기
-            boolean neck = MINE_ITEM_SAND_NECKLACE.equals(code);
-            if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, (neck ? "사막의 목걸이" : "신속의 장화") + "가 없어요. 대장장이에게서 만들 수 있어요.");
+        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
+            MineGear ng = mineGear(code);
+            if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, ng.name + "이(가) 없어요. 대장장이에게서 만들 수 있어요.");
+            boolean on = !code.equals(mineNeckCode(it));
+            if (on) dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : 1);
+            dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, on ? 0 : 1);
+            return mineGearResult(userName, true, "📿 " + ng.name + (on ? "을(를) 걸었어요." : "을(를) 풀었어요."));
+        }
+        if (MINE_ITEM_SWIFT_BOOTS.equals(code)) { // [2026-10-28] 신발 -- 신기/벗기
+            boolean neck = false;
+            if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, "신속의 장화가 없어요. 대장장이에게서 만들 수 있어요.");
             String flag = neck ? MINE_ITEM_NECK_OFF : MINE_ITEM_BOOTS_OFF;
             boolean on = it.getOrDefault(flag, 0) == 1;
             dao.upsertMineItem(userName, flag, on ? 0 : 1);
