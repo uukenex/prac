@@ -9410,6 +9410,31 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long MINE_RANGED_MIN_MS = 6_000L, MINE_RANGED_RAND_MS = 4_000L;
     private static final double MINE_RANGED_MULT = 1.3;
+    // [2026-10-28] "용암 거신은 플레이어가 밟고 있던 땅을 용암화시키는 원거리 공격, 용암화된 땅은 전투가 완전 종료되면 정상화" --
+    //  불덩이가 떨어진 칸(맞은 플레이어가 서 있던 칸)이 용암이 된다(최대 MINE_LAVA_MAX칸). 용암 위에 서 있으면 환경 턴(1초)마다 최대 체력의 MINE_LAVA_PCT%.
+    //  용암 거신과 싸우는(인식된) 사람이 아무도 없거나 거신이 쓰러지면 모두 식는다. 용암섬은 한 곳뿐이라 서버 메모리 하나로 둔다.
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, Long> MINE_LAVA = new java.util.concurrent.ConcurrentHashMap<>();
+    private static volatile String mineLavaVer = "";
+    private static final int MINE_LAVA_MAX = 60;
+    private static final double MINE_LAVA_PCT = 6;
+
+    /** 지금 용암 칸(y * w + x) -- 용암섬이 아니면 빈 목록. 전투가 완전히 끝났으면 여기서 식힌다. */
+    private List<Integer> mineLavaCells(S5MineMap map, long now) {
+        if (!S5MineMap.ISLE7.equals(map.id)) return Collections.emptyList();
+        if (!map.version().equals(mineLavaVer)) { MINE_LAVA.clear(); mineLavaVer = map.version(); }
+        if (!MINE_LAVA.isEmpty() && !mineLavaFightOn(map, now)) MINE_LAVA.clear();
+        return new ArrayList<>(MINE_LAVA.keySet());
+    }
+
+    /** 용암 거신이 살아 있고 누군가와 싸우는 중인지(인식된 사람이 있음). */
+    private boolean mineLavaFightOn(S5MineMap map, long now) {
+        S5MineMap.Mob boss = mineBossOf(map);
+        if (boss == null || boss.type != S5MineMobs.LAVA_BOSS_TYPE || mineBossDead(boss.type)) return false;
+        MobState bs = MINE_MOB_STATE.get(mineMobKey(map, boss.id));
+        if (bs != null && bs.deadUntil > now) return false;
+        for (MineEngage e : MINE_ENGAGE.values()) if (map.version().equals(e.mapVer) && now - e.at <= MINE_ENGAGE_TTL_MS && e.mobs.containsKey(boss.id)) return true;
+        return false;
+    }
 
     /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
     private boolean mineBossDead(int type) {
@@ -9629,6 +9654,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                         h.put("fx", s.fx);
                         h.put("fy", s.fy);
                         hits.add(h);
+                        mineLavaCells(map, now); // 맵 버전 맞추기
+                        if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(x, y) && !map.safeAt(x, y)) MINE_LAVA.put(y * map.w + x, now); // [2026-10-28] 서 있던 칸이 용암으로
+                        h.put("lava", true);
                         killerName = type.name;
                     }
                 }
@@ -9655,6 +9683,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("hits", hits);
         out.put("mobs", mobs);
+        if (S5MineMap.ISLE7.equals(map.id)) out.put("lava", mineLavaCells(map, now)); // [2026-10-28] 용암 칸
         String rwMsg = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 다른 사람이 닌자 두목을 쓰러뜨렸을 때 함께 싸운 보상 소식
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
@@ -10249,6 +10278,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineLavaKilledCycle = S5MineMap.activeCycle();
                 MINE_RANGED_NEXT.clear();
+                MINE_LAVA.clear(); // 전투 끝 -- 용암이 식는다
+                out.put("lava", Collections.emptyList());
                 dao.upsertConfigValue(MINE_LAVA_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine lava isle boss killed (cycle|user)");
                 msg.insert(0, "👑 용암 거신을 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
@@ -11218,6 +11249,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 cs.frac = drain - heatDmg;
             }
         }
+        int lavaDmg = 0;
+        if (S5MineMap.ISLE7.equals(map.id)) { // [2026-10-28] 용암 거신 -- 용암 칸 위면 초당 최대 체력 MINE_LAVA_PCT%
+            List<Integer> lava = mineLavaCells(map, now);
+            out.put("lava", lava);
+            long el = Math.min(2_000L, Math.max(0, now - from));
+            if (el > 0 && lava.contains(y * map.w + x)) lavaDmg = Math.max(1, (int) (cap * MINE_LAVA_PCT / 100 * el / 1000.0));
+        }
         if (map.cold() > 0) {
             if (safe || iceFrozen) cs.frac = 0;
             else {
@@ -11248,24 +11286,25 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (ng <= now) { out.put("gasAt", ng); gasDmg = (int) Math.min(Integer.MAX_VALUE / 4, atk * 1.2); }
             }
         }
-        if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg <= 0) return out;
+        if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg <= 0) return out;
         HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
         lv = mineLv(lrow); // [2026-10-28] 잠근 행의 레벨로(그 사이 레벨업했으면 옛 레벨로 덮어쓰지 않게)
         long exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
-        int hp = mineHpNow(lrow, now, lock, rb) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg;
+        int hp = mineHpNow(lrow, now, lock, rb) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg - lavaDmg;
+        if (lavaDmg > 0) out.put("lavaDmg", lavaDmg);
         if (coldDmg > 0) out.put("coldDmg", coldDmg);
         if (heatDmg > 0) out.put("heatDmg", heatDmg);
         if (bzDmg > 0) out.put("blizzardDmg", bzDmg);
         if (fireDmg > 0) out.put("fireDmg", fireDmg);
         if (gasDmg > 0) out.put("gasDmg", gasDmg);
         if (hp <= 0) {
-            boolean spell = fireDmg + gasDmg > 0;
-            if (spell) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금)
+            boolean spell = fireDmg + gasDmg > 0, burnt = lavaDmg > 0 && !spell;
+            if (spell || burnt) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금), [2026-10-28] 용암도(보스전)
             hp = mineHpCap(lv, lock, rb);
             mineDisengageAll(userName);
             MINE_COLD.remove(userName);
             out.put("died", true);
-            out.put("message", spell ? "💀 타락한 대주교의 " + (fireDmg > 0 ? "불벼락" : "어둠가스") + "에 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out)
+            out.put("message", burnt ? "🌋 용암에 데어 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out) : spell ? "💀 타락한 대주교의 " + (fireDmg > 0 ? "불벼락" : "어둠가스") + "에 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out)
                     : heatDmg > 0 && coldDmg + bzDmg == 0 ? (map.sun() > 0 ? "☀️ 뜨거운 햇볕에 쓰러졌어요... " : "🥵 더위를 견디지 못하고 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요."
                     : "🥶 " + (bzDmg > 0 ? "눈바람에 휩쓸려" : "추위를 견디지 못하고") + " 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
         }

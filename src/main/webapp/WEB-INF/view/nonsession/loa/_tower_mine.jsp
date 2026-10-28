@@ -1786,6 +1786,13 @@ var TowerMine = (function () {
   //  몬스터에게 인식돼 있거나(st.combat.fight) 동굴 3층 보스 2칸 안이면 1초마다 서버에 묻는다(쫓아온 칸, 맞은 피해, 인식 해제).
   var lastBossT = 0, bossBusy = false, bossWarned = false;
   var bolts = [], BOLT_MS = 420, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
+  // [2026-10-28] 용암 칸(불덩이가 떨어진 칸, "y * w + x") -- 서버가 전투/환경 턴마다 알려 준다. 전투가 끝나면 빈 목록(식음).
+  var lavaCells = {};
+  function lavaSet(list) {
+    var n = {};
+    (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; });
+    lavaCells = n;
+  }
   function bossTick(now) {
     if (!map || busy || bossBusy || fade || now - lastBossT < 1000) return;
     var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
@@ -1807,12 +1814,13 @@ var TowerMine = (function () {
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
+      if (d.lava) lavaSet(d.lava);
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
           bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t });
           floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
-          if (!boltWarned) { boltWarned = true; msg('☄️ 용암 거신이 불덩이를 던져요! 떨어져 있어도 맞아요.', 3200); }
+          if (!boltWarned) { boltWarned = true; msg('☄️ 용암 거신의 불덩이! 서 있던 땅이 🌋 용암이 됐어요 -- 얼른 비켜요! (전투가 끝나면 식어요)', 3600); }
           return;
         }
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
@@ -1862,6 +1870,8 @@ var TowerMine = (function () {
         if (d.gasDmg) { floats.push({ x: P.x, y: P.y - 1.1, text: '☠️ -' + d.gasDmg, color: '#c08aff', big: true, t0: t + 150 }); if (!d.fireDmg) msg('☠️ 어둠가스가 성당 옛터를 뒤덮었어요! (-' + d.gasDmg + ')', 2600); }
       }
       if (map.ice) iceApply(d, t); // [2026-10-28] 설산 봉우리 -- 빙결/얼음땡
+      if (d.lava) lavaSet(d.lava); // [2026-10-28] 용암섬
+      if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
       if (d.died && d.state) fallDown(d);
@@ -2354,6 +2364,16 @@ var TowerMine = (function () {
         if (!npcAt[z[0] + ',' + z[1]]) drawFire(zx, zy, TS, now);
       });
     }
+    // [2026-10-28] 용암 칸 -- 일렁이는 붉은 바닥 + 거품
+    for (var lk in lavaCells) {
+      var lp = lk.split(','), lx = +lp[0] * TS - camX, ly = +lp[1] * TS - camY;
+      if (lx < -TS || ly < -TS || lx > W || ly > H) continue;
+      var glow = 0.75 + 0.2 * Math.sin(now / 300 + (+lp[0]) * 1.3 + (+lp[1]) * 0.7);
+      ctx.fillStyle = 'rgba(200,40,10,' + glow + ')'; ctx.fillRect(lx, ly, TS, TS);
+      ctx.fillStyle = 'rgba(255,170,40,' + (glow * 0.8) + ')'; ctx.fillRect(lx + TS * 0.15, ly + TS * 0.15, TS * 0.7, TS * 0.7);
+      var bb = ((now / 700 + (+lp[0]) * 0.37 + (+lp[1]) * 0.61) % 1);
+      ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
+    }
     // [2026-10-24] 탐지 곡괭이 -- 주변의 안 캔 광석. [2026-10-28] "범위를 보여주고 물풍선으로" -- 탐지 범위 점선 테두리 + 광석 아이콘을 담은 물풍선이 둥실둥실
     if (scan && scan.map === map.id) {
       var sr = scan.r, bx = (scan.x - sr) * TS - camX, by = (scan.y - sr) * TS - camY, bw = (sr * 2 + 1) * TS;
@@ -2635,7 +2655,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
