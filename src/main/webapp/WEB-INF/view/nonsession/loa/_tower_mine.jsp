@@ -1309,64 +1309,136 @@ var TowerMine = (function () {
     return map && map.archi ? 'sea' : 'plain';
   }
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
+  // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
+  //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
+  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [0, 440], sea: [360, 470] }, WORLD_SIZE = [680, 860];
+  var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵']];
+  var worldVB = null, wMoved = false;
+  function worldPos(rid, nid) {
+    var R = WORLD_REGIONS.filter(function (r) { return r.id === rid; })[0], o = WORLD_PLACE[rid];
+    var e = R && R.nodes.filter(function (n) { return n[0] === nid; })[0];
+    return e ? { x: o[0] + e[1], y: o[1] + e[2] } : null;
+  }
   function worldHtml() {
-    if (!worldTab) worldTab = regionOf(map && map.id);
-    var R = WORLD_REGIONS.filter(function (r) { return r.id === worldTab; })[0] || WORLD_REGIONS[0];
     var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && st.adminMaps);
     WORLD_NODES.forEach(function (n) { info[n.id] = n; });
-    var N = {};
-    R.nodes.forEach(function (e) {
-      if (e[0].charAt(0) === '@') { N[e[0]] = { id: e[0], x: e[1], y: e[2], go: e[3], name: e[4], exit: true }; return; }
-      var n = info[e[0]];
-      if (!n || n.locked || n.dev) return;
-      N[e[0]] = { id: n.id, x: e[1], y: e[2], name: n.name, fill: n.fill, ink: n.ink, w: n.w, town: n.town };
-    });
     var STY = { walk: 'stroke="#f4f0e6" stroke-width="3"', sea: 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"', fall: 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"' };
-    var tabs = '<div class="eq-tabs world-tabs">' + WORLD_REGIONS.map(function (r) {
-      return '<button type="button" class="' + (r.id === R.id ? 'on' : '') + '" onclick="TowerMine.worldTab(\'' + r.id + '\')">' + r.name + '</button>';
-    }).join('') + '</div>';
-    var svg = '<svg viewBox="0 0 320 ' + R.vh + '" class="mine-world" role="img" aria-label="광산 전체 지도 -- ' + R.name + '">'
-        + '<rect x="0" y="0" width="320" height="' + R.vh + '" fill="#1d1730"/>';
-    R.links.forEach(function (l) {
-      var p = N[l[0]], q = N[l[1]];
-      if (!p || !q) return;
-      svg += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[l[2] || 'walk'] + '/>'
-          + (l[3] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + l[3] + '</text>' : '');
-    });
-    // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)
     var bossOf = {};
     ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map] = b; });
     var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
-    Object.keys(N).forEach(function (k) {
-      var n = N[k], nw = n.w || W;
-      if (n.exit) { // 다른 구간으로 -- 누르면 그 탭
-        svg += '<g style="cursor:pointer" onclick="TowerMine.worldTab(\'' + n.go + '\')"><rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="#2a2440" stroke="#b8b0c8" stroke-width="2" stroke-dasharray="5 4"/>'
-            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="#e8e0ff">' + n.name + '</text></g>';
-        return;
-      }
-      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi && !N[map.id] && regionOf(map.id) === 'sea'));
-      if (bossOf[n.id]) {
-        var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = Math.max(4, n.x - nw / 2 + 2);
-        svg += b.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
-            : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(b.nextAt) + '</text>';
-      }
-      // [2026-10-28] 관리자 -- 칸을 누르면 그 맵 시작점으로(서버도 관리자만)
-      svg += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
-          + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
-          + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"/>'
-          + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
-          + (adminW ? '</g>' : '')
-          + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
-          + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
+    var here = null, lines = '', nodes = '', labels = '';
+    WORLD_REGIONS.forEach(function (R) {
+      var o = WORLD_PLACE[R.id], N = {};
+      R.nodes.forEach(function (e) {
+        if (e[0].charAt(0) === '@') return; // 구간 밖 점선 칸은 한 장 지도에선 실제 칸끼리 잇는다(WORLD_CROSS)
+        var n = info[e[0]];
+        if (!n || n.locked || n.dev) return;
+        N[e[0]] = { id: n.id, x: o[0] + e[1], y: o[1] + e[2], name: n.name, fill: n.fill, ink: n.ink, w: n.w, town: n.town };
+      });
+      labels += '<text x="' + (o[0] + 6) + '" y="' + (o[1] + 14) + '" class="wr">' + R.name + '</text>';
+      R.links.forEach(function (l) {
+        var p = N[l[0]], q = N[l[1]];
+        if (!p || !q) return;
+        lines += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[l[2] || 'walk'] + '/>'
+            + (l[3] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + l[3] + '</text>' : '');
+      });
+      Object.keys(N).forEach(function (k) {
+        var n = N[k], nw = n.w || W;
+        var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]));
+        if (isHere) here = { x: n.x, y: n.y };
+        if (bossOf[n.id]) {
+          var bb = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - nw / 2 + 2;
+          labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
+              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(bb.nextAt) + '</text>';
+        }
+        nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
+            + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
+            + ' stroke="' + (isHere ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (isHere ? 4 : 2) + '"/>'
+            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
+            + (adminW ? '</g>' : '')
+            + (isHere ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
+            + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
+      });
     });
-    svg += '</svg>';
+    WORLD_CROSS.forEach(function (c) { // 구간 사이 길
+      var p = worldPos(c[0], c[1]), q = worldPos(c[2], c[3]);
+      if (!p || !q) return;
+      lines = '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[c[4]] + '/>'
+          + (c[5] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + c[5] + '</text>' : '') + lines;
+    });
+    if (!worldVB) { var c0 = here || { x: WORLD_SIZE[0] / 2, y: WORLD_SIZE[1] / 2 }; worldVB = { x: c0.x - 190, y: c0.y - 230, w: 380, h: 460 }; }
+    worldHere = here;
+    var svg = '<div class="world-ctrl">'
+        + '<button type="button" onclick="TowerMine.worldZoom(1.3)">＋</button><button type="button" onclick="TowerMine.worldZoom(1 / 1.3)">－</button>'
+        + '<button type="button" onclick="TowerMine.worldGo(\'me\')">📍 내 위치</button>'
+        + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
+        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
+        + '<rect x="-400" y="-400" width="' + (WORLD_SIZE[0] + 800) + '" height="' + (WORLD_SIZE[1] + 800) + '" fill="#1d1730"/>'
+        + lines + nodes + labels + '</svg></div>'
+        + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
         + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
-    return npcHead('🗺️ 전체 지도', false) + tabs + svg;
+    return npcHead('🗺️ 전체 지도', false) + svg;
+  }
+  var worldHere = null;
+  function worldApply() {
+    var el2 = document.getElementById('mineWorldSvg');
+    if (el2 && worldVB) el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h);
+  }
+  function worldZoomAt(f, cx, cy) { // f > 1 = 확대. (cx, cy) = 지도 좌표 기준점
+    var nw = Math.max(160, Math.min(1400, worldVB.w / f)), k = nw / worldVB.w;
+    worldVB = { x: cx - (cx - worldVB.x) * k, y: cy - (cy - worldVB.y) * k, w: nw, h: worldVB.h * k };
+    worldApply();
+  }
+  function worldZoom(f) { worldZoomAt(f, worldVB.x + worldVB.w / 2, worldVB.y + worldVB.h / 2); }
+  function worldGo(id) {
+    var c = null;
+    if (id === 'me') c = worldHere;
+    else if (WORLD_PLACE[id]) { var R = WORLD_REGIONS.filter(function (r) { return r.id === id; })[0]; c = { x: WORLD_PLACE[id][0] + 160, y: WORLD_PLACE[id][1] + (R ? R.vh / 2 : 200) }; }
+    if (!c) return;
+    worldVB = { x: c.x - worldVB.w / 2, y: c.y - worldVB.h / 2, w: worldVB.w, h: worldVB.h };
+    worldApply();
+  }
+  /** 지도 끌기/확대 -- 화면에 그린 뒤 붙인다(renderSmithView). */
+  function worldBind() {
+    var sv = document.getElementById('mineWorldSvg');
+    if (!sv) return;
+    var pts = {}, start = null, pinch = null;
+    var toMap = function (clientX, clientY) { var r = sv.getBoundingClientRect(), s2 = Math.max(worldVB.w / r.width, worldVB.h / r.height); return { x: worldVB.x + (clientX - r.left - (r.width - worldVB.w / s2) / 2) * s2, y: worldVB.y + (clientY - r.top - (r.height - worldVB.h / s2) / 2) * s2, s: s2 }; };
+    sv.addEventListener('pointerdown', function (e) {
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (ids.length === 1) { wMoved = false; start = { cx: e.clientX, cy: e.clientY, vb: { x: worldVB.x, y: worldVB.y }, s: toMap(e.clientX, e.clientY).s }; }
+      else if (ids.length === 2) { var p1 = pts[ids[0]], p2 = pts[ids[1]]; pinch = { d: Math.hypot(p1.x - p2.x, p1.y - p2.y), w: worldVB.w }; start = null; }
+    });
+    sv.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return;
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+      var ids = Object.keys(pts);
+      if (ids.length === 2 && pinch) {
+        var p1 = pts[ids[0]], p2 = pts[ids[1]], d = Math.hypot(p1.x - p2.x, p1.y - p2.y), m = toMap((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        worldZoomAt((pinch.w / worldVB.w) * (d / pinch.d), m.x, m.y);
+        wMoved = true;
+        e.preventDefault();
+        return;
+      }
+      if (!start) return;
+      var dx = e.clientX - start.cx, dy = e.clientY - start.cy;
+      if (Math.abs(dx) + Math.abs(dy) > 6) wMoved = true;
+      if (!wMoved) return;
+      worldVB.x = start.vb.x - dx * start.s; worldVB.y = start.vb.y - dy * start.s;
+      worldApply();
+      e.preventDefault();
+    });
+    var end = function (e) { delete pts[e.pointerId]; if (Object.keys(pts).length < 2) pinch = null; if (!Object.keys(pts).length) start = null; };
+    sv.addEventListener('pointerup', end);
+    sv.addEventListener('pointercancel', end);
+    sv.addEventListener('pointerleave', end);
+    sv.addEventListener('wheel', function (e) { e.preventDefault(); var m = toMap(e.clientX, e.clientY); worldZoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, m.x, m.y); }, { passive: false });
   }
   /** [2026-10-28] 관리자 -- 전체 지도에서 누른 지역(맵) 시작점으로 이동(서버 mineAdminWarp가 관리자인지 다시 확인). */
   function worldWarp(id) {
-    if (!st || !st.adminMaps || busy) return;
+    if (!st || !st.adminMaps || busy || wMoved) return; // [2026-10-28] 끌다가 놓은 건 누른 게 아니다
     var e = st.adminMaps.filter(function (m) { return m.id === id; })[0];
     if (!e) { msg('이동할 수 없는 곳이에요.'); return; }
     closeSmith();
@@ -1469,7 +1541,7 @@ var TowerMine = (function () {
   function archiLeftMin(t) { var p = ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs; return Math.max(1, Math.ceil(((p < map.dayMs ? map.dayMs : map.dayCycleMs) - p) / 60000)); }
   function openWorld() {
     if (!opened || !map) return;
-    worldTab = regionOf(map.id); // [2026-10-28] 지금 있는 구간부터
+    worldVB = null; // [2026-10-28] 열 때마다 지금 있는 곳을 가운데로
     openSmith({ name: '전체 지도', line: '', kind: 'world' }, 'world');
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
@@ -1833,6 +1905,7 @@ var TowerMine = (function () {
     }
     if (smithView === 'world') {
       el.smith.innerHTML = worldHtml();
+      worldBind(); // [2026-10-28] 끌기/확대
       return;
     }
     if (smithView === 'archi') { // [2026-10-28] 다도해 NPC
@@ -3127,6 +3200,6 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

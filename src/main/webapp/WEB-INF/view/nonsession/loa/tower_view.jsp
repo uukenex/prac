@@ -820,6 +820,13 @@
     .cos-card .mine-cost img{ width:12px; height:12px; }
     .cos-card button{ font-size:11px; padding:3px 8px; margin-top:auto; }
     .mine-look-mini{ width:36px; height:36px; image-rendering:pixelated; background:#2a2340; border:1px solid #f4f0e6; cursor:pointer; flex-shrink:0; }
+    /* [2026-10-28] 끌기/확대 전체 지도 */
+    .world-wrap{ height:min(62vh, 540px); border:2px solid #f4f0e6; margin-bottom:8px; overflow:hidden; background:#1d1730; }
+    .world-wrap .mine-world{ border:0; margin:0; width:100%; height:100%; touch-action:none; cursor:grab; user-select:none; -webkit-user-select:none; }
+    .world-wrap .mine-world:active{ cursor:grabbing; }
+    .mine-world .wr{ font:800 15px sans-serif; fill:#ffe9a8; opacity:.85; }
+    .world-ctrl{ display:flex; flex-wrap:wrap; gap:4px; margin:0 0 6px; }
+    .world-ctrl button{ font-size:12px; padding:4px 8px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .world-tabs{ flex-wrap:wrap; } .world-tabs button{ flex:1 1 40%; font-size:12px; } /* [2026-10-28] 전체 지도 구간 탭 */
     .mine-world{ display:block; width:100%; height:auto; border:2px solid #f4f0e6; margin-bottom:8px; }
     .mine-world .wn{ font:800 12px sans-serif; }
