@@ -8702,6 +8702,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.PEAK, 90);
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
+        MINE_MIN_LV.put(S5MineMap.CAVE4, 53); // [2026-10-28] 광산 동굴 4층(14~15단계)
         MINE_MIN_LV.put(S5MineMap.ANTNEST, 41);
         MINE_MIN_LV.put(S5MineMap.SNOWCAVE, 41); // [2026-10-28] 설산 동굴(박쥐 11~12단계)
         MINE_MIN_LV.put(S5MineMap.SNOWCAVE2, 49); // [2026-10-28] 설산 동굴 2층(얼음 골렘 13단계) // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
@@ -9867,10 +9868,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private List<HashMap<String, Object>> mineRaidDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (RND.nextInt(100) < MINE_SEAL_PCT) {
-            dao.addUserOre(userName, S5MineMap.SEAL_CODE, 1);
+        if (mineGiveToken(userName, MINE_ITEM_TOKEN_SEAL, S5MineMap.SEAL_CODE)) { // [2026-10-28] 고유 증표 -- 처음 잡을 때 반드시, 그 뒤로는 없음(예전: 매번 MINE_SEAL_PCT%)
             drops.add(mineDrop(S5MineMap.SEAL_GRADE, S5MineMap.SEAL_NAME, 1));
-            msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!!");
+            msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!! (고유 증표 -- 한 번뿐)");
         }
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
@@ -10009,11 +10009,24 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 얼음 여왕 보상: 얼음의 심장 1(반드시) + 50% 다이아몬드 2 + 40% 별빛석 1. */
+    // [2026-10-28] "보스에게 뜨는 상징적인 아이템은 고유 증표 개념으로 1회만" -- 얼음의 심장(얼음 여왕), 대주교의 인장(대주교)은 처음 잡을 때 반드시 1개,
+    //  그 뒤로는 안 나온다(받았는지는 광산 아이템 TOKEN_*). 닌자의 비급서(SHRINE_BOSS_REWARD), 사막의 심장(DESERT_CHEST)은 이미 한 번만.
+    static final String MINE_ITEM_TOKEN_ICE = "TOKEN_ICE_HEART", MINE_ITEM_TOKEN_SEAL = "TOKEN_ARCH_SEAL";
+
+    /** 증표를 아직 안 받았으면 주고 true. */
+    private boolean mineGiveToken(String userName, String flag, String code) {
+        if (mineItems(userName).getOrDefault(flag, 0) > 0) return false;
+        dao.upsertMineItem(userName, flag, 1);
+        dao.addUserOre(userName, code, 1);
+        return true;
+    }
+
     private List<HashMap<String, Object>> mineIceDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        dao.addUserOre(userName, S5MineMap.ICE_HEART_CODE, 1);
-        drops.add(mineDrop(S5MineMap.ICE_HEART_GRADE, S5MineMap.ICE_HEART_NAME, 1));
-        msg.append(" · 💠 ").append(S5MineMap.ICE_HEART_NAME).append(" 1개!!");
+        if (mineGiveToken(userName, MINE_ITEM_TOKEN_ICE, S5MineMap.ICE_HEART_CODE)) {
+            drops.add(mineDrop(S5MineMap.ICE_HEART_GRADE, S5MineMap.ICE_HEART_NAME, 1));
+            msg.append(" · 💠 ").append(S5MineMap.ICE_HEART_NAME).append(" 1개!! (고유 증표 -- 한 번뿐)");
+        }
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 2));
@@ -10538,7 +10551,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2 }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4 }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);

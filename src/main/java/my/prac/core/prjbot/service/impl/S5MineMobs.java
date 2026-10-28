@@ -188,6 +188,12 @@ public final class S5MineMobs {
         new Type("흡혈 박쥐", 11, "flyer", "#6a2a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
         new Type("서리 박쥐", 12, "flyer", "#d8f0ff", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
         new Type("동굴 큰박쥐", 12, "flyer", "#3a3a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
+        // [2026-10-28] 광산 동굴 4층 -- 14단계(Lv.53) / 15단계(Lv.57)
+        new Type("동굴 트롤", 14, "human", "#5a6a4a", S5MineMap.CAVE4),
+        new Type("수정 전갈", 14, "crab", "#9a7ad8", S5MineMap.CAVE4),
+        new Type("어둠 거미", 15, "crab", "#2a1a2a", S5MineMap.CAVE4),
+        new Type("심층 골렘", 15, "human", "#4a3a5a", S5MineMap.CAVE4),
+        new Type("마그마 슬라임", 15, "blob", "#e8602a", S5MineMap.CAVE4),
         // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레를 지키는 얼음 골렘(13단계 Lv.49, 체력 x1.6 / 공격 x1.2, 늘 선공)
         new Type("얼음 골렘", 13, "human", "#a8d8f0", S5MineMap.SNOWCAVE2).strong(1.6, 1.2).asFirstStrike()
     ));
@@ -238,6 +244,7 @@ public final class S5MineMobs {
             case S5MineMap.NORTH: return y > m.h * 0.66 ? 7 : y > m.h * 0.33 ? 8 : 9;
             case S5MineMap.CAVE2: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 6 : 7;
             case S5MineMap.CAVE3: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 8 : 9;
+            case S5MineMap.CAVE4: return Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 40 ? 14 : 15; // [2026-10-28] 입구에서 멀수록
             case S5MineMap.SEAROAD: return y > m.h * 0.5 ? 4 : 5; // 용궁(북쪽)에 가까울수록
             // 왕도(북쪽)에 가까울수록 강하다. 왕도 안은 몬스터 없음(0). [2026-10-27] 6~7단계 -> 9~11단계("사막 횡단 후 왕도까지 더 강하게")
             case S5MineMap.STEPPE: return y > m.h * 0.66 ? 9 : y > m.h * 0.33 ? 10 : 11;
@@ -270,18 +277,19 @@ public final class S5MineMobs {
 
     /** 맵별 몬스터 밀도(이동 가능 칸 몇 칸에 한 마리). */
     // [2026-10-28] "맵 전체적으로 몹 개체수를 조금 늘려줘" -- 모든 맵 약 25% 더(칸 수 / 마리를 0.8배로).
+    // [2026-10-28] "전체 맵 몬스터 개체 2배 정도" -- 모든 맵 칸 수 / 마리를 절반으로(몬스터끼리 4칸 넘게 떨어지는 규칙은 그대로라 빽빽한 맵은 덜 늘 수 있다).
     private static int density(String mapId) {
         switch (mapId) {
-            case S5MineMap.FIELD: return 160;
-            case S5MineMap.DUNGEON: return 256;
-            case S5MineMap.CAVE1: return 104;
-            case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
-            case S5MineMap.SNOWROAD: return 96; // [2026-10-28] 설산 봉우리 가는 길
-            case S5MineMap.ANTNEST: return 90; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
-            case S5MineMap.SNOWCAVE: return 100; // [2026-10-28] 설산 동굴 박쥐
-            case S5MineMap.SNOWCAVE2: return 45; // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레에 얼음 골렘 많이
-            case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 60; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
-            default: return 128;
+            case S5MineMap.FIELD: return 80;
+            case S5MineMap.DUNGEON: return 128;
+            case S5MineMap.CAVE1: return 52;
+            case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 48; // [2026-10-26] 설산은 빽빽하게
+            case S5MineMap.SNOWROAD: return 48; // [2026-10-28] 설산 봉우리 가는 길
+            case S5MineMap.ANTNEST: return 45; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
+            case S5MineMap.SNOWCAVE: return 50; // [2026-10-28] 설산 동굴 박쥐
+            case S5MineMap.SNOWCAVE2: return 22; // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레에 얼음 골렘 많이
+            case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 30; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
+            default: return 64;
         }
     }
 

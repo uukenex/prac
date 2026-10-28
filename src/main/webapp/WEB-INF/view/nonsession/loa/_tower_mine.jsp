@@ -1256,6 +1256,7 @@ var TowerMine = (function () {
     { id: 'city', name: '왕도 아스테리아', x: 160, y: 28, fill: '#c8a46a', ink: '#2a1d10', town: true }, // [2026-10-27] 일반 플레이어에게 열림, [2026-10-28] 레벨 표시 없음
     { id: 'steppe', name: '왕도 남쪽 초원', x: 160, y: 100, fill: '#8fbf5a', ink: '#10300a' },
     { id: 'cave3', name: '광산 동굴 3층', x: 52, y: 52, fill: '#2a2230', ink: '#e8d8ff' },
+    { id: 'cave4', name: '광산 동굴 4층', x: 52, y: 52, fill: '#1a1424', ink: '#e8d8ff' }, // [2026-10-28] 3층 보스가 지키는 문 너머
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
@@ -1286,9 +1287,9 @@ var TowerMine = (function () {
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
   var WORLD_REGIONS = [
     { id: 'plain', name: '🌾 평원', vh: 390,
-      nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave3', 52, 40], ['cave2', 52, 100], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
+      nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', 52, -22], ['cave3', 52, 40], ['cave2', 52, 100], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
-      links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
+      links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['cave3', 'cave4'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
     { id: 'desert', name: '🏜️ 사막·왕도', vh: 410,
       nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['steppe', 160, 240], ['desert', 160, 310],
         ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],

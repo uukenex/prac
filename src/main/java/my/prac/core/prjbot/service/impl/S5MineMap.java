@@ -52,6 +52,8 @@ public final class S5MineMap {
     public static final String SEAROAD = "searoad";
     /** [2026-10-24] 광산 동굴 3층(마지막 층, 광산 레벨 3) -- 가장 깊은 곳에 선공 보스(맵 리셋 때만 나타나고 잡히면 다음 리셋까지 없음). */
     public static final String CAVE3 = "cave3";
+    /** [2026-10-28] "광산 동굴 4층에 50~60레벨 구간" -- 3층 지하 문(보스가 지키는 자리 옆)을 열어 4층으로. 14~15단계(Lv.53~57), 광산 레벨 4(투구 3단계부터). */
+    public static final String CAVE4 = "cave4";
     public static final List<String> TELE_DESTS = Collections.unmodifiableList(Arrays.asList(FIELD, BEACH, DESERT, CASTLE));
     /** [2026-10-26] "레벨 40대가 많아져 설산부터 강한 몬스터, 북쪽 끝 설원에서 설산으로 오르는 입구, 3층 설산을 지나면 설산 마을" 요청.
      *  설원 북쪽 끝 입구 -> 설산 1층 -> 2층 -> 3층 -> 설산 마을(작은 마을, 북/동/서 문은 눈바람으로 잠김). 한기(cold): 설원 1, 설산 1~3층 = 2~4(초당 최대 체력 %). */
@@ -162,7 +164,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -207,6 +209,7 @@ public final class S5MineMap {
     private static final double[] CAVE2_SHARE = { 2, 25, 0.06, 0.18, 0.30 };
     private static final double[] ANTNEST_SHARE = { 1, 25, 0.06, 0.18, 0.30 }; // [2026-10-28] 개미굴
     private static final double[] CAVE3_SHARE = { 3, 35, 0.08, 0.20, 0.30 };
+    private static final double[] CAVE4_SHARE = { 3, 40, 0.09, 0.22, 0.30 }; // [2026-10-28] 광산 동굴 4층
     /** [2026-10-26] 설산 1~3층 -- 위층일수록 풍부하다. */
     private static final double[][] SNOW_SHARE = { { 2, 30, 0.07, 0.20, 0.30 }, { 3, 35, 0.08, 0.20, 0.30 }, { 4, 40, 0.09, 0.22, 0.30 } };
     private static final double[] ROAD_SHARE = { 3, 35, 0.08, 0.20, 0.30 }; // [2026-10-27] 왕도 가는 길
@@ -741,8 +744,8 @@ public final class S5MineMap {
         int bossX = cave3.spawnX, bossY = cave3.spawnY;
         for (Portal p : cave3.portals) {
             if (p.kind == 'U') c3p.add(new Portal(p.x, p.y, 'U', CAVE2, door2Side[0], door2Side[1], "광산 동굴 2층으로 올라가기"));
-            else {
-                cave3.terrain[p.y][p.x] = '#';
+            else { // [2026-10-28] 지하 문을 막지 않고 4층으로(좌표는 맨 뒤에서). 보스는 그대로 문 앞을 지킨다
+                c3p.add(new Portal(p.x, p.y, 'S', CAVE4, 0, 0, "지하 4층으로 내려가는 문"));
                 for (int[] dv : DIRS) if (cave3.walkable(p.x + dv[0], p.y + dv[1])) { bossX = p.x + dv[0]; bossY = p.y + dv[1]; break; }
             }
         }
@@ -938,6 +941,24 @@ public final class S5MineMap {
         S5MineMap snowCave = generateSnowCave(seed + 73, 1), stw = out.get(SNOWTOWN);
         out.put(SNOWCAVE, relink(snowCave, retarget(snowCave, SNOWTOWN, besidePortal(stw, SNOWCAVE)), null));
         out.put(SNOWTOWN, relink(stw, retarget(stw, SNOWCAVE, new int[] { snowCave.spawnX, snowCave.spawnY }), stw.npcs));
+        // [2026-10-28] 광산 동굴 3층 지하 문 <-> 4층(맨 뒤). 4층의 지하 문은 막는다(마지막 층). 3층으로 올라오면 문 옆(보스 자리가 아닌 칸)에.
+        S5MineMap cave4 = generateCave(seed + 75, CAVE4, "광산 동굴 4층", CAVE4_SHARE), cv3o = out.get(CAVE3);
+        int[] up3 = { cv3o.spawnX, cv3o.spawnY };
+        for (Portal p : cv3o.portals) if (CAVE4.equals(p.target))
+            for (int d = 1, found = 0; d <= 4 && found == 0; d++) for (int dy = -d; dy <= d && found == 0; dy++) for (int dx = -d; dx <= d; dx++) { // 문 둘레(문 앞은 보스 자리라 그 옆으로)
+                int nx = p.x + dx, ny = p.y + dy;
+                if (Math.abs(dx) + Math.abs(dy) != d || !cv3o.walkable(nx, ny) || (nx == cv3o.bossX && ny == cv3o.bossY)) continue;
+                up3 = new int[] { nx, ny }; found = 1; break;
+            }
+        List<Portal> c4p = new ArrayList<>();
+        for (Portal p : cave4.portals) {
+            if (p.kind == 'U') c4p.add(new Portal(p.x, p.y, 'U', CAVE3, up3[0], up3[1], "광산 동굴 3층으로 올라가기"));
+            else cave4.terrain[p.y][p.x] = '#';
+        }
+        S5MineMap cv4 = relink(cave4, c4p, null);
+        cv4.level = 4; // 광산 레벨 4 -- 투구 3단계 이상, 3층보다 한 단계 더 어둡다
+        out.put(CAVE4, cv4);
+        out.put(CAVE3, relink(cv3o, retarget(cv3o, CAVE4, new int[] { cave4.spawnX, cave4.spawnY }), null));
         // [2026-10-28] 설산 동굴 1층 계단 <-> 2층(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로)
         S5MineMap snowCave2 = generateSnowCave(seed + 74, 2), sc1 = out.get(SNOWCAVE);
         out.put(SNOWCAVE2, relink(snowCave2, retarget(snowCave2, SNOWCAVE, besidePortal(sc1, SNOWCAVE2)), null));
