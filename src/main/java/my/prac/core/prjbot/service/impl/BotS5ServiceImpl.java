@@ -9240,7 +9240,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감"
-    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
+    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
     //  [2026-10-28] 햇빛(다도해)만 x (1 - 0.2 rb)(mineSunCut) -- 5환생이면 햇빛을 완전히 막는다.
     static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
@@ -9253,7 +9253,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     static final double MINE_RB_ATK_BONUS = 0.5;
-    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(5, rb)); }
+    /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
+    static final double MINE_RB_EXP_MUL = 2;
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(MINE_RB_EXP_MUL, rb)); }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
     static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && exp >= mineExpNeed(MINE_LV_MAX, rb); }
 
@@ -11279,7 +11281,7 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  한 번에 1 ~ 1 + q*2/1000개(가장 적은 상자 = 보석 1개), 다이아몬드 q*25/1000 %(가장 많은 상자 = 예전 보상: 네 번 1~3개 + 25% 다이아).
      *  연 상자는 ANT_CHEST_CYC(주기 + 1) / ANT_CHEST_MASK(상자 순서 비트)로 기억한다. */
     static final String MINE_ITEM_ANT_CHEST_CYC = "ANT_CHEST_CYC", MINE_ITEM_ANT_CHEST_MASK = "ANT_CHEST_MASK";
-    static final int MINE_ANT_CHEST_LIMIT = 3;
+    static final int MINE_ANT_CHEST_LIMIT = 10; // [2026-10-28] 3 -> "10개 다 열 수 있게"
 
     @Override
     @Transactional
@@ -12614,8 +12616,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("rebirthDone", true);
         out.put("look", mineLookOf(items));
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
+        // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! 환생 " + nrb + "단계 -- Lv.1(환생" + nrb + ")로 다시 태어났어요. "
-                + "최대 체력 x" + mineRebirthMulText(1.5, nrb) + ", 필요 경험치 x" + mineRebirthMulText(3, nrb) + ".");
+                + "최대 체력 x" + (1 + nrb) + " · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 다도해 햇빛 -" + Math.min(100, nrb * 20) + "% · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
         return out;
     }
 

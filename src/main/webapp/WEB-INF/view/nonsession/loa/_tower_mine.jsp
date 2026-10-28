@@ -1474,18 +1474,20 @@ var TowerMine = (function () {
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 환생' + rb + ')' : '') + '<small>' + rbSub + '</small></button></div>';
-    // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). 체력 x(1+회차), 필요 경험치 x5^회차, 광물 획득 x(1+회차), 한기/햇빛 피해 -회차 %p
+    // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). "환생 시 멘트 조정" -- 좋아지는 것 / 어려워지는 것 / 그대로인 것으로 나눠서
     if (priestConfirm && ready) {
       var nrb = rb + 1;
       if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>환생 ' + nrb + '단계</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
-          + '· 레벨이 <b>Lv.1(환생' + nrb + ')</b>로 돌아가고 경험치는 0이 돼요.<br>'
-          + '· 기본 최대 체력 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
-          + '· 다음 레벨까지 필요 경험치 <b>x' + Math.pow(5, nrb) + '</b> (5의 ' + nrb + '제곱)<br>'
-          + '· 채굴·전투로 얻는 광물 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
-          + '· 한기·눈바람으로 입는 피해량 <b>-' + nrb + '%</b>, 다도해 햇빛 피해 <b>-' + Math.min(100, nrb * 20) + '%</b>' + (nrb >= 5 ? ' (햇빛 완전히 막음)' : '') + '<br>'
-          + '· 공격력 <b>+' + (nrb * 50) + '%</b> (x' + (1 + nrb * 0.5) + ', 레벨에 따라 처음부터 다시 올라요)<br>'
-          + '· 광석·장비·치장은 그대로예요.<br>'
-          + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계).'
+          + '<b>✨ 강해지는 것</b><br>'
+          + '· 최대 체력 <b>x' + (1 + nrb) + '</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
+          + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
+          + '· 한기·눈바람 피해 <b>-' + nrb + '%</b> · 다도해 햇빛 피해 <b>-' + Math.min(100, nrb * 20) + '%</b>' + (nrb >= 5 ? ' (햇빛을 완전히 막아요)' : '') + '<br>'
+          + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계)<br>'
+          + '<b>⏳ 다시 쌓는 것</b><br>'
+          + '· 레벨이 <b>Lv.1(환생' + nrb + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
+          + '· 레벨마다 필요한 경험치 <b>x' + rbMul(2, nrb) + '</b> (환생할 때마다 2배씩)<br>'
+          + '<b>🎒 그대로인 것</b><br>'
+          + '· 광석·보석·장비·치장은 모두 그대로예요.'
           + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirthFinal\')">다음</button>'
           + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
       else html += '<div class="mine-rb-box">⚠️ <b>최종 확인</b><br>정말 <b>환생 ' + nrb + '단계</b>로 다시 태어날까요?<br>지금 <b>Lv.' + c.lv + '</b>가 <b>Lv.1</b>로 돌아가며, <b>되돌릴 수 없어요.</b>'
