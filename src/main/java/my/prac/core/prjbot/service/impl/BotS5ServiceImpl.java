@@ -9403,27 +9403,51 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  맵 리셋(2일 주기)마다 한 번만 나타난다. 잡히면 TBOT_S5_CONFIG.MINE_BOSS_KILLED = "주기|유저"(서버를 다시 켜도 그 주기엔 안 나옴).
     //  선공: 보스 2칸 안에 들어오면 보스가 먼저 인식한다([2026-10-25] 전투 턴 mineCombatTick -- 아래 몬스터 인식 참고).
     private static final String MINE_BOSS_KEY = "MINE_BOSS_KILLED";
-    private static volatile int mineBossKilledCycle = Integer.MIN_VALUE;
+    // [2026-10-28] "처치된 보스는 2시간 뒤 재생성" -- 보스 공통(동굴 3층/대주교/얼음 여왕/용암 거신)으로 쓰러진 시각 + MINE_BOSS_RESPAWN_MS까지만 없다.
+    //  쓰러진 시각은 설정값(키마다 "T시각|유저")에 남겨 서버를 다시 켜도 이어진다(예전 "주기|유저" 값은 이미 지난 것으로 본다).
+    static final long MINE_BOSS_RESPAWN_MS = 2 * 3_600_000L;
+    private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_BOSS_KILLED_AT = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private long mineBossKilledAt(String key) {
+        Long v = MINE_BOSS_KILLED_AT.get(key);
+        if (v == null) {
+            long at = 0;
+            try {
+                String c = dao.selectConfigValue(key);
+                if (c != null && c.startsWith("T")) at = Long.parseLong(c.substring(1).split("\\|")[0].trim());
+            } catch (Exception e) {
+                at = 0;
+            }
+            MINE_BOSS_KILLED_AT.put(key, at);
+            v = at;
+        }
+        return v;
+    }
+
+    private void mineBossKilledNow(String key, String userName, long now) {
+        MINE_BOSS_KILLED_AT.put(key, now);
+        dao.upsertConfigValue(key, "T" + now + "|" + userName, "web mine boss killed (T epoch ms|user) -- respawns 2h later");
+    }
+
+    private boolean mineBossDeadKey(String key) {
+        return System.currentTimeMillis() < mineBossKilledAt(key) + MINE_BOSS_RESPAWN_MS;
+    }
+
+    /** 보스 종류 -> 쓰러진 시각 설정 키(보스가 아니거나 따로 셈하는 보스면 null). */
+    private static String mineBossKey(int type) {
+        return type == S5MineMobs.BOSS_TYPE ? MINE_BOSS_KEY : type == S5MineMobs.RAID_BOSS_TYPE ? MINE_RAID_KEY : type == S5MineMobs.ICE_BOSS_TYPE ? MINE_ICE_KEY
+                : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : null;
+    }
 
     private boolean mineBossDead() {
-        if (mineBossKilledCycle == Integer.MIN_VALUE) {
-            try {
-                String v = dao.selectConfigValue(MINE_BOSS_KEY);
-                mineBossKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
-            } catch (Exception e) {
-                mineBossKilledCycle = -1;
-            }
-        }
-        return mineBossKilledCycle == S5MineMap.activeCycle();
+        return mineBossDeadKey(MINE_BOSS_KEY);
     }
 
     // [2026-10-28] "젠은 맵 초기화 시점 1회만(보스 공통)" -- 타락한 대주교도 동굴 3층 보스처럼 주기마다 한 번(MINE_RAID_KILLED = "주기|유저").
     private static final String MINE_RAID_KEY = "MINE_RAID_KILLED";
-    private static volatile int mineRaidKilledCycle = Integer.MIN_VALUE;
 
     // [2026-10-28] 용암섬 용암 거신 -- 보스 공통으로 주기마다 한 번(MINE_LAVA_KILLED = "주기|유저").
     private static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
-    private static volatile int mineLavaKilledCycle = Integer.MIN_VALUE;
     /** 원거리 공격(불덩이) -- 인식 중인 유저마다 다음에 던질 시각. 6~10초마다, 2칸 이상 떨어져 있을 때(붙어 있으면 그냥 때린다). */
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long MINE_RANGED_MIN_MS = 6_000L, MINE_RANGED_RAND_MS = 4_000L;
@@ -9459,31 +9483,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return false;
     }
 
-    /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
+    /** 보스(type)가 쓰러진 지 2시간이 안 됐는지. 보스가 아니면 false. */
     private boolean mineBossDead(int type) {
-        if (type == S5MineMobs.BOSS_TYPE) return mineBossDead();
-        if (type == S5MineMobs.LAVA_BOSS_TYPE) {
-            if (mineLavaKilledCycle == Integer.MIN_VALUE) {
-                try {
-                    String v = dao.selectConfigValue(MINE_LAVA_KEY);
-                    mineLavaKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
-                } catch (Exception e) {
-                    mineLavaKilledCycle = -1;
-                }
-            }
-            return mineLavaKilledCycle == S5MineMap.activeCycle();
-        }
-        if (type == S5MineMobs.ICE_BOSS_TYPE) return mineIceBossDead(); // [2026-10-28] 얼음 여왕
-        if (type != S5MineMobs.RAID_BOSS_TYPE) return false;
-        if (mineRaidKilledCycle == Integer.MIN_VALUE) {
-            try {
-                String v = dao.selectConfigValue(MINE_RAID_KEY);
-                mineRaidKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
-            } catch (Exception e) {
-                mineRaidKilledCycle = -1;
-            }
-        }
-        return mineRaidKilledCycle == S5MineMap.activeCycle();
+        String key = mineBossKey(type);
+        return key != null && mineBossDeadKey(key);
     }
 
     private static S5MineMap.Mob mineBossOf(S5MineMap map) {
@@ -9886,7 +9889,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     //   판정은 봉우리에 있는 모든 화면이 1초마다 부르는 환경 턴(mineColdTick)에서 한다. 언 동안엔 한기/눈바람 피해가 없다.
     //  보스 공통: 맵 주기마다 한 번(MINE_ICE_KILLED = "주기|유저"). 보상: 얼음의 심장 1(반드시) + 50% 다이아몬드 2 + 40% 별빛석 1.
     private static final String MINE_ICE_KEY = "MINE_ICE_KILLED";
-    private static volatile int mineIceKilledCycle = Integer.MIN_VALUE;
     private static final long MINE_ICE_AWAKE_MS = 15_000L;
     private static final long MINE_ICE_FIRST_MS = 8_000L, MINE_ICE_PERIOD_MS = 18_000L, MINE_ICE_FREEZE_MS = 15_000L;
     private static final int MINE_ICE_RESCUE_RANGE = 2;
@@ -9908,15 +9910,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_ICE_THAWED = new java.util.concurrent.ConcurrentHashMap<>();
 
     private boolean mineIceBossDead() {
-        if (mineIceKilledCycle == Integer.MIN_VALUE) {
-            try {
-                String v = dao.selectConfigValue(MINE_ICE_KEY);
-                mineIceKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
-            } catch (Exception e) {
-                mineIceKilledCycle = -1;
-            }
-        }
-        return mineIceKilledCycle == S5MineMap.activeCycle();
+        return mineBossDeadKey(MINE_ICE_KEY);
     }
 
     /** 지금 얼어 있으면 그 얼음(없으면 null). 다 녹았거나 맵이 바뀌었으면 지운다. */
@@ -10044,7 +10038,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final long MINE_SPLIT_MS = 30_000L;
     private static final double MINE_CLONE_TRAP_MULT = 1.0;
     private static final int MINE_CLONE_HEAL_PCT = 5;
-    private static final long MINE_SHRINE_BOSS_RESPAWN_MS = 10 * 60_000L;
+    private static final long MINE_SHRINE_BOSS_RESPAWN_MS = 2 * 3_600_000L; // [2026-10-28] 10분 -> 2시간(보스 공통)
     static final String MINE_ITEM_SHRINE_BOSS_REWARD = "SHRINE_BOSS_REWARD";
     /** 함께 싸운 유저에게 다음 전투 턴에 보여 줄 보상 소식. */
     private static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_SHRINE_REWARD_MSG = new java.util.concurrent.ConcurrentHashMap<>();
@@ -10222,7 +10216,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     killed = true;
                     s.hp = 0;
                     // 보스(동굴 3층/타락한 대주교)는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지, 닌자 두목은 10분 뒤(보상은 한 사람에 한 번)
-                    s.deadUntil = shrineBoss ? now + MINE_SHRINE_BOSS_RESPAWN_MS : type.boss || type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs();
+                    s.deadUntil = shrineBoss ? now + MINE_SHRINE_BOSS_RESPAWN_MS : type.boss ? now + MINE_BOSS_RESPAWN_MS : type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs(); // [2026-10-28] 보스 2시간
                     s.frozenUntil = 0;
                     splitEnd = s.splitUntil > now;
                     s.splitUntil = 0;
@@ -10333,8 +10327,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("expGain", type.exp());
             if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
-                mineRaidKilledCycle = S5MineMap.activeCycle();
-                dao.upsertConfigValue(MINE_RAID_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine ruins raid boss killed (cycle|user)");
+                mineBossKilledNow(MINE_RAID_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 msg.insert(0, "👑 타락한 대주교를 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
@@ -10342,24 +10335,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 mineIceAwakeUntil = 0;
                 mineIceNextFreeze = 0;
                 mineIceThawAll();
-                mineIceKilledCycle = S5MineMap.activeCycle();
-                dao.upsertConfigValue(MINE_ICE_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine snow peak ice queen killed (cycle|user)");
+                mineBossKilledNow(MINE_ICE_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 msg.insert(0, "👑 얼음 여왕을 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
-                mineLavaKilledCycle = S5MineMap.activeCycle();
+                mineBossKilledNow(MINE_LAVA_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 MINE_RANGED_NEXT.clear();
                 MINE_LAVA.clear(); // 전투 끝 -- 용암이 식는다
                 out.put("lava", Collections.emptyList());
-                dao.upsertConfigValue(MINE_LAVA_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine lava isle boss killed (cycle|user)");
                 msg.insert(0, "👑 용암 거신을 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
             if (mob.type == S5MineMobs.BOSS_TYPE) { // [2026-10-24] 보스 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
-                mineBossKilledCycle = S5MineMap.activeCycle();
-                dao.upsertConfigValue(MINE_BOSS_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine cave3 boss killed (cycle|user)");
+                mineBossKilledNow(MINE_BOSS_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 msg.insert(0, "👑 보스 처치! ");
                 out.put("bossKilled", true);
             }
@@ -10473,7 +10463,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             b.put("map", bm);
             b.put("name", S5MineMobs.TYPES.get(bmob.type).name);
             b.put("alive", !mineBossDead(bmob.type));
-            b.put("nextAt", S5MineMap.nextResetAt(now));
+            String bk = mineBossKey(bmob.type);
+            b.put("nextAt", bk == null ? S5MineMap.nextResetAt(now) : mineBossKilledAt(bk) + MINE_BOSS_RESPAWN_MS); // [2026-10-28] 쓰러지고 2시간 뒤
             bosses.add(b);
         }
         if (mineArchiOpen(userName)) { // [2026-10-28] 닌자 두목 -- 맵 리셋이 아니라 쓰러지고 10분 뒤 다시(전체 지도에 다음 시각)
@@ -10964,7 +10955,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         int ax = ship ? target.dockX() : tele ? target.spawnX : p.tx, ay = ship ? target.dockY() : tele ? target.spawnY : p.ty;
-        int tx = target.walkable(ax, ay) ? ax : target.spawnX, ty = target.walkable(ax, ay) ? ay : target.spawnY;
+        boolean landOk = mineWalk(target, ax, ay, water); // [2026-10-28] "섬에서 뱃길로 나오면 그 섬 입구 쪽에" -- 뱃길(배로 물 위)은 물 칸도 내리는 칸(예전엔 걸을 칸이 아니라고 시작점으로 보냈다)
+        int tx = landOk ? ax : target.spawnX, ty = landOk ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
         // [2026-10-28] "설산 1,2,3층 순서대로 밟아야 설산에 간 걸로 인정" -- 북쪽 끝 설원 -> 1층 -> 2층 -> 3층으로 올라온 만큼(SNOW_PATH 1~3)을 적고,
