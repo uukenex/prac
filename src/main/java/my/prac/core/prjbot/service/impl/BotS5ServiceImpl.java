@@ -12618,7 +12618,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! 환생 " + nrb + "단계 -- Lv.1(환생" + nrb + ")로 다시 태어났어요. "
-                + "최대 체력 x" + (1 + nrb) + " · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 다도해 햇빛 -" + Math.min(100, nrb * 20) + "% · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
+                + "최대 체력 x" + (1 + nrb) + " · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
         return out;
     }
 
