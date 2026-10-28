@@ -810,6 +810,23 @@
     .eq-tabs{ display:flex; gap:6px; margin:4px 0 8px; }
     /* [2026-10-28] 인벤토리 -- 탭을 고정 머리 안에(스크롤해도 위에), 기타 탭은 카테고리별 칸 */
     .mine-smith-head.inv-head{ flex-wrap:wrap; }
+    /* [2026-10-28] 인벤토리 장비 탭 -- 가운데 캐릭터, 둘레 부위 칸, 누르면 고르기 창 */
+    .doll{ display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center; margin:4px 0 8px; }
+    .doll-col{ display:flex; flex-direction:column; gap:8px; }
+    .doll-char{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px; background:rgba(255,255,255,.05); border:2px solid rgba(244,240,230,.25); }
+    .doll-char img{ width:96px; height:96px; image-rendering:pixelated; }
+    .doll-char small{ color:#ffe9a8; font-weight:800; }
+    .doll-slot{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; padding:6px 8px; text-align:left; cursor:pointer; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.35); min-width:0; }
+    .doll-slot b{ font-size:12px; }
+    .doll-slot span{ font-size:11px; color:#cfc6b0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .doll-slot.on{ border-color:#ffcf4a; }
+    .doll-slot.on span{ color:#ffe9a8; }
+    .doll-tool{ margin-bottom:8px; }
+    .eq-pop{ position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
+    .eq-pop-box{ width:min(420px, 100%); max-height:70vh; overflow:auto; padding:10px 12px; background:#1d1730; border:2px solid #f4f0e6; color:#fff; }
+    .eq-pop-h{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-weight:800; margin-bottom:8px; }
+    .eq-pop-h small{ font-weight:600; opacity:.7; }
+    .eq-pop-h button{ border:2px solid #f4f0e6; background:#a33a3a; color:#fff; cursor:pointer; padding:2px 8px; }
     .inv-head .eq-tabs{ flex-basis:100%; margin:8px 0 0; }
     .minv-cat{ margin:0 0 10px; }
     .minv-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); gap:6px; }

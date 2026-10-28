@@ -1459,6 +1459,8 @@ var TowerMine = (function () {
     { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
     { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
+    { id: 'necklace', name: '📿 목걸이', hint: '', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이를 만들 수 있어요.' },
+    { id: 'boots', name: '👢 신발', hint: '', none: '신발이 없어요. 대장장이에게서 신속의 장화를 만들 수 있어요.' }, // [2026-10-28] "신발이 빠져서 추가"
     { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 쓸 수 있어요 -- 무기와 따로', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
   ];
   // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
@@ -1487,6 +1489,7 @@ var TowerMine = (function () {
       });
       return h;
     }
+    return h + dollHtml(); // [2026-10-28] 캐릭터 그림 + 부위별 칸(누르면 그 부위 장비 고르기)
     EQ_SLOTS.forEach(function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
       h += '<div class="cos-slot"><div class="cos-slot-h">' + sl.name + (sl.hint ? ' <small>' + sl.hint + '</small>' : '') + '</div>';
@@ -1498,6 +1501,36 @@ var TowerMine = (function () {
       }).join('') + '</div></div>';
     });
     return h + '<div class="mine-smith-say">장비를 누르면 설명이 나와요.</div>'; // [2026-10-28] 방한 장비 안내는 카드 설명으로
+  }
+  // [2026-10-28] "인벤토리에 캐릭터 이미지 + 부위별 장착 장비, 누르면 그 부위에 장착 가능한 것이 팝(장착 해제 포함)" -- 가운데 캐릭터, 둘레에 부위 칸
+  var eqPop = null;
+  function eqPopGo(id) { eqPop = id; if (smithOpen) renderSmith(smithNpc); }
+  function dollHtml() {
+    var slot = function (sl) {
+      var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
+      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? w.name : (rows.length ? '벗음' : '없음')) + '</span></button>';
+    };
+    var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
+    var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>'
+        + '<div class="doll-char"><img src="' + lookImg(st.look || {}, 'down') + '" alt="내 캐릭터"><small>Lv.' + myLv() + '</small></div>'
+        + '<div class="doll-col">' + ['coat', 'necklace', 'boots'].map(function (k) { return slot(by[k]); }).join('') + '</div></div>'
+        + '<div class="doll-tool">' + slot(by.tool) + '</div>'
+        + '<div class="mine-smith-say">칸을 누르면 그 부위에 낄 수 있는 장비가 나와요.</div>';
+    if (eqPop && by[eqPop]) {
+      var sl = by[eqPop], rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
+      var verb = sl.id === 'coat' ? ['입기', '벗기'] : sl.id === 'weapon' ? ['들기', ''] : sl.id === 'tool' ? ['쓰기', ''] : sl.id === 'boots' ? ['신기', '벗기'] : sl.id === 'necklace' ? ['걸기', '풀기'] : ['끼기', '빼기'];
+      h += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.eqPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">' + sl.name + (sl.hint ? ' <small>' + sl.hint + '</small>' : '')
+          + '<button type="button" onclick="TowerMine.eqPop(null)">✖</button></div>';
+      if (!rows.length) h += '<div class="mine-eq-empty">' + sl.none + '</div>';
+      rows.forEach(function (e) {
+        var off = e.worn && verb[1]; // 무기/채집 도구는 기본(칼/기본 곡괭이)으로 바꾸는 걸로 해제
+        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + e.name + '<small>' + (EQ_TIPS[e.code] || e.effect) + '</small></span>'
+            + (e.worn ? (off ? '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[1] + '</button>' : '<span class="mine-worn">사용 중</span>')
+                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[0] + '</button>') + '</div>';
+      });
+      h += '</div></div>';
+    }
+    return h;
   }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
@@ -1543,6 +1576,7 @@ var TowerMine = (function () {
   }
   function openEquip() {
     if (!opened || !map) return;
+    eqPop = null;
     openSmith({ name: '인벤토리', line: '', kind: 'equip' }, 'equip');
   }
   // [2026-10-28] 다도해 NPC -- 신궁 수문장(수색 임무: 닌자 100명 -> 비급서 + 달빛석), 배 목수(달빛석 -> 1인용 배), 뱃사공(배 타기 -> 뱃길)
@@ -3237,7 +3271,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

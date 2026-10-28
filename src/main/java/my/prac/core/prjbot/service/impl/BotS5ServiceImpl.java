@@ -10835,7 +10835,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         r.put("upgraded", upgraded);
         // [2026-10-24] 보석 -- 캘 때 확률로 지역 보석(맵별 2종) 또는 다이아몬드(모든 맵)가 함께 나온다(S5MineMap.gemFor). 바닷길은 이미 보석.
         //  사막의 목걸이는 보석 확률 배수(난수를 배수로 나눠 문턱 아래로 들어올 확률을 키운다, 다이아몬드 포함).
-        int gi = S5MineMap.SEAROAD.equals(map.id) ? -1 : S5MineMap.gemFor(map.id, (int) (RND.nextInt(1000) / MINE_SAND_GEM_MULT[Math.min(items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0), MINE_SAND_GEM_MULT.length - 1)]));
+        int gi = S5MineMap.SEAROAD.equals(map.id) ? -1 : S5MineMap.gemFor(map.id, (int) (RND.nextInt(1000) / MINE_SAND_GEM_MULT[Math.min(mineNeckTier(items), MINE_SAND_GEM_MULT.length - 1)]));
         if (gi >= 0) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             r.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
@@ -12102,8 +12102,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static int mineStepMs(Map<String, Integer> items) {
         MineCos shoes = mineWornCos(items, "shoes");
         if (shoes != null && MINE_COS_SPEED.equals(shoes.code)) return MINE_STEP_MS[0] / MINE_COS_SPEED_DIV; // [2026-10-28] 바람의 신(운영자) -- 5배
-        return MINE_STEP_MS[Math.min(items.getOrDefault(MINE_ITEM_SWIFT_BOOTS, 0), MINE_STEP_MS.length - 1)];
+        return MINE_STEP_MS[Math.min(mineBootsTier(items), MINE_STEP_MS.length - 1)];
     }
+
+    // [2026-10-28] "인벤토리에 부위별 장착 장비, 누르면 장착/해제 + 신발이 빠져서 추가" -- 신속의 장화(신발)와 사막의 목걸이도 벗을 수 있게(BOOTS_OFF / NECK_OFF = 1이면 벗음).
+    static final String MINE_ITEM_BOOTS_OFF = "BOOTS_OFF", MINE_ITEM_NECK_OFF = "NECK_OFF";
+    static int mineBootsTier(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_BOOTS_OFF, 0) == 1 ? 0 : items.getOrDefault(MINE_ITEM_SWIFT_BOOTS, 0); }
+    static int mineNeckTier(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_NECK_OFF, 0) == 1 ? 0 : items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0); }
 
     // [2026-10-28] "방한 외투, 방한 장갑, 용왕의 반지도 다른 장비와 중첩 적용은 안 되게 -- 반지류 하나, 옷류 하나, 장갑류 하나" --
     //  반지 칸(RING_SLOT): 1 풍요 / 2 심연 / 3 용왕의 반지(물 위 걷기는 이걸 낄 때만). 옷 칸(COAT_SLOT): 방한 외투 1/2.
@@ -12297,6 +12302,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineHasDragonRing(items)) out.add(mineEquipRow("ring", MINE_ITEM_DRAGON_RING, "용왕의 반지", "물 위를 걸을 수 있음", ring == MINE_RING_DRAGON));
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
+        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
+            MineGear g = mineGear(bc);
+            int t = g == null ? 0 : Math.min(items.getOrDefault(bc, 0), g.cost.length);
+            if (t < 1) continue;
+            boolean neck = MINE_ITEM_SAND_NECKLACE.equals(bc);
+            out.add(mineEquipRow(neck ? "necklace" : "boots", bc, g.name + " " + t + "단계", g.effect[t - 1], (neck ? mineNeckTier(items) : mineBootsTier(items)) > 0));
+        }
         boolean pon = mineParasolOn(items); // [2026-10-28] 무기 칸 -- 칼(기본), 양산
         out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon));
         if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "공격력 +" + MINE_PARASOL_ATK_FLAT + " · 다도해 햇빛 -" + MINE_PARASOL_CUT + "단계", pon));
@@ -12482,6 +12494,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (on) dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, 0); // [2026-10-28] 다른 장갑은 벗는다
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 꼈어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 벗었어요.");
+        }
+        if (MINE_ITEM_SWIFT_BOOTS.equals(code) || MINE_ITEM_SAND_NECKLACE.equals(code)) { // [2026-10-28] 신발 / 목걸이 -- 신기/벗기
+            boolean neck = MINE_ITEM_SAND_NECKLACE.equals(code);
+            if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, (neck ? "사막의 목걸이" : "신속의 장화") + "가 없어요. 대장장이에게서 만들 수 있어요.");
+            String flag = neck ? MINE_ITEM_NECK_OFF : MINE_ITEM_BOOTS_OFF;
+            boolean on = it.getOrDefault(flag, 0) == 1;
+            dao.upsertMineItem(userName, flag, on ? 0 : 1);
+            return mineGearResult(userName, true, (neck ? "📿 사막의 목걸이를 " : "👢 신속의 장화를 ") + (on ? (neck ? "걸었어요." : "신었어요.") : (neck ? "풀었어요." : "벗었어요.")));
         }
         if ("BASIC_PICK".equals(code)) { // [2026-10-28] 채집 도구 칸 -- 기본 곡괭이로
             dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, 0);
