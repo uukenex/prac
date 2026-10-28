@@ -842,6 +842,12 @@ var TowerMine = (function () {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
     miniCtx.clearRect(0, 0, v.w, v.h);
+    if (map.noMap) { // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
+      miniCtx.fillStyle = '#120c08'; miniCtx.fillRect(0, 0, v.w, v.h);
+      miniCtx.fillStyle = '#6a4a30'; miniCtx.font = 'bold ' + Math.round(v.w / 5) + 'px sans-serif'; miniCtx.textAlign = 'center'; miniCtx.textBaseline = 'middle';
+      miniCtx.fillText('?', v.w / 2, v.h / 2);
+      return;
+    }
     miniCtx.drawImage(miniBase, -ox, -oy);
     Object.keys(dug).forEach(function (key) {
       var p = key.split(','), g = dug[key];
@@ -1181,6 +1187,8 @@ var TowerMine = (function () {
     { id: 'cave3', name: '광산 동굴 3층', x: 52, y: 52, fill: '#2a2230', ink: '#e8d8ff' },
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
+    { id: 'anthill', name: '개미굴 입구', x: -42, y: 172, fill: '#b0703a', ink: '#fff', w: 76 }, // [2026-10-28] 사막 서쪽
+    { id: 'antnest', name: '개미굴 🐜', x: -42, y: 242, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 },
     { id: 'cave2', name: '광산 동굴 2층', x: 52, y: 122, fill: '#4a3d33', ink: '#fff' },
     { id: 'cave1', name: '광산 동굴 1층', x: 52, y: 192, fill: '#6b5b4b', ink: '#fff' },
     { id: 'dungeon', name: '요일 던전', x: 52, y: 252, fill: '#5b4d40', ink: '#fff' },
@@ -1220,13 +1228,13 @@ var TowerMine = (function () {
     };
     var walk = 'stroke="#f4f0e6" stroke-width="3"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
     var adminW = !!(st && st.adminMaps), vh = adminW ? 1005 : 750; // [2026-10-28] 위로 설산 봉우리까지, 관리자는 아래로 다도해 안쪽 지역까지(지역을 누르면 이동)
-    var svg = '<svg viewBox="0 -290 320 ' + vh + '" class="mine-world" role="img" aria-label="광산 전체 지도">'
-        + '<rect x="0" y="-290" width="320" height="' + vh + '" fill="#1d1730"/>'
+    var svg = '<svg viewBox="-90 -290 410 ' + vh + '" class="mine-world" role="img" aria-label="광산 전체 지도">'
+        + '<rect x="-90" y="-290" width="410" height="' + vh + '" fill="#1d1730"/>'
         + line('snowtown', 'snowroad', walk) + line('snowroad', 'snowpeak', walk)
         + line('archi', 'shrine', walk) + line('shrine', 'shrine2', walk) + line('shrine2', 'shrine3', walk) + line('archi', 'shrineboss', walk) + line('archi', 'archisea', sea, '⛵')
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
         + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
-        + line('field', 'desert', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
+        + line('field', 'desert', walk) + line('desert', 'anthill', walk) + line('anthill', 'antnest', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵') + line('island', 'archi', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
     // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)

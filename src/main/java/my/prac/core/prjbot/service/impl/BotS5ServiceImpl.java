@@ -8702,6 +8702,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.PEAK, 90);
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
+        MINE_MIN_LV.put(S5MineMap.ANTHILL, 33); // [2026-10-28] 개미굴 입구(9~10단계), 개미굴(11~13단계 + 여왕개미 14단계)
+        MINE_MIN_LV.put(S5MineMap.ANTNEST, 41);
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
         MINE_MIN_LV.put(S5MineMap.SNOW1, 33); // [2026-10-26] 설산 1층(10~11단계), 2층(11~12), 3층(12~13), 설산 마을
         MINE_MIN_LV.put(S5MineMap.SNOW2, 37);
@@ -9154,7 +9156,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("raid", S5MineMap.RUINS.equals(map.id)); // [2026-10-28] 성당 옛터 -- 화면이 1초마다 환경 턴(대주교 마법)
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
-        out.put("noDig", !map.hasOre()); // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
+        out.put("noDig", !map.hasOre());
+        out.put("noMap", map.noMap()); // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳 // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
             out.put("sun", map.sun());
@@ -9405,6 +9408,8 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // [2026-10-28] 용암섬 용암 거신 -- 보스 공통으로 주기마다 한 번(MINE_LAVA_KILLED = "주기|유저").
     private static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
+    private static final String MINE_ANT_KEY = "MINE_ANT_KILLED"; // [2026-10-28] 개미굴 여왕개미
+    private static volatile int mineAntKilledCycle = Integer.MIN_VALUE;
     private static volatile int mineLavaKilledCycle = Integer.MIN_VALUE;
     /** 원거리 공격(불덩이) -- 인식 중인 유저마다 다음에 던질 시각. 6~10초마다, 2칸 이상 떨어져 있을 때(붙어 있으면 그냥 때린다). */
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
@@ -9439,6 +9444,17 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
     private boolean mineBossDead(int type) {
         if (type == S5MineMobs.BOSS_TYPE) return mineBossDead();
+        if (type == S5MineMobs.ANT_BOSS_TYPE) { // [2026-10-28] 여왕개미 -- 주기마다 한 번(MINE_ANT_KILLED = "주기|유저")
+            if (mineAntKilledCycle == Integer.MIN_VALUE) {
+                try {
+                    String v = dao.selectConfigValue(MINE_ANT_KEY);
+                    mineAntKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
+                } catch (Exception e) {
+                    mineAntKilledCycle = -1;
+                }
+            }
+            return mineAntKilledCycle == S5MineMap.activeCycle();
+        }
         if (type == S5MineMobs.LAVA_BOSS_TYPE) {
             if (mineLavaKilledCycle == Integer.MIN_VALUE) {
                 try {
@@ -10275,6 +10291,12 @@ public class BotS5ServiceImpl implements BotS5Service {
                 msg.insert(0, "👑 얼음 여왕을 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
+            if (mob.type == S5MineMobs.ANT_BOSS_TYPE) { // [2026-10-28] 여왕개미 처치 -- 이번 주기엔 다시 안 나온다(DB 기록). 보상은 동굴 3층 보스와 같다(mineBossDrops)
+                mineAntKilledCycle = S5MineMap.activeCycle();
+                dao.upsertConfigValue(MINE_ANT_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine ant nest queen killed (cycle|user)");
+                msg.insert(0, "👑 여왕개미를 쓰러뜨렸어요! ");
+                out.put("bossKilled", true);
+            }
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineLavaKilledCycle = S5MineMap.activeCycle();
                 MINE_RANGED_NEXT.clear();
@@ -10390,7 +10412,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         List<HashMap<String, Object>> bosses = new ArrayList<>();
-        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK }) { // [2026-10-28] 설산 봉우리(얼음 여왕)
+        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ANTNEST, S5MineMap.ISLE7 }) { // [2026-10-28] 설산 봉우리(얼음 여왕), 개미굴(여왕개미), 용암섬(용암 거신)
             S5MineMap.Mob bmob = mineBossOf(S5MineMap.get(bm));
             if (bmob == null) continue;
             HashMap<String, Object> b = new HashMap<>();

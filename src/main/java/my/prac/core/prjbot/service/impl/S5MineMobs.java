@@ -163,7 +163,18 @@ public final class S5MineMobs {
         new Type("닌자 두목", 25, "ninja", "#2a0f1a").asBoss().asNinja().hpCut(S5MineMobs.ARCHI_HP_CUT),
         new Type("닌자 두목의 분신", 25, "ninja", "#2a0f1a").asClone().hpCut(S5MineMobs.ARCHI_HP_CUT),
         // [2026-10-28] "마지막 섬엔 보스, 원거리 공격을 가끔씩" -- 용암섬 남쪽 끝 화구의 용암 거신(26단계 보스, Lv.101)
-        new Type("용암 거신", 26, "human", "#ff5a1a").asBoss().asRanged().hpCut(S5MineMobs.ARCHI_HP_CUT)
+        new Type("용암 거신", 26, "human", "#ff5a1a").asBoss().asRanged().hpCut(S5MineMobs.ARCHI_HP_CUT),
+        // [2026-10-28] 개미굴 입구(9~10단계, Lv.33~37) / 개미굴(11~13단계, Lv.41~49) / 여왕개미(14단계 보스, Lv.53, 가장 깊은 방)
+        new Type("일개미", 9, "crab", "#7a3a1a", S5MineMap.ANTHILL),
+        new Type("병정개미", 9, "crab", "#3a1a0a", S5MineMap.ANTHILL),
+        new Type("날개개미", 10, "flyer", "#8a5a2a", S5MineMap.ANTHILL),
+        new Type("개미귀신", 10, "snake", "#b08a5a", S5MineMap.ANTHILL),
+        new Type("독개미", 11, "crab", "#5a8a2a", S5MineMap.ANTNEST),
+        new Type("흰개미 떼", 11, "blob", "#e8dcc0", S5MineMap.ANTNEST),
+        new Type("근위개미", 12, "crab", "#8a1a1a", S5MineMap.ANTNEST),
+        new Type("산성개미", 12, "crab", "#b0c020", S5MineMap.ANTNEST),
+        new Type("거대 병정개미", 13, "crab", "#2a0a0a", S5MineMap.ANTNEST),
+        new Type("여왕개미", 14, "crab", "#c03a6a").asBoss()
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -181,6 +192,8 @@ public final class S5MineMobs {
     public static final int CLONE_SLOTS = 4;
     /** [2026-10-28] 다도해 몬스터(본섬/신궁/섬, 닌자 두목, 용암 거신) 체력 배수. */
     static final double ARCHI_HP_CUT = 0.85;
+    /** [2026-10-28] 개미굴 보스. */
+    public static final int ANT_BOSS_TYPE = indexOf("여왕개미");
     /** [2026-10-28] 용암섬(다도해 마지막 섬) 보스. */
     public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
 
@@ -227,6 +240,8 @@ public final class S5MineMobs {
             case S5MineMap.ISLE5: return 22;
             case S5MineMap.ISLE6: return 23;
             case S5MineMap.ISLE7: return 24;
+            case S5MineMap.ANTHILL: return x > m.w * 0.5 ? 9 : 10; // [2026-10-28] 굴(서쪽)에 가까울수록
+            case S5MineMap.ANTNEST: return y > m.h * 0.66 ? 11 : y > m.h * 0.33 ? 12 : 13; // 들어오는 곳(아래)에서 깊이(위로) 들어갈수록
             case S5MineMap.SNOWROAD: return y > m.h * 0.5 ? 20 : 21; // [2026-10-28] 설산 봉우리 가는 길 -- 봉우리(북쪽) 쪽일수록 강하다. 봉우리는 보스만(0)
             default: return 0;
         }
@@ -241,6 +256,7 @@ public final class S5MineMobs {
             case S5MineMap.CAVE1: return 104;
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
             case S5MineMap.SNOWROAD: return 96; // [2026-10-28] 설산 봉우리 가는 길
+            case S5MineMap.ANTNEST: return 90; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
             case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 60; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
             default: return 128;
         }
@@ -336,7 +352,7 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
