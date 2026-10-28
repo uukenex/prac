@@ -94,6 +94,11 @@ public final class S5MineMap {
     public static final int BAR_GRADE_BASE = 40, CUT_GRADE_BASE = 45;
     public static String cutCode(int gemIdx) { return "CUT_" + GEM_CODES[gemIdx]; }
     public static String cutName(int gemIdx) { return "세공된 " + GEM_NAMES[gemIdx]; }
+    /** [2026-10-28] "빙석을 세공 목록에, 세공된 빙석 10개 + 다도해의 세공 보석으로 방한 갑옷/장갑 3단계" -- 세공된 빙석(54), 세공된 바다 보석(55~59). */
+    public static final String CUT_ICE_CODE = "CUT_ICE_STONE", CUT_ICE_NAME = "세공된 빙석";
+    public static final int CUT_ICE_GRADE = 54, SEA_CUT_GRADE_BASE = 55;
+    public static String seaCutCode(int i) { return "CUT_" + SEA_GEM_CODES[i]; }
+    public static String seaCutName(int i) { return "세공된 " + SEA_GEM_NAMES[i]; }
     public static final String DESERT_HEART_NAME = "사막의 심장";
     public static final int DESERT_HEART_GRADE = 39;
     public static final String PEAK = "snowpeak";

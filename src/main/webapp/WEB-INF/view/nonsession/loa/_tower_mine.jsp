@@ -40,6 +40,14 @@ var TowerMine = (function () {
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
   for (var cgi = 0; cgi < 9; cgi++) { ORE_NAME[45 + cgi] = '세공된 ' + ORE_NAME[21 + cgi]; ORE_COL[45 + cgi] = ORE_COL[21 + cgi]; RARE_GEM[45 + cgi] = 1; }
+  // [2026-10-28] 세공된 빙석(54), 세공된 바다 보석(55~59)
+  ORE_NAME[54] = '세공된 빙석'; ORE_COL[54] = ORE_COL[19]; RARE_GEM[54] = 1;
+  for (var sgi = 0; sgi < 5; sgi++) { ORE_NAME[55 + sgi] = '세공된 ' + ORE_NAME[34 + sgi]; ORE_COL[55 + sgi] = ORE_COL[34 + sgi]; RARE_GEM[55 + sgi] = 1; }
+  // 세공 목록 [원재료 등급, 세공된 등급] -- 서버 번호(0~8 보석, 9 빙석, 10~14 바다 보석)와 같은 순서
+  var CUT_LIST = [];
+  for (var cli = 0; cli < 9; cli++) CUT_LIST.push([21 + cli, 45 + cli]);
+  CUT_LIST.push([19, 54]);
+  for (var clj = 0; clj < 5; clj++) CUT_LIST.push([34 + clj, 55 + clj]);
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -555,7 +563,7 @@ var TowerMine = (function () {
       }
       px(g, '#ffffff', 6, 4, 2, 1); px(g, '#ffffff', 5, 5);
       if (grade === 23) { px(g, '#ffffff', 8, 8); px(g, '#ffffff', 7, 9, 3, 1); px(g, '#ffffff', 8, 10); } // 스타 사파이어의 별
-      if (grade >= 45 && grade <= 53) { px(g, '#ffffff', 1, 1); px(g, '#ffffff', 0, 2, 3, 1); px(g, '#ffffff', 1, 3); px(g, '#fff6b8', 13, 11); px(g, '#fff6b8', 12, 12, 3, 1); px(g, '#fff6b8', 13, 13); } // [2026-10-28] 세공된 보석 -- 반짝임 둘
+      if (grade >= 45 && grade <= 59) { px(g, '#ffffff', 1, 1); px(g, '#ffffff', 0, 2, 3, 1); px(g, '#ffffff', 1, 3); px(g, '#fff6b8', 13, 11); px(g, '#fff6b8', 12, 12, 3, 1); px(g, '#fff6b8', 13, 13); } // [2026-10-28] 세공된 보석 -- 반짝임 둘
       if (RARE_GEM[grade]) { px(g, '#ffffff', 13, 1); px(g, '#ffffff', 12, 2, 3, 1); px(g, '#ffffff', 13, 3); }
       outline(c, '#140d0a');
       oreIcons[grade] = c.toDataURL();
@@ -1407,9 +1415,10 @@ var TowerMine = (function () {
     return h + '<div class="mine-smith-say">장비를 누르면 설명이 나와요.</div>'; // [2026-10-28] 방한 장비 안내는 카드 설명으로
   }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
-  var EQ_TIPS = { COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
+  var EQ_TIPS = { COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+    COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
-    GLOVES: '한기 방어 +1(외투와 함께 적용, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
+    GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).',
     REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 되찾아요(전투 중에도). 장갑은 하나만 -- 끼면 방한 장갑은 벗어요.',
     BERSERK_GLOVES: '공격력이 50% 올라가지만 체력이 저절로 차지 않아요(성당 신부의 회복이나 쓰러진 뒤 깨어날 때만). 장갑은 하나만.' };
@@ -1616,30 +1625,29 @@ var TowerMine = (function () {
       if (el2) el2.textContent = '⏳ 암상인이 사라지기까지 ' + Math.floor(left / 60) + ':' + pad2(left % 60);
     }, 1000);
   }
+  // [2026-10-28] 털옷 장인 -- "전부 퀘스트 형태로 순차 획득, 이전 것은 못 쓰는 업그레이드 형태" -- 외투 3단계 / 장갑 3단계 의뢰 사슬
   function coatHtml(n) {
     var bm = n && n.kind === 'blackmarket', d = coatData;
-    var h = npcHead((bm ? '🕶️ ' : '🧥 ') + (n ? n.name : '털옷 장인'), false) + talkBlock(n, n ? n.line : '')
-        + (bm ? '<div class="mine-smith-say" id="mineBlackLeft"></div>' : '');
+    var h = npcHead((bm ? '🕶️ ' : '🧥 ') + (n ? n.name : '털옷 장인'), false) + talkBlock(n, n ? n.line : '');
+    if (bm) return h + '<div class="mine-smith-say">🕶️ 이제 털옷은 안 판다네... 설산 마을 털옷 장인의 의뢰로만 만들 수 있지.</div>';
     if (!d) return h + '<div class="mine-smith-say">물건을 꺼내는 중...</div>';
-    var wear = d.coatDef === 1 ? '방한 외투' : d.coatDef === 2 ? '두꺼운 방한 외투' : '없음';
-    h += '<div class="mine-smith-dur">🧥 입고 있는 외투 <b>' + wear + '</b></div>'; // [2026-10-28] 암상인 값이 더 비싼 건 비공개(문구 없음)
-    return h + (d.coats || []).map(function (c) {
-      return '<div class="mine-smith-row"><span class="nm">' + c.name + '<small>' + c.effect + (c.owned ? ' · 보유' : '') + '</small>' + (c.owned ? '' : costHtml(c.costs)) + '</span>'
-          + (c.owned ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + c.code + '\')">' + (c.worn ? '벗기' : '입기') + '</button>'
-              : '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'buy\',\'' + c.code + '\')">사기</button>') + '</div>';
-    }).join('') + '<div class="mine-smith-say">한기 방어 1단계마다 한기가 1단계씩 약해져요(설원 1단계는 1단계 외투면 없음). 몸이 둔해져 몬스터에게 받는 피해는 2배, 눈바람은 막지 못해요.</div>'
-      + (bm ? '' : gloveQuestHtml(d));
-  }
-  // [2026-10-28] 털옷 장인 의뢰 -- "빙석을 모아 오면 방한 장갑"(한기 방어 +1, 받는 피해 그대로)
-  function gloveQuestHtml(d) {
-    var q = d.gloveQuest || 0, h = '<div class="mine-smith-sub"><b>📜 의뢰: 손이 얼지 않는 장갑</b></div>';
-    if (q >= 2 || d.hasGloves) return h + '<div class="mine-smith-say">🧤 방한 장갑을 받았어요. 한기 방어 +1 (외투와 함께 적용)</div>';
-    if (q < 1) return h + '<div class="mine-smith-say">설산 얼음 속에 박힌 빙석을 모아 오면 장갑을 떠 주겠대요. (보상: 방한 장갑 -- 한기 방어 +1, 받는 피해는 그대로)</div>'
-        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.coatAct(\'quest\',\'\')">📜 의뢰 받기</button></div>';
-    var ok = (d.iceHave || 0) >= (d.iceNeed || 30);
-    return h + '<div class="mine-smith-row"><img src="' + oreIcon(19) + '" alt=""><span class="nm">빙석 ' + (d.iceHave || 0) + ' / ' + (d.iceNeed || 30)
-        + '<small>설산 1~3층에서 캘 때, 설산 몬스터에게서</small></span>'
-        + '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'gloves\',\'\')">건네기</button></div>';
+    var CN = ['방한 외투', '두꺼운 방한 외투', '방한 갑옷'], GN = ['방한 장갑', '두꺼운 방한 장갑', '방한 건틀릿'];
+    h += '<div class="mine-smith-dur">🧥 ' + (d.coatTier ? CN[d.coatTier - 1] + (d.coatWorn ? ' (입음)' : ' (벗음)') : '외투 없음')
+        + ' · 🧤 ' + (d.gloveTier ? GN[d.gloveTier - 1] + (d.glovesOn ? ' (낌)' : ' (벗음)') : '장갑 없음') + ' · 한기 방어 ' + (d.coldDef || 0) + '</div>';
+    var block = function (title, steps, code, tier, worn) {
+      var b = '<div class="mine-smith-sub"><b>📜 ' + title + '</b></div>';
+      (steps || []).forEach(function (s) {
+        if (s.done) b += '<div class="mine-smith-row"><span class="nm">✔ ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + (s.tier === tier ? ' · 지금 가진 것' : ' · 다음 단계로 바뀌었어요') + '</small></span>'
+            + (s.tier === tier ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + code + '\')">' + (worn ? '벗기' : (code === 'coat' ? '입기' : '끼기')) + '</button>' : '') + '</div>';
+        else if (s.next) b += '<div class="mine-smith-row"><span class="nm">' + s.tier + '단계 ' + s.name + '<small>' + s.effect + '</small>' + costHtml(s.costs) + '</span>'
+            + '<button type="button" ' + (s.can ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'up\',\'' + code + '\')">건네기</button></div>';
+        else b += '<div class="mine-smith-row" style="opacity:.5"><span class="nm">🔒 ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + ' · 앞 단계를 먼저</small></span></div>';
+      });
+      return b;
+    };
+    return h + block('털옷 의뢰 (외투 -> 두꺼운 외투 -> 갑옷)', d.coatSteps, 'coat', d.coatTier, d.coatWorn)
+        + block('장갑 의뢰 (장갑 -> 두꺼운 장갑 -> 건틀릿)', d.gloveSteps, 'gloves', d.gloveTier, d.glovesOn)
+        + '<div class="mine-smith-say">한기 방어 = 외투 단계 + 장갑 단계. 외투를 입으면 몸이 둔해져 몬스터에게 받는 피해 2배(갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워요.</div>';
   }
   function coatAct(action, code) {
     if (busy) return;
@@ -2393,18 +2401,18 @@ var TowerMine = (function () {
     }
     if (n.kind === 'gemcutter') {
       h += '<div class="mine-smith-say">보석 5개 -> 세공된 보석 1개 (성공 25%, 실패하면 보석이 깨져요). 세공된 보석은 고급 장비와 왕도 장인에게 쓰여요.</div>';
-      for (var i = 0; i < 9; i++) { var hv = oreHave(21 + i); h += row(45 + i, ORE_NAME[21 + i] + ' 5 -> ' + ORE_NAME[45 + i], '보유 ' + hv + ' · 세공 ' + oreHave(45 + i) + '개', btn('gemCut', i, 1, hv >= 5) + btn('gemCut', i, 10, hv >= 50)); }
+      CUT_LIST.forEach(function (cl, i) { var hv = oreHave(cl[0]); h += row(cl[1], ORE_NAME[cl[0]] + ' 5 -> ' + ORE_NAME[cl[1]], '보유 ' + hv + ' · 세공 ' + oreHave(cl[1]) + '개', btn('gemCut', i, 1, hv >= 5) + btn('gemCut', i, 10, hv >= 50)); }); // [2026-10-28] 빙석/바다 보석도
       return h;
     }
     var mx = st.durabilityMax || 0;
     h += '<div class="mine-smith-say">곡괭이 최대 내구도가 1000 이상이면, 세공된 보석 하나에 최대 내구도 +30 (지금 ' + (st.durability || 0) + ' / ' + mx + ')</div>';
     var any = false;
-    for (var j = 0; j < 9; j++) {
-      var c = oreHave(45 + j);
-      if (!c) continue;
+    CUT_LIST.forEach(function (cl, j) {
+      var c = oreHave(cl[1]);
+      if (!c) return;
       any = true;
-      h += row(45 + j, ORE_NAME[45 + j], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'disabled ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
-    }
+      h += row(cl[1], ORE_NAME[cl[1]], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'disabled ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
+    });
     if (!any) h += '<div class="mine-smith-say">세공된 보석이 없어요. 마을의 보석 세공사에게서 만들 수 있어요.</div>';
     return h;
   }
