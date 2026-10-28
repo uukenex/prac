@@ -11187,7 +11187,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-10-28] 개미굴 보물 상자(구석진 방 10곳) -- 상자마다 맵 주기에 한 번. 보석 네 번(아무 보석 1~3개씩, 다이아몬드 빼고) + 25% 다이아몬드 1 + 20% 달빛석 1.
+    /** [2026-10-28] 개미굴 보물 상자(구석진 방 10곳) -- 상자마다 맵 주기에 한 번. 보석 네 번(아무 보석 1~3개씩, 다이아몬드 빼고) + 25% 다이아몬드 1.
      *  연 상자는 ANT_CHEST_CYC(주기 + 1) / ANT_CHEST_MASK(상자 순서 비트)로 기억한다. */
     static final String MINE_ITEM_ANT_CHEST_CYC = "ANT_CHEST_CYC", MINE_ITEM_ANT_CHEST_MASK = "ANT_CHEST_MASK";
 
@@ -11228,11 +11228,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 1));
             gm.append(", 다이아몬드 1");
         }
-        if (RND.nextInt(100) < 20) {
-            dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1);
-            drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1));
-            gm.append(", 달빛석 1");
-        }
+        // [2026-10-28] "달빛석이 나오게 하지 말아 줘" -- 예전 20% 달빛석 1개는 뺐다(달빛석은 다도해 배 재료라 다도해 밖에서 나오면 안 된다)
         int opened = Integer.bitCount(mask | (1 << idx));
         out.put("ok", true);
         out.put("drops", drops);
