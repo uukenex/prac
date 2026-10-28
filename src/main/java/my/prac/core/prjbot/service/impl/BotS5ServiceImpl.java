@@ -8879,7 +8879,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 저장된 위치(없거나 지금 맵에서 못 서는 칸이면 그 맵 시작점). water = 용왕의 반지(물 위 걷기). */
-    private int[] minePos(HashMap<String, Object> row, S5MineMap map, boolean water) {
+    private int[] minePos(HashMap<String, Object> row, S5MineMap map, int water) {
         if (row.get("POS_X") != null && row.get("POS_Y") != null) {
             int x = intVal(row.get("POS_X"), map.spawnX), y = intVal(row.get("POS_Y"), map.spawnY);
             if (mineWalk(map, x, y, water)) return new int[] { x, y };
@@ -8888,8 +8888,16 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** [2026-10-24] 설 수 있는 칸 -- 용왕의 반지가 있으면 물(~) 칸도. */
-    private static boolean mineWalk(S5MineMap map, int x, int y, boolean water) {
-        return map.walkable(x, y) || ((water || map.boat()) && map.inside(x, y) && map.terrainAt(x, y) == '~'); // [2026-10-28] 다도해 뱃길(boat)은 배로 물 위를 다닌다
+    /** [2026-10-28] 설 수 있는 칸 판정 모드 -- 0 보통, 1 물 위(용왕의 반지), 2 모두 통과("운영자 신발 바람의 신 -- 모든 장애물/몬스터 통과"). */
+    private static int mineWalkMode(Map<String, Integer> items) {
+        MineCos shoes = mineWornCos(items, "shoes");
+        if (shoes != null && MINE_COS_SPEED.equals(shoes.code)) return 2;
+        return mineWaterWalk(items) ? 1 : 0;
+    }
+
+    private static boolean mineWalk(S5MineMap map, int x, int y, int water) {
+        if (water >= 2) return map.inside(x, y); // 바람의 신 -- 맵 안이면 어디든
+        return map.walkable(x, y) || ((water >= 1 || map.boat()) && map.inside(x, y) && map.terrainAt(x, y) == '~'); // [2026-10-28] 다도해 뱃길(boat)은 배로 물 위를 다닌다
     }
 
     /** stepMs = 화면 한 칸 이동 시간(신속의 장화로 빨라지면 허용 거리도 그만큼 늘린다). */
@@ -8938,7 +8946,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE }; // [2026-10-28] 달빛석(20), 비급서(32), 얼음의 심장(33)
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE };
+        sc = mineWithSeaGems(sc); // [2026-10-28] 다도해 바다 보석(34~38) // [2026-10-28] 달빛석(20), 비급서(32), 얼음의 심장(33)
         for (String c : sc) {
             HashMap<String, Object> o = new HashMap<>();
             o.put("grade", mineCodeGrade(c));
@@ -9217,9 +9226,13 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final int MINE_REBIRTH_MAX = 5;
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * Math.pow(1.5, rb)); }
+    // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감"
+    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 5^rb, 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/햇빛 초당 피해 -rb %포인트(0 아래로는 안 감).
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
+    /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
+    static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
     static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
-    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(3, rb)); }
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(5, rb)); }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
     static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && exp >= mineExpNeed(MINE_LV_MAX, rb); }
 
@@ -9469,7 +9482,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) { mineDisengageAll(userName); return out; }
         Map<String, Integer> items = mineItems(userName);
-        int[] pos = minePos(row, map, mineWaterWalk(items));
+        int[] pos = minePos(row, map, mineWalkMode(items));
         if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         int hp = mineHpNow(row, now, lock, rb); // 인식 전이면 지금까지 회복한 만큼, 인식 중이면 회복 없이(mineHpNow)
@@ -9940,7 +9953,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = mineRowLocked(userName); // [2026-10-28] 성능 -- 행 확인(mineRow) + 잠금 조회 두 번을 잠금 조회 한 번으로
         S5MineMap map = mineMapOf(row);
         Map<String, Integer> items = mineItems(userName);
-        boolean water = mineWaterWalk(items);
+        int water = mineWalkMode(items); // [2026-10-28] 0 보통 / 1 물 위 / 2 바람의 신(모두 통과)
         int[] pos = minePos(row, map, water);
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
             out.put("reload", true);
@@ -10200,6 +10213,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (r < 55) { g = Math.max(1, b - 1); qty += RND.nextInt(2); }
             else if (r < 92) g = Math.min(b, 4);
             else g = type.tier >= 9 ? 5 : Math.min(b + 1, 4);
+            qty *= mineRebirthGain(mineItems(userName)); // [2026-10-28] 환생 x(1 + 회차)
             dao.addUserOre(userName, S5MineMap.ORE_CODES[g - 1], qty);
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
@@ -10270,7 +10284,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         out.put("bosses", bosses);
         Map<String, Integer> items = mineItems(userName);
-        int[] pos = minePos(row, map, mineWaterWalk(items));
+        int[] pos = minePos(row, map, mineWalkMode(items));
         out.put("mapId", map.id);
         out.put("mapName", map.name);
         out.put("mapVersion", map.version());
@@ -10377,7 +10391,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", false);
         putMinePick(out, st, stMax);
         Map<String, Integer> items = mineItems(userName);
-        boolean water = mineWaterWalk(items);
+        int water = mineWalkMode(items); // [2026-10-28] 0 보통 / 1 물 위 / 2 바람의 신(모두 통과)
         int[] pos = minePos(row, map, water);
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
             out.put("reload", true);
@@ -10525,7 +10539,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) return out;
         long now = System.currentTimeMillis();
-        if (!mineMoveOk(minePos(row, map, mineWaterWalk(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         String dugKey = mineDugKey(map, now, items);
         List<int[]> cells = new ArrayList<>();
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
@@ -10569,7 +10583,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-24] 풍요의 반지 -- 확률로 2개
         int dbl = MINE_PLENTY_DOUBLE_PCT[mineRingTier(items, MINE_ITEM_PLENTY_RING)];
-        int gain = dbl > 0 && RND.nextInt(100) < dbl ? 2 : 1;
+        int gain = (dbl > 0 && RND.nextInt(100) < dbl ? 2 : 1) * mineRebirthGain(items); // [2026-10-28] 환생 x(1 + 회차)
         dao.insertMineDug(userName, dugKey, y * map.w + x, g, now);
         dao.addUserOre(userName, code, gain);
         HashMap<String, Object> r = new HashMap<>();
@@ -10585,6 +10599,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             r.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
             r.put("gemName", S5MineMap.GEM_NAMES[gi]);
+        }
+        // [2026-10-28] 다도해 바다 보석(진주/산호석/자수정/오팔/흑진주) -- 지역 보석이 안 나왔을 때 본섬/일곱 섬에서 4%
+        if (gi < 0 && S5MineMap.isArchiLand(map.id) && RND.nextInt(1000) < S5MineMap.SEA_GEM_PERMILLE) {
+            int sg = S5MineMap.seaGemFor(RND.nextInt(100));
+            dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[sg], 1);
+            r.put("gemGrade", S5MineMap.SEA_GEM_GRADE_BASE + sg);
+            r.put("gemName", S5MineMap.SEA_GEM_NAMES[sg]);
         }
         // [2026-10-28] 설산 빙석 -- 1/2/3층에서 캘 때 함께. 처음 8/10/12%였다가 같은 날 "더 안 나오게(득템 느낌)" 1.5/2/2.5%(천분율)
         int icePm = S5MineMap.SNOW1.equals(map.id) ? 15 : S5MineMap.SNOW2.equals(map.id) ? 20 : S5MineMap.SNOW3.equals(map.id) ? 25 : S5MineMap.SNOWROAD.equals(map.id) || S5MineMap.PEAK.equals(map.id) ? 25 : 0; // [2026-10-28] 봉우리 가는 길/봉우리 2.5%
@@ -10604,7 +10625,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
         Map<String, Integer> items = mineItems(userName);
-        boolean water = mineWaterWalk(items);
+        int water = mineWalkMode(items); // [2026-10-28] 0 보통 / 1 물 위 / 2 바람의 신(모두 통과)
         int[] pos = minePos(row, map, water);
         HashMap<String, Object> out = new HashMap<>();
         out.put("mapName", map.name); // [2026-10-23] 퇴장 로그용
@@ -10647,7 +10668,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         Map<String, Integer> items = mineItems(userName);
-        boolean water = mineWaterWalk(items);
+        int water = mineWalkMode(items); // [2026-10-28] 0 보통 / 1 물 위 / 2 바람의 신(모두 통과)
         int[] pos = minePos(row, map, water);
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) {
             out.put("reload", true);
@@ -10697,7 +10718,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         S5MineMap target = S5MineMap.get(ship || tele ? dest : p.target);
-        if (S5MineMap.SEAROAD.equals(target.id) && !water) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
+        if (S5MineMap.SEAROAD.equals(target.id) && water < 1) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("silent", true);
             return out;
@@ -10845,7 +10866,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (gate != null) return gate;
         mineRow(userName, false);
         S5MineMap map = S5MineMap.get(mapId);
-        boolean water = mineWaterWalk(mineItems(userName));
+        int water = mineWalkMode(mineItems(userName));
         int[] p = null;
         for (int r = 0; r <= 30 && p == null; r++) { // 가까운 칸부터(마름모 둘레)
             for (int dx = -r; dx <= r && p == null; dx++) {
@@ -10904,7 +10925,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             return out;
         }
         Map<String, Integer> items = mineItems(userName);
-        int[] pos = minePos(row, map, mineWaterWalk(items));
+        int[] pos = minePos(row, map, mineWalkMode(items));
         if (!mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
             out.put("resyncX", pos[0]);
             out.put("resyncY", pos[1]);
@@ -10983,7 +11004,7 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 더운 맵에서 초당 깎이는 최대 체력 %: 끼고 있는 방한 장비(외투, 장갑) 하나에 1%. */
     private static int mineHeatPct(S5MineMap map, Map<String, Integer> items, long now) {
-        int sun = map.sun() > 0 && S5MineMap.archiDay(now) ? map.sun() : 0; // [2026-10-28] 다도해 낮 햇빛(지역별 1~5%), 밤엔 없음
+        int sun = map.sun() > 0 && S5MineMap.archiDay(now) ? Math.max(0, map.sun() - mineRebirth(items)) : 0; // [2026-10-28] 다도해 낮 햇빛(지역별 1~5%), 밤엔 없음, 환생 회차만큼 경감
         return sun + (mineCoatDef(items) > 0 ? 1 : 0) + (mineGlovesOn(items) ? 1 : 0);
     }
 
@@ -11021,8 +11042,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) return out;
         Map<String, Integer> items = mineItems(userName);
-        if (!mineMoveOk(minePos(row, map, mineWaterWalk(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        int def = mineColdDef(items), eff = Math.max(0, map.cold() - def); // [2026-10-28] 외투 + 방한 장갑
+        if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        int rbx = mineRebirth(items); // [2026-10-28] 환생 -- 한기/햇빛 초당 피해 회차만큼 %포인트 경감
+        int def = mineColdDef(items), eff = Math.max(0, map.cold() - def - rbx); // [2026-10-28] 외투 + 방한 장갑
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
         int heat = hot ? mineHeatPct(map, items, now) : 0; // [2026-10-28] 더위(초당 최대 체력 %)
         out.put("heat", heat);
@@ -11058,7 +11080,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (S5MineMap.blizzardBetween(map.id, from, now) > 0) {
                 if (safe) out.put("blizzardSafe", true);
-                else if (!iceFrozen) bzDmg = Math.max(1, cap * MINE_BLIZZARD_PCT / 100);
+                else if (!iceFrozen && MINE_BLIZZARD_PCT > rbx) bzDmg = Math.max(1, cap * (MINE_BLIZZARD_PCT - rbx) / 100); // [2026-10-28] 환생 회차만큼 눈바람도 경감
             }
         }
         if (raid) { // [2026-10-28] 대주교 마법 -- 깨어 있을 때(누가 싸우는 중)만. 불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체
@@ -11398,6 +11420,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     /** 재료 코드 -> 화면 등급 값(아이콘)과 이름. */
+    private static String[] mineWithSeaGems(String[] sc) {
+        String[] out = java.util.Arrays.copyOf(sc, sc.length + S5MineMap.SEA_GEM_CODES.length);
+        System.arraycopy(S5MineMap.SEA_GEM_CODES, 0, out, sc.length, S5MineMap.SEA_GEM_CODES.length);
+        return out;
+    }
+
     private static int mineCodeGrade(String code) {
         for (int i = 0; i < S5MineMap.ORE_CODES.length; i++) if (S5MineMap.ORE_CODES[i].equals(code)) return i + 1;
         for (int i = 0; i < S5MineMap.DAY_STONE_CODES.length; i++) if (S5MineMap.DAY_STONE_CODES[i].equals(code)) return S5MineMap.DAY_STONE_GRADE_BASE + i;
@@ -11406,6 +11434,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.GEM_CODES[i].equals(code)) return S5MineMap.GEM_GRADE_BASE + i;
         if (S5MineMap.SEAL_CODE.equals(code)) return S5MineMap.SEAL_GRADE;
         if (S5MineMap.MOON_STONE_CODE.equals(code)) return S5MineMap.MOON_STONE_GRADE; // [2026-10-28]
+        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.SEA_GEM_CODES[i].equals(code)) return S5MineMap.SEA_GEM_GRADE_BASE + i; // [2026-10-28] 바다 보석
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
         if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
         return 0;
@@ -11417,6 +11446,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g == S5MineMap.SEAL_GRADE) return S5MineMap.SEAL_NAME;
         if (g == S5MineMap.MOON_STONE_GRADE) return S5MineMap.MOON_STONE_NAME; // [2026-10-28]
         if (g == S5MineMap.NINJA_BOOK_GRADE) return S5MineMap.NINJA_BOOK_NAME;
+        if (g >= S5MineMap.SEA_GEM_GRADE_BASE && g < S5MineMap.SEA_GEM_GRADE_BASE + S5MineMap.SEA_GEM_CODES.length) return S5MineMap.SEA_GEM_NAMES[g - S5MineMap.SEA_GEM_GRADE_BASE]; // [2026-10-28] 바다 보석(보석 줄보다 먼저)
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g >= S5MineMap.GEM_GRADE_BASE) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
@@ -11707,7 +11737,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineWaterWalk(it) && next != MINE_RING_DRAGON) { // 물 위에 서 있으면 용왕의 반지를 빼면 빠진다
             HashMap<String, Object> row = dao.selectMineUser(userName);
             S5MineMap mp = row == null ? null : mineMapOf(row);
-            int[] pos = mp == null ? null : minePos(row, mp, true);
+            int[] pos = mp == null ? null : minePos(row, mp, 1);
             if (pos != null && mp.inside(pos[0], pos[1]) && mp.terrainAt(pos[0], pos[1]) == '~')
                 return mineGearResult(userName, false, "🌊 물 위에 서 있어서 용왕의 반지를 뺄 수 없어요. 땅으로 나간 뒤에 바꿔 끼세요.");
         }
@@ -12070,7 +12100,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             MinePresence p = MINE_PRESENCE.get(u);
             boolean online = p != null && p.mapId != null && now - p.at <= MINE_PRESENCE_TTL_MS;
             S5MineMap map = online ? S5MineMap.get(p.mapId) : mineMapOf(row);
-            int[] pos = online ? new int[] { p.x, p.y } : minePos(row, map, mineWaterWalk(items));
+            int[] pos = online ? new int[] { p.x, p.y } : minePos(row, map, mineWalkMode(items));
             m.put("online", online);
             m.put("mapId", map.id);
             m.put("mapName", map.name);
@@ -12161,7 +12191,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         S5MineMap map = mineMapOf(row);
         Map<String, Integer> items = mineItems(userName);
-        int[] pos = minePos(row, map, mineWaterWalk(items));
+        int[] pos = minePos(row, map, mineWalkMode(items));
         MinePresence me = minePresenceOf(userName);
         // [2026-10-28] "3명 모이면 인사가 잘 안 된다" -- 저장 위치(DB, 움직이는 중 2.5초마다)로 재면 화면과 어긋나서 근처 판정이 자주 빗나갔다.
         //  1초마다 오는 위치 알림(화면이 보는 것과 같은 위치)이 있으면 그걸로 잰다.

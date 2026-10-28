@@ -790,6 +790,15 @@
     .cos-slot-h small{ opacity:.7; font-weight:600; margin-right:auto; }
     .cos-car{ display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x proximity; padding:2px 2px 8px; touch-action:pan-x pan-y; overscroll-behavior-x:contain; scrollbar-width:thin; }
     .cos-card{ flex:0 0 92px; scroll-snap-align:start; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; background:rgba(255,255,255,.06); border:2px solid rgba(244,240,230,.3); text-align:center; }
+    /* [2026-10-28] 대장간/🎒 장비 캐러셀 카드(글이 많아 더 넓게) + 장착/치장 탭 */
+    .cos-card.gear-card{ flex-basis:150px; }
+    .gear-ico{ font-size:24px; line-height:1.1; }
+    .gear-tier{ font-size:11px; color:#ffd27a; font-weight:800; }
+    .gear-eff, .gear-next{ font-size:10px; line-height:1.35; opacity:.9; }
+    .gear-next{ color:#cfe9ff; }
+    .eq-tabs{ display:flex; gap:6px; margin:4px 0 8px; }
+    .eq-tabs button{ flex:1; padding:7px 0; font-size:13px; font-weight:800; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
+    .eq-tabs button.on{ background:#ffcf4a; color:#2a1d10; border-color:#ffcf4a; }
     .cos-card.worn{ border-color:#ffe14d; background:rgba(255,225,77,.12); }
     .cos-card.gm{ border-color:#b07cff; }
     .cos-card > img{ width:48px; height:48px; image-rendering:pixelated; background:#2a2340; cursor:pointer; }
@@ -3767,7 +3776,7 @@ var TW = (function () {
       (m.ores || []).forEach(function (o) {
         html += '<div class="inv-item"><div class="inv-ico ' + (['t1', 't1', 't1', 't2', 't3', 't4', 'legend'][o.grade] || 't3') + '"><img class="ore-ico" src="' + TowerMine.oreIcon(o.grade) + '" alt="">'
             + (o.qty > 0 ? '<span class="inv-qty">x' + o.qty + '</span>' : '') + '</div>'
-            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade === 33 ? '설산 봉우리 얼음 여왕의 특수 재료' : o.grade === 32 ? '신궁 닌자 수색 보상' : o.grade === 20 ? '1인용 배 재료(다도해)' : o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
+            + '<div class="inv-body"><div class="inv-name">' + o.name + '</div><div class="inv-sub">' + (o.grade >= 34 && o.grade <= 38 ? '다도해 바다 보석' : o.grade === 33 ? '설산 봉우리 얼음 여왕의 특수 재료' : o.grade === 32 ? '신궁 닌자 수색 보상' : o.grade === 20 ? '1인용 배 재료(다도해)' : o.grade >= 30 ? '타락한 대주교의 특수 재료' : o.grade >= 21 ? '보석' : o.grade === 19 ? '설산 빙석(털옷 장인 의뢰)' : o.grade === 18 ? '요일석 7종 + 별빛석 합성' : o.grade >= 11 ? '요일 던전의 돌' : o.grade + '등급') + ' · 보유 ' + o.qty + '개</div></div></div>';
       });
       box.innerHTML = html + '</div>';
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });

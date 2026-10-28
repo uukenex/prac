@@ -80,6 +80,24 @@ public final class S5MineMap {
     public static final String ICE_HEART_CODE = "ICE_HEART";
     public static final String ICE_HEART_NAME = "얼음의 심장";
     public static final int ICE_HEART_GRADE = 33;
+    /** [2026-10-28] "다도해 지역 바닥을 캐면 다른 보석, 마비노기 참고" -- 다도해 본섬/일곱 섬에서 캘 때만 나오는 바다 보석(등급 값 34~38).
+     *  지역 보석이 안 나왔을 때 SEA_GEM_PERMILLE(천분율) 확률로 하나: 진주 40 / 산호석 25 / 자수정 20 / 오팔 10 / 흑진주 5(%). */
+    public static final String[] SEA_GEM_CODES = { "PEARL", "CORAL_GEM", "AMETHYST", "OPAL", "BLACK_PEARL" };
+    public static final String[] SEA_GEM_NAMES = { "진주", "산호석", "자수정", "오팔", "흑진주" };
+    public static final int SEA_GEM_GRADE_BASE = 34;
+    public static final int SEA_GEM_PERMILLE = 40;
+    private static final int[] SEA_GEM_WEIGHT = { 40, 25, 20, 10, 5 };
+    /** roll = 0~99 -> 바다 보석 인덱스. */
+    public static int seaGemFor(int roll) {
+        for (int i = 0, acc = 0; i < SEA_GEM_WEIGHT.length; i++) { acc += SEA_GEM_WEIGHT[i]; if (roll < acc) return i; }
+        return 0;
+    }
+    /** 바다 보석이 나오는 다도해 땅(본섬 + 일곱 섬, 신궁/뱃길 제외). */
+    public static boolean isArchiLand(String id) {
+        if (ARCHI.equals(id)) return true;
+        for (String s : ISLE_IDS) if (s.equals(id)) return true;
+        return false;
+    }
     public static final String[] ISLE_NAMES = { "동백섬", "갈매기섬", "거북섬", "안개섬", "산호섬", "달맞이섬", "용암섬" };
     /** 섬마다 낮 햇빛 피해(초당 최대 체력 %), 크기. 뒤 섬일수록 덥고 크고 몬스터가 세다(S5MineMobs.tierAt). */
     static final int[] ISLE_SUN = { 1, 2, 2, 1, 3, 4, 5 };

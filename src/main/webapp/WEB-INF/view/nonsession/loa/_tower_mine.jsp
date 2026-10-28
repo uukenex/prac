@@ -31,6 +31,9 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '타락한 대주교의 인장'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff'];
   ORE_NAME[20] = '달빛석'; ORE_COL[20] = ['#8fa8e8', '#f4f8ff']; // [2026-10-28] 다도해 -- 1인용 배 재료
+  // [2026-10-28] 다도해 바다 보석(본섬/일곱 섬에서 캘 때) -- 진주/산호석/자수정/오팔/흑진주
+  ORE_NAME[34] = '진주'; ORE_COL[34] = ['#f4eee4', '#ffffff']; ORE_NAME[35] = '산호석'; ORE_COL[35] = ['#ff7a8a', '#ffd0d8']; ORE_NAME[36] = '자수정'; ORE_COL[36] = ['#9a5ad8', '#e0c8ff'];
+  ORE_NAME[37] = '오팔'; ORE_COL[37] = ['#8ad8d0', '#fff0f8']; ORE_NAME[38] = '흑진주'; ORE_COL[38] = ['#3a3a4a', '#b8b8d0'];
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
@@ -699,6 +702,7 @@ var TowerMine = (function () {
   function cellAt(x, y) { return map && x >= 0 && y >= 0 && x < map.w && y < map.h ? map.rows[y].charAt(x) : '^'; }
   function walk(x, y) {
     var c = cellAt(x, y);
+    if (st && st.look && st.look.shoesCode === 'SHOE_GM') return !!map && x >= 0 && y >= 0 && x < map.w && y < map.h; // [2026-10-28] 바람의 신(운영자) -- 장애물/몬스터 모두 통과(서버 mineWalkMode 2)
     if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
     return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배
   }
@@ -830,6 +834,8 @@ var TowerMine = (function () {
     }
     g.putImageData(img, 0, 0);
   }
+  var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
+    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -843,6 +849,12 @@ var TowerMine = (function () {
       if (p.kind === 'Z') return; // [2026-10-24] 숨은 입구(바닷길)는 미니맵에도 안 찍는다
       miniCtx.fillStyle = p.locked ? '#9a9a9a' : '#ffd23f';
       miniCtx.fillRect(p.x - ox - 2 * k, p.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
+    });
+    // [2026-10-28] "미니맵에 NPC 색 표시" -- NPC마다 색 점(테두리 흰색). 대장장이 주황, 상점 보라, 신부 흰색, 안내원 초록, 그 밖 하늘색
+    (map.npcs || []).forEach(function (n) {
+      var col = NPC_MINI_COL[n.kind] || '#5ad8ff';
+      miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(n.x - ox - 2 * k - 1, n.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
+      miniCtx.fillStyle = col; miniCtx.fillRect(n.x - ox - 2 * k, n.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
     miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - ox - 3 * k, P.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - ox - k, P.y - oy - k, 2 * k + 1, 2 * k + 1);
@@ -975,21 +987,32 @@ var TowerMine = (function () {
       return '<span class="' + (c.have >= c.need ? 'ok' : 'no') + '"><img src="' + oreIcon(c.grade) + '" alt="">' + c.name + ' ' + c.have + '/' + c.need + '</span>';
     }).join('') + '</span>';
   }
+  // [2026-10-28] "마을 장비 상점(대장장이)도 캐러셀 형태로(부위별)" -- 반지/목걸이/장화/곡괭이 줄마다 가로로 넘기는 카드
+  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '가지고 있으면 바로 적용'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요']];
+  function gearCard(g) {
+    var worn = g.kind === 'ring' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
+    var h = '<div class="cos-card gear-card' + (worn ? ' worn' : '') + '"><div class="gear-ico">' + (GEAR_ICON[g.kind] || '💍') + '</div>'
+        + '<div class="cos-nm">' + g.name + '</div><small class="gear-tier">' + (g.tier > 0 ? g.tier + '단계' + (g.maxTier ? ' / ' + g.maxTier : '') : '없음') + '</small>';
+    if (g.effect) h += '<small class="gear-eff">지금: ' + g.effect + '</small>';
+    if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</small>';
+    if ((g.kind === 'ring' || g.kind === 'tool') && g.tier > 0)
+      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
+          : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>';
+    if (!g.nextTier) return h + '<small class="gear-eff">최고 단계예요.</small></div>';
+    var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
+    h += '<small class="gear-next">' + (g.cityOnly ? '🏰 ' : '') + g.nextTier + '단계: ' + g.nextEffect + '</small>' + costHtml(g.costs);
+    return h + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
+        : '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button>') + '</div>';
+  }
   function gearHtml() {
-    return (st.gear || []).map(function (g) {
-      var h = '<div class="mine-smith-sub">' + (GEAR_ICON[g.kind] || '💍') + ' ' + g.name + ' <b>' + (g.tier > 0 ? g.tier + '단계' : '없음') + '</b>'
-          + (g.kind === 'ring' && g.tier > 0 ? (g.worn ? ' <span class="mine-worn">착용 중</span>'
-              : ' <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>') : '')
-          // [2026-10-24] 칠요석 곡괭이(광역/탐지) -- 산 뒤엔 자유롭게 바꿔 끼기(다시 누르면 기본 곡괭이)
-          + (g.kind === 'tool' && g.tier > 0 ? (g.on ? ' <span class="mine-worn">사용 중</span> <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>'
-              : ' <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>') + (g.dim ? ' <span class="mine-worn" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</span>' : '') : '') + '</div>';
-      if (g.effect) h += '<div class="mine-smith-say">지금: ' + g.effect + '</div>';
-      if (!g.nextTier) return h + '<div class="mine-smith-say">최고 단계예요.</div>';
-      var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
-      return h + '<div class="mine-smith-row"><span class="nm">' + (g.cityOnly ? '🏰 ' : '') + g.nextTier + '단계: ' + g.nextEffect + costHtml(g.costs) + '</span>'
-          + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
-              : '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button>') + '</div>';
-    }).join('') + '<div class="mine-smith-say">반지와 곡괭이는 하나만 낄 수 있어요(산 뒤엔 언제든 바꿔 끼기). 목걸이와 장화는 가지고 있으면 바로 적용돼요.</div>';
+    var h = '';
+    GEAR_PARTS.forEach(function (p) {
+      var list = (st.gear || []).filter(function (g) { return g.kind === p[0]; });
+      if (!list.length) return;
+      h += '<div class="cos-slot"><div class="cos-slot-h">' + p[1] + ' <small>' + p[2] + '</small></div><div class="cos-car" data-slot="g-' + p[0] + '">'
+          + list.map(gearCard).join('') + '</div></div>';
+    });
+    return h;
   }
   function synthHtml() {
     var stones = [];
@@ -1236,19 +1259,41 @@ var TowerMine = (function () {
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
     { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' }
   ];
+  // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
+  var equipTab = 'gear';
+  function equipTabGo(t) { equipTab = t; if (smithOpen) renderSmith(smithNpc); }
   function equipHtml() {
-    var h = npcHead('🎒 내 장비', false);
+    var h = npcHead('🎒 내 장비', false)
+        + '<div class="eq-tabs"><button type="button" class="' + (equipTab === 'gear' ? 'on' : '') + '" onclick="TowerMine.equipTab(\'gear\')">⚔️ 장착</button>'
+        + '<button type="button" class="' + (equipTab === 'look' ? 'on' : '') + '" onclick="TowerMine.equipTab(\'look\')">👗 치장</button></div>';
+    if (equipTab === 'look') {
+      var lk = st.look || {};
+      h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(lk, d) + '" alt="">'; }).join('') + '</div>'
+          + '<div class="mine-smith-say">가지고 있는 치장만 보여요. 새 치장은 명품상점에서 살 수 있어요.</div></div>';
+      ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
+        var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot && c.owned; });
+        h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + list.length + '개</small></div><div class="cos-car" data-slot="l-' + slot + '">'
+            + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImg(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
+            + (cur ? '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">입기</button>' : '<span class="mine-worn">착용 중</span>') + '</div>';
+        list.forEach(function (c) {
+          h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '"><img src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + '"><div class="cos-nm">' + c.name + '</div>'
+              + (c.code === cur ? '<span class="mine-worn">착용 중</span>' : '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>') + '</div>';
+        });
+        h += '</div></div>';
+      });
+      return h;
+    }
     EQ_SLOTS.forEach(function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
-      h += '<div class="mine-eq-slot">' + sl.name + (sl.hint ? '<small>' + sl.hint + '</small>' : '') + '</div>';
-      if (!rows.length) { h += '<div class="mine-eq-empty">' + sl.none + '</div>'; return; }
-      rows.forEach(function (e) {
-        h += '<div class="mine-smith-row"><span class="nm">' + e.name + '<small>' + e.effect + '</small></span>'
-            + (e.worn ? '<span class="mine-worn">착용 중</span> <button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">빼기</button>'
+      h += '<div class="cos-slot"><div class="cos-slot-h">' + sl.name + (sl.hint ? ' <small>' + sl.hint + '</small>' : '') + '</div>';
+      if (!rows.length) { h += '<div class="mine-eq-empty">' + sl.none + '</div></div>'; return; }
+      h += '<div class="cos-car" data-slot="e-' + sl.id + '">' + rows.map(function (e) {
+        return '<div class="cos-card gear-card' + (e.worn ? ' worn' : '') + '"><div class="gear-ico">' + sl.name.split(' ')[0] + '</div><div class="cos-nm">' + e.name + '</div><small class="gear-eff">' + e.effect + '</small>'
+            + (e.worn ? '<span class="mine-worn">착용 중</span><button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">빼기</button>'
                 : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + (sl.id === 'coat' ? '입기' : '끼기') + '</button>') + '</div>';
-      });
+      }).join('') + '</div></div>';
     });
-    return h + '<div class="mine-smith-say">방한 장비(외투·장갑)는 설산에선 든든하지만, 사막과 남쪽 섬에선 더워서 하나에 초당 1%씩 체력이 깎여요.</div>';
+    return h + '<div class="mine-smith-say">방한 장비(외투·장갑)는 설산에선 든든하지만, 사막과 남쪽 섬, 다도해에선 더워서 하나에 초당 1%씩 체력이 깎여요.</div>';
   }
   function openEquip() {
     if (!opened || !map) return;
@@ -1303,21 +1348,27 @@ var TowerMine = (function () {
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 환생' + rb + ')' : '') + '<small>' + rbSub + '</small></button></div>';
+    // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). 체력 x(1+회차), 필요 경험치 x5^회차, 광물 획득 x(1+회차), 한기/햇빛 피해 -회차 %p
     if (priestConfirm && ready) {
       var nrb = rb + 1;
-      html += '<div class="mine-rb-box">🕊️ <b>환생 ' + nrb + '단계</b>로 다시 태어날까요?<br>'
+      if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>환생 ' + nrb + '단계</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
           + '· 레벨이 <b>Lv.1(환생' + nrb + ')</b>로 돌아가고 경험치는 0이 돼요.<br>'
-          + '· 최대 체력 <b>x1.5</b> (환생 전체 x' + rbMul(1.5, nrb) + ')<br>'
-          + '· 다음 레벨까지 필요 경험치 <b>x3</b> (환생 전체 x' + rbMul(3, nrb) + ')<br>'
+          + '· 기본 최대 체력 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
+          + '· 다음 레벨까지 필요 경험치 <b>x' + Math.pow(5, nrb) + '</b> (5의 ' + nrb + '제곱)<br>'
+          + '· 채굴·전투로 얻는 광물 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
+          + '· 한기·눈바람·햇빛 피해 <b>초당 -' + nrb + '%</b> 경감<br>'
           + '· 공격력은 레벨에 따라 처음부터 다시 올라요. 광석·장비·치장은 그대로예요.<br>'
           + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계).'
-          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirth\')">🕊️ 환생하기</button>'
+          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirthFinal\')">다음</button>'
+          + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
+      else html += '<div class="mine-rb-box">⚠️ <b>최종 확인</b><br>정말 <b>환생 ' + nrb + '단계</b>로 다시 태어날까요?<br>지금 <b>Lv.' + c.lv + '</b>가 <b>Lv.1</b>로 돌아가며, <b>되돌릴 수 없어요.</b>'
+          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirth\')">🕊️ 최종 확인 -- 환생하기</button>'
           + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
     }
     return html;
   }
   function priestAct(action) {
-    if (action === 'rebirthAsk' || action === 'rebirthNo') { priestConfirm = action === 'rebirthAsk'; if (smithOpen) renderSmith(smithNpc); return; }
+    if (action === 'rebirthAsk' || action === 'rebirthNo' || action === 'rebirthFinal') { priestConfirm = action === 'rebirthAsk' ? 1 : action === 'rebirthFinal' ? 2 : 0; if (smithOpen) renderSmith(smithNpc); return; } // [2026-10-28] 설명 -> 최종 확인
     if (busy) return;
     busy = true;
     priestConfirm = false;
@@ -1578,6 +1629,22 @@ var TowerMine = (function () {
       if (im2._fr !== fr) { im2._fr = fr; im2.src = portrait(kind, fr); }
     }, 55);
   }
+  /** [2026-10-28] 캐러셀 창(명품상점/대장간 구매/🎒 장비) -- 다시 그려도 넘겨 둔 자리와 세로 스크롤 그대로, 처음 열면 착용 카드가 보이게. */
+  function carouselHtml(html) {
+    var keep = {}, keepY = el.smith.scrollTop;
+    Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) { keep[c.getAttribute('data-slot')] = c.scrollLeft; });
+    el.smith.innerHTML = html;
+    var place = function () { // 그림이 그려진 뒤(다음 프레임)에 넘긴다 -- 바로 넘기면 칸 맞춤이 첫 카드로 되돌린다
+      Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) {
+        var v = keep[c.getAttribute('data-slot')], worn = c.querySelector('.cos-card.worn');
+        if (v != null) c.scrollLeft = v;
+        else if (worn) c.scrollLeft = Math.max(0, worn.offsetLeft - c.offsetLeft - 8);
+      });
+      el.smith.scrollTop = keepY;
+    };
+    place();
+    requestAnimationFrame(place);
+  }
   function renderSmith(n) {
     renderSmithView(n);
     startTalk(); // [2026-10-24] NPC 초상화/대사
@@ -1619,10 +1686,7 @@ var TowerMine = (function () {
       el.smith.innerHTML = archiHtml(n);
       return;
     }
-    if (smithView === 'equip') { // [2026-10-28] 🎒 장비
-      el.smith.innerHTML = equipHtml();
-      return;
-    }
+    if (smithView === 'equip') { carouselHtml(equipHtml()); return; } // [2026-10-28] 🎒 장비(장착/치장 탭, 캐러셀)
     if (smithView === 'warp') {
       el.smith.innerHTML = warpHtml();
       return;
@@ -1635,22 +1699,7 @@ var TowerMine = (function () {
       el.smith.innerHTML = shipHtml();
       return;
     }
-    if (smithView === 'boutique') {
-      var keep = {}, keepY = el.smith.scrollTop; // [2026-10-28] 캐러셀 -- 입어 보기/사기로 다시 그려도 넘겨 둔 자리 그대로
-      Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) { keep[c.getAttribute('data-slot')] = c.scrollLeft; });
-      el.smith.innerHTML = boutiqueHtml(n);
-      var place = function () { // 그림이 그려진 뒤(다음 프레임)에 넘긴다 -- 바로 넘기면 칸 맞춤이 첫 카드로 되돌린다
-        Array.prototype.forEach.call(el.smith.querySelectorAll('.cos-car'), function (c) {
-          var v = keep[c.getAttribute('data-slot')], worn = c.querySelector('.cos-card.worn');
-          if (v != null) c.scrollLeft = v;
-          else if (worn) c.scrollLeft = Math.max(0, worn.offsetLeft - c.offsetLeft - 8); // 처음 열면 입고 있는 카드가 보이게
-        });
-        el.smith.scrollTop = keepY;
-      };
-      place();
-      requestAnimationFrame(place);
-      return;
-    }
+    if (smithView === 'boutique') { carouselHtml(boutiqueHtml(n)); return; }
     if (smithView === 'menu') {
       el.smith.innerHTML = npcHead(map && map.id === 'city' ? '🏰 왕도 대장간' : '🔨 대장간', false) // [2026-10-25] 왕도 대장장이(더 높은 단계)
           + talkBlock(n, n ? n.line : '')
@@ -1659,10 +1708,7 @@ var TowerMine = (function () {
           + '<button type="button" onclick="TowerMine.smithGo(\'synth\')">🌈 합성<small>칠요석 · 구리</small></button></div>';
       return;
     }
-    if (smithView === 'buy') {
-      el.smith.innerHTML = npcHead('⛑️ 대장간 · 구매', true) + helmetHtml() + gearHtml();
-      return;
-    }
+    if (smithView === 'buy') { carouselHtml(npcHead('⛑️ 대장간 · 구매', true) + helmetHtml() + gearHtml()); return; } // [2026-10-28] 부위별 캐러셀
     if (smithView === 'synth') {
       el.smith.innerHTML = npcHead('🌈 대장간 · 합성', true) + synthHtml();
       return;
@@ -1732,8 +1778,7 @@ var TowerMine = (function () {
     api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
       bossBusy = false;
       if (!d || !d.ok) return;
-      if (d.bossAggro && !bossWarned && bt) { bossWarned = true; msg('👑 ' + bt.name + '이(가) 먼저 덤벼들어요! 5칸 넘게 떨어지기 전엔 계속 쫓아와요.', 3200); }
-      if (d.preempt && !d.bossAggro) msg('⚠️ ' + d.preempt + '이(가) 먼저 덤벼들어요! (레벨 차이 20 이상) 7칸 이상 떨어지면 따돌릴 수 있어요.', 3200);
+      // [2026-10-28] "몬스터가 인식했을 때 나오는 문구 없애줘, 벗어났을 때도 필요 없어" -- 보스 선공/레벨 차이 선공/인식 풀림 안내는 띄우지 않는다
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
@@ -1742,7 +1787,7 @@ var TowerMine = (function () {
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
-      if (d.released) { flashT0 = t; msg(d.message || '', 2800); }
+      // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
       if (d.died && d.state) fallDown(d);
     }).catch(function () { bossBusy = false; });
   }
@@ -1899,6 +1944,11 @@ var TowerMine = (function () {
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
     if (el.cold.style.display !== 'block') el.cold.style.display = 'block';
+  }
+  /** [2026-10-28] 안전지대 경계선 -- "피해 안 받는 곳 음영 처리 더": 점선 원(천천히 돈다)으로 어디까지가 안전한지 보이게. */
+  function safeRing(zx, zy, rr, col) {
+    ctx.save(); ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, 2 * dpr); ctx.setLineDash([6 * dpr, 5 * dpr]); ctx.lineDashOffset = -(performance.now() / 60) % 22;
+    ctx.beginPath(); ctx.arc(zx, zy, rr - dpr, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   }
   /** [2026-10-28] 야자수(다도해 그늘 가운데) -- 줄기 + 바람에 살짝 흔들리는 잎. */
   function drawPalm(cx, cy, TS, now) {
@@ -2248,8 +2298,8 @@ var TowerMine = (function () {
         var zx = (z[0] + 0.5) * TS - camX, zy = (z[1] + 0.5) * TS - camY, rr = (z[2] + 0.5) * TS;
         if (zx < -rr || zy < -rr || zx > W + rr || zy > H + rr) return;
         var gr = ctx.createRadialGradient(zx, zy, TS * 0.3, zx, zy, rr);
-        gr.addColorStop(0, 'rgba(20,60,40,0.30)'); gr.addColorStop(0.8, 'rgba(20,60,40,0.14)'); gr.addColorStop(1, 'rgba(20,60,40,0)');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(zx, zy, rr, 0, Math.PI * 2); ctx.fill();
+        gr.addColorStop(0, 'rgba(20,70,45,0.46)'); gr.addColorStop(0.85, 'rgba(20,70,45,0.34)'); gr.addColorStop(1, 'rgba(20,70,45,0.28)'); // [2026-10-28] 안전지대 음영 더 진하게 + 경계선
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(zx, zy, rr, 0, Math.PI * 2); ctx.fill(); safeRing(zx, zy, rr, 'rgba(150,255,190,0.85)');
         if (!npcAt[z[0] + ',' + z[1]]) drawPalm(zx, zy, TS, now);
       });
     }
@@ -2259,8 +2309,8 @@ var TowerMine = (function () {
         var zx = (z[0] + 0.5) * TS - camX, zy = (z[1] + 0.5) * TS - camY, rr = (z[2] + 0.5) * TS;
         if (zx < -rr || zy < -rr || zx > W + rr || zy > H + rr) return;
         var gr = ctx.createRadialGradient(zx, zy, TS * 0.3, zx, zy, rr);
-        gr.addColorStop(0, 'rgba(255,170,60,0.34)'); gr.addColorStop(0.8, 'rgba(255,170,60,0.12)'); gr.addColorStop(1, 'rgba(255,170,60,0)');
-        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(zx, zy, rr, 0, Math.PI * 2); ctx.fill();
+        gr.addColorStop(0, 'rgba(255,170,60,0.44)'); gr.addColorStop(0.85, 'rgba(255,170,60,0.30)'); gr.addColorStop(1, 'rgba(255,170,60,0.24)'); // [2026-10-28] 안전지대 음영 더 진하게 + 경계선
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(zx, zy, rr, 0, Math.PI * 2); ctx.fill(); safeRing(zx, zy, rr, 'rgba(255,210,120,0.9)');
         if (!npcAt[z[0] + ',' + z[1]]) drawFire(zx, zy, TS, now);
       });
     }
@@ -2303,7 +2353,7 @@ var TowerMine = (function () {
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
           var nm = (ty.boss ? '👑 보스 ' : '') + ty.name + ' Lv.' + (ty.lv || (1 + 4 * (ty.tier - 1))); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95)
-          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - 6 * scale);
+          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
           ctx.fillStyle = ty.boss ? '#ff4a4a' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
         }
       }
@@ -2723,7 +2773,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, openEquip: openEquip, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { open: open, close: close, openEquip: openEquip, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
