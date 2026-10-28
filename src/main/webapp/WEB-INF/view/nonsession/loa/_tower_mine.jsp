@@ -38,14 +38,14 @@ var TowerMine = (function () {
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
-                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
+                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
                     's': '성 바닥', 'W': '성벽', 'n': '눈밭', 'Y': '눈 덮인 숲', 'K': '건물', 'Q': '성당', 'X': '텔레포트 게이트', 'u': '바다 모래', 'p': '용궁 길', 'e': '해초', 'O': '산호', 'L': '용궁 기둥', 'Z': '물' };
   var MINI_COL = { '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
                    'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20],
                    'h': [190, 140, 60], 'j': [190, 140, 60], 'k': [190, 140, 60], 'l': [190, 140, 60],
                    'd': [227, 196, 122], 'R': [184, 135, 90], 'C': [63, 143, 58], 'b': [236, 217, 160], 'P': [139, 90, 43], 'q': [107, 66, 32], 'N': [64, 120, 255],
-                   's': [169, 164, 154], 'W': [74, 69, 64], 'n': [242, 246, 250], 'Y': [47, 93, 74], 'K': [168, 68, 58], 'Q': [223, 230, 242], 'X': [122, 92, 255], 'u': [111, 159, 192], 'p': [184, 72, 58], 'e': [47, 122, 106], 'O': [224, 122, 138], 'L': [138, 30, 30], 'Z': [58, 120, 212] };
+                   's': [169, 164, 154], 'W': [74, 69, 64], 'n': [242, 246, 250], 'Y': [47, 93, 74], 'K': [168, 68, 58], 'Q': [223, 230, 242], 'X': [122, 92, 255], 'u': [111, 159, 192], 'p': [184, 72, 58], 'e': [47, 122, 106], 'O': [224, 122, 138], 'L': [138, 30, 30], 'Z': [58, 120, 212], 'I': [127, 208, 240] };
 
   var cfg = null, map = null, st = null, portalAt = {}, npcAt = {}, ship = null, lastWindT = 0, talkBubble = null, smithOpen = false;
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
@@ -224,6 +224,13 @@ var TowerMine = (function () {
         for (var x = 8 - half; x < 8 + half; x++) px(g, (y - 1) % 4 === 0 ? '#ffffff' : (x < 8 ? '#3d7a5e' : '#2f5d4a'), x, y);
       }
       return c;
+    });
+    // [2026-10-28] 설산 동굴 얼음 광맥(I) -- 어두운 바위 속에 솟은 푸른 결정
+    tiles.vein = [1, 2].map(function (s) {
+      return tile('#4e5a68', [['#3e4856', 10], ['#5e6a78', 6]], 140 + s, function (g) {
+        px(g, '#7fd0f0', 2 + s, 6, 3, 9); px(g, '#d8f6ff', 3 + s, 6, 1, 7); px(g, '#9fe8ff', 7, 2, 4, 13); px(g, '#ecfbff', 8, 3, 1, 10);
+        px(g, '#7fd0f0', 12, 8 - s, 2, 7); px(g, '#ffffff', 9, 4); px(g, '#ffffff', 4 + s, 8);
+      });
     });
     tiles.ice = [1, 2].map(function (s) {
       return tile('#bfe3f5', [['#a8d4ec', 10], ['#e6f6ff', 6, 3, 1]], 120 + s, function (g) { px(g, '#ffffff', 3 + s, 4, 5, 1); px(g, '#8fc4e0', 9, 10 - s, 4, 1); });
@@ -458,6 +465,7 @@ var TowerMine = (function () {
       case 'L': return tiles.palaceWall[v % 2];
       case 'Z': return tiles.water[(wf + (x + y) % 2) % 2]; // [2026-10-24] 숨은 입구 -- 물과 똑같이 보인다
       case 'n': return tiles.snow[v % 2];
+      case 'I': return tiles.vein[v % 2]; // [2026-10-28] 설산 동굴 얼음 광맥
       case 'Y': return tiles.pine[v % 2];
       case 'c': return tiles.cave[v % 2];
       case 'r': return tiles.gravel;
@@ -633,6 +641,9 @@ var TowerMine = (function () {
     var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, f = dirs[P.dir], m = f && mobOcc[(P.x + f[0]) + ',' + (P.y + f[1])];
     if (m) return { m: m, dir: P.dir };
     for (var key in dirs) { var v = dirs[key], mm = mobOcc[(P.x + v[0]) + ',' + (P.y + v[1])]; if (mm) return { m: mm, dir: key }; }
+    // [2026-10-28] "공격 버튼은 내 캐릭터 주변 동서남북을 포함한 8방향을 타겟으로" -- 상하좌우에 없으면 대각선(바라보는 쪽은 좌우)
+    var diag = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+    for (var di = 0; di < diag.length; di++) { var dm = mobOcc[(P.x + diag[di][0]) + ',' + (P.y + diag[di][1])]; if (dm) return { m: dm, dir: diag[di][0] < 0 ? 'left' : 'right' }; }
     return null;
   }
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
@@ -930,7 +941,7 @@ var TowerMine = (function () {
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
     var digShow = map.noDig ? 'none' : '';
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
-    if (el.auto) { var autoShow = map.noDig ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if (map.noDig && auto) setAuto(false); } }
+    if (el.auto) { var autoShow = map.noDig || map.vein ? 'none' : ''; // [2026-10-28] 설산 동굴은 자동채광 없음 if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if ((map.noDig || map.vein) && auto) setAuto(false); } }
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
     bossTick(now); // [2026-10-24] 동굴 3층 보스 선공 + [2026-10-25] 몬스터 인식 중 전투 턴
     coldTick(now); coldWarn(); // [2026-10-26] 한기/눈바람
@@ -1197,7 +1208,8 @@ var TowerMine = (function () {
   var WORLD_NODES = [
     { id: 'snowpeak', name: '설산 봉우리 🧊', x: 262, y: -264, fill: '#9fd8f0', ink: '#0a2a3a' }, // [2026-10-28] 설산 마을 북문 -> 봉우리 가는 길 -> 봉우리(얼음 여왕)
     { id: 'snowroad', name: '봉우리 가는 길', x: 262, y: -194, fill: '#d0e4f4', ink: '#1a2a3a' },
-    { id: 'snowtown', name: '설산 마을', x: 262, y: -124, fill: '#d9c9a0', ink: '#2a1d10', town: true }, // [2026-10-28] 마을은 전체 지도에 레벨 표시 안 함
+    { id: 'snowtown', name: '설산 마을', x: 262, y: -124, fill: '#d9c9a0', ink: '#2a1d10', town: true },
+    { id: 'snowcave', name: '설산 동굴 💠', x: 262, y: -124, fill: '#4e6a84', ink: '#e8f8ff' }, // [2026-10-28] 설산 마을 동문 // [2026-10-28] 마을은 전체 지도에 레벨 표시 안 함
     { id: 'snow3', name: '설산 3층', x: 262, y: -68, fill: '#c8d8ea', ink: '#1a2a3a' },
     { id: 'snow2', name: '설산 2층', x: 262, y: -12, fill: '#d6e2f0', ink: '#1a2a3a' },
     { id: 'snow1', name: '설산 1층', x: 262, y: 44, fill: '#e2ebf5', ink: '#1a2a3a' },
@@ -1244,9 +1256,9 @@ var TowerMine = (function () {
         ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
       links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
     { id: 'snow', name: '❄️ 설원·설산', vh: 420,
-      nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
+      nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 150], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
         ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
-      links: [['snowroad', 'snowpeak'], ['snowtown', 'snowroad'], ['snowtown', '@royal'], ['snow3', 'snowtown'], ['snow2', 'snow3'], ['snow1', 'snow2'], ['north', 'snow1'], ['north', '@beach2', 'sea']] },
+      links: [['snowroad', 'snowpeak'], ['snowtown', 'snowroad'], ['snowtown', '@royal'], ['snowtown', 'snowcave'], ['snow3', 'snowtown'], ['snow2', 'snow3'], ['snow1', 'snow2'], ['north', 'snow1'], ['north', '@beach2', 'sea']] },
     { id: 'sea', name: '🏝️ 남쪽 바다', vh: 380,
       nodes: [['@beach', 160, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 92], ['archi', 252, 92], ['shrine', 52, 160], ['shrine2', 160, 160], ['shrine3', 268, 160],
         ['shrineboss', 106, 220], ['archisea', 214, 220], ['isle1', 44, 295], ['isle2', 120, 295], ['isle3', 196, 295], ['isle4', 272, 295],
@@ -1441,7 +1453,8 @@ var TowerMine = (function () {
           + '· 다음 레벨까지 필요 경험치 <b>x' + Math.pow(5, nrb) + '</b> (5의 ' + nrb + '제곱)<br>'
           + '· 채굴·전투로 얻는 광물 <b>+' + (nrb * 100) + '%</b> (x' + (1 + nrb) + ')<br>'
           + '· 한기·눈바람으로 입는 피해량 <b>-' + nrb + '%</b>, 다도해 햇빛 피해 <b>-' + Math.min(100, nrb * 20) + '%</b>' + (nrb >= 5 ? ' (햇빛 완전히 막음)' : '') + '<br>'
-          + '· 공격력은 레벨에 따라 처음부터 다시 올라요. 광석·장비·치장은 그대로예요.<br>'
+          + '· 공격력 <b>+' + (nrb * 50) + '%</b> (x' + (1 + nrb * 0.5) + ', 레벨에 따라 처음부터 다시 올라요)<br>'
+          + '· 광석·장비·치장은 그대로예요.<br>'
           + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계).'
           + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirthFinal\')">다음</button>'
           + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
@@ -1863,7 +1876,7 @@ var TowerMine = (function () {
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
     var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
       var ty = map.mobTypes[mb.k];
-      return ty && !ty.boss && !ty.minion && mb._p && 1 + 4 * (ty.tier - 1) - myLv() >= 20 && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
+      return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
     });
     if (!fight && !nearBoss && !nearStrong && !frozenMe()) return; // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
@@ -1875,6 +1888,7 @@ var TowerMine = (function () {
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
+      if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
@@ -2272,6 +2286,7 @@ var TowerMine = (function () {
       if (d.mobDeadUntil != null) mobSt[m.id] = mobStOf([m.id, d.mobHp, d.mobDeadUntil, d.mobFx, d.mobFy, d.mobFrozenUntil, d.mobStealth ? 1 : 0], mobSt[m.id]);
       (d.mobRows || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); }); // [2026-10-28] 분신술 -- 분신/두목 상태
       if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
+      if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴 -- 반격에 맞음
       lastSaved = map.id + ':' + P.x + ',' + P.y;
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
@@ -2837,7 +2852,41 @@ var TowerMine = (function () {
       }
     } catch (e) { }
   }
+  // [2026-10-28] 설산 동굴 -- 땅은 못 파고, 바라보는(없으면 상하좌우) 얼음 광맥(I)을 연속 채광. 20번이면 빙석, 몬스터에게 맞으면 처음부터.
+  var veinBusy = false, veinCount = 0;
+  function veinDig() {
+    if (!map || busy || veinBusy || fade || P.moving) return;
+    var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, f = dirs[P.dir];
+    if (!(f && cellAt(P.x + f[0], P.y + f[1]) === 'I')) {
+      f = null;
+      for (var k in dirs) if (cellAt(P.x + dirs[k][0], P.y + dirs[k][1]) === 'I') { P.dir = k; f = dirs[k]; break; }
+    }
+    if (!f) { msg('💠 얼음 광맥 바로 앞에서 캐요. 이 동굴은 땅을 팔 수 없어요.', 1800); return; }
+    var tx = P.x + f[0], ty = P.y + f[1];
+    veinBusy = true; P.digT0 = performance.now();
+    api('/api/tower-mine-vein?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&tx=' + tx + '&ty=' + ty + verQ()).then(function (d) {
+      veinBusy = false;
+      if (!d || d.tooFast) return;
+      if (!d.ok) { if (d.message) msg(d.message, 1800); return; }
+      veinCount = d.gain ? 0 : d.count;
+      var t = performance.now();
+      if (d.gain) {
+        if (d.ores) st.ores = d.ores;
+        flashT0 = t;
+        var im = new Image(); im.src = oreIcon(d.grade || 19);
+        floats.push({ x: tx, y: ty - 0.4, text: '+1 빙석', color: '#bfefff', big: true, icon: im, t0: t });
+        msg(d.message, 2800);
+      } else floats.push({ x: tx, y: ty - 0.2, text: '💠 ' + d.count + '/' + d.need, color: d.count >= d.need - 3 ? '#ffe14d' : '#cfefff', t0: t });
+    }).catch(function () { veinBusy = false; });
+  }
+  function veinBroke() {
+    if (!map || !map.vein || !veinCount) return;
+    veinCount = 0;
+    floats.push({ x: P.x, y: P.y - 1.0, text: '💥 연속 채광 끊김!', color: '#ff8a8a', big: true, t0: performance.now() + 120 });
+    msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 다시 20번을 캐야 해요.', 2400);
+  }
   function dig() {
+    if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
     if (P.moving) return;
     var x = P.x, y = P.y, c = cellAt(x, y);

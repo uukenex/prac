@@ -39,11 +39,14 @@ public final class S5MineMobs {
         public boolean ninja, clone;
         /** [2026-10-28] 용암섬 보스 -- "원거리 공격을 가끔씩": 인식 중 떨어져 있어도 6~10초마다 불덩이를 던진다(BotS5ServiceImpl.mineCombatTick). */
         public boolean ranged;
+        /** [2026-10-28] 설산 동굴 박쥐 -- 레벨 차이와 상관없이 선공(MINE_PREEMPT_RANGE칸 안). */
+        public boolean firstStrike;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
         Type asNinja() { ninja = true; return this; }
         Type asRanged() { ranged = true; return this; }
+        Type asFirstStrike() { firstStrike = true; return this; }
         Type asClone() { minion = true; clone = true; ninja = true; return this; }
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
@@ -171,7 +174,12 @@ public final class S5MineMobs {
         new Type("근위개미", 12, "crab", "#8a1a1a", S5MineMap.ANTNEST),
         new Type("산성개미", 12, "crab", "#b0c020", S5MineMap.ANTNEST),
         new Type("거대 병정개미", 13, "crab", "#2a0a0a", S5MineMap.ANTNEST),
-        new Type("여왕개미", 14, "crab", "#c03a6a").asBoss()
+        new Type("여왕개미", 14, "crab", "#c03a6a").asBoss(),
+        // [2026-10-28] 설산 동굴 박쥐 -- "40레벨대 강하지만 체력이 적은 박쥐류가 선공": 11~12단계(Lv.41~45), 체력 x0.4 / 공격 x1.3, 레벨 차이와 상관없이 선공
+        new Type("얼음 박쥐", 11, "flyer", "#9fd0f0", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
+        new Type("흡혈 박쥐", 11, "flyer", "#6a2a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
+        new Type("서리 박쥐", 12, "flyer", "#d8f0ff", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
+        new Type("동굴 큰박쥐", 12, "flyer", "#3a3a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike()
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -237,6 +245,7 @@ public final class S5MineMobs {
             case S5MineMap.ISLE5: return 22;
             case S5MineMap.ISLE6: return 23;
             case S5MineMap.ISLE7: return 24;
+            case S5MineMap.SNOWCAVE: return x < m.w * 0.45 ? 11 : 12; // [2026-10-28] 설산 동굴 -- 안쪽(동쪽)일수록
             case S5MineMap.ANTNEST: { // [2026-10-28] 떨어지는 곳(한가운데)에서 멀수록
                 int d = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY);
                 return d < 40 ? 11 : d < 75 ? 12 : 13;
@@ -256,6 +265,7 @@ public final class S5MineMobs {
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 96; // [2026-10-26] 설산은 빽빽하게
             case S5MineMap.SNOWROAD: return 96; // [2026-10-28] 설산 봉우리 가는 길
             case S5MineMap.ANTNEST: return 90; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
+            case S5MineMap.SNOWCAVE: return 100; // [2026-10-28] 설산 동굴 박쥐
             case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 60; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
             default: return 128;
         }

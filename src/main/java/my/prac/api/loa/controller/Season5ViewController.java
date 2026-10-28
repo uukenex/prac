@@ -839,6 +839,18 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineScan(userName, mapId, x, y));
     }
 
+    /** [2026-10-28] 웹 광산 설산 동굴 연속 채광(빙석을 얻을 때만 기록). */
+    @GetMapping("/api/tower-mine-vein")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineVein(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam("x") int x, @RequestParam("y") int y, @RequestParam("tx") int tx, @RequestParam("ty") int ty) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineVein(userName, mapId, ver, x, y, tx, ty);
+        if (Boolean.TRUE.equals(out.get("gain"))) mineLog(userName, "[웹] 광산 설산 동굴 연속 채광", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 사막 서쪽 -- 개미굴로 떨어지기(화면이 걸을 때 확률로). */
     @GetMapping("/api/tower-mine-antfall")
     @ResponseBody

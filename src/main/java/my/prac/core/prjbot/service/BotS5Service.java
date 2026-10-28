@@ -291,6 +291,9 @@ public interface BotS5Service {
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 
+    /** [2026-10-28] 설산 동굴 -- 바라보는 얼음 광맥(tx, ty) 연속 채광(20번이면 빙석). */
+    HashMap<String, Object> mineVein(String userName, String mapId, String ver, int x, int y, int tx, int ty);
+
     /** [2026-10-28] 사막 서쪽에서 개미굴로 떨어지기. */
     HashMap<String, Object> mineAntFall(String userName, String mapId, int x, int y);
 

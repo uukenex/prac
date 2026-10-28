@@ -79,6 +79,10 @@ public final class S5MineMap {
      *  나가는 통로 3개를 어렵게, 탈출하면 피라미드 -- 가운데 보상 상자에서 사막의 심장" -- 사막 서쪽(DESERT_FALL_X 왼쪽)에서 걸을 때마다 확률로 개미굴 한가운데로 떨어진다
      *  (BotS5ServiceImpl.mineAntFall). 개미굴(굴 미로, 미니맵 없음) 가장자리 세 곳의 나가는 굴(U) -> 피라미드. 피라미드 동쪽 문 -> 사막 서쪽. */
     public static final String ANTNEST = "antnest", PYRAMID = "pyramid";
+    /** [2026-10-28] "설산 동쪽에 설산 동굴 -- 땅파기가 안 되고, 앞에 있는 광석(얼음 광맥 I)을 직접 앞에서 채광, 20번 연속 채광하면 빙석,
+     *  근처 40레벨대 강하지만 체력이 적은 박쥐류가 선공, 공격받으면 연속 채광이 풀린다, 내구도 소모 없음" -- 설산 마을 동문 -> 설산 동굴(veinMine).
+     *  연속 채광은 BotS5ServiceImpl.mineVein. */
+    public static final String SNOWCAVE = "snowcave";
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -377,6 +381,7 @@ public final class S5MineMap {
     public int sun() { return sun; }
     public boolean boat() { return boat; }
     public boolean noMap() { return noMap; }
+    public boolean veinMine() { return veinMine; }
 
     public boolean safeAt(int x, int y) {
         return nearSafe(x, y, 0);
@@ -507,6 +512,7 @@ public final class S5MineMap {
     private int sun;                                   // [2026-10-28] 다도해 낮 햇빛 피해(초당 최대 체력 %), 0 = 없음
     private boolean boat;                              // [2026-10-28] 다도해 뱃길 -- 배를 타고 물 위로 다닌다(물 칸이 길)
     private boolean noMap;                             // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(화면이 미니맵을 가린다)
+    private boolean veinMine;                          // [2026-10-28] 설산 동굴 -- 땅은 못 파고 얼음 광맥(I)을 앞에서 연속 채광
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
     private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
@@ -878,6 +884,10 @@ public final class S5MineMap {
         S5MineMap py = relink(pyramid, retarget(pyramid, DESERT, dw), null);
         placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
         out.put(PYRAMID, py);
+        // [2026-10-28] 설산 마을 동문 <-> 설산 동굴(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로, 설산 마을은 NPC 그대로 다시 넣음)
+        S5MineMap snowCave = generateSnowCave(seed + 73), stw = out.get(SNOWTOWN);
+        out.put(SNOWCAVE, relink(snowCave, retarget(snowCave, SNOWTOWN, besidePortal(stw, SNOWCAVE)), null));
+        out.put(SNOWTOWN, relink(stw, retarget(stw, SNOWCAVE, new int[] { snowCave.spawnX, snowCave.spawnY }), stw.npcs));
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -900,6 +910,7 @@ public final class S5MineMap {
         n.sun = m.sun;
         n.boat = m.boat;
         n.noMap = m.noMap;
+        n.veinMine = m.veinMine;
         n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
@@ -1322,6 +1333,57 @@ public final class S5MineMap {
         portals.add(new Portal(w - 1, gy, 'G', DESERT, 0, 0, "동쪽 -- 사막으로"));
         S5MineMap m = new S5MineMap(PYRAMID, "피라미드", false, w, h, sx, sy, t, new byte[h][w], portals);
         m.safe.add(new int[] { cx, cy, 5 });
+        return m;
+    }
+
+    /** [2026-10-28] 설산 동굴(110x80) -- 바위산(^) 속 눈 바닥(n) 동굴 방 16개(반지름 5~8)를 굴로 이었다. 서쪽 끝 나가는 길(U) = 설산 마을 동문.
+     *  벽 가운데 바닥에 붙은 칸 일부와 방 안 군데군데가 얼음 광맥(I -- 지나갈 수 없음, 앞에서 연속 채광). 땅에는 광석이 없다(veinMine). */
+    static S5MineMap generateSnowCave(long seed) {
+        int w = 110, h = 80;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (char[] row : t) Arrays.fill(row, '#');
+        int n = 16;
+        int[][] rooms = new int[n][];
+        rooms[0] = new int[] { 7, h / 2, 4 };
+        for (int i = 1; i < n; i++) {
+            int[] best = null;
+            for (int tries = 0; tries < 60; tries++) {
+                int rx = 18 + r.nextInt(w - 28), ry = 9 + r.nextInt(h - 18), rr = 5 + r.nextInt(4);
+                boolean ok = true;
+                for (int j = 0; j < i && ok; j++) if (Math.hypot(rx - rooms[j][0], ry - rooms[j][1]) < rr + rooms[j][2] + 5) ok = false;
+                if (ok) { best = new int[] { rx, ry, rr }; break; }
+            }
+            rooms[i] = best != null ? best : new int[] { 18 + r.nextInt(w - 28), 9 + r.nextInt(h - 18), 4 };
+        }
+        for (int[] rm : rooms) carveRoom(t, rm[0], rm[1], rm[2]);
+        for (int i = 1; i < n; i++) {
+            int near = 0;
+            for (int j = 1; j < i; j++) if (Math.hypot(rooms[i][0] - rooms[j][0], rooms[i][1] - rooms[j][1]) < Math.hypot(rooms[i][0] - rooms[near][0], rooms[i][1] - rooms[near][1])) near = j;
+            antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[near][0], rooms[near][1]);
+            if (i > 2 && r.nextDouble() < 0.35) { int j = 1 + r.nextInt(i - 1); antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[j][0], rooms[j][1]); }
+        }
+        int ey = h / 2;
+        for (int x = 1; x <= rooms[0][0]; x++) { t[ey][x] = 'c'; t[ey + 1][x] = 'c'; }
+        t[ey][0] = 'U';
+        // 바닥 -> 눈, 바닥에 붙은 벽 일부 -> 얼음 광맥, 방 안 기둥 광맥, 나머지 벽 -> 바위산
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (t[y][x] == 'c') t[y][x] = 'n';
+        for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++) {
+            if (t[y][x] != '#' || x < 14) continue; // 입구 둘레는 비운다
+            boolean touch = t[y - 1][x] == 'n' || t[y + 1][x] == 'n' || t[y][x - 1] == 'n' || t[y][x + 1] == 'n';
+            if (touch && r.nextDouble() < 0.12) t[y][x] = 'I';
+        }
+        for (int i = 1; i < n; i++) for (int k = 0; k < 2; k++) {
+            int x = rooms[i][0] + r.nextInt(5) - 2, y = rooms[i][1] + r.nextInt(5) - 2;
+            boolean open = true;
+            for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (t[yy][xx] != 'n') { open = false; break; }
+            if (open) t[y][x] = 'I';
+        }
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (t[y][x] == '#') t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(0, ey, 'U', SNOWTOWN, 0, 0, "설산 마을로 나가기"));
+        S5MineMap m = new S5MineMap(SNOWCAVE, "설산 동굴", false, w, h, 2, ey, t, new byte[h][w], portals);
+        m.veinMine = true;
         return m;
     }
 
@@ -1949,7 +2011,7 @@ public final class S5MineMap {
         t[h - 1][vx] = 'G';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(gates[0][0], gates[0][1], 'G', SNOWROAD, 0, 0, "북문 -- 설산 봉우리 가는 길")); // [2026-10-28] 북문 개방(좌표는 buildWorld)
-        portals.add(new Portal(gates[1][0], gates[1][1], 'G', null, 0, 0, "동문 -- 눈바람이 너무 심해 나갈 수 없어요"));
+        portals.add(new Portal(gates[1][0], gates[1][1], 'G', SNOWCAVE, 0, 0, "동문 -- 설산 동굴")); // [2026-10-28] 개방(좌표는 buildWorld)
         portals.add(new Portal(gates[2][0], gates[2][1], 'G', ROYALROAD, 0, 0, "서문 -- 왕도 북쪽 샛길")); // [2026-10-27] 설산에서 내려가 왕도로(좌표는 buildWorld)
         portals.add(new Portal(vx, h - 1, 'G', SNOW3, 0, 0, "설산 3층으로 내려가기"));
         S5MineMap m = new S5MineMap(SNOWTOWN, "설산 마을", false, w, h, vx, vy + vr + 2, t, new byte[h][w], portals);

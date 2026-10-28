@@ -8702,7 +8702,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.PEAK, 90);
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
-        MINE_MIN_LV.put(S5MineMap.ANTNEST, 41); // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
+        MINE_MIN_LV.put(S5MineMap.ANTNEST, 41);
+        MINE_MIN_LV.put(S5MineMap.SNOWCAVE, 41); // [2026-10-28] 설산 동굴(박쥐 11~12단계) // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
         MINE_MIN_LV.put(S5MineMap.SNOW1, 33); // [2026-10-26] 설산 1층(10~11단계), 2층(11~12), 3층(12~13), 설산 마을
         MINE_MIN_LV.put(S5MineMap.SNOW2, 37);
@@ -9155,7 +9156,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("raid", S5MineMap.RUINS.equals(map.id)); // [2026-10-28] 성당 옛터 -- 화면이 1초마다 환경 턴(대주교 마법)
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
-        out.put("noDig", !map.hasOre());
+        out.put("noDig", !map.hasOre() && !map.veinMine());
+        out.put("vein", map.veinMine()); // [2026-10-28] 설산 동굴 -- 앞의 얼음 광맥을 연속 채광
         out.put("noMap", map.noMap()); // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳 // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
@@ -9183,6 +9185,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
             if (ty.boss) m.put("aggro", MINE_BOSS_AGGRO_RANGE); // [2026-10-28] 보스 선공 거리 12칸
             if (ty.ninja) m.put("ninja", true); // [2026-10-28] 은신(화면은 반투명)
+            if (ty.firstStrike) m.put("first", true); // [2026-10-28] 설산 동굴 박쥐 -- 늘 선공(화면도 6칸 안이면 전투 턴)
             if (ty.clone) m.put("clone", true); // [2026-10-28] 닌자 두목의 분신 -- 화면은 두목(맵 마지막 몬스터)과 똑같이 그린다
             out.add(m);
         }
@@ -9241,6 +9244,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         return grade >= 1 && grade <= 5 && S5MineMap.ORE_CODES[grade - 1].equals(code) ? mineRebirthGain(items) : 1;
     }
     static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
+    /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
+    static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
+    static final double MINE_RB_ATK_BONUS = 0.5;
     static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(5, rb)); }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
     static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && exp >= mineExpNeed(MINE_LV_MAX, rb); }
@@ -9335,7 +9341,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         c.put("expNeed", mineExpNeed(lv, rb));
         c.put("hp", hp);
         c.put("hpMax", mineHpMax(lv, rb));
-        c.put("atk", mineAtk(lv));
+        c.put("atk", mineAtk(lv, rb));
         c.put("rebirth", rb); // [2026-10-28] 환생 횟수(화면 "Lv.1(환생1)" + 날개)
         c.put("rebirthReady", mineRebirthReady(lv, exp, rb));
         c.put("at", now);
@@ -9512,7 +9518,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final int MINE_PREEMPT_RANGE = 6;
 
     private static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
-        return 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP;
+        return t.firstStrike || 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
     }
 
     private static final class MineEngage {
@@ -9710,6 +9716,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             hp = mineHpNow(lrow, now, lock, rb);
         }
         if (dmgSum > 0) {
+            if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
             hp -= dmgSum;
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
@@ -10110,10 +10117,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (s.deadUntil > 0) s.respawn(type.hp()); // 다시 나타남
             int hitCell = -1;
-            for (int c : mineMobCells(mob, s, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선
+            for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round(mineAtk(lv) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0)));
+            dmg = Math.max(1, (int) Math.round(mineAtk(lv, rb) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0))); // [2026-10-28] 환생 공격력 보너스
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -10336,6 +10343,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("ores", mineOreList(userName));
         } else {
             if (mineCoatDef(items) > 0) counter *= 2; // [2026-10-26] 방한 외투 -- 받는 피해 2배
+            if (counter > 0 && mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 반격에 맞아도 끊긴다
             hp -= counter;
             out.put("counter", counter);
             if (hp <= 0) {
@@ -11058,6 +11066,65 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("message", "🛠️ " + map.name + " (" + p[0] + ", " + p[1] + ")로 이동했어요." + (p[0] != x || p[1] != y ? " (입력한 칸에 설 수 없어 가장 가까운 칸으로)" : ""));
         out.put("state", mineState(userName));
+        return out;
+    }
+
+    // ---- [2026-10-28] 설산 동굴 연속 채광 -- 바라보는 얼음 광맥(I)을 캘 때마다 한 번, MINE_VEIN_NEED번 이어서 캐면 빙석 1개(다시 0부터).
+    //  몬스터에게 맞으면(전투 턴 / 반격) 0으로 돌아간다(mineVeinBreak). 곡괭이 내구도는 쓰지 않는다. 숫자는 서버 메모리(맵이 바뀌면 처음부터).
+    static final int MINE_VEIN_NEED = 20;
+    private static final long MINE_VEIN_GAP_MS = 300L;
+    private static final class VeinState { String mapVer; int count; long at; }
+    private static final java.util.concurrent.ConcurrentHashMap<String, VeinState> MINE_VEIN = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 연속 채광이 이어지던 중이었으면 끊고 true. */
+    private static boolean mineVeinBreak(String userName) {
+        VeinState v = MINE_VEIN.get(userName);
+        if (v == null) return false;
+        synchronized (v) {
+            if (v.count <= 0) return false;
+            v.count = 0;
+            return true;
+        }
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineVein(String userName, String mapId, String ver, int x, int y, int tx, int ty) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        if (!map.veinMine() || !map.id.equals(mapId) || mineStaleVersion(map, ver)) return out;
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        if (Math.abs(tx - x) + Math.abs(ty - y) != 1 || map.terrainAt(tx, ty) != 'I') { out.put("message", "💠 얼음 광맥 바로 앞에서 그쪽을 보고 캐요."); return out; }
+        if (mineFrozen(userName, now) != null) { out.put("message", MINE_FROZEN_BLOCK); return out; }
+        VeinState v = MINE_VEIN.computeIfAbsent(userName, u -> new VeinState());
+        int count;
+        boolean gain = false;
+        synchronized (v) {
+            if (!map.version().equals(v.mapVer)) { v.mapVer = map.version(); v.count = 0; }
+            if (now - v.at < MINE_VEIN_GAP_MS) { out.put("tooFast", true); return out; }
+            v.at = now;
+            v.count++;
+            if (v.count >= MINE_VEIN_NEED) { v.count = 0; gain = true; }
+            count = gain ? MINE_VEIN_NEED : v.count;
+        }
+        if (gain) dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
+        out.put("ok", true);
+        out.put("count", count);
+        out.put("need", MINE_VEIN_NEED);
+        if (gain) {
+            out.put("gain", true);
+            out.put("grade", S5MineMap.ICE_STONE_GRADE);
+            out.put("ores", mineOreList(userName));
+            out.put("message", "💠 " + MINE_VEIN_NEED + "번 연속 채광 성공! 🧊 " + S5MineMap.ICE_STONE_NAME + " 1개를 얻었어요.");
+        }
         return out;
     }
 
