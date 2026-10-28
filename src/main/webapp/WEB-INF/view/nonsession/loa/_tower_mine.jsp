@@ -519,7 +519,7 @@ var TowerMine = (function () {
     spriteKey = key;
     sprites = {};
     ['down', 'up', 'right', 'left'].forEach(function (d) {
-      for (var s = 0; s < 3; s++) for (var k = 0; k < 3; k++) sprites[d + s + k] = charSprite(d, s, k, lk);
+      for (var s = 0; s < 3; s++) for (var k = 0; k < 5; k++) sprites[d + s + k] = charSprite(d, s, k, lk); // [2026-10-28] k 3/4 = 무기 휘두르기
     });
   }
   // 광석 아이콘(광석 탭/광산상점에서도 씀)
@@ -2312,7 +2312,11 @@ var TowerMine = (function () {
   function atkBtn() {
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     var a = !P.moving && adjMob();
-    if (a) attack(a); else msg('⚔️ 바로 옆(상하좌우)에 몬스터가 없어요.', 1600);
+    if (a) { attack(a); return; }
+    // [2026-10-28] "아무것도 없을 때도 무기 휘두르는 액션" -- 서버에 묻지 않고 그 자리에서 휘두르기만
+    var sn = performance.now();
+    if (busy || P.moving || sn - lastAtkT < 420) return;
+    lastAtkT = sn; P.digT0 = sn; P.swing = true;
   }
   // [2026-10-28] ☰ 메뉴 -- 장비/마을로/최근 캔 곳/나가기(고르면 닫힌다). 자동채광은 채광 버튼 아래로 뺐다.
   function setMenu(on) {
@@ -2340,7 +2344,7 @@ var TowerMine = (function () {
     var now = performance.now();
     if (now - lastAtkT < 420) return;
     lastAtkT = now; atkBusy = true;
-    P.dir = a.dir; P.digT0 = now;
+    P.dir = a.dir; P.digT0 = now; P.swing = true; // [2026-10-28] 무기 휘두르기
     var m = a.m, mp = m._p;
     var mc = mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
     api('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + verQ()).then(function (d) {
@@ -2677,7 +2681,7 @@ var TowerMine = (function () {
     var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
     ctx.fillStyle = 'rgba(0,0,0,.28)';
     ctx.fillRect(cx + 3 * scale, cy + 13 * scale, 10 * scale, 3 * scale);
-    var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) : 0;
+    var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) + (P.swing ? 2 : 0) : 0; // [2026-10-28] 공격 = 무기를 휘두른다(곡괭이 대신)
     var meGm = !!(st && st.look && st.look.gm); // [2026-10-28] 운영자 장비 -- 반짝이 + "운영자" 표시
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
@@ -2958,7 +2962,7 @@ var TowerMine = (function () {
     }
     if (!f) { msg('💠 얼음 광맥 바로 앞에서 캐요. 이 동굴은 땅을 팔 수 없어요.', 1800); return; }
     var tx = P.x + f[0], ty = P.y + f[1];
-    veinBusy = true; P.digT0 = performance.now();
+    veinBusy = true; P.digT0 = performance.now(); P.swing = false;
     api('/api/tower-mine-vein?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&tx=' + tx + '&ty=' + ty + verQ()).then(function (d) {
       veinBusy = false;
       if (!d || d.tooFast) return;
@@ -2996,7 +3000,7 @@ var TowerMine = (function () {
     if (st.durability < 1) { msg('⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요.'); return; }
     busy = true;
     el.dig.disabled = true;
-    P.digT0 = performance.now();
+    P.digT0 = performance.now(); P.swing = false; // 곡괭이
     api('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
       busy = false;
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
