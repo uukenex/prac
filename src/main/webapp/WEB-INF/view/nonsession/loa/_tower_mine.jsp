@@ -1232,50 +1232,78 @@ var TowerMine = (function () {
     { id: 'isle6', name: '달맞이섬', x: 160, y: 675, fill: '#8a9ac8', ink: '#fff', sub: true, w: 72 },
     { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', sub: true, w: 72 }
   ];
+  // [2026-10-28] "전체 지도 보기가 어렵다, 지역 구간별로 나눠 놓으면" -- 네 구간(탭)으로 나눠 그린다. 처음엔 지금 있는 구간.
+  //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
+  var WORLD_REGIONS = [
+    { id: 'plain', name: '🌾 평원', vh: 390,
+      nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave3', 52, 40], ['cave2', 52, 100], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
+        ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
+      links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
+    { id: 'desert', name: '🏜️ 사막·왕도', vh: 410,
+      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['steppe', 160, 240], ['desert', 160, 310],
+        ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
+      links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
+    { id: 'snow', name: '❄️ 설원·설산', vh: 420,
+      nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
+        ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
+      links: [['snowroad', 'snowpeak'], ['snowtown', 'snowroad'], ['snowtown', '@royal'], ['snow3', 'snowtown'], ['snow2', 'snow3'], ['snow1', 'snow2'], ['north', 'snow1'], ['north', '@beach2', 'sea']] },
+    { id: 'sea', name: '🏝️ 남쪽 바다', vh: 380,
+      nodes: [['@beach', 160, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 92], ['archi', 252, 92], ['shrine', 52, 160], ['shrine2', 160, 160], ['shrine3', 268, 160],
+        ['shrineboss', 106, 220], ['archisea', 214, 220], ['isle1', 44, 295], ['isle2', 120, 295], ['isle3', 196, 295], ['isle4', 272, 295],
+        ['isle5', 82, 345], ['isle6', 160, 345], ['isle7', 238, 345]],
+      links: [['@beach', 'island', 'sea'], ['island', 'archi', 'sea', '⛵'], ['archi', 'shrine'], ['shrine', 'shrine2'], ['shrine2', 'shrine3'], ['archi', 'shrineboss'], ['archi', 'archisea', 'sea', '⛵']] }
+  ];
+  var worldTab = null;
+  function regionOf(id) {
+    for (var i = 0; i < WORLD_REGIONS.length; i++) if (WORLD_REGIONS[i].nodes.some(function (n) { return n[0] === id; })) return WORLD_REGIONS[i].id;
+    return map && map.archi ? 'sea' : 'plain';
+  }
+  function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   function worldHtml() {
-    // [2026-10-24] "갈 수 있는 곳만" -- 잠긴 곳, 개발 중인 곳(왕도/초원)은 그리지 않는다. 숨은 곳(바닷길)은 목록에 없다. 구역마다 권장 레벨(모자라면 붉게).
-    var N = {}, W = 96, H = 32, lv = myLv();
-    WORLD_NODES.forEach(function (n) {
-      if (n.locked || n.dev) return; // [2026-10-24] 개발 중인 곳(왕도/초원)은 관리자에게도 안 보인다
-      if (n.admin && !(st && st.adminMaps)) return; // [2026-10-28] 다도해는 운영자에게만
-      N[n.id] = n;
+    if (!worldTab) worldTab = regionOf(map && map.id);
+    var R = WORLD_REGIONS.filter(function (r) { return r.id === worldTab; })[0] || WORLD_REGIONS[0];
+    var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && st.adminMaps);
+    WORLD_NODES.forEach(function (n) { info[n.id] = n; });
+    var N = {};
+    R.nodes.forEach(function (e) {
+      if (e[0].charAt(0) === '@') { N[e[0]] = { id: e[0], x: e[1], y: e[2], go: e[3], name: e[4], exit: true }; return; }
+      var n = info[e[0]];
+      if (!n || n.locked || n.dev) return;
+      N[e[0]] = { id: n.id, x: e[1], y: e[2], name: n.name, fill: n.fill, ink: n.ink, w: n.w, town: n.town };
     });
-    var line = function (a, b, style, label) {
-      var p = N[a], q = N[b];
-      if (!p || !q) return '';
-      var mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
-      return '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + style + '/>'
-          + (label ? '<text x="' + (mx + 6) + '" y="' + (my + 4) + '" class="wl">' + label + '</text>' : '');
-    };
-    var walk = 'stroke="#f4f0e6" stroke-width="3"', sea = 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"';
-    var adminW = !!(st && st.adminMaps), vh = adminW ? 1005 : 750; // [2026-10-28] 위로 설산 봉우리까지, 관리자는 아래로 다도해 안쪽 지역까지(지역을 누르면 이동)
-    var svg = '<svg viewBox="-90 -290 410 ' + vh + '" class="mine-world" role="img" aria-label="광산 전체 지도">'
-        + '<rect x="-90" y="-290" width="410" height="' + vh + '" fill="#1d1730"/>'
-        + line('snowtown', 'snowroad', walk) + line('snowroad', 'snowpeak', walk)
-        + line('archi', 'shrine', walk) + line('shrine', 'shrine2', walk) + line('shrine2', 'shrine3', walk) + line('archi', 'shrineboss', walk) + line('archi', 'archisea', sea, '⛵')
-        + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
-        + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
-        + line('field', 'desert', walk) + line('desert', 'antnest', 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"', '🕳️') + line('antnest', 'pyramid', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
-        + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵') + line('island', 'archi', sea, '⛵')
-        + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
+    var STY = { walk: 'stroke="#f4f0e6" stroke-width="3"', sea: 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"', fall: 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"' };
+    var tabs = '<div class="eq-tabs world-tabs">' + WORLD_REGIONS.map(function (r) {
+      return '<button type="button" class="' + (r.id === R.id ? 'on' : '') + '" onclick="TowerMine.worldTab(\'' + r.id + '\')">' + r.name + '</button>';
+    }).join('') + '</div>';
+    var svg = '<svg viewBox="0 0 320 ' + R.vh + '" class="mine-world" role="img" aria-label="광산 전체 지도 -- ' + R.name + '">'
+        + '<rect x="0" y="0" width="320" height="' + R.vh + '" fill="#1d1730"/>';
+    R.links.forEach(function (l) {
+      var p = N[l[0]], q = N[l[1]];
+      if (!p || !q) return;
+      svg += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[l[2] || 'walk'] + '/>'
+          + (l[3] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + l[3] + '</text>' : '');
+    });
     // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)
     var bossOf = {};
     ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map] = b; });
     var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
-    WORLD_NODES.forEach(function (n) {
-      if (!N[n.id] || !bossOf[n.id]) return;
-      var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - (n.w || W) / 2 + 2; // 왼쪽 끝 맵(동굴 3층)에서 안 잘리게 왼쪽 맞춤
-      svg += b.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
-          : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(b.nextAt) + '</text>';
-    });
-    WORLD_NODES.forEach(function (n) {
-      if (!N[n.id]) return;
-      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi && !N[map.id])); // [2026-10-28] 다도해 맵은 다도해 칸(관리자는 안쪽 지역 칸)
-      var nw = n.w || W;
-      // [2026-10-28] "관리자 좌표 이동 -- 전체 지도에서 지역을 누르면 그곳으로" -- 관리자만 칸을 누를 수 있다(그 맵 시작점으로, 서버도 관리자만)
+    Object.keys(N).forEach(function (k) {
+      var n = N[k], nw = n.w || W;
+      if (n.exit) { // 다른 구간으로 -- 누르면 그 탭
+        svg += '<g style="cursor:pointer" onclick="TowerMine.worldTab(\'' + n.go + '\')"><rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="#2a2440" stroke="#b8b0c8" stroke-width="2" stroke-dasharray="5 4"/>'
+            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="#e8e0ff">' + n.name + '</text></g>';
+        return;
+      }
+      var here = map && (map.id === n.id || (n.id === 'archi' && map.archi && !N[map.id] && regionOf(map.id) === 'sea'));
+      if (bossOf[n.id]) {
+        var b = bossOf[n.id], by = n.y + H / 2 + 25, bx = Math.max(4, n.x - nw / 2 + 2);
+        svg += b.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
+            : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(b.nextAt) + '</text>';
+      }
+      // [2026-10-28] 관리자 -- 칸을 누르면 그 맵 시작점으로(서버도 관리자만)
       svg += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
           + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
-          + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"' + (n.locked ? ' stroke-dasharray="4 3"' : '') + '/>'
+          + ' stroke="' + (here ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (here ? 4 : 2) + '"/>'
           + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
           + (adminW ? '</g>' : '')
           + (here ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
@@ -1284,7 +1312,7 @@ var TowerMine = (function () {
     svg += '</svg>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
         + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
-    return npcHead('🗺️ 전체 지도', false) + svg; // [2026-10-24] 아래 안내 문구는 뺐다("이 멘트도 없애주고")
+    return npcHead('🗺️ 전체 지도', false) + tabs + svg;
   }
   /** [2026-10-28] 관리자 -- 전체 지도에서 누른 지역(맵) 시작점으로 이동(서버 mineAdminWarp가 관리자인지 다시 확인). */
   function worldWarp(id) {
@@ -1376,7 +1404,7 @@ var TowerMine = (function () {
           + '<button type="button" ' + (a.boatCan ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
     }
     return h + have + '<div class="mine-smith-menu"><button type="button" ' + (a.boat ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'board\')">⛵ 배 타기<small>' + (a.boat ? '다도해 뱃길로' : '1인용 배가 있어야 해요') + '</small></button></div>'
-        + '<div class="mine-smith-say">☀️ 다도해는 낮(25분)과 밤(15분)이 번갈아 와요. 낮에는 섬마다 햇볕에 초당 1~5%씩 체력이 깎이니, 야자수 그늘(🌴)에서 쉬어 가세요.</div>';
+        + '<div class="mine-smith-say">☀️ 다도해는 낮(30분)과 밤(30분)이 번갈아 와요. 낮에는 섬마다 햇볕에 초당 3~8%씩 체력이 깎이니(환생할수록 덜), 야자수 그늘(🌴)에서 쉬어 가세요.</div>';
   }
   function archiAct(action) {
     if (action === 'board') { closeSmith(); travel('/api/tower-mine-archi?action=board', '배를 타지 못했어요.'); return; }
@@ -1387,6 +1415,7 @@ var TowerMine = (function () {
   function archiLeftMin(t) { var p = ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs; return Math.max(1, Math.ceil(((p < map.dayMs ? map.dayMs : map.dayCycleMs) - p) / 60000)); }
   function openWorld() {
     if (!opened || !map) return;
+    worldTab = regionOf(map.id); // [2026-10-28] 지금 있는 구간부터
     openSmith({ name: '전체 지도', line: '', kind: 'world' }, 'world');
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
@@ -2938,6 +2967,6 @@ var TowerMine = (function () {
   }
 
   return { open: open, close: close, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
