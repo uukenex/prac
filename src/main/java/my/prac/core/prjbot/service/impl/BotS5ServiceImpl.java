@@ -9420,6 +9420,11 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
     private static final long MINE_RANGED_MIN_MS = 6_000L, MINE_RANGED_RAND_MS = 4_000L;
     private static final double MINE_RANGED_MULT = 1.3;
+    // [2026-10-28] 여왕개미 독산 -- 맞으면 MINE_SLOW_MS 동안 느려지고(화면이 걸음을 2배로 늦춘다) MINE_POISON_MS 동안 초당 최대 체력 MINE_POISON_PCT% 독(전투 턴마다).
+    private static final long MINE_SLOW_MS = 4_000L, MINE_POISON_MS = 6_000L;
+    private static final double MINE_POISON_PCT = 2;
+    private static final class Debuff { volatile long slowUntil, poisonUntil, poisonAt; }
+    private static final java.util.concurrent.ConcurrentHashMap<String, Debuff> MINE_DEBUFF = new java.util.concurrent.ConcurrentHashMap<>();
     // [2026-10-28] "용암 거신은 플레이어가 밟고 있던 땅을 용암화시키는 원거리 공격, 용암화된 땅은 전투가 완전 종료되면 정상화" --
     //  불덩이가 떨어진 칸(맞은 플레이어가 서 있던 칸)이 용암이 된다(최대 MINE_LAVA_MAX칸). 용암 위에 서 있으면 환경 턴(1초)마다 최대 체력의 MINE_LAVA_PCT%.
     //  용암 거신과 싸우는(인식된) 사람이 아무도 없거나 거신이 쓰러지면 모두 식는다. 용암섬은 한 곳뿐이라 서버 메모리 하나로 둔다.
@@ -9494,6 +9499,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private String mineRespawn(String userName, Map<String, Integer> items, long now) {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
+        MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
         MINE_ICE_THAWED.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
@@ -9675,9 +9681,19 @@ public class BotS5ServiceImpl implements BotS5Service {
                         h.put("fx", s.fx);
                         h.put("fy", s.fy);
                         hits.add(h);
-                        mineLavaCells(map, now); // 맵 버전 맞추기
-                        if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(x, y) && !map.safeAt(x, y)) MINE_LAVA.put(y * map.w + x, now); // [2026-10-28] 서 있던 칸이 용암으로
-                        h.put("lava", true);
+                        if (type.venom) { // [2026-10-28] 여왕개미 독산 -- 슬로우 + 독
+                            Debuff db = MINE_DEBUFF.computeIfAbsent(userName, u -> new Debuff());
+                            db.slowUntil = now + MINE_SLOW_MS;
+                            if (db.poisonUntil <= now) db.poisonAt = now;
+                            db.poisonUntil = now + MINE_POISON_MS;
+                            h.put("venom", true);
+                            out.put("slowUntil", db.slowUntil);
+                            out.put("poisonUntil", db.poisonUntil);
+                        } else if (S5MineMap.ISLE7.equals(map.id)) {
+                            mineLavaCells(map, now); // 맵 버전 맞추기
+                            if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(x, y) && !map.safeAt(x, y)) MINE_LAVA.put(y * map.w + x, now); // [2026-10-28] 서 있던 칸이 용암으로
+                            h.put("lava", true);
+                        }
                         killerName = type.name;
                     }
                 }
@@ -9698,6 +9714,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 mobs.add(mineMobRow(id, s));
             }
+        }
+        Debuff pdb = MINE_DEBUFF.get(userName); // [2026-10-28] 여왕개미 독 -- 전투 턴마다 지난 시간만큼
+        if (pdb != null && pdb.poisonUntil > pdb.poisonAt && hp - dmgSum > 0) {
+            long until = Math.min(now, pdb.poisonUntil), el = Math.min(2_000L, until - pdb.poisonAt);
+            pdb.poisonAt = until;
+            if (el > 0) {
+                int pd = Math.max(1, (int) (mineHpCap(mineLv(row), lock, rb) * MINE_POISON_PCT / 100 * el / 1000.0));
+                dmgSum += pd;
+                HashMap<String, Object> h = new HashMap<>();
+                h.put("dmg", pd);
+                h.put("poison", true);
+                hits.add(h);
+                killerName = "여왕개미의 독";
+            }
+            out.put("poisonUntil", pdb.poisonUntil);
         }
         if (boss != null && boss.type == S5MineMobs.RAID_BOSS_TYPE && e.mobs.containsKey(boss.id)) mineRaidSummon(userName, map, boss, now, out, mobs); // [2026-10-28]
         if (boss != null && boss.type == S5MineMobs.ICE_BOSS_TYPE && e.mobs.containsKey(boss.id)) mineIceAwakeUntil = now + MINE_ICE_AWAKE_MS; // [2026-10-28] 얼음 여왕이 깨어 있다(빙결)
@@ -11153,6 +11184,60 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("message", "🕳️ 모래가 꺼지며 아래로 쑥 빨려 들어갔어요... 여기는 개미굴! 지도도 보이지 않아요. 빛이 새어 드는 나가는 굴을 찾아야 해요.");
         out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** [2026-10-28] 개미굴 보물 상자(구석진 방 10곳) -- 상자마다 맵 주기에 한 번. 보석 네 번(아무 보석 1~3개씩, 다이아몬드 빼고) + 25% 다이아몬드 1 + 20% 달빛석 1.
+     *  연 상자는 ANT_CHEST_CYC(주기 + 1) / ANT_CHEST_MASK(상자 순서 비트)로 기억한다. */
+    static final String MINE_ITEM_ANT_CHEST_CYC = "ANT_CHEST_CYC", MINE_ITEM_ANT_CHEST_MASK = "ANT_CHEST_MASK";
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAntChest(String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        int[] pos = minePos(row, map, 0);
+        int idx = -1, k = 0;
+        for (S5MineMap.Npc n : map.npcs()) {
+            if (!"antchest".equals(n.kind)) continue;
+            if (Math.abs(pos[0] - n.x) + Math.abs(pos[1] - n.y) <= 2) idx = k;
+            k++;
+        }
+        if (idx < 0) { out.put("message", "상자 바로 앞에서 열어 주세요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        int cyc = S5MineMap.activeCycle() + 1, mask = items.getOrDefault(MINE_ITEM_ANT_CHEST_CYC, 0) == cyc ? items.getOrDefault(MINE_ITEM_ANT_CHEST_MASK, 0) : 0;
+        if ((mask & (1 << idx)) != 0) { out.put("message", "📦 이미 열어 본 상자예요. 다른 구석을 찾아보세요! (맵 리셋 " + mineResetText() + " 뒤 다시 채워져요)"); return out; }
+        dao.upsertMineItem(userName, MINE_ITEM_ANT_CHEST_CYC, cyc);
+        dao.upsertMineItem(userName, MINE_ITEM_ANT_CHEST_MASK, mask | (1 << idx));
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        StringBuilder gm = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            int gi = RND.nextInt(S5MineMap.GEM_CODES.length - 1);
+            if (gi >= S5MineMap.GEM_DIAMOND) gi++;
+            int q = 1 + RND.nextInt(3);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], q);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], q));
+            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[gi]).append(' ').append(q);
+        }
+        if (RND.nextInt(100) < 25) {
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 1);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 1));
+            gm.append(", 다이아몬드 1");
+        }
+        if (RND.nextInt(100) < 20) {
+            dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1);
+            drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1));
+            gm.append(", 달빛석 1");
+        }
+        int opened = Integer.bitCount(mask | (1 << idx));
+        out.put("ok", true);
+        out.put("drops", drops);
+        out.put("message", "📦 보물 상자를 열었어요! 💎 " + gm + " (이번 맵에서 " + opened + "/" + k + "개 열었어요)");
+        out.put("ores", mineOreList(userName));
         return out;
     }
 

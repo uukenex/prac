@@ -865,10 +865,12 @@ public class Season5ViewController {
     /** [2026-10-28] 웹 광산 피라미드 보상 상자. */
     @GetMapping("/api/tower-mine-chest")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineChest(@RequestParam(value = "userName", defaultValue = "") String userName) {
+    public ResponseEntity<?> apiTowerMineChest(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "kind", defaultValue = "") String kind) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineDesertChest(userName);
-        mineLog(userName, "[웹] 광산 피라미드 보상 상자", String.valueOf(out.get("message")));
+        boolean ant = "ant".equals(kind); // [2026-10-28] 개미굴 보물 상자
+        HashMap<String, Object> out = ant ? s5Service.mineAntChest(userName) : s5Service.mineDesertChest(userName);
+        mineLog(userName, ant ? "[웹] 광산 개미굴 보물 상자" : "[웹] 광산 피라미드 보상 상자", String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
 

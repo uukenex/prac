@@ -146,7 +146,8 @@ public final class S5MineMap {
     }
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
-            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS);
+            ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
+            ANTNEST, PYRAMID, SNOWCAVE); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -513,6 +514,7 @@ public final class S5MineMap {
     private boolean boat;                              // [2026-10-28] 다도해 뱃길 -- 배를 타고 물 위로 다닌다(물 칸이 길)
     private boolean noMap;                             // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(화면이 미니맵을 가린다)
     private boolean veinMine;                          // [2026-10-28] 설산 동굴 -- 땅은 못 파고 얼음 광맥(I)을 앞에서 연속 채광
+    private List<int[]> chestSpots = Collections.emptyList(); // [2026-10-28] 개미굴 보물 상자 자리(buildWorld가 NPC로 세운다)
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
     private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
@@ -880,7 +882,9 @@ public final class S5MineMap {
         S5MineMap ds0 = out.get(DESERT);
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
-        out.put(ANTNEST, relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null));
+        S5MineMap an2 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
+        for (int[] c : an2.chestSpots) placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 개미들이 모아 둔 반짝이는 돌이 들어 있을 것 같다.");
+        out.put(ANTNEST, an2);
         S5MineMap py = relink(pyramid, retarget(pyramid, DESERT, dw), null);
         placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
         out.put(PYRAMID, py);
@@ -911,6 +915,7 @@ public final class S5MineMap {
         n.boat = m.boat;
         n.noMap = m.noMap;
         n.veinMine = m.veinMine;
+        n.chestSpots = m.chestSpots;
         n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
@@ -1235,34 +1240,37 @@ public final class S5MineMap {
         return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
     }
 
-    /** [2026-10-28] 개미굴(150x150) -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7) 22개를 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
+    /** [2026-10-28] 개미굴(200x200) -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7) 36개를 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
      *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 떨어진 곳에서 가장 먼 방이 여왕의 방(반지름 9, 여왕개미 보스).
-     *  나가는 굴 셋: 그다음으로 먼 방 가운데 서로 떨어진 세 곳에서 가장 가까운 가장자리까지 구불구불 판 굴 끝(U) = 피라미드. 멀수록 광석이 좋고 몬스터가 강하다(11~13단계). */
+     *  [2026-10-28] "더 크고 나가기 어렵게" -- 150 -> 200칸, 방 22 -> 36개, 굴은 가장 가까운 방 하나에만 이어서(고리 적게) 막다른 길이 많다.
+     *  나가는 굴 셋: 떨어진 곳에서 먼 방 가운데 서로 50칸 넘게 떨어진(여왕의 방과도) 세 곳에서 가장 가까운 가장자리까지 구불구불 판 굴 끝(U) = 피라미드.
+     *  "보물 상자를 구석진 곳에 많이" -- 나가는 굴/여왕의 방이 아닌 방 가운데 맵 가운데에서 가장 먼(구석) 10곳에 보물 상자(antchest, buildWorld가 세운다).
+     *  멀수록 광석이 좋고 몬스터가 강하다(11~13단계). */
     static S5MineMap generateAntNest(long seed) {
-        int w = 150, h = 150;
+        int w = 200, h = 200;
         Random r = new Random(seed);
         Noise rich = new Noise(seed * 31 + 131);
         char[][] t = new char[h][w];
         for (char[] row : t) Arrays.fill(row, '#');
-        int n = 22;
+        int n = 36;
         int[][] rooms = new int[n][];
         rooms[0] = new int[] { w / 2, h / 2, 5 }; // 떨어지는 방(한가운데)
         for (int i = 1; i < n; i++) {
             int[] best = null;
-            for (int tries = 0; tries < 60; tries++) { // 다른 방과 떨어진 자리
-                int rx = 12 + r.nextInt(w - 24), ry = 10 + r.nextInt(h - 26), rr = 4 + r.nextInt(4);
+            for (int tries = 0; tries < 80; tries++) { // 다른 방과 떨어진 자리
+                int rx = 12 + r.nextInt(w - 24), ry = 12 + r.nextInt(h - 24), rr = 4 + r.nextInt(4);
                 boolean ok = true;
-                for (int j = 0; j < i && ok; j++) if (Math.hypot(rx - rooms[j][0], ry - rooms[j][1]) < rr + rooms[j][2] + 6) ok = false;
+                for (int j = 0; j < i && ok; j++) if (Math.hypot(rx - rooms[j][0], ry - rooms[j][1]) < rr + rooms[j][2] + 7) ok = false;
                 if (ok) { best = new int[] { rx, ry, rr }; break; }
             }
-            rooms[i] = best != null ? best : new int[] { 12 + r.nextInt(w - 24), 10 + r.nextInt(h - 26), 3 };
+            rooms[i] = best != null ? best : new int[] { 12 + r.nextInt(w - 24), 12 + r.nextInt(h - 24), 4 };
         }
         for (int[] rm : rooms) carveRoom(t, rm[0], rm[1], rm[2]);
-        for (int i = 1; i < n; i++) { // 가장 가까운 앞 방과 굴로 잇기(모두 이어진다) + 가끔 하나 더(고리)
+        for (int i = 1; i < n; i++) { // 가장 가까운 앞 방과 굴로 잇기(모두 이어진다) + 드물게 하나 더(고리)
             int near = 0;
             for (int j = 1; j < i; j++) if (Math.hypot(rooms[i][0] - rooms[j][0], rooms[i][1] - rooms[j][1]) < Math.hypot(rooms[i][0] - rooms[near][0], rooms[i][1] - rooms[near][1])) near = j;
             antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[near][0], rooms[near][1]);
-            if (i > 3 && r.nextDouble() < 0.3) { int j = 1 + r.nextInt(i - 1); antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[j][0], rooms[j][1]); }
+            if (i > 3 && r.nextDouble() < 0.12) { int j = 1 + r.nextInt(i - 1); antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[j][0], rooms[j][1]); }
         }
         int sx = rooms[0][0], sy = rooms[0][1];
         // 여왕의 방 = 떨어진 칸에서 걸어서 가장 먼 방(반지름 9로 넓힌다)
@@ -1271,7 +1279,7 @@ public final class S5MineMap {
         for (int i = 1; i < n; i++) if (dist[rooms[i][1]][rooms[i][0]] > dist[rooms[qi][1]][rooms[qi][0]]) qi = i;
         int qx = rooms[qi][0], qy = rooms[qi][1];
         carveRoom(t, qx, qy, 9);
-        // 나가는 굴 셋 -- 먼 방부터, 이미 고른 방/여왕의 방과 40칸 넘게 떨어진 방에서 가장 가까운 가장자리로
+        // 나가는 굴 셋 -- 먼 방부터, 이미 고른 방/여왕의 방과 50칸 넘게 떨어진 방에서 가장 가까운 가장자리로
         List<Portal> portals = new ArrayList<>();
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
@@ -1279,14 +1287,18 @@ public final class S5MineMap {
         final int[][] rm = rooms;
         Arrays.sort(order, (a, b) -> Integer.compare(dd[rm[b][1]][rm[b][0]], dd[rm[a][1]][rm[a][0]]));
         List<int[]> picked = new ArrayList<>();
+        java.util.Set<Integer> used = new java.util.HashSet<>();
+        used.add(0);
+        used.add(qi);
         picked.add(rooms[qi]);
         for (int oi = 0; oi < n && portals.size() < 3; oi++) {
             int[] ro = rooms[order[oi]];
-            if (order[oi] == 0 || ro == rooms[qi]) continue;
+            if (used.contains(order[oi])) continue;
             boolean far = true;
-            for (int[] p : picked) if (Math.hypot(ro[0] - p[0], ro[1] - p[1]) < 40) far = false;
+            for (int[] p : picked) if (Math.hypot(ro[0] - p[0], ro[1] - p[1]) < 50) far = false;
             if (!far && oi < n - 3) continue;
             picked.add(ro);
+            used.add(order[oi]);
             int ex, ey; // 가장 가까운 가장자리
             int dl = ro[0], dr = w - 1 - ro[0], du = ro[1], dn = h - 1 - ro[1], m = Math.min(Math.min(dl, dr), Math.min(du, dn));
             if (m == dl) { ex = 0; ey = ro[1]; } else if (m == dr) { ex = w - 1; ey = ro[1]; } else if (m == du) { ex = ro[0]; ey = 0; } else { ex = ro[0]; ey = h - 1; }
@@ -1294,6 +1306,12 @@ public final class S5MineMap {
             t[ey][ex] = 'U';
             portals.add(new Portal(ex, ey, 'U', PYRAMID, 0, 0, "빛이 새어 드는 굴 -- 밖으로"));
         }
+        // 보물 상자 -- 남은 방 가운데 맵 가운데에서 가장 먼(구석) 10곳
+        List<int[]> rest = new ArrayList<>();
+        for (int i = 1; i < n; i++) if (!used.contains(i)) rest.add(rooms[i]);
+        rest.sort((a, b) -> Double.compare(Math.hypot(b[0] - w / 2, b[1] - h / 2), Math.hypot(a[0] - w / 2, a[1] - h / 2)));
+        List<int[]> chests = new ArrayList<>();
+        for (int i = 0; i < Math.min(10, rest.size()); i++) chests.add(new int[] { rest.get(i)[0], rest.get(i)[1] });
         dist = bfsDist(t, sx, sy);
         int far = 1;
         for (int[] row : dist) for (int d : row) far = Math.max(far, d);
@@ -1303,11 +1321,13 @@ public final class S5MineMap {
             skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2 || Math.hypot(x - qx, y - qy) <= 3;
             score[y][x] = 0.5 * rich.fbm(x / 12.0, y / 12.0) + 0.3 * Math.max(0, dist[y][x]) / far + 0.16 * r.nextDouble();
         }
+        for (int[] c : chests) for (int y = c[1] - 1; y <= c[1] + 1; y++) for (int x = c[0] - 1; x <= c[0] + 1; x++) skip[y][x] = true;
         byte[][] o = assignOre(t, score, ANTNEST_SHARE, skip);
         S5MineMap m = new S5MineMap(ANTNEST, "개미굴", false, w, h, sx, sy, t, o, portals);
         m.noMap = true;
         m.bossX = qx;
         m.bossY = qy;
+        m.chestSpots = chests;
         return m;
     }
 

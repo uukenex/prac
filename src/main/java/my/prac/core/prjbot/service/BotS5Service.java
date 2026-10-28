@@ -297,6 +297,9 @@ public interface BotS5Service {
     /** [2026-10-28] 사막 서쪽에서 개미굴로 떨어지기. */
     HashMap<String, Object> mineAntFall(String userName, String mapId, int x, int y);
 
+    /** [2026-10-28] 개미굴 보물 상자(상자마다 맵 주기에 한 번, 보석). */
+    HashMap<String, Object> mineAntChest(String userName);
+
     /** [2026-10-28] 피라미드 보상 상자(사막의 심장, 맵 주기마다 한 번). */
     HashMap<String, Object> mineDesertChest(String userName);
 

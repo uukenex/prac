@@ -307,7 +307,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite() }; // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -915,7 +915,7 @@ var TowerMine = (function () {
   // ---------------------------------------------------------------- 진행
   function curPos(now) {
     if (!P.moving) return { x: P.x, y: P.y };
-    var k = Math.min(1, (now - P.t0) / STEP_MS);
+    var k = Math.min(1, (now - P.t0) / stepMs());
     return { x: P.fx + (P.tx - P.fx) * k, y: P.fy + (P.ty - P.fy) * k };
   }
   function heldDir() {
@@ -947,7 +947,7 @@ var TowerMine = (function () {
     coldTick(now); coldWarn(); // [2026-10-26] 한기/눈바람
     scanTick(); // [2026-10-24] 탐지 곡괭이
     var ng = nearOther(); if (el.greet && (el.greet.style.display === "block") !== ng) el.greet.style.display = ng ? "block" : "none"; // [2026-10-24] 근처에 다른 유저가 있으면 👋
-    if (P.moving && now - P.t0 >= STEP_MS) {
+    if (P.moving && now - P.t0 >= stepMs()) {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
       antFallCheck(); // [2026-10-28] 사막 서쪽 -- 개미굴
@@ -1016,7 +1016,7 @@ var TowerMine = (function () {
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
     else if (n.kind === 'ninjaquest' || n.kind === 'boatwright' || n.kind === 'ferry') { setAuto(false); openSmith(n, 'archi'); } // [2026-10-28] 다도해
-    else if (n.kind === 'chest') openChest(n); // [2026-10-28] 피라미드 보상 상자
+    else if (n.kind === 'chest' || n.kind === 'antchest') openChest(n); // [2026-10-28] 피라미드 보상 상자, 개미굴 보물 상자
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -1859,6 +1859,8 @@ var TowerMine = (function () {
   //  몬스터에게 인식돼 있거나(st.combat.fight) 동굴 3층 보스 2칸 안이면 1초마다 서버에 묻는다(쫓아온 칸, 맞은 피해, 인식 해제).
   var lastBossT = 0, bossBusy = false, bossWarned = false;
   var bolts = [], BOLT_MS = 420, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
+  var slowUntil = 0, venomWarned = false; // [2026-10-28] 여왕개미 독산 -- 느려짐(서버 시각까지 걸음 2배)
+  function stepMs() { return nowSrv() < slowUntil ? STEP_MS * 2 : STEP_MS; }
   // [2026-10-28] 용암 칸(불덩이가 떨어진 칸, "y * w + x") -- 서버가 전투/환경 턴마다 알려 준다. 전투가 끝나면 빈 목록(식음).
   var lavaCells = {};
   function lavaSet(list) {
@@ -1888,9 +1890,17 @@ var TowerMine = (function () {
       if (d.summoned) { flashT0 = performance.now(); msg(d.message || '👿 타락한 대주교가 수하를 불러냈어요!', 3000); } // [2026-10-28]
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
+      if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
+        if (h.poison) { floats.push({ x: P.x + 0.3, y: P.y - 0.1, text: '-' + h.dmg + '☠️', color: '#9ad84a', t0: t + k * 120 }); return; } // [2026-10-28] 여왕개미 독
+        if (h.venom) { // [2026-10-28] 여왕개미 독산 -- 초록 덩이, 맞으면 느려지고 중독
+          bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t, venom: true });
+          floats.push({ x: P.x, y: P.y - 0.3, text: '🧪 -' + h.dmg + ' 느려짐·중독', color: '#9ad84a', big: true, t0: t + BOLT_MS });
+          if (!venomWarned) { venomWarned = true; msg('🧪 여왕개미가 독산을 뱉어요! 맞으면 잠시 느려지고 독이 퍼져요.', 3200); }
+          return;
+        }
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
           bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t });
           floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
@@ -2381,13 +2391,12 @@ var TowerMine = (function () {
   function openChest(n) {
     if (chestBusy) return;
     chestBusy = true;
-    api('/api/tower-mine-chest').then(function (d) {
+    api('/api/tower-mine-chest' + (n.kind === 'antchest' ? '?kind=ant' : '')).then(function (d) {
       chestBusy = false;
       if (d && d.ores) st.ores = d.ores;
       if (d && d.ok) {
         flashT0 = performance.now();
-        var im = new Image(); im.src = oreIcon(d.grade || 39);
-        floats.push({ x: n.x, y: n.y - 0.6, text: '+1 사막의 심장', color: '#ffc04a', big: true, icon: im, t0: performance.now() });
+        if (d.grade) { var im = new Image(); im.src = oreIcon(d.grade); floats.push({ x: n.x, y: n.y - 0.6, text: '+1 사막의 심장', color: '#ffc04a', big: true, icon: im, t0: performance.now() }); }
         (d.drops || []).forEach(function (w, i) { // 보석이 차례로 솟는다
           var gi = new Image(); gi.src = oreIcon(w.grade);
           floats.push({ x: n.x + ((i % 3) - 1) * 0.9, y: n.y - 1.2 - Math.floor(i / 3) * 0.5, text: '+' + w.qty + ' ' + w.name, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: gi, t0: performance.now() + 220 + i * 120 });
@@ -2703,7 +2712,7 @@ var TowerMine = (function () {
       for (var tr = 3; tr >= 0; tr--) {
         var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (b.tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (b.ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 1.2;
         ctx.globalAlpha = k >= 1 ? Math.max(0, 1 - (now - b.t0 - BOLT_MS) / 150) : 1 - tr * 0.22;
-        ctx.fillStyle = tr ? '#ff7a1a' : '#ffe08a'; ctx.beginPath(); ctx.arc(bx, by, TS * (0.22 - tr * 0.04), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = b.venom ? (tr ? '#6ab82a' : '#d8ff8a') : tr ? '#ff7a1a' : '#ffe08a'; ctx.beginPath(); ctx.arc(bx, by, TS * (0.22 - tr * 0.04), 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalAlpha = 1;
     });
