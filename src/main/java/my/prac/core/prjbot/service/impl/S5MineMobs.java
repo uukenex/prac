@@ -43,6 +43,9 @@ public final class S5MineMobs {
         public boolean firstStrike;
         /** [2026-10-28] 여왕개미 -- 원거리(ranged) 독산: 맞으면 슬로우 + 독(BotS5ServiceImpl.mineCombatTick). */
         public boolean venom;
+        /** [2026-10-28] 여왕개미 -- 처치 보상(광석/보석) 없음, 다시 나타나기까지 respawnOverride(0 = 단계로). */
+        public boolean noReward;
+        public long respawnOverride;
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
@@ -50,6 +53,8 @@ public final class S5MineMobs {
         Type asRanged() { ranged = true; return this; }
         Type asFirstStrike() { firstStrike = true; return this; }
         Type asVenom() { ranged = true; venom = true; return this; }
+        /** [2026-10-28] "여왕개미 세 군데, 처치 보상은 따로 없음" -- 보스가 아니라 보스만큼 센 몬스터(체력 x12 / 공격 x1.4, 경험치는 단계 그대로), 늘 선공, 보상 없음, 10분 뒤 다시. */
+        Type asQueen() { hpCut = 12; atkCut = 1.4; firstStrike = true; noReward = true; respawnOverride = 600_000L; return this; }
         Type asClone() { minion = true; clone = true; ninja = true; return this; }
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
@@ -68,7 +73,7 @@ public final class S5MineMobs {
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
-        public long respawnMs() { return 20_000L + tier * 4_000L; }
+        public long respawnMs() { return respawnOverride > 0 ? respawnOverride : 20_000L + tier * 4_000L; }
     }
 
     /** kind(화면 도트 모양): small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
@@ -177,7 +182,7 @@ public final class S5MineMobs {
         new Type("근위개미", 12, "crab", "#8a1a1a", S5MineMap.ANTNEST),
         new Type("산성개미", 12, "crab", "#b0c020", S5MineMap.ANTNEST),
         new Type("거대 병정개미", 13, "crab", "#2a0a0a", S5MineMap.ANTNEST),
-        new Type("여왕개미", 21, "crab", "#c03a6a").asBoss().showLv(80).asVenom(), // [2026-10-28] "여왕개미 레벨 80, 원거리 공격으로 슬로우와 독" -- 14 -> 21단계(화면 Lv.80)
+        new Type("여왕개미", 21, "crab", "#c03a6a").asQueen().showLv(80).asVenom(), // [2026-10-28] "여왕개미 레벨 80, 원거리 공격으로 슬로우와 독" -- 14 -> 21단계(화면 Lv.80), 세 마리(보스 아님)
         // [2026-10-28] 설산 동굴 박쥐 -- "40레벨대 강하지만 체력이 적은 박쥐류가 선공": 11~12단계(Lv.41~45), 체력 x0.4 / 공격 x1.3, 레벨 차이와 상관없이 선공
         new Type("얼음 박쥐", 11, "flyer", "#9fd0f0", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
         new Type("흡혈 박쥐", 11, "flyer", "#6a2a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
@@ -249,9 +254,9 @@ public final class S5MineMobs {
             case S5MineMap.ISLE6: return 23;
             case S5MineMap.ISLE7: return 24;
             case S5MineMap.SNOWCAVE: return x < m.w * 0.45 ? 11 : 12; // [2026-10-28] 설산 동굴 -- 안쪽(동쪽)일수록
-            case S5MineMap.ANTNEST: { // [2026-10-28] 떨어지는 곳(한가운데)에서 멀수록(200칸으로 넓혀 55 / 100)
+            case S5MineMap.ANTNEST: { // [2026-10-28] 떨어지는 곳(한가운데)에서 멀수록(맵 크기에 비례 -- 200칸: 55 / 100)
                 int d = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY);
-                return d < 55 ? 11 : d < 100 ? 12 : 13;
+                return d < m.w * 0.28 ? 11 : d < m.w / 2 ? 12 : 13;
             }
             case S5MineMap.SNOWROAD: return y > m.h * 0.5 ? 20 : 21; // [2026-10-28] 설산 봉우리 가는 길 -- 봉우리(북쪽) 쪽일수록 강하다. 봉우리는 보스만(0)
             default: return 0;
@@ -338,6 +343,14 @@ public final class S5MineMobs {
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
             taken[y][x] = true;
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca));
+        }
+        for (int[] q : m.queenSpots()) { // [2026-10-28] 개미굴 여왕개미 셋(보스 아님 -- 목록 맨 끝이 아니어도 된다)
+            List<Integer> qc = new ArrayList<>();
+            qc.add(q[1] * m.w + q[0]);
+            for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) if (mobCell(t[q[1] + dv[1]][q[0] + dv[0]])) qc.add((q[1] + dv[1]) * m.w + q[0] + dv[0]);
+            int[] qa = new int[qc.size()];
+            for (int i = 0; i < qa.length; i++) qa[i] = qc.get(i);
+            out.add(new S5MineMap.Mob(out.size(), ANT_BOSS_TYPE, q[0], q[1], qa));
         }
         boolean raid = S5MineMap.RUINS.equals(m.id);
         if (raid && m.bossX() >= 0) { // [2026-10-28] 대주교 수하 자리 -- 제단 둘레(평소엔 없음, 보스가 불러내면 그 자리에서 나타나 쫓아온다)

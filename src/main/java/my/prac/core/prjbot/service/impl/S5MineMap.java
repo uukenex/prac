@@ -514,7 +514,12 @@ public final class S5MineMap {
     private boolean boat;                              // [2026-10-28] 다도해 뱃길 -- 배를 타고 물 위로 다닌다(물 칸이 길)
     private boolean noMap;                             // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(화면이 미니맵을 가린다)
     private boolean veinMine;                          // [2026-10-28] 설산 동굴 -- 땅은 못 파고 얼음 광맥(I)을 앞에서 연속 채광
-    private List<int[]> chestSpots = Collections.emptyList(); // [2026-10-28] 개미굴 보물 상자 자리(buildWorld가 NPC로 세운다)
+    private List<int[]> chestSpots = Collections.emptyList(); // [2026-10-28] 개미굴 보물 상자 자리 {x, y, 담긴 양 0~1000}(buildWorld가 NPC로 세운다)
+    private List<int[]> queenSpots = Collections.emptyList(); // [2026-10-28] 개미굴 여왕개미 자리 셋(S5MineMobs.spawn)
+    private final Map<Integer, Integer> chestRich = new java.util.HashMap<>(); // [2026-10-28] 개미굴 보물 상자 칸(y * w + x) -> 담긴 양(0~1000)
+    public List<int[]> queenSpots() { return queenSpots; }
+    /** 개미굴 보물 상자에 담긴 양(0 = 보석 1개 ~ 1000 = 가장 많이). 모르는 칸이면 500. */
+    public int chestRich(int x, int y) { return chestRich.getOrDefault(y * w + x, 500); }
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
     private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
@@ -883,12 +888,16 @@ public final class S5MineMap {
         for (int off = 3; off <= 33; off += 10) // 통로 둘레가 좁으면 안쪽(동쪽)으로 더 들어가 자리를 찾는다
             if (placeNpc(fd, wg[0] + off, wg[1], "daykeeper", "요일 동굴 문지기", "오늘의 요일석 20개를 내면 다른 요일의 동굴 문을 열어 주지. 한 번 열면 오늘 하루는 그대로라네.")) break;
         // [2026-10-28] 개미굴(사막 서쪽에서 빠짐) -> 나가는 굴 셋 -> 피라미드 -> 동쪽 문 -> 사막 서쪽. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로).
-        S5MineMap antnest = generateAntNest(seed + 71), pyramid = generatePyramid(seed + 72);
+        S5MineMap antnest = generateAntNest(seed + 71, (seed - BASE_SEED) / 7919L >= ANT_BIG_CYCLE), pyramid = generatePyramid(seed + 72);
         S5MineMap ds0 = out.get(DESERT);
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
         S5MineMap an2 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
-        for (int[] c : an2.chestSpots) placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 개미들이 모아 둔 반짝이는 돌이 들어 있을 것 같다.");
+        for (int[] c : an2.chestSpots) // [2026-10-28] 상자마다 담긴 양(c[2] = 0~1000) -- 세운 칸으로 찾는다(자리가 막혀 옆에 서면 칸이 달라서)
+            if (placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 상자마다 담긴 양이 다르다는데... 한 번에 세 개까지만 열 수 있다.")) {
+                Npc pn = an2.npcs.get(an2.npcs.size() - 1);
+                an2.chestRich.put(pn.y * an2.w + pn.x, c[2]);
+            }
         out.put(ANTNEST, an2);
         S5MineMap py = relink(pyramid, retarget(pyramid, DESERT, dw), null);
         placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
@@ -921,6 +930,7 @@ public final class S5MineMap {
         n.noMap = m.noMap;
         n.veinMine = m.veinMine;
         n.chestSpots = m.chestSpots;
+        n.queenSpots = m.queenSpots;
         n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
@@ -1245,19 +1255,23 @@ public final class S5MineMap {
         return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
     }
 
-    /** [2026-10-28] 개미굴(200x200) -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7) 36개를 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
-     *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 떨어진 곳에서 가장 먼 방이 여왕의 방(반지름 9, 여왕개미 보스).
-     *  [2026-10-28] "더 크고 나가기 어렵게" -- 150 -> 200칸, 방 22 -> 36개, 굴은 가장 가까운 방 하나에만 이어서(고리 적게) 막다른 길이 많다.
-     *  나가는 굴 셋: 떨어진 곳에서 먼 방 가운데 서로 50칸 넘게 떨어진(여왕의 방과도) 세 곳에서 가장 가까운 가장자리까지 구불구불 판 굴 끝(U) = 피라미드.
-     *  "보물 상자를 구석진 곳에 많이" -- 나가는 굴/여왕의 방이 아닌 방 가운데 맵 가운데에서 가장 먼(구석) 10곳에 보물 상자(antchest, buildWorld가 세운다).
-     *  멀수록 광석이 좋고 몬스터가 강하다(11~13단계). */
-    static S5MineMap generateAntNest(long seed) {
-        int w = 200, h = 200;
+    /** [2026-10-28] "다음 맵 변경에서는 개미굴을 더 넓게 헤매게, 500x500" -- 이 주기(10/29 05:00 리셋)부터 만드는 맵은 500x500(방 200개). 그 전 주기는 200x200(방 36개). */
+    static final int ANT_BIG_CYCLE = 3;
+
+    /** [2026-10-28] 개미굴 -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7)을 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
+     *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 굴은 가장 가까운 방 하나에만 이어서(고리 적게) 막다른 길이 많다.
+     *  나가는 굴 셋: 떨어진 곳에서 먼 방 가운데 서로(여왕의 방과도) 멀리 떨어진 세 곳에서 가장 가까운 가장자리까지 구불구불 판 굴 끝(U) = 피라미드.
+     *  [2026-10-28] "여왕개미를 세 군데" -- 떨어진 곳에서 가장 먼 방(반지름 9) + 나가는 굴이 아닌 먼 방 둘(반지름 7)에 여왕개미(queenSpots, 보스 아님 -- 보상 없음).
+     *  "보물 상자를 구석진 곳에 많이" + "인당 3개만, 보상이 아주 적은 것(1개)부터 지금 보상까지 골고루" -- 남은 방 가운데 맵 가운데에서 가장 먼(구석) 곳에
+     *  보물 상자(200칸: 10개, 500칸: 30개), 상자마다 담긴 양을 0~1000으로 고르게 섞어 둔다(chestSpots {x, y, 양}).
+     *  멀수록 광석이 좋고 몬스터가 강하다(11~13단계). big = 500x500. */
+    static S5MineMap generateAntNest(long seed, boolean big) {
+        int w = big ? 500 : 200, h = w;
         Random r = new Random(seed);
         Noise rich = new Noise(seed * 31 + 131);
         char[][] t = new char[h][w];
         for (char[] row : t) Arrays.fill(row, '#');
-        int n = 36;
+        int n = big ? 200 : 36, apart = big ? 120 : 50, chestN = big ? 30 : 10;
         int[][] rooms = new int[n][];
         rooms[0] = new int[] { w / 2, h / 2, 5 }; // 떨어지는 방(한가운데)
         for (int i = 1; i < n; i++) {
@@ -1278,13 +1292,13 @@ public final class S5MineMap {
             if (i > 3 && r.nextDouble() < 0.12) { int j = 1 + r.nextInt(i - 1); antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[j][0], rooms[j][1]); }
         }
         int sx = rooms[0][0], sy = rooms[0][1];
-        // 여왕의 방 = 떨어진 칸에서 걸어서 가장 먼 방(반지름 9로 넓힌다)
+        // 첫 여왕의 방 = 떨어진 칸에서 걸어서 가장 먼 방(반지름 9로 넓힌다)
         int[][] dist = bfsDist(t, sx, sy);
         int qi = 1;
         for (int i = 1; i < n; i++) if (dist[rooms[i][1]][rooms[i][0]] > dist[rooms[qi][1]][rooms[qi][0]]) qi = i;
         int qx = rooms[qi][0], qy = rooms[qi][1];
         carveRoom(t, qx, qy, 9);
-        // 나가는 굴 셋 -- 먼 방부터, 이미 고른 방/여왕의 방과 50칸 넘게 떨어진 방에서 가장 가까운 가장자리로
+        // 나가는 굴 셋 -- 먼 방부터, 이미 고른 방/여왕의 방과 apart칸 넘게 떨어진 방에서 가장 가까운 가장자리로
         List<Portal> portals = new ArrayList<>();
         Integer[] order = new Integer[n];
         for (int i = 0; i < n; i++) order[i] = i;
@@ -1300,7 +1314,7 @@ public final class S5MineMap {
             int[] ro = rooms[order[oi]];
             if (used.contains(order[oi])) continue;
             boolean far = true;
-            for (int[] p : picked) if (Math.hypot(ro[0] - p[0], ro[1] - p[1]) < 50) far = false;
+            for (int[] p : picked) if (Math.hypot(ro[0] - p[0], ro[1] - p[1]) < apart) far = false;
             if (!far && oi < n - 3) continue;
             picked.add(ro);
             used.add(order[oi]);
@@ -1311,12 +1325,25 @@ public final class S5MineMap {
             t[ey][ex] = 'U';
             portals.add(new Portal(ex, ey, 'U', PYRAMID, 0, 0, "빛이 새어 드는 굴 -- 밖으로"));
         }
-        // 보물 상자 -- 남은 방 가운데 맵 가운데에서 가장 먼(구석) 10곳
+        // 여왕개미 셋 -- 첫 여왕의 방 + 나가는 굴이 아닌 먼 방 가운데 여왕의 방끼리 apart/2칸 넘게 떨어진 둘(반지름 7)
+        List<int[]> queens = new ArrayList<>();
+        queens.add(new int[] { qx, qy });
+        for (int oi = 0; oi < n && queens.size() < 3; oi++) {
+            if (used.contains(order[oi])) continue;
+            int[] ro = rooms[order[oi]];
+            boolean far = true;
+            for (int[] q : queens) if (Math.hypot(ro[0] - q[0], ro[1] - q[1]) < apart / 2.0) far = false;
+            if (!far) continue;
+            used.add(order[oi]);
+            carveRoom(t, ro[0], ro[1], 7);
+            queens.add(new int[] { ro[0], ro[1] });
+        }
+        // 보물 상자 -- 남은 방 가운데 맵 가운데에서 가장 먼(구석) chestN곳
         List<int[]> rest = new ArrayList<>();
         for (int i = 1; i < n; i++) if (!used.contains(i)) rest.add(rooms[i]);
         rest.sort((a, b) -> Double.compare(Math.hypot(b[0] - w / 2, b[1] - h / 2), Math.hypot(a[0] - w / 2, a[1] - h / 2)));
         List<int[]> chests = new ArrayList<>();
-        for (int i = 0; i < Math.min(10, rest.size()); i++) chests.add(new int[] { rest.get(i)[0], rest.get(i)[1] });
+        for (int i = 0; i < Math.min(chestN, rest.size()); i++) chests.add(new int[] { rest.get(i)[0], rest.get(i)[1], 0 });
         dist = bfsDist(t, sx, sy);
         int far = 1;
         for (int[] row : dist) for (int d : row) far = Math.max(far, d);
@@ -1328,11 +1355,15 @@ public final class S5MineMap {
         }
         for (int[] c : chests) for (int y = c[1] - 1; y <= c[1] + 1; y++) for (int x = c[0] - 1; x <= c[0] + 1; x++) skip[y][x] = true;
         byte[][] o = assignOre(t, score, ANTNEST_SHARE, skip);
+        // 상자마다 담긴 양 -- 0(보석 1개)부터 1000(가장 많이)까지 고르게, 자리와는 섞어서(난수는 광석 배치 뒤에 써서 지형/광석은 그대로)
+        List<Integer> amounts = new ArrayList<>();
+        for (int i = 0; i < chests.size(); i++) amounts.add(chests.size() == 1 ? 1000 : i * 1000 / (chests.size() - 1));
+        Collections.shuffle(amounts, r);
+        for (int i = 0; i < chests.size(); i++) chests.get(i)[2] = amounts.get(i);
         S5MineMap m = new S5MineMap(ANTNEST, "개미굴", false, w, h, sx, sy, t, o, portals);
         m.noMap = true;
-        m.bossX = qx;
-        m.bossY = qy;
         m.chestSpots = chests;
+        m.queenSpots = queens;
         return m;
     }
 

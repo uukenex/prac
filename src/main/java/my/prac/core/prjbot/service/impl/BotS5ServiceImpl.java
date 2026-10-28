@@ -9413,8 +9413,6 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // [2026-10-28] 용암섬 용암 거신 -- 보스 공통으로 주기마다 한 번(MINE_LAVA_KILLED = "주기|유저").
     private static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
-    private static final String MINE_ANT_KEY = "MINE_ANT_KILLED"; // [2026-10-28] 개미굴 여왕개미
-    private static volatile int mineAntKilledCycle = Integer.MIN_VALUE;
     private static volatile int mineLavaKilledCycle = Integer.MIN_VALUE;
     /** 원거리 공격(불덩이) -- 인식 중인 유저마다 다음에 던질 시각. 6~10초마다, 2칸 이상 떨어져 있을 때(붙어 있으면 그냥 때린다). */
     private static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
@@ -9454,17 +9452,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 보스(type)가 이번 맵 주기에 이미 쓰러졌는지. 보스가 아니면 false. */
     private boolean mineBossDead(int type) {
         if (type == S5MineMobs.BOSS_TYPE) return mineBossDead();
-        if (type == S5MineMobs.ANT_BOSS_TYPE) { // [2026-10-28] 여왕개미 -- 주기마다 한 번(MINE_ANT_KILLED = "주기|유저")
-            if (mineAntKilledCycle == Integer.MIN_VALUE) {
-                try {
-                    String v = dao.selectConfigValue(MINE_ANT_KEY);
-                    mineAntKilledCycle = v == null || v.trim().isEmpty() ? -1 : Integer.parseInt(v.split("\\|")[0].trim());
-                } catch (Exception e) {
-                    mineAntKilledCycle = -1;
-                }
-            }
-            return mineAntKilledCycle == S5MineMap.activeCycle();
-        }
         if (type == S5MineMobs.LAVA_BOSS_TYPE) {
             if (mineLavaKilledCycle == Integer.MIN_VALUE) {
                 try {
@@ -10328,12 +10315,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 msg.insert(0, "👑 얼음 여왕을 쓰러뜨렸어요! ");
                 out.put("bossKilled", true);
             }
-            if (mob.type == S5MineMobs.ANT_BOSS_TYPE) { // [2026-10-28] 여왕개미 처치 -- 이번 주기엔 다시 안 나온다(DB 기록). 보상은 동굴 3층 보스와 같다(mineBossDrops)
-                mineAntKilledCycle = S5MineMap.activeCycle();
-                dao.upsertConfigValue(MINE_ANT_KEY, S5MineMap.activeCycle() + "|" + userName, "web mine ant nest queen killed (cycle|user)");
-                msg.insert(0, "👑 여왕개미를 쓰러뜨렸어요! ");
-                out.put("bossKilled", true);
-            }
+            if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineLavaKilledCycle = S5MineMap.activeCycle();
                 MINE_RANGED_NEXT.clear();
@@ -10369,7 +10351,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 else if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
-            out.put("drops", shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
+            out.put("drops", type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg));
             out.put("ores", mineOreList(userName));
         } else {
@@ -10450,7 +10432,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         List<HashMap<String, Object>> bosses = new ArrayList<>();
-        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ANTNEST, S5MineMap.ISLE7 }) { // [2026-10-28] 설산 봉우리(얼음 여왕), 개미굴(여왕개미), 용암섬(용암 거신)
+        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7 }) { // [2026-10-28] 설산 봉우리(얼음 여왕), 용암섬(용암 거신)
             S5MineMap.Mob bmob = mineBossOf(S5MineMap.get(bm));
             if (bmob == null) continue;
             HashMap<String, Object> b = new HashMap<>();
@@ -11187,9 +11169,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-10-28] 개미굴 보물 상자(구석진 방 10곳) -- 상자마다 맵 주기에 한 번. 보석 네 번(아무 보석 1~3개씩, 다이아몬드 빼고) + 25% 다이아몬드 1.
+    /** [2026-10-28] 개미굴 보물 상자(구석진 방) -- "인당 3개씩만, 보상이 아주 적은 것(1개)부터 지금 보상까지 골고루":
+     *  한 사람이 맵 주기마다 MINE_ANT_CHEST_LIMIT개까지. 상자마다 담긴 양 q(0~1000, S5MineMap.chestRich) -- 보석 1 + q*3/1000번(1~4번),
+     *  한 번에 1 ~ 1 + q*2/1000개(가장 적은 상자 = 보석 1개), 다이아몬드 q*25/1000 %(가장 많은 상자 = 예전 보상: 네 번 1~3개 + 25% 다이아).
      *  연 상자는 ANT_CHEST_CYC(주기 + 1) / ANT_CHEST_MASK(상자 순서 비트)로 기억한다. */
     static final String MINE_ITEM_ANT_CHEST_CYC = "ANT_CHEST_CYC", MINE_ITEM_ANT_CHEST_MASK = "ANT_CHEST_MASK";
+    static final int MINE_ANT_CHEST_LIMIT = 3;
 
     @Override
     @Transactional
@@ -11202,28 +11187,31 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         int[] pos = minePos(row, map, 0);
         int idx = -1, k = 0;
+        S5MineMap.Npc chest = null;
         for (S5MineMap.Npc n : map.npcs()) {
             if (!"antchest".equals(n.kind)) continue;
-            if (Math.abs(pos[0] - n.x) + Math.abs(pos[1] - n.y) <= 2) idx = k;
+            if (Math.abs(pos[0] - n.x) + Math.abs(pos[1] - n.y) <= 2) { idx = k; chest = n; }
             k++;
         }
         if (idx < 0) { out.put("message", "상자 바로 앞에서 열어 주세요."); return out; }
         Map<String, Integer> items = mineItems(userName);
         int cyc = S5MineMap.activeCycle() + 1, mask = items.getOrDefault(MINE_ITEM_ANT_CHEST_CYC, 0) == cyc ? items.getOrDefault(MINE_ITEM_ANT_CHEST_MASK, 0) : 0;
-        if ((mask & (1 << idx)) != 0) { out.put("message", "📦 이미 열어 본 상자예요. 다른 구석을 찾아보세요! (맵 리셋 " + mineResetText() + " 뒤 다시 채워져요)"); return out; }
+        if ((mask & (1 << idx)) != 0) { out.put("message", "📦 이미 열어 본 상자예요. (맵 리셋 " + mineResetText() + " 뒤 다시 채워져요)"); return out; }
+        if (Integer.bitCount(mask) >= MINE_ANT_CHEST_LIMIT) { out.put("message", "📦 이번 맵에서는 보물 상자를 " + MINE_ANT_CHEST_LIMIT + "개까지만 열 수 있어요. (맵 리셋 " + mineResetText() + " 뒤 다시)"); return out; }
+        int q = map.chestRich(chest.x, chest.y), picks = 1 + q * 3 / 1000, qmax = 1 + q * 2 / 1000;
         dao.upsertMineItem(userName, MINE_ITEM_ANT_CHEST_CYC, cyc);
         dao.upsertMineItem(userName, MINE_ITEM_ANT_CHEST_MASK, mask | (1 << idx));
         List<HashMap<String, Object>> drops = new ArrayList<>();
         StringBuilder gm = new StringBuilder();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < picks; i++) {
             int gi = RND.nextInt(S5MineMap.GEM_CODES.length - 1);
             if (gi >= S5MineMap.GEM_DIAMOND) gi++;
-            int q = 1 + RND.nextInt(3);
-            dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], q);
-            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], q));
-            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[gi]).append(' ').append(q);
+            int gq = 1 + RND.nextInt(qmax);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], gq);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], gq));
+            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[gi]).append(' ').append(gq);
         }
-        if (RND.nextInt(100) < 25) {
+        if (RND.nextInt(1000) < q * 25 / 100) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 1);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 1));
             gm.append(", 다이아몬드 1");
@@ -11232,7 +11220,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int opened = Integer.bitCount(mask | (1 << idx));
         out.put("ok", true);
         out.put("drops", drops);
-        out.put("message", "📦 보물 상자를 열었어요! 💎 " + gm + " (이번 맵에서 " + opened + "/" + k + "개 열었어요)");
+        out.put("message", "📦 보물 상자를 열었어요! 💎 " + gm + " (이번 맵에서 " + opened + "/" + MINE_ANT_CHEST_LIMIT + "개 열었어요)");
         out.put("ores", mineOreList(userName));
         return out;
     }
