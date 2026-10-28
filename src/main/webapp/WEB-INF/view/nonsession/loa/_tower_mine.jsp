@@ -900,6 +900,10 @@ var TowerMine = (function () {
     }
     var near = !P.moving && adjMob(), lab = near ? '⚔️' : '⛏️';
     if (el.dig.textContent !== lab) el.dig.textContent = lab;
+    // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 옆에 몬스터가 있을 때만 ⚔️ 버튼, 자동채광 숨김
+    var digShow = !map.noDig || !!near ? '' : 'none';
+    if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
+    if (el.auto) { var autoShow = map.noDig ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if (map.noDig && auto) setAuto(false); } }
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
     bossTick(now); // [2026-10-24] 동굴 3층 보스 선공 + [2026-10-25] 몬스터 인식 중 전투 턴
     coldTick(now); coldWarn(); // [2026-10-26] 한기/눈바람

@@ -9154,6 +9154,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("raid", S5MineMap.RUINS.equals(map.id)); // [2026-10-28] 성당 옛터 -- 화면이 1초마다 환경 턴(대주교 마법)
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
+        out.put("noDig", !map.hasOre()); // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
             out.put("sun", map.sun());
@@ -10204,7 +10205,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 int nk = items.getOrDefault(MINE_ITEM_NINJA_KILLS, 0) + 1;
                 dao.upsertMineItem(userName, MINE_ITEM_NINJA_KILLS, nk);
                 out.put("ninjaKills", nk);
-                if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
+                if (nk < MINE_NINJA_NEED && items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) < 1 && RND.nextInt(100) < MINE_NINJA_KEY_PCT) {
+                    // [2026-10-28] "닌자 100마리 퀘스트 진행 중 확률적으로 보스방 열쇠" -- 수색 중 닌자를 쓰러뜨릴 때마다 MINE_NINJA_KEY_PCT%로 열쇠가 떨어진다(임무 끝)
+                    dao.upsertMineItem(userName, S5MineMap.SHRINE_KEY_ITEM, 1);
+                    dao.upsertMineItem(userName, MINE_ITEM_NINJA_QUEST, 0);
+                    dao.upsertMineItem(userName, MINE_ITEM_NINJA_KILLS, 0);
+                    msg.append(" 🗝️ 닌자가 신궁 열쇠를 떨어뜨렸어요! 수색은 여기까지 -- 동쪽 문(닌자 두목의 방)으로 들어갈 수 있어요.");
+                    out.put("shrineKey", true);
+                }
+                else if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
             out.put("drops", shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
@@ -10532,7 +10541,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             msg += " + 💎 " + one.get("gemName") + " 1개!";
         }
         // [2026-10-24] 탐지 곡괭이로 별빛석을 캐면 빛을 잃는다(이번 맵 주기 동안 탐지 꺼짐)
-        if (Integer.valueOf(6).equals(one.get("grade")) && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 2 && items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) > 0 && !mineDetectDim(items)) {
+        if ((Integer.valueOf(6).equals(one.get("grade")) || Integer.valueOf(S5MineMap.MOON_STONE_GRADE).equals(one.get("grade"))) && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 2 && items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) > 0 && !mineDetectDim(items)) {
             dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, S5MineMap.activeCycle() + 1);
             out.put("detectDim", true);
             msg += " 🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 맵 리셋 때 다시 빛나요.";
@@ -10584,6 +10593,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (g == 0 || dug.contains(ny * map.w + nx)) continue;
             if (S5MineMap.DUNGEON.equals(map.id)) g = S5MineMap.DAY_STONE_GRADE_BASE + mineDungeonDay(items, now);
             else if (S5MineMap.SEAROAD.equals(map.id)) g = -1;
+            else if (g == 6 && S5MineMap.isArchi(map.id)) g = S5MineMap.MOON_STONE_GRADE; // [2026-10-28] 다도해 = 달빛석
             if (g == 6 || g == S5MineMap.MOON_STONE_GRADE) glow = true;
             cells.add(new int[] { dx, dy, g });
         }
@@ -10624,6 +10634,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             code = S5MineMap.ORE_CODES[g - 1];
             name = S5MineMap.ORE_NAMES[g - 1];
+            if (g == 6 && S5MineMap.isArchi(map.id)) { // [2026-10-28] "다도해 지역에선 별빛석 없이 달빛석만" -- 별빛석 칸은 달빛석(캔 칸 기록도 20)
+                g = S5MineMap.MOON_STONE_GRADE;
+                code = S5MineMap.MOON_STONE_CODE;
+                name = S5MineMap.MOON_STONE_NAME;
+            }
         }
         // [2026-10-24] 풍요의 반지 -- 확률로 2개
         int dbl = MINE_PLENTY_DOUBLE_PCT[mineRingTier(items, MINE_ITEM_PLENTY_RING)];
@@ -11560,6 +11575,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_NINJA_QUEST = "NINJA_QUEST"; // 0 없음, 1 수색 중(보상을 받으면 다시 0 -- 되풀이 가능)
     static final String MINE_ITEM_NINJA_KILLS = "NINJA_KILLS";
     static final int MINE_NINJA_NEED = 100;
+    static final int MINE_NINJA_KEY_PCT = 2; // [2026-10-28] 수색 중 닌자 처치마다 열쇠가 떨어질 확률(%) -- 평균 50마리쯤
     /** 1인용 배 = 달빛석 1개 + "보석류가 골고루 많이 사용되도록" 보석 9종(재스퍼~다이아몬드). */
     private static final String[][] MINE_BOAT_COST = { { S5MineMap.MOON_STONE_CODE, "1" }, mineCost(0, 20), mineCost(1, 15), mineCost(2, 8), mineCost(3, 15),
             mineCost(4, 15), mineCost(5, 15), mineCost(6, 15), mineCost(7, 8), mineCost(8, 3) };

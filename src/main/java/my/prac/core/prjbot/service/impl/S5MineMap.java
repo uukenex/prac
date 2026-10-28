@@ -380,11 +380,14 @@ public final class S5MineMap {
     }
 
     /** 모닥불 배치: 눈길(pathX, 열린 줄 y0~y1) 위 every줄마다 + 18칸 격자마다 갈 수 있는 칸 -- 서로 10칸 넘게 떨어지게.
-     *  눈바람 예고(5초) 동안 걸어서 닿을 수 있게 촘촘히(어느 칸에서든 가장 가까운 모닥불까지 대체로 20칸 안팎). */
+     *  눈바람 예고(5초) 동안 걸어서 닿을 수 있게 촘촘히(어느 칸에서든 가장 가까운 모닥불까지 대체로 20칸 안팎).
+     *  [2026-10-28] "설산 지역 모닥불을 절반 정도 없애줘" -- 눈길 간격 x2, 격자 18 -> 32칸(입구/정박장 모닥불 포함 개수로 약 절반). */
+    static final int CAMPFIRE_GRID = 32;
     private static void campfires(char[][] t, int[] pathX, int y0, int y1, int every, List<int[]> safe) {
         int h = t.length, w = t[0].length;
+        every *= 2;
         for (int y = y1 - every; y > y0 + 4; y -= every) if (pathX[y] > 0 && walkable(t[y][pathX[y]])) safe.add(new int[] { pathX[y], y, 3 });
-        for (int gy = 9; gy < h - 4; gy += 18) for (int gx = 9; gx < w - 4; gx += 18) {
+        for (int gy = 9; gy < h - 4; gy += CAMPFIRE_GRID) for (int gx = 9; gx < w - 4; gx += CAMPFIRE_GRID) {
             int[] best = null;
             for (int d = 0; d <= 8 && best == null; d++) for (int dy = -d; dy <= d && best == null; dy++) for (int dx = -d; dx <= d; dx++) {
                 int x = gx + dx, y = gy + dy;
@@ -541,6 +544,17 @@ public final class S5MineMap {
     /** 0 = 광석 없음, 1~6 = ORE_CODES 순서 + 1. */
     public int oreAt(int x, int y) {
         return inside(x, y) ? ore[y][x] : 0;
+    }
+
+    private Boolean hasOre;
+    /** [2026-10-28] 캘 수 있는 칸이 하나라도 있는지(없으면 화면이 캐기 버튼/자동채광을 숨긴다). */
+    public boolean hasOre() {
+        if (hasOre == null) {
+            boolean any = false;
+            for (byte[] row : ore) { for (byte b : row) if (b != 0) { any = true; break; } if (any) break; }
+            hasOre = any;
+        }
+        return hasOre;
     }
 
     public Portal portalAt(int x, int y) {
@@ -1423,18 +1437,24 @@ public final class S5MineMap {
         m.sun = 3; // [2026-10-28] 1 -> 3
         m.safe.add(new int[] { vx, vy, 7 });
         m.safe.add(new int[] { cx, doorY + 7, 6 }); // [2026-10-28] 두 문 앞 광장
-        addShadeGroves(m, r, 10);
+        addShadeGroves(m, r);
         return m;
     }
 
-    /** 그늘(야자수 숲) -- 풀밭/모래 칸에 서로 떨어지게 n곳, 반지름 3. 햇빛 피해가 없는 안전지대(화면이 야자수 그늘로 그린다). */
-    private static void addShadeGroves(S5MineMap m, Random r, int n) {
-        for (int tries = 0, made = 0; made < n && tries < 4000; tries++) {
+    /** 그늘(야자수 숲) -- 풀밭/모래 칸에 서로 떨어지게, 반지름 3. 햇빛 피해가 없는 안전지대(화면이 야자수 그늘로 그린다).
+     *  [2026-10-28] "다도해도 (모닥불을 절반으로 줄인 설산과) 비슷한 수준으로 그늘" -- 걸을 수 있는 칸 SHADE_CELLS칸마다 한 곳, 서로 SHADE_GAP칸 넘게
+     *  (예전: 본섬 10곳, 섬 5~6곳 -- 설산의 1/8 정도로 드물었다). */
+    static final int SHADE_CELLS = 450, SHADE_GAP = 14;
+    private static void addShadeGroves(S5MineMap m, Random r) {
+        int walk = 0;
+        for (int y = 0; y < m.h; y++) for (int x = 0; x < m.w; x++) if (walkable(m.terrain[y][x])) walk++;
+        int n = Math.max(3, walk / SHADE_CELLS);
+        for (int tries = 0, made = 0; made < n && tries < 40000; tries++) {
             int x = 3 + r.nextInt(m.w - 6), y = 3 + r.nextInt(m.h - 6);
             char c = m.terrain[y][x];
             if (c != '.' && c != 'b' && c != 'u') continue;
             boolean far = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) > 12;
-            for (int[] z : m.safe) if (Math.abs(z[0] - x) + Math.abs(z[1] - y) < Math.max(18, m.w / 6)) far = false;
+            for (int[] z : m.safe) if (Math.abs(z[0] - x) + Math.abs(z[1] - y) < SHADE_GAP) far = false;
             if (!far) continue;
             m.safe.add(new int[] { x, y, 3 });
             made++;
@@ -1604,7 +1624,7 @@ public final class S5MineMap {
         m.dockY = sy;
         m.sun = ISLE_SUN[idx];
         m.safe.add(new int[] { pier + 1, land + 2, 4 }); // 부두 앞 그늘
-        addShadeGroves(m, r, 3 + size / 40);
+        addShadeGroves(m, r);
         return m;
     }
 
