@@ -75,8 +75,16 @@ public final class S5MineMap {
     /** [2026-10-28] "설산 마을 북쪽에 설산 봉우리 가는 길(80레벨 몬스터, 더 강하게), 그 북쪽에 설산 봉우리(가운데 큰 호수, 보스 한 마리만 -- 95레벨, 얼음의 심장,
      *  주기적으로 한 명씩 얼리고 얼어 있는 사람을 때리면 즉사, 다른 사람이 곁에 와야 풀림(얼음땡))" -- 설산 마을 북문 -> 봉우리 가는 길 -> 봉우리. */
     public static final String SNOWROAD = "snowroad";
-    /** [2026-10-28] "사막 왼쪽 맵을 개미굴 입구로, 개미굴(지도가 안 보이는 지역), 레벨 30~50대" -- 사막 서쪽 문 -> 개미굴 입구(흙더미 황무지) -> 굴 입구(M) -> 개미굴(굴 미로, 미니맵 없음, 가장 깊은 방에 여왕개미). */
-    public static final String ANTHILL = "anthill", ANTNEST = "antnest";
+    /** [2026-10-28] "개미굴(지도가 안 보이는 지역), 레벨 30~50대" + "개미굴 입구는 따로 없고 사막 서쪽을 걷다가 랜덤하게 빠진다, 마을 이동 안 됨,
+     *  나가는 통로 3개를 어렵게, 탈출하면 피라미드 -- 가운데 보상 상자에서 사막의 심장" -- 사막 서쪽(DESERT_FALL_X 왼쪽)에서 걸을 때마다 확률로 개미굴 한가운데로 떨어진다
+     *  (BotS5ServiceImpl.mineAntFall). 개미굴(굴 미로, 미니맵 없음) 가장자리 세 곳의 나가는 굴(U) -> 피라미드. 피라미드 동쪽 문 -> 사막 서쪽. */
+    public static final String ANTNEST = "antnest", PYRAMID = "pyramid";
+    /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
+    public static final double DESERT_FALL_X = 0.3;
+    /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
+    public static final String DESERT_HEART_CODE = "DESERT_HEART";
+    public static final String DESERT_HEART_NAME = "사막의 심장";
+    public static final int DESERT_HEART_GRADE = 39;
     public static final String PEAK = "snowpeak";
     /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
     public static final String ICE_HEART_CODE = "ICE_HEART";
@@ -177,7 +185,6 @@ public final class S5MineMap {
     private static final double[] NORTH_SHARE = { 2, 30, 0.06, 0.18, 0.30 };
     private static final double[] STEPPE_SHARE = { 1, 20, 0.04, 0.14, 0.30 };
     private static final double[] CAVE2_SHARE = { 2, 25, 0.06, 0.18, 0.30 };
-    private static final double[] ANTHILL_SHARE = { 1, 20, 0.05, 0.15, 0.30 }; // [2026-10-28] 개미굴 입구
     private static final double[] ANTNEST_SHARE = { 1, 25, 0.06, 0.18, 0.30 }; // [2026-10-28] 개미굴
     private static final double[] CAVE3_SHARE = { 3, 35, 0.08, 0.20, 0.30 };
     /** [2026-10-26] 설산 1~3층 -- 위층일수록 풍부하다. */
@@ -711,7 +718,6 @@ public final class S5MineMap {
         Portal dNorth = null;
         for (Portal p : desert.portals) {
             if (FIELD.equals(p.target)) dp.add(new Portal(p.x, p.y, p.kind, FIELD, north.x, north.y + 1, p.label));
-            else if (ANTHILL.equals(p.target)) dp.add(p); // [2026-10-28] 서쪽 문 -- 좌표는 맨 뒤에서
             else { dNorth = p; dp.add(new Portal(p.x, p.y, p.kind, STEPPE, steppe.spawnX, steppe.spawnY, "모래폭풍을 지나 왕도 남쪽 초원으로")); }
         }
         // 초원: 남쪽 통로 -> 사막 북쪽 끝, 북쪽 통로 -> 왕도 남문. 왕도: 남문 -> 초원 북쪽 끝(동/서문은 잠김).
@@ -863,14 +869,15 @@ public final class S5MineMap {
         int[] wg = besidePortal(fd, DUNGEON);
         for (int off = 3; off <= 33; off += 10) // 통로 둘레가 좁으면 안쪽(동쪽)으로 더 들어가 자리를 찾는다
             if (placeNpc(fd, wg[0] + off, wg[1], "daykeeper", "요일 동굴 문지기", "오늘의 요일석 20개를 내면 다른 요일의 동굴 문을 열어 주지. 한 번 열면 오늘 하루는 그대로라네.")) break;
-        // [2026-10-28] 사막 서쪽 문 <-> 개미굴 입구 <-> 개미굴. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로, 사막은 자리 그대로 다시 넣음).
-        S5MineMap anthill = generateAnthill(seed + 70), antnest = generateAntNest(seed + 71);
+        // [2026-10-28] 개미굴(사막 서쪽에서 빠짐) -> 나가는 굴 셋 -> 피라미드 -> 동쪽 문 -> 사막 서쪽. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로).
+        S5MineMap antnest = generateAntNest(seed + 71), pyramid = generatePyramid(seed + 72);
         S5MineMap ds0 = out.get(DESERT);
-        S5MineMap ah = relink(anthill, retarget(anthill, DESERT, besidePortal(ds0, ANTHILL)), null);
-        ah = relink(ah, retarget(ah, ANTNEST, new int[] { antnest.spawnX, antnest.spawnY }), null);
-        out.put(ANTHILL, ah);
-        out.put(ANTNEST, relink(antnest, retarget(antnest, ANTHILL, besidePortal(ah, ANTNEST)), null));
-        out.put(DESERT, relink(ds0, retarget(ds0, ANTHILL, new int[] { ah.spawnX, ah.spawnY }), null));
+        int[] dw = { 2, ds0.h / 2 };
+        for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
+        out.put(ANTNEST, relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null));
+        S5MineMap py = relink(pyramid, retarget(pyramid, DESERT, dw), null);
+        placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
+        out.put(PYRAMID, py);
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -1192,27 +1199,20 @@ public final class S5MineMap {
         for (int y = 0; y < h; y++) { t[y][0] = 'R'; t[y][w - 1] = 'R'; }
         // 남쪽 입구 -> 북쪽 끝까지 3칸 너비 모래길(바람에 밀려도 막히지 않게 넓게)
         int sx = w / 2, sy = h - 2, px = sx;
-        int[] pathX = new int[h];
         for (int y = h - 2; y >= 1; y--) {
             if (r.nextDouble() < 0.22) px += r.nextBoolean() ? 1 : -1;
             px = Math.max(4, Math.min(w - 5, px));
             for (int dx = -1; dx <= 1; dx++) t[y][px + dx] = 'd';
-            pathX[y] = px;
         }
         int nx = px;
         t[h - 1][sx] = 'G';
         t[sy][sx] = 'd';
         t[0][nx] = 'G';
-        // [2026-10-28] 서쪽 문 -> 개미굴 입구. 가운데 줄에서 모래길까지 3칸 너비 길(난수를 더 쓰지 않아 다른 칸 배치는 그대로)
-        int wy = h / 2;
-        for (int x = 1; x < pathX[wy]; x++) for (int dy = -1; dy <= 1; dy++) t[wy + dy][x] = 'd';
-        t[wy][0] = 'G';
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'R';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(sx, h - 1, 'G', FIELD, 0, 0, "중앙 평원으로 돌아가는 길"));
         portals.add(new Portal(nx, 0, 'G', null, 0, 0, "북쪽 끝 너머 (준비 중)"));
-        portals.add(new Portal(0, wy, 'G', ANTHILL, 0, 0, "서쪽 개미굴 입구로")); // [2026-10-28]
 
         double[][] score = new double[h][w];
         boolean[][] skip = new boolean[h][w];
@@ -1224,62 +1224,9 @@ public final class S5MineMap {
         return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
     }
 
-    /** [2026-10-28] 개미굴 입구(130x100) -- 사막 서쪽의 붉은 흙 황무지. 모래(d)와 자갈(r), 바위(R), 선인장(C), 곳곳에 흙더미 개미탑(바위 둥근 더미).
-     *  동쪽 끝 G = 사막 서쪽 문, 서쪽으로 굽이치는 3칸 흙길(,) 끝에 거대한 개미탑과 굴 입구(M) = 개미굴. 몬스터는 굴에 가까울수록(서쪽) 강하다(9~10단계). */
-    static S5MineMap generateAnthill(long seed) {
-        int w = 130, h = 100;
-        Random r = new Random(seed);
-        Noise rock = new Noise(seed * 31 + 121), soil = new Noise(seed * 31 + 122), rich = new Noise(seed * 31 + 123);
-        char[][] t = new char[h][w];
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            double rk = rock.fbm(x / 16.0, y / 16.0), so = soil.fbm(x / 10.0, y / 10.0);
-            char c = rk > 0.70 ? 'R' : so > 0.56 ? 'r' : 'd';
-            if (c != 'R' && r.nextDouble() < 0.01) c = 'C';
-            t[y][x] = c;
-        }
-        for (int k = 0; k < 16; k++) { // 흙더미 개미탑
-            int mx = 8 + r.nextInt(w - 16), my = 6 + r.nextInt(h - 12);
-            double rad = 1.6 + r.nextDouble() * 1.6;
-            for (int y = my - 4; y <= my + 4; y++) for (int x = mx - 4; x <= mx + 4; x++)
-                if (x > 0 && y > 0 && x < w - 1 && y < h - 1 && Math.hypot(x - mx, (y - my) * 1.2) <= rad) t[y][x] = 'R';
-        }
-        for (int x = 0; x < w; x++) { t[0][x] = 'R'; t[h - 1][x] = 'R'; }
-        for (int y = 0; y < h; y++) { t[y][0] = 'R'; t[y][w - 1] = 'R'; }
-        // 동쪽 문에서 서쪽 개미탑까지 3칸 흙길
-        int ey = h / 2, py = ey, mouthX = 14;
-        for (int x = w - 2; x >= mouthX; x--) {
-            if (r.nextDouble() < 0.25) py += r.nextBoolean() ? 1 : -1;
-            py = Math.max(12, Math.min(h - 13, py));
-            for (int dy = -1; dy <= 1; dy++) t[py + dy][x] = ',';
-        }
-        // 거대한 개미탑(반지름 7)과 동쪽 면의 굴 입구
-        int cx = mouthX - 7, cy = py;
-        for (int y = cy - 8; y <= cy + 8; y++) for (int x = 1; x <= cx + 8; x++)
-            if (y > 0 && y < h - 1 && Math.hypot(x - cx, (y - cy) * 1.1) <= 7.2) t[y][x] = 'R';
-        int mx = cx + 7;
-        while (mx > 1 && t[cy][mx] != 'R') mx--;
-        t[cy][mx] = 'M';
-        for (int x = mx + 1; x <= mouthX; x++) t[cy][x] = ',';
-        t[ey][w - 1] = 'G';
-        for (int x = w - 2; x >= w - 4; x--) t[ey][x] = ',';
-        int sx = w - 2, sy = ey;
-        boolean[][] reach = reachable(t, sx, sy);
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'R';
-        List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(w - 1, ey, 'G', DESERT, 0, 0, "동쪽 사막으로"));
-        portals.add(new Portal(mx, cy, 'M', ANTNEST, 0, 0, "개미굴로 들어가기"));
-        double[][] score = new double[h][w];
-        boolean[][] skip = new boolean[h][w];
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2 || Math.abs(x - mx) + Math.abs(y - cy) <= 2;
-            score[y][x] = 0.55 * rich.fbm(x / 14.0, y / 14.0) + 0.25 * (1.0 - (double) x / w) + 0.16 * r.nextDouble();
-        }
-        byte[][] o = assignOre(t, score, ANTHILL_SHARE, skip);
-        return new S5MineMap(ANTHILL, "개미굴 입구", false, w, h, sx, sy, t, o, portals);
-    }
-
-    /** [2026-10-28] 개미굴(150x150) -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7) 22개를 2칸 굴로 이어 붙인 미로. 아래 가운데 나가는 길(U) = 개미굴 입구.
-     *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 입구에서 가장 먼 방이 여왕의 방(반지름 9, 여왕개미 보스). 깊을수록 광석이 좋고 몬스터가 강하다(11~13단계). */
+    /** [2026-10-28] 개미굴(150x150) -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7) 22개를 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
+     *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 떨어진 곳에서 가장 먼 방이 여왕의 방(반지름 9, 여왕개미 보스).
+     *  나가는 굴 셋: 그다음으로 먼 방 가운데 서로 떨어진 세 곳에서 가장 가까운 가장자리까지 구불구불 판 굴 끝(U) = 피라미드. 멀수록 광석이 좋고 몬스터가 강하다(11~13단계). */
     static S5MineMap generateAntNest(long seed) {
         int w = 150, h = 150;
         Random r = new Random(seed);
@@ -1288,7 +1235,7 @@ public final class S5MineMap {
         for (char[] row : t) Arrays.fill(row, '#');
         int n = 22;
         int[][] rooms = new int[n][];
-        rooms[0] = new int[] { w / 2, h - 10, 5 }; // 들어오는 방
+        rooms[0] = new int[] { w / 2, h / 2, 5 }; // 떨어지는 방(한가운데)
         for (int i = 1; i < n; i++) {
             int[] best = null;
             for (int tries = 0; tries < 60; tries++) { // 다른 방과 떨어진 자리
@@ -1306,17 +1253,36 @@ public final class S5MineMap {
             antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[near][0], rooms[near][1]);
             if (i > 3 && r.nextDouble() < 0.3) { int j = 1 + r.nextInt(i - 1); antTunnel(t, r, rooms[i][0], rooms[i][1], rooms[j][0], rooms[j][1]); }
         }
-        int sx = rooms[0][0], sy = rooms[0][1] + 3;
-        for (int y = sy; y < h - 1; y++) for (int dx = -1; dx <= 1; dx++) t[y][sx + dx] = 'c';
-        t[h - 1][sx] = 'U';
-        // 여왕의 방 = 들어오는 칸에서 걸어서 가장 먼 방(반지름 9로 넓힌다)
+        int sx = rooms[0][0], sy = rooms[0][1];
+        // 여왕의 방 = 떨어진 칸에서 걸어서 가장 먼 방(반지름 9로 넓힌다)
         int[][] dist = bfsDist(t, sx, sy);
         int qi = 1;
         for (int i = 1; i < n; i++) if (dist[rooms[i][1]][rooms[i][0]] > dist[rooms[qi][1]][rooms[qi][0]]) qi = i;
         int qx = rooms[qi][0], qy = rooms[qi][1];
         carveRoom(t, qx, qy, 9);
+        // 나가는 굴 셋 -- 먼 방부터, 이미 고른 방/여왕의 방과 40칸 넘게 떨어진 방에서 가장 가까운 가장자리로
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(sx, h - 1, 'U', ANTHILL, 0, 0, "개미굴 입구로 나가기"));
+        Integer[] order = new Integer[n];
+        for (int i = 0; i < n; i++) order[i] = i;
+        final int[][] dd = dist;
+        final int[][] rm = rooms;
+        Arrays.sort(order, (a, b) -> Integer.compare(dd[rm[b][1]][rm[b][0]], dd[rm[a][1]][rm[a][0]]));
+        List<int[]> picked = new ArrayList<>();
+        picked.add(rooms[qi]);
+        for (int oi = 0; oi < n && portals.size() < 3; oi++) {
+            int[] ro = rooms[order[oi]];
+            if (order[oi] == 0 || ro == rooms[qi]) continue;
+            boolean far = true;
+            for (int[] p : picked) if (Math.hypot(ro[0] - p[0], ro[1] - p[1]) < 40) far = false;
+            if (!far && oi < n - 3) continue;
+            picked.add(ro);
+            int ex, ey; // 가장 가까운 가장자리
+            int dl = ro[0], dr = w - 1 - ro[0], du = ro[1], dn = h - 1 - ro[1], m = Math.min(Math.min(dl, dr), Math.min(du, dn));
+            if (m == dl) { ex = 0; ey = ro[1]; } else if (m == dr) { ex = w - 1; ey = ro[1]; } else if (m == du) { ex = ro[0]; ey = 0; } else { ex = ro[0]; ey = h - 1; }
+            antTunnel(t, r, ro[0], ro[1], Math.max(1, Math.min(w - 3, ex)), Math.max(1, Math.min(h - 3, ey)));
+            t[ey][ex] = 'U';
+            portals.add(new Portal(ex, ey, 'U', PYRAMID, 0, 0, "빛이 새어 드는 굴 -- 밖으로"));
+        }
         dist = bfsDist(t, sx, sy);
         int far = 1;
         for (int[] row : dist) for (int d : row) far = Math.max(far, d);
@@ -1331,6 +1297,31 @@ public final class S5MineMap {
         m.noMap = true;
         m.bossX = qx;
         m.bossY = qy;
+        return m;
+    }
+
+    /** [2026-10-28] 피라미드(90x90) -- 개미굴을 빠져나오면 닿는 모래 언덕. 가운데 큰 돌 피라미드(R, 31x31), 남쪽 입구에서 곧은 돌길(s)로
+     *  한가운데 방(9x9)까지, 방 가운데 보상 상자(NPC chest -- 사막의 심장, 맵 주기마다 한 번). 남쪽 아래에서 시작, 동쪽 문 G = 사막 서쪽. 몬스터/광석 없음. */
+    static S5MineMap generatePyramid(long seed) {
+        int w = 90, h = 90, cx = w / 2, cy = h / 2 - 4;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = r.nextDouble() < 0.02 ? 'C' : 'd';
+        for (int x = 0; x < w; x++) { t[0][x] = 'R'; t[h - 1][x] = 'R'; }
+        for (int y = 0; y < h; y++) { t[y][0] = 'R'; t[y][w - 1] = 'R'; }
+        int half = 15;
+        for (int y = cy - half; y <= cy + half; y++) for (int x = cx - half; x <= cx + half; x++) t[y][x] = 'R';
+        for (int y = cy - 4; y <= cy + 4; y++) for (int x = cx - 4; x <= cx + 4; x++) t[y][x] = 's'; // 보물 방
+        for (int y = cy + 5; y <= cy + half + 1; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = 's'; // 남쪽 입구 돌길
+        for (int y = cy + half + 2; y <= h - 8; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = ','; // 시작점에서 입구까지 흙길
+        int sx = cx, sy = h - 8;
+        int gy = h / 2;
+        for (int x = cx + half + 1; x < w - 1; x++) t[gy][x] = ','; // 동쪽 문까지
+        t[gy][w - 1] = 'G';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(w - 1, gy, 'G', DESERT, 0, 0, "동쪽 -- 사막으로"));
+        S5MineMap m = new S5MineMap(PYRAMID, "피라미드", false, w, h, sx, sy, t, new byte[h][w], portals);
+        m.safe.add(new int[] { cx, cy, 5 });
         return m;
     }
 

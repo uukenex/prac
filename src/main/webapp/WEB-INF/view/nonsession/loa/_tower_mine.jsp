@@ -36,6 +36,7 @@ var TowerMine = (function () {
   ORE_NAME[37] = '오팔'; ORE_COL[37] = ['#8ad8d0', '#fff0f8']; ORE_NAME[38] = '흑진주'; ORE_COL[38] = ['#3a3a4a', '#b8b8d0'];
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
+  ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
@@ -299,7 +300,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry') }; // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite() }; // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -354,6 +355,14 @@ var TowerMine = (function () {
     return outline(c, '#140d0a');
   }
   // [2026-10-28] 요일 동굴 문지기 -- 잿빛 두건 망토 노인, 손에 든 등불
+  // [2026-10-28] 피라미드 보상 상자 -- 금테 두른 나무 상자
+  function chestSprite() {
+    var c = mk(T, T), g = c.getContext('2d');
+    px(g, '#7a4a1f', 2, 6, 12, 8); px(g, '#9a6a2f', 2, 3, 12, 4); px(g, '#5a3414', 2, 7, 12, 1);
+    px(g, '#ffd23f', 2, 3, 1, 11); px(g, '#ffd23f', 13, 3, 1, 11); px(g, '#ffd23f', 7, 6, 2, 3); px(g, '#fff3b0', 7, 7);
+    px(g, '#e8c27a', 0, 14, 16, 2); px(g, '#d6ae64', 3, 14, 4, 1);
+    return outline(c, '#140d0a');
+  }
   function keeperSprite() {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#e8c09a';
     px(g, '#5a5560', 3, 5, 10, 10); px(g, '#46424c', 3, 5, 1, 10); px(g, '#46424c', 12, 5, 1, 10);
@@ -503,6 +512,14 @@ var TowerMine = (function () {
       px(g, '#e8466a', 5, 6, 2, 1); px(g, '#e8466a', 9, 6, 2, 1); px(g, '#e8466a', 4, 7, 8, 2); px(g, '#e8466a', 5, 9, 6, 1); px(g, '#e8466a', 6, 10, 4, 1); px(g, '#e8466a', 7, 11, 2, 1);
       px(g, '#ffb0c0', 5, 7);
       outline(c, '#0a2a3a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
+    if (grade === 39) { // [2026-10-28] 사막의 심장 -- 모래빛 심장 둘레에 흩날리는 모래
+      px(g, '#e8a23a', 4, 4, 3, 2); px(g, '#e8a23a', 9, 4, 3, 2); px(g, '#e8a23a', 3, 5, 10, 4); px(g, '#e8a23a', 4, 9, 8, 1); px(g, '#e8a23a', 5, 10, 6, 1); px(g, '#e8a23a', 6, 11, 4, 1); px(g, '#e8a23a', 7, 12, 2, 1);
+      px(g, '#b06a1a', 9, 8, 3, 1); px(g, '#b06a1a', 8, 10, 3, 1); px(g, '#fff0c0', 5, 5, 2, 1); px(g, '#fff0c0', 4, 6);
+      px(g, '#f4d68a', 1, 2); px(g, '#f4d68a', 14, 3); px(g, '#f4d68a', 13, 12); px(g, '#f4d68a', 2, 11);
+      outline(c, '#3a2008');
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
@@ -820,8 +837,9 @@ var TowerMine = (function () {
   //  가로세로 1.8배 넘게 긴 맵은 플레이어 주변 정사각 창만 보여 주고(따라 움직임), 그 밖의 정사각이 아닌 맵은 늘리지 않고 비율 그대로(CSS object-fit).
   function miniView() {
     var w = map.w, h = map.h;
-    if (w > h * 1.8) return { x0: Math.max(0, Math.min(w - h, Math.round(P.x - h / 2))), y0: 0, w: h, h: h };
-    if (h > w * 1.8) return { x0: 0, y0: Math.max(0, Math.min(h - w, Math.round(P.y - w / 2))), w: w, h: w };
+    // [2026-10-28] "늘어져 보이는 걸 방지, 좌우로 기니 상하 레터박스, 전체를 볼 수 있어야" -- 긴 맵도 통째로, 정사각 캔버스 가운데에 두고 위아래(좌우) 빈 띠
+    if (w > h * 1.8) return { x0: 0, y0: -Math.floor((w - h) / 2), w: w, h: w };
+    if (h > w * 1.8) return { x0: -Math.floor((h - w) / 2), y0: 0, w: h, h: h };
     return { x0: 0, y0: 0, w: w, h: h };
   }
   function buildMiniBase() {
@@ -837,11 +855,12 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff' };
+    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
     miniCtx.clearRect(0, 0, v.w, v.h);
+    if (v.x0 < 0 || v.y0 < 0) { miniCtx.fillStyle = '#0b0912'; miniCtx.fillRect(0, 0, v.w, v.h); } // 레터박스 띠
     if (map.noMap) { // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
       miniCtx.fillStyle = '#120c08'; miniCtx.fillRect(0, 0, v.w, v.h);
       miniCtx.fillStyle = '#6a4a30'; miniCtx.font = 'bold ' + Math.round(v.w / 5) + 'px sans-serif'; miniCtx.textAlign = 'center'; miniCtx.textBaseline = 'middle';
@@ -920,6 +939,7 @@ var TowerMine = (function () {
     if (P.moving && now - P.t0 >= STEP_MS) {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
+      antFallCheck(); // [2026-10-28] 사막 서쪽 -- 개미굴
     }
     if (!P.moving && !busy && now - P.digT0 > 380) {
       var d = heldDir() || tapDir;
@@ -985,6 +1005,7 @@ var TowerMine = (function () {
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
     else if (n.kind === 'ninjaquest' || n.kind === 'boatwright' || n.kind === 'ferry') { setAuto(false); openSmith(n, 'archi'); } // [2026-10-28] 다도해
+    else if (n.kind === 'chest') openChest(n); // [2026-10-28] 피라미드 보상 상자
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
   function oreHave(g) {
@@ -1187,8 +1208,8 @@ var TowerMine = (function () {
     { id: 'cave3', name: '광산 동굴 3층', x: 52, y: 52, fill: '#2a2230', ink: '#e8d8ff' },
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
-    { id: 'anthill', name: '개미굴 입구', x: -42, y: 172, fill: '#b0703a', ink: '#fff', w: 76 }, // [2026-10-28] 사막 서쪽
-    { id: 'antnest', name: '개미굴 🐜', x: -42, y: 242, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 },
+    { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
+    { id: 'pyramid', name: '피라미드 📦', x: -42, y: 242, fill: '#d8b060', ink: '#3b2a10', w: 76 }, // 개미굴을 빠져나오면
     { id: 'cave2', name: '광산 동굴 2층', x: 52, y: 122, fill: '#4a3d33', ink: '#fff' },
     { id: 'cave1', name: '광산 동굴 1층', x: 52, y: 192, fill: '#6b5b4b', ink: '#fff' },
     { id: 'dungeon', name: '요일 던전', x: 52, y: 252, fill: '#5b4d40', ink: '#fff' },
@@ -1234,7 +1255,7 @@ var TowerMine = (function () {
         + line('archi', 'shrine', walk) + line('shrine', 'shrine2', walk) + line('shrine2', 'shrine3', walk) + line('archi', 'shrineboss', walk) + line('archi', 'archisea', sea, '⛵')
         + line('north', 'snow1', walk) + line('snow1', 'snow2', walk) + line('snow2', 'snow3', walk) + line('snow3', 'snowtown', walk)
         + line('snowtown', 'royalroad', walk) + line('royalroad', 'city', walk) + line('royalroad', 'ruins', walk)
-        + line('field', 'desert', walk) + line('desert', 'anthill', walk) + line('anthill', 'antnest', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
+        + line('field', 'desert', walk) + line('desert', 'antnest', 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"', '🕳️') + line('antnest', 'pyramid', walk) + line('desert', 'steppe', walk) + line('steppe', 'city', walk) + line('field', 'cave1', walk) + line('cave1', 'cave2', walk) + line('cave2', 'cave3', walk) + line('field', 'dungeon', walk) + line('field', 'castle', walk)
         + line('field', 'beach', walk) + line('beach', 'island', sea, '⛵') + line('island', 'archi', sea, '⛵')
         + (N.beach && N.north ? '<path d="M208 344 H314 V100 H310" fill="none" ' + sea + '/><text x="280" y="318" class="wl">⛵ 배</text>' : '');
     // [2026-10-28] 보스 맵 -- 지금 있으면 "👑 출현 중", 이번 주기에 잡혔으면 다음 리셋 시각(보스는 맵 리셋 때마다 한 번)
@@ -2310,6 +2331,30 @@ var TowerMine = (function () {
   function fadeIn(label) {
     fade = { mode: 'in', t0: performance.now() };
     if (label) banner = { text: label, t0: performance.now() };
+  }
+  // [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(맵 주기마다 한 번)
+  var chestBusy = false;
+  function openChest(n) {
+    if (chestBusy) return;
+    chestBusy = true;
+    api('/api/tower-mine-chest').then(function (d) {
+      chestBusy = false;
+      if (d && d.ores) st.ores = d.ores;
+      if (d && d.ok) {
+        flashT0 = performance.now();
+        var im = new Image(); im.src = oreIcon(d.grade || 39);
+        floats.push({ x: n.x, y: n.y - 0.6, text: '+1 사막의 심장', color: '#ffc04a', big: true, icon: im, t0: performance.now() });
+      }
+      msg((d && (d.message || d.error)) || '상자를 열지 못했어요.', 4200);
+    }).catch(function () { chestBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  // [2026-10-28] 사막 서쪽(DESERT_FALL_X 왼쪽)을 걸으면 한 칸마다 ANT_FALL_P 확률로 개미굴에 빠진다
+  var ANT_FALL_X = 0.3, ANT_FALL_P = 0.012;
+  function antFallCheck() {
+    if (!map || map.id !== 'desert' || busy || fade || smithOpen || P.x >= map.w * ANT_FALL_X || Math.random() >= ANT_FALL_P) return;
+    setAuto(false);
+    flashT0 = performance.now();
+    travel('/api/tower-mine-antfall?mapId=desert&x=' + P.x + '&y=' + P.y, '모래가 꺼질 뻔했지만 무사했어요.');
   }
   /** 이동 요청 공통 -- 성공하면 새 상태로 바꾼 뒤 페이드 인, 실패하면 원래 화면으로 페이드 인. */
   function travel(path, failText) {

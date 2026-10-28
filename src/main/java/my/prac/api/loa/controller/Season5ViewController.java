@@ -839,6 +839,27 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineScan(userName, mapId, x, y));
     }
 
+    /** [2026-10-28] 웹 광산 사막 서쪽 -- 개미굴로 떨어지기(화면이 걸을 때 확률로). */
+    @GetMapping("/api/tower-mine-antfall")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineAntFall(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineAntFall(userName, mapId, x, y);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 개미굴에 빠짐 (" + x + ", " + y + ")", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
+    /** [2026-10-28] 웹 광산 피라미드 보상 상자. */
+    @GetMapping("/api/tower-mine-chest")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineChest(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineDesertChest(userName);
+        mineLog(userName, "[웹] 광산 피라미드 보상 상자", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-24] 웹 광산 관리자 전용 좌표 이동. */
     @GetMapping("/api/tower-mine-admin-warp")
     @ResponseBody

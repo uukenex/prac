@@ -291,6 +291,12 @@ public interface BotS5Service {
     /** [2026-10-24] 관리자 전용 광산 좌표 이동(MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS). */
     HashMap<String, Object> mineAdminWarp(String userName, String mapId, int x, int y);
 
+    /** [2026-10-28] 사막 서쪽에서 개미굴로 떨어지기. */
+    HashMap<String, Object> mineAntFall(String userName, String mapId, int x, int y);
+
+    /** [2026-10-28] 피라미드 보상 상자(사막의 심장, 맵 주기마다 한 번). */
+    HashMap<String, Object> mineDesertChest(String userName);
+
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);
 

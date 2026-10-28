@@ -8702,8 +8702,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.PEAK, 90);
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
-        MINE_MIN_LV.put(S5MineMap.ANTHILL, 33); // [2026-10-28] 개미굴 입구(9~10단계), 개미굴(11~13단계 + 여왕개미 14단계)
-        MINE_MIN_LV.put(S5MineMap.ANTNEST, 41);
+        MINE_MIN_LV.put(S5MineMap.ANTNEST, 41); // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
         MINE_MIN_LV.put(S5MineMap.SNOW1, 33); // [2026-10-26] 설산 1층(10~11단계), 2층(11~12), 3층(12~13), 설산 마을
         MINE_MIN_LV.put(S5MineMap.SNOW2, 37);
@@ -8948,7 +8947,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE };
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE };
         sc = mineWithSeaGems(sc); // [2026-10-28] 다도해 바다 보석(34~38) // [2026-10-28] 달빛석(20), 비급서(32), 얼음의 심장(33)
         for (String c : sc) {
             HashMap<String, Object> o = new HashMap<>();
@@ -11062,6 +11061,69 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
+    /** [2026-10-28] 사막 서쪽(S5MineMap.DESERT_FALL_X 왼쪽)을 걷다가 화면이 확률로 부른다 -- 개미굴 한가운데로 떨어진다.
+     *  사막의 그 칸에 있는지(이동 기록 검사)만 확인하고, 확률은 화면이 정한다(빠지고 싶어서 일부러 부르는 건 막을 이유가 없다). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAntFall(String userName, String mapId, int x, int y) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        if (!S5MineMap.DESERT.equals(map.id) || !S5MineMap.DESERT.equals(mapId) || x >= map.w * S5MineMap.DESERT_FALL_X || !map.walkable(x, y)) return out;
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        if (mineFrozen(userName, now) != null) return out;
+        mineDisengageAll(userName);
+        S5MineMap nest = S5MineMap.get(S5MineMap.ANTNEST);
+        dao.updateMinePos(userName, nest.id, nest.spawnX, nest.spawnY, now);
+        out.put("ok", true);
+        out.put("message", "🕳️ 모래가 꺼지며 아래로 쑥 빨려 들어갔어요... 여기는 개미굴! 지도도 보이지 않아요. 빛이 새어 드는 나가는 굴을 찾아야 해요.");
+        out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** [2026-10-28] 피라미드 보상 상자 -- 상자 2칸 안에서 열면 사막의 심장 1개. 맵 주기마다 한 번(DESERT_CHEST = 주기 + 1). */
+    static final String MINE_ITEM_DESERT_CHEST = "DESERT_CHEST";
+
+    private static String mineResetText() {
+        java.time.ZonedDateTime z = java.time.Instant.ofEpochMilli(S5MineMap.nextResetAt(System.currentTimeMillis())).atZone(KST);
+        return z.getMonthValue() + "/" + z.getDayOfMonth() + " " + String.format("%02d:%02d", z.getHour(), z.getMinute());
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineDesertChest(String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        S5MineMap.Npc chest = null;
+        for (S5MineMap.Npc n : map.npcs()) if ("chest".equals(n.kind)) chest = n;
+        int[] pos = minePos(row, map, 0);
+        if (chest == null || Math.abs(pos[0] - chest.x) + Math.abs(pos[1] - chest.y) > 2) { out.put("message", "상자 바로 앞에서 열어 주세요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        int cyc = S5MineMap.activeCycle() + 1;
+        if (items.getOrDefault(MINE_ITEM_DESERT_CHEST, 0) == cyc) {
+            out.put("message", "📦 이미 열어 본 상자예요. 텅 비어 있어요... 맵 리셋(" + mineResetText() + ") 뒤에 다시 개미굴을 빠져나오면 또 열려요.");
+            return out;
+        }
+        dao.upsertMineItem(userName, MINE_ITEM_DESERT_CHEST, cyc);
+        dao.addUserOre(userName, S5MineMap.DESERT_HEART_CODE, 1);
+        out.put("ok", true);
+        out.put("grade", S5MineMap.DESERT_HEART_GRADE);
+        out.put("message", "📦 상자가 열렸어요! 모래빛으로 고동치는 🧡 " + S5MineMap.DESERT_HEART_NAME + "을(를) 얻었어요!");
+        out.put("ores", mineOreList(userName));
+        return out;
+    }
+
     /** [2026-10-23] "마을로 이동" 버튼 -- 어느 맵 어디에 있든 중앙 평원 마을(시작점)으로 바로 옮긴다(이동 기록 검사 없음, 스태미너 소모 없음). */
     @Override
     public HashMap<String, Object> mineGoVillage(String userName) {
@@ -11073,6 +11135,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         if (mineFrozen(userName, now) != null) { out.put("ok", false); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
         if (mineEngaged(userName, now)) { out.put("ok", false); out.put("message", MINE_FIGHT_BLOCK); return out; } // [2026-10-25]
+        HashMap<String, Object> vr = dao.selectMineUser(userName);
+        if (vr != null && S5MineMap.ANTNEST.equals(strVal(vr.get("MAP_ID"), ""))) { // [2026-10-28] "개미굴에선 마을 이동 안 됨" -- 나가는 굴을 찾아야 한다
+            out.put("ok", false);
+            out.put("message", "🐜 개미굴에서는 마을로 갈 수 없어요! 빛이 새어 드는 나가는 굴을 찾아야 해요. (어딘가 가장자리에 세 곳)");
+            return out;
+        }
         // [2026-10-25] "부활 거점을 골랐는데 마을 이동을 누르면 거점으로 안 간다" -- 성당에서 기도했으면 왕도 성당으로(mineRespawn과 같은 곳)
         String where = mineRespawn(userName, mineItems(userName), now);
         out.put("ok", true);
@@ -11645,6 +11713,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.SEA_GEM_CODES[i].equals(code)) return S5MineMap.SEA_GEM_GRADE_BASE + i; // [2026-10-28] 바다 보석
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
         if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
+        if (S5MineMap.DESERT_HEART_CODE.equals(code)) return S5MineMap.DESERT_HEART_GRADE; // [2026-10-28] 피라미드 보상 상자
         return 0;
     }
 
@@ -11656,6 +11725,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g == S5MineMap.NINJA_BOOK_GRADE) return S5MineMap.NINJA_BOOK_NAME;
         if (g >= S5MineMap.SEA_GEM_GRADE_BASE && g < S5MineMap.SEA_GEM_GRADE_BASE + S5MineMap.SEA_GEM_CODES.length) return S5MineMap.SEA_GEM_NAMES[g - S5MineMap.SEA_GEM_GRADE_BASE]; // [2026-10-28] 바다 보석(보석 줄보다 먼저)
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
+        if (g == S5MineMap.DESERT_HEART_GRADE) return S5MineMap.DESERT_HEART_NAME; // [2026-10-28]
         if (g >= S5MineMap.GEM_GRADE_BASE) return S5MineMap.GEM_NAMES[g - S5MineMap.GEM_GRADE_BASE];
         if (g == S5MineMap.SEVEN_STONE_GRADE) return S5MineMap.SEVEN_STONE_NAME;
         return mineGradeName(g);
