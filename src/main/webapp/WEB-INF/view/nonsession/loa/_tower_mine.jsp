@@ -736,11 +736,12 @@ var TowerMine = (function () {
   }
   function hpNow() {
     var c = st && st.combat;
-    if (c && c.fight) return Math.min(c.hpMax, c.hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
     if (!c) return 0;
     // [2026-10-26] 서버와 같이 마지막 전투 뒤 대기(regenFrom, 서버 시각)가 지나야 차오른다. c.hp = 서버 시각 c.at 때의 체력.
-    var tSrv = c.at + (Date.now() - combatT0), from = Math.max(c.at, c.regenFrom || 0);
-    return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax / (c.fullMs || 60000)));
+    // [2026-10-28] 전투 중에도 1/4 속도로(대기 없이), 그늘/모닥불 등 안전지대에선 x1.5(서버 mineHpNow와 같은 식)
+    var tSrv = c.at + (Date.now() - combatT0), from = c.fight ? c.at : Math.max(c.at, c.regenFrom || 0);
+    var mul = (c.fight ? (c.regenFight != null ? c.regenFight : 0) : 1) * (inSafe() ? (c.regenSafe || 1) : 1);
+    return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000)));
   }
   function renderHp() {
     var c = st && st.combat;
@@ -1263,7 +1264,8 @@ var TowerMine = (function () {
   var EQ_SLOTS = [
     { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
-    { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' }
+    { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
+    { id: 'tool', name: '⛏️ 곡괭이', hint: '하나만 낄 수 있어요(빼면 기본 곡괭이)', none: '특수 곡괭이가 없어요. 대장장이에게서 광역/탐지/쌍날 곡괭이를 만들 수 있어요.' } // [2026-10-28] 곡괭이도 장비 창에서
   ];
   // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
   var equipTab = 'gear';
@@ -1784,7 +1786,7 @@ var TowerMine = (function () {
     var fight = !!(st.combat && st.combat.fight), nearBoss = false, bt = null;
     if (map.mobs && map.mobs.length) {
       var boss = map.mobs[map.mobs.length - 1]; bt = map.mobTypes[boss.k];
-      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.aggro || (bt.stay ? 4 : 2))); // [2026-10-28] 대주교/얼음 여왕은 4칸
+      nearBoss = !!(bt && bt.boss && boss._p && Math.abs(boss._p.cx - P.x) + Math.abs(boss._p.cy - P.y) <= (bt.aggro || (bt.stay ? 4 : 2))); // [2026-10-28] 보스 12칸(서버가 aggro로 보냄)
     }
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
     var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
@@ -1919,7 +1921,7 @@ var TowerMine = (function () {
     var txt = inSafe() ? '🔥 안전지대' : eff > 0 ? '🥶 한기 -' + rateTxt(cold && cold.coldRate != null ? cold.coldRate : eff) + '%/초' : '🧥 한기 막음'; // [2026-10-28] 짧게(화면 가림)
     if (left > 0 && left <= 10000) txt += ' 🌨️' + Math.ceil(left / 1000) + '초';
     if (map.ice) { // [2026-10-28] 설산 봉우리 -- 언 동안 남은 초 / 여왕이 깨어 있으면 다음 빙결까지
-      if (frozenMe()) txt = '🧊 빙결 ' + Math.max(0, Math.ceil((iceSt.frozen.until - nowSrv()) / 1000)) + '초';
+      if (frozenMe()) txt = '🧊 빙결 -- 동료가 와야 풀려요'; // [2026-10-28] 저절로 안 녹는다
       else if (iceSt && iceSt.awake && iceSt.next > nowSrv()) txt += ' ❄️' + Math.ceil((iceSt.next - nowSrv()) / 1000) + '초';
     }
     if (el.cold._t !== txt) { el.cold._t = txt; el.cold.textContent = txt; }
@@ -2165,7 +2167,7 @@ var TowerMine = (function () {
       lastSaved = map.id + ':' + P.x + ',' + P.y;
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
-      if (d.evade) floats.push({ x: fxp, y: fyp, text: '💨 은신!', color: '#c8c8ff', big: true, t0: t });
+      if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
       else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
       if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });

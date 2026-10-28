@@ -9178,7 +9178,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
-            if (ty.aggro > 0) m.put("aggro", ty.aggro); // [2026-10-28] 보스 선공 거리
+            if (ty.boss) m.put("aggro", MINE_BOSS_AGGRO_RANGE); // [2026-10-28] 보스 선공 거리 12칸
             if (ty.ninja) m.put("ninja", true); // [2026-10-28] 은신(화면은 반투명)
             if (ty.clone) m.put("clone", true); // [2026-10-28] 닌자 두목의 분신 -- 화면은 두목(맵 마지막 몬스터)과 똑같이 그린다
             out.add(m);
@@ -9205,12 +9205,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         String target;   // [2026-10-25] 쫓아가는 유저(인식 중)
         long lastMoveAt; // 마지막으로 한 칸 쫓아온 시각
         boolean stealth;  // [2026-10-28] 닌자 은신 중(공격을 피했고 다음 한 방이 2배)
+        int stealthHits;  // [2026-10-28] 닌자 두목 -- 은신 중 받은 공격 수(MINE_BOSS_STEALTH_HITS번째에 풀림)
         long splitUntil;  // [2026-10-28] 닌자 두목 분신술이 끝나는 시각(그 전엔 제자리, 안 때림)
         int splitStage;   // 지금까지 쓴 분신술 횟수(체력 75/50/25% 아래로 내려갈 때마다 한 번)
         java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
-        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; splitUntil = 0; splitStage = 0; hitters = null; }
+        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; }
     }
 
     private static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -9232,6 +9233,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
+    /** [2026-10-28] "환생 보너스 추가 광석은 미스릴 이하 광석만" -- 구리~미스릴(등급 1~5) 광석일 때만 x(1 + 회차), 별빛석/요일석/보석 등은 1배. */
+    static int mineRebirthGain(Map<String, Integer> items, int grade, String code) {
+        return grade >= 1 && grade <= 5 && S5MineMap.ORE_CODES[grade - 1].equals(code) ? mineRebirthGain(items) : 1;
+    }
     static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
     static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(5, rb)); }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
@@ -9291,20 +9296,29 @@ public class BotS5ServiceImpl implements BotS5Service {
      *  이만큼 지나야 회복이 시작된다. */
     private static final long MINE_REGEN_DELAY_MS = 10_000L;
 
+    /** [2026-10-28] "체력 회복은 전투 중이어도 서서히, 그늘이나 모닥불 근처에서는 조금씩 더" -- 전투 중(인식됨)엔 평소의 1/4 속도로(대기 없이),
+     *  안전지대(그늘/모닥불/마을 등 map.safeAt)에 서 있으면 x1.5. 화면(hpNow)도 같은 식. */
+    static final double MINE_REGEN_FIGHT_MUL = 0.25, MINE_REGEN_SAFE_MUL = 1.5;
+
     /** 지금 체력(저장된 체력 + 저장 시각 + MINE_REGEN_DELAY_MS부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계, rb = 환생 횟수. */
     private int mineHpNow(HashMap<String, Object> row, long now, int lock, int rb) {
         int max = mineHpCap(mineLv(row), lock, rb);
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
-        if (mineEngaged(strVal(row.get("USER_NAME"), null), now)) return Math.min(max, hp); // [2026-10-25] 몬스터에게 인식돼 있으면 회복 없음
-        long from = longOf(row.get("M_HP_AT_MS"), now) + MINE_REGEN_DELAY_MS;
-        return (int) Math.min(max, hp + Math.max(0, now - from) * max / MINE_HP_FULL_MS);
+        boolean fight = mineEngaged(strVal(row.get("USER_NAME"), null), now);
+        long from = longOf(row.get("M_HP_AT_MS"), now) + (fight ? 0 : MINE_REGEN_DELAY_MS);
+        double mul = fight ? MINE_REGEN_FIGHT_MUL : 1;
+        S5MineMap m = mineMapOf(row);
+        if (m != null && row.get("POS_X") != null && m.safeAt(intVal(row.get("POS_X"), -1), intVal(row.get("POS_Y"), -1))) mul *= MINE_REGEN_SAFE_MUL;
+        return (int) Math.min(max, hp + (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS));
     }
 
     private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock, int rb) {
         HashMap<String, Object> c = mineCombatInfo(lv, exp, hp, now, rb);
         c.put("regenFrom", now + MINE_REGEN_DELAY_MS); // [2026-10-26] 화면도 이때부터 체력을 올린다(지금 저장했으니 지금 + 대기)
-        c.put("fight", fight); // [2026-10-25] 인식 중(화면도 체력을 안 올리고 1초마다 전투 턴을 부른다)
+        c.put("fight", fight); // [2026-10-25] 인식 중(화면은 1초마다 전투 턴을 부른다), [2026-10-28] 체력은 1/4 속도로 찬다
+        c.put("regenFight", MINE_REGEN_FIGHT_MUL);
+        c.put("regenSafe", MINE_REGEN_SAFE_MUL);
         c.put("hpMax", mineHpCap(lv, lock, rb)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
         c.put("hpBase", mineHpMax(lv, rb));
         c.put("hpLock", Math.min(MINE_HP_LOCK_MAX, lock) * 10);
@@ -9429,6 +9443,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  (때릴 때마다 받는 반격도 한 턴으로 친다). 몬스터와 MINE_AGGRO_RANGE칸 이상 벌어지면 인식이 풀리고, 인식이 모두 풀리면 그때부터 체력이 서서히 찬다(10-25 "가득" -> "서서히").
     //  몬스터를 쓰러뜨려 인식이 끝나면 그때부터 다시 저절로 찬다. 화면을 닫아 10초 넘게 소식이 없으면 인식 중이 아닌 것으로 본다.
     private static final int MINE_AGGRO_RANGE = 5;
+    static final int MINE_BOSS_AGGRO_RANGE = 12;
     private static final long MINE_MOB_STRIKE_GAP_MS = 1_500L;
     private static final long MINE_CHASE_STEP_MS = 600L;
     private static final long MINE_ENGAGE_TTL_MS = 10_000L;
@@ -9494,7 +9509,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (boss != null && !mineBossDead(boss.type) && (e == null || !e.mobs.containsKey(boss.id))) {
             S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
             MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bt.hp()));
-            int aggro = bt.aggro > 0 ? bt.aggro : bt.stay ? 4 : 2; // [2026-10-28] 대주교는 4칸(풀리는 거리 5칸보다 안쪽), 얼음 여왕도 4칸(aggroRange)
+            int aggro = MINE_BOSS_AGGRO_RANGE; // [2026-10-28] "보스맵 구간은 인식범위 12칸, 한번 어그로가 잡히면 맵을 벗어나야만 풀리게" (예전 2칸, 대주교/얼음 여왕 4칸)
             synchronized (bs) {
                 if (bs.deadUntil > 0 && bs.deadUntil <= now) bs.respawn(bt.hp()); // 다시 나타남(대주교 1시간, [2026-10-28] 닌자 두목 10분)
                 if (bs.deadUntil <= now && bs.splitUntil <= now) { // [2026-10-28] 분신술 중엔 다가가도 먼저 덤비지 않는다(들키지 않게)
@@ -9553,7 +9568,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
-                if (dist >= (!type.boss && mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE) && !(iceHeld && id == boss.id)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다
+                if (!type.boss && dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
@@ -9583,7 +9598,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 Long last = e.mobs.get(id);
                 if (dist <= 1 && !splitting && (last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
                     int d = Math.max(1, (int) Math.round(type.atk() * (0.8 + RND.nextDouble() * 0.4))) * (mineCoatDef(items) > 0 ? 2 : 1); // [2026-10-26] 방한 외투 = 2배
-                    boolean x2 = s.stealth; // [2026-10-28] 은신했던 닌자의 기습 -- 2배
+                    boolean x2 = s.stealth && map.mobs().get(id).type != S5MineMobs.SHRINE_BOSS_TYPE; // [2026-10-28] 은신했던 닌자의 기습 -- 2배(닌자 두목은 은신을 유지한 채 보통 세기)
                     if (x2) { d *= MINE_NINJA_STEALTH_MULT; s.stealth = false; }
                     if (iceHeld && id == boss.id) { d = Math.max(d, hp - dmgSum); shattered = true; } // [2026-10-28] 언 채로 맞으면 즉사
                     dmgSum += d;
@@ -9739,7 +9754,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static final long MINE_ICE_FIRST_MS = 8_000L, MINE_ICE_PERIOD_MS = 18_000L, MINE_ICE_FREEZE_MS = 15_000L;
     private static final int MINE_ICE_RESCUE_RANGE = 2;
     private static final long MINE_ICE_FRESH_MS = 3_000L;
-    private static final String MINE_FROZEN_BLOCK = "🧊 얼어붙어서 꼼짝할 수 없어요! 동료가 곁(2칸)에 오면 풀려요. (혼자면 잠시 뒤 녹아요)";
+    private static final String MINE_FROZEN_BLOCK = "🧊 얼어붙어서 꼼짝할 수 없어요! 동료가 곁(2칸)에 와야만 풀려요.";
     private static volatile long mineIceAwakeUntil = 0;
     private static volatile long mineIceNextFreeze = 0;
     private static final Object MINE_ICE_LOCK = new Object();
@@ -9771,7 +9786,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static IceFreeze mineFrozen(String userName, long now) {
         IceFreeze f = userName == null ? null : MINE_ICE_FROZEN.get(userName);
         if (f == null) return null;
-        if (f.until <= now || !f.mapVer.equals(S5MineMap.get(S5MineMap.PEAK).version())) {
+        if ((f.until <= now && mineIceAwakeUntil <= now) || !f.mapVer.equals(S5MineMap.get(S5MineMap.PEAK).version())) { // [2026-10-28] "빙결이 안 풀리게" -- 여왕이 깨어 있는 동안은 시간이 지나도 안 녹는다
             if (MINE_ICE_FROZEN.remove(userName, f)) MINE_ICE_THAWED.put(userName, "melted");
             return null;
         }
@@ -9847,7 +9862,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             HashMap<String, Object> fz = new HashMap<>();
             fz.put("x", me.x);
             fz.put("y", me.y);
-            fz.put("until", me.until);
+            fz.put("until", Math.max(me.until, now + 3000)); // [2026-10-28] 여왕이 깨어 있는 동안은 계속 언 채로(화면이 저절로 풀린 걸로 보지 않게)
             out.put("frozen", fz);
         }
         String th = MINE_ICE_THAWED.remove(userName);
@@ -9886,6 +9901,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  이미 받은 사람은 일반 몬스터 보상(광석/보석). 보상이 한 사람에 한 번이라 다른 보스처럼 맵 리셋마다 한 번이 아니라 10분 뒤 다시 나타난다.
     static final int MINE_NINJA_STEALTH_PCT = 15;
     static final int MINE_NINJA_STEALTH_MULT = 2;
+    /** [2026-10-28] "자객 보스는 은신이 3회 공격 시까지 안 풀리게" -- 닌자 두목은 은신 중 공격 1, 2번째도 피하고 3번째에 풀리며 맞는다(그때 2배 반격).
+     *  은신 중에도 보통 세기로 때리지만 은신은 안 풀린다(mineCombatTick). */
+    static final int MINE_BOSS_STEALTH_HITS = 3;
     private static final long MINE_SPLIT_MS = 30_000L;
     private static final double MINE_CLONE_TRAP_MULT = 1.0;
     private static final int MINE_CLONE_HEAL_PCT = 5;
@@ -10017,7 +10035,17 @@ public class BotS5ServiceImpl implements BotS5Service {
                 s.deadUntil = Long.MAX_VALUE / 2;
                 s.frozenUntil = 0;
                 counter = Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4)));
+            } else if (shrineBoss && s.stealth && ++s.stealthHits < MINE_BOSS_STEALTH_HITS) { // [2026-10-28] 닌자 두목 은신 -- 3번째 공격까지 계속 피한다
+                evade = true;
+                dmg = 0;
+                crit = false;
+                s.lastHitAt = now;
+                s.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
+                mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2);
+                out.put("stealthLeft", MINE_BOSS_STEALTH_HITS - s.stealthHits);
             } else if (type.ninja && !s.stealth && s.splitUntil <= now && RND.nextInt(100) < MINE_NINJA_STEALTH_PCT) { // [2026-10-28] 은신 -- 공격을 피한다
+                if (shrineBoss) { s.stealthHits = 0; out.put("stealthLeft", MINE_BOSS_STEALTH_HITS); }
                 evade = true;
                 dmg = 0;
                 crit = false;
@@ -10214,7 +10242,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (r < 55) { g = Math.max(1, b - 1); qty += RND.nextInt(2); }
             else if (r < 92) g = Math.min(b, 4);
             else g = type.tier >= 9 ? 5 : Math.min(b + 1, 4);
-            qty *= mineRebirthGain(mineItems(userName)); // [2026-10-28] 환생 x(1 + 회차)
+            qty *= mineRebirthGain(mineItems(userName)); // [2026-10-28] 환생 x(1 + 회차) -- 여기 g는 늘 구리~미스릴
             dao.addUserOre(userName, S5MineMap.ORE_CODES[g - 1], qty);
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
@@ -10599,7 +10627,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-24] 풍요의 반지 -- 확률로 2개
         int dbl = MINE_PLENTY_DOUBLE_PCT[mineRingTier(items, MINE_ITEM_PLENTY_RING)];
-        int gain = (dbl > 0 && RND.nextInt(100) < dbl ? 2 : 1) * mineRebirthGain(items); // [2026-10-28] 환생 x(1 + 회차)
+        int gain = (dbl > 0 && RND.nextInt(100) < dbl ? 2 : 1) * mineRebirthGain(items, g, code); // [2026-10-28] 환생 x(1 + 회차) -- 미스릴 이하 광석만
         dao.insertMineDug(userName, dugKey, y * map.w + x, g, now);
         dao.addUserOre(userName, code, gain);
         HashMap<String, Object> r = new HashMap<>();
@@ -10919,7 +10947,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
-    private static final String MINE_FIGHT_BLOCK = "⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어져 인식을 풀고 나서 이동할 수 있어요.";
+    private static final String MINE_FIGHT_BLOCK = "⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어져 인식을 풀고 나서 이동할 수 있어요. (보스는 포탈로 맵을 벗어나야 풀려요)";
 
     /** [2026-10-25] 이동 안내원 -- "마을 간 이동이 활성화되는 느낌, NPC로": 안내원 2칸 안에서 다른 안내원 맵(마을만: 평원 마을/왕도, 왕도는 아직 관리자만)의
      *  안내원 옆으로 무료로 옮긴다. 전투 중(몬스터 인식)엔 안 된다. */
@@ -11620,6 +11648,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (items.getOrDefault(MINE_ITEM_COAT1, 0) > 0) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
         if (items.getOrDefault(MINE_ITEM_COAT2, 0) > 0) out.add(mineEquipRow("coat", MINE_ITEM_COAT2, "두꺼운 방한 외투", "한기 방어 2 · 받는 피해 2배", coat == 2));
         if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) out.add(mineEquipRow("gloves", MINE_ITEM_GLOVES, "방한 장갑", "한기 방어 +1", mineGlovesOn(items)));
+        // [2026-10-28] "장비창에서 곡괭이도 선택" -- 가진 특수 곡괭이(광역/탐지/쌍날), 끼기/빼기는 반지와 같은 /api/tower-mine-ring
+        int pick = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+        for (MineGear g : MINE_GEAR) if ("tool".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) {
+            int t = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
+            boolean dim = MINE_ITEM_DETECT_PICK.equals(g.code) && mineDetectDim(items);
+            out.add(mineEquipRow("tool", g.code, g.name, (dim ? "🌑 빛을 잃음(맵 리셋 때 회복) · " : "") + g.effect[t - 1], pick == minePickSlotOf(g.code)));
+        }
         return out;
     }
 
