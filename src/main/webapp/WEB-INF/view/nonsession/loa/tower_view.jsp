@@ -808,6 +808,15 @@
     .gear-eff, .gear-next{ font-size:10px; line-height:1.35; opacity:.9; }
     .gear-next{ color:#cfe9ff; }
     .eq-tabs{ display:flex; gap:6px; margin:4px 0 8px; }
+    /* [2026-10-28] 인벤토리 -- 탭을 고정 머리 안에(스크롤해도 위에), 기타 탭은 카테고리별 칸 */
+    .mine-smith-head.inv-head{ flex-wrap:wrap; }
+    .inv-head .eq-tabs{ flex-basis:100%; margin:8px 0 0; }
+    .minv-cat{ margin:0 0 10px; }
+    .minv-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); gap:6px; }
+    .minv-item{ display:flex; align-items:center; gap:4px; padding:5px 6px; font-size:12px; background:rgba(255,255,255,.06); border:1px solid rgba(244,240,230,.25); }
+    .minv-item img{ width:20px; height:20px; image-rendering:pixelated; flex:none; }
+    .minv-item span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .minv-item b{ color:#ffe14d; font-variant-numeric:tabular-nums; }
     .eq-tabs button{ flex:1; padding:7px 0; font-size:13px; font-weight:800; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
     .eq-tabs button.on{ background:#ffcf4a; color:#2a1d10; border-color:#ffcf4a; }
     .cos-card.worn{ border-color:#ffe14d; background:rgba(255,225,77,.12); }
@@ -1709,7 +1718,7 @@
   <!-- [2026-10-28] 왼쪽 버튼 다섯 개를 ☰ 메뉴 하나로 -->
   <button type="button" class="mine-btn mine-menu-btn mpx" id="mineMenuBtn" onclick="TowerMine.toggleMenu()" aria-expanded="false" aria-controls="mineMenu">☰ 메뉴</button>
   <div class="mine-menu mpx" id="mineMenu">
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 장비</button>
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 인벤토리</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('home')">🏠 마을로</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 기록</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>

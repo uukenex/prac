@@ -204,6 +204,13 @@ var TowerMine = (function () {
       px(g, '#c8f0a0', 8, 4); px(g, '#c8f0a0', 8, 9); px(g, '#ff7fa8', 8, 1);
     });
     tiles.beach = [1, 2].map(function (s) { return tile('#ecd9a0', [['#dcc488', 12], ['#f8ecc4', 8], ['#c9b07a', 2]], 70 + s); });
+    // [2026-10-28] 바닷길 입구(용왕의 반지를 얻은 뒤) -- 물 위 푸른 소용돌이(두 프레임)
+    tiles.seaGate = [0, 1].map(function (f) {
+      return over(tiles.water[f], function (g) {
+        px(g, '#bfe8ff', 4, 4, 8, 1); px(g, '#bfe8ff', 3, 5, 1, 6); px(g, '#bfe8ff', 12, 5, 1, 6); px(g, '#bfe8ff', 4, 11, 8, 1);
+        px(g, '#ffffff', 6, 6 + f, 4, 1); px(g, '#ffffff', 5, 7, 1, 2); px(g, '#ffffff', 10, 7, 1, 2); px(g, '#7fd0f0', 7, 8 - f, 2, 2);
+      });
+    });
     tiles.plank = [false, true].map(function (locked) {
       return over(tiles.water[0], function (g) {
         px(g, '#9c6a35', 0, 5, T, 6); px(g, '#7a4a1f', 0, 5, T, 1); px(g, '#7a4a1f', 0, 10, T, 1);
@@ -475,7 +482,7 @@ var TowerMine = (function () {
       case 'e': return tiles.seaweed[v % 2];
       case 'O': return tiles.coral[v % 2];
       case 'L': return tiles.palaceWall[v % 2];
-      case 'Z': return tiles.water[(wf + (x + y) % 2) % 2]; // [2026-10-24] 숨은 입구 -- 물과 똑같이 보인다
+      case 'Z': return st && st.dragon && st.dragon.has ? tiles.seaGate[wf] : tiles.water[(wf + (x + y) % 2) % 2]; // [2026-10-24] 숨은 입구 -- 물과 똑같이, [2026-10-28] 용왕의 반지를 얻으면 소용돌이로 보인다
       case 'n': return tiles.snow[v % 2];
       case 'I': return tiles.vein[v % 2]; // [2026-10-28] 설산 동굴 얼음 광맥
       case 'Y': return tiles.pine[v % 2];
@@ -904,7 +911,7 @@ var TowerMine = (function () {
       if (g >= 4 && ORE_COL[g]) { miniCtx.fillStyle = ORE_COL[g][0]; miniCtx.fillRect(+p[0] - ox - k, +p[1] - oy - k, 2 * k + 1, 2 * k + 1); }
     });
     (map.portals || []).forEach(function (p) {
-      if (p.kind === 'Z') return; // [2026-10-24] 숨은 입구(바닷길)는 미니맵에도 안 찍는다
+      if (p.kind === 'Z' && !(st && st.dragon && st.dragon.has)) return; // [2026-10-24] 숨은 입구(바닷길)는 미니맵에도 안 찍는다([2026-10-28] 용왕의 반지를 얻으면 보인다)
       miniCtx.fillStyle = p.locked ? '#9a9a9a' : '#ffd23f';
       miniCtx.fillRect(p.x - ox - 2 * k, p.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
@@ -1457,10 +1464,12 @@ var TowerMine = (function () {
   // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
   var equipTab = 'gear';
   function equipTabGo(t) { equipTab = t; if (smithOpen) renderSmith(smithNpc); }
+  // [2026-10-28] "메뉴의 장비 -> 인벤토리, 장비/치장/기타로 분류, 탭은 항상 상단에 고정" -- 탭을 위쪽 고정 머리(닫기 줄) 안에 넣는다
   function equipHtml() {
-    var h = npcHead('🎒 내 장비', false)
-        + '<div class="eq-tabs"><button type="button" class="' + (equipTab === 'gear' ? 'on' : '') + '" onclick="TowerMine.equipTab(\'gear\')">⚔️ 장착</button>'
-        + '<button type="button" class="' + (equipTab === 'look' ? 'on' : '') + '" onclick="TowerMine.equipTab(\'look\')">👗 치장</button></div>';
+    var tab = function (id, label) { return '<button type="button" class="' + (equipTab === id ? 'on' : '') + '" onclick="TowerMine.equipTab(\'' + id + '\')">' + label + '</button>'; };
+    var h = '<div class="mine-smith-head inv-head">🎒 인벤토리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
+        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('etc', '📦 기타') + '</div></div>';
+    if (equipTab === 'etc') return h + invEtcHtml();
     if (equipTab === 'look') {
       var lk = st.look || {};
       h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(lk, d) + '" alt="">'; }).join('') + '</div>'
@@ -1490,6 +1499,34 @@ var TowerMine = (function () {
     });
     return h + '<div class="mine-smith-say">장비를 누르면 설명이 나와요.</div>'; // [2026-10-28] 방한 장비 안내는 카드 설명으로
   }
+  // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
+  var INV_CATS = [
+    ['⛏️ 광석', function (g) { return g >= 1 && g <= 6; }],
+    ['💎 보석', function (g) { return (g >= 21 && g <= 29) || (g >= 34 && g <= 38); }],
+    ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
+    ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
+    ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
+    ['🧊 특수 재료', function (g) { return g === 19 || g === 20; }],
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }]
+  ];
+  function invEtcHtml() {
+    var ores = (st.ores || []).filter(function (o) { return o.qty > 0; }), used = {}, h = '';
+    INV_CATS.forEach(function (c) {
+      var list = ores.filter(function (o) { return c[1](o.grade); });
+      list.forEach(function (o) { used[o.grade] = 1; });
+      if (!list.length) return;
+      h += '<div class="minv-cat"><div class="cos-slot-h">' + c[0] + ' <small>' + list.length + '종</small></div><div class="minv-grid">'
+          + list.map(function (o) { return '<div class="minv-item"><img src="' + oreIcon(o.grade) + '" alt=""><span>' + (o.name || ORE_NAME[o.grade]) + '</span><b>' + o.qty + '</b></div>'; }).join('') + '</div></div>';
+    });
+    var rest = ores.filter(function (o) { return !used[o.grade]; });
+    if (rest.length) h += '<div class="minv-cat"><div class="cos-slot-h">📦 그 밖</div><div class="minv-grid">'
+        + rest.map(function (o) { return '<div class="minv-item"><img src="' + oreIcon(o.grade) + '" alt=""><span>' + (o.name || ORE_NAME[o.grade]) + '</span><b>' + o.qty + '</b></div>'; }).join('') + '</div></div>';
+    var a = st.archi || {}, keys = [];
+    if (a.boat) keys.push('⛵ 1인용 배');
+    if (a.key) keys.push('🗝️ 신궁 열쇠');
+    if (keys.length) h += '<div class="minv-cat"><div class="cos-slot-h">🗝️ 소지품</div><div class="minv-grid">' + keys.map(function (k) { return '<div class="minv-item"><span>' + k + '</span></div>'; }).join('') + '</div></div>';
+    return h || '<div class="mine-smith-say">아직 가진 게 없어요.</div>';
+  }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
   var EQ_TIPS = { SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
@@ -1507,7 +1544,7 @@ var TowerMine = (function () {
   }
   function openEquip() {
     if (!opened || !map) return;
-    openSmith({ name: '내 장비', line: '', kind: 'equip' }, 'equip');
+    openSmith({ name: '인벤토리', line: '', kind: 'equip' }, 'equip');
   }
   // [2026-10-28] 다도해 NPC -- 신궁 수문장(수색 임무: 닌자 100명 -> 비급서 + 달빛석), 배 목수(달빛석 -> 1인용 배), 뱃사공(배 타기 -> 뱃길)
   function archiHtml(n) {
@@ -2861,9 +2898,10 @@ var TowerMine = (function () {
     } else if (talkBubble) talkBubble = null;
     // 가까운 포탈 이름
     (map.portals || []).forEach(function (p) {
-      if (p.kind === 'Z' || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
+      var zSeen = p.kind === 'Z' && st && st.dragon && st.dragon.has; // [2026-10-28] 용왕의 반지를 얻으면 바닷길 입구 이름도
+      if ((p.kind === 'Z' && !zSeen) || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
       var tx = p.x * TS - camX + TS / 2, ty = p.y * TS - camY - 4 * dpr;
-      var label = (p.locked ? (p.label.indexOf('눈바람') >= 0 ? '🌨️ ' : '🔒 ') : '🚪 ') + p.label;
+      var label = zSeen ? '🌀 바닷길 입구' + (st.waterWalk ? '' : ' (용왕의 반지를 끼면)') : (p.locked ? (p.label.indexOf('눈바람') >= 0 ? '🌨️ ' : '🔒 ') : '🚪 ') + p.label;
       ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(label, tx, ty);
