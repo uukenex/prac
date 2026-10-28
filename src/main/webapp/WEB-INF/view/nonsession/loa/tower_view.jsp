@@ -858,6 +858,7 @@
     .mine-log-head button{ font-size:11px; padding:3px 6px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; }
     .mine-log-row{ display:flex; align-items:center; gap:4px; padding:2px 0; }
     .mine-log-row img{ width:16px; height:16px; image-rendering:pixelated; }
+    .mine-log-src{ font-size:11px; color:#b8e0ff; white-space:nowrap; } /* [2026-10-28] 최근 획득·구매 -- 어디서 */
     .mine-log-xy{ font-family:ui-monospace, Consolas, monospace; color:#ffe9a8; }
     /* [2026-10-28] 패치 전 공지(/패치공지) -- 화면 맨 위를 가로지르는 띠, 은은하게 깜빡임 */
     .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:7px 12px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
@@ -1703,7 +1704,7 @@
   <div class="mine-menu mpx" id="mineMenu">
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 장비</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('home')">🏠 마을로</button>
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 캔 곳</button>
+    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 기록</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>
   </div>
   <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>

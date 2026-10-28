@@ -903,13 +903,22 @@ var TowerMine = (function () {
     miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - ox - 3 * k, P.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - ox - k, P.y - oy - k, 2 * k + 1, 2 * k + 1);
   }
+  // [2026-10-28] "최근 캔 곳에 최근 획득이나 구매한 걸, 사용한 건 안 나와도" -- 위: 최근 획득·구매(창을 열 때 서버에서), 아래: 최근 캔 곳
+  var recentGet = [];
   function renderLog() {
-    if (!recent.length) { el.log.innerHTML = '<div class="mine-log-empty">아직 캔 곳이 없어요.</div>'; return; }
-    var rows = recent.slice(0, 30).map(function (d) {
+    var h = '<div class="mine-log-head">🎁 최근 획득·구매</div>';
+    if (!recentGet.length) h += '<div class="mine-log-empty">아직 없어요. (서버를 다시 켜면 비워져요)</div>';
+    else h += recentGet.slice(0, 20).map(function (e) {
+      var body = e.t === 'buy' ? '🛒 ' + e.text : '<b>+' + e.qty + '</b> ' + e.name;
+      return '<div class="mine-log-row"><span class="mine-log-src">' + e.src + '</span> ' + body + '<span class="mine-log-when">' + digTime(e.at) + '</span></div>';
+    }).join('');
+    h += '<div class="mine-log-head" style="margin-top:8px">⛏️ 최근 캔 곳</div>';
+    if (!recent.length) h += '<div class="mine-log-empty">아직 캔 곳이 없어요.</div>';
+    else h += recent.slice(0, 30).map(function (d) {
       return '<div class="mine-log-row"><span class="mine-log-xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span> <img src="' + oreIcon(d.grade) + '" alt=""> ' + ORE_NAME[d.grade]
           + '<span class="mine-log-when">' + digTime(d.at) + '</span></div>';
-    });
-    el.log.innerHTML = '<div class="mine-log-head">최근 캔 곳</div>' + rows.join('');
+    }).join('');
+    el.log.innerHTML = h;
   }
 
   // ---------------------------------------------------------------- 진행
@@ -3015,7 +3024,14 @@ var TowerMine = (function () {
     });
   }
   function toggleMini() { el.mini.classList.toggle('big'); }
-  function toggleLog() { el.log.style.display = el.log.style.display === 'block' ? 'none' : 'block'; }
+  function toggleLog() {
+    var open = el.log.style.display !== 'block';
+    el.log.style.display = open ? 'block' : 'none';
+    if (open) { // [2026-10-28] 열 때마다 최근 획득·구매를 새로
+      renderLog();
+      api('/api/tower-mine-recent-get').then(function (d) { recentGet = (d && d.list) || []; renderLog(); }).catch(function () {});
+    }
+  }
   // 캔 시각: 오늘이면 "15:42", 아니면 "10/22 15:42"
   function digTime(ms) {
     if (!ms) return '';

@@ -839,6 +839,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineScan(userName, mapId, x, y));
     }
 
+    /** [2026-10-28] 웹 광산 최근 획득/구매(📜 최근 기록 창을 열 때). 읽기만. */
+    @GetMapping("/api/tower-mine-recent-get")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineRecentGet(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("list", userName.trim().isEmpty() ? new java.util.ArrayList<Object>() : my.prac.core.prjbot.service.impl.S5MineSessionLog.recent(userName));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 설산 동굴 연속 채광(빙석을 얻을 때만 기록). */
     @GetMapping("/api/tower-mine-vein")
     @ResponseBody

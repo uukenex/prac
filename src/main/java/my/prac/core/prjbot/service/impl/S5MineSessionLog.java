@@ -98,6 +98,51 @@ public class S5MineSessionLog {
     private static final ConcurrentHashMap<String, Session> SESSIONS = new ConcurrentHashMap<String, Session>();
     private static final ConcurrentLinkedQueue<Session> CLOSED = new ConcurrentLinkedQueue<Session>();
     private static final ConcurrentLinkedQueue<HashMap<String, Object>> RETRY = new ConcurrentLinkedQueue<HashMap<String, Object>>();
+    /** [2026-10-28] "최근 캔 곳에 최근 획득이나 구매한 걸 노출, 사용한 건 안 나와도 돼" -- 유저마다 최근 RECENT_MAX건(메모리, 서버를 다시 켜면 비어 있다).
+     *  획득 = 행동에 붙은 광석/보석 증가(처치/보스/상자/연속 채광/보상 등, 캐기는 "최근 캔 곳"에 따로 있어 뺀다),
+     *  구매 = 광석을 내고 한 행동(상점/대장간/제작/합성 등 -- 결과 문구). 쓴 광석(감소) 자체는 보여 주지 않는다. */
+    static final int RECENT_MAX = 30;
+    private static final ConcurrentHashMap<String, java.util.LinkedList<HashMap<String, Object>>> RECENT = new ConcurrentHashMap<String, java.util.LinkedList<HashMap<String, Object>>>();
+
+    private static void noteRecent(String user, String kind, String req, String res, LinkedHashMap<String, Integer> ore, long now) {
+        if ("in".equals(kind) || "out".equals(kind) || "dig".equals(kind) || "move".equals(kind) || "died".equals(kind)) return;
+        if (ore == null || ore.isEmpty()) return;
+        String src = "kill".equals(kind) ? "처치" : "boss".equals(kind) ? "보스 처치" : req == null ? "획득" : label(req);
+        boolean spent = false;
+        for (Integer v : ore.values()) if (v != null && v < 0) spent = true;
+        java.util.LinkedList<HashMap<String, Object>> l = RECENT.computeIfAbsent(user, u -> new java.util.LinkedList<HashMap<String, Object>>());
+        synchronized (l) {
+            if (spent && "act".equals(kind)) { // 광석을 내고 한 행동 = 구매/제작
+                HashMap<String, Object> e = new HashMap<String, Object>();
+                e.put("at", now);
+                e.put("t", "buy");
+                e.put("src", src);
+                e.put("text", trim(res == null ? src : res, 70));
+                l.addFirst(e);
+            }
+            for (Map.Entry<String, Integer> o : ore.entrySet()) {
+                if (o.getValue() == null || o.getValue() <= 0) continue;
+                HashMap<String, Object> e = new HashMap<String, Object>();
+                e.put("at", now);
+                e.put("t", "get");
+                e.put("src", src);
+                e.put("name", o.getKey());
+                e.put("qty", o.getValue());
+                l.addFirst(e);
+            }
+            while (l.size() > RECENT_MAX) l.removeLast();
+        }
+    }
+
+    /** 최근 획득/구매(새것부터). */
+    public static List<HashMap<String, Object>> recent(String user) {
+        java.util.LinkedList<HashMap<String, Object>> l = user == null ? null : RECENT.get(user);
+        if (l == null) return new ArrayList<HashMap<String, Object>>();
+        synchronized (l) {
+            return new ArrayList<HashMap<String, Object>>(l);
+        }
+    }
+
     /** 이 요청에서 커밋된 광석 증감(유저 -> 이름 -> 증감) -- 다음 행동 기록에 붙인다. */
     private static final ThreadLocal<Map<String, LinkedHashMap<String, Integer>>> REQ_ORE = new ThreadLocal<Map<String, LinkedHashMap<String, Integer>>>();
 
@@ -124,6 +169,7 @@ public class S5MineSessionLog {
         long now = System.currentTimeMillis();
         String kind = kindOf(req, res, out);
         LinkedHashMap<String, Integer> ore = takeReqOre(user);
+        noteRecent(user, kind, req, res, ore, now); // [2026-10-28] 최근 획득/구매
         if ("in".equals(kind)) {
             Session old = SESSIONS.remove(user);
             if (old != null) close(old, now, null, "다시 입장");
@@ -213,6 +259,7 @@ public class S5MineSessionLog {
         Session s = SESSIONS.get(user);
         if (s == null) return; // 광산 밖(채팅 명령 등) -- 그쪽 로그가 따로 있다
         long now = System.currentTimeMillis();
+        noteRecent(user, "etc", null, null, o, now); // [2026-10-28] 보상 등(행동 기록 없이 들어온 증가)
         synchronized (s) {
             add(s, ev(now, "etc", "광석 변동", null, o));
         }
