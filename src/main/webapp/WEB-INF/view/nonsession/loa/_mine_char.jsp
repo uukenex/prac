@@ -108,6 +108,14 @@ window.MineChar = (function () {
       }
     }
     var wood = '#8a5a2b', iron = '#c3cad1';
+    if (!dig) { // [2026-10-28] "무기 아이템(기본은 칼) 장착을 보여주고" -- 캐지 않을 때 손에 든 무기(lk.weapon: sword 기본 / parasol 양산)
+      if (lk.weapon === 'parasol') { // 머리 위로 펼친 분홍 양산 + 손잡이
+        px(g, '#ff8ab8', 3, 0, 10, 1); px(g, '#ff8ab8', 1, 1, 14, 1); px(g, '#e05a90', 1, 1); px(g, '#e05a90', 14, 1); px(g, '#ffffff', 5, 0, 1, 2); px(g, '#ffffff', 10, 0, 1, 2);
+        if (side) px(g, wood, 9, 2, 1, 9); else px(g, wood, 12, 2, 1, 9);
+      } else if (side) { px(g, wood, 9, 11); px(g, '#ffd23f', 10, 10, 1, 3); px(g, iron, 11, 11, 4, 1); px(g, '#ffffff', 14, 11); }
+      else if (dir === 'up') { px(g, wood, 12, 9, 1, 2); px(g, '#ffd23f', 11, 8, 3, 1); px(g, iron, 12, 4, 1, 4); }
+      else { px(g, wood, 12, 12); px(g, '#ffd23f', 11, 11, 3, 1); px(g, iron, 12, 6, 1, 5); px(g, '#ffffff', 12, 6); }
+    }
     if (dig === 1) { // 들어 올림
       if (side) { px(g, wood, 9, 1, 1, 7); px(g, iron, 7, 0, 5, 1); px(g, iron, 7, 1); px(g, iron, 11, 1); }
       else { px(g, wood, 12, 1, 1, 8); px(g, iron, 10, 0, 5, 1); px(g, iron, 10, 1); px(g, iron, 14, 1); }

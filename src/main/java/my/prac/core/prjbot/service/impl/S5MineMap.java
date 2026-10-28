@@ -83,6 +83,9 @@ public final class S5MineMap {
      *  근처 40레벨대 강하지만 체력이 적은 박쥐류가 선공, 공격받으면 연속 채광이 풀린다, 내구도 소모 없음" -- 설산 마을 동문 -> 설산 동굴(veinMine).
      *  연속 채광은 BotS5ServiceImpl.mineVein. */
     public static final String SNOWCAVE = "snowcave";
+    /** [2026-10-28] "설산 동굴 2층 -- 빙석 주변에 얼음 골렘 많이(쉽게 못 캐게), 2층에서 채집 시 가끔 세공 빙석, 어두운 효과 2층 5레벨 / 1층 4레벨" --
+     *  1층 가장 먼 방 가운데 계단(S) -> 2층(130x100, 광맥 더 많이). 어두움 = 광산 레벨(투구 단계 - (레벨 - 1)만큼 보인다). */
+    public static final String SNOWCAVE2 = "snowcave2";
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -159,7 +162,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -909,6 +912,7 @@ public final class S5MineMap {
         S5MineMap av = out.get(ARCHI);
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
         placeNpc(av, av.villageX + 10, av.villageY - 5, "gemcutter", "보석 세공사", gcLine);
+        placeNpc(av, av.villageX, av.villageY - 8, "archishop", "다도해 상인", "햇볕이 뜨겁지? 이 양산만 있으면 한낮도 끄떡없다네. 바다 보석으로 값을 치르게."); // [2026-10-28]
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽
         S5MineMap fd = out.get(FIELD);
@@ -931,9 +935,13 @@ public final class S5MineMap {
         placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
         out.put(PYRAMID, py);
         // [2026-10-28] 설산 마을 동문 <-> 설산 동굴(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로, 설산 마을은 NPC 그대로 다시 넣음)
-        S5MineMap snowCave = generateSnowCave(seed + 73), stw = out.get(SNOWTOWN);
+        S5MineMap snowCave = generateSnowCave(seed + 73, 1), stw = out.get(SNOWTOWN);
         out.put(SNOWCAVE, relink(snowCave, retarget(snowCave, SNOWTOWN, besidePortal(stw, SNOWCAVE)), null));
         out.put(SNOWTOWN, relink(stw, retarget(stw, SNOWCAVE, new int[] { snowCave.spawnX, snowCave.spawnY }), stw.npcs));
+        // [2026-10-28] 설산 동굴 1층 계단 <-> 2층(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로)
+        S5MineMap snowCave2 = generateSnowCave(seed + 74, 2), sc1 = out.get(SNOWCAVE);
+        out.put(SNOWCAVE2, relink(snowCave2, retarget(snowCave2, SNOWCAVE, besidePortal(sc1, SNOWCAVE2)), null));
+        out.put(SNOWCAVE, relink(sc1, retarget(sc1, SNOWCAVE2, new int[] { snowCave2.spawnX, snowCave2.spawnY }), null));
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -1422,12 +1430,13 @@ public final class S5MineMap {
 
     /** [2026-10-28] 설산 동굴(110x80) -- 바위산(^) 속 눈 바닥(n) 동굴 방 16개(반지름 5~8)를 굴로 이었다. 서쪽 끝 나가는 길(U) = 설산 마을 동문.
      *  벽 가운데 바닥에 붙은 칸 일부와 방 안 군데군데가 얼음 광맥(I -- 지나갈 수 없음, 앞에서 연속 채광). 땅에는 광석이 없다(veinMine). */
-    static S5MineMap generateSnowCave(long seed) {
-        int w = 110, h = 80;
+    static S5MineMap generateSnowCave(long seed, int floor) {
+        boolean f2 = floor >= 2; // [2026-10-28] 2층 -- 더 넓고 방이 많고 광맥이 많다
+        int w = f2 ? 130 : 110, h = f2 ? 100 : 80;
         Random r = new Random(seed);
         char[][] t = new char[h][w];
         for (char[] row : t) Arrays.fill(row, '#');
-        int n = 16;
+        int n = f2 ? 22 : 16;
         int[][] rooms = new int[n][];
         rooms[0] = new int[] { 7, h / 2, 4 };
         for (int i = 1; i < n; i++) {
@@ -1455,9 +1464,9 @@ public final class S5MineMap {
         for (int y = 1; y < h - 1; y++) for (int x = 1; x < w - 1; x++) {
             if (t[y][x] != '#' || x < 14) continue; // 입구 둘레는 비운다
             boolean touch = t[y - 1][x] == 'n' || t[y + 1][x] == 'n' || t[y][x - 1] == 'n' || t[y][x + 1] == 'n';
-            if (touch && r.nextDouble() < 0.12) t[y][x] = 'I';
+            if (touch && r.nextDouble() < (f2 ? 0.2 : 0.12)) t[y][x] = 'I';
         }
-        for (int i = 1; i < n; i++) for (int k = 0; k < 2; k++) {
+        for (int i = 1; i < n; i++) for (int k = 0; k < (f2 ? 3 : 2); k++) {
             int x = rooms[i][0] + r.nextInt(5) - 2, y = rooms[i][1] + r.nextInt(5) - 2;
             boolean open = true;
             for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (t[yy][xx] != 'n') { open = false; break; }
@@ -1465,9 +1474,17 @@ public final class S5MineMap {
         }
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (t[y][x] == '#') t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(0, ey, 'U', SNOWTOWN, 0, 0, "설산 마을로 나가기"));
-        S5MineMap m = new S5MineMap(SNOWCAVE, "설산 동굴", false, w, h, 2, ey, t, new byte[h][w], portals);
+        portals.add(new Portal(0, ey, 'U', f2 ? SNOWCAVE : SNOWTOWN, 0, 0, f2 ? "설산 동굴 1층으로 올라가기" : "설산 마을로 나가기"));
+        if (!f2) { // [2026-10-28] 1층 -- 입구에서 걸어서 가장 먼 방 가운데 = 2층 계단(난수를 더 쓰지 않아 다른 칸은 그대로)
+            int[][] dist = bfsDist(t, 2, ey);
+            int fi = 1;
+            for (int i = 1; i < n; i++) if (dist[rooms[i][1]][rooms[i][0]] > dist[rooms[fi][1]][rooms[fi][0]]) fi = i;
+            t[rooms[fi][1]][rooms[fi][0]] = 'S';
+            portals.add(new Portal(rooms[fi][0], rooms[fi][1], 'S', SNOWCAVE2, 0, 0, "설산 동굴 2층으로 내려가기"));
+        }
+        S5MineMap m = new S5MineMap(f2 ? SNOWCAVE2 : SNOWCAVE, f2 ? "설산 동굴 2층" : "설산 동굴", true, w, h, 2, ey, t, new byte[h][w], portals);
         m.veinMine = true;
+        m.level = f2 ? 5 : 4; // [2026-10-28] 어두움 1층 4레벨(투구 3단계부터), 2층 5레벨(투구 4단계부터)
         return m;
     }
 

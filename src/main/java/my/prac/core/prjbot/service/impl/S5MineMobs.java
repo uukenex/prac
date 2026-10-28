@@ -187,7 +187,9 @@ public final class S5MineMobs {
         new Type("얼음 박쥐", 11, "flyer", "#9fd0f0", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
         new Type("흡혈 박쥐", 11, "flyer", "#6a2a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
         new Type("서리 박쥐", 12, "flyer", "#d8f0ff", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
-        new Type("동굴 큰박쥐", 12, "flyer", "#3a3a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike()
+        new Type("동굴 큰박쥐", 12, "flyer", "#3a3a4a", S5MineMap.SNOWCAVE).strong(0.4, 1.3).asFirstStrike(),
+        // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레를 지키는 얼음 골렘(13단계 Lv.49, 체력 x1.6 / 공격 x1.2, 늘 선공)
+        new Type("얼음 골렘", 13, "human", "#a8d8f0", S5MineMap.SNOWCAVE2).strong(1.6, 1.2).asFirstStrike()
     ));
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
@@ -256,6 +258,7 @@ public final class S5MineMobs {
             case S5MineMap.ISLE6: return 23;
             case S5MineMap.ISLE7: return 24;
             case S5MineMap.SNOWCAVE: return x < m.w * 0.45 ? 11 : 12; // [2026-10-28] 설산 동굴 -- 안쪽(동쪽)일수록
+            case S5MineMap.SNOWCAVE2: return 13; // [2026-10-28] 설산 동굴 2층 -- 얼음 골렘
             case S5MineMap.ANTNEST: { // [2026-10-28] 떨어지는 곳(한가운데)에서 멀수록(맵 크기에 비례 -- 200칸: 55 / 100)
                 int d = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY);
                 return d < m.w * 0.28 ? 11 : d < m.w / 2 ? 12 : 13;
@@ -276,6 +279,7 @@ public final class S5MineMobs {
             case S5MineMap.SNOWROAD: return 96; // [2026-10-28] 설산 봉우리 가는 길
             case S5MineMap.ANTNEST: return 90; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
             case S5MineMap.SNOWCAVE: return 100; // [2026-10-28] 설산 동굴 박쥐
+            case S5MineMap.SNOWCAVE2: return 45; // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레에 얼음 골렘 많이
             case S5MineMap.SHRINE: case S5MineMap.SHRINE2: case S5MineMap.SHRINE3: return 60; // [2026-10-28] 신궁은 닌자가 빽빽하게(수색 임무 100마리, 1~3층)
             default: return 128;
         }
@@ -316,6 +320,7 @@ public final class S5MineMobs {
             for (S5MineMap.Npc n : m.npcs()) if (Math.abs(x - n.x) + Math.abs(y - n.y) < 5) { nearGate = true; break; }
             if (!nearGate) cand.add(new int[] { x, y });
         }
+        if (S5MineMap.SNOWCAVE2.equals(m.id)) cand.removeIf(c -> !nearVein(t, c[0], c[1], 2)); // [2026-10-28] 골렘은 광맥 둘레(2칸)에만
         Collections.shuffle(cand, r);
         int want = walk / density(m.id);
         boolean[][] taken = new boolean[m.h][m.w];
@@ -385,6 +390,13 @@ public final class S5MineMobs {
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
+    }
+
+    /** [2026-10-28] (x, y) 둘레 d칸 안에 얼음 광맥(I)이 있는지. */
+    private static boolean nearVein(char[][] t, int x, int y, int d) {
+        for (int yy = Math.max(0, y - d); yy <= Math.min(t.length - 1, y + d); yy++)
+            for (int xx = Math.max(0, x - d); xx <= Math.min(t[0].length - 1, x + d); xx++) if (t[yy][xx] == 'I') return true;
+        return false;
     }
 
     /** 32비트 정수 섞기 -- 화면 JS(Math.imul)와 같은 결과. 0 이상. */

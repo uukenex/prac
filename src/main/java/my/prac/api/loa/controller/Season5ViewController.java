@@ -850,6 +850,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-28] 웹 광산 다도해 상인(양산). */
+    @GetMapping("/api/tower-mine-archishop")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineArchiShop(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "code", defaultValue = "") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineArchiShop(userName, action, code);
+        if ("buy".equals(action) && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 다도해 상인 " + code, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     @GetMapping("/api/tower-mine-gemcut")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineGemCut(@RequestParam(value = "userName", defaultValue = "") String userName,

@@ -299,6 +299,8 @@ public interface BotS5Service {
 
     /** [2026-10-28] 광석 전문가(광석 100 -> 괴, 45%), 보석 세공사(보석 5 -> 세공된 보석, 25%), 왕도 장인(세공된 보석 -> 최대 내구도 +30). */
     HashMap<String, Object> mineSmelt(String userName, int grade, int times);
+    /** [2026-10-28] 다도해 상인(양산). */
+    HashMap<String, Object> mineArchiShop(String userName, String action, String code);
     HashMap<String, Object> mineGemCut(String userName, int gemIdx, int times);
     HashMap<String, Object> mineArtisan(String userName, int gemIdx);
 

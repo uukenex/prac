@@ -8703,7 +8703,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
         MINE_MIN_LV.put(S5MineMap.ANTNEST, 41);
-        MINE_MIN_LV.put(S5MineMap.SNOWCAVE, 41); // [2026-10-28] 설산 동굴(박쥐 11~12단계) // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
+        MINE_MIN_LV.put(S5MineMap.SNOWCAVE, 41); // [2026-10-28] 설산 동굴(박쥐 11~12단계)
+        MINE_MIN_LV.put(S5MineMap.SNOWCAVE2, 49); // [2026-10-28] 설산 동굴 2층(얼음 골렘 13단계) // [2026-10-28] 개미굴(11~13단계 + 여왕개미 14단계, 사막 서쪽에서 빠짐)
         MINE_MIN_LV.put(S5MineMap.SEAROAD, 13);
         MINE_MIN_LV.put(S5MineMap.SNOW1, 33); // [2026-10-26] 설산 1층(10~11단계), 2층(11~12), 3층(12~13), 설산 마을
         MINE_MIN_LV.put(S5MineMap.SNOW2, 37);
@@ -10534,7 +10535,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2 }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -11114,6 +11115,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // ---- [2026-10-28] 설산 동굴 연속 채광 -- 바라보는 얼음 광맥(I)을 캘 때마다 한 번, MINE_VEIN_NEED번 이어서 캐면 빙석 1개(다시 0부터).
     //  몬스터에게 맞으면(전투 턴 / 반격) 0으로 돌아간다(mineVeinBreak). 곡괭이 내구도는 쓰지 않는다. 숫자는 서버 메모리(맵이 바뀌면 처음부터).
     static final int MINE_VEIN_NEED = 20;
+    static final int MINE_VEIN_CUT_PCT = 4; // [2026-10-28] 설산 동굴 2층 -- 캘 때마다 세공된 빙석이 나올 확률(%)
     private static final long MINE_VEIN_GAP_MS = 300L;
     private static final class VeinState { String mapVer; int count; long at; }
     private static final java.util.concurrent.ConcurrentHashMap<String, VeinState> MINE_VEIN = new java.util.concurrent.ConcurrentHashMap<>();
@@ -11158,6 +11160,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             count = gain ? MINE_VEIN_NEED : v.count;
         }
         if (gain) dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
+        boolean cutIce = S5MineMap.SNOWCAVE2.equals(map.id) && RND.nextInt(100) < MINE_VEIN_CUT_PCT; // [2026-10-28] 2층 -- 가끔 세공된 빙석
+        if (cutIce) { dao.addUserOre(userName, S5MineMap.CUT_ICE_CODE, 1); out.put("cutIce", true); out.put("ores", mineOreList(userName)); }
         out.put("ok", true);
         out.put("count", count);
         out.put("need", MINE_VEIN_NEED);
@@ -11542,12 +11546,54 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     /** 더운 맵에서 초당 깎이는 최대 체력 %: 끼고 있는 방한 장비(외투, 장갑) 하나에 1%. */
     private static int mineHeatPct(S5MineMap map, Map<String, Integer> items, long now) {
-        return mineSunPct(map, now) + mineGearHeatPct(items);
+        return mineSunPct(map, items, now) + mineGearHeatPct(items);
     }
 
     /** [2026-10-28] 다도해 낮 햇빛(지역별 초당 %), 밤엔 없음. */
     private static int mineSunPct(S5MineMap map, long now) {
         return map.sun() > 0 && S5MineMap.archiDay(now) ? map.sun() : 0;
+    }
+
+    /** [2026-10-28] "양산을 장착하면 햇빛 피해 레벨 -2" -- 양산을 들고 있으면 햇빛 단계에서 MINE_PARASOL_CUT을 뺀다. */
+    private static int mineSunPct(S5MineMap map, Map<String, Integer> items, long now) {
+        int s = mineSunPct(map, now);
+        return s > 0 && mineParasolOn(items) ? Math.max(0, s - MINE_PARASOL_CUT) : s;
+    }
+
+    // ---- [2026-10-28] 무기 칸 -- "무기 아이템(기본은 칼) 장착을 보여주고, 양산을 다도해 상점에서" -- WEAPON_SLOT 0 = 칼(기본), 1 = 양산(PARASOL)
+    static final String MINE_ITEM_PARASOL = "PARASOL", MINE_ITEM_WEAPON_SLOT = "WEAPON_SLOT";
+    static final int MINE_PARASOL_CUT = 2;
+    private static final String[][] MINE_PARASOL_COST = { { S5MineMap.SEA_GEM_CODES[0], "10" }, { S5MineMap.SEA_GEM_CODES[1], "10" }, { S5MineMap.ORE_CODES[3], "50" } };
+
+    static boolean mineParasolOn(Map<String, Integer> items) {
+        return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 1 && items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0;
+    }
+
+    /** 다도해 상인 -- action list(보기) / buy(code). 지금은 양산 하나. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineArchiShop(String userName, String action, String code) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        Map<String, Integer> items = mineItems(userName);
+        String msg = null;
+        boolean ok = true;
+        if ("buy".equals(action)) {
+            if (!mineAtNpc(row, "archishop")) { ok = false; msg = "다도해 마을의 다도해 상인에게서만 살 수 있어요."; }
+            else if (!MINE_ITEM_PARASOL.equals(code)) { ok = false; msg = "그런 물건은 없어요."; }
+            else if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) { ok = false; msg = "양산은 이미 가지고 있어요. 🎒 장비 창의 무기 칸에서 들 수 있어요."; }
+            else if (!mineCostOk(MINE_PARASOL_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_PARASOL_COST) + " 필요)"; }
+            else {
+                mineTakeCost(userName, MINE_PARASOL_COST, 1);
+                dao.upsertMineItem(userName, MINE_ITEM_PARASOL, 1);
+                dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 1);
+                msg = "⛱️ 양산을 사서 들었어요! 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계 (" + mineCostText(MINE_PARASOL_COST) + " 사용)";
+            }
+        }
+        HashMap<String, Object> out = mineGearResult(userName, ok, msg == null ? "" : msg);
+        if (ok && "buy".equals(action)) out.put("craftedRing", true);
+        return out;
     }
 
     private static int mineGearHeatPct(Map<String, Integer> items) {
@@ -11601,7 +11647,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
         int heat = hot ? mineHeatPct(map, items, now) : 0; // [2026-10-28] 더위(초당 최대 체력 %)
         // [2026-10-28] 환생 경감을 뺀 실제 초당 % -- 화면 표시용(햇빛 = 회차당 20%, 한기/장비 더위 = 회차당 1%)
-        double heatRate = hot ? mineSunPct(map, now) * mineSunCut(mineRebirth(items)) + mineGearHeatPct(items) * rbCut : 0;
+        double heatRate = hot ? mineSunPct(map, items, now) * mineSunCut(mineRebirth(items)) + mineGearHeatPct(items) * rbCut : 0;
         out.put("heat", heat);
         out.put("heatRate", Math.round(heatRate * 100) / 100.0);
         if (map.sun() > 0) { out.put("day", S5MineMap.archiDay(now)); out.put("dayChangeAt", S5MineMap.archiNextChange(now)); out.put("sun", map.sun()); }
@@ -12232,6 +12278,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineHasDragonRing(items)) out.add(mineEquipRow("ring", MINE_ITEM_DRAGON_RING, "용왕의 반지", "물 위를 걸을 수 있음", ring == MINE_RING_DRAGON));
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
+        boolean pon = mineParasolOn(items); // [2026-10-28] 무기 칸 -- 칼(기본), 양산
+        out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon));
+        if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계", pon));
         int ct = mineCoatTier(items); // [2026-10-28] 외투는 하나(단계)
         if (ct > 0) out.add(mineEquipRow("coat", "COAT", MINE_COAT_NAMES[ct - 1] + " " + ct + "단계", mineCoatEffect(ct), items.getOrDefault(MINE_ITEM_COAT_SLOT, 0) > 0));
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT2, "두꺼운 방한 외투", "한기 방어 2 · 받는 피해 2배", coat == 2));
@@ -12289,6 +12338,18 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("gear", gear);
         out.put("equip", mineEquipList(items)); // [2026-10-28] 🎒 장비 창(반지 하나, 옷 하나, 장갑 하나)
         out.put("gloveCode", mineGloveCode(items)); // [2026-10-28] 광전사의 장갑이면 화면도 체력을 안 올린다
+        out.put("look", mineLookOf(items)); // [2026-10-28] 무기를 바꿔 들면 그림도
+        List<HashMap<String, Object>> shop = new ArrayList<>(); // [2026-10-28] 다도해 상인
+        HashMap<String, Object> ps = new HashMap<>();
+        ps.put("code", MINE_ITEM_PARASOL);
+        ps.put("name", "양산");
+        ps.put("effect", "들고 있으면 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계");
+        ps.put("owned", items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0);
+        Map<String, Integer> shave = mineOreHave(userName);
+        ps.put("costs", mineCostList(MINE_PARASOL_COST, shave));
+        ps.put("can", mineCostOk(MINE_PARASOL_COST, shave));
+        shop.add(ps);
+        out.put("archiShop", shop);
         if (mineArchiOpen(userName)) { // [2026-10-28] 다도해 -- 신궁 수색 임무 / 1인용 배 / 달빛석·비급서
             HashMap<String, Object> ar = new HashMap<>();
             ar.put("quest", items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0));
@@ -12399,6 +12460,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (on) dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, 0); // [2026-10-28] 다른 장갑은 벗는다
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 꼈어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 벗었어요.");
+        }
+        if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
+            boolean pa = MINE_ITEM_PARASOL.equals(code);
+            if (pa && it.getOrDefault(MINE_ITEM_PARASOL, 0) < 1) return mineGearResult(userName, false, "양산이 없어요. 다도해 마을 다도해 상인에게서 살 수 있어요.");
+            pa = pa && !mineParasolOn(it); // 양산을 든 채로 다시 누르면 칼로
+            dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, pa ? 1 : 0);
+            return mineGearResult(userName, true, pa ? "⛱️ 양산을 들었어요. 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계" : "🗡️ 칼을 들었어요.");
         }
         if ("COAT".equals(code) || MINE_ITEM_COAT1.equals(code) || MINE_ITEM_COAT2.equals(code)) { // [2026-10-28] 외투는 하나(단계)
             int cs = mineCoatTier(it);
@@ -13026,6 +13094,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (c != null && c.admin) gm = true;
         }
         if (gm) look.put("gm", true); // [2026-10-28] 운영자 장비를 입었으면 화면이 "운영자" 표시 + 반짝이
+        look.put("weapon", mineParasolOn(items) ? "parasol" : "sword"); // [2026-10-28] 손에 든 무기(화면 그림)
         int rb = mineRebirth(items);
         if (rb > 0) look.put("rebirth", rb); // [2026-10-28] 환생 날개(단계별로 커진다) -- 다른 유저 화면/관리자 페이지 그림에도
         return look;
