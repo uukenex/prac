@@ -2500,6 +2500,7 @@ var TowerMine = (function () {
       if (d && d.ok) myBubbleT0 = performance.now();
       if (d && d.ores) st.ores = d.ores;
       if (d && d.reward) flashT0 = performance.now();
+      if (d && d.ok && !d.reward) return; // [2026-10-29] "중복 인사 때 멘트 없애줘" -- 오늘 보상을 이미 받았으면 말풍선만
       msg((d && (d.message || d.error)) || '인사하지 못했어요.', 3200);
     }).catch(function () { greetBusy = false; });
   }
