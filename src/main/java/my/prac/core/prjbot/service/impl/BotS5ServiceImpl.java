@@ -11064,7 +11064,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int tier = mineItems(userName).getOrDefault(MINE_ITEM_HELMET, 0);
         boolean city4 = tier + 1 > MINE_HELMET_FIELD_MAX && tier < MINE_HELMET_OPEN_MAX; // [2026-10-25] 4단계 = 왕도 대장장이 + 칠요석
         if (city4 && !S5MineMap.CITY.equals(strVal(hrow.get("MAP_ID"), ""))) return "🔨 광부 투구 " + (tier + 1) + "단계는 왕도 아스테리아의 대장장이만 만들 수 있어요.";
-        if (city4 && !mineCostOk(MINE_HELMET_EXTRA4, mineOreHave(userName))) return "재료가 부족해요. (" + mineCostText(MINE_HELMET_EXTRA4) + "도 필요)";
+        if (city4 && !mineCostOk(MINE_HELMET_EXTRA4, mineOreHave(userName))) return "재료가 부족해요. (" + mineCostText(MINE_HELMET_EXTRA4) + "도 필요" + mineLackText(MINE_HELMET_EXTRA4, userName) + ")";
         if (tier >= MINE_HELMET_OPEN_MAX || tier >= MINE_HELMET_COST.length) return "⛑️ 광부 투구는 지금 최고 단계(" + tier + "단계)예요. 더 깊은 광산이 열리면 업그레이드할 수 있어요.";
         int cg = MINE_HELMET_COST[tier][0], cn = MINE_HELMET_COST[tier][1];
         String name = S5MineMap.ORE_NAMES[cg - 1];
@@ -11606,7 +11606,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (!mineAtNpc(row, "archishop")) { ok = false; msg = "다도해 마을의 다도해 상인에게서만 살 수 있어요."; }
             else if (!MINE_ITEM_PARASOL.equals(code)) { ok = false; msg = "그런 물건은 없어요."; }
             else if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) { ok = false; msg = "양산은 이미 가지고 있어요. 🎒 장비 창의 무기 칸에서 들 수 있어요."; }
-            else if (!mineCostOk(MINE_PARASOL_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_PARASOL_COST) + " 필요)"; }
+            else if (!mineCostOk(MINE_PARASOL_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_PARASOL_COST) + " 필요" + mineLackText(MINE_PARASOL_COST, userName) + ")"; }
             else {
                 mineTakeCost(userName, MINE_PARASOL_COST, 1);
                 dao.upsertMineItem(userName, MINE_ITEM_PARASOL, 1);
@@ -11787,7 +11787,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             else if (cur >= 3) { ok = false; msg = (gl ? "🧤 장갑" : "🧥 외투") + "은(는) 이미 마지막 단계예요."; }
             else {
                 String[][] cost = gl ? mineGloveStepCost(next) : mineCoatStepCost(next);
-                if (!mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "재료가 모자라요. (" + mineCostText(cost) + " 필요)"; }
+                if (!mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "재료가 모자라요. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"; }
                 else {
                     mineTakeCost(userName, cost, 1);
                     if (gl) {
@@ -12217,6 +12217,17 @@ public class BotS5ServiceImpl implements BotS5Service {
         return out;
     }
 
+    /** [2026-10-29] 모자란 재료(" · 모자란 것: 칠요석 1개, 금괴 2개", 다 있으면 ""). 버튼을 막지 않고 서버가 안내한다. */
+    private String mineLackText(String[][] cost, String userName) {
+        Map<String, Integer> have = mineOreHave(userName);
+        StringBuilder sb = new StringBuilder();
+        for (String[] c : cost) {
+            int lack = Integer.parseInt(c[1]) - have.getOrDefault(c[0], 0);
+            if (lack > 0) sb.append(sb.length() > 0 ? ", " : "").append(mineCodeName(c[0])).append(' ').append(lack).append("개");
+        }
+        return sb.length() > 0 ? " · 모자란 것: " + sb : "";
+    }
+
     private static boolean mineCostOk(String[][] cost, Map<String, Integer> have) {
         for (String[] c : cost) if (have.getOrDefault(c[0], 0) < Integer.parseInt(c[1])) return false;
         return true;
@@ -12293,7 +12304,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("boat".equals(action)) {
             if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0) return mineGearResult(userName, false, "⛵ 배 목수: 이미 배가 있잖나. 뱃사공에게 가 보게.");
             String[][] cost = MINE_BOAT_COST;
-            if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 배 목수: 재료가 모자라네. (" + mineCostText(cost) + ") 달빛석은 신궁 깊은 곳 닌자 두목이 지니고 있다더군."); // [2026-10-28]
+            if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 배 목수: 재료가 모자라네. (" + mineCostText(cost) + mineLackText(cost, userName) + ") 달빛석은 신궁 깊은 곳 닌자 두목이 지니고 있다더군."); // [2026-10-28]
             mineTakeCost(userName, cost, 1);
             dao.upsertMineItem(userName, S5MineMap.BOAT_ITEM, 1);
             HashMap<String, Object> out = mineGearResult(userName, true, "⛵ 1인용 배가 완성됐어요! 뱃사공에게 배 타기를 부탁하면 뱃길로 나갈 수 있어요.");
@@ -12470,7 +12481,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (tier + 1 > g.fieldMax && !S5MineMap.CITY.equals(strVal(crow.get("MAP_ID"), ""))) // [2026-10-25] 높은 단계는 왕도 대장장이만
             return mineGearResult(userName, false, "🔨 " + g.name + " " + (tier + 1) + "단계는 왕도 아스테리아의 대장장이만 만들 수 있어요.");
         String[][] cost = g.cost[tier];
-        if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "재료가 부족해요. (" + mineCostText(cost) + " 필요)");
+        if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "재료가 부족해요. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")");
         mineTakeCost(userName, cost, 1);
         dao.upsertMineItem(userName, g.code, tier + 1);
         String wear = "";
@@ -12720,7 +12731,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("craft".equals(action)) {
             if (quest < 1) return mineGearResult(userName, false, "늙은 선장: 무슨 반지 말인가? 금광석이나 가져오게.");
             if (!mineCostOk(MINE_DRAGON_RING_COST, mineOreHave(userName))) {
-                return mineGearResult(userName, false, "늙은 선장: 재료가 모자라는군. (" + mineCostText(MINE_DRAGON_RING_COST) + " 필요)");
+                return mineGearResult(userName, false, "늙은 선장: 재료가 모자라는군. (" + mineCostText(MINE_DRAGON_RING_COST) + " 필요" + mineLackText(MINE_DRAGON_RING_COST, userName) + ")");
             }
             mineTakeCost(userName, MINE_DRAGON_RING_COST, 1);
             dao.upsertMineItem(userName, MINE_ITEM_DRAGON_RING, 1);
@@ -13243,7 +13254,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (c == null || (c.admin && !isMineAdmin(userName))) return mineGearResult(userName, false, "없는 상품이에요.");
         boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0 || c.admin; // [2026-10-28] 운영자 전용은 관리자가 처음부터 가진다
         if ("buy".equals(action) && !owned) {
-            if (!mineCostOk(c.cost, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 재료가 모자라요. (" + mineCostText(c.cost) + " 필요)");
+            if (!mineCostOk(c.cost, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 재료가 모자라요. (" + mineCostText(c.cost) + " 필요" + mineLackText(c.cost, userName) + ")");
             mineTakeCost(userName, c.cost, 1);
             dao.upsertMineItem(userName, "COS_" + c.code, 1);
             owned = true;

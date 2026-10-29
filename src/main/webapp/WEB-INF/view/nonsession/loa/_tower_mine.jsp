@@ -1101,7 +1101,7 @@ var TowerMine = (function () {
     var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
     h += '<small class="gear-next">' + (g.cityOnly ? '🏰 ' : '') + g.nextTier + '단계: ' + g.nextEffect + '</small>' + costHtml(g.costs);
     return h + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
-        : '<button type="button" ' + (g.can ? '' : 'disabled ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button>') + '</div>';
+        : '<button type="button" ' + (g.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.craft(\'' + g.code + '\')">' + (g.tier > 0 ? '올리기' : '만들기') + '</button>') + '</div>';
   }
   function gearHtml() {
     var h = '';
@@ -1118,7 +1118,7 @@ var TowerMine = (function () {
     var dayNeed = st.sevenDayNeed || 30; // [2026-10-28] 요일석 종류마다 30개(서버 MINE_SEVEN_DAY_STONES)
     for (var g = 11; g <= 17; g++) stones.push({ grade: g, name: ORE_NAME[g], have: oreHave(g), need: dayNeed });
     stones.push({ grade: 6, name: ORE_NAME[6], have: oreHave(6), need: 1 }); // [2026-10-25] 칠요석 하나에 별빛석 1개
-    var can = (st.sevenMax || 0) > 0 ? '' : 'disabled ';
+    var can = (st.sevenMax || 0) > 0 ? '' : 'data-lack="1" ';
     return '<div class="mine-smith-say">요일석 7종(월요석~일요석)을 ' + dayNeed + '개씩, 거기에 별빛석 하나를 더 가져오면 별빛으로 묶어 칠요석 하나로 합쳐 주지.</div>'
         + '<div class="mine-smith-row"><img src="' + oreIcon(18) + '" alt=""><span class="nm">칠요석<small>보유 ' + oreHave(18) + '개 · 지금 ' + (st.sevenMax || 0) + '개 만들 수 있어요</small>'
         + costHtml(stones) + '</span>'
@@ -1128,7 +1128,7 @@ var TowerMine = (function () {
   }
   // [2026-10-28] "구리 광석 사용처를 늘려줘" -- 구리 정련(구리 20 -> 철광석 1), 오늘의 구리 납품(하루 1번 구리 100 -> 오늘 요일석 3 + 곡괭이 내구도 +50)
   function copperHtml() {
-    var cu = oreHave(1), canR = cu >= 20 ? '' : 'disabled ', canD = cu >= 100 && !st.deliverDone ? '' : 'disabled ';
+    var cu = oreHave(1), canR = cu >= 20 ? '' : 'data-lack="1" ', canD = cu >= 100 && !st.deliverDone ? '' : 'data-lack="1" ';
     return '<div class="mine-smith-sub"><b>🔥 구리 정련 · 📦 오늘의 납품</b></div>'
         + '<div class="mine-smith-row"><img src="' + oreIcon(1) + '" alt=""><span class="nm">구리 광석 20개 → 철광석 1개<small>보유 구리 ' + cu + '개</small></span>'
         + '<button type="button" ' + canR + 'onclick="TowerMine.refine(1)">1번</button>'
@@ -1145,11 +1145,11 @@ var TowerMine = (function () {
     if (d.quest >= 1) {
       return h + talkBlock(n, captainSay || d.story || '')
           + '<div class="mine-smith-row"><span class="nm">🌊 용왕의 반지<small>가지고 있으면 물 위를 걸을 수 있어요</small>' + costHtml(d.costs) + '</span>'
-          + '<button type="button" ' + (d.can ? '' : 'disabled ') + 'onclick="TowerMine.captain(\'craft\')">만들어 주세요</button></div>';
+          + '<button type="button" ' + (d.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.captain(\'craft\')">만들어 주세요</button></div>';
     }
     return h + talkBlock(n, captainSay || (n ? n.line : ''))
         + '<div class="mine-smith-row"><img src="' + oreIcon(4) + '" alt=""><span class="nm">금광석 ' + d.goldNeed + '개 주기<small>보유 ' + (d.gold || 0) + '개</small></span>'
-        + '<button type="button" ' + ((d.gold || 0) >= d.goldNeed ? '' : 'disabled ') + 'onclick="TowerMine.captain(\'give\')">주기</button></div>';
+        + '<button type="button" ' + ((d.gold || 0) >= d.goldNeed ? '' : 'data-lack="1" ') + 'onclick="TowerMine.captain(\'give\')">주기</button></div>';
   }
   // [2026-10-24] 배 -- 다른 항구를 고르면 그곳 부두로
   function shipHtml() {
@@ -1206,7 +1206,7 @@ var TowerMine = (function () {
         var btn;
         if (c.code === cur) btn = '<span class="mine-worn">착용 중</span>';
         else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
-        else btn = '<button type="button" ' + (c.can ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
+        else btn = '<button type="button" ' + (c.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
         h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '">'
             + '<img src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
             + '<div class="cos-nm">' + c.name + '</div>'
@@ -1604,7 +1604,7 @@ var TowerMine = (function () {
     if (n.kind === 'boatwright') {
       if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>';
       return h + have + '<div class="mine-smith-row"><span class="nm">⛵ 1인용 배<small>뱃길로 나가 일곱 섬에 내릴 수 있어요</small>' + costHtml(a.boatCosts) + '</span>'
-          + '<button type="button" ' + (a.boatCan ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
+          + '<button type="button" ' + (a.boatCan ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
     }
     return h + have + '<div class="mine-smith-menu"><button type="button" ' + (a.boat ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'board\')">⛵ 배 타기<small>' + (a.boat ? '다도해 뱃길로' : '1인용 배가 있어야 해요') + '</small></button></div>'
         + '<div class="mine-smith-say">☀️ 다도해는 낮(30분)과 밤(30분)이 번갈아 와요. 낮에는 섬마다 햇볕에 초당 3~8%씩 체력이 깎이니(환생할수록 덜), 야자수 그늘(🌴)에서 쉬어 가세요.</div>';
@@ -1679,7 +1679,7 @@ var TowerMine = (function () {
   function teleHtml() {
     var gold = 0;
     (st.ores || []).forEach(function (o) { if (o.grade === 4) gold = o.qty; });
-    var need = map.teleGold != null ? map.teleGold : 5, can = gold >= need ? '' : 'disabled ';
+    var need = map.teleGold != null ? map.teleGold : 5, can = gold >= need ? '' : 'data-lack="1" ';
     return npcHead('🌀 텔레포트 게이트', false)
         + '<div class="mine-smith-say">' + (need > 0 ? '금광석 ' + need + '개를 바치면 마법진이 빛나며 먼 곳으로 데려다줘요. (보유 ' + gold + '개)' : '마법진에 올라서면 먼 곳으로 데려다줘요. (무료)') + '</div><div class="mine-smith-menu" style="flex-wrap:wrap">'
         + (map.teleTo || []).map(function (d) { return '<button type="button" ' + can + 'onclick="TowerMine.teleport(\'' + d.id + '\')">🌀 ' + d.name + '</button>'; }).join('') + '</div>';
@@ -1792,7 +1792,7 @@ var TowerMine = (function () {
         if (s.done) b += '<div class="mine-smith-row"><span class="nm">✔ ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + (s.tier === tier ? ' · 지금 가진 것' : ' · 다음 단계로 바뀌었어요') + '</small></span>'
             + (s.tier === tier ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + code + '\')">' + (worn ? '벗기' : (code === 'coat' ? '입기' : '끼기')) + '</button>' : '') + '</div>';
         else if (s.next) b += '<div class="mine-smith-row"><span class="nm">' + s.tier + '단계 ' + s.name + '<small>' + s.effect + '</small>' + costHtml(s.costs) + '</span>'
-            + '<button type="button" ' + (s.can ? '' : 'disabled ') + 'onclick="TowerMine.coatAct(\'up\',\'' + code + '\')">건네기</button></div>';
+            + '<button type="button" ' + (s.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.coatAct(\'up\',\'' + code + '\')">건네기</button></div>';
         else b += '<div class="mine-smith-row" style="opacity:.5"><span class="nm">🔒 ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + ' · 앞 단계를 먼저</small></span></div>';
       });
       return b;
@@ -1963,7 +1963,7 @@ var TowerMine = (function () {
       var ah = npcHead('⛱️ ' + n.name, false) + talkBlock(n, n.line);
       (st.archiShop || []).forEach(function (it) {
         ah += '<div class="mine-smith-row"><span class="nm">⛱️ ' + it.name + '<small>' + it.effect + (it.owned ? ' · 보유 -- 🎒 장비 창 무기 칸에서 들기' : '') + '</small>' + (it.owned ? '' : costHtml(it.costs)) + '</span>'
-            + (it.owned ? '' : '<button type="button" ' + (it.can ? '' : 'disabled ') + 'onclick="TowerMine.archiBuy(\'' + it.code + '\')">사기</button>') + '</div>';
+            + (it.owned ? '' : '<button type="button" ' + (it.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiBuy(\'' + it.code + '\')">사기</button>') + '</div>';
       });
       el.smith.innerHTML = ah;
       return;
@@ -2021,8 +2021,8 @@ var TowerMine = (function () {
       var have = oreHave(r.grade), can = have >= r.need && !capped;
       return '<div class="mine-smith-row"><img src="' + oreIcon(r.grade) + '" alt=""><span class="nm">' + r.oreName + ' ' + r.need + '개 → 최대 +' + r.gain
           + '<small>보유 ' + have + '개</small></span>'
-          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',1)">1회</button>'
-          + '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',9999)">최대</button></div>';
+          + '<button type="button" ' + (can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',1)">1회</button>'
+          + '<button type="button" ' + (can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.pickUpgrade(' + r.grade + ',9999)">최대</button></div>';
     });
     el.smith.innerHTML = npcHead('⛏️ 대장간 · 곡괭이 강화', true)
         + '<div class="mine-smith-dur">⛏️ 곡괭이 내구도 <b>' + st.durability + ' / ' + st.durabilityMax + '</b>' + (st.pickCap ? ' <small>(최대 ' + st.pickCap + ')</small>' : '') + '</div>'
@@ -2045,7 +2045,7 @@ var TowerMine = (function () {
     return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + (hm.cityOnly ? '🏰 ' : '') + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
         + '<small>보유 ' + hm.have + '개' + (hm.cityOnly ? ' · 동굴 3층까지 환하게' : '') + '</small>' + (hm.extra ? costHtml(hm.extra) : '') + '</span>'
         + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'
-            : '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.helmetUpgrade()">' + (hm.tier > 0 ? '업그레이드' : '만들기') + '</button>') + '</div>';
+            : '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.helmetUpgrade()">' + (hm.tier > 0 ? '업그레이드' : '만들기') + '</button>') + '</div>';
   }
   function helmetUpgrade() {
     if (busy) return;
@@ -2566,7 +2566,7 @@ var TowerMine = (function () {
   function craftNpcHtml(n) {
     var h = npcHead((n.kind === 'smelter' ? '🔥 ' : n.kind === 'gemcutter' ? '💎 ' : '🔨 ') + n.name, false) + talkBlock(n, n.line);
     var row = function (icon, name, sub, btns) { return '<div class="mine-smith-row"><img src="' + oreIcon(icon) + '" alt=""><span class="nm">' + name + '<small>' + sub + '</small></span>' + btns + '</div>'; };
-    var btn = function (fn, a, t, ok) { return '<button type="button" ' + (ok ? '' : 'disabled ') + 'onclick="TowerMine.' + fn + '(' + a + ', ' + t + ')">' + t + '번</button>'; };
+    var btn = function (fn, a, t, ok) { return '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.' + fn + '(' + a + ', ' + t + ')">' + t + '번</button>'; };
     if (n.kind === 'smelter') {
       h += '<div class="mine-smith-say">광석 100개 -> 괴 1개 (성공 45%, 실패해도 광석은 녹아요). 괴는 좋은 장비의 재료예요.</div>';
       for (var g = 1; g <= 5; g++) { var have = oreHave(g); h += row(39 + g, ORE_NAME[g] + ' 100 -> ' + ORE_NAME[39 + g], '보유 ' + have + ' · ' + ORE_NAME[39 + g] + ' ' + oreHave(39 + g) + '개', btn('smelt', g, 1, have >= 100) + btn('smelt', g, 10, have >= 1000)); }
@@ -2584,7 +2584,7 @@ var TowerMine = (function () {
       var c = oreHave(cl[1]);
       if (!c) return;
       any = true;
-      h += row(cl[1], ORE_NAME[cl[1]], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'disabled ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
+      h += row(cl[1], ORE_NAME[cl[1]], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'data-lack="1" ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
     });
     if (!any) h += '<div class="mine-smith-say">세공된 보석이 없어요. 마을의 보석 세공사에게서 만들 수 있어요.</div>';
     return h;

@@ -910,6 +910,8 @@
     .mine-ask{ font-size:14px; font-weight:700; line-height:1.5; margin:4px 0 12px; }
     .mine-smith-head button, .mine-smith-row button{ font-size:12px; padding:4px 8px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-smith-row button:disabled{ opacity:.4; cursor:default; }
+    /* [2026-10-29] "재료 있어도 제작이 비활성되는 문제가 없도록" -- 재료/제작 버튼은 막지 않고 흐리게만(눌러도 되고, 모자라면 서버가 무엇이 모자란지 알려 준다) */
+    .mine-smith button[data-lack]{ opacity:.55; filter:grayscale(.5); }
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
     .mine-smith-menu{ display:flex; gap:8px; }
