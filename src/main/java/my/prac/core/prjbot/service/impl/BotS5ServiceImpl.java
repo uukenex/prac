@@ -8952,7 +8952,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE };
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.NINJA_SHARD_CODE };
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
             scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
@@ -10377,7 +10377,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dao.upsertMineItem(userName, MINE_ITEM_NINJA_SWORD, g + 1);
                     if (cur < 0) dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 2);
                     msg.append(" 🗡️ 닌자의 검을 얻었어요! ").append(mineNinjaEffect(g)).append(cur < 0 ? " (바로 들었어요)" : " (더 좋은 검으로 바꿨어요)");
-                } else msg.append(" 🗡️ 닌자의 검을 주웠지만 지금 검보다 좋지 않아 두고 왔어요.");
+                } else { // [2026-10-29] "이미 있는 아이템(등급까지 같으면) 자동 분해해서 닌자의 검 조각으로, 등급마다 1개씩 더" -- 같은 등급 이하는 분해
+                    dao.addUserOre(userName, S5MineMap.NINJA_SHARD_CODE, g + 1);
+                    msg.append(" 🧩 이미 있는 닌자의 검이라 분해했어요. 닌자의 검 조각 +").append(g + 1);
+                    out.put("dropShard", g + 1);
+                }
                 out.put("dropGrade", g);
                 out.put("dropName", "닌자의 검");
             }
@@ -12215,6 +12219,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (S5MineMap.ICE_STONE_CODE.equals(code)) return S5MineMap.ICE_STONE_GRADE; // [2026-10-28]
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.GEM_CODES[i].equals(code)) return S5MineMap.GEM_GRADE_BASE + i;
         if (S5MineMap.SEAL_CODE.equals(code)) return S5MineMap.SEAL_GRADE;
+        if (S5MineMap.NINJA_SHARD_CODE.equals(code)) return S5MineMap.NINJA_SHARD_GRADE; // [2026-10-29]
         if (S5MineMap.MOON_STONE_CODE.equals(code)) return S5MineMap.MOON_STONE_GRADE; // [2026-10-28]
         for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.SEA_GEM_CODES[i].equals(code)) return S5MineMap.SEA_GEM_GRADE_BASE + i; // [2026-10-28] 바다 보석
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
@@ -12236,6 +12241,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g >= S5MineMap.SEA_GEM_GRADE_BASE && g < S5MineMap.SEA_GEM_GRADE_BASE + S5MineMap.SEA_GEM_CODES.length) return S5MineMap.SEA_GEM_NAMES[g - S5MineMap.SEA_GEM_GRADE_BASE]; // [2026-10-28] 바다 보석(보석 줄보다 먼저)
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g == S5MineMap.DESERT_HEART_GRADE) return S5MineMap.DESERT_HEART_NAME; // [2026-10-28]
+        if (g == S5MineMap.NINJA_SHARD_GRADE) return S5MineMap.NINJA_SHARD_NAME; // [2026-10-29]
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g == S5MineMap.CUT_ICE_GRADE) return S5MineMap.CUT_ICE_NAME;

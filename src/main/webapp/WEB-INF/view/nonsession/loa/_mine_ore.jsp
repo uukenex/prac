@@ -18,6 +18,7 @@ window.MineOre = (function () {
   ['진주', '산호석', '자수정', '오팔', '흑진주'].forEach(function (n, i) { name[34 + i] = n; });
   [['#f4eee4', '#ffffff'], ['#ff7a8a', '#ffd0d8'], ['#9a5ad8', '#e0c8ff'], ['#8ad8d0', '#fff0f8'], ['#3a3a4a', '#b8b8d0']].forEach(function (c, i) { col[34 + i] = c; });
   name[39] = '사막의 심장'; col[39] = ['#e8a23a', '#fff0c0'];
+  name[60] = '닌자의 검 조각'; col[60] = ['#4a4f5c', '#d8dee8']; // [2026-10-29]
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { name[40 + i] = n; col[40 + i] = col[1 + i]; });
   for (var i = 0; i < 9; i++) { name[45 + i] = '세공된 ' + name[21 + i]; col[45 + i] = col[21 + i]; }
   name[54] = '세공된 빙석'; col[54] = col[19];
@@ -29,7 +30,8 @@ window.MineOre = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }]
+    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }],
+    ['🧩 조각', function (g) { return g === 60; }]
   ];
   var byNameMap = {};
   name.forEach(function (n, g) { if (n) byNameMap[n] = g; });

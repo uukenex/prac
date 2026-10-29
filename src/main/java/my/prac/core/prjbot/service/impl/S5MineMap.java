@@ -108,6 +108,9 @@ public final class S5MineMap {
     public static String seaCutName(int i) { return "세공된 " + SEA_GEM_NAMES[i]; }
     public static final String DESERT_HEART_NAME = "사막의 심장";
     public static final int DESERT_HEART_GRADE = 39;
+    /** [2026-10-29] 닌자의 검 조각(60) -- 이미 가진 닌자의 검(같은 등급 이하)이 또 나오면 자동 분해(일반 1개, 등급마다 +1 -- 신화 8개). */
+    public static final String NINJA_SHARD_CODE = "NINJA_SHARD", NINJA_SHARD_NAME = "닌자의 검 조각";
+    public static final int NINJA_SHARD_GRADE = 60;
     public static final String PEAK = "snowpeak";
     /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
     public static final String ICE_HEART_CODE = "ICE_HEART";

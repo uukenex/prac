@@ -43,6 +43,7 @@ var TowerMine = (function () {
   var ELEM_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'], ELEM_NAME = ['무', '땅', '번개', '물', '얼음', '바람', '불', '어둠', '빛'];
   // [2026-10-29] "구리~미스릴, 빙석, 요일석, 보석, 바다 보석, 괴 말고 다른 게 나오면 이펙트를 조금 더" -- 별빛석/달빛석/칠요석/세공품/고유 증표
   function specialDrop(g) { return !((g >= 1 && g <= 5) || g === 19 || (g >= 11 && g <= 17) || (g >= 21 && g <= 29) || (g >= 34 && g <= 38) || (g >= 40 && g <= 44)); }
+  ORE_NAME[60] = '닌자의 검 조각'; ORE_COL[60] = ['#4a4f5c', '#d8dee8']; // [2026-10-29] 같은 등급 이하 닌자의 검 자동 분해
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
@@ -1564,7 +1565,8 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }]
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }],
+    ['🧩 조각', function (g) { return g === 60; }] // [2026-10-29] 닌자의 검 조각
   ];
   function invEtcHtml() {
     var ores = (st.ores || []).filter(function (o) { return o.qty > 0; }), used = {}, h = '';
@@ -2565,7 +2567,7 @@ var TowerMine = (function () {
           floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, big: sp, t0: t + 200 + i * 150 });
           if (sp) { flashT0 = t; banner = { text: '✨ ' + dr.name + '!', t0: t }; }
         });
-        if (d.dropGrade != null) { flashT0 = t; banner = { text: '🗡️ ' + d.dropName + '!', t0: t, color: GRADE_COL[d.dropGrade], rainbow: d.dropGrade === 7 }; } // [2026-10-29] 닌자의 검 -- 등급은 색으로만
+        if (d.dropGrade != null) { flashT0 = t; banner = d.dropShard ? { text: '🧩 닌자의 검 조각 +' + d.dropShard, t0: t } : { text: '🗡️ ' + d.dropName + '!', t0: t, color: GRADE_COL[d.dropGrade], rainbow: d.dropGrade === 7 }; } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
         msg(d.message || '', 2600);
       }
