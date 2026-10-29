@@ -206,6 +206,21 @@ public final class S5MineMobs {
     ));
     public static final int DUMMY_TYPE = indexOf("허수아비");
 
+    // [2026-10-29] "같은 이름의 몬스터라도 개체마다 체력·레벨이 다르게, 3단계, 보상 pool도 다르게, 상위 단계는 높은 등급 확률이 조금 더"
+    //  -- 하급 30% / 보통 50% / 상급 20%(보스·수하·분신·여왕개미·허수아비는 늘 보통). 맵 시드와 개체 번호로 정해서(배치 난수와 따로) 서버/화면이 같다.
+    public static final String[] RANK_NAMES = { "하급", "보통", "상급" };
+    public static final double[] RANK_HP = { 0.75, 1.0, 1.4 }, RANK_ATK = { 0.85, 1.0, 1.2 };
+    public static final int[] RANK_LV = { -2, 0, 3 };
+    static int rankOf(long seed, int id, Type t) {
+        if (t.boss || t.minion || t.clone || t.noReward || t.dummy) return 1;
+        int v = new Random(seed * 1_000_003L + id * 7919L).nextInt(100);
+        return v < 30 ? 0 : v < 80 ? 1 : 2;
+    }
+    public static int hp(Type t, int rank) { return Math.max(1, (int) Math.round(t.hp() * RANK_HP[rank])); }
+    public static int atk(Type t, int rank) { return Math.max(1, (int) Math.round(t.atk() * RANK_ATK[rank])); }
+    public static long exp(Type t, int rank) { return Math.max(1, Math.round(t.exp() * RANK_HP[rank])); }
+    public static int lv(Type t, int rank) { return Math.max(1, t.lv() + RANK_LV[rank]); }
+
     // [2026-10-29] 속성 -- 기본 6(땅/번개/물/얼음/바람/불) + 특수 3(무/어둠/빛). 몬스터는 하나씩(elemOf: 이름 -> 종류 -> 맵 순).
     //  상성은 곱연산 x1.5: 어둠<>빛, 물·얼음<>불, 땅·바람<>번개. 플레이어는 무기에 부여한 속성으로 때린다(BotS5ServiceImpl.mineElemMul).
     public static final int EL_NONE = 0, EL_EARTH = 1, EL_THUNDER = 2, EL_WATER = 3, EL_ICE = 4, EL_WIND = 5, EL_FIRE = 6, EL_DARK = 7, EL_LIGHT = 8;
@@ -403,7 +418,7 @@ public final class S5MineMobs {
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
             taken[y][x] = true;
-            out.add(new S5MineMap.Mob(out.size(), type, x, y, ca));
+            out.add(new S5MineMap.Mob(out.size(), type, x, y, ca, rankOf(seed, out.size(), TYPES.get(type)))); // [2026-10-29] 개체 단계
         }
         for (int[] q : m.dummySpots()) out.add(new S5MineMap.Mob(out.size(), DUMMY_TYPE, q[0], q[1], new int[] { q[1] * m.w + q[0] })); // [2026-10-29] 왕도 훈련장 허수아비
         for (int[] q : m.queenSpots()) { // [2026-10-28] 개미굴 여왕개미 셋(보스 아님 -- 목록 맨 끝이 아니어도 된다)

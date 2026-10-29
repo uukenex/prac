@@ -355,8 +355,11 @@ public final class S5MineMap {
     public static final class Mob {
         public final int id, type, x, y;
         public final int[] cells;
-        Mob(int id, int type, int x, int y, int[] cells) {
-            this.id = id; this.type = type; this.x = x; this.y = y; this.cells = cells;
+        /** [2026-10-29] 개체 단계(S5MineMobs.RANK_*): 0 하급 / 1 보통 / 2 상급 -- 같은 이름이라도 레벨·체력·공격·보상이 다르다. */
+        public final int rank;
+        Mob(int id, int type, int x, int y, int[] cells) { this(id, type, x, y, cells, 1); }
+        Mob(int id, int type, int x, int y, int[] cells, int rank) {
+            this.id = id; this.type = type; this.x = x; this.y = y; this.cells = cells; this.rank = rank;
         }
     }
 
@@ -626,7 +629,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 3;
+    static final int PAYLOAD_REV = 4;
 
     public String version() {
         String v = version;

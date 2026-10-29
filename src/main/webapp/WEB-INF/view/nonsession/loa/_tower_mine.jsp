@@ -40,6 +40,8 @@ var TowerMine = (function () {
   var GRADE_COL = ['#ffffff', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffffff'];
   function gradeName(nm, g) { return g == null ? nm : '<span class="gr gr' + g + '"' + (g < 6 ? ' style="color:' + GRADE_COL[g] + '"' : '') + '>' + nm + '</span>'; }
   // [2026-10-29] 속성(서버 S5MineMobs.EL_* 순서): 무, 땅, 번개, 물, 얼음, 바람, 불, 어둠, 빛
+  // [2026-10-29] 개체 단계(0 하급 / 1 보통 / 2 상급) -- 서버 S5MineMobs.RANK_*와 같은 값. 상급 = ⭐ + 주황 이름, 하급 = 회색 이름
+  var RANK_HP = [0.75, 1, 1.4], RANK_LV = [-2, 0, 3];
   var ELEM_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'], ELEM_NAME = ['무', '땅', '번개', '물', '얼음', '바람', '불', '어둠', '빛'];
   // [2026-10-29] "구리~미스릴, 빙석, 요일석, 보석, 바다 보석, 괴 말고 다른 게 나오면 이펙트를 조금 더" -- 별빛석/달빛석/칠요석/세공품/고유 증표
   function specialDrop(g) { return !((g >= 1 && g <= 5) || g === 19 || (g >= 11 && g <= 17) || (g >= 21 && g <= 29) || (g >= 34 && g <= 38) || (g >= 40 && g <= 44)); }
@@ -1648,16 +1650,18 @@ var TowerMine = (function () {
   var priestConfirm = false, RB_MAX = 5;
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
-  var ENCH_HITS = 1000;
+  var ENCH_HITS = 1000, ENCH_HITS_ELEM = 500; // 성당 신부 1000번, [2026-10-29] 원소술사 500번
   var ELEM_SHOP = [['water', 3, 48, '불'], ['thunder', 2, 49, '땅·바람'], ['fire', 6, 46, '물·얼음'], ['earth', 1, 45, '번개']];
   function elemHtml(n) {
     var e = st.ench || {}, have = function (g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; };
     return npcHead('🔮 ' + (n ? n.name : '원소술사'), false) + talkBlock(n, n ? n.line : '')
       + '<div class="mine-smith-say">지금 무기: ' + (e.left > 0 && e.el ? ELEM_ICON[e.el] + ' ' + ELEM_NAME[e.el] + ' 속성 (' + e.left + '번 남음)' : '속성 없음') + ' · 새로 부여하면 이전 속성은 사라져요.</div>'
       + ELEM_SHOP.map(function (s) {
-          return '<div class="mine-smith-row"><img src="' + oreIcon(s[2]) + '" alt=""><span class="nm">' + ELEM_ICON[s[1]] + ' ' + ELEM_NAME[s[1]] + ' 속성<small>' + ORE_NAME[s[2]] + ' 1개 (보유 ' + have(s[2]) + ') · ' + s[3] + ' 몬스터 x1.5</small></span>'
+          return '<div class="mine-smith-row"><img src="' + oreIcon(s[2]) + '" alt=""><span class="nm">' + ELEM_ICON[s[1]] + ' ' + ELEM_NAME[s[1]] + ' 속성<small>' + ORE_NAME[s[2]] + ' 1개 (보유 ' + have(s[2]) + ') · ' + ENCH_HITS_ELEM + '번 · ' + s[3] + ' 몬스터 x1.5</small></span>'
             + '<button type="button" ' + (have(s[2]) ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_' + s[0] + '\')">부여</button></div>';
-        }).join('');
+        }).join('')
+      + '<div class="mine-smith-row"><span class="nm">⚪ 무속성으로 되돌리기<small>무기에 깃든 속성을 없애요 (무료)</small></span>' // [2026-10-29]
+      + '<button type="button" ' + (e.left > 0 && e.el ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_none\')">되돌리기</button></div>';
   }
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
@@ -2838,15 +2842,16 @@ var TowerMine = (function () {
         } else ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
         ctx.globalAlpha = 1;
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
-        if (ms && ms.hp > 0 && ms.hp < ty.hp) {
+        var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력
+        if (ms && ms.hp > 0 && ms.hp < hpMx) {
           ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + 1 * scale, my - 4 * scale, 14 * scale, 3 * scale);
-          ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / ty.hp), scale);
+          ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / hpMx), scale);
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
-          var nm = ty.dummy ? '🎯 ' + ty.name + ' (데미지 시험)' : (ty.boss ? '👑 보스 ' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + (ty.lv || (1 + 4 * (ty.tier - 1))); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
+          var nm = ty.dummy ? '🎯 ' + ty.name + ' (데미지 시험)' : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
-          ctx.fillStyle = ty.boss ? '#ff4a4a' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
+          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
         }
       }
     }
