@@ -209,6 +209,11 @@ public class S5MineSessionLog {
                 int lv = levelOf(out);
                 if (lv > 0) s.killRun.lv = lv;
                 merge(s.killRun, ore);
+                if (out != null && out.get("dropName") != null) { // [2026-10-29] "무기 얻으면 로그에 뜨지?" -- 처치 묶음과 따로 한 줄(관리자 로그엔 등급 이름도)
+                    Object g = out.get("dropGrade"), sh = out.get("dropShard");
+                    String gn = g instanceof Integer && (Integer) g >= 0 && (Integer) g < GRADE_NAMES.length ? GRADE_NAMES[(Integer) g] : "?";
+                    add(s, ev(now, "drop", "무기 드랍", out.get("dropName") + " (" + gn + ")" + (sh != null ? " -- 이미 있어 분해: " + out.get("dropShardName") + " +" + sh : ""), null));
+                }
             } else {
                 Ev e = ev(now, kind, label(req), trim(res, MSG_MAX), ore);
                 if ("boss".equals(kind)) { e.x = longOf(out == null ? null : out.get("expGain")); e.lv = levelOf(out); }
@@ -310,6 +315,9 @@ public class S5MineSessionLog {
         if (s.isEmpty() || "null".equals(s)) return null;
         return s.length() > max ? s.substring(0, max) + "…" : s;
     }
+
+    /** [2026-10-29] 장비 등급 이름(BotS5ServiceImpl 등급 0~7 -- 화면엔 색으로만, 관리자 로그엔 글자로). */
+    private static final String[] GRADE_NAMES = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
 
     private static Ev ev(long t, String k, String a, String m, LinkedHashMap<String, Integer> o) {
         Ev e = new Ev();

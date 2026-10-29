@@ -292,7 +292,7 @@
     //  REQ "[웹] 광산 기록 #sid ...", RES = JSON {sid, seq, start, sm(입장 위치), ev[{t, k, a, m, n, x, lv, o{이름: 증감}}], end, em, why}.
     //  k: in 입장 / out 퇴장 / dig 채굴(n회 묶음) / kill 처치(n마리 묶음, x 경험치, lv 레벨 업) / boss 보스 처치 / died 쓰러짐 / move 이동 / act 구매·제작·강화 등 / etc 광석 변동.
     var SESS_PREFIX = '[웹] 광산 기록';
-    var EV_ICON = { 'in': '🚪', out: '🚪', dig: '⛏️', kill: '⚔️', boss: '👑', died: '💫', move: '🧭', act: '🛒', etc: '🔁' };
+    var EV_ICON = { drop: '🗡️', 'in': '🚪', out: '🚪', dig: '⛏️', kill: '⚔️', boss: '👑', died: '💫', move: '🧭', act: '🛒', etc: '🔁' };
     function sessOf(it) {
       if (catOf(it) !== 'mine' || String(it.REQ || '').indexOf(SESS_PREFIX) !== 0) return null;
       try {
@@ -323,7 +323,7 @@
       var first = chunks[0], ev = [], endC = null, live = false, dropped = 0;
       chunks.forEach(function (c) { ev = ev.concat(c.ev || []); if (c.end) endC = c; if (c.live) live = true; dropped += Number(c.dropped || 0); });
       if (endC) live = false;
-      var dig = 0, kill = 0, died = 0, move = 0, exp = 0, lv = 0, gain = {}, spend = {}, buys = [];
+      var wdrop = 0, dig = 0, kill = 0, died = 0, move = 0, exp = 0, lv = 0, gain = {}, spend = {}, buys = [];
       ev.forEach(function (e) {
         if (e.k === 'dig') dig += e.n || 0;
         else if (e.k === 'kill') kill += e.n || 0;
@@ -334,7 +334,8 @@
         if (e.lv) lv = Math.max(lv, e.lv);
         var o = e.o || {}, neg = false;
         Object.keys(o).forEach(function (k) { if (o[k] > 0) gain[k] = (gain[k] || 0) + o[k]; else if (o[k] < 0) { spend[k] = (spend[k] || 0) + o[k]; neg = true; } });
-        if (e.k === 'act' || neg) buys.push(e);
+        if (e.k === 'act' || e.k === 'drop' || neg) buys.push(e); // [2026-10-29] 무기 드랍도 목록에
+        if (e.k === 'drop') wdrop++;
       });
       var lastT = endC ? endC.end : (ev.length ? ev[ev.length - 1].t : first.start);
       var mins = Math.max(0, Math.round((lastT - first.start) / 60000));
@@ -342,7 +343,7 @@
         + '<span class="log-chip mine">⛏️ 한 판</span>' + (live ? '<span class="log-chip live-chip">🟢 플레이 중</span>' : '') + '</span>'
         + '<span>' + escapeHtml(mdhm(first.start)) + ' ~ ' + (live ? '지금' : escapeHtml(hms(lastT))) + ' (' + mins + '분)</span></div>';
       // [2026-10-28] 한 일은 숫자 칸으로(인게임 창처럼 금색 숫자), 0인 칸은 뺀다
-      var stats = [['⛏️ 채굴', dig], ['⚔️ 처치', kill], ['✨ 경험치', exp ? '+' + exp : 0], ['⬆️ 레벨', lv ? 'Lv.' + lv : 0], ['💫 쓰러짐', died], ['🧭 이동', move], ['🛒 구매·사용', buys.length]]
+      var stats = [['⛏️ 채굴', dig], ['⚔️ 처치', kill], ['✨ 경험치', exp ? '+' + exp : 0], ['⬆️ 레벨', lv ? 'Lv.' + lv : 0], ['💫 쓰러짐', died], ['🧭 이동', move], ['🛒 구매·사용', buys.length - wdrop], ['🗡️ 무기', wdrop]]
         .filter(function (x) { return x[1]; });
       var body = '<div class="sess-line"><span>📍 <b>' + escapeHtml(first.sm || '-') + '</b></span>'
         + (endC ? '<span>🚪 <b>' + escapeHtml(endC.em || '-') + '</b> (' + escapeHtml(endC.why || '') + ')</span>' : '') + '<span>#' + escapeHtml(first.sid) + '</span></div>'
