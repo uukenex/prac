@@ -916,6 +916,7 @@
     /* [2026-10-29] 장비 등급 색(신화 = 무지개), 공격 버튼 속성 부여 표시 */
     /* [2026-10-29] 장비 팝업이 인벤토리 창(transform) 안에 갇혀 긴 목록의 끝이 잘렸다 -- 상자를 창 높이까지만, 안에서 스크롤 */
     .gr6{ background:linear-gradient(90deg,#7f8b9c,#f4f8ff 45%,#9aa6b6 70%,#e8eef6); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; } /* 고대 = 은빛 광택 */
+    .cos-card img, .mine-look-prev{ object-fit:contain; } /* [2026-10-29] 날개까지 그린 그림은 옆으로 넓다 */
     .gr6, .gr7{ display:inline-block; width:fit-content; align-self:flex-start; } /* 칸 안에서 줄 폭으로 늘어나면 무지개가 앞쪽 색만 보인다 */
     .gr7{ background:linear-gradient(90deg,#ff4a4a,#ffa500,#ffe14d,#4fd16a,#4a9eff,#b56cff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 

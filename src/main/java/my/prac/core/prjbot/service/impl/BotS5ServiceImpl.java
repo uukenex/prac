@@ -13308,7 +13308,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     // "캐릭터 외형을 바꿀 수 있게, 대장장이 옆 건물에 명품상점 -- 부위별 치장 아이템, 성별 전환도 여기서" 요청. 능력치 없음(보이는 것만).
     //  산 아이템: TBOT_S5_MINE_ITEM "COS_" + 코드(1), 부위별 착용: "LOOK_" + 부위(카탈로그 순번 + 1, 0 = 기본), 성별: "LOOK_GENDER"(0 남 / 1 여).
     //  모양/색(look 값)은 화면(TowerMine.charSprite)이 그린다.
-    static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes" };
+    static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes", "wing" }; // [2026-10-29] wing = 환생 날개 염색(기본 흰색)
     private static final String MINE_ITEM_GENDER = "LOOK_GENDER";
     /** 성별 전환 비용. */
     private static final String[][] MINE_GENDER_COST = { { S5MineMap.ORE_CODES[2], "10" } };
@@ -13400,7 +13400,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         new MineCos("SHOE_BLACK", "shoes", "검은 구두", "#141418", new String[][] { mineCost(2, 3) }),
         new MineCos("SHOE_PURPLE", "shoes", "보라 부츠", "#8a4ad8", new String[][] { mineCost(6, 4) }),
         new MineCos("SHOE_GREEN", "shoes", "초록 운동화", "#4fbf6a", new String[][] { mineCost(7, 2) }),
-        new MineCos("SHOE_FLAME", "shoes", "불꽃 신", "#ff6a2a|flame", new String[][] { mineCost(1, 10), mineOre(6, 1) })
+        new MineCos("SHOE_FLAME", "shoes", "불꽃 신", "#ff6a2a|flame", new String[][] { mineCost(1, 10), mineOre(6, 1) }),
+        // [2026-10-29] "날개 전부 흰색, 치장상점에서 염색" -- 환생 날개 색(입으면 날개가 그 색, 기본 = 흰색). 목록 뒤에만 붙인다(착용 번호 = 목록 순서).
+        new MineCos("WING_SKY", "wing", "하늘빛 날개 염색", "#bfe4ff", new String[][] { mineCost(3, 5) }),
+        new MineCos("WING_PINK", "wing", "벚꽃 날개 염색", "#ffc0dc", new String[][] { mineCost(6, 5) }),
+        new MineCos("WING_MINT", "wing", "민트 날개 염색", "#9fecd0", new String[][] { mineCost(7, 5) }),
+        new MineCos("WING_GOLD", "wing", "황금 날개 염색", "#ffd75a", new String[][] { mineCost(4, 5), mineBar(3, 1) }),
+        new MineCos("WING_PURPLE", "wing", "별빛 보라 날개 염색", "#c8a8ff", new String[][] { mineCost(2, 5) }),
+        new MineCos("WING_RED", "wing", "불사조 날개 염색", "#ff7a5a", new String[][] { mineCost(1, 8) }),
+        new MineCos("WING_BLACK", "wing", "흑요 날개 염색", "#4a4458", new String[][] { mineCost(5, 5), mineCost(8, 1) }),
+        new MineCos("WING_RAINBOW", "wing", "무지개 날개 염색", "rainbow", new String[][] { mineCost(8, 3), mineSeven(3) })
     );
     /** [2026-10-28] 바람의 신 -- 화면 한 칸 이동 시간을 기본(140ms)의 1/5로. */
     private static final String MINE_COS_SPEED = "SHOE_GM";

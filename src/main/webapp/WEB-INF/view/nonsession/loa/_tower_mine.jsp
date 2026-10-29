@@ -1189,18 +1189,19 @@ var TowerMine = (function () {
     travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + n.px + '&py=' + n.py + '&dest=' + encodeURIComponent(dest) + verQ(), '배를 타지 못했어요.');
   }
   // [2026-10-24] 명품상점 -- 부위별 외형(능력치 없음) + 성별 전환
-  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발' };
+  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발', wing: '🪽 날개 염색 (환생하면 보여요)' }; // [2026-10-29] 날개 염색
   // [2026-10-24] "치장 아이템을 착용했을 때 모습을 이미지로" -- 목록마다 그 아이템을 입은 내 캐릭터, 누르면 위에 크게 입어보기(앞/옆/뒤)
   var lookImgCache = {}, tryLook = null, tryName = '';
   function lookImg(lk, dir) {
     var key = JSON.stringify(lk) + dir;
-    if (!lookImgCache[key]) lookImgCache[key] = charSprite(dir, 0, 0, lk).toDataURL();
+    if (!lookImgCache[key]) lookImgCache[key] = (lk && lk.rebirth > 0 ? MineChar.withWings(dir, 0, 0, lk) : charSprite(dir, 0, 0, lk)).toDataURL(); // [2026-10-29] 환생했으면 날개까지
     return lookImgCache[key];
   }
   function lookWith(slot, look) {
     var lk = {}, cur = st.look || {};
     for (var k in cur) lk[k] = cur[k];
     lk[slot] = look;
+    if (slot === 'wing') lk.rebirth = Math.max(2, lk.rebirth | 0); // [2026-10-29] 날개 염색 미리보기 -- 환생 전이어도 날개를 보여 준다
     return lk;
   }
   function tryOn(code) {
@@ -1221,7 +1222,7 @@ var TowerMine = (function () {
         + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
     // [2026-10-28] "치장상점 UI -- 부위별 캐러셀" -- 부위마다 가로로 넘기는 카드 줄(그림을 누르면 입어 보기). 다시 그려도 넘긴 자리는 그대로(renderSmithView).
-    ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
+    ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (slot) {
       var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot; });
       var owned = list.filter(function (c) { return c.owned; }).length;
       h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + owned + '/' + list.length + ' 보유</small>'
@@ -1507,7 +1508,7 @@ var TowerMine = (function () {
       var lk = st.look || {};
       h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(lk, d) + '" alt="">'; }).join('') + '</div>'
           + '<div class="mine-smith-say">가지고 있는 치장만 보여요. 새 치장은 명품상점에서 살 수 있어요.</div></div>';
-      ['hat', 'hair', 'top', 'bottom', 'shoes'].forEach(function (slot) {
+      ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (slot) {
         var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot && c.owned; });
         h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + list.length + '개</small></div><div class="cos-car" data-slot="l-' + slot + '">'
             + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImg(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
@@ -2508,11 +2509,13 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 환생 날개 -- 캐릭터 그림(16x16, 왼쪽 위 (x, y)) 뒤에 MineChar.wings(단계, 방향)을 깐다. 날개 캔버스의 (ext, 2)가 캐릭터 자리.
   //  가끔(1.6초마다 0.25초) 한 칸 들썩여 날갯짓처럼. draw()의 TS/scale 대신 scale만 쓴다(전역).
-  function drawWings(x, y, rb, dir, now, seed) {
+  function drawWings(x, y, rb, dir, now, seed, dye) {
     if (!(rb > 0) || !window.MineChar || !MineChar.wings) return;
-    var w = MineChar.wings(rb, dir || 'down'), up = ((now + (seed || 0) * 397) % 1600) < 250 ? scale : 0;
-    ctx.drawImage(w.c, x - w.ext * scale, y - 2 * scale - up, w.c.width * scale, w.c.height * scale);
+    // [2026-10-29] 날개 32x32급 + 쉬지 않고 펄럭임(4프레임), 염색(dye) -- 날개 캔버스 한 칸 = 캐릭터 32 도트 한 칸(scale / 2)
+    var f = Math.floor((now + (seed || 0) * 397) / 170) % 4, w = MineChar.wings(rb, dir || 'down', f, dye), hs = scale / 2;
+    ctx.drawImage(w.c, x - w.ext * hs, y - w.top * hs, w.c.width * hs, w.c.height * hs);
   }
+
   function drawBubble(text, px0, py0) {
     ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
     var w = ctx.measureText(text).width + 14 * dpr, h = 20 * dpr, bx = Math.round(px0 - w / 2), by = Math.round(py0 - h);
@@ -2906,7 +2909,7 @@ var TowerMine = (function () {
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
-      if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1); } catch (e) { } } // [2026-10-28] 환생 날개
+      if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
@@ -2921,7 +2924,7 @@ var TowerMine = (function () {
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
-    if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0); } catch (e) { } }
+    if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0, st && st.look && st.look.wing); } catch (e) { } }
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
