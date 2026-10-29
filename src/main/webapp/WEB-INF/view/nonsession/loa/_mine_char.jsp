@@ -32,11 +32,120 @@ window.MineChar = (function () {
   // [2026-10-24] 명품상점 외형 -- lk = { gender 0 남/1 여, hat '색|모양', hair '색', top '색|모양', bottom '색', shoes '색' } (빈 값 = 기본)
   function lookPart(v) { var p = (v || '').split('|'); return { c: p[0] || '', s: p[1] || '' }; }
   // 캐릭터: 방향(down/up/right/left) x 걸음(0/1/2) x 캐기(0 없음, 1 들기, 2 내려치기). 왼쪽은 오른쪽을 뒤집어서.
+  // ---- [2026-10-29] "무기, 곡괭이만 32x32" -- 몸(16x16)은 두 배로 키우고 무기/곡괭이/양산만 32 격자로 그린다(gear32). 화면은 같은 칸 크기에 그린다.
+  //  무기: 손잡이(감은 끈) + 코등이 + 칼날(hi 밝은 날 / dk 칼등), 벨 때 궤적(trail). 비철도 = 넓적하고 이 빠진 날, 카타나 = 길고 휜 날·둥근 코등이·붉은 술,
+  //  닌자의 검 = 가는 강철 날을 휘감는 푸른 번개(벨 때 큰 초승달), 백화검(白火) = 칼날이 흰 심지의 불꽃(걸음마다 일렁임).
+  var W32 = {
+    sword:   { bl: '#c3cad1', hi: '#ffffff', dk: '#7f8892', hg: '#ffd23f', hgd: '#b8860b', hd: '#8a5a2b', hdd: '#5a3a1a', bw: 2, n: 12, trail: '#ffffff' },
+    bichul:  { bl: '#8f969c', hi: '#c8ced4', dk: '#555c62', hg: '#6b4a2a', hgd: '#3a2410', hd: '#5a3a1e', hdd: '#2e1c0c', bw: 4, n: 11, chip: 1, trail: '#c8ced4' },
+    katana:  { bl: '#e8eef4', hi: '#ffffff', dk: '#9aa8b8', hg: '#1c1c22', hgd: '#d8b040', hd: '#b01c2c', hdd: '#141418', bw: 2, n: 15, curve: 1, tassel: '#e8303a', trail: '#dff0ff' },
+    ninja:   { bl: '#5a6070', hi: '#d8e4f0', dk: '#2a2e38', hg: '#3a3f4a', hgd: '#1a1c22', hd: '#141418', hdd: '#3a4a7a', bw: 2, n: 14, bolt: 1, trail: '#a8dcff' },
+    baekhwa: { bl: '#ffe060', hi: '#ffffff', dk: '#ff8a1a', hg: '#5a1a10', hgd: '#2a0a06', hd: '#2a1a14', hdd: '#7a2a10', bw: 3, n: 13, fire: 1, trail: '#ffb030' },
+    parasol: { bl: '#ff8ab8', hi: '#ffd0e4', dk: '#e05a90', hg: '#8a5a2b', hgd: '#5a3a1a', hd: '#8a5a2b', hdd: '#5a3a1a', bw: 2, n: 11, trail: '#ffc8dc' }
+  };
+  function P(g, c, x, y) { if (c) { g.fillStyle = c; g.fillRect(x, y, 1, 1); } else g.clearRect(x, y, 1, 1); }
+  // 빛(번개/바깥 불꽃/궤적)은 검은 테두리 없이 따로 겹친다(FX) -- 테두리가 붙으면 울타리처럼 보였다
+  var FX = null;
+  /** 칼 하나 -- (hx, hy) = 코등이 바로 아래 손잡이 칸, (dx, dy) = 칼끝 방향, f = 프레임(불꽃/번개가 일렁임). 칼날 폭은 방향의 오른쪽(-dy, dx)으로. */
+  function blade32(g, W, hx, hy, dx, dy, f) {
+    var nx = -dy, ny = dx, bw = W.bw, n = W.n;
+    var at = function (i, j, c) { P(g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
+    var af = function (i, j, c) { P(FX || g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
+    for (var i = -4; i <= 0; i++) for (var j = 0; j < 2; j++) at(i, j, (i + j) % 2 ? W.hd : W.hdd); // 손잡이 + 감은 끈
+    at(-5, 0, W.hgd); at(-5, 1, W.hgd);
+    if (W.tassel) { var tx = hx - dx * 5, ty = hy - dy * 5; for (var k = 1; k <= 5; k++) P(g, k % 2 ? W.tassel : '#ff7a7a', tx + (k > 3 ? 1 : 0), ty + k); }
+    if (W.curve) { for (var a = -1; a <= 2; a++) { at(1, a, W.hg); at(2, a, W.hg); } at(1, -1, W.hgd); at(2, 2, W.hgd); } // 둥근 코등이 + 금테
+    else if (W.fire) { for (var b = -2; b <= bw + 1; b++) at(1, b, W.hg); at(1, -2, '#ff6a1a'); at(1, bw + 1, '#ff6a1a'); }
+    else if (W.bolt) { for (var b2 = -1; b2 <= bw; b2++) at(1, b2, W.hg); at(1, -1, '#7ab8ff'); at(1, bw, '#7ab8ff'); }
+    else { for (var b3 = -2; b3 <= bw + 1; b3++) at(1, b3, W.hg); at(1, -2, W.hgd); at(1, bw + 1, W.hgd); }
+    var b0 = W.curve ? 3 : 2;
+    for (var s = 0; s < n; s++) {
+      var ii = b0 + s, w = s >= n - 2 ? Math.max(1, bw - (s - (n - 3))) : bw, sh = W.curve && s >= n - 5 ? -Math.ceil((s - (n - 6)) / 2) : 0;
+      if (W.fire) { // 불꽃 칼날: 흰 심지 -> 노랑 -> 주황 -> 빨강, 톱니처럼 들쭉날쭉(f로 일렁임)
+        var ext = [2, 1, 0, 1][(s + f) % 4], half = s >= n - 3 ? 0 : 1;
+        for (var j2 = -ext - half; j2 < bw + ext + half; j2++) {
+          var d = j2 < 0 ? -j2 : j2 >= bw ? j2 - bw + 1 : 0;
+          (d === 0 ? at : af)(ii, j2, d === 0 ? (j2 === 1 ? '#ffffff' : '#ffe060') : d === 1 ? '#ff9a20' : '#e8401a');
+        }
+        if ((s + f) % 5 === 0) af(ii + 1, -ext - 2, '#ffb030');
+        if ((s + f) % 5 === 2) af(ii + 1, bw + ext + 1, '#ffb030');
+        continue;
+      }
+      for (var j3 = 0; j3 < w; j3++) at(ii, j3 + sh, j3 === 0 ? W.hi : j3 === w - 1 ? W.dk : W.bl);
+      if (W.curve && s % 3 === 1) at(ii, sh + 1, '#ffffff'); // 물결 무늬(하몬)
+      if (W.chip && (s === 3 || s === 7)) at(ii, bw - 1, null); // 이 빠진 날
+      if (W.bolt && s % 5 !== 4) { // 칼날을 휘감는 푸른 번개
+        var zl = [-2, -3, -4, -3][(s + f) % 4], zr = bw + [1, 2, 3, 2][(s + f + 2) % 4];
+        af(ii, zl, s % 2 ? '#a8dcff' : '#ffffff'); af(ii, zr, s % 2 ? '#ffffff' : '#7ab8ff'); if (s % 3 === 0) af(ii + 1, zl + 1, '#7ab8ff');
+      }
+    }
+    var te = b0 + n;
+    if (W.fire) { at(te, 1, '#ffe060'); af(te + 1, f % 2, '#ff9a20'); af(te + 2, 1 - f % 2, '#e8401a'); af(te + 1, 2 - f % 2, '#ffb030'); af(te + 3, f % 2 ? 0 : 2, '#ffd040'); } // 칼끝 불꽃
+    if (W.bolt) { af(te, -1, '#ffffff'); af(te + 1, 0, '#a8dcff'); af(te, 2, '#7ab8ff'); af(te + 2, 1, '#ffffff'); } // 칼끝 번개
+  }
+  /** 벨 때 궤적 -- (cx, cy) 중심, 반지름 r, 각도 a0 -> a1. 닌자의 검은 두껍고 큰 초승달. */
+  function trail32(g, W, cx, cy, r, a0, a1) {
+    var big = !!W.bolt, steps = 18;
+    g = FX || g;
+    for (var i = 0; i <= steps; i++) {
+      var t = a0 + (a1 - a0) * i / steps, x = Math.round(cx + Math.cos(t) * r), y = Math.round(cy + Math.sin(t) * r);
+      var th = big ? (i > 2 && i < steps - 2 ? 3 : 1) : (i > 3 && i < steps - 3 ? 2 : 1);
+      for (var k = 0; k < th; k++) P(g, k === 0 ? (big ? '#ffffff' : W.trail) : W.trail, Math.round(cx + Math.cos(t) * (r - k)), Math.round(cy + Math.sin(t) * (r - k)));
+      if (W.fire && i % 3 === 0) P(g, '#ff6a1a', x, y - 1);
+    }
+  }
+  /** 곡괭이(1 = 들어 올림, 2 = 내려침). */
+  function pick32(g, dir, side, dig) {
+    var wd = '#8a5a2b', wdd = '#5a3a1a', ir = '#c3cad1', irh = '#ffffff', ird = '#7f8892';
+    var stick = function (x0, y0, w, h) { for (var y = y0; y < y0 + h; y++) for (var x = x0; x < x0 + w; x++) P(g, (x + y) % 3 ? wd : wdd, x, y); };
+    if (dig === 1) {
+      var hx = side ? 18 : 24;
+      stick(hx, 3, 2, 14);
+      for (var x = hx - 6; x <= hx + 7; x++) P(g, ir, x, 1); for (var x2 = hx - 4; x2 <= hx + 5; x2++) P(g, irh, x2, 0);
+      P(g, ird, hx - 7, 2); P(g, ird, hx - 7, 3); P(g, ird, hx + 8, 2); P(g, ird, hx + 8, 3); P(g, ird, hx, 2); P(g, ird, hx + 1, 2);
+    } else if (side) {
+      stick(19, 20, 10, 2);
+      for (var y = 15; y <= 26; y++) { P(g, ir, 29, y); P(g, y < 21 ? irh : ird, 30, y); }
+      P(g, ird, 30, 14); P(g, ird, 30, 27); P(g, ird, 28, 20); P(g, ird, 28, 21);
+    } else {
+      var up = dir === 'up', hy = up ? 2 : 29;
+      stick(24, up ? 5 : 21, 2, up ? 12 : 8);
+      for (var x3 = 19; x3 <= 30; x3++) { P(g, ir, x3, hy); P(g, up ? irh : ird, x3, hy + 1); }
+      P(g, ird, 18, up ? 4 : 27); P(g, ird, 31, up ? 4 : 27);
+    }
+  }
+  /** 손에 든 것(32 격자) -- 무기(가만히/휘두르기)나 곡괭이. 그린 게 있으면 true. */
+  function gear32(g, dir, step, dig, lk) {
+    var side = dir === 'right', wk = lk.weapon || 'sword', W = W32[wk] || W32.sword, f = step | 0;
+    if (dig === 1 || dig === 2) { pick32(g, dir, side, dig); return true; }
+    if (!dig) {
+      if (wk === 'parasol') { // 머리 위로 펼친 분홍 양산(가장자리 물결, 흰 줄) + 손잡이
+        var hx = side ? 18 : 24;
+        for (var y = 3; y <= 22; y++) P(g, y % 4 ? W.hd : W.hdd, hx, y);
+        [[10, 21], [6, 25], [3, 28], [2, 29]].forEach(function (r, i) { for (var x = r[0]; x <= r[1]; x++) P(g, i === 0 ? W.hi : W.bl, x, i); });
+        for (var x2 = 2; x2 <= 29; x2++) if (x2 % 7 < 4) P(g, W.dk, x2, 4);
+        [9, 16, 23].forEach(function (x3) { for (var y2 = 0; y2 < 4; y2++) P(g, '#ffffff', x3, y2); });
+        return true;
+      }
+      if (side) blade32(g, W, 24, 26, 0, -1, f);
+      else if (dir === 'up') blade32(g, W, 24, 20, 0, -1, f);
+      else blade32(g, W, 24, 26, 0, -1, f);
+      return true;
+    }
+    if (dig === 3) { blade32(g, W, side ? 18 : dir === 'up' ? 6 : 24, 21, 0, -1, f); return true; }
+    if (dig === 4) {
+      if (side) { trail32(g, W, 18, 22, 12, -1.55, -0.15); blade32(g, W, 17, 22, 1, 0, f); }
+      else if (dir === 'up') blade32(g, W, 24, 15, 0, -1, f);
+      else { trail32(g, W, 22, 20, 10, -0.6, 0.9); blade32(g, W, 24, 21, 0, 1, f); }
+      return true;
+    }
+    return false;
+  }
   function charSprite(dir, step, dig, lk) {
     lk = lk || {};
     if (dir === 'left') {
-      var src = charSprite('right', step, dig, lk), c2 = mk(T, T), g2 = c2.getContext('2d');
-      g2.translate(T, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
+      var src = charSprite('right', step, dig, lk), c2 = mk(src.width, src.height), g2 = c2.getContext('2d');
+      g2.translate(src.width, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
       return c2;
     }
     var c = mk(T, T), g = c.getContext('2d');
@@ -107,62 +216,16 @@ window.MineChar = (function () {
         px(g, '#3ad1ff', 5, 2); px(g, '#ff3b6b', 7, 1, 2, 1); px(g, '#3ad1ff', 10, 2); px(g, '#ffffff', 8, 2);
       }
     }
-    var wood = '#8a5a2b', iron = '#c3cad1';
-    // [2026-10-29] "무기마다 독특한 디자인" -- 색만 다르던 것을 모양까지: 칼날(wide 넓적 / curve 끝이 휨 / long·short 길이), 코등이(bar 막대 / tsuba 둥근 / x 표창 / flower 꽃),
-    //  술(tassel), 빛 알갱이(glow -- 들고 있을 때 칼날 둘레, 벨 때 궤적 색). 칼날은 손잡이 쪽 밑동(x0, y0)에서 (dx, dy) 방향으로 n칸, 마지막 칸이 칼끝(edge 색).
-    var WL = {
-      sword:   { bl: iron, edge: '#ffffff', hg: '#ffd23f', hd: wood, guard: 'bar' },
-      bichul:  { bl: '#8f969c', edge: '#c8ced4', back: '#5f666c', hg: '#6b4a2a', hd: '#5a3a1e', guard: 'bar', wide: 1 },               // 비철도: 넓적한 무쇠 칼날
-      katana:  { bl: '#eef3f8', edge: '#ffffff', hg: '#222228', hd: '#a01c2c', guard: 'tsuba', curve: 1, long: 1, tassel: '#e8303a' }, // 카타나: 길고 휜 칼날 + 붉은 술
-      ninja:   { bl: '#3a3f4a', edge: '#b8c0d4', hg: '#8a4ac8', hd: '#141418', guard: 'x', short: 1, glow: '#c08aff' },               // 닌자의 검: 짧은 검은 칼날 + 표창 코등이
-      baekhwa: { bl: '#ffffff', edge: '#ff9ac0', hg: '#ff9ac0', hd: '#e8e0f0', guard: 'flower', long: 1, glow: '#ffb8d4' },           // 백화검: 꽃 코등이 + 꽃잎
-      parasol: { bl: '#ff8ab8', edge: '#e05a90', hg: wood, hd: wood, guard: 'bar' } };
-    var W = WL[lk.weapon] || WL.sword;
-    var blade = function (x0, y0, dx, dy, n) {
-      n += (W.long || 0) - (W.short || 0);
-      for (var i = 0; i < n; i++) {
-        var bx = x0 + dx * i, by = y0 + dy * i;
-        if (W.curve && i >= n - 2) { bx += -dy; by += -dx; } // 끝 두 칸이 한쪽으로 휜다
-        px(g, i === n - 1 ? W.edge : W.bl, bx, by);
-        if (W.wide && i < n - 1) px(g, W.back, bx + dy, by + dx); // 넓적한 칼등
-      }
-    };
-    var guard = function (cx, cy, v) { // v = 칼날이 세로
-      if (W.guard === 'x') { px(g, W.hg, cx - 1, cy - 1); px(g, W.hg, cx + 1, cy - 1); px(g, W.hg, cx, cy); px(g, W.hg, cx - 1, cy + 1); px(g, W.hg, cx + 1, cy + 1); }
-      else if (W.guard === 'flower') { px(g, W.hg, cx - 1, cy); px(g, W.hg, cx + 1, cy); px(g, W.hg, cx, cy - 1); px(g, W.hg, cx, cy + 1); px(g, '#ffe14d', cx, cy); }
-      else { if (v) px(g, W.hg, cx - 1, cy, 3, 1); else px(g, W.hg, cx, cy - 1, 1, 3); if (W.guard === 'tsuba') px(g, '#d8b040', cx, cy); }
-    };
-    var dots = function (pts) { if (W.glow) pts.forEach(function (p) { px(g, W.glow, p[0], p[1]); }); };
-    if (!dig) { // [2026-10-28] "무기 아이템(기본은 칼) 장착을 보여주고" (휘두를 때는 아래 dig 3/4) -- 캐지 않을 때 손에 든 무기
-      if (lk.weapon === 'parasol') { // 머리 위로 펼친 분홍 양산 + 손잡이
-        px(g, '#ff8ab8', 3, 0, 10, 1); px(g, '#ff8ab8', 1, 1, 14, 1); px(g, '#e05a90', 1, 1); px(g, '#e05a90', 14, 1); px(g, '#ffffff', 5, 0, 1, 2); px(g, '#ffffff', 10, 0, 1, 2);
-        if (side) px(g, wood, 9, 2, 1, 9); else px(g, wood, 12, 2, 1, 9);
-      } else if (side) { px(g, W.hd, 9, 11); guard(10, 11, false); blade(11, 11, 1, 0, 4); if (W.tassel) px(g, W.tassel, 8, 12, 1, 2); dots([[12, 9], [15, 13], [14, 8]]); }
-      else if (dir === 'up') { px(g, W.hd, 12, 9, 1, 2); guard(12, 8, true); blade(12, 7, 0, -1, 4); }
-      else { px(g, W.hd, 12, 12, 1, 1); guard(12, 11, true); blade(12, 10, 0, -1, 5); if (W.tassel) px(g, W.tassel, 13, 13, 1, 2); dots([[14, 7], [10, 8], [14, 4]]); }
-    }
-    if (dig === 3 || dig === 4) { // [2026-10-28] 무기 휘두르기(3 = 치켜듦, 4 = 내려 벰) -- 무기 모양 그대로(양산은 접은 분홍 양산)
-      var slash = W.glow || '#ffffff'; // 베는 궤적(닌자의 검 보라, 백화검 분홍)
-      if (dig === 3) {
-        if (side) { px(g, W.hd, 9, 9, 1, 2); guard(9, 8, true); blade(9, 7, 0, -1, 7); }
-        else if (dir === 'up') { px(g, W.hd, 3, 9, 1, 2); guard(3, 8, true); blade(3, 7, 0, -1, 7); }
-        else { px(g, W.hd, 12, 9, 1, 2); guard(12, 8, true); blade(12, 7, 0, -1, 7); }
-        dots(side ? [[11, 2], [7, 4]] : [[14, 2], [10, 4]]);
-      } else {
-        if (side) { px(g, W.hd, 9, 11); guard(10, 11, false); blade(11, 11, 1, 0, 5); px(g, slash, 13, 9); px(g, slash, 14, 10); px(g, slash, 15, 13); }
-        else if (dir === 'up') { px(g, W.hd, 12, 7); guard(12, 6, true); blade(12, 5, 0, -1, 5); }
-        else { px(g, W.hd, 12, 11); guard(12, 12, true); blade(12, 13, 0, 1, 3); px(g, slash, 14, 10); px(g, slash, 15, 11); px(g, slash, 13, 14); }
-      }
-    }
-    if (dig === 1) { // 들어 올림
-      if (side) { px(g, wood, 9, 1, 1, 7); px(g, iron, 7, 0, 5, 1); px(g, iron, 7, 1); px(g, iron, 11, 1); }
-      else { px(g, wood, 12, 1, 1, 8); px(g, iron, 10, 0, 5, 1); px(g, iron, 10, 1); px(g, iron, 14, 1); }
-    } else if (dig === 2) { // 내려치기
-      if (side) { px(g, wood, 10, 10, 5, 1); px(g, iron, 15, 8, 1, 5); }
-      else if (dir === 'up') { px(g, wood, 12, 2, 1, 6); px(g, iron, 10, 1, 5, 1); }
-      else { px(g, wood, 12, 11, 1, 4); px(g, iron, 10, 15, 5, 1); }
-    }
-    return outline(c, '#140d0a');
+    outline(c, '#140d0a');
+    // [2026-10-29] "무기, 곡괭이만 32x32" -- 몸(16x16)을 두 배로 키운 32x32 위에 손에 든 것(gear32)을 32 격자로 겹친다(쓰는 곳은 같은 칸 크기로 그려서 화면 배치는 그대로)
+    var big = mk(T * 2, T * 2), bg = big.getContext('2d');
+    bg.imageSmoothingEnabled = false; bg.drawImage(c, 0, 0, T * 2, T * 2);
+    var wl = mk(T * 2, T * 2), fl = mk(T * 2, T * 2);
+    FX = fl.getContext('2d');
+    var drew = gear32(wl.getContext('2d'), dir, step, dig, lk);
+    FX = null;
+    if (drew) { bg.drawImage(outline(wl, '#140d0a'), 0, 0); bg.drawImage(fl, 0, 0); } // 빛은 테두리 없이 맨 위에
+    return big;
   }
   // [2026-10-28] 환생 날개(1~5단계) -- "환생하면 캐릭터에 작은 날개, 환생 단계가 오를수록 날개가 커지게". 사용자가 고른 시안 그대로.
   //  wingSprite(stage) = { c: 캔버스(폭 16 + 2*ext, 높이 18), ext } -- 날개만 그린다. 캐릭터는 그 위 (ext, 2)에 겹쳐 그린다(어깨 = 캔버스 y 9).
@@ -218,9 +281,10 @@ window.MineChar = (function () {
   function withWings(dir, step, dig, lk) {
     var rb = lk ? lk.rebirth | 0 : 0, ch = charSprite(dir, step, dig, lk);
     if (rb < 1) return ch;
-    var w = wings(rb, dir), c = mk(w.c.width, w.c.height), g = c.getContext('2d');
-    g.drawImage(w.c, 0, 0);
-    g.drawImage(ch, w.ext, 2);
+    var w = wings(rb, dir), c = mk(w.c.width * 2, w.c.height * 2), g = c.getContext('2d'); // [2026-10-29] 캐릭터 그림이 32x32 -- 날개도 두 배로
+    g.imageSmoothingEnabled = false;
+    g.drawImage(w.c, 0, 0, c.width, c.height);
+    g.drawImage(ch, w.ext * 2, 4);
     return c;
   }
   /** 정면(서 있는 모습) 그림 data URL -- 외형이 같으면 한 번만 그린다.
