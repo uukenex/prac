@@ -46,6 +46,11 @@ public final class S5MineMobs {
         /** [2026-10-28] 여왕개미 -- 처치 보상(광석/보석) 없음, 다시 나타나기까지 respawnOverride(0 = 단계로). */
         public boolean noReward;
         public long respawnOverride;
+        /** [2026-10-29] 속성(S5MineMobs.EL_*, -1 = 아직 안 정함 -- elem()이 이름/맵으로 정한다), dummy = 왕도 훈련장 허수아비(맞아도 안 줄고 반격/인식 없음). */
+        int elem = -1;
+        public boolean dummy;
+        public int elem() { if (elem < 0) elem = S5MineMobs.elemOf(this); return elem; }
+        Type asDummy() { dummy = true; stay = true; noReward = true; return this; }
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
@@ -195,8 +200,49 @@ public final class S5MineMobs {
         new Type("심층 골렘", 15, "human", "#4a3a5a", S5MineMap.CAVE4),
         new Type("마그마 슬라임", 15, "blob", "#e8602a", S5MineMap.CAVE4),
         // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레를 지키는 얼음 골렘(13단계 Lv.49, 체력 x1.6 / 공격 x1.2, 늘 선공)
-        new Type("얼음 골렘", 13, "human", "#a8d8f0", S5MineMap.SNOWCAVE2).strong(1.6, 1.2).asFirstStrike()
+        new Type("얼음 골렘", 13, "human", "#a8d8f0", S5MineMap.SNOWCAVE2).strong(1.6, 1.2).asFirstStrike(),
+        // [2026-10-29] 왕도 1시 방향 훈련장 허수아비(죽지 않음, 데미지 시험 -- 맵 목록 없이 S5MineMap.dummySpots 자리에만)
+        new Type("허수아비", 1, "human", "#c8a050").asDummy()
     ));
+    public static final int DUMMY_TYPE = indexOf("허수아비");
+
+    // [2026-10-29] 속성 -- 기본 6(땅/번개/물/얼음/바람/불) + 특수 3(무/어둠/빛). 몬스터는 하나씩(elemOf: 이름 -> 종류 -> 맵 순).
+    //  상성은 곱연산 x1.5: 어둠<>빛, 물·얼음<>불, 땅·바람<>번개. 플레이어는 무기에 부여한 속성으로 때린다(BotS5ServiceImpl.mineElemMul).
+    public static final int EL_NONE = 0, EL_EARTH = 1, EL_THUNDER = 2, EL_WATER = 3, EL_ICE = 4, EL_WIND = 5, EL_FIRE = 6, EL_DARK = 7, EL_LIGHT = 8;
+    public static final String[] ELEM_NAMES = { "무", "땅", "번개", "물", "얼음", "바람", "불", "어둠", "빛" };
+    public static boolean elemBeats(int w, int m) {
+        switch (w) {
+            case EL_LIGHT: return m == EL_DARK;
+            case EL_DARK: return m == EL_LIGHT;
+            case EL_FIRE: return m == EL_WATER || m == EL_ICE;
+            case EL_WATER: case EL_ICE: return m == EL_FIRE;
+            case EL_THUNDER: return m == EL_EARTH || m == EL_WIND;
+            case EL_EARTH: case EL_WIND: return m == EL_THUNDER;
+            default: return false;
+        }
+    }
+    private static boolean has(String n, String... ks) { for (String k : ks) if (n.contains(k)) return true; return false; }
+    static int elemOf(Type t) {
+        String n = t.name;
+        if (t.dummy) return EL_NONE;
+        if (has(n, "용암", "화염", "불", "마그마", "화산")) return EL_FIRE;
+        if (has(n, "얼음", "눈", "서리", "빙", "설")) return EL_ICE;
+        if (has(n, "번개", "천둥", "전기")) return EL_THUNDER;
+        if (has(n, "닌자", "유령", "그림자", "해골", "망령", "대주교", "타락", "어둠", "흡혈", "저주", "박쥐")) return EL_DARK;
+        if (has(n, "달", "천사", "빛", "정령")) return EL_LIGHT;
+        if (has(n, "게", "거북", "해파리", "산호", "바다", "늪", "해적", "상어", "문어")) return EL_WATER;
+        if (has(n, "갈매기", "새", "독수리", "나비")) return EL_WIND;
+        if (has(n, "개미", "골렘", "전갈", "거미", "트롤", "두더지", "바위", "모래", "수정")) return EL_EARTH;
+        if ("flyer".equals(t.kind)) return EL_WIND;
+        String m = t.maps.length > 0 ? t.maps[0] : "";
+        if (m.startsWith("isle") || has(m, S5MineMap.ARCHI, S5MineMap.BEACH, S5MineMap.ISLAND, S5MineMap.SEAROAD)) return EL_WATER;
+        if (m.startsWith("snow") || m.equals(S5MineMap.NORTH) || m.equals(S5MineMap.PEAK)) return EL_ICE;
+        if (m.startsWith("cave") || m.equals(S5MineMap.DESERT) || m.equals(S5MineMap.ANTNEST) || m.equals(S5MineMap.PYRAMID)) return EL_EARTH;
+        if (m.equals(S5MineMap.CASTLE) || m.equals(S5MineMap.ROYALROAD)) return EL_THUNDER;
+        if (m.equals(S5MineMap.STEPPE)) return EL_WIND;
+        if (m.equals(S5MineMap.RUINS) || m.startsWith("shrine")) return EL_DARK;
+        return EL_NONE;
+    }
 
     /** 보스 종류 번호(TYPES 안) -- [2026-10-26] 보스 뒤에 설산 몬스터를 덧붙여서 "맨 끝"이 아니라 찾아서. 동굴 3층 보스(맵 리셋 때만). */
     public static final int BOSS_TYPE = indexOf("고대 광석 골렘");
@@ -359,6 +405,7 @@ public final class S5MineMobs {
             taken[y][x] = true;
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca));
         }
+        for (int[] q : m.dummySpots()) out.add(new S5MineMap.Mob(out.size(), DUMMY_TYPE, q[0], q[1], new int[] { q[1] * m.w + q[0] })); // [2026-10-29] 왕도 훈련장 허수아비
         for (int[] q : m.queenSpots()) { // [2026-10-28] 개미굴 여왕개미 셋(보스 아님 -- 목록 맨 끝이 아니어도 된다)
             List<Integer> qc = new ArrayList<>();
             qc.add(q[1] * m.w + q[0]);

@@ -538,6 +538,8 @@ public final class S5MineMap {
     private List<int[]> queenSpots = Collections.emptyList(); // [2026-10-28] 개미굴 여왕개미 자리 셋(S5MineMobs.spawn)
     private final Map<Integer, Integer> chestRich = new java.util.HashMap<>(); // [2026-10-28] 개미굴 보물 상자 칸(y * w + x) -> 담긴 양(0~1000)
     public List<int[]> queenSpots() { return queenSpots; }
+    private List<int[]> dummySpots = Collections.emptyList(); // [2026-10-29] 왕도 훈련장 허수아비 자리(S5MineMobs.spawn)
+    public List<int[]> dummySpots() { return dummySpots; }
     /** 개미굴 보물 상자에 담긴 양(0 = 보석 1개 ~ 1000 = 가장 많이). 모르는 칸이면 500. */
     public int chestRich(int x, int y) { return chestRich.getOrDefault(y * w + x, 500); }
     private List<int[]> safe = new ArrayList<>();      // [2026-10-26] 안전지대(모닥불) {x, y, 반지름}
@@ -618,7 +620,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 2;
+    static final int PAYLOAD_REV = 3;
 
     public String version() {
         String v = version;
@@ -990,6 +992,7 @@ public final class S5MineMap {
         n.veinMine = m.veinMine;
         n.chestSpots = m.chestSpots;
         n.queenSpots = m.queenSpots;
+        n.dummySpots = m.dummySpots;
         n.safe = m.safe;
         n.npcs = npcs == null ? Collections.<Npc>emptyList() : Collections.unmodifiableList(npcs);
         return n;
@@ -1819,6 +1822,10 @@ public final class S5MineMap {
     /** 신궁 층(130x100): 붉은 기둥 벽(L) 사이로 방 5x4개(20x18)와 3칸 너비 복도, 바닥은 붉은 길(p), 방마다 기둥. 아래 가운데 방 밑으로 나가는 길(U --
      *  1층은 본섬, 2/3층은 아래층 계단 옆). 1/2층은 맨 위 구석 방(1층 오른쪽, 2층 왼쪽) 위 벽에 올라가는 계단(S). 광석 없음, 닌자만.
      *  [2026-10-28] 예전 신궁 내부(96x78, 방 4x3, 한 층)를 "더 넓게, 3층까지"로 바꿨다(1층 id는 SHRINE 그대로). floor = 1~3. */
+    private static void greyStone(char[][] t) {
+        for (char[] row : t) for (int x = 0; x < row.length; x++) { if (row[x] == 'p') row[x] = 's'; else if (row[x] == 'L') row[x] = 'W'; }
+    }
+
     static S5MineMap generateShrine(long seed, int floor) {
         int cols = 5, rows = 4, rw = 20, rh = 18, gx = 25, gy = 24, w = 4 + cols * gx + 1, h = 4 + rows * gy;
         Random r = new Random(seed);
@@ -1860,6 +1867,7 @@ public final class S5MineMap {
             t[uy][ux] = 'S';
             portals.add(new Portal(ux, uy, 'S', floor == 1 ? SHRINE2 : SHRINE3, 0, 0, "신궁 " + (floor + 1) + "층으로 올라가는 계단"));
         }
+        greyStone(t); // [2026-10-29] "신궁 내부가 용궁이라고 뜬다, 회색 배경" -- 붉은 용궁 길/기둥(p/L) 대신 회색 성 바닥/벽(s/W)
         return new S5MineMap(id, "신궁 " + floor + "층", false, w, h, sx, sy, t, new byte[h][w], portals);
     }
 
@@ -1876,6 +1884,7 @@ public final class S5MineMap {
         t[h - 2][c] = 'U';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(c, h - 2, 'U', ARCHI, 0, 0, "신궁 밖으로"));
+        greyStone(t); // [2026-10-29]
         S5MineMap m = new S5MineMap(SHRINE_BOSS, "닌자 두목의 방", false, w, h, c, h - 5, t, new byte[h][w], portals);
         m.bossX = c;
         m.bossY = 10;
@@ -2411,6 +2420,11 @@ public final class S5MineMap {
             for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
             for (int x = bx - 1; x <= bx + bw; x++) t[by + bh][x] = 's';
         }
+        // [2026-10-29] "대도시 1시 방향은 건물 없애고 허수아비 넷 -- 죽지 않는 데미지 시험장" -- 성당 오른쪽 위를 돌바닥 마당으로 비우고 허수아비 자리
+        int tx0 = c + 14, tx1 = c + 44, ty0 = wt + 3, ty1 = wt + 24;
+        for (int y = ty0; y <= ty1; y++) for (int x = tx0; x <= tx1; x++) t[y][x] = 's';
+        List<int[]> dummies = new ArrayList<>();
+        for (int i = 0; i < 4; i++) dummies.add(new int[] { tx0 + 6 + i * 6, ty0 + 9 });
         // 가운데 광장(돌바닥 원) + 분수
         for (int y = c - 16; y <= c + 16; y++) for (int x = c - 16; x <= c + 16; x++) if (Math.hypot(x - c, y - c) < 16) t[y][x] = 's';
         for (int y = c - 3; y <= c + 3; y++) for (int x = c - 3; x <= c + 3; x++) if (Math.hypot(x - c, y - c) < 3.2) t[y][x] = '~';
@@ -2420,6 +2434,7 @@ public final class S5MineMap {
         for (int y = qy1 + 1; y <= qy1 + 2; y++) for (int x = qx0 - 1; x <= qx1 + 1; x++) t[y][x] = 's';
         int px = c, py = qy1 + 1;
         t[py][px] = 'N';
+        t[py][px + 3] = 'N'; // [2026-10-29] 원소술사(신부 옆)
         // 텔레포트 게이트: 광장 남쪽
         int gx = c, gy = c + 9;
         t[gy][gx] = 'X';
@@ -2441,8 +2456,10 @@ public final class S5MineMap {
         byte[][] o = new byte[h][w]; // 광석 없음(도시)
         S5MineMap m = new S5MineMap(CITY, "왕도 아스테리아", false, w, h, sx, sy, t, o, portals);
         List<Npc> npcs = new ArrayList<>();
-        npcs.add(new Npc(px, py, "priest", "성당 신부", "여신의 가호가 함께하기를. 상처를 치료하고, 쓰러지면 이곳에서 깨어나도록 기도해 드리지요."));
+        npcs.add(new Npc(px, py, "priest", "성당 신부", "여신의 가호가 함께하기를. 상처를 치료하고, 쓰러지면 이곳에서 깨어나도록 기도해 드리지요. 미스릴괴를 바치면 무기에 성스러운 빛을 깃들여 드립니다."));
+        npcs.add(new Npc(px + 3, py, "elementalist", "원소술사", "세공된 보석엔 원소가 깃들어 있지. 하나만 주면 자네 무기에 물·번개·불·땅의 힘을 불어넣어 주겠네."));
         m.npcs = npcs;
+        m.dummySpots = dummies;
         return m;
     }
 
@@ -2462,8 +2479,11 @@ public final class S5MineMap {
         for (int x = 0; x < w; x++) { t[0][x] = 'O'; t[1][x] = 'O'; t[h - 1][x] = 'O'; }
         for (int y = 0; y < h; y++) { t[y][0] = 'O'; t[y][w - 1] = 'O'; }
         // 용궁(북쪽): 붉은 성벽 블록, 가운데 문(잠김)
-        int py0 = 3, py1 = 22;
-        for (int y = py0; y <= py1; y++) for (int x = c - 22; x <= c + 22; x++) t[y][x] = 'L';
+        // [2026-10-29] "바닷길 용궁 입구를 낮은 건물로, 바닷속이라는 걸 표현" -- 20줄 높이 성벽 -> 5줄 낮은 궁(폭도 좁게), 지붕 위로 해초, 양끝 산호
+        int py0 = 18, py1 = 22;
+        for (int y = py0; y <= py1; y++) for (int x = c - 14; x <= c + 14; x++) t[y][x] = 'L';
+        for (int x = c - 14; x <= c + 14; x += 3) t[py0 - 1][x] = 'e';
+        for (int y = py0 - 2; y <= py1; y++) { t[y][c - 16] = 'O'; t[y][c + 16] = 'O'; }
         for (int y = py1 + 1; y <= py1 + 3; y++) for (int x = c - 24; x <= c + 24; x++) t[y][x] = 'p'; // 궁 앞 마당
         t[py1][c] = 'G';
         // 궁궐 길: 남쪽 입구 -> 용궁 문(5칸 폭), 양옆 6칸마다 붉은 기둥

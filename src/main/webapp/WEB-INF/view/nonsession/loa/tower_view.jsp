@@ -912,6 +912,10 @@
     .mine-smith-row button:disabled{ opacity:.4; cursor:default; }
     /* [2026-10-29] "재료 있어도 제작이 비활성되는 문제가 없도록" -- 재료/제작 버튼은 막지 않고 흐리게만(눌러도 되고, 모자라면 서버가 무엇이 모자란지 알려 준다) */
     .mine-smith button[data-lack]{ opacity:.55; filter:grayscale(.5); }
+    /* [2026-10-29] 장비 등급 색(신화 = 무지개), 공격 버튼 속성 부여 표시 */
+    .gr7{ background:linear-gradient(90deg,#ff4a4a,#ffa500,#ffe14d,#4fd16a,#4a9eff,#b56cff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
+
+    .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
     .mine-smith-menu{ display:flex; gap:8px; }

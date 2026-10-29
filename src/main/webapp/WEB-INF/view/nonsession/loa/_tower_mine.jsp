@@ -36,6 +36,13 @@ var TowerMine = (function () {
   ORE_NAME[37] = '오팔'; ORE_COL[37] = ['#8ad8d0', '#fff0f8']; ORE_NAME[38] = '흑진주'; ORE_COL[38] = ['#3a3a4a', '#b8b8d0'];
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
+  // [2026-10-29] 장비 등급(일반 흰색 / 고급 초록 / 희귀 파랑 / 영웅 보라 / 전설 주황 / 유물 빨강 / 고대 은색 / 신화 무지개) -- 플레이어는 색으로만 안다
+  var GRADE_COL = ['#ffffff', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffffff'];
+  function gradeName(nm, g) { return g == null ? nm : '<span class="gr gr' + g + '"' + (g < 7 ? ' style="color:' + GRADE_COL[g] + '"' : '') + '>' + nm + '</span>'; }
+  // [2026-10-29] 속성(서버 S5MineMobs.EL_* 순서): 무, 땅, 번개, 물, 얼음, 바람, 불, 어둠, 빛
+  var ELEM_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'], ELEM_NAME = ['무', '땅', '번개', '물', '얼음', '바람', '불', '어둠', '빛'];
+  // [2026-10-29] "구리~미스릴, 빙석, 요일석, 보석, 바다 보석, 괴 말고 다른 게 나오면 이펙트를 조금 더" -- 별빛석/달빛석/칠요석/세공품/고유 증표
+  function specialDrop(g) { return !((g >= 1 && g <= 5) || g === 19 || (g >= 11 && g <= 17) || (g >= 21 && g <= 29) || (g >= 34 && g <= 38) || (g >= 40 && g <= 44)); }
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
@@ -317,15 +324,18 @@ var TowerMine = (function () {
         px(g, '#ffd0d8', 4, 3); px(g, '#ffd0d8', 9, 2); px(g, '#ffd0d8', 12, 5);
       });
     });
+    // [2026-10-29] "바닷길 용궁 입구를 낮은 건물로, 바닷속이라는 걸" -- 물에 잠긴 푸른 돌담(이끼 낀 청기와 + 따개비 + 해초 자락)
     tiles.palaceWall = [1, 2].map(function (s) {
-      return tile('#8a1e1e', [['#7a1818', 6]], 190 + s, function (g) {
-        px(g, '#e8c25a', 0, 2, T, 1); px(g, '#e8c25a', 0, 13, T, 1); px(g, '#5a1010', 0, 14, T, 2);
-        if (s === 1) { px(g, '#3a7ad8', 6, 5, 4, 6); px(g, '#e8c25a', 7, 6, 2, 1); } // 청기와 문양
+      return tile('#3f6f7a', [['#356270', 8], ['#4f8a90', 5]], 190 + s, function (g) {
+        px(g, '#2f8a9a', 0, 0, T, 3); px(g, '#5fc0c8', 0, 0, T, 1); px(g, '#1f4a55', 0, 14, T, 2); // 청기와 처마
+        px(g, '#e8f4f0', 3, 9, 2, 1); px(g, '#e8f4f0', 11, 6, 1, 2); px(g, '#cfe8e0', 7, 11); // 따개비
+        if (s === 1) { for (var y = 4; y < 14; y++) px(g, (y % 3) ? '#2f7a6a' : '#4fae8a', 13 + ((y >> 1) % 2), y); } // 해초 자락
+        else px(g, '#e07a8a', 5, 5, 2, 2); // 산호 조각
       });
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -780,8 +790,16 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
   var combatT0 = 0, hpShownT = 0;
+  // [2026-10-29] 무기 속성 부여 -- 공격 버튼 위에 속성 아이콘 + 남은 횟수
+  function updEnch() {
+    if (!el.atk) return;
+    var e = st && st.ench, on = e && e.left > 0 && e.el;
+    el.atk.innerHTML = '⚔️' + (on ? '<small class="ench">' + ELEM_ICON[e.el] + e.left + '</small>' : '');
+    el.atk.title = '무기로 공격 (스페이스)' + (on ? ' -- ' + ELEM_NAME[e.el] + ' 속성 ' + e.left + '번 남음' : '');
+  }
   function setCombat(c) {
     if (!c) return;
+    updEnch();
     st.combat = c; combatT0 = Date.now(); renderHp();
     // [2026-10-28] 환생 가능(99레벨 경험치 가득) -- 화면을 연 뒤 처음 한 번만 안내(잡는 순간엔 서버 처치 메시지에도 같은 안내가 붙는다)
     if (c.rebirthReady && !rbHintShown) { rbHintShown = true; msg('✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.', 4200); }
@@ -1058,6 +1076,7 @@ var TowerMine = (function () {
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
     else if (n.kind === 'priest') { priestConfirm = false; openSmith(n, 'priest'); } // [2026-10-24] 왕도 성당 신부 ([2026-10-28] 환생 확인 창은 닫힌 채로)
+    else if (n.kind === 'elementalist') openSmith(n, 'elem'); // [2026-10-29]
     else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
@@ -1514,7 +1533,7 @@ var TowerMine = (function () {
   function dollHtml() {
     var slot = function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
-      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? w.name : (rows.length ? '벗음' : '없음')) + '</span></button>';
+      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? gradeName(w.name, w.grade) : (rows.length ? '벗음' : '없음')) + '</span></button>';
     };
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
     var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>'
@@ -1530,7 +1549,7 @@ var TowerMine = (function () {
       if (!rows.length) h += '<div class="mine-eq-empty">' + sl.none + '</div>';
       rows.forEach(function (e) {
         var off = e.worn && verb[1]; // 무기/채집 도구는 기본(칼/기본 곡괭이)으로 바꾸는 걸로 해제
-        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + e.name + '<small>' + (EQ_TIPS[e.code] || e.effect) + '</small></span>'
+        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + (EQ_TIPS[e.code] || e.effect) + '</small></span>'
             + (e.worn ? (off ? '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[1] + '</button>' : '<span class="mine-worn">사용 중</span>')
                 : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[0] + '</button>') + '</div>';
       });
@@ -1625,6 +1644,18 @@ var TowerMine = (function () {
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
   var priestConfirm = false, RB_MAX = 5;
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
+  // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
+  var ENCH_HITS = 1000;
+  var ELEM_SHOP = [['water', 3, 48, '불'], ['thunder', 2, 49, '땅·바람'], ['fire', 6, 46, '물·얼음'], ['earth', 1, 45, '번개']];
+  function elemHtml(n) {
+    var e = st.ench || {}, have = function (g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; };
+    return npcHead('🔮 ' + (n ? n.name : '원소술사'), false) + talkBlock(n, n ? n.line : '')
+      + '<div class="mine-smith-say">지금 무기: ' + (e.left > 0 && e.el ? ELEM_ICON[e.el] + ' ' + ELEM_NAME[e.el] + ' 속성 (' + e.left + '번 남음)' : '속성 없음') + ' · 새로 부여하면 이전 속성은 사라져요.</div>'
+      + ELEM_SHOP.map(function (s) {
+          return '<div class="mine-smith-row"><img src="' + oreIcon(s[2]) + '" alt=""><span class="nm">' + ELEM_ICON[s[1]] + ' ' + ELEM_NAME[s[1]] + ' 속성<small>' + ORE_NAME[s[2]] + ' 1개 (보유 ' + have(s[2]) + ') · ' + s[3] + ' 몬스터 x1.5</small></span>'
+            + '<button type="button" ' + (have(s[2]) ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_' + s[0] + '\')">부여</button></div>';
+        }).join('');
+  }
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
     var line = ready ? '때가 되었군요. 수많은 고비를 넘은 영혼이여, 원한다면 여신의 이름으로 새 날개를 달아 다시 태어나게 해 드리지요.' : (n ? n.line : '');
@@ -1632,6 +1663,7 @@ var TowerMine = (function () {
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
         + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
+        + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1 · ' + ENCH_HITS + '번 공격 · 어둠 몬스터 x1.5</small></button>' : '') // [2026-10-29]
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 환생' + rb + ')' : '') + '<small>' + rbSub + '</small></button></div>';
@@ -1666,6 +1698,7 @@ var TowerMine = (function () {
       busy = false;
       if (d.combat) setCombat(d.combat);
       if (d.respawnCity != null) st.respawnCity = d.respawnCity;
+      if (d.ench) { st.ench = d.ench; flashT0 = performance.now(); updEnch(); api('/api/tower-mine').then(function (s) { if (s && s.ores) st.ores = s.ores; if (smithOpen) renderSmith(smithNpc); }); } // [2026-10-29] 속성 부여(쓴 재료 반영)
       if (action === 'heal') flashT0 = performance.now();
       if (d.rebirthDone) { // [2026-10-28] 환생 -- 날개는 st.combat.rebirth로 그린다(외형도 같이 갱신)
         if (d.look) st.look = d.look;
@@ -1943,6 +1976,7 @@ var TowerMine = (function () {
       el.smith.innerHTML = priestHtml(n);
       return;
     }
+    if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'tele') {
       el.smith.innerHTML = teleHtml();
       return;
@@ -2518,7 +2552,8 @@ var TowerMine = (function () {
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
-      else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + d.dmg, color: d.crit ? '#ffdd33' : '#ff5a4a', big: !!d.crit, t0: t });
+      else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + (d.elHit ? '✨' : '') + d.dmg, color: d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit), t0: t }); // [2026-10-29] 속성 상성 x1.5
+      if (d.enchLeft != null && st.ench) { st.ench.left = d.enchLeft; if (!d.enchLeft) st.ench.el = 0; updEnch(); }
       if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });
       if (d.split) flashT0 = t; // [2026-10-28] 분신술 -- 가운데 멘트 없이 번쩍임만
       setCombat(d.combat);
@@ -2526,8 +2561,11 @@ var TowerMine = (function () {
         if (d.ores) st.ores = d.ores;
         (d.drops || []).forEach(function (dr, i) {
           var img = new Image(); img.src = oreIcon(dr.grade);
-          floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, t0: t + 200 + i * 150 });
+          var sp = specialDrop(dr.grade); // [2026-10-29] 귀한 것 -- 크게 + 번쩍 + 가운데 이름
+          floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, big: sp, t0: t + 200 + i * 150 });
+          if (sp) { flashT0 = t; banner = { text: '✨ ' + dr.name + '!', t0: t }; }
         });
+        if (d.dropGrade != null) { flashT0 = t; banner = { text: '🗡️ ' + d.dropName + '!', t0: t, color: GRADE_COL[d.dropGrade], rainbow: d.dropGrade === 7 }; } // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
         msg(d.message || '', 2600);
       }
@@ -2803,7 +2841,7 @@ var TowerMine = (function () {
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
-          var nm = (ty.boss ? '👑 보스 ' : '') + ty.name + ' Lv.' + (ty.lv || (1 + 4 * (ty.tier - 1))); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95)
+          var nm = ty.dummy ? '🎯 ' + ty.name + ' (데미지 시험)' : (ty.boss ? '👑 보스 ' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + (ty.lv || (1 + 4 * (ty.tier - 1))); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
           ctx.fillStyle = ty.boss ? '#ff4a4a' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
         }
@@ -2990,7 +3028,9 @@ var TowerMine = (function () {
         ctx.font = 'bold ' + Math.round(22 * dpr) + 'px sans-serif';
         ctx.textAlign = 'center';
         ctx.lineWidth = 6 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(banner.text, W / 2, H * 0.32);
-        ctx.fillStyle = '#ffe9a8'; ctx.fillText(banner.text, W / 2, H * 0.32);
+        var bfill = banner.color || '#ffe9a8';
+        if (banner.rainbow) { var tw = ctx.measureText(banner.text).width; bfill = ctx.createLinearGradient(W / 2 - tw / 2, 0, W / 2 + tw / 2, 0); ['#ff4a4a', '#ffa500', '#ffe14d', '#4fd16a', '#4a9eff', '#b56cff'].forEach(function (cc, k) { bfill.addColorStop(k / 5, cc); }); }
+        ctx.fillStyle = bfill; ctx.fillText(banner.text, W / 2, H * 0.32);
         ctx.globalAlpha = 1;
       }
     }
@@ -3170,6 +3210,7 @@ var TowerMine = (function () {
         var rare = (d.grade >= 5 && d.grade <= 6) || !!RARE_GEM[d.grade]; // 미스릴/별빛석, 귀한 보석(바닷길에서 캔 칸은 보석)
         floats.push({ x: x, y: y, text: '+' + (d.gain || 1) + ' ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: rare, icon: img, t0: performance.now() });
         if (rare) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name, 3200); } // [2026-10-28] 좌표 빼기
+        if (specialDrop(d.grade)) banner = { text: '✨ ' + d.oreName + '!', t0: performance.now() }; // [2026-10-29] 귀한 것은 가운데 이름까지
         // [2026-10-24] 광역 곡괭이 -- 주변 칸도 함께 캔 결과
         (d.wide || []).forEach(function (w, i) {
           dug[w.x + ',' + w.y] = w.grade;

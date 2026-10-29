@@ -9192,6 +9192,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("color", ty.color);
             m.put("hp", ty.hp());
             m.put("boss", ty.boss);
+            m.put("el", ty.elem()); // [2026-10-29] 속성
+            if (ty.dummy) m.put("dummy", true);
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
@@ -10185,7 +10187,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + (mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0))); // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
+            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true); // [2026-10-29] 닌자의 검, 속성 상성 x1.5 // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -10229,6 +10231,9 @@ public class BotS5ServiceImpl implements BotS5Service {
                 s.frozenUntil = now + MINE_MOB_FREEZE_MS;
                 if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
+            } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
+                s.lastHitAt = now;
+                out.put("dummyHit", true);
             } else {
                 s.hp -= dmg;
                 s.lastHitAt = now;
@@ -10286,6 +10291,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("mobFrozenUntil", s.frozenUntil);
             out.put("mobStealth", s.stealth);
         }
+        int enchLeft = items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0); // [2026-10-29] 속성 부여 -- 공격마다 1회
+        if (enchLeft > 0) { dao.upsertMineItem(userName, MINE_ITEM_ENCH_LEFT, enchLeft - 1); out.put("enchLeft", enchLeft - 1); }
         // [2026-10-28] 분신술 시작/끝(분신 상태는 두목 잠금 밖에서 -- 잠금을 겹쳐 잡지 않는다)
         if (split != null || splitEnd || cloneHit) {
             List<long[]> rows = new ArrayList<>();
@@ -10363,6 +10370,16 @@ public class BotS5ServiceImpl implements BotS5Service {
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
+            if (type.ninja && !type.clone && RND.nextInt(1000) < MINE_NINJA_SWORD_PERMIL) { // [2026-10-29] 닌자의 검(0.5%) -- 등급은 색으로만(이름에 등급 글자 없음)
+                int g = mineGradeRoll(), cur = mineNinjaGrade(items);
+                if (g > cur) {
+                    dao.upsertMineItem(userName, MINE_ITEM_NINJA_SWORD, g + 1);
+                    if (cur < 0) dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 2);
+                    msg.append(" 🗡️ 닌자의 검을 얻었어요! 공격력 +").append(mineGradeVal(MINE_NINJA_SWORD_ATK, g)).append(cur < 0 ? " (바로 들었어요)" : " (더 좋은 검으로 바꿨어요)");
+                } else msg.append(" 🗡️ 닌자의 검을 주웠지만 지금 검보다 좋지 않아 두고 왔어요.");
+                out.put("dropGrade", g);
+                out.put("dropName", "닌자의 검");
+            }
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineBossKilledNow(MINE_LAVA_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 MINE_RANGED_NEXT.clear();
@@ -10534,7 +10551,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ppBonus", numVal(row.get("PP_BONUS"), 0));
         int helmetTier = items.getOrDefault(MINE_ITEM_HELMET, 0);
         out.put("helmet", helmetTier);
-        out.put("helmetInfo", mineHelmetInfo(userName, helmetTier)); // [2026-10-24] 대장장이 창의 투구 업그레이드
+        out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
+        out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items))); // [2026-10-24] 광산 전투 레벨
@@ -11582,6 +11600,32 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     // ---- [2026-10-28] 무기 칸 -- "무기 아이템(기본은 칼) 장착을 보여주고, 양산을 다도해 상점에서" -- WEAPON_SLOT 0 = 칼(기본), 1 = 양산(PARASOL)
     static final String MINE_ITEM_PARASOL = "PARASOL", MINE_ITEM_WEAPON_SLOT = "WEAPON_SLOT";
+    // ---- [2026-10-29] 닌자의 검(WEAPON_SLOT 2) + 장비 등급 -- "닌자를 잡다 보면 0.5%로 닌자의 검(공격력 +500, 무기), 등급(일반~신화)은 색으로만,
+    //  신화 0.01%, 대부분 일반/고급, 희귀도 잘 안 나오게, 등급이 하나 오를 때마다 모든 효과 +40%". NINJA_SWORD = 가진 가장 좋은 등급 + 1(0 = 없음).
+    static final String MINE_ITEM_NINJA_SWORD = "NINJA_SWORD";
+    /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 56% / 30% / 8% / 4% / 1.5% / 0.4% / 0.09% / 0.01%. */
+    static final int[] MINE_GRADE_W = { 5600, 3000, 800, 400, 150, 40, 9, 1 };
+    static final int MINE_NINJA_SWORD_PERMIL = 5, MINE_NINJA_SWORD_ATK = 500;
+    static int mineGradeRoll() { int r = RND.nextInt(10000); for (int g = 0; g < MINE_GRADE_W.length; g++) { r -= MINE_GRADE_W[g]; if (r < 0) return g; } return 0; }
+    /** 등급마다 효과 +40%(더하기: 일반 x1, 고급 x1.4 ... 신화 x3.8). */
+    static int mineGradeVal(int base, int grade) { return (int) Math.round(base * (1 + 0.4 * grade)); }
+    static int mineNinjaGrade(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_NINJA_SWORD, 0) - 1; }
+    static boolean mineNinjaOn(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 2 && mineNinjaGrade(items) >= 0; }
+    /** 무기 고정 공격력(양산 +10, 닌자의 검 +500 x 등급). */
+    static int mineWeaponFlat(Map<String, Integer> items) { return mineNinjaOn(items) ? mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(items)) : mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0; }
+    // [2026-10-29] 무기 속성 부여 -- ENCH_EL(S5MineMobs.EL_*) / ENCH_LEFT(남은 공격 횟수). 상성 몬스터에게 피해 x1.5(곱연산).
+    static final String MINE_ITEM_ENCH_EL = "ENCH_EL", MINE_ITEM_ENCH_LEFT = "ENCH_LEFT";
+    static final int MINE_ENCH_HITS = 1000;
+    static double mineElemMul(Map<String, Integer> items, S5MineMobs.Type type) {
+        return items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0) > 0 && S5MineMobs.elemBeats(items.getOrDefault(MINE_ITEM_ENCH_EL, 0), type.elem()) ? 1.5 : 1;
+    }
+    static HashMap<String, Object> mineEnchInfo(Map<String, Integer> items) {
+        HashMap<String, Object> m = new HashMap<>();
+        int left = items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0);
+        m.put("el", left > 0 ? items.getOrDefault(MINE_ITEM_ENCH_EL, 0) : 0);
+        m.put("left", left);
+        return m;
+    }
     static final int MINE_PARASOL_CUT = 2;
     // [2026-10-28] "조금 더 저렴하게, 다도해 보석이 아니어도" -- 진주 10 + 산호석 10 + 금 50 -> 금광석 30 + 은광석 20
     private static final String[][] MINE_PARASOL_COST = { { S5MineMap.ORE_CODES[3], "30" }, { S5MineMap.ORE_CODES[2], "20" } };
@@ -12346,7 +12390,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(mineEquipRow(neck ? "necklace" : "boots", bc, g.name + " " + t + "단계", g.effect[t - 1], neck ? bc.equals(mineNeckCode(items)) : mineBootsTier(items) > 0));
         }
         boolean pon = mineParasolOn(items); // [2026-10-28] 무기 칸 -- 칼(기본), 양산
-        out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon));
+        boolean non = mineNinjaOn(items); // [2026-10-29] 닌자의 검(등급 = 색)
+        out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon && !non));
+        if (mineNinjaGrade(items) >= 0) {
+            HashMap<String, Object> nr = mineEquipRow("weapon", MINE_ITEM_NINJA_SWORD, "닌자의 검", "공격력 +" + mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(items)), non);
+            nr.put("grade", mineNinjaGrade(items));
+            out.add(nr);
+        }
         if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "공격력 +" + MINE_PARASOL_ATK_FLAT + " · 다도해 햇빛 -" + MINE_PARASOL_CUT + "단계", pon));
         int ct = mineCoatTier(items); // [2026-10-28] 외투는 하나(단계)
         if (ct > 0) out.add(mineEquipRow("coat", "COAT", MINE_COAT_NAMES[ct - 1] + " " + ct + "단계", mineCoatEffect(ct), items.getOrDefault(MINE_ITEM_COAT_SLOT, 0) > 0));
@@ -12555,6 +12605,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("BASIC_PICK".equals(code)) { // [2026-10-28] 채집 도구 칸 -- 기본 곡괭이로
             dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, 0);
             return mineGearResult(userName, true, "⛏️ 기본 곡괭이로 바꿨어요.");
+        }
+        if (MINE_ITEM_NINJA_SWORD.equals(code)) { // [2026-10-29] 닌자의 검 -- 든 채로 다시 누르면 칼로
+            if (mineNinjaGrade(it) < 0) return mineGearResult(userName, false, "닌자의 검이 없어요. 신궁의 닌자가 아주 드물게 떨어뜨려요.");
+            boolean on = !mineNinjaOn(it);
+            dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? 2 : 0);
+            return mineGearResult(userName, true, on ? "🗡️ 닌자의 검을 들었어요. 공격력 +" + mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(it)) : "🗡️ 칼을 들었어요.");
         }
         if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
             boolean pa = MINE_ITEM_PARASOL.equals(code);
@@ -12772,6 +12828,32 @@ public class BotS5ServiceImpl implements BotS5Service {
         return new int[] { city.spawnX, city.spawnY };
     }
 
+    /** [2026-10-29] 무기 속성 부여(MINE_ENCH_HITS번 공격 동안) -- 왕도 성당 신부: 빛(미스릴괴 1, 어둠 x1.5), 원소술사: 물/번개/불/땅
+     *  (세공된 아쿠아마린/토파즈/루비/재스퍼 1, 상성 x1.5). 새로 부여하면 이전 속성은 사라진다. */
+    private HashMap<String, Object> mineEnchant(String userName, HashMap<String, Object> row, String el, HashMap<String, Object> out) {
+        int e;
+        String cost, npc = "elementalist";
+        switch (el) {
+            case "light": e = S5MineMobs.EL_LIGHT; cost = S5MineMap.BAR_CODES[4]; npc = "priest"; break;
+            case "water": e = S5MineMobs.EL_WATER; cost = S5MineMap.cutCode(3); break;
+            case "thunder": e = S5MineMobs.EL_THUNDER; cost = S5MineMap.cutCode(4); break;
+            case "fire": e = S5MineMobs.EL_FIRE; cost = S5MineMap.cutCode(1); break;
+            case "earth": e = S5MineMobs.EL_EARTH; cost = S5MineMap.cutCode(0); break;
+            default: out.put("ok", false); out.put("message", "그런 속성은 없어요."); return out;
+        }
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, npc)) {
+            out.put("ok", false);
+            out.put("message", ("priest".equals(npc) ? "왕도 성당 신부" : "왕도 원소술사") + " 앞에서만 할 수 있어요.");
+            return out;
+        }
+        if (dao.takeUserOre(userName, cost, 1) == 0) { out.put("ok", false); out.put("message", mineCodeName(cost) + " 1개가 있어야 해요."); return out; }
+        dao.upsertMineItem(userName, MINE_ITEM_ENCH_EL, e);
+        dao.upsertMineItem(userName, MINE_ITEM_ENCH_LEFT, MINE_ENCH_HITS);
+        out.put("message", "✨ 무기에 " + S5MineMobs.ELEM_NAMES[e] + " 속성을 깃들였어요! " + MINE_ENCH_HITS + "번 공격하는 동안 상성 몬스터에게 피해 x1.5 (" + mineCodeName(cost) + " 1개 사용)");
+        out.put("ench", mineEnchInfo(mineItems(userName)));
+        return out;
+    }
+
     /** 성당 신부 -- action: heal(체력 가득, 무료) / save(쓰러지면 왕도 성당에서 깨어나기) / reset(부활 지점을 평원 마을로) / [2026-10-28] rebirth(환생). */
     @Override
     @Transactional
@@ -12789,6 +12871,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("message", save ? "🙏 성당 신부: 기도했습니다. 쓰러지면 왕도 한가운데 광장에서 깨어날 거예요." : "🙏 성당 신부: 이제 쓰러지면 중앙 평원 마을에서 깨어날 거예요.");
             return out;
         }
+        if (action.startsWith("ench_")) return mineEnchant(userName, row, action.substring(5), out); // [2026-10-29]
         int lv = mineLv(row);
         Map<String, Integer> items = mineItems(userName);
         int rb = mineRebirth(items);
@@ -12984,7 +13067,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
             m.put("hpMax", mineHpCap(lv, lock, rb));
             m.put("hp", mineHpNow(row, now, lock, rb));
-            m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + (mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0)));
+            m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)));
             m.put("coldDef", mineColdDef(items));
             m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
             m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
