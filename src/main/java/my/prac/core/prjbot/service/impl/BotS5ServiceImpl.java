@@ -9231,6 +9231,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         long splitUntil;  // [2026-10-28] 닌자 두목 분신술이 끝나는 시각(그 전엔 제자리, 안 때림)
         int splitStage;   // 지금까지 쓴 분신술 횟수(체력 75/50/25% 아래로 내려갈 때마다 한 번)
         java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
+        long regenAt;     // [2026-10-29] 보스 체력 회복을 마지막으로 반영한 시각
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
         void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; }
@@ -9396,7 +9397,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             MobState s = e.getValue();
             long id = Long.parseLong(e.getKey().substring(prefix.length()));
             boolean minion = id < map.mobs().size() && S5MineMobs.TYPES.get(map.mobs().get((int) id).type).minion;
+            S5MineMobs.Type bt = id < map.mobs().size() ? S5MineMobs.TYPES.get(map.mobs().get((int) id).type) : null;
             synchronized (s) {
+                if (bt != null && bt.boss && s.deadUntil <= now) { // [2026-10-29] 보스 -- 인식이 풀리면 서서히 회복
+                    int bmax = S5MineMobs.hp(bt, map.mobs().get((int) id).rank);
+                    mineBossRegen(s, bmax, now);
+                    if (s.hp < bmax || s.target != null) { list.add(mineMobRow((int) id, s)); seen.add(id); continue; }
+                }
                 if (minion && s.deadUntil <= now && s.frozenUntil <= now) s.deadUntil = Long.MAX_VALUE / 2; // [2026-10-28] 아무도 안 싸우면 수하는 물러난다
                 if (!minion && s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS) { MINE_MOB_STATE.remove(e.getKey(), s); continue; }
                 list.add(mineMobRow((int) id, s)); // [2026-10-28] 7번째 = 은신 중(1)
@@ -9477,7 +9484,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  용암 거신과 싸우는(인식된) 사람이 아무도 없거나 거신이 쓰러지면 모두 식는다. 용암섬은 한 곳뿐이라 서버 메모리 하나로 둔다.
     private static final java.util.concurrent.ConcurrentHashMap<Integer, Long> MINE_LAVA = new java.util.concurrent.ConcurrentHashMap<>();
     private static volatile String mineLavaVer = "";
-    private static final int MINE_LAVA_MAX = 60;
+    private static final int MINE_LAVA_MAX = 180; // [2026-10-29] 3x3씩 깔리니 60 -> 180
     private static final double MINE_LAVA_PCT = 6;
 
     /** 지금 용암 칸(y * w + x) -- 용암섬이 아니면 빈 목록. 전투가 완전히 끝났으면 여기서 식힌다. */
@@ -9531,6 +9538,14 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  (때릴 때마다 받는 반격도 한 턴으로 친다). 몬스터와 MINE_AGGRO_RANGE칸 이상 벌어지면 인식이 풀리고, 인식이 모두 풀리면 그때부터 체력이 서서히 찬다(10-25 "가득" -> "서서히").
     //  몬스터를 쓰러뜨려 인식이 끝나면 그때부터 다시 저절로 찬다. 화면을 닫아 10초 넘게 소식이 없으면 인식 중이 아닌 것으로 본다.
     private static final int MINE_AGGRO_RANGE = 5;
+    /** [2026-10-29] "보스 공통으로 50칸 이상 멀어지면 어그로가 풀리고 체력이 서서히 회복" -- 인식이 풀린 보스는 마지막으로 맞은 지 5초 뒤부터 2분에 걸쳐 가득. */
+    static final int MINE_BOSS_LEASH = 50;
+    static final long MINE_BOSS_REGEN_DELAY_MS = 5_000L, MINE_BOSS_REGEN_FULL_MS = 120_000L;
+    private static void mineBossRegen(MobState s, int max, long now) {
+        if (s.target != null || s.deadUntil > now || s.hp >= max) { s.regenAt = now; return; }
+        long from = Math.max(s.regenAt, s.lastHitAt + MINE_BOSS_REGEN_DELAY_MS);
+        if (now > from) { s.hp = (int) Math.min(max, s.hp + (now - from) * max / MINE_BOSS_REGEN_FULL_MS); s.regenAt = now; }
+    }
     static final int MINE_BOSS_AGGRO_RANGE = 12;
     private static final long MINE_MOB_STRIKE_GAP_MS = 1_500L;
     private static final long MINE_CHASE_STEP_MS = 600L;
@@ -9673,7 +9688,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
-                if (!type.boss && dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
+                if (type.boss ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
@@ -9724,7 +9739,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                             out.put("poisonUntil", db.poisonUntil);
                         } else if (S5MineMap.ISLE7.equals(map.id)) {
                             mineLavaCells(map, now); // 맵 버전 맞추기
-                            if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(x, y) && !map.safeAt(x, y)) MINE_LAVA.put(y * map.w + x, now); // [2026-10-28] 서 있던 칸이 용암으로
+                            for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) // [2026-10-29] "용암 범위 3x3" (예전 서 있던 한 칸)
+                                if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(lx, ly) && !map.safeAt(lx, ly)) MINE_LAVA.put(ly * map.w + lx, now);
                             h.put("lava", true);
                         }
                         killerName = type.name;
@@ -10187,6 +10203,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         synchronized (s) {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
+            if (type.boss) mineBossRegen(s, mobMax, now); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
             for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }

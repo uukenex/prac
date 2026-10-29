@@ -2240,13 +2240,41 @@ var TowerMine = (function () {
     var left = iceSt.next - nowSrv();
     // [2026-10-28] 빙결 예고 멘트는 없앴다(위 HUD에 남은 초)
   }
-  /** 얼음 덩어리(언 캐릭터 위) -- (x, y) = 캐릭터 그림 왼쪽 위. draw()의 TS는 지역 변수라 여기서 다시 구한다. */
+  /** 얼음 감옥(언 캐릭터 위) -- (x, y) = 캐릭터 그림 왼쪽 위. [2026-10-29] "빙결 이펙트 더 멋지게(16x16 도트)":
+   *  20x22 도트(캐릭터 16x16 둘레 + 위로 솟은 얼음 가시) -- 들쭉날쭉한 결정 면(밝은 면/어두운 면), 발밑 서리, 반짝임 3프레임. 반투명이라 안이 비친다. */
+  var iceFrames = null;
+  function iceFrame(f) {
+    if (!iceFrames) iceFrames = [0, 1, 2].map(function (k) {
+      var c = mk(20, 22), g = c.getContext('2d');
+      var body = 'rgba(150,215,250,0.50)', lite = 'rgba(225,248,255,0.62)', deep = 'rgba(80,160,225,0.50)', rim = '#e8faff', rimD = '#6fb4e0';
+      // 몸통(위가 좁고 아래가 넓은 결정 덩어리) -- 행마다 [시작, 끝]
+      var rows = [[6, 13], [5, 14], [4, 15], [3, 16], [3, 16], [2, 17], [2, 17], [2, 17], [1, 18], [1, 18], [1, 18], [1, 18], [1, 18], [1, 18], [1, 18], [2, 17], [1, 18], [0, 19]];
+      rows.forEach(function (r, i) { var y = 4 + i; px(g, body, r[0], y, r[1] - r[0] + 1, 1); px(g, rim, r[0], y); px(g, rimD, r[1], y); });
+      // 면: 왼쪽 위 밝은 면, 오른쪽 아래 어두운 면, 가운데 갈라진 결
+      for (var i = 0; i < 8; i++) px(g, lite, 3 + (i >> 1), 6 + i, 3 - (i >> 2), 1);
+      for (var j = 0; j < 7; j++) px(g, deep, 13 - (j >> 1), 13 + j, 4 + (j >> 1), 1);
+      [[9, 8], [10, 9], [10, 10], [9, 11], [11, 12], [12, 13]].forEach(function (q) { px(g, rim, q[0], q[1]); });
+      // 머리 위 얼음 가시(가운데 큰 것 + 양옆)
+      [[9, 0, 4], [6, 2, 2], [13, 1, 3], [3, 4, 1], [16, 4, 1]].forEach(function (q) {
+        for (var t = 0; t < q[2]; t++) { px(g, 'rgba(190,235,255,0.85)', q[0] - (t >> 1), q[1] + t, 1 + (t >> 1) * 2 + 1, 1); }
+        px(g, '#ffffff', q[0], q[1]);
+      });
+      // 발밑 서리
+      for (var x = 0; x < 20; x++) if ((x * 7) % 5 !== 0) px(g, x % 3 ? '#dff6ff' : '#9fd8f0', x, 21);
+      outline(c, '#2f6a9a'); // 눈밭에서도 또렷하게
+      // 반짝임(프레임마다 자리가 바뀐다)
+      [[[4, 7], [15, 11], [8, 17]], [[12, 6], [5, 14], [16, 17]], [[7, 9], [14, 8], [3, 18]]][k].forEach(function (q) {
+        px(g, '#ffffff', q[0], q[1]); px(g, 'rgba(255,255,255,0.7)', q[0] - 1, q[1]); px(g, 'rgba(255,255,255,0.7)', q[0] + 1, q[1]); px(g, 'rgba(255,255,255,0.7)', q[0], q[1] - 1); px(g, 'rgba(255,255,255,0.7)', q[0], q[1] + 1);
+      });
+      return c;
+    });
+    return iceFrames[f % 3];
+  }
   function drawIce(x, y, now) {
-    var TS = T * scale, u = TS / 16, sh = 0.5 + 0.2 * Math.sin(now / 260);
-    ctx.fillStyle = 'rgba(170,230,255,0.55)'; ctx.fillRect(x - u, y - 2 * u, TS + 2 * u, TS + 3 * u);
-    ctx.strokeStyle = 'rgba(235,250,255,0.95)'; ctx.lineWidth = Math.max(1, u); ctx.strokeRect(x - u, y - 2 * u, TS + 2 * u, TS + 3 * u);
-    ctx.fillStyle = 'rgba(255,255,255,' + sh + ')'; ctx.fillRect(x + u, y - u, 2 * u, 6 * u); ctx.fillRect(x + 3 * u, y - u, 4 * u, u);
-    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(x + TS - 3 * u, y + TS - 6 * u, u, 3 * u);
+    var u = scale; // 16 도트 한 칸
+    var smooth = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(iceFrame(Math.floor(now / 240)), x - 2 * u, y - 5 * u, 20 * u, 22 * u);
+    ctx.imageSmoothingEnabled = smooth;
   }
   function coldWarn() {
     if (map && map.ice) iceWarn(); // [2026-10-28] 설산 봉우리
