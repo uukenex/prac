@@ -1741,8 +1741,8 @@
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>
   </div>
   <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
-  <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격">⚔️</button>
-  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기">⛏️</button>
+  <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격" title="무기로 공격 (스페이스)">⚔️</button>
+  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기" title="캐기 (Z)">⛏️</button>
   <button type="button" class="mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
   <div class="mine-smith mpx" id="mineSmith"></div>

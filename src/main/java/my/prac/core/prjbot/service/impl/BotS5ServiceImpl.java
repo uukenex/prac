@@ -8712,13 +8712,15 @@ public class BotS5ServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.SNOW3, 41);
         MINE_MIN_LV.put(S5MineMap.SNOWTOWN, 41);
         // [2026-10-28] 다도해(본섬 16~17단계, 신궁 18~19, 섬은 뒤로 갈수록 16 -> 20)
-        MINE_MIN_LV.put(S5MineMap.ARCHI, 65);
-        MINE_MIN_LV.put(S5MineMap.SHRINE, 70);
-        MINE_MIN_LV.put(S5MineMap.SHRINE2, 74); // [2026-10-28] 신궁 2층(19단계), 3층(20단계), 닌자 두목의 방(21단계 보스)
-        MINE_MIN_LV.put(S5MineMap.SHRINE3, 78);
-        MINE_MIN_LV.put(S5MineMap.SHRINE_BOSS, 82);
-        MINE_MIN_LV.put(S5MineMap.ARCHISEA, 65);
-        int[] isleLv = { 61, 65, 65, 69, 70, 73, 77 };
+        // [2026-10-29] "다도해 본섬~다도해 쪽 권장 레벨 표시가 잘못됐다" -- 몬스터를 +4단계 올릴 때(S5MineMobs.tierAt) 권장 레벨을 안 따라 올렸다.
+        //  지금 단계(본섬 20~21, 신궁 1~3층 22/23/24, 닌자 두목 25, 섬 20/20/21/21/22/23/24)에 같은 식(가장 약한 몬스터 Lv. - 4 = 4 x 단계 - 7)으로.
+        MINE_MIN_LV.put(S5MineMap.ARCHI, 73);
+        MINE_MIN_LV.put(S5MineMap.SHRINE, 81);
+        MINE_MIN_LV.put(S5MineMap.SHRINE2, 85);
+        MINE_MIN_LV.put(S5MineMap.SHRINE3, 89);
+        MINE_MIN_LV.put(S5MineMap.SHRINE_BOSS, 93);
+        MINE_MIN_LV.put(S5MineMap.ARCHISEA, 73);
+        int[] isleLv = { 73, 73, 77, 77, 81, 85, 89 };
         for (int i = 0; i < S5MineMap.ISLE_IDS.length; i++) MINE_MIN_LV.put(S5MineMap.ISLE_IDS[i], isleLv[i]);
     }
 

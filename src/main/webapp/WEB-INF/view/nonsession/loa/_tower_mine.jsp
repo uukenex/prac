@@ -722,7 +722,11 @@ var TowerMine = (function () {
       var d = keyDir(e.key);
       if (d) { e.preventDefault(); if (keys.indexOf(d) < 0) keys.push(d); tapDir = d; return; } // 짧게 눌렀다 떼도 한 칸은 움직이게
       if (smithOpen) { if (e.key === 'Escape') closeSmith(); else if (e.key === 'Enter' && smithView === 'warp') adminWarp(); return; } // 대장간 창이 열려 있으면 이동/캐기 대신 창만
-      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
+      // [2026-10-29] "PC에서 Z키로 채광, 스페이스키로 공격" -- 화면 버튼(⛏️ 채광 / ⚔️ 공격)과 똑같이. 한글 입력 상태에서도 되게 e.code로도 본다.
+      //  Enter는 예전처럼 옆에 몬스터가 있으면 공격, 없으면 캐기.
+      if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); atkBtn(); }
+      else if (e.code === 'KeyZ' || e.key === 'z' || e.key === 'Z') { e.preventDefault(); digBtn(); }
+      else if (e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
       else if (e.key === 'Escape') close();
     });
     document.addEventListener('keyup', function (e) {
