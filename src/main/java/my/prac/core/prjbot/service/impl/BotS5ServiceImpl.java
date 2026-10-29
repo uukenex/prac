@@ -11202,6 +11202,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         if (Math.abs(tx - x) + Math.abs(ty - y) != 1 || map.terrainAt(tx, ty) != 'I') { out.put("message", "💠 얼음 광맥 바로 앞에서 그쪽을 보고 캐요."); return out; }
         if (mineFrozen(userName, now) != null) { out.put("message", MINE_FROZEN_BLOCK); return out; }
+        // [2026-10-29] "이미 캔 빙석은 못 캐게" -- 빙석을 얻은 광맥(이어진 I 칸 전체)은 이 유저에게 맵 리셋 때까지 다 캔 광맥(캔 칸 기록에 남긴다)
+        String dugKey = mineDugKey(map, now, items);
+        if (dao.countMineDug(userName, dugKey, ty * map.w + tx) > 0) { out.put("veinDone", true); out.put("message", "💠 이미 빙석을 캔 광맥이에요. 맵 리셋 때 다시 차올라요."); return out; }
         VeinState v = MINE_VEIN.computeIfAbsent(userName, u -> new VeinState());
         int count;
         boolean gain = false;
@@ -11213,7 +11216,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (v.count >= MINE_VEIN_NEED) { v.count = 0; gain = true; }
             count = gain ? MINE_VEIN_NEED : v.count;
         }
-        if (gain) dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
+        if (gain) {
+            dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
+            List<Integer> vc = mineVeinCells(map, tx, ty);
+            for (int c : vc) dao.insertMineDug(userName, dugKey, c, S5MineMap.ICE_STONE_GRADE, now);
+            List<int[]> cells = new ArrayList<>();
+            for (int c : vc) cells.add(new int[] { c % map.w, c / map.w });
+            out.put("veinCells", cells); // 화면이 이 칸들을 다 캔 광맥으로 그린다
+        }
         boolean cutIce = S5MineMap.SNOWCAVE2.equals(map.id) && RND.nextInt(100) < MINE_VEIN_CUT_PCT; // [2026-10-28] 2층 -- 가끔 세공된 빙석
         if (cutIce) { dao.addUserOre(userName, S5MineMap.CUT_ICE_CODE, 1); out.put("cutIce", true); out.put("ores", mineOreList(userName)); }
         out.put("ok", true);
@@ -11224,6 +11234,25 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("grade", S5MineMap.ICE_STONE_GRADE);
             out.put("ores", mineOreList(userName));
             out.put("message", "💠 " + MINE_VEIN_NEED + "번 연속 채광 성공! 🧊 " + S5MineMap.ICE_STONE_NAME + " 1개를 얻었어요.");
+        }
+        return out;
+    }
+
+    /** [2026-10-29] (tx, ty)와 이어진 얼음 광맥(I) 칸 전체(상하좌우, 최대 64칸). */
+    private static List<Integer> mineVeinCells(S5MineMap map, int tx, int ty) {
+        List<Integer> out = new ArrayList<>();
+        java.util.ArrayDeque<Integer> q = new java.util.ArrayDeque<>();
+        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        int s0 = ty * map.w + tx;
+        q.add(s0); seen.add(s0);
+        while (!q.isEmpty() && out.size() < 64) {
+            int c = q.poll(), x = c % map.w, y = c / map.w;
+            out.add(c);
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+                int nx = x + d[0], ny = y + d[1], nc = ny * map.w + nx;
+                if (nx < 0 || ny < 0 || nx >= map.w || ny >= map.h || seen.contains(nc) || map.terrainAt(nx, ny) != 'I') continue;
+                seen.add(nc); q.add(nc);
+            }
         }
         return out;
     }

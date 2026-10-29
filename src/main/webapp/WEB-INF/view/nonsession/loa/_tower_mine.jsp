@@ -261,6 +261,8 @@ var TowerMine = (function () {
         px(g, '#7fd0f0', 12, 8 - s, 2, 7); px(g, '#ffffff', 9, 4); px(g, '#ffffff', 4 + s, 8);
       });
     });
+    // [2026-10-29] 빙석을 다 캔 광맥 -- 얼음 결정이 빠진 어두운 바위(금 간 자국만)
+    tiles.veinDone = tile('#454c56', [['#3a4048', 10], ['#525a64', 6]], 147, function (g) { px(g, '#2e333a', 4, 5, 1, 7); px(g, '#2e333a', 9, 3, 1, 9); px(g, '#2e333a', 12, 7, 1, 5); px(g, '#5e7a8a', 8, 6); });
     tiles.ice = [1, 2].map(function (s) {
       return tile('#bfe3f5', [['#a8d4ec', 10], ['#e6f6ff', 6, 3, 1]], 120 + s, function (g) { px(g, '#ffffff', 3 + s, 4, 5, 1); px(g, '#8fc4e0', 9, 10 - s, 4, 1); });
     });
@@ -498,7 +500,7 @@ var TowerMine = (function () {
       case 'L': return tiles.palaceWall[v % 2];
       case 'Z': return st && st.dragon && st.dragon.has ? tiles.seaGate[wf] : tiles.water[(wf + (x + y) % 2) % 2]; // [2026-10-24] 숨은 입구 -- 물과 똑같이, [2026-10-28] 용왕의 반지를 얻으면 소용돌이로 보인다
       case 'n': return tiles.snow[v % 2];
-      case 'I': return tiles.vein[v % 2]; // [2026-10-28] 설산 동굴 얼음 광맥
+      case 'I': return dug[x + ',' + y] ? tiles.veinDone : tiles.vein[v % 2]; // [2026-10-28] 설산 동굴 얼음 광맥, [2026-10-29] 빙석을 캔 광맥은 빛을 잃은 바위
       case 'Y': return tiles.pine[v % 2];
       case 'c': return tiles.cave[v % 2];
       case 'r': return tiles.gravel;
@@ -2762,7 +2764,7 @@ var TowerMine = (function () {
         var sx = x * TS - camX, sy = y * TS - camY;
         var ch = row.charAt(x);
         ctx.drawImage(tileFor(ch, x, y, wf), sx, sy, TS, TS);
-        if (dug[x + ',' + y]) ctx.drawImage(hole, sx, sy, TS, TS);
+        if (dug[x + ',' + y] && ch !== 'I') ctx.drawImage(hole, sx, sy, TS, TS); // [2026-10-29] 광맥은 구멍 대신 veinDone 타일
         if (ch === 'q' && ship) ctx.drawImage(ship.img, (x - ship.x) * T, (y - ship.y) * T, T, T, sx, sy, TS, TS);
         else if (ch === 'N') {
           var np = npcAt[x + ',' + y];
@@ -3162,18 +3164,22 @@ var TowerMine = (function () {
   function veinDig() {
     if (!map || busy || veinBusy || fade || P.moving) return;
     var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, f = dirs[P.dir];
-    if (!(f && cellAt(P.x + f[0], P.y + f[1]) === 'I')) {
+    var live = function (d) { var cx = P.x + d[0], cy = P.y + d[1]; return cellAt(cx, cy) === 'I' && !dug[cx + ',' + cy]; }; // [2026-10-29] 다 캔 광맥은 건너뛴다
+    var doneNear = false;
+    for (var k0 in dirs) if (cellAt(P.x + dirs[k0][0], P.y + dirs[k0][1]) === 'I' && !live(dirs[k0])) doneNear = true;
+    if (!(f && live(f))) {
       f = null;
-      for (var k in dirs) if (cellAt(P.x + dirs[k][0], P.y + dirs[k][1]) === 'I') { P.dir = k; f = dirs[k]; break; }
+      for (var k in dirs) if (live(dirs[k])) { P.dir = k; f = dirs[k]; break; }
     }
-    if (!f) { msg('💠 얼음 광맥 바로 앞에서 캐요. 이 동굴은 땅을 팔 수 없어요.', 1800); return; }
+    if (!f) { msg(doneNear ? '💠 이미 빙석을 캔 광맥이에요. 다른 광맥을 찾아보세요. (맵 리셋 때 다시 차올라요)' : '💠 얼음 광맥 바로 앞에서 캐요. 이 동굴은 땅을 팔 수 없어요.', 2200); return; }
     var tx = P.x + f[0], ty = P.y + f[1];
     veinBusy = true; P.digT0 = performance.now(); P.swing = false;
     api('/api/tower-mine-vein?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&tx=' + tx + '&ty=' + ty + verQ()).then(function (d) {
       veinBusy = false;
       if (!d || d.tooFast) return;
-      if (!d.ok) { if (d.message) msg(d.message, 1800); return; }
+      if (!d.ok) { if (d.veinDone) { dug[tx + ',' + ty] = 19; buildMiniBase(); } if (d.message) msg(d.message, 1800); return; }
       veinCount = d.gain ? 0 : d.count;
+      (d.veinCells || []).forEach(function (c) { dug[c[0] + ',' + c[1]] = 19; }); // [2026-10-29] 다 캔 광맥(이어진 칸 전체)
       var t = performance.now();
       if (d.cutIce) { // [2026-10-28] 설산 동굴 2층 -- 가끔 세공된 빙석
         if (d.ores) st.ores = d.ores;
