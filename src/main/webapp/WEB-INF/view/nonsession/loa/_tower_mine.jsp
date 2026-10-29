@@ -1669,11 +1669,11 @@ var TowerMine = (function () {
     var rbSub = rb >= RB_MAX ? '환생 ' + RB_MAX + '단계 완료' : ready ? '지금 환생할 수 있어요!' : 'Lv.99 + 경험치 가득일 때';
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
-        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
-        + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1 · ' + ENCH_HITS + '번 공격 · 어둠 몬스터 x1.5</small></button>' : '') // [2026-10-29]
+        + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
+        + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1개 · ' + ENCH_HITS + '번 · 어둠 x1.5</small></button>' : '') // [2026-10-29]
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
-        + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 환생' + rb + ')' : '') + '<small>' + rbSub + '</small></button></div>';
+        + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 ' + rb + '단계)' : '') + '<small>' + rbSub + '</small></button></div>';
     // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). "환생 시 멘트 조정" -- 좋아지는 것 / 어려워지는 것 / 그대로인 것으로 나눠서
     if (priestConfirm && ready) {
       var nrb = rb + 1;

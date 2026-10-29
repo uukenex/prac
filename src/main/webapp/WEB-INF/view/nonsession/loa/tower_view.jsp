@@ -811,14 +811,15 @@
     /* [2026-10-28] 인벤토리 -- 탭을 고정 머리 안에(스크롤해도 위에), 기타 탭은 카테고리별 칸 */
     .mine-smith-head.inv-head{ flex-wrap:wrap; }
     /* [2026-10-28] 인벤토리 장비 탭 -- 가운데 캐릭터, 둘레 부위 칸, 누르면 고르기 창 */
-    .doll{ display:grid; grid-template-columns:1fr auto 1fr; gap:8px; align-items:center; margin:4px 0 8px; }
+    .doll{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); /* [2026-10-29] 좌우 칸 폭 같게(긴 이름에 한쪽만 늘어나던 것) */ gap:8px; align-items:stretch; margin:4px 0 8px; }
     .doll-col{ display:flex; flex-direction:column; gap:8px; }
     .doll-char{ display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px; background:rgba(255,255,255,.05); border:2px solid rgba(244,240,230,.25); }
     .doll-char img{ width:96px; height:96px; image-rendering:pixelated; }
     .doll-char small{ color:#ffe9a8; font-weight:800; }
     .doll-slot{ display:flex; flex-direction:column; align-items:flex-start; gap:2px; width:100%; padding:6px 8px; text-align:left; cursor:pointer; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.35); min-width:0; }
     .doll-slot b{ font-size:12px; }
-    .doll-slot span{ font-size:11px; color:#cfc6b0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .doll-slot span{ font-size:11px; color:#cfc6b0; max-width:100%; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:keep-all; overflow-wrap:anywhere; } /* [2026-10-29] 긴 이름은 두 줄까지 */
+    .doll-col .doll-slot{ flex:1; }
     .doll-slot.on{ border-color:#ffcf4a; }
     .doll-slot.on span{ color:#ffe9a8; }
     .doll-tool{ margin-bottom:8px; }
@@ -924,6 +925,10 @@
     .mine-smith-menu{ display:flex; gap:8px; }
     .mine-smith-menu button{ flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px; font-size:15px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-smith-menu button small{ font-size:11px; font-weight:600; color:#cfc8e8; }
+    /* [2026-10-29] "사제 UI 읽기 불편" -- 버튼이 많은 메뉴는 한 줄에 하나씩(이름 왼쪽, 설명 오른쪽) */
+    .mine-smith-menu.list{ flex-direction:column; gap:6px; }
+    .mine-smith-menu.list button{ flex-direction:row; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; text-align:left; white-space:nowrap; }
+    .mine-smith-menu.list button small{ white-space:normal; text-align:right; }
     .mine-smith-menu button:hover, .mine-smith-menu button:focus-visible{ background:#4d3f72; }
     .mine-cost{ display:flex; flex-wrap:wrap; gap:2px 8px; margin-top:3px; font-size:11px; font-weight:700; }
     .mine-cost span{ display:inline-flex; align-items:center; gap:2px; }
