@@ -10372,14 +10372,15 @@ public class BotS5ServiceImpl implements BotS5Service {
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
-            MineWeapon dw = mineWeaponDrop(type); // [2026-10-29] 레벨대 무기(0.5%) -- 등급은 색으로만(이름에 등급 글자 없음)
-            if (dw != null && RND.nextInt(1000) < MINE_WEAPON_DROP_PERMIL) {
+            MineWeapon dw = null; // [2026-10-29] 레벨대 무기(무기마다 0.5%, 한 번에 하나) -- 등급은 색으로만(이름에 등급 글자 없음)
+            for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(1000) < MINE_WEAPON_DROP_PERMIL) { dw = w; break; }
+            if (dw != null) {
                 int g = mineGradeRoll(dw.maxGrade), cur = mineWeaponGrade(items, dw);
-                if (g > cur) {
-                    boolean wear = dw.atkAt(g) > mineWeaponFlat(items); // 지금 무기보다 세면 바로 든다
+                if (g > cur) { // "등급이 높으면 자동 교체, 다른 무기는 사용자가 확인" -- 든 무기의 등급만 저절로 오르고, 새 무기는 인벤토리에서 직접 든다
                     dao.upsertMineItem(userName, dw.code, g + 1);
-                    if (wear) dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, dw.slot);
-                    msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g)).append(wear ? " (바로 들었어요)" : "");
+                    boolean held = mineWeaponOn(items) == dw;
+                    msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g))
+                            .append(held ? " (들고 있던 검이 더 좋아졌어요)" : cur >= 0 ? " (더 좋은 등급으로 바뀌었어요)" : " (인벤토리 무기 칸에서 들 수 있어요)");
                 } else { // "이미 있는 아이템(등급까지 같으면) 자동 분해해서 조각으로, 등급마다 1개씩 더" -- 같은 등급 이하는 분해
                     dao.addUserOre(userName, dw.shard, g + 1);
                     msg.append(" 🧩 이미 있는 ").append(dw.name).append("이라 분해했어요. ").append(mineCodeName(dw.shard)).append(" +").append(g + 1);
@@ -11648,12 +11649,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (MineWeapon w : MINE_WEAPONS) if (w.slot == s && mineWeaponGrade(items, w) >= 0) return w;
         return null;
     }
-    /** 이 몬스터가 떨어뜨리는 무기(레벨 ±4, 닌자 = 닌자의 검). 허수아비/분신/보상 없는 몬스터는 없음. */
-    static MineWeapon mineWeaponDrop(S5MineMobs.Type t) {
-        if (t.dummy || t.clone || t.noReward) return null;
-        if (t.ninja) return mineWeaponOf(MINE_ITEM_NINJA_SWORD);
-        for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP) return w;
-        return null;
+    /** 이 몬스터가 떨어뜨리는 무기들(레벨 ±4 / 닌자 = 닌자의 검 / [2026-10-29] 다도해 본섬 몬스터도 닌자의 검). 허수아비/분신/보상 없는 몬스터는 없음. */
+    static List<MineWeapon> mineWeaponDrops(S5MineMobs.Type t) {
+        List<MineWeapon> out = new ArrayList<>();
+        if (t.dummy || t.clone || t.noReward) return out;
+        if (t.ninja || java.util.Arrays.asList(t.maps).contains(S5MineMap.ARCHI)) out.add(mineWeaponOf(MINE_ITEM_NINJA_SWORD));
+        if (!t.ninja) for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w)) out.add(w);
+        return out;
     }
     static int mineWeaponPct(Map<String, Integer> items) { MineWeapon w = mineWeaponOn(items); return w == null ? 0 : w.pctAt(mineWeaponGrade(items, w)); }
     /** 무기 고정 공격력(양산 +10, 드랍 무기는 등급대로). */
