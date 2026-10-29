@@ -9250,9 +9250,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final int MINE_REBIRTH_MAX = 5;
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
-    // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감"
+    // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감" -- [2026-10-29] 방한/햇빛/동굴 밝기 단계 +1(x회차)로 바꿈
     //  -> 최대 체력 x (1 + rb), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
-    //  [2026-10-28] 햇빛(다도해)만 x (1 - 0.2 rb)(mineSunCut) -- 5환생이면 햇빛을 완전히 막는다.
+    //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
     static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
@@ -11666,7 +11666,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-28] "양산을 장착하면 햇빛 피해 레벨 -2" -- 양산을 들고 있으면 햇빛 단계에서 MINE_PARASOL_CUT을 뺀다. */
     private static int mineSunPct(S5MineMap map, Map<String, Integer> items, long now) {
         int s = mineSunPct(map, now);
-        return s > 0 && mineParasolOn(items) ? Math.max(0, s - MINE_PARASOL_CUT) : s;
+        // [2026-10-29] "환생으로 햇빛 저항 +1씩" -- 양산(-2단계)처럼 환생 회차만큼 단계를 뺀다(예전: 회차당 20% 경감)
+        return s > 0 ? Math.max(0, s - (mineParasolOn(items) ? MINE_PARASOL_CUT : 0) - mineRebirth(items)) : s;
     }
 
     // ---- [2026-10-28] 무기 칸 -- "무기 아이템(기본은 칼) 장착을 보여주고, 양산을 다도해 상점에서" -- WEAPON_SLOT 0 = 칼(기본), 1 = 양산(PARASOL)
@@ -11792,16 +11793,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         return (mineCoatDef(items) > 0 ? 1 : 0) + (mineGlovesOn(items) ? 1 : 0);
     }
 
-    /** [2026-10-28] "환생 단계가 어느 정도 되어야 햇빛 피해를 상쇄할 수 있도록" -- 햇빛만 환생 1회당 20% 경감, 5환생(최대)이면 완전히 막는다.
-     *  (한기/눈바람/방한 장비 더위는 그대로 회차당 1%.) */
-    static final double MINE_SUN_RB_CUT = 0.2;
-    private static double mineSunCut(int rb) {
-        return Math.max(0, 1 - MINE_SUN_RB_CUT * rb);
-    }
-
     /** 한기 방어 합계 = 외투 + 방한 장갑. */
     private static int mineColdDef(Map<String, Integer> items) {
-        return mineCoatDef(items) + (mineGlovesOn(items) ? mineGloveTier(items) : 0); // [2026-10-28] 장갑도 단계만큼
+        return mineCoatDef(items) + (mineGlovesOn(items) ? mineGloveTier(items) : 0) // [2026-10-28] 장갑도 단계만큼
+                + mineRebirth(items); // [2026-10-29] "환생으로 방한 +1씩" -- 예전엔 피해 1%씩 경감이라 2환생도 한기 1단계를 못 막았다
     }
 
     private static boolean mineBlackOpen(long now) {
@@ -11834,12 +11829,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) return out;
         Map<String, Integer> items = mineItems(userName);
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
-        double rbCut = 1 - 0.01 * mineRebirth(items); // [2026-10-28] 환생 -- 한기/눈바람/햇빛(더위)로 입는 피해량 회차당 1% 경감
+        double rbCut = 1; // [2026-10-29] 환생은 % 경감 대신 방한/햇빛 단계 +1(mineColdDef / mineSunPct) -- 피해량 배수는 1
         int def = mineColdDef(items), eff = Math.max(0, map.cold() - def); // [2026-10-28] 외투 + 방한 장갑
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
         int heat = hot ? mineHeatPct(map, items, now) : 0; // [2026-10-28] 더위(초당 최대 체력 %)
         // [2026-10-28] 환생 경감을 뺀 실제 초당 % -- 화면 표시용(햇빛 = 회차당 20%, 한기/장비 더위 = 회차당 1%)
-        double heatRate = hot ? mineSunPct(map, items, now) * mineSunCut(mineRebirth(items)) + mineGearHeatPct(items) * rbCut : 0;
+        double heatRate = hot ? mineSunPct(map, items, now) + mineGearHeatPct(items) * rbCut : 0;
         out.put("heat", heat);
         out.put("heatRate", Math.round(heatRate * 100) / 100.0);
         if (map.sun() > 0) { out.put("day", S5MineMap.archiDay(now)); out.put("dayChangeAt", S5MineMap.archiNextChange(now)); out.put("sun", map.sun()); }
