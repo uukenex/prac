@@ -891,7 +891,7 @@ var TowerMine = (function () {
   // [2026-10-23] 광부 투구 시야 -- 어두운 맵(동굴)에서 투구 단계 - 필요 단계: 0 이하 아주 어둡게 / 1 잘 보임 / 2 이상 전체(서버 mineMapBlock과 같은 기준)
   function sight() {
     if (!map || !map.dark) return 9;
-    return (st && st.helmet || 0) - (map.helmetNeed || 0);
+    return (st && st.helmet || 0) + (st && st.combat ? st.combat.rebirth | 0 : 0) - (map.helmetNeed || 0); // [2026-10-29] "환생 옵션에 동굴 밝기 +1씩" -- 시야만(들어가는 조건은 투구 그대로)
   }
   function helmetBlocked() {
     return map && (st && st.helmet || 0) < (map.helmetNeed || 0);
@@ -1683,6 +1683,7 @@ var TowerMine = (function () {
           + '<b>✨ 강해지는 것</b><br>'
           + '· 최대 체력 <b>x' + (1 + nrb) + '</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
+          + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
           + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + (nrb >= 5 ? ' (다도해 햇빛을 완전히 막아요)' : '') + '<br>' // [2026-10-28] 문구만(효과: 한기 -1%/회, 햇빛 -20%/회)
           + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계)<br>'
           + '<b>⏳ 다시 쌓는 것</b><br>'
