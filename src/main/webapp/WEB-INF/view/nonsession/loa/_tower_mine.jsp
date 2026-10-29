@@ -38,7 +38,7 @@ var TowerMine = (function () {
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   // [2026-10-29] 장비 등급(일반 흰색 / 고급 초록 / 희귀 파랑 / 영웅 보라 / 전설 주황 / 유물 빨강 / 고대 은색 / 신화 무지개) -- 플레이어는 색으로만 안다
   var GRADE_COL = ['#ffffff', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffffff'];
-  function gradeName(nm, g) { return g == null ? nm : '<span class="gr gr' + g + '"' + (g < 7 ? ' style="color:' + GRADE_COL[g] + '"' : '') + '>' + nm + '</span>'; }
+  function gradeName(nm, g) { return g == null ? nm : '<span class="gr gr' + g + '"' + (g < 6 ? ' style="color:' + GRADE_COL[g] + '"' : '') + '>' + nm + '</span>'; }
   // [2026-10-29] 속성(서버 S5MineMobs.EL_* 순서): 무, 땅, 번개, 물, 얼음, 바람, 불, 어둠, 빛
   var ELEM_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'], ELEM_NAME = ['무', '땅', '번개', '물', '얼음', '바람', '불', '어둠', '빛'];
   // [2026-10-29] "구리~미스릴, 빙석, 요일석, 보석, 바다 보석, 괴 말고 다른 게 나오면 이펙트를 조금 더" -- 별빛석/달빛석/칠요석/세공품/고유 증표

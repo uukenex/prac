@@ -823,7 +823,7 @@
     .doll-slot.on span{ color:#ffe9a8; }
     .doll-tool{ margin-bottom:8px; }
     .eq-pop{ position:fixed; inset:0; z-index:20; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
-    .eq-pop-box{ width:min(420px, 100%); max-height:70vh; overflow:auto; padding:10px 12px; background:#1d1730; border:2px solid #f4f0e6; color:#fff; }
+    .eq-pop-box{ width:min(420px, 100%); max-height:min(70vh, 100%); overflow:auto; padding:10px 12px; background:#1d1730; border:2px solid #f4f0e6; color:#fff; }
     .eq-pop-h{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-weight:800; margin-bottom:8px; }
     .eq-pop-h small{ font-weight:600; opacity:.7; }
     .eq-pop-h button{ border:2px solid #f4f0e6; background:#a33a3a; color:#fff; cursor:pointer; padding:2px 8px; }
@@ -913,6 +913,9 @@
     /* [2026-10-29] "재료 있어도 제작이 비활성되는 문제가 없도록" -- 재료/제작 버튼은 막지 않고 흐리게만(눌러도 되고, 모자라면 서버가 무엇이 모자란지 알려 준다) */
     .mine-smith button[data-lack]{ opacity:.55; filter:grayscale(.5); }
     /* [2026-10-29] 장비 등급 색(신화 = 무지개), 공격 버튼 속성 부여 표시 */
+    /* [2026-10-29] 장비 팝업이 인벤토리 창(transform) 안에 갇혀 긴 목록의 끝이 잘렸다 -- 상자를 창 높이까지만, 안에서 스크롤 */
+    .gr6{ background:linear-gradient(90deg,#7f8b9c,#f4f8ff 45%,#9aa6b6 70%,#e8eef6); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; } /* 고대 = 은빛 광택 */
+    .gr6, .gr7{ display:inline-block; width:fit-content; align-self:flex-start; } /* 칸 안에서 줄 폭으로 늘어나면 무지개가 앞쪽 색만 보인다 */
     .gr7{ background:linear-gradient(90deg,#ff4a4a,#ffa500,#ffe14d,#4fd16a,#4a9eff,#b56cff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }

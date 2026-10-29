@@ -9262,7 +9262,8 @@ public class BotS5ServiceImpl implements BotS5Service {
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
     static double mineAtkMul(Map<String, Integer> items) {
-        return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? MINE_BERSERK_MULT - 1 : 0);
+        return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? MINE_BERSERK_MULT - 1 : 0)
+                + (mineNinjaOn(items) ? mineNinjaPct(mineNinjaGrade(items)) / 100.0 : 0); // [2026-10-29] 닌자의 검 영웅부터 +1%씩(합연산)
     }
     static final double MINE_RB_ATK_BONUS = 0.5;
     /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
@@ -10375,7 +10376,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (g > cur) {
                     dao.upsertMineItem(userName, MINE_ITEM_NINJA_SWORD, g + 1);
                     if (cur < 0) dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 2);
-                    msg.append(" 🗡️ 닌자의 검을 얻었어요! 공격력 +").append(mineGradeVal(MINE_NINJA_SWORD_ATK, g)).append(cur < 0 ? " (바로 들었어요)" : " (더 좋은 검으로 바꿨어요)");
+                    msg.append(" 🗡️ 닌자의 검을 얻었어요! ").append(mineNinjaEffect(g)).append(cur < 0 ? " (바로 들었어요)" : " (더 좋은 검으로 바꿨어요)");
                 } else msg.append(" 🗡️ 닌자의 검을 주웠지만 지금 검보다 좋지 않아 두고 왔어요.");
                 out.put("dropGrade", g);
                 out.put("dropName", "닌자의 검");
@@ -11610,6 +11611,9 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** 등급마다 효과 +40%(더하기: 일반 x1, 고급 x1.4 ... 신화 x3.8). */
     static int mineGradeVal(int base, int grade) { return (int) Math.round(base * (1 + 0.4 * grade)); }
     static int mineNinjaGrade(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_NINJA_SWORD, 0) - 1; }
+    /** [2026-10-29] "공격력 비율도 -- 영웅 등급부터 합연산으로 단계당 1%씩": 영웅 1%, 전설 2%, 유물 3%, 고대 4%, 신화 5%. */
+    static int mineNinjaPct(int grade) { return Math.max(0, grade - 2); }
+    static String mineNinjaEffect(int grade) { int p = mineNinjaPct(grade); return "공격력 +" + mineGradeVal(MINE_NINJA_SWORD_ATK, grade) + (p > 0 ? " · 공격력 +" + p + "%" : ""); }
     static boolean mineNinjaOn(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 2 && mineNinjaGrade(items) >= 0; }
     /** 무기 고정 공격력(양산 +10, 닌자의 검 +500 x 등급). */
     static int mineWeaponFlat(Map<String, Integer> items) { return mineNinjaOn(items) ? mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(items)) : mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0; }
@@ -12393,7 +12397,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean non = mineNinjaOn(items); // [2026-10-29] 닌자의 검(등급 = 색)
         out.add(mineEquipRow("weapon", "SWORD", "칼", "기본 무기", !pon && !non));
         if (mineNinjaGrade(items) >= 0) {
-            HashMap<String, Object> nr = mineEquipRow("weapon", MINE_ITEM_NINJA_SWORD, "닌자의 검", "공격력 +" + mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(items)), non);
+            HashMap<String, Object> nr = mineEquipRow("weapon", MINE_ITEM_NINJA_SWORD, "닌자의 검", mineNinjaEffect(mineNinjaGrade(items)), non);
             nr.put("grade", mineNinjaGrade(items));
             out.add(nr);
         }
@@ -12610,7 +12614,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (mineNinjaGrade(it) < 0) return mineGearResult(userName, false, "닌자의 검이 없어요. 신궁의 닌자가 아주 드물게 떨어뜨려요.");
             boolean on = !mineNinjaOn(it);
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? 2 : 0);
-            return mineGearResult(userName, true, on ? "🗡️ 닌자의 검을 들었어요. 공격력 +" + mineGradeVal(MINE_NINJA_SWORD_ATK, mineNinjaGrade(it)) : "🗡️ 칼을 들었어요.");
+            return mineGearResult(userName, true, on ? "🗡️ 닌자의 검을 들었어요. " + mineNinjaEffect(mineNinjaGrade(it)) : "🗡️ 칼을 들었어요.");
         }
         if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
             boolean pa = MINE_ITEM_PARASOL.equals(code);
