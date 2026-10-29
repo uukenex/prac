@@ -10375,7 +10375,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
             MineWeapon dw = null; // [2026-10-29] 레벨대 무기(무기마다 0.5%, 한 번에 하나) -- 등급은 색으로만(이름에 등급 글자 없음)
-            for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(1000) < MINE_WEAPON_RANK_PERMIL[mob.rank]) { dw = w; break; }
+            for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < MINE_WEAPON_RANK_P10K[mob.rank]) { dw = w; break; }
             if (dw != null) {
                 int g = mineGradeRoll(dw.maxGrade, mob.rank), cur = mineWeaponGrade(items, dw);
                 if (g > cur) { // "등급이 높으면 자동 교체, 다른 무기는 사용자가 확인" -- 든 무기의 등급만 저절로 오르고, 새 무기는 인벤토리에서 직접 든다
@@ -11637,11 +11637,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         new MineWeapon(MINE_ITEM_NINJA_SWORD, "닌자의 검", 2, 60, 500, 0.4, 7, 3, 1, S5MineMap.WEAPON_SHARD_CODES[0]),
         new MineWeapon("BAEKHWA_SWORD", "백화검", 5, 80, 1500, 0.2, 7, 0, 1, S5MineMap.WEAPON_SHARD_CODES[3]),
     };
-    static final int MINE_WEAPON_DROP_PERMIL = 5, MINE_WEAPON_DROP_LV_GAP = 4;
+    static final int MINE_WEAPON_DROP_LV_GAP = 4;
     /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 56% / 30% / 8% / 4% / 1.5% / 0.4% / 0.09% / 0.01%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로). */
     static final int[] MINE_GRADE_W = { 5600, 3000, 800, 400, 150, 40, 9, 1 };
-    /** [2026-10-29] 개체 단계별 무기 확률(1000분율: 하급 0.3% / 보통 0.5% / 상급 0.8%)과 희귀 이상 등급 가중치 배수(하급 x0.8 / 보통 x1 / 상급 x1.5). */
-    static final int[] MINE_WEAPON_RANK_PERMIL = { 3, 5, 8 };
+    /** [2026-10-29] 개체 단계별 무기 확률(MINE_WEAPON_RANK_P10K)과 희귀 이상 등급 가중치 배수(하급 x0.8 / 보통 x1 / 상급 x1.5). */
+    //  [2026-10-29] "무기 드랍률 30% 정도 더 낮춰" -- 1만분율로 x0.7: 하급 0.21% / 보통 0.35% / 상급 0.56%(예전 0.3 / 0.5 / 0.8%)
+    static final int[] MINE_WEAPON_RANK_P10K = { 21, 35, 56 };
     static final double[] MINE_RANK_GRADE_MUL = { 0.8, 1.0, 1.5 };
     static int mineGradeRoll(int maxGrade) { return mineGradeRoll(maxGrade, 1); }
     static int mineGradeRoll(int maxGrade, int rank) {
