@@ -11669,6 +11669,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (!t.ninja) for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w)) out.add(w);
         return out;
     }
+    /** 화면 그림 이름(_mine_char.jsp WEAPON_LOOK의 키). */
+    static String mineWeaponLook(MineWeapon w) {
+        switch (w.code) {
+            case "BICHUL_SWORD": return "bichul";
+            case "KATANA": return "katana";
+            case MINE_ITEM_NINJA_SWORD: return "ninja";
+            case "BAEKHWA_SWORD": return "baekhwa";
+            default: return "sword";
+        }
+    }
     static int mineWeaponPct(Map<String, Integer> items) { MineWeapon w = mineWeaponOn(items); return w == null ? 0 : w.pctAt(mineWeaponGrade(items, w)); }
     /** 무기 고정 공격력(양산 +10, 드랍 무기는 등급대로). */
     static int mineWeaponFlat(Map<String, Integer> items) { MineWeapon w = mineWeaponOn(items); return w != null ? w.atkAt(mineWeaponGrade(items, w)) : mineParasolOn(items) ? MINE_PARASOL_ATK_FLAT : 0; }
@@ -13365,7 +13375,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (c != null && c.admin) gm = true;
         }
         if (gm) look.put("gm", true); // [2026-10-28] 운영자 장비를 입었으면 화면이 "운영자" 표시 + 반짝이
-        look.put("weapon", mineParasolOn(items) ? "parasol" : "sword"); // [2026-10-28] 손에 든 무기(화면 그림)
+        MineWeapon lw = mineWeaponOn(items); // [2026-10-29] "무기별로 외형 조금씩 다르게" -- 드랍 무기는 무기마다 그림이 다르다(_mine_char.jsp WEAPON_LOOK)
+        look.put("weapon", lw != null ? mineWeaponLook(lw) : mineParasolOn(items) ? "parasol" : "sword"); // [2026-10-28] 손에 든 무기(화면 그림)
         int rb = mineRebirth(items);
         if (rb > 0) look.put("rebirth", rb); // [2026-10-28] 환생 날개(단계별로 커진다) -- 다른 유저 화면/관리자 페이지 그림에도
         return look;

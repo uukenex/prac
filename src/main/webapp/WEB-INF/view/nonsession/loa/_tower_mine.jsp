@@ -2572,6 +2572,7 @@ var TowerMine = (function () {
           floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, big: sp, t0: t + 200 + i * 150 });
           if (sp) { flashT0 = t; banner = { text: '✨ ' + dr.name + '!', t0: t }; }
         });
+        if (d.dropGrade != null) api('/api/tower-mine').then(function (s2) { if (s2 && !s2.error) { st.equip = s2.equip; st.gear = s2.gear; if (s2.ores) st.ores = s2.ores; if (s2.look) st.look = s2.look; if (smithOpen) renderSmith(smithNpc); } }).catch(function () { }); // [2026-10-29] "무기를 얻었는데 인벤토리에 안 보인다" -- 장비 목록/조각을 바로 다시 받는다
         if (d.dropGrade != null) { flashT0 = t; banner = d.dropShard ? { text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, t0: t } : { text: '🗡️ ' + d.dropName + '!', t0: t, color: GRADE_COL[d.dropGrade], rainbow: d.dropGrade === 7 }; } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
         msg(d.message || '', 2600);

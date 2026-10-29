@@ -108,24 +108,33 @@ window.MineChar = (function () {
       }
     }
     var wood = '#8a5a2b', iron = '#c3cad1';
+    // [2026-10-29] "무기별로 외형 조금씩 다르게" -- 칼날(bl) / 칼끝(tip) / 코등이(hg) / 손잡이(hd) 색, long = 칼날 1칸 더(카타나), petal = 백화검 꽃잎
+    var WL = { sword: { bl: iron, tip: '#ffffff', hg: '#ffd23f', hd: wood },
+               bichul: { bl: '#8f969c', tip: '#b8bec4', hg: '#6b4a2a', hd: '#5a3a1e' },                  // 비철도: 무딘 쇠, 나무 코등이
+               katana: { bl: '#eef3f8', tip: '#ffffff', hg: '#222228', hd: '#a01c2c', long: 1 },        // 카타나: 하얗고 긴 칼날, 검은 코등이, 붉은 손잡이
+               ninja: { bl: '#3a3f4a', tip: '#9aa2b4', hg: '#6a3a8a', hd: '#141418' },                  // 닌자의 검: 검은 칼날, 보라 코등이
+               baekhwa: { bl: '#fff4f8', tip: '#ffc8dc', hg: '#f0c040', hd: '#e8e0f0', petal: '#ff9ac0' } }; // 백화검: 흰 칼날에 분홍 꽃잎
+    var W = WL[lk.weapon] || WL.sword, L1 = W.long || 0;
     if (!dig) { // [2026-10-28] "무기 아이템(기본은 칼) 장착을 보여주고" (휘두를 때는 아래 dig 3/4) -- 캐지 않을 때 손에 든 무기(lk.weapon: sword 기본 / parasol 양산)
       if (lk.weapon === 'parasol') { // 머리 위로 펼친 분홍 양산 + 손잡이
         px(g, '#ff8ab8', 3, 0, 10, 1); px(g, '#ff8ab8', 1, 1, 14, 1); px(g, '#e05a90', 1, 1); px(g, '#e05a90', 14, 1); px(g, '#ffffff', 5, 0, 1, 2); px(g, '#ffffff', 10, 0, 1, 2);
         if (side) px(g, wood, 9, 2, 1, 9); else px(g, wood, 12, 2, 1, 9);
-      } else if (side) { px(g, wood, 9, 11); px(g, '#ffd23f', 10, 10, 1, 3); px(g, iron, 11, 11, 4, 1); px(g, '#ffffff', 14, 11); }
-      else if (dir === 'up') { px(g, wood, 12, 9, 1, 2); px(g, '#ffd23f', 11, 8, 3, 1); px(g, iron, 12, 4, 1, 4); }
-      else { px(g, wood, 12, 12); px(g, '#ffd23f', 11, 11, 3, 1); px(g, iron, 12, 6, 1, 5); px(g, '#ffffff', 12, 6); }
+      } else if (side) { px(g, W.hd, 9, 11); px(g, W.hg, 10, 10, 1, 3); px(g, W.bl, 11, 11, 4 + L1, 1); px(g, W.tip, 14 + L1, 11); if (W.petal) { px(g, W.petal, 13, 10); px(g, W.petal, 12, 12); } }
+      else if (dir === 'up') { px(g, W.hd, 12, 9, 1, 2); px(g, W.hg, 11, 8, 3, 1); px(g, W.bl, 12, 4 - L1, 1, 4 + L1); }
+      else { px(g, W.hd, 12, 12); px(g, W.hg, 11, 11, 3, 1); px(g, W.bl, 12, 6 - L1, 1, 5 + L1); px(g, W.tip, 12, 6 - L1); if (W.petal) { px(g, W.petal, 13, 7); px(g, W.petal, 11, 9); } }
     }
     if (dig === 3 || dig === 4) { // [2026-10-28] 무기 휘두르기(3 = 치켜듦, 4 = 내려 벰) -- 칼 / 양산(접은 분홍 양산)
-      var bl = lk.weapon === 'parasol' ? '#ff8ab8' : iron, tipc = lk.weapon === 'parasol' ? '#e05a90' : '#ffffff', hg = lk.weapon === 'parasol' ? wood : '#ffd23f';
+      var pa = lk.weapon === 'parasol', bl = pa ? '#ff8ab8' : W.bl, tipc = pa ? '#e05a90' : W.tip, hg = pa ? wood : W.hg, hd = pa ? wood : W.hd; // [2026-10-29] 무기별 색
       if (dig === 3) {
-        if (side) { px(g, wood, 9, 9, 1, 2); px(g, hg, 8, 8, 3, 1); px(g, bl, 9, 1, 1, 7); px(g, tipc, 9, 1); }
-        else if (dir === 'up') { px(g, wood, 3, 9, 1, 2); px(g, hg, 2, 8, 3, 1); px(g, bl, 3, 1, 1, 7); }
-        else { px(g, wood, 12, 9, 1, 2); px(g, hg, 11, 8, 3, 1); px(g, bl, 12, 1, 1, 7); px(g, tipc, 12, 1); }
+        if (side) { px(g, hd, 9, 9, 1, 2); px(g, hg, 8, 8, 3, 1); px(g, bl, 9, 1, 1, 7); px(g, tipc, 9, 1); }
+        else if (dir === 'up') { px(g, hd, 3, 9, 1, 2); px(g, hg, 2, 8, 3, 1); px(g, bl, 3, 1, 1, 7); }
+        else { px(g, hd, 12, 9, 1, 2); px(g, hg, 11, 8, 3, 1); px(g, bl, 12, 1, 1, 7); px(g, tipc, 12, 1); }
+        if (!pa && W.petal) { px(g, W.petal, side ? 10 : 13, 3); px(g, W.petal, side ? 8 : 11, 5); } // 백화검 꽃잎
       } else {
-        if (side) { px(g, wood, 9, 11); px(g, hg, 10, 10, 1, 3); px(g, bl, 11, 11, 5, 1); px(g, tipc, 15, 11); px(g, '#ffffff', 13, 9); px(g, '#ffffff', 14, 10); px(g, '#ffffff', 15, 13); }
-        else if (dir === 'up') { px(g, wood, 12, 7); px(g, hg, 11, 6, 3, 1); px(g, bl, 12, 1, 1, 5); }
-        else { px(g, wood, 12, 11); px(g, hg, 11, 12, 3, 1); px(g, bl, 12, 13, 1, 3); px(g, bl, 13, 12, 3, 1); px(g, '#ffffff', 14, 10); px(g, '#ffffff', 15, 11); }
+        var slash = !pa && W.petal ? W.petal : !pa && lk.weapon === 'ninja' ? '#b08ad8' : '#ffffff'; // 베는 궤적 색(백화검 분홍, 닌자의 검 보라)
+        if (side) { px(g, hd, 9, 11); px(g, hg, 10, 10, 1, 3); px(g, bl, 11, 11, 5, 1); px(g, tipc, 15, 11); px(g, slash, 13, 9); px(g, slash, 14, 10); px(g, slash, 15, 13); }
+        else if (dir === 'up') { px(g, hd, 12, 7); px(g, hg, 11, 6, 3, 1); px(g, bl, 12, 1, 1, 5); }
+        else { px(g, hd, 12, 11); px(g, hg, 11, 12, 3, 1); px(g, bl, 12, 13, 1, 3); px(g, bl, 13, 12, 3, 1); px(g, slash, 14, 10); px(g, slash, 15, 11); }
       }
     }
     if (dig === 1) { // 들어 올림
