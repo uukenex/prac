@@ -629,7 +629,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 4;
+    static final int PAYLOAD_REV = 5;
 
     public String version() {
         String v = version;
@@ -942,13 +942,13 @@ public final class S5MineMap {
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
         S5MineMap an2 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
         for (int[] c : an2.chestSpots) // [2026-10-28] 상자마다 담긴 양(c[2] = 0~1000) -- 세운 칸으로 찾는다(자리가 막혀 옆에 서면 칸이 달라서)
-            if (placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 상자마다 담긴 양이 다르다는데... 한 번에 세 개까지만 열 수 있다.")) {
+            if (placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 상자마다 담긴 양이 다르다. 개미굴이 바뀌기 전까지 열 개까지 열 수 있다." /* [2026-10-29] 설명이 예전 규칙(세 개)이었다 */)) {
                 Npc pn = an2.npcs.get(an2.npcs.size() - 1);
                 an2.chestRich.put(pn.y * an2.w + pn.x, c[2]);
             }
         out.put(ANTNEST, an2);
         S5MineMap py = relink(pyramid, retarget(pyramid, DESERT, dw), null);
-        placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 개미굴을 빠져나온 이에게만 열린다는 전설이 있다.");
+        placeNpc(py, py.w / 2, py.h / 2 - 4, "chest", "보상 상자", "모래에 반쯤 묻힌 낡은 상자. 사람마다 평생 단 한 번만 열린다는 전설이 있다." /* [2026-10-29] 개미굴을 안 거쳐도 오게 바뀐 뒤 설명이 남아 있었다 */);
         out.put(PYRAMID, py);
         // [2026-10-28] 설산 마을 동문 <-> 설산 동굴(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로, 설산 마을은 NPC 그대로 다시 넣음)
         S5MineMap snowCave = generateSnowCave(seed + 73, 1), stw = out.get(SNOWTOWN);
