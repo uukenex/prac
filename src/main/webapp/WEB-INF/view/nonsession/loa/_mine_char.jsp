@@ -230,8 +230,9 @@ window.MineChar = (function () {
   // [2026-10-29] 환생 날개 다시 그리기 -- "날개는 더 날개같이, 펄럭이는 효과, 전부 흰색 + 치장상점에서 염색" (참고: 큰 천사 날개 / 작은 날개)
   //  어깨에서 위로 휘어 오르는 날개뼈(앞날) + 그 아래로 늘어진 칼깃(바깥일수록 길다) + 날개뼈 아래 짧은 덮깃. 단계(1~5)가 오를수록 크고 깃이 많다.
   //  32x32 캐릭터 기준 캔버스(폭 32 + 2*ext, 높이 top + 36) -- 캐릭터는 (ext, top)에 겹친다. f = 날갯짓 프레임(0~3), dye = 염색('#색' / 'rainbow' / '' = 흰색).
-  var WING_SIZE = [null, { span: 11, rise: 7, drop: 9, n: 5 }, { span: 15, rise: 10, drop: 12, n: 6 }, { span: 19, rise: 14, drop: 15, n: 7 },
-                   { span: 23, rise: 17, drop: 18, n: 8 }, { span: 27, rise: 20, drop: 21, n: 9 }];
+  // [2026-10-29] "날개는 더 아래쪽까지" -- 칼깃이 발 근처까지 길게, 더 곧게 늘어진다(참고: 몸 옆으로 길게 내려오는 날개)
+  var WING_SIZE = [null, { span: 9, rise: 7, drop: 16, n: 5 }, { span: 12, rise: 10, drop: 19, n: 6 }, { span: 15, rise: 13, drop: 22, n: 7 },
+                   { span: 18, rise: 16, drop: 25, n: 8 }, { span: 21, rise: 19, drop: 28, n: 9 }];
   var WING_FLAP = [0, 0.22, 0.38, 0.18]; // 내려옴 -> 올라감 -> 가장 위 -> 내려옴
   var WING_RAIN = ['#ff7a7a', '#ffb04a', '#ffe14d', '#7ad87a', '#6ab8ff', '#a08aff', '#ff8ad8'];
   function wingPal(dye) {
@@ -243,7 +244,7 @@ window.MineChar = (function () {
     var rot = function (x, y) { var dx = x - ax, dy = y - ay, a = -flap * s, cs = Math.cos(a), sn = Math.sin(a); return [ax + dx * cs - dy * sn, ay + dx * sn + dy * cs]; };
     var arm = function (t) { return [ax + s * z.span * t, ay - z.rise * Math.sin(Math.min(1, t * 1.25) * Math.PI / 2) + (t > 0.8 ? (t - 0.8) * z.rise * 1.2 : 0)]; };
     for (var i = z.n - 1; i >= 0; i--) { // 칼깃 -- 바깥부터(안쪽이 위에 겹친다)
-      var t = (i + 0.5) / z.n, b = arm(t), len = z.drop * (0.45 + 0.65 * t), ang = Math.PI / 2 + s * (-0.15 - 0.55 * t);
+      var t = (i + 0.5) / z.n, b = arm(t), len = z.drop * (0.7 + 0.45 * t), ang = Math.PI / 2 + s * (0.02 - 0.26 * t);
       var dx = Math.cos(ang), dy = Math.sin(ang), w0 = 1.6 + t * 0.9, fp = rain ? wingPal(WING_RAIN[i % WING_RAIN.length]) : p;
       for (var k = 0; k <= len; k++) {
         var ww = Math.max(0.6, w0 * (k < len - 2 ? 1 : (len - k + 0.5) / 2.5));
@@ -258,7 +259,7 @@ window.MineChar = (function () {
     for (var t3 = 0; t3 <= 1; t3 += 0.02) { var a3 = arm(t3), q3 = rot(a3[0], a3[1]); P(q3[0], q3[1], p.hi); var q4 = rot(a3[0], a3[1] + 1); P(q4[0], q4[1], p.base); var q5 = rot(a3[0], a3[1] - 1); P(q5[0], q5[1], p.mid); } // 날개뼈
   }
   function wingSprite(stage, side, f, dye) {
-    var z = WING_SIZE[stage], p = wingPal(dye), ext = z.span + 3, top = z.rise + 8, W = 32 + ext * 2, H = top + 36;
+    var z = WING_SIZE[stage], p = wingPal(dye), ext = z.span + 3, top = z.rise + 8, W = 32 + ext * 2, H = top + 16 + Math.ceil(z.drop * 1.15) + 6;
     if (side) z = { span: Math.round(z.span * 0.8), rise: Math.round(z.rise * 0.9), drop: Math.round(z.drop * 0.9), n: z.n };
     var c = mk(W, H), g = c.getContext('2d'), fl = WING_FLAP[f % 4], sy = top + 16, rain = dye === 'rainbow';
     if (side) oneWing(g, p, z, ext + 13, sy, -1, fl, rain);

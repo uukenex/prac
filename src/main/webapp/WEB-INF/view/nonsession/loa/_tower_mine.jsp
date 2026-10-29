@@ -637,7 +637,107 @@ var TowerMine = (function () {
     return { x: ax + (bx - ax) * k, y: ay + (by - ay) * k, cx: k < 0.5 ? ax : bx, cy: k < 0.5 ? ay : by };
   }
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
-  function mobSprite(k, pose) {
+  // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
+  //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
+  var BOSS_ART = { '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen' };
+  var bossArt = (function () {
+    function painter(g) {
+      var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+      return {
+        P: P,
+        R: function (x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); },
+        E: function (cx, cy, rx, ry, c) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + 0.5) + (y * y) / (ry * ry + 0.5) <= 1) P(cx + x, cy + y, c); },
+        L: function (x0, y0, x1, y1, c, w) { var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) || 1; for (var i = 0; i <= n; i++) { var x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n; P(x, y, c); if (w > 1) P(x + 1, y, c); if (w > 2) P(x, y + 1, c); } },
+        D: function (cx, cy, r, c, hi) { for (var y = -r; y <= r; y++) for (var x = -r; x <= r; x++) if (Math.abs(x) + Math.abs(y) <= r) P(cx + x, cy + y, c); if (hi) P(cx - 1, cy - 1, hi); }
+      };
+    }
+    var ART = {
+      golem: function (pt, pf, f) { // 고대 광석 골렘 -- 광석 결정이 박힌 바위 몸, 하늘빛 눈
+        var b = '#6a5a7a', d = '#4a3e58', h = '#8a7a9a', u = f ? -2 : 0;
+        pt.R(15, 36, 7, 11, d); pt.R(27, 36, 7, 11, d); pt.R(14, 44, 9, 3, '#3a3048'); pt.R(26, 44, 9, 3, '#3a3048');
+        pt.E(24, 26 + (f ? 1 : 0), 15, 12, b); pt.E(27, 30, 11, 7, d); pt.E(19, 20, 7, 5, h);
+        pt.E(7, 28 + u, 6, 9, b); pt.E(8, 33 + u, 5, 4, d); pt.E(41, 28 + u, 6, 9, b); pt.E(40, 33 + u, 5, 4, d);
+        pt.E(24, 11, 8, 6, b); pt.E(22, 9, 4, 2, h);
+        pt.L(16, 22, 21, 30, d); pt.L(30, 18, 34, 27, d); pt.L(10, 24, 7, 32, d);
+        pt.D(19, 25, 2, '#ffd23f', '#fff6b0'); pt.D(31, 23, 2, '#20c9b8', '#b9fff6'); pt.D(9, 22 + u, 2, '#20c9b8', '#b9fff6'); pt.D(40, 24 + u, 2, '#ffd23f', '#fff6b0'); pt.D(26, 31, 1, '#f23fd0', '#ffffff');
+        pf.R(20, 10, 2, 2, '#7ff0ff'); pf.R(26, 10, 2, 2, '#7ff0ff'); if (f) { pf.P(19, 10, '#bff8ff'); pf.P(28, 10, '#bff8ff'); pf.P(24, 31, '#ffffff'); }
+      },
+      archbishop: function (pt, pf, f) { // 타락한 대주교 -- 주교관, 찢어진 사제복, 해골 지팡이, 보라 기운
+        var r = '#3a1a4a', rd = '#24102e', g = '#c8a040';
+        for (var y = 15; y < 47; y++) { var hw = Math.round(6 + (y - 15) * 0.42); pt.R(22 - hw, y, hw * 2, 1, (y + 15) % 7 < 2 ? rd : r); }
+        for (var x = 9; x < 36; x += 3) pt.R(x, 46 - (x % 2), 2, 1 + (x % 2), rd);
+        pt.R(21, 15, 2, 31, g); pt.R(10, 44, 25, 1, g);
+        pt.R(17, 8, 10, 8, '#b8c0a0'); pt.R(17, 14, 10, 2, '#98a080');
+        pt.R(16, 0, 12, 9, r); pt.R(21, 1, 2, 7, g); pt.R(19, 3, 6, 2, g); pt.R(15, 7, 14, 2, g);
+        pf.R(19, 10, 2, 2, '#ff3040'); pf.R(24, 10, 2, 2, '#ff3040');
+        pt.R(37, 8, 2, 39, '#4a3020'); pt.E(38, 6, 4, 4, '#e8e0c8'); pt.R(36, 5, 1, 2, '#2a2020'); pt.R(39, 5, 1, 2, '#2a2020'); pt.R(37, 8, 3, 1, '#2a2020');
+        pt.R(33, 22, 5, 3, '#b8c0a0'); pt.R(6, 24, 4, 3, '#b8c0a0');
+        [[38, 0], [36, 1], [40, 1]].forEach(function (q, i) { pf.P(q[0], q[1] - (f && i === 0 ? 1 : 0), i ? '#b06aff' : '#e0c0ff'); });
+        [[4, 18], [43, 30], [6, 36], [41, 14], [2, 28], [44, 22]].forEach(function (q, i) { var o = (f ? 3 : 0) * (i % 2 ? 1 : -1); pf.P(q[0], q[1] + o, '#7a3aa8'); pf.P(q[0], q[1] + o + 1, '#4a1a6a'); });
+      },
+      icequeen: function (pt, pf, f) { // 얼음 여왕 -- 얼음 왕관, 흘러내리는 머릿결, 넓게 퍼진 얼음 드레스, 떠도는 결정
+        for (var y = 24; y < 47; y++) { var hw = Math.round(5 + (y - 24) * 0.75); for (var x = -hw; x < hw; x++) pt.P(24 + x, y, (x + y) % 9 === 0 ? '#ffffff' : x < -hw / 2 ? '#8fd0f0' : x > hw / 2 ? '#a8dcf4' : '#bfefff'); }
+        pt.R(19, 16, 10, 9, '#9fd8f0'); pt.R(21, 17, 6, 2, '#dff6ff');
+        pt.R(13, 17, 6, 3, '#9fd8f0'); pt.R(29, 17, 6, 3, '#9fd8f0'); pt.R(11, 19, 3, 3, '#e8f4ff'); pt.R(34, 19, 3, 3, '#e8f4ff');
+        for (var hy = 3; hy < 26; hy++) { // 머릿결 -- 양옆으로 흘러내리며 살짝 물결
+          var wv = Math.round(Math.sin(hy * 0.5 + (f ? 1 : 0)) * 1);
+          pt.R(16 + wv - (hy > 12 ? 1 : 0), hy, 3, 1, hy % 4 ? '#dff4ff' : '#bfe4f8'); pt.R(29 - wv + (hy > 12 ? 1 : 0), hy, 3, 1, hy % 4 ? '#dff4ff' : '#bfe4f8');
+        }
+        pt.R(18, 2, 12, 4, '#dff4ff'); pt.R(19, 6, 10, 9, '#e8f4ff'); pt.R(19, 5, 10, 2, '#cfeaf8');
+        pt.R(21, 9, 2, 2, '#3a7ad8'); pt.R(25, 9, 2, 2, '#3a7ad8'); pt.P(21, 9, '#ffffff'); pt.P(25, 9, '#ffffff'); pt.R(23, 12, 2, 1, '#8ab8e0');
+        [[19, 1, 3], [23, -1, 4], [27, 1, 3]].forEach(function (q) { for (var k = 0; k < q[2]; k++) pt.R(q[0] - ((q[2] - 1 - k) / 2 | 0), q[1] + k + 1, 1 + (q[2] - 1 - k > 0 ? 1 : 0), 1, '#7fd0f0'); pf.P(q[0], q[1] + 1, '#ffffff'); });
+        [[6, 12], [42, 16], [4, 32], [44, 34], [10, 42], [38, 6]].forEach(function (q, i) { var o = (f ? 2 : 0) * (i % 2 ? 1 : -1); pf.D(q[0], q[1] + o, 1, '#bfefff', '#ffffff'); });
+      },
+      ninjaboss: function (pt, pf, f, pose) { // 닌자 두목 -- 노란 눈, 휘날리는 붉은 목도리, 쌍검(pose = 인을 맺은 자세: 칼을 가슴 앞에 교차)
+        var b = '#2a0f1a', l = '#4a2030', s = '#c0283a';
+        pt.R(15, 34, 6, 12, b); pt.R(27, 34, 6, 12, b); pt.R(13, 44, 8, 3, '#140810'); pt.R(27, 44, 8, 3, '#140810');
+        pt.E(24, 27, 11, 10, b); pt.E(21, 24, 5, 5, l);
+        pt.R(16, 4, 16, 14, b); pt.R(17, 3, 14, 2, l); pt.R(18, 9, 12, 4, '#e8c8a0'); pf.R(20, 10, 3, 2, '#ffe14d'); pf.R(26, 10, 3, 2, '#ffe14d');
+        pt.R(15, 17, 18, 3, s);
+        for (var i = 0; i < 16; i++) { var wy = 18 + Math.round(Math.sin(i * 0.6 + (f ? 1.6 : 0)) * 2) + (i >> 2); pt.R(14 - i, wy, 1, 3, s); }
+        if (pose) { pt.R(19, 24, 10, 4, b); pt.L(14, 34, 34, 14, '#c3cad1', 2); pt.L(34, 34, 14, 14, '#c3cad1', 2); pf.D(24, 24, 2, '#b48aff', '#ffffff'); }
+        else {
+          pt.R(8, 24, 6, 4, b); pt.R(34, 24, 6, 4, b);
+          pt.L(6, 26, 2, 6, '#c3cad1', 2); pt.L(42, 26, 46, 6, '#c3cad1', 2); pt.P(2, 5, '#ffffff'); pt.P(46, 5, '#ffffff'); pt.R(5, 25, 4, 2, '#3a3f4a'); pt.R(40, 25, 4, 2, '#3a3f4a');
+          pf.L(3, 9 + (f ? 1 : 0), 5, 22, '#b48aff'); pf.L(45, 9 + (f ? 1 : 0), 43, 22, '#b48aff');
+        }
+      },
+      lavagiant: function (pt, pf, f) { // 용암 거신 -- 검은 바위 피부 사이로 흐르는 용암, 일렁이는 불꽃 머리
+        var b = '#2a1a14', d = '#1a0e0a', h = '#4a3020';
+        pt.R(14, 34, 8, 13, b); pt.R(26, 34, 8, 13, b);
+        pt.E(24, 25, 16, 12, b); pt.E(17, 21, 8, 5, h); pt.E(30, 30, 9, 6, d);
+        pt.E(6, 22, 6, 7, b); pt.E(42, 22, 6, 7, b); pt.R(2, 26, 8, 12, b); pt.R(38, 26, 8, 12, b); pt.E(6, 39, 5, 4, d); pt.E(42, 39, 5, 4, d);
+        pt.E(24, 11, 8, 7, b); pt.E(22, 9, 4, 3, h);
+        [[14, 20, 20, 30], [28, 18, 32, 27], [20, 31, 26, 35], [5, 24, 7, 33], [41, 25, 43, 34], [17, 37, 18, 45], [30, 37, 29, 45]].forEach(function (q) { pf.L(q[0], q[1], q[2], q[3], '#ff6a1a'); pf.L(q[0] + 1, q[1], q[2] + 1, q[3], f ? '#fff0a0' : '#ffd040'); });
+        pf.R(20, 10, 3, 2, '#fff6b0'); pf.R(26, 10, 3, 2, '#fff6b0');
+        for (var x = 15; x <= 33; x++) { // 불꽃 머리 -- 높이가 들쭉날쭉, 프레임마다 일렁임
+          var fh = Math.max(1, Math.round(4 + 2.5 * Math.sin(x * 1.7 + (f ? 2.2 : 0)) + 1.5 * Math.sin(x * 0.55) - Math.abs(x - 24) * 0.18));
+          for (var k = 0; k < fh; k++) pf.P(x, 5 - k, k < fh * 0.35 ? '#fff0a0' : k < fh * 0.7 ? '#ff9a20' : '#e8401a');
+        }
+        pf.P(6, 44 + (f ? 1 : 0), '#ff8a1a'); pf.P(42, 45 - (f ? 1 : 0), '#ff8a1a');
+      },
+      antqueen: function (pt, pf, f) { // 여왕개미 -- 줄무늬 큰 배, 왕관 더듬이, 붉은 눈, 독침의 독
+        var b = '#c03a6a', d = '#801a40', h = '#e86a98';
+        pt.E(13, 31, 12, 9, b); for (var x = 4; x < 24; x += 4) pt.R(x, 24, 1, 15, d); pt.E(10, 27, 5, 3, h);
+        pt.E(28, 27, 6, 6, b); pt.E(38, 20, 7, 6, b); pt.E(36, 18, 3, 2, h);
+        pf.R(40, 18, 2, 2, '#ff3030'); pf.R(36, 18, 2, 2, '#ff3030');
+        pt.L(43, 23, 47, 26, d, 2); pt.L(43, 24, 46, 28, d);
+        pt.L(36, 14, 32 - (f ? 1 : 0), 4, d); pt.L(40, 14, 44 + (f ? 1 : 0), 4, d); pt.D(32 - (f ? 1 : 0), 4, 1, '#ffd23f', '#fff6b0'); pt.D(44 + (f ? 1 : 0), 4, 1, '#ffd23f', '#fff6b0'); pt.R(33, 13, 10, 2, '#ffd23f');
+        [[24, 32, 20 - (f ? 1 : 0), 42], [28, 33, 27, 44], [32, 32, 36 + (f ? 1 : 0), 43], [25, 29, 19, 37], [31, 29, 37, 37]].forEach(function (q) { pt.L(q[0], q[1], q[2], q[3], d, 2); });
+        pt.L(2, 34, 0, 38, d, 2); pf.P(0, 40 + (f ? 1 : 0), '#7fff60'); pf.P(1, 41 + (f ? 1 : 0), '#4fd040');
+      }
+    };
+    return function (name, f, pose) {
+      var c = mk(48, 48), fx = mk(48, 48);
+      ART[name](painter(c.getContext('2d')), painter(fx.getContext('2d')), f, pose);
+      outline(c, '#140d0a');
+      c.getContext('2d').drawImage(fx, 0, 0);
+      return c;
+    };
+  })();
+  function mobSprite(k, pose, f) {
+    var art = BOSS_ART[(map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임)
+    if (art) { var bk = 'b' + k + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
     if (mobSprites[ck]) return mobSprites[ck];
     var ty = map.mobTypes[k] || {}, c = mk(T, T), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3);
@@ -680,6 +780,8 @@ var TowerMine = (function () {
   }
   /** 플레이어 옆(바라보는 칸 먼저) 살아 있는 몬스터 -- { m, dir }. */
   function adjMob() {
+    var self = mobOcc[P.x + ',' + P.y]; // [2026-10-29] "공격할 때 본인 위치도" -- 내 칸에 겹친 몬스터부터
+    if (self) return { m: self, dir: P.dir };
     var dirs = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, f = dirs[P.dir], m = f && mobOcc[(P.x + f[0]) + ',' + (P.y + f[1])];
     if (m) return { m: m, dir: P.dir };
     for (var key in dirs) { var v = dirs[key], mm = mobOcc[(P.x + v[0]) + ',' + (P.y + v[1])]; if (mm) return { m: mm, dir: key }; }
@@ -1002,7 +1104,10 @@ var TowerMine = (function () {
       var tS = nowSrv();
       for (var mi = 0; mi < map.mobs.length; mi++) {
         var mm = map.mobs[mi], mp = mobPos(mm, tS);
-        if (mp) { mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm; } else mm._p = null;
+        if (mp) {
+          mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm;
+          if ((map.mobTypes[mm.k] || {}).boss) { mobOcc[(mp.cx + 1) + ',' + mp.cy] = mm; mobOcc[mp.cx + ',' + (mp.cy + 1)] = mm; mobOcc[(mp.cx + 1) + ',' + (mp.cy + 1)] = mm; } // [2026-10-29] 보스 = 2x2칸
+        } else mm._p = null;
       }
     }
     // [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- ⛏️는 캐기만, ⚔️는 바로 옆 몬스터가 있을 때 또렷해진다
@@ -2873,9 +2978,11 @@ var TowerMine = (function () {
         if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
         ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
         if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
-          ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS / 2, my + TS / 2, TS * 1.1, 0, Math.PI * 2); ctx.fill();
-          ctx.drawImage(mobSprite(sk, pose), Math.round(mx - TS * 0.4), Math.round(my - TS * 0.8 - bob), TS * 1.8, TS * 1.8);
-        } else ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
+          ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS, my + TS, TS * 1.5, 0, Math.PI * 2); ctx.fill();
+          var bw = TS * 2.4; // [2026-10-29] 보스 2x2칸 -- 그림은 두 칸 가운데, 발은 아래 칸
+          ctx.drawImage(mobSprite(sk, pose, Math.floor(now / 480 + bid)), Math.round(mx + TS - bw / 2), Math.round(my + 2 * TS - bw - bob), bw, bw);
+        } else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
+        else ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
         ctx.globalAlpha = 1;
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력
@@ -2886,8 +2993,8 @@ var TowerMine = (function () {
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
           var nm = ty.dummy ? '🎯 ' + ty.name + ' (데미지 시험)' : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
-          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
-          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + TS / 2, my - (ty.boss ? 14 : 6) * scale);
+          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 10 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
+          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 10 : 6) * scale);
         }
       }
     }

@@ -9688,6 +9688,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
+                if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
                 if (type.boss ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
@@ -10205,7 +10206,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
             if (type.boss) mineBossRegen(s, mobMax, now); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
-            for (int c : mineMobCells(mob, s, now, map)) if (Math.max(Math.abs(c % map.w - x), Math.abs(c / map.w - y)) == 1 && (hitCell < 0 || c == mc)) hitCell = c; // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
+            for (int c : mineMobCells(mob, s, now, map)) { // [2026-10-29] 보스는 2x2칸, "공격할 때 본인 위치도" -- 내 칸(0)과 둘레 8칸(1)
+                int fw = type.boss ? 2 : 1;
+                for (int oy = 0; oy < fw; oy++) for (int ox = 0; ox < fw; ox++)
+                    if (Math.max(Math.abs(c % map.w + ox - x), Math.abs(c / map.w + oy - y)) <= 1 && (hitCell < 0 || c == mc)) hitCell = c;
+            } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
             dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true); // [2026-10-29] 닌자의 검, 속성 상성 x1.5 // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
