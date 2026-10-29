@@ -1113,7 +1113,7 @@ var TowerMine = (function () {
     var h = '<div class="cos-card gear-card' + (worn ? ' worn' : '') + '"><div class="gear-ico">' + (GEAR_ICON[g.kind] || '💍') + '</div>'
         + '<div class="cos-nm">' + g.name + '</div><small class="gear-tier">' + (g.tier > 0 ? g.tier + '단계' + (g.maxTier ? ' / ' + g.maxTier : '') : '없음') + '</small>';
     if (g.effect) h += '<small class="gear-eff">지금: ' + g.effect + '</small>';
-    if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(맵 리셋 때 회복)</small>';
+    if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(' + (g.dimLeft ? g.dimLeft + ' 뒤' : '12시간 뒤') + ' 회복)</small>'; // [2026-10-29] 맵 리셋 -> 12시간
     if ((g.kind === 'ring' || g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace') && g.tier > 0)
       h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
           : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>';
@@ -3225,10 +3225,10 @@ var TowerMine = (function () {
           var iimg = new Image(); iimg.src = oreIcon(19);
           floats.push({ x: x, y: y - 1.0, text: '+1 빙석', color: '#bfefff', icon: iimg, t0: performance.now() + 350 });
         }
-        if (d.detectDim) { // 탐지 곡괭이가 별빛석에 빛을 잃음 -- 맵 리셋 때 회복
+        if (d.detectDim) { // 탐지 곡괭이가 별빛석에 빛을 잃음 -- 12시간 뒤 회복
           (st.gear || []).forEach(function (g) { if (g.code === 'DETECT_PICK') g.dim = true; });
           scan = null;
-          msg('🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 맵 리셋 때 다시 빛나요.', 4200);
+          msg('🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 12시간 뒤 다시 빛나요.', 4200);
         }
         if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
           (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });

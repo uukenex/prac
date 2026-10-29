@@ -10751,9 +10751,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-24] 탐지 곡괭이로 별빛석을 캐면 빛을 잃는다(이번 맵 주기 동안 탐지 꺼짐)
         if ((Integer.valueOf(6).equals(one.get("grade")) || Integer.valueOf(S5MineMap.MOON_STONE_GRADE).equals(one.get("grade"))) && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == 2 && items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) > 0 && !mineDetectDim(items)) {
-            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, S5MineMap.activeCycle() + 1);
+            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, mineDetectOffValue());
             out.put("detectDim", true);
-            msg += " 🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 맵 리셋 때 다시 빛나요.";
+            msg += " 🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 12시간 뒤 다시 빛나요.";
         }
         boolean ice = one.get("iceGain") != null;
         for (HashMap<String, Object> wc : wide) ice |= wc.get("iceGain") != null;
@@ -10774,7 +10774,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-24] 탐지 곡괭이 -- (x, y) 주변 칸 중 내가 안 캔 광석 칸: [dx, dy, 등급 값](요일 던전 = 오늘 요일석, 바닷길 = -1 보석 줄기).
      *  탐지 곡괭이를 끼고 있고 (x, y)가 저장 위치에서 갈 수 있는 거리일 때만.
      *  [2026-10-28] 범위 3x3 -> 사방 MINE_DETECT_R칸("주변 8x8", 내 칸이 가운데라 9x9). 캔 칸은 한 번에 읽는다(칸마다 조회 X).
-     *  범위 안에 빛나는 돌(별빛석/달빛석)이 있으면 이번 결과까지 보여 주고 기능이 멈춘다(DETECT_OFF, 맵 리셋 때 회복). */
+     *  범위 안에 빛나는 돌(별빛석/달빛석)이 있으면 이번 결과까지 보여 주고 기능이 멈춘다(DETECT_OFF, [2026-10-29] 12시간 뒤 회복). */
     static final int MINE_DETECT_R = 4;
     @Override
     public HashMap<String, Object> mineScan(String userName, String mapId, int x, int y) {
@@ -10785,7 +10785,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (row == null) return out;
         Map<String, Integer> items = mineItems(userName);
         if (items.getOrDefault(MINE_ITEM_DETECT_PICK, 0) < 1 || items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) != 2) return out;
-        if (mineDetectDim(items)) { out.put("dim", true); return out; } // 별빛석을 캐서 빛을 잃음 -- 맵 리셋 때 회복
+        if (mineDetectDim(items)) { out.put("dim", true); return out; } // 별빛석을 캐서 빛을 잃음 -- 12시간 뒤 회복
         S5MineMap map = mineMapOf(row);
         if (mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) return out;
         long now = System.currentTimeMillis();
@@ -10807,7 +10807,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             cells.add(new int[] { dx, dy, g });
         }
         if (glow) { // 빛나는 돌을 탐지 -- 이번 결과까지 보여 주고 멈춤
-            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, S5MineMap.activeCycle() + 1);
+            dao.upsertMineItem(userName, MINE_ITEM_DETECT_OFF, mineDetectOffValue());
             out.put("dim", true);
             out.put("message", "주변에 빛나는 돌이 있어 기능이 멈추었습니다.");
         }
@@ -11988,11 +11988,19 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-25] 쌍날 곡괭이 -- 바라보는 방향 앞뒤 칸도 함께(PICK_SLOT 3). */
     static final String MINE_ITEM_LINE_PICK = "LINE_PICK";
     static final String MINE_ITEM_PICK_SLOT = "PICK_SLOT";
-    /** 탐지 곡괭이가 빛을 잃은 주기 + 1("별빛석을 캐면 효과 꺼짐, 맵 리셋 때 회복"). 지금 주기 + 1과 같으면 꺼짐. */
+    /** 탐지 곡괭이가 빛을 잃음 -- [2026-10-29] "탐지 후 12시간마다 한 번씩 회복(지금은 2일 주기 = 맵 리셋)": DETECT_OFF = 다시 빛나는 시각(epoch 분).
+     *  (예전 값은 주기 번호 + 1이라 아주 작은 수 -- 지금 시각보다 작아 바로 회복된 것으로 본다.) */
     static final String MINE_ITEM_DETECT_OFF = "DETECT_OFF";
+    static final long MINE_DETECT_RECOVER_MS = 12 * 3_600_000L;
 
+    private static int mineDetectOffValue() { return (int) ((System.currentTimeMillis() + MINE_DETECT_RECOVER_MS) / 60_000L); }
     private static boolean mineDetectDim(Map<String, Integer> items) {
-        return items.getOrDefault(MINE_ITEM_DETECT_OFF, 0) == S5MineMap.activeCycle() + 1;
+        return items.getOrDefault(MINE_ITEM_DETECT_OFF, 0) > System.currentTimeMillis() / 60_000L;
+    }
+    /** 다시 빛날 때까지 남은 시간("5시간 12분"). */
+    private static String mineDetectLeft(Map<String, Integer> items) {
+        long m = Math.max(1, items.getOrDefault(MINE_ITEM_DETECT_OFF, 0) - System.currentTimeMillis() / 60_000L);
+        return (m >= 60 ? m / 60 + "시간 " : "") + m % 60 + "분";
     }
 
     private static int minePickSlotOf(String code) {
@@ -12083,7 +12091,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
         new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
             new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" }, mineBar(4, 1), mineBar(3, 1), mineCut(2, 1) } }, // "많이 비싸게"
-            new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (맵 리셋 때 다시 빛나요)" }),
+            new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (멈추면 12시간 뒤 다시 빛나요)" }),
         new MineGear(MINE_ITEM_LINE_PICK, "쌍날 곡괭이", "tool",
             new String[][][] { { mineSeven(1) } },
             new String[] { "캘 때 바라보는 방향의 앞 칸과 뒤 칸도 함께 (칸마다 내구도 1)" }),
@@ -12425,7 +12433,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (MineGear g : MINE_GEAR) if ("tool".equals(g.kind) && items.getOrDefault(g.code, 0) > 0) {
             int t = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
             boolean dim = MINE_ITEM_DETECT_PICK.equals(g.code) && mineDetectDim(items);
-            out.add(mineEquipRow("tool", g.code, g.name, (dim ? "🌑 빛을 잃음(맵 리셋 때 회복) · " : "") + g.effect[t - 1], pick == minePickSlotOf(g.code)));
+            out.add(mineEquipRow("tool", g.code, g.name, (dim ? "🌑 빛을 잃음(" + mineDetectLeft(items) + " 뒤 회복) · " : "") + g.effect[t - 1], pick == minePickSlotOf(g.code)));
         }
         return out;
     }
@@ -12454,7 +12462,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("maxTier", g.cost.length);
             m.put("effect", tier > 0 ? g.effect[tier - 1] : "");
             if ("tool".equals(g.kind)) m.put("on", tier > 0 && items.getOrDefault(MINE_ITEM_PICK_SLOT, 0) == minePickSlotOf(g.code)); // 끼고 있는 곡괭이
-            if (MINE_ITEM_DETECT_PICK.equals(g.code)) m.put("dim", mineDetectDim(items)); // 빛을 잃음(맵 리셋 때 회복)
+            if (MINE_ITEM_DETECT_PICK.equals(g.code)) { m.put("dim", mineDetectDim(items)); if (mineDetectDim(items)) m.put("dimLeft", mineDetectLeft(items)); } // 빛을 잃음([2026-10-29] 12시간 뒤 회복)
             m.put("worn", "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
                     : "gloves".equals(g.kind) ? g.code.equals(mineGloveCode(items)) : "necklace".equals(g.kind) ? g.code.equals(mineNeckCode(items)) : tier > 0); // [2026-10-28] 장갑, 목걸이
             m.put("fieldMax", g.fieldMax); // [2026-10-25] 이 단계까지 마을 대장장이, 그 위는 왕도 대장장이
