@@ -3090,6 +3090,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
+    if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
     buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고

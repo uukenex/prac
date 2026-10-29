@@ -10505,6 +10505,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = mineRow(userName, false);
         S5MineMap map = mineMapOf(row);
         HashMap<String, Object> out = new HashMap<>();
+        { // [2026-10-29] 무기 장착 레벨 -- 들고 있는 무기보다 레벨이 낮으면(환생 직후 등) 칼로 바꿔 든다
+            MineWeapon hw = mineWeaponOn(mineItems(userName));
+            if (hw != null && mineLv(row) < hw.lv) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); out.put("weaponOffMsg", "🗡️ " + hw.name + "은(는) Lv." + hw.lv + "부터라 칼로 바꿔 들었어요."); }
+        }
         putMinePick(out, minePickDur(row), minePickMax(row));
         out.put("pickUpgrades", minePickUpgradeList());
         out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
@@ -12506,7 +12510,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         for (MineWeapon w : MINE_WEAPONS) {
             int wg = mineWeaponGrade(items, w);
             if (wg < 0) continue;
-            HashMap<String, Object> nr = mineEquipRow("weapon", w.code, w.name, w.effect(wg) + " · " + w.lv + "레벨 무기", w == won);
+            HashMap<String, Object> nr = mineEquipRow("weapon", w.code, w.name, w.effect(wg) + " · Lv." + w.lv + "부터", w == won);
             nr.put("grade", wg);
             out.add(nr);
         }
@@ -12723,6 +12727,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (ew != null) { // [2026-10-29] 드랍 무기 -- 든 채로 다시 누르면 칼로
             if (mineWeaponGrade(it, ew) < 0) return mineGearResult(userName, false, ew.name + "이(가) 없어요. " + ew.lv + "레벨 근처 몬스터가 아주 드물게 떨어뜨려요.");
             boolean on = mineWeaponOn(it) != ew;
+            if (on) { // [2026-10-29] "무기 장착 레벨 제한" -- 무기 레벨(20/40/60/80) 이상이어야 든다
+                HashMap<String, Object> wr = dao.selectMineUser(userName);
+                int wlv = wr == null ? 1 : mineLv(wr);
+                if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
+            }
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? ew.slot : 0);
             return mineGearResult(userName, true, on ? "🗡️ " + ew.name + "을(를) 들었어요. " + ew.effect(mineWeaponGrade(it, ew)) : "🗡️ 칼을 들었어요.");
         }
@@ -13025,6 +13034,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0);
         int hp = mineHpMax(1, nrb);
         dao.updateMineCombat(userName, 1, 0L, hp, now, 0);
+        if (mineWeaponOn(items) != null) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); items.put(MINE_ITEM_WEAPON_SLOT, 0); } // [2026-10-29] 무기 장착 레벨 -- 환생하면 칼로
         MinePresence p = MINE_PRESENCE.get(userName);
         if (p != null) p.look = null; // 다른 유저 화면에도 바로 날개가 보이게(다음 위치 알림 때 외형을 다시 읽는다)
         items.put(MINE_ITEM_REBIRTH, nrb);
