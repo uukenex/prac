@@ -819,7 +819,7 @@ var TowerMine = (function () {
     // [2026-10-28] 전투 중에도 1/4 속도로(대기 없이), 그늘/모닥불 등 안전지대에선 x1.5(서버 mineHpNow와 같은 식)
     var tSrv = c.at + (Date.now() - combatT0), from = c.fight ? c.at : Math.max(c.at, c.regenFrom || 0);
     var mul = (c.fight ? (c.regenFight != null ? c.regenFight : 0) : 1) * (inSafe() ? (c.regenSafe || 1) : 1);
-    if (st && st.gloveCode === 'BERSERK_GLOVES') mul = 0; // [2026-10-28] 광전사의 장갑 -- 자연 회복 없음
+    if (st && st.gloveCode === 'BERSERK_GLOVES') mul *= 0.8; // [2026-10-29] 광전사의 장갑 -- 회복 속도 -20%(서버 MINE_BERSERK_REGEN_MUL)
     return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000)));
   }
   function renderHp() {
@@ -1593,7 +1593,7 @@ var TowerMine = (function () {
     GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).',
     REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 되찾아요(전투 중에도). 장갑은 하나만 -- 끼면 방한 장갑은 벗어요.',
-    BERSERK_GLOVES: '공격력이 50% 올라가지만 체력이 저절로 차지 않아요(성당 신부의 회복이나 쓰러진 뒤 깨어날 때만). 장갑은 하나만.' };
+    BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요. 장갑은 하나만.' };
   function eqInfo(elm, ev) {
     if (ev && ev.target && ev.target.tagName === 'BUTTON') return; // 끼기/빼기 버튼은 그대로
     var code = elm.getAttribute('data-code'), e = null;

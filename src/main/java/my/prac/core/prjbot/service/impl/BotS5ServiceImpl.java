@@ -9336,12 +9336,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (row.get("M_HP") == null) return max;
         int hp = intVal(row.get("M_HP"), max);
         String un = strVal(row.get("USER_NAME"), null);
-        if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) return Math.min(max, hp); // [2026-10-28] 광전사의 장갑 -- 자연 회복 없음
         boolean fight = mineEngaged(un, now);
         long from = longOf(row.get("M_HP_AT_MS"), now) + (fight ? 0 : MINE_REGEN_DELAY_MS);
         double mul = fight ? MINE_REGEN_FIGHT_MUL : 1;
         S5MineMap m = mineMapOf(row);
         if (m != null && row.get("POS_X") != null && m.safeAt(intVal(row.get("POS_X"), -1), intVal(row.get("POS_Y"), -1))) mul *= MINE_REGEN_SAFE_MUL;
+        if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) mul *= MINE_BERSERK_REGEN_MUL; // [2026-10-29] 광전사의 장갑 -- 회복 없음 -> 20% 느리게
         return (int) Math.min(max, hp + (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS));
     }
 
@@ -12095,12 +12095,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "전투에서 받은 피해의 80%를 4초에 걸쳐 회복" }, 0),
         new MineGear("BERSERK_GLOVES", "광전사의 장갑", "gloves", // = MINE_ITEM_BERSERK_GLOVES
             new String[][][] { { mineCost(5, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(5, 1) } },
-            new String[] { "공격력 +50% · 체력이 저절로 차지 않음" }, 0)
+            new String[] { "공격력 +50% · 체력 회복 속도 -20%" }, 0)
     );
     static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
     /** [2026-10-28] 장갑 칸: 2 = 재생의 장갑, 3 = 광전사의 장갑, 그 밖(0/없음) = 방한 장갑(GLOVES_OFF로 벗음). */
     static final String MINE_ITEM_GLOVE_SLOT = "GLOVE_SLOT";
     static final double MINE_REGEN_GLOVE_PCT = 0.8, MINE_BERSERK_MULT = 1.5;
+    /** [2026-10-29] "광전사의 장갑 -- 체력이 회복되지 않음 대신 회복 속도 -20%" */
+    static final double MINE_BERSERK_REGEN_MUL = 0.8;
     static final long MINE_REGEN_GLOVE_MS = 4_000L;
 
     /** 끼고 있는 장갑 코드(없으면 null). */
