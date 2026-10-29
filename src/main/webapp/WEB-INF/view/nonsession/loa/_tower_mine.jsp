@@ -2036,6 +2036,12 @@ var TowerMine = (function () {
         + '<div class="mine-smith-say">어두운 동굴의 시야가 넓어져요. 동굴 N층은 투구 N-1단계부터 움직일 수 있고, 단계가 그보다 높을수록 더 밝게 보여요(3층까지).</div>';
     if (!hm.nextTier) return h + '<div class="mine-smith-say">지금 열린 최고 단계예요.</div>';
     var away = hm.cityOnly && map.id !== 'city', ok = hm.have >= hm.need && (!hm.cityOnly || hm.extraOk); // [2026-10-25] 4단계 = 왕도 대장장이 + 칠요석
+    // [2026-10-29] "투구 4단계 제작이 안 된다" -- 버튼만 흐려지고 이유가 안 보였다(실제론 미스릴 100개 + 칠요석 2개를 못 채운 경우). 모자란 것을 적어 준다.
+    var lack = [];
+    if (hm.have < hm.need) lack.push(hm.oreName + ' ' + (hm.need - hm.have) + '개');
+    if (hm.cityOnly) (hm.extra || []).forEach(function (c) { if (c.have < c.need) lack.push(c.name + ' ' + (c.need - c.have) + '개'); });
+    if (lack.length) h += '<div class="mine-smith-say" style="color:#ff9a8a">모자라요: ' + lack.join(', ') + (away ? ' · 만들기는 🏰 왕도 대장장이에게서' : '') + '</div>';
+    else if (away) h += '<div class="mine-smith-say" style="color:#ffd27a">재료는 다 모였어요! 🏰 왕도 아스테리아의 대장장이에게 가져가세요.</div>';
     return h + '<div class="mine-smith-row"><img src="' + oreIcon(hm.oreGrade) + '" alt=""><span class="nm">' + (hm.cityOnly ? '🏰 ' : '') + hm.oreName + ' ' + hm.need + '개 → ' + hm.nextTier + '단계'
         + '<small>보유 ' + hm.have + '개' + (hm.cityOnly ? ' · 동굴 3층까지 환하게' : '') + '</small>' + (hm.extra ? costHtml(hm.extra) : '') + '</span>'
         + (away ? '<span class="mine-worn" style="color:#ffd27a">왕도 대장장이</span>'

@@ -97,7 +97,9 @@ public final class S5MineMap {
     public static final String[] BAR_CODES = { "BAR_COPPER", "BAR_IRON", "BAR_SILVER", "BAR_GOLD", "BAR_MITHRIL" };
     public static final String[] BAR_NAMES = { "동괴", "철괴", "은괴", "금괴", "미스릴괴" };
     public static final int BAR_GRADE_BASE = 40, CUT_GRADE_BASE = 45;
-    public static String cutCode(int gemIdx) { return "CUT_" + GEM_CODES[gemIdx]; }
+    // [2026-10-29] TBOT_S5_USER_ORE.ORE_CODE는 VARCHAR2(20)인데 "CUT_GEM_STAR_SAPPHIRE"가 21자라 세공 성공 때 저장이 ORA-12899로 실패(거래째 되돌려져
+    //  세공된 스타 사파이어를 아무도 못 만들었고, 그걸 쓰는 탐지 곡괭이도 못 만들었다). 20자 넘는 코드만 밑줄을 빼서 줄인다(다른 세공 코드는 그대로).
+    public static String cutCode(int gemIdx) { String c = "CUT_" + GEM_CODES[gemIdx]; return c.length() <= 20 ? c : "CUT_GEM_" + GEM_CODES[gemIdx].substring(4).replace("_", ""); }
     public static String cutName(int gemIdx) { return "세공된 " + GEM_NAMES[gemIdx]; }
     /** [2026-10-28] "빙석을 세공 목록에, 세공된 빙석 10개 + 다도해의 세공 보석으로 방한 갑옷/장갑 3단계" -- 세공된 빙석(54), 세공된 바다 보석(55~59). */
     public static final String CUT_ICE_CODE = "CUT_ICE_STONE", CUT_ICE_NAME = "세공된 빙석";
