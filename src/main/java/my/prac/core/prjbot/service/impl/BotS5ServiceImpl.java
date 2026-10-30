@@ -542,7 +542,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     @Override
     public String refreshConfig() {
         my.prac.core.prjbot.dao.S5RequestCache.clearShared(); // [2026-10-22] 요청 간 공유 캐시(기준 데이터/장비 목록)도 즉시 비움
-        mineBossReload(); // [2026-10-30] 광산 보스 처치 기록도 DB에서 다시(직접 SQL로 되살린 보스가 바로 나오게)
         loadConfig();
         loadBalanceV2();
         return "🗼 시즌5 설정 갱신 완료 (칸이동 " + MOVE_COOLDOWN_SEC + "초 / 전투중 " + COMBAT_COOLDOWN_SEC
@@ -9468,20 +9467,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     private static String mineBossKey(int type) {
         return type == S5MineMobs.BOSS_TYPE ? MINE_BOSS_KEY : type == S5MineMobs.RAID_BOSS_TYPE ? MINE_RAID_KEY : type == S5MineMobs.ICE_BOSS_TYPE ? MINE_ICE_KEY
                 : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : null;
-    }
-
-    /** [2026-10-30] "일반 유저가 테스트 중 용암 거신을 잡음 -- 잡기 전으로" -- 처치 시각 메모리를 비워 DB(설정값)에서 다시 읽고,
-     *  DB 기준으로 살아 있어야 하는 보스가 서버 메모리에선 쓰러진 채면 체력 가득으로 되살린다. */
-    private void mineBossReload() {
-        MINE_BOSS_KILLED_AT.clear();
-        long now = System.currentTimeMillis();
-        for (String mid : S5MineMap.ids()) {
-            S5MineMap m = S5MineMap.get(mid);
-            S5MineMap.Mob b = mineBossOf(m);
-            if (b == null || mineBossKey(b.type) == null || mineBossDead(b.type)) continue;
-            MobState bs = MINE_MOB_STATE.get(mineMobKey(m, b.id));
-            if (bs != null) synchronized (bs) { if (bs.deadUntil > now) { bs.respawn(S5MineMobs.hp(S5MineMobs.TYPES.get(b.type), b.rank)); bs.target = null; } }
-        }
     }
 
     private boolean mineBossDead() {

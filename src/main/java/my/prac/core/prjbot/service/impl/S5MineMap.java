@@ -659,9 +659,6 @@ public final class S5MineMap {
     }
 
     /** 맵 ID로(없는 ID면 평원). 지금 주기의 맵. */
-    /** 모든 맵 id(관리 작업용 -- /갱신의 보스 되살리기 등). */
-    public static List<String> ids() { return IDS; }
-
     public static S5MineMap get(String id) {
         Map<String, S5MineMap> wv = world;
         if (wv == null) {
