@@ -9251,9 +9251,11 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감" -- [2026-10-29] 방한/햇빛/동굴 밝기 단계 +1(x회차)로 바꿈
-    //  -> 최대 체력 x (1 + rb), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
+    //  -> 최대 체력 x (1 + rb)([2026-10-30] x (1 + 0.5 rb)), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + rb)); }
+    /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
+    static final double MINE_RB_HP_BONUS = 0.5;
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + MINE_RB_HP_BONUS * rb)); }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
     /** [2026-10-28] "환생 보너스 추가 광석은 미스릴 이하 광석만" -- 구리~미스릴(등급 1~5) 광석일 때만 x(1 + 회차), 별빛석/요일석/보석 등은 1배. */
@@ -9673,6 +9675,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         int dmgSum = 0, released = 0;
         // [2026-10-28] 얼음 여왕에게 얼어 있으면 -- 여왕의 인식이 거리와 상관없이 안 풀리고(쫓아온다), 여왕에게 맞으면 즉사
         boolean iceHeld = boss != null && boss.type == S5MineMobs.ICE_BOSS_TYPE && mineFrozen(userName, now) != null, shattered = false;
+        if (iceHeld && !mineBossDead(boss.type)) { // [2026-10-30] "빙결 상태에서 닿으면 즉사가 안 된다" -- 언 사람은 거리와 상관없이 여왕이 노리고(인식 유지) 쫓아온다
+            mineEngage(userName, map, boss.id, now, 0L);
+            e = MINE_ENGAGE.get(userName);
+            MobState qs = MINE_MOB_STATE.get(mineMobKey(map, boss.id));
+            if (qs != null) synchronized (qs) { if (qs.deadUntil <= now) { qs.target = userName; qs.frozenUntil = Math.max(qs.frozenUntil, now + MINE_MOB_FREEZE_MS); } }
+        }
         List<HashMap<String, Object>> hits = new ArrayList<>();
         List<long[]> mobs = new ArrayList<>();
         String killerName = null;
@@ -9748,7 +9756,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     }
                 }
                 Long last = e.mobs.get(id);
-                if (dist <= 1 && !splitting && (last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
+                boolean shatterNow = iceHeld && id == boss.id; // [2026-10-30] 언 사람에게 닿는 순간(공격 간격 대기 없이) 즉사
+                if (dist <= 1 && !splitting && (shatterNow || last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
                     int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * (0.8 + RND.nextDouble() * 0.4)))); // [2026-10-29] 개체 단계, [2026-10-26] 방한 외투 = 2배([2026-10-28] 갑옷 1.5배)
                     boolean x2 = s.stealth && map.mobs().get(id).type != S5MineMobs.SHRINE_BOSS_TYPE; // [2026-10-28] 은신했던 닌자의 기습 -- 2배(닌자 두목은 은신을 유지한 채 보통 세기)
                     if (x2) { d *= MINE_NINJA_STEALTH_MULT; s.stealth = false; }
@@ -13062,7 +13071,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! 환생 " + nrb + "단계 -- Lv.1(환생" + nrb + ")로 다시 태어났어요. "
-                + "최대 체력 x" + (1 + nrb) + " · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
+                + "최대 체력 +" + (nrb * 50) + "% · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
         return out;
     }
 
