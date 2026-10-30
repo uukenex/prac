@@ -1067,6 +1067,10 @@ var TowerMine = (function () {
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(n.x - ox - 2 * k - 1, n.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
       miniCtx.fillStyle = col; miniCtx.fillRect(n.x - ox - 2 * k, n.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
+    if (hermitOn()) { // [2026-10-30] "그 NPC 지도에 위치 표시" -- 은둔한 대장장이(같은 맵에 나와 있을 때) 금색 점
+      miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(hermit.x - ox - 3 * k - 1, hermit.y - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3);
+      miniCtx.fillStyle = '#ffc61a'; miniCtx.fillRect(hermit.x - ox - 3 * k, hermit.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
+    }
     // [2026-10-28] "미니맵에서 보스 위치도" -- 맵 맨 끝 몬스터가 보스면(살아 있을 때) 붉은 점(흰 테두리, 크게)
     var bm = map.mobs && map.mobs[map.mobs.length - 1], bty = bm && map.mobTypes[bm.k];
     if (bty && bty.boss && bm._p) {
