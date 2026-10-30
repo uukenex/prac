@@ -859,6 +859,8 @@
     .mine-world .wn{ font:800 12px sans-serif; }
     .mine-world .wl{ font:700 11px sans-serif; fill:#cfe9ff; paint-order:stroke; stroke:#1d1730; stroke-width:4px; stroke-linejoin:round; } /* [2026-10-27] 연결선 위에서도 읽히게 */
     .mine-world .wh{ font:800 12px sans-serif; fill:#ffe14d; }
+    .mine-world .wc{ display:none; font:800 10px sans-serif; fill:#9fe0ff; paint-order:stroke; stroke:#1d1730; stroke-width:3px; stroke-linejoin:round; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
+    .mine-world.world-close .wc{ display:block; }
     .mine-coord.admin{ pointer-events:auto; cursor:pointer; }
     .mine-warp{ display:flex; flex-direction:column; gap:8px; }
     .mine-warp label{ display:flex; align-items:center; gap:8px; font-weight:800; }

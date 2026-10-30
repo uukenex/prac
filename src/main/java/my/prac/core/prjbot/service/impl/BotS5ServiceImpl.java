@@ -13378,6 +13378,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
             others.add(m);
         }
+        // [2026-10-30] "지금 접속 중인 사람 수 항상, 전체 지도를 가장 크게 확대하면 맵별 인원" -- 이름 없이 숫자만
+        HashMap<String, Integer> mapN = new HashMap<>();
+        int online = 0;
+        for (MinePresence o : MINE_PRESENCE.values()) {
+            if (now - o.at > MINE_PRESENCE_TTL_MS || o.mapId == null) continue;
+            online++;
+            mapN.merge(o.mapId, 1, Integer::sum);
+        }
+        out.put("online", online);
+        out.put("mapN", mapN);
         long[] hm = mineHermitNow(now); // [2026-10-30] 은둔한 대장장이
         if (hm != null && mapId.equals(mineHermitMaps()[(int) hm[0]])) { HashMap<String, Object> hr = new HashMap<>(); hr.put("x", hm[1]); hr.put("y", hm[2]); hr.put("until", hm[3]); out.put("hermit", hr); }
         if (hm != null && isMineAdmin(userName)) out.put("hermitAdmin", mineHermitMaps()[(int) hm[0]] + " (" + hm[1] + ", " + hm[2] + ")");

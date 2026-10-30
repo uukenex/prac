@@ -906,7 +906,7 @@ var TowerMine = (function () {
   function showStamina() {
     el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
-    el.regen.textContent = st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '';
+    regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
     if (el.atk) el.atk.disabled = busy;
   }
@@ -1562,6 +1562,7 @@ var TowerMine = (function () {
             + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
             + (adminW ? '</g>' : '')
             + (isHere ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
+            + '<text x="' + (n.x + nw / 2) + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="end" class="wc" data-cnt="' + n.id + '">👥 ' + (mapN[n.id] || 0) + '</text>'
             + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
       });
     });
@@ -1577,7 +1578,7 @@ var TowerMine = (function () {
         + '<button type="button" onclick="TowerMine.worldZoom(1.3)">＋</button><button type="button" onclick="TowerMine.worldZoom(1 / 1.3)">－</button>'
         + '<button type="button" onclick="TowerMine.worldGo(\'me\')">📍 내 위치</button>'
         + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
-        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
+        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_MIN_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
         + '<rect x="-400" y="-400" width="' + (WORLD_SIZE[0] + 800) + '" height="' + (WORLD_SIZE[1] + 800) + '" fill="#1d1730"/>'
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
@@ -1586,12 +1587,22 @@ var TowerMine = (function () {
     return npcHead('🗺️ 전체 지도', false) + svg;
   }
   var worldHere = null;
+  // [2026-10-30] 접속 인원 -- 위치 알림으로 받는다(이름 없이 숫자만). 맵별 인원은 전체 지도를 가장 크게 확대했을 때만 보인다(.world-close)
+  var onlineN = null, mapN = {}, WORLD_MIN_W = 160;
+  function regenText() {
+    if (!el.regen || !st) return;
+    el.regen.textContent = (st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '') + (onlineN != null ? (st.nextResetAt ? ' · ' : '') + '👥 접속 ' + onlineN + '명' : '');
+  }
+  function worldCounts() {
+    var sv = document.getElementById('mineWorldSvg');
+    if (sv) sv.querySelectorAll('[data-cnt]').forEach(function (t) { t.textContent = '👥 ' + (mapN[t.getAttribute('data-cnt')] || 0); });
+  }
   function worldApply() {
     var el2 = document.getElementById('mineWorldSvg');
-    if (el2 && worldVB) el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h);
+    if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_MIN_W); }
   }
   function worldZoomAt(f, cx, cy) { // f > 1 = 확대. (cx, cy) = 지도 좌표 기준점
-    var nw = Math.max(160, Math.min(1400, worldVB.w / f)), k = nw / worldVB.w;
+    var nw = Math.max(WORLD_MIN_W, Math.min(1400, worldVB.w / f)), k = nw / worldVB.w;
     worldVB = { x: cx - (cx - worldVB.x) * k, y: cy - (cy - worldVB.y) * k, w: nw, h: worldVB.h * k };
     worldApply();
   }
@@ -2625,6 +2636,7 @@ var TowerMine = (function () {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
+      if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
       if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
