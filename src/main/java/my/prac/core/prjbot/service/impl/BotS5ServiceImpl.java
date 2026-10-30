@@ -8952,7 +8952,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE };
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
@@ -9634,10 +9634,10 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap.Mob boss = mineBossOf(map);
         if (boss != null && !mineBossDead(boss.type) && (e == null || !e.mobs.containsKey(boss.id))) {
             S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
-            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bt.hp()));
+            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(S5MineMobs.hp(bt, boss.rank)));
             int aggro = MINE_BOSS_AGGRO_RANGE; // [2026-10-28] "보스맵 구간은 인식범위 12칸, 한번 어그로가 잡히면 맵을 벗어나야만 풀리게" (예전 2칸, 대주교/얼음 여왕 4칸)
             synchronized (bs) {
-                if (bs.deadUntil > 0 && bs.deadUntil <= now) bs.respawn(bt.hp()); // 다시 나타남(대주교 1시간, [2026-10-28] 닌자 두목 10분)
+                if (bs.deadUntil > 0 && bs.deadUntil <= now) bs.respawn(S5MineMobs.hp(bt, boss.rank)); // 다시 나타남(대주교 1시간, [2026-10-28] 닌자 두목 10분)
                 if (bs.deadUntil <= now && bs.splitUntil <= now) { // [2026-10-28] 분신술 중엔 다가가도 먼저 덤비지 않는다(들키지 않게)
                     int near = -1;
                     for (int c : mineMobCells(boss, bs, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= aggro) near = c;
@@ -9932,9 +9932,9 @@ public class BotS5ServiceImpl implements BotS5Service {
 
     private List<HashMap<String, Object>> mineRaidDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (mineGiveToken(userName, MINE_ITEM_TOKEN_SEAL, S5MineMap.SEAL_CODE)) { // [2026-10-28] 고유 증표 -- 처음 잡을 때 반드시, 그 뒤로는 없음(예전: 매번 MINE_SEAL_PCT%)
+        if (mineTokenRoll(userName, S5MineMap.SEAL_CODE)) { // [2026-10-30] 증표 -- 처치마다 MINE_TOKEN_PCT%(예전: 첫 처치 1번)
             drops.add(mineDrop(S5MineMap.SEAL_GRADE, S5MineMap.SEAL_NAME, 1));
-            msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!! (고유 증표 -- 한 번뿐)");
+            msg.append(" · 📜 ").append(S5MineMap.SEAL_NAME).append(" 1개!!");
         }
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
@@ -10077,19 +10077,19 @@ public class BotS5ServiceImpl implements BotS5Service {
     //  그 뒤로는 안 나온다(받았는지는 광산 아이템 TOKEN_*). 닌자의 비급서(SHRINE_BOSS_REWARD), 사막의 심장(DESERT_CHEST)은 이미 한 번만.
     static final String MINE_ITEM_TOKEN_ICE = "TOKEN_ICE_HEART", MINE_ITEM_TOKEN_SEAL = "TOKEN_ARCH_SEAL";
 
-    /** 증표를 아직 안 받았으면 주고 true. */
-    private boolean mineGiveToken(String userName, String flag, String code) {
-        if (mineItems(userName).getOrDefault(flag, 0) > 0) return false;
-        dao.upsertMineItem(userName, flag, 1);
+    /** [2026-10-30] "보스 드랍템 다회 획득, 대신 확률 30%" -- 처치마다 굴려서 나오면 주고 true. */
+    static final int MINE_TOKEN_PCT = 30;
+    private boolean mineTokenRoll(String userName, String code) {
+        if (RND.nextInt(100) >= MINE_TOKEN_PCT) return false;
         dao.addUserOre(userName, code, 1);
         return true;
     }
 
     private List<HashMap<String, Object>> mineIceDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (mineGiveToken(userName, MINE_ITEM_TOKEN_ICE, S5MineMap.ICE_HEART_CODE)) {
+        if (mineTokenRoll(userName, S5MineMap.ICE_HEART_CODE)) {
             drops.add(mineDrop(S5MineMap.ICE_HEART_GRADE, S5MineMap.ICE_HEART_NAME, 1));
-            msg.append(" · 💠 ").append(S5MineMap.ICE_HEART_NAME).append(" 1개!! (고유 증표 -- 한 번뿐)");
+            msg.append(" · 💠 ").append(S5MineMap.ICE_HEART_NAME).append(" 1개!!");
         }
         if (RND.nextInt(100) < 50) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 2);
@@ -10133,15 +10133,14 @@ public class BotS5ServiceImpl implements BotS5Service {
         all.add(userName);
         if (hitters != null) all.addAll(hitters);
         for (String u : all) {
-            if (mineItems(u).getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0) continue; // 이미 받았다
-            dao.upsertMineItem(u, MINE_ITEM_SHRINE_BOSS_REWARD, 1);
+            if (RND.nextInt(100) >= MINE_TOKEN_PCT) continue; // [2026-10-30] 처치마다 함께 싸운 사람별로 30%(예전: 첫 처치 1번)
             dao.addUserOre(u, S5MineMap.NINJA_BOOK_CODE, 1);
             dao.addUserOre(u, S5MineMap.MOON_STONE_CODE, 1);
             if (u.equals(userName)) {
                 drops = new ArrayList<>();
                 drops.add(mineDrop(S5MineMap.NINJA_BOOK_GRADE, S5MineMap.NINJA_BOOK_NAME, 1));
                 drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1));
-                msg.append(" · 📜 ").append(S5MineMap.NINJA_BOOK_NAME).append(" 1권 · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 1개!! (첫 처치 보상)");
+                msg.append(" · 📜 ").append(S5MineMap.NINJA_BOOK_NAME).append(" 1권 · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 1개!!");
             } else {
                 MINE_SHRINE_REWARD_MSG.put(u, "👑 닌자 두목이 쓰러졌어요! 함께 싸운 보상으로 📜 " + S5MineMap.NINJA_BOOK_NAME + " 1권과 🌙 " + S5MineMap.MOON_STONE_NAME + " 1개를 받았어요!");
             }
@@ -10153,6 +10152,10 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-28] 용암 거신 보상: 달빛석 2(반드시) + 다도해 바다 보석 2개(무작위) + 50% 다이아몬드 1. */
     private List<HashMap<String, Object>> mineLavaDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
+        if (S5MineMap.archiDay(System.currentTimeMillis()) && mineTokenRoll(userName, S5MineMap.VOLCANO_HEART_CODE)) { // [2026-10-30] "낮에 죽이면 화산의 심장(확률)"
+            drops.add(mineDrop(S5MineMap.VOLCANO_HEART_GRADE, S5MineMap.VOLCANO_HEART_NAME, 1));
+            msg.append(" · ❤️‍🔥 ").append(S5MineMap.VOLCANO_HEART_NAME).append(" 1개!!");
+        }
         dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 2);
         drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 2));
         msg.append(" · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 2개");
@@ -11511,6 +11514,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-28] 피라미드 보상 상자 -- 상자 2칸 안에서 열면 사막의 심장 1개 + "보석 많이, 골고루": 보석 아홉 가지 모두 2~4개씩(다이아몬드는 1~2개).
      *  맵 주기마다 한 번(DESERT_CHEST = 주기 + 1). */
     static final String MINE_ITEM_DESERT_CHEST = "DESERT_CHEST";
+    static final int MINE_DESERT_CHEST_PCT = 40;
 
     private static String mineResetText() {
         java.time.ZonedDateTime z = java.time.Instant.ofEpochMilli(S5MineMap.nextResetAt(System.currentTimeMillis())).atZone(KST);
@@ -11532,11 +11536,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (chest == null || Math.abs(pos[0] - chest.x) + Math.abs(pos[1] - chest.y) > 2) { out.put("message", "상자 바로 앞에서 열어 주세요."); return out; }
         Map<String, Integer> items = mineItems(userName);
         int cyc = S5MineMap.activeCycle() + 1;
-        if (items.getOrDefault(MINE_ITEM_DESERT_CHEST, 0) > 0) { // [2026-10-28] "피라미드 상자는 1회만, 맵 초기화 때도 못 먹게" -- 한 번 열면 끝(주기와 상관없이)
-            out.put("message", "📦 이미 열어 본 상자예요. 텅 비어 있어요... 피라미드 상자는 한 사람에 한 번뿐이에요.");
+        if (items.getOrDefault(MINE_ITEM_DESERT_CHEST, 0) == cyc) { // [2026-10-30] "피라미드 보상도 다회, 확률 40%" -- 맵 주기마다 한 번 열고, 40%로 보상
+            out.put("message", "📦 이미 열어 본 상자예요. (맵 리셋 " + mineResetText() + " 뒤 다시 열 수 있어요)");
             return out;
         }
         dao.upsertMineItem(userName, MINE_ITEM_DESERT_CHEST, cyc);
+        if (RND.nextInt(100) >= MINE_DESERT_CHEST_PCT) {
+            out.put("ok", true);
+            out.put("message", "📦 상자가 텅 비어 있어요... (맵 리셋 " + mineResetText() + " 뒤 다시 열 수 있어요)");
+            return out;
+        }
         dao.addUserOre(userName, S5MineMap.DESERT_HEART_CODE, 1);
         List<HashMap<String, Object>> drops = new ArrayList<>();
         StringBuilder gm = new StringBuilder();
@@ -11551,6 +11560,116 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("drops", drops);
         out.put("message", "📦 상자가 열렸어요! 모래빛으로 고동치는 🧡 " + S5MineMap.DESERT_HEART_NAME + " + 💎 보석이 와르르! (" + gm + ")");
         out.put("ores", mineOreList(userName));
+        return out;
+    }
+
+    // ---- [2026-10-30] 은둔한 대장장이 -- "보스 증표 넷 + 무기 조각으로 무기 등급업(1~3단계), 다도해(본섬 + 7개 섬) 어딘가에 랜덤한 시간에 나와 30분".
+    //  6시간 칸마다 시작 시각/맵/자리를 칸 번호로 정한다(저장 없음, 서버를 다시 켜도 같음). 자리는 몬스터 집 칸 근처(걸어서 닿는 곳).
+    static final long MINE_HERMIT_WINDOW_MS = 6 * 3_600_000L, MINE_HERMIT_STAY_MS = 30 * 60_000L;
+    static final int MINE_HERMIT_RANGE = 3;
+    private static final String[] MINE_GRADE_NAMES = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
+    private static String[] mineHermitMaps() {
+        String[] m = new String[S5MineMap.ISLE_IDS.length + 1];
+        m[0] = S5MineMap.ARCHI;
+        System.arraycopy(S5MineMap.ISLE_IDS, 0, m, 1, S5MineMap.ISLE_IDS.length);
+        return m;
+    }
+
+    /** 지금 나와 있으면 {맵 번호, x, y, 사라지는 시각}, 아니면 null. */
+    private static long[] mineHermitNow(long now) {
+        long w = now / MINE_HERMIT_WINDOW_MS;
+        java.util.Random r = new java.util.Random(w * 7919L + 20261030L);
+        long start = w * MINE_HERMIT_WINDOW_MS + (long) (r.nextDouble() * (MINE_HERMIT_WINDOW_MS - MINE_HERMIT_STAY_MS));
+        if (now < start || now >= start + MINE_HERMIT_STAY_MS) return null;
+        int mi = r.nextInt(mineHermitMaps().length);
+        S5MineMap map = S5MineMap.get(mineHermitMaps()[mi]);
+        List<S5MineMap.Mob> mobs = new ArrayList<>();
+        for (S5MineMap.Mob mb : map.mobs()) if (!S5MineMobs.TYPES.get(mb.type).boss) mobs.add(mb);
+        int x = map.spawnX, y = map.spawnY;
+        for (int t = 0; t < 40 && !mobs.isEmpty(); t++) {
+            S5MineMap.Mob mb = mobs.get(r.nextInt(mobs.size()));
+            int nx = mb.x + r.nextInt(5) - 2, ny = mb.y + r.nextInt(5) - 2;
+            if (map.walkable(nx, ny) && !map.safeAt(nx, ny)) { x = nx; y = ny; break; }
+        }
+        return new long[] { mi, x, y, start + MINE_HERMIT_STAY_MS };
+    }
+
+    private static String[][] mineHermitCost(MineWeapon w, int g) {
+        return new String[][] { { S5MineMap.SEAL_CODE, "1" }, { S5MineMap.ICE_HEART_CODE, "1" }, { S5MineMap.VOLCANO_HEART_CODE, "1" }, { S5MineMap.DESERT_HEART_CODE, "1" }, { w.shard, String.valueOf(5 * (g + 1)) } };
+    }
+
+    /** 고른 등급 g에서 오를 수 있는 등급(1~3단계 위, 무기 최고 등급까지, 이미 가진 등급 제외) -- 낮은 순. */
+    private static List<Integer> mineHermitTargets(Map<String, Integer> items, MineWeapon w, int g) {
+        List<Integer> t = new ArrayList<>();
+        int mask = mineWeaponMask(items, w);
+        for (int n = g + 1; n <= Math.min(g + 3, w.maxGrade); n++) if ((mask & (1 << n)) == 0) t.add(n);
+        return t;
+    }
+
+    /** action=list: 가진 무기와 재료 / action=do: 등급업. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineHermit(String userName, String action, String code) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (row == null) return out;
+        long now = System.currentTimeMillis();
+        S5MineMap map = mineMapOf(row);
+        long[] hm = mineHermitNow(now);
+        int[] pos = minePos(row, map, 0);
+        if (hm == null || !map.id.equals(mineHermitMaps()[(int) hm[0]]) || Math.abs(pos[0] - hm[1]) + Math.abs(pos[1] - hm[2]) > MINE_HERMIT_RANGE) { out.put("message", "...(아무도 없다)"); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        Map<String, Integer> have = mineOreHave(userName);
+        if ("do".equals(action)) {
+            MineWeapon w = null;
+            for (MineWeapon c : MINE_WEAPONS) if (c.code.equals(code)) w = c;
+            int g = w == null ? -1 : mineWeaponGrade(items, w);
+            if (g < 0) { out.put("message", "...그 무기는 없군."); return out; }
+            List<Integer> t = mineHermitTargets(items, w, g);
+            if (t.isEmpty()) { out.put("message", "...더 올릴 수 없군."); return out; }
+            String[][] cost = mineHermitCost(w, g);
+            if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
+            mineTakeCost(userName, cost, 1);
+            int r = RND.nextInt(100), step = r < 60 ? 0 : r < 90 ? 1 : 2; // 1단계 60%, 2단계 30%, 3단계 10%
+            int ng = t.get(Math.min(step, t.size() - 1));
+            int mask = (mineWeaponMask(items, w) & ~(1 << g)) | (1 << ng); // 올리기 전 등급은 새 등급이 된다
+            dao.upsertMineItem(userName, w.code + "_M", mask);
+            dao.upsertMineItem(userName, w.code, ng + 1);
+            HashMap<String, Object> res = mineGearResult(userName, true, "🔨 ...됐군. " + w.name + "이(가) " + MINE_GRADE_NAMES[ng] + " 등급이 되었다.");
+            res.put("ores", mineOreList(userName));
+            res.put("grade", ng);
+            return res;
+        }
+        List<HashMap<String, Object>> list = new ArrayList<>();
+        for (MineWeapon w : MINE_WEAPONS) {
+            int g = mineWeaponGrade(items, w);
+            if (g < 0) continue;
+            List<Integer> t = mineHermitTargets(items, w, g);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("code", w.code);
+            m.put("name", w.name);
+            m.put("grade", g);
+            m.put("gradeName", MINE_GRADE_NAMES[g]);
+            if (!t.isEmpty()) {
+                int mx = t.get(t.size() - 1);
+                m.put("maxGrade", mx);
+                m.put("maxName", MINE_GRADE_NAMES[mx]);
+                List<HashMap<String, Object>> cl = new ArrayList<>();
+                for (String[] c : mineHermitCost(w, g)) {
+                    HashMap<String, Object> cm = new HashMap<>();
+                    cm.put("name", mineCodeName(c[0]));
+                    cm.put("need", Integer.parseInt(c[1]));
+                    cm.put("have", have.getOrDefault(c[0], 0));
+                    cl.add(cm);
+                }
+                m.put("cost", cl);
+            }
+            list.add(m);
+        }
+        out.put("ok", true);
+        out.put("weapons", list);
         return out;
     }
 
@@ -12458,6 +12577,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
         if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
         if (S5MineMap.DESERT_HEART_CODE.equals(code)) return S5MineMap.DESERT_HEART_GRADE; // [2026-10-28] 피라미드 보상 상자
+        if (S5MineMap.VOLCANO_HEART_CODE.equals(code)) return S5MineMap.VOLCANO_HEART_GRADE; // [2026-10-30]
         for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         if (S5MineMap.CUT_ICE_CODE.equals(code)) return S5MineMap.CUT_ICE_GRADE; // [2026-10-28] 세공된 빙석
@@ -12474,6 +12594,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (g >= S5MineMap.SEA_GEM_GRADE_BASE && g < S5MineMap.SEA_GEM_GRADE_BASE + S5MineMap.SEA_GEM_CODES.length) return S5MineMap.SEA_GEM_NAMES[g - S5MineMap.SEA_GEM_GRADE_BASE]; // [2026-10-28] 바다 보석(보석 줄보다 먼저)
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g == S5MineMap.DESERT_HEART_GRADE) return S5MineMap.DESERT_HEART_NAME; // [2026-10-28]
+        if (g == S5MineMap.VOLCANO_HEART_GRADE) return S5MineMap.VOLCANO_HEART_NAME; // [2026-10-30]
         if (g >= S5MineMap.NINJA_SHARD_GRADE && g < S5MineMap.NINJA_SHARD_GRADE + S5MineMap.WEAPON_SHARD_NAMES.length) return S5MineMap.WEAPON_SHARD_NAMES[g - S5MineMap.NINJA_SHARD_GRADE]; // [2026-10-29]
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
@@ -13253,6 +13374,9 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
             others.add(m);
         }
+        long[] hm = mineHermitNow(now); // [2026-10-30] 은둔한 대장장이
+        if (hm != null && mapId.equals(mineHermitMaps()[(int) hm[0]])) { HashMap<String, Object> hr = new HashMap<>(); hr.put("x", hm[1]); hr.put("y", hm[2]); hr.put("until", hm[3]); out.put("hermit", hr); }
+        if (hm != null && isMineAdmin(userName)) out.put("hermitAdmin", mineHermitMaps()[(int) hm[0]] + " (" + hm[1] + ", " + hm[2] + ")");
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
         String rw = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 닌자 두목을 함께 쓰러뜨린 보상 소식 -- 전투 중이 아니어도 1초 위치 알림으로 받는다
         if (rw != null) out.put("rewardMsg", rw);

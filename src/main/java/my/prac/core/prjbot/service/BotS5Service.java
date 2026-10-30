@@ -312,6 +312,9 @@ public interface BotS5Service {
     /** [2026-10-28] 피라미드 보상 상자(사막의 심장, 맵 주기마다 한 번). */
     HashMap<String, Object> mineDesertChest(String userName);
 
+    /** [2026-10-30] 은둔한 대장장이 -- action=list(가진 무기/재료), do(무기 등급업). */
+    HashMap<String, Object> mineHermit(String userName, String action, String code);
+
     /** [2026-10-08] 전설장비 강화 -- 웹용(EQUIP_ID 지정). 전설의조각을 넣어 +1씩 올리고(수치 제한 없음), 실패해도 수치는 유지(조각만 소모). */
     String enhanceLegendary(String userName, int equipId);
 

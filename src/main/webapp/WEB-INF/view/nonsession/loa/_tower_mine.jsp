@@ -48,6 +48,7 @@ var TowerMine = (function () {
   ORE_NAME[60] = '닌자의 검 조각'; ORE_COL[60] = ['#4a4f5c', '#d8dee8']; // [2026-10-29] 같은 등급 이하 드랍 무기 자동 분해(60~63)
   ORE_NAME[61] = '비철도 조각'; ORE_COL[61] = ['#6a5a4a', '#d8c8b0']; ORE_NAME[62] = '카타나 조각'; ORE_COL[62] = ['#5a2a2a', '#f0c8c8']; ORE_NAME[63] = '백화검 조각'; ORE_COL[63] = ['#c8c8d8', '#ffffff'];
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
+  ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
   for (var cgi = 0; cgi < 9; cgi++) { ORE_NAME[45 + cgi] = '세공된 ' + ORE_NAME[21 + cgi]; ORE_COL[45 + cgi] = ORE_COL[21 + cgi]; RARE_GEM[45 + cgi] = 1; }
@@ -418,6 +419,12 @@ var TowerMine = (function () {
     return outline(c, '#140d0a');
   }
   // [2026-10-23] NPC 그림 -- 대장장이(가죽 앞치마 + 망치), 선장(흰 제복 + 모자 + 수염). 칸 위에 서 있는 모습(바닥은 칸 타일).
+  /** [2026-10-30] 은둔한 대장장이 -- 후드를 눌러쓴 검은 옷. */
+  function hermitSprite() {
+    var c = npcSprite('priest'), g = c.getContext('2d');
+    px(g, '#1a1626', 4, 1, 8, 4); px(g, '#0c0a12', 5, 3, 6, 2); px(g, '#24212b', 4, 7, 8, 5); px(g, '#ffb03a', 6, 4); px(g, '#ffb03a', 9, 4);
+    return c;
+  }
   function npcSprite(kind) {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
@@ -555,6 +562,13 @@ var TowerMine = (function () {
       px(g, '#e8466a', 5, 6, 2, 1); px(g, '#e8466a', 9, 6, 2, 1); px(g, '#e8466a', 4, 7, 8, 2); px(g, '#e8466a', 5, 9, 6, 1); px(g, '#e8466a', 6, 10, 4, 1); px(g, '#e8466a', 7, 11, 2, 1);
       px(g, '#ffb0c0', 5, 7);
       outline(c, '#0a2a3a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
+    if (grade === 64) { // [2026-10-30] 화산의 심장 -- 붉은 심장에 금빛 불길
+      px(g, '#d8341a', 4, 4, 3, 2); px(g, '#d8341a', 9, 4, 3, 2); px(g, '#d8341a', 3, 5, 10, 4); px(g, '#d8341a', 4, 9, 8, 2); px(g, '#d8341a', 5, 11, 6, 1); px(g, '#d8341a', 6, 12, 4, 1); px(g, '#d8341a', 7, 13, 2, 1);
+      px(g, '#ffb03a', 7, 6, 2, 5); px(g, '#ffb03a', 6, 8, 4, 2); px(g, '#ffe8a0', 7, 8, 2, 2); px(g, '#ffd08a', 5, 5, 2, 1);
+      outline(c, '#4a0a04');
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
@@ -1154,7 +1168,9 @@ var TowerMine = (function () {
       if (d) {
         P.dir = d;
         var nx = P.x + (d === 'left' ? -1 : d === 'right' ? 1 : 0), ny = P.y + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
-        if (walk(nx, ny)) {
+        if (hermitOn() && nx === hermit.x && ny === hermit.y) {
+          talk(hermitNpc(), now); // [2026-10-30] 은둔한 대장장이
+        } else if (walk(nx, ny)) {
           P.fx = P.x; P.fy = P.y; P.tx = nx; P.ty = ny; P.t0 = now; P.moving = true; P.step = P.step === 1 ? 2 : 1;
         } else if (PORTALS.indexOf(cellAt(nx, ny)) >= 0) {
           enterPortal(nx, ny, now);
@@ -1174,6 +1190,45 @@ var TowerMine = (function () {
     var ph = Math.floor(Date.now() / 7000);
     return (hashXY(ph, 7) % 2) ? 1 : -1;
   }
+  // [2026-10-30] 은둔한 대장장이 -- 위치 알림(presTick)으로 받는다. 맵 정보에 없고 지도에도 안 나온다.
+  var hermit = null, hermitAdminSaid = '', hermitStep = 'talk', hermitList = null, hermitPick = null, hermitBusy = false;
+  function hermitOn() { return !!(hermit && map && hermit.m === map.id && hermit.until > nowSrv()); }
+  function hermitNpc() { return { x: hermit.x, y: hermit.y, kind: 'hermit', name: '???', line: '...' }; }
+  function hermitHtml(n) {
+    var h = npcHead('❔ ???', false) + talkBlock(n, '...');
+    if (hermitStep === 'talk') return h + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.hermitGo(\'list\')">보스를 모두 처치했다</button></div>';
+    if (hermitStep === 'list') {
+      if (!hermitList) return h + '<div class="mine-smith-say">...</div>';
+      if (!hermitList.length) return h + '<div class="mine-smith-say">...무기가 없군.</div>';
+      return h + '<div class="mine-smith-say">...무기를 보여라.</div>' + hermitList.map(function (w) {
+        return '<div class="mine-smith-row"><span class="nm" style="color:' + GRADE_COL[w.grade] + '">🗡️ ' + w.name + '<small>' + w.gradeName + (w.maxName ? '' : ' · 더 올릴 수 없음') + '</small></span>'
+          + (w.maxName ? '<button type="button" onclick="TowerMine.hermitGo(\'pick\',\'' + w.code + '\')">선택</button>' : '') + '</div>';
+      }).join('');
+    }
+    var p = hermitPick;
+    return h + '<div class="mine-smith-say">지금 하면 최대 <b style="color:' + GRADE_COL[p.maxGrade] + '">' + p.maxName + '</b> 등급이 되겠군. 하겠나..?</div>'
+      + p.cost.map(function (c) { return '<div class="mine-smith-row"><span class="nm">' + c.name + '<small style="color:' + (c.have >= c.need ? '#7cf08a' : '#ff8a8a') + '">' + c.have + ' / ' + c.need + '개</small></span></div>'; }).join('')
+      + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.hermitGo(\'do\')">확인</button><button type="button" onclick="TowerMine.hermitGo(\'talk\')">취소</button></div>';
+  }
+  function hermitGo(step, code) {
+    if (hermitBusy) return;
+    if (step === 'talk') { hermitStep = 'talk'; renderSmith(smithNpc); return; }
+    if (step === 'pick') { (hermitList || []).forEach(function (w) { if (w.code === code) hermitPick = w; }); hermitStep = 'confirm'; renderSmith(smithNpc); return; }
+    hermitBusy = true;
+    var q = step === 'do' ? 'action=do&code=' + encodeURIComponent(hermitPick.code) : 'action=list';
+    if (step === 'list') { hermitStep = 'list'; hermitList = null; renderSmith(smithNpc); }
+    api('/api/tower-mine-hermit?' + q).then(function (d) {
+      hermitBusy = false;
+      if (!d) return;
+      if (step === 'list') {
+        if (!d.ok) { closeSmith(); msg(d.message || '...', 2500); return; }
+        hermitList = d.weapons; renderSmith(smithNpc); return;
+      }
+      if (d.ores) st.ores = d.ores;
+      if (d.ok) { applyGear(d); flashT0 = performance.now(); hermitStep = 'talk'; closeSmith(); }
+      msg(d.message || '...', 4200);
+    }).catch(function () { hermitBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   /** NPC에게 말 걸기 -- 머리 위 말풍선 + 대장장이면 강화 창. */
   function talk(n, now) {
     if (!n) return;
@@ -1185,6 +1240,7 @@ var TowerMine = (function () {
     if (n.kind === 'captain' && dg.has) line = '물 위를 걷는 기분은 어떤가?';
     else if (n.kind === 'captain' && dg.quest >= 1) line = '재료는 다 모았나?';
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
+    if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; openSmith(n, 'hermit'); return; } // [2026-10-30]
     if (n.kind === 'smith') openSmith(n, 'menu');
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
@@ -1681,7 +1737,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39; }],
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64; }],
     ['🧩 조각', function (g) { return g >= 60 && g <= 63; }] // [2026-10-29] 무기 조각
   ];
   function invEtcHtml() {
@@ -1732,7 +1788,7 @@ var TowerMine = (function () {
     var have = '<div class="mine-smith-say">🌙 달빛석 ' + (a.moon || 0) + '개 · 📜 비급서 ' + (a.books || 0) + '권 · ⛵ 1인용 배 ' + (a.boat ? '있음' : '없음') + (a.key ? ' · 🗝️ 신궁 열쇠' : '') + '</div>';
     if (n.kind === 'ninjaquest') { // [2026-10-28] 수색 임무 보상 = 닌자 두목의 방 열쇠(비급서/달빛석은 두목 첫 처치 보상)
       var boss = '<div class="mine-smith-say">🗝️ 신궁 열쇠가 있으면 동쪽 문(닌자 두목의 방)에 들어갈 수 있어요. 두목은 은신과 분신술을 써요 -- 다섯 중 <b>자세가 다른 하나</b>가 진짜!'
-          + (a.bossReward ? ' (첫 처치 보상은 이미 받았어요)' : ' 처음 쓰러뜨리면 📜 비급서 + 🌙 달빛석 확정!') + '</div>';
+          + ' 쓰러뜨리면 30%로 📜 비급서 + 🌙 달빛석!' + '</div>';
       if (a.key) return h + have + boss;
       if (!a.quest) return h + have + '<div class="mine-smith-row"><span class="nm">신궁 수색<small>신궁 1~3층의 닌자 ' + (a.need || 100) + '명 처치 -> 🗝️ 닌자 두목의 방 열쇠</small></span><button type="button" onclick="TowerMine.archiAct(\'quest\')">임무 받기</button></div>';
       var done = (a.kills || 0) >= (a.need || 100), pct = Math.min(100, Math.round((a.kills || 0) * 100 / (a.need || 100)));
@@ -2099,6 +2155,7 @@ var TowerMine = (function () {
       el.smith.innerHTML = priestHtml(n);
       return;
     }
+    if (smithView === 'hermit') { el.smith.innerHTML = hermitHtml(n); return; } // [2026-10-30]
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'tele') {
       el.smith.innerHTML = teleHtml();
@@ -2565,6 +2622,8 @@ var TowerMine = (function () {
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
       if (!map || map.id !== mid || !d) return;
+      hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
       var now = performance.now(), seen = {};
       (d.others || []).forEach(function (o) {
         seen[o.id] = 1;
@@ -3006,15 +3065,21 @@ var TowerMine = (function () {
         ctx.globalAlpha = 1;
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력
+        if (ms && ms.hp > hpMx) hpMx = ms.hp; // [2026-10-30] 저장된 옛 맵 정보라도 막대가 넘치거나 안 보이지 않게
         if (ms && ms.hp > 0 && ms.hp < hpMx) {
+          if (ty.boss) { // [2026-10-30] 보스 -- 2칸 폭으로 그림 위에
+            ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + TS - 15 * scale, my - 9 * scale, 30 * scale, 4 * scale);
+            ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + TS - 14 * scale, my - 8 * scale, Math.max(1, 28 * scale * ms.hp / hpMx), 2 * scale);
+          } else {
           ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + 1 * scale, my - 4 * scale, 14 * scale, 3 * scale);
           ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / hpMx), scale);
+          }
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
           ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
           var nm = ty.dummy ? '🎯 ' + ty.name + ' (데미지 시험)' : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
-          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 10 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
-          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 10 : 6) * scale);
+          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
+          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale);
         }
       }
     }
@@ -3043,6 +3108,16 @@ var TowerMine = (function () {
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
+    }
+    if (hermitOn()) { // [2026-10-30] 은둔한 대장장이
+      var hxp = Math.round(hermit.x * TS - camX), hyp = Math.round(hermit.y * TS - camY);
+      if (!tiles.npc.hermit) tiles.npc.hermit = hermitSprite();
+      ctx.drawImage(tiles.npc.hermit, hxp, hyp - 3 * scale, TS, TS);
+      if (Math.abs(hermit.x - P.x) + Math.abs(hermit.y - P.y) <= 8) {
+        ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+        ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('💬 ???', hxp + TS / 2, hyp - 6 * dpr);
+        ctx.fillStyle = '#9fe0ff'; ctx.fillText('💬 ???', hxp + TS / 2, hyp - 6 * dpr);
+      }
     }
     // 캐릭터
     var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
@@ -3516,7 +3591,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

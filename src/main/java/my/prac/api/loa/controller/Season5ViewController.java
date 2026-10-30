@@ -931,6 +931,18 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-10-30] 웹 광산 은둔한 대장장이. */
+    @GetMapping("/api/tower-mine-hermit")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineHermit(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "list") String action,
+            @RequestParam(value = "code", defaultValue = "") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineHermit(userName, action, code);
+        if ("do".equals(action)) mineLog(userName, "[웹] 광산 은둔한 대장장이 " + code, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 피라미드 보상 상자. */
     @GetMapping("/api/tower-mine-chest")
     @ResponseBody

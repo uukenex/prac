@@ -116,6 +116,9 @@ public final class S5MineMap {
     public static final String[] WEAPON_SHARD_NAMES = { NINJA_SHARD_NAME, "비철도 조각", "카타나 조각", "백화검 조각" };
     public static final String PEAK = "snowpeak";
     /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
+    /** [2026-10-30] 화산의 심장 -- 용암 거신을 낮에 쓰러뜨리면 확률로. */
+    public static final String VOLCANO_HEART_CODE = "VOLCANO_HEART", VOLCANO_HEART_NAME = "화산의 심장";
+    public static final int VOLCANO_HEART_GRADE = 64;
     public static final String ICE_HEART_CODE = "ICE_HEART";
     public static final String ICE_HEART_NAME = "얼음의 심장";
     public static final int ICE_HEART_GRADE = 33;
@@ -629,7 +632,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 5;
+    static final int PAYLOAD_REV = 6; // [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게
 
     public String version() {
         String v = version;
