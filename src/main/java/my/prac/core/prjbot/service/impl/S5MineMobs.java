@@ -51,6 +51,7 @@ public final class S5MineMobs {
         public boolean dummy;
         public int elem() { if (elem < 0) elem = S5MineMobs.elemOf(this); return elem; }
         Type asDummy() { dummy = true; stay = true; noReward = true; return this; }
+        Type asDummy(int el) { elem = el; return asDummy(); } // [2026-10-30] 속성별 허수아비
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
@@ -202,9 +203,20 @@ public final class S5MineMobs {
         // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레를 지키는 얼음 골렘(13단계 Lv.49, 체력 x1.6 / 공격 x1.2, 늘 선공)
         new Type("얼음 골렘", 13, "human", "#a8d8f0", S5MineMap.SNOWCAVE2).strong(1.6, 1.2).asFirstStrike(),
         // [2026-10-29] 왕도 1시 방향 훈련장 허수아비(죽지 않음, 데미지 시험 -- 맵 목록 없이 S5MineMap.dummySpots 자리에만)
-        new Type("허수아비", 1, "human", "#c8a050").asDummy()
+        new Type("허수아비", 1, "human", "#c8a050").asDummy(),
+        // [2026-10-30] "허수아비 속성별로" -- 불러 쓰는 순서는 DUMMY_TYPES
+        new Type("불 허수아비", 1, "human", "#e8603a").asDummy(6),
+        new Type("물 허수아비", 1, "human", "#3a8ae8").asDummy(3),
+        new Type("얼음 허수아비", 1, "human", "#9fe0f4").asDummy(4),
+        new Type("바람 허수아비", 1, "human", "#8ad8a0").asDummy(5),
+        new Type("땅 허수아비", 1, "human", "#9a7a4a").asDummy(1),
+        new Type("번개 허수아비", 1, "human", "#f0d83a").asDummy(2),
+        new Type("어둠 허수아비", 1, "human", "#5a3a7a").asDummy(7),
+        new Type("빛 허수아비", 1, "human", "#fff0c0").asDummy(8)
     ));
     public static final int DUMMY_TYPE = indexOf("허수아비");
+    /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
+    public static final int[] DUMMY_TYPES = { DUMMY_TYPE, indexOf("불 허수아비"), indexOf("물 허수아비"), indexOf("얼음 허수아비"), indexOf("바람 허수아비"), indexOf("땅 허수아비"), indexOf("번개 허수아비"), indexOf("어둠 허수아비"), indexOf("빛 허수아비") };
 
     // [2026-10-29] "같은 이름의 몬스터라도 개체마다 체력·레벨이 다르게, 3단계, 보상 pool도 다르게, 상위 단계는 높은 등급 확률이 조금 더"
     //  -- 하급 30% / 보통 50% / 상급 20%(보스·수하·분신·여왕개미·허수아비는 늘 보통). 맵 시드와 개체 번호로 정해서(배치 난수와 따로) 서버/화면이 같다.
@@ -420,7 +432,8 @@ public final class S5MineMobs {
             taken[y][x] = true;
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca, rankOf(seed, out.size(), TYPES.get(type)))); // [2026-10-29] 개체 단계
         }
-        for (int[] q : m.dummySpots()) out.add(new S5MineMap.Mob(out.size(), DUMMY_TYPE, q[0], q[1], new int[] { q[1] * m.w + q[0] })); // [2026-10-29] 왕도 훈련장 허수아비
+        int dmi = 0;
+        for (int[] q : m.dummySpots()) out.add(new S5MineMap.Mob(out.size(), DUMMY_TYPES[dmi++ % DUMMY_TYPES.length], q[0], q[1], new int[] { q[1] * m.w + q[0] })); // [2026-10-29] 왕도 훈련장 허수아비
         for (int[] q : m.queenSpots()) { // [2026-10-28] 개미굴 여왕개미 셋(보스 아님 -- 목록 맨 끝이 아니어도 된다)
             List<Integer> qc = new ArrayList<>();
             qc.add(q[1] * m.w + q[0]);

@@ -2420,6 +2420,8 @@ public final class S5MineMap {
             if (Math.hypot(x - c, y - c) < 17) continue;
             t[y][x] = r.nextDouble() < 0.08 ? 'T' : '.';
         }
+        // [2026-10-29] "대도시 1시 방향은 건물 없애고 허수아비 -- 죽지 않는 데미지 시험장" -- 성당 오른쪽 위 돌바닥 마당
+        int tx0 = c + 14, tx1 = c + 44, ty0 = wt + 3, ty1 = wt + 24;
         // 붉은 지붕 건물 블록(대로/광장에서 떨어진 곳), 건물 앞은 돌길
         // [2026-10-27] "왕도 내 건물 높게, 대도시처럼" -- 블록을 세로로 길게(8~10칸): 화면이 위 두 줄은 지붕, 그 아래는 층마다 창이 난 벽, 맨 아래는 1층 앞면으로 그린다.
         for (int by = wt + 4; by < h - wt - 12; by += 14) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
@@ -2427,16 +2429,15 @@ public final class S5MineMap {
             boolean clear = true;
             for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++) {
                 if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
+                if (x >= tx0 - 2 && x <= tx1 + 2 && y >= ty0 - 2 && y <= ty1 + 2) { clear = false; break; } // [2026-10-30] "1시 방향 집들이 어색" -- 마당에 잘려 조각난 건물이 남지 않게 아예 안 짓는다
             }
             if (!clear) continue;
             for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
             for (int x = bx - 1; x <= bx + bw; x++) t[by + bh][x] = 's';
         }
-        // [2026-10-29] "대도시 1시 방향은 건물 없애고 허수아비 넷 -- 죽지 않는 데미지 시험장" -- 성당 오른쪽 위를 돌바닥 마당으로 비우고 허수아비 자리
-        int tx0 = c + 14, tx1 = c + 44, ty0 = wt + 3, ty1 = wt + 24;
         for (int y = ty0; y <= ty1; y++) for (int x = tx0; x <= tx1; x++) t[y][x] = 's';
         List<int[]> dummies = new ArrayList<>();
-        for (int i = 0; i < 4; i++) dummies.add(new int[] { tx0 + 6 + i * 6, ty0 + 9 });
+        for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) dummies.add(new int[] { tx0 + 7 + i * 8, ty0 + 4 + j * 6 }); // [2026-10-30] 속성별 아홉(S5MineMobs.DUMMY_TYPES 순서)
         // 가운데 광장(돌바닥 원) + 분수
         for (int y = c - 16; y <= c + 16; y++) for (int x = c - 16; x <= c + 16; x++) if (Math.hypot(x - c, y - c) < 16) t[y][x] = 's';
         for (int y = c - 3; y <= c + 3; y++) for (int x = c - 3; x <= c + 3; x++) if (Math.hypot(x - c, y - c) < 3.2) t[y][x] = '~';
