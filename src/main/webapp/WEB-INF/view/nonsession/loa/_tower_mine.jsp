@@ -1647,7 +1647,7 @@ var TowerMine = (function () {
   function dollHtml() {
     var slot = function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
-      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? gradeName(w.name, w.grade) : (rows.length ? '벗음' : '없음')) + '</span></button>';
+      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? gradeName(w.name, w.grade) : '없음') + '</span></button>';
     };
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
     var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>'

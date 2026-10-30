@@ -96,7 +96,7 @@ window.MineHome = (function () {
   var LOOK = { hat: '모자', hair: '머리', top: '상의', bottom: '하의', shoes: '신발' };
   function wornOf(u, sl) { var rows = (u.equip || []).filter(function (e) { return e.slot === sl; }); return { w: rows.filter(function (e) { return e.worn; })[0], n: rows.length }; }
   function slot(u, sl, cls) {
-    var o = wornOf(u, sl), nm = o.w ? esc(o.w.name) : (o.n ? '벗음' : '없음');
+    var o = wornOf(u, sl), nm = o.w ? esc(o.w.name) : '없음';
     if (o.w && o.w.grade != null) nm = '<span style="color:' + GRADE_COL[o.w.grade] + '">' + nm + '</span>';
     return '<div class="slot' + (o.w ? ' on' : '') + (cls ? ' ' + cls : '') + '" title="' + esc(o.w ? o.w.effect : '') + '"><b>' + SLOTS[sl] + '</b><span>' + nm + '</span></div>';
   }

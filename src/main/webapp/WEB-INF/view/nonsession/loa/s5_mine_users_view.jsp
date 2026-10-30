@@ -169,7 +169,7 @@
   function slot(u, sl, cls) {
     var o = wornOf(u, sl);
     return '<div class="slot' + (o.w ? ' on' : '') + (cls ? ' ' + cls : '') + '" title="' + esc(o.w ? o.w.effect : '') + '"><b>' + SLOTS[sl] + '</b><span>'
-      + esc(o.w ? o.w.name : (o.n ? '벗음' : '없음')) + '</span></div>'; // 효과는 칸에 마우스를 올리면(title)
+      + esc(o.w ? o.w.name : '없음') + '</span></div>'; // 효과는 칸에 마우스를 올리면(title)
   }
   function meter(label, a, b, color) {
     return '<div class="bar-row"><div class="k"><span>' + label + '</span><span class="num">' + n(a) + ' / ' + n(b) + '</span></div>'
