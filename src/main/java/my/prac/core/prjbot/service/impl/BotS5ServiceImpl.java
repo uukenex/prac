@@ -11595,14 +11595,18 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     private static String[][] mineHermitCost(MineWeapon w, int g) {
-        return new String[][] { { S5MineMap.SEAL_CODE, "1" }, { S5MineMap.ICE_HEART_CODE, "1" }, { S5MineMap.VOLCANO_HEART_CODE, "1" }, { S5MineMap.DESERT_HEART_CODE, "1" }, { w.shard, String.valueOf(5 * (g + 1)) } };
+        return new String[][] { { S5MineMap.SEAL_CODE, "1" }, { S5MineMap.ICE_HEART_CODE, "1" }, { S5MineMap.VOLCANO_HEART_CODE, "1" }, { S5MineMap.DESERT_HEART_CODE, "1" }, { w.shard, String.valueOf(100 + 50 * g) } }; // [2026-10-30] 조각 100개부터, 등급마다 +50
     }
 
-    /** 고른 등급 g에서 오를 수 있는 등급(1~3단계 위, 무기 최고 등급까지, 이미 가진 등급 제외) -- 낮은 순. */
-    private static List<Integer> mineHermitTargets(Map<String, Integer> items, MineWeapon w, int g) {
+    /** [2026-10-30] 가진 등급 중 가장 높은 등급(없으면 -1) -- 은둔한 대장장이는 이 등급을 기준으로 올린다. */
+    private static int mineWeaponTop(Map<String, Integer> items, MineWeapon w) {
+        return mineWeaponGrade(items, w) < 0 ? -1 : 31 - Integer.numberOfLeadingZeros(mineWeaponMask(items, w));
+    }
+
+    /** 가장 높은 등급 g에서 오를 수 있는 등급(1~3단계 위, 무기 최고 등급까지) -- 낮은 순. */
+    private static List<Integer> mineHermitTargets(MineWeapon w, int g) {
         List<Integer> t = new ArrayList<>();
-        int mask = mineWeaponMask(items, w);
-        for (int n = g + 1; n <= Math.min(g + 3, w.maxGrade); n++) if ((mask & (1 << n)) == 0) t.add(n);
+        for (int n = g + 1; n <= Math.min(g + 3, w.maxGrade); n++) t.add(n);
         return t;
     }
 
@@ -11625,9 +11629,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         if ("do".equals(action)) {
             MineWeapon w = null;
             for (MineWeapon c : MINE_WEAPONS) if (c.code.equals(code)) w = c;
-            int g = w == null ? -1 : mineWeaponGrade(items, w);
+            int g = w == null ? -1 : mineWeaponTop(items, w);
             if (g < 0) { out.put("message", "...그 무기는 없군."); return out; }
-            List<Integer> t = mineHermitTargets(items, w, g);
+            List<Integer> t = mineHermitTargets(w, g);
             if (t.isEmpty()) { out.put("message", "...더 올릴 수 없군."); return out; }
             String[][] cost = mineHermitCost(w, g);
             if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
@@ -11644,9 +11648,9 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         List<HashMap<String, Object>> list = new ArrayList<>();
         for (MineWeapon w : MINE_WEAPONS) {
-            int g = mineWeaponGrade(items, w);
+            int g = mineWeaponTop(items, w);
             if (g < 0) continue;
-            List<Integer> t = mineHermitTargets(items, w, g);
+            List<Integer> t = mineHermitTargets(w, g);
             HashMap<String, Object> m = new HashMap<>();
             m.put("code", w.code);
             m.put("name", w.name);
