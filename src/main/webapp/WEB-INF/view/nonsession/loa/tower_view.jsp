@@ -1131,7 +1131,7 @@
     var el = document.createElement('div');
     el.id = 'newBuildBar';
     el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#2F8F5C;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border:2px solid #fff;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer;';
-    el.textContent = auto ? '🔄 새 버전으로 업데이트돼요 -- 3초 뒤 자동 새로고침' : '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
+    el.textContent = auto ? '🔄 새 버전으로 업데이트돼요 -- 5초 뒤 자동 새로고침' : '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
     el.onclick = function () { location.replace(freshUrl(b)); };
     document.body.appendChild(el);
   }
@@ -1143,9 +1143,9 @@
         if (!d || !d.build || d.build === MY) return;
         if (location.search.indexOf('_b=' + d.build) >= 0) { bar(d.build); return; } // 같은 번호로 다시 왔는데도 다르면(저장본) 멈추고 띠만
         if (first) { location.replace(freshUrl(d.build)); return; }
-        // [2026-10-29] "패치되면 강제로 새로고침" -- 보는 도중 새로 배포되면 3초 안내 뒤 자동으로 다시 불러온다(광산은 pagehide에서 위치를 저장)
+        // [2026-10-29] "패치되면 강제로 새로고침" -- 보는 도중 새로 배포되면 5초 안내 뒤 자동으로 다시 불러온다(광산은 pagehide에서 위치를 저장)
         bar(d.build, true);
-        setTimeout(function () { location.replace(freshUrl(d.build)); }, 3000);
+        setTimeout(function () { location.replace(freshUrl(d.build)); }, 5000); // [2026-10-30] 3초 -> 5초
       }).catch(function () { });
   }
   check(true);
