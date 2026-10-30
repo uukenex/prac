@@ -1502,10 +1502,11 @@ var TowerMine = (function () {
       nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 150], ['snowcave2', 272, 230], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
         ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
       links: [['snowroad', 'snowpeak'], ['snowtown', 'snowroad'], ['snowtown', '@royal'], ['snowtown', 'snowcave'], ['snowcave', 'snowcave2'], ['snow3', 'snowtown'], ['snow2', 'snow3'], ['snow1', 'snow2'], ['north', 'snow1'], ['north', '@beach2', 'sea']] },
-    { id: 'sea', name: '🏝️ 남쪽 바다', vh: 380,
-      nodes: [['@beach', 160, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 92], ['archi', 252, 92], ['shrine', 52, 160], ['shrine2', 160, 160], ['shrine3', 268, 160],
-        ['shrineboss', 106, 220], ['archisea', 214, 220], ['isle1', 44, 295], ['isle2', 120, 295], ['isle3', 196, 295], ['isle4', 272, 295],
-        ['isle5', 82, 345], ['isle6', 160, 345], ['isle7', 238, 345]],
+    // [2026-10-30] "다도해 뱃길에서 일곱 섬 가는 길도 실제 뱃길처럼" -- 실제 맵처럼 본섬에서 북쪽으로 물길, 왼쪽/오른쪽 번갈아 부두(동백 > 갈매기 > ... > 용암)
+    { id: 'sea', name: '🏝️ 남쪽 바다', vh: 760, channel: { x: 250, top: 128, isles: ['isle1', 'isle2', 'isle3', 'isle4', 'isle5', 'isle6', 'isle7'] },
+      nodes: [['@beach', 60, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 560], ['archi', 250, 560], ['shrine', 140, 630], ['shrine2', 250, 630], ['shrine3', 360, 630],
+        ['shrineboss', 250, 700], ['archisea', 250, 500], ['isle1', 170, 440], ['isle2', 330, 388], ['isle3', 170, 336], ['isle4', 330, 284],
+        ['isle5', 170, 232], ['isle6', 330, 180], ['isle7', 170, 128]],
       links: [['@beach', 'island', 'sea'], ['island', 'archi', 'sea', '⛵'], ['archi', 'shrine'], ['shrine', 'shrine2'], ['shrine2', 'shrine3'], ['archi', 'shrineboss'], ['archi', 'archisea', 'sea', '⛵']] }
   ];
   var worldTab = null;
@@ -1516,8 +1517,10 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [0, 440], sea: [360, 470] }, WORLD_SIZE = [680, 860];
+  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [0, 440], sea: [20, 800] }, WORLD_SIZE = [680, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
   var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵']];
+  // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
+  var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
   var worldVB = null, wMoved = false;
   function worldPos(rid, nid) {
     var R = WORLD_REGIONS.filter(function (r) { return r.id === rid; })[0], o = WORLD_PLACE[rid];
@@ -1544,11 +1547,17 @@ var TowerMine = (function () {
       R.links.forEach(function (l) {
         var p = N[l[0]], q = N[l[1]];
         if (!p || !q) return;
-        lines += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[l[2] || 'walk'] + '/>'
+        lines += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + (WORLD_FLOOR[p.id] && WORLD_FLOOR[q.id] ? 'stroke="#ffd27a" stroke-width="3" stroke-dasharray="2 5"' : STY[l[2] || 'walk']) + '/>'
             + (l[3] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + l[3] + '</text>' : '');
       });
+      if (R.channel && N.archisea) { // 뱃길 물길 + 섬으로 가는 갈래
+        var chx = o[0] + R.channel.x;
+        lines += '<line x1="' + chx + '" y1="' + N.archisea.y + '" x2="' + chx + '" y2="' + (o[1] + R.channel.top) + '" stroke="#2f6a9a" stroke-width="10" stroke-linecap="round"/>'
+            + '<line x1="' + chx + '" y1="' + N.archisea.y + '" x2="' + chx + '" y2="' + (o[1] + R.channel.top) + '" stroke="#6fc8f0" stroke-width="2" stroke-dasharray="7 5"/>';
+        R.channel.isles.forEach(function (id) { var p = N[id]; if (p) lines += '<line x1="' + chx + '" y1="' + p.y + '" x2="' + p.x + '" y2="' + p.y + '" ' + STY.sea + '/>'; });
+      }
       Object.keys(N).forEach(function (k) {
-        var n = N[k], nw = n.w || W;
+        var n = N[k], nw = n.w || W, flr = WORLD_FLOOR[n.id], nmT = flr ? n.name.replace(/\s*\d층/, '') : n.name;
         var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]));
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
@@ -1557,9 +1566,11 @@ var TowerMine = (function () {
               : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(bb.nextAt) + '</text>';
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
+            + (flr ? '<rect x="' + (n.x - nw / 2 + 5) + '" y="' + (n.y - H / 2 - 5) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="2"/>' : '')
             + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
             + ' stroke="' + (isHere ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (isHere ? 4 : 2) + '"/>'
-            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + n.name + '</text>'
+            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + nmT + '</text>'
+            + (flr ? '<text x="' + (n.x - nw / 2 + 3) + '" y="' + (n.y - H / 2 + 10) + '" class="wf">' + flr + '</text>' : '')
             + (adminW ? '</g>' : '')
             + (isHere ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
             + '<text x="' + (n.x + nw / 2) + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="end" class="wc" data-cnt="' + n.id + '">👥 ' + (mapN[n.id] || 0) + '</text>'
