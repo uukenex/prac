@@ -113,6 +113,25 @@ public class Season5ViewController {
         return ResponseEntity.ok(result);
     }
 
+    /** [2026-10-30] "광산 접속 화면을 관리자 페이지처럼 -- 캐릭터 정보 + 아래 로그도 똑같이" -- 내 현황 + 내 광산 기록(최근 24시간, 최대 200줄) + 진행 중인 판. */
+    @GetMapping("/api/tower-mine-home")
+    @ResponseBody
+    public ResponseEntity<?> apiMineHome(@RequestParam(value = "userName", defaultValue = "") String userName) {
+        HashMap<String, Object> result = new HashMap<>();
+        String u = userName.trim();
+        if (u.isEmpty()) { result.put("error", "유저명을 입력하세요."); return ResponseEntity.ok(result); }
+        result.put("me", s5Service.mineMyOverview(u));
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("userName", u);
+        params.put("hours", 24);
+        params.put("cat", "mine");
+        params.put("maxRows", 200);
+        result.put("items", botDao.selectWordHisRecent(params));
+        result.put("live", my.prac.core.prjbot.service.impl.S5MineSessionLog.liveRows(u));
+        result.put("now", System.currentTimeMillis());
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(result);
+    }
+
     @GetMapping("/api/tower-mine-users")
     @ResponseBody
     public ResponseEntity<?> apiMineUsers(HttpSession session) {

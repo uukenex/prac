@@ -13178,77 +13178,88 @@ public class BotS5ServiceImpl implements BotS5Service {
     public List<HashMap<String, Object>> mineUserOverview() {
         long now = System.currentTimeMillis();
         List<HashMap<String, Object>> out = new ArrayList<>();
-        for (HashMap<String, Object> row : dao.selectAllMineUsers()) {
-            String u = strVal(row.get("USER_NAME"), "");
-            Map<String, Integer> items = mineItems(u);
-            HashMap<String, Object> m = new HashMap<>();
-            m.put("userName", u);
-            MinePresence p = MINE_PRESENCE.get(u);
-            boolean online = p != null && p.mapId != null && now - p.at <= MINE_PRESENCE_TTL_MS;
-            S5MineMap map = online ? S5MineMap.get(p.mapId) : mineMapOf(row);
-            int[] pos = online ? new int[] { p.x, p.y } : minePos(row, map, mineWalkMode(items));
-            m.put("online", online);
-            m.put("mapId", map.id);
-            m.put("mapName", map.name);
-            m.put("x", pos[0]);
-            m.put("y", pos[1]);
-            m.put("lastAt", online ? p.at : longOf(row.get("POS_AT_MS"), 0L));
-            int lv = mineLv(row), rb = mineRebirth(items);
-            m.put("lv", lv);
-            m.put("rebirth", rb); // [2026-10-28] 환생 횟수("Lv.1(환생1)")
-            m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
-            m.put("expNeed", mineExpNeed(lv, rb));
-            m.put("kills", intVal(row.get("M_KILLS"), 0));
-            m.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
-            m.put("pickDur", minePickDur(row));
-            m.put("pickMax", minePickMax(row));
-            // 장착/보유 장비: 투구, 장신구/장화/곡괭이(단계, 끼고 있는지), 용왕의 반지
-            List<HashMap<String, Object>> gear = new ArrayList<>();
-            int helmet = items.getOrDefault(MINE_ITEM_HELMET, 0);
-            if (helmet > 0) gear.add(mineOverviewGear("광부 투구", "helmet", helmet, MINE_HELMET_OPEN_MAX, true));
-            int slot = items.getOrDefault(MINE_ITEM_RING_SLOT, 0), pickSlot = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
-            for (MineGear g : MINE_GEAR) {
-                int tier = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
-                if (tier < 1) continue;
-                boolean worn = "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
-                        : "tool".equals(g.kind) ? pickSlot == minePickSlotOf(g.code) : true;
-                gear.add(mineOverviewGear(g.name, g.kind, tier, g.cost.length, worn));
-            }
-            if (mineHasDragonRing(items)) gear.add(mineOverviewGear("용왕의 반지", "dragon", 1, 1, mineWaterWalk(items)));
-            int oct = mineCoatTier(items), ogt = mineGloveTier(items); // [2026-10-28] 외투/장갑은 단계 하나씩
-            if (oct > 0) gear.add(mineOverviewGear(MINE_COAT_NAMES[oct - 1], "coat", oct, 3, mineCoatDef(items) > 0));
-            if (ogt > 0) gear.add(mineOverviewGear(MINE_GLOVE_NAMES[ogt - 1], "coat", ogt, 3, mineGlovesOn(items)));
-            m.put("gear", gear);
-            // [2026-10-28] "광산 캐릭터 현황을 인게임과 비슷하게" -- 인벤토리 장비 칸(무기/반지/장갑/옷/목걸이/신발/채집 도구)과 같은 목록, 전투 수치
-            m.put("equip", mineEquipList(items));
-            m.put("helmet", helmet);
-            m.put("helmetMax", MINE_HELMET_OPEN_MAX);
-            int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
-            m.put("hpMax", mineHpCap(lv, lock, rb));
-            m.put("hp", mineHpNow(row, now, lock, rb));
-            m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)));
-            m.put("coldDef", mineColdDef(items));
-            m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
-            m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
-            // 외형(부위별 착용 치장 이름, 성별), 산 치장 아이템 수
-            HashMap<String, Object> look = mineLookOf(items);
-            HashMap<String, Object> wear = new HashMap<>();
-            for (String s : MINE_LOOK_SLOTS) {
-                MineCos c = mineCos(strVal(look.get(s + "Code"), ""));
-                wear.put(s, c == null ? "" : c.name);
-            }
-            m.put("look", wear);
-            m.put("lookRaw", look); // [2026-10-25] 화면 캐릭터 그림(MineChar)용
-            m.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
-            int cosOwned = 0;
-            for (MineCos c : MINE_COS) if (items.getOrDefault("COS_" + c.code, 0) > 0) cosOwned++;
-            m.put("cosOwned", cosOwned);
-            List<HashMap<String, Object>> ores = new ArrayList<>();
-            for (HashMap<String, Object> o : mineOreList(u)) if (intVal(o.get("qty"), 0) > 0) ores.add(o);
-            m.put("ores", ores);
-            out.add(m);
-        }
+        for (HashMap<String, Object> row : dao.selectAllMineUsers()) out.add(mineOverviewOf(row, now));
         return out;
+    }
+
+    /** [2026-10-30] "광산 접속 화면에 관리자 페이지처럼 캐릭터 정보" -- 내 현황 하나(광산 기록이 없으면 null). */
+    @Override
+    public HashMap<String, Object> mineMyOverview(String userName) {
+        if (!mineAccess(userName)) return null;
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        return row == null ? null : mineOverviewOf(row, System.currentTimeMillis());
+    }
+
+    /** 한 사람 현황(광산 캐릭터 현황 페이지 / 광산 접속 화면). */
+    private HashMap<String, Object> mineOverviewOf(HashMap<String, Object> row, long now) {
+        String u = strVal(row.get("USER_NAME"), "");
+        Map<String, Integer> items = mineItems(u);
+        HashMap<String, Object> m = new HashMap<>();
+        m.put("userName", u);
+        MinePresence p = MINE_PRESENCE.get(u);
+        boolean online = p != null && p.mapId != null && now - p.at <= MINE_PRESENCE_TTL_MS;
+        S5MineMap map = online ? S5MineMap.get(p.mapId) : mineMapOf(row);
+        int[] pos = online ? new int[] { p.x, p.y } : minePos(row, map, mineWalkMode(items));
+        m.put("online", online);
+        m.put("mapId", map.id);
+        m.put("mapName", map.name);
+        m.put("x", pos[0]);
+        m.put("y", pos[1]);
+        m.put("lastAt", online ? p.at : longOf(row.get("POS_AT_MS"), 0L));
+        int lv = mineLv(row), rb = mineRebirth(items);
+        m.put("lv", lv);
+        m.put("rebirth", rb); // [2026-10-28] 환생 횟수("Lv.1(환생1)")
+        m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
+        m.put("expNeed", mineExpNeed(lv, rb));
+        m.put("kills", intVal(row.get("M_KILLS"), 0));
+        m.put("totalDig", intVal(row.get("TOTAL_DIG"), 0));
+        m.put("pickDur", minePickDur(row));
+        m.put("pickMax", minePickMax(row));
+        // 장착/보유 장비: 투구, 장신구/장화/곡괭이(단계, 끼고 있는지), 용왕의 반지
+        List<HashMap<String, Object>> gear = new ArrayList<>();
+        int helmet = items.getOrDefault(MINE_ITEM_HELMET, 0);
+        if (helmet > 0) gear.add(mineOverviewGear("광부 투구", "helmet", helmet, MINE_HELMET_OPEN_MAX, true));
+        int slot = items.getOrDefault(MINE_ITEM_RING_SLOT, 0), pickSlot = items.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
+        for (MineGear g : MINE_GEAR) {
+            int tier = Math.min(items.getOrDefault(g.code, 0), g.cost.length);
+            if (tier < 1) continue;
+            boolean worn = "ring".equals(g.kind) ? (slot == 1 && MINE_ITEM_PLENTY_RING.equals(g.code)) || (slot == 2 && MINE_ITEM_ABYSS_RING.equals(g.code))
+                    : "tool".equals(g.kind) ? pickSlot == minePickSlotOf(g.code) : true;
+            gear.add(mineOverviewGear(g.name, g.kind, tier, g.cost.length, worn));
+        }
+        if (mineHasDragonRing(items)) gear.add(mineOverviewGear("용왕의 반지", "dragon", 1, 1, mineWaterWalk(items)));
+        int oct = mineCoatTier(items), ogt = mineGloveTier(items); // [2026-10-28] 외투/장갑은 단계 하나씩
+        if (oct > 0) gear.add(mineOverviewGear(MINE_COAT_NAMES[oct - 1], "coat", oct, 3, mineCoatDef(items) > 0));
+        if (ogt > 0) gear.add(mineOverviewGear(MINE_GLOVE_NAMES[ogt - 1], "coat", ogt, 3, mineGlovesOn(items)));
+        m.put("gear", gear);
+        // [2026-10-28] "광산 캐릭터 현황을 인게임과 비슷하게" -- 인벤토리 장비 칸(무기/반지/장갑/옷/목걸이/신발/채집 도구)과 같은 목록, 전투 수치
+        m.put("equip", mineEquipList(items));
+        m.put("helmet", helmet);
+        m.put("helmetMax", MINE_HELMET_OPEN_MAX);
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
+        m.put("hpMax", mineHpCap(lv, lock, rb));
+        m.put("hp", mineHpNow(row, now, lock, rb));
+        m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)));
+        m.put("coldDef", mineColdDef(items));
+        m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
+        m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
+        // 외형(부위별 착용 치장 이름, 성별), 산 치장 아이템 수
+        HashMap<String, Object> look = mineLookOf(items);
+        HashMap<String, Object> wear = new HashMap<>();
+        for (String s : MINE_LOOK_SLOTS) {
+            MineCos c = mineCos(strVal(look.get(s + "Code"), ""));
+            wear.put(s, c == null ? "" : c.name);
+        }
+        m.put("look", wear);
+        m.put("lookRaw", look); // [2026-10-25] 화면 캐릭터 그림(MineChar)용
+        m.put("gender", items.getOrDefault(MINE_ITEM_GENDER, 0));
+        int cosOwned = 0;
+        for (MineCos c : MINE_COS) if (items.getOrDefault("COS_" + c.code, 0) > 0) cosOwned++;
+        m.put("cosOwned", cosOwned);
+        List<HashMap<String, Object>> ores = new ArrayList<>();
+        for (HashMap<String, Object> o : mineOreList(u)) if (intVal(o.get("qty"), 0) > 0) ores.add(o);
+        m.put("ores", ores);
+        return m;
     }
 
     /** [2026-10-25] "로그의 광산 로그에 캐릭터 이미지" -- 광산 유저별 외형(mineLookOf 모양, 화면 MineChar가 그린다). 읽기만. */

@@ -3859,31 +3859,16 @@ var TW = (function () {
     } });
   }
 
-  // [2026-10-23] 광산 탭 -- 곡괭이 내구도/현재 맵·위치 + 들어가기 + 최근 캔 곳(언제 캤는지 포함)
+  // [2026-10-23] 광산 탭 -- [2026-10-30] "관리자 페이지에서 보이는 캐릭터 정보 그대로 + 아래 로그도 똑같이":
+  //  들어가기 + 내 캐릭터 카드(장비 칸/체력·경험치·곡괭이/보유) + 내 광산 기록(한 판 카드, 최근 24시간) -- _mine_home.jsp(MineHome)
   function renderMinePanel() {
     var box = document.getElementById('mineBox');
     var u = userName();
     if (!u) { box.innerHTML = '<div class="sheet-empty">유저명을 입력하세요.</div>'; return; }
-    fetch(base + '/api/tower-mine?userName=' + encodeURIComponent(u)).then(function (r) { return r.json(); }).then(function (m) {
-      if (m.error) { box.innerHTML = '<div class="sheet-empty">' + m.error + '</div>'; return; }
-      var nr = m.nextResetAt ? new Date(m.nextResetAt) : null;
-      var resetTxt = nr ? (nr.getMonth() + 1) + '/' + nr.getDate() + ' ' + (nr.getHours() < 10 ? '0' : '') + nr.getHours() + ':00' : '';
-      var html = '<div class="ore-mine-card"><div><div class="ore-sta">⛏️ 곡괭이 내구도 ' + m.durability + ' / ' + m.durabilityMax + '</div>'
-          + '<div class="ore-sub">캘 때마다 1씩 닳고, 중앙 평원 마을의 대장장이에게 광석을 주면 곡괭이가 강화돼요(최대·현재 내구도 함께 증가) · 맵은 2일마다 새로 섞여요' + (resetTxt ? '(다음 ' + resetTxt + ')' : '') + ' · 한 번 캔 칸은 리셋 전까지 다시 못 캐요</div>'
-          + '<div class="ore-sub">📍 ' + m.mapName + ' (' + m.x + ', ' + m.y + ') · 누적 ' + (m.totalDig || 0) + '회 · ⛑️ 광부 투구 ' + (m.helmet || 0) + '단계</div></div>'
-          + '<button type="button" onclick="TW.openMine()">⛏️ 들어가기</button></div>';
-      var rec = m.recent || [];
-      html += '<div class="inv-etc-title">최근 캔 곳</div>';
-      if (!rec.length) html += '<div class="sheet-empty">아직 캔 곳이 없어요. 들어가서 캐 보세요!</div>';
-      else {
-        html += '<div class="mine-recent">';
-        rec.forEach(function (d) {
-          html += '<div class="mine-recent-row"><img src="' + TowerMine.oreIcon(d.grade) + '" alt=""><b>' + d.name + '</b><span class="xy">' + d.mapName + ' (' + d.x + ', ' + d.y + ')</span>'
-              + '<span class="when">' + TowerMine.digTime(d.at) + '</span></div>';
-        });
-        html += '</div>';
-      }
-      box.innerHTML = html;
+    fetch(base + '/api/tower-mine-home?userName=' + encodeURIComponent(u), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
+      if (!window.MineHome) { box.innerHTML = '<div class="sheet-empty">화면을 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.</div>'; return; }
+      MineHome.render(box, d, 'TW.openMine()', '캘 때마다 곡괭이가 1씩 닳고, 대장장이에게서 강화해요 · 맵은 2일마다 새로 섞이고, 한 번 캔 칸은 리셋 전까지 다시 못 캐요');
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
   }
 
@@ -5537,6 +5522,8 @@ var TW = (function () {
 })();
 </script>
 <%-- [2026-10-28] 광산 스크립트는 _tower_mine.jsp로(이 JSP가 너무 커서 64KB 메서드 한계로 500이 났다 -- 동적 포함이어야 함) --%>
+<jsp:include page="_mine_ore.jsp" />
+<jsp:include page="_mine_home.jsp" /><%-- [2026-10-30] 광산 접속 화면(캐릭터 카드 + 내 광산 기록) --%>
 <jsp:include page="_tower_mine.jsp" />
 </body>
 </html>
