@@ -11658,8 +11658,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("gradeName", MINE_GRADE_NAMES[g]);
             if (!t.isEmpty()) {
                 int mx = t.get(t.size() - 1);
-                m.put("maxGrade", mx);
-                m.put("maxName", MINE_GRADE_NAMES[mx]);
+                m.put("maxGrade", mx >= 6 ? 0 : mx); // [2026-10-30] 고대·신화는 색도 숨긴다
+                m.put("maxName", mx >= 6 ? "???" : MINE_GRADE_NAMES[mx]); // "최대 등급이 고대·신화면 ???"
                 List<HashMap<String, Object>> cl = new ArrayList<>();
                 for (String[] c : mineHermitCost(w, g)) {
                     HashMap<String, Object> cm = new HashMap<>();
