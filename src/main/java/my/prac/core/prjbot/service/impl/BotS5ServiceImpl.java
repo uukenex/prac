@@ -9232,6 +9232,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         int splitStage;   // 지금까지 쓴 분신술 횟수(체력 75/50/25% 아래로 내려갈 때마다 한 번)
         java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
         long regenAt;     // [2026-10-29] 보스 체력 회복을 마지막으로 반영한 시각
+        long nearAt;      // [2026-10-30] 보스 MINE_BOSS_ALONE_RANGE칸 안에 누가 있던 마지막 시각
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
         void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; }
@@ -9408,7 +9409,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (bt != null && bt.boss && s.deadUntil <= now) { // [2026-10-29] 보스 -- 인식이 풀리면 서서히 회복
                     int bmax = S5MineMobs.hp(bt, map.mobs().get((int) id).rank);
-                    mineBossRegen(s, bmax, now);
+                    mineBossRegen(s, bmax, now, map, map.mobs().get((int) id));
                     if (s.hp < bmax || s.target != null) { list.add(mineMobRow((int) id, s)); seen.add(id); continue; }
                 }
                 if (minion && s.deadUntil <= now && s.frozenUntil <= now) s.deadUntil = Long.MAX_VALUE / 2; // [2026-10-28] 아무도 안 싸우면 수하는 물러난다
@@ -9548,7 +9549,21 @@ public class BotS5ServiceImpl implements BotS5Service {
     /** [2026-10-29] "보스 공통으로 50칸 이상 멀어지면 어그로가 풀리고 체력이 서서히 회복" -- 인식이 풀린 보스는 마지막으로 맞은 지 5초 뒤부터 2분에 걸쳐 가득. */
     static final int MINE_BOSS_LEASH = 50;
     static final long MINE_BOSS_REGEN_DELAY_MS = 5_000L, MINE_BOSS_REGEN_FULL_MS = 120_000L;
-    private static void mineBossRegen(MobState s, int max, long now) {
+    // [2026-10-30] "맵에 아무도 없거나 200칸 안에 아무도 없으면 체력이 최대치로" -- 위치 알림(MINE_PRESENCE) 기준. 한동안(MINE_BOSS_ALONE_MS) 아무도 안 보다가 돌아와도 가득.
+    static final int MINE_BOSS_ALONE_RANGE = 200;
+    static final long MINE_BOSS_ALONE_MS = 20_000L;
+    private static void mineBossRegen(MobState s, int max, long now, S5MineMap map, S5MineMap.Mob mb) {
+        if (s.deadUntil <= now) {
+            boolean near = false;
+            for (MinePresence p : MINE_PRESENCE.values()) {
+                if (!map.id.equals(p.mapId) || now - p.at > MINE_PRESENCE_TTL_MS) continue;
+                if (Math.abs(p.x - mb.x) + Math.abs(p.y - mb.y) <= MINE_BOSS_ALONE_RANGE || Math.abs(p.x - s.fx) + Math.abs(p.y - s.fy) <= MINE_BOSS_ALONE_RANGE) { near = true; break; }
+            }
+            if (!near && s.target != null && mineEngaged(s.target, now)) near = true; // 싸우는 중이면(위치 알림이 늦어도) 그대로
+            boolean gone = s.nearAt > 0 && now - s.nearAt > MINE_BOSS_ALONE_MS;
+            if (near) s.nearAt = now;
+            if (!near || (gone && (s.target == null || !mineEngaged(s.target, now)))) { s.hp = max; s.target = null; s.regenAt = now; return; }
+        }
         if (s.target != null || s.deadUntil > now || s.hp >= max) { s.regenAt = now; return; }
         long from = Math.max(s.regenAt, s.lastHitAt + MINE_BOSS_REGEN_DELAY_MS);
         if (now > from) { s.hp = (int) Math.min(max, s.hp + (now - from) * max / MINE_BOSS_REGEN_FULL_MS); s.regenAt = now; }
@@ -9729,7 +9744,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                     dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 }
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
-                if (type.ranged && dist >= 2 && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이
+                if (type.ranged && (dist >= 2 || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
@@ -10224,7 +10239,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         synchronized (s) {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
-            if (type.boss) mineBossRegen(s, mobMax, now); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
+            if (type.boss) mineBossRegen(s, mobMax, now, map, mob); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
             for (int c : mineMobCells(mob, s, now, map)) { // [2026-10-29] 보스는 2x2칸, "공격할 때 본인 위치도" -- 내 칸(0)과 둘레 8칸(1)
                 int fw = type.boss ? 2 : 1;

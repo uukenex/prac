@@ -74,7 +74,7 @@ public final class S5MineMobs {
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
         //  플레이어(BotS5ServiceImpl: 레벨마다 체력/공격 x1.09, 필요 경험치 x1.12)와 같은 비율로 줄여 적정 레벨에서 3번쯤 때리면 쓰러지는 것과
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
-        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 12 : 1) * hpMul * hpCut); }
+        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
