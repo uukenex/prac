@@ -8637,6 +8637,7 @@ public class BotS5ServiceImpl implements BotS5Service {
     //   [2026-10-23] 처음엔 "시간당"이었으나 "시간당 대신 처치당"으로 변경(같은 수치, 자동사냥 시간당 처치 수(기본 6)만큼 커짐).
     /** [2026-10-24] "대장장이 곡괭이 강화 최대치 제한" -- 최대 내구도 상한. 상한에 닿으면 더 강화하지 않는다(수리는 없음 -- 같은 날 "수리는 없애도 될 것 같아"). */
     static final int MINE_PICK_CAP = 1000;
+    static final int MINE_BROKEN_PICK_PCT = 20;
     private static final int MINE_PICK_MAX = 200; // 곡괭이 기본(초기) 최대 내구도 -- 새로 들어온 유저도 200으로 시작(컬럼 기본값, 2026-10-23 1000 -> 200)
     /** 대장간 곡괭이 강화 {광석 등급, 필요 개수, 최대(+현재) 내구도 증가}. 캔 광석을 전부 강화에 써도 평균적으로 1회 채굴(내구도 1)보다 조금 덜 돌아오게(약 0.85) 잡았다. */
     private static final int[][] MINE_PICK_UPGRADE = { { 1, 50, 10 }, { 2, 20, 10 }, { 3, 10, 10 }, { 4, 5, 10 }, { 5, 1, 5 }, { 6, 1, 20 } };
@@ -10777,9 +10778,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             out.put("noOre", true);
             return out;
         }
-        if (st < 1) {
-            out.put("message", "⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요(최대·현재 내구도가 함께 올라요).");
-            return out;
+        if (st < 1) { // [2026-10-30] "내구도가 없어도 채집 가능, 성공률 20%" -- 실패하면 칸은 그대로(다시 시도 가능), 성공하면 내구도는 0 그대로(광역/쌍날은 한 칸만)
+            if (RND.nextInt(100) >= MINE_BROKEN_PICK_PCT) {
+                out.put("message", "⛏️ 곡괭이가 다 닳아 캐지 못했어요. (내구도 0 · 성공률 " + MINE_BROKEN_PICK_PCT + "%)\n대장장이에게 광석을 주면 강화할 수 있어요.");
+                out.put("digFail", true);
+                return out;
+            }
+            st = 1;
         }
         // [2026-10-24] 바닷길은 하루 보석 MINE_SEA_DAILY개까지(광역 곡괭이로 함께 캔 칸도 센다) -- 다 캤으면 내구도도 안 쓴다
         boolean sea = S5MineMap.SEAROAD.equals(map.id);

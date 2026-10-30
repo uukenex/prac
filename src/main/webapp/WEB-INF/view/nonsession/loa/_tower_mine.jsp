@@ -3491,7 +3491,6 @@ var TowerMine = (function () {
     if (c === 'V') { msg('마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.'); return; }
     if (c === 'T') { msg('나무 밑은 캘 수 없어요. 옆 칸에서 캐 보세요.'); return; }
     if (dug[x + ',' + y]) { msg('이미 캔 자리예요. 다른 곳을 찾아보세요.'); return; }
-    if (st.durability < 1) { msg('⛏️ 곡괭이 내구도가 다 닳았어요. 중앙 평원 마을의 대장장이에게 광석을 주고 곡괭이를 강화하세요.'); return; }
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now(); P.swing = false; // 곡괭이
@@ -3537,7 +3536,8 @@ var TowerMine = (function () {
         if (d.reload) { reload(); return; }
         if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
         if (d.seaLimit) setAuto(false); // [2026-10-24] 바닷길 하루 보석 한도
-        if (d.noOre || auto) noOre[x + ',' + y] = 1; // [2026-10-24] 자동채광이 같은 칸을 다시 고르지 않게
+        if (d.digFail) floats.push({ x: x, y: y, text: '💨 실패', color: '#c9c3d6', t0: performance.now() }); // [2026-10-30] 내구도 0 -- 성공률 20%
+        else if (d.noOre || auto) noOre[x + ',' + y] = 1; // [2026-10-24] 자동채광이 같은 칸을 다시 고르지 않게
         if (!(auto && d.noOre)) msg(d.message || d.error || '캐지 못했어요.');
       }
       showStamina();
