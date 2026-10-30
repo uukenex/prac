@@ -10428,17 +10428,20 @@ public class BotS5ServiceImpl implements BotS5Service {
             MineWeapon dw = null; // [2026-10-29] 레벨대 무기(무기마다 0.5%, 한 번에 하나) -- 등급은 색으로만(이름에 등급 글자 없음)
             for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < MINE_WEAPON_RANK_P10K[mob.rank]) { dw = w; break; }
             if (dw != null) {
-                int g = mineGradeRoll(dw.maxGrade, mob.rank), cur = mineWeaponGrade(items, dw);
-                if (g > cur) { // "등급이 높으면 자동 교체, 다른 무기는 사용자가 확인" -- 든 무기의 등급만 저절로 오르고, 새 무기는 인벤토리에서 직접 든다
-                    dao.upsertMineItem(userName, dw.code, g + 1);
-                    boolean held = mineWeaponOn(items) == dw;
-                    msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g))
-                            .append(held ? " (들고 있던 검이 더 좋아졌어요)" : cur >= 0 ? " (더 좋은 등급으로 바뀌었어요)" : " (인벤토리 무기 칸에서 들 수 있어요)");
-                } else { // "이미 있는 아이템(등급까지 같으면) 자동 분해해서 조각으로, 등급마다 1개씩 더" -- 같은 등급 이하는 분해
+                int g = mineGradeRoll(dw.maxGrade, mob.rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
+                if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급
                     dao.addUserOre(userName, dw.shard, g + 1);
                     msg.append(" 🧩 이미 있는 ").append(dw.name).append("이라 분해했어요. ").append(mineCodeName(dw.shard)).append(" +").append(g + 1);
                     out.put("dropShard", g + 1);
                     out.put("dropShardName", mineCodeName(dw.shard));
+                } else {
+                    dao.upsertMineItem(userName, dw.code + "_M", mask | (1 << g)); // [2026-10-30] 처음 나온 등급은 보관(등급별로 골라 든다)
+                    if (g > cur) { // 고른 등급보다 높으면 고른 등급도 바뀐다("등급이 높으면 자동 교체")
+                        dao.upsertMineItem(userName, dw.code, g + 1);
+                        boolean held = mineWeaponOn(items) == dw;
+                        msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g))
+                                .append(held ? " (들고 있던 검이 더 좋아졌어요)" : cur >= 0 ? " (더 좋은 등급으로 바뀌었어요)" : " (인벤토리 무기 칸에서 들 수 있어요)");
+                    } else msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! (인벤토리 무기 칸에서 등급을 골라 들 수 있어요)");
                 }
                 out.put("dropGrade", g);
                 out.put("dropName", dw.name);
@@ -11740,6 +11743,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
     static MineWeapon mineWeaponOf(String code) { for (MineWeapon w : MINE_WEAPONS) if (w.code.equals(code)) return w; return null; }
     static int mineWeaponGrade(Map<String, Integer> items, MineWeapon w) { return items.getOrDefault(w.code, 0) - 1; }
+    /** [2026-10-30] "무기를 등급별로 다 가지고 고르게" -- 가진 등급 비트(아이템 코드 + "_M"), 고른(든) 등급은 그대로 코드 값(등급 + 1).
+     *  예전엔 가장 좋은 등급 하나만 저장했으니 비트가 없으면 그 등급 하나만 가진 것으로 본다. */
+    static int mineWeaponMask(Map<String, Integer> items, MineWeapon w) {
+        int m = items.getOrDefault(w.code + "_M", 0), g = mineWeaponGrade(items, w);
+        return m | (g >= 0 ? 1 << g : 0);
+    }
     /** 지금 든 드랍 무기(없으면 null -- 칼/양산). */
     static MineWeapon mineWeaponOn(Map<String, Integer> items) {
         int s = items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0);
@@ -12568,6 +12577,10 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (wg < 0) continue;
             HashMap<String, Object> nr = mineEquipRow("weapon", w.code, w.name, w.effect(wg) + " · Lv." + w.lv + "부터", w == won);
             nr.put("grade", wg);
+            List<Integer> gl = new ArrayList<>(); // [2026-10-30] 가진 등급(색 칩)
+            int wm = mineWeaponMask(items, w);
+            for (int gi = 0; gi <= w.maxGrade; gi++) if ((wm & (1 << gi)) != 0) gl.add(gi);
+            nr.put("grades", gl);
             out.add(nr);
         }
         if (items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0) out.add(mineEquipRow("weapon", MINE_ITEM_PARASOL, "양산", "공격력 +" + MINE_PARASOL_ATK_FLAT + " · 다도해 햇빛 -" + MINE_PARASOL_CUT + "단계", pon));
@@ -12779,7 +12792,21 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, 0);
             return mineGearResult(userName, true, "⛏️ 기본 곡괭이로 바꿨어요.");
         }
+        int pickGrade = -1; // [2026-10-30] 등급 칩 -- "NINJA_SWORD#3" = 그 무기의 4번째 등급을 골라 든다
+        if (code != null && code.indexOf('#') > 0) {
+            try { pickGrade = Integer.parseInt(code.substring(code.indexOf('#') + 1)); } catch (NumberFormatException ex) { pickGrade = -2; }
+            code = code.substring(0, code.indexOf('#'));
+        }
         MineWeapon ew = mineWeaponOf(code);
+        if (ew != null && pickGrade != -1) {
+            if (pickGrade < 0 || pickGrade > ew.maxGrade || (mineWeaponMask(it, ew) & (1 << pickGrade)) == 0) return mineGearResult(userName, false, "그 등급의 " + ew.name + "은(는) 없어요.");
+            HashMap<String, Object> wr = dao.selectMineUser(userName);
+            int wlv = wr == null ? 1 : mineLv(wr);
+            if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
+            dao.upsertMineItem(userName, ew.code, pickGrade + 1);
+            dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, ew.slot);
+            return mineGearResult(userName, true, "🗡️ " + ew.name + "을(를) 들었어요. " + ew.effect(pickGrade));
+        }
         if (ew != null) { // [2026-10-29] 드랍 무기 -- 든 채로 다시 누르면 칼로
             if (mineWeaponGrade(it, ew) < 0) return mineGearResult(userName, false, ew.name + "이(가) 없어요. " + ew.lv + "레벨 근처 몬스터가 아주 드물게 떨어뜨려요.");
             boolean on = mineWeaponOn(it) != ew;
