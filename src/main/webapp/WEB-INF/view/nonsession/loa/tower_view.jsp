@@ -1131,13 +1131,58 @@
     var u = location.pathname + location.search.replace(/([?&])_b=[^&]*&?/, '$1').replace(/[?&]$/, '');
     return u + (u.indexOf('?') >= 0 ? '&' : '?') + '_b=' + encodeURIComponent(b) + location.hash;
   }
+  // [2026-10-30] "서버와 1분 이상 통신이 안 되면(백그라운드 등) 접속 종료 멘트 후 다시 접속, 배포 때도" --
+  //  모든 fetch의 성공/실패 시각을 적어 둔다. 광산이 열려 있으면 1분 넘게 성공한 응답이 없을 때(창이 숨어 있다 돌아온 경우 포함),
+  //  광산 밖에선 실패가 이어져 1분이 넘을 때(서버 재시작/배포) 화면을 덮고 서버가 답할 때까지 3초마다 물어본 뒤 다시 불러온다(광산이 열려 있었으면 ?go=mine으로 광산까지).
+  var lastOk = Date.now(), lastFail = 0, lost = false, LOST_MS = 60 * 1000;
+  if (window.fetch) {
+    var of = window.fetch;
+    window.fetch = function () {
+      return of.apply(this, arguments).then(function (r) { if (r && r.status < 500) lastOk = Date.now(); else lastFail = Date.now(); return r; },
+        function (e) { lastFail = Date.now(); throw e; });
+    };
+  }
+  function mineOn() { var o = document.getElementById('mineOverlay'); return !!(o && o.classList.contains('open')); }
+  function goUrl(b) {
+    var q = new URLSearchParams(location.search);
+    q.delete('_b'); q.delete('go');
+    if (b) q.set('_b', b);
+    if (mineOn()) q.set('go', 'mine'); // 광산에 있었으면 다시 광산으로
+    var qs = q.toString();
+    return location.pathname + (qs ? '?' + qs : '') + location.hash;
+  }
+  function lostCheck() {
+    if (lost || document.hidden) return;
+    var gap = Date.now() - lastOk;
+    if (gap <= LOST_MS || !(mineOn() || lastFail > lastOk)) return;
+    lost = true;
+    var el = document.createElement('div');
+    el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(10,8,20,.82);display:flex;align-items:center;justify-content:center;padding:16px;';
+    el.innerHTML = '<div style="background:#221c33;color:#fff;border:2px solid #f4f0e6;border-radius:14px;padding:18px 20px;max-width:320px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.5);">'
+        + '<div style="font-size:30px;margin-bottom:6px;">🔌</div><div style="font-weight:800;font-size:15px;margin-bottom:6px;">서버와의 접속이 끊겼어요</div>'
+        + '<div id="lostSub" style="font-size:13px;color:#cfc8e8;line-height:1.5;">1분 넘게 서버와 통신하지 못했어요.<br>다시 접속하는 중...</div></div>';
+    document.body.appendChild(el);
+    (function retry() {
+      of('/loa/api/tower-page-build?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+        var sub = document.getElementById('lostSub');
+        if (sub) sub.innerHTML = '서버에 다시 연결됐어요.<br>' + (mineOn() ? '광산에 다시 들어가요...' : '화면을 다시 불러와요...');
+        setTimeout(function () { location.replace(goUrl(d && d.build)); }, 1500);
+      }).catch(function () {
+        var sub = document.getElementById('lostSub');
+        if (sub) sub.innerHTML = '서버가 아직 응답하지 않아요(점검/업데이트 중일 수 있어요).<br>3초마다 다시 시도하는 중...';
+        setTimeout(retry, 3000);
+      });
+    })();
+  }
+  setInterval(lostCheck, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) lostCheck(); });
   function bar(b, auto) {
     if (document.getElementById('newBuildBar')) return;
     var el = document.createElement('div');
     el.id = 'newBuildBar';
     el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#2F8F5C;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border:2px solid #fff;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer;';
     el.textContent = auto ? '🔄 새 버전으로 업데이트돼요 -- 5초 뒤 자동 새로고침' : '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
-    el.onclick = function () { location.replace(freshUrl(b)); };
+    el.onclick = function () { location.replace(goUrl(b)); };
     document.body.appendChild(el);
   }
   function check(first) {
@@ -1150,7 +1195,7 @@
         if (first) { location.replace(freshUrl(d.build)); return; }
         // [2026-10-29] "패치되면 강제로 새로고침" -- 보는 도중 새로 배포되면 5초 안내 뒤 자동으로 다시 불러온다(광산은 pagehide에서 위치를 저장)
         bar(d.build, true);
-        setTimeout(function () { location.replace(freshUrl(d.build)); }, 5000); // [2026-10-30] 3초 -> 5초
+        setTimeout(function () { location.replace(goUrl(d.build)); }, 5000); // [2026-10-30] 3초 -> 5초, 광산에 있었으면 광산까지(goUrl)
       }).catch(function () { });
   }
   check(true);
