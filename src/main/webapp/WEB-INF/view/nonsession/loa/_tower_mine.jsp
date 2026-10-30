@@ -883,8 +883,10 @@ var TowerMine = (function () {
     scale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
     ctx.imageSmoothingEnabled = false;
   }
+  /** [2026-10-30] "멘트에 엔터" -- 문장(. ! ? 뒤 띄어쓰기)마다 줄을 바꾼다. 화면은 white-space:pre-line. */
+  function brk(text) { return String(text == null ? '' : text).replace(/([.!?…]+)[ \t]+(?=\S)/g, '$1\n'); }
   function msg(text, ms) {
-    el.msg.textContent = text;
+    el.msg.textContent = brk(text);
     el.msg.style.display = 'block';
     clearTimeout(msgTimer);
     msgTimer = setTimeout(function () { el.msg.style.display = 'none'; }, ms || 2600);
@@ -2136,7 +2138,7 @@ var TowerMine = (function () {
   function talkBlock(n, text) {
     if (!n || !PORTRAIT[n.kind]) return '<div class="mine-smith-say">' + (text || '') + '</div>';
     return '<div class="mine-npc-talk"><img class="mine-portrait" id="minePortrait" src="' + portrait(n.kind, 0) + '" alt="' + escAttr(n.name) + '">'
-        + '<div class="mine-npc-bubble"><b>' + escAttr(n.name) + '</b><span id="mineNpcLine" data-text="' + escAttr(text) + '"></span></div></div>';
+        + '<div class="mine-npc-bubble"><b>' + escAttr(n.name) + '</b><span id="mineNpcLine" data-text="' + escAttr(brk(text)) + '"></span></div></div>';
   }
   var talkTimer = 0, talkKey = '', talkShown = 0;
   function startTalk() {

@@ -929,6 +929,7 @@
     .gr7{ background:linear-gradient(90deg,#ff4a4a,#ffa500,#ffe14d,#4fd16a,#4a9eff,#b56cff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
+    .mine-msg, #mineNpcLine{ white-space:pre-line; } /* [2026-10-30] 문장마다 줄바꿈(brk) */
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
     .mine-smith-menu{ display:flex; gap:8px; }
