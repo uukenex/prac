@@ -927,7 +927,9 @@ var TowerMine = (function () {
     var tSrv = c.at + (Date.now() - combatT0), from = c.fight ? c.at : Math.max(c.at, c.regenFrom || 0);
     var mul = (c.fight ? (c.regenFight != null ? c.regenFight : 0) : 1) * (inSafe() ? (c.regenSafe || 1) : 1);
     if (st && st.gloveCode === 'BERSERK_GLOVES') mul *= 0.8; // [2026-10-29] 광전사의 장갑 -- 회복 속도 -20%(서버 MINE_BERSERK_REGEN_MUL)
-    return Math.min(c.hpMax, Math.floor(c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000)));
+    var h = c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000);
+    if (st && st.gloveCode === 'TWIN_GLOVES') h = Math.max(Math.min(c.hp, 1), h - Math.max(0, tSrv - c.at) * c.hpMax * 0.01 / 1000); // [2026-10-30] 쌍격의 장갑 -- 초당 -1%(서버 mineHpNow와 같은 식)
+    return Math.min(c.hpMax, Math.floor(h));
   }
   function renderHp() {
     var c = st && st.combat;
@@ -1704,6 +1706,7 @@ var TowerMine = (function () {
     GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).',
     REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 되찾아요(전투 중에도). 장갑은 하나만 -- 끼면 방한 장갑은 벗어요.',
+    TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 두 번 때려요(합쳐서 110%). 타격마다 치명타 확률 +5%. 대신 끼고 있는 동안 초당 최대 체력 1%가 닳아요(자연 회복과 겹쳐서, 쉬고 있을 땐 회복이 더 커요). 장갑은 하나만.',
     BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요. 장갑은 하나만.' };
   function eqInfo(elm, ev) {
     if (ev && ev.target && ev.target.tagName === 'BUTTON') return; // 끼기/빼기 버튼은 그대로
@@ -2699,6 +2702,7 @@ var TowerMine = (function () {
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
+      else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (hc ? '💥' : '') + (d.elHit ? '✨' : '') + hv, color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
       else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + (d.elHit ? '✨' : '') + d.dmg, color: d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit), t0: t }); // [2026-10-29] 속성 상성 x1.5
       if (d.enchLeft != null && st.ench) { st.ench.left = d.enchLeft; if (!d.enchLeft) st.ench.el = 0; updEnch(); }
       if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });

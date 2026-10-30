@@ -9347,7 +9347,12 @@ public class BotS5ServiceImpl implements BotS5Service {
         S5MineMap m = mineMapOf(row);
         if (m != null && row.get("POS_X") != null && m.safeAt(intVal(row.get("POS_X"), -1), intVal(row.get("POS_Y"), -1))) mul *= MINE_REGEN_SAFE_MUL;
         if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) mul *= MINE_BERSERK_REGEN_MUL; // [2026-10-29] 광전사의 장갑 -- 회복 없음 -> 20% 느리게
-        return (int) Math.min(max, hp + (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS));
+        long regen = (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS);
+        if (un != null && MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(mineItems(un)))) { // [2026-10-30] 쌍격의 장갑 -- 저장 시각부터 초당 -1%(자연 회복과 겹쳐 상쇄, 1 아래로는 안 떨어진다)
+            long drain = (long) (Math.max(0, now - longOf(row.get("M_HP_AT_MS"), now)) * max * MINE_TWIN_DRAIN_PCT / 100 / 1000);
+            return (int) Math.max(Math.min(hp, 1), Math.min(max, hp + regen - drain));
+        }
+        return (int) Math.min(max, hp + regen);
     }
 
     private static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock, int rb) {
@@ -9697,7 +9702,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
-                if (type.boss ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
+                if (type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
@@ -9889,6 +9894,12 @@ public class BotS5ServiceImpl implements BotS5Service {
             ns.lastMoveAt = now;
             MINE_MOB_STATE.put(key, ns);
             mineEngage(userName, map, mb.id, now, now - MINE_MOB_STRIKE_GAP_MS + 700); // 곧 덤벼든다
+            // [2026-10-30] "소환되자마자 사라진다 -- 하수인은 보스와 같은 인식 범위" -- 대주교 둘레(보스 인식 12칸) 유저 모두를 인식(아무도 안 싸우면 물러나던 것)
+            for (java.util.Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) {
+                MinePresence o = pe.getValue();
+                if (pe.getKey().equals(userName) || !map.id.equals(o.mapId) || now - o.at > MINE_PRESENCE_TTL_MS) continue;
+                if (Math.abs(o.x - boss.x) + Math.abs(o.y - boss.y) <= MINE_BOSS_AGGRO_RANGE) mineEngage(pe.getKey(), map, mb.id, now, now - MINE_MOB_STRIKE_GAP_MS + 700);
+            }
             rows.add(mineMobRow(mb.id, ns));
             n++;
         }
@@ -10222,7 +10233,16 @@ public class BotS5ServiceImpl implements BotS5Service {
             } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true); // [2026-10-29] 닌자의 검, 속성 상성 x1.5 // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
+            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
+            if (MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(items))) { // [2026-10-30] 쌍격의 장갑 -- 55%씩 두 번(타격마다 치명 15%), 화면엔 숫자 두 개
+                double base = (mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * mineElemMul(items, type) * MINE_TWIN_PCT;
+                int[] hs = new int[2]; boolean[] cs = new boolean[2];
+                for (int hi = 0; hi < 2; hi++) { cs[hi] = RND.nextInt(100) < 10 + MINE_TWIN_CRIT; hs[hi] = Math.max(1, (int) Math.round(base * (0.85 + RND.nextDouble() * 0.3) * (cs[hi] ? 1.6 : 1.0))); }
+                dmg = hs[0] + hs[1];
+                crit = cs[0] || cs[1];
+                out.put("hits", hs);
+                out.put("hitCrits", cs);
+            } // [2026-10-29] 닌자의 검, 속성 상성 x1.5 // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -12224,9 +12244,17 @@ public class BotS5ServiceImpl implements BotS5Service {
             new String[] { "전투에서 받은 피해의 80%를 4초에 걸쳐 회복" }, 0),
         new MineGear("BERSERK_GLOVES", "광전사의 장갑", "gloves", // = MINE_ITEM_BERSERK_GLOVES
             new String[][][] { { mineCost(5, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(5, 1) } },
-            new String[] { "공격력 +50% · 체력 회복 속도 -20%" }, 0)
+            new String[] { "공격력 +50% · 체력 회복 속도 -20%" }, 0),
+        // [2026-10-30] "기본 공격력의 55%로 두 번 때리는 장갑 -- 타격당 치명 +5%, 착용 중 초당 체력 -1%(자연 회복과 겹쳐 상쇄)"
+        new MineGear("TWIN_GLOVES", "쌍격의 장갑", "gloves", // = MINE_ITEM_TWIN_GLOVES
+            new String[][][] { { mineCost(4, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(4, 1) } },
+            new String[] { "한 번에 두 번 공격(각 55%) · 타격마다 치명타 +5% · 끼고 있으면 초당 체력 -1%" }, 0)
     );
     static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
+    /** [2026-10-30] 쌍격의 장갑(GLOVE_SLOT 4) -- 두 번(각 MINE_TWIN_PCT%), 타격마다 치명 +MINE_TWIN_CRIT, 초당 최대 체력 -MINE_TWIN_DRAIN_PCT%(mineHpNow). */
+    static final String MINE_ITEM_TWIN_GLOVES = "TWIN_GLOVES";
+    static final double MINE_TWIN_PCT = 0.55, MINE_TWIN_DRAIN_PCT = 1.0;
+    static final int MINE_TWIN_CRIT = 5;
     /** [2026-10-28] 장갑 칸: 2 = 재생의 장갑, 3 = 광전사의 장갑, 그 밖(0/없음) = 방한 장갑(GLOVES_OFF로 벗음). */
     static final String MINE_ITEM_GLOVE_SLOT = "GLOVE_SLOT";
     static final double MINE_REGEN_GLOVE_PCT = 0.8, MINE_BERSERK_MULT = 1.5;
@@ -12235,10 +12263,12 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final long MINE_REGEN_GLOVE_MS = 4_000L;
 
     /** 끼고 있는 장갑 코드(없으면 null). */
+    static int mineGloveSlotOf(String code) { return MINE_ITEM_REGEN_GLOVES.equals(code) ? 2 : MINE_ITEM_TWIN_GLOVES.equals(code) ? 4 : 3; }
     static String mineGloveCode(Map<String, Integer> items) {
         int s = items.getOrDefault(MINE_ITEM_GLOVE_SLOT, 0);
         if (s == 2 && items.getOrDefault(MINE_ITEM_REGEN_GLOVES, 0) > 0) return MINE_ITEM_REGEN_GLOVES;
         if (s == 3 && items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) > 0) return MINE_ITEM_BERSERK_GLOVES;
+        if (s == 4 && items.getOrDefault(MINE_ITEM_TWIN_GLOVES, 0) > 0) return MINE_ITEM_TWIN_GLOVES; // [2026-10-30]
         return items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0 && items.getOrDefault(MINE_ITEM_GLOVES_OFF, 0) != 1 ? MINE_ITEM_GLOVES : null;
     }
 
@@ -12685,7 +12715,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             wear = " 바로 걸었어요.";
         }
         if ("gloves".equals(g.kind)) { // [2026-10-28] 재생/광전사의 장갑 -- 만들면 바로 낀다(방한 장갑은 벗음)
-            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, MINE_ITEM_REGEN_GLOVES.equals(g.code) ? 2 : 3);
+            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, mineGloveSlotOf(g.code));
             if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
             wear = " 바로 꼈어요.";
         }
@@ -12712,11 +12742,11 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         // [2026-10-28] 장비 칸(반지 하나, 옷 하나, 장갑 하나) -- 🎒 장비 창. 같은 걸 다시 누르면 뺀다.
         Map<String, Integer> it = mineItems(userName);
-        if (MINE_ITEM_REGEN_GLOVES.equals(code) || MINE_ITEM_BERSERK_GLOVES.equals(code)) { // [2026-10-28] 장갑 칸은 하나 -- 끼면 방한 장갑은 벗는다
+        if (MINE_ITEM_REGEN_GLOVES.equals(code) || MINE_ITEM_BERSERK_GLOVES.equals(code) || MINE_ITEM_TWIN_GLOVES.equals(code)) { // [2026-10-28] 장갑 칸은 하나 -- 끼면 방한 장갑은 벗는다
             MineGear gg = mineGear(code);
             if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, gg.name + "이(가) 없어요. 왕도 대장장이에게서 만들 수 있어요.");
             boolean on = !code.equals(mineGloveCode(it));
-            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, on ? (MINE_ITEM_REGEN_GLOVES.equals(code) ? 2 : 3) : 0);
+            dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, on ? mineGloveSlotOf(code) : 0);
             if (on && it.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
             if (!on) MINE_HEAL.remove(userName);
             return mineGearResult(userName, true, "🧤 " + gg.name + (on ? "을(를) 꼈어요. " + gg.effect[0] : "을(를) 뺐어요."));
