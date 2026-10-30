@@ -1598,7 +1598,7 @@ var TowerMine = (function () {
     { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
     { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
     { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
-    { id: 'necklace', name: '📿 목걸이', hint: '하나만 걸 수 있어요', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이나 정신의 목걸이(싸요!)를 만들 수 있어요.' },
+    { id: 'necklace', name: '📿 목걸이', hint: '하나만 걸 수 있어요', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이나 정신의 목걸이(싸요!)를, 왕도 대장장이에게서 자객의 목걸이를 만들 수 있어요.' },
     { id: 'boots', name: '👢 신발', hint: '', none: '신발이 없어요. 대장장이에게서 신속의 장화를 만들 수 있어요.' }, // [2026-10-28] "신발이 빠져서 추가"
     { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 쓸 수 있어요 -- 무기와 따로', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
   ];
@@ -1703,7 +1703,8 @@ var TowerMine = (function () {
     return h || '<div class="mine-smith-say">아직 가진 게 없어요.</div>';
   }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
-  var EQ_TIPS = { MIND_NECKLACE: '걸고 있으면 몬스터를 쓰러뜨릴 때 경험치가 더 들어와요(1~3단계 +10/20/30%). 1단계는 구리 30 + 철 20으로 싸게 만들 수 있어요.', SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+  var EQ_TIPS = { ASSASSIN_NECKLACE: '공격할 때 15% 확률로 은신해요. 은신 중엔 몸이 반투명해지고 몬스터의 일반 공격을 2번 피해요(15초). 회피가 남아 있을 때 공격하면 은신이 풀리며 2배 피해! 불덩이·독산 같은 원거리 공격과 한기·더위는 못 피해요. 목걸이는 하나만.',
+    MIND_NECKLACE: '걸고 있으면 몬스터를 쓰러뜨릴 때 경험치가 더 들어와요(1~3단계 +10/20/30%). 1단계는 구리 30 + 철 20으로 싸게 만들 수 있어요.', SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
@@ -2226,7 +2227,14 @@ var TowerMine = (function () {
   // [2026-10-25] 전투 턴 -- "전투 중엔 체력 회복 없이, 안 때려도 몬스터가 일정 턴마다 공격, 5칸 이상 벌어지면 인식이 풀리고 체력 가득" 요청.
   //  몬스터에게 인식돼 있거나(st.combat.fight) 동굴 3층 보스 2칸 안이면 1초마다 서버에 묻는다(쫓아온 칸, 맞은 피해, 인식 해제).
   var lastBossT = 0, bossBusy = false, bossWarned = false;
-  var bolts = [], BOLT_MS = 420, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
+  var bolts = [], BOLT_MS = 420, BOLT_HIT_MS = 280, boltWarned = false; // [2026-10-28] 용암 거신 불덩이(원거리 공격)
+  var pStealth = null; // [2026-10-30] 자객의 목걸이 은신 [남은 회피, 끝나는 시각(서버)]
+  function pStealthOn() { return !!(pStealth && pStealth[0] > 0 && pStealth[1] > nowSrv()); }
+  /** [2026-10-30] "투사체가 플레이어에게 닿도록" -- 쏜 몬스터 몸통(보스는 2x2 가운데)에서 출발. */
+  function boltFrom(h) {
+    var mb = map.mobs && map.mobs[h.mobId], mt = mb && map.mobTypes[mb.k];
+    return mt && mt.boss ? { fx: h.fx + 0.5, fy: h.fy + 0.3 } : { fx: h.fx, fy: h.fy - 0.25 };
+  }
   var slowUntil = 0, venomWarned = false; // [2026-10-28] 여왕개미 독산 -- 느려짐(서버 시각까지 걸음 2배)
   var healUntil = 0; // [2026-10-28] 재생의 장갑 -- 이때까지(서버 시각) 전투 턴으로 회복을 받는다
   function stepMs() { return nowSrv() < slowUntil ? STEP_MS * 2 : STEP_MS; }
@@ -2267,17 +2275,19 @@ var TowerMine = (function () {
       (d.hits || []).forEach(function (h, k) {
         if (h.poison) { floats.push({ x: P.x + 0.3, y: P.y - 0.1, text: '-' + h.dmg + '☠️', color: '#9ad84a', t0: t + k * 120 }); return; } // [2026-10-28] 여왕개미 독
         if (h.venom) { // [2026-10-28] 여왕개미 독산 -- 초록 덩이, 맞으면 느려지고 중독
-          bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t, venom: true });
+          var bv = boltFrom(h); bolts.push({ fx: bv.fx, fy: bv.fy, me: true, t0: t, venom: true });
           floats.push({ x: P.x, y: P.y - 0.3, text: '🧪 -' + h.dmg + ' 느려짐·중독', color: '#9ad84a', big: true, t0: t + BOLT_MS });
           return;
         }
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
-          bolts.push({ fx: h.fx, fy: h.fy, tx: P.x, ty: P.y, t0: t });
+          var bf = boltFrom(h); bolts.push({ fx: bf.fx, fy: bf.fy, me: true, t0: t });
           floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
           return;
         }
+        if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
       }); // [2026-10-28] 은신했던 닌자의 기습
+      if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30]
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
@@ -2561,7 +2571,7 @@ var TowerMine = (function () {
         var cur = others[o.id];
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
-        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; // [2026-10-28] 얼음 여왕 빙결
+        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; // [2026-10-28] 얼음 여왕 빙결
       });
       for (var id in others) if (!seen[id]) delete others[id];
       drawMini(); // [2026-10-28] 미니맵에 다른 유저 위치
@@ -2705,8 +2715,11 @@ var TowerMine = (function () {
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
-      else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (hc ? '💥' : '') + (d.elHit ? '✨' : '') + hv, color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
-      else floats.push({ x: fxp, y: fyp, text: (d.crit ? '💥' : '') + (d.elHit ? '✨' : '') + d.dmg, color: d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit), t0: t }); // [2026-10-29] 속성 상성 x1.5
+      else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + (d.elHit ? '✨' : '') + hv, color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
+      else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + (d.elHit ? '✨' : '') + d.dmg, color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
+      if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30] 자객의 목걸이
+      if (d.assassinOn) floats.push({ x: P.x, y: P.y - 0.6, text: '🥷 은신!', color: '#c8c8ff', big: true, t0: t + 80 });
+      if (d.dodged) floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + 180 });
       if (d.enchLeft != null && st.ench) { st.ench.left = d.enchLeft; if (!d.enchLeft) st.ench.el = 0; updEnch(); }
       if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });
       if (d.split) flashT0 = t; // [2026-10-28] 분신술 -- 가운데 멘트 없이 번쩍임만
@@ -3024,7 +3037,9 @@ var TowerMine = (function () {
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
+      if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
       ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
+      ctx.globalAlpha = 1;
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
@@ -3038,8 +3053,12 @@ var TowerMine = (function () {
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     if (map.boat) drawBoat(cx, cy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
+    var hid = pStealthOn(); // [2026-10-30] 자객의 목걸이 은신 -- 반투명하게(살짝 일렁임)
+    if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0, st && st.look && st.look.wing); } catch (e) { } }
+    if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
+    ctx.globalAlpha = 1;
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
@@ -3149,13 +3168,23 @@ var TowerMine = (function () {
       ctx.fillStyle = p.locked ? '#d0d0d0' : '#ffe14d'; ctx.fillText(label, tx, ty);
     });
     // [2026-10-28] 불덩이 -- 보스 칸에서 내 칸으로 BOLT_MS 동안 날아가며 꼬리를 남긴다
-    bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + 150; });
+    //  [2026-10-30] "땅에 맞는 것 같다" -- 날아가는 동안 내가 움직여도 따라오고(지금 그려진 내 자리), 몸통에 맞아 터진다(고리 + 불똥)
+    bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
-      var k = Math.min(1, (now - b.t0) / BOLT_MS);
-      for (var tr = 3; tr >= 0; tr--) {
-        var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (b.tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (b.ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 1.2;
-        ctx.globalAlpha = k >= 1 ? Math.max(0, 1 - (now - b.t0 - BOLT_MS) / 150) : 1 - tr * 0.22;
-        ctx.fillStyle = b.venom ? (tr ? '#6ab82a' : '#d8ff8a') : tr ? '#ff7a1a' : '#ffe08a'; ctx.beginPath(); ctx.arc(bx, by, TS * (0.22 - tr * 0.04), 0, Math.PI * 2); ctx.fill();
+      var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
+      var c0 = b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.venom ? '#6ab82a' : '#ff7a1a';
+      if (k < 1) {
+        for (var tr = 3; tr >= 0; tr--) {
+          var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 0.5;
+          ctx.globalAlpha = 1 - tr * 0.22;
+          ctx.fillStyle = tr ? c1 : c0; ctx.beginPath(); ctx.arc(bx, by, TS * (0.22 - tr * 0.04), 0, Math.PI * 2); ctx.fill();
+        }
+      } else {
+        var q = (now - b.t0 - BOLT_MS) / BOLT_HIT_MS, hx = tx * TS - camX + TS / 2, hy = ty * TS - camY + TS / 2;
+        ctx.globalAlpha = Math.max(0, 0.55 * (1 - q)); ctx.fillStyle = c0; ctx.beginPath(); ctx.arc(hx, hy, TS * (0.42 - 0.15 * q), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = Math.max(0, 1 - q); ctx.strokeStyle = c1; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.arc(hx, hy, TS * (0.2 + 0.55 * q), 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = c1;
+        for (var sp = 0; sp < 8; sp++) { var an = sp * Math.PI / 4 + 0.3, rr = TS * (0.18 + 0.6 * q), ps = Math.max(1, 3.5 * dpr * (1 - q)); ctx.fillRect(hx + Math.cos(an) * rr - ps / 2, hy + Math.sin(an) * rr - ps / 2, ps, ps); }
       }
       ctx.globalAlpha = 1;
     });

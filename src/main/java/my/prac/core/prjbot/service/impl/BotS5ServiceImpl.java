@@ -9530,6 +9530,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
         MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
+        MINE_PSTEALTH.remove(userName); // [2026-10-30] 자객의 목걸이 은신도 끝
         MINE_HEAL.remove(userName); // [2026-10-28] 재생의 장갑 회복도 끝
         MINE_ICE_THAWED.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
@@ -9782,11 +9783,14 @@ public class BotS5ServiceImpl implements BotS5Service {
                     boolean x2 = s.stealth && map.mobs().get(id).type != S5MineMobs.SHRINE_BOSS_TYPE; // [2026-10-28] 은신했던 닌자의 기습 -- 2배(닌자 두목은 은신을 유지한 채 보통 세기)
                     if (x2) { d *= MINE_NINJA_STEALTH_MULT; s.stealth = false; }
                     if (iceHeld && id == boss.id) { d = Math.max(d, hp - dmgSum); shattered = true; } // [2026-10-28] 언 채로 맞으면 즉사
+                    boolean dodged = !(iceHeld && id == boss.id) && minePStealthDodge(userName, now); // [2026-10-30] 자객의 목걸이 은신 -- 일반 공격 회피
+                    if (dodged) d = 0;
                     dmgSum += d;
                     e.mobs.put(id, now);
                     HashMap<String, Object> h = new HashMap<>();
                     h.put("mobId", id);
                     h.put("dmg", d);
+                    if (dodged) h.put("dodge", true);
                     if (x2) h.put("x2", true);
                     hits.add(h);
                     killerName = type.name;
@@ -9814,6 +9818,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("hits", hits);
         out.put("mobs", mobs);
+        out.put("pStealth", minePStealthOf(userName, now)); // [2026-10-30] 자객의 목걸이 -- 남은 회피/끝나는 시각(없으면 null)
         if (S5MineMap.ISLE7.equals(map.id)) out.put("lava", mineLavaCells(map, now)); // [2026-10-28] 용암 칸
         String rwMsg = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 다른 사람이 닌자 두목을 쓰러뜨렸을 때 함께 싸운 보상 소식
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
@@ -10231,6 +10236,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(mobMax));
         int dmg, counter = 0, kills = 0;
         boolean killed = false, crit;
+        boolean assassin = MINE_ITEM_ASSASSIN_NECKLACE.equals(mineNeckCode(items)), assassinHit = false; // [2026-10-30] 자객의 목걸이
         // [2026-10-28] 닌자 -- evade = 은신으로 피함(피해 0, 반격 없음, 다음 한 방 2배), stealthHit = 은신했던 닌자의 2배 반격,
         //  cloneHit = 닌자 두목의 분신을 때림(펑 사라지고 두목 회복 + 함정 반격), splitEnd = 분신술 중 진짜를 때림, split = 이번에 분신술을 씀(자리 다섯)
         boolean evade = false, stealthHit = false, cloneHit = false, splitEnd = false, shrineBoss = mob.type == S5MineMobs.SHRINE_BOSS_TYPE;
@@ -10258,6 +10264,13 @@ public class BotS5ServiceImpl implements BotS5Service {
                 out.put("hits", hs);
                 out.put("hitCrits", cs);
             } // [2026-10-29] 닌자의 검, 속성 상성 x1.5 // [2026-10-28] 환생/광전사/양산 보너스는 더해서(mineAtkMul)
+            if (assassin && !type.dummy && minePStealthOf(userName, now) != null) { // [2026-10-30] 자객의 목걸이 -- 은신 중 공격: 풀리며 2배
+                MINE_PSTEALTH.remove(userName);
+                dmg *= 2;
+                Object hv = out.get("hits");
+                if (hv instanceof int[]) for (int hi = 0; hi < ((int[]) hv).length; hi++) ((int[]) hv)[hi] *= 2;
+                assassinHit = true;
+            }
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -10399,6 +10412,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         }
         if (evade) { out.put("evade", true); out.put("message", "💨 " + type.name + "이(가) 은신해 공격을 피했어요! 다음 공격이 아플 거예요."); }
         if (stealthHit) out.put("stealthHit", true);
+        if (assassin) { // [2026-10-30] 자객의 목걸이 -- 은신(이번 반격부터 피한다) / 반격 회피
+            if (assassinHit) out.put("assassinHit", true);
+            else if (!type.dummy && RND.nextInt(100) < MINE_ASSASSIN_PCT) { MINE_PSTEALTH.put(userName, new long[] { MINE_ASSASSIN_DODGES, now + MINE_ASSASSIN_MS }); out.put("assassinOn", true); }
+            if (!killed && counter > 0 && minePStealthDodge(userName, now)) { counter = 0; out.put("dodged", true); }
+        }
+        long[] pst = minePStealthOf(userName, now);
+        out.put("pStealth", pst == null ? null : pst);
         out.put("ok", true);
         out.put("dmg", dmg);
         out.put("crit", crit);
@@ -12268,8 +12288,39 @@ public class BotS5ServiceImpl implements BotS5Service {
         // [2026-10-30] "기본 공격력의 55%로 두 번 때리는 장갑 -- 타격당 치명 +5%, 착용 중 초당 체력 -1%(자연 회복과 겹쳐 상쇄)"
         new MineGear("TWIN_GLOVES", "쌍격의 장갑", "gloves", // = MINE_ITEM_TWIN_GLOVES
             new String[][][] { { mineCost(4, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(4, 1) } },
-            new String[] { "한 번에 두 번 공격(각 55%) · 타격마다 치명타 +5% · 끼고 있으면 초당 체력 -1%" }, 0)
+            new String[] { "한 번에 두 번 공격(각 55%) · 타격마다 치명타 +5% · 끼고 있으면 초당 체력 -1%" }, 0),
+        // [2026-10-30] "자객의 목걸이 -- 공격 시 확률적으로 은신(일반 공격 회피 2회), 회피가 남았을 때 공격하면 풀리며 2배 피해, 상위급" -- 왕도 대장장이만
+        new MineGear("ASSASSIN_NECKLACE", "자객의 목걸이", "necklace", // = MINE_ITEM_ASSASSIN_NECKLACE
+            new String[][][] { { mineCost(8, 10), mineSeven(3), { S5MineMap.MOON_STONE_CODE, "3" }, mineBar(4, 2), mineBar(3, 2), mineCut(6, 1) } },
+            new String[] { "공격할 때 15%로 은신 -- 몬스터의 일반 공격을 2번 피함(15초) · 은신 중 공격하면 은신이 풀리며 2배 피해" }, 0)
     );
+    /** [2026-10-30] 자객의 목걸이(NECK_SLOT 3) -- 은신 상태는 유저별 메모리 MINE_PSTEALTH {남은 회피, 끝나는 시각}. 원거리(불덩이/독산)·환경 피해는 못 피한다. */
+    static final String MINE_ITEM_ASSASSIN_NECKLACE = "ASSASSIN_NECKLACE";
+    static final int MINE_ASSASSIN_PCT = 15, MINE_ASSASSIN_DODGES = 2;
+    static final long MINE_ASSASSIN_MS = 15_000L;
+    private static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_PSTEALTH = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 은신 중이면 {남은 회피, 끝나는 시각}, 아니면 null. */
+    static long[] minePStealthOf(String userName, long now) {
+        long[] st = MINE_PSTEALTH.get(userName);
+        if (st == null) return null;
+        synchronized (st) { if (st[0] > 0 && st[1] > now) return new long[] { st[0], st[1] }; }
+        MINE_PSTEALTH.remove(userName, st);
+        return null;
+    }
+
+    /** 몬스터의 일반 공격을 은신으로 피했는지(피했으면 회피 1회를 쓴다). */
+    static boolean minePStealthDodge(String userName, long now) {
+        long[] st = MINE_PSTEALTH.get(userName);
+        if (st == null) return false;
+        synchronized (st) {
+            if (st[0] <= 0 || st[1] <= now) { MINE_PSTEALTH.remove(userName, st); return false; }
+            if (--st[0] <= 0) MINE_PSTEALTH.remove(userName, st);
+            return true;
+        }
+    }
+
+    static int mineNeckSlotOf(String code) { return MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : MINE_ITEM_ASSASSIN_NECKLACE.equals(code) ? 3 : 1; }
     static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
     /** [2026-10-30] 쌍격의 장갑(GLOVE_SLOT 4) -- 두 번(각 MINE_TWIN_PCT%), 타격마다 치명 +MINE_TWIN_CRIT, 초당 최대 체력 -MINE_TWIN_DRAIN_PCT%(mineHpNow). */
     static final String MINE_ITEM_TWIN_GLOVES = "TWIN_GLOVES";
@@ -12358,6 +12409,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         boolean sand = items.getOrDefault(MINE_ITEM_SAND_NECKLACE, 0) > 0, mind = items.getOrDefault(MINE_ITEM_MIND_NECKLACE, 0) > 0;
         int s = items.getOrDefault(MINE_ITEM_NECK_SLOT, 0);
         if (s == 2 && mind) return MINE_ITEM_MIND_NECKLACE;
+        if (s == 3 && items.getOrDefault(MINE_ITEM_ASSASSIN_NECKLACE, 0) > 0) return MINE_ITEM_ASSASSIN_NECKLACE; // [2026-10-30]
         if (sand) return MINE_ITEM_SAND_NECKLACE;
         return mind ? MINE_ITEM_MIND_NECKLACE : null;
     }
@@ -12573,7 +12625,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (mineHasDragonRing(items)) out.add(mineEquipRow("ring", MINE_ITEM_DRAGON_RING, "용왕의 반지", "물 위를 걸을 수 있음", ring == MINE_RING_DRAGON));
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
-        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
+        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_ASSASSIN_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
             MineGear g = mineGear(bc);
             int t = g == null ? 0 : Math.min(items.getOrDefault(bc, 0), g.cost.length);
             if (t < 1) continue;
@@ -12734,7 +12786,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         String wear = "";
         if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 장착했어요."; }
         if ("necklace".equals(g.kind) && tier == 0) { // [2026-10-28] 목걸이는 하나 -- 처음 만들면 그걸 건다
-            dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(g.code) ? 2 : 1);
+            dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, mineNeckSlotOf(g.code));
             dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, 0);
             wear = " 바로 장착했어요.";
         }
@@ -12783,11 +12835,11 @@ public class BotS5ServiceImpl implements BotS5Service {
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 장착했어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 해제했어요.");
         }
-        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
+        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code) || MINE_ITEM_ASSASSIN_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
             MineGear ng = mineGear(code);
             if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, ng.name + "이(가) 없어요. 대장장이에게서 만들 수 있어요.");
             boolean on = !code.equals(mineNeckCode(it));
-            if (on) dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : 1);
+            if (on) dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, mineNeckSlotOf(code));
             dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, on ? 0 : 1);
             return mineGearResult(userName, true, "📿 " + ng.name + (on ? "을(를) 장착했어요." : "을(를) 해제했어요."));
         }
@@ -13197,7 +13249,8 @@ public class BotS5ServiceImpl implements BotS5Service {
             m.put("d", o.dir);
             m.put("look", o.look);
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
-            if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true); // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
+            if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true);
+            if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
             others.add(m);
         }
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
