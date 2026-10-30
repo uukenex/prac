@@ -10436,12 +10436,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     out.put("dropShardName", mineCodeName(dw.shard));
                 } else {
                     dao.upsertMineItem(userName, dw.code + "_M", mask | (1 << g)); // [2026-10-30] 처음 나온 등급은 보관(등급별로 골라 든다)
-                    if (g > cur) { // 고른 등급보다 높으면 고른 등급도 바뀐다("등급이 높으면 자동 교체")
-                        dao.upsertMineItem(userName, dw.code, g + 1);
-                        boolean held = mineWeaponOn(items) == dw;
-                        msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g))
-                                .append(held ? " (들고 있던 검이 더 좋아졌어요)" : cur >= 0 ? " (더 좋은 등급으로 바뀌었어요)" : " (인벤토리 무기 칸에서 들 수 있어요)");
-                    } else msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! (인벤토리 무기 칸에서 등급을 골라 들 수 있어요)");
+                    if (cur < 0) dao.upsertMineItem(userName, dw.code, g + 1); // 처음 얻은 무기 -- 그 등급을 고른 등급으로(장착은 직접). [2026-10-30] "자동 교체 없애줘"
+                    msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g)).append(" (인벤토리 무기 칸에서 등급을 골라 장착할 수 있어요)");
                 }
                 out.put("dropGrade", g);
                 out.put("dropName", dw.name);
@@ -12721,16 +12717,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineTakeCost(userName, cost, 1);
         dao.upsertMineItem(userName, g.code, tier + 1);
         String wear = "";
-        if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 꼈어요."; }
+        if ("tool".equals(g.kind)) { dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, minePickSlotOf(g.code)); wear = " 바로 장착했어요."; }
         if ("necklace".equals(g.kind) && tier == 0) { // [2026-10-28] 목걸이는 하나 -- 처음 만들면 그걸 건다
             dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(g.code) ? 2 : 1);
             dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, 0);
-            wear = " 바로 걸었어요.";
+            wear = " 바로 장착했어요.";
         }
         if ("gloves".equals(g.kind)) { // [2026-10-28] 재생/광전사의 장갑 -- 만들면 바로 낀다(방한 장갑은 벗음)
             dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, mineGloveSlotOf(g.code));
             if (items.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
-            wear = " 바로 꼈어요.";
+            wear = " 바로 장착했어요.";
         }
         if ("ring".equals(g.kind) && items.getOrDefault(MINE_ITEM_RING_SLOT, 0) == 0) {
             dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, MINE_ITEM_PLENTY_RING.equals(g.code) ? 1 : 2);
@@ -12751,7 +12747,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             int slot = minePickSlotOf(g.code), now = it.getOrDefault(MINE_ITEM_PICK_SLOT, 0);
             boolean on = now != slot;
             dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, on ? slot : 0);
-            return mineGearResult(userName, true, "⛏️ " + (on ? g.name + "을(를) 꼈어요. " + g.effect[0] : "기본 곡괭이로 바꿨어요."));
+            return mineGearResult(userName, true, "⛏️ " + (on ? g.name + "을(를) 장착했어요. " + g.effect[0] : "기본 곡괭이로 바꿨어요."));
         }
         // [2026-10-28] 장비 칸(반지 하나, 옷 하나, 장갑 하나) -- 🎒 장비 창. 같은 걸 다시 누르면 뺀다.
         Map<String, Integer> it = mineItems(userName);
@@ -12762,7 +12758,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, on ? mineGloveSlotOf(code) : 0);
             if (on && it.getOrDefault(MINE_ITEM_GLOVES, 0) > 0) dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, 1);
             if (!on) MINE_HEAL.remove(userName);
-            return mineGearResult(userName, true, "🧤 " + gg.name + (on ? "을(를) 꼈어요. " + gg.effect[0] : "을(를) 뺐어요."));
+            return mineGearResult(userName, true, "🧤 " + gg.name + (on ? "을(를) 장착했어요. " + gg.effect[0] : "을(를) 해제했어요."));
         }
         if (MINE_ITEM_GLOVES.equals(code)) {
             if (it.getOrDefault(MINE_ITEM_GLOVES, 0) < 1) return mineGearResult(userName, false, "방한 장갑이 없어요. 설산 마을 털옷 장인의 의뢰로 받을 수 있어요.");
@@ -12770,7 +12766,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_GLOVES_OFF, on ? 0 : 1);
             if (on) dao.upsertMineItem(userName, MINE_ITEM_GLOVE_SLOT, 0); // [2026-10-28] 다른 장갑은 벗는다
             int gtn = mineGloveTier(it);
-            return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 꼈어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 벗었어요.");
+            return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 장착했어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 해제했어요.");
         }
         if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
             MineGear ng = mineGear(code);
@@ -12778,7 +12774,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             boolean on = !code.equals(mineNeckCode(it));
             if (on) dao.upsertMineItem(userName, MINE_ITEM_NECK_SLOT, MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : 1);
             dao.upsertMineItem(userName, MINE_ITEM_NECK_OFF, on ? 0 : 1);
-            return mineGearResult(userName, true, "📿 " + ng.name + (on ? "을(를) 걸었어요." : "을(를) 풀었어요."));
+            return mineGearResult(userName, true, "📿 " + ng.name + (on ? "을(를) 장착했어요." : "을(를) 해제했어요."));
         }
         if (MINE_ITEM_SWIFT_BOOTS.equals(code)) { // [2026-10-28] 신발 -- 신기/벗기
             boolean neck = false;
@@ -12786,7 +12782,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             String flag = neck ? MINE_ITEM_NECK_OFF : MINE_ITEM_BOOTS_OFF;
             boolean on = it.getOrDefault(flag, 0) == 1;
             dao.upsertMineItem(userName, flag, on ? 0 : 1);
-            return mineGearResult(userName, true, (neck ? "📿 사막의 목걸이를 " : "👢 신속의 장화를 ") + (on ? (neck ? "걸었어요." : "신었어요.") : (neck ? "풀었어요." : "벗었어요.")));
+            return mineGearResult(userName, true, (neck ? "📿 사막의 목걸이를 " : "👢 신속의 장화를 ") + (on ? "장착했어요." : "해제했어요."));
         }
         if ("BASIC_PICK".equals(code)) { // [2026-10-28] 채집 도구 칸 -- 기본 곡괭이로
             dao.upsertMineItem(userName, MINE_ITEM_PICK_SLOT, 0);
@@ -12805,7 +12801,7 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             dao.upsertMineItem(userName, ew.code, pickGrade + 1);
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, ew.slot);
-            return mineGearResult(userName, true, "🗡️ " + ew.name + "을(를) 들었어요. " + ew.effect(pickGrade));
+            return mineGearResult(userName, true, "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(pickGrade));
         }
         if (ew != null) { // [2026-10-29] 드랍 무기 -- 든 채로 다시 누르면 칼로
             if (mineWeaponGrade(it, ew) < 0) return mineGearResult(userName, false, ew.name + "이(가) 없어요. " + ew.lv + "레벨 근처 몬스터가 아주 드물게 떨어뜨려요.");
@@ -12816,21 +12812,21 @@ public class BotS5ServiceImpl implements BotS5Service {
                 if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             }
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? ew.slot : 0);
-            return mineGearResult(userName, true, on ? "🗡️ " + ew.name + "을(를) 들었어요. " + ew.effect(mineWeaponGrade(it, ew)) : "🗡️ 칼을 들었어요.");
+            return mineGearResult(userName, true, on ? "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(mineWeaponGrade(it, ew)) : "🗡️ 칼을 장착했어요.");
         }
         if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
             boolean pa = MINE_ITEM_PARASOL.equals(code);
             if (pa && it.getOrDefault(MINE_ITEM_PARASOL, 0) < 1) return mineGearResult(userName, false, "양산이 없어요. 다도해 마을 다도해 상인에게서 살 수 있어요.");
             pa = pa && !mineParasolOn(it); // 양산을 든 채로 다시 누르면 칼로
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, pa ? 1 : 0);
-            return mineGearResult(userName, true, pa ? "⛱️ 양산을 들었어요. 공격력 +" + MINE_PARASOL_ATK_FLAT + ", 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계" : "🗡️ 칼을 들었어요.");
+            return mineGearResult(userName, true, pa ? "⛱️ 양산을 장착했어요. 공격력 +" + MINE_PARASOL_ATK_FLAT + ", 다도해 햇빛 피해 -" + MINE_PARASOL_CUT + "단계" : "🗡️ 칼을 장착했어요.");
         }
         if ("COAT".equals(code) || MINE_ITEM_COAT1.equals(code) || MINE_ITEM_COAT2.equals(code)) { // [2026-10-28] 외투는 하나(단계)
             int cs = mineCoatTier(it);
             if (cs < 1) return mineGearResult(userName, false, "방한 외투가 없어요. 설산 마을 털옷 장인의 의뢰로 받을 수 있어요.");
             boolean on = it.getOrDefault(MINE_ITEM_COAT_SLOT, 0) <= 0;
             dao.upsertMineItem(userName, MINE_ITEM_COAT_SLOT, on ? 1 : 0);
-            return mineGearResult(userName, true, on ? "🧥 " + MINE_COAT_NAMES[cs - 1] + "을(를) 입었어요. " + mineCoatEffect(cs) : "🧥 " + MINE_COAT_NAMES[cs - 1] + "을(를) 벗었어요.");
+            return mineGearResult(userName, true, on ? "🧥 " + MINE_COAT_NAMES[cs - 1] + "을(를) 장착했어요. " + mineCoatEffect(cs) : "🧥 " + MINE_COAT_NAMES[cs - 1] + "을(를) 해제했어요.");
         }
         boolean dragon = MINE_ITEM_DRAGON_RING.equals(code);
         if (!dragon && (g == null || !"ring".equals(g.kind))) return mineGearResult(userName, false, "낄 수 없는 물건이에요.");
@@ -12846,7 +12842,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                 return mineGearResult(userName, false, "🌊 물 위에 서 있어서 용왕의 반지를 뺄 수 없어요. 땅으로 나간 뒤에 바꿔 끼세요.");
         }
         dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, next);
-        return mineGearResult(userName, true, next == 0 ? "💍 " + nm + "을(를) 뺐어요." : "💍 " + nm + "을(를) 끼었어요." + (dragon ? " 물 위를 걸을 수 있어요." : "") + (cur != 0 && cur != next ? " (반지는 하나만 -- 끼던 반지는 뺐어요)" : ""));
+        return mineGearResult(userName, true, next == 0 ? "💍 " + nm + "을(를) 해제했어요." : "💍 " + nm + "을(를) 장착했어요." + (dragon ? " 물 위를 걸을 수 있어요." : "") + (cur != 0 && cur != next ? " (반지는 하나만 -- 끼던 반지는 뺐어요)" : ""));
     }
 
     // [2026-10-28] "구리 광석 사용처를 늘려줘 -- 초보자들이 바로 상위 구역으로 가서 구리 채광을 잘 안 한다":

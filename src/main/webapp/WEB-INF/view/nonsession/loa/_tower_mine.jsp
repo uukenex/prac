@@ -1227,8 +1227,8 @@ var TowerMine = (function () {
     if (g.effect) h += '<small class="gear-eff">지금: ' + g.effect + '</small>';
     if (g.dim) h += '<small class="gear-eff" style="color:#9aa">🌑 빛을 잃음(' + (g.dimLeft ? g.dimLeft + ' 뒤' : '12시간 뒤') + ' 회복)</small>'; // [2026-10-29] 맵 리셋 -> 12시간
     if ((g.kind === 'ring' || g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace') && g.tier > 0)
-      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">빼기</button>' : '')
-          : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">끼기</button>';
+      h += worn ? '<span class="mine-worn">' + (g.kind === 'tool' ? '사용 중' : '착용 중') + '</span>' + (g.kind === 'tool' || g.kind === 'gloves' || g.kind === 'necklace' ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">해제</button>' : '')
+          : '<button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + g.code + '\')">장착</button>';
     if (!g.nextTier) return h + '<small class="gear-eff">최고 단계예요.</small></div>';
     var away = g.cityOnly && map.id !== 'city'; // [2026-10-25] 높은 단계는 왕도 대장장이만(곡괭이는 어디서나)
     h += '<small class="gear-next">' + (g.cityOnly ? '🏰 ' : '') + g.nextTier + '단계: ' + g.nextEffect + '</small>' + costHtml(g.costs);
@@ -1635,8 +1635,8 @@ var TowerMine = (function () {
       if (!rows.length) { h += '<div class="mine-eq-empty">' + sl.none + '</div></div>'; return; }
       h += '<div class="cos-car" data-slot="e-' + sl.id + '">' + rows.map(function (e) {
         return '<div class="cos-card gear-card' + (e.worn ? ' worn' : '') + '" data-code="' + e.code + '" onclick="TowerMine.eqInfo(this, event)"><div class="gear-ico">' + sl.name.split(' ')[0] + '</div><div class="cos-nm">' + e.name + '</div><small class="gear-eff">' + e.effect + '</small>'
-            + (e.worn ? '<span class="mine-worn">착용 중</span><button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">빼기</button>'
-                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + (sl.id === 'coat' ? '입기' : sl.id === 'weapon' ? '들기' : sl.id === 'tool' ? '쓰기' : '끼기') + '</button>') + '</div>';
+            + (e.worn ? '<span class="mine-worn">착용 중</span><button type="button" class="mine-mini-btn" onclick="TowerMine.equipRing(\'' + e.code + '\')">해제</button>'
+                : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + '장착' + '</button>') + '</div>';
       }).join('') + '</div></div>';
     });
     return h + '<div class="mine-smith-say">장비를 누르면 설명이 나와요.</div>'; // [2026-10-28] 방한 장비 안내는 카드 설명으로
@@ -1654,15 +1654,15 @@ var TowerMine = (function () {
         + '<div class="doll-char"><img src="' + lookImg(st.look || {}, 'down') + '" alt="내 캐릭터"><small>Lv.' + myLv() + '</small></div>'
         + '<div class="doll-col">' + ['coat', 'necklace', 'boots'].map(function (k) { return slot(by[k]); }).join('') + '</div></div>'
         + '<div class="doll-tool">' + slot(by.tool) + '</div>'
-        + '<div class="mine-smith-say">칸을 누르면 그 부위에 낄 수 있는 장비가 나와요.</div>';
+        + '<div class="mine-smith-say">칸을 누르면 그 부위에 장착할 수 있는 장비가 나와요.</div>';
     if (eqPop && by[eqPop]) {
       var sl = by[eqPop], rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
-      var verb = sl.id === 'coat' ? ['입기', '벗기'] : sl.id === 'weapon' ? ['들기', ''] : sl.id === 'tool' ? ['쓰기', ''] : sl.id === 'boots' ? ['신기', '벗기'] : sl.id === 'necklace' ? ['걸기', '풀기'] : ['끼기', '빼기'];
+      var verb = ['장착', '해제']; // [2026-10-30] "들기, 걸기 대신 장착/해제로"
       h += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.eqPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">' + sl.name + (sl.hint ? ' <small>' + sl.hint + '</small>' : '')
           + '<button type="button" onclick="TowerMine.eqPop(null)">✖</button></div>';
       if (!rows.length) h += '<div class="mine-eq-empty">' + sl.none + '</div>';
       rows.forEach(function (e) {
-        var off = e.worn && verb[1]; // 무기/채집 도구는 기본(칼/기본 곡괭이)으로 바꾸는 걸로 해제
+        var off = e.worn && e.code !== 'SWORD' && e.code !== 'BASIC_PICK'; // 무기/채집 도구는 해제하면 기본(칼/기본 곡괭이) -- 기본은 "사용 중"
         h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + (EQ_TIPS[e.code] || e.effect) + '</small>'
             + (e.grades && e.grades.length ? '<span class="gchips">' + e.grades.map(function (g) { // [2026-10-30] 무기 등급별 보관 -- 가진 등급을 색 칩으로, 누르면 그 등급을 든다
                 return '<button type="button" class="gchip' + (g === e.grade ? ' on' : '') + (g === 7 ? ' g7' : '') + '"' + (g < 7 ? ' style="background:' + GRADE_COL[g] + '"' : '') + ' onclick="TowerMine.equipRing(\'' + e.code + '#' + g + '\')" aria-label="등급 ' + (g + 1) + '"></button>';
@@ -1945,7 +1945,7 @@ var TowerMine = (function () {
       var b = '<div class="mine-smith-sub"><b>📜 ' + title + '</b></div>';
       (steps || []).forEach(function (s) {
         if (s.done) b += '<div class="mine-smith-row"><span class="nm">✔ ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + (s.tier === tier ? ' · 지금 가진 것' : ' · 다음 단계로 바뀌었어요') + '</small></span>'
-            + (s.tier === tier ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + code + '\')">' + (worn ? '벗기' : (code === 'coat' ? '입기' : '끼기')) + '</button>' : '') + '</div>';
+            + (s.tier === tier ? '<button type="button" onclick="TowerMine.coatAct(\'wear\',\'' + code + '\')">' + (worn ? '해제' : '장착') + '</button>' : '') + '</div>';
         else if (s.next) b += '<div class="mine-smith-row"><span class="nm">' + s.tier + '단계 ' + s.name + '<small>' + s.effect + '</small>' + costHtml(s.costs) + '</span>'
             + '<button type="button" ' + (s.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.coatAct(\'up\',\'' + code + '\')">건네기</button></div>';
         else b += '<div class="mine-smith-row" style="opacity:.5"><span class="nm">🔒 ' + s.tier + '단계 ' + s.name + '<small>' + s.effect + ' · 앞 단계를 먼저</small></span></div>';
