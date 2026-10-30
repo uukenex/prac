@@ -883,6 +883,14 @@ var TowerMine = (function () {
     scale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
     ctx.imageSmoothingEnabled = false;
   }
+  /** [2026-10-30] "접속 시 1회만 공지" -- 이 기기에서 한 번만(새 공지는 키를 바꾼다). */
+  function noticeOnce() {
+    try {
+      if (localStorage.getItem('tw-mine-notice') === 'pick0') return;
+      localStorage.setItem('tw-mine-notice', 'pick0');
+    } catch (e) { return; }
+    setTimeout(function () { msg('📢 곡괭이 내구도가 없어도 채집이 가능해졌어요!', 6000); }, 800);
+  }
   /** [2026-10-30] "멘트에 엔터" -- 문장(. ! ? 뒤 띄어쓰기)마다 줄을 바꾼다. 화면은 white-space:pre-line. */
   function brk(text) { return String(text == null ? '' : text).replace(/([.!?…]+)[ \t]+(?=\S)/g, '$1\n'); }
   function msg(text, ms) {
@@ -906,7 +914,8 @@ var TowerMine = (function () {
     return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
   function showStamina() {
-    el.sta.textContent = '⛏️ ' + st.durability + ' / ' + st.durabilityMax;
+    el.sta.textContent = st.durability + ' / ' + st.durabilityMax; // [2026-10-30] 채광 버튼 꼬리표
+    el.sta.classList.toggle('zero', st.durability < 1);
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
@@ -3566,6 +3575,7 @@ var TowerMine = (function () {
     }).then(function () {
       if (!opened) return;
       el.load.style.display = 'none';
+      noticeOnce();
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
       clearInterval(mobTimer); mobTimer = setInterval(pollMobs, 1500); // [2026-10-24] 몬스터 체력/쓰러짐 조회

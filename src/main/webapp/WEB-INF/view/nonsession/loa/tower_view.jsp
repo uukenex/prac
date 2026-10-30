@@ -752,7 +752,9 @@
     .mine-coord{ display:inline-block; font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
     .mine-hud-tr{ position:absolute; right:10px; top:calc(10px + var(--patch-h, 0px)); display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
-    .mine-sta{ font:800 15px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; color:#ffe14d; }
+    /* [2026-10-30] "곡괭이 횟수는 곡괭이 이미지에" -- 채광 버튼 아래쪽 꼬리표 */
+    .mine-dig .dig-n{ position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); font:800 11px/1 ui-monospace, Consolas, monospace; padding:3px 6px; background:#140d0a; color:#ffe14d; border:1px solid #f4f0e6; white-space:nowrap; }
+    .mine-dig .dig-n.zero{ color:#ff8a8a; }
     .mine-regen{ max-width:150px; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
     #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; object-fit:contain; } /* [2026-10-28] 정사각이 아닌 맵은 늘리지 않고 비율 그대로 */
     #mineMini.big{ width:min(78vw,360px); height:min(78vw,360px); }
@@ -780,7 +782,7 @@
     .mine-eq-slot small{ font-weight:600; opacity:.7; margin-left:4px; }
     .mine-eq-empty{ font-size:12px; opacity:.7; padding:4px 2px 8px; }
     .mine-world-btn{ font-size:12px; padding:4px 8px; cursor:pointer; }
-    .mine-greet{ position:absolute; left:0; right:0; margin:0 auto; width:max-content; bottom:calc(22px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
+    .mine-greet{ position:absolute; left:0; right:0; margin:0 auto; width:max-content; bottom:calc(72px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
     @keyframes mineGreetPop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
     /* [2026-10-24] NPC 초상화(마비노기처럼): 미끄러져 들어오기 + 숨쉬기 */
     .mine-npc-talk{ display:flex; align-items:flex-end; gap:10px; margin:2px 0 10px; }
@@ -868,7 +870,8 @@
     .mine-warp select, .mine-warp input{ flex:1; min-width:0; font:700 14px/1.2 ui-monospace, Consolas, monospace; padding:5px 6px; border:2px solid #f4f0e6; background:#1d1730; color:#fff; }
     .mine-warp button{ padding:8px; font-size:14px; border:2px solid #f4f0e6; background:#3a2f55; color:#fff; cursor:pointer; font-weight:800; }
     .mine-auto-btn.on{ background:#1f6b3a; color:#d6ffe0; }
-    .mine-hp{ font:800 12px/1.15 ui-monospace, Consolas, monospace; padding:4px 7px; color:#ffd0d0; width:112px; box-sizing:border-box; } /* [2026-10-28] "체력바가 너무 길어서 화면을 가린다" -- 폭 고정, 숫자는 현재 체력만 */
+    .mine-hp{ font:800 12px/1.15 ui-monospace, Consolas, monospace; padding:4px 7px; color:#ffd0d0; box-sizing:border-box; position:absolute; left:104px; right:118px; max-width:420px; bottom:calc(22px + env(safe-area-inset-bottom)); } /* [2026-10-30] "체력바는 메뉴 옆에 길게" */
+    .mine-overlay.npc-open .mine-hp{ display:none; } /* [2026-10-28] "체력바가 너무 길어서 화면을 가린다" -- 폭 고정, 숫자는 현재 체력만 */
     .mine-hp .hp-l{ display:flex; justify-content:space-between; align-items:baseline; gap:4px; white-space:nowrap; }
     .mine-hp .hp-n{ font-size:11px; color:#fff; }
     .mine-hp:empty{ display:none; }
@@ -1796,13 +1799,12 @@
   <div class="mine-patch" id="minePatch" role="status" aria-live="polite"></div>
   <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
-    <div class="mine-sta mpx" id="mineSta">⛏️ 0 / 200</div>
-    <div class="mine-hp mpx" id="mineHp"></div>
     <div class="mine-cold mpx" id="mineCold"></div>
     <div class="mine-regen" id="mineRegen"></div>
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
     <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
   </div>
+  <div class="mine-hp mpx" id="mineHp"></div>
   <div class="mine-log mpx" id="mineLog"></div>
   <!-- [2026-10-28] 왼쪽 버튼 다섯 개를 ☰ 메뉴 하나로 -->
   <button type="button" class="mine-btn mine-menu-btn mpx" id="mineMenuBtn" onclick="TowerMine.toggleMenu()" aria-expanded="false" aria-controls="mineMenu">☰ 메뉴</button>
@@ -1814,7 +1816,7 @@
   </div>
   <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
   <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격" title="무기로 공격 (스페이스)">⚔️</button>
-  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기" title="캐기 (Z)">⛏️</button>
+  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기" title="캐기 (Z)">⛏️<span class="dig-n" id="mineSta"></span></button>
   <button type="button" class="mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
   <div class="mine-msg mpx" id="mineMsg"></div>
   <div class="mine-smith mpx" id="mineSmith"></div>
