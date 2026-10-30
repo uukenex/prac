@@ -9770,7 +9770,7 @@ public class BotS5ServiceImpl implements BotS5Service {
                         } else if (S5MineMap.ISLE7.equals(map.id)) {
                             mineLavaCells(map, now); // 맵 버전 맞추기
                             for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) // [2026-10-29] "용암 범위 3x3" (예전 서 있던 한 칸)
-                                if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(lx, ly) && !map.safeAt(lx, ly)) MINE_LAVA.put(ly * map.w + lx, now);
+                                if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(lx, ly)) MINE_LAVA.put(ly * map.w + lx, now); // [2026-10-30] 야자수 그늘(안전지대)에도 깔린다
                             h.put("lava", true);
                         }
                         killerName = type.name;
