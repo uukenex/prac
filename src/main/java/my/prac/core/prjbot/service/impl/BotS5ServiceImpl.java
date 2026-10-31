@@ -11569,38 +11569,60 @@ public class BotS5ServiceImpl implements BotS5Service {
     }
 
     // ---- [2026-10-30] 은둔한 대장장이 -- "보스 증표 넷 + 무기 조각으로 무기 등급업(1~3단계), 다도해(본섬 + 7개 섬) 어딘가에 랜덤한 시간에 나와 30분".
-    //  6시간 칸마다 시작 시각/맵/자리를 칸 번호로 정한다(저장 없음, 서버를 다시 켜도 같음). 자리는 몬스터 집 칸 근처(걸어서 닿는 곳).
-    static final long MINE_HERMIT_WINDOW_MS = 6 * 3_600_000L, MINE_HERMIT_STAY_MS = 30 * 60_000L;
+    //  [2026-10-31] "항상 어딘가(일곱 섬)에 있고, 누군가 업그레이드하면 즉시 6시간 사라짐" -- 자리는 세대 번호(gen)로 정한다(맵 리셋 때는 새 맵 안에서 다시).
+    //  사라지는 시각과 세대는 설정값 MINE_HERMIT = "돌아오는 시각(ms)|세대"에 남겨 서버를 다시 켜도 이어진다.
+    private static final String MINE_HERMIT_KEY = "MINE_HERMIT";
+    static final long MINE_HERMIT_GONE_MS = 6 * 3_600_000L;
+    private static final Object MINE_HERMIT_LOCK = new Object();
+    private static volatile long mineHermitBackAt = -1, mineHermitGen = 0;
+    private static volatile String mineHermitSpotKey = "";
+    private static volatile int[] mineHermitSpot;
     static final int MINE_HERMIT_RANGE = 3;
     private static final String[] MINE_GRADE_NAMES = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
-    private static String[] mineHermitMaps() {
-        String[] m = new String[S5MineMap.ISLE_IDS.length + 1];
-        m[0] = S5MineMap.ARCHI;
-        System.arraycopy(S5MineMap.ISLE_IDS, 0, m, 1, S5MineMap.ISLE_IDS.length);
-        return m;
-    }
+    private static String[] mineHermitMaps() { return S5MineMap.ISLE_IDS; }
 
-    /** 지금 나와 있으면 {맵 번호, x, y, 사라지는 시각}, 아니면 null. */
-    private static long[] mineHermitNow(long now) {
-        long w = now / MINE_HERMIT_WINDOW_MS;
-        java.util.Random r = new java.util.Random(w * 7919L + 20261030L);
-        long start = w * MINE_HERMIT_WINDOW_MS + (long) (r.nextDouble() * (MINE_HERMIT_WINDOW_MS - MINE_HERMIT_STAY_MS));
-        if (now < start || now >= start + MINE_HERMIT_STAY_MS) return null;
+    /** 지금 나와 있으면 {맵 번호, x, y, 표시 유효 시각}, 사라져 있으면 null. */
+    private long[] mineHermitNow(long now) {
+        if (mineHermitBackAt < 0) {
+            synchronized (MINE_HERMIT_LOCK) {
+                if (mineHermitBackAt < 0) {
+                    long back = 0, gen = 0;
+                    try {
+                        String c = dao.selectConfigValue(MINE_HERMIT_KEY);
+                        if (c != null) { String[] p = c.split("\\|"); back = Long.parseLong(p[0].trim()); gen = Long.parseLong(p[1].trim()); }
+                    } catch (Exception e) {
+                        back = 0;
+                    }
+                    mineHermitGen = gen;
+                    mineHermitBackAt = back;
+                }
+            }
+        }
+        if (now < mineHermitBackAt) return null;
+        long gen = mineHermitGen;
+        java.util.Random r = new java.util.Random(gen * 7919L + 20261031L);
         int mi = r.nextInt(mineHermitMaps().length);
         S5MineMap map = S5MineMap.get(mineHermitMaps()[mi]);
-        List<S5MineMap.Mob> mobs = new ArrayList<>();
-        for (S5MineMap.Mob mb : map.mobs()) if (!S5MineMobs.TYPES.get(mb.type).boss) mobs.add(mb);
-        int x = map.spawnX, y = map.spawnY;
-        for (int t = 0; t < 40 && !mobs.isEmpty(); t++) {
-            S5MineMap.Mob mb = mobs.get(r.nextInt(mobs.size()));
-            int nx = mb.x + r.nextInt(5) - 2, ny = mb.y + r.nextInt(5) - 2;
-            if (map.walkable(nx, ny) && !map.safeAt(nx, ny)) { x = nx; y = ny; break; }
+        String key = gen + ":" + map.version();
+        int[] spot = mineHermitSpot;
+        if (spot == null || !key.equals(mineHermitSpotKey)) {
+            List<S5MineMap.Mob> mobs = new ArrayList<>();
+            for (S5MineMap.Mob mb : map.mobs()) if (!S5MineMobs.TYPES.get(mb.type).boss) mobs.add(mb);
+            int x = map.spawnX, y = map.spawnY;
+            for (int t = 0; t < 40 && !mobs.isEmpty(); t++) {
+                S5MineMap.Mob mb = mobs.get(r.nextInt(mobs.size()));
+                int nx = mb.x + r.nextInt(5) - 2, ny = mb.y + r.nextInt(5) - 2;
+                if (map.walkable(nx, ny) && !map.safeAt(nx, ny)) { x = nx; y = ny; break; }
+            }
+            spot = new int[] { x, y };
+            mineHermitSpot = spot;
+            mineHermitSpotKey = key;
         }
-        return new long[] { mi, x, y, start + MINE_HERMIT_STAY_MS };
+        return new long[] { mi, spot[0], spot[1], now + 60_000L };
     }
 
     private static String[][] mineHermitCost(MineWeapon w, int g) {
-        return new String[][] { { S5MineMap.SEAL_CODE, "1" }, { S5MineMap.ICE_HEART_CODE, "1" }, { S5MineMap.VOLCANO_HEART_CODE, "1" }, { S5MineMap.DESERT_HEART_CODE, "1" }, { w.shard, String.valueOf(100 + 50 * g) } }; // [2026-10-30] 조각 100개부터, 등급마다 +50
+        return new String[][] { { S5MineMap.SEAL_CODE, "1" }, { S5MineMap.ICE_HEART_CODE, "1" }, { S5MineMap.VOLCANO_HEART_CODE, "1" }, { S5MineMap.DESERT_HEART_CODE, "1" }, { w.shard, String.valueOf(g >= 3 ? 25 * (g - 2) : 5 * (g + 1)) } }; // [2026-10-31] 현재 등급에 비례: 일반 5 / 고급 10 / 희귀 15 / 영웅 25 / 전설 50 / 유물 75 / 고대 100
     }
 
     /** [2026-10-30] 가진 등급 중 가장 높은 등급(없으면 -1) -- 은둔한 대장장이는 이 등급을 기준으로 올린다. */
@@ -11640,6 +11662,14 @@ public class BotS5ServiceImpl implements BotS5Service {
             if (t.isEmpty()) { out.put("message", "...더 올릴 수 없군."); return out; }
             String[][] cost = mineHermitCost(w, g);
             if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
+            long backAt;
+            synchronized (MINE_HERMIT_LOCK) { // [2026-10-31] 먼저 올린 한 사람만 -- 그 즉시 6시간 사라진다(세대가 바뀌어 다음엔 다른 곳에)
+                if (now < mineHermitBackAt) { out.put("message", "...(아무도 없다)"); return out; }
+                backAt = now + MINE_HERMIT_GONE_MS;
+                mineHermitBackAt = backAt;
+                mineHermitGen++;
+            }
+            dao.upsertConfigValue(MINE_HERMIT_KEY, backAt + "|" + mineHermitGen, "web mine hermit -- back at (epoch ms)|generation");
             mineTakeCost(userName, cost, 1);
             int r = RND.nextInt(100), step = r < 60 ? 0 : r < 90 ? 1 : 2; // 1단계 60%, 2단계 30%, 3단계 10%
             int ng = t.get(Math.min(step, t.size() - 1));
@@ -11885,11 +11915,13 @@ public class BotS5ServiceImpl implements BotS5Service {
         new MineWeapon("BAEKHWA_SWORD", "백화검", 5, 80, 1500, 0.2, 7, 0, 1, S5MineMap.WEAPON_SHARD_CODES[3]),
     };
     static final int MINE_WEAPON_DROP_LV_GAP = 4;
-    /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 56% / 30% / 8% / 4% / 1.5% / 0.4% / 0.09% / 0.01%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로). */
-    static final int[] MINE_GRADE_W = { 5600, 3000, 800, 400, 150, 40, 9, 1 };
+    /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 41.22% / 30% / 16% / 8% / 3.5% / 1% / 0.25% / 0.03%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로).
+     *  [2026-10-31] "고등급 확률 두 배 이상" -- 예전 56 / 30 / 8 / 4 / 1.5 / 0.4 / 0.09 / 0.01%. */
+    static final int[] MINE_GRADE_W = { 4122, 3000, 1600, 800, 350, 100, 25, 3 };
     /** [2026-10-29] 개체 단계별 무기 확률(MINE_WEAPON_RANK_P10K)과 희귀 이상 등급 가중치 배수(하급 x0.8 / 보통 x1 / 상급 x1.5). */
     //  [2026-10-29] "무기 드랍률 30% 정도 더 낮춰" -- 1만분율로 x0.7: 하급 0.21% / 보통 0.35% / 상급 0.56%(예전 0.3 / 0.5 / 0.8%)
-    static final int[] MINE_WEAPON_RANK_P10K = { 21, 35, 56 };
+    //  [2026-10-31] "무기 드랍률 두 배" -- 하급 0.42% / 보통 0.7% / 상급 1.12%
+    static final int[] MINE_WEAPON_RANK_P10K = { 42, 70, 112 };
     static final double[] MINE_RANK_GRADE_MUL = { 0.8, 1.0, 1.5 };
     static int mineGradeRoll(int maxGrade) { return mineGradeRoll(maxGrade, 1); }
     static int mineGradeRoll(int maxGrade, int rank) {
