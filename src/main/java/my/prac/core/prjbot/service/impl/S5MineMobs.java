@@ -353,6 +353,15 @@ public final class S5MineMobs {
     // [2026-10-28] "전체 맵 몬스터 개체 2배 정도" -- 모든 맵 칸 수 / 마리를 절반으로(몬스터끼리 4칸 넘게 떨어지는 규칙은 그대로라 빽빽한 맵은 덜 늘 수 있다).
     private static int density(String mapId) {
         switch (mapId) {
+        	case S5MineMap.ARCHI:
+	        case S5MineMap.ISLE1:
+	        case S5MineMap.ISLE2:
+	        case S5MineMap.ISLE3:
+	        case S5MineMap.ISLE4:
+	        case S5MineMap.ISLE5:
+	        case S5MineMap.ISLE6:
+	        case S5MineMap.ISLE7:
+	            return 32;
             case S5MineMap.FIELD: return 80;
             case S5MineMap.DUNGEON: return 128;
             case S5MineMap.CAVE1: return 52;
