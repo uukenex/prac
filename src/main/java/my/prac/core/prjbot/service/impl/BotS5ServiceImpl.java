@@ -11951,6 +11951,16 @@ public class BotS5ServiceImpl implements BotS5Service {
         List<MineWeapon> out = new ArrayList<>();
         if (t.dummy || t.clone || t.noReward) return out;
         if (t.ninja || java.util.Arrays.asList(t.maps).contains(S5MineMap.ARCHI)) out.add(mineWeaponOf(MINE_ITEM_NINJA_SWORD));
+        if (java.util.Arrays.asList(t.maps).stream()
+                .anyMatch(m -> m.equals(S5MineMap.ISLE1)
+                            || m.equals(S5MineMap.ISLE2)
+                            || m.equals(S5MineMap.ISLE3)
+                            || m.equals(S5MineMap.ISLE4)
+                            || m.equals(S5MineMap.ISLE5)
+                            || m.equals(S5MineMap.ISLE6)
+                            || m.equals(S5MineMap.ISLE7))) {
+            out.add(mineWeaponOf("BAEKHWA_SWORD"));
+        }
         if (!t.ninja) for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w)) out.add(w);
         return out;
     }
