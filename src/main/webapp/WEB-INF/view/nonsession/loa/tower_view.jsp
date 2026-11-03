@@ -752,7 +752,10 @@
     #mineCanvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
     .mpx{ background:rgba(20,16,30,.82); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); color:#fff; font-weight:800; border-radius:0; }
     .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + var(--patch-h, 0px)); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
-    .mine-coord{ display:inline-block; font:800 18px/1.1 ui-monospace, Consolas, monospace; padding:6px 10px; letter-spacing:1px; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
+    .mine-coord{ display:inline-block; font:800 14px/1.1 ui-monospace, Consolas, monospace; padding:4px 8px; letter-spacing:1px; } /* [2026-11-03] 18px -> 14px */
+    .mine-ping{ display:inline-block; margin-left:6px; font:800 12px/1.1 ui-monospace, Consolas, monospace; padding:4px 7px; vertical-align:top; } /* [2026-11-03] 응답 속도(핑) */
+    .mine-ping:empty{ display:none; }
+    .mine-ping.ok{ color:#7cf08a; } .mine-ping.mid{ color:#ffd84a; } .mine-ping.bad{ color:#ff7a6a; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
     .mine-hud-tr{ position:absolute; right:10px; top:calc(10px + var(--patch-h, 0px)); display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     /* [2026-10-30] "곡괭이 횟수는 곡괭이 이미지에" -- 채광 버튼 아래쪽 꼬리표 */
@@ -1807,7 +1810,7 @@
 <div class="mine-overlay" id="mineOverlay">
   <canvas id="mineCanvas"></canvas>
   <div class="mine-patch" id="minePatch" role="status" aria-live="polite"></div>
-  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-terr" id="mineTerr"></div></div>
+  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-ping mpx" id="minePing"></div><div class="mine-terr" id="mineTerr"></div></div>
   <div class="mine-hud-tr">
     <div class="mine-cold mpx" id="mineCold"></div>
     <div class="mine-regen" id="mineRegen"></div>

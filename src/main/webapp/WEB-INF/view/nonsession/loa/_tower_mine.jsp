@@ -834,7 +834,7 @@ var TowerMine = (function () {
   function bindDom() {
     if (bound) return;
     bound = true;
-    el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr');
+    el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr'); el.ping = $('minePing');
     el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn'); el.atk = $('mineAtkBtn'); el.menu = $('mineMenu'); el.menuBtn = $('mineMenuBtn'); // [2026-10-28] 공격 버튼 분리, ☰ 메뉴
     el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog'); el.smith = $('mineSmith');
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
@@ -2667,7 +2667,9 @@ var TowerMine = (function () {
     // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
+    var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
     apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '')).then(function (r) {
+      showPing(performance.now() - pt0, pws);
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);
       if (tm && r && r.m) applyMobs(r.m, mid);
@@ -3408,6 +3410,15 @@ var TowerMine = (function () {
       wsWait = {};
       if (opened && was) { clearTimeout(wsTimer); wsTimer = setTimeout(wsOpen, Math.min(10000, 1000 * Math.pow(2, wsRetry++))); }
     };
+  }
+  /** 왼쪽 위 핑 -- 최근 3번 평균(ms), 150 미만 초록 / 300 미만 노랑 / 그 위 빨강. */
+  var pingHist = [];
+  function showPing(ms, viaWs) {
+    if (!el.ping) return;
+    pingHist.push(ms); if (pingHist.length > 3) pingHist.shift();
+    var avg = Math.round(pingHist.reduce(function (a, b) { return a + b; }, 0) / pingHist.length);
+    el.ping.textContent = '📶 ' + avg + 'ms' + (viaWs ? '' : ' · HTTP');
+    el.ping.className = 'mine-ping mpx ' + (avg < 150 ? 'ok' : avg < 300 ? 'mid' : 'bad');
   }
   function wsClose() { clearTimeout(wsTimer); var w = ws; ws = null; wsOk = false; if (w) { try { w.close(); } catch (e) { } } }
   function apiFast(path) {
