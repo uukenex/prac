@@ -9338,20 +9338,51 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final double MINE_REGEN_FIGHT_MUL = 0.25, MINE_REGEN_SAFE_MUL = 1.5;
 
     /** 지금 체력(저장된 체력 + 저장 시각 + MINE_REGEN_DELAY_MS부터 회복). M_HP가 없으면 가득. lock = 최대 체력 잠금 단계, rb = 환생 횟수. */
+    // ---- [2026-11-03] "전투 시 매초 체력을 DB에 저장할 필요 없다" -- 전투 턴/환경 턴(한기·더위·용암 등)에서 체력만 바뀌면 메모리(MINE_HP_VIRT)에 두고
+    //  MINE_HP_FLUSH_MS마다(또는 쓰러질 때) DB에 쓴다. 메모리 값은 "어느 DB 저장 시각(M_HP_AT_MS) 다음 값인지"를 들고 있어서, 그 사이 다른 요청(처치/레벨업/회복 등)이
+    //  DB에 쓰면 저장 시각이 달라져 저절로 버려진다(따로 지울 곳이 없다). 창을 닫으면 마지막 몇 초의 체력 변화만 사라진다.
+    private static final class HpVirt { final int hp; final long at, dbAt; HpVirt(int hp, long at, long dbAt) { this.hp = hp; this.at = at; this.dbAt = dbAt; } }
+    private static final java.util.concurrent.ConcurrentHashMap<String, HpVirt> MINE_HP_VIRT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_HP_FLUSH_MS = 15_000L;
+
+    /** 이 DB 행 다음의 메모리 체력(없거나 DB가 그 뒤에 바뀌었으면 null). */
+    private HpVirt mineHpVirt(HashMap<String, Object> row) {
+        String un = strVal(row.get("USER_NAME"), null);
+        HpVirt v = un == null ? null : MINE_HP_VIRT.get(un);
+        return v != null && row.get("M_HP_AT_MS") != null && v.dbAt == longOf(row.get("M_HP_AT_MS"), -1L) ? v : null;
+    }
+
+    /** 체력 저장 시각(메모리 값이 있으면 그 시각) -- 회복 계산의 기준. */
+    private long mineHpAt(HashMap<String, Object> row, long def) {
+        HpVirt v = mineHpVirt(row);
+        return v != null ? v.at : longOf(row.get("M_HP_AT_MS"), def);
+    }
+
+    /** 체력만 바뀐 결과를 메모리에 둔다(dbAt = 이 요청이 읽은 DB 행의 저장 시각). DB에 쓸 때가 됐는지는 부른 쪽이 mineHpFlushDue로 본다. */
+    private static void mineHpKeep(String userName, HashMap<String, Object> row, int hp, long now) {
+        MINE_HP_VIRT.put(userName, new HpVirt(hp, now, longOf(row.get("M_HP_AT_MS"), 0L)));
+    }
+
+    private static boolean mineHpFlushDue(HashMap<String, Object> row, long now) {
+        return now - longOf(row.get("M_HP_AT_MS"), 0L) >= MINE_HP_FLUSH_MS;
+    }
+
     private int mineHpNow(HashMap<String, Object> row, long now, int lock, int rb) {
         int max = mineHpCap(mineLv(row), lock, rb);
-        if (row.get("M_HP") == null) return max;
-        int hp = intVal(row.get("M_HP"), max);
+        HpVirt hv = mineHpVirt(row);
+        if (hv == null && row.get("M_HP") == null) return max;
+        int hp = hv != null ? hv.hp : intVal(row.get("M_HP"), max);
+        long hpAt = hv != null ? hv.at : longOf(row.get("M_HP_AT_MS"), now);
         String un = strVal(row.get("USER_NAME"), null);
         boolean fight = mineEngaged(un, now);
-        long from = longOf(row.get("M_HP_AT_MS"), now) + (fight ? 0 : MINE_REGEN_DELAY_MS);
+        long from = hpAt + (fight ? 0 : MINE_REGEN_DELAY_MS);
         double mul = fight ? MINE_REGEN_FIGHT_MUL : 1;
         S5MineMap m = mineMapOf(row);
         if (m != null && row.get("POS_X") != null && m.safeAt(intVal(row.get("POS_X"), -1), intVal(row.get("POS_Y"), -1))) mul *= MINE_REGEN_SAFE_MUL;
         if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) mul *= MINE_BERSERK_REGEN_MUL; // [2026-10-29] 광전사의 장갑 -- 회복 없음 -> 20% 느리게
         long regen = (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS);
         if (un != null && MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(mineItems(un)))) { // [2026-10-30] 쌍격의 장갑 -- 저장 시각부터 초당 -1%(자연 회복과 겹쳐 상쇄, 1 아래로는 안 떨어진다)
-            long drain = (long) (Math.max(0, now - longOf(row.get("M_HP_AT_MS"), now)) * max * MINE_TWIN_DRAIN_PCT / 100 / 1000);
+            long drain = (long) (Math.max(0, now - hpAt) * max * MINE_TWIN_DRAIN_PCT / 100 / 1000);
             return (int) Math.max(Math.min(hp, 1), Math.min(max, hp + regen - drain));
         }
         return (int) Math.min(max, hp + regen);
@@ -9825,7 +9856,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
         if (dmgSum == 0 && healed == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
-        HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 쓰기 전에 같은 유저 요청 직렬화
+        boolean save = mineHpFlushDue(row, now) || hp + healed - dmgSum <= 0; // [2026-11-03] 체력만 바뀌면 메모리에(MINE_HP_VIRT), 쓰러지거나 15초마다 DB
+        HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : null; // 쓰기 전에 같은 유저 요청 직렬화
         if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
             lv = mineLv(lrow);
             exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
@@ -9853,8 +9885,11 @@ public class BotS5ServiceImpl implements BotS5Service {
                 out.put("message", "🏃 몬스터가 더는 쫓아오지 않아요. 숨을 고르니 체력이 서서히 돌아와요.");
             }
         }
-        if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
-        dao.updateMineCombat(userName, lv, exp, hp, now, 0);
+        if (save || out.containsKey("died")) {
+            if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
+            dao.updateMineCombat(userName, lv, exp, hp, now, 0);
+            MINE_HP_VIRT.remove(userName);
+        } else mineHpKeep(userName, row, hp, now);
         out.put("fight", fight);
         out.put("combat", mineCombatInfo(lv, exp, hp, now, fight, lock, rb));
         out.put("healUntil", mineHealUntil(userName)); // [2026-10-28] 재생의 장갑
@@ -10666,7 +10701,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
         out.put("combat", mineCombatInfo(mineLv(row), Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items)), now, mineEngaged(userName, now), items.getOrDefault(MINE_ITEM_HP_LOCK, 0), mineRebirth(items))); // [2026-10-24] 광산 전투 레벨
         if (row.get("M_HP") != null) // [2026-10-26] 여기선 저장하지 않으니 회복 시작은 마지막 저장 시각 + 대기
-            ((HashMap<String, Object>) out.get("combat")).put("regenFrom", longOf(row.get("M_HP_AT_MS"), now) + MINE_REGEN_DELAY_MS);
+            ((HashMap<String, Object>) out.get("combat")).put("regenFrom", mineHpAt(row, now) + MINE_REGEN_DELAY_MS);
         out.put("mapMinLv", MINE_MIN_LV); // [2026-10-24] 구역별 권장 레벨(전체 지도 표시, 들어갈 때 경고 -- 막지는 않음)
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         out.put("visitedSnowtown", items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0); // [2026-10-26] 이동 안내원 목적지
@@ -12138,10 +12173,13 @@ public class BotS5ServiceImpl implements BotS5Service {
             }
         }
         if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg <= 0) return out;
-        HashMap<String, Object> lrow = dao.selectMineUserForUpdate(userName); // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
+        int envDmg = coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg;
+        boolean save = mineHpFlushDue(row, now) || mineHpNow(row, now, lock, rb) - envDmg <= 0; // [2026-11-03] 체력만 바뀌면 메모리에, 쓰러지거나 15초마다 DB
+        HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : row; // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
+        if (lrow == null) lrow = row;
         lv = mineLv(lrow); // [2026-10-28] 잠근 행의 레벨로(그 사이 레벨업했으면 옛 레벨로 덮어쓰지 않게)
         long exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
-        int hp = mineHpNow(lrow, now, lock, rb) - coldDmg - bzDmg - fireDmg - gasDmg - heatDmg - lavaDmg;
+        int hp = mineHpNow(lrow, now, lock, rb) - envDmg;
         if (lavaDmg > 0) out.put("lavaDmg", lavaDmg);
         if (coldDmg > 0) out.put("coldDmg", coldDmg);
         if (heatDmg > 0) out.put("heatDmg", heatDmg);
@@ -12159,7 +12197,8 @@ public class BotS5ServiceImpl implements BotS5Service {
                     : heatDmg > 0 && coldDmg + bzDmg == 0 ? (map.sun() > 0 ? "☀️ 뜨거운 햇볕에 쓰러졌어요... " : "🥵 더위를 견디지 못하고 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요."
                     : "🥶 " + (bzDmg > 0 ? "눈바람에 휩쓸려" : "추위를 견디지 못하고") + " 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
         }
-        dao.updateMineCombat(userName, lv, exp, hp, now, 0);
+        if (save || out.containsKey("died")) { dao.updateMineCombat(userName, lv, exp, hp, now, 0); MINE_HP_VIRT.remove(userName); }
+        else mineHpKeep(userName, row, hp, now);
         out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock, rb));
         if (out.containsKey("died")) out.put("state", mineState(userName));
         return out;
