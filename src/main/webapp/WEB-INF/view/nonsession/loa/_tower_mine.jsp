@@ -622,6 +622,7 @@ var TowerMine = (function () {
 
   // ---------------------------------------------------------------- [2026-10-24] 몬스터
   // 위치는 시각으로 정한다(서버 S5MineMobs.cellAt과 같은 식) -- 체력/쓰러짐/멈춤만 서버에서 1.5초마다 받아 온다(mobSt).
+  var mobHitAt = {}; // [2026-11-03] 공격한 순간(몬스터 흔들림)
   var mobSt = {}, srvOff = 0, mobTimer = 0, mobSprites = {}, mobOcc = {}, atkBusy = false, lastAtkT = 0;
   function mix(a, b) {
     var h = (Math.imul(a, 0x9E3779B1 | 0) + Math.imul(b, 0x85EBCA77 | 0)) | 0;
@@ -641,7 +642,7 @@ var TowerMine = (function () {
     if (s && s.du > t) return null;
     if (m.d && !s) return null; // [2026-10-28] 대주교 수하 -- 불려 나오기 전엔 없다
     if (s && s.fu > t) {
-      if (s.ox != null && t - s.mt < 450) { var q = Math.max(0, (t - s.mt) / 450); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
+      if (s.ox != null && t - s.mt < 950) { var q = Math.max(0, (t - s.mt) / 950); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
       return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
     }
     var SL = map.mobSlotMs || 3000, slot = Math.floor(t / SL);
@@ -808,7 +809,7 @@ var TowerMine = (function () {
   function mobStOf(a, old) {
     var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중
     if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) { n.ox = old.fx; n.oy = old.fy; n.mt = t; }
-    else if (old && old.mt != null && t - old.mt < 450) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; }
+    else if (old && old.mt != null && t - old.mt < 950) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; } // [2026-11-03] 450 -> 950(1초 턴 사이를 이어서)
     return n;
   }
   function pollMobs() {
@@ -2662,7 +2663,7 @@ var TowerMine = (function () {
     // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
-    api('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '')).then(function (r) {
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);
       if (tm && r && r.m) applyMobs(r.m, mid);
@@ -2808,9 +2809,10 @@ var TowerMine = (function () {
     if (now - lastAtkT < 420) return;
     lastAtkT = now; atkBusy = true;
     P.dir = a.dir; P.digT0 = now; P.swing = true; // [2026-10-28] 무기 휘두르기
+    if (a.m) mobHitAt[a.m.id] = performance.now(); // [2026-11-03] 서버 응답 전에 맞은 몬스터가 바로 흔들린다(지연 숨기기)
     var m = a.m, mp = m._p;
     var mc = mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
-    api('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + verQ()).then(function (d) {
+    apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + verQ()).then(function (d) {
       atkBusy = false;
       if (!d || d.tooFast) return;
       if (d.reload) { reload(); return; }
@@ -3104,6 +3106,8 @@ var TowerMine = (function () {
         if (mx < -TS || my < -TS || mx > W || my > H) continue;
         var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = false;
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
+        var hq = mobHitAt[mb.id] ? now - mobHitAt[mb.id] : 999;
+        if (hq < 200) mx += Math.round(Math.sin(hq / 16) * 2.5 * scale * (1 - hq / 200)); // [2026-11-03] 맞은 몬스터 흔들림
         var bob = ty.kind === 'flyer' ? Math.sin(now / 260 + bid) * 2 * scale : Math.abs(Math.sin(now / 420 + bid)) * scale;
         var ms = mobSt[mb.id];
         if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
@@ -3368,12 +3372,42 @@ var TowerMine = (function () {
 
   // ---------------------------------------------------------------- 서버
   function api(path) {
-    return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); })
-      .then(function (d) {
-        // [2026-10-23] 2일 주기 맵 리셋 중 -- 안내 후 광산에서 나간다(리셋이 끝나면 다시 들어오면 새 맵)
-        if (d && d.resetting && opened && map) { msg(d.message || d.error, 4000); setTimeout(close, 2500); }
-        return d;
-      });
+    return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); }).then(apiPost);
+  }
+  function apiPost(d) {
+    // [2026-10-23] 2일 주기 맵 리셋 중 -- 안내 후 광산에서 나간다(리셋이 끝나면 다시 들어오면 새 맵)
+    if (d && d.resetting && opened && map) { msg(d.message || d.error, 4000); setTimeout(close, 2500); }
+    return d;
+  }
+  // [2026-11-03] 시즌 5.5 "네트워크 지연을 안 느끼게" -- 1초 턴/공격/캐기는 연결 하나(WebSocket /s55ws, S55MineSocket)로 주고받는다.
+  //  메시지는 HTTP 때와 같은 주소 문자열, 답도 같은 응답. 연결이 없거나 끊기면 예전처럼 HTTP(api)로 보내고, 끊기면 1·2·4...10초 뒤 다시 잇는다.
+  var ws = null, wsOk = false, wsSeq = 0, wsWait = {}, wsRetry = 0, wsTimer = 0;
+  function wsOpen() {
+    if (!opened || ws || !window.WebSocket) return;
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; return; }
+    ws.onopen = function () { wsOk = true; wsRetry = 0; };
+    ws.onmessage = function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (window.twAlive) window.twAlive(); // 탑 화면 "접속 끊김" 감시에 살아 있다고 알린다
+      var w = wsWait[m.i];
+      if (w) { delete wsWait[m.i]; clearTimeout(w.t); w.ok(m.d); }
+    };
+    ws.onclose = ws.onerror = function () {
+      var was = ws;
+      ws = null; wsOk = false;
+      for (var k in wsWait) { clearTimeout(wsWait[k].t); wsWait[k].no(new Error('ws')); }
+      wsWait = {};
+      if (opened && was) { clearTimeout(wsTimer); wsTimer = setTimeout(wsOpen, Math.min(10000, 1000 * Math.pow(2, wsRetry++))); }
+    };
+  }
+  function wsClose() { clearTimeout(wsTimer); var w = ws; ws = null; wsOk = false; if (w) { try { w.close(); } catch (e) { } } }
+  function apiFast(path) {
+    if (!wsOk || !ws || ws.readyState !== 1) return api(path);
+    return new Promise(function (ok, no) {
+      var i = ++wsSeq;
+      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () { delete wsWait[i]; no(new Error('timeout')); }, 5000) };
+      ws.send(JSON.stringify({ i: i, p: path }));
+    }).then(apiPost);
   }
   /** 서버에 보내는 맵 version -- 리셋 등으로 맵이 바뀌었으면 서버가 reload로 답한다. */
   function verQ() { return map && map.version ? '&v=' + encodeURIComponent(map.version) : ''; }
@@ -3516,7 +3550,7 @@ var TowerMine = (function () {
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now(); P.swing = false; // 곡괭이
-    api('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
+    apiFast('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
       busy = false;
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
       if (d.ok) {
@@ -3591,6 +3625,7 @@ var TowerMine = (function () {
       noticeOnce();
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
+      wsOpen(); // [2026-11-03] 시즌 5.5 WebSocket
       clearInterval(mobTimer); pollMobs(); // [2026-10-24] 몬스터 체력/쓰러짐 조회 -- [2026-11-03] 처음 한 번, 그 뒤로는 1초 턴(presTick)에 함께
       clearInterval(presTimer); presTimer = setInterval(presTick, 1000); // [2026-10-24] 다른 유저 위치 주고받기
       clearInterval(saveTimer);
@@ -3609,7 +3644,7 @@ var TowerMine = (function () {
     opened = false;
     cancelAnimationFrame(raf);
     clearInterval(saveTimer);
-    clearInterval(mobTimer); setAuto(false); // [2026-10-24]
+    clearInterval(mobTimer); setAuto(false); wsClose(); // [2026-10-24] [2026-11-03] WebSocket도 닫는다
     clearInterval(presTimer); others = {}; // [2026-10-24] 함께 보기
     keys = []; drag = null;
     el.ov.classList.remove('open');

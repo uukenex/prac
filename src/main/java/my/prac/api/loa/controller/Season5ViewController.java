@@ -42,6 +42,10 @@ import my.prac.core.util.PP;
 @RequestMapping("/loa")
 public class Season5ViewController {
 
+    /** [2026-11-03] 시즌 5.5 -- 광산 WebSocket(S55MineSocket)이 이 컨트롤러의 메서드를 그대로 부르게 넘긴다. */
+    @javax.annotation.PostConstruct
+    void bindMineSocket() { my.prac.config.S55MineSocket.bind(this); }
+
     @Resource(name = "core.prjbot.BotS5Service")
     BotS5Service s5Service;
 

@@ -879,7 +879,7 @@
     .mine-hp .hp-n{ font-size:11px; color:#fff; }
     .mine-hp:empty{ display:none; }
     .mine-bar{ display:block; height:5px; margin-top:3px; background:#2a1d1d; border:1px solid #140d0a; }
-    .mine-bar i{ display:block; height:100%; }
+    .mine-bar i{ display:block; height:100%; transition:width .25s ease-out; } /* [2026-11-03] 체력/경험치 막대가 부드럽게 */
     .mine-bar.hp i{ background:#e8433a; }
     .mine-bar.ex i{ background:#4fb4ff; }
     /* [2026-10-25] 잠긴 최대 체력(오른쪽 회색 빗금) */
@@ -1146,6 +1146,7 @@
   //  모든 fetch의 성공/실패 시각을 적어 둔다. 광산이 열려 있으면 1분 넘게 성공한 응답이 없을 때(창이 숨어 있다 돌아온 경우 포함),
   //  광산 밖에선 실패가 이어져 1분이 넘을 때(서버 재시작/배포) 화면을 덮고 서버가 답할 때까지 3초마다 물어본 뒤 다시 불러온다(광산이 열려 있었으면 ?go=mine으로 광산까지).
   var lastOk = Date.now(), lastFail = 0, lost = false, LOST_MS = 60 * 1000;
+  window.twAlive = function () { lastOk = Date.now(); }; // [2026-11-03] 광산 WebSocket 응답도 "살아 있음"으로
   if (window.fetch) {
     var of = window.fetch;
     window.fetch = function () {

@@ -1,0 +1,89 @@
+package my.prac.config;
+
+import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.websocket.OnError;
+import javax.websocket.OnMessage;
+import javax.websocket.Session;
+import javax.websocket.server.ServerEndpoint;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import my.prac.api.loa.controller.Season5ViewController;
+
+/**
+ * [2026-11-03] 시즌 5.5(광산) -- "네트워크 지연을 안 느끼게" 요청. 광산 화면이 HTTP 요청 대신 연결 하나(WebSocket)로 1초 턴/공격/캐기를 주고받는다.
+ * 메시지 = {"i": 번호, "p": "/api/tower-mine-tick?mapId=...&x=..."}(HTTP 때와 같은 주소 문자열), 답 = {"i": 번호, "d": HTTP 때와 같은 응답}.
+ * 실제 처리는 Season5ViewController의 같은 메서드를 그대로 부른다(규칙/로그가 HTTP와 똑같다). 유저는 연결할 때 주소의 u(HTTP 때의 userName과 같은 방식).
+ * 받을 수 있는 주소는 ROUTES뿐이고, 화면은 연결이 안 되면 예전처럼 HTTP로 보낸다.
+ */
+@ServerEndpoint("/s55ws")
+public class S55MineSocket {
+
+    private static volatile Season5ViewController ctl;
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** Season5ViewController가 뜰 때 자기 자신을 넘긴다(이 클래스는 스프링이 아니라 톰캣이 만든다). */
+    public static void bind(Season5ViewController c) { ctl = c; }
+
+    @OnMessage
+    public void onMessage(String message, Session session) {
+        Object id = null;
+        Object data;
+        try {
+            Map<?, ?> m = JSON.readValue(message, Map.class);
+            id = m.get("i");
+            data = route(String.valueOf(m.get("p")), user(session));
+        } catch (Exception e) {
+            data = new HashMap<String, Object>();
+        }
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("i", id);
+        out.put("d", data);
+        try {
+            String text = JSON.writeValueAsString(out);
+            synchronized (session) { session.getBasicRemote().sendText(text); }
+        } catch (Exception ignore) {
+        }
+    }
+
+    @OnError
+    public void onError(Session session, Throwable t) {
+    }
+
+    private static String user(Session s) {
+        List<String> u = s.getRequestParameterMap().get("u");
+        return u == null || u.isEmpty() ? "" : u.get(0);
+    }
+
+    private static Object route(String p, String userName) throws Exception {
+        Season5ViewController c = ctl;
+        if (c == null || userName.trim().isEmpty()) return new HashMap<String, Object>();
+        int q = p.indexOf('?');
+        String path = q < 0 ? p : p.substring(0, q);
+        Map<String, String> a = new HashMap<>();
+        if (q >= 0) for (String kv : p.substring(q + 1).split("&")) {
+            int e = kv.indexOf('=');
+            if (e > 0) a.put(URLDecoder.decode(kv.substring(0, e), "UTF-8"), URLDecoder.decode(kv.substring(e + 1), "UTF-8"));
+        }
+        switch (path) {
+            case "/api/tower-mine-tick":
+                return c.apiTowerMineTick(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.getOrDefault("d", "down"), a.getOrDefault("v", ""),
+                        a.getOrDefault("c", ""), a.getOrDefault("e", ""), a.getOrDefault("m", "")).getBody();
+            case "/api/tower-mine-attack":
+                return c.apiTowerMineAttack(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), num(a, "mob"), a.getOrDefault("v", ""),
+                        a.containsKey("mc") ? num(a, "mc") : -1).getBody();
+            case "/api/tower-mine-dig":
+                return c.apiTowerMineDig(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.getOrDefault("v", ""), a.getOrDefault("dir", "down")).getBody();
+            default:
+                return new HashMap<String, Object>();
+        }
+    }
+
+    private static int num(Map<String, String> a, String k) {
+        try { return Integer.parseInt(a.get(k)); } catch (Exception e) { return 0; }
+    }
+}
