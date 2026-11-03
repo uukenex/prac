@@ -3408,7 +3408,7 @@ var TowerMine = (function () {
       ws = null; wsOk = false;
       for (var k in wsWait) { clearTimeout(wsWait[k].t); wsWait[k].no(new Error('ws')); }
       wsWait = {};
-      if (opened && was) { clearTimeout(wsTimer); wsTimer = setTimeout(wsOpen, Math.min(10000, 1000 * Math.pow(2, wsRetry++))); }
+      if (opened && was && netMode() === 'ws') { clearTimeout(wsTimer); wsTimer = setTimeout(wsOpen, Math.min(10000, 1000 * Math.pow(2, wsRetry++))); } // [2026-11-04] HTTP를 고른 동안엔 다시 잇지 않는다
     };
   }
   /** 왼쪽 위 핑 -- 최근 3번 평균(ms), 150 미만 초록 / 300 미만 노랑 / 그 위 빨강. */
@@ -3417,8 +3417,26 @@ var TowerMine = (function () {
     if (!el.ping) return;
     pingHist.push(ms); if (pingHist.length > 3) pingHist.shift();
     var avg = Math.round(pingHist.reduce(function (a, b) { return a + b; }, 0) / pingHist.length);
-    el.ping.textContent = '📶 ' + avg + 'ms' + (viaWs ? '' : ' · HTTP');
+    el.ping.textContent = '📶 ' + avg + 'ms · ' + (viaWs ? 'WS' : 'HTTP'); // [2026-11-04] 누르면 통신 방식 바꾸기(netToggle)
     el.ping.className = 'mine-ping mpx ' + (avg < 150 ? 'ok' : avg < 300 ? 'mid' : 'bad');
+    if (!el.ping._tap) { // [2026-11-04] "네트워크 속도 부분을 누르면 통신 방식이 바뀌게"
+      el.ping._tap = 1; el.ping.style.pointerEvents = 'auto'; el.ping.style.cursor = 'pointer';
+      el.ping.title = '눌러서 통신 방식(WebSocket/HTTP) 바꾸기';
+      el.ping.onclick = function () { netToggle(); };
+    }
+  }
+  /** [2026-11-04] 이 기기에서 고른 통신 방식(localStorage tw-mine-net = ws/http), 없으면 서버 설정(st.ws, TBOT_S5_CONFIG.S55_WS). */
+  function netMode() {
+    var v = null;
+    try { v = localStorage.getItem('tw-mine-net'); } catch (e) { }
+    return v === 'ws' || v === 'http' ? v : (st && st.ws ? 'ws' : 'http');
+  }
+  function netToggle() {
+    var next = netMode() === 'ws' ? 'http' : 'ws';
+    try { localStorage.setItem('tw-mine-net', next); } catch (e) { }
+    pingHist = [];
+    if (next === 'ws') { wsRetry = 0; wsOpen(); } else wsClose();
+    msg(next === 'ws' ? '📶 통신 방식: WebSocket' : '📶 통신 방식: HTTP (예전 방식)', 2200);
   }
   function wsClose() { clearTimeout(wsTimer); var w = ws; ws = null; wsOk = false; if (w) { try { w.close(); } catch (e) { } } }
   function apiFast(path) {
@@ -3671,7 +3689,7 @@ var TowerMine = (function () {
       noticeOnce();
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
-      if (st && st.ws) wsOpen(); // [2026-11-03] 시즌 5.5 WebSocket -- [2026-11-04] 설정(S55_WS = 1)일 때만, 기본은 HTTP
+      if (netMode() === 'ws') wsOpen(); // [2026-11-03] 시즌 5.5 WebSocket -- [2026-11-04] 기본은 서버 설정, 핑을 누르면 이 기기에서 바꾼다 -- [2026-11-04] 설정(S55_WS = 1)일 때만, 기본은 HTTP
       clearInterval(mobTimer); pollMobs(); // [2026-10-24] 몬스터 체력/쓰러짐 조회 -- [2026-11-03] 처음 한 번, 그 뒤로는 1초 턴(presTick)에 함께
       clearInterval(presTimer); presTimer = setInterval(presTick, 1000); // [2026-10-24] 다른 유저 위치 주고받기
       clearInterval(saveTimer);
