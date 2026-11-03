@@ -803,17 +803,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long hpAt = hv != null ? hv.at : longOf(row.get("M_HP_AT_MS"), now);
         String un = strVal(row.get("USER_NAME"), null);
         boolean fight = mineEngaged(un, now);
-        long from = hpAt + (fight ? 0 : MINE_REGEN_DELAY_MS);
-        double mul = fight ? MINE_REGEN_FIGHT_MUL : 1;
+        double mul = 1;
         S5MineMap m = mineMapOf(row);
         if (m != null && row.get("POS_X") != null && m.safeAt(intVal(row.get("POS_X"), -1), intVal(row.get("POS_Y"), -1))) mul *= MINE_REGEN_SAFE_MUL;
-        if (un != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(mineItems(un)))) mul *= MINE_BERSERK_REGEN_MUL; // [2026-10-29] 광전사의 장갑 -- 회복 없음 -> 20% 느리게
-        long regen = (long) (Math.max(0, now - from) * max * mul / MINE_HP_FULL_MS);
-        if (un != null && MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(mineItems(un)))) { // [2026-10-30] 쌍격의 장갑 -- 저장 시각부터 초당 -1%(자연 회복과 겹쳐 상쇄, 1 아래로는 안 떨어진다)
-            long drain = (long) (Math.max(0, now - hpAt) * max * MINE_TWIN_DRAIN_PCT / 100 / 1000);
-            return (int) Math.max(Math.min(hp, 1), Math.min(max, hp + regen - drain));
+        Map<String, Integer> gi = un == null ? null : mineItems(un);
+        if (gi != null && MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(gi))) mul *= MINE_BERSERK_REGEN_MUL; // [2026-10-29] 광전사의 장갑 -- 회복 없음 -> 20% 느리게
+        boolean twin = gi != null && MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(gi)); // [2026-10-30] 쌍격의 장갑 -- 저장 시각부터 초당 -1%(1 아래로는 안 떨어진다)
+        // [2026-11-03] "쌍격의 장갑 끼고 오래 쉬다 싸우면 체력이 1이 됨" -- 예전엔 지금 싸우는 중이면 저장 뒤 전체 시간을 전투 회복(x0.25)으로 쳐서
+        //  초당 -1%가 회복을 넘어 체력이 바닥났다. 이제 마지막 MINE_ENGAGE_TTL_MS(10초)만 전투로 보고, 그 앞은 평소처럼(10초 대기 뒤 회복) 계산한다.
+        long el = Math.max(0, now - hpAt), fightSpan = fight ? Math.min(el, MINE_ENGAGE_TTL_MS) : 0, calm = el - fightSpan;
+        double floor = Math.min(hp, 1), v = hp;
+        if (calm > 0) {
+            v += Math.max(0, calm - MINE_REGEN_DELAY_MS) * (double) max * mul / MINE_HP_FULL_MS;
+            if (twin) v -= calm * (double) max * MINE_TWIN_DRAIN_PCT / 100 / 1000;
+            v = Math.min(max, v); if (twin) v = Math.max(floor, v);
         }
-        return (int) Math.min(max, hp + regen);
+        if (fightSpan > 0) {
+            v += fightSpan * (double) max * mul * MINE_REGEN_FIGHT_MUL / MINE_HP_FULL_MS;
+            if (twin) v -= fightSpan * (double) max * MINE_TWIN_DRAIN_PCT / 100 / 1000;
+            v = Math.min(max, v); if (twin) v = Math.max(floor, v);
+        }
+        return (int) v;
     }
 
     static HashMap<String, Object> mineCombatInfo(int lv, long exp, int hp, long now, boolean fight, int lock, int rb) {
