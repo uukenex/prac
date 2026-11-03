@@ -5,6 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>람쥐탑 등반기</title>
+  <%-- [2026-11-03] 시즌 5.5 경량화 -- 스타일은 /loa/s55/tower.css(이 파일의 원래 <style> 블록을 S55AssetController가 뽑아 1년 저장 가능하게) --%>
+  <link rel="stylesheet" href="<%=request.getContextPath()%>/loa/s55/tower.css?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>">
+  <%-- 원본 스타일(수정은 여기서, 화면엔 위 파일로 나간다):
   <style>
     :root{
       --parchment:#FBF3DF; --parchment-deep:#F3E6C4; --ink:#2E2440; --ink-soft:#6B5E82;
@@ -1126,6 +1129,7 @@
       body{ padding-top:8px; }
     }
   </style>
+  --%>
 </head>
 <body>
 <!-- [2026-10-26] "구버전에서 업데이트 안 되는 사람, 새로고침해도 신버전이 안 된다" -- 이 화면의 빌드 번호를 서버(/api/tower-page-build, 배포마다 바뀜)와 비교.
@@ -1823,6 +1827,9 @@
   <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
 </div>
 
+<%-- [2026-11-03] 시즌 5.5 경량화 -- 탑 화면 스크립트는 /loa/s55/tower.js(아래 원본 <script>를 S55AssetController가 뽑아 냄) --%>
+<script src="<%=request.getContextPath()%>/loa/s55/tower.js?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>"></script>
+<%-- 원본 스크립트(수정은 여기서):
 <script>
 var TW = (function () {
   var base = '<%=request.getContextPath()%>/loa';
@@ -5577,9 +5584,9 @@ var TW = (function () {
            closeDungeon: closeDungeon };
 })();
 </script>
+--%>
 <%-- [2026-10-28] 광산 스크립트는 _tower_mine.jsp로(이 JSP가 너무 커서 64KB 메서드 한계로 500이 났다 -- 동적 포함이어야 함) --%>
-<jsp:include page="_mine_ore.jsp" />
+<script src="<%=request.getContextPath()%>/loa/s55/mine.js?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>"></script><%-- [2026-11-03] _mine_ore + _mine_char + _tower_mine 스크립트(S55AssetController) --%>
 <jsp:include page="_mine_home.jsp" /><%-- [2026-10-30] 광산 접속 화면(캐릭터 카드 + 내 광산 기록) --%>
-<jsp:include page="_tower_mine.jsp" />
 </body>
 </html>

@@ -100,6 +100,11 @@ GET /loa/chat
   그 마이그레이션 검증 시 실제로 쓴 쿼리 -- `INSERT INTO t (REQ) VALUES
   (UNISTR('test\D83C\DFB2dice')); SELECT ASCIISTR(REQ) FROM t;`.
 
+## 시즌 5.5(광산) 화면 파일 구조 (2026-11-03 경량화)
+- 광산 게임은 "시즌 5.5"로 부른다. 탑 화면(tower_view.jsp)의 큰 CSS/JS는 HTML에 싣지 않고 `/loa/s55/tower.css`, `/loa/s55/tower.js`, `/loa/s55/mine.js`(?v=빌드 번호, 1년 캐시)로 따로 내려간다(S55AssetController).
+- **수정은 예전 자리 그대로**: tower_view.jsp 안 `<%-- 원본 스타일 / 원본 스크립트 --%>` 주석 속 `<style>`/`<script>`, 그리고 _mine_ore.jsp / _mine_char.jsp / _tower_mine.jsp의 `<script>`. 컨트롤러가 이 파일들에서 블록을 뽑는다(서버 재시작 때 한 번 읽어 메모리에).
+  그 안에서 쓸 수 있는 JSP 식은 `<%=request.getContextPath()%>` 하나뿐(다른 JSP 식이나 `--%>`를 넣지 말 것). 빌드 확인 스크립트(pageBuild)는 HTML에 그대로 남는다.
+
 ## 오케스트레이션 (개발 담당 + 점검 담당, 2026-10-07)
 - 메인 Claude가 **개발 담당**: 요구 분석 -> 구현 -> 커밋/푸시, 점검 결과 취합/반영.
 - 점검 담당은 `.claude/agents/`의 서브에이전트(이 폴더만 git으로 추적, `.gitignore` 참고 -- 다른 컴퓨터는 pull 후 새 세션부터 인식):
