@@ -814,13 +814,14 @@ var TowerMine = (function () {
   function pollMobs() {
     if (!opened || !map || !map.mobs || !map.mobs.length) return;
     var mid = map.id;
-    fetch(cfg.base + '/api/tower-mine-mobs?mapId=' + encodeURIComponent(mid)).then(function (r) { return r.json(); }).then(function (d) {
-      if (!map || map.id !== mid || !d) return;
-      if (d.now) srvOff = d.now - Date.now();
-      var ns = {};
-      (d.mobs || []).forEach(function (a) { ns[a[0]] = mobStOf(a, mobSt[a[0]]); });
-      mobSt = ns;
-    }).catch(function () { });
+    fetch(cfg.base + '/api/tower-mine-mobs?mapId=' + encodeURIComponent(mid)).then(function (r) { return r.json(); }).then(function (d) { applyMobs(d, mid); }).catch(function () { });
+  }
+  function applyMobs(d, mid) {
+    if (!map || map.id !== mid || !d) return;
+    if (d.now) srvOff = d.now - Date.now();
+    var ns = {};
+    (d.mobs || []).forEach(function (a) { ns[a[0]] = mobStOf(a, mobSt[a[0]]); });
+    mobSt = ns;
   }
 
   // ---------------------------------------------------------------- 화면
@@ -2356,7 +2357,7 @@ var TowerMine = (function () {
     });
     if (!fight && !nearBoss && !nearStrong && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
-    api('/api/tower-mine-combat-tick?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
+    tickC = function (d) { // [2026-11-03] 1초 턴(presTick)에 함께 -- 응답의 c
       bossBusy = false;
       if (!d || !d.ok) return;
       // [2026-10-28] "몬스터가 인식했을 때 나오는 문구 없애줘, 벗어났을 때도 필요 없어" -- 보스 선공/레벨 차이 선공/인식 풀림 안내는 띄우지 않는다
@@ -2390,7 +2391,7 @@ var TowerMine = (function () {
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
       // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
       if (d.died && d.state) fallDown(d);
-    }).catch(function () { bossBusy = false; });
+    };
   }
   // [2026-10-26] 한기 -- 한기 맵(설원/설산)에서 1초마다 서버에 묻는다(한기/눈바람 피해, 안전지대, 다음 눈바람 시각).
   //  눈바람 5초 전 "곧 눈바람이 몰아칩니다" + 가장 가까운 모닥불 방향 안내. 안전지대(모닥불 둘레)에선 한기도 눈바람도 없다.
@@ -2411,7 +2412,7 @@ var TowerMine = (function () {
     if (!map || !(map.cold || map.raid || map.hot) || busy || coldBusy || fade || now - lastColdT < 1000) return; // [2026-10-28] 더운 곳(hot)도
     lastColdT = now; coldBusy = true;
     var mid = map.id;
-    api('/api/tower-mine-cold-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + verQ()).then(function (d) {
+    tickE = function (d) { // [2026-11-03] 1초 턴(presTick)에 함께 -- 응답의 e
       coldBusy = false;
       if (!d || !d.ok || !map || map.id !== mid) return;
       if (cold && cold.nextBz && d.nextBlizzardAt && d.nextBlizzardAt !== cold.nextBz) lastBz = cold.nextBz;
@@ -2434,7 +2435,7 @@ var TowerMine = (function () {
       if (d.combat) setCombat(d.combat);
       renderCold();
       if (d.died && d.state) fallDown(d);
-    }).catch(function () { coldBusy = false; });
+    };
   }
   var heatWarned = false;
   // [2026-10-28] 설산 봉우리 -- 얼음 여왕이 18초마다 한 명씩 얼린다(최대 15초). 언 동안 못 움직이고(서버도 막음), 여왕에게 맞으면 즉사.
@@ -2638,6 +2639,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 광산에서 다른 유저 만나기 -- 1초마다 내 위치를 알리고 같은 맵 다른 유저(이름 없이)를 받아 그린다.
   //  근처(4칸)에 다른 유저가 있으면 👋 안녕하세요 버튼(말풍선이 서로 보임, 하루 1회 오늘 요일석 5개).
+  var tickC = null, tickE = null; // [2026-11-03] 다음 1초 턴에 실을 전투 턴/환경 턴 응답 처리
   var others = {}, presTimer = 0, presBusy = false, otherSprites = {}, myBubbleT0 = 0, greetBusy = false;
   // [2026-10-28] 패치 전 공지(/패치공지) -- 위치 알림 응답에 실려 오면 화면 맨 위 띠로 계속 띄우고, 새 공지면 한 번 크게 알린다.
   //  공지가 내려가면(끄기/배포) 띠도 내린다. 띠 높이만큼 좌표/미니맵을 아래로(--patch-h).
@@ -2657,7 +2659,15 @@ var TowerMine = (function () {
     if (!opened || !map || presBusy) return;
     presBusy = true;
     var mid = map.id;
-    api('/api/tower-mine-presence?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir).then(function (d) {
+    // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
+    var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
+    tickC = tickE = null;
+    api('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '')).then(function (r) {
+      if (tc) tc(r && r.c);
+      if (te) te(r && r.e);
+      if (tm && r && r.m) applyMobs(r.m, mid);
+      return r && r.p;
+    }).then(function (d) {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
@@ -2675,7 +2685,7 @@ var TowerMine = (function () {
       });
       for (var id in others) if (!seen[id]) delete others[id];
       drawMini(); // [2026-10-28] 미니맵에 다른 유저 위치
-    }).catch(function () { presBusy = false; });
+    }).catch(function () { presBusy = false; if (tc) bossBusy = false; if (te) coldBusy = false; });
   }
   function otherPos(o, now) {
     var k = Math.min(1, (now - o.t0) / 950);
@@ -3581,7 +3591,7 @@ var TowerMine = (function () {
       noticeOnce();
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
-      clearInterval(mobTimer); mobTimer = setInterval(pollMobs, 1500); // [2026-10-24] 몬스터 체력/쓰러짐 조회
+      clearInterval(mobTimer); pollMobs(); // [2026-10-24] 몬스터 체력/쓰러짐 조회 -- [2026-11-03] 처음 한 번, 그 뒤로는 1초 턴(presTick)에 함께
       clearInterval(presTimer); presTimer = setInterval(presTick, 1000); // [2026-10-24] 다른 유저 위치 주고받기
       clearInterval(saveTimer);
       saveTimer = setInterval(function () {

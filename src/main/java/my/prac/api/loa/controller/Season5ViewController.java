@@ -731,6 +731,33 @@ public class Season5ViewController {
     }
 
     /** [2026-10-24] 웹 광산 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만) -- 화면이 1.5초마다. */
+    /** [2026-11-03] 시즌 5.5 경량화 -- "1초마다 따로 보내던 요청(위치 알림 / 전투 턴 / 환경 턴 / 몬스터 상태)을 하나로".
+     *  응답 {p: 위치 알림, c: 전투 턴(c=1일 때), e: 환경 턴(e=1일 때), m: 몬스터 상태(m=1일 때)} -- 각 값은 예전 엔드포인트 응답과 같다. */
+    @GetMapping("/api/tower-mine-tick")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineTick(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "d", defaultValue = "down") String dir, @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam(value = "c", defaultValue = "") String c, @RequestParam(value = "e", defaultValue = "") String e,
+            @RequestParam(value = "m", defaultValue = "") String m) {
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(out);
+        my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName);
+        out.put("p", s5Service.minePresence(userName, mapId, x, y, dir));
+        if ("1".equals(c)) {
+            HashMap<String, Object> co = s5Service.mineCombatTick(userName, mapId, ver, x, y);
+            if (Boolean.TRUE.equals(co.get("died"))) mineLog(userName, "[웹] 광산 몬스터에게 쓰러짐", String.valueOf(co.get("message")));
+            out.put("c", co);
+        }
+        if ("1".equals(e)) {
+            HashMap<String, Object> eo = s5Service.mineColdTick(userName, mapId, ver, x, y);
+            if (Boolean.TRUE.equals(eo.get("died"))) mineLog(userName, "[웹] 광산 추위에 쓰러짐", String.valueOf(eo.get("message")));
+            out.put("e", eo);
+        }
+        if ("1".equals(m)) out.put("m", s5Service.mineMobs(mapId));
+        return ResponseEntity.ok(out);
+    }
+
     @GetMapping("/api/tower-mine-mobs")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMobs(@RequestParam(value = "mapId", defaultValue = "") String mapId) {
