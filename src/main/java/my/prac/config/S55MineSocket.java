@@ -29,8 +29,25 @@ public class S55MineSocket {
     /** Season5ViewController가 뜰 때 자기 자신을 넘긴다(이 클래스는 스프링이 아니라 톰캣이 만든다). */
     public static void bind(Season5ViewController c) { ctl = c; }
 
+    /** [2026-11-04] 메시지를 줄 세우지 않고 따로 처리(공격/캐기가 1초 턴 뒤에서 기다리지 않게). */
+    private static final java.util.concurrent.ExecutorService POOL = java.util.concurrent.Executors.newFixedThreadPool(16, r -> { Thread t = new Thread(r, "s55ws"); t.setDaemon(true); return t; });
+
     @OnMessage
     public void onMessage(String message, Session session) {
+        POOL.execute(() -> handle(message, session));
+    }
+
+    private void handle(String message, Session session) {
+        // [2026-11-04] HTTP 요청은 필터(S5RequestCacheFilter)가 요청 단위 캐시와 광산 기록 마무리를 해 주는데 WebSocket은 필터를 안 거친다 -- 여기서 같게
+        my.prac.core.prjbot.dao.S5RequestCache.begin();
+        try {
+            handleIn(message, session);
+        } finally {
+            my.prac.core.prjbot.dao.S5RequestCache.end();
+        }
+    }
+
+    private void handleIn(String message, Session session) {
         Object id = null;
         Object data;
         try {

@@ -660,6 +660,8 @@ public class Season5ViewController {
             return ResponseEntity.ok(err);
         }
         HashMap<String, Object> st = s5Service.mineState(userName);
+        // [2026-11-04] "속도 개선 뒤 공격/자동채광이 느리다" -- WebSocket은 설정값 S55_WS = 1일 때만(기본은 예전처럼 HTTP). 배포 없이 켜고 끈다(/갱신).
+        if (st.get("error") == null) { String w = s5Dao.selectConfigValue("S55_WS"); st.put("ws", w != null && "1".equals(w.trim())); }
         if ("1".equals(enter) && st.get("error") == null) {
             mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 곡괭이 내구도 "
                     + st.get("durability") + "/" + st.get("durabilityMax"));

@@ -2813,7 +2813,7 @@ var TowerMine = (function () {
     if (!opened || !map || busy || fade) return;
     var now = performance.now();
     if (now - lastAtkT < 420) return;
-    if (atkBusy) { lastAtkT = now; P.dir = a.dir; P.digT0 = now; P.swing = true; return; } // [2026-11-03] 응답을 기다리는 중에도 휘두르기는 보인다(누르고 있으면 계속)
+    if (atkBusy) { if (now - P.digT0 >= 420) { P.dir = a.dir; P.digT0 = now; P.swing = true; } return; } // [2026-11-03] 응답을 기다리는 중에도 휘두르기는 보인다 -- [2026-11-04] 공격 간격(lastAtkT)은 건드리지 않는다(응답이 오면 바로 다음 공격)
     lastAtkT = now; atkBusy = true;
     P.dir = a.dir; P.digT0 = now; P.swing = true; // [2026-10-28] 무기 휘두르기
     if (a.m) mobHitAt[a.m.id] = performance.now(); // [2026-11-03] 서버 응답 전에 맞은 몬스터가 바로 흔들린다(지연 숨기기)
@@ -3671,7 +3671,7 @@ var TowerMine = (function () {
       noticeOnce();
       fadeIn('🗺️ ' + map.name);
       msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : '방향키·화면 끌기로 이동, ⛏️(스페이스)로 캐기, 몬스터 옆에서는 ⚔️로 공격. 🤖 자동채광을 켜면 알아서 캐요.', 3500);
-      wsOpen(); // [2026-11-03] 시즌 5.5 WebSocket
+      if (st && st.ws) wsOpen(); // [2026-11-03] 시즌 5.5 WebSocket -- [2026-11-04] 설정(S55_WS = 1)일 때만, 기본은 HTTP
       clearInterval(mobTimer); pollMobs(); // [2026-10-24] 몬스터 체력/쓰러짐 조회 -- [2026-11-03] 처음 한 번, 그 뒤로는 1초 턴(presTick)에 함께
       clearInterval(presTimer); presTimer = setInterval(presTick, 1000); // [2026-10-24] 다른 유저 위치 주고받기
       clearInterval(saveTimer);
