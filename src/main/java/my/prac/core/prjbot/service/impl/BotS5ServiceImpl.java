@@ -11433,8 +11433,8 @@ public class BotS5ServiceImpl implements BotS5Service {
         int ok = 0;
         for (int i = 0; i < n; i++) if (RND.nextInt(100) < MINE_CUT_PCT) ok++;
         if (ok > 0) dao.addUserOre(userName, mineCutDst(gemIdx), ok);
-        HashMap<String, Object> out = mineGearResult(userName, true, "💎 " + mineCutSrcName(gemIdx) + " " + (MINE_CUT_NEED * n) + "개로 " + n + "번 세공 -> "
-                + (ok > 0 ? mineCutDstName(gemIdx) + " " + ok + "개 성공!" : "모두 깨졌어요...") + " (성공 " + MINE_CUT_PCT + "%)");
+        HashMap<String, Object> out = mineGearResult(userName, true, "💎 " + mineCutSrcName(gemIdx) + " " + n + "번 세공 -> "
+                + (ok > 0 ? mineCutDstName(gemIdx) + " " + ok + "개 성공!" : " 깨졌어요...") + " (성공 " + MINE_CUT_PCT + "%)");
         if (ok > 0) out.put("craftedRing", true);
         return out;
     }
@@ -11448,7 +11448,7 @@ public class BotS5ServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!mineAtNpc(row, "artisan")) return mineGearResult(userName, false, "왕도 장인에게서만 할 수 있어요.");
         int dur = minePickDur(row), max = minePickMax(row);
-        if (max < MINE_ARTISAN_MIN) return mineGearResult(userName, false, "🔨 곡괭이 최대 내구도가 " + MINE_ARTISAN_MIN + " 이상이어야 해요. (지금 " + max + " -- 대장장이에게서 먼저 올려 주세요)");
+        if (max < MINE_ARTISAN_MIN) return mineGearResult(userName, false, "🔨 곡괭이 최대 내구도가 " + MINE_ARTISAN_MIN + " 이상이어야 해요. (지금 " + max + "  대장장이에게서 먼저 올려 주세요)");
         if (gemIdx < 0 || gemIdx >= MINE_CUT_KINDS || dao.takeUserOre(userName, mineCutDst(gemIdx), 1) == 0)
             return mineGearResult(userName, false, "세공된 보석이 있어야 해요. (보석 세공사에게서 만들 수 있어요)");
         dao.addMinePickMax(userName, MINE_ARTISAN_GAIN);
@@ -11806,7 +11806,6 @@ public class BotS5ServiceImpl implements BotS5Service {
     static final String MINE_ITEM_COAT_SLOT = "COAT_SLOT"; // 0 = 안 입음, 1 = 방한 외투, 2 = 두꺼운 방한 외투
     private static final int MINE_BLIZZARD_PCT = 10;
     private static final long MINE_COLD_MAX_GAP_MS = 3_000L;
-    private static final int MINE_BLACK_PCT = 150; // [2026-10-28] "암상인은 설산 상점 대비 1.5배" (예전 3배), 나누어떨어지지 않으면 올림
     private static final int MINE_BLACK_OPEN_MIN = 15; // 매시 정각 ~ 15분
     /** 설산 마을 값(암상인은 MINE_BLACK_PCT%). */
     private static final String[][] MINE_COAT1_COST = { { S5MineMap.ORE_CODES[4], "20" }, { S5MineMap.ORE_CODES[3], "80" }, mineCost(8, 3) };

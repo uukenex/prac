@@ -1290,7 +1290,7 @@ var TowerMine = (function () {
     }).join('') + '</span>';
   }
   // [2026-10-28] "마을 장비 상점(대장장이)도 캐러셀 형태로(부위별)" -- 반지/목걸이/장화/곡괭이 줄마다 가로로 넘기는 카드
-  var GEAR_PARTS = [['ring', '💍 반지', '하나만 낄 수 있어요'], ['necklace', '📿 목걸이', '하나만 걸 수 있어요'], ['boots', '👢 장화', '가지고 있으면 바로 적용'], ['tool', '⛏️ 곡괭이', '하나만 낄 수 있어요'], ['gloves', '🧤 장갑', '왕도 대장장이 · 하나만 낄 수 있어요']]; // [2026-10-28] 재생/광전사의 장갑
+  var GEAR_PARTS = [['ring', '💍 반지', '하나만 착용 가능!'], ['necklace', '📿 목걸이', '하나만 착용 가능!'], ['boots', '👢 장화', '하나만 착용 가능!'], ['tool', '⛏️ 곡괭이', '하나만 착용 가능!'], ['gloves', '🧤 장갑', '왕도 대장장이 · 하나만 착용 가능!']]; // [2026-10-28] 재생/광전사의 장갑
   function gearCard(g) {
     var worn = g.kind === 'ring' || g.kind === 'gloves' || g.kind === 'necklace' ? g.worn && g.tier > 0 : g.kind === 'tool' ? !!g.on : g.tier > 0;
     var h = '<div class="cos-card gear-card' + (worn ? ' worn' : '') + '"><div class="gear-ico">' + (GEAR_ICON[g.kind] || '💍') + '</div>'
@@ -1347,7 +1347,7 @@ var TowerMine = (function () {
     if (d.has) return h + talkBlock(n, captainSay || '허허, 물 위를 걷는 기분은 어떤가? 🌊');
     if (d.quest >= 1) {
       return h + talkBlock(n, captainSay || d.story || '')
-          + '<div class="mine-smith-row"><span class="nm">🌊 용왕의 반지<small>가지고 있으면 물 위를 걸을 수 있어요</small>' + costHtml(d.costs) + '</span>'
+          + '<div class="mine-smith-row"><span class="nm">🌊 용왕의 반지<small>를 착용하면 물 위를 걸을 수 있어요</small>' + costHtml(d.costs) + '</span>'
           + '<button type="button" ' + (d.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.captain(\'craft\')">만들어 주세요</button></div>';
     }
     return h + talkBlock(n, captainSay || (n ? n.line : ''))
@@ -1356,8 +1356,8 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 배 -- 다른 항구를 고르면 그곳 부두로
   function shipHtml() {
-    return npcHead('⛵ 배 타기', false) + '<div class="mine-smith-say">어디로 갈까요? (뱃삯 없음)</div><div class="mine-smith-menu">'
-        + (map.shipTo || []).filter(function (s) { return !s.admin || (st && st.adminMaps); }) // [2026-10-28] 다도해는 운영자만
+    return npcHead('⛵ 배 타기', false) + '<div class="mine-smith-say">어디로 갈까요? (무료)</div><div class="mine-smith-menu">'
+        + (map.shipTo || []).filter(function (s) { return !s.admin || (st && st.adminMaps); }) 
           .map(function (s) { return '<button type="button" onclick="TowerMine.sail(\'' + s.id + '\')">⛵ ' + s.name + (s.admin ? ' 🏯' : '') + '</button>'; }).join('') + '</div>';
   }
   function sail(dest) {
@@ -1367,7 +1367,7 @@ var TowerMine = (function () {
     travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + n.px + '&py=' + n.py + '&dest=' + encodeURIComponent(dest) + verQ(), '배를 타지 못했어요.');
   }
   // [2026-10-24] 명품상점 -- 부위별 외형(능력치 없음) + 성별 전환
-  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발', wing: '🪽 날개 염색 (환생하면 보여요)' }; // [2026-10-29] 날개 염색
+  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발', wing: '🪽 날개 염색' }; // [2026-10-29] 날개 염색
   // [2026-10-24] "치장 아이템을 착용했을 때 모습을 이미지로" -- 목록마다 그 아이템을 입은 내 캐릭터, 누르면 위에 크게 입어보기(앞/옆/뒤)
   var lookImgCache = {}, tryLook = null, tryName = '';
   function lookImg(lk, dir) {
@@ -1483,8 +1483,7 @@ var TowerMine = (function () {
     { id: 'castle', name: '동쪽 성곽', x: 258, y: 252, fill: '#8a857c', ink: '#fff' },
     { id: 'beach', name: '남쪽 바닷가', x: 160, y: 344, fill: '#ecd9a0', ink: '#3b2a10' },
     { id: 'island', name: '남쪽 섬', x: 60, y: 422, fill: '#3fa36b', ink: '#fff' },
-    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' }, // [2026-10-28] 다도해 -- 본섬은 모두에게(신궁/뱃길/일곱 섬은 아직 운영자만)
-    // [2026-10-28] 다도해 안쪽(운영자만, 지도 아래로 늘려서) -- 관리자가 지역을 눌러 바로 이동할 수 있게
+    { id: 'archi', name: '다도해 🏯', x: 252, y: 422, fill: '#2f8a8a', ink: '#fff' }, 
     { id: 'shrine', name: '신궁 1층', x: 52, y: 490, fill: '#8a1e1e', ink: '#fff', sub: true },
     { id: 'shrine2', name: '신궁 2층', x: 160, y: 490, fill: '#7a1a1a', ink: '#fff', sub: true },
     { id: 'shrine3', name: '신궁 3층', x: 268, y: 490, fill: '#6a1414', ink: '#fff', sub: true },
@@ -1687,13 +1686,13 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 🎒 장비 -- "반지류 하나, 옷류 하나, 장갑류 하나": 칸마다 가진 장비를 보여 주고 끼기/빼기(같은 칸의 다른 장비는 저절로 빠진다).
   var EQ_SLOTS = [
-    { id: 'weapon', name: '⚔️ 무기', hint: '하나만 들 수 있어요 -- 싸울 때', none: '' }, // [2026-10-28] 칼(기본), 양산(다도해 상인)
-    { id: 'ring', name: '💍 반지', hint: '하나만 낄 수 있어요', none: '반지가 없어요. 대장장이에게서 풍요/심연의 반지를, 바닷가 늙은 선장에게서 용왕의 반지를 얻을 수 있어요.' },
-    { id: 'coat', name: '🧥 옷', hint: '하나만 입을 수 있어요', none: '방한 외투가 없어요. 설산 마을 털옷 장인이나 설원 암상인에게서 살 수 있어요.' },
-    { id: 'gloves', name: '🧤 장갑', hint: '', none: '장갑이 없어요. 설산 마을 털옷 장인의 의뢰(빙석)로 받을 수 있어요.' },
-    { id: 'necklace', name: '📿 목걸이', hint: '하나만 걸 수 있어요', none: '목걸이가 없어요. 대장장이에게서 사막의 목걸이나 정신의 목걸이(싸요!)를, 왕도 대장장이에게서 자객의 목걸이를 만들 수 있어요.' },
-    { id: 'boots', name: '👢 신발', hint: '', none: '신발이 없어요. 대장장이에게서 신속의 장화를 만들 수 있어요.' }, // [2026-10-28] "신발이 빠져서 추가"
-    { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 쓸 수 있어요 -- 무기와 따로', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
+    { id: 'weapon', name: '⚔️ 무기', hint: '하나만 장착 가능', none: '' }, // [2026-10-28] 칼(기본), 양산(다도해 상인)
+    { id: 'ring', name: '💍 반지', hint: '하나만 장착 가능', none: '장착 가능 장비 없음' },
+    { id: 'coat', name: '🧥 옷', hint: '하나만 장착 가능', none: '장착 가능 장비 없음' },
+    { id: 'gloves', name: '🧤 장갑', hint: '하나만 장착 가능', none: '장착 가능 장비 없음' },
+    { id: 'necklace', name: '📿 목걸이', hint: '하나만 장착 가능', none: '장착 가능 장비 없음' },
+    { id: 'boots', name: '👢 신발', hint: '하나만 장착 가능', none: '장착 가능 장비 없음' }, // [2026-10-28] "신발이 빠져서 추가"
+    { id: 'tool', name: '⛏️ 채집 도구', hint: '하나만 장착 가능', none: '' } // [2026-10-28] 무기(칼/양산)와 채집 도구(곡괭이류)는 칸이 따로
   ];
   // [2026-10-28] "장비 버튼 -> 캐러셀, 장착 탭과 치장 탭으로 나눠서 둘 다 조정" -- 장착: 반지/옷/장갑 줄, 치장: 가진 치장만 부위별 줄(입기/기본으로)
   var equipTab = 'gear';
@@ -1796,15 +1795,19 @@ var TowerMine = (function () {
     return h || '<div class="mine-smith-say">아직 가진 게 없어요.</div>';
   }
   // [2026-10-28] "장비를 누르면 설명" -- 카드(버튼 말고)를 누르면 효과와 주의점을 안내
-  var EQ_TIPS = { ASSASSIN_NECKLACE: '공격할 때 15% 확률로 은신해요. 은신 중엔 몸이 반투명해지고 몬스터의 일반 공격을 2번 피해요(15초). 회피가 남아 있을 때 공격하면 은신이 풀리며 2배 피해! 불덩이·독산 같은 원거리 공격과 한기·더위는 못 피해요. 목걸이는 하나만.',
-    MIND_NECKLACE: '걸고 있으면 몬스터를 쓰러뜨릴 때 경험치가 더 들어와요(1~3단계 +10/20/30%). 1단계는 구리 30 + 철 20으로 싸게 만들 수 있어요.', SWORD: '기본 무기예요. 들고 있는 모습이 캐릭터에 보여요.', PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 줄어요. 무기라서 곡괭이(채집 도구)와는 따로예요. 다도해 마을 다도해 상인에게서 살 수 있어요.', BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요. 광역/탐지/쌍날 곡괭이는 대장장이에게서 만들 수 있어요.', COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배(3단계 갑옷은 1.5배). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+  var EQ_TIPS = { ASSASSIN_NECKLACE: '공격할 때 15% 확률로 은신. 은신 중엔 몸이 반투명해지고 몬스터의 일반 공격을 2번 회피(15초지속). 회피가 남아 있을 때 공격하면 은신이 풀리며 2배 피해! 원거리 공격과 한기·더위는 못 피해요. ',
+    MIND_NECKLACE: '착용시 몬스터 처치 경험치 추가(1~3단계 +10/20/30%)',
+    SWORD: '기본 무기', 
+    PARASOL: '공격력 +10, 다도해 햇빛 피해 2단계 감소', 
+    BASIC_PICK: '한 칸씩 캐는 기본 곡괭이예요.', 
+    COAT: '설산의 한기를 단계만큼 막아 줘요(1~3). 몸이 둔해져 몬스터에게 받는 피해가 2배. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     COAT1: '설산의 한기를 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
-    GLOVES: '한기 방어 +단계(1~3, 외투와 함께, 받는 피해는 그대로). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
-    DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요. 반지는 하나만 낄 수 있어요(물 위에서는 못 빼요).',
-    REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 되찾아요(전투 중에도). 장갑은 하나만 -- 끼면 방한 장갑은 벗어요.',
-    TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 두 번 때려요(합쳐서 110%). 타격마다 치명타 확률 +5%. 대신 끼고 있는 동안 초당 최대 체력 1%가 닳아요(자연 회복과 겹쳐서, 쉬고 있을 땐 회복이 더 커요). 장갑은 하나만.',
-    BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요. 장갑은 하나만.' };
+    GLOVES: '한기 방어 +단계(1~3). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
+    DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요.(물 위에서는 못 빼요).',
+    REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 회복',
+    TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 더블어택(합쳐서 110%). 타격마다 치명타 확률 +5%. 초당 최대 체력의 1% 소모',
+    BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요.' };
   function eqInfo(elm, ev) {
     if (ev && ev.target && ev.target.tagName === 'BUTTON') return; // 끼기/빼기 버튼은 그대로
     var code = elm.getAttribute('data-code'), e = null;
@@ -2872,12 +2875,12 @@ var TowerMine = (function () {
     var row = function (icon, name, sub, btns) { return '<div class="mine-smith-row"><img src="' + oreIcon(icon) + '" alt=""><span class="nm">' + name + '<small>' + sub + '</small></span>' + btns + '</div>'; };
     var btn = function (fn, a, t, ok) { return '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.' + fn + '(' + a + ', ' + t + ')">' + t + '번</button>'; };
     if (n.kind === 'smelter') {
-      h += '<div class="mine-smith-say">광석 100개 -> 괴 1개 (성공 45%, 실패해도 광석은 녹아요). 괴는 좋은 장비의 재료예요.</div>';
+      h += '<div class="mine-smith-say">광석 100개 -> 괴 1개 (성공 45%). 괴는 좋은 장비의 재료예요.</div>';
       for (var g = 1; g <= 5; g++) { var have = oreHave(g); h += row(39 + g, ORE_NAME[g] + ' 100 -> ' + ORE_NAME[39 + g], '보유 ' + have + ' · ' + ORE_NAME[39 + g] + ' ' + oreHave(39 + g) + '개', btn('smelt', g, 1, have >= 100) + btn('smelt', g, 10, have >= 1000)); }
       return h;
     }
     if (n.kind === 'gemcutter') {
-      h += '<div class="mine-smith-say">보석 5개 -> 세공된 보석 1개 (성공 25%, 실패하면 보석이 깨져요). 세공된 보석은 고급 장비와 왕도 장인에게 쓰여요.</div>';
+      h += '<div class="mine-smith-say">보석 5개 -> 세공된 보석 1개 (성공 25%). 세공된 보석은 고급 장비와 왕도 장인에게 쓰여요.</div>';
       CUT_LIST.forEach(function (cl, i) { var hv = oreHave(cl[0]); h += row(cl[1], ORE_NAME[cl[0]] + ' 5 -> ' + ORE_NAME[cl[1]], '보유 ' + hv + ' · 세공 ' + oreHave(cl[1]) + '개', btn('gemCut', i, 1, hv >= 5) + btn('gemCut', i, 10, hv >= 50)); }); // [2026-10-28] 빙석/바다 보석도
       return h;
     }
