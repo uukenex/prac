@@ -820,8 +820,12 @@ var TowerMine = (function () {
   function applyMobs(d, mid) {
     if (!map || map.id !== mid || !d) return;
     if (d.now) srvOff = d.now - Date.now();
-    var ns = {};
+    var ns = {}, tn = nowSrv();
     (d.mobs || []).forEach(function (a) { ns[a[0]] = mobStOf(a, mobSt[a[0]]); });
+    for (var id in mobSt) { // [2026-11-03] 방금(1.5초 안) 공격하며 세운 몬스터는 그 응답이 오기 전에 만든 목록이 덮지 않게
+      var o = mobSt[id];
+      if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
+    }
     mobSt = ns;
   }
 
@@ -2804,14 +2808,19 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 공격(바람의나라식: 바로 옆 몬스터를 때리고, 살아남은 몬스터는 그 자리에 멈춰 반격)
   function attack(a) {
-    if (!opened || !map || atkBusy || busy || fade) return;
+    if (!opened || !map || busy || fade) return;
     var now = performance.now();
     if (now - lastAtkT < 420) return;
+    if (atkBusy) { lastAtkT = now; P.dir = a.dir; P.digT0 = now; P.swing = true; return; } // [2026-11-03] 응답을 기다리는 중에도 휘두르기는 보인다(누르고 있으면 계속)
     lastAtkT = now; atkBusy = true;
     P.dir = a.dir; P.digT0 = now; P.swing = true; // [2026-10-28] 무기 휘두르기
     if (a.m) mobHitAt[a.m.id] = performance.now(); // [2026-11-03] 서버 응답 전에 맞은 몬스터가 바로 흔들린다(지연 숨기기)
     var m = a.m, mp = m._p;
-    var mc = mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
+    if (mp) { // [2026-11-03] "때리는 동안 몬스터가 제 길로 가다 끌려온다" -- 응답 전부터 화면에서도 그 칸에 세운다(서버도 mc 칸에 세운다)
+      var os = mobSt[m.id], tn = nowSrv();
+      mobSt[m.id] = { hp: os ? os.hp : 1, du: 0, fx: mp.cx, fy: mp.cy, fu: Math.max(os && os.fu || 0, tn + 8000), sl: !!(os && os.sl), loc: tn };
+    }
+    var mc =mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
     apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + verQ()).then(function (d) {
       atkBusy = false;
       if (!d || d.tooFast) return;
