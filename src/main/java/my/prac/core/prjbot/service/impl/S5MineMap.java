@@ -662,6 +662,9 @@ public final class S5MineMap {
     }
 
     /** 맵 ID로(없는 ID면 평원). 지금 주기의 맵. */
+    /** 모든 맵 id -- [2026-11-03] 화면이 게임 시작 때 모든 맵을 미리 받도록(mapVers). */
+    public static List<String> ids() { return IDS; }
+
     public static S5MineMap get(String id) {
         Map<String, S5MineMap> wv = world;
         if (wv == null) {

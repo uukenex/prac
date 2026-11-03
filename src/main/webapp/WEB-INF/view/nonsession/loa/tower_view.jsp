@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>람쥐탑 등반기</title>
-  <%-- [2026-11-03] 시즌 5.5 경량화 -- 스타일은 /loa/s55/tower.css(이 파일의 원래 <style> 블록을 S55AssetController가 뽑아 1년 저장 가능하게) --%>
+  <%-- [2026-11-03] 시즌 5.5 경량화 -- 스타일은 /loa/s55/tower.css(이 파일의 원래 스타일 블록을 S55AssetController가 뽑아 1년 저장 가능하게) --%>
   <link rel="stylesheet" href="<%=request.getContextPath()%>/loa/s55/tower.css?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>">
   <%-- 원본 스타일(수정은 여기서, 화면엔 위 파일로 나간다):
   <style>
@@ -1188,13 +1188,18 @@
   }
   setInterval(lostCheck, 5000);
   document.addEventListener('visibilitychange', function () { if (!document.hidden) lostCheck(); });
+  /** [2026-11-03] "업데이트가 있을 땐 강력 새로고침" -- 새 빌드 번호 주소(?_b=, 화면 HTML은 저장 안 함 + CSS/JS도 ?v=새 번호)로 다시 받고, 저장해 둔 맵 정보도 비운다. */
+  function hardReload(b) {
+    try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('tw-mine-map') === 0) localStorage.removeItem(k); }); } catch (e) { }
+    location.replace(goUrl(b));
+  }
   function bar(b, auto) {
     if (document.getElementById('newBuildBar')) return;
     var el = document.createElement('div');
     el.id = 'newBuildBar';
     el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#2F8F5C;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border:2px solid #fff;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer;';
     el.textContent = auto ? '🔄 새 버전으로 업데이트돼요 -- 5초 뒤 자동 새로고침' : '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
-    el.onclick = function () { location.replace(goUrl(b)); };
+    el.onclick = function () { hardReload(b); };
     document.body.appendChild(el);
   }
   function check(first) {
@@ -1207,7 +1212,7 @@
         if (first) { location.replace(freshUrl(d.build)); return; }
         // [2026-10-29] "패치되면 강제로 새로고침" -- 보는 도중 새로 배포되면 5초 안내 뒤 자동으로 다시 불러온다(광산은 pagehide에서 위치를 저장)
         bar(d.build, true);
-        setTimeout(function () { location.replace(goUrl(d.build)); }, 5000); // [2026-10-30] 3초 -> 5초, 광산에 있었으면 광산까지(goUrl)
+        setTimeout(function () { hardReload(d.build); }, 5000); // [2026-10-30] 3초 -> 5초, 광산에 있었으면 광산까지(goUrl)
       }).catch(function () { });
   }
   check(true);
@@ -1828,7 +1833,7 @@
   <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
 </div>
 
-<%-- [2026-11-03] 시즌 5.5 경량화 -- 탑 화면 스크립트는 /loa/s55/tower.js(아래 원본 <script>를 S55AssetController가 뽑아 냄) --%>
+<%-- [2026-11-03] 시즌 5.5 경량화 -- 탑 화면 스크립트는 /loa/s55/tower.js(아래 원본 스크립트 블록을 S55AssetController가 뽑아 냄) --%>
 <script src="<%=request.getContextPath()%>/loa/s55/tower.js?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>"></script>
 <%-- 원본 스크립트(수정은 여기서):
 <script>

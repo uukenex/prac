@@ -3411,17 +3411,39 @@ var TowerMine = (function () {
   }
   /** 서버에 보내는 맵 version -- 리셋 등으로 맵이 바뀌었으면 서버가 reload로 답한다. */
   function verQ() { return map && map.version ? '&v=' + encodeURIComponent(map.version) : ''; }
+  // [2026-11-03] 미리 받은 맵(메모리) -- 포탈을 타도 다시 받지 않는다(localStorage는 용량이 차면 못 쓸 수 있어서 함께 둔다)
+  var mapMem = {};
   function ensureMap(id, ver) {
     var key = 'tw-mine-map-' + id;
+    if (mapMem[id] && mapMem[id].version === ver) return Promise.resolve(mapMem[id]);
     try {
       var c = JSON.parse(localStorage.getItem(key) || 'null');
-      if (c && c.version === ver && c.rows) return Promise.resolve(c);
+      if (c && c.version === ver && c.rows) { mapMem[id] = c; return Promise.resolve(c); }
     } catch (e) { }
     return fetch(cfg.base + '/api/tower-mine-map?mapId=' + encodeURIComponent(id)).then(function (r) { return r.json(); }).then(function (m) {
       if (m.error || !m.rows) throw new Error(m.error || '맵을 불러오지 못했어요.');
       try { localStorage.removeItem('tw-mine-map'); localStorage.setItem(key, JSON.stringify(m)); } catch (e) { }
+      mapMem[id] = m;
       return m;
     });
+  }
+  /** [2026-11-03] "게임 시작 때 모든 리소스 로딩을 먼저, 진행 중엔 매끄럽게" -- 모든 맵(버전이 바뀐 것만)을 6개씩 나눠 받고 광석 그림도 미리 만든다.
+   *  처음 한 번은 몇 초 걸리고, 그 뒤엔 저장본(localStorage)으로 바로. 실패한 맵은 그냥 두고(들어갈 때 다시 받는다) 게임은 시작한다. */
+  function preloadAll(vers) {
+    for (var g = 1; g <= 64; g++) { try { oreIcon(g); } catch (e) { } }
+    var ids = Object.keys(vers || {}).filter(function (id) { return !(mapMem[id] && mapMem[id].version === vers[id]); });
+    if (!ids.length) return Promise.resolve();
+    var done = 0, total = ids.length, i = 0;
+    var show = function () { if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (' + done + ' / ' + total + ')'; };
+    show();
+    var worker = function () {
+      if (i >= ids.length) return Promise.resolve();
+      var id = ids[i++];
+      return ensureMap(id, vers[id]).catch(function () { }).then(function () { done++; show(); return worker(); });
+    };
+    var ws6 = [];
+    for (var k = 0; k < 6; k++) ws6.push(worker());
+    return Promise.all(ws6);
   }
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {
@@ -3616,9 +3638,13 @@ var TowerMine = (function () {
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
     exitSent = false;
+    var vers = null;
     api('/api/tower-mine?enter=1').then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
       if (s.error) throw new Error(s.error);
+      vers = s.mapVers;
       return enterState(s);
+    }).then(function () {
+      return preloadAll(vers); // [2026-11-03] 게임 시작 때 모든 맵을 먼저 받아 둔다(진행 중엔 포탈을 타도 바로)
     }).then(function () {
       if (!opened) return;
       el.load.style.display = 'none';

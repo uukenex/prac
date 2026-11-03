@@ -2109,6 +2109,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("mapId", map.id);
         out.put("mapName", map.name);
         out.put("mapVersion", map.version());
+        { // [2026-11-03] "게임 시작 때 모든 리소스를 먼저" -- 화면이 모든 맵을 미리 받아 두도록 맵별 버전
+            HashMap<String, String> mv = new HashMap<>();
+            for (String id : S5MineMap.ids()) mv.put(id, S5MineMap.get(id).version());
+            out.put("mapVers", mv);
+        }
         out.put("x", pos[0]);
         out.put("y", pos[1]);
         // 이 맵에서 캔 칸(영구) -- [x, y, 등급, x, y, 등급, ...]

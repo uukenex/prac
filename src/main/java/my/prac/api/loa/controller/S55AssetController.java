@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
  *  - tower.css = tower_view.jsp의 첫 &lt;style&gt; 블록
  *  - tower.js  = tower_view.jsp의 &lt;script&gt; 블록 중 빌드 확인용(pageBuild를 쓰는 블록)을 뺀 것
  *  - mine.js   = _mine_ore.jsp + _mine_char.jsp + _tower_mine.jsp의 &lt;script&gt; 블록(이 순서)
+ * 블록은 그 태그만 있는 줄로 시작/끝나야 한다(주석 글 속 태그 글자는 무시 -- 2026-11-03 tower.css 앞에 주석 조각이 섞였던 것).
  * 뽑을 때 JSP 식은 &lt;%=request.getContextPath()%&gt; 하나만 바꿔 넣는다(다른 JSP 식이 있으면 그 블록은 쓰지 않도록 화면 쪽에 두어야 한다).
  */
 @Controller
@@ -37,8 +38,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class S55AssetController {
 
     private static final String DIR = "/WEB-INF/view/nonsession/loa/";
-    private static final Pattern SCRIPT = Pattern.compile("<script>([\\s\\S]*?)</script>");
-    private static final Pattern STYLE = Pattern.compile("<style>([\\s\\S]*?)</style>");
+    // [2026-11-03] 블록은 태그만 있는 줄로 시작/끝나야 한다 -- 주석 글 속 "<style>" 글자를 블록 시작으로 잡아 tower.css 앞에 주석 조각이 섞였었다
+    private static final Pattern SCRIPT = Pattern.compile("(?m)^[ \\t]*<script>[ \\t]*\\r?$([\\s\\S]*?)^[ \\t]*</script>");
+    private static final Pattern STYLE = Pattern.compile("(?m)^[ \\t]*<style>[ \\t]*\\r?$([\\s\\S]*?)^[ \\t]*</style>");
     private static final ConcurrentHashMap<String, byte[]> CACHE = new ConcurrentHashMap<>();
 
     @Autowired
