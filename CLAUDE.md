@@ -104,6 +104,9 @@ GET /loa/chat
 - 광산 게임은 "시즌 5.5"로 부른다. 탑 화면(tower_view.jsp)의 큰 CSS/JS는 HTML에 싣지 않고 `/loa/s55/tower.css`, `/loa/s55/tower.js`, `/loa/s55/mine.js`(?v=빌드 번호, 1년 캐시)로 따로 내려간다(S55AssetController).
 - **수정은 예전 자리 그대로**: tower_view.jsp 안 `<%-- 원본 스타일 / 원본 스크립트 --%>` 주석 속 `<style>`/`<script>`, 그리고 _mine_ore.jsp / _mine_char.jsp / _tower_mine.jsp의 `<script>`. 컨트롤러가 이 파일들에서 블록을 뽑는다(서버 재시작 때 한 번 읽어 메모리에).
   그 안에서 쓸 수 있는 JSP 식은 `<%=request.getContextPath()%>` 하나뿐(다른 JSP 식이나 `--%>`를 넣지 말 것). 빌드 확인 스크립트(pageBuild)는 HTML에 그대로 남는다.
+- 서버 코드: 광산은 `S55MineServiceImpl`(부모 클래스, 약 5,400줄), 탑(시즌 5)은 `BotS5ServiceImpl extends S55MineServiceImpl`(빈은 이것 하나). 둘이 같이 쓰는 도우미(intVal/strVal/RND/isMineAdmin 등)는 부모 쪽 맨 끝에 있다.
+  광산 쪽 멤버는 private 없이(패키지 공개) 둔다 -- 탑 쪽에서도 부를 수 있게.
+- 1초 턴: 화면은 `/api/tower-mine-tick` 하나로 위치 알림 + 전투 턴(c=1) + 환경 턴(e=1) + 몬스터 상태(m=1)를 함께 보낸다. 전투/환경 턴 체력은 메모리(MINE_HP_VIRT)에 두고 15초마다/쓰러질 때 DB에 쓴다.
 
 ## 오케스트레이션 (개발 담당 + 점검 담당, 2026-10-07)
 - 메인 Claude가 **개발 담당**: 요구 분석 -> 구현 -> 커밋/푸시, 점검 결과 취합/반영.
