@@ -1190,7 +1190,7 @@ var TowerMine = (function () {
       }
       if (d && frozenMe()) { // [2026-10-28] 얼음 여왕 빙결 -- 못 움직인다
         iceStruggle(now); // [2026-11-04] 몸부림 -- 20번이면 풀린다
-        if (now - lastBumpT > 2500 || lastBump !== 'ice') msg('🧊 얼어붙어서 움직일 수 없어요! 동료가 곁(2칸)에 오면 풀려요.');
+        if (now - lastBumpT > 2500 || lastBump !== 'ice') msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.');
         lastBump = 'ice'; lastBumpT = now;
         d = null;
       }
@@ -2853,7 +2853,7 @@ var TowerMine = (function () {
   // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
   function digBtn() {
     if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
-    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     dig();
   }
   // [2026-11-04] 검기 -- st.aura = { l: 배운 단계[9], a: 켠 단계[9] }(속성 번호 1~8 = 땅/번개/물/얼음/바람/불/어둠/빛)
@@ -2986,7 +2986,7 @@ var TowerMine = (function () {
   }
   function atkBtn() {
     if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
-    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (a) { attack(a); return; }
     if (!P.moving && auraRange() > 0) { auraAttack(); return; } // [2026-11-04] 옆에 몬스터가 없어도 검기는 날아간다
@@ -3011,7 +3011,7 @@ var TowerMine = (function () {
     else if (k === 'exit') close();
   }
   function act() {
-    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; } // [2026-10-28]
+    if (frozenMe()) { msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; } // [2026-10-28]
     var a = !P.moving && adjMob();
     if (a) attack(a); else dig();
   }
@@ -3557,6 +3557,19 @@ var TowerMine = (function () {
       });
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
+    // [2026-11-04] 빙결 몸부림 게이지 -- 캐릭터 위에 얼음 막대(횟수는 안 보여 줌) + 깜빡이는 ⬅️➡️⚔️
+    if (frozenMe()) {
+      var ip = curPos(now), ix = ip.x * TS - camX + TS / 2, iy = ip.y * TS - camY - 14 * dpr, bw = TS * 1.3, bh = 7 * dpr;
+      var ik = iceSt.frozen.until === iceStruggleKey ? Math.min(1, iceStruggleN / ICE_STRUGGLE) : 0, shk = now - iceStruggleT < 120 ? (Math.random() - 0.5) * 3 * dpr : 0;
+      ctx.fillStyle = 'rgba(10,20,40,.85)'; ctx.fillRect(ix - bw / 2 - 2 * dpr + shk, iy - 2 * dpr, bw + 4 * dpr, bh + 4 * dpr);
+      ctx.fillStyle = '#2a4a6a'; ctx.fillRect(ix - bw / 2 + shk, iy, bw, bh);
+      ctx.fillStyle = '#bfefff'; ctx.fillRect(ix - bw / 2 + shk, iy, bw * ik, bh);
+      ctx.strokeStyle = '#f4f0e6'; ctx.lineWidth = 1 * dpr; ctx.strokeRect(ix - bw / 2 + shk, iy, bw, bh);
+      ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(now / 260));
+      ctx.font = Math.round(15 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('⬅️ ➡️ ⚔️', ix, iy - 7 * dpr);
+      ctx.globalAlpha = 1;
+    }
     // 캔 광석 글자
     floats = floats.filter(function (f) { return now - f.t0 < 1400; });
     floats.forEach(function (f) {
