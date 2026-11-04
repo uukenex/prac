@@ -46,6 +46,13 @@
     .s55-top img{ width:28px; height:28px; image-rendering:pixelated; }
     .s55-top .who{ flex:1; min-width:0; color:#cfc8e8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .s55-top a{ color:#a89ec8; font-size:12px; white-space:nowrap; }
+    /* [2026-11-04] 관리자 알림 칸 + 화면 안 알림 */
+    .s55-adm{ margin:0 0 10px; padding:8px 10px; background:rgba(20,16,30,.88); border:2px solid #ffd27a; box-shadow:3px 3px 0 rgba(0,0,0,.6); font-size:12px; }
+    .s55-adm-h{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .s55-adm-h span{ flex:1 1 160px; } .s55-adm-h .ok{ color:#9fe0a8; } .s55-adm-h .no{ color:#ffb0a0; }
+    .s55-adm-h button{ padding:4px 8px; font-size:11px; font-weight:800; color:#fff; background:#3a2f55; border:2px solid #f4f0e6; cursor:pointer; }
+    .s55-adm-list{ margin-top:6px; line-height:1.55; color:#e8e2f8; } .s55-adm-list span{ color:#a89ec8; } .s55-adm-list .e{ color:#a89ec8; }
+    .s55-toast{ position:fixed; left:50%; top:calc(10px + env(safe-area-inset-top)); transform:translateX(-50%); z-index:100001; max-width:min(92vw, 420px); padding:10px 14px; background:#2a2140; color:#fff; border:2px solid #ffd27a; box-shadow:3px 3px 0 rgba(0,0,0,.6); font-size:13px; line-height:1.5; }
     /* [2026-11-04] 앱 설치 안내(휴대폰 화면을 흉내 낸 그림) */
     .s55-gd{ position:fixed; inset:0; z-index:50; background:rgba(10,8,20,.86); overflow:auto; padding:16px; box-sizing:border-box; }
     .s55-gd-box{ max-width:520px; margin:0 auto; background:#1d1730; border:2px solid #f4f0e6; box-shadow:4px 4px 0 rgba(0,0,0,.6); padding:18px 14px; text-align:center; }
@@ -95,24 +102,54 @@
     <a href="<%=ctx%>/loa/s5/logout">로그아웃</a>
   </div>
   <% if (request.getAttribute("vapidPub") != null) { %>
-  <div class="s55-top" id="s55PushBox"><span class="who">🔔 관리자 알림(접속·보스·전설 장비·카카오 연결·게시판)</span><button type="button" class="s55-btn" id="s55Push" style="margin:0;padding:6px 10px;font-size:12px">이 기기로 받기</button></div>
+  <%-- [2026-11-04] "관리자 알림은 승인 구조 없이 무조건 받도록, 수신되는지 확인이 안 된다" -- 들어오면 자동으로 구독(허용 창은 처음 한 번 -- 브라우저 규칙),
+       폰 알림이 꺼져 있어도 앱을 띄워 둔 동안은 화면 안 알림(10초마다 /mine/admin-alerts) + 최근 알림 목록 + 상태 + 시험 알림 --%>
+  <div class="s55-adm" id="s55Adm">
+    <div class="s55-adm-h"><b>🔔 관리자 알림</b><span id="s55AdmSt">확인 중...</span><button type="button" id="s55AdmBtn" hidden>알림 허용</button><button type="button" id="s55AdmTest">시험 알림</button></div>
+    <div class="s55-adm-list" id="s55AdmList"><div class="e">아직 알림이 없어요.</div></div>
+  </div>
+  <div class="s55-toast" id="s55Toast" hidden></div>
   <script>
   (function () {
-    var key = '<%=request.getAttribute("vapidPub")%>', btn = document.getElementById('s55Push');
+    var key = '<%=request.getAttribute("vapidPub")%>', base = '<%=ctx%>/mine/', $ = function (id) { return document.getElementById(id); }, since = 0, seen = 0, items = [];
     function b64(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var r = atob(s), a = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) a[i] = r.charCodeAt(i); return a; }
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) { btn.textContent = '이 기기는 지원 안 함'; btn.disabled = true; return; }
-    navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (s) { if (s && Notification.permission === 'granted') btn.textContent = '받는 중 (다시 등록)'; });
-    btn.onclick = function () {
-      btn.disabled = true;
-      Notification.requestPermission().then(function (p) {
-        if (p !== 'granted') throw new Error('알림 권한이 꺼져 있어요');
-        return navigator.serviceWorker.ready;
-      }).then(function (reg) {
-        return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) }); });
-      }).then(function (s) {
-        return fetch('<%=ctx%>/mine/push-sub', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'endpoint=' + encodeURIComponent(s.endpoint) }).then(function (r) { return r.json(); });
-      }).then(function (d) { btn.disabled = false; btn.textContent = d.ok ? '받는 중 ✔ (시험 알림 보냄)' : '등록 실패'; })
-        .catch(function (e) { btn.disabled = false; btn.textContent = (e && e.message) || '등록 실패'; });
+    document.body.appendChild(); // 게임 화면(입장 화면이 숨겨진 동안)에서도 보이게
+    function st(t, ok) { $('s55AdmSt').textContent = t; $('s55AdmSt').className = ok ? 'ok' : 'no'; }
+    function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function hhmm(t) { var d = new Date(t), p = function (v) { return (v < 10 ? '0' : '') + v; }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
+    function render() { $('s55AdmList').innerHTML = items.length ? items.slice(0, 6).map(function (n) { return '<div><span>' + hhmm(n.t) + '</span> <b>' + esc(n.title) + '</b> ' + esc(n.body) + '</div>'; }).join('') : '<div class="e">아직 알림이 없어요.</div>'; }
+    var toastT = 0;
+    function toast(n) { var e = $('s55Toast'); e.innerHTML = '<b>' + esc(n.title) + '</b><br>' + esc(n.body); e.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 5000); }
+    // 화면 안 알림 -- 10초마다(앱을 띄워 둔 동안은 폰 알림 권한과 상관없이)
+    function poll() {
+      fetch(base + 'admin-alerts?since=' + since, { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (l) {
+        if (!l || !l.length) return;
+        l.forEach(function (n) { since = Math.max(since, n.id); items.unshift(n); });
+        render();
+        if (seen) toast(l[l.length - 1]); // 처음 불러온 목록은 띄우지 않는다
+      }).catch(function () { }).then(function () { seen = 1; });
+    }
+    poll(); setInterval(poll, 10000);
+    // 폰 알림 -- 자동 구독
+    function sub(ask) {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) { st('이 기기는 폰 알림을 지원하지 않아요(앱 안 알림만)', false); return; }
+      if (Notification.permission === 'denied') { st('폰 알림이 꺼져 있어요 -- 브라우저/폰 설정에서 이 사이트 알림 허용(앱 안 알림은 받아요)', false); return; }
+      var p = Notification.permission === 'granted' ? Promise.resolve('granted') : ask ? Notification.requestPermission() : Promise.resolve('default');
+      p.then(function (r) {
+        if (r !== 'granted') { st('폰 알림 허용이 필요해요 (앱 안 알림은 받아요)', false); $('s55AdmBtn').hidden = false; return; }
+        $('s55AdmBtn').hidden = true;
+        return navigator.serviceWorker.ready.then(function (reg) {
+          return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) }); });
+        }).then(function (s) {
+          return fetch(base + 'push-sub', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'endpoint=' + encodeURIComponent(s.endpoint) }).then(function (r) { return r.json(); });
+        }).then(function (d) { st(d && d.ok ? '받는 중 ✔ (폰 알림 + 앱 안 알림)' : '폰 알림 등록 실패 (앱 안 알림은 받아요)', !!(d && d.ok)); });
+      }).catch(function (e) { st('폰 알림 등록 실패: ' + ((e && e.message) || '') + ' (앱 안 알림은 받아요)', false); $('s55AdmBtn').hidden = false; });
+    }
+    sub(true);
+    $('s55AdmBtn').onclick = function () { sub(true); };
+    $('s55AdmTest').onclick = function () {
+      $('s55AdmTest').disabled = true;
+      fetch(base + 'push-test', { method: 'POST', credentials: 'same-origin' }).then(function () { setTimeout(poll, 600); }).catch(function () { }).then(function () { setTimeout(function () { $('s55AdmTest').disabled = false; }, 3000); });
     };
   })();
   </script>

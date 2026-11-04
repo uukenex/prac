@@ -46,6 +46,9 @@ public class S55AdminPush {
     private static final ConcurrentHashMap<String, Deque<HashMap<String, Object>>> QUEUE = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> THROTTLE = new ConcurrentHashMap<>();
     private static final int QUEUE_MAX = 30;
+    /** [2026-11-04] 화면 안 알림용 최근 알림(서버 전체 50개, id = 증가 번호). */
+    private static final Deque<HashMap<String, Object>> RECENT = new ArrayDeque<>();
+    private static long recentSeq = 0;
 
     @Resource(name = "core.prjbot.BotS5DAO")
     BotS5DAO dao;
@@ -82,9 +85,27 @@ public class S55AdminPush {
 
     /** 모든 관리자 구독에 알림(내용은 메모리에 두고, 폰에는 "알림 있음"만). */
     public static void notify(String title, String body) {
+        synchronized (RECENT) { // [2026-11-04] 화면 안 알림(폰 알림 권한과 상관없이)
+            HashMap<String, Object> n = new HashMap<>();
+            n.put("id", ++recentSeq);
+            n.put("title", title);
+            n.put("body", body);
+            n.put("t", System.currentTimeMillis());
+            RECENT.addLast(n);
+            while (RECENT.size() > 50) RECENT.removeFirst();
+        }
         S55AdminPush p = inst;
         if (p == null) return;
         POOL.execute(() -> p.send(title, body));
+    }
+
+    /** [2026-11-04] 화면 안 알림 -- id가 since보다 큰 것(처음이면 최근 10개). */
+    public static List<HashMap<String, Object>> recent(long since) {
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        synchronized (RECENT) {
+            for (HashMap<String, Object> n : RECENT) if (((Number) n.get("id")).longValue() > since) out.add(n);
+        }
+        return since <= 0 && out.size() > 10 ? new ArrayList<>(out.subList(out.size() - 10, out.size())) : out;
     }
 
     /** 서비스 워커가 깨서 가져가는 그 폰 몫의 알림(가져가면 비운다). */

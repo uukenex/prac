@@ -119,7 +119,30 @@ public class S55MineController {
         String kid = kakaoId(req), user = kid == null ? null : s5Service.s55LinkedUser(kid);
         boolean ok = user != null && s5Service.s55IsAdmin(user) && my.prac.core.util.S55AdminPush.subscribe(endpoint, kid, user);
         out.put("ok", ok);
-        if (ok) my.prac.core.util.S55AdminPush.notify("🔔 알림 켜짐", "이 기기로 관리자 알림을 받아요.");
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(out); // [2026-11-04] 들어올 때마다 자동 구독 -- 알림은 [시험 알림]으로만
+    }
+
+    private boolean adminSession(HttpServletRequest req) {
+        String kid = kakaoId(req), user = kid == null ? null : s5Service.s55LinkedUser(kid);
+        return user != null && s5Service.s55IsAdmin(user);
+    }
+
+    /** [2026-11-04] 화면 안 관리자 알림(10초마다) -- 관리자만. */
+    @GetMapping(value = "/mine/admin-alerts", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<?> adminAlerts(HttpServletRequest req, @RequestParam(value = "since", defaultValue = "0") long since) {
+        Object body = adminSession(req) ? my.prac.core.util.S55AdminPush.recent(since) : new java.util.ArrayList<Object>();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
+    }
+
+    /** [2026-11-04] 시험 알림(폰 알림 + 화면 안 알림) -- 관리자만. */
+    @PostMapping(value = "/mine/push-test", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<?> pushTest(HttpServletRequest req) {
+        HashMap<String, Object> out = new HashMap<>();
+        boolean ok = adminSession(req);
+        if (ok) my.prac.core.util.S55AdminPush.notify("🔔 시험 알림", "관리자 알림이 잘 오고 있어요. (" + new java.text.SimpleDateFormat("HH:mm:ss").format(new java.util.Date()) + ")");
+        out.put("ok", ok);
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(out);
     }
 
