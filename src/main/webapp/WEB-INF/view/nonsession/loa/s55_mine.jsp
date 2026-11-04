@@ -40,30 +40,43 @@
     .s55-confirm{ margin-top:12px; padding:12px; border:2px dashed #b89cff; background:#241a3a; font-size:14px; line-height:1.6; }
     .s55-small{ font-size:11px; color:#a89ec8; margin-top:16px; line-height:1.6; }
     .s55-small a{ color:#cfc8e8; }
+    /* [2026-11-04] 광산 입장하기(랜딩) -- 위 띠 + 탑 화면 광산 탭과 같은 카드 */
+    .s55-land{ max-width:560px; margin:0 auto; padding:12px 12px calc(24px + env(safe-area-inset-bottom)); box-sizing:border-box; }
+    .s55-top{ display:flex; align-items:center; gap:8px; padding:8px 10px; margin-bottom:10px; background:rgba(20,16,30,.88); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.6); font-size:14px; }
+    .s55-top img{ width:28px; height:28px; image-rendering:pixelated; }
+    .s55-top .who{ flex:1; min-width:0; color:#cfc8e8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .s55-top a{ color:#a89ec8; font-size:12px; white-space:nowrap; }
   </style>
 </head>
 <body>
 <%@ include file="_s55_live.jsp" %>
 <% if ("game".equals(mode)) { %>
 <%@ include file="_mine_overlay.jsp" %>
-<div class="s55-wrap" id="s55Out" hidden>
-  <div class="s55-card">
-    <img class="logo" src="<%=ctx%>/img_loa/s55/icon-192.png" alt="">
-    <h1>광산에서 나왔어요</h1>
-    <p class="sub"><%=userEsc%></p>
-    <button type="button" class="s55-btn main" onclick="s55Go()">⛏️ 다시 들어가기</button>
-    <div class="s55-small"><a href="<%=ctx%>/loa/s5/logout">로그아웃</a></div>
+<%-- [2026-11-04] "광산으로 바로 들어가지 말고 광산 입장하기 페이지로 랜딩, 장착 정보나 로그를 볼 수 있게" -- 탑 화면 광산 탭과 같은 카드(MineHome: 장비 칸/체력·경험치/보유 + 내 광산 기록) --%>
+<div class="s55-land" id="s55Land">
+  <div class="s55-top">
+    <img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><b>람쥐 광산</b><span class="who"><%=userEsc%></span>
+    <a href="<%=ctx%>/loa/s5/logout">로그아웃</a>
   </div>
+  <div id="s55Home"><div class="s55-msg">불러오는 중...</div></div>
 </div>
 <script src="<%=ctx%>/loa/s55/mine.js?v=<%=build%>"></script>
+<%@ include file="_mine_home.jsp" %>
 <script>
 (function () {
-  var user = <%=request.getAttribute("userJson")%>;
+  var user = <%=request.getAttribute("userJson")%>, base = '<%=ctx%>/loa';
+  function home() {
+    var box = document.getElementById('s55Home');
+    fetch(base + '/api/tower-mine-home?userName=' + encodeURIComponent(user), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.error) { box.innerHTML = '<div class="s55-msg err">' + d.error + '</div>'; return; }
+      MineHome.render(box, d, 's55Go()', '캘 때마다 곡괭이가 1씩 닳고, 대장장이에게서 강화해요 · 맵은 2일마다 새로 섞여요');
+    }).catch(function () { box.innerHTML = '<div class="s55-msg err">불러오지 못했어요. <a href="" style="color:#cfc8e8">다시 시도</a></div>'; });
+  }
   window.s55Go = function () {
-    document.getElementById('s55Out').hidden = true;
-    TowerMine.open({ base: '<%=ctx%>/loa', user: user, onClose: function () { document.getElementById('s55Out').hidden = false; } });
+    document.getElementById('s55Land').hidden = true;
+    TowerMine.open({ base: base, user: user, onClose: function () { document.getElementById('s55Land').hidden = false; window.scrollTo(0, 0); home(); } });
   };
-  s55Go();
+  home();
 })();
 </script>
 <% } else if ("link".equals(mode)) { %>
