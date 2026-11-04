@@ -786,6 +786,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-04] 검기 -- 인벤토리 스킬 탭: 속성 el(1~8)을 lv단계로(0 = 끔). */
+    @GetMapping("/api/tower-mine-aura")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineAura(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("el") int el, @RequestParam("lv") int lv) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineAuraSet(userName, el, lv));
+    }
+
     @GetMapping("/api/tower-mine-mobs")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMobs(@RequestParam(value = "mapId", defaultValue = "") String mapId) {
@@ -798,9 +807,9 @@ public class Season5ViewController {
     public ResponseEntity<?> apiTowerMineAttack(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
             @RequestParam("mob") int mob, @RequestParam(value = "v", defaultValue = "") String ver,
-            @RequestParam(value = "mc", defaultValue = "-1") int mc) {
+            @RequestParam(value = "mc", defaultValue = "-1") int mc, @RequestParam(value = "d", defaultValue = "") String dir) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob, mc); // mc = 화면이 보던 몬스터 칸(y * w + x)
+        HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob, mc, dir); // [2026-11-04] d = 바라보는 방향(검기) // mc = 화면이 보던 몬스터 칸(y * w + x)
         mineAdminAlerts(userName, out, mapId); // [2026-11-04] 관리자 알림 -- 보스 처치, 전설 이상 장비
         if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")), out);
         return ResponseEntity.ok(out);

@@ -342,7 +342,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1071,7 +1071,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', wallguard: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1730,8 +1730,9 @@ var TowerMine = (function () {
   function equipHtml() {
     var tab = function (id, label) { return '<button type="button" class="' + (equipTab === id ? 'on' : '') + '" onclick="TowerMine.equipTab(\'' + id + '\')">' + label + '</button>'; };
     var h = '<div class="mine-smith-head inv-head">🎒 인벤토리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
-        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('etc', '📦 기타') + '</div></div>';
+        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('skill', '🌀 스킬') + tab('etc', '📦 기타') + '</div></div>';
     if (equipTab === 'etc') return h + invEtcHtml();
+    if (equipTab === 'skill') return h + skillHtml(); // [2026-11-04] 검기
     if (equipTab === 'look') {
       var lk = st.look || {};
       h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(lk, d) + '" alt="">'; }).join('') + '</div>'
@@ -2115,7 +2116,8 @@ var TowerMine = (function () {
     blackmarket: { skin: '#c8a080', hair: '#1a1322', cloth: '#2a1f33', clothD: '#1a1322' }, // [2026-10-26]
     furrier: { skin: '#f2c194', hair: '#5a3a22', cloth: '#8a5a32', clothD: '#6a4222' },
     daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' }, // [2026-10-28] 요일 동굴 문지기
-    wallguard: { skin: '#d8a070', hair: '#3a2a1a', cloth: '#8a6a3a', clothD: '#5a4422' } // [2026-11-04] 사막 경비병
+    wallguard: { skin: '#d8a070', hair: '#3a2a1a', cloth: '#8a6a3a', clothD: '#5a4422' }, // [2026-11-04] 사막 경비병
+    swordmaster: { skin: '#e8b48a', hair: '#1a1a22', cloth: '#7a2a2a', clothD: '#4a1818' } // [2026-11-04] 검기 사범
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -2823,11 +2825,78 @@ var TowerMine = (function () {
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     dig();
   }
+  // [2026-11-04] 검기 -- st.aura = { l: 배운 단계[9], a: 켠 단계[9] }(속성 번호 1~8 = 땅/번개/물/얼음/바람/불/어둠/빛)
+  var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 300, auraFx = [];
+  function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
+  function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
+  function auraFxGo() { var r = auraRange(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), t0: performance.now() }); }
+  /** 공격 응답의 검기 -- 바로 앞 적의 속성 숫자(aura), 너머 몬스터(auraMobs: 상태/숫자/처치), 드랍. */
+  function auraShow(d, fxp, fyp, t) {
+    (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
+    var anyKill = false;
+    (d.auraMobs || []).forEach(function (am, j) {
+      var mm = map.mobs && map.mobs[am.id], p = mm && mm._p ? { x: mm._p.x, y: mm._p.y } : { x: am.row[3], y: am.row[4] };
+      mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
+      mobHitAt[am.id] = performance.now();
+      var dl = 60 + j * 40;
+      (am.hits || []).forEach(function (h, i) { floats.push({ x: p.x + (i % 2 ? 0.3 : -0.3), y: p.y - 0.32 * i, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * i }); });
+      if (am.killed) { anyKill = true; floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); }
+    });
+    (d.auraDrops || []).forEach(function (dr, i) {
+      var img = new Image(); img.src = oreIcon(dr.grade);
+      floats.push({ x: P.x, y: P.y - 1 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, t0: t + 300 + i * 150 });
+    });
+    if (anyKill) { if (d.ores) st.ores = d.ores; if (!d.killed && d.message) msg(d.message, 2600); }
+  }
+  /** 옆에 몬스터가 없을 때 공격 버튼 = 검기만 날린다(서버 mob=-1). */
+  function auraAttack() {
+    if (!opened || !map || busy || fade || atkBusy) return;
+    var now = performance.now();
+    if (now - lastAtkT < 420) return;
+    lastAtkT = now; atkBusy = true; P.digT0 = now; P.swing = true;
+    auraFxGo();
+    apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=-1&d=' + P.dir + verQ()).then(function (d) {
+      atkBusy = false;
+      if (!d || d.tooFast) return;
+      if (d.reload) { reload(); return; }
+      if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+      if (!d.ok) { if (d.message) msg(d.message); return; }
+      var t = performance.now();
+      auraShow(d, P.x, P.y, t);
+      if (d.combat) setCombat(d.combat);
+      if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
+      if (d.rebirthReadyNow) { rbHintShown = true; flashT0 = t; banner = { text: '✨ 환생 가능! 왕도 성당 신부님께', t0: t }; }
+      if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
+    }).catch(function () { atkBusy = false; });
+  }
+  /** 인벤토리 스킬 탭 -- 배운 속성마다 끔/1~배운 단계 중 고르기(장비 등급처럼). */
+  function skillHtml() {
+    var au = (st && st.aura) || { l: [], a: [] }, any = false, R = auraRange();
+    var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 사거리는 켠 단계 중 가장 높은 값(최대 5칸), 속성마다 공격력의 (단계 x 10%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격도 함께 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
+        + '<div style="margin:6px 0 8px;font-weight:800">지금 사거리 <b style="color:#ffd27a">' + R + '칸</b>' + (R ? ' · ' + auraEls().map(function (e) { return '<span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + au.a[e] + '</span>'; }).join(' ') : '') + '</div>';
+    for (var e = 1; e <= 8; e++) {
+      var L = (au.l && au.l[e]) || 0, A = (au.a && au.a[e]) || 0;
+      if (!L) continue;
+      any = true;
+      h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:0 0 6px"><span style="min-width:64px;font-weight:800;color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + '</span>';
+      for (var v = 0; v <= L; v++) h += '<button type="button" class="mine-mini-btn" style="' + (v === A ? 'background:' + AURA_COL[e] + ';color:#1a1424;' : '') + '" onclick="TowerMine.auraSet(' + e + ',' + v + ')">' + (v ? v + '단계' : '끔') + '</button>';
+      h += '</div>';
+    }
+    if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 배울 수 있어요. (수련 재료 준비 중)</div>';
+    return h;
+  }
+  function auraSet(e, v) {
+    api('/api/tower-mine-aura?el=' + e + '&lv=' + v).then(function (d) {
+      if (d && d.ok) { st.aura = d.aura; if (smithOpen) renderSmith(smithNpc); msg(v ? '🌀 ' + ELEM_NAME[e] + ' 검기 ' + v + '단계 · 사거리 ' + auraRange() + '칸' : '🌀 ' + ELEM_NAME[e] + ' 검기를 껐어요.', 1800); }
+      else msg((d && d.message) || '바꾸지 못했어요.');
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function atkBtn() {
     if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (a) { attack(a); return; }
+    if (!P.moving && auraRange() > 0) { auraAttack(); return; } // [2026-11-04] 옆에 몬스터가 없어도 검기는 날아간다
     // [2026-10-28] "아무것도 없을 때도 무기 휘두르는 액션" -- 서버에 묻지 않고 그 자리에서 휘두르기만
     var sn = performance.now();
     if (busy || P.moving || sn - lastAtkT < 420) return;
@@ -2861,6 +2930,7 @@ var TowerMine = (function () {
     if (atkBusy) { if (now - P.digT0 >= 420) { P.dir = a.dir; P.digT0 = now; P.swing = true; } return; } // [2026-11-03] 응답을 기다리는 중에도 휘두르기는 보인다 -- [2026-11-04] 공격 간격(lastAtkT)은 건드리지 않는다(응답이 오면 바로 다음 공격)
     lastAtkT = now; atkBusy = true;
     P.dir = a.dir; P.digT0 = now; P.swing = true; // [2026-10-28] 무기 휘두르기
+    auraFxGo(); // [2026-11-04] 검기
     if (a.m) mobHitAt[a.m.id] = performance.now(); // [2026-11-03] 서버 응답 전에 맞은 몬스터가 바로 흔들린다(지연 숨기기)
     var m = a.m, mp = m._p;
     if (mp) { // [2026-11-03] "때리는 동안 몬스터가 제 길로 가다 끌려온다" -- 응답 전부터 화면에서도 그 칸에 세운다(서버도 mc 칸에 세운다)
@@ -2868,7 +2938,7 @@ var TowerMine = (function () {
       mobSt[m.id] = { hp: os ? os.hp : 1, du: 0, fx: mp.cx, fy: mp.cy, fu: Math.max(os && os.fu || 0, tn + 8000), sl: !!(os && os.sl), loc: tn };
     }
     var mc =mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
-    apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + verQ()).then(function (d) {
+    apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + '&d=' + P.dir + verQ()).then(function (d) {
       atkBusy = false;
       if (!d || d.tooFast) return;
       if (d.reload) { reload(); return; }
@@ -2886,6 +2956,7 @@ var TowerMine = (function () {
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
       else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv + (d.elHit ? ' x1.5' : ''), color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
       else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + d.dmg + (d.elHit ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
+      auraShow(d, fxp, fyp, t); // [2026-11-04] 검기 -- 속성 숫자 + 너머 몬스터
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30] 자객의 목걸이
       if (d.assassinOn) floats.push({ x: P.x, y: P.y - 0.6, text: '🥷 은신!', color: '#c8c8ff', big: true, t0: t + 80 });
       if (d.dodged) floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + 180 });
@@ -3382,6 +3453,22 @@ var TowerMine = (function () {
       }
       ctx.globalAlpha = 1;
     });
+    // [2026-11-04] 검기 -- 속성마다 그 색의 초승달 칼날이 바라보는 방향으로 사거리만큼 날아간다(속성이 많으면 겹겹이 조금씩 늦게)
+    auraFx = auraFx.filter(function (f) { return now - f.t0 < AURA_FX_MS + 120; });
+    auraFx.forEach(function (f) {
+      var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 120 : 1;
+      var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
+      ctx.lineCap = 'round';
+      f.els.forEach(function (e, i) {
+        var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + (f.r - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
+        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 0.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 0.4, rr = TS * (0.5 + i * 0.07);
+        ctx.globalAlpha = Math.max(0, fo * (k < 1 ? 0.95 : 0.7)); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 1.05, ang + 1.05); ctx.stroke();
+        ctx.globalAlpha = Math.max(0, fo * 0.35); ctx.lineWidth = lw * 2.2; // 잔광
+        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.8, ang + 0.8); ctx.stroke();
+      });
+      ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+    });
     // 캔 광석 글자
     floats = floats.filter(function (f) { return now - f.t0 < 1400; });
     floats.forEach(function (f) {
@@ -3811,7 +3898,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

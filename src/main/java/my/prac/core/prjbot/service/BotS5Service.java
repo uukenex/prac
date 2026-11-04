@@ -235,7 +235,9 @@ public interface BotS5Service {
     HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest);
     /** [2026-10-24] 광산 몬스터 상태 조회 / 공격. */
     HashMap<String, Object> mineMobs(String mapId);
-    HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc);
+    HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc, String dir);
+    /** [2026-11-04] 검기 -- 인벤토리 스킬 탭에서 속성 el의 검기를 lv단계로(0 = 끔). */
+    HashMap<String, Object> mineAuraSet(String userName, int el, int lv);
     HashMap<String, Object> mineGoVillage(String userName);
     /** [2026-10-25] 이동 안내원 -- 안내원 맵끼리 무료 이동. */
     HashMap<String, Object> mineGuide(String userName, String mapId, String ver, int x, int y, String dest);

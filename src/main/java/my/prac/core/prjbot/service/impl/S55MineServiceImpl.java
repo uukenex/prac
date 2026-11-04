@@ -1778,12 +1778,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 공격 -- (x, y)에 서서 바로 옆(상하좌우) 몬스터 mobId를 때린다. 살아남으면 반격(몬스터 공격력), 쓰러뜨리면 경험치 + 광석/보석. */
     @Override
     @Transactional
-    public HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc) {
+    public HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc, String dir) {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
         if (mineStunned(userName, now)) { HashMap<String, Object> so = new HashMap<>(); so.put("ok", false); so.put("stunned", true); so.put("message", "🩹 붕대에 묶여 움직일 수 없어요!"); return so; } // [2026-11-04]
+        if (mobId == -1) return mineAuraAttack(userName, mapId, ver, x, y, dir); // [2026-11-04] 옆에 몬스터 없이 검기만
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         Long last = MINE_LAST_ATTACK.get(userName);
@@ -1822,6 +1823,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mobId), k -> new MobState(mobMax));
         int dmg, counter = 0, kills = 0;
         boolean killed = false, crit;
+        int[] aura = mineAuraActive(items); // [2026-11-04] 검기 -- 바로 앞(때린) 적에게도 속성 피해
+        int auraRange = mineAuraRange(aura);
+        double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items);
+        List<int[]> auraMain = null;
         boolean assassin = MINE_ITEM_ASSASSIN_NECKLACE.equals(mineNeckCode(items)), assassinHit = false; // [2026-10-30] 자객의 목걸이
         // [2026-10-28] 닌자 -- evade = 은신으로 피함(피해 0, 반격 없음, 다음 한 방 2배), stealthHit = 은신했던 닌자의 2배 반격,
         //  cloneHit = 닌자 두목의 분신을 때림(펑 사라지고 두목 회복 + 함정 반격), splitEnd = 분신술 중 진짜를 때림, split = 이번에 분신술을 씀(자리 다섯)
@@ -1901,10 +1906,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
             } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
+                if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
             } else {
                 s.hp -= dmg;
+                if (auraRange > 0) { auraMain = mineAuraHits(aura, atkBase, type); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 s.lastHitAt = now;
                 if (shrineBoss) { if (s.hitters == null) s.hitters = new java.util.HashSet<>(); s.hitters.add(userName); }
                 if (s.hp <= 0) {
@@ -2046,23 +2053,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
-            MineWeapon dw = null; // [2026-10-29] 레벨대 무기(무기마다 0.5%, 한 번에 하나) -- 등급은 색으로만(이름에 등급 글자 없음)
-            for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < MINE_WEAPON_RANK_P10K[mob.rank]) { dw = w; break; }
-            if (dw != null) {
-                int g = mineGradeRoll(dw.maxGrade, mob.rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
-                if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급
-                    dao.addUserOre(userName, dw.shard, g + 1);
-                    msg.append(" 🧩 이미 있는 ").append(dw.name).append("이라 분해했어요. ").append(mineCodeName(dw.shard)).append(" +").append(g + 1);
-                    out.put("dropShard", g + 1);
-                    out.put("dropShardName", mineCodeName(dw.shard));
-                } else {
-                    dao.upsertMineItem(userName, dw.code + "_M", mask | (1 << g)); // [2026-10-30] 처음 나온 등급은 보관(등급별로 골라 든다)
-                    if (cur < 0) dao.upsertMineItem(userName, dw.code, g + 1); // 처음 얻은 무기 -- 그 등급을 고른 등급으로(장착은 직접). [2026-10-30] "자동 교체 없애줘"
-                    msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g)).append(" (인벤토리 무기 칸에서 등급을 골라 장착할 수 있어요)");
-                }
-                out.put("dropGrade", g);
-                out.put("dropName", dw.name);
-            }
+            mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
             if (mob.type == S5MineMobs.PHARAOH_BOSS_TYPE) { // [2026-11-04] 파라오 미라 처치 -- 2시간 뒤 다시
                 mineBossKilledNow(MINE_PHARAOH_KEY, userName, now);
                 MINE_RANGED_NEXT.clear();
@@ -2119,6 +2110,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         if (killed) { MineEngage me = MINE_ENGAGE.get(userName); if (me != null) me.mobs.remove(mobId); }
+        if (auraMain != null) out.put("aura", auraMain);
+        if (auraRange > 0 && !evade && !cloneHit) { // [2026-11-04] 검기 -- 바라보는 방향 앞 사거리 칸의 다른 몬스터
+            StringBuilder am = new StringBuilder();
+            long[] ar = mineAuraSweep(userName, map, items, aura, auraRange, atkBase, x, y, dir, mobId, now, am, out);
+            if (ar[0] > 0) {
+                long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, ar[1], died, out);
+                lv = (int) g[0]; exp = g[1]; hp = (int) g[2]; lock = (int) g[3]; levelUp += (int) g[4];
+                kills += (int) ar[0];
+            }
+            if (am.length() > 0) msg.append(msg.length() > 0 ? " " : "").append(am);
+        }
         if (!died) dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, lv, exp, hp, now, kills);
         out.put("levelUp", levelUp);
@@ -2254,6 +2256,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int helmetTier = items.getOrDefault(MINE_ITEM_HELMET, 0);
         out.put("helmet", helmetTier);
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
+        out.put("aura", mineAuraInfo(items)); // [2026-11-04] 검기(배운 단계/켠 단계)
         out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
@@ -3612,6 +3615,225 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static double mineElemMul(Map<String, Integer> items, S5MineMobs.Type type) {
         return items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0) > 0 && S5MineMobs.elemBeats(items.getOrDefault(MINE_ITEM_ENCH_EL, 0), type.elem()) ? 1.5 : 1;
     }
+    /** [2026-10-29] 레벨대 무기 드랍(무기마다 확률, 한 번에 하나) -- 이미 가진 등급이면 조각으로 분해. [2026-11-04] 검기 처치와 함께 쓰려고 mineAttack에서 뺐다. */
+    void mineWeaponDrop(String userName, Map<String, Integer> items, S5MineMobs.Type type, int rank, StringBuilder msg, HashMap<String, Object> out) {
+        MineWeapon dw = null;
+        for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < MINE_WEAPON_RANK_P10K[rank]) { dw = w; break; }
+        if (dw == null) return;
+        int g = mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
+        if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급
+            dao.addUserOre(userName, dw.shard, g + 1);
+            msg.append(" 🧩 이미 있는 ").append(dw.name).append("이라 분해했어요. ").append(mineCodeName(dw.shard)).append(" +").append(g + 1);
+            out.put("dropShard", g + 1);
+            out.put("dropShardName", mineCodeName(dw.shard));
+        } else {
+            dao.upsertMineItem(userName, dw.code + "_M", mask | (1 << g)); // [2026-10-30] 처음 나온 등급은 보관(등급별로 골라 든다)
+            items.put(dw.code + "_M", mask | (1 << g));
+            if (cur < 0) { dao.upsertMineItem(userName, dw.code, g + 1); items.put(dw.code, g + 1); } // 처음 얻은 무기 -- 그 등급을 고른 등급으로(장착은 직접). [2026-10-30] "자동 교체 없애줘"
+            msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g)).append(" (인벤토리 무기 칸에서 등급을 골라 장착할 수 있어요)");
+        }
+        out.put("dropGrade", g);
+        out.put("dropName", dw.name);
+    }
+
+    // ---- [2026-11-04] 검기 ----
+    // "공격 시 바라보는 방향으로 앞 최대 5칸 검기, 속성별 색 이펙트. 공격력 100% 기준 얼음2 불2면 바로 앞 적은 일반 피해 + 얼음 20% + 불 20%(숫자 3개),
+    //  사거리는 가장 높은 속성 단계(얼음2 불2 = 2칸), 그 너머 적은 속성 피해만, 상성 x1.5, 8속성 모두면 8가지가 더해진다"
+    //  속성별 배운 단계 AURA_L{e}(0~5, 새 NPC가 가르친다 -- 재료 미정), 켠 단계 AURA_A{e}(0~배운 단계, 인벤토리 스킬 탭에서 고른다).
+    static final int MINE_AURA_MAX = 5, MINE_AURA_PCT = 10;
+    static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
+    static int[] mineAuraActive(Map<String, Integer> items) {
+        int[] a = new int[9];
+        for (int e = 1; e <= 8; e++) a[e] = Math.max(0, Math.min(Math.min(items.getOrDefault(mineAuraKey(true, e), 0), items.getOrDefault(mineAuraKey(false, e), 0)), MINE_AURA_MAX));
+        return a;
+    }
+    static int mineAuraRange(int[] a) { int r = 0; for (int e = 1; e <= 8; e++) r = Math.max(r, a[e]); return r; }
+    static HashMap<String, Object> mineAuraInfo(Map<String, Integer> items) {
+        HashMap<String, Object> m = new HashMap<>();
+        int[] l = new int[9];
+        for (int e = 1; e <= 8; e++) l[e] = Math.min(items.getOrDefault(mineAuraKey(false, e), 0), MINE_AURA_MAX);
+        m.put("l", l);
+        m.put("a", mineAuraActive(items));
+        return m;
+    }
+    /** 켠 속성마다 [속성, 피해, 상성 1/0] -- 피해 = 공격력(무기 포함) x 단계 x 10%, 상성 x1.5. */
+    static List<int[]> mineAuraHits(int[] a, double atkBase, S5MineMobs.Type type) {
+        List<int[]> out = new ArrayList<>();
+        for (int e = 1; e <= 8; e++) {
+            if (a[e] <= 0) continue;
+            boolean beat = S5MineMobs.elemBeats(e, type.elem());
+            out.add(new int[] { e, Math.max(1, (int) Math.round(atkBase * a[e] * MINE_AURA_PCT / 100.0 * (0.85 + RND.nextDouble() * 0.3) * (beat ? 1.5 : 1))), beat ? 1 : 0 });
+        }
+        return out;
+    }
+    static int[] mineDirVec(String dir) {
+        if ("up".equals(dir)) return new int[] { 0, -1 };
+        if ("down".equals(dir)) return new int[] { 0, 1 };
+        if ("left".equals(dir)) return new int[] { -1, 0 };
+        if ("right".equals(dir)) return new int[] { 1, 0 };
+        return null;
+    }
+
+    /** 검기 -- (x, y)에서 dir 방향 1~사거리 칸 위의 몬스터(skipMob = 일반 공격으로 이미 때린 몬스터는 뺀다)에게 속성 피해.
+     *  보스는 검기만으로는 쓰러지지 않는다(체력 1). 쓰러뜨리면 일반 처치처럼 드랍/무기(경험치는 돌려주는 값으로 -- 부르는 쪽이 더한다).
+     *  out: auraMobs [{id, hits, row, killed}], auraDrops. 반환 {처치 수, 경험치}. */
+    long[] mineAuraSweep(String userName, S5MineMap map, Map<String, Integer> items, int[] aura, int range, double atkBase, int x, int y, String dir, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out) {
+        int[] dv = mineDirVec(dir);
+        if (dv == null || range <= 0) return new long[] { 0, 0 };
+        java.util.Set<Integer> line = new java.util.HashSet<>();
+        for (int k = 1; k <= range; k++) {
+            int lx = x + dv[0] * k, ly = y + dv[1] * k;
+            if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) break;
+            line.add(ly * map.w + lx);
+        }
+        List<HashMap<String, Object>> hitList = new ArrayList<>();
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        int mind = mineMindExpPct(items);
+        long kills = 0, expSum = 0;
+        for (S5MineMap.Mob om : map.mobs()) {
+            if (om.id == skipMob) continue;
+            S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
+            if (ot.clone || mineBossDead(om.type)) continue;
+            String key = mineMobKey(map, om.id);
+            MobState s0 = MINE_MOB_STATE.get(key);
+            if (ot.minion && s0 == null) continue; // 불려 나오지 않은 수하
+            int hitCell = -1, fw = ot.boss ? 2 : 1;
+            for (int c : mineMobCells(om, s0, now, map))
+                for (int oy = 0; oy < fw && hitCell < 0; oy++) for (int ox = 0; ox < fw; ox++) if (line.contains(c + oy * map.w + ox)) { hitCell = c; break; }
+            if (hitCell < 0) continue;
+            int omMax = S5MineMobs.hp(ot, om.rank);
+            MobState s = MINE_MOB_STATE.computeIfAbsent(key, k -> new MobState(omMax));
+            List<int[]> hs = mineAuraHits(aura, atkBase, ot);
+            int sum = 0;
+            for (int[] h : hs) sum += h[1];
+            boolean dead = false;
+            long[] row;
+            synchronized (s) {
+                if (s.deadUntil > now) continue;
+                if (s.deadUntil > 0) s.respawn(omMax);
+                if (ot.boss) mineBossRegen(s, omMax, now, map, om);
+                if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
+                s.lastHitAt = now;
+                if (!ot.dummy) {
+                    s.hp -= sum;
+                    if (ot.boss) s.hp = Math.max(1, s.hp);
+                    if (s.hp <= 0) {
+                        dead = true;
+                        s.hp = 0;
+                        s.deadUntil = ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
+                        s.frozenUntil = 0;
+                        s.stealth = false;
+                    } else {
+                        s.fx = hitCell % map.w;
+                        s.fy = hitCell / map.w;
+                        s.frozenUntil = now + MINE_MOB_FREEZE_MS;
+                        if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
+                    }
+                }
+                row = mineMobRow(om.id, s);
+            }
+            if (!dead && !ot.dummy) mineEngage(userName, map, om.id, now, now);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", om.id);
+            m.put("hits", hs);
+            m.put("row", row);
+            if (dead) {
+                m.put("killed", true);
+                kills++;
+                long be = S5MineMobs.exp(ot, om.rank), g = be + be * mind / 100;
+                expSum += g;
+                m.put("exp", g);
+                msg.append(msg.length() > 0 ? " " : "").append("🌀 검기로 ").append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
+                if (!ot.noReward) {
+                    drops.addAll(mineMobDrops(userName, map, ot, msg, om.rank));
+                    mineWeaponDrop(userName, items, ot, om.rank, msg, out);
+                }
+                MineEngage me = MINE_ENGAGE.get(userName);
+                if (me != null) me.mobs.remove(om.id);
+            }
+            hitList.add(m);
+        }
+        out.put("auraMobs", hitList);
+        if (!drops.isEmpty()) out.put("auraDrops", drops);
+        if (kills > 0) out.put("ores", mineOreList(userName));
+        return new long[] { kills, expSum };
+    }
+
+    /** [2026-11-04] 검기 경험치 -- 더하고 레벨 업. {lv, exp, hp, lock, 오른 레벨 수}. */
+    long[] mineAuraExp(String userName, int lv, long exp, int hp, int lock, int rb, long gain, boolean died, HashMap<String, Object> out) {
+        if (gain <= 0) return new long[] { lv, exp, hp, lock, 0 };
+        boolean wasReady = mineRebirthReady(lv, exp, rb);
+        exp += gain;
+        int up = 0;
+        while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
+        if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb));
+        if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
+        if (up > 0 && !died) {
+            hp = mineHpMax(lv, rb);
+            if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
+        }
+        return new long[] { lv, exp, hp, lock, up };
+    }
+
+    /** [2026-11-04] 옆에 몬스터가 없을 때 검기만 날리기(공격 버튼) -- mineAttack(mobId = -1). */
+    HashMap<String, Object> mineAuraAttack(String userName, String mapId, String ver, int x, int y, String dir) {
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        Long last = MINE_LAST_ATTACK.get(userName);
+        if (last != null && now - last < MINE_ATTACK_GAP_MS) { out.put("tooFast", true); return out; }
+        MINE_LAST_ATTACK.put(userName, now);
+        if (mineFrozen(userName, now) != null) { out.put("frozen", true); out.put("message", MINE_FROZEN_BLOCK); return out; }
+        HashMap<String, Object> row = mineRowLocked(userName);
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        int water = mineWalkMode(items);
+        int[] pos = minePos(row, map, water);
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) { out.put("reload", true); out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요."); return out; }
+        if (!mineWalk(map, x, y, water) || !mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
+            out.put("resyncX", pos[0]);
+            out.put("resyncY", pos[1]);
+            out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        int lv = mineLv(row);
+        String block = mineMapBlock(map, items, lv);
+        if (block != null) { out.put("message", block); return out; }
+        int[] aura = mineAuraActive(items);
+        int range = mineAuraRange(aura);
+        if (range <= 0) { out.put("message", "켜 둔 검기가 없어요. (인벤토리 스킬 탭)"); return out; }
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        int hp = mineHpNow(row, now, lock, rb);
+        StringBuilder msg = new StringBuilder();
+        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
+        long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
+        dao.updateMinePos(userName, map.id, x, y, now);
+        dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
+        out.put("ok", true);
+        out.put("auraOnly", true);
+        out.put("levelUp", (int) g[4]);
+        out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
+        if (msg.length() > 0) out.put("message", msg.toString());
+        return out;
+    }
+
+    /** [2026-11-04] 인벤토리 스킬 탭 -- 속성 el(1~8)의 검기를 lv단계로 켠다(0 = 끔, 배운 단계까지). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAuraSet(String userName, int el, int lv) {
+        HashMap<String, Object> out = new HashMap<>();
+        if (!mineAccess(userName)) return mineClosed();
+        Map<String, Integer> items = mineItems(userName);
+        int have = Math.min(items.getOrDefault(mineAuraKey(false, el), 0), MINE_AURA_MAX);
+        if (el < 1 || el > 8 || lv < 0 || lv > have) { out.put("ok", false); out.put("message", "아직 배우지 않은 단계예요."); return out; }
+        dao.upsertMineItem(userName, mineAuraKey(true, el), lv);
+        items.put(mineAuraKey(true, el), lv);
+        out.put("ok", true);
+        out.put("aura", mineAuraInfo(items));
+        return out;
+    }
+
     static HashMap<String, Object> mineEnchInfo(Map<String, Integer> items) {
         HashMap<String, Object> m = new HashMap<>();
         int left = items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0);
