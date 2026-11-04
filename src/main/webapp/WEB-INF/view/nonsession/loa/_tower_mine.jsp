@@ -3436,9 +3436,10 @@ var TowerMine = (function () {
   }
 
   // ---------------------------------------------------------------- 서버
-  function api(path) {
-    return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); }).then(apiPost);
+  function apiRaw(path) {
+    return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); });
   }
+  function api(path) { return apiRaw(path).then(apiPost); }
   function apiPost(d) {
     // [2026-10-23] 2일 주기 맵 리셋 중 -- 안내 후 광산에서 나간다(리셋이 끝나면 다시 들어오면 새 맵)
     if (d && d.resetting && opened && map) { msg(d.message || d.error, 4000); setTimeout(close, 2500); }
@@ -3500,7 +3501,15 @@ var TowerMine = (function () {
     if (!wsOk || !ws || ws.readyState !== 1) return api(path);
     return new Promise(function (ok, no) {
       var i = ++wsSeq;
-      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () { delete wsWait[i]; no(new Error('timeout')); }, 5000) };
+      // [2026-11-04] "컴으로 하면 끊긴다" -- PC(절전/와이파이 바뀜/백신 웹 보호/회사 프록시)에선 소켓이 열린 채로 답만 안 오는 일이 있다(onclose가 안 옴).
+      //  그러면 매 턴 5초 기다리다 실패만 반복 -> 1분 뒤 "접속 끊김". 답이 3초 안에 안 오면 그 소켓을 버리고 바로 HTTP로 다시 보내고, 소켓은 3초 뒤 새로 잇는다.
+      var sock = ws;
+      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () {
+        delete wsWait[i];
+        if (ws === sock) { wsClose(); wsTimer = setTimeout(wsOpen, 3000); }
+        // 턴(위치 알림)만 HTTP로 다시 보낸다 -- 전투/환경 턴(c/e)은 빼고(소켓 쪽이 이미 처리했을 수 있어 두 번 맞지 않게), 공격/캐기는 다시 보내지 않는다(두 번 되지 않게)
+        if (path.indexOf('/api/tower-mine-tick') === 0) apiRaw(path.replace(/&[ce]=1/g, '')).then(ok, no); else no(new Error('timeout'));
+      }, 3000) };
       ws.send(JSON.stringify({ i: i, p: path }));
     }).then(apiPost);
   }
