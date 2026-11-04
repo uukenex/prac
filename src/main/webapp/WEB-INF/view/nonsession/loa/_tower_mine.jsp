@@ -1339,12 +1339,13 @@ var TowerMine = (function () {
   function gearHtml() {
     var h = '';
     GEAR_PARTS.forEach(function (p) {
-      var list = (st.gear || []).filter(function (g) { return g.kind === p[0]; });
+      // [2026-11-04] "이미 산 상품은 안 나오게" -- 최고 단계까지 산 것은 빼고, 더 올릴 단계가 있는 것만(장착/해제는 인벤토리에서)
+      var list = (st.gear || []).filter(function (g) { return g.kind === p[0] && g.nextTier; });
       if (!list.length) return;
       h += '<div class="cos-slot"><div class="cos-slot-h">' + p[1] + ' <small>' + p[2] + '</small></div><div class="cos-car" data-slot="g-' + p[0] + '">'
           + list.map(gearCard).join('') + '</div></div>';
     });
-    return h;
+    return h || '<div class="mine-eq-empty">여기서 살 수 있는 장비는 모두 최고 단계까지 갖췄어요. 장착/해제는 인벤토리에서 할 수 있어요.</div>';
   }
   function synthHtml() {
     var stones = [];
