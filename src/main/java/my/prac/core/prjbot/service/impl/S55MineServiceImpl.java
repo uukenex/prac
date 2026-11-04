@@ -989,7 +989,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 보스 종류 -> 쓰러진 시각 설정 키(보스가 아니거나 따로 셈하는 보스면 null). */
     static String mineBossKey(int type) {
         return type == S5MineMobs.BOSS_TYPE ? MINE_BOSS_KEY : type == S5MineMobs.RAID_BOSS_TYPE ? MINE_RAID_KEY : type == S5MineMobs.ICE_BOSS_TYPE ? MINE_ICE_KEY
-                : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : null;
+                : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : type == S5MineMobs.PHARAOH_BOSS_TYPE ? MINE_PHARAOH_KEY : null;
     }
 
     boolean mineBossDead() {
@@ -1001,6 +1001,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     // [2026-10-28] 용암섬 용암 거신 -- 보스 공통으로 주기마다 한 번(MINE_LAVA_KILLED = "주기|유저").
     static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
+    // [2026-11-04] 피라미드 지하 파라오 미라 -- 보스 공통(2시간 뒤 다시). 붕대 감기 = 원거리 공격에 맞으면 MINE_STUN_MS 동안 못 움직이고 못 때린다(화면 + 공격/캐기 서버도 막음).
+    static final String MINE_PHARAOH_KEY = "MINE_PHARAOH_KILLED";
+    static final long MINE_STUN_MS = 2_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_STUN = new java.util.concurrent.ConcurrentHashMap<>();
+    static boolean mineStunned(String userName, long now) { Long u = userName == null ? null : MINE_STUN.get(userName); return u != null && u > now; }
     /** 원거리 공격(불덩이) -- 인식 중인 유저마다 다음에 던질 시각. 6~10초마다, 2칸 이상 떨어져 있을 때(붙어 있으면 그냥 때린다). */
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_RANGED_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_RANGED_MIN_MS = 6_000L, MINE_RANGED_RAND_MS = 4_000L;
@@ -1054,6 +1059,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
         MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
         MINE_PSTEALTH.remove(userName); // [2026-10-30] 자객의 목걸이 은신도 끝
+        MINE_STUN.remove(userName); // [2026-11-04] 붕대 스턴도 끝
         MINE_HEAL.remove(userName); // [2026-10-28] 재생의 장갑 회복도 끝
         MINE_ICE_THAWED.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
@@ -1268,7 +1274,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 }
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
-                if (type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
+                if (type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
@@ -1290,6 +1296,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                             h.put("venom", true);
                             out.put("slowUntil", db.slowUntil);
                             out.put("poisonUntil", db.poisonUntil);
+                        } else if (map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) { // [2026-11-04] 붕대 감기 -- 스턴
+                            MINE_STUN.put(userName, now + MINE_STUN_MS);
+                            h.put("stun", true);
+                            out.put("stunUntil", now + MINE_STUN_MS);
                         } else if (S5MineMap.ISLE7.equals(map.id)) {
                             mineLavaCells(map, now); // 맵 버전 맞추기
                             for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) // [2026-10-29] "용암 범위 3x3" (예전 서 있던 한 칸)
@@ -1490,7 +1500,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_ICE_AWAKE_MS = 15_000L;
     static final long MINE_ICE_FIRST_MS = 8_000L, MINE_ICE_PERIOD_MS = 18_000L, MINE_ICE_FREEZE_MS = 15_000L;
     static final int MINE_ICE_RESCUE_RANGE = 2;
-    static final long MINE_ICE_FRESH_MS = 3_000L;
+    static final long MINE_ICE_FRESH_MS = 6_000L; // [2026-11-04] 3초 -> 6초(통신이 느린 사람도 빙결 대상)
     static final String MINE_FROZEN_BLOCK = "🧊 얼어붙어서 꼼짝할 수 없어요! 동료가 곁(2칸)에 와야만 풀려요.";
     static volatile long mineIceAwakeUntil = 0;
     static volatile long mineIceNextFreeze = 0;
@@ -1559,7 +1569,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     List<String> cand = new ArrayList<>();
                     for (java.util.Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) {
                         MinePresence o = pe.getValue();
-                        if (!map.id.equals(o.mapId) || now - o.at > MINE_ICE_FRESH_MS || map.safeAt(o.x, o.y) || !map.walkable(o.x, o.y) || mineFrozen(pe.getKey(), now) != null) continue;
+                        if (!map.id.equals(o.mapId) || now - o.at > MINE_ICE_FRESH_MS || map.safeAt(o.x, o.y) || mineFrozen(pe.getKey(), now) != null) continue; // [2026-11-04] "한 명이 안 얼려진다" -- 걸을 수 없는 칸(물 위 등)도 대상
                         cand.add(pe.getKey());
                     }
                     if (!cand.isEmpty()) {
@@ -1728,6 +1738,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
+        if (mineStunned(userName, now)) { HashMap<String, Object> so = new HashMap<>(); so.put("ok", false); so.put("stunned", true); so.put("message", "🩹 붕대에 묶여 움직일 수 없어요!"); return so; } // [2026-11-04]
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         Long last = MINE_LAST_ATTACK.get(userName);
@@ -2007,6 +2018,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("dropGrade", g);
                 out.put("dropName", dw.name);
             }
+            if (mob.type == S5MineMobs.PHARAOH_BOSS_TYPE) { // [2026-11-04] 파라오 미라 처치 -- 2시간 뒤 다시
+                mineBossKilledNow(MINE_PHARAOH_KEY, userName, now);
+                MINE_RANGED_NEXT.clear();
+                msg.insert(0, "👑 파라오 미라를 쓰러뜨렸어요! ");
+                out.put("bossKilled", true);
+            }
             if (mob.type == S5MineMobs.LAVA_BOSS_TYPE) { // [2026-10-28] 용암 거신 처치 -- 이번 주기엔 다시 안 나온다(DB 기록)
                 mineBossKilledNow(MINE_LAVA_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
                 MINE_RANGED_NEXT.clear();
@@ -2041,7 +2058,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
             out.put("drops", type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
-                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
+                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
             out.put("ores", mineOreList(userName));
         } else {
             counter = mineCoatHit(items, counter); // [2026-10-26] 방한 외투 -- 받는 피해 2배([2026-10-28] 갑옷 1.5배)
@@ -2213,7 +2230,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4 }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -2266,6 +2283,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
+        if (mineStunned(userName, now)) { HashMap<String, Object> so = new HashMap<>(); so.put("ok", false); so.put("stunned", true); so.put("message", "🩹 붕대에 묶여 움직일 수 없어요!"); return so; } // [2026-11-04]
         HashMap<String, Object> row = mineRowLocked(userName); // [2026-10-28] 성능 -- 행 확인(mineRow) + 잠금 조회 두 번을 잠금 조회 한 번으로
         S5MineMap map = mineMapOf(row);
         int st = minePickDur(row), stMax = minePickMax(row);
@@ -3050,6 +3068,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-28] 피라미드 보상 상자 -- 상자 2칸 안에서 열면 사막의 심장 1개 + "보석 많이, 골고루": 보석 아홉 가지 모두 2~4개씩(다이아몬드는 1~2개).
      *  맵 주기마다 한 번(DESERT_CHEST = 주기 + 1). */
     static final String MINE_ITEM_DESERT_CHEST = "DESERT_CHEST";
+
+    /** [2026-11-04] 피라미드 상자 보상(사막의 심장 1개 + 보석 아홉 가지 2~4개, 다이아 1~2개) -- 상자와 파라오 미라 처치(100%)가 함께 쓴다. gm = 보석 목록 글. */
+    private List<HashMap<String, Object>> mineDesertGems(String userName, StringBuilder gm) {
+        dao.addUserOre(userName, S5MineMap.DESERT_HEART_CODE, 1);
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) {
+            int q = i == S5MineMap.GEM_DIAMOND ? 1 + RND.nextInt(2) : 2 + RND.nextInt(3);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[i], q);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + i, S5MineMap.GEM_NAMES[i], q));
+            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[i]).append(' ').append(q);
+        }
+        return drops;
+    }
+
+    private List<HashMap<String, Object>> mineDesertReward(String userName, StringBuilder msg) {
+        StringBuilder gm = new StringBuilder();
+        List<HashMap<String, Object>> drops = mineDesertGems(userName, gm);
+        drops.add(0, mineDrop(S5MineMap.DESERT_HEART_GRADE, S5MineMap.DESERT_HEART_NAME, 1));
+        msg.append(" · 📦 피라미드 상자 보상! 🧡 ").append(S5MineMap.DESERT_HEART_NAME).append(" + ").append(gm);
+        return drops;
+    }
     static final int MINE_DESERT_CHEST_PCT = 40;
 
     static String mineResetText() {
@@ -3082,15 +3121,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", "📦 상자가 텅 비어 있어요... (맵 리셋 " + mineResetText() + " 뒤 다시 열 수 있어요)");
             return out;
         }
-        dao.addUserOre(userName, S5MineMap.DESERT_HEART_CODE, 1);
-        List<HashMap<String, Object>> drops = new ArrayList<>();
         StringBuilder gm = new StringBuilder();
-        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) {
-            int q = i == S5MineMap.GEM_DIAMOND ? 1 + RND.nextInt(2) : 2 + RND.nextInt(3);
-            dao.addUserOre(userName, S5MineMap.GEM_CODES[i], q);
-            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + i, S5MineMap.GEM_NAMES[i], q));
-            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[i]).append(' ').append(q);
-        }
+        List<HashMap<String, Object>> drops = mineDesertGems(userName, gm);
         out.put("ok", true);
         out.put("grade", S5MineMap.DESERT_HEART_GRADE);
         out.put("drops", drops);

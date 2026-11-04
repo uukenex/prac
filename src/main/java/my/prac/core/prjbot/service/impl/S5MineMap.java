@@ -81,6 +81,8 @@ public final class S5MineMap {
      *  나가는 통로 3개를 어렵게, 탈출하면 피라미드 -- 가운데 보상 상자에서 사막의 심장" -- 사막 서쪽(DESERT_FALL_X 왼쪽)에서 걸을 때마다 확률로 개미굴 한가운데로 떨어진다
      *  (BotS5ServiceImpl.mineAntFall). 개미굴(굴 미로, 미니맵 없음) 가장자리 세 곳의 나가는 굴(U) -> 피라미드. 피라미드 동쪽 문 -> 사막 서쪽. */
     public static final String ANTNEST = "antnest", PYRAMID = "pyramid";
+    /** [2026-11-04] 피라미드 지하(파라오 미라의 방, 50x50) -- 개미굴 나가는 굴 셋 중 하나로만 들어간다. 전체 지도엔 없다. */
+    public static final String PYRAMID_UNDER = "pyramidb";
     /** [2026-10-28] "설산 동쪽에 설산 동굴 -- 땅파기가 안 되고, 앞에 있는 광석(얼음 광맥 I)을 직접 앞에서 채광, 20번 연속 채광하면 빙석,
      *  근처 40레벨대 강하지만 체력이 적은 박쥐류가 선공, 공격받으면 연속 채광이 풀린다, 내구도 소모 없음" -- 설산 마을 동문 -> 설산 동굴(veinMine).
      *  연속 채광은 BotS5ServiceImpl.mineVein. */
@@ -175,7 +177,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -942,11 +944,15 @@ public final class S5MineMap {
         for (int off = 3; off <= 33; off += 10) // 통로 둘레가 좁으면 안쪽(동쪽)으로 더 들어가 자리를 찾는다
             if (placeNpc(fd, wg[0] + off, wg[1], "daykeeper", "요일 동굴 문지기", "오늘의 요일석 20개를 내면 다른 요일의 동굴 문을 열어 주지. 한 번 열면 오늘 하루는 그대로라네.")) break;
         // [2026-10-28] 개미굴(사막 서쪽에서 빠짐) -> 나가는 굴 셋 -> 피라미드 -> 동쪽 문 -> 사막 서쪽. 맨 뒤에 넣는다(앞 맵들의 몬스터 자리는 그대로).
-        S5MineMap antnest = generateAntNest(seed + 71, (seed - BASE_SEED) / 7919L >= ANT_BIG_CYCLE), pyramid = generatePyramid(seed + 72);
+        boolean antV2 = (seed - BASE_SEED) / 7919L >= ANT_V2_CYCLE;
+        S5MineMap antnest = generateAntNest(seed + 71, (seed - BASE_SEED) / 7919L >= ANT_BIG_CYCLE, antV2), pyramid = generatePyramid(seed + 72);
+        S5MineMap pyb = generatePyramidUnder(seed + 79); // [2026-11-04] 피라미드 지하 -- 만들기만 여기서, 목록엔 맨 뒤에(앞 맵들의 몬스터 자리 그대로)
         S5MineMap ds0 = out.get(DESERT);
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
-        S5MineMap an2 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
+        S5MineMap an1 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
+        S5MineMap an2 = relink(an1, retarget(an1, PYRAMID_UNDER, new int[] { pyb.spawnX, pyb.spawnY }), null);
+        S5MineMap pybL = relink(pyb, retarget(pyb, ANTNEST, antV2 ? besidePortal(an2, PYRAMID_UNDER) : new int[] { an2.spawnX, an2.spawnY }), null);
         for (int[] c : an2.chestSpots) // [2026-10-28] 상자마다 담긴 양(c[2] = 0~1000) -- 세운 칸으로 찾는다(자리가 막혀 옆에 서면 칸이 달라서)
             if (placeNpc(an2, c[0], c[1], "antchest", "보물 상자", "흙더미 속에 반쯤 묻힌 보물 상자. 상자마다 담긴 양이 다르다. 개미굴이 바뀌기 전까지 열 개까지 열 수 있다." /* [2026-10-29] 설명이 예전 규칙(세 개)이었다 */)) {
                 Npc pn = an2.npcs.get(an2.npcs.size() - 1);
@@ -982,6 +988,7 @@ public final class S5MineMap {
         S5MineMap snowCave2 = generateSnowCave(seed + 74, 2), sc1 = out.get(SNOWCAVE);
         out.put(SNOWCAVE2, relink(snowCave2, retarget(snowCave2, SNOWCAVE, besidePortal(sc1, SNOWCAVE2)), null));
         out.put(SNOWCAVE, relink(sc1, retarget(sc1, SNOWCAVE2, new int[] { snowCave2.spawnX, snowCave2.spawnY }), null));
+        out.put(PYRAMID_UNDER, pybL); // [2026-11-04] 맨 뒤
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -1334,6 +1341,8 @@ public final class S5MineMap {
 
     /** [2026-10-28] "다음 맵 변경에서는 개미굴을 더 넓게 헤매게, 500x500" -- 이 주기(10/29 05:00 리셋)부터 만드는 맵은 500x500(방 200개). 그 전 주기는 200x200(방 36개). */
     static final int ANT_BIG_CYCLE = 3;
+    /** [2026-11-04] "다음 맵 리셋부터 개미굴 375x375, 나가는 굴 셋 중 하나는 피라미드 지하로" -- 11/06 05:00 리셋(주기 7)부터. */
+    static final int ANT_V2_CYCLE = 7;
 
     /** [2026-10-28] 개미굴 -- 흙벽(#) 속에 크고 작은 방(c, 반지름 4~7)을 2칸 굴로 이어 붙인 미로. 사막에서 빠지면 한가운데 방에 떨어진다.
      *  지도가 안 보인다(noMap -- 화면이 미니맵을 가린다). 굴은 가장 가까운 방 하나에만 이어서(고리 적게) 막다른 길이 많다.
@@ -1342,13 +1351,13 @@ public final class S5MineMap {
      *  "보물 상자를 구석진 곳에 많이" + "인당 3개만, 보상이 아주 적은 것(1개)부터 지금 보상까지 골고루" -- 남은 방 가운데 맵 가운데에서 가장 먼(구석) 곳에
      *  보물 상자(200칸: 10개, 500칸: 30개), 상자마다 담긴 양을 0~1000으로 고르게 섞어 둔다(chestSpots {x, y, 양}).
      *  멀수록 광석이 좋고 몬스터가 강하다(11~13단계). big = 500x500. */
-    static S5MineMap generateAntNest(long seed, boolean big) {
-        int w = big ? 500 : 200, h = w;
+    static S5MineMap generateAntNest(long seed, boolean big, boolean v2) {
+        int w = v2 ? 375 : big ? 500 : 200, h = w; // [2026-11-04] v2 = 375x375
         Random r = new Random(seed);
         Noise rich = new Noise(seed * 31 + 131);
         char[][] t = new char[h][w];
         for (char[] row : t) Arrays.fill(row, '#');
-        int n = big ? 200 : 36, apart = big ? 120 : 50, chestN = big ? 30 : 10;
+        int n = v2 ? 112 : big ? 200 : 36, apart = v2 ? 90 : big ? 120 : 50, chestN = v2 ? 17 : big ? 30 : 10; // [2026-11-04] 375x375 = 500x500의 넓이 비율로
         int[][] rooms = new int[n][];
         rooms[0] = new int[] { w / 2, h / 2, 5 }; // 떨어지는 방(한가운데)
         for (int i = 1; i < n; i++) {
@@ -1400,7 +1409,8 @@ public final class S5MineMap {
             if (m == dl) { ex = 0; ey = ro[1]; } else if (m == dr) { ex = w - 1; ey = ro[1]; } else if (m == du) { ex = ro[0]; ey = 0; } else { ex = ro[0]; ey = h - 1; }
             antTunnel(t, r, ro[0], ro[1], Math.max(1, Math.min(w - 3, ex)), Math.max(1, Math.min(h - 3, ey)));
             t[ey][ex] = 'U';
-            portals.add(new Portal(ex, ey, 'U', PYRAMID, 0, 0, "빛이 새어 드는 굴 -- 밖으로"));
+            boolean under = v2 && portals.isEmpty(); // [2026-11-04] 첫 굴은 피라미드 지하로
+            portals.add(new Portal(ex, ey, 'U', under ? PYRAMID_UNDER : PYRAMID, 0, 0, under ? "무너져 내린 굴 -- 아래로" : "빛이 새어 드는 굴 -- 밖으로"));
         }
         // 여왕개미 셋 -- 첫 여왕의 방 + 나가는 굴이 아닌 먼 방 가운데 여왕의 방끼리 apart/2칸 넘게 떨어진 둘(반지름 7)
         List<int[]> queens = new ArrayList<>();
@@ -1446,6 +1456,23 @@ public final class S5MineMap {
 
     /** [2026-10-28] 피라미드(90x90) -- 개미굴을 빠져나오면 닿는 모래 언덕. 가운데 큰 돌 피라미드(R, 31x31), 남쪽 입구에서 곧은 돌길(s)로
      *  한가운데 방(9x9)까지, 방 가운데 보상 상자(NPC chest -- 사막의 심장, 맵 주기마다 한 번). 남쪽 아래에서 시작, 동쪽 문 G = 사막 서쪽. 몬스터/광석 없음. */
+    /** [2026-11-04] 피라미드 지하(50x50) -- 사암 벽(R) 안 돌바닥 방, 양옆 기둥, 남쪽 무너진 굴(개미굴로), 북쪽 제단 앞에 파라오 미라(보스, 2x2). */
+    static S5MineMap generatePyramidUnder(long seed) {
+        int w = 50, h = 50, cx = w / 2;
+        Random r = new Random(seed);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'R' : r.nextDouble() < 0.06 ? 'd' : 's';
+        for (int py = 8; py < h - 8; py += 8) for (int px : new int[] { 9, w - 11 }) for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) t[py + dy][px + dx] = 'R'; // 기둥
+        for (int x = cx - 4; x <= cx + 5; x++) t[5][x] = 'R'; // 제단 뒷벽
+        t[h - 2][cx] = 'U';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(cx, h - 2, 'U', ANTNEST, 0, 0, "무너진 굴 -- 개미굴로"));
+        S5MineMap m = new S5MineMap(PYRAMID_UNDER, "피라미드 지하", false, w, h, cx, h - 4, t, new byte[h][w], portals);
+        m.bossX = cx;
+        m.bossY = 11;
+        return m;
+    }
+
     static S5MineMap generatePyramid(long seed) {
         int w = 90, h = 90, cx = w / 2, cy = h / 2 - 4;
         Random r = new Random(seed);

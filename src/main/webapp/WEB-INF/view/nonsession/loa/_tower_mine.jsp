@@ -654,7 +654,7 @@ var TowerMine = (function () {
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
   // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
   //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
-  var BOSS_ART = { '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen' };
+  var BOSS_ART = { '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen' };
   var bossArt = (function () {
     function painter(g) {
       var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
@@ -667,6 +667,20 @@ var TowerMine = (function () {
       };
     }
     var ART = {
+      pharaoh: function (pt, pf, f) { // [2026-11-04] 파라오 미라 -- 금·청 줄무늬 네메스 두건과 코브라 장식, 붕대 감긴 몸, 흩날리는 붕대, 보랏빛 눈(어둠 속성)
+        var w0 = '#d8c8a0', w1 = '#a8946a', w2 = '#f0e6cc', gd = '#e8b830', bl = '#2a4aa8', u = f ? 1 : 0;
+        pt.R(17, 34, 6, 12, w0); pt.R(26, 34, 6, 12, w0); for (var ly = 35; ly < 46; ly += 3) { pt.R(17, ly, 6, 1, w1); pt.R(26, ly, 6, 1, w1); }
+        pt.E(24, 27, 11, 10, w0); for (var by = 18; by < 37; by += 3) pt.R(14, by, 21, 1, w1); pt.L(15, 20, 33, 35, w1); pt.L(33, 20, 16, 35, w2);
+        pt.R(5, 21 + u, 10, 5, w0); pt.R(33, 21 + u, 10, 5, w0); pt.R(5, 22 + u, 10, 1, w1); pt.R(33, 24 + u, 10, 1, w1); // 앞으로 내민 두 팔
+        for (var i = 0; i < 9; i++) { pt.P(5 - (i >> 1), 26 + u + i + Math.round(Math.sin(i + (f ? 1.5 : 0))), w2); pt.P(42 + (i >> 1), 26 + u + i + Math.round(Math.cos(i + (f ? 1.5 : 0))), w2); } // 늘어진 붕대
+        for (var hy = 3; hy < 23; hy++) { var hw = hy < 7 ? 8 + hy : Math.max(9, 15 - Math.max(0, hy - 16)); pt.R(24 - hw, hy, hw * 2, 1, hy % 2 ? gd : bl); } // 네메스 두건(줄무늬, 얼굴은 위에 덮는다)
+        pt.R(15, 3, 18, 3, gd); pt.R(15, 4, 18, 1, bl);
+        pt.R(18, 7, 12, 11, w0); pt.R(18, 10, 12, 1, w1); pt.R(18, 14, 12, 1, w1); pt.R(18, 17, 12, 1, w1); // 붕대 얼굴
+        pt.R(23, 0, 2, 4, gd); pt.P(22, 1, gd); pt.P(25, 1, gd); pt.P(23, 1, '#c02020'); // 코브라
+        pt.R(22, 18, 4, 4, bl); pt.R(22, 19, 4, 1, gd); // 턱수염
+        pf.R(20, 11, 2, 2, '#c060ff'); pf.R(26, 11, 2, 2, '#c060ff'); if (f) { pf.P(19, 11, '#f0c8ff'); pf.P(28, 11, '#f0c8ff'); }
+        [[4, 14], [44, 12], [3, 38], [45, 40], [10, 4], [38, 3]].forEach(function (q, i) { var o = (f ? 2 : 0) * (i % 2 ? 1 : -1); pf.P(q[0], q[1] + o, '#7a3aa8'); pf.P(q[0], q[1] + o + 1, '#4a1a6a'); });
+      },
       golem: function (pt, pf, f) { // 고대 광석 골렘 -- 광석 결정이 박힌 바위 몸, 하늘빛 눈
         var b = '#6a5a7a', d = '#4a3e58', h = '#8a7a9a', u = f ? -2 : 0;
         pt.R(15, 36, 7, 11, d); pt.R(27, 36, 7, 11, d); pt.R(14, 44, 9, 3, '#3a3048'); pt.R(26, 44, 9, 3, '#3a3048');
@@ -1168,6 +1182,11 @@ var TowerMine = (function () {
       var d = heldDir() || tapDir;
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
+      if (d && stunnedMe()) { // [2026-11-04] 붕대 스턴
+        if (now - lastBumpT > 1500 || lastBump !== 'stun') msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500);
+        lastBump = 'stun'; lastBumpT = now;
+        d = null;
+      }
       if (d && frozenMe()) { // [2026-10-28] 얼음 여왕 빙결 -- 못 움직인다
         if (now - lastBumpT > 2500 || lastBump !== 'ice') msg('🧊 얼어붙어서 움직일 수 없어요! 동료가 곁(2칸)에 오면 풀려요.');
         lastBump = 'ice'; lastBumpT = now;
@@ -2371,6 +2390,7 @@ var TowerMine = (function () {
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
+      if (d.stunUntil) stunUntil = d.stunUntil; // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       if (d.healed) floats.push({ x: P.x - 0.2, y: P.y - 0.5, text: '+' + d.healed + ' 💚', color: '#7cf08a', t0: performance.now() });
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
@@ -2380,6 +2400,11 @@ var TowerMine = (function () {
         if (h.venom) { // [2026-10-28] 여왕개미 독산 -- 초록 덩이, 맞으면 느려지고 중독
           var bv = boltFrom(h); bolts.push({ fx: bv.fx, fy: bv.fy, me: true, t0: t, venom: true });
           floats.push({ x: P.x, y: P.y - 0.3, text: '🧪 -' + h.dmg + ' 느려짐·중독', color: '#9ad84a', big: true, t0: t + BOLT_MS });
+          return;
+        }
+        if (h.ranged && h.stun) { // [2026-11-04] 파라오 미라 붕대 감기 -- 붕대가 날아와 감기고 잠깐 못 움직인다
+          var bb = boltFrom(h); bolts.push({ fx: bb.fx, fy: bb.fy, me: true, t0: t, bandage: true });
+          floats.push({ x: P.x, y: P.y - 0.3, text: '🩹 붕대! -' + h.dmg, color: '#f0e6cc', big: true, t0: t + BOLT_MS });
           return;
         }
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
@@ -2446,6 +2471,19 @@ var TowerMine = (function () {
   // [2026-10-28] 설산 봉우리 -- 얼음 여왕이 18초마다 한 명씩 얼린다(최대 15초). 언 동안 못 움직이고(서버도 막음), 여왕에게 맞으면 즉사.
   //  얼지 않은 동료가 2칸 안에 오면 풀린다(얼음땡). 서버가 환경 턴으로 알려 준다: iceAwake, nextFreezeAt, frozen {x, y, until}, thawed.
   var iceSt = null, iceWarned = 0;
+  var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
+  function stunnedMe() { return stunUntil > nowSrv(); }
+  /** 붕대에 감긴 모습 -- 몸을 가로지르는 베이지 붕대 줄(흔들림). (x, y) = 캐릭터 그림 왼쪽 위. */
+  function drawBandage(x, y, now) {
+    var TS = T * scale;
+    ctx.save();
+    for (var i = 0; i < 4; i++) {
+      var yy = y + TS * (0.3 + i * 0.15) + Math.sin(now / 120 + i) * scale * 0.5;
+      ctx.fillStyle = i % 2 ? '#e8dcc0' : '#d0c098'; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.moveTo(x + TS * 0.12, yy); ctx.lineTo(x + TS * 0.88, yy - TS * 0.07); ctx.lineTo(x + TS * 0.88, yy - TS * 0.07 + 2.5 * scale); ctx.lineTo(x + TS * 0.12, yy + 2.5 * scale); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
   function frozenMe() { return !!(iceSt && iceSt.frozen && iceSt.frozen.until > nowSrv() && map && map.ice); }
   function iceApply(d, t) {
     var was = frozenMe();
@@ -2776,10 +2814,12 @@ var TowerMine = (function () {
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
   // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
   function digBtn() {
+    if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     dig();
   }
   function atkBtn() {
+    if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
     if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (a) { attack(a); return; }
@@ -3203,6 +3243,7 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
+    if (stunnedMe()) drawBandage(cx, cy - 3 * scale, now); // [2026-11-04] 붕대 스턴
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
@@ -3314,7 +3355,7 @@ var TowerMine = (function () {
     bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
       var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
-      var c0 = b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.venom ? '#6ab82a' : '#ff7a1a';
+      var c0 = b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-04] 붕대
       if (k < 1) {
         for (var tr = 3; tr >= 0; tr--) {
           var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 0.5;

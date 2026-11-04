@@ -52,6 +52,7 @@ public final class S5MineMobs {
         public int elem() { if (elem < 0) elem = S5MineMobs.elemOf(this); return elem; }
         Type asDummy() { dummy = true; stay = true; noReward = true; return this; }
         Type asDummy(int el) { elem = el; return asDummy(); } // [2026-10-30] 속성별 허수아비
+        Type el(int e) { elem = e; return this; } // [2026-11-04] 속성을 이름/맵 대신 직접
         Type(String name, int tier, String kind, String color, String... maps) {
             this.name = name; this.tier = tier; this.kind = kind; this.color = color; this.maps = maps;
         }
@@ -212,7 +213,9 @@ public final class S5MineMobs {
         new Type("땅 허수아비", 1, "human", "#9a7a4a").asDummy(1),
         new Type("번개 허수아비", 1, "human", "#f0d83a").asDummy(2),
         new Type("어둠 허수아비", 1, "human", "#5a3a7a").asDummy(7),
-        new Type("빛 허수아비", 1, "human", "#fff0c0").asDummy(8)
+        new Type("빛 허수아비", 1, "human", "#fff0c0").asDummy(8),
+        // [2026-11-04] 피라미드 지하 보스 -- 파라오 왕관을 쓴 미라, 어둠 속성, 붕대 감기(원거리, 스턴). 세기는 얼음 여왕과 같게.
+        new Type("파라오 미라", 24, "human", "#d8c8a0").asBoss().strong(1.5, 1.1).showLv(95).aggroRange(4).asRanged().el(7) // 7 = EL_DARK(아래에 선언돼 앞에서는 숫자로)
     ));
     public static final int DUMMY_TYPE = indexOf("허수아비");
     /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
@@ -292,6 +295,7 @@ public final class S5MineMobs {
     public static final int ANT_BOSS_TYPE = indexOf("여왕개미");
     /** [2026-10-28] 용암섬(다도해 마지막 섬) 보스. */
     public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
+    public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -478,7 +482,7 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
