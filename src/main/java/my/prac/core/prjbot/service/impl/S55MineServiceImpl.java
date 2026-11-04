@@ -83,7 +83,52 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUser(n);
         out.put("exists", row != null);
         if (row != null) out.put("lv", mineLv(row));
+        else out.put("similar", s55Similar(kakaoId, n)); // [2026-11-04] "비슷한 닉네임 추천" -- 오타로 새 캐릭터를 만들지 않게
         return out;
+    }
+
+    /** [2026-11-04] 입력한 이름과 비슷한 기존 광산 캐릭터(최대 3개, 다른 카카오 계정에 연결된 것은 뺀다) -- [{name, lv}].
+     *  같은 기준: 대소문자·띄어쓰기 무시하고 같음 / "닉네임/캐릭터"의 앞쪽이나 뒤쪽이 같음 / 한쪽이 다른 쪽을 품음 / 글자 2개 이하 차이. */
+    List<HashMap<String, Object>> s55Similar(String kakaoId, String name) {
+        String q = name.toLowerCase().replace(" ", "");
+        String[] qp = q.split("/", 2);
+        List<Object[]> scored = new ArrayList<>();
+        for (HashMap<String, Object> u : dao.selectAllMineUsers()) {
+            String un = strVal(u.get("USER_NAME"), "");
+            if (un.isEmpty()) continue;
+            String c = un.toLowerCase().replace(" ", "");
+            String[] cp = c.split("/", 2);
+            int score = c.equals(q) ? 100
+                    : (cp[0].equals(qp[0]) || (cp.length > 1 && qp.length > 1 && cp[1].equals(qp[1])) || (cp.length > 1 && cp[1].equals(q)) || cp[0].equals(q)) ? 80
+                    : s55Lev(c, q) <= 2 ? 70 - s55Lev(c, q)
+                    : (q.length() >= 2 && (c.contains(q) || q.contains(c))) ? 60 : 0;
+            if (score == 0) continue;
+            String owner = dao.selectS55LinkByUser(un);
+            if (owner != null && !owner.equals(kakaoId)) continue;
+            scored.add(new Object[] { score, un, intVal(u.get("M_LV"), 1) });
+        }
+        scored.sort((a, b) -> (Integer) b[0] - (Integer) a[0]);
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (int i = 0; i < Math.min(3, scored.size()); i++) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("name", scored.get(i)[1]);
+            m.put("lv", scored.get(i)[2]);
+            out.add(m);
+        }
+        return out;
+    }
+
+    /** 글자 차이(편집 거리). */
+    static int s55Lev(String a, String b) {
+        if (Math.abs(a.length() - b.length()) > 2) return 99;
+        int[] p = new int[b.length() + 1], c = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) p[j] = j;
+        for (int i = 1; i <= a.length(); i++) {
+            c[0] = i;
+            for (int j = 1; j <= b.length(); j++) c[j] = Math.min(Math.min(c[j - 1] + 1, p[j] + 1), p[j - 1] + (a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1));
+            int[] t = p; p = c; c = t;
+        }
+        return p[b.length()];
     }
 
     @Override

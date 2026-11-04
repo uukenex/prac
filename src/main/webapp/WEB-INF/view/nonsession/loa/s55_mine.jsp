@@ -166,10 +166,14 @@
       if (!d.ok) { say(d.message || '확인하지 못했어요.', 'err'); $('s55Confirm').hidden = true; return; }
       if (d.taken) { say('이미 다른 카카오 계정에 이어진 닉네임이에요. 본인 캐릭터라면 관리자에게 문의해 주세요.', 'err'); $('s55Confirm').hidden = true; return; }
       picked = d.name; say('');
-      $('s55Confirm').innerHTML = (d.exists ? '기존 광산 캐릭터 <b>' + esc(d.name) + '</b> (Lv.' + d.lv + ')와 이을까요?' : '<b>' + esc(d.name) + '</b> 캐릭터는 아직 없어요.<br>이 이름으로 새로 시작할까요?')
+      var sim = (d.similar || []).map(function (c) { return '<button type="button" class="s55-btn s55-sim" data-n="' + esc(c.name) + '">' + esc(c.name) + ' (Lv.' + c.lv + ')</button>'; }).join(''); // [2026-11-04] 비슷한 닉네임 추천
+      $('s55Confirm').innerHTML = (d.exists ? '기존 광산 캐릭터 <b>' + esc(d.name) + '</b> (Lv.' + d.lv + ')와 이을까요?'
+          : (sim ? '<div style="margin-bottom:6px">혹시 이 캐릭터인가요?</div>' + sim + '<div style="margin:10px 0 0;color:#ffd27a">아니라면 ↓</div>' : '')
+            + '<b>' + esc(d.name) + '</b> 캐릭터는 아직 없어요.<br>이 이름으로 새로 시작할까요?<br><small style="color:#ffb0a0">람쥐봇 방 닉네임과 한 글자라도 다르면 다른 캐릭터가 돼요.</small>')
         + '<br><button type="button" class="s55-btn main" id="s55Go">' + (d.exists ? '이 캐릭터로 시작' : '새로 시작') + '</button><button type="button" class="s55-btn" id="s55No">다시 입력</button>';
       $('s55Confirm').hidden = false;
       $('s55Go').onclick = link;
+      Array.prototype.forEach.call(document.querySelectorAll('.s55-sim'), function (b) { b.onclick = function () { $('s55Name').value = b.getAttribute('data-n'); check(); }; });
       $('s55No').onclick = function () { $('s55Confirm').hidden = true; picked = null; $('s55Name').focus(); };
     }).catch(function () { $('s55Check').disabled = false; say('요청이 실패했어요. 다시 시도해 주세요.', 'err'); });
   }
