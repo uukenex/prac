@@ -3642,7 +3642,8 @@ var TowerMine = (function () {
   // [2026-11-04] "핑이 비정상으로 높다" -- Cloudflare를 거치면 도쿄/홍콩을 돌아와 150~600ms. 서버가 직접 주소(st.wsHost)를 주면 http 화면에선 소켓을 그리로 바로 잇는다.
   //  한 번도 못 열고 끊기면(막힘) 이 화면에선 예전 주소로 돌아간다.
   var wsDirectBad = false;
-  function wsDirect() { return !!(st && st.wsHost && location.protocol === 'http:' && !wsDirectBad); }
+  //  [2026-11-04] 서버 주소는 숨긴다(사용자 지시) -- wsHost는 서울 지점 중계(CloudFront) 도메인. 보안 연결도 되니 https 화면도 wss://로.
+  function wsDirect() { return !!(st && st.wsHost && !wsDirectBad); }
   function wsOpen() {
     if (!opened || ws || !window.WebSocket) return;
     var direct = wsDirect(), opened1 = false;
