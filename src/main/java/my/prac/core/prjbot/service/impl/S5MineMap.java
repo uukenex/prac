@@ -381,10 +381,10 @@ public final class S5MineMap {
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
     //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
     //  [2026-10-25] 설원 북쪽 작은 마을도 마을이라 안내원을 둔다. [2026-10-26] 그 마을은 설산 3층 너머 "설산 마을"(SNOWTOWN)로 옮겼다.
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI)); // [2026-10-28] 다도해 마을(본섬)도
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI, SNOWROAD)); // [2026-10-28] 다도해 마을(본섬)도, [2026-11-04] 설산 베이스캠프(봉우리 가는 길 맨 위)
     /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
     public static String townName(String id) {
-        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : ARCHI.equals(id) ? "다도해 마을" : nameOf(id);
+        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : ARCHI.equals(id) ? "다도해 마을" : SNOWROAD.equals(id) ? "설산 베이스캠프" : nameOf(id);
     }
 
     // ---------------------------------------------------------------- [2026-10-26] 한기 / 눈바람 / 안전지대
@@ -892,6 +892,8 @@ public final class S5MineMap {
         S5MineMap sr = relink(sroad, retarget(sroad, SNOWTOWN, besidePortal(tw0, SNOWROAD)), null);
         sr = relink(sr, retarget(sr, PEAK, new int[] { peak.spawnX, peak.spawnY }), null);
         out.put(SNOWROAD, sr);
+        sr.villageX = sroad.villageX; sr.villageY = sroad.villageY;
+        placeNpc(sr, sr.villageX + 4, sr.villageY + 1, "basecamp", "베이스캠프 대장", "소문 들었나? 얼음 여왕의 얼음을 깨는 방법을 누가 알아냈다더군. 꽁꽁 얼어붙어도 포기하지 말고 버둥거려 보라던데... 자네도 한번 도전해 보게나."); // [2026-11-04]
         out.put(PEAK, relink(peak, retarget(peak, SNOWROAD, besidePortal(sr, PEAK)), null));
         out.put(SNOWTOWN, relink(tw0, retarget(tw0, SNOWROAD, new int[] { sr.spawnX, sr.spawnY }), tw0.npcs));
         S5MineMap sh2 = relink(shrine2, retarget(shrine2, SHRINE, besidePortal(sh1, SHRINE2)), null);
@@ -955,7 +957,7 @@ public final class S5MineMap {
         { // [2026-11-04] 사막 서쪽 방벽 문 경비병(문 동쪽 -- "너무 저렙은 위험하니 가지 말라고 안내")
             int awx = antWallX(ds0.w), agy = -1;
             for (int y = 1; y < ds0.h - 1 && agy < 0; y++) if (ds0.terrain[y][awx] != 'W' && ds0.terrain[y - 1][awx] == 'W') agy = y + 1;
-            if (agy > 0) placeNpc(ds0, awx + 3, agy, "wallguard", "사막 경비병", "여기서부터 서쪽은 모래가 꺼져 개미굴로 빠지는 곳이오. 지도도 안 보이고 개미 떼가 들끓지. Lv.41이 안 됐다면 돌아가시오 -- 문을 열어 줄 수 없소.");
+            if (agy > 0) placeNpc(ds0, awx + 3, agy, "wallguard", "사막 경비병", "이전에 챙석봉이라는 유저가 사막에 빠져서 사라졌다네.. 그는 초보 모험가였지... 그 이후 방벽이 세워졌다네.. 여기서부터 서쪽은 모래가 꺼져 개미굴로 빠지는 곳이오. Lv.41이 안 됐다면 돌아가시오.");
         }
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
@@ -2300,6 +2302,10 @@ public final class S5MineMap {
             pathX[y] = px;
         }
         int bx = pathX[h - 2], tx = pathX[1];
+        // [2026-11-04] "설산 봉우리 가는 길 맨 위에 베이스캠프(보스방 입구에서 20걸음쯤)" -- 눈길 위 반지름 4 공터(바위/나무/호수 치움). 무작위 값을 쓰지 않아 나머지 칸은 그대로.
+        int campY = 20, campX = pathX[campY];
+        for (int y = campY - 4; y <= campY + 4; y++) for (int x = campX - 5; x <= campX + 5; x++)
+            if (x > 0 && x < w - 1 && y > 0 && Math.hypot((x - campX) / 1.2, y - campY) <= 4.2) t[y][x] = 'n';
         t[h - 1][bx] = 'G';
         t[0][tx] = 'G';
         int sx = bx, sy = h - 2;
@@ -2315,7 +2321,11 @@ public final class S5MineMap {
             score[y][x] = 0.55 * rich.fbm(x / 13.0, y / 13.0) + 0.2 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, SNOWROAD_SHARE, skip);
+        for (int y = campY - 4; y <= campY + 4; y++) for (int x = Math.max(0, campX - 5); x <= Math.min(w - 1, campX + 5); x++) o[y][x] = 0; // 베이스캠프엔 광석 없음
         S5MineMap m = new S5MineMap(SNOWROAD, "설산 봉우리 가는 길", false, w, h, sx, sy, t, o, portals);
+        m.villageX = campX; // 이동 안내원 자리(placeGuide)
+        m.villageY = campY;
+        m.safe.add(new int[] { campX, campY, 5 }); // 베이스캠프 모닥불
         m.cold = 4;
         m.safe.add(new int[] { bx, h - 3, 4 });
         m.safe.add(new int[] { pathX[3], 3, 4 });

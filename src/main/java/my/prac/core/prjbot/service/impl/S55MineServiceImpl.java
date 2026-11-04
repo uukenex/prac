@@ -685,7 +685,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", d);
                 m.put("name", S5MineMap.townName(d)); // [2026-10-25] 마을 이름(설원 = 설원 마을)
-                if (S5MineMap.SNOWTOWN.equals(d) || S5MineMap.CITY.equals(d) || S5MineMap.ARCHI.equals(d)) m.put("needVisit", true); // [2026-10-26] 한 번 걸어서 가 본 뒤에만(화면도 그때만), [2026-10-27] 왕도도
+                if (S5MineMap.SNOWTOWN.equals(d) || S5MineMap.CITY.equals(d) || S5MineMap.ARCHI.equals(d) || S5MineMap.SNOWROAD.equals(d)) m.put("needVisit", true); // [2026-10-26] 한 번 걸어서 가 본 뒤에만(화면도 그때만), [2026-10-27] 왕도도
                 gl.add(m);
             }
             out.put("guideTo", gl);
@@ -3423,6 +3423,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
         if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
         if (S5MineMap.ARCHI.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 다도해 마을은 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-28]
+        if (S5MineMap.SNOWROAD.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 설산 베이스캠프는 설산 마을에 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-04]
         if (S5MineMap.SNOWTOWN.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1) { out.put("message", "🧭 설산 마을은 설산 1, 2, 3층을 차례로 오르거나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-26]
         if (mineEngaged(userName, now)) { out.put("message", MINE_FIGHT_BLOCK); return out; }
         S5MineMap target = S5MineMap.get(dest);
