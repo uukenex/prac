@@ -3127,6 +3127,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return drops;
     }
 
+    /** [2026-11-04] 피라미드 상자 꽝일 때 -- 보석 세 가지를 1~2개씩(다이아는 1개), 가진 개수가 적은 보석부터(같으면 무작위). */
+    private List<HashMap<String, Object>> mineDesertFewGems(String userName, StringBuilder gm) {
+        Map<String, Integer> have = mineOreHave(userName);
+        List<Integer> idx = new ArrayList<>();
+        for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) idx.add(i);
+        Collections.shuffle(idx, RND);
+        idx.sort((a, b) -> have.getOrDefault(S5MineMap.GEM_CODES[a], 0) - have.getOrDefault(S5MineMap.GEM_CODES[b], 0));
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        for (int k = 0; k < 3; k++) {
+            int i = idx.get(k), q = i == S5MineMap.GEM_DIAMOND ? 1 : 1 + RND.nextInt(2);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[i], q);
+            drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + i, S5MineMap.GEM_NAMES[i], q));
+            gm.append(gm.length() > 0 ? ", " : "").append(S5MineMap.GEM_NAMES[i]).append(' ').append(q);
+        }
+        return drops;
+    }
+
     private List<HashMap<String, Object>> mineDesertReward(String userName, StringBuilder msg) {
         StringBuilder gm = new StringBuilder();
         List<HashMap<String, Object>> drops = mineDesertGems(userName, gm);
@@ -3161,9 +3178,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         dao.upsertMineItem(userName, MINE_ITEM_DESERT_CHEST, cyc);
-        if (RND.nextInt(100) >= MINE_DESERT_CHEST_PCT) {
+        if (RND.nextInt(100) >= MINE_DESERT_CHEST_PCT) { // [2026-11-04] "꽝이어도 보석은 항상 조금, 내가 없는 보석 위주로"
+            StringBuilder fg = new StringBuilder();
             out.put("ok", true);
-            out.put("message", "📦 상자가 텅 비어 있어요... (맵 리셋 " + mineResetText() + " 뒤 다시 열 수 있어요)");
+            out.put("drops", mineDesertFewGems(userName, fg));
+            out.put("message", "📦 사막의 심장은 없었지만 보석이 조금 들어 있었어요! (" + fg + ") -- 맵 리셋 " + mineResetText() + " 뒤 다시 열 수 있어요");
+            out.put("ores", mineOreList(userName));
             return out;
         }
         StringBuilder gm = new StringBuilder();
