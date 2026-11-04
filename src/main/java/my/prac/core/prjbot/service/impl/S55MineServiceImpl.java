@@ -1123,7 +1123,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_AGGRO_RANGE = 5;
     /** [2026-10-29] "보스 공통으로 50칸 이상 멀어지면 어그로가 풀리고 체력이 서서히 회복" -- 인식이 풀린 보스는 마지막으로 맞은 지 5초 뒤부터 2분에 걸쳐 가득. */
     static final int MINE_BOSS_LEASH = 50;
-    static final long MINE_BOSS_REGEN_DELAY_MS = 5_000L, MINE_BOSS_REGEN_FULL_MS = 120_000L;
+    static final long MINE_BOSS_REGEN_DELAY_MS = 3_000L, MINE_BOSS_REGEN_FULL_MS = 20_000L; // [2026-11-04] "보스에게서 떨어지면 서서히 -> 빠르게 회복" (5초 뒤 120초 -> 3초 뒤 20초에 가득)
     // [2026-10-30] "맵에 아무도 없거나 200칸 안에 아무도 없으면 체력이 최대치로" -- 위치 알림(MINE_PRESENCE) 기준. 한동안(MINE_BOSS_ALONE_MS) 아무도 안 보다가 돌아와도 가득.
     static final int MINE_BOSS_ALONE_RANGE = 200;
     static final long MINE_BOSS_ALONE_MS = 20_000L;
@@ -1402,6 +1402,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
         if (dmgSum == 0 && healed == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
+        if (dmgSum > 0 && mineFrozen(userName, now) != null && hp + healed - dmgSum > 0) { dmgSum = hp + healed; shattered = true; } // [2026-11-04] "빙결 상태에서 맞으면 즉사" -- 얼음 여왕뿐 아니라 어떤 공격이든
         boolean save = mineHpFlushDue(row, now) || hp + healed - dmgSum <= 0; // [2026-11-03] 체력만 바뀌면 메모리에(MINE_HP_VIRT), 쓰러지거나 15초마다 DB
         HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : null; // 쓰기 전에 같은 유저 요청 직렬화
         if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
@@ -1413,6 +1414,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dmgSum > 0) {
             if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
             if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * mineRegenPct(items)), now); // [2026-10-28] 재생의 장갑
+            if (shattered) dmgSum = Math.max(dmgSum, hp); // [2026-11-04] 다시 읽은 체력 기준으로도 즉사
             hp -= dmgSum;
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1

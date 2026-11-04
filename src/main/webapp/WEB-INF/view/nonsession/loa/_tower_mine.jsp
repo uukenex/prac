@@ -1121,7 +1121,7 @@ var TowerMine = (function () {
   // [2026-10-28] "최근 캔 곳에 최근 획득이나 구매한 걸, 사용한 건 안 나와도" -- 위: 최근 획득·구매(창을 열 때 서버에서), 아래: 최근 캔 곳
   var recentGet = [];
   function renderLog() {
-    var h = '<div class="mine-log-head">🎁 최근 획득·구매</div>';
+    var h = '<div class="mine-log-head">🎁 최근 획득·구매<button type="button" class="mine-mini-btn" style="pointer-events:auto" onclick="TowerMine.toggleLog()">✖ 닫기</button></div>'; // [2026-11-04] 닫기
     if (!recentGet.length) h += '<div class="mine-log-empty">아직 없어요. (서버를 다시 켜면 비워져요)</div>';
     else h += recentGet.slice(0, 20).map(function (e) {
       var body = e.t === 'buy' ? '🛒 ' + e.text : '<b>+' + e.qty + '</b> ' + e.name;
@@ -2832,6 +2832,40 @@ var TowerMine = (function () {
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
   function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
+  // [2026-11-04] 획득 카드 -- 오른쪽 위에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
+  var lootBox = null;
+  function lootDrops(list) {
+    if (!list || !list.length) return;
+    var sp = false;
+    lootToast(list.map(function (dr) { var s = specialDrop(dr.grade); if (s) sp = true; return { icon: oreIcon(dr.grade), text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], big: s }; }));
+    if (sp) flashT0 = performance.now();
+  }
+  function lootToast(items) {
+    if (!el.ov || !items || !items.length) return;
+    if (!lootBox || !lootBox.parentNode) {
+      lootBox = document.createElement('div');
+      lootBox.style.cssText = 'position:absolute;right:10px;top:calc(var(--patch-h, 0px) + 96px + env(safe-area-inset-top));z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none;';
+      el.ov.appendChild(lootBox);
+    }
+    items.forEach(function (it, i) {
+      var c = document.createElement('div');
+      c.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 9px;background:rgba(20,16,30,.88);border:2px solid ' + (it.big ? '#ffd27a' : '#f4f0e6') + ';box-shadow:2px 2px 0 rgba(0,0,0,.6);font:800 ' + (it.big ? 13 : 12) + 'px monospace;color:' + (it.color || '#fff') + ';white-space:nowrap;opacity:0;transform:translateX(24px);transition:transform .25s ease-out,opacity .25s;';
+      c.innerHTML = (it.icon ? '<img src="' + it.icon + '" alt="" style="width:16px;height:16px;image-rendering:pixelated">' : '') + '<span></span>';
+      c.lastChild.textContent = it.text;
+      lootBox.appendChild(c);
+      while (lootBox.children.length > 8) lootBox.removeChild(lootBox.firstChild);
+      setTimeout(function () { c.style.opacity = '1'; c.style.transform = 'none'; }, 30 + i * 90);
+      setTimeout(function () { // 왼쪽 아래 메뉴 버튼 쪽으로
+        if (!c.parentNode) return;
+        var r = c.getBoundingClientRect(), tg = el.menuBtn ? el.menuBtn.getBoundingClientRect() : null; if (tg && !tg.width) tg = null; // 메뉴 버튼이 숨어 있으면(NPC 창) 왼쪽 아래 구석으로
+        var tx = tg ? tg.left + tg.width / 2 : 24, ty = tg ? tg.top + tg.height / 2 : window.innerHeight - 60;
+        c.style.transition = 'transform .55s cubic-bezier(.5,0,.9,.4),opacity .55s ease-in';
+        c.style.transform = 'translate(' + Math.round(tx - (r.left + r.width / 2)) + 'px,' + Math.round(ty - (r.top + r.height / 2)) + 'px) scale(.15)';
+        c.style.opacity = '0';
+        setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); if (el.menuBtn) { el.menuBtn.style.transition = 'transform .12s'; el.menuBtn.style.transform = 'scale(1.18)'; setTimeout(function () { el.menuBtn.style.transform = ''; }, 140); } }, 560);
+      }, 1800 + i * 160);
+    });
+  }
   /** 공격 응답의 검기 -- 바로 앞 적의 속성 숫자(aura), 너머 몬스터(auraMobs: 상태/숫자/처치), 드랍. */
   function auraShow(d, fxp, fyp, t) {
     (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
@@ -2844,10 +2878,8 @@ var TowerMine = (function () {
       (am.hits || []).forEach(function (h, i) { floats.push({ x: p.x + (i % 2 ? 0.3 : -0.3), y: p.y - 0.32 * i, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * i }); });
       if (am.killed) { anyKill = true; floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); }
     });
-    (d.auraDrops || []).forEach(function (dr, i) {
-      var img = new Image(); img.src = oreIcon(dr.grade);
-      floats.push({ x: P.x, y: P.y - 1 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, t0: t + 300 + i * 150 });
-    });
+    lootDrops(d.auraDrops); // [2026-11-04] 화면 구석 카드
+    if (!d.killed && d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); }
     if (anyKill) { if (d.ores) st.ores = d.ores; if (!d.killed && d.message) msg(d.message, 2600); }
   }
   /** 옆에 몬스터가 없을 때 공격 버튼 = 검기만 날린다(서버 mob=-1). */
@@ -2998,14 +3030,9 @@ var TowerMine = (function () {
       setCombat(d.combat);
       if (d.killed) {
         if (d.ores) st.ores = d.ores;
-        (d.drops || []).forEach(function (dr, i) {
-          var img = new Image(); img.src = oreIcon(dr.grade);
-          var sp = specialDrop(dr.grade); // [2026-10-29] 귀한 것 -- 크게 + 번쩍 + 가운데 이름
-          floats.push({ x: fxp, y: fyp - 0.6 - i * 0.5, text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], icon: img, big: sp, t0: t + 200 + i * 150 });
-          if (sp) { flashT0 = t; banner = { text: '✨ ' + dr.name + '!', t0: t }; }
-        });
+        lootDrops(d.drops); // [2026-11-04] "드랍 아이템 효과가 가운데 상자를 가린다" -- 화면 구석 카드 -> 왼쪽 아래로 빨려 들어감
         if (d.dropGrade != null) api('/api/tower-mine').then(function (s2) { if (s2 && !s2.error) { st.equip = s2.equip; st.gear = s2.gear; if (s2.ores) st.ores = s2.ores; if (s2.look) st.look = s2.look; if (smithOpen) renderSmith(smithNpc); } }).catch(function () { }); // [2026-10-29] "무기를 얻었는데 인벤토리에 안 보인다" -- 장비 목록/조각을 바로 다시 받는다
-        if (d.dropGrade != null) { flashT0 = t; banner = d.dropShard ? { text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, t0: t } : { text: '🗡️ ' + d.dropName + '!', t0: t, color: GRADE_COL[d.dropGrade], rainbow: d.dropGrade === 7 }; } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
+        if (d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
         msg(d.message || '', 2600);
       }
