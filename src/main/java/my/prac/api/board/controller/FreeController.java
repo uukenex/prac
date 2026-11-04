@@ -118,6 +118,7 @@ public class FreeController {
 		String userId = u.getUserId();
 		try {
 			commentService.writeFreeComment(commentName, commentContent, userId, secretYn);
+			my.prac.core.util.S55AdminPush.notify("📝 자유게시판 새 글", commentName + " (" + userId + ")"); // [2026-11-04] 관리자 폰 알림
 		} catch (Exception e) {
 			log.info("commentService.writeFreeComment DB none Connect");
 		}

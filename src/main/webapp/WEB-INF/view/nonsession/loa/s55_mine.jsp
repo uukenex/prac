@@ -58,6 +58,29 @@
     <img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><b>람쥐 광산</b><span class="who"><%=userEsc%></span>
     <a href="<%=ctx%>/loa/s5/logout">로그아웃</a>
   </div>
+  <% if (request.getAttribute("vapidPub") != null) { %>
+  <div class="s55-top" id="s55PushBox"><span class="who">🔔 관리자 알림(접속·보스·전설 장비·카카오 연결·게시판)</span><button type="button" class="s55-btn" id="s55Push" style="margin:0;padding:6px 10px;font-size:12px">이 기기로 받기</button></div>
+  <script>
+  (function () {
+    var key = '<%=request.getAttribute("vapidPub")%>', btn = document.getElementById('s55Push');
+    function b64(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var r = atob(s), a = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) a[i] = r.charCodeAt(i); return a; }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) { btn.textContent = '이 기기는 지원 안 함'; btn.disabled = true; return; }
+    navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (s) { if (s && Notification.permission === 'granted') btn.textContent = '받는 중 (다시 등록)'; });
+    btn.onclick = function () {
+      btn.disabled = true;
+      Notification.requestPermission().then(function (p) {
+        if (p !== 'granted') throw new Error('알림 권한이 꺼져 있어요');
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
+        return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) }); });
+      }).then(function (s) {
+        return fetch('<%=ctx%>/mine/push-sub', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'endpoint=' + encodeURIComponent(s.endpoint) }).then(function (r) { return r.json(); });
+      }).then(function (d) { btn.disabled = false; btn.textContent = d.ok ? '받는 중 ✔ (시험 알림 보냄)' : '등록 실패'; })
+        .catch(function (e) { btn.disabled = false; btn.textContent = (e && e.message) || '등록 실패'; });
+    };
+  })();
+  </script>
+  <% } %>
   <div id="s55Home"><div class="s55-msg">불러오는 중...</div></div>
 </div>
 <script src="<%=ctx%>/loa/s55/mine.js?v=<%=build%>"></script>

@@ -61,6 +61,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return dao.selectS55Link(kakaoId);
     }
 
+    @Override
+    public boolean s55IsAdmin(String userName) { return isMineAdmin(userName); }
+
     /** 입력한 이름 다듬기(앞뒤 공백, 줄바꿈/제어문자/꺾쇠 없음, 1~S55_NAME_MAX자) -- 쓸 수 없으면 null. */
     static String s55CleanName(String name) {
         String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");

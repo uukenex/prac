@@ -66,6 +66,22 @@
         SELECT USER_NAME FROM TBOT_S55_MINE_LINK WHERE KAKAO_ID = #{kakaoId}
     </select>
 
+    <!-- [2026-11-04] 관리자 폰 푸시 구독(S55AdminPush) -->
+    <update id="upsertS55PushSub">
+        MERGE INTO TBOT_S55_PUSH_SUB T
+        USING (SELECT #{endpoint} AS ENDPOINT FROM DUAL) S ON (T.ENDPOINT = S.ENDPOINT)
+        WHEN MATCHED THEN UPDATE SET T.KAKAO_ID = #{kakaoId}, T.USER_NAME = #{userName}, T.REG_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (ENDPOINT, KAKAO_ID, USER_NAME, REG_DATE) VALUES (S.ENDPOINT, #{kakaoId}, #{userName}, SYSDATE)
+    </update>
+
+    <select id="selectS55PushSubs" resultType="string">
+        SELECT ENDPOINT FROM TBOT_S55_PUSH_SUB
+    </select>
+
+    <delete id="deleteS55PushSub">
+        DELETE FROM TBOT_S55_PUSH_SUB WHERE ENDPOINT = #{endpoint}
+    </delete>
+
     <select id="selectS55LinkByUser" resultType="string">
         SELECT KAKAO_ID FROM TBOT_S55_MINE_LINK WHERE USER_NAME = #{userName} AND ROWNUM = 1
     </select>

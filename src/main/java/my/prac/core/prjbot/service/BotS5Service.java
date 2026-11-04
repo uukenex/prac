@@ -321,6 +321,9 @@ public interface BotS5Service {
     /** 닉네임으로 연결 -- 있으면 그 캐릭터, 없으면 새로 만들어 연결. {ok, name, created, message} */
     HashMap<String, Object> s55Link(String kakaoId, String name);
 
+    /** [2026-11-04] 광산 관리자인지(웹앱 관리자 알림 구독 허용). */
+    boolean s55IsAdmin(String userName);
+
     /** [2026-10-30] 은둔한 대장장이 -- action=list(가진 무기/재료), do(무기 등급업). */
     HashMap<String, Object> mineHermit(String userName, String action, String code);
 

@@ -32,6 +32,13 @@ public interface BotS5DAO {
 
     /** 이 이름에 연결된 카카오 계정(없으면 null). */
     String selectS55LinkByUser(@Param("userName") String userName);
+
+    /** [2026-11-04] 관리자 폰 푸시 구독(S55AdminPush). */
+    int upsertS55PushSub(@Param("endpoint") String endpoint, @Param("kakaoId") String kakaoId, @Param("userName") String userName);
+
+    java.util.List<String> selectS55PushSubs();
+
+    int deleteS55PushSub(@Param("endpoint") String endpoint);
     int touchKakaoRemember(@Param("tokenHash") String tokenHash, @Param("days") int days);
     int deleteKakaoRemember(@Param("tokenHash") String tokenHash);
     int deleteExpiredKakaoRemember();

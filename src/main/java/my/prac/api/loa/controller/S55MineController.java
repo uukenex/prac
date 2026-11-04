@@ -78,6 +78,7 @@ public class S55MineController {
             req.setAttribute("mode", "game");
             req.setAttribute("userJson", JSON.writeValueAsString(user).replace("</", "<\\/"));
             req.setAttribute("userName", user);
+            if (s5Service.s55IsAdmin(user)) req.setAttribute("vapidPub", my.prac.core.util.S55AdminPush.publicKey()); // [2026-11-04] 관리자만 알림 켜기 버튼
         }
         return "nonsession/loa/s55_mine";
     }
@@ -100,8 +101,33 @@ public class S55MineController {
         HashMap<String, Object> out;
         if (kid == null) { out = new HashMap<>(); out.put("ok", false); out.put("login", false); out.put("message", "카카오 로그인이 풀렸어요. 다시 로그인해 주세요."); }
         else if (s5Service.s55LinkedUser(kid) != null) { out = new HashMap<>(); out.put("ok", true); out.put("message", "이미 연결돼 있어요."); }
-        else out = s5Service.s55Link(kid, name);
+        else {
+            out = s5Service.s55Link(kid, name);
+            if (Boolean.TRUE.equals(out.get("ok"))) { // [2026-11-04] 관리자 폰 알림 -- 누가 카카오로 어떤 닉네임에 연결했는지
+                Map<String, Object> me = me(req);
+                my.prac.core.util.S55AdminPush.notify("🔗 카카오 연결", "카카오 '" + (me == null ? "?" : me.get("nickname")) + "' 님이 '" + out.get("name") + "'" + (Boolean.TRUE.equals(out.get("created")) ? " (새 캐릭터)" : "") + "에 연결했어요");
+            }
+        }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(out);
+    }
+
+    /** [2026-11-04] 관리자 폰 알림 구독(관리자 캐릭터에 연결된 카카오 계정만). */
+    @PostMapping(value = "/mine/push-sub", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<?> pushSub(HttpServletRequest req, @RequestParam(value = "endpoint", defaultValue = "") String endpoint) {
+        HashMap<String, Object> out = new HashMap<>();
+        String kid = kakaoId(req), user = kid == null ? null : s5Service.s55LinkedUser(kid);
+        boolean ok = user != null && s5Service.s55IsAdmin(user) && my.prac.core.util.S55AdminPush.subscribe(endpoint, kid, user);
+        out.put("ok", ok);
+        if (ok) my.prac.core.util.S55AdminPush.notify("🔔 알림 켜짐", "이 기기로 관리자 알림을 받아요.");
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(out);
+    }
+
+    /** 서비스 워커가 푸시를 받으면 그 기기 몫의 알림을 가져간다(구독 주소가 열쇠). */
+    @GetMapping(value = "/mine/push-pull", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<?> pushPull(@RequestParam(value = "endpoint", defaultValue = "") String endpoint) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(my.prac.core.util.S55AdminPush.pull(endpoint));
     }
 
     @GetMapping("/mine/manifest.webmanifest")
@@ -128,6 +154,19 @@ public class S55MineController {
                 + "    return new Response('<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><body style=\"background:#241a3a;color:#fff;font-family:sans-serif;text-align:center;padding-top:30vh\">"
                 + "<div style=\"font-size:40px\">🔌</div><p>인터넷에 연결되어 있지 않아요.<br>연결되면 다시 열어 주세요.</p></body>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });\n"
                 + "  }));\n"
+                + "});\n"
+                // [2026-11-04] 관리자 폰 알림 -- 푸시는 내용이 없다. 깨면 이 기기 몫을 가져와 띄운다(없으면 기본 문구 -- 푸시마다 알림을 꼭 띄워야 한다)
+                + "self.addEventListener('push', function (e) {\n"
+                + "  e.waitUntil(self.registration.pushManager.getSubscription().then(function (sub) {\n"
+                + "    return fetch('/mine/push-pull?endpoint=' + encodeURIComponent(sub ? sub.endpoint : ''), { cache: 'no-store' }).then(function (r) { return r.json(); });\n"
+                + "  }).catch(function () { return []; }).then(function (list) {\n"
+                + "    if (!list || !list.length) return self.registration.showNotification('람쥐 광산', { body: '새 알림이 있어요.', icon: '/img_loa/s55/icon-192.png', tag: 's55' });\n"
+                + "    return Promise.all(list.slice(-5).map(function (n, i) { return self.registration.showNotification(n.title || '람쥐 광산', { body: n.body || '', icon: '/img_loa/s55/icon-192.png', tag: 's55-' + n.t + '-' + i, timestamp: n.t }); }));\n"
+                + "  }));\n"
+                + "});\n"
+                + "self.addEventListener('notificationclick', function (e) {\n"
+                + "  e.notification.close();\n"
+                + "  e.waitUntil(self.clients.matchAll({ type: 'window' }).then(function (cs) { for (var i = 0; i < cs.length; i++) if (cs[i].url.indexOf('/mine/') >= 0) return cs[i].focus(); return self.clients.openWindow('/mine/'); }));\n"
                 + "});\n";
         return ResponseEntity.ok().contentType(MediaType.valueOf("application/javascript;charset=UTF-8")).cacheControl(CacheControl.noCache()).body(js);
     }

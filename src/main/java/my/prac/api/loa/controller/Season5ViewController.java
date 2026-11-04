@@ -662,6 +662,8 @@ public class Season5ViewController {
         HashMap<String, Object> st = s5Service.mineState(userName);
         // [2026-11-04] "속도 개선 뒤 공격/자동채광이 느리다" -- WebSocket은 설정값 S55_WS = 1일 때만(기본은 예전처럼 HTTP). 배포 없이 켜고 끈다(/갱신).
         if (st.get("error") == null) { String w = s5Dao.selectConfigValue("S55_WS"); st.put("ws", w != null && "1".equals(w.trim())); }
+        if ("1".equals(enter) && st.get("error") == null && !s5Service.s55IsAdmin(userName)) // [2026-11-04] 관리자 알림 -- 다른 유저 접속(같은 유저는 30분에 한 번)
+            my.prac.core.util.S55AdminPush.notifyOnce("enter|" + userName, 30 * 60_000L, "⛏️ 광산 접속", userName + " 님이 광산에 들어왔어요 (" + st.get("mapName") + ")");
         if ("1".equals(enter) && st.get("error") == null) {
             mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 곡괭이 내구도 "
                     + st.get("durability") + "/" + st.get("durabilityMax"));
@@ -737,6 +739,21 @@ public class Season5ViewController {
     }
 
     /** [2026-10-24] 웹 광산 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만) -- 화면이 1.5초마다. */
+    private static final String[] GRADE_NAMES = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
+
+    /** [2026-11-04] 관리자 폰 알림 -- 보스 처치, 전설(4) 이상 무기(드랍/은둔한 대장장이 등급업). 관리자 본인 것은 보내지 않는다. */
+    private void mineAdminAlerts(String userName, java.util.Map<String, Object> out, String mapId) {
+        if (out == null || !Boolean.TRUE.equals(out.get("ok")) || s5Service.s55IsAdmin(userName)) return;
+        if (Boolean.TRUE.equals(out.get("bossKilled"))) {
+            String m = String.valueOf(out.get("message"));
+            my.prac.core.util.S55AdminPush.notify("👑 보스 처치", userName + " -- " + (m.length() > 80 ? m.substring(0, 80) + "..." : m));
+        }
+        Object g = out.get("dropGrade");
+        Object nm = out.get("dropName");
+        if (g instanceof Number && ((Number) g).intValue() >= 4 && ((Number) g).intValue() < GRADE_NAMES.length && nm != null)
+            my.prac.core.util.S55AdminPush.notify("🗡️ " + GRADE_NAMES[((Number) g).intValue()] + " 장비", userName + " 님이 " + nm + " (" + GRADE_NAMES[((Number) g).intValue()] + ")");
+    }
+
     /** [2026-11-03] 시즌 5.5 경량화 -- "1초마다 따로 보내던 요청(위치 알림 / 전투 턴 / 환경 턴 / 몬스터 상태)을 하나로".
      *  응답 {p: 위치 알림, c: 전투 턴(c=1일 때), e: 환경 턴(e=1일 때), m: 몬스터 상태(m=1일 때)} -- 각 값은 예전 엔드포인트 응답과 같다. */
     @GetMapping("/api/tower-mine-tick")
@@ -781,6 +798,7 @@ public class Season5ViewController {
             @RequestParam(value = "mc", defaultValue = "-1") int mc) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineAttack(userName, mapId, ver, x, y, mob, mc); // mc = 화면이 보던 몬스터 칸(y * w + x)
+        mineAdminAlerts(userName, out, mapId); // [2026-11-04] 관리자 알림 -- 보스 처치, 전설 이상 장비
         if (Boolean.TRUE.equals(out.get("killed")) || Boolean.TRUE.equals(out.get("died"))) mineLog(userName, "[웹] 광산 전투 " + mapId, String.valueOf(out.get("message")), out);
         return ResponseEntity.ok(out);
     }
@@ -974,6 +992,7 @@ public class Season5ViewController {
             @RequestParam(value = "code", defaultValue = "") String code) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineHermit(userName, action, code);
+        if ("do".equals(action) && out.get("grade") != null) { HashMap<String, Object> a = new HashMap<>(); a.put("ok", out.get("ok")); a.put("dropGrade", out.get("grade")); a.put("dropName", "은둔한 대장장이 등급업"); mineAdminAlerts(userName, a, ""); } // [2026-11-04] 은둔한 대장장이 등급업이 전설 이상이면 관리자 알림
         if ("do".equals(action)) mineLog(userName, "[웹] 광산 은둔한 대장장이 " + code, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }

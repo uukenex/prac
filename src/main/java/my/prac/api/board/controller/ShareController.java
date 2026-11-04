@@ -112,6 +112,7 @@ public class ShareController {
 		int newShareNo = 0;
 		try {
 			newShareNo = shareService.insertShareTx(share);
+			my.prac.core.util.S55AdminPush.notify("📎 공유게시판 새 글", shareName + " (" + userId + ")"); // [2026-11-04] 관리자 폰 알림
 		} catch (Exception e) {
 			log.info("shareService.writeShare DB none Connect");
 		}
@@ -159,6 +160,7 @@ public class ShareController {
 
 		try {
 			shareService.updateShareTx(share);
+			my.prac.core.util.S55AdminPush.notify("📎 공유게시판 수정", shareName + " (" + userId + ")"); // [2026-11-04] 관리자 폰 알림
 		} catch (Exception e) {
 			log.info("shareService.updateShare DB none Connect");
 		}
