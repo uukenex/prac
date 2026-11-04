@@ -2963,6 +2963,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (row == null) return out;
         S5MineMap map = mineMapOf(row);
         if (!S5MineMap.DESERT.equals(map.id) || !S5MineMap.DESERT.equals(mapId) || x >= map.w * S5MineMap.DESERT_FALL_X || !map.walkable(x, y)) return out;
+        if (mineLv(row) < MINE_MIN_LV.getOrDefault(S5MineMap.ANTNEST, 41)) return out; // [2026-11-04] 방벽 경비병 -- 저레벨은 빠지지 않는다(바람에 밀려 들어가도)
         Map<String, Integer> items = mineItems(userName);
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         if (mineFrozen(userName, now) != null) return out;

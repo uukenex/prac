@@ -948,6 +948,11 @@ public final class S5MineMap {
         S5MineMap antnest = generateAntNest(seed + 71, (seed - BASE_SEED) / 7919L >= ANT_BIG_CYCLE, antV2), pyramid = generatePyramid(seed + 72);
         S5MineMap pyb = generatePyramidUnder(seed + 79); // [2026-11-04] 피라미드 지하 -- 만들기만 여기서, 목록엔 맨 뒤에(앞 맵들의 몬스터 자리 그대로)
         S5MineMap ds0 = out.get(DESERT);
+        { // [2026-11-04] 사막 서쪽 방벽 문 경비병(문 동쪽 -- "너무 저렙은 위험하니 가지 말라고 안내")
+            int awx = antWallX(ds0.w), agy = -1;
+            for (int y = 1; y < ds0.h - 1 && agy < 0; y++) if (ds0.terrain[y][awx] != 'W' && ds0.terrain[y - 1][awx] == 'W') agy = y + 1;
+            if (agy > 0) placeNpc(ds0, awx + 3, agy, "wallguard", "사막 경비병", "여기서부터 서쪽은 모래가 꺼져 개미굴로 빠지는 곳이오. 지도도 안 보이고 개미 떼가 들끓지. Lv.41이 안 됐다면 돌아가시오 -- 문을 열어 줄 수 없소.");
+        }
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
         S5MineMap an1 = relink(antnest, retarget(antnest, PYRAMID, new int[] { pyramid.spawnX, pyramid.spawnY }), null);
@@ -1336,7 +1341,24 @@ public final class S5MineMap {
             score[y][x] = 0.55 * rich.fbm(x / 16.0, y / 16.0) + 0.25 * (1.0 - (double) y / h) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, DESERT_SHARE, skip);
+        // [2026-11-04] "사막 서쪽(개미굴에 빠지는 곳)은 방벽을 쳐서 NPC가 막도록" -- 빠지는 구역 경계(x = DESERT_FALL_X)에 세로 성벽(W),
+        //  가운데에 가까운 3칸 문 하나. 문은 경비병(buildWorld)이 지키고, Lv.41 미만은 서쪽으로 못 지나간다(화면 walk/antGate, 서버 mineAntFall).
+        //  모든 무작위 값을 다 쓴 뒤에 덮어써서 나머지 칸/광석은 그대로.
+        int wx = antWallX(w), gy = antGateY(t, wx);
+        for (int y = 1; y < h - 1; y++) if (Math.abs(y - gy) > 1) { t[y][wx] = 'W'; o[y][wx] = 0; }
+        for (int y = gy - 1; y <= gy + 1; y++) for (int x = wx - 1; x <= wx + 1; x++) { t[y][x] = 'd'; o[y][x] = 0; }
         return new S5MineMap(DESERT, "북쪽 사막", false, w, h, sx, sy, t, o, portals);
+    }
+
+    /** [2026-11-04] 사막 서쪽 방벽 x(이 칸보다 서쪽 = 개미굴에 빠지는 구역). */
+    public static int antWallX(int w) { return (int) (w * DESERT_FALL_X); }
+
+    /** [2026-11-04] 사막 서쪽 방벽 문 가운데 y -- 방벽 양옆이 걸을 수 있는, 가운데에 가장 가까운 줄. */
+    static int antGateY(char[][] t, int wx) {
+        int h = t.length;
+        for (int d = 0; d < h / 2 - 3; d++) for (int y : new int[] { h / 2 - d, h / 2 + d })
+            if (walkable(t[y][wx - 2]) && walkable(t[y][wx + 2]) && t[y][wx] != 'G') return y;
+        return h / 2;
     }
 
     /** [2026-10-28] "다음 맵 변경에서는 개미굴을 더 넓게 헤매게, 500x500" -- 이 주기(10/29 05:00 리셋)부터 만드는 맵은 500x500(방 200개). 그 전 주기는 200x200(방 36개). */

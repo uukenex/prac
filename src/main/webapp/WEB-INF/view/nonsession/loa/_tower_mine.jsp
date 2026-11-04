@@ -342,7 +342,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -924,6 +924,7 @@ var TowerMine = (function () {
     var c = cellAt(x, y);
     if (st && st.look && st.look.shoesCode === 'SHOE_GM') return !!map && x >= 0 && y >= 0 && x < map.w && y < map.h && PORTALS.indexOf(c) < 0 && c !== 'N'; // [2026-10-28] 바람의 신(운영자) -- 장애물/몬스터 통과, NPC/포탈 칸에선 멈춘다(말 걸기/들어가기)
     if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
+    if (antGate(x)) return false; // [2026-11-04] 사막 서쪽 방벽 문 -- Lv.41 미만은 서쪽으로 못 지나간다(바람에도)
     return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
@@ -1070,7 +1071,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    daykeeper: '#ffe14d', wallguard: '#ffe14d', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1216,6 +1217,9 @@ var TowerMine = (function () {
           enterPortal(nx, ny, now);
         } else if (cellAt(nx, ny) === 'N') {
           talk(npcAt[nx + ',' + ny], now);
+        } else if (antGate(nx) && (now - lastBumpT > 2500 || lastBump !== 'antgate')) { // [2026-11-04] 방벽 문 경비병
+          lastBump = 'antgate'; lastBumpT = now;
+          msg('🛡️ 사막 경비병: 멈추시오! 서쪽은 모래가 꺼져 개미굴로 빠지는 곳이오. Lv.' + ANT_GATE_LV + '이 되면 다시 오시오.', 3000);
         }
       } else if (map.wind && !smithOpen && !fade && now - lastWindT >= WIND_MS) {
         // [2026-10-23] 모래바람 -- 가만히 있으면 바람 방향(좌/우)으로 한 칸씩 밀린다(막힌 칸이면 그대로). 방향은 시각으로 정해 모두 같다.
@@ -2110,7 +2114,8 @@ var TowerMine = (function () {
     guide: { skin: '#f2c194', hair: '#7a4a26', cloth: '#2f8a5a', clothD: '#1f6342' },
     blackmarket: { skin: '#c8a080', hair: '#1a1322', cloth: '#2a1f33', clothD: '#1a1322' }, // [2026-10-26]
     furrier: { skin: '#f2c194', hair: '#5a3a22', cloth: '#8a5a32', clothD: '#6a4222' },
-    daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' } // [2026-10-28] 요일 동굴 문지기
+    daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' }, // [2026-10-28] 요일 동굴 문지기
+    wallguard: { skin: '#d8a070', hair: '#3a2a1a', cloth: '#8a6a3a', clothD: '#5a4422' } // [2026-11-04] 사막 경비병
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -3022,7 +3027,13 @@ var TowerMine = (function () {
     }).catch(function () { chestBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   // [2026-10-28] 사막 서쪽(DESERT_FALL_X 왼쪽)을 걸으면 한 칸마다 ANT_FALL_P 확률로 개미굴에 빠진다
-  var ANT_FALL_X = 0.3, ANT_FALL_P = 0.012;
+  var ANT_FALL_X = 0.3, ANT_FALL_P = 0.012, ANT_GATE_LV = 41;
+  /** [2026-11-04] 사막 서쪽 방벽(x = w * 0.3) -- 동쪽에서 서쪽으로 넘어가는 칸이고 Lv.41 미만이면 막는다(서쪽에서 나오는 건 된다). */
+  function antGate(x) {
+    if (!map || map.id !== 'desert') return false;
+    var wx = Math.floor(map.w * ANT_FALL_X);
+    return x < wx && P.x >= wx && myLv() < ANT_GATE_LV;
+  }
   function antFallCheck() {
     if (!map || map.id !== 'desert' || busy || fade || smithOpen || P.x >= map.w * ANT_FALL_X || Math.random() >= ANT_FALL_P) return;
     setAuto(false);
