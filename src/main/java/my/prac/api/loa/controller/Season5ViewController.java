@@ -782,7 +782,9 @@ public class Season5ViewController {
             out.put("e", eo);
         }
         if ("1".equals(m)) out.put("m", s5Service.mineMobs(mapId));
-        out.put("ms", (System.nanoTime() - t0) / 1_000_000L);
+        long srvMs = (System.nanoTime() - t0) / 1_000_000L;
+        out.put("ms", srvMs);
+        if (pg >= 0) my.prac.core.util.S55AdminPush.netSrv(userName, srvMs); // [2026-11-04] 관리자 통신 상태에 서버 처리 시간도
         return ResponseEntity.ok(out);
     }
 

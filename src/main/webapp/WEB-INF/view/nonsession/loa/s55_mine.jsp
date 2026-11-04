@@ -138,7 +138,7 @@
         var DV = ['💻 PC', '📱 폰', '💬 카톡'];
         $('s55AdmNet').innerHTML = l && l.length ? l.map(function (n) {
           var c = n.pg < 150 ? '#9fe0a8' : n.pg < 300 ? '#ffd27a' : '#ffb0a0';
-          return '<div><b style="color:' + c + '">' + n.pg + 'ms</b> ' + esc(n.u) + ' <span>' + (DV[n.dv] || '?') + ' · ' + (n.nw ? 'WS' : 'HTTP') + (n.fg > 100 ? ' · 화면 ' + n.fg : '') + '</span></div>';
+          return '<div><b style="color:' + c + '">' + n.pg + 'ms</b> ' + esc(n.u) + ' <span>' + (DV[n.dv] || '?') + ' · ' + (n.nw ? 'WS' : 'HTTP') + (n.sv >= 0 ? ' · 서버 ' + n.sv + 'ms / 통신 ' + Math.max(0, n.pg - n.sv) + 'ms' : '') + (n.fg > 100 ? ' · 화면 ' + n.fg : '') + '</span></div>';
         }).join('') : '<div class="e">지금 광산에 있는 사람이 없어요(새 화면으로 접속한 사람만 보여요).</div>';
       }).catch(function () { });
     }

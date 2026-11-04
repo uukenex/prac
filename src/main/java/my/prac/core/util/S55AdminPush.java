@@ -113,7 +113,15 @@ public class S55AdminPush {
 
     public static void net(String user, int pg, int dv, int nw, int fg) {
         if (NET.size() > 2000) NET.clear();
-        NET.put(user, new long[] { Math.min(pg, 99999), dv, nw, Math.min(Math.max(fg, 0), 99999), System.currentTimeMillis() });
+        long[] old = NET.get(user);
+        NET.put(user, new long[] { Math.min(pg, 99999), dv, nw, Math.min(Math.max(fg, 0), 99999), System.currentTimeMillis(), old != null && old.length > 5 ? old[5] : -1 });
+    }
+
+    /** [2026-11-04] "핑이 왜 높지" -- 그 유저 1초 턴의 서버 처리 시간(ms, 최근 값 위주 평균). 핑에서 이걸 빼면 통신(네트워크) 지연. */
+    public static void netSrv(String user, long ms) {
+        long[] v = NET.get(user);
+        if (v == null || v.length < 6) return;
+        v[5] = v[5] < 0 ? ms : (v[5] * 2 + ms) / 3;
     }
 
     /** 최근 30초 안에 알린 유저(핑 느린 순). */
@@ -124,7 +132,7 @@ public class S55AdminPush {
             long[] v = e.getValue();
             if (now - v[4] > 30_000L) continue;
             HashMap<String, Object> m = new HashMap<>();
-            m.put("u", e.getKey()); m.put("pg", v[0]); m.put("dv", v[1]); m.put("nw", v[2]); m.put("fg", v[3]);
+            m.put("u", e.getKey()); m.put("pg", v[0]); m.put("dv", v[1]); m.put("nw", v[2]); m.put("fg", v[3]); m.put("sv", v.length > 5 ? v[5] : -1);
             out.add(m);
         }
         out.sort((a, b) -> Long.compare((Long) b.get("pg"), (Long) a.get("pg")));
