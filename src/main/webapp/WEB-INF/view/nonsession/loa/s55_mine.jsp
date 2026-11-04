@@ -113,7 +113,7 @@
   (function () {
     var key = '<%=request.getAttribute("vapidPub")%>', base = '<%=ctx%>/mine/', $ = function (id) { return document.getElementById(id); }, since = 0, seen = 0, items = [];
     function b64(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var r = atob(s), a = new Uint8Array(r.length); for (var i = 0; i < r.length; i++) a[i] = r.charCodeAt(i); return a; }
-    document.body.appendChild(); // 게임 화면(입장 화면이 숨겨진 동안)에서도 보이게
+    document.body.appendChild($('s55Toast')); // 게임 화면(입장 화면이 숨겨진 동안)에서도 보이게
     function st(t, ok) { $('s55AdmSt').textContent = t; $('s55AdmSt').className = ok ? 'ok' : 'no'; }
     function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function hhmm(t) { var d = new Date(t), p = function (v) { return (v < 10 ? '0' : '') + v; }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
