@@ -795,6 +795,16 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineAuraSet(userName, el, lv));
     }
 
+    /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기(보스 드랍템 + 달빛석). */
+    @GetMapping("/api/tower-mine-aura-learn")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineAuraLearn(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam("el") int el) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineAuraLearn(userName, el);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 검기 배우기", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     @GetMapping("/api/tower-mine-mobs")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMobs(@RequestParam(value = "mapId", defaultValue = "") String mapId) {

@@ -3640,7 +3640,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // "공격 시 바라보는 방향으로 앞 최대 5칸 검기, 속성별 색 이펙트. 공격력 100% 기준 얼음2 불2면 바로 앞 적은 일반 피해 + 얼음 20% + 불 20%(숫자 3개),
     //  사거리는 가장 높은 속성 단계(얼음2 불2 = 2칸), 그 너머 적은 속성 피해만, 상성 x1.5, 8속성 모두면 8가지가 더해진다"
     //  속성별 배운 단계 AURA_L{e}(0~5, 새 NPC가 가르친다 -- 재료 미정), 켠 단계 AURA_A{e}(0~배운 단계, 인벤토리 스킬 탭에서 고른다).
-    static final int MINE_AURA_MAX = 5, MINE_AURA_PCT = 10;
+    static final int MINE_AURA_MAX = 5, MINE_AURA_PCT = 5; // [2026-11-04] "10%씩 말고 5%씩(속성별 최대 25%)"
+    /** [2026-11-04] "달빛석 + 보스 처치 재화로 검기 강화" -- 속성별 보스 드랍템(땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장,
+     *  어둠 = 타락한 대주교의 인장, 나머지는 보스가 생기면). n단계를 배우려면 그 드랍템 2n-1개 + 달빛석 2n-1개(1/3/5/7/9). */
+    static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, null, null, S5MineMap.ICE_HEART_CODE, null, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
+    static int mineAuraCost(int lv) { return 2 * lv - 1; }
     static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
     static int[] mineAuraActive(Map<String, Integer> items) {
         int[] a = new int[9];
@@ -3815,6 +3819,38 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("levelUp", (int) g[4]);
         out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
         if (msg.length() > 0) out.put("message", msg.toString());
+        return out;
+    }
+
+    /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기(보스 드랍템 + 달빛석). 켜 둔 단계가 배운 단계와 같았으면 새 단계로 함께 올린다. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAuraLearn(String userName, int el) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "swordmaster")) { out.put("message", "왕도 검기 사범 앞에서만 배울 수 있어요."); return out; }
+        if (el < 1 || el > 8 || MINE_AURA_BOSS_ITEM[el] == null) { out.put("message", "그 속성의 검기는 아직 가르칠 수 없네. (그 속성의 보스가 나타나면)"); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        int cur = Math.min(items.getOrDefault(mineAuraKey(false, el), 0), MINE_AURA_MAX), act = items.getOrDefault(mineAuraKey(true, el), 0);
+        if (cur >= MINE_AURA_MAX) { out.put("message", "이미 " + S5MineMobs.ELEM_NAMES[el] + " 검기를 끝까지 익혔네."); return out; }
+        int nx = cur + 1, n = mineAuraCost(nx);
+        String boss = MINE_AURA_BOSS_ITEM[el];
+        if (dao.takeUserOre(userName, boss, n) == 0) { out.put("message", mineCodeName(boss) + " " + n + "개와 " + S5MineMap.MOON_STONE_NAME + " " + n + "개가 있어야 해요."); return out; }
+        if (dao.takeUserOre(userName, S5MineMap.MOON_STONE_CODE, n) == 0) {
+            dao.addUserOre(userName, boss, n); // 돌려준다
+            out.put("message", mineCodeName(boss) + " " + n + "개와 " + S5MineMap.MOON_STONE_NAME + " " + n + "개가 있어야 해요.");
+            return out;
+        }
+        dao.upsertMineItem(userName, mineAuraKey(false, el), nx);
+        items.put(mineAuraKey(false, el), nx);
+        if (act == cur) { dao.upsertMineItem(userName, mineAuraKey(true, el), nx); items.put(mineAuraKey(true, el), nx); }
+        out.put("ok", true);
+        out.put("message", "🌀 검기 사범: " + S5MineMobs.ELEM_NAMES[el] + " 검기 " + nx + "단계를 익혔네! (공격력의 " + nx * MINE_AURA_PCT + "% 속성 피해, 사거리 " + nx + "칸)");
+        out.put("aura", mineAuraInfo(items));
+        out.put("ores", mineOreList(userName));
         return out;
     }
 

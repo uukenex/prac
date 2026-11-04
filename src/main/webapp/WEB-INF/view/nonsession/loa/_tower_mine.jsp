@@ -1290,6 +1290,7 @@ var TowerMine = (function () {
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
     else if (n.kind === 'priest') { priestConfirm = false; openSmith(n, 'priest'); } // [2026-10-24] 왕도 성당 신부 ([2026-10-28] 환생 확인 창은 닫힌 채로)
     else if (n.kind === 'elementalist') openSmith(n, 'elem'); // [2026-10-29]
+    else if (n.kind === 'swordmaster') { setAuto(false); openSmith(n, 'aura'); } // [2026-11-04] 검기 사범
     else if (n.kind === 'guide') { setAuto(false); openSmith(n, 'guide'); } // [2026-10-25] 이동 안내원
     else if (n.kind === 'blackmarket' || n.kind === 'furrier') { setAuto(false); openCoat(n); } // [2026-10-26] 방한 외투
     else if (n.kind === 'daykeeper') { setAuto(false); openSmith(n, 'daygate'); } // [2026-10-28] 요일 동굴 문지기
@@ -2229,6 +2230,7 @@ var TowerMine = (function () {
     }
     if (smithView === 'hermit') { el.smith.innerHTML = hermitHtml(n); return; } // [2026-10-30]
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
+    if (smithView === 'aura') { el.smith.innerHTML = auraNpcHtml(n); return; } // [2026-11-04] 검기 사범
     if (smithView === 'tele') {
       el.smith.innerHTML = teleHtml();
       return;
@@ -2872,7 +2874,7 @@ var TowerMine = (function () {
   /** 인벤토리 스킬 탭 -- 배운 속성마다 끔/1~배운 단계 중 고르기(장비 등급처럼). */
   function skillHtml() {
     var au = (st && st.aura) || { l: [], a: [] }, any = false, R = auraRange();
-    var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 사거리는 켠 단계 중 가장 높은 값(최대 5칸), 속성마다 공격력의 (단계 x 10%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격도 함께 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
+    var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 사거리는 켠 단계 중 가장 높은 값(최대 5칸), 속성마다 공격력의 (단계 x 5%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격도 함께 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
         + '<div style="margin:6px 0 8px;font-weight:800">지금 사거리 <b style="color:#ffd27a">' + R + '칸</b>' + (R ? ' · ' + auraEls().map(function (e) { return '<span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + au.a[e] + '</span>'; }).join(' ') : '') + '</div>';
     for (var e = 1; e <= 8; e++) {
       var L = (au.l && au.l[e]) || 0, A = (au.a && au.a[e]) || 0;
@@ -2882,8 +2884,33 @@ var TowerMine = (function () {
       for (var v = 0; v <= L; v++) h += '<button type="button" class="mine-mini-btn" style="' + (v === A ? 'background:' + AURA_COL[e] + ';color:#1a1424;' : '') + '" onclick="TowerMine.auraSet(' + e + ',' + v + ')">' + (v ? v + '단계' : '끔') + '</button>';
       h += '</div>';
     }
-    if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 배울 수 있어요. (수련 재료 준비 중)</div>';
+    if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 보스 드랍템 + 달빛석으로 배울 수 있어요.</div>';
     return h;
+  }
+  // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)'], 4: [33, '설산(얼음 여왕)'], 6: [64, '화산(용암 거신)'], 7: [31, '성당(타락한 대주교)'] }, MOON_G = 20;
+  function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
+  function auraNpcHtml(n) {
+    var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
+    var h = npcHead('🌀 ' + (n ? n.name : '검기 사범'), false) + talkBlock(n, n ? n.line : '')
+        + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 (2n-1)개 + 달빛석 (2n-1)개 · 달빛석 보유 ' + moon + '</div>';
+    for (var e = 1; e <= 8; e++) {
+      var L = (au.l && au.l[e]) || 0, b = AURA_BOSS[e];
+      var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 검기</span> ' + L + '/5';
+      if (!b) { h += '<div class="mine-smith-row">' + head + '<small>이 속성의 보스는 아직 없어요 (추가 예정)</small></span><button type="button" data-lack="1" disabled>준비 중</button></div>'; continue; }
+      if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; continue; }
+      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), ok = hb >= c && moon >= c;
+      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + '개 (보유 ' + hb + ') + 달빛석 ' + c + '개 · ' + b[1] + '</small></span>'
+          + '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.auraLearn(' + e + ')">배우기</button></div>';
+    }
+    return h + '<div class="mine-smith-say">배운 단계는 인벤토리 🌀 스킬 탭에서 골라 켜고 끌 수 있어요.</div>';
+  }
+  function auraLearn(e) {
+    api('/api/tower-mine-aura-learn?el=' + e).then(function (d) {
+      if (d && d.ok) { st.aura = d.aura; if (d.ores) st.ores = d.ores; flashT0 = performance.now(); }
+      if (smithOpen) renderSmith(smithNpc);
+      msg((d && d.message) || '배우지 못했어요.', 3000);
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function auraSet(e, v) {
     api('/api/tower-mine-aura?el=' + e + '&lv=' + v).then(function (d) {
@@ -3898,7 +3925,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

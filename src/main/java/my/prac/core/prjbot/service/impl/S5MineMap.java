@@ -937,8 +937,8 @@ public final class S5MineMap {
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
         placeNpc(av, av.villageX + 10, av.villageY - 5, "gemcutter", "보석 세공사", gcLine);
         placeNpc(av, av.villageX, av.villageY - 8, "archishop", "다도해 상인", "햇볕이 뜨겁지? 이 양산만 있으면 한낮도 끄떡없다네. 바다 보석으로 값을 치르게."); // [2026-10-28]
-        for (Npc en : ct.npcs()) if ("elementalist".equals(en.kind)) { // [2026-11-04] 검기 사범(원소술사 옆) -- 검기 배우기는 재료가 정해지면(지금은 말만)
-            placeNpc(ct, en.x + 3, en.y, "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 단계가 오를수록 멀리, 세게 나가네. 수련 재료는 곧 정할 테니 조금만 기다리게.");
+        for (Npc en : ct.npcs()) if ("elementalist".equals(en.kind)) { // [2026-11-04] 검기 사범(원소술사 옆) -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn)
+            placeNpc(ct, en.x + 3, en.y, "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수와 달빛석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
             break;
         }
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
