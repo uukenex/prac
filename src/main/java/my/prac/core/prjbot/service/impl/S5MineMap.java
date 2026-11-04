@@ -957,7 +957,7 @@ public final class S5MineMap {
         { // [2026-11-04] 사막 서쪽 방벽 문 경비병(문 동쪽 -- "너무 저렙은 위험하니 가지 말라고 안내")
             int awx = antWallX(ds0.w), agy = -1;
             for (int y = 1; y < ds0.h - 1 && agy < 0; y++) if (ds0.terrain[y][awx] != 'W' && ds0.terrain[y - 1][awx] == 'W') agy = y + 1;
-            if (agy > 0) placeNpc(ds0, awx + 3, agy, "wallguard", "사막 경비병", "이전에 챙석봉이라는 유저가 사막에 빠져서 사라졌다네.. 그는 초보 모험가였지... 그 이후 방벽이 세워졌다네.. 여기서부터 서쪽은 모래가 꺼져 개미굴로 빠지는 곳이오. Lv.41이 안 됐다면 돌아가시오.");
+            if (agy > 0) placeNpc(ds0, awx + 3, agy, "wallguard", "사막 경비병", "이전에 챙석봉이라는 유저가 사막에 빠져서 사라졌다네.. 그는 초보 모험가였지... 그 이후 방벽이 세워졌다네..");
         }
         int[] dw = { 2, ds0.h / 2 };
         for (int x = 2; x < ds0.w / 3; x++) if (ds0.walkable(x, ds0.h / 2)) { dw = new int[] { x, ds0.h / 2 }; break; } // 사막 서쪽 가운데 걸을 수 있는 칸
