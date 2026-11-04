@@ -805,6 +805,14 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-04] 빙결 몸부림(20번) -- 얼음 깨기. */
+    @GetMapping("/api/tower-mine-struggle")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineStruggle(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "n", defaultValue = "0") int n) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineIceStruggle(userName, n));
+    }
+
     @GetMapping("/api/tower-mine-mobs")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMobs(@RequestParam(value = "mapId", defaultValue = "") String mapId) {

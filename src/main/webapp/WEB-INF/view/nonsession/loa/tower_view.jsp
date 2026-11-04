@@ -754,7 +754,7 @@
     .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + var(--patch-h, 0px)); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
     .mine-coord{ display:inline-block; font:800 14px/1.1 ui-monospace, Consolas, monospace; padding:4px 8px; letter-spacing:1px; } /* [2026-11-03] 18px -> 14px */
     .mine-ping{ display:inline-block; margin-left:6px; font:800 12px/1.1 ui-monospace, Consolas, monospace; padding:4px 7px; vertical-align:top; } /* [2026-11-03] 응답 속도(핑) */
-    @media (max-width:560px){ .mine-ping{ display:block; width:fit-content; margin:4px 0 0; font-size:11px; } .mine-hud-tl{ max-width:calc(100% - 175px); } } /* [2026-11-04] "모바일에서 핑과 맵 리셋이 겹친다" -- 좁은 화면은 핑을 좌표 아래 줄로 */
+    @media (max-width:560px){ .mine-ping{ display:block; width:fit-content; margin:4px 0 0; font-size:11px; } .mine-hud-tl{ max-width:calc(100% - 215px); } } /* [2026-11-04] "모바일에서 핑과 맵 리셋이 겹친다" -- 좁은 화면은 핑을 좌표 아래 줄로 */
     .mine-ping:empty{ display:none; }
     .mine-ping.ok{ color:#7cf08a; } .mine-ping.mid{ color:#ffd84a; } .mine-ping.bad{ color:#ff7a6a; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
@@ -762,7 +762,7 @@
     /* [2026-10-30] "곡괭이 횟수는 곡괭이 이미지에" -- 채광 버튼 아래쪽 꼬리표 */
     .mine-dig .dig-n{ position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); font:800 11px/1 ui-monospace, Consolas, monospace; padding:3px 6px; background:#140d0a; color:#ffe14d; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-dig .dig-n.zero{ color:#ff8a8a; }
-    .mine-regen{ max-width:150px; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
+    .mine-regen{ white-space:nowrap; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
     #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; object-fit:contain; } /* [2026-10-28] 정사각이 아닌 맵은 늘리지 않고 비율 그대로 */
     #mineMini.big{ width:min(78vw,360px); height:min(78vw,360px); }
     .mine-dig{ position:absolute; right:18px; bottom:calc(64px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; font-size:40px; line-height:1; background:#ffcf4a; border:3px solid #140d0a; box-shadow:0 5px 0 #8a5a00; cursor:pointer; }

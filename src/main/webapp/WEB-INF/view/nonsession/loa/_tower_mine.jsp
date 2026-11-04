@@ -1189,6 +1189,7 @@ var TowerMine = (function () {
         d = null;
       }
       if (d && frozenMe()) { // [2026-10-28] 얼음 여왕 빙결 -- 못 움직인다
+        iceStruggle(now); // [2026-11-04] 몸부림 -- 20번이면 풀린다
         if (now - lastBumpT > 2500 || lastBump !== 'ice') msg('🧊 얼어붙어서 움직일 수 없어요! 동료가 곁(2칸)에 오면 풀려요.');
         lastBump = 'ice'; lastBumpT = now;
         d = null;
@@ -1559,7 +1560,7 @@ var TowerMine = (function () {
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
   var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [0, 440], sea: [20, 800] }, WORLD_SIZE = [680, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
-  var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵']];
+  var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
   var worldVB = null, wMoved = false;
@@ -1621,6 +1622,12 @@ var TowerMine = (function () {
     WORLD_CROSS.forEach(function (c) { // 구간 사이 길
       var p = worldPos(c[0], c[1]), q = worldPos(c[2], c[3]);
       if (!p || !q) return;
+      if (c[6]) { // [2026-11-04] 꺾인 길(거쳐 가는 점) -- 글자는 가운데 꺾인 구간에
+        var pts = [[p.x, p.y]].concat(c[6]).concat([[q.x, q.y]]), mid = c[6][Math.floor((c[6].length - 1) / 2)], mid2 = c[6][Math.min(c[6].length - 1, Math.floor(c[6].length / 2))];
+        lines = '<polyline fill="none" points="' + pts.map(function (v) { return v[0] + ',' + v[1]; }).join(' ') + '" ' + STY[c[4]] + '/>'
+            + (c[5] ? '<text x="' + ((mid[0] + mid2[0]) / 2 + 6) + '" y="' + ((mid[1] + mid2[1]) / 2 + 4) + '" class="wl">' + c[5] + '</text>' : '') + lines;
+        return;
+      }
       lines = '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + STY[c[4]] + '/>'
           + (c[5] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + c[5] + '</text>' : '') + lines;
     });
@@ -1630,7 +1637,7 @@ var TowerMine = (function () {
         + '<button type="button" onclick="TowerMine.worldZoom(1.3)">＋</button><button type="button" onclick="TowerMine.worldZoom(1 / 1.3)">－</button>'
         + '<button type="button" onclick="TowerMine.worldGo(\'me\')">📍 내 위치</button>'
         + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
-        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_MIN_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
+        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
         + '<rect x="-400" y="-400" width="' + (WORLD_SIZE[0] + 800) + '" height="' + (WORLD_SIZE[1] + 800) + '" fill="#1d1730"/>'
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
@@ -1640,7 +1647,7 @@ var TowerMine = (function () {
   }
   var worldHere = null;
   // [2026-10-30] 접속 인원 -- 위치 알림으로 받는다(이름 없이 숫자만). 맵별 인원은 전체 지도를 가장 크게 확대했을 때만 보인다(.world-close)
-  var onlineN = null, mapN = {}, WORLD_MIN_W = 160;
+  var onlineN = null, mapN = {}, WORLD_MIN_W = 160, WORLD_CNT_W = 300; // [2026-11-04] "어느 정도 커지면 인원수" -- 한두 번 확대(처음 폭 380)
   function regenText() {
     if (!el.regen || !st) return;
     el.regen.textContent = (st.nextResetAt ? '🔄 맵 리셋 ' + resetText(st.nextResetAt) : '') + (onlineN != null ? (st.nextResetAt ? ' · ' : '') + '👥 접속 ' + onlineN + '명' : '');
@@ -1651,7 +1658,7 @@ var TowerMine = (function () {
   }
   function worldApply() {
     var el2 = document.getElementById('mineWorldSvg');
-    if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_MIN_W); }
+    if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_CNT_W); }
   }
   function worldZoomAt(f, cx, cy) { // f > 1 = 확대. (cx, cy) = 지도 좌표 기준점
     var nw = Math.max(WORLD_MIN_W, Math.min(1400, worldVB.w / f)), k = nw / worldVB.w;
@@ -2494,6 +2501,27 @@ var TowerMine = (function () {
     }
     ctx.restore();
   }
+  // [2026-11-04] 빙결 몸부림 -- 움직이거나 공격하려 할 때마다 1(0.12초에 한 번까지), 얼음마다 처음부터 센다. ICE_STRUGGLE번이면 서버에 알린다(얼음이 깨짐).
+  var ICE_STRUGGLE = 20, iceStruggleN = 0, iceStruggleKey = 0, iceStruggleT = 0, iceStruggleBusy = false;
+  function iceStruggle(now) {
+    if (!frozenMe() || iceStruggleBusy || now - iceStruggleT < 120) return;
+    iceStruggleT = now;
+    var k = iceSt.frozen.until;
+    if (k !== iceStruggleKey) { iceStruggleKey = k; iceStruggleN = 0; }
+    iceStruggleN++;
+    floats.push({ x: P.x + (Math.random() - 0.5) * 0.8, y: P.y - 0.2, text: '❄', color: '#bfefff', t0: now });
+    if (iceStruggleN < ICE_STRUGGLE) return;
+    iceStruggleBusy = true;
+    api('/api/tower-mine-struggle?n=' + iceStruggleN).then(function (d) {
+      iceStruggleBusy = false;
+      if (d && d.ok) {
+        iceSt.frozen = null; iceStruggleN = 0;
+        flashT0 = performance.now();
+        floats.push({ x: P.x, y: P.y - 0.7, text: '🧊 쨍그랑!', color: '#bfefff', big: true, t0: performance.now() });
+        msg('🧊 얼음을 깨고 빠져나왔어요!', 2200);
+      } else iceStruggleN = Math.max(0, ICE_STRUGGLE - 3); // 아직이면(너무 빨랐음) 조금 더
+    }).catch(function () { iceStruggleBusy = false; });
+  }
   function frozenMe() { return !!(iceSt && iceSt.frozen && iceSt.frozen.until > nowSrv() && map && map.ice); }
   function iceApply(d, t) {
     var was = frozenMe();
@@ -2825,7 +2853,7 @@ var TowerMine = (function () {
   // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
   function digBtn() {
     if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
-    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     dig();
   }
   // [2026-11-04] 검기 -- st.aura = { l: 배운 단계[9], a: 켠 단계[9] }(속성 번호 1~8 = 땅/번개/물/얼음/바람/불/어둠/빛)
@@ -2958,7 +2986,7 @@ var TowerMine = (function () {
   }
   function atkBtn() {
     if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
-    if (frozenMe()) { msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
+    if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙어서 아무것도 할 수 없어요! 동료가 곁(2칸)에 오면 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (a) { attack(a); return; }
     if (!P.moving && auraRange() > 0) { auraAttack(); return; } // [2026-11-04] 옆에 몬스터가 없어도 검기는 날아간다

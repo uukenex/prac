@@ -1579,6 +1579,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return f;
     }
 
+    /** [2026-11-04] "빙결에 걸렸을 때 움직이거나 공격해서 일정 수치를 채우면 풀리게, 적어도 20번" -- 화면이 몸부림 n번(0.12초에 한 번까지)을 세어
+     *  다 차면 부른다. 얼고 나서 n x 0.1초 넘게 지났을 때만 풀린다(너무 빠르면 거절 -- 화면이 조금 더 센다). */
+    static final int MINE_ICE_STRUGGLE = 20;
+    @Override
+    public HashMap<String, Object> mineIceStruggle(String userName, int n) {
+        HashMap<String, Object> out = new HashMap<>();
+        long now = System.currentTimeMillis();
+        IceFreeze f = mineFrozen(userName, now);
+        if (f == null) { out.put("ok", true); return out; } // 이미 풀렸다
+        long since = now - (f.until - MINE_ICE_FREEZE_MS);
+        if (n < MINE_ICE_STRUGGLE || since < MINE_ICE_STRUGGLE * 100L) { out.put("ok", false); return out; }
+        MINE_ICE_FROZEN.remove(userName, f);
+        out.put("ok", true);
+        return out;
+    }
+
     /** 얼음을 모두 녹인다(여왕이 쓰러졌을 때). */
     static void mineIceThawAll() {
         for (String fu : new ArrayList<>(MINE_ICE_FROZEN.keySet())) if (MINE_ICE_FROZEN.remove(fu) != null) MINE_ICE_THAWED.put(fu, "melted");
