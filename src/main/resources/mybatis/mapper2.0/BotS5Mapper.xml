@@ -61,6 +61,22 @@
         VALUES (#{tokenHash}, #{kakaoId}, SYSDATE, SYSDATE, SYSDATE + #{days})
     </insert>
 
+    <!-- [2026-11-03] 시즌 5.5 웹앱: 카카오 계정과 게임 캐릭터 연결(TBOT_S55_MINE_LINK) -->
+    <select id="selectS55Link" resultType="string">
+        SELECT USER_NAME FROM TBOT_S55_MINE_LINK WHERE KAKAO_ID = #{kakaoId}
+    </select>
+
+    <select id="selectS55LinkByUser" resultType="string">
+        SELECT KAKAO_ID FROM TBOT_S55_MINE_LINK WHERE USER_NAME = #{userName} AND ROWNUM = 1
+    </select>
+
+    <update id="upsertS55Link">
+        MERGE INTO TBOT_S55_MINE_LINK T
+        USING (SELECT #{kakaoId} AS KAKAO_ID FROM DUAL) S ON (T.KAKAO_ID = S.KAKAO_ID)
+        WHEN MATCHED THEN UPDATE SET T.USER_NAME = #{userName}, T.REG_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (KAKAO_ID, USER_NAME, REG_DATE) VALUES (S.KAKAO_ID, #{userName}, SYSDATE)
+    </update>
+
     <select id="selectKakaoRemember" resultType="hashmap">
         SELECT R.KAKAO_ID, M.NICKNAME, CASE WHEN R.LAST_USED &lt; SYSDATE - 1 THEN 1 ELSE 0 END AS STALE
           FROM TBOT_S5_KAKAO_REMEMBER R

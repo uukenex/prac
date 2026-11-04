@@ -77,7 +77,8 @@ public class Season5KakaoLoginController {
 
     /** 로그인 후 돌아갈 수 있는 곳(오픈 리다이렉트 방지) -- 보호 대상 3페이지만. */
     private static boolean allowedNext(String next) {
-        return "/loa/tower-battle-log".equals(next) || "/loa/tower-mine-users".equals(next); // [2026-10-25] 광산 캐릭터 현황
+        return "/loa/tower-battle-log".equals(next) || "/loa/tower-mine-users".equals(next) // [2026-10-25] 광산 캐릭터 현황
+                || "/mine/".equals(next); // [2026-11-04] 시즌 5.5 광산 웹앱(전용 주소)
     }
 
     /** 다른 컨트롤러(Season5ViewController)가 페이지/API 보호에 쓴다. */
@@ -145,6 +146,8 @@ public class Season5KakaoLoginController {
 
     @GetMapping("/kakao/auth")
     public String kakaoAuth(HttpServletRequest request, HttpSession session) throws Exception {
+        String nx = request.getParameter("next"); // [2026-11-04] 광산 웹앱 로그인 버튼이 이 주소로 바로 온다(로그인 뒤 돌아갈 곳)
+        if (nx != null && allowedNext(nx)) session.setAttribute(NEXT_KEY, nx);
         String kakaoKey = PropsUtil.getProperty("keys", "kakaoKey");
         String state = STATE_PREFIX + UUID.randomUUID().toString().replace("-", "");
         session.setAttribute(STATE_KEY, state);

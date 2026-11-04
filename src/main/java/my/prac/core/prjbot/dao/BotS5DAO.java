@@ -24,6 +24,14 @@ public interface BotS5DAO {
     /** [2026-10-28] 카카오 로그인 오래 기억하기(쿠키 해시 -> 카카오 회원). */
     int insertKakaoRemember(@Param("tokenHash") String tokenHash, @Param("kakaoId") String kakaoId, @Param("days") int days);
     HashMap<String, Object> selectKakaoRemember(@Param("tokenHash") String tokenHash);
+
+    /** [2026-11-03] 시즌 5.5 웹앱 -- 카카오 계정에 연결된 게임 캐릭터(없으면 null). */
+    String selectS55Link(@Param("kakaoId") String kakaoId);
+
+    int upsertS55Link(@Param("kakaoId") String kakaoId, @Param("userName") String userName);
+
+    /** 이 이름에 연결된 카카오 계정(없으면 null). */
+    String selectS55LinkByUser(@Param("userName") String userName);
     int touchKakaoRemember(@Param("tokenHash") String tokenHash, @Param("days") int days);
     int deleteKakaoRemember(@Param("tokenHash") String tokenHash);
     int deleteExpiredKakaoRemember();

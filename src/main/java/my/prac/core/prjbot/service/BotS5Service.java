@@ -312,6 +312,15 @@ public interface BotS5Service {
     /** [2026-10-28] 피라미드 보상 상자(사막의 심장, 맵 주기마다 한 번). */
     HashMap<String, Object> mineDesertChest(String userName);
 
+    /** [2026-11-04] 시즌 5.5 웹앱 -- 카카오 계정에 연결된 게임 캐릭터(없으면 null). */
+    String s55LinkedUser(String kakaoId);
+
+    /** 닉네임 확인 -- {ok, name, exists, lv, taken(다른 카카오 계정에 연결됨), message}. */
+    HashMap<String, Object> s55LinkCheck(String kakaoId, String name);
+
+    /** 닉네임으로 연결 -- 있으면 그 캐릭터, 없으면 새로 만들어 연결. {ok, name, created, message} */
+    HashMap<String, Object> s55Link(String kakaoId, String name);
+
     /** [2026-10-30] 은둔한 대장장이 -- action=list(가진 무기/재료), do(무기 등급업). */
     HashMap<String, Object> mineHermit(String userName, String action, String code);
 

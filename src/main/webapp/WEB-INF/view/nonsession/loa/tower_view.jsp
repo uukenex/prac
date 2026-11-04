@@ -1135,94 +1135,7 @@
   --%>
 </head>
 <body>
-<!-- [2026-10-26] "구버전에서 업데이트 안 되는 사람, 새로고침해도 신버전이 안 된다" -- 이 화면의 빌드 번호를 서버(/api/tower-page-build, 배포마다 바뀜)와 비교.
-     열자마자 다르면(브라우저/카톡 웹뷰가 예전 화면을 저장해 둠) 주소에 ?_b=새번호를 붙여 바로 다시 불러오고(주소가 달라 저장본을 못 씀),
-     보는 도중 새로 배포되면 위쪽에 "새 버전" 띠를 띄워 누르면 다시 불러온다(놀이 중에 갑자기 끊지 않게). 다른 스크립트와 따로 돌아 예전 화면이 깨져 있어도 동작. -->
-<script>
-(function () {
-  var MY = '<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>';
-  function freshUrl(b) {
-    var u = location.pathname + location.search.replace(/([?&])_b=[^&]*&?/, '$1').replace(/[?&]$/, '');
-    return u + (u.indexOf('?') >= 0 ? '&' : '?') + '_b=' + encodeURIComponent(b) + location.hash;
-  }
-  // [2026-10-30] "서버와 1분 이상 통신이 안 되면(백그라운드 등) 접속 종료 멘트 후 다시 접속, 배포 때도" --
-  //  모든 fetch의 성공/실패 시각을 적어 둔다. 광산이 열려 있으면 1분 넘게 성공한 응답이 없을 때(창이 숨어 있다 돌아온 경우 포함),
-  //  광산 밖에선 실패가 이어져 1분이 넘을 때(서버 재시작/배포) 화면을 덮고 서버가 답할 때까지 3초마다 물어본 뒤 다시 불러온다(광산이 열려 있었으면 ?go=mine으로 광산까지).
-  var lastOk = Date.now(), lastFail = 0, lost = false, LOST_MS = 60 * 1000;
-  window.twAlive = function () { lastOk = Date.now(); }; // [2026-11-03] 광산 WebSocket 응답도 "살아 있음"으로
-  if (window.fetch) {
-    var of = window.fetch;
-    window.fetch = function () {
-      return of.apply(this, arguments).then(function (r) { if (r && r.status < 500) lastOk = Date.now(); else lastFail = Date.now(); return r; },
-        function (e) { lastFail = Date.now(); throw e; });
-    };
-  }
-  function mineOn() { var o = document.getElementById('mineOverlay'); return !!(o && o.classList.contains('open')); }
-  function goUrl(b) {
-    var q = new URLSearchParams(location.search);
-    q.delete('_b'); q.delete('go');
-    if (b) q.set('_b', b);
-    if (mineOn()) q.set('go', 'mine'); // 광산에 있었으면 다시 광산으로
-    var qs = q.toString();
-    return location.pathname + (qs ? '?' + qs : '') + location.hash;
-  }
-  function lostCheck() {
-    if (lost || document.hidden) return;
-    var gap = Date.now() - lastOk;
-    if (gap <= LOST_MS || !(mineOn() || lastFail > lastOk)) return;
-    lost = true;
-    var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(10,8,20,.82);display:flex;align-items:center;justify-content:center;padding:16px;';
-    el.innerHTML = '<div style="background:#221c33;color:#fff;border:2px solid #f4f0e6;border-radius:14px;padding:18px 20px;max-width:320px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.5);">'
-        + '<div style="font-size:30px;margin-bottom:6px;">🔌</div><div style="font-weight:800;font-size:15px;margin-bottom:6px;">서버와의 접속이 끊겼어요</div>'
-        + '<div id="lostSub" style="font-size:13px;color:#cfc8e8;line-height:1.5;">1분 넘게 서버와 통신하지 못했어요.<br>다시 접속하는 중...</div></div>';
-    document.body.appendChild(el);
-    (function retry() {
-      of('/loa/api/tower-page-build?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
-        var sub = document.getElementById('lostSub');
-        if (sub) sub.innerHTML = '서버에 다시 연결됐어요.<br>' + (mineOn() ? '광산에 다시 들어가요...' : '화면을 다시 불러와요...');
-        setTimeout(function () { location.replace(goUrl(d && d.build)); }, 1500);
-      }).catch(function () {
-        var sub = document.getElementById('lostSub');
-        if (sub) sub.innerHTML = '서버가 아직 응답하지 않아요(점검/업데이트 중일 수 있어요).<br>3초마다 다시 시도하는 중...';
-        setTimeout(retry, 3000);
-      });
-    })();
-  }
-  setInterval(lostCheck, 5000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) lostCheck(); });
-  /** [2026-11-03] "업데이트가 있을 땐 강력 새로고침" -- 새 빌드 번호 주소(?_b=, 화면 HTML은 저장 안 함 + CSS/JS도 ?v=새 번호)로 다시 받고, 저장해 둔 맵 정보도 비운다. */
-  function hardReload(b) {
-    try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('tw-mine-map') === 0) localStorage.removeItem(k); }); } catch (e) { }
-    location.replace(goUrl(b));
-  }
-  function bar(b, auto) {
-    if (document.getElementById('newBuildBar')) return;
-    var el = document.createElement('div');
-    el.id = 'newBuildBar';
-    el.style.cssText = 'position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:99999;background:#2F8F5C;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;border:2px solid #fff;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.35);cursor:pointer;';
-    el.textContent = auto ? '🔄 새 버전으로 업데이트돼요 -- 5초 뒤 자동 새로고침' : '🔄 새 버전이 나왔어요 -- 눌러서 새로고침';
-    el.onclick = function () { hardReload(b); };
-    document.body.appendChild(el);
-  }
-  function check(first) {
-    if (!window.fetch) return;
-    fetch('/loa/api/tower-page-build?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!d || !d.build || d.build === MY) return;
-        if (location.search.indexOf('_b=' + d.build) >= 0) { bar(d.build); return; } // 같은 번호로 다시 왔는데도 다르면(저장본) 멈추고 띠만
-        if (first) { location.replace(freshUrl(d.build)); return; }
-        // [2026-10-29] "패치되면 강제로 새로고침" -- 보는 도중 새로 배포되면 5초 안내 뒤 자동으로 다시 불러온다(광산은 pagehide에서 위치를 저장)
-        bar(d.build, true);
-        setTimeout(function () { hardReload(d.build); }, 5000); // [2026-10-30] 3초 -> 5초, 광산에 있었으면 광산까지(goUrl)
-      }).catch(function () { });
-  }
-  check(true);
-  setInterval(function () { if (!document.hidden) check(false); }, 60 * 1000); // [2026-10-29] 5분 -> 1분(배포 뒤 빨리 새로고침)
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(false); });
-})();
-</script>
+<%@ include file="_s55_live.jsp" %>
 <div class="wrap">
 
   <div class="top-controls">
@@ -1807,34 +1720,7 @@
 </nav>
 
 <!-- [2026-10-23] 웹 광산(255x255 공용 맵, 2D 도트) -- TowerMine 스크립트(맨 아래)가 그린다. -->
-<div class="mine-overlay" id="mineOverlay">
-  <canvas id="mineCanvas"></canvas>
-  <div class="mine-patch" id="minePatch" role="status" aria-live="polite"></div>
-  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-ping mpx" id="minePing"></div><div class="mine-terr" id="mineTerr"></div></div>
-  <div class="mine-hud-tr">
-    <div class="mine-cold mpx" id="mineCold"></div>
-    <div class="mine-regen" id="mineRegen"></div>
-    <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
-    <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
-  </div>
-  <div class="mine-hp mpx" id="mineHp"></div>
-  <div class="mine-log mpx" id="mineLog"></div>
-  <!-- [2026-10-28] 왼쪽 버튼 다섯 개를 ☰ 메뉴 하나로 -->
-  <button type="button" class="mine-btn mine-menu-btn mpx" id="mineMenuBtn" onclick="TowerMine.toggleMenu()" aria-expanded="false" aria-controls="mineMenu">☰ 메뉴</button>
-  <div class="mine-menu mpx" id="mineMenu">
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 인벤토리</button>
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('home')">🏠 마을로</button>
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 기록</button>
-    <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>
-  </div>
-  <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
-  <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격" title="무기로 공격 (스페이스)">⚔️</button>
-  <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기" title="캐기 (Z)">⛏️<span class="dig-n" id="mineSta"></span></button>
-  <button type="button" class="mine-auto-btn mpx" id="mineAutoBtn" onclick="TowerMine.toggleAuto()">🤖 자동채광</button>
-  <div class="mine-msg mpx" id="mineMsg"></div>
-  <div class="mine-smith mpx" id="mineSmith"></div>
-  <div class="mine-loading" id="mineLoading">광산으로 가는 중...</div>
-</div>
+<%@ include file="_mine_overlay.jsp" %>
 
 <%-- [2026-11-03] 시즌 5.5 경량화 -- 탑 화면 스크립트는 /loa/s55/tower.js(아래 원본 스크립트 블록을 S55AssetController가 뽑아 냄) --%>
 <script src="<%=request.getContextPath()%>/loa/s55/tower.js?v=<%= request.getAttribute("pageBuild") == null ? "" : request.getAttribute("pageBuild") %>"></script>

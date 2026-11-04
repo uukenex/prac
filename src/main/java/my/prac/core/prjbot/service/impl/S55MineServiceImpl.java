@@ -50,6 +50,56 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Resource(name = "core.prjbot.BotS5DAO")
     BotS5DAO dao;
 
+    // ---- [2026-11-04] 시즌 5.5 웹앱(PWA, /mine/) -- "카카오 로그인은 신규 테이블로 유저 정보 매칭, 최초 접속 때 카카오톡 닉네임을 직접 입력해서
+    //  기존 광산 게임 아이디와 맞으면 연결, 없으면 생성해서 연결". 연결은 TBOT_S55_MINE_LINK(카카오 계정 하나 = 캐릭터 하나).
+    //  이미 다른 카카오 계정에 연결된 이름은 연결하지 않는다(남의 캐릭터를 가져가지 않게).
+    static final int S55_NAME_MAX = 40;
+
+    @Override
+    public String s55LinkedUser(String kakaoId) {
+        if (kakaoId == null || kakaoId.isEmpty()) return null;
+        return dao.selectS55Link(kakaoId);
+    }
+
+    /** 입력한 이름 다듬기(앞뒤 공백, 줄바꿈/제어문자/꺾쇠 없음, 1~S55_NAME_MAX자) -- 쓸 수 없으면 null. */
+    static String s55CleanName(String name) {
+        String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+        if (n.isEmpty() || n.length() > S55_NAME_MAX || n.matches(".*[\\p{Cntrl}<>\"'].*")) return null;
+        return n;
+    }
+
+    @Override
+    public HashMap<String, Object> s55LinkCheck(String kakaoId, String name) {
+        HashMap<String, Object> out = new HashMap<>();
+        String n = s55CleanName(name);
+        out.put("ok", n != null);
+        if (n == null) { out.put("message", "닉네임을 1~" + S55_NAME_MAX + "자로 입력해 주세요. (꺾쇠·따옴표·줄바꿈은 안 돼요)"); return out; }
+        out.put("name", n);
+        String owner = dao.selectS55LinkByUser(n);
+        out.put("taken", owner != null && !owner.equals(kakaoId));
+        HashMap<String, Object> row = dao.selectMineUser(n);
+        out.put("exists", row != null);
+        if (row != null) out.put("lv", mineLv(row));
+        return out;
+    }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> s55Link(String kakaoId, String name) {
+        HashMap<String, Object> out = s55LinkCheck(kakaoId, name);
+        if (!Boolean.TRUE.equals(out.get("ok"))) return out;
+        String n = (String) out.get("name");
+        if (Boolean.TRUE.equals(out.get("taken"))) { out.put("ok", false); out.put("message", "이미 다른 카카오 계정에 연결된 닉네임이에요. 본인 캐릭터라면 관리자에게 문의해 주세요."); return out; }
+        if (!mineAccess(n)) { out.put("ok", false); out.put("message", "광산은 아직 준비 중이에요."); return out; }
+        boolean created = !Boolean.TRUE.equals(out.get("exists"));
+        mineRow(n, false); // 없으면 이 이름으로 광산 캐릭터를 만든다(/광산 링크와 같다)
+        dao.upsertS55Link(kakaoId, n);
+        out.put("created", created);
+        out.put("message", created ? "새 광산 캐릭터 '" + n + "'(으)로 시작해요!" : "'" + n + "' 캐릭터와 연결했어요!");
+        return out;
+    }
+
+
     // ---- [2026-10-23] 웹 광산(공용 맵 여러 개, 2D 도트) ----
     // 맵은 S5MineMap(주기마다 시드로 서버가 만든다)을 모든 유저가 같이 쓴다 -- 칸마다 광석 등급이 정해져 있어 좌표를 공유할 수 있다.
     // 화면에는 지형/포탈/NPC만 보내고 광석은 캐 봐야 안다. 한 칸은 유저마다 한 번만 캘 수 있다(TBOT_S5_MINE_DUG, 맵 리셋 때만 초기화).
