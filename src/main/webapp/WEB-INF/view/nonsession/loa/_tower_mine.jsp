@@ -1836,7 +1836,7 @@ var TowerMine = (function () {
     COAT2: '설산의 한기를 크게 막아 주지만 몸이 둔해져 몬스터에게 받는 피해가 2배예요. 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요.',
     GLOVES: '한기 방어 +단계(1~3). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요.(물 위에서는 못 빼요).',
-    REGEN_GLOVES: '몬스터에게 받은 피해의 80%를 4초에 걸쳐 회복',
+    REGEN_GLOVES: '몬스터에게 받은 피해의 50%를 5초에 걸쳐 회복', // [2026-11-04] 80%/4초 -> 50%/5초
     TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 더블어택(합쳐서 110%). 타격마다 치명타 확률 +5%. 초당 최대 체력의 1% 소모',
     BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요.' };
   function eqInfo(elm, ev) {
@@ -2889,23 +2889,23 @@ var TowerMine = (function () {
       }
       h += '</div>';
     }
-    if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 보스 드랍템 + 달빛석으로 배울 수 있어요.</div>';
+    if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 보스 드랍템 + 달빛석 + 세공된 바다 보석으로 배울 수 있어요.</div>';
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
-  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)'], 4: [33, '설산(얼음 여왕)'], 6: [64, '화산(용암 거신)'], 7: [31, '성당(타락한 대주교)'] }, MOON_G = 20;
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [31, '성당(타락한 대주교)', 59] }, MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
   function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
     var h = npcHead('🌀 ' + (n ? n.name : '검기 사범'), false) + talkBlock(n, n ? n.line : '')
-        + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 (2n-1)개 + 달빛석 (2n-1)개 · 달빛석 보유 ' + moon + '</div>';
+        + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 + 달빛석 + 세공된 바다 보석 각 (2n-1)개 · 달빛석 보유 ' + moon + '</div>';
     for (var e = 1; e <= 8; e++) {
       var L = (au.l && au.l[e]) || 0, b = AURA_BOSS[e];
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 검기</span> ' + L + '/5';
       if (!b) { h += '<div class="mine-smith-row">' + head + '<small>이 속성의 보스는 아직 없어요 (추가 예정)</small></span><button type="button" data-lack="1" disabled>준비 중</button></div>'; continue; }
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; continue; }
-      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), ok = hb >= c && moon >= c;
-      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + '개 (보유 ' + hb + ') + 달빛석 ' + c + '개 · ' + b[1] + '</small></span>'
+      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), hs = oreHave(b[2]), ok = hb >= c && moon >= c && hs >= c;
+      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + ' + ' + ORE_NAME[b[2]] + ' ' + c + ' (보유 ' + hs + ') · ' + b[1] + '</small></span>'
           + '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.auraLearn(' + e + ')">배우기</button></div>';
     }
     return h + '<div class="mine-smith-say">배운 단계는 인벤토리 🌀 스킬 탭에서 골라 켜고 끌 수 있어요.</div>';

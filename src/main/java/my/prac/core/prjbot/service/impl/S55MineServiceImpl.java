@@ -3645,6 +3645,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
      *  어둠 = 타락한 대주교의 인장, 나머지는 보스가 생기면). n단계를 배우려면 그 드랍템 2n-1개 + 달빛석 2n-1개(1/3/5/7/9). */
     static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, null, null, S5MineMap.ICE_HEART_CODE, null, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
     static int mineAuraCost(int lv) { return 2 * lv - 1; }
+    /** [2026-11-04] "달빛석뿐 아니라 세공된 바다의 보석도" -- 속성별 세공 바다 보석(S5MineMap.seaCutCode 번호): 땅 = 자수정, 얼음 = 진주, 불 = 산호석, 어둠 = 흑진주. 같은 개수(2n-1). */
+    static final int[] MINE_AURA_SEA = { -1, 2, -1, -1, 0, -1, 1, 4, -1 };
     static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
     static int[] mineAuraActive(Map<String, Integer> items) {
         int[] a = new int[9];
@@ -3841,11 +3843,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cur = Math.min(items.getOrDefault(mineAuraKey(false, el), 0), MINE_AURA_MAX), act = items.getOrDefault(mineAuraKey(true, el), 0);
         if (cur >= MINE_AURA_MAX) { out.put("message", "이미 " + S5MineMobs.ELEM_NAMES[el] + " 검기를 끝까지 익혔네."); return out; }
         int nx = cur + 1, n = mineAuraCost(nx);
-        String boss = MINE_AURA_BOSS_ITEM[el];
-        if (dao.takeUserOre(userName, boss, n) == 0) { out.put("message", mineCodeName(boss) + " " + n + "개와 " + S5MineMap.MOON_STONE_NAME + " " + n + "개가 있어야 해요."); return out; }
-        if (dao.takeUserOre(userName, S5MineMap.MOON_STONE_CODE, n) == 0) {
-            dao.addUserOre(userName, boss, n); // 돌려준다
-            out.put("message", mineCodeName(boss) + " " + n + "개와 " + S5MineMap.MOON_STONE_NAME + " " + n + "개가 있어야 해요.");
+        String[] need = { MINE_AURA_BOSS_ITEM[el], S5MineMap.MOON_STONE_CODE, S5MineMap.seaCutCode(MINE_AURA_SEA[el]) };
+        for (int i = 0; i < need.length; i++) {
+            if (dao.takeUserOre(userName, need[i], n) > 0) continue;
+            for (int j = 0; j < i; j++) dao.addUserOre(userName, need[j], n); // 앞에서 가져간 것은 돌려준다
+            out.put("message", mineCodeName(need[0]) + ", " + S5MineMap.MOON_STONE_NAME + ", " + mineCodeName(need[2]) + " 각각 " + n + "개가 있어야 해요.");
             return out;
         }
         dao.upsertMineItem(userName, mineAuraKey(false, el), nx);
@@ -4345,7 +4347,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         //  광전사의 장갑 = "자연 회복이 멈추는 대신 데미지 50% 추가"
         new MineGear("REGEN_GLOVES", "재생의 장갑", "gloves", // = MINE_ITEM_REGEN_GLOVES(아래 -- 앞에서 쓰면 forward reference)
             new String[][][] { { mineCost(1, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(1, 1) } }, // [2026-10-28] "유저 최고가 구매할 만큼 비싸게"
-            new String[] { "전투에서 받은 피해의 80%를 4초에 걸쳐 회복" }, 0),
+            new String[] { "전투에서 받은 피해의 50%를 5초에 걸쳐 회복" }, 0), // [2026-11-04] 80%/4초 -> 50%/5초
         new MineGear("BERSERK_GLOVES", "광전사의 장갑", "gloves", // = MINE_ITEM_BERSERK_GLOVES
             new String[][][] { { mineCost(5, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(5, 1) } },
             new String[] { "공격력 +50% · 체력 회복 속도 -20%" }, 0),
@@ -4392,10 +4394,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_TWIN_CRIT = 5;
     /** [2026-10-28] 장갑 칸: 2 = 재생의 장갑, 3 = 광전사의 장갑, 그 밖(0/없음) = 방한 장갑(GLOVES_OFF로 벗음). */
     static final String MINE_ITEM_GLOVE_SLOT = "GLOVE_SLOT";
-    static final double MINE_REGEN_GLOVE_PCT = 0.8, MINE_BERSERK_MULT = 1.5;
+    static final double MINE_REGEN_GLOVE_PCT = 0.5, MINE_BERSERK_MULT = 1.5; // [2026-11-04] 재생의 장갑 80% -> 50%
     /** [2026-10-29] "광전사의 장갑 -- 체력이 회복되지 않음 대신 회복 속도 -20%" */
     static final double MINE_BERSERK_REGEN_MUL = 0.8;
-    static final long MINE_REGEN_GLOVE_MS = 4_000L;
+    static final long MINE_REGEN_GLOVE_MS = 5_000L; // [2026-11-04] 4초 -> 5초
 
     /** 끼고 있는 장갑 코드(없으면 null). */
     static int mineGloveSlotOf(String code) { return MINE_ITEM_REGEN_GLOVES.equals(code) ? 2 : MINE_ITEM_TWIN_GLOVES.equals(code) ? 4 : 3; }
