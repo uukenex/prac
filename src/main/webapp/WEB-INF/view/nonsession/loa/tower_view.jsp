@@ -754,6 +754,7 @@
     .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + var(--patch-h, 0px)); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
     .mine-coord{ display:inline-block; font:800 14px/1.1 ui-monospace, Consolas, monospace; padding:4px 8px; letter-spacing:1px; } /* [2026-11-03] 18px -> 14px */
     .mine-ping{ display:inline-block; margin-left:6px; font:800 12px/1.1 ui-monospace, Consolas, monospace; padding:4px 7px; vertical-align:top; } /* [2026-11-03] 응답 속도(핑) */
+    @media (max-width:560px){ .mine-ping{ display:block; width:fit-content; margin:4px 0 0; font-size:11px; } .mine-hud-tl{ max-width:calc(100% - 175px); } } /* [2026-11-04] "모바일에서 핑과 맵 리셋이 겹친다" -- 좁은 화면은 핑을 좌표 아래 줄로 */
     .mine-ping:empty{ display:none; }
     .mine-ping.ok{ color:#7cf08a; } .mine-ping.mid{ color:#ffd84a; } .mine-ping.bad{ color:#ff7a6a; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
