@@ -1906,12 +1906,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
             } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
-                if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type);
+                if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type, 1);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
             } else {
                 s.hp -= dmg;
-                if (auraRange > 0) { auraMain = mineAuraHits(aura, atkBase, type); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
+                if (auraRange > 0) { auraMain = mineAuraHits(aura, atkBase, type, 1); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 s.lastHitAt = now;
                 if (shrineBoss) { if (s.hitters == null) s.hitters = new java.util.HashSet<>(); s.hitters.add(userName); }
                 if (s.hp <= 0) {
@@ -3660,11 +3660,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("a", mineAuraActive(items));
         return m;
     }
-    /** 켠 속성마다 [속성, 피해, 상성 1/0] -- 피해 = 공격력(무기 포함) x 단계 x 10%, 상성 x1.5. */
-    static List<int[]> mineAuraHits(int[] a, double atkBase, S5MineMobs.Type type) {
+    /** 켠 속성마다 [속성, 피해, 상성 1/0] -- 피해 = 공격력(무기 포함) x 단계 x 5%, 상성 x1.5.
+     *  [2026-11-04] "속성마다 자기 단계만큼만 닿는다(불5 얼음1이면 2~5칸 앞은 불만)" -- dist칸 앞이면 단계 >= dist인 속성만. */
+    static List<int[]> mineAuraHits(int[] a, double atkBase, S5MineMobs.Type type, int dist) {
         List<int[]> out = new ArrayList<>();
         for (int e = 1; e <= 8; e++) {
-            if (a[e] <= 0) continue;
+            if (a[e] <= 0 || a[e] < dist) continue;
             boolean beat = S5MineMobs.elemBeats(e, type.elem());
             out.add(new int[] { e, Math.max(1, (int) Math.round(atkBase * a[e] * MINE_AURA_PCT / 100.0 * (0.85 + RND.nextDouble() * 0.3) * (beat ? 1.5 : 1))), beat ? 1 : 0 });
         }
@@ -3684,11 +3685,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     long[] mineAuraSweep(String userName, S5MineMap map, Map<String, Integer> items, int[] aura, int range, double atkBase, int x, int y, String dir, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out) {
         int[] dv = mineDirVec(dir);
         if (dv == null || range <= 0) return new long[] { 0, 0 };
-        java.util.Set<Integer> line = new java.util.HashSet<>();
+        java.util.Map<Integer, Integer> line = new java.util.HashMap<>(); // 칸 -> 몇 칸 앞
         for (int k = 1; k <= range; k++) {
             int lx = x + dv[0] * k, ly = y + dv[1] * k;
             if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) break;
-            line.add(ly * map.w + lx);
+            line.put(ly * map.w + lx, k);
         }
         List<HashMap<String, Object>> hitList = new ArrayList<>();
         List<HashMap<String, Object>> drops = new ArrayList<>();
@@ -3701,13 +3702,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             String key = mineMobKey(map, om.id);
             MobState s0 = MINE_MOB_STATE.get(key);
             if (ot.minion && s0 == null) continue; // 불려 나오지 않은 수하
-            int hitCell = -1, fw = ot.boss ? 2 : 1;
+            int hitCell = -1, fw = ot.boss ? 2 : 1, dist = 99;
             for (int c : mineMobCells(om, s0, now, map))
-                for (int oy = 0; oy < fw && hitCell < 0; oy++) for (int ox = 0; ox < fw; ox++) if (line.contains(c + oy * map.w + ox)) { hitCell = c; break; }
+                for (int oy = 0; oy < fw; oy++) for (int ox = 0; ox < fw; ox++) {
+                    Integer k = line.get(c + oy * map.w + ox);
+                    if (k != null && k < dist) { dist = k; hitCell = c; }
+                }
             if (hitCell < 0) continue;
             int omMax = S5MineMobs.hp(ot, om.rank);
             MobState s = MINE_MOB_STATE.computeIfAbsent(key, k -> new MobState(omMax));
-            List<int[]> hs = mineAuraHits(aura, atkBase, ot);
+            List<int[]> hs = mineAuraHits(aura, atkBase, ot, dist);
             int sum = 0;
             for (int[] h : hs) sum += h[1];
             boolean dead = false;

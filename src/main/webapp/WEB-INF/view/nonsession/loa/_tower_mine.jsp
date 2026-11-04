@@ -2831,7 +2831,7 @@ var TowerMine = (function () {
   var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 300, auraFx = [];
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
-  function auraFxGo() { var r = auraRange(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), t0: performance.now() }); }
+  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
   /** 공격 응답의 검기 -- 바로 앞 적의 속성 숫자(aura), 너머 몬스터(auraMobs: 상태/숫자/처치), 드랍. */
   function auraShow(d, fxp, fyp, t) {
     (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
@@ -2874,7 +2874,7 @@ var TowerMine = (function () {
   /** 인벤토리 스킬 탭 -- 배운 속성마다 끔/1~배운 단계 중 고르기(장비 등급처럼). */
   function skillHtml() {
     var au = (st && st.aura) || { l: [], a: [] }, any = false, R = auraRange();
-    var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 사거리는 켠 단계 중 가장 높은 값(최대 5칸), 속성마다 공격력의 (단계 x 5%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격도 함께 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
+    var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 속성마다 자기 단계만큼 멀리(1단계 = 1칸 ~ 5단계 = 5칸), 공격력의 (단계 x 5%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격 + 켠 속성 전부를 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
         + '<div style="margin:6px 0 4px;font-size:11px;color:#a89ec8">숫자 = 단계(단계마다 5%), 흐린 칸은 아직 안 배운 단계</div>'
         + '<div style="margin:0 0 8px;font-weight:800">지금 사거리 <b style="color:#ffd27a">' + R + '칸</b>' + (R ? ' · ' + auraEls().map(function (e) { return '<span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + au.a[e] + '</span>'; }).join(' ') : '') + '</div>';
     for (var e = 1; e <= 8; e++) {
@@ -3492,7 +3492,7 @@ var TowerMine = (function () {
       var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
-        var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + (f.r - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
+        var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
         var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 0.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 0.4, rr = TS * (0.5 + i * 0.07);
         ctx.globalAlpha = Math.max(0, fo * (k < 1 ? 0.95 : 0.7)); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw;
         ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 1.05, ang + 1.05); ctx.stroke();
