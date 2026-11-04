@@ -911,7 +911,7 @@
     .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:7px 12px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
     @keyframes minePatchGlow{ 50%{ filter:brightness(1.25); } }
     @media (prefers-reduced-motion: reduce){ .mine-patch{ animation:none; } }
-    .mine-msg{ position:absolute; z-index:6; left:50%; top:calc(50% - 140px); transform:translateX(-50%); padding:7px 12px; font-size:13px; display:none; max-width:84vw; text-align:center; pointer-events:none; }
+    .mine-msg{ position:absolute; z-index:6; left:104px; right:118px; max-width:420px; bottom:calc(54px + env(safe-area-inset-bottom)); padding:6px 10px; font-size:12px; display:none; text-align:center; pointer-events:none; box-sizing:border-box; } /* [2026-11-04] "가운데 멘트가 화면을 많이 가린다" -- 체력바 바로 위(체력바와 같은 폭) */
     .mine-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
     /* [2026-10-23] 대장간(곡괭이 강화) 창 */
     .mine-smith{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(340px,92vw); max-height:80vh; overflow:auto; padding:12px; font-size:13px; display:none; z-index:2; }

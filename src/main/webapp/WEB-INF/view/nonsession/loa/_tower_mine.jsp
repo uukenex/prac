@@ -2861,7 +2861,7 @@ var TowerMine = (function () {
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
   function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
-  // [2026-11-04] 획득 카드 -- 오른쪽 위에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
+  // [2026-11-04] 획득 카드 -- 화면 가운데(조금 위)에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
   var lootBox = null;
   function lootDrops(list) {
     if (!list || !list.length) return;
@@ -2873,12 +2873,12 @@ var TowerMine = (function () {
     if (!el.ov || !items || !items.length) return;
     if (!lootBox || !lootBox.parentNode) {
       lootBox = document.createElement('div');
-      lootBox.style.cssText = 'position:absolute;right:10px;top:calc(var(--patch-h, 0px) + 96px + env(safe-area-inset-top));z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:4px;pointer-events:none;';
+      lootBox.style.cssText = 'position:absolute;left:50%;top:38%;transform:translateX(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;'; // [2026-11-04] 화면 가운데에서 아이템 창(메뉴) 쪽으로
       el.ov.appendChild(lootBox);
     }
     items.forEach(function (it, i) {
       var c = document.createElement('div');
-      c.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 9px;background:rgba(20,16,30,.88);border:2px solid ' + (it.big ? '#ffd27a' : '#f4f0e6') + ';box-shadow:2px 2px 0 rgba(0,0,0,.6);font:800 ' + (it.big ? 13 : 12) + 'px monospace;color:' + (it.color || '#fff') + ';white-space:nowrap;opacity:0;transform:translateX(24px);transition:transform .25s ease-out,opacity .25s;';
+      c.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 9px;background:rgba(20,16,30,.88);border:2px solid ' + (it.big ? '#ffd27a' : '#f4f0e6') + ';box-shadow:2px 2px 0 rgba(0,0,0,.6);font:800 ' + (it.big ? 13 : 12) + 'px monospace;color:' + (it.color || '#fff') + ';white-space:nowrap;opacity:0;transform:translateY(10px);transition:transform .25s ease-out,opacity .25s;';
       c.innerHTML = (it.icon ? '<img src="' + it.icon + '" alt="" style="width:16px;height:16px;image-rendering:pixelated">' : '') + '<span></span>';
       c.lastChild.textContent = it.text;
       lootBox.appendChild(c);
