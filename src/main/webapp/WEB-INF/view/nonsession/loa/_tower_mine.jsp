@@ -1794,7 +1794,7 @@ var TowerMine = (function () {
       if (!rows.length) h += '<div class="mine-eq-empty">' + sl.none + '</div>';
       rows.forEach(function (e) {
         var off = e.worn && e.code !== 'SWORD' && e.code !== 'BASIC_PICK'; // 무기/채집 도구는 해제하면 기본(칼/기본 곡괭이) -- 기본은 "사용 중"
-        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + (EQ_TIPS[e.code] || e.effect) + '</small>'
+        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + eqTip(e) + '</small>'
             + (e.grades && e.grades.length ? '<span class="gchips">' + e.grades.map(function (g) { // [2026-10-30] 무기 등급별 보관 -- 가진 등급을 색 칩으로, 누르면 그 등급을 든다
                 return '<button type="button" class="gchip' + (g === e.grade ? ' on' : '') + (g === 7 ? ' g7' : '') + '"' + (g < 7 ? ' style="background:' + GRADE_COL[g] + '"' : '') + ' onclick="TowerMine.equipRing(\'' + e.code + '#' + g + '\')" aria-label="등급 ' + (g + 1) + '"></button>';
               }).join('') + '</span>' : '') + '</span>'
@@ -1847,12 +1847,14 @@ var TowerMine = (function () {
     REGEN_GLOVES: '몬스터에게 받은 피해의 50%를 5초에 걸쳐 회복 (2단계: 65% + 처치 시 최대 체력 3%)', // [2026-11-04] 80%/4초 -> 50%/5초, 2단계
     TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 더블어택(합쳐서 110%). 타격마다 치명타 확률 +5%. 초당 최대 체력의 1% 소모',
     BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요.' };
+  /** [2026-11-04] "2단계 장비 옵션이 안 나온다" -- 고정 설명(EQ_TIPS)은 1단계 기준이라, 이름에 (n단계)가 붙은 장비는 서버가 준 그 단계 효과를 보여 준다. */
+  function eqTip(e) { var t = EQ_TIPS[e.code]; return t && !/\(\d단계\)/.test(e.name) ? t : e.effect; }
   function eqInfo(elm, ev) {
     if (ev && ev.target && ev.target.tagName === 'BUTTON') return; // 끼기/빼기 버튼은 그대로
     var code = elm.getAttribute('data-code'), e = null;
     (st.equip || []).forEach(function (q) { if (q.code === code) e = q; });
     if (!e) return;
-    msg('ℹ️ ' + e.name + ' -- ' + (EQ_TIPS[code] || e.effect), 4200);
+    msg('ℹ️ ' + e.name + ' -- ' + eqTip(e), 4200);
   }
   function openEquip() {
     if (!opened || !map) return;
