@@ -3639,10 +3639,15 @@ var TowerMine = (function () {
   // [2026-11-03] 시즌 5.5 "네트워크 지연을 안 느끼게" -- 1초 턴/공격/캐기는 연결 하나(WebSocket /s55ws, S55MineSocket)로 주고받는다.
   //  메시지는 HTTP 때와 같은 주소 문자열, 답도 같은 응답. 연결이 없거나 끊기면 예전처럼 HTTP(api)로 보내고, 끊기면 1·2·4...10초 뒤 다시 잇는다.
   var ws = null, wsOk = false, wsSeq = 0, wsWait = {}, wsRetry = 0, wsTimer = 0;
+  // [2026-11-04] "핑이 비정상으로 높다" -- Cloudflare를 거치면 도쿄/홍콩을 돌아와 150~600ms. 서버가 직접 주소(st.wsHost)를 주면 http 화면에선 소켓을 그리로 바로 잇는다.
+  //  한 번도 못 열고 끊기면(막힘) 이 화면에선 예전 주소로 돌아간다.
+  var wsDirectBad = false;
+  function wsDirect() { return !!(st && st.wsHost && location.protocol === 'http:' && !wsDirectBad); }
   function wsOpen() {
     if (!opened || ws || !window.WebSocket) return;
-    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; return; }
-    ws.onopen = function () { wsOk = true; wsRetry = 0; };
+    var direct = wsDirect(), opened1 = false;
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + (direct ? st.wsHost : location.host) + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; if (direct) { wsDirectBad = true; wsOpen(); } return; }
+    ws.onopen = function () { wsOk = true; wsRetry = 0; opened1 = true; };
     ws.onmessage = function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (window.twAlive) window.twAlive(); // 탑 화면 "접속 끊김" 감시에 살아 있다고 알린다
@@ -3651,6 +3656,7 @@ var TowerMine = (function () {
     };
     ws.onclose = ws.onerror = function () {
       var was = ws;
+      if (direct && !opened1) { wsDirectBad = true; wsRetry = 0; } // 직접 주소가 막혔다 -- 다음엔 예전 주소로
       ws = null; wsOk = false;
       for (var k in wsWait) { clearTimeout(wsWait[k].t); wsWait[k].no(new Error('ws')); }
       wsWait = {};
@@ -3680,7 +3686,7 @@ var TowerMine = (function () {
   function netMode() {
     var v = null;
     try { v = localStorage.getItem('tw-mine-net'); } catch (e) { }
-    return v === 'ws' || v === 'http' ? v : (st && st.ws ? 'ws' : 'http');
+    return v === 'ws' || v === 'http' ? v : (st && (st.ws || wsDirect()) ? 'ws' : 'http'); // [2026-11-04] 직접 주소가 있으면 기본 WebSocket
   }
   function netToggle() {
     var next = netMode() === 'ws' ? 'http' : 'ws';

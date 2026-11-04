@@ -661,7 +661,11 @@ public class Season5ViewController {
         }
         HashMap<String, Object> st = s5Service.mineState(userName);
         // [2026-11-04] "속도 개선 뒤 공격/자동채광이 느리다" -- WebSocket은 설정값 S55_WS = 1일 때만(기본은 예전처럼 HTTP). 배포 없이 켜고 끈다(/갱신).
-        if (st.get("error") == null) { String w = s5Dao.selectConfigValue("S55_WS"); st.put("ws", w != null && "1".equals(w.trim())); }
+        if (st.get("error") == null) { String w = s5Dao.selectConfigValue("S55_WS"); st.put("ws", w != null && "1".equals(w.trim()));
+            // [2026-11-04] "핑이 비정상으로 높다" -- Cloudflare를 거치면 한국 유저가 도쿄/홍콩을 돌아와 왕복 150~600ms(서버 처리는 0~4ms, 서버 직접은 10ms).
+            //  설정값 S55_WS_HOST(예: 서버 IP 또는 Cloudflare 프록시를 끈 도메인)가 있으면 화면이 WebSocket을 그 주소로 바로 잇는다(http 화면일 때만). 비우면 예전처럼.
+            String wh = s5Dao.selectConfigValue("S55_WS_HOST");
+            if (wh != null && wh.trim().matches("[A-Za-z0-9.:-]{1,100}")) st.put("wsHost", wh.trim()); }
         if ("1".equals(enter) && st.get("error") == null && !s5Service.s55IsAdmin(userName)) // [2026-11-04] 관리자 알림 -- 다른 유저 접속(같은 유저는 30분에 한 번)
             my.prac.core.util.S55AdminPush.notifyOnce("enter|" + userName, 30 * 60_000L, "⛏️ 광산 접속", userName + " 님이 광산에 들어왔어요 (" + st.get("mapName") + ")");
         if ("1".equals(enter) && st.get("error") == null) {
