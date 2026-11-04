@@ -6450,9 +6450,7 @@ public class BotS5ServiceImpl extends S55MineServiceImpl implements BotS5Service
             created = true;
         }
         return (created ? "🎉 " + userName + " 님의 계정을 새로 만들었어요!" + NL : "")
-                + "⛏️ 람쥐 광산(웹앱): https://rgb-tns.dev-apc.com/mine/" + NL // [2026-11-04] 시즌 5.5 전용 주소 -- 카카오 로그인 후 처음 한 번 닉네임 입력
-                + "카카오 로그인 후 처음 한 번 닉네임에 " + userName + " 을(를) 그대로 입력하면 이 캐릭터로 이어져요." + NL
-                + "홈 화면에 추가하면 앱처럼 쓸 수 있어요.";
+                + "⛏️ 람쥐 광산(웹앱): https://rgb-tns.dev-apc.com/mine/"; // [2026-11-04] 시즌 5.5 전용 주소(안내 문구는 웹앱에서)
     }
 
     @Override

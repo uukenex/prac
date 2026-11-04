@@ -46,6 +46,39 @@
     .s55-top img{ width:28px; height:28px; image-rendering:pixelated; }
     .s55-top .who{ flex:1; min-width:0; color:#cfc8e8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .s55-top a{ color:#a89ec8; font-size:12px; white-space:nowrap; }
+    /* [2026-11-04] 앱 설치 안내(휴대폰 화면을 흉내 낸 그림) */
+    .s55-gd{ position:fixed; inset:0; z-index:50; background:rgba(10,8,20,.86); overflow:auto; padding:16px; box-sizing:border-box; }
+    .s55-gd-box{ max-width:520px; margin:0 auto; background:#1d1730; border:2px solid #f4f0e6; box-shadow:4px 4px 0 rgba(0,0,0,.6); padding:18px 14px; text-align:center; }
+    .s55-gd-box h2{ margin:0 0 4px; font-size:19px; }
+    .s55-gd-sub{ margin:0 0 12px; font-size:13px; color:#cfc8e8; }
+    .s55-gd-kakao{ margin:0 0 12px; padding:10px; border:2px dashed #fee500; background:#2a2440; font-size:13px; line-height:1.6; }
+    .s55-gd-kakao .s55-btn{ display:block; margin:8px auto 4px; }
+    .s55-gd-kakao small{ color:#a89ec8; }
+    .s55-gd-tabs{ display:flex; gap:6px; justify-content:center; margin:6px 0 12px; }
+    .s55-gd-tabs button{ flex:1; padding:8px 4px; font-size:13px; font-weight:800; color:#cfc8e8; background:#2a2440; border:2px solid #5a4f7a; cursor:pointer; }
+    .s55-gd-tabs button.on{ color:#fff; background:#3a2f55; border-color:#f4f0e6; }
+    .s55-gd [hidden]{ display:none !important; }
+    .s55-gd-steps{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+    .s55-gd-step p{ margin:6px 0 0; font-size:12px; line-height:1.45; color:#e8e2f8; }
+    .s55-gd-step p b:first-child{ display:inline-block; width:18px; height:18px; line-height:18px; border-radius:50%; background:#ffe14d; color:#1d1730; font-size:11px; margin-right:2px; }
+    .s55-gd-step small{ color:#a89ec8; }
+    .ph{ position:relative; height:150px; border:3px solid #0c0a14; border-radius:14px; background:#f4f1ea; overflow:hidden; display:flex; flex-direction:column; color:#333; font-size:9px; }
+    .ph-bar{ display:flex; align-items:center; gap:4px; padding:5px 6px; background:#e2ddd2; }
+    .ph-bar .url{ flex:1; background:#fff; border-radius:8px; padding:2px 5px; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ph-bar.ios{ justify-content:space-between; font-size:9px; }
+    .ph-body{ flex:1; background:repeating-linear-gradient(0deg, #ddd8cc 0 6px, #f4f1ea 6px 14px); margin:8px; border-radius:4px; }
+    .ph-menu{ margin:auto 6px 6px; background:#fff; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.25); display:flex; flex-direction:column; text-align:left; }
+    .ph-menu span{ padding:5px 7px; border-bottom:1px solid #eee; }
+    .ph-tool{ display:flex; justify-content:space-around; padding:6px 2px; background:#e2ddd2; font-size:12px; }
+    .ph-home{ background:linear-gradient(160deg, #3a5a8a, #6a3a7a); align-items:center; justify-content:center; }
+    .ph-home .app, .ph-add{ display:flex; flex-direction:column; align-items:center; gap:3px; color:#fff; font-style:normal; }
+    .ph-home .app img, .ph-add img{ width:42px; height:42px; border-radius:10px; image-rendering:pixelated; }
+    .ph-home .app i{ font-style:normal; font-size:10px; }
+    .ph-add{ margin:auto; color:#333; }
+    .ph .hl{ outline:2px solid #ff4a4a; outline-offset:1px; border-radius:4px; background:#fff3c4; font-weight:800; animation:s55Blink 1.2s ease-in-out infinite; }
+    .ph-home .app{ animation:s55Blink 1.2s ease-in-out infinite; }
+    @keyframes s55Blink{ 50%{ outline-color:transparent; opacity:.75; } }
+    #s55GdClose{ margin-top:14px; }
   </style>
 </head>
 <body>
@@ -56,6 +89,7 @@
 <div class="s55-land" id="s55Land">
   <div class="s55-top">
     <img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><b>람쥐 광산</b><span class="who"><%=userEsc%></span>
+    <a href="#" onclick="s55Guide(); return false;">📲 앱 설치</a>
     <a href="<%=ctx%>/loa/s5/logout">로그아웃</a>
   </div>
   <% if (request.getAttribute("vapidPub") != null) { %>
@@ -144,8 +178,8 @@
       .then(function (r) { return r.json(); }).then(function (d) {
         if (d.login === false) { location.reload(); return; }
         if (!d.ok) { $('s55Go').disabled = false; say(d.message || '연결하지 못했어요.', 'err'); return; }
-        say((d.message || '연결했어요!') + ' 광산으로 들어가요...', 'ok');
-        setTimeout(function () { location.reload(); }, 800);
+        say(d.message || '연결했어요!', 'ok');
+        s55Guide(function () { location.reload(); }); // [2026-11-04] 처음 연결 직후 -- 앱 설치 방법부터(닫으면 입장 화면)
       }).catch(function () { $('s55Go').disabled = false; say('요청이 실패했어요. 다시 시도해 주세요.', 'err'); });
   }
   $('s55Check').onclick = check;
@@ -163,6 +197,56 @@
   </div>
 </div>
 <% } %>
+<%-- [2026-11-04] "최초 로그인 연결에 성공하면 웹앱 설치 방법 알려줘(스샷 같은 걸로)" -- 처음 연결 직후 자동으로, 입장 화면에선 "📲 앱 설치" 로 다시 열기.
+     그림은 실제 캡처 대신 휴대폰 화면을 흉내 낸 그림(기기마다 메뉴 모양이 조금 달라서). 카카오톡 안 브라우저에선 설치가 안 돼 "다른 브라우저로 열기"부터. --%>
+<div class="s55-gd" id="s55Guide" hidden>
+  <div class="s55-gd-box">
+    <h2>📲 람쥐 광산을 앱처럼 설치하기</h2>
+    <p class="s55-gd-sub">홈 화면에 아이콘을 만들면 주소창 없이 전체 화면으로 열려요.</p>
+    <div class="s55-gd-kakao" id="s55GdKakao" hidden>
+      <b>지금은 카카오톡 안 브라우저예요.</b> 여기서는 설치가 안 돼요.<br>먼저 <b>다른 브라우저(크롬/사파리)로 열기</b>를 해 주세요.
+      <a class="s55-btn main" id="s55GdExt" href="#">🌐 다른 브라우저로 열기</a>
+      <small>안 되면 오른쪽 아래(또는 위) ⋮ / 공유 버튼 → "다른 브라우저로 열기"</small>
+    </div>
+    <button type="button" class="s55-btn main" id="s55GdInstall" hidden>⬇️ 지금 바로 설치</button>
+    <div class="s55-gd-tabs"><button type="button" data-t="and" class="on">안드로이드 (크롬)</button><button type="button" data-t="ios">아이폰 (사파리)</button></div>
+    <div class="s55-gd-steps" data-p="and">
+      <div class="s55-gd-step"><div class="ph"><div class="ph-bar"><span class="url">rgb-tns.dev-apc.com/mine/</span><span class="hl">⋮</span></div><div class="ph-body"></div></div><p><b>1</b> 오른쪽 위 <b>⋮</b> 메뉴</p></div>
+      <div class="s55-gd-step"><div class="ph"><div class="ph-bar"><span class="url">rgb-tns.dev-apc.com/mine/</span><span>⋮</span></div><div class="ph-menu"><span>새 탭</span><span>북마크</span><span class="hl">📲 홈 화면에 추가</span><span>공유</span></div></div><p><b>2</b> <b>홈 화면에 추가</b><br><small>("앱 설치"로 보일 수도 있어요)</small></p></div>
+      <div class="s55-gd-step"><div class="ph ph-home"><span class="app"><img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><i>람쥐광산</i></span></div><p><b>3</b> 홈 화면의 <b>람쥐광산</b> 아이콘으로 실행</p></div>
+    </div>
+    <div class="s55-gd-steps" data-p="ios" hidden>
+      <div class="s55-gd-step"><div class="ph"><div class="ph-body"></div><div class="ph-tool"><span>‹</span><span>›</span><span class="hl">⬆︎</span><span>📖</span><span>⧉</span></div></div><p><b>1</b> 아래 가운데 <b>공유</b> 버튼(□↑)</p></div>
+      <div class="s55-gd-step"><div class="ph"><div class="ph-menu"><span>복사</span><span>읽기 목록에 추가</span><span class="hl">➕ 홈 화면에 추가</span><span>북마크 추가</span></div></div><p><b>2</b> 아래로 내려 <b>홈 화면에 추가</b></p></div>
+      <div class="s55-gd-step"><div class="ph"><div class="ph-bar ios"><span>취소</span><b>홈 화면에 추가</b><span class="hl">추가</span></div><div class="ph-add"><img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><span>람쥐광산</span></div></div><p><b>3</b> 오른쪽 위 <b>추가</b> → 아이콘으로 실행</p></div>
+    </div>
+    <button type="button" class="s55-btn" id="s55GdClose">⛏️ 광산 입장하기</button>
+  </div>
+</div>
+<script>
+(function () {
+  var g = document.getElementById('s55Guide'), deferred = null, after = null;
+  var ua = navigator.userAgent || '', isKakao = /KAKAOTALK/i.test(ua), isIos = /iPhone|iPad|iPod/i.test(ua);
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; var b = document.getElementById('s55GdInstall'); if (b) b.hidden = false; });
+  function tab(t) {
+    g.querySelectorAll('.s55-gd-tabs button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-t') === t); });
+    g.querySelectorAll('.s55-gd-steps').forEach(function (p) { p.hidden = p.getAttribute('data-p') !== t; });
+  }
+  g.querySelectorAll('.s55-gd-tabs button').forEach(function (b) { b.onclick = function () { tab(b.getAttribute('data-t')); }; });
+  document.getElementById('s55GdInstall').onclick = function () { if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function () { deferred = null; document.getElementById('s55GdInstall').hidden = true; }); };
+  document.getElementById('s55GdExt').onclick = function (e) { e.preventDefault(); location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.origin + '<%=ctx%>/mine/'); };
+  document.getElementById('s55GdClose').onclick = function () { g.hidden = true; if (after) after(); };
+  /** 설치 안내 열기 -- then = 닫을 때 할 일(처음 연결 직후엔 새로고침해 입장 화면으로). 이미 앱으로 열려 있으면 안 띄운다. */
+  window.s55Guide = function (then) {
+    after = then || null;
+    var standalone = window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+    if (standalone && then) { then(); return; }
+    document.getElementById('s55GdKakao').hidden = !isKakao;
+    tab(isIos ? 'ios' : 'and');
+    g.hidden = false;
+  };
+})();
+</script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('<%=ctx%>/mine/sw.js', { scope: '<%=ctx%>/mine/' }).catch(function () { });</script>
 </body>
 </html>
