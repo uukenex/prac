@@ -2875,13 +2875,18 @@ var TowerMine = (function () {
   function skillHtml() {
     var au = (st && st.aura) || { l: [], a: [] }, any = false, R = auraRange();
     var h = '<div class="mine-smith-say">🌀 <b>검기</b> -- 공격하면 바라보는 방향으로 날아가요. 사거리는 켠 단계 중 가장 높은 값(최대 5칸), 속성마다 공격력의 (단계 x 5%) 속성 피해(상성이면 x1.5). 바로 앞 적은 일반 공격도 함께 맞고, 옆에 적이 없어도 공격 버튼으로 날릴 수 있어요.</div>'
-        + '<div style="margin:6px 0 8px;font-weight:800">지금 사거리 <b style="color:#ffd27a">' + R + '칸</b>' + (R ? ' · ' + auraEls().map(function (e) { return '<span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + au.a[e] + '</span>'; }).join(' ') : '') + '</div>';
+        + '<div style="margin:6px 0 4px;font-size:11px;color:#a89ec8">숫자 = 단계(단계마다 5%), 흐린 칸은 아직 안 배운 단계</div>'
+        + '<div style="margin:0 0 8px;font-weight:800">지금 사거리 <b style="color:#ffd27a">' + R + '칸</b>' + (R ? ' · ' + auraEls().map(function (e) { return '<span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + au.a[e] + '</span>'; }).join(' ') : '') + '</div>';
     for (var e = 1; e <= 8; e++) {
       var L = (au.l && au.l[e]) || 0, A = (au.a && au.a[e]) || 0;
       if (!L) continue;
       any = true;
-      h += '<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:0 0 6px"><span style="min-width:64px;font-weight:800;color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + '</span>';
-      for (var v = 0; v <= L; v++) h += '<button type="button" class="mine-mini-btn" style="' + (v === A ? 'background:' + AURA_COL[e] + ';color:#1a1424;' : '') + '" onclick="TowerMine.auraSet(' + e + ',' + v + ')">' + (v ? v + '단계' : '끔') + '</button>';
+      // [2026-11-04] "단계 선택이 옆으로 길어 잘린다" -- 한 줄에 이름 + 끔/1~5 작은 칸(같은 너비, 줄바꿈 없음), 배우지 않은 단계는 흐리게
+      h += '<div style="display:flex;align-items:center;gap:3px;margin:0 0 6px"><span style="flex:0 0 58px;font-weight:800;font-size:12px;white-space:nowrap;color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + '</span>';
+      for (var v = 0; v <= 5; v++) {
+        var on = v === A, can = v <= L;
+        h += '<button type="button" class="mine-mini-btn" style="flex:1 1 0;min-width:0;padding:3px 0;' + (on ? 'background:' + AURA_COL[e] + ';color:#1a1424;' : '') + (can ? '' : 'opacity:.3;') + '"' + (can ? ' onclick="TowerMine.auraSet(' + e + ',' + v + ')"' : ' disabled') + '>' + (v ? v : '끔') + '</button>';
+      }
       h += '</div>';
     }
     if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 보스 드랍템 + 달빛석으로 배울 수 있어요.</div>';
