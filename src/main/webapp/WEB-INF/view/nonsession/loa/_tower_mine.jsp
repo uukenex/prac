@@ -2711,7 +2711,7 @@ var TowerMine = (function () {
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
-    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap : '')).then(function (r) {
       showPing(performance.now() - pt0, pws, r && r.ms);
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);
@@ -3469,12 +3469,14 @@ var TowerMine = (function () {
   /** 왼쪽 위 핑 -- 최근 3번 평균(ms), 150 미만 초록 / 300 미만 노랑 / 그 위 빨강. */
   var pingHist = [];
   // [2026-11-04] "유저 핑 838ms" -- 어디서 늦는지 나눠 보려고: 서버 처리(응답의 ms), 화면 멈춤(그 사이 가장 길었던 프레임 간격, 100ms 넘을 때만)
-  var frameGapMax = 0, lastFrameT = 0;
+  var frameGapMax = 0, lastFrameT = 0, netAvg = -1, netGap = 0;
+  var NET_DV = /KAKAOTALK/i.test(navigator.userAgent) ? 2 : /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 1 : 0; // 0 PC / 1 폰 / 2 카톡 안
   function showPing(ms, viaWs, srvMs) {
     if (!el.ping) return;
     pingHist.push(ms); if (pingHist.length > 3) pingHist.shift();
     var avg = Math.round(pingHist.reduce(function (a, b) { return a + b; }, 0) / pingHist.length);
     var gap = Math.round(frameGapMax); frameGapMax = 0;
+    netAvg = avg; netGap = gap; // [2026-11-04] 다음 턴에 서버로(관리자 화면 -- PC/폰 비교)
     el.ping.textContent = '📶 ' + avg + 'ms · ' + (viaWs ? 'WS' : 'HTTP') + (srvMs != null ? ' · 서버 ' + srvMs : '') + (gap > 100 ? ' · 화면 ' + gap : ''); // [2026-11-04] 누르면 통신 방식 바꾸기(netToggle)
     el.ping.className = 'mine-ping mpx ' + (avg < 150 ? 'ok' : avg < 300 ? 'mid' : 'bad');
     if (!el.ping._tap) { // [2026-11-04] "네트워크 속도 부분을 누르면 통신 방식이 바뀌게"

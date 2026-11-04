@@ -107,6 +107,8 @@
   <div class="s55-adm" id="s55Adm">
     <div class="s55-adm-h"><b>🔔 관리자 알림</b><span id="s55AdmSt">확인 중...</span><button type="button" id="s55AdmBtn" hidden>알림 허용</button><button type="button" id="s55AdmTest">시험 알림</button></div>
     <div class="s55-adm-list" id="s55AdmList"><div class="e">아직 알림이 없어요.</div></div>
+    <div class="s55-adm-h" style="margin-top:8px"><b>📶 접속 중 통신 상태</b><span class="e" style="color:#a89ec8">핑 느린 순 · 10초마다</span></div>
+    <div class="s55-adm-list" id="s55AdmNet"><div class="e">불러오는 중...</div></div>
   </div>
   <div class="s55-toast" id="s55Toast" hidden></div>
   <script>
@@ -129,7 +131,18 @@
         if (seen) toast(l[l.length - 1]); // 처음 불러온 목록은 띄우지 않는다
       }).catch(function () { }).then(function () { seen = 1; });
     }
-    poll(); setInterval(poll, 10000);
+    // [2026-11-04] "폰은 괜찮은데 컴으로 하면 느리다" -- 접속 중 유저별 핑(최근 3번 평균)/기기/통신 방식/화면 멈춤
+    function net() {
+      if (document.hidden) return;
+      fetch(base + 'admin-net', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (l) {
+        var DV = ['💻 PC', '📱 폰', '💬 카톡'];
+        $('s55AdmNet').innerHTML = l && l.length ? l.map(function (n) {
+          var c = n.pg < 150 ? '#9fe0a8' : n.pg < 300 ? '#ffd27a' : '#ffb0a0';
+          return '<div><b style="color:' + c + '">' + n.pg + 'ms</b> ' + esc(n.u) + ' <span>' + (DV[n.dv] || '?') + ' · ' + (n.nw ? 'WS' : 'HTTP') + (n.fg > 100 ? ' · 화면 ' + n.fg : '') + '</span></div>';
+        }).join('') : '<div class="e">지금 광산에 있는 사람이 없어요(새 화면으로 접속한 사람만 보여요).</div>';
+      }).catch(function () { });
+    }
+    poll(); setInterval(poll, 10000); net(); setInterval(net, 10000);
     // 폰 알림 -- 자동 구독
     function sub(ask) {
       if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) { st('이 기기는 폰 알림을 지원하지 않아요(앱 안 알림만)', false); return; }

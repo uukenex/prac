@@ -108,6 +108,29 @@ public class S55AdminPush {
         return since <= 0 && out.size() > 10 ? new ArrayList<>(out.subList(out.size() - 10, out.size())) : out;
     }
 
+    /** [2026-11-04] "폰은 괜찮은데 컴으로 하면 느리다" -- 유저별 최근 통신 상태 {핑 ms(최근 3번 평균), 기기 0 PC/1 폰/2 카톡 안, 1 = WebSocket, 화면 멈춤 ms, 받은 시각}. */
+    private static final ConcurrentHashMap<String, long[]> NET = new ConcurrentHashMap<>();
+
+    public static void net(String user, int pg, int dv, int nw, int fg) {
+        if (NET.size() > 2000) NET.clear();
+        NET.put(user, new long[] { Math.min(pg, 99999), dv, nw, Math.min(Math.max(fg, 0), 99999), System.currentTimeMillis() });
+    }
+
+    /** 최근 30초 안에 알린 유저(핑 느린 순). */
+    public static List<HashMap<String, Object>> nets() {
+        long now = System.currentTimeMillis();
+        List<HashMap<String, Object>> out = new ArrayList<>();
+        for (java.util.Map.Entry<String, long[]> e : NET.entrySet()) {
+            long[] v = e.getValue();
+            if (now - v[4] > 30_000L) continue;
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("u", e.getKey()); m.put("pg", v[0]); m.put("dv", v[1]); m.put("nw", v[2]); m.put("fg", v[3]);
+            out.add(m);
+        }
+        out.sort((a, b) -> Long.compare((Long) b.get("pg"), (Long) a.get("pg")));
+        return out;
+    }
+
     /** 서비스 워커가 깨서 가져가는 그 폰 몫의 알림(가져가면 비운다). */
     public static List<HashMap<String, Object>> pull(String endpoint) {
         List<HashMap<String, Object>> out = new ArrayList<>();

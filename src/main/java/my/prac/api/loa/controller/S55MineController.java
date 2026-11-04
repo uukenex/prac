@@ -135,6 +135,14 @@ public class S55MineController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
     }
 
+    /** [2026-11-04] 접속 중 유저 통신 상태(핑/기기/방식) -- 관리자만. */
+    @GetMapping(value = "/mine/admin-net", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
+    @ResponseBody
+    public ResponseEntity<?> adminNet(HttpServletRequest req) {
+        Object body = adminSession(req) ? my.prac.core.util.S55AdminPush.nets() : new java.util.ArrayList<Object>();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
+    }
+
     /** [2026-11-04] 시험 알림(폰 알림 + 화면 안 알림) -- 관리자만. */
     @PostMapping(value = "/mine/push-test", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
     @ResponseBody
