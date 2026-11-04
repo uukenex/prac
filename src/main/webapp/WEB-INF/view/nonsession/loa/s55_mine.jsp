@@ -78,7 +78,9 @@
     .ph .hl{ outline:2px solid #ff4a4a; outline-offset:1px; border-radius:4px; background:#fff3c4; font-weight:800; animation:s55Blink 1.2s ease-in-out infinite; }
     .ph-home .app{ animation:s55Blink 1.2s ease-in-out infinite; }
     @keyframes s55Blink{ 50%{ outline-color:transparent; opacity:.75; } }
-    #s55GdClose{ margin-top:14px; }
+    #s55GdClose{ margin-top:14px; min-width:120px; }
+    .s55-gd-box{ position:relative; }
+    .s55-gd-x{ position:absolute; right:8px; top:6px; width:32px; height:32px; font-size:18px; color:#cfc8e8; background:none; border:none; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -201,6 +203,7 @@
      그림은 실제 캡처 대신 휴대폰 화면을 흉내 낸 그림(기기마다 메뉴 모양이 조금 달라서). 카카오톡 안 브라우저에선 설치가 안 돼 "다른 브라우저로 열기"부터. --%>
 <div class="s55-gd" id="s55Guide" hidden>
   <div class="s55-gd-box">
+    <button type="button" class="s55-gd-x" onclick="document.getElementById('s55GdClose').click()" aria-label="닫기">✕</button>
     <h2>📲 람쥐 광산을 앱처럼 설치하기</h2>
     <p class="s55-gd-sub">홈 화면에 아이콘을 만들면 주소창 없이 전체 화면으로 열려요.</p>
     <div class="s55-gd-kakao" id="s55GdKakao" hidden>
@@ -220,7 +223,7 @@
       <div class="s55-gd-step"><div class="ph"><div class="ph-menu"><span>복사</span><span>읽기 목록에 추가</span><span class="hl">➕ 홈 화면에 추가</span><span>북마크 추가</span></div></div><p><b>2</b> 아래로 내려 <b>홈 화면에 추가</b></p></div>
       <div class="s55-gd-step"><div class="ph"><div class="ph-bar ios"><span>취소</span><b>홈 화면에 추가</b><span class="hl">추가</span></div><div class="ph-add"><img src="<%=ctx%>/img_loa/s55/icon-192.png" alt=""><span>람쥐광산</span></div></div><p><b>3</b> 오른쪽 위 <b>추가</b> → 아이콘으로 실행</p></div>
     </div>
-    <button type="button" class="s55-btn" id="s55GdClose">⛏️ 광산 입장하기</button>
+    <button type="button" class="s55-btn" id="s55GdClose">닫기</button><%-- [2026-11-04] "누르면 게임에 들어가는 것처럼 보인다" -- 닫기(닫으면 입장 화면: 장비/기록) --%>
   </div>
 </div>
 <script>
