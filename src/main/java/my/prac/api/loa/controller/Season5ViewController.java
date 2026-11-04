@@ -748,6 +748,7 @@ public class Season5ViewController {
             @RequestParam(value = "m", defaultValue = "") String m) {
         HashMap<String, Object> out = new HashMap<String, Object>();
         if (userName.trim().isEmpty()) return ResponseEntity.ok(out);
+        long t0 = System.nanoTime(); // [2026-11-04] 서버 처리 시간(ms) -- 화면 핑 옆에 "서버 n"으로(통신 지연과 나눠 보려고)
         my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName);
         out.put("p", s5Service.minePresence(userName, mapId, x, y, dir));
         if ("1".equals(c)) {
@@ -761,6 +762,7 @@ public class Season5ViewController {
             out.put("e", eo);
         }
         if ("1".equals(m)) out.put("m", s5Service.mineMobs(mapId));
+        out.put("ms", (System.nanoTime() - t0) / 1_000_000L);
         return ResponseEntity.ok(out);
     }
 
