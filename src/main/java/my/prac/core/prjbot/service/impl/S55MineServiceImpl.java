@@ -2191,6 +2191,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double[] MINE_RANK_GEM_MUL = { 0.7, 1.0, 2.0 };
     List<HashMap<String, Object>> mineMobDrops(String userName, S5MineMap map, S5MineMobs.Type type, StringBuilder msg, int rank) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
+        if (S5MineMap.WESTROAD.equals(map.id)) return drops; // [2026-11-05] "그 맵은 몬스터가 광석을 안 떨어뜨려도 된다" -- 처치마다 DB에 쓰던 것도 없어진다(경험치는 공격마다 한 번에)
         if (RND.nextInt(100) < MINE_RANK_ORE_PCT[rank]) {
             int b = Math.min(5, 1 + (type.tier - 1) / 2), r = RND.nextInt(100), g, qty = 1;
             if (r < 55) { g = Math.max(1, b - 1); qty += RND.nextInt(2); }
@@ -3739,6 +3740,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
      *  out: auraMobs [{id, hits, row, killed}], auraDrops. 반환 {처치 수, 경험치}. */
     /** [2026-11-05] 검기 폭(바라보는 줄 양옆 몇 줄)과 한 번에 맞는 최대 마리 -- 처치마다 경험치/드랍을 DB에 쓰므로 느려지지 않을 만큼(12). */
     static final int MINE_AURA_SIDE = 1, MINE_AURA_MAX_TARGETS = 12;
+    /** [2026-11-05] 마물의 숲 입구는 광석 드랍이 없어 처치마다 DB에 쓰지 않으므로(경험치는 공격마다 한 번) 더 많이. */
+    static final int MINE_AURA_MAX_TARGETS_WILD = 30;
     long[] mineAuraSweep(String userName, S5MineMap map, Map<String, Integer> items, int[] aura, int range, double atkBase, int x, int y, String dir, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out) {
         int[] dv = mineDirVec(dir);
         if (dv == null || range <= 0) return new long[] { 0, 0 };
@@ -3770,7 +3773,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (hitCell >= 0) tg.add(new int[] { om.id, hitCell, dist });
         }
         tg.sort((p, q) -> Integer.compare(p[2], q[2]));
-        if (tg.size() > MINE_AURA_MAX_TARGETS) tg = tg.subList(0, MINE_AURA_MAX_TARGETS);
+        int cap = S5MineMap.WESTROAD.equals(map.id) ? MINE_AURA_MAX_TARGETS_WILD : MINE_AURA_MAX_TARGETS;
+        if (tg.size() > cap) tg = tg.subList(0, cap);
         for (int[] tq : tg) {
             S5MineMap.Mob om = map.mobs().get(tq[0]);
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
