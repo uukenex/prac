@@ -135,7 +135,7 @@ public final class S5MineMap {
     public static final String[] SEA_GEM_CODES = { "PEARL", "CORAL_GEM", "AMETHYST", "OPAL", "BLACK_PEARL" };
     public static final String[] SEA_GEM_NAMES = { "진주", "산호석", "자수정", "오팔", "흑진주" };
     public static final int SEA_GEM_GRADE_BASE = 34;
-    public static final int SEA_GEM_PERMILLE = 40;
+    public static final int SEA_GEM_PERMILLE = 50; // [2026-11-05] 다도해 바다 보석 4% -> 5%
     private static final int[] SEA_GEM_WEIGHT = { 40, 25, 20, 10, 5 };
     /** roll = 0~99 -> 바다 보석 인덱스. */
     public static int seaGemFor(int roll) {
@@ -283,7 +283,7 @@ public final class S5MineMap {
     }
 
     /** [2026-10-28] "보석 드랍률 소폭 낮춰줘" -- 맵별 지역 보석(과 추가 다이아) 천분율에 곱하는 백분율. 모든 맵 공통 다이아(DIAMOND_PERMILLE)는 그대로. */
-    static final int GEM_SCALE_PCT = 80;
+    static final int GEM_SCALE_PCT = 100; // [2026-11-05] "전체 지역 보석 채광 확률 조금씩 올려" -- 80 -> 100(지역 보석 +25%)
 
     /** 한 번 캘 때 함께 나오는 보석 인덱스(없으면 -1). roll = 0~999 난수. 다이아몬드를 먼저 본다. */
     public static int gemFor(String mapId, int roll) {
