@@ -1067,13 +1067,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static volatile String mineLavaVer = "";
     static final int MINE_LAVA_MAX = 180; // [2026-10-29] 3x3씩 깔리니 60 -> 180
     static final double MINE_LAVA_PCT = 6;
+    /** [2026-11-05] "화산섬 보스 물속에도 마그마 장판(다만 짧게)" -- 용왕의 반지로 물 위에 서서 피하던 것. 물 칸(~)의 용암은 이만큼만 남는다. */
+    static final long MINE_LAVA_WATER_MS = 4_000L;
 
     /** 지금 용암 칸(y * w + x) -- 용암섬이 아니면 빈 목록. 전투가 완전히 끝났으면 여기서 식힌다. */
     List<Integer> mineLavaCells(S5MineMap map, long now) {
         if (!S5MineMap.ISLE7.equals(map.id)) return Collections.emptyList();
         if (!map.version().equals(mineLavaVer)) { MINE_LAVA.clear(); mineLavaVer = map.version(); }
         if (!MINE_LAVA.isEmpty() && !mineLavaFightOn(map, now)) MINE_LAVA.clear();
+        MINE_LAVA.entrySet().removeIf(en -> now - en.getValue() > MINE_LAVA_WATER_MS && mineLavaWater(map, en.getKey())); // [2026-11-05] 물 위 용암은 금방 식는다
         return new ArrayList<>(MINE_LAVA.keySet());
+    }
+
+    static boolean mineLavaWater(S5MineMap map, int cell) {
+        int cx = cell % map.w, cy = cell / map.w;
+        return map.inside(cx, cy) && map.terrainAt(cx, cy) == '~';
     }
 
     /** 용암 거신이 살아 있고 누군가와 싸우는 중인지(인식된 사람이 있음). */
@@ -1348,7 +1356,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         } else if (S5MineMap.ISLE7.equals(map.id)) {
                             mineLavaCells(map, now); // 맵 버전 맞추기
                             for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) // [2026-10-29] "용암 범위 3x3" (예전 서 있던 한 칸)
-                                if (MINE_LAVA.size() < MINE_LAVA_MAX && map.walkable(lx, ly)) MINE_LAVA.put(ly * map.w + lx, now); // [2026-10-30] 야자수 그늘(안전지대)에도 깔린다
+                                if ((MINE_LAVA.size() < MINE_LAVA_MAX || MINE_LAVA.containsKey(ly * map.w + lx)) && (map.walkable(lx, ly) || (map.inside(lx, ly) && map.terrainAt(lx, ly) == '~'))) MINE_LAVA.put(ly * map.w + lx, now); // [2026-11-05] 물 위에도(MINE_LAVA_WATER_MS 뒤 식음) // [2026-10-30] 야자수 그늘(안전지대)에도 깔린다
                             h.put("lava", true);
                         }
                         killerName = type.name;
