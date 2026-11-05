@@ -37,6 +37,7 @@ var TowerMine = (function () {
   ORE_NAME[32] = '닌자의 비급서'; ORE_COL[32] = ['#3a2a1a', '#e8d8a8'];
   ORE_NAME[33] = '얼음의 심장'; ORE_COL[33] = ['#4fc8f0', '#f0fcff']; RARE_GEM[33] = 1; // [2026-10-28] 설산 봉우리 얼음 여왕 보상
   // [2026-10-29] 장비 등급(일반 흰색 / 고급 초록 / 희귀 파랑 / 영웅 보라 / 전설 주황 / 유물 빨강 / 고대 은색 / 신화 무지개) -- 플레이어는 색으로만 안다
+  var GRADE_NAME = ['일반', '고급', '희귀', '영웅', '전설', '유물', '고대', '신화']; // [2026-11-05] 무기 드랍 표시(서버 GRADE_NAMES와 같은 순서)
   var GRADE_COL = ['#ffffff', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffffff'];
   function gradeName(nm, g) { return g == null ? nm : '<span class="gr gr' + g + '"' + (g < 6 ? ' style="color:' + GRADE_COL[g] + '"' : '') + '>' + nm + '</span>'; }
   // [2026-10-29] 속성(서버 S5MineMobs.EL_* 순서): 무, 땅, 번개, 물, 얼음, 바람, 불, 어둠, 빛
@@ -2957,14 +2958,70 @@ var TowerMine = (function () {
   function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
   // [2026-11-04] 획득 카드 -- 화면 가운데(조금 위)에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
   var lootBox = null;
-  function lootDrops(list) {
+  function lootDrops(list, px, py) {
     if (!list || !list.length) return;
     var sp = false;
-    lootToast(list.map(function (dr) { var s = specialDrop(dr.grade); if (s) sp = true; return { icon: oreIcon(dr.grade), text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], big: s }; }));
+    lootToast(list.map(function (dr) { var s = specialDrop(dr.grade); if (s) sp = true; if (cutGrade(dr.grade)) rainbowGo(px, py); return { icon: oreIcon(dr.grade), text: '+' + dr.qty + ' ' + dr.name, color: (ORE_COL[dr.grade] || ORE_COL[1])[1], big: s }; }));
     if (sp) flashT0 = performance.now();
+  }
+  /** [2026-11-05] 세공된 보석(등급 45~53, 세공 빙석 54, 세공 바다 보석 55~59). */
+  function cutGrade(g) { return g >= 45 && g <= 59; }
+  /** [2026-11-05] 무기 드랍 -- 이름 뒤에 (등급), 전설 이상이면 무지개 빛. 같은 등급이 또 나와 분해되면 조각. */
+  function weaponLoot(d, px, py) {
+    if (d.dropGrade >= 4) rainbowGo(px, py);
+    lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard + (d.dropName ? ' (' + d.dropName + ' ' + (GRADE_NAME[d.dropGrade] || '') + ')' : ''), color: '#e8e2f8' }]
+      : [{ text: '🗡️ ' + d.dropName + ' (' + (GRADE_NAME[d.dropGrade] || '?') + ')', color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]);
+  }
+  // [2026-11-05] "아이템 드랍 위치로부터 퍼지는 이펙트 -- 에픽 빔 같은 느낌" -- 전설 이상 무기 / 세공된 보석이 나오면 떨어진 자리에서
+  //  흰빛-금빛-주황 빛줄기가 부채꼴로 화면 끝까지 쭉 뻗고(0.4초), 사이사이 가는 무지개 줄기와 가운데 번쩍임, 2.2초에 걸쳐 사라진다.
+  var beamFx = null, BEAM_MS = 2200;
+  function rainbowGo(x, y) { beamFx = { x: x != null ? x : P.x, y: y != null ? y : P.y, t0: performance.now(), seed: Math.random() }; }
+  function drawRainbow(tn, W, H, TS, camX, camY) {
+    if (!beamFx) return;
+    var q = (tn - beamFx.t0) / BEAM_MS;
+    if (q >= 1) { beamFx = null; return; }
+    if (q < 0) return;
+    var cx = beamFx.x * TS - camX + TS / 2, cy = beamFx.y * TS - camY + TS / 2;
+    var grow = 1 - Math.pow(1 - Math.min(1, q / 0.18), 3), a = q < 0.18 ? 1 : 1 - (q - 0.18) / 0.82, L = Math.hypot(W, H) * 1.1 * grow, sd = beamFx.seed;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    // 굵은 빛줄기 -- [각도, 반폭, 길이 배수]
+    [[-2.35, 0.09, 1], [-1.95, 0.05, 0.75], [-1.62, 0.12, 1], [-1.15, 0.045, 0.7], [-0.72, 0.1, 1], [-0.3, 0.05, 0.6], [0.45, 0.06, 0.7], [2.75, 0.05, 0.55], [3.5, 0.045, 0.5]].forEach(function (r, i) {
+      var ang = r[0] + (sd - 0.5) * 0.4 + Math.sin(tn / 320 + i) * 0.015, hw = r[1] * (0.85 + 0.15 * Math.sin(tn / 55 + i * 2)), len = L * r[2];
+      var ex = cx + Math.cos(ang) * len, ey = cy + Math.sin(ang) * len, g = ctx.createLinearGradient(cx, cy, ex, ey);
+      g.addColorStop(0, 'rgba(255,255,235,' + (0.95 * a) + ')');
+      g.addColorStop(0.22, 'rgba(255,232,90,' + (0.75 * a) + ')');
+      g.addColorStop(0.6, 'rgba(255,150,40,' + (0.35 * a) + ')');
+      g.addColorStop(1, 'rgba(255,110,30,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ang - hw) * len, cy + Math.sin(ang - hw) * len); ctx.lineTo(cx + Math.cos(ang + hw) * len, cy + Math.sin(ang + hw) * len); ctx.closePath(); ctx.fill();
+      var cg = ctx.createLinearGradient(cx, cy, cx + Math.cos(ang) * len * 0.7, cy + Math.sin(ang) * len * 0.7);
+      cg.addColorStop(0, 'rgba(255,255,255,' + (0.9 * a) + ')'); cg.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.strokeStyle = cg; ctx.lineWidth = Math.max(1.5, TS * 0.05);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ang) * len * 0.7, cy + Math.sin(ang) * len * 0.7); ctx.stroke();
+    });
+    // 가는 무지개 줄기
+    for (var k = 0; k < 7; k++) {
+      var ra = -2.6 + k * 0.62 + (sd - 0.5) * 0.4, rl = L * (0.45 + 0.08 * (k % 3)), rh = 0.018;
+      var rg2 = ctx.createLinearGradient(cx, cy, cx + Math.cos(ra) * rl, cy + Math.sin(ra) * rl);
+      rg2.addColorStop(0, 'hsla(' + ((k * 51 + tn / 6) % 360) + ',100%,70%,' + (0.7 * a) + ')'); rg2.addColorStop(1, 'hsla(' + ((k * 51 + tn / 6) % 360) + ',100%,60%,0)');
+      ctx.fillStyle = rg2;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ra - rh) * rl, cy + Math.sin(ra - rh) * rl); ctx.lineTo(cx + Math.cos(ra + rh) * rl, cy + Math.sin(ra + rh) * rl); ctx.closePath(); ctx.fill();
+    }
+    // 가운데 번쩍임 + 가로 빛번짐
+    var fr = TS * (1.2 + 1.6 * a), cg2 = ctx.createRadialGradient(cx, cy, 0, cx, cy, fr);
+    cg2.addColorStop(0, 'rgba(255,255,255,' + a + ')'); cg2.addColorStop(0.35, 'rgba(255,240,150,' + (0.7 * a) + ')'); cg2.addColorStop(1, 'rgba(255,170,60,0)');
+    ctx.fillStyle = cg2; ctx.beginPath(); ctx.arc(cx, cy, fr, 0, Math.PI * 2); ctx.fill();
+    var sw = TS * 5 * (0.5 + a * 0.5), sg = ctx.createLinearGradient(cx - sw, cy, cx + sw, cy);
+    sg.addColorStop(0, 'rgba(255,230,140,0)'); sg.addColorStop(0.5, 'rgba(255,255,230,' + (0.8 * a) + ')'); sg.addColorStop(1, 'rgba(255,230,140,0)');
+    ctx.fillStyle = sg; ctx.fillRect(cx - sw, cy - TS * 0.06, sw * 2, TS * 0.12);
+    ctx.restore();
   }
   function lootToast(items) {
     if (!el.ov || !items || !items.length) return;
+    items.forEach(function (it) { killFeed(it.text, it.color, it.icon); }); // [2026-11-05] 왼쪽 획득 기록(경험치 줄과 같은 곳)
+    items = items.filter(function (it) { return it.big; }); // 날아가는 카드는 귀한 것만
+    if (!items.length) return;
     if (!lootBox || !lootBox.parentNode) {
       lootBox = document.createElement('div');
       lootBox.style.cssText = 'position:absolute;left:50%;top:38%;transform:translateX(-50%);z-index:5;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;'; // [2026-11-04] 화면 가운데에서 아이템 창(메뉴) 쪽으로
@@ -3001,8 +3058,8 @@ var TowerMine = (function () {
       (am.hits || []).forEach(function (h, i) { floats.push({ x: p.x + (i % 2 ? 0.3 : -0.3), y: p.y - 0.32 * i, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * i }); });
       if (am.killed) { anyKill = true; floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); }
     });
-    lootDrops(d.auraDrops); // [2026-11-04] 화면 구석 카드
-    if (!d.killed && d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); }
+    lootDrops(d.auraDrops, fxp, fyp); // [2026-11-04] 화면 구석 카드
+    if (!d.killed && d.dropGrade != null) { flashT0 = t; weaponLoot(d, fxp, fyp); }
     if (anyKill && d.ores) st.ores = d.ores;
     // [2026-11-05] "쓰러뜨렸어요 문구 빼고 경험치 몇 올랐는지만, 검은 상자 말고 왼쪽 빈 화면에 글씨만 띄웠다 서서히 사라지게" -- 일반 공격 처치 + 검기 처치를 합쳐 한 줄
     var exSum = d.killed && d.expGain ? d.expGain : 0, kn = d.killed ? 1 : 0;
@@ -3011,21 +3068,22 @@ var TowerMine = (function () {
   }
   // 왼쪽 빈 화면 -- 글씨만(그림자) 떠올랐다가 1.6초 뒤 위로 살짝 떠오르며 사라진다. 최대 6줄.
   var killBox = null;
-  function killFeed(text) {
+  function killFeed(text, color, icon) {
     if (!el.ov) return;
     if (!killBox || !killBox.parentNode) {
       killBox = document.createElement('div');
-      killBox.style.cssText = 'position:absolute;left:14px;top:42%;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:2px;pointer-events:none;';
+      killBox.style.cssText = 'position:absolute;left:14px;top:57%;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:2px;pointer-events:none;';
       el.ov.appendChild(killBox);
     }
     var c = document.createElement('div');
-    c.textContent = text;
-    c.style.cssText = 'font:800 15px monospace;color:#9fe0ff;text-shadow:0 0 3px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s,transform .2s;';
+    c.innerHTML = (icon ? '<img src="' + icon + '" alt="" style="width:15px;height:15px;image-rendering:pixelated;vertical-align:-2px;margin-right:4px">' : '') + '<span></span>';
+    c.lastChild.textContent = text;
+    c.style.cssText = 'font:800 15px monospace;color:' + (color || '#9fe0ff') + ';text-shadow:0 0 3px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s,transform .2s;';
     killBox.appendChild(c);
-    while (killBox.children.length > 6) killBox.removeChild(killBox.firstChild);
+    while (killBox.children.length > 8) killBox.removeChild(killBox.firstChild);
     setTimeout(function () { c.style.opacity = '1'; c.style.transform = 'none'; }, 20);
-    setTimeout(function () { c.style.transition = 'opacity 1.1s ease-in,transform 1.1s ease-out'; c.style.opacity = '0'; c.style.transform = 'translateY(-14px)'; }, 1600);
-    setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 2800);
+    setTimeout(function () { c.style.transition = 'opacity 1.1s ease-in,transform 1.1s ease-out'; c.style.opacity = '0'; c.style.transform = 'translateY(-14px)'; }, 2600);
+    setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 3800);
   }
   /** 옆에 몬스터가 없을 때 공격 버튼 = 검기만 날린다(서버 mob=-1). */
   function auraAttack() {
@@ -3175,9 +3233,9 @@ var TowerMine = (function () {
       setCombat(d.combat);
       if (d.killed) {
         if (d.ores) st.ores = d.ores;
-        lootDrops(d.drops); // [2026-11-04] "드랍 아이템 효과가 가운데 상자를 가린다" -- 화면 구석 카드 -> 왼쪽 아래로 빨려 들어감
+        lootDrops(d.drops, fxp, fyp); // [2026-11-04] "드랍 아이템 효과가 가운데 상자를 가린다" -- 화면 구석 카드 -> 왼쪽 아래로 빨려 들어감
         if (d.dropGrade != null) api('/api/tower-mine').then(function (s2) { if (s2 && !s2.error) { st.equip = s2.equip; st.gear = s2.gear; if (s2.ores) st.ores = s2.ores; if (s2.look) st.look = s2.look; if (smithOpen) renderSmith(smithNpc); } }).catch(function () { }); // [2026-10-29] "무기를 얻었는데 인벤토리에 안 보인다" -- 장비 목록/조각을 바로 다시 받는다
-        if (d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
+        if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, fxp, fyp); } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
         if (d.bossKilled || d.shrineKey || (d.ninjaKills && d.ninjaKills % 10 === 0)) msg(d.message || '', 3600); // [2026-11-05] 처치 문구는 왼쪽 경험치 줄로(auraShow) -- 보스 처치/신궁 열쇠/수색 진행만 가운데에
       }
@@ -3588,6 +3646,7 @@ var TowerMine = (function () {
       }
     }
     if (map.thunder && stormNext && stormNext - nowSrv() < 1500 && stormNext > nowSrv()) { ctx.fillStyle = 'rgba(160,200,255,' + (0.08 + 0.08 * Math.sin(now / 40)) + ')'; ctx.fillRect(0, 0, W, H); } // [2026-11-05] 낙뢰 직전 깜빡임
+    drawRainbow(performance.now(), W, H, TS, camX, camY); // [2026-11-05] 전설 이상 / 세공된 보석 -- 떨어진 자리에서 빛줄기
     if (performance.now() - stormT0 < 700) { // [2026-11-05] 전체 낙뢰 -- 화면이 하얗게 번쩍, 하늘에서 내 머리 위로 번개
       var sq = (performance.now() - stormT0) / 700;
       ctx.fillStyle = 'rgba(220,235,255,' + (0.55 * (1 - sq)) + ')'; ctx.fillRect(0, 0, W, H);
@@ -4087,11 +4146,12 @@ var TowerMine = (function () {
         if (d.cutGrade) { // [2026-11-05] 채광 중 가끔 세공된 보석
           var cimg = new Image(); cimg.src = oreIcon(d.cutGrade);
           floats.push({ x: x, y: y - 1.0, text: '+1 ' + d.cutName, color: '#fff4b0', big: true, icon: cimg, t0: performance.now() + 350 });
-          flashT0 = performance.now(); msg('✨ ' + d.cutName + '! 반짝이는 세공품이 함께 나왔어요.', 3200);
+          flashT0 = performance.now(); rainbowGo(x, y); killFeed('+1 ' + d.cutName, '#fff4b0', cimg.src); // [2026-11-05] 무지개 빛 + 왼쪽 기록(가운데 상자 대신)
         }
         if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
           (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
           var gimg = new Image(); gimg.src = oreIcon(d.gemGrade);
+          killFeed('+1 ' + d.gemName, (ORE_COL[d.gemGrade] || ORE_COL[1])[1], gimg.src); // [2026-11-05] 왼쪽 획득 기록
           floats.push({ x: x, y: y - 0.6, text: '+1 ' + d.gemName, color: (ORE_COL[d.gemGrade] || ORE_COL[1])[1], big: !!RARE_GEM[d.gemGrade], icon: gimg, t0: performance.now() + 250 });
           if (RARE_GEM[d.gemGrade]) { flashT0 = performance.now(); msg('💎 ' + d.gemName + '! ' + map.name, 3600); } // [2026-10-28] 좌표 빼기 }
           else msg('💎 ' + d.gemName + '도 함께 나왔어요!', 2200);
