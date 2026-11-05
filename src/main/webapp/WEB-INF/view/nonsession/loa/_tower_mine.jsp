@@ -3657,11 +3657,11 @@ var TowerMine = (function () {
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
         var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
-        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 1.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 1.4, rr = TS * (1.5 + i * 0.07); // [2026-11-05] 폭 3칸(서버 MINE_AURA_SIDE) -- 큰 원의 앞쪽 호
+        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 0.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 0.4, rr = TS * (0.5 + i * 0.07); // [2026-11-05] 폭 1칸 그대로(옆 폭은 나중에 업그레이드)
         ctx.globalAlpha = Math.max(0, fo * (k < 1 ? 0.95 : 0.7)); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw;
-        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 0.85, ang + 0.85); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 1.05, ang + 1.05); ctx.stroke();
         ctx.globalAlpha = Math.max(0, fo * 0.35); ctx.lineWidth = lw * 2.2; // 잔광
-        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.65, ang + 0.65); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.8, ang + 0.8); ctx.stroke();
       });
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });

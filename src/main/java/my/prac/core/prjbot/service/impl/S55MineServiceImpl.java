@@ -1466,6 +1466,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> hits = new ArrayList<>();
         List<long[]> mobs = new ArrayList<>();
         String killerName = null;
+        // [2026-11-05] "몬스터가 겹쳐 오지 않게" -- 나를 쫓는 몬스터끼리 같은 칸에 서지 않는다(지금 붙잡힌 칸들, 보스 2x2 제외)
+        java.util.Set<Integer> occ = new java.util.HashSet<>();
+        for (Integer oid : e.mobs.keySet()) {
+            MobState os = oid >= 0 && oid < map.mobs().size() ? MINE_MOB_STATE.get(mineMobKey(map, oid)) : null;
+            if (os != null && os.frozenUntil > now && os.deadUntil <= now) occ.add(os.fy * map.w + os.fx);
+        }
         for (Integer id : new ArrayList<>(e.mobs.keySet())) {
             MobState s = id >= 0 && id < map.mobs().size() ? MINE_MOB_STATE.get(mineMobKey(map, id)) : null;
             if (s == null) { e.mobs.remove(id); continue; }
@@ -1499,7 +1505,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         boolean moved = false;
                         for (int[] t : tries) {
                             int nx = s.fx + t[0], ny = s.fy + t[1];
-                            if ((t[0] != 0 || t[1] != 0) && map.walkable(nx, ny) && !(nx == x && ny == y)) { s.fx = nx; s.fy = ny; moved = true; break; }
+                            if ((t[0] != 0 || t[1] != 0) && map.walkable(nx, ny) && !(nx == x && ny == y) && (type.boss || !occ.contains(ny * map.w + nx))) { occ.remove(s.fy * map.w + s.fx); s.fx = nx; s.fy = ny; occ.add(ny * map.w + nx); moved = true; break; }
                         }
                         if (!moved || Math.abs(s.fx - x) + Math.abs(s.fy - y) <= 1) break;
                     }
@@ -3931,14 +3937,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
      *  보스는 검기만으로는 쓰러지지 않는다(체력 1). 쓰러뜨리면 일반 처치처럼 드랍/무기(경험치는 돌려주는 값으로 -- 부르는 쪽이 더한다).
      *  out: auraMobs [{id, hits, row, killed}], auraDrops. 반환 {처치 수, 경험치}. */
     /** [2026-11-05] 검기 폭(바라보는 줄 양옆 몇 줄)과 한 번에 맞는 최대 마리 -- 처치마다 경험치/드랍을 DB에 쓰므로 느려지지 않을 만큼(12). */
-    static final int MINE_AURA_SIDE = 1, MINE_AURA_MAX_TARGETS = 12;
-    /** [2026-11-05] 마물의 숲 입구는 광석 드랍이 없어 처치마다 DB에 쓰지 않으므로(경험치는 공격마다 한 번) 더 많이. */
-    static final int MINE_AURA_MAX_TARGETS_WILD = 30;
+    // [2026-11-05] "옆 폭은 나중에 업그레이드로 -- 지금은 1칸", "검기 12마리로" -- 폭은 바라보는 줄 하나(MINE_AURA_SIDE = 0, 늘리면 양옆 줄), 모든 맵 최대 12마리.
+    static final int MINE_AURA_SIDE = 0, MINE_AURA_MAX_TARGETS = 12;
     long[] mineAuraSweep(String userName, S5MineMap map, Map<String, Integer> items, int[] aura, int range, double atkBase, int x, int y, String dir, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out) {
         int[] dv = mineDirVec(dir);
         if (dv == null || range <= 0) return new long[] { 0, 0 };
         java.util.Map<Integer, Integer> line = new java.util.HashMap<>(); // 칸 -> 몇 칸 앞
-        // [2026-11-05] "검기가 여러 마리 타격" -- 바라보는 줄 + 양옆 한 줄씩(폭 3칸), 가까운 순으로 최대 MINE_AURA_MAX_TARGETS마리. 속성 사거리(몇 칸 앞)는 그대로.
+        // [2026-11-05] "검기가 여러 마리 타격" -- 바라보는 줄(+ 양옆 MINE_AURA_SIDE줄, 지금 0)의 몬스터를 가까운 순으로 최대 MINE_AURA_MAX_TARGETS마리. 속성 사거리(몇 칸 앞)는 그대로.
         for (int k = 1; k <= range; k++) for (int sd = -MINE_AURA_SIDE; sd <= MINE_AURA_SIDE; sd++) {
             int lx = x + dv[0] * k - dv[1] * sd, ly = y + dv[1] * k + dv[0] * sd;
             if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) continue;
@@ -3965,8 +3970,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (hitCell >= 0) tg.add(new int[] { om.id, hitCell, dist });
         }
         tg.sort((p, q) -> Integer.compare(p[2], q[2]));
-        int cap = S5MineMap.WESTROAD.equals(map.id) ? MINE_AURA_MAX_TARGETS_WILD : MINE_AURA_MAX_TARGETS;
-        if (tg.size() > cap) tg = tg.subList(0, cap);
+        if (tg.size() > MINE_AURA_MAX_TARGETS) tg = tg.subList(0, MINE_AURA_MAX_TARGETS);
         for (int[] tq : tg) {
             S5MineMap.Mob om = map.mobs().get(tq[0]);
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
