@@ -3864,7 +3864,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-29] 레벨대 무기 드랍(무기마다 확률, 한 번에 하나) -- 이미 가진 등급이면 조각으로 분해. [2026-11-04] 검기 처치와 함께 쓰려고 mineAttack에서 뺐다. */
     void mineWeaponDrop(String userName, Map<String, Integer> items, S5MineMobs.Type type, int rank, StringBuilder msg, HashMap<String, Object> out) {
         MineWeapon dw = null;
-        for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < MINE_WEAPON_RANK_P10K[rank]) { dw = w; break; }
+        int wp = MINE_WEAPON_RANK_P10K[rank];
+        if (java.util.Arrays.asList(type.maps).contains(S5MineMap.WESTROAD)) wp /= 2; // [2026-11-05] "마물의 숲 장비 드랍은 다른 맵의 절반(등급 비율은 같게)"
+        for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
         if (dw == null) return;
         int g = mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
         if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급

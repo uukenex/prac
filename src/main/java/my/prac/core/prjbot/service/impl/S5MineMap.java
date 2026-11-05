@@ -2315,12 +2315,17 @@ public final class S5MineMap {
         for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
         // 동굴 셋 -- 가운데를 피해 맵 중간중간(북동 / 남쪽 가운데 / 북서). 바위 언덕(타원) 아래쪽 가운데가 입구, 입구 앞 3칸은 비운다.
         int[][] caves = { { (int) (w * 0.70), (int) (h * 0.24) }, { (int) (w * 0.44), (int) (h * 0.74) }, { (int) (w * 0.18), (int) (h * 0.30) } };
-        String[] caveNames = { "바람이 새어 나오는 동굴", "짐승 뼈가 쌓인 동굴", "얼음 냄새가 나는 동굴" };
+        // [2026-11-05] "동굴 셋을 숲을 배경으로, 숲 던전 입구로" -- 바위 언덕 대신 지나갈 수 없는 울창한 숲(F) 덩어리, 둘레엔 나무(T)가 듬성듬성, 아래 가운데가 숲 던전 입구(M, 아직 막힘)
+        String[] caveNames = { "숲 던전 입구", "숲 던전 입구", "숲 던전 입구" };
         for (int[] cv : caves) {
-            for (int y = cv[1] - 4; y <= cv[1] + 4; y++) for (int x = cv[0] - 7; x <= cv[0] + 7; x++)
-                if (Math.pow((x - cv[0]) / 7.0, 2) + Math.pow((y - cv[1]) / 4.0, 2) <= 1.0) t[y][x] = '^';
-            for (int y = cv[1] + 5; y <= cv[1] + 7; y++) for (int x = cv[0] - 1; x <= cv[0] + 1; x++) t[y][x] = '.';
-            t[cv[1] + 4][cv[0]] = 'M';
+            for (int y = cv[1] - 6; y <= cv[1] + 6; y++) for (int x = cv[0] - 11; x <= cv[0] + 11; x++) {
+                double dd = Math.pow((x - cv[0]) / 9.0, 2) + Math.pow((y - cv[1]) / 5.0, 2);
+                int hh = (x * 73856093) ^ (y * 19349663);
+                if (dd <= 1.0 || (dd <= 1.2 && (hh & 3) != 0)) t[y][x] = 'F';
+                else if (dd <= 1.8 && (hh & 7) < 3 && t[y][x] == '.') t[y][x] = 'T';
+            }
+            for (int y = cv[1] + 6; y <= cv[1] + 8; y++) for (int x = cv[0] - 1; x <= cv[0] + 1; x++) t[y][x] = '.';
+            t[cv[1] + 5][cv[0]] = 'M';
         }
         // 동쪽 문에서 서쪽으로 굽이치는 3칸 흙길(막다른 길)
         int py = h / 2;
@@ -2340,7 +2345,7 @@ public final class S5MineMap {
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(w - 1, gy, 'G', CITY, 0, 0, "왕도 아스테리아 서문으로"));
-        for (int i = 0; i < caves.length; i++) portals.add(new Portal(caves[i][0], caves[i][1] + 4, 'M', null, 0, 0, caveNames[i] + " (입구가 무너진 돌에 막혀 있다)"));
+        for (int i = 0; i < caves.length; i++) portals.add(new Portal(caves[i][0], caves[i][1] + 5, 'M', null, 0, 0, caveNames[i] + " (가시덩굴이 얽혀 막혀 있다)"));
         byte[][] o = new byte[h][w]; // [2026-11-05] "이 맵은 채광 불가" -- 광석 없음(화면도 캐기 버튼/자동채광을 숨긴다)
         S5MineMap m = new S5MineMap(WESTROAD, "왕도 서쪽 마물의 숲 입구", false, w, h, sx, sy, t, o, portals); // [2026-11-05] 이름 바꿈(왕도 서쪽길 -> 마물의 숲 입구)
         m.bossX = bx; m.bossY = by; // [2026-11-05] 밤에 마물 500마리를 쓰러뜨리면 맵 가운데에 천둥 황소

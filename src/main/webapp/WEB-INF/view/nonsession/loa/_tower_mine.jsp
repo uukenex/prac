@@ -62,10 +62,10 @@ var TowerMine = (function () {
   CUT_LIST.push([19, 54]);
   for (var clj = 0; clj < 5; clj++) CUT_LIST.push([34 + clj, 55 + clj]);
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
-                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
+                    'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'F': '울창한 숲', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
                     's': '성 바닥', 'W': '성벽', 'n': '눈밭', 'Y': '눈 덮인 숲', 'K': '건물', 'Q': '성당', 'X': '텔레포트 게이트', 'u': '바다 모래', 'p': '용궁 길', 'e': '해초', 'O': '산호', 'L': '용궁 기둥', 'Z': '물' };
-  var MINI_COL = { '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
+  var MINI_COL = { 'F': [24, 58, 30], '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
                    'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20],
                    'h': [190, 140, 60], 'j': [190, 140, 60], 'k': [190, 140, 60], 'l': [190, 140, 60],
                    'd': [227, 196, 122], 'R': [184, 135, 90], 'C': [63, 143, 58], 'b': [236, 217, 160], 'P': [139, 90, 43], 'q': [107, 66, 32], 'N': [64, 120, 255],
@@ -156,6 +156,18 @@ var TowerMine = (function () {
           if (d < 30) px(g, d > 22 ? '#1b4d1f' : (dx < -1 && dy < -1 ? '#4fae52' : '#2f7d32'), x, y);
         }
         px(g, '#6fc86f', 5, 3, 2, 1); px(g, '#6fc86f', 4, 4, 1, 1);
+        return c;
+      }),
+      // [2026-11-05] 울창한 숲(F, 지나갈 수 없음) -- 겹겹이 겹친 어두운 나뭇잎, 마물의 숲 던전 입구(M) -- 고목 사이 어두운 굴 + 가시덩굴(막힘)
+      forest: [1, 2].map(function (s) {
+        var c = tile('#16341b', [['#0f2613', 14], ['#1e4423', 8]], 40 + s), g = c.getContext('2d');
+        [[4, 4, 5], [12, 3, 4], [8, 10, 5], [14, 12, 4], [1, 12, 4]].forEach(function (b, i) {
+          var cx = (b[0] + s * 3) % T, cy = b[1];
+          for (var y = cy - b[2]; y <= cy + b[2]; y++) for (var x = cx - b[2]; x <= cx + b[2]; x++) {
+            var d = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+            if (x >= 0 && y >= 0 && x < T && y < T && d <= b[2] * b[2]) px(g, d > (b[2] - 1) * (b[2] - 1) ? '#0e2412' : (x < cx && y < cy ? '#3a7a3e' : (i % 2 ? '#245a2a' : '#2a6630')), x, y);
+          }
+        });
         return c;
       }),
       cliff: cliff,
@@ -489,6 +501,7 @@ var TowerMine = (function () {
       case 'H': return tiles.bridge;
       case '~': return map && (map.id === 'north' ? y < map.h - 20 : /^snow/.test(map.id)) ? tiles.ice[v % 2] : tiles.water[(wf + (x + y) % 2) % 2]; // 설원/설산 호수는 얼음
       case 'T': return tiles.tree[v % 2];
+      case 'F': return tiles.forest[v % 2]; // [2026-11-05] 울창한 숲
       case 's': return tiles.stone[v % 2];
       case 'W': return tiles.castleWall[v % 2];
       case 'K': { // 아래가 길이면 1층 앞면, [2026-10-27] 위 두 줄은 지붕, 그 사이는 층마다 창(높은 건물)
@@ -515,7 +528,12 @@ var TowerMine = (function () {
       case '#': return tiles.wall[v % 2];
       case 'h': case 'j': case 'k': case 'l': return tiles.house[c];
       case 'G': p = portalAt[x + ',' + y]; return tiles.gate[p && !p.locked ? 0 : 1];
-      case 'M': return tiles.mouth;
+      case 'M': return map && map.id === 'westroad' ? (tiles.forestGate || (tiles.forestGate = over(tiles.forest[0], function (g) { // [2026-11-05] 숲 던전 입구
+        px(g, '#4e2f16', 1, 3, 3, 13); px(g, '#6b4220', 2, 3, 1, 13); px(g, '#4e2f16', 12, 3, 3, 13); px(g, '#6b4220', 13, 3, 1, 13);
+        px(g, '#0a0806', 4, 6, 8, 10); px(g, '#0a0806', 5, 5, 6, 1); px(g, '#1a1410', 4, 15, 8, 1);
+        for (var i = 0; i < 8; i++) { px(g, '#3a7a2a', 4 + i, 7 + (i % 3) * 3, 1, 1); px(g, '#3a7a2a', 11 - i, 8 + (i % 3) * 3, 1, 1); }
+        px(g, '#a83a3a', 6, 9); px(g, '#a83a3a', 9, 12); px(g, '#a83a3a', 7, 14); px(g, '#2a6630', 3, 2, 10, 2);
+      }))) : tiles.mouth;
       case 'U': return tiles.exit;
       case 'S': p = portalAt[x + ',' + y]; return tiles.door[p && !p.locked ? 0 : 1];
       case 'd': return tiles.sand[v % 2];

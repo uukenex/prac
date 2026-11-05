@@ -79,7 +79,8 @@ public final class S5MineMobs {
         /** [2026-11-05] 왕도 서쪽길 무리 -- "체력은 많고 공격력은 적당하게, 한 전투가 오래", "인식 범위가 넓고 리젠이 빠르게": 체력 x3(경험치도 x3) / 공격 x0.6,
          *  늘 선공(HERD_AGGRO칸 안), 쓰러지면 HERD_RESPAWN_MS 뒤 다시. */
         // [2026-11-05] "경험치를 많이 줄이고(기존 대비 20%), 몬스터가 더 강하게, 체력은 많게" -- 체력 x3 -> x4.5, 공격 x0.6 -> x0.9, 경험치는 x3 -> x0.6(expMul로 따로)
-        Type herd() { hpMul = 4.5; atkMul = 0.9; expMul = 0.6 / 4.5; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
+        // [2026-11-05] 같은 날 "몬스터 공격력을 지금 대비 1.1배"(1.8배는 취소) -- 0.9 -> 0.99
+        Type herd() { hpMul = 4.5; atkMul = 0.99; expMul = 0.6 / 4.5; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
         /** 화면/안내에 보이는 레벨. */
         public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
