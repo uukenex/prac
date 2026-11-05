@@ -2976,7 +2976,29 @@ var TowerMine = (function () {
     });
     lootDrops(d.auraDrops); // [2026-11-04] 화면 구석 카드
     if (!d.killed && d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); }
-    if (anyKill) { if (d.ores) st.ores = d.ores; if (!d.killed && d.message) msg(d.message, 2600); }
+    if (anyKill && d.ores) st.ores = d.ores;
+    // [2026-11-05] "쓰러뜨렸어요 문구 빼고 경험치 몇 올랐는지만, 검은 상자 말고 왼쪽 빈 화면에 글씨만 띄웠다 서서히 사라지게" -- 일반 공격 처치 + 검기 처치를 합쳐 한 줄
+    var exSum = d.killed && d.expGain ? d.expGain : 0, kn = d.killed ? 1 : 0;
+    (d.auraMobs || []).forEach(function (am) { if (am.killed) { exSum += am.exp || 0; kn++; } });
+    if (exSum > 0) killFeed('+' + exSum.toLocaleString() + ' 경험치' + (kn > 1 ? '  ×' + kn : ''));
+  }
+  // 왼쪽 빈 화면 -- 글씨만(그림자) 떠올랐다가 1.6초 뒤 위로 살짝 떠오르며 사라진다. 최대 6줄.
+  var killBox = null;
+  function killFeed(text) {
+    if (!el.ov) return;
+    if (!killBox || !killBox.parentNode) {
+      killBox = document.createElement('div');
+      killBox.style.cssText = 'position:absolute;left:14px;top:42%;z-index:4;display:flex;flex-direction:column;align-items:flex-start;gap:2px;pointer-events:none;';
+      el.ov.appendChild(killBox);
+    }
+    var c = document.createElement('div');
+    c.textContent = text;
+    c.style.cssText = 'font:800 15px monospace;color:#9fe0ff;text-shadow:0 0 3px #000,1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;white-space:nowrap;opacity:0;transform:translateX(-10px);transition:opacity .2s,transform .2s;';
+    killBox.appendChild(c);
+    while (killBox.children.length > 6) killBox.removeChild(killBox.firstChild);
+    setTimeout(function () { c.style.opacity = '1'; c.style.transform = 'none'; }, 20);
+    setTimeout(function () { c.style.transition = 'opacity 1.1s ease-in,transform 1.1s ease-out'; c.style.opacity = '0'; c.style.transform = 'translateY(-14px)'; }, 1600);
+    setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c); }, 2800);
   }
   /** 옆에 몬스터가 없을 때 공격 버튼 = 검기만 날린다(서버 mob=-1). */
   function auraAttack() {
@@ -3130,7 +3152,7 @@ var TowerMine = (function () {
         if (d.dropGrade != null) api('/api/tower-mine').then(function (s2) { if (s2 && !s2.error) { st.equip = s2.equip; st.gear = s2.gear; if (s2.ores) st.ores = s2.ores; if (s2.look) st.look = s2.look; if (smithOpen) renderSmith(smithNpc); } }).catch(function () { }); // [2026-10-29] "무기를 얻었는데 인벤토리에 안 보인다" -- 장비 목록/조각을 바로 다시 받는다
         if (d.dropGrade != null) { flashT0 = t; lootToast(d.dropShard ? [{ text: '🧩 ' + (d.dropShardName || '조각') + ' +' + d.dropShard, color: '#e8e2f8' }] : [{ text: '🗡️ ' + d.dropName, color: GRADE_COL[d.dropGrade] || '#ffd27a', big: true }]); } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
         floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
-        msg(d.message || '', 2600);
+        if (d.bossKilled || d.shrineKey || (d.ninjaKills && d.ninjaKills % 10 === 0)) msg(d.message || '', 3600); // [2026-11-05] 처치 문구는 왼쪽 경험치 줄로(auraShow) -- 보스 처치/신궁 열쇠/수색 진행만 가운데에
       }
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
       if (d.rebirthReadyNow) { rbHintShown = true; flashT0 = t; banner = { text: '✨ 환생 가능! 왕도 성당 신부님께', t0: t }; } // [2026-10-28] 99레벨 경험치가 방금 가득
