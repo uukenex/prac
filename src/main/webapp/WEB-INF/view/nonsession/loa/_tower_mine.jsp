@@ -4059,6 +4059,11 @@ var TowerMine = (function () {
           scan = null;
           msg('🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 12시간 뒤 다시 빛나요.', 4200);
         }
+        if (d.cutGrade) { // [2026-11-05] 채광 중 가끔 세공된 보석
+          var cimg = new Image(); cimg.src = oreIcon(d.cutGrade);
+          floats.push({ x: x, y: y - 1.0, text: '+1 ' + d.cutName, color: '#fff4b0', big: true, icon: cimg, t0: performance.now() + 350 });
+          flashT0 = performance.now(); msg('✨ ' + d.cutName + '! 반짝이는 세공품이 함께 나왔어요.', 3200);
+        }
         if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
           (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
           var gimg = new Image(); gimg.src = oreIcon(d.gemGrade);

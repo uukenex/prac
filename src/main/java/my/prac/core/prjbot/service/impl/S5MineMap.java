@@ -298,6 +298,17 @@ public final class S5MineMap {
         return -1;
     }
 
+    /** [2026-11-05] 채광 중 가끔 나오는 세공된 보석의 종류 -- 그 맵 지역 보석을 확률 비율대로(지역 보석이 없는 맵은 다이아 뺀 여덟 가지 중 하나). roll = 0 이상 아무 정수. */
+    public static int cutGemFor(String mapId, int roll) {
+        int[][] d = GEM_DROPS.get(mapId);
+        if (d == null || d.length == 0) return roll % GEM_DIAMOND;
+        int tot = 0;
+        for (int[] x : d) tot += x[1];
+        int k = roll % Math.max(1, tot);
+        for (int[] x : d) { k -= x[1]; if (k < 0) return x[0]; }
+        return d[0][0];
+    }
+
     /** [2026-10-24] 몬스터 처치 보상용 -- 캘 때(gemFor)와 같지만 그 맵의 흔한 보석(첫째)만 commonMult배. */
     public static int gemForMob(String mapId, int roll, double commonMult) {
         if (roll < DIAMOND_PERMILLE) return GEM_DIAMOND;

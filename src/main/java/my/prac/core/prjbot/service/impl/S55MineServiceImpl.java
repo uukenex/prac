@@ -2818,6 +2818,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             r.put("gemGrade", S5MineMap.GEM_GRADE_BASE + gi);
             r.put("gemName", S5MineMap.GEM_NAMES[gi]);
         }
+        // [2026-11-05] "채광 시 가끔 세공된 보석(확률 낮게)" -- 천분의 MINE_DIG_CUT_PERMILLE(0.3%), 그 맵 지역 보석의 세공품
+        if (!S5MineMap.SEAROAD.equals(map.id) && RND.nextInt(1000) < MINE_DIG_CUT_PERMILLE) {
+            int cg = S5MineMap.cutGemFor(map.id, RND.nextInt(1 << 20));
+            dao.addUserOre(userName, S5MineMap.cutCode(cg), 1);
+            r.put("cutGrade", S5MineMap.CUT_GRADE_BASE + cg);
+            r.put("cutName", S5MineMap.cutName(cg));
+        }
         // [2026-10-28] 다도해 바다 보석(진주/산호석/자수정/오팔/흑진주) -- 지역 보석이 안 나왔을 때 본섬/일곱 섬에서 4%
         if (gi < 0 && S5MineMap.isArchiLand(map.id) && RND.nextInt(1000) < S5MineMap.SEA_GEM_PERMILLE) {
             int sg = S5MineMap.seaGemFor(RND.nextInt(100));
@@ -6046,6 +6053,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     // ---- 탑(시즌 5)과 함께 쓰는 도우미(BotS5ServiceImpl에서 옮김) ----
     static final Random RND = new Random();
+    static final int MINE_DIG_CUT_PERMILLE = 3; // [2026-11-05] 채광 중 세공된 보석 0.3%
 
     int intVal(Object o, int def) {
         if (o == null) return def;
