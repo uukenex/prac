@@ -875,6 +875,11 @@ var TowerMine = (function () {
       if (old.ox != null && t - old.mt < omd) { var oq = Math.max(0, (t - old.mt) / omd); cx0 = old.ox + (old.fx - old.ox) * oq; cy0 = old.oy + (old.fy - old.oy) * oq; }
       n.ox = cx0; n.oy = cy0; n.mt = t; n.md = Math.max(600, Math.min(2200, old.pt ? t - old.pt : 950)); n.pt = t;
     }
+    else if (n.fu > t && !(old && old.fu > t) && map && map.mobs && map.mobs[a[0]]) { // [2026-11-05] "다가올 때 순간이동" -- 막 쫓기 시작: 어슬렁거리던 자리에서 걸어온다
+      var wp = mobPos(map.mobs[a[0]], t);
+      if (wp && (Math.abs(wp.x - n.fx) + Math.abs(wp.y - n.fy)) > 0.05 && Math.abs(wp.x - n.fx) + Math.abs(wp.y - n.fy) < 12) { n.ox = wp.x; n.oy = wp.y; n.mt = t; n.md = 950; }
+      n.pt = t;
+    }
     else if (old && old.mt != null && t - old.mt < (old.md || 950)) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; n.md = old.md; n.pt = old.pt; } // [2026-11-03] 450 -> 950(1초 턴 사이를 이어서)
     else if (old && old.pt && old.fx === n.fx && old.fy === n.fy) n.pt = old.pt;
     return n;
@@ -3104,7 +3109,7 @@ var TowerMine = (function () {
   var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 620, auraFx = []; // [2026-11-05] "검기가 느리게 나가면" 300 -> 620
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
-  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
+  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now(), w: !!(st && st.adminMaps) }); } // [2026-11-05] w = 관리자 둘레 회오리 // [2026-11-04] 속성마다 자기 단계만큼
   // [2026-11-04] 획득 카드 -- 화면 가운데(조금 위)에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
   var lootBox = null;
   function lootDrops(list, px, py) {
@@ -4024,6 +4029,25 @@ var TowerMine = (function () {
     auraFx.forEach(function (f) {
       var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 180 : 1;
       k = 1 - (1 - k) * (1 - k); // 처음엔 빠르게, 끝에서 느려지며 멎는다
+      if (f.w) { // [2026-11-05] 관리자 -- 내 둘레 8칸 회오리(속성 색 칼날이 한 바퀴 반 돈다)
+        var wx = f.x * TS - camX + TS / 2, wy = f.y * TS - camY + TS / 2, wr = TS * 1.15, rot = k * Math.PI * 3;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = Math.max(0, fo * 0.22); ctx.fillStyle = AURA_COL[f.els[0]] || '#ffffff';
+        ctx.beginPath(); ctx.arc(wx, wy, wr * (0.6 + 0.4 * k), 0, Math.PI * 2); ctx.fill();
+        f.els.forEach(function (e, i) {
+          var a0 = rot + i * (Math.PI * 2 / f.els.length);
+          for (var b = 0; b < 3; b++) {
+            var ab = a0 + b * Math.PI * 2 / 3, rb2 = wr * (0.75 + 0.1 * i);
+            ctx.globalAlpha = Math.max(0, fo * 0.4); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = 12 * dpr;
+            ctx.beginPath(); ctx.arc(wx, wy, rb2, ab, ab + 0.9); ctx.stroke();
+            ctx.globalAlpha = Math.max(0, fo); ctx.lineWidth = 5 * dpr;
+            ctx.beginPath(); ctx.arc(wx, wy, rb2, ab, ab + 0.9); ctx.stroke();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5 * dpr;
+            ctx.beginPath(); ctx.arc(wx, wy, rb2, ab + 0.15, ab + 0.8); ctx.stroke();
+          }
+        });
+        ctx.globalAlpha = 1;
+      }
       var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {

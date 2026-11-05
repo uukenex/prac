@@ -1513,7 +1513,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 long stepGap = type.fast ? MINE_FAST_STEP_MS : S5MineMap.WESTROAD.equals(map.id) && !type.boss ? MINE_CHASE_STEP_MS_FOREST : MINE_CHASE_STEP_MS;
                 if (!type.stay && !splitting && userName.equals(s.target) && dist > 1 && now - s.lastMoveAt >= stepGap) {
                     int steps = type.fast ? (int) Math.min(dist - 1, Math.min(25, (now - s.lastMoveAt) / stepGap))
-                            : (int) Math.max(1, Math.min(dist - 1, Math.min(MINE_CHASE_CATCH_MS, now - s.lastMoveAt) / stepGap));
+                            : now - s.lastMoveAt > MINE_CHASE_CATCH_MS ? 1 // [2026-11-05] "다가올 때 순간이동" -- 막 쫓기 시작(오래 안 움직임)이면 한 칸만
+                            : (int) Math.max(1, Math.min(dist - 1, (now - s.lastMoveAt) / stepGap));
                     for (int st = 0; st < steps; st++) {
                         int dx = Integer.signum(x - s.fx), dy = Integer.signum(y - s.fy);
                         int[][] tries = Math.abs(x - s.fx) >= Math.abs(y - s.fy) ? new int[][] { { dx, 0 }, { 0, dy } } : new int[][] { { 0, dy }, { dx, 0 } };
@@ -4008,7 +4009,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dv == null || range <= 0) return new long[] { 0, 0 };
         java.util.Map<Integer, Integer> line = new java.util.HashMap<>(); // 칸 -> 몇 칸 앞
         // [2026-11-05] "검기가 여러 마리 타격" -- 바라보는 줄(+ 양옆 MINE_AURA_SIDE줄, 지금 0)의 몬스터를 가까운 순으로 최대 MINE_AURA_MAX_TARGETS마리. 속성 사거리(몇 칸 앞)는 그대로.
-        int side = isMineAdmin(userName) ? 1 : MINE_AURA_SIDE; // [2026-11-05] "관리자 검기 폭 3칸" -- 양옆 한 줄씩
+        boolean adminAura = isMineAdmin(userName);
+        int side = adminAura ? 1 : MINE_AURA_SIDE; // [2026-11-05] "관리자 검기 폭 3칸" -- 양옆 한 줄씩
+        if (adminAura) for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) { // [2026-11-05] "관리자 검기에 8방향 둘레 회오리" -- 내 둘레 8칸도 1칸 거리로
+            int lx = x + ox, ly = y + oy;
+            if ((ox != 0 || oy != 0) && lx >= 0 && ly >= 0 && lx < map.w && ly < map.h) line.put(ly * map.w + lx, 1);
+        }
         for (int k = 1; k <= range; k++) for (int sd = -side; sd <= side; sd++) {
             int lx = x + dv[0] * k - dv[1] * sd, ly = y + dv[1] * k + dv[0] * sd;
             if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) continue;
