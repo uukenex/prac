@@ -2329,7 +2329,7 @@ var TowerMine = (function () {
     }
     if (smithView === 'merc') { // [2026-11-05] 왕도 용병소
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
-      mh += '<div class="mine-smith-say">지금 함께하는 용병: <b>' + (mi2.name || '견습 용병') + '</b> · 공격력 ' + (mi2.atk || '?') + ' · 체력 ' + (mi2.hp != null ? mi2.hp + '/' + mi2.max : '?')
+      if (st.merc) mh += '<div class="mine-smith-say">지금 함께하는 용병: <b>' + (mi2.name || '견습 용병') + '</b> · 공격력 ' + (mi2.atk || '?') + ' · 체력 ' + (mi2.hp != null ? mi2.hp + '/' + mi2.max : '?')
           + '<br>평소엔 뒤를 따라오고, 싸울 땐 가까운 몬스터에게 달려가 함께 싸워요. 지치면 뒤에서 잠시 쉬었다가 돌아와요. (한 명만 데리고 다녀요)</div>';
       (ms2.list || []).forEach(function (it) {
         var own = it.t === ms2.cur, past = it.t < ms2.cur;
@@ -2337,7 +2337,7 @@ var TowerMine = (function () {
             + (own ? '<button type="button" data-lack="1" disabled>함께하는 중</button>' : past ? '<button type="button" data-lack="1" disabled>-</button>'
               : '<button type="button" ' + (it.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + it.t + ')">고용</button>') + '</div>';
       });
-      if (!ms2.list) mh += '<div class="mine-eq-empty">불러오는 중...</div>';
+      if (!ms2.list) mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
       el.smith.innerHTML = mh;
       return;
     }

@@ -2533,7 +2533,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("helmet", helmetTier);
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
         out.put("aura", mineAuraInfo(items)); // [2026-11-04] 검기(배운 단계/켠 단계)
-        out.put("merc", mineMercInfo(userName, mineMercTier(items), System.currentTimeMillis())); // [2026-11-05] 용병
+        if (isMineAdmin(userName)) out.put("merc", mineMercInfo(userName, mineMercTier(items), System.currentTimeMillis())); // [2026-11-05] 용병(시험 중 -- 관리자만)
         out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
@@ -4225,6 +4225,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 전투 턴의 용병 차례 -- {처치 수, 경험치}. 결과는 out.merc(+ 드랍/무기). */
     long[] mineMercTurn(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, MineEngage e, HashMap<String, Object> out) {
+        if (!isMineAdmin(userName)) return new long[] { 0, 0 }; // [2026-11-05] "용병은 관리자만 -- 충분히 테스트한 뒤 일반 유저에게 알림"
         int tier = mineMercTier(items);
         HashMap<String, Object> mo = mineMercInfo(userName, tier, now);
         out.put("merc", mo);
@@ -4306,6 +4307,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Transactional
     public HashMap<String, Object> mineMercShop(String userName, String action, int tier) {
         if (!mineAccess(userName)) return mineClosed();
+        if (!isMineAdmin(userName)) { // [2026-11-05] 시험 중 -- 관리자만
+            HashMap<String, Object> closed = new HashMap<>();
+            closed.put("ok", false);
+            closed.put("message", "용병소는 아직 문을 열지 않았네. 쓸 만한 놈들을 추리는 중이라... 조금만 기다려 주게.");
+            return closed;
+        }
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         Map<String, Integer> items = mineItems(userName);
@@ -5949,7 +5956,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile String dir = "down";
         volatile long at, lookAt, bubbleAt;
         volatile HashMap<String, Object> look;
-        volatile int merc; // [2026-11-05] 데리고 다니는 용병 단계
+        volatile int merc = -1; // [2026-11-05] 데리고 다니는 용병 단계(-1 = 없음 -- 지금은 관리자만)
         MinePresence(String id) { this.id = id; }
     }
     static final java.util.concurrent.ConcurrentHashMap<String, MinePresence> MINE_PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -5978,7 +5985,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercTier(lit); me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercTier(lit) : -1; me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
             MinePresence o = e.getValue();
             if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
@@ -5990,7 +5997,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("look", o.look);
             if (minePStealthOf(e.getKey(), now) == null) m.put("n", mineNick(e.getKey())); // [2026-11-05] "플레이어 위에 닉네임"(은신 중엔 숨김)
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
-            if (minePStealthOf(e.getKey(), now) == null) { // [2026-11-05] 용병 -- 단계, 쉬는 중, 싸우는 몬스터 칸
+            if (o.merc >= 0 && minePStealthOf(e.getKey(), now) == null) { // [2026-11-05] 용병 -- 단계, 쉬는 중, 싸우는 몬스터 칸
                 m.put("mc", o.merc);
                 MercSt ms = MINE_MERC.get(e.getKey());
                 if (ms != null && ms.restUntil > now) m.put("mr", 1);
