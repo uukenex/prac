@@ -4,12 +4,13 @@
 <div class="mine-overlay" id="mineOverlay">
   <canvas id="mineCanvas"></canvas>
   <div class="mine-patch" id="minePatch" role="status" aria-live="polite"></div>
-  <div class="mine-hud-tl"><div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div><div class="mine-ping mpx" id="minePing"></div><div class="mine-terr" id="mineTerr"></div></div>
+  <div class="mine-hud-tl"><div class="mine-ping mpx" id="minePing"></div><div class="mine-luck mpx" id="mineLuck"></div><div class="mine-terr" id="mineTerr"></div></div><%-- [2026-11-05] 좌표는 지도 아래로, 핑은 100ms 이상일 때만, 행운의 주문서는 따로 --%>
   <div class="mine-hud-tr">
     <div class="mine-cold mpx" id="mineCold"></div>
     <div class="mine-regen" id="mineRegen"></div>
     <canvas id="mineMini" width="255" height="255" onclick="TowerMine.toggleMini()"></canvas>
-    <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button>
+    <div class="mine-coord mpx" id="mineCoord" onclick="TowerMine.openWarp()">📍 0, 0</div>
+    <button type="button" class="mine-world-btn mpx" onclick="TowerMine.openWorld()">🗺️ 전체 지도</button><%-- [2026-11-05] 지도를 크게 했을 때만 보인다(CSS) --%>
   </div>
   <div class="mine-hp mpx" id="mineHp"></div>
   <div class="mine-log mpx" id="mineLog"></div>

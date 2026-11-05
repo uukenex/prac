@@ -1235,6 +1235,7 @@ var TowerMine = (function () {
     }
     if (!P.moving && !busy && now - P.digT0 > 380) {
       var d = heldDir() || tapDir;
+      if (d && el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05] 움직이면 메뉴 창 닫힘
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
       if (d && stunnedMe()) { // [2026-11-04] 붕대 스턴
@@ -2947,6 +2948,7 @@ var TowerMine = (function () {
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
   // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
   function digBtn() {
+    setMenu(false); // [2026-11-05] 채광/공격하면 메뉴 창 닫힘
     if (stunnedMe()) { msg(stunMsg(), 1500); return; } // [2026-11-04]
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     dig();
@@ -3159,6 +3161,7 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function atkBtn() {
+    setMenu(false); // [2026-11-05]
     if (stunnedMe()) { msg(stunMsg(), 1500); return; } // [2026-11-04]
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     var a = !P.moving && adjMob();
@@ -3909,14 +3912,23 @@ var TowerMine = (function () {
     var avg = Math.round(pingHist.reduce(function (a, b) { return a + b; }, 0) / pingHist.length);
     var gap = Math.round(frameGapMax); frameGapMax = 0;
     netAvg = avg; netGap = gap; // [2026-11-04] 다음 턴에 서버로(관리자 화면 -- PC/폰 비교)
-    var lk = st && st.luckUntil ? st.luckUntil - nowSrv() : 0; // [2026-11-05] 행운의 주문서 남은 시간
-    el.ping.textContent = '📶 ' + avg + 'ms · ' + (viaWs ? 'WS' : 'HTTP') + (srvMs != null ? ' · 서버 ' + srvMs : '') + (gap > 100 ? ' · 화면 ' + gap : '') + (lk > 0 ? ' · 🍀 ' + Math.floor(lk / 60000) + ':' + ('0' + Math.floor(lk / 1000) % 60).slice(-2) : ''); // [2026-11-04] 누르면 통신 방식 바꾸기(netToggle)
+    el.ping.textContent = '📶 ' + avg + 'ms · ' + (viaWs ? 'WS' : 'HTTP') + (srvMs != null ? ' · 서버 ' + srvMs : '') + (gap > 100 ? ' · 화면 ' + gap : '');
+    var pshow = avg >= 100 ? 'inline-block' : 'none'; // [2026-11-05] "핑 정보는 100ms 이상일 때만"
+    if (el.ping.style.display !== pshow) el.ping.style.display = pshow;
+    luckHud(); // [2026-11-04] 누르면 통신 방식 바꾸기(netToggle)
     el.ping.className = 'mine-ping mpx ' + (avg < 150 ? 'ok' : avg < 300 ? 'mid' : 'bad');
     if (!el.ping._tap) { // [2026-11-04] "네트워크 속도 부분을 누르면 통신 방식이 바뀌게"
       el.ping._tap = 1; el.ping.style.pointerEvents = 'auto'; el.ping.style.cursor = 'pointer';
       el.ping.title = '눌러서 통신 방식(WebSocket/HTTP) 바꾸기';
       el.ping.onclick = function () { netToggle(); };
     }
+  }
+  /** [2026-11-05] 행운의 주문서 남은 시간 -- 핑과 따로(왼쪽 위), 끝나면 숨김. */
+  function luckHud() {
+    var lu = el.luck || (el.luck = document.getElementById('mineLuck'));
+    if (!lu) return;
+    var lk = st && st.luckUntil ? st.luckUntil - nowSrv() : 0, tx = lk > 0 ? '🍀 경험치 3배 · 드랍 2배 ' + Math.floor(lk / 60000) + ':' + ('0' + Math.floor(lk / 1000) % 60).slice(-2) : '';
+    if (lu._t !== tx) { lu._t = tx; lu.textContent = tx; lu.style.display = tx ? 'block' : 'none'; }
   }
   /** [2026-11-04] 이 기기에서 고른 통신 방식(localStorage tw-mine-net = ws/http), 없으면 서버 설정(st.ws, TBOT_S5_CONFIG.S55_WS). */
   function netMode() {
@@ -4103,6 +4115,7 @@ var TowerMine = (function () {
     msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 다시 20번을 캐야 해요.', 2400);
   }
   function dig() {
+    if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
     if (P.moving) return;
