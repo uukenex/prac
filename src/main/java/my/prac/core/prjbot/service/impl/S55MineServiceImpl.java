@@ -227,6 +227,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.RUINS, 80); // [2026-10-28] 성당 옛터 -- 타락한 대주교("80레벨 이상 권장")
         MINE_MIN_LV.put(S5MineMap.SNOWROAD, 80); // [2026-10-28] 설산 봉우리 가는 길(20~21단계를 더 세게), 봉우리(얼음 여왕 Lv.95)
         MINE_MIN_LV.put(S5MineMap.PEAK, 90);
+        MINE_MIN_LV.put(S5MineMap.WESTROAD, 53); // [2026-11-05] 왕도 서쪽길(매머드 무리 14~23단계, 왕도에서 멀수록)
         MINE_MIN_LV.put(S5MineMap.CAVE2, 21); // [2026-10-24] 동굴 2층(6~7단계), 3층(8~9단계 + 보스), 바닷길(4~5단계)
         MINE_MIN_LV.put(S5MineMap.CAVE3, 25);
         MINE_MIN_LV.put(S5MineMap.CAVE4, 53); // [2026-10-28] 광산 동굴 4층(14~15단계)
@@ -728,6 +729,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
             if (ty.boss) m.put("aggro", MINE_BOSS_AGGRO_RANGE); // [2026-10-28] 보스 선공 거리 12칸
             if (ty.ninja) m.put("ninja", true); // [2026-10-28] 은신(화면은 반투명)
+            if (!ty.boss && ty.aggro > 0) m.put("aggro", ty.aggro); // [2026-11-05] 왕도 서쪽길 무리 -- 화면도 이 거리 안이면 전투 턴
             if (ty.firstStrike) m.put("first", true); // [2026-10-28] 설산 동굴 박쥐 -- 늘 선공(화면도 6칸 안이면 전투 턴)
             if (ty.clone) m.put("clone", true); // [2026-10-28] 닌자 두목의 분신 -- 화면은 두목(맵 마지막 몬스터)과 똑같이 그린다
             out.add(m);
@@ -1159,6 +1161,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_PREEMPT_LV_GAP = 20;
     static final int MINE_PREEMPT_RANGE = 6;
 
+    /** [2026-11-05] 선공 인식 거리 -- 왕도 서쪽길 무리(aggro)는 더 넓게, 그 밖엔 MINE_PREEMPT_RANGE. */
+    static int minePreemptRange(S5MineMobs.Type t) {
+        return !t.boss && t.aggro > 0 ? t.aggro : MINE_PREEMPT_RANGE;
+    }
+
     static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
         return t.firstStrike || 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
     }
@@ -1240,9 +1247,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
             if (mt.boss || mt.minion || !mineMobPreempts(mt, lv) || (e != null && e.mobs.containsKey(mb.id))) continue;
             MobState cur = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
-            if (cur == null && Math.abs(mb.x - x) + Math.abs(mb.y - y) > MINE_PREEMPT_RANGE + 1) continue; // 상태가 없으면 집 칸 주변 1칸만 돌아다닌다(빠른 거르기)
+            int pr = minePreemptRange(mt); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
+            if (cur == null && Math.abs(mb.x - x) + Math.abs(mb.y - y) > pr + 1) continue; // 상태가 없으면 집 칸 주변 1칸만 돌아다닌다(빠른 거르기)
             int near = -1;
-            for (int c : mineMobCells(mb, cur, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= MINE_PREEMPT_RANGE) near = c;
+            for (int c : mineMobCells(mb, cur, now, map)) if (Math.abs(c % map.w - x) + Math.abs(c / map.w - y) <= pr) near = c;
             if (near < 0) continue;
             MobState ms = cur != null ? cur : MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mb.id), k -> new MobState(S5MineMobs.hp(mt, mb.rank)));
             synchronized (ms) {
@@ -1300,7 +1308,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
-                if (type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? MINE_PREEMPT_RANGE + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
+                if (type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? minePreemptRange(type) + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
@@ -2306,7 +2314,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD }) { // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);

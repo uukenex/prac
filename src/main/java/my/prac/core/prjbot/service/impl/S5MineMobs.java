@@ -18,6 +18,9 @@ public final class S5MineMobs {
     private S5MineMobs() { }
 
     public static final long SLOT_MS = 3000L;
+    /** [2026-11-05] 왕도 서쪽길 무리 몬스터 -- 인식 범위(보통 선공 6칸), 다시 나타나기까지. */
+    static final int HERD_AGGRO = 7;
+    static final long HERD_RESPAWN_MS = 6_000L;
 
     public static final class Type {
         public final String name, kind, color;
@@ -71,6 +74,9 @@ public final class S5MineMobs {
         Type hpCut(double c) { hpCut = c; return this; }
         Type archiNerf() { hpCut = S5MineMobs.ARCHI_HP_CUT; atkCut = S5MineMobs.ARCHI_ATK_CUT; return this; }
         Type aggroRange(int r) { aggro = r; return this; }
+        /** [2026-11-05] 왕도 서쪽길 무리 -- "체력은 많고 공격력은 적당하게, 한 전투가 오래", "인식 범위가 넓고 리젠이 빠르게": 체력 x3(경험치도 x3) / 공격 x0.6,
+         *  늘 선공(HERD_AGGRO칸 안), 쓰러지면 HERD_RESPAWN_MS 뒤 다시. */
+        Type herd() { hpMul = 3.0; atkMul = 0.6; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
         /** 화면/안내에 보이는 레벨. */
         public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
@@ -215,7 +221,28 @@ public final class S5MineMobs {
         new Type("어둠 허수아비", 1, "human", "#5a3a7a").asDummy(7),
         new Type("빛 허수아비", 1, "human", "#fff0c0").asDummy(8),
         // [2026-11-04] 피라미드 지하 보스 -- 파라오 왕관을 쓴 미라, 어둠 속성, 붕대 감기(원거리, 스턴). 세기는 얼음 여왕과 같게.
-        new Type("파라오 미라", 24, "human", "#d8c8a0").asBoss().strong(1.5, 1.1).showLv(95).aggroRange(4).asRanged().el(7) // 7 = EL_DARK(아래에 선언돼 앞에서는 숫자로)
+        new Type("파라오 미라", 24, "human", "#d8c8a0").asBoss().strong(1.5, 1.1).showLv(95).aggroRange(4).asRanged().el(7), // 7 = EL_DARK(아래에 선언돼 앞에서는 숫자로)
+        // [2026-11-05] 왕도 서쪽길 -- 매머드류 무리(14~23단계, Lv.53~89), 왕도에서 멀수록 강하다. 단계마다 매머드 하나 + 다른 짐승 하나.
+        new Type("초원 매머드", 14, "mammoth", "#8a6a4a", S5MineMap.WESTROAD).herd(),
+        new Type("엄니 멧돼지", 14, "quad", "#6a4a3a", S5MineMap.WESTROAD).herd(),
+        new Type("털매머드", 15, "mammoth", "#7a5230", S5MineMap.WESTROAD).herd(),
+        new Type("갑옷 코뿔소", 15, "quad", "#8a8a90", S5MineMap.WESTROAD).herd(),
+        new Type("바위 매머드", 16, "mammoth", "#7a7268", S5MineMap.WESTROAD).herd(),
+        new Type("거대 들소", 16, "quad", "#4a3020", S5MineMap.WESTROAD).herd(),
+        new Type("늪 매머드", 17, "mammoth", "#4a5a3a", S5MineMap.WESTROAD).herd(),
+        new Type("강철 코뿔소", 17, "quad", "#6a7078", S5MineMap.WESTROAD).herd(),
+        new Type("고대 매머드", 18, "mammoth", "#6a4a2a", S5MineMap.WESTROAD).herd(),
+        new Type("매머드 사냥꾼 오우거", 18, "human", "#7a6a4a", S5MineMap.WESTROAD).herd(),
+        new Type("천둥 매머드", 19, "mammoth", "#5a5a7a", S5MineMap.WESTROAD).herd(),
+        new Type("전쟁 코뿔소", 19, "quad", "#5a4a4a", S5MineMap.WESTROAD).herd(),
+        new Type("화석 매머드", 20, "mammoth", "#c8b898", S5MineMap.WESTROAD).herd(),
+        new Type("산맥 거수", 20, "quad", "#6a5a4a", S5MineMap.WESTROAD).herd(),
+        new Type("용암 매머드", 21, "mammoth", "#a84a2a", S5MineMap.WESTROAD).herd(),
+        new Type("흑철 코뿔소", 21, "quad", "#2a2a30", S5MineMap.WESTROAD).herd(),
+        new Type("빙하기 매머드", 22, "mammoth", "#c8dcef", S5MineMap.WESTROAD).herd(),
+        new Type("매머드 족장", 22, "mammoth", "#8a3a2a", S5MineMap.WESTROAD).herd(),
+        new Type("태고의 매머드 왕", 23, "mammoth", "#5a2a1a", S5MineMap.WESTROAD).herd(),
+        new Type("거신 코뿔소", 23, "quad", "#4a4040", S5MineMap.WESTROAD).herd()
     ));
     public static final int DUMMY_TYPE = indexOf("허수아비");
     /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
@@ -269,6 +296,7 @@ public final class S5MineMobs {
         if (m.startsWith("snow") || m.equals(S5MineMap.NORTH) || m.equals(S5MineMap.PEAK)) return EL_ICE;
         if (m.startsWith("cave") || m.equals(S5MineMap.DESERT) || m.equals(S5MineMap.ANTNEST) || m.equals(S5MineMap.PYRAMID)) return EL_EARTH;
         if (m.equals(S5MineMap.CASTLE) || m.equals(S5MineMap.ROYALROAD)) return EL_THUNDER;
+        if (m.equals(S5MineMap.WESTROAD)) return EL_EARTH; // [2026-11-05] 왕도 서쪽길(용암/빙하기/천둥/늪/바위 매머드는 이름으로 먼저)
         if (m.equals(S5MineMap.STEPPE)) return EL_WIND;
         if (m.equals(S5MineMap.RUINS) || m.startsWith("shrine")) return EL_DARK;
         return EL_NONE;
@@ -347,6 +375,10 @@ public final class S5MineMobs {
                 int d = Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY);
                 return d < m.w * 0.28 ? 11 : d < m.w / 2 ? 12 : 13;
             }
+            case S5MineMap.WESTROAD: { // [2026-11-05] 왕도 서쪽길 -- 왕도 서문(동쪽 끝)에서 멀어질수록 14 -> 23단계(열 구간 고르게)
+                double d = Math.hypot(x - m.spawnX, (y - m.spawnY) * 0.5);
+                return 14 + Math.min(9, (int) (d * 10 / (m.w - 4)));
+            }
             case S5MineMap.SNOWROAD: return y > m.h * 0.5 ? 20 : 21; // [2026-10-28] 설산 봉우리 가는 길 -- 봉우리(북쪽) 쪽일수록 강하다. 봉우리는 보스만(0)
             default: return 0;
         }
@@ -371,6 +403,7 @@ public final class S5MineMobs {
             case S5MineMap.CAVE1: return 52;
             case S5MineMap.SNOW1: case S5MineMap.SNOW2: case S5MineMap.SNOW3: return 48; // [2026-10-26] 설산은 빽빽하게
             case S5MineMap.SNOWROAD: return 48; // [2026-10-28] 설산 봉우리 가는 길
+            case S5MineMap.WESTROAD: return 18; // [2026-11-05] 왕도 서쪽길 -- 지금까지 중 가장 많이(무리 지어 -- spawnHerd)
             case S5MineMap.ANTNEST: return 45; // [2026-10-28] 개미굴은 굴이 좁아 빽빽하게
             case S5MineMap.SNOWCAVE: return 50; // [2026-10-28] 설산 동굴 박쥐
             case S5MineMap.SNOWCAVE2: return 22; // [2026-10-28] 설산 동굴 2층 -- 광맥 둘레에 얼음 골렘 많이
@@ -417,6 +450,7 @@ public final class S5MineMobs {
         if (S5MineMap.SNOWCAVE2.equals(m.id)) cand.removeIf(c -> !nearVein(t, c[0], c[1], 2)); // [2026-10-28] 골렘은 광맥 둘레(2칸)에만
         Collections.shuffle(cand, r);
         int want = walk / density(m.id);
+        if (S5MineMap.WESTROAD.equals(m.id)) return spawnHerd(m, t, r, cand, want, seed); // [2026-11-05] 무리 지어
         boolean[][] taken = new boolean[m.h][m.w];
         List<S5MineMap.Mob> out = new ArrayList<>();
         for (int[] c : cand) {
@@ -484,6 +518,50 @@ public final class S5MineMobs {
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
             int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
+        }
+        return out;
+    }
+
+    /** [2026-11-05] 왕도 서쪽길 -- "디아블로2 소 레벨처럼 다중으로 몰려오게, 무조건 두 마리 이상 상대하게": 무리 가운데끼리 HERD_GAP칸(체비셰프) 넘게 떨어뜨리고
+     *  가운데 둘레 2칸 안에 4~6마리. 한 무리는 같은 단계(가운데 칸 기준)에서 종류를 섞는다. */
+    static final int HERD_GAP = 6;
+    private static List<S5MineMap.Mob> spawnHerd(S5MineMap m, char[][] t, Random r, List<int[]> cand, int want, long seed) {
+        boolean[][] center = new boolean[m.h][m.w], used = new boolean[m.h][m.w];
+        List<S5MineMap.Mob> out = new ArrayList<>();
+        for (int[] c : cand) {
+            if (out.size() >= want) break;
+            int x = c[0], y = c[1];
+            boolean near = false;
+            for (int dy = -HERD_GAP; dy <= HERD_GAP && !near; dy++) for (int dx = -HERD_GAP; dx <= HERD_GAP; dx++) {
+                int nx = x + dx, ny = y + dy;
+                if (nx >= 0 && ny >= 0 && nx < m.w && ny < m.h && center[ny][nx]) { near = true; break; }
+            }
+            if (near) continue;
+            List<Integer> types = typesFor(m.id, tierAt(m, x, y));
+            if (types.isEmpty()) continue;
+            center[y][x] = true;
+            int n = 4 + r.nextInt(3); // 4~6마리
+            for (int tries = 0, placed = 0; tries < 24 && placed < n && out.size() < want; tries++) {
+                int nx = tries == 0 ? x : x + r.nextInt(5) - 2, ny = tries == 0 ? y : y + r.nextInt(5) - 2;
+                if (nx < 1 || ny < 1 || nx >= m.w - 1 || ny >= m.h - 1 || used[ny][nx] || !mobCell(t[ny][nx])) continue;
+                if (Math.abs(nx - m.spawnX) + Math.abs(ny - m.spawnY) < 9) continue;
+                boolean gate = false;
+                for (S5MineMap.Portal p : m.portals) if (Math.abs(nx - p.x) + Math.abs(ny - p.y) < 5) { gate = true; break; }
+                if (gate) continue;
+                used[ny][nx] = true;
+                placed++;
+                int type = types.get(r.nextInt(types.size()));
+                List<Integer> cells = new ArrayList<>();
+                cells.add(ny * m.w + nx);
+                for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) {
+                    int cx = nx + dv[0], cy = ny + dv[1];
+                    if (cx < 1 || cy < 1 || cx >= m.w - 1 || cy >= m.h - 1 || !mobCell(t[cy][cx])) continue;
+                    cells.add(cy * m.w + cx);
+                }
+                int[] ca = new int[cells.size()];
+                for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
+                out.add(new S5MineMap.Mob(out.size(), type, nx, ny, ca, rankOf(seed, out.size(), TYPES.get(type))));
+            }
         }
         return out;
     }

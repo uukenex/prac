@@ -90,6 +90,9 @@ public final class S5MineMap {
     /** [2026-10-28] "설산 동굴 2층 -- 빙석 주변에 얼음 골렘 많이(쉽게 못 캐게), 2층에서 채집 시 가끔 세공 빙석, 어두운 효과 2층 5레벨 / 1층 4레벨" --
      *  1층 가장 먼 방 가운데 계단(S) -> 2층(130x100, 광맥 더 많이). 어두움 = 광산 레벨(투구 단계 - (레벨 - 1)만큼 보인다). */
     public static final String SNOWCAVE2 = "snowcave2";
+    /** [2026-11-05] "한 마리 전투가 너무 쉽게 끝난다" -- 왕도 서문 너머 왕도 서쪽길(240x120): 체력 많은 매머드류가 무리 지어(디아블로2 소 레벨처럼) 넓게 인식하고 몰려온다.
+     *  50~90레벨(14~23단계)이 왕도에서 멀어질수록 강해진다(S5MineMobs.tierAt). 다른 곳으로 가는 길은 없고, 맵 중간중간 동굴 셋(아직 막힘). */
+    public static final String WESTROAD = "westroad";
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -177,7 +180,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -1001,6 +1004,14 @@ public final class S5MineMap {
         out.put(SNOWCAVE2, relink(snowCave2, retarget(snowCave2, SNOWCAVE, besidePortal(sc1, SNOWCAVE2)), null));
         out.put(SNOWCAVE, relink(sc1, retarget(sc1, SNOWCAVE2, new int[] { snowCave2.spawnX, snowCave2.spawnY }), null));
         out.put(PYRAMID_UNDER, pybL); // [2026-11-04] 맨 뒤
+        { // [2026-11-05] 왕도 서문 <-> 왕도 서쪽길(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로). 왕도는 NPC/주민 그대로 다시 넣는다.
+            S5MineMap wr0 = generateWestRoad(seed + 80), ctw = out.get(CITY);
+            S5MineMap wr = relink(wr0, retarget(wr0, CITY, besidePortal(ctw, WESTROAD)), null);
+            S5MineMap ctn = relink(ctw, retarget(ctw, WESTROAD, new int[] { wr.spawnX, wr.spawnY }), ctw.npcs);
+            ctn.citizens = ctw.citizens;
+            out.put(CITY, ctn);
+            out.put(WESTROAD, wr);
+        }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -2277,6 +2288,54 @@ public final class S5MineMap {
         return new S5MineMap(ROYALROAD, "왕도 북쪽 샛길", false, w, h, sx, sy, t, o, portals);
     }
 
+    /** [2026-11-05] 왕도 서쪽길(240x120) -- 탁 트인 툰드라 들판(풀밭/자갈/드문 나무, 바위 언덕). 동쪽 끝 G = 왕도 서문, 서쪽으로 굽이치는 흙길이 끝까지(막다른 길).
+     *  맵 중간중간 바위 언덕 셋에 동굴 입구(M, 아직 막힘 -- 대상 없음). 몬스터는 무리 지어(S5MineMobs.spawn), 왕도에서 멀수록 강하다. */
+    static S5MineMap generateWestRoad(long seed) {
+        int w = 240, h = 120;
+        Random r = new Random(seed);
+        Noise rock = new Noise(seed * 31 + 81), wood = new Noise(seed * 31 + 82), rich = new Noise(seed * 31 + 83), grav = new Noise(seed * 31 + 84);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double rk = rock.fbm(x / 13.0, y / 13.0), wd = wood.fbm(x / 10.0, y / 10.0), gv = grav.fbm(x / 9.0, y / 9.0);
+            t[y][x] = rk > 0.7 ? '^' : wd > 0.68 ? (r.nextDouble() < 0.25 ? 'T' : '.') : gv > 0.66 ? ':' : '.';
+        }
+        for (int x = 0; x < w; x++) { t[0][x] = '^'; t[h - 1][x] = '^'; }
+        for (int y = 0; y < h; y++) { t[y][0] = '^'; t[y][w - 1] = '^'; }
+        // 동굴 셋 -- 가운데를 피해 맵 중간중간(북동 / 남쪽 가운데 / 북서). 바위 언덕(타원) 아래쪽 가운데가 입구, 입구 앞 3칸은 비운다.
+        int[][] caves = { { (int) (w * 0.70), (int) (h * 0.24) }, { (int) (w * 0.44), (int) (h * 0.74) }, { (int) (w * 0.18), (int) (h * 0.30) } };
+        String[] caveNames = { "바람이 새어 나오는 동굴", "짐승 뼈가 쌓인 동굴", "얼음 냄새가 나는 동굴" };
+        for (int[] cv : caves) {
+            for (int y = cv[1] - 4; y <= cv[1] + 4; y++) for (int x = cv[0] - 7; x <= cv[0] + 7; x++)
+                if (Math.pow((x - cv[0]) / 7.0, 2) + Math.pow((y - cv[1]) / 4.0, 2) <= 1.0) t[y][x] = '^';
+            for (int y = cv[1] + 5; y <= cv[1] + 7; y++) for (int x = cv[0] - 1; x <= cv[0] + 1; x++) t[y][x] = '.';
+            t[cv[1] + 4][cv[0]] = 'M';
+        }
+        // 동쪽 문에서 서쪽으로 굽이치는 3칸 흙길(막다른 길)
+        int py = h / 2;
+        for (int x = w - 2; x >= 3; x--) {
+            if (r.nextDouble() < 0.2) py += r.nextBoolean() ? 1 : -1;
+            py = Math.max(6, Math.min(h - 7, py));
+            for (int dy = -1; dy <= 1; dy++) if (t[py + dy][x] != 'M') t[py + dy][x] = ',';
+        }
+        int gy = h / 2;
+        for (int x = w - 6; x < w - 1; x++) for (int dy = -1; dy <= 1; dy++) t[gy + dy][x] = ',';
+        t[gy][w - 1] = 'G';
+        int sx = w - 2, sy = gy;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = '^';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(w - 1, gy, 'G', CITY, 0, 0, "왕도 아스테리아 서문으로"));
+        for (int i = 0; i < caves.length; i++) portals.add(new Portal(caves[i][0], caves[i][1] + 4, 'M', null, 0, 0, caveNames[i] + " (입구가 무너진 돌에 막혀 있다)"));
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
+            score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * (1.0 - (double) x / w) + 0.16 * r.nextDouble();
+        }
+        byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
+        return new S5MineMap(WESTROAD, "왕도 서쪽길", false, w, h, sx, sy, t, o, portals);
+    }
+
     /** [2026-10-28] 설산 봉우리 가는 길(84x200, 한기 4) -- 설산 마을 북문(아래 G)에서 봉우리(위 G)까지 길게 굽이치는 3칸 눈길.
      *  설산 3층보다 바위가 많아 좁고, 얼음 호수가 군데군데. 눈길과 격자에 모닥불. 몬스터는 20~21단계(Lv.77~81)를 더 세게(S5MineMobs.Type.strong). */
     static S5MineMap generateSnowRoad(long seed) {
@@ -2528,7 +2587,7 @@ public final class S5MineMap {
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 왕도 남쪽 초원으로"));
         portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
-        portals.add(new Portal(0, c, 'G', null, 0, 0, "서문 (굳게 닫혀 있다)"));
+        portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽길")); // [2026-11-05] 열림(좌표는 buildWorld)
         portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
         int sx = c, sy = h - wt - 2;
         boolean[][] reach = reachable(t, sx, sy);

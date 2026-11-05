@@ -782,6 +782,10 @@ var TowerMine = (function () {
       case 'small':
         px(g, col, 4, 8, 8, 6); px(g, lt, 5, 9, 4, 2); px(g, col, 9, 5, 5, 5); px(g, dk, 10, 4, 1, 2); px(g, dk, 12, 4, 1, 2);
         px(g, eye, 12, 7); px(g, dk, 2, 7, 2, 4); px(g, dk, 5, 14, 2, 1); px(g, dk, 9, 14, 2, 1); break;
+      case 'mammoth': // [2026-11-05] 왕도 서쪽길 매머드 -- 덥수룩한 큰 몸, 둥근 머리, 늘어진 코, 하얀 엄니
+        px(g, col, 1, 4, 11, 8); px(g, lt, 2, 4, 9, 1); px(g, dk, 1, 10, 11, 2); px(g, col, 10, 3, 5, 6); px(g, lt, 11, 3, 3, 1);
+        px(g, dk, 14, 8, 1, 5); px(g, dk, 13, 12, 1, 1); px(g, '#f4ecd8', 11, 9, 1, 2); px(g, '#f4ecd8', 12, 10, 2, 1); px(g, eye, 12, 5);
+        px(g, dk, 0, 5, 1, 3); px(g, dk, 2, 12, 2, 3); px(g, dk, 5, 12, 2, 3); px(g, dk, 8, 12, 2, 3); px(g, dk, 10, 12, 2, 3); break;
       case 'quad':
         px(g, col, 2, 7, 10, 5); px(g, lt, 3, 7, 8, 1); px(g, col, 11, 4, 4, 5); px(g, dk, 12, 3, 1, 2); px(g, dk, 14, 3, 1, 2);
         px(g, eye, 13, 6); px(g, dk, 15, 7, 1, 1); px(g, dk, 1, 6, 2, 2);
@@ -1506,6 +1510,7 @@ var TowerMine = (function () {
     { id: 'cave4', name: '광산 동굴 4층', x: 52, y: 52, fill: '#1a1424', ink: '#e8d8ff' }, // [2026-10-28] 3층 보스가 지키는 문 너머
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
+    { id: 'westroad', name: '왕도 서쪽길 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
     { id: 'pyramid', name: '피라미드 📦', x: -42, y: 242, fill: '#d8b060', ink: '#3b2a10', w: 76 }, // 개미굴을 빠져나오면
     { id: 'cave2', name: '광산 동굴 2층', x: 52, y: 122, fill: '#4a3d33', ink: '#fff' },
@@ -1537,9 +1542,9 @@ var TowerMine = (function () {
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
       links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['cave3', 'cave4'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
     { id: 'desert', name: '🏜️ 사막·왕도', vh: 410,
-      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['steppe', 160, 240], ['desert', 160, 310],
+      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['westroad', 44, 170], ['steppe', 160, 240], ['desert', 160, 310],
         ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
-      links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
+      links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'westroad'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
     { id: 'snow', name: '❄️ 설원·설산', vh: 420,
       nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 150], ['snowcave2', 272, 230], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
         ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
@@ -2397,7 +2402,7 @@ var TowerMine = (function () {
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
     var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
       var ty = map.mobTypes[mb.k];
-      return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= 6;
+      return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (ty.aggro || 6); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
     });
     if (!fight && !nearBoss && !nearStrong && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
