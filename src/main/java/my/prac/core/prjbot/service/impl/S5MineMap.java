@@ -169,6 +169,13 @@ public final class S5MineMap {
     public static final int NINJA_BOOK_GRADE = 32;
     /** 다도해 낮과 밤 -- 리셋 기준 시각부터 40분마다 낮 25분 + 밤 15분(모든 화면이 같은 시각으로 판단). */
     public static final long ARCHI_DAY_MS = 30 * 60_000L, ARCHI_CYCLE_MS = 60 * 60_000L; // [2026-10-28] 낮/밤 30분씩(예전 25/15분)
+    /** [2026-11-05] "모든 필드에 밤과 낮" -- 다도해와 같은 시각(리셋 기준 60분마다 낮 30분 + 밤 30분)을 모든 바깥 맵이 쓴다. */
+    public static boolean night(long ms) { return !archiDay(ms); }
+    /** 지금(또는 마지막) 밤 번호 -- 낮/밤 한 바퀴마다 하나씩 오른다. */
+    public static long nightIndex(long ms) { return Math.floorDiv(ms - RESET_ANCHOR_MS, ARCHI_CYCLE_MS); }
+    private static final List<String> INDOOR = Arrays.asList(DUNGEON, SEAROAD, ANTNEST, PYRAMID, PYRAMID_UNDER, SNOWCAVE, SNOWCAVE2);
+    /** [2026-11-05] 하늘이 보이는 바깥 맵(밤에 어두워지고, 한기 맵은 밤에 더 춥다) -- 동굴/던전/신궁/피라미드/개미굴/바닷길 제외. */
+    public boolean outdoor() { return !dark && !INDOOR.contains(id) && !id.startsWith("cave") && !id.startsWith("shrine"); }
     public static boolean archiDay(long ms) {
         return Math.floorMod(ms - RESET_ANCHOR_MS, ARCHI_CYCLE_MS) < ARCHI_DAY_MS;
     }
@@ -637,7 +644,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 7; // [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 8; // [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1007,6 +1014,7 @@ public final class S5MineMap {
         { // [2026-11-05] 왕도 서문 <-> 왕도 서쪽길(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로). 왕도는 NPC/주민 그대로 다시 넣는다.
             S5MineMap wr0 = generateWestRoad(seed + 80), ctw = out.get(CITY);
             S5MineMap wr = relink(wr0, retarget(wr0, CITY, besidePortal(ctw, WESTROAD)), null);
+            placeNpc(wr, wr.spawnX - 5, wr.spawnY - 2, "forestguard", "숲 입구 파수꾼", "멈추게! 요즘 숲에서 마물이 미친 듯이 불어나고 있네. 하나를 베면 둘이 달려들고, 쓰러뜨려도 금세 다시 우르르 몰려나오지... 안쪽으로 갈수록 산만 한 놈들뿐일세. 각오가 없다면 돌아가게."); // [2026-11-05]
             S5MineMap ctn = relink(ctw, retarget(ctw, WESTROAD, new int[] { wr.spawnX, wr.spawnY }), ctw.npcs);
             ctn.citizens = ctw.citizens;
             out.put(CITY, ctn);
@@ -2289,7 +2297,8 @@ public final class S5MineMap {
     }
 
     /** [2026-11-05] 왕도 서쪽길(240x120) -- 탁 트인 툰드라 들판(풀밭/자갈/드문 나무, 바위 언덕). 동쪽 끝 G = 왕도 서문, 서쪽으로 굽이치는 흙길이 끝까지(막다른 길).
-     *  맵 중간중간 바위 언덕 셋에 동굴 입구(M, 아직 막힘 -- 대상 없음). 몬스터는 무리 지어(S5MineMobs.spawn), 왕도에서 멀수록 강하다. */
+     *  맵 중간중간 바위 언덕 셋에 동굴 입구(M, 아직 막힘 -- 대상 없음). 몬스터는 무리 지어(S5MineMobs.spawn), 왕도에서 멀수록 강하다.
+     *  [2026-11-05] 이름 "왕도 서쪽 마물의 숲 입구", 채광 불가(광석 없음), 입구 파수꾼, 가운데 보스 자리. */
     static S5MineMap generateWestRoad(long seed) {
         int w = 240, h = 120;
         Random r = new Random(seed);
@@ -2317,6 +2326,9 @@ public final class S5MineMap {
             py = Math.max(6, Math.min(h - 7, py));
             for (int dy = -1; dy <= 1; dy++) if (t[py + dy][x] != 'M') t[py + dy][x] = ',';
         }
+        int bx = w / 2, by = h / 2; // [2026-11-05] 맵 가운데 보스 자리 -- 둘레를 탁 트인 풀밭으로(동굴 언덕/흙길은 그대로)
+        for (int y = by - 6; y <= by + 6; y++) for (int x = bx - 8; x <= bx + 8; x++)
+            if (Math.pow((x - bx) / 8.0, 2) + Math.pow((y - by) / 6.0, 2) <= 1.0 && (t[y][x] == '^' || t[y][x] == 'T' || t[y][x] == ':')) t[y][x] = '.';
         int gy = h / 2;
         for (int x = w - 6; x < w - 1; x++) for (int dy = -1; dy <= 1; dy++) t[gy + dy][x] = ',';
         t[gy][w - 1] = 'G';
@@ -2326,14 +2338,10 @@ public final class S5MineMap {
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(w - 1, gy, 'G', CITY, 0, 0, "왕도 아스테리아 서문으로"));
         for (int i = 0; i < caves.length; i++) portals.add(new Portal(caves[i][0], caves[i][1] + 4, 'M', null, 0, 0, caveNames[i] + " (입구가 무너진 돌에 막혀 있다)"));
-        double[][] score = new double[h][w];
-        boolean[][] skip = new boolean[h][w];
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 2;
-            score[y][x] = 0.55 * rich.fbm(x / 15.0, y / 15.0) + 0.2 * (1.0 - (double) x / w) + 0.16 * r.nextDouble();
-        }
-        byte[][] o = assignOre(t, score, ROAD_SHARE, skip);
-        return new S5MineMap(WESTROAD, "왕도 서쪽길", false, w, h, sx, sy, t, o, portals);
+        byte[][] o = new byte[h][w]; // [2026-11-05] "이 맵은 채광 불가" -- 광석 없음(화면도 캐기 버튼/자동채광을 숨긴다)
+        S5MineMap m = new S5MineMap(WESTROAD, "왕도 서쪽 마물의 숲 입구", false, w, h, sx, sy, t, o, portals); // [2026-11-05] 이름 바꿈(왕도 서쪽길 -> 마물의 숲 입구)
+        m.bossX = bx; m.bossY = by; // [2026-11-05] 밤에 마물 500마리를 쓰러뜨리면 맵 가운데에 천둥 황소
+        return m;
     }
 
     /** [2026-10-28] 설산 봉우리 가는 길(84x200, 한기 4) -- 설산 마을 북문(아래 G)에서 봉우리(위 G)까지 길게 굽이치는 3칸 눈길.
@@ -2587,7 +2595,7 @@ public final class S5MineMap {
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 왕도 남쪽 초원으로"));
         portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
-        portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽길")); // [2026-11-05] 열림(좌표는 buildWorld)
+        portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽 마물의 숲 입구")); // [2026-11-05] 열림(좌표는 buildWorld)
         portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
         int sx = c, sy = h - wt - 2;
         boolean[][] reach = reachable(t, sx, sy);

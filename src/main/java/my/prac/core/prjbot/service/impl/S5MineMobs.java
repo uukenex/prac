@@ -547,6 +547,7 @@ public final class S5MineMobs {
                 if (Math.abs(nx - m.spawnX) + Math.abs(ny - m.spawnY) < 9) continue;
                 boolean gate = false;
                 for (S5MineMap.Portal p : m.portals) if (Math.abs(nx - p.x) + Math.abs(ny - p.y) < 5) { gate = true; break; }
+                for (S5MineMap.Npc np : m.npcs()) if (Math.abs(nx - np.x) + Math.abs(ny - np.y) < 5) { gate = true; break; } // [2026-11-05] 입구 파수꾼
                 if (gate) continue;
                 used[ny][nx] = true;
                 placed++;

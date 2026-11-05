@@ -342,7 +342,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1075,7 +1075,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1510,7 +1510,7 @@ var TowerMine = (function () {
     { id: 'cave4', name: '광산 동굴 4층', x: 52, y: 52, fill: '#1a1424', ink: '#e8d8ff' }, // [2026-10-28] 3층 보스가 지키는 문 너머
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
-    { id: 'westroad', name: '왕도 서쪽길 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
+    { id: 'westroad', name: '마물의 숲 입구 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
     { id: 'pyramid', name: '피라미드 📦', x: -42, y: 242, fill: '#d8b060', ink: '#3b2a10', w: 76 }, // 개미굴을 빠져나오면
     { id: 'cave2', name: '광산 동굴 2층', x: 52, y: 122, fill: '#4a3d33', ink: '#fff' },
@@ -2134,7 +2134,8 @@ var TowerMine = (function () {
     daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' }, // [2026-10-28] 요일 동굴 문지기
     wallguard: { skin: '#d8a070', hair: '#3a2a1a', cloth: '#8a6a3a', clothD: '#5a4422' }, // [2026-11-04] 사막 경비병
     swordmaster: { skin: '#e8b48a', hair: '#1a1a22', cloth: '#7a2a2a', clothD: '#4a1818' }, // [2026-11-04] 검기 사범
-    basecamp: { skin: '#e8b48a', hair: '#6a4a2a', cloth: '#3a6a9a', clothD: '#2a4a6a' } // [2026-11-04] 베이스캠프 대장
+    basecamp: { skin: '#e8b48a', hair: '#6a4a2a', cloth: '#3a6a9a', clothD: '#2a4a6a' }, // [2026-11-04] 베이스캠프 대장
+    forestguard: { skin: '#d8a47a', hair: '#3a2a1a', cloth: '#4a5a2a', clothD: '#2a3a18' } // [2026-11-05] 마물의 숲 입구 파수꾼
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -3436,7 +3437,7 @@ var TowerMine = (function () {
       ctx.fillRect(0, 0, W, H);
     }
     // [2026-10-28] 다도해 밤 -- 푸르스름하게 어둡게(낮엔 햇살이 살짝 노랗게)
-    if (map.archi && map.dayCycleMs && map.id.indexOf('shrine') !== 0) { // [2026-10-28] 신궁 1~3층/닌자 두목의 방은 실내
+    if (map.dayCycleMs && (map.archi ? map.id.indexOf('shrine') !== 0 : map.outdoor)) { // [2026-10-28] 신궁 1~3층/닌자 두목의 방은 실내, [2026-11-05] 모든 바깥 맵에 밤
       ctx.fillStyle = archiDay(nowSrv()) ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -3557,11 +3558,11 @@ var TowerMine = (function () {
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
         var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
-        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 0.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 0.4, rr = TS * (0.5 + i * 0.07);
+        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 1.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 1.4, rr = TS * (1.5 + i * 0.07); // [2026-11-05] 폭 3칸(서버 MINE_AURA_SIDE) -- 큰 원의 앞쪽 호
         ctx.globalAlpha = Math.max(0, fo * (k < 1 ? 0.95 : 0.7)); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw;
-        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 1.05, ang + 1.05); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 0.85, ang + 0.85); ctx.stroke();
         ctx.globalAlpha = Math.max(0, fo * 0.35); ctx.lineWidth = lw * 2.2; // 잔광
-        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.8, ang + 0.8); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.65, ang + 0.65); ctx.stroke();
       });
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
