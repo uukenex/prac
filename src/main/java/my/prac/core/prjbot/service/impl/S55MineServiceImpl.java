@@ -1990,6 +1990,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // [2026-11-05] "보스들이 달빛석이나 별빛석을 확률 드랍" -- 모든 보스 공통 덤(각 보스 원래 보상과 별개): MINE_BOSS_SHINE_PCT%로 둘 중 하나 1개(반반).
+    static final int MINE_BOSS_SHINE_PCT = 30;
+    void mineBossShine(String userName, List<HashMap<String, Object>> drops, StringBuilder msg) {
+        if (RND.nextInt(100) >= MINE_BOSS_SHINE_PCT) return;
+        if (RND.nextBoolean()) {
+            dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1);
+            drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1));
+            msg.append(" · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 1개!");
+        } else {
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[5], 1);
+            drops.add(mineDrop(6, S5MineMap.ORE_NAMES[5], 1));
+            msg.append(" · ✨ ").append(S5MineMap.ORE_NAMES[5]).append(" 1개!");
+        }
+    }
+
     List<HashMap<String, Object>> mineBossDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
         if (RND.nextInt(100) < 25) {
@@ -2336,8 +2351,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 else if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
-            out.put("drops", type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
-                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
+            List<HashMap<String, Object>> killDrops = type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
+                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank);
+            if (type.boss && !type.noReward) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
+            out.put("drops", killDrops);
             out.put("ores", mineOreList(userName));
             if (type.boss) { // [2026-11-05] 왕도 소문 -- 혼자서 / 일행이
                 int fighters = 0;
