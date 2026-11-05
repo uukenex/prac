@@ -764,6 +764,7 @@ var TowerMine = (function () {
       return c;
     };
   })();
+  var EYE_PX = { mammoth: [[12, 5]], quad: [[13, 6]], human: [[6, 4], [9, 4]], small: [[12, 7]], flyer: [[7, 7], [8, 7]], crab: [[6, 7], [9, 7]], blob: [[6, 10], [9, 10]] }; // [2026-11-05] 몬스터 그림(16칸)의 눈 자리 -- 밤 붉은 눈
   function mobSprite(k, pose, f) {
     var art = BOSS_ART[(map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임)
     if (art) { var bk = 'b' + k + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
@@ -3325,6 +3326,8 @@ var TowerMine = (function () {
       });
     }
     // [2026-10-24] 몬스터(그림 + 맞은 몬스터 체력 막대 + 가까우면 이름)
+    // [2026-11-05] 마물의 숲 입구 밤 -- 몬스터 눈이 빨갛게 빛난다(밤 어둠 위에 덧그리려고 자리만 모아 둔다). EYE_PX = 16칸 그림의 눈 자리.
+    var wildNight = map.id === 'westroad' && map.dayCycleMs && !archiDay(nowSrv()), redEyes = [];
     if (map.mobs) {
       // [2026-10-28] 닌자 두목 분신술 -- 분신은 두목과 똑같이(그림/크기/이름/체력 막대) 그리고, 분신이 나와 있는 동안 진짜만 인을 맺은 자세
       var bossM = map.mobs[map.mobs.length - 1], bossT = bossM && map.mobTypes[bossM.k], splitOn = false;
@@ -3347,7 +3350,10 @@ var TowerMine = (function () {
           var bw = TS * 2.4; // [2026-10-29] 보스 2x2칸 -- 그림은 두 칸 가운데, 발은 아래 칸
           ctx.drawImage(mobSprite(sk, pose, Math.floor(now / 480 + bid)), Math.round(mx + TS - bw / 2), Math.round(my + 2 * TS - bw - bob), bw, bw);
         } else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
-        else ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
+        else {
+          ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
+          if (wildNight && EYE_PX[ty.kind]) EYE_PX[ty.kind].forEach(function (e) { redEyes.push([mx + (e[0] + 0.5) * scale, my - 2 * scale - bob + (e[1] + 0.5) * scale]); });
+        }
         ctx.globalAlpha = 1;
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력
@@ -3438,8 +3444,25 @@ var TowerMine = (function () {
     }
     // [2026-10-28] 다도해 밤 -- 푸르스름하게 어둡게(낮엔 햇살이 살짝 노랗게)
     if (map.dayCycleMs && (map.archi ? map.id.indexOf('shrine') !== 0 : map.outdoor)) { // [2026-10-28] 신궁 1~3층/닌자 두목의 방은 실내, [2026-11-05] 모든 바깥 맵에 밤
-      ctx.fillStyle = archiDay(nowSrv()) ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
+      var isDay = archiDay(nowSrv());
+      ctx.fillStyle = isDay ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
       ctx.fillRect(0, 0, W, H);
+      if (!isDay) { // [2026-11-05] "밤이 되면 시야가 어두워지게" -- 캐릭터 둘레(약 4칸)만 밝고 멀수록 캄캄하게
+        var nlx = cx + TS / 2, nly = cy + TS / 2, ng = ctx.createRadialGradient(nlx, nly, TS * 2.5, nlx, nly, TS * 9);
+        ng.addColorStop(0, 'rgba(4,6,20,0)');
+        ng.addColorStop(0.5, 'rgba(4,6,20,0.45)');
+        ng.addColorStop(1, 'rgba(4,6,20,0.78)');
+        ctx.fillStyle = ng;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+    if (redEyes && redEyes.length) { // [2026-11-05] 마물의 숲 밤 -- 어둠 속에서 빛나는 붉은 눈
+      var eg = 0.75 + 0.25 * Math.sin(now / 240);
+      ctx.save();
+      ctx.shadowColor = '#ff2020'; ctx.shadowBlur = 6 * scale;
+      ctx.fillStyle = 'rgba(255,40,30,' + eg + ')';
+      redEyes.forEach(function (p) { ctx.fillRect(Math.round(p[0] - scale * 0.6), Math.round(p[1] - scale * 0.6), Math.max(2, Math.round(scale * 1.2)), Math.max(2, Math.round(scale * 1.2))); });
+      ctx.restore();
     }
     // [2026-10-23] 모래바람 -- 화면이 누렇게 흐려지고 바람 방향으로 모래가 날린다.
     if (map.wind) {
