@@ -2747,7 +2747,7 @@ var TowerMine = (function () {
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
-    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
       showPing(performance.now() - pt0, pws, r && r.ms);
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);
@@ -3641,14 +3641,14 @@ var TowerMine = (function () {
   var ws = null, wsOk = false, wsSeq = 0, wsWait = {}, wsRetry = 0, wsTimer = 0;
   // [2026-11-04] "핑이 비정상으로 높다" -- Cloudflare를 거치면 도쿄/홍콩을 돌아와 150~600ms. 서버가 직접 주소(st.wsHost)를 주면 http 화면에선 소켓을 그리로 바로 잇는다.
   //  한 번도 못 열고 끊기면(막힘) 이 화면에선 예전 주소로 돌아간다.
-  var wsDirectBad = false;
+  var wsDirectBad = false, wsVia = 0; // [2026-11-05] 지금 소켓 길(1 서울 CloudFront / 2 예전 주소) -- 관리자 통신 상태에
   //  [2026-11-04] 서버 주소는 숨긴다(사용자 지시) -- wsHost는 서울 지점 중계(CloudFront) 도메인. 보안 연결도 되니 https 화면도 wss://로.
   function wsDirect() { return !!(st && st.wsHost && !wsDirectBad); }
   function wsOpen() {
     if (!opened || ws || !window.WebSocket) return;
     var direct = wsDirect(), opened1 = false;
     try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + (direct ? st.wsHost : location.host) + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; if (direct) { wsDirectBad = true; wsOpen(); } return; }
-    ws.onopen = function () { wsOk = true; wsRetry = 0; opened1 = true; };
+    ws.onopen = function () { wsOk = true; wsRetry = 0; opened1 = true; wsVia = direct ? 1 : 2; };
     ws.onmessage = function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (window.twAlive) window.twAlive(); // 탑 화면 "접속 끊김" 감시에 살아 있다고 알린다

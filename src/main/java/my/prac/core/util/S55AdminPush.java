@@ -111,10 +111,10 @@ public class S55AdminPush {
     /** [2026-11-04] "폰은 괜찮은데 컴으로 하면 느리다" -- 유저별 최근 통신 상태 {핑 ms(최근 3번 평균), 기기 0 PC/1 폰/2 카톡 안, 1 = WebSocket, 화면 멈춤 ms, 받은 시각}. */
     private static final ConcurrentHashMap<String, long[]> NET = new ConcurrentHashMap<>();
 
-    public static void net(String user, int pg, int dv, int nw, int fg) {
+    public static void net(String user, int pg, int dv, int nw, int fg, int bg, int wv) { // [2026-11-05] bg = 게임 창이 백그라운드, wv = 소켓 길(1 서울 CloudFront / 2 예전 Cloudflare)
         if (NET.size() > 2000) NET.clear();
         long[] old = NET.get(user);
-        NET.put(user, new long[] { Math.min(pg, 99999), dv, nw, Math.min(Math.max(fg, 0), 99999), System.currentTimeMillis(), old != null && old.length > 5 ? old[5] : -1 });
+        NET.put(user, new long[] { Math.min(pg, 99999), dv, nw, Math.min(Math.max(fg, 0), 99999), System.currentTimeMillis(), old != null && old.length > 5 ? old[5] : -1, bg, wv });
     }
 
     /** [2026-11-04] "핑이 왜 높지" -- 그 유저 1초 턴의 서버 처리 시간(ms, 최근 값 위주 평균). 핑에서 이걸 빼면 통신(네트워크) 지연. */
@@ -132,7 +132,7 @@ public class S55AdminPush {
             long[] v = e.getValue();
             if (now - v[4] > 30_000L) continue;
             HashMap<String, Object> m = new HashMap<>();
-            m.put("u", e.getKey()); m.put("pg", v[0]); m.put("dv", v[1]); m.put("nw", v[2]); m.put("fg", v[3]); m.put("sv", v.length > 5 ? v[5] : -1);
+            m.put("u", e.getKey()); m.put("pg", v[0]); m.put("dv", v[1]); m.put("nw", v[2]); m.put("fg", v[3]); m.put("sv", v.length > 5 ? v[5] : -1); m.put("bg", v.length > 6 ? v[6] : 0); m.put("wv", v.length > 7 ? v[7] : 0);
             out.add(m);
         }
         out.sort((a, b) -> Long.compare((Long) b.get("pg"), (Long) a.get("pg")));
