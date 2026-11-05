@@ -36,6 +36,8 @@ public final class S5MineMobs {
         public double hpMul = 1, atkMul = 1;
         /** [2026-11-05] 경험치만 따로 곱하는 배수(마물의 숲 무리 -- 체력은 많고 경험치는 적게). */
         public double expMul = 1;
+        /** [2026-11-05] 검기에 받는 피해 배수(마물의 숲 무리 3배 -- 체력 많은 무리를 검기로 쓸어 담게). */
+        public double auraTaken = 1;
         /** [2026-10-28] "다도해 몬스터 체력 소폭 낮춰줘" -> "체력 30%, 공격력 30% 너프" -- 체력/공격만 곱한다(경험치는 그대로, hpMul과 달리). */
         public double hpCut = 1, atkCut = 1;
         public int lvShow, aggro;
@@ -80,7 +82,8 @@ public final class S5MineMobs {
          *  늘 선공(HERD_AGGRO칸 안), 쓰러지면 HERD_RESPAWN_MS 뒤 다시. */
         // [2026-11-05] "경험치를 많이 줄이고(기존 대비 20%), 몬스터가 더 강하게, 체력은 많게" -- 체력 x3 -> x4.5, 공격 x0.6 -> x0.9, 경험치는 x3 -> x0.6(expMul로 따로)
         // [2026-11-05] 같은 날 "몬스터 공격력을 지금 대비 1.1배"(1.8배는 취소) -- 0.9 -> 0.99
-        Type herd() { hpMul = 4.5; atkMul = 0.99; expMul = 0.6 / 4.5; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
+        // [2026-11-05] 같은 날 "검기에 피해 3배로, 체력은 지금 대비 1.2배" -- 체력 x4.5 -> x5.4(경험치는 그대로 x0.6), 검기 피해 x3
+        Type herd() { hpMul = 5.4; atkMul = 0.99; expMul = 0.6 / 5.4; auraTaken = 3.0; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
         /** 화면/안내에 보이는 레벨. */
         public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.

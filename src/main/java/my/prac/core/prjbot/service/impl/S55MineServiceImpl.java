@@ -3918,7 +3918,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int e = 1; e <= 8; e++) {
             if (a[e] <= 0 || a[e] < dist) continue;
             boolean beat = S5MineMobs.elemBeats(e, type.elem());
-            out.add(new int[] { e, Math.max(1, (int) Math.round(atkBase * a[e] * MINE_AURA_PCT / 100.0 * (0.85 + RND.nextDouble() * 0.3) * (beat ? 1.5 : 1))), beat ? 1 : 0 });
+            out.add(new int[] { e, Math.max(1, (int) Math.round(atkBase * a[e] * MINE_AURA_PCT / 100.0 * (0.85 + RND.nextDouble() * 0.3) * (beat ? 1.5 : 1) * type.auraTaken)), beat ? 1 : 0 }); // [2026-11-05] auraTaken = 마물의 숲 무리 3배
         }
         return out;
     }
