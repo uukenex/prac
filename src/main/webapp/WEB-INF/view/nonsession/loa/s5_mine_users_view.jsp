@@ -187,6 +187,13 @@
     }).join('');
   }
   function lvBadge(u) { return '<span class="lv' + (u.rebirth > 0 ? ' rb' : '') + '">Lv.' + u.lv + (u.rebirth > 0 ? ' ✦' + u.rebirth : '') + '</span>'; }
+  // [2026-11-05] "유저별 검기 단계 업그레이드 현황" -- 배운 속성만 아이콘 + 단계(켠 단계가 다르면 켠/배운)
+  var AURA_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'];
+  function auraTxt(u) {
+    var s = [];
+    for (var e = 1; e <= 8; e++) { var l = (u.auraL || [])[e] || 0, a = (u.auraA || [])[e] || 0; if (l > 0) s.push(AURA_ICON[e] + (a !== l ? a + '/' + l : l)); }
+    return s.length ? s.join(' ') : '<span style="color:var(--ink-soft)">-</span>';
+  }
   function card(u) {
     var look = Object.keys(LOOK).filter(function (k) { return u.look && u.look[k]; }).map(function (k) { return LOOK[k] + ' <span>' + esc(u.look[k]) + '</span>'; }).join(' · ');
     return '<div class="ch' + (u.online ? ' on' : '') + '">'
@@ -208,6 +215,7 @@
       +       '<div><small>처치</small><b class="num">' + n(u.kills) + '</b></div>'
       +       '<div><small>치장</small><b class="num">' + n(u.cosOwned) + '</b></div>'
       +     '</div>'
+      +     '<div class="look">🌀 검기 ' + auraTxt(u) + (u.luckUntil > Date.now() ? ' · 🍀 행운 ' + Math.ceil((u.luckUntil - Date.now()) / 60000) + '분' : '') + '</div>' // [2026-11-05] 검기 단계
       +     (u.dragonQuest === 1 ? '<div class="look">🌊 선장 퀘스트 진행 중</div>' : '')
       +     '<div class="look" title="' + esc(look.replace(/<[^>]+>/g, '')) + '">👗 ' + (look || '기본 외형') + '</div>'
       +   '</div>'
@@ -222,7 +230,7 @@
     var mini = function (a, b, c) { return '<span class="mini"><i style="width:' + pct(a, b) + '%;background:' + c + '"></i></span>'; };
     return '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>캐릭터</th><th class="r">Lv</th><th>위치</th><th class="r">체력</th><th class="r">경험치</th><th class="r">공격</th><th class="r">곡괭이</th>'
       + SLOT_ORDER.map(function (s) { return '<th>' + SLOTS[s] + '</th>'; }).join('')
-      + '<th class="r">⛏️광석</th><th class="r">💎보석</th><th class="r">✨세공</th><th class="r">채광</th><th class="r">처치</th></tr></thead><tbody>'
+      + '<th class="r">⛏️광석</th><th class="r">💎보석</th><th class="r">✨세공</th><th class="r">채광</th><th class="r">처치</th><th>🌀 검기</th></tr></thead><tbody>'
       + list.map(function (u) {
           return '<tr class="' + (u.online ? 'on' : '') + '"><td>' + img(u) + '</td><td><b>' + esc(u.userName) + '</b></td><td class="r">' + lvBadge(u) + '</td>'
             + '<td>' + esc(u.mapName) + ' <span class="num" style="color:var(--ink-soft)">' + u.x + ',' + u.y + '</span> · ' + (u.online ? '<span style="color:var(--on)">접속 중</span>' : '<span style="color:var(--ink-soft)">' + ago(u.lastAt) + '</span>') + '</td>'
@@ -232,7 +240,7 @@
             + '<td class="r num">' + n(u.pickDur) + mini(u.pickDur, u.pickMax, 'var(--dur)') + '</td>'
             + SLOT_ORDER.map(function (s) { var o = wornOf(u, s); return '<td class="eq' + (o.w ? '' : ' off') + '" title="' + esc(o.w ? o.w.effect : '') + '">' + esc(o.w ? o.w.name : '-') + '</td>'; }).join('')
             + '<td class="r num">' + n(top(u, 0)) + '</td><td class="r num">' + n(top(u, 1)) + '</td><td class="r num">' + n(top(u, 3)) + '</td>'
-            + '<td class="r num">' + n(u.totalDig) + '</td><td class="r num">' + n(u.kills) + '</td></tr>';
+            + '<td class="r num">' + n(u.totalDig) + '</td><td class="r num">' + n(u.kills) + '</td><td>' + auraTxt(u) + '</td></tr>';
         }).join('')
       + '</tbody></table></div>';
   }

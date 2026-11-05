@@ -959,6 +959,16 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-05] 왕도 상인 -- 행운의 주문서. */
+    @GetMapping("/api/tower-mine-cityshop")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineCityShop(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "action", defaultValue = "list") String action) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineCityShop(userName, action);
+        if ("buy".equals(action) && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 행운의 주문서", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-28] 웹 광산 다도해 상인(양산). */
     @GetMapping("/api/tower-mine-archishop")
     @ResponseBody

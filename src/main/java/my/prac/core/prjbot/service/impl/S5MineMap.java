@@ -959,6 +959,7 @@ public final class S5MineMap {
         placeNpc(tw3, tw3.villageX + 3, tw3.villageY + 5, "gemcutter", "보석 세공사", gcLine);
         placeNpc(ct, cc - 10, cc + 6, "smelter", "광석 전문가", smLine);
         placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
+        placeNpc(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
         placeNpc(ct, cc, cc + 10, "artisan", "왕도 장인", "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
         S5MineMap av = out.get(ARCHI);
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);

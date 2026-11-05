@@ -2267,7 +2267,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
-            long baseExp = mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
+            long baseExp = mineLuckExp(items, mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
             exp += expGain;
             while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; }
             // [2026-10-28] 99레벨에선 경험치를 다음 레벨 필요치(= 환생 조건)에서 멈춘다(막대가 가득 찬 채로, 숫자가 끝없이 쌓이지 않게)
@@ -2385,18 +2385,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     List<HashMap<String, Object>> mineMobDrops(String userName, S5MineMap map, S5MineMobs.Type type, StringBuilder msg, int rank) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
         if (S5MineMap.WESTROAD.equals(map.id)) return drops; // [2026-11-05] "그 맵은 몬스터가 광석을 안 떨어뜨려도 된다" -- 처치마다 DB에 쓰던 것도 없어진다(경험치는 공격마다 한 번에)
-        if (RND.nextInt(100) < MINE_RANK_ORE_PCT[rank]) {
+        Map<String, Integer> dit = mineItems(userName);
+        int dm = mineLuckOn(dit, System.currentTimeMillis()) ? 2 : 1; // [2026-11-05] 행운의 주문서 -- 드랍률 2배(광석/보석/빙석 확률)
+        if (RND.nextInt(100) < MINE_RANK_ORE_PCT[rank] * dm) {
             int b = Math.min(5, 1 + (type.tier - 1) / 2), r = RND.nextInt(100), g, qty = 1;
             if (r < 55) { g = Math.max(1, b - 1); qty += RND.nextInt(2); }
             else if (r < 92) g = Math.min(b, 4);
             else g = type.tier >= 9 ? 5 : Math.min(b + 1, 4);
             if (rank == 2) qty *= 2; // [2026-10-29] 상급 개체
-            qty *= mineRebirthGain(mineItems(userName)); // [2026-10-28] 환생 x(1 + 회차) -- 여기 g는 늘 구리~미스릴
+            qty *= mineRebirthGain(dit); // [2026-10-28] 환생 x(1 + 회차) -- 여기 g는 늘 구리~미스릴
             dao.addUserOre(userName, S5MineMap.ORE_CODES[g - 1], qty);
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
         }
-        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000), 1.3 * MINE_RANK_GEM_MUL[rank]);
+        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000) / dm, 1.3 * MINE_RANK_GEM_MUL[rank]);
         if (gi >= 0) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
@@ -2404,7 +2406,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         // [2026-10-28] 설산 몬스터 빙석 -- 같은 날 "더 안 나오게(득템 느낌)" 15% -> 3%
         boolean snow = S5MineMap.SNOW1.equals(map.id) || S5MineMap.SNOW2.equals(map.id) || S5MineMap.SNOW3.equals(map.id) || S5MineMap.SNOWROAD.equals(map.id); // [2026-10-28] 봉우리 가는 길도
-        if (snow && RND.nextInt(100) < 3) {
+        if (snow && RND.nextInt(100) < 3 * dm) {
             dao.addUserOre(userName, S5MineMap.ICE_STONE_CODE, 1);
             drops.add(mineDrop(S5MineMap.ICE_STONE_GRADE, S5MineMap.ICE_STONE_NAME, 1));
             msg.append(" · 🧊 ").append(S5MineMap.ICE_STONE_NAME).append(" 1개!");
@@ -2514,6 +2516,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("visitedCity", items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0 || isMineAdmin(userName)); // [2026-10-27]
         out.put("visitedArchi", items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0 || isMineAdmin(userName)); // [2026-10-28] 다도해 마을
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
+        out.put("luckUntil", mineLuckUntil(items)); // [2026-11-05] 행운의 주문서
         Object[] nt = mineNotice(); // [2026-10-28] 아직 안 본 광산 소식(확인을 누르면 mineNoticeAck, 글은 /광산공지로)
         if (!((String) nt[1]).isEmpty() && items.getOrDefault(MINE_ITEM_NOTICE, 0) < (Integer) nt[0]) {
             out.put("noticeId", nt[0]);
@@ -3872,7 +3875,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineWeaponDrop(String userName, Map<String, Integer> items, S5MineMobs.Type type, int rank, StringBuilder msg, HashMap<String, Object> out) {
         MineWeapon dw = null;
         int wp = MINE_WEAPON_RANK_P10K[rank];
-        if (java.util.Arrays.asList(type.maps).contains(S5MineMap.WESTROAD)) wp /= 2; // [2026-11-05] "마물의 숲 장비 드랍은 다른 맵의 절반(등급 비율은 같게)"
+        if (java.util.Arrays.asList(type.maps).contains(S5MineMap.WESTROAD)) wp /= 2;
+        if (mineLuckOn(items, System.currentTimeMillis())) wp *= 2; // [2026-11-05] 행운의 주문서 -- 드랍률 2배 // [2026-11-05] "마물의 숲 장비 드랍은 다른 맵의 절반(등급 비율은 같게)"
         for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
         if (dw == null) return;
         int g = mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
@@ -4020,7 +4024,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 m.put("killed", true);
                 kills++;
                 mineThunderKill(map, ot, now); // [2026-11-05] 밤 마물 처치 수
-                long be = mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
+                long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
                 msg.append(msg.length() > 0 ? " " : "").append("🌀 검기로 ").append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
@@ -4165,6 +4169,45 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     static boolean mineParasolOn(Map<String, Integer> items) {
         return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 1 && items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0;
+    }
+
+    // [2026-11-05] "금괴 반복 소모 -- 왕도 상인, 10분간 경험치 3배, 드랍률 2배" -- 행운의 주문서. 끝나는 시각은 광산 아이템 LUCK_UNTIL(초)에, 사면 남은 시간에 10분을 더한다.
+    static final String MINE_ITEM_LUCK = "LUCK_UNTIL";
+    static final long MINE_LUCK_MS = 10 * 60_000L;
+    static final String[][] MINE_LUCK_COST = { { S5MineMap.BAR_CODES[3], "1" } }; // 금괴 1개
+    static long mineLuckUntil(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_LUCK, 0) * 1000L; }
+    static boolean mineLuckOn(Map<String, Integer> items, long now) { return mineLuckUntil(items) > now; }
+    static long mineLuckExp(Map<String, Integer> items, long exp, long now) { return mineLuckOn(items, now) ? exp * 3 : exp; }
+
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineCityShop(String userName, String action) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        Map<String, Integer> items = mineItems(userName);
+        long now = System.currentTimeMillis();
+        boolean ok = true;
+        String msg = "";
+        if ("buy".equals(action)) {
+            if (!mineAtNpc(row, "citymerchant")) { ok = false; msg = "왕도의 왕도 상인에게서만 살 수 있어요."; }
+            else if (!mineCostOk(MINE_LUCK_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_LUCK_COST) + " 필요" + mineLackText(MINE_LUCK_COST, userName) + ")"; }
+            else {
+                mineTakeCost(userName, MINE_LUCK_COST, 1);
+                long until = Math.max(now, mineLuckUntil(items)) + MINE_LUCK_MS;
+                dao.upsertMineItem(userName, MINE_ITEM_LUCK, (int) (until / 1000L));
+                items.put(MINE_ITEM_LUCK, (int) (until / 1000L));
+                msg = "🍀 행운의 주문서를 읽었어요! 10분 동안 경험치 3배 · 드랍률 2배 (" + mineCostText(MINE_LUCK_COST) + " 사용)";
+            }
+        }
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", ok);
+        out.put("message", msg);
+        out.put("luckUntil", mineLuckUntil(items));
+        out.put("cost", mineCostText(MINE_LUCK_COST));
+        out.put("can", mineCostOk(MINE_LUCK_COST, mineOreHave(userName)));
+        out.put("ores", mineOreList(userName));
+        return out;
     }
 
     /** 다도해 상인 -- action list(보기) / buy(code). 지금은 양산 하나. */
@@ -5731,6 +5774,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int lv = mineLv(row), rb = mineRebirth(items);
         m.put("lv", lv);
         m.put("rebirth", rb); // [2026-10-28] 환생 횟수("Lv.1(환생1)")
+        { // [2026-11-05] 관리자 캐릭터 현황 -- 속성별 검기 배운 단계 / 켠 단계, 행운의 주문서
+            int[] al = new int[9], aa = mineAuraActive(items);
+            for (int e = 1; e <= 8; e++) al[e] = Math.max(0, Math.min(items.getOrDefault(mineAuraKey(false, e), 0), MINE_AURA_MAX));
+            m.put("auraL", al);
+            m.put("auraA", aa);
+            m.put("luckUntil", mineLuckUntil(items));
+        }
         m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
         m.put("expNeed", mineExpNeed(lv, rb));
         m.put("kills", intVal(row.get("M_KILLS"), 0));
