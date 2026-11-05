@@ -356,7 +356,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop') }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite() }; // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1120,7 +1120,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1355,6 +1355,7 @@ var TowerMine = (function () {
     else if (n.kind === 'chest' || n.kind === 'antchest') openChest(n); // [2026-10-28] 피라미드 보상 상자, 개미굴 보물 상자
     else if (n.kind === 'smelter' || n.kind === 'gemcutter' || n.kind === 'artisan') { setAuto(false); openSmith(n, n.kind); } // [2026-10-28] 광석 전문가 / 보석 세공사 / 왕도 장인
     else if (n.kind === 'citymerchant') { setAuto(false); openSmith(n, 'citymerchant'); api('/api/tower-mine-cityshop?action=list').then(function (d) { cityShop = d; if (d && d.luckUntil != null) st.luckUntil = d.luckUntil; if (smithOpen && smithView === 'citymerchant') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 상인
+    else if (n.kind === 'mercenary') { setAuto(false); openSmith(n, 'merc'); api('/api/tower-mine-merc?action=list').then(function (d) { mercShop = d; if (d && d.merc) st.merc = d.merc; if (smithOpen && smithView === 'merc') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 용병소
     else if (n.kind === 'archishop') { setAuto(false); openSmith(n, 'archishop'); api('/api/tower-mine-archishop?action=list').then(function (d) { applyGear(d); if (smithOpen && smithView === 'archishop') renderSmith(smithNpc); }).catch(function () {}); } // [2026-10-28] 다도해 상인
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
@@ -2189,7 +2190,8 @@ var TowerMine = (function () {
     swordmaster: { skin: '#e8b48a', hair: '#1a1a22', cloth: '#7a2a2a', clothD: '#4a1818' }, // [2026-11-04] 검기 사범
     basecamp: { skin: '#e8b48a', hair: '#6a4a2a', cloth: '#3a6a9a', clothD: '#2a4a6a' }, // [2026-11-04] 베이스캠프 대장
     forestguard: { skin: '#d8a47a', hair: '#3a2a1a', cloth: '#4a5a2a', clothD: '#2a3a18' }, // [2026-11-05] 마물의 숲 입구 파수꾼
-    citymerchant: { skin: '#e8b48a', hair: '#5a3a1a', cloth: '#2a7a4a', clothD: '#1a5030' } // [2026-11-05] 왕도 상인
+    citymerchant: { skin: '#e8b48a', hair: '#5a3a1a', cloth: '#2a7a4a', clothD: '#1a5030' }, // [2026-11-05] 왕도 상인
+    mercenary: { skin: '#d8a070', hair: '#2a1a10', cloth: '#6a4a2a', clothD: '#4a3018' } // [2026-11-05] 용병소 대장
   };
   var portraitCache = {};
   /** frame: 0 보통, 1 눈 감음, 2 입 벌림. */
@@ -2323,6 +2325,20 @@ var TowerMine = (function () {
       el.smith.innerHTML = npcHead('🍀 ' + n.name, false) + talkBlock(n, n.line)
         + '<div class="mine-smith-row"><span class="nm">📜 행운의 주문서 (10분)<small>경험치 3배 · 드랍률 2배' + (left > 0 ? ' · 남은 시간 ' + Math.ceil(left / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
         + '<button type="button" ' + (cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>';
+      return;
+    }
+    if (smithView === 'merc') { // [2026-11-05] 왕도 용병소
+      var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
+      mh += '<div class="mine-smith-say">지금 함께하는 용병: <b>' + (mi2.name || '견습 용병') + '</b> · 공격력 ' + (mi2.atk || '?') + ' · 체력 ' + (mi2.hp != null ? mi2.hp + '/' + mi2.max : '?')
+          + '<br>평소엔 뒤를 따라오고, 싸울 땐 가까운 몬스터에게 달려가 함께 싸워요. 지치면 뒤에서 잠시 쉬었다가 돌아와요. (한 명만 데리고 다녀요)</div>';
+      (ms2.list || []).forEach(function (it) {
+        var own = it.t === ms2.cur, past = it.t < ms2.cur;
+        mh += '<div class="mine-smith-row"><span class="nm">🛡️ ' + it.name + '<small>공격력 ' + it.atk + ' · 체력 ' + it.hp + '</small><small>' + (it.t ? '필요: ' + it.cost : it.cost) + '</small></span>'
+            + (own ? '<button type="button" data-lack="1" disabled>함께하는 중</button>' : past ? '<button type="button" data-lack="1" disabled>-</button>'
+              : '<button type="button" ' + (it.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + it.t + ')">고용</button>') + '</div>';
+      });
+      if (!ms2.list) mh += '<div class="mine-eq-empty">불러오는 중...</div>';
+      el.smith.innerHTML = mh;
       return;
     }
     if (smithView === 'archishop') { // [2026-10-28] 다도해 상인
@@ -2511,6 +2527,8 @@ var TowerMine = (function () {
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
       }); // [2026-10-28] 은신했던 닌자의 기습
+      if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
+      if (d.levelUp) floats.push({ x: P.x, y: P.y - 1, text: '⬆️ 레벨 업!', color: '#ffe14d', big: true, t0: performance.now() });
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30]
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
       if (d.combat) setCombat(d.combat);
@@ -2726,6 +2744,107 @@ var TowerMine = (function () {
     gossipT = now;
     fetch(cfg.base + '/api/tower-mine-gossip').then(function (r) { return r.json(); }).then(function (d) { if (d && d.lines) gossip = d.lines; if (d && d.updates) updLines = d.updates; }).catch(function () { });
   }
+  // [2026-11-05] 용병(동료) -- 평소엔 내가 지나온 칸을 두세 칸 뒤에서 따라오고, 전투 턴(서버)이 고른 몬스터 옆 칸으로 달려가 싸운다(흩어짐).
+  //  체력이 다하면 내 뒤 칸에서 쉰다(흐리게 + 💤). 다른 유저의 용병도 같은 식(쉬는 중/싸우는 칸은 위치 알림으로 온다).
+  var MERC_LOOK = [
+    { gender: 0, hair: '#7a4a26', top: '#8a5a32', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'bichul' },
+    { gender: 1, hair: '#2b1d16', top: '#2e8b57', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'sword' },
+    { gender: 0, hair: '#3a3a3a', top: '#3a3f4a|armor', hat: '#9aa3ad|helmet', bottom: '#2c45a3', shoes: '', weapon: 'sword' },
+    { gender: 1, hair: '#a83a2a', top: '#a8323a|armor', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'katana' },
+    { gender: 0, hair: '#d8dde6', top: '#d8dde6|armor', hat: '#d8dde6|helmet', bottom: '#9aa3ad', shoes: '', weapon: 'katana' },
+    { gender: 0, hair: '#f0d060', top: '#e0b030|armor', hat: '#e8c84a|helmet', bottom: '#7a2a2a', shoes: '', weapon: 'ninja' },
+    { gender: 1, hair: '#ffffff', top: '#7b3fa0|armor', hat: '', bottom: '#24212b', shoes: '', weapon: 'baekhwa' }
+  ];
+  var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, mercShop = null, mercSpr = {};
+  function mercSprite(t, dir, step, dig) {
+    var k = t + dir + step + '_' + dig;
+    if (!mercSpr[k]) mercSpr[k] = MineChar.sprite(dir, step, dig, MERC_LOOK[t] || MERC_LOOK[0]);
+    return mercSpr[k];
+  }
+  function mercBehind(x, y, dir) { var v = MERC_DV[dir] || MERC_DV.down; return walk(x - v[0], y - v[1]) ? [x - v[0], y - v[1]] : [x, y]; }
+  function mercBeside(tx, ty, fx, fy, px, py) {
+    var b = null, bd = 1e9;
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (v) {
+      var nx = tx + v[0], ny = ty + v[1];
+      if (!walk(nx, ny) || (nx === px && ny === py)) return;
+      var d = Math.abs(nx - fx) + Math.abs(ny - fy);
+      if (d < bd) { bd = d; b = [nx, ny]; }
+    });
+    return b || [tx, ty];
+  }
+  function mercMove(mp, gx, gy, now) {
+    var dt = Math.min(0.1, (now - (mp.lt || now)) / 1000);
+    mp.lt = now;
+    if (mp.x == null || Math.abs(gx - mp.x) + Math.abs(gy - mp.y) > 14) { mp.x = gx; mp.y = gy; mp.mv = false; return; }
+    var dx = gx - mp.x, dy = gy - mp.y, d = Math.hypot(dx, dy);
+    if (d < 0.03) { mp.x = gx; mp.y = gy; mp.mv = false; return; }
+    mp.mv = true;
+    mp.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    var k = Math.min(1, (d > 3 ? 11 : 6.5) * dt / d);
+    mp.x += dx * k; mp.y += dy * k;
+  }
+  function mercFace(mp, tx, ty) { var dx = tx - mp.x, dy = ty - mp.y; mp.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); }
+  function mercDraw(mp, t, rest, hpf, atkT, now, V) {
+    var x = Math.round(mp.x * V.TS - V.camX), y = Math.round(mp.y * V.TS - V.camY), sc = V.scale;
+    if (x < -V.TS || y < -V.TS * 2 || x > V.W || y > V.H) return;
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(x + 3 * sc, y + 13 * sc, 10 * sc, 3 * sc);
+    var ad = now - atkT, dig = ad >= 0 && ad < 360 ? (ad < 180 ? 3 : 4) : 0;
+    if (rest) ctx.globalAlpha = 0.55;
+    ctx.drawImage(mercSprite(t, mp.dir, mp.mv ? 1 + Math.floor(now / 150) % 2 : 0, dig), x, y - 3 * sc, V.TS, V.TS);
+    ctx.globalAlpha = 1;
+    if (rest) { ctx.font = Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💤', x + V.TS * 0.8, y - 2 * sc - Math.sin(now / 300) * 2 * sc); }
+    else if (hpf != null && hpf < 1) {
+      var bw = 12 * sc;
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x + 2 * sc, y - 4 * sc, bw, 2 * sc);
+      ctx.fillStyle = hpf > 0.5 ? '#7cf08a' : hpf > 0.25 ? '#ffd23f' : '#ff5a4a'; ctx.fillRect(x + 2 * sc, y - 4 * sc, bw * Math.max(0, hpf), 2 * sc);
+    }
+  }
+  function mercDrawMine(now, V) {
+    var mi = st && st.merc;
+    if (!mi || !map || map.boat) return;
+    if (merc.map !== map.id) { merc.map = map.id; merc.x = null; merc.trail = []; merc.tg = null; }
+    var tr = merc.trail, l = tr[tr.length - 1];
+    if (!l || l[0] !== P.x || l[1] !== P.y) { tr.push([P.x, P.y]); if (tr.length > 4) tr.shift(); }
+    var rest = mi.rest > nowSrv(), fight = !rest && merc.tg && now - merc.tg.t < 1800, g;
+    if (rest) g = mercBehind(P.x, P.y, P.dir);
+    else if (fight) g = merc.tg.g || (merc.tg.g = mercBeside(merc.tg.x, merc.tg.y, Math.round(merc.x == null ? P.x : merc.x), Math.round(merc.y == null ? P.y : merc.y), P.x, P.y));
+    else g = tr.length >= 3 ? tr[0] : mercBehind(P.x, P.y, P.dir);
+    if (g[0] === P.x && g[1] === P.y && !rest) g = mercBehind(P.x, P.y, P.dir);
+    mercMove(merc, g[0], g[1], now);
+    if (fight && !merc.mv) mercFace(merc, merc.tg.x, merc.tg.y);
+    mercDraw(merc, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, merc.atkT, now, V);
+  }
+  function mercDrawOther(ou, op, now, V) {
+    var mp = ou.mp || (ou.mp = { x: null, y: null, dir: 'down' }), ox = Math.round(op.x), oy = Math.round(op.y), g;
+    if (ou.mt && !ou.mr) {
+      var gk = ou.mt[0] + ',' + ou.mt[1];
+      if (mp.gk !== gk) { mp.gk = gk; mp.g = mercBeside(ou.mt[0], ou.mt[1], mp.x == null ? ox : Math.round(mp.x), mp.y == null ? oy : Math.round(mp.y), ox, oy); }
+      g = mp.g;
+    } else { mp.gk = null; g = mercBehind(ox, oy, ou.dir || 'down'); }
+    mercMove(mp, g[0], g[1], now);
+    if (ou.mt && !ou.mr && !mp.mv) mercFace(mp, ou.mt[0], ou.mt[1]);
+    mercDraw(mp, ou.mc | 0, ou.mr, null, ou.mt && !ou.mr ? now - now % 1000 : -1e9, now, V);
+  }
+  /** 전투 턴 응답의 용병 소식 -- 체력/쉬기, 때린 몬스터(그 옆으로 달려감), 피해 숫자, 처치 경험치·드랍. */
+  function mercApply(m) {
+    if (!st) return;
+    st.merc = { t: m.t, name: m.name, atk: m.atk, hp: m.hp, max: m.max, rest: m.rest };
+    var t = performance.now();
+    if (m.row) mobSt[m.row[0]] = mobStOf(m.row, mobSt[m.row[0]]);
+    if (m.tx != null) {
+      if (!merc.tg || merc.tg.x !== m.tx || merc.tg.y !== m.ty) merc.tg = { x: m.tx, y: m.ty, t: t };
+      else merc.tg.t = t;
+      merc.atkT = t;
+      floats.push({ x: m.tx, y: m.ty - 0.3, text: '🛡️' + m.dmg, color: '#ffd27a', t0: t });
+    }
+    if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
+    if (m.down) { merc.tg = null; killFeed('💤 ' + m.name + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
+    if (m.exp) killFeed('+' + m.exp + ' 경험치 (🛡️ ' + m.name + ')', '#9fe0ff');
+    if (m.ores) st.ores = m.ores;
+    if (m.drops) lootDrops(m.drops, m.tx, m.ty);
+    if (m.dropGrade != null || m.dropShard) weaponLoot(m, m.tx, m.ty);
+  }
   function myNick() { var u = (cfg && cfg.user) || ''; var i = u.indexOf('/'); return i > 0 ? u.slice(0, i) : u; }
   /** [2026-11-05] 캐릭터 머리 위 이름 -- 작은 글씨 + 검은 테두리. */
   function nameTag(text, x, y, col) {
@@ -2876,7 +2995,7 @@ var TowerMine = (function () {
         var cur = others[o.id];
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
-        cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; // [2026-10-28] 얼음 여왕 빙결
+        cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; cur.mc = o.mc; cur.mr = !!o.mr; cur.mt = o.mt || null; // [2026-11-05] 용병 // [2026-10-28] 얼음 여왕 빙결
       });
       for (var id in others) if (!seen[id]) delete others[id];
       drawMini(); // [2026-10-28] 미니맵에 다른 유저 위치
@@ -3303,6 +3422,22 @@ var TowerMine = (function () {
   function craft(code) { gearAct('/api/tower-mine-craft?code=' + encodeURIComponent(code)); }
   // [2026-10-28] 광석 전문가(광석 100 -> 괴, 45%) / 보석 세공사(보석 5 -> 세공된 보석, 25%) / 왕도 장인(세공된 보석 -> 최대 내구도 +30, 1000 이상일 때)
   var cityShop = null;
+  function mercHire(t) { // [2026-11-05] 왕도 용병소 -- 더 센 용병으로 바꿔 고용
+    if (busy) return;
+    var it = mercShop && mercShop.list && mercShop.list[t];
+    if (!confirm('🛡️ ' + (it ? it.name : '용병') + '을(를) 고용할까요? 지금 용병은 용병소에 남아요.')) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=hire&tier=' + t).then(function (d) {
+      busy = false;
+      if (!d) return;
+      mercShop = d;
+      if (d.merc) st.merc = d.merc;
+      if (d.ores) st.ores = d.ores;
+      if (d.ok) flashT0 = performance.now();
+      msg(d.message || '완료', 3200);
+      if (smithOpen) renderSmith(smithNpc);
+    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function cityBuy() { // [2026-11-05] 왕도 상인 -- 행운의 주문서
     if (busy) return;
     busy = true;
@@ -3613,6 +3748,7 @@ var TowerMine = (function () {
     for (var oid in others) {
       var ou = others[oid], op = otherPos(ou, now), ox = Math.round(op.x * TS - camX), oy = Math.round(op.y * TS - camY);
       if (ox < -TS || oy < -TS || ox > W || oy > H) continue;
+      if (ou.mc != null && !map.boat) mercDrawOther(ou, op, now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }); // [2026-11-05] 다른 유저의 용병
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
@@ -3645,6 +3781,7 @@ var TowerMine = (function () {
         ctx.fillStyle = '#9fe0ff'; ctx.fillText('💬 ???', hxp + TS / 2, hyp - 6 * dpr);
       }
     }
+    mercDrawMine(now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }); // [2026-11-05] 내 용병
     // 캐릭터
     var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
     ctx.fillStyle = 'rgba(0,0,0,.28)';
@@ -4309,7 +4446,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

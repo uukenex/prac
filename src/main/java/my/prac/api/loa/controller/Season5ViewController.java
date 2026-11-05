@@ -812,6 +812,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-05] 왕도 용병소. */
+    @GetMapping("/api/tower-mine-merc")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineMerc(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "tier", defaultValue = "0") int tier) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineMercShop(userName, action, tier);
+        if ("hire".equals(action) && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 용병 고용", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-11-05] 2환생 특전 -- 검기 1단계 무료(한 번). */
     @GetMapping("/api/tower-mine-aura-gift")
     @ResponseBody
