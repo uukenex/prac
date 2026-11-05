@@ -4190,7 +4190,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         while (MINE_GOSSIP.size() > 30) MINE_GOSSIP.pollLast();
     }
     // [2026-11-05] "NPC 대화 등록 사전 -- 업데이트 내역을 고지하는 대신 사전에 등록해 NPC가 가끔 말하게(자동화)" -- 클래스패스 s5/npc_talk.txt
-    //  ("yyyy-MM-dd|문장", # 주석). 서버가 처음 부를 때 한 번 읽고(배포 = 새 파일), 날짜로부터 MINE_NPC_TALK_DAYS일 안의 줄만 내준다.
+    //  ('@yyyy-MM-dd' 줄 아래에 대사만, # 주석). 서버가 처음 부를 때 한 번 읽고(배포 = 새 파일), 날짜로부터 MINE_NPC_TALK_DAYS일 안의 줄만 내준다.
     static final int MINE_NPC_TALK_DAYS = 14;
     static volatile List<String[]> mineNpcTalkAll = null;
     @Override
@@ -4201,11 +4201,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             try (java.io.InputStream in = S55MineServiceImpl.class.getResourceAsStream("/s5/npc_talk.txt")) {
                 if (in != null) {
                     java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+                    String day = null; // [2026-11-05] "대사에 날짜는 빼줘" -- '@yyyy-MM-dd' 줄이 아래 대사들의 날짜
                     for (String ln; (ln = br.readLine()) != null; ) {
                         ln = ln.trim();
-                        int bar = ln.indexOf('|');
-                        if (ln.isEmpty() || ln.startsWith("#") || bar < 0) continue;
-                        all.add(new String[] { ln.substring(0, bar).trim(), ln.substring(bar + 1).trim() });
+                        if (ln.isEmpty() || ln.startsWith("#")) continue;
+                        if (ln.startsWith("@")) { day = ln.substring(1).trim(); continue; }
+                        if (day != null) all.add(new String[] { day, ln });
                     }
                 }
             } catch (Exception ignore) { }
