@@ -634,7 +634,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 6; // [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게
+    static final int PAYLOAD_REV = 7; // [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -647,6 +647,7 @@ public final class S5MineMap {
             hsh = 31 * hsh + (wind ? 1 : 0) + (underwater ? 2 : 0) + dockX * 3 + dockY * 5;
             for (int[] z : safe) hsh = 31 * hsh + z[0] * 7 + z[1] * 13 + z[2] + cold * 17; // [2026-10-26] 한기/모닥불
             for (int[] cz : citizens) hsh = 31 * hsh + Arrays.hashCode(cz); // [2026-10-27] 왕도 주민
+            if (GUIDE_MAPS.contains(id)) hsh = 31 * hsh + GUIDE_MAPS.hashCode(); // [2026-11-05] 이동 안내원 목적지가 늘면 안내원 있는 맵도 다시 받게(베이스캠프 추가 때 설산 마을 화면이 옛 목록을 들고 있었음)
             hsh = 31 * hsh + PAYLOAD_REV; // [2026-10-28] 맵 정보에 새 항목이 생기면 올린다(화면이 저장해 둔 옛 맵 정보를 다시 받게)
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
         }
