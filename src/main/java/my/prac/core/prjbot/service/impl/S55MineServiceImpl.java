@@ -3944,6 +3944,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int e = 1; e <= 8; e++) l[e] = Math.min(items.getOrDefault(mineAuraKey(false, e), 0), MINE_AURA_MAX);
         m.put("l", l);
         m.put("a", mineAuraActive(items));
+        m.put("gift", items.getOrDefault(MINE_ITEM_AURA_GIFT, 0) > 0 ? 2 : mineRebirth(items) >= MINE_AURA_GIFT_RB ? 1 : 0); // [2026-11-05] 2환생 특전: 0 = 아직, 1 = 받을 수 있음, 2 = 받음
         return m;
     }
     /** 켠 속성마다 [속성, 피해, 상성 1/0] -- 피해 = 공격력(무기 포함) x 단계 x 5%, 상성 x1.5.
@@ -4159,6 +4160,36 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("message", "🌀 검기 사범: " + S5MineMobs.ELEM_NAMES[el] + " 검기 " + nx + "단계를 익혔네! (공격력의 " + nx * MINE_AURA_PCT + "% 속성 피해, 사거리 " + nx + "칸)");
         out.put("aura", mineAuraInfo(items));
         out.put("ores", mineOreList(userName));
+        return out;
+    }
+
+    // [2026-11-05] "2환생 특전으로 검기 1레벨(0에서 1만) 하나 무료 -- 검기 사범에게 환생 특전 받기 버튼 따로" -- 계정당 한 번(AURA_RB_GIFT = 1).
+    //  아직 0단계인 속성(보스가 있어 가르칠 수 있는 속성)만 고를 수 있고, 2단계부터는 원래대로 재료로 배운다.
+    static final String MINE_ITEM_AURA_GIFT = "AURA_RB_GIFT";
+    static final int MINE_AURA_GIFT_RB = 2;
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineAuraGift(String userName, int el) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName); // 같은 유저의 동시 요청은 여기서 줄 선다(두 번 받기 방지)
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "swordmaster")) { out.put("message", "왕도 검기 사범 앞에서만 받을 수 있어요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        if (mineRebirth(items) < MINE_AURA_GIFT_RB) { out.put("message", MINE_AURA_GIFT_RB + "환생을 하면 받을 수 있는 특전이네."); return out; }
+        if (items.getOrDefault(MINE_ITEM_AURA_GIFT, 0) > 0) { out.put("message", "환생 특전은 이미 받았네."); return out; }
+        if (el < 1 || el > 8 || MINE_AURA_BOSS_ITEM[el] == null) { out.put("message", "그 속성의 검기는 아직 가르칠 수 없네."); return out; }
+        int cur = items.getOrDefault(mineAuraKey(false, el), 0), act = items.getOrDefault(mineAuraKey(true, el), 0);
+        if (cur > 0) { out.put("message", "이미 배운 속성이네. 아직 안 배운 속성을 골라 보게."); return out; }
+        dao.upsertMineItem(userName, MINE_ITEM_AURA_GIFT, 1);
+        items.put(MINE_ITEM_AURA_GIFT, 1);
+        dao.upsertMineItem(userName, mineAuraKey(false, el), 1);
+        items.put(mineAuraKey(false, el), 1);
+        if (act == 0) { dao.upsertMineItem(userName, mineAuraKey(true, el), 1); items.put(mineAuraKey(true, el), 1); }
+        out.put("ok", true);
+        out.put("message", "🎁 검기 사범: 환생한 기념이네! " + S5MineMobs.ELEM_NAMES[el] + " 검기 1단계를 공짜로 가르쳐 주지. (공격력의 " + MINE_AURA_PCT + "% 속성 피해, 사거리 1칸)");
+        out.put("aura", mineAuraInfo(items));
         return out;
     }
 

@@ -3152,6 +3152,14 @@ var TowerMine = (function () {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
     var h = npcHead('🌀 ' + (n ? n.name : '검기 사범'), false) + talkBlock(n, n ? n.line : '')
         + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 (2n-1) + 달빛석 (2n-1) + 세공된 바다 보석 5개 · 달빛석 보유 ' + moon + '</div>';
+    // [2026-11-05] 2환생 특전 -- 아직 안 배운 속성 하나를 1단계로 무료(한 번). 속성 버튼을 따로 보여 준다.
+    if (au.gift === 1) {
+      var gb = '';
+      for (var ge = 1; ge <= 8; ge++) if (AURA_BOSS[ge] && !((au.l && au.l[ge]) || 0)) gb += '<button type="button" class="mine-mini-btn" style="color:' + AURA_COL[ge] + '" onclick="TowerMine.auraGift(' + ge + ')">' + ELEM_ICON[ge] + ' ' + ELEM_NAME[ge] + '</button>';
+      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>2환생 특전</b> -- 아직 배우지 않은 검기 하나를 1단계로 무료로 가르쳐 준대요. (한 번만)'
+          + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 속성이 없어요 (모두 이미 배움)</div>') + '</div>';
+    } else if (au.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 2환생 특전 -- 받았어요</div>';
+    else h += '<div class="mine-smith-say" style="opacity:.6">🎁 2환생 특전 -- 2환생을 하면 검기 하나를 1단계로 무료로 받을 수 있어요</div>';
     for (var e = 1; e <= 8; e++) {
       var L = (au.l && au.l[e]) || 0, b = AURA_BOSS[e];
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 검기</span> ' + L + '/5';
@@ -3168,6 +3176,14 @@ var TowerMine = (function () {
       if (d && d.ok) { st.aura = d.aura; if (d.ores) st.ores = d.ores; flashT0 = performance.now(); }
       if (smithOpen) renderSmith(smithNpc);
       msg((d && d.message) || '배우지 못했어요.', 3000);
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function auraGift(e) { // [2026-11-05] 2환생 특전
+    if (!confirm('🎁 2환생 특전(한 번만)으로 ' + ELEM_NAME[e] + ' 검기 1단계를 받을까요?')) return;
+    api('/api/tower-mine-aura-gift?el=' + e).then(function (d) {
+      if (d && d.ok) { st.aura = d.aura; flashT0 = performance.now(); }
+      if (smithOpen) renderSmith(smithNpc);
+      msg((d && d.message) || '받지 못했어요.', 3500);
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function auraSet(e, v) {
@@ -4293,7 +4309,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

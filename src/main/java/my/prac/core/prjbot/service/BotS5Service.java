@@ -240,6 +240,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineAuraSet(String userName, int el, int lv);
     /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기. */
     HashMap<String, Object> mineAuraLearn(String userName, int el);
+    /** [2026-11-05] 2환생 특전 -- 검기 사범에게서 아직 안 배운 속성 하나를 1단계로 무료(한 번). */
+    HashMap<String, Object> mineAuraGift(String userName, int el);
     /** [2026-11-04] 빙결 몸부림 -- n번 채우면 얼음이 깨진다. */
     HashMap<String, Object> mineIceStruggle(String userName, int n);
     HashMap<String, Object> mineGoVillage(String userName);
