@@ -1466,12 +1466,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> hits = new ArrayList<>();
         List<long[]> mobs = new ArrayList<>();
         String killerName = null;
-        // [2026-11-05] "몬스터가 겹쳐 오지 않게" -- 나를 쫓는 몬스터끼리 같은 칸에 서지 않는다(지금 붙잡힌 칸들, 보스 2x2 제외)
-        java.util.Set<Integer> occ = new java.util.HashSet<>();
-        for (Integer oid : e.mobs.keySet()) {
-            MobState os = oid >= 0 && oid < map.mobs().size() ? MINE_MOB_STATE.get(mineMobKey(map, oid)) : null;
-            if (os != null && os.frozenUntil > now && os.deadUntil <= now) occ.add(os.fy * map.w + os.fx);
-        }
+        // [2026-11-05] "검기를 제대로 쓰려면 몬스터 겹침이 필요" -- 쫓아오는 몬스터끼리 같은 칸에 겹쳐 설 수 있다(한 줄 검기에 여럿이 함께 맞게). 같은 날 잠깐 막았다가 되돌림.
         for (Integer id : new ArrayList<>(e.mobs.keySet())) {
             MobState s = id >= 0 && id < map.mobs().size() ? MINE_MOB_STATE.get(mineMobKey(map, id)) : null;
             if (s == null) { e.mobs.remove(id); continue; }
@@ -1505,7 +1500,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         boolean moved = false;
                         for (int[] t : tries) {
                             int nx = s.fx + t[0], ny = s.fy + t[1];
-                            if ((t[0] != 0 || t[1] != 0) && map.walkable(nx, ny) && !(nx == x && ny == y) && (type.boss || !occ.contains(ny * map.w + nx))) { occ.remove(s.fy * map.w + s.fx); s.fx = nx; s.fy = ny; occ.add(ny * map.w + nx); moved = true; break; }
+                            if ((t[0] != 0 || t[1] != 0) && map.walkable(nx, ny) && !(nx == x && ny == y)) { s.fx = nx; s.fy = ny; moved = true; break; }
                         }
                         if (!moved || Math.abs(s.fx - x) + Math.abs(s.fy - y) <= 1) break;
                     }

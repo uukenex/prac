@@ -3403,6 +3403,7 @@ var TowerMine = (function () {
         if (hq < 200) mx += Math.round(Math.sin(hq / 16) * 2.5 * scale * (1 - hq / 200)); // [2026-11-03] 맞은 몬스터 흔들림
         var bob = ty.kind === 'flyer' ? Math.sin(now / 260 + bid) * 2 * scale : Math.abs(Math.sin(now / 420 + bid)) * scale;
         var ms = mobSt[mb.id];
+        if (ms && ms.fu > nowSrv() && !ty.boss) { mx += ((mb.id % 5) - 2) * scale; my += (((mb.id / 5) | 0) % 3 - 1) * scale; } // [2026-11-05] 쫓아오며 겹친 몬스터 -- 조금씩 비껴 그려 여러 마리인 게 보이게
         if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
         ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
         if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
