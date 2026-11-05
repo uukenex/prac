@@ -2719,11 +2719,12 @@ var TowerMine = (function () {
   // [2026-10-27] 왕도 주민 -- "왕도 내 움직이는 NPC(말풍선으로만 말하고 대화 창 없음)". 서버가 준 길(칸 목록)을 시각으로 왕복해서
   //  모든 화면에서 같은 자리에 보인다. 길을 막지 않고(지나갈 수 있음), 7초마다 셋 중 하나꼴로 3.6초 말풍선. 외형은 번호로 정해진다.
   // [2026-11-05] 왕도 주민 소문(유저 이야기) -- 왕도에 있는 동안 1분마다 서버에서 받아 온다
-  var gossip = [], gossipT = -1e9;
+  // [2026-11-05] NPC 대화 사전(업데이트 소식, updLines) -- 어느 맵이든 1분마다 함께 받아, 왕도 주민과 마을 NPC가 가끔 말한다
+  var gossip = [], updLines = [], gossipT = -1e9;
   function gossipTick(now) {
-    if (!map || map.id !== 'city' || now - gossipT < 60000) return;
+    if (!map || now - gossipT < 60000) return;
     gossipT = now;
-    fetch(cfg.base + '/api/tower-mine-gossip').then(function (r) { return r.json(); }).then(function (d) { if (d && d.lines) gossip = d.lines; }).catch(function () { });
+    fetch(cfg.base + '/api/tower-mine-gossip').then(function (r) { return r.json(); }).then(function (d) { if (d && d.lines) gossip = d.lines; if (d && d.updates) updLines = d.updates; }).catch(function () { });
   }
   function myNick() { var u = (cfg && cfg.user) || ''; var i = u.indexOf('/'); return i > 0 ? u.slice(0, i) : u; }
   /** [2026-11-05] 캐릭터 머리 위 이름 -- 작은 글씨 + 검은 테두리. */
@@ -3589,7 +3590,7 @@ var TowerMine = (function () {
         if (cxp < -TS || cyp < -TS * 2 || cxp > W || cyp > H) continue;
         ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(cxp + 3 * scale, cyp + 13 * scale, 10 * scale, 3 * scale);
         ctx.drawImage(citSprite(ci, cp.dir, cp.moving ? 1 + Math.floor(now / 170) % 2 : 0), cxp, cyp - 3 * scale, TS, TS);
-        if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) { var gl = gossip.length && mix(ci + 3, cwin) % 3 !== 0 ? gossip : CIT_LINES; drawBubble(gl[mix(ci + 7, cwin) % gl.length], cxp + TS / 2, cyp - 6 * scale); } // [2026-11-05] 셋 중 둘은 유저 소문
+        if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) { var gm = mix(ci + 3, cwin) % 3, gl = gm === 1 && updLines.length ? updLines : gm !== 0 && gossip.length ? gossip : CIT_LINES; drawBubble(gl[mix(ci + 7, cwin) % gl.length], cxp + TS / 2, cyp - 6 * scale); } // [2026-11-05] 셋 중 하나씩 유저 소문 / 업데이트 소식 / 기본 말
       }
     }
     // [2026-10-24] 다른 유저(이름 없이) -- 1초마다 받은 칸 사이를 걸어서, 인사하면 말풍선
@@ -3607,6 +3608,16 @@ var TowerMine = (function () {
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
       if (ou.n) nameTag(ou.n, ox + TS / 2, oy - 4 * scale, '#ffffff'); // [2026-11-05] 닉네임
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - (ou.n ? 9 : 6) * scale);
+    }
+    // [2026-11-05] NPC 대화 사전 -- 화면 안의 NPC(상자/노점 제외)가 9초마다 넷 중 하나꼴로 업데이트 소식을 말풍선으로
+    if (updLines.length && map.npcs) {
+      var tu = nowSrv(), uw = Math.floor(tu / 9000);
+      if (tu % 9000 < 4500) map.npcs.forEach(function (np, ni) {
+        if (/chest|stall|blackmarket/.test(np.kind) || mix(ni + 11, uw) % 4 !== 0) return;
+        var nxp = Math.round(np.x * TS - camX), nyp = Math.round(np.y * TS - camY);
+        if (nxp < -TS || nyp < -TS * 2 || nxp > W || nyp > H) return;
+        drawBubble(updLines[mix(ni + 5, uw) % updLines.length], nxp + TS / 2, nyp - 6 * scale);
+      });
     }
     if (hermitOn()) { // [2026-10-30] 은둔한 대장장이
       var hxp = Math.round(hermit.x * TS - camX), hyp = Math.round(hermit.y * TS - camY);

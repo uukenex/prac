@@ -4189,6 +4189,36 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_GOSSIP.addFirst(new Object[] { System.currentTimeMillis(), text });
         while (MINE_GOSSIP.size() > 30) MINE_GOSSIP.pollLast();
     }
+    // [2026-11-05] "NPC 대화 등록 사전 -- 업데이트 내역을 고지하는 대신 사전에 등록해 NPC가 가끔 말하게(자동화)" -- 클래스패스 s5/npc_talk.txt
+    //  ("yyyy-MM-dd|문장", # 주석). 서버가 처음 부를 때 한 번 읽고(배포 = 새 파일), 날짜로부터 MINE_NPC_TALK_DAYS일 안의 줄만 내준다.
+    static final int MINE_NPC_TALK_DAYS = 14;
+    static volatile List<String[]> mineNpcTalkAll = null;
+    @Override
+    public List<String> mineNpcTalk() {
+        List<String[]> all = mineNpcTalkAll;
+        if (all == null) {
+            all = new ArrayList<>();
+            try (java.io.InputStream in = S55MineServiceImpl.class.getResourceAsStream("/s5/npc_talk.txt")) {
+                if (in != null) {
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8));
+                    for (String ln; (ln = br.readLine()) != null; ) {
+                        ln = ln.trim();
+                        int bar = ln.indexOf('|');
+                        if (ln.isEmpty() || ln.startsWith("#") || bar < 0) continue;
+                        all.add(new String[] { ln.substring(0, bar).trim(), ln.substring(bar + 1).trim() });
+                    }
+                }
+            } catch (Exception ignore) { }
+            mineNpcTalkAll = all;
+        }
+        java.time.LocalDate today = java.time.LocalDate.now(KST);
+        List<String> out = new ArrayList<>();
+        for (String[] e : all) {
+            try { if (!java.time.LocalDate.parse(e[0]).plusDays(MINE_NPC_TALK_DAYS).isBefore(today) && !e[1].isEmpty()) out.add(e[1]); } catch (Exception ignore) { }
+        }
+        return out;
+    }
+
     @Override
     public List<String> mineGossip() {
         long now = System.currentTimeMillis();

@@ -313,6 +313,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineCityShop(String userName, String action);
     /** [2026-11-05] 왕도 주민 소문(유저 이야기) -- 최근 사건 + 환생 임박. */
     List<String> mineGossip();
+    /** [2026-11-05] NPC 대화 사전(s5/npc_talk.txt)의 최근 업데이트 소식. */
+    List<String> mineNpcTalk();
     HashMap<String, Object> mineGemCut(String userName, int gemIdx, int times);
     HashMap<String, Object> mineArtisan(String userName, int gemIdx);
 

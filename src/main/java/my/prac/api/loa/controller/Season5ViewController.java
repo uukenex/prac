@@ -965,6 +965,7 @@ public class Season5ViewController {
     public ResponseEntity<?> apiTowerMineGossip() {
         HashMap<String, Object> out = new HashMap<>();
         out.put("lines", s5Service.mineGossip());
+        out.put("updates", s5Service.mineNpcTalk()); // [2026-11-05] NPC 대화 사전
         return ResponseEntity.ok(out);
     }
 
