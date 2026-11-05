@@ -3686,12 +3686,14 @@ var TowerMine = (function () {
   /** [2026-11-04] 이 기기에서 고른 통신 방식(localStorage tw-mine-net = ws/http), 없으면 서버 설정(st.ws, TBOT_S5_CONFIG.S55_WS). */
   function netMode() {
     var v = null;
-    try { v = localStorage.getItem('tw-mine-net'); } catch (e) { }
+    if (NET_DV === 0 && wsDirect()) return 'ws'; // [2026-11-05] PC는 빠른 길(서울 CloudFront WebSocket)로 고정 -- HTTP는 Cloudflare 해외 경유라 항상 느림(소켓이 끊기면 그때만 HTTP로 대신)
+    try { v = localStorage.getItem('tw-mine-net2'); } catch (e) { } // [2026-11-05] 예전에 고른 HTTP 선택(tw-mine-net)은 한 번 초기화
     return v === 'ws' || v === 'http' ? v : (st && (st.ws || wsDirect()) ? 'ws' : 'http'); // [2026-11-04] 직접 주소가 있으면 기본 WebSocket
   }
   function netToggle() {
+    if (NET_DV === 0 && wsDirect()) { msg('📶 PC는 빠른 WebSocket으로 고정돼 있어요.', 2200); return; } // [2026-11-05]
     var next = netMode() === 'ws' ? 'http' : 'ws';
-    try { localStorage.setItem('tw-mine-net', next); } catch (e) { }
+    try { localStorage.setItem('tw-mine-net2', next); } catch (e) { }
     pingHist = [];
     if (next === 'ws') { wsRetry = 0; wsOpen(); } else wsClose();
     msg(next === 'ws' ? '📶 통신 방식: WebSocket' : '📶 통신 방식: HTTP (예전 방식)', 2200);
