@@ -480,7 +480,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.add(o);
         }
         // [2026-10-28] 특수 재료 -- 빙석(19), 성유물 조각(30), 대주교의 인장(31)
-        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE };
+        String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.THUNDER_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
@@ -699,6 +699,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
         out.put("noDig", !map.hasOre() && !map.veinMine());
+        out.put("thunder", S5MineMap.WESTROAD.equals(map.id)); // [2026-11-05] 마물의 숲 입구 -- 화면이 1초마다 환경 턴(천둥 황소 장판/전체 감전)
         out.put("vein", map.veinMine()); // [2026-10-28] 설산 동굴 -- 앞의 얼음 광맥을 연속 채광
         out.put("noMap", map.noMap()); // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳 // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
         if (map.outdoor()) { // [2026-11-05] "모든 필드에 밤과 낮" -- 바깥 맵은 화면이 같은 시각으로 밤을 어둡게
@@ -982,6 +983,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long id = Long.parseLong(e.getKey().substring(prefix.length()));
             boolean minion = id < map.mobs().size() && S5MineMobs.TYPES.get(map.mobs().get((int) id).type).minion;
             S5MineMobs.Type bt = id < map.mobs().size() ? S5MineMobs.TYPES.get(map.mobs().get((int) id).type) : null;
+            if (bt != null && mineHidden(map, bt, now)) continue; // [2026-11-05] 숨은 마물은 화면이 hideUntil로 지운다(1,400마리 줄을 매초 보내지 않게)
             synchronized (s) {
                 if (bt != null && bt.boss && s.deadUntil <= now) { // [2026-10-29] 보스 -- 인식이 풀리면 서서히 회복
                     int bmax = S5MineMobs.hp(bt, map.mobs().get((int) id).rank);
@@ -1002,6 +1004,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             list.add(new long[] { bid, 0, Long.MAX_VALUE / 2, 0, 0, 0 });
         }
         out.put("mobs", list);
+        if (S5MineMap.WESTROAD.equals(map.id) && mineThunderOn(now)) out.put("hideUntil", mineThunderUntil); // [2026-11-05] 천둥 황소 -- 이때까지 마물(보스 제외)은 없음
         return out;
     }
 
@@ -1102,8 +1105,161 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return false;
     }
 
+    // ---- [2026-11-05] 마물의 숲 입구 천둥 황소 -- "이번 밤 동안 500마리를 잡으면 모든 몬스터가 사라지고 맵 가운데 번개의 힘을 받은 소 보스, 번개의 심장".
+    //  밤마다 마물 처치 수를 모두 함께 센다(서버 메모리). MINE_THUNDER_NEED에 닿으면 마물은 모두 숨고(mineHidden) 황소가 MINE_THUNDER_BOSS_MS 동안 나타난다.
+    //  쓰러뜨리거나 시간이 지나면 마물이 돌아온다. 한 밤에 한 번. 스킬(mineThunderSkills): 전광석화(멀면 딱 붙고 가까우면 밀쳐냄), 멀면 전기창(맞은 자리 3x3 폭발),
+    //  붙어 있으면 밀쳐내고 근접 장판, 그리고 전체 맵 낙뢰(감전 스턴 -- 환경 턴).
+    static final int MINE_THUNDER_NEED = 500;
+    static final long MINE_THUNDER_BOSS_MS = 20 * 60_000L;
+    static final Object MINE_THUNDER_LOCK = new Object();
+    static volatile long mineThunderNight = Long.MIN_VALUE, mineThunderDoneNight = Long.MIN_VALUE, mineThunderUntil = 0;
+    static volatile boolean mineThunderKilled = false;
+    static int mineThunderKills = 0;
+    static boolean mineThunderOn(long now) { return now < mineThunderUntil && !mineThunderKilled; }
+    /** 황소가 나와 있는 동안 마물의 숲 입구 마물(보스 제외)은 없는 것으로 본다. */
+    static boolean mineHidden(S5MineMap map, S5MineMobs.Type t, long now) { return S5MineMap.WESTROAD.equals(map.id) && !t.boss && mineThunderOn(now); }
+
+    void mineThunderKill(S5MineMap map, S5MineMobs.Type t, long now) {
+        if (!S5MineMap.WESTROAD.equals(map.id) || t.boss || !S5MineMap.night(now)) return;
+        long ni = S5MineMap.nightIndex(now);
+        synchronized (MINE_THUNDER_LOCK) {
+            if (ni == mineThunderDoneNight || mineThunderOn(now)) return;
+            if (ni != mineThunderNight) { mineThunderNight = ni; mineThunderKills = 0; }
+            if (++mineThunderKills < MINE_THUNDER_NEED) return;
+            mineThunderDoneNight = ni;
+            mineThunderKilled = false;
+            mineThunderUntil = now + MINE_THUNDER_BOSS_MS;
+        }
+        S5MineMap.Mob boss = mineBossOf(map);
+        if (boss != null) {
+            S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
+            int bmax = S5MineMobs.hp(bt, boss.rank);
+            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bmax));
+            synchronized (bs) { bs.respawn(bmax); bs.target = null; bs.frozenUntil = 0; bs.fx = boss.x; bs.fy = boss.y; bs.regenAt = now; bs.nearAt = now; bs.lastHitAt = 0; }
+        }
+        MINE_SHOCK.clear();
+        MINE_THUNDER_NEXT.clear();
+        mineThunderStormAt = 0;
+        mineThunderStormNext = now + 15_000L;
+        int bid = boss == null ? -1 : boss.id;
+        for (MineEngage e : MINE_ENGAGE.values()) if (map.version().equals(e.mapVer)) e.mobs.keySet().removeIf(id -> id != bid); // 싸우던 마물도 사라진다
+    }
+
+    /** 황소를 쓰러뜨렸다 -- 마물이 곧(쓰러져 있던 것도 3초 안에) 돌아온다. */
+    void mineThunderEnd(S5MineMap map, long now) {
+        mineThunderKilled = true;
+        MINE_SHOCK.clear();
+        MINE_THUNDER_NEXT.clear();
+        String prefix = map.version() + ":";
+        for (java.util.Map.Entry<String, MobState> en : MINE_MOB_STATE.entrySet()) {
+            if (!en.getKey().startsWith(prefix)) continue;
+            MobState ms = en.getValue();
+            synchronized (ms) { if (ms.deadUntil > now + 3_000L && ms.deadUntil < Long.MAX_VALUE / 4) ms.deadUntil = now + 3_000L; }
+        }
+    }
+
+    /** 천둥 황소 스킬 타이머(유저마다 {전광석화, 전기창, 밀쳐내기+장판}), 전기 장판 칸(y * w + x -> 사라지는 시각), 전체 낙뢰 시각. */
+    static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_THUNDER_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.ConcurrentHashMap<Integer, Long> MINE_SHOCK = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_THUNDER_STORM_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
+    static volatile long mineThunderStormAt = 0, mineThunderStormNext = 0;
+    static final long MINE_SPEAR_ZONE_MS = 1_500L, MINE_FIELD_ZONE_MS = 3_000L, MINE_STORM_STUN_MS = 1_500L;
+    static final double MINE_DASH_MULT = 0.8, MINE_SPEAR_MULT = 1.3, MINE_SLAM_MULT = 1.0, MINE_ZONE_MULT = 0.5, MINE_STORM_MULT = 0.6;
+
+    static List<Integer> mineShockCells(long now) {
+        MINE_SHOCK.entrySet().removeIf(en -> en.getValue() <= now);
+        return new ArrayList<>(MINE_SHOCK.keySet());
+    }
+
+    /** 보스(2x2, 왼위 bx,by)에서 멀어지는 쪽으로 플레이어를 최대 n칸 민다(막히면 그 앞까지). */
+    static int[] mineThunderKnock(S5MineMap map, int bx, int by, int x, int y, int n, int walk) {
+        double cx = bx + 0.5, cy = by + 0.5;
+        int dx = (int) Math.signum(x - cx), dy = (int) Math.signum(y - cy);
+        if (dx == 0 && dy == 0) dx = RND.nextBoolean() ? 1 : -1;
+        int px = x, py = y;
+        for (int i = 0; i < n; i++) {
+            int[][] tries = { { dx, dy }, { dx, 0 }, { 0, dy } };
+            boolean moved = false;
+            for (int[] t : tries) {
+                if (t[0] == 0 && t[1] == 0) continue;
+                int nx = px + t[0], ny = py + t[1];
+                if (mineWalk(map, nx, ny, walk) && !(nx >= bx && nx <= bx + 1 && ny >= by && ny <= by + 1)) { px = nx; py = ny; moved = true; break; }
+            }
+            if (!moved) break;
+        }
+        return new int[] { px, py };
+    }
+
+    /** 전광석화로 딱 붙을 자리(보스 2x2의 왼위 칸) -- 플레이어 바로 옆. */
+    static int[] mineThunderBeside(S5MineMap map, int x, int y, int bx, int by) {
+        int[][] c = { { x + 1, y }, { x - 2, y }, { x, y + 1 }, { x, y - 2 }, { x + 1, y - 1 }, { x - 2, y - 1 }, { x - 1, y + 1 }, { x - 1, y - 2 } };
+        int[] best = null;
+        int bd = Integer.MAX_VALUE;
+        for (int[] q : c) {
+            if (!map.walkable(q[0], q[1]) || !map.walkable(q[0] + 1, q[1] + 1)) continue;
+            int d = Math.abs(q[0] - bx) + Math.abs(q[1] - by);
+            if (d < bd) { bd = d; best = q; }
+        }
+        return best;
+    }
+
+    int mineThunderSkills(String userName, S5MineMap map, MobState s, S5MineMap.Mob mb, int x, int y, int dist, Map<String, Integer> items, long now,
+            List<HashMap<String, Object>> hits, HashMap<String, Object> out) {
+        S5MineMobs.Type type = S5MineMobs.TYPES.get(mb.type);
+        long[] nx = MINE_THUNDER_NEXT.computeIfAbsent(userName, u -> new long[] { now + 3_000L, now + 4_500L, now + 2_000L });
+        int atk = S5MineMobs.atk(type, mb.rank), dmg = 0;
+        HashMap<String, Object> h = new HashMap<>();
+        h.put("mobId", mb.id);
+        h.put("fx", s.fx);
+        h.put("fy", s.fy);
+        if (now >= nx[0]) { // 전광석화
+            nx[0] = now + 9_000L + RND.nextInt(4_000);
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_DASH_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            h.put("thunder", "dash");
+            if (dist >= 3) { // 멀면 번개처럼 달려와 딱 붙는다
+                int[] c = mineThunderBeside(map, x, y, s.fx, s.fy);
+                if (c != null) { s.fx = c[0]; s.fy = c[1]; s.lastMoveAt = now; }
+                h.put("pull", true);
+            } else { // 가까우면 들이받아 밀쳐낸다
+                int[] k = mineThunderKnock(map, s.fx, s.fy, x, y, 4, mineWalkMode(items));
+                out.put("knockX", k[0]);
+                out.put("knockY", k[1]);
+                h.put("push", true);
+            }
+            h.put("tx", s.fx);
+            h.put("ty", s.fy);
+            h.put("dmg", d);
+            hits.add(h);
+            dmg += d;
+        } else if (dist >= 2 && now >= nx[1]) { // 전기창 -- 맞은 자리 3x3이 잠깐 폭발 장판
+            nx[1] = now + 6_000L + RND.nextInt(3_000);
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SPEAR_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) if (map.inside(lx, ly)) MINE_SHOCK.merge(ly * map.w + lx, now + MINE_SPEAR_ZONE_MS, Math::max);
+            h.put("thunder", "spear");
+            h.put("dmg", d);
+            hits.add(h);
+            dmg += d;
+        } else if (dist <= 1 && now >= nx[2]) { // 붙어 있으면 밀쳐내고 근접 장판(보스 둘레 반지름 3)
+            nx[2] = now + 8_000L + RND.nextInt(3_000);
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SLAM_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            int[] k = mineThunderKnock(map, s.fx, s.fy, x, y, 3, mineWalkMode(items));
+            out.put("knockX", k[0]);
+            out.put("knockY", k[1]);
+            for (int ly = s.fy - 3; ly <= s.fy + 4; ly++) for (int lx = s.fx - 3; lx <= s.fx + 4; lx++)
+                if (map.inside(lx, ly) && Math.abs(lx - s.fx - 0.5) + Math.abs(ly - s.fy - 0.5) <= 4.5) MINE_SHOCK.merge(ly * map.w + lx, now + MINE_FIELD_ZONE_MS, Math::max);
+            h.put("thunder", "slam");
+            h.put("dmg", d);
+            hits.add(h);
+            dmg += d;
+        }
+        if (out.containsKey("knockX")) dao.updateMinePos(userName, map.id, (Integer) out.get("knockX"), (Integer) out.get("knockY"), now);
+        if (!MINE_SHOCK.isEmpty()) out.put("shock", mineShockCells(now));
+        return dmg;
+    }
+
     /** 보스(type)가 쓰러진 지 2시간이 안 됐는지. 보스가 아니면 false. */
     boolean mineBossDead(int type) {
+        if (type == S5MineMobs.THUNDER_BOSS_TYPE) return !mineThunderOn(System.currentTimeMillis()); // [2026-11-05] 밤 마물 500마리 뒤에만
         String key = mineBossKey(type);
         return key != null && mineBossDeadKey(key);
     }
@@ -1260,7 +1416,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-10-28] "레벨 차이가 20 이상 나면 선공, 인식 범위 6칸" -- 몬스터 레벨(1+4(단계-1))이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(보스/수하 제외)
         for (S5MineMap.Mob mb : map.mobs()) {
             S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
-            if (mt.boss || mt.minion || !mineMobPreempts(mt, lv) || (e != null && e.mobs.containsKey(mb.id))) continue;
+            if (mt.boss || mt.minion || !mineMobPreempts(mt, lv) || (e != null && e.mobs.containsKey(mb.id)) || mineHidden(map, mt, now)) continue;
             MobState cur = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
             int pr = minePreemptRange(mt); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
             if (cur == null && Math.abs(mb.x - x) + Math.abs(mb.y - y) > pr + 1) continue; // 상태가 없으면 집 칸 주변 1칸만 돌아다닌다(빠른 거르기)
@@ -1315,6 +1471,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s == null) { e.mobs.remove(id); continue; }
             S5MineMobs.Type type = S5MineMobs.TYPES.get(map.mobs().get(id).type);
             synchronized (s) {
+                if (mineHidden(map, type, now)) { e.mobs.remove(id); continue; } // [2026-11-05] 천둥 황소가 나와 마물이 숨었다
                 if (s.deadUntil > now) { e.mobs.remove(id); mobs.add(mineMobRow(id, s)); continue; } // 누가 쓰러뜨렸다
                 if (s.frozenUntil <= now) { // 한동안 소식이 없어 돌아다니던 몬스터 -- 지금 칸에서 다시 붙잡는다
                     s.target = null;
@@ -1350,7 +1507,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 }
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
-                if (type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
+                boolean thunderBoss = map.mobs().get(id).type == S5MineMobs.THUNDER_BOSS_TYPE;
+                if (thunderBoss && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
+                    dmgSum += mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
+                    if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
+                    dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1));
+                }
+                if (!thunderBoss && type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
@@ -1781,6 +1944,28 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 보스 보상: 25% 별빛석 1개, 아니면 미스릴 3~5개 + 30% 다이아몬드. */
     /** [2026-10-28] 용암 거신 보상: 달빛석 2(반드시) + 다도해 바다 보석 2개(무작위) + 50% 다이아몬드 1. */
+    /** [2026-11-05] 천둥 황소 보상 -- 번개의 심장 1개(꼭), 달빛석 3, 바다 보석 3, 다이아몬드 1. */
+    List<HashMap<String, Object>> mineThunderDrops(String userName, StringBuilder msg) {
+        List<HashMap<String, Object>> drops = new ArrayList<>();
+        msg.insert(0, "👑 천둥 황소를 쓰러뜨렸어요! ");
+        dao.addUserOre(userName, S5MineMap.THUNDER_HEART_CODE, 1);
+        drops.add(mineDrop(S5MineMap.THUNDER_HEART_GRADE, S5MineMap.THUNDER_HEART_NAME, 1));
+        msg.append(" · ⚡ ").append(S5MineMap.THUNDER_HEART_NAME).append(" 1개!!");
+        dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 3);
+        drops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 3));
+        msg.append(" · 🌙 ").append(S5MineMap.MOON_STONE_NAME).append(" 3개");
+        for (int i = 0; i < 3; i++) {
+            int gi = RND.nextInt(S5MineMap.SEA_GEM_CODES.length);
+            dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[gi], 1);
+            drops.add(mineDrop(S5MineMap.SEA_GEM_GRADE_BASE + gi, S5MineMap.SEA_GEM_NAMES[gi], 1));
+            msg.append(" · 💎 ").append(S5MineMap.SEA_GEM_NAMES[gi]).append(" 1개");
+        }
+        dao.addUserOre(userName, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 1);
+        drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + S5MineMap.GEM_DIAMOND, S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], 1));
+        msg.append(" · 💎 다이아몬드 1개");
+        return drops;
+    }
+
     List<HashMap<String, Object>> mineLavaDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
         if (S5MineMap.archiDay(System.currentTimeMillis()) && mineTokenRoll(userName, S5MineMap.VOLCANO_HEART_CODE)) { // [2026-10-30] "낮에 죽이면 화산의 심장(확률)"
@@ -1885,6 +2070,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         java.util.Set<String> bossHitters = null;
         synchronized (s) {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
+            if (mineHidden(map, type, now) || (mob.type == S5MineMobs.THUNDER_BOSS_TYPE && mineBossDead(mob.type))) { out.put("message", "⚡ 마물이 숲 속으로 사라졌어요."); out.put("mobDeadUntil", Math.max(now + 3_000L, mineThunderUntil)); return out; } // [2026-11-05] 숨은 마물 / 나오지 않은 천둥 황소
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
             if (type.boss) mineBossRegen(s, mobMax, now, map, mob); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
@@ -2072,6 +2258,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int levelUp = 0;
         if (killed) {
             kills = 1;
+            mineThunderKill(map, type, now); // [2026-11-05] 밤 마물 처치 수
+            if (mob.type == S5MineMobs.THUNDER_BOSS_TYPE) { // [2026-11-05] 천둥 황소 처치 -- 마물이 돌아온다
+                mineThunderEnd(map, now);
+                out.put("shock", Collections.emptyList());
+                out.put("bossKilled", true);
+            }
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
             long baseExp = mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
@@ -2144,7 +2336,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
             out.put("drops", type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
-                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
+                    : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
             out.put("ores", mineOreList(userName));
         } else {
             counter = mineCoatHit(items, counter); // [2026-10-26] 방한 외투 -- 받는 피해 2배([2026-10-28] 갑옷 1.5배)
@@ -3696,10 +3888,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_AURA_MAX = 5, MINE_AURA_PCT = 5; // [2026-11-04] "10%씩 말고 5%씩(속성별 최대 25%)"
     /** [2026-11-04] "달빛석 + 보스 처치 재화로 검기 강화" -- 속성별 보스 드랍템(땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장,
      *  어둠 = 타락한 대주교의 인장, 나머지는 보스가 생기면). n단계를 배우려면 그 드랍템 2n-1개 + 달빛석 2n-1개(1/3/5/7/9). */
-    static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, null, null, S5MineMap.ICE_HEART_CODE, null, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
+    static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, S5MineMap.THUNDER_HEART_CODE /* [2026-11-05] 번개 = 천둥 황소 */, null, S5MineMap.ICE_HEART_CODE, null, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
     static int mineAuraCost(int lv) { return 2 * lv - 1; }
     /** [2026-11-04] "달빛석뿐 아니라 세공된 바다의 보석도" -- 속성별 세공 바다 보석(S5MineMap.seaCutCode 번호): 땅 = 자수정, 얼음 = 진주, 불 = 산호석, 어둠 = 흑진주. 같은 개수(2n-1). */
-    static final int[] MINE_AURA_SEA = { -1, 2, -1, -1, 0, -1, 1, 4, -1 };
+    static final int[] MINE_AURA_SEA = { -1, 2, 3, -1, 0, -1, 1, 4, -1 }; // [2026-11-05] 번개 = 세공 바다 보석 3번
     static final int MINE_AURA_SEA_QTY = 5; // [2026-11-04] "세공 바다 보석은 2n-1 말고 고정 5개"
     static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
     static int[] mineAuraActive(Map<String, Integer> items) {
@@ -3760,7 +3952,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (S5MineMap.Mob om : map.mobs()) {
             if (om.id == skipMob) continue;
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
-            if (ot.clone || mineBossDead(om.type)) continue;
+            if (ot.clone || mineBossDead(om.type) || mineHidden(map, ot, now)) continue; // [2026-11-05] 천둥 황소 동안 마물은 숨음
             MobState s0 = MINE_MOB_STATE.get(mineMobKey(map, om.id));
             if (ot.minion && s0 == null) continue; // 불려 나오지 않은 수하
             if (s0 != null && s0.deadUntil > now) continue; // 쓰러져 있는 몬스터는 자리를 차지하지 않는다
@@ -3819,6 +4011,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (dead) {
                 m.put("killed", true);
                 kills++;
+                mineThunderKill(map, ot, now); // [2026-11-05] 밤 마물 처치 수
                 long be = mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
@@ -4050,7 +4243,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("coatDef", def);
         out.put("safe", safe);
         boolean iceFrozen = S5MineMap.PEAK.equals(map.id) && mineIceTick(userName, map, now, out); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결/얼음땡(언 동안 한기 없음)
-        if (map.cold() <= 0 && !raid && !hot) { MINE_COLD.remove(userName); return out; }
+        boolean thunderMap = S5MineMap.WESTROAD.equals(map.id); // [2026-11-05] 마물의 숲 입구 -- 천둥 황소 장판/전체 낙뢰
+        if (map.cold() <= 0 && !raid && !hot && !thunderMap) { MINE_COLD.remove(userName); return out; }
         if (map.cold() > 0) out.put("nextBlizzardAt", S5MineMap.nextBlizzard(map.id, now));
         ColdState cs = MINE_COLD.computeIfAbsent(userName, u -> new ColdState());
         long from = map.version().equals(cs.mapVer) ? Math.max(cs.at, now - MINE_COLD_MAX_GAP_MS) : now;
@@ -4064,6 +4258,29 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 double drain = cap * heatRate / 100.0 * Math.max(0, now - from) / 1000.0 + cs.frac; // 환생 경감 적용된 비율
                 heatDmg = (int) drain;
                 cs.frac = drain - heatDmg;
+            }
+        }
+        int shockDmg = 0, stormDmg = 0;
+        if (thunderMap) { // [2026-11-05] 천둥 황소 -- 전기 장판 위면 초당 피해, 전체 낙뢰(감전 스턴)
+            List<Integer> shock = mineShockCells(now);
+            out.put("shock", shock);
+            if (mineThunderOn(now)) {
+                out.put("thunderOn", true);
+                int tatk = S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).atk();
+                if (shock.contains(y * map.w + x)) shockDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_ZONE_MULT)));
+                synchronized (MINE_THUNDER_LOCK) {
+                    if (mineThunderStormNext <= 0) mineThunderStormNext = now + 15_000L;
+                    if (now >= mineThunderStormNext) { mineThunderStormAt = now; mineThunderStormNext = now + 18_000L + RND.nextInt(6_000); }
+                }
+                out.put("stormNext", mineThunderStormNext);
+                Long seen = MINE_THUNDER_STORM_SEEN.get(userName);
+                if (mineThunderStormAt > 0 && now - mineThunderStormAt < 3_000L && (seen == null || seen < mineThunderStormAt)) {
+                    MINE_THUNDER_STORM_SEEN.put(userName, mineThunderStormAt);
+                    MINE_STUN.put(userName, now + MINE_STORM_STUN_MS);
+                    stormDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_STORM_MULT)));
+                    out.put("storm", mineThunderStormAt);
+                    out.put("stunUntil", now + MINE_STORM_STUN_MS);
+                }
             }
         }
         int lavaDmg = 0;
@@ -4103,8 +4320,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (ng <= now) { out.put("gasAt", ng); gasDmg = (int) Math.min(Integer.MAX_VALUE / 4, atk * 1.2); }
             }
         }
-        if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg <= 0) return out;
-        int envDmg = coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg;
+        if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg <= 0) return out;
+        int envDmg = coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg;
+        if (shockDmg > 0) out.put("shockDmg", shockDmg);
+        if (stormDmg > 0) out.put("stormDmg", stormDmg);
         boolean save = mineHpFlushDue(row, now) || mineHpNow(row, now, lock, rb) - envDmg <= 0; // [2026-11-03] 체력만 바뀌면 메모리에, 쓰러지거나 15초마다 DB
         HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : row; // 같은 유저의 공격/전투 턴과 겹치지 않게 잠그고 다시 읽는다
         if (lrow == null) lrow = row;
@@ -4118,13 +4337,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (fireDmg > 0) out.put("fireDmg", fireDmg);
         if (gasDmg > 0) out.put("gasDmg", gasDmg);
         if (hp <= 0) {
-            boolean spell = fireDmg + gasDmg > 0, burnt = lavaDmg > 0 && !spell;
-            if (spell || burnt) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금), [2026-10-28] 용암도(보스전)
+            boolean spell = fireDmg + gasDmg > 0, burnt = lavaDmg > 0 && !spell, shocked = shockDmg + stormDmg > 0 && !spell && !burnt; // [2026-11-05] 천둥 황소
+            if (spell || burnt || shocked) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금), [2026-10-28] 용암도(보스전)
             hp = mineHpCap(lv, lock, rb);
             mineDisengageAll(userName);
             MINE_COLD.remove(userName);
             out.put("died", true);
-            out.put("message", burnt ? "🌋 용암에 데어 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out) : spell ? "💀 타락한 대주교의 " + (fireDmg > 0 ? "불벼락" : "어둠가스") + "에 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out)
+            out.put("message", shocked ? "⚡ 천둥에 감전되어 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out) : burnt ? "🌋 용암에 데어 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out) : spell ? "💀 타락한 대주교의 " + (fireDmg > 0 ? "불벼락" : "어둠가스") + "에 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out)
                     : heatDmg > 0 && coldDmg + bzDmg == 0 ? (map.sun() > 0 ? "☀️ 뜨거운 햇볕에 쓰러졌어요... " : "🥵 더위를 견디지 못하고 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요."
                     : "🥶 " + (bzDmg > 0 ? "눈바람에 휩쓸려" : "추위를 견디지 못하고") + " 쓰러졌어요... " + mineRespawn(userName, items, now) + " 깨어났어요.");
         }
@@ -4616,6 +4835,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.ICE_HEART_CODE.equals(code)) return S5MineMap.ICE_HEART_GRADE; // [2026-10-28] 설산 봉우리
         if (S5MineMap.DESERT_HEART_CODE.equals(code)) return S5MineMap.DESERT_HEART_GRADE; // [2026-10-28] 피라미드 보상 상자
         if (S5MineMap.VOLCANO_HEART_CODE.equals(code)) return S5MineMap.VOLCANO_HEART_GRADE; // [2026-10-30]
+        if (S5MineMap.THUNDER_HEART_CODE.equals(code)) return S5MineMap.THUNDER_HEART_GRADE; // [2026-11-05]
         for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         if (S5MineMap.CUT_ICE_CODE.equals(code)) return S5MineMap.CUT_ICE_GRADE; // [2026-10-28] 세공된 빙석
@@ -4633,6 +4853,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (g == S5MineMap.ICE_HEART_GRADE) return S5MineMap.ICE_HEART_NAME; // [2026-10-28] (보석 줄보다 먼저 -- 33은 보석 번호 밖)
         if (g == S5MineMap.DESERT_HEART_GRADE) return S5MineMap.DESERT_HEART_NAME; // [2026-10-28]
         if (g == S5MineMap.VOLCANO_HEART_GRADE) return S5MineMap.VOLCANO_HEART_NAME; // [2026-10-30]
+        if (g == S5MineMap.THUNDER_HEART_GRADE) return S5MineMap.THUNDER_HEART_NAME; // [2026-11-05]
         if (g >= S5MineMap.NINJA_SHARD_GRADE && g < S5MineMap.NINJA_SHARD_GRADE + S5MineMap.WEAPON_SHARD_NAMES.length) return S5MineMap.WEAPON_SHARD_NAMES[g - S5MineMap.NINJA_SHARD_GRADE]; // [2026-10-29]
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석

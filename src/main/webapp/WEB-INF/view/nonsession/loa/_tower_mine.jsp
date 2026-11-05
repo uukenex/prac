@@ -48,6 +48,7 @@ var TowerMine = (function () {
   ORE_NAME[60] = '닌자의 검 조각'; ORE_COL[60] = ['#4a4f5c', '#d8dee8']; // [2026-10-29] 같은 등급 이하 드랍 무기 자동 분해(60~63)
   ORE_NAME[61] = '비철도 조각'; ORE_COL[61] = ['#6a5a4a', '#d8c8b0']; ORE_NAME[62] = '카타나 조각'; ORE_COL[62] = ['#5a2a2a', '#f0c8c8']; ORE_NAME[63] = '백화검 조각'; ORE_COL[63] = ['#c8c8d8', '#ffffff'];
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
+  ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
   ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
@@ -565,6 +566,13 @@ var TowerMine = (function () {
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
+    if (grade === 65) { // [2026-11-05] 번개의 심장 -- 푸른 심장을 가르는 금빛 번개
+      px(g, '#2a6ad8', 4, 4, 3, 2); px(g, '#2a6ad8', 9, 4, 3, 2); px(g, '#2a6ad8', 3, 5, 10, 4); px(g, '#2a6ad8', 4, 9, 8, 2); px(g, '#2a6ad8', 5, 11, 6, 1); px(g, '#2a6ad8', 6, 12, 4, 1); px(g, '#2a6ad8', 7, 13, 2, 1);
+      px(g, '#8ac8ff', 5, 5, 2, 1); px(g, '#ffe94a', 8, 5, 2, 2); px(g, '#ffe94a', 7, 7, 2, 2); px(g, '#ffe94a', 6, 9, 3, 1); px(g, '#ffe94a', 8, 10, 1, 2); px(g, '#fff8c0', 8, 5);
+      outline(c, '#0a1a3a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
     if (grade === 64) { // [2026-10-30] 화산의 심장 -- 붉은 심장에 금빛 불길
       px(g, '#d8341a', 4, 4, 3, 2); px(g, '#d8341a', 9, 4, 3, 2); px(g, '#d8341a', 3, 5, 10, 4); px(g, '#d8341a', 4, 9, 8, 2); px(g, '#d8341a', 5, 11, 6, 1); px(g, '#d8341a', 6, 12, 4, 1); px(g, '#d8341a', 7, 13, 2, 1);
       px(g, '#ffb03a', 7, 6, 2, 5); px(g, '#ffb03a', 6, 8, 4, 2); px(g, '#ffe8a0', 7, 8, 2, 2); px(g, '#ffd08a', 5, 5, 2, 1);
@@ -654,7 +662,7 @@ var TowerMine = (function () {
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
   // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
   //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
-  var BOSS_ART = { '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen' };
+  var BOSS_ART = { '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull' };
   var bossArt = (function () {
     function painter(g) {
       var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
@@ -744,6 +752,19 @@ var TowerMine = (function () {
           for (var k = 0; k < fh; k++) pf.P(x, 5 - k, k < fh * 0.35 ? '#fff0a0' : k < fh * 0.7 ? '#ff9a20' : '#e8401a');
         }
         pf.P(6, 44 + (f ? 1 : 0), '#ff8a1a'); pf.P(42, 45 - (f ? 1 : 0), '#ff8a1a');
+      },
+      thunderbull: function (pt, pf, f) { // [2026-11-05] 천둥 황소 -- 짙은 남색 황소, 금빛 뿔, 푸른 눈, 몸을 타고 흐르는 번개(프레임마다 갈래가 바뀜)
+        var b = '#2a3058', d = '#181c38', h = '#46508a', k = '#0e0e1a', u = f ? 1 : 0;
+        pt.R(10, 34, 6, 11, b); pt.R(19, 35, 5, 10, d); pt.R(28, 35, 5, 10, d); pt.R(35, 34, 6, 11, b);
+        pt.R(9, 44, 8, 3, k); pt.R(18, 44, 7, 3, k); pt.R(27, 44, 7, 3, k); pt.R(34, 44, 8, 3, k);
+        pt.E(26, 28, 18, 10, b); pt.E(23, 23, 12, 5, h); pt.E(31, 33, 12, 5, d); pt.E(18, 19, 7, 5, d);
+        pt.E(10, 21, 9, 9, b); pt.E(8, 18, 5, 4, h); pt.E(6, 27, 6, 4, d); pt.P(3, 27, k); pt.P(7, 28, k);
+        pt.L(5, 14, 1, 6, '#f0d878', 2); pt.L(14, 13, 19, 5, '#f0d878', 2); pt.P(1, 5, '#fff6c8'); pt.P(19, 4, '#fff6c8');
+        pt.L(43, 24, 46, 34, d, 2); pt.E(46, 36, 2, 2, '#f0d878');
+        pf.R(6, 19, 2, 2, '#bff8ff'); pf.R(12, 19, 2, 2, '#bff8ff');
+        var zz = f ? [[14, 22, 20, 28, 16, 33], [30, 20, 26, 27, 33, 31], [38, 26, 42, 32, 39, 38], [22, 30, 27, 34, 24, 40]] : [[18, 21, 24, 27, 20, 32], [32, 22, 28, 28, 35, 33], [10, 30, 14, 36, 11, 41], [40, 22, 36, 28, 41, 33]];
+        zz.forEach(function (q) { pf.L(q[0], q[1], q[2], q[3], '#ffe94a'); pf.L(q[2], q[3], q[4], q[5], '#ffe94a'); pf.P(q[2], q[3], '#ffffff'); });
+        pf.L(2, 6 - u, 0, 1 - u, '#bff8ff'); pf.L(19, 4 + u, 22, 0 + u, '#bff8ff');
       },
       antqueen: function (pt, pf, f) { // 여왕개미 -- 줄무늬 큰 배, 왕관 더듬이, 붉은 눈, 독침의 독
         var b = '#c03a6a', d = '#801a40', h = '#e86a98';
@@ -844,6 +865,10 @@ var TowerMine = (function () {
     for (var id in mobSt) { // [2026-11-03] 방금(1.5초 안) 공격하며 세운 몬스터는 그 응답이 오기 전에 만든 목록이 덮지 않게
       var o = mobSt[id];
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
+    }
+    if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
+      map.mobs.forEach(function (mb) { var mt = map.mobTypes[mb.k]; if (mt && !mt.boss) ns[mb.id] = { hp: 0, du: d.hideUntil, fx: mb.x, fy: mb.y, fu: 0 }; });
+      if (hideNoticeT !== d.hideUntil) { hideNoticeT = d.hideUntil; flashT0 = performance.now(); msg('⚡ 마물들이 한순간에 숲 속으로 흩어졌어요... 숲 한가운데에서 천둥이 울려요!', 4500); }
     }
     mobSt = ns;
   }
@@ -1189,7 +1214,7 @@ var TowerMine = (function () {
       tapDir = null;
       if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
       if (d && stunnedMe()) { // [2026-11-04] 붕대 스턴
-        if (now - lastBumpT > 1500 || lastBump !== 'stun') msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500);
+        if (now - lastBumpT > 1500 || lastBump !== 'stun') msg(stunMsg(), 1500);
         lastBump = 'stun'; lastBumpT = now;
         d = null;
       }
@@ -1818,7 +1843,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64; }],
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65; }],
     ['🧩 조각', function (g) { return g >= 60 && g <= 63; }] // [2026-10-29] 무기 조각
   ];
   function invEtcHtml() {
@@ -2416,6 +2441,8 @@ var TowerMine = (function () {
       if (d.summoned) flashT0 = performance.now(); // [2026-10-28] "보스 스킬 쓸 때 가운데 멘트 없애줘, 특히 성당 보스" -- 번쩍임만
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
+      if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
+      if (d.knockX != null) setPos(d.knockX, d.knockY); // [2026-11-05] 밀쳐내기
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.stunUntil) stunUntil = d.stunUntil; // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
@@ -2437,6 +2464,13 @@ var TowerMine = (function () {
         if (h.ranged) { // [2026-10-28] 용암 거신 불덩이 -- 보스 칸에서 날아와 맞는다
           var bf = boltFrom(h); bolts.push({ fx: bf.fx, fy: bf.fy, me: true, t0: t });
           floats.push({ x: P.x, y: P.y - 0.3, text: '☄️ -' + h.dmg, color: '#ff8a2a', big: true, t0: t + BOLT_MS });
+          return;
+        }
+        if (h.thunder) { // [2026-11-05] 천둥 황소 -- 전광석화(번개 줄기) / 전기창(푸른 창이 날아와 폭발) / 밀쳐내기 + 근접 장판
+          var bcx = h.fx + 1, bcy = h.fy + 1;
+          if (h.thunder === 'dash') { if (h.pull) zapAdd(bcx, bcy, h.tx + 1, h.ty + 1); zapAdd(h.tx + 1, h.ty + 1, P.x + 0.5, P.y + 0.5); flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3, text: '⚡ 전광석화 -' + h.dmg, color: '#ffe94a', big: true, t0: t }); }
+          else if (h.thunder === 'spear') { var bs2 = boltFrom(h); bolts.push({ fx: bs2.fx, fy: bs2.fy, me: true, t0: t, spear: true }); floats.push({ x: P.x, y: P.y - 0.3, text: '🔱 -' + h.dmg, color: '#7ad8ff', big: true, t0: t + BOLT_MS }); }
+          else { for (var zi = 0; zi < 6; zi++) { var za = zi * Math.PI / 3; zapAdd(bcx, bcy, bcx + Math.cos(za) * 3.5, bcy + Math.sin(za) * 3.5); } flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3, text: '💥 -' + h.dmg, color: '#ffe94a', big: true, t0: t }); }
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
@@ -2466,7 +2500,7 @@ var TowerMine = (function () {
   // [2026-10-28] 성당 옛터 -- 같은 환경 턴으로 대주교 마법(불벼락 = 대주교 12칸 안, 어둠가스 = 맵 전체)을 받는다. 예고 후 화면 효과.
   var raid = null, raidFx = { fire: 0, gas: 0 }, raidWarned = {};
   function coldTick(now) {
-    if (!map || !(map.cold || map.raid || map.hot) || busy || coldBusy || fade || now - lastColdT < 1000) return; // [2026-10-28] 더운 곳(hot)도
+    if (!map || !(map.cold || map.raid || map.hot || map.thunder) || busy || coldBusy || fade || now - lastColdT < 1000) return; // [2026-10-28] 더운 곳(hot)도
     lastColdT = now; coldBusy = true;
     var mid = map.id;
     tickE = function (d) { // [2026-11-03] 1초 턴(presTick)에 함께 -- 응답의 e
@@ -2488,6 +2522,10 @@ var TowerMine = (function () {
       }
       if (map.ice) iceApply(d, t); // [2026-10-28] 설산 봉우리 -- 빙결/얼음땡
       if (d.lava) lavaSet(d.lava); // [2026-10-28] 용암섬
+      if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
+      if (d.stormNext) stormNext = d.stormNext;
+      if (d.shockDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.shockDmg + '⚡', color: '#ffe94a', t0: t });
+      if (d.storm) { stormT0 = performance.now(); flashT0 = stormT0; if (d.stunUntil) { stunUntil = d.stunUntil; zapStunUntil = d.stunUntil; } floats.push({ x: P.x, y: P.y - 0.7, text: '⚡ 감전! -' + (d.stormDmg || 0), color: '#ffe94a', big: true, t0: t }); }
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
@@ -2500,6 +2538,20 @@ var TowerMine = (function () {
   var iceSt = null, iceWarned = 0;
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
   function stunnedMe() { return stunUntil > nowSrv(); }
+  // [2026-11-05] 천둥 황소 -- 전기 장판 칸, 번개 줄기(전광석화/밀쳐내기), 전체 낙뢰, 감전 스턴, 마물이 숨은 시각
+  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450;
+  function shockSet(list) { var n = {}; (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; }); shockCells = n; }
+  function zapAdd(x0, y0, x1, y1) { zaps.push({ x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), seed: Math.random() * 1000 }); }
+  function stunMsg() { return zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : '🩹 붕대에 묶여 움직일 수 없어요!'; }
+  function drawZapStun(x, y, now) { // 감전 -- 캐릭터 둘레에 튀는 노란 불꽃
+    var TS = T * scale;
+    ctx.save(); ctx.strokeStyle = '#ffe94a'; ctx.lineWidth = Math.max(1, scale * 0.8); ctx.shadowColor = '#7ad8ff'; ctx.shadowBlur = 6 * scale;
+    for (var i = 0; i < 4; i++) {
+      var a = now / 90 + i * 1.7, r0 = TS * 0.35, r1 = TS * 0.62, cx0 = x + TS / 2, cy0 = y + TS / 2;
+      ctx.beginPath(); ctx.moveTo(cx0 + Math.cos(a) * r0, cy0 + Math.sin(a) * r0); ctx.lineTo(cx0 + Math.cos(a + 0.3) * (r0 + r1) / 2, cy0 + Math.sin(a - 0.3) * (r0 + r1) / 2); ctx.lineTo(cx0 + Math.cos(a) * r1, cy0 + Math.sin(a) * r1); ctx.stroke();
+    }
+    ctx.restore();
+  }
   /** 붕대에 감긴 모습 -- 몸을 가로지르는 베이지 붕대 줄(흔들림). (x, y) = 캐릭터 그림 왼쪽 위. */
   function drawBandage(x, y, now) {
     var TS = T * scale;
@@ -2862,7 +2914,7 @@ var TowerMine = (function () {
   /** ⛏️/⚔️ 버튼·스페이스 -- 옆에 몬스터가 있으면 공격, 없으면 지금 칸 캐기. */
   // [2026-10-28] 버튼을 나눴다 -- ⛏️ = 캐기만, ⚔️ = 바로 옆 몬스터 공격만(스페이스/엔터는 예전처럼 act: 옆에 몬스터가 있으면 공격, 없으면 캐기)
   function digBtn() {
-    if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
+    if (stunnedMe()) { msg(stunMsg(), 1500); return; } // [2026-11-04]
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     dig();
   }
@@ -2964,7 +3016,7 @@ var TowerMine = (function () {
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
-  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [31, '성당(타락한 대주교)', 59] }, MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [31, '성당(타락한 대주교)', 59], 2: [65, '마물의 숲(천둥 황소)', 58] }, MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
   function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
@@ -2995,7 +3047,7 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function atkBtn() {
-    if (stunnedMe()) { msg('🩹 붕대에 묶여 움직일 수 없어요!', 1500); return; } // [2026-11-04]
+    if (stunnedMe()) { msg(stunMsg(), 1500); return; } // [2026-11-04]
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (a) { attack(a); return; }
@@ -3297,6 +3349,14 @@ var TowerMine = (function () {
         if (!npcAt[z[0] + ',' + z[1]]) drawFire(zx, zy, TS, now);
       });
     }
+    // [2026-11-05] 전기 장판 -- 깜빡이는 푸른 바닥 + 튀는 불꽃
+    for (var sk2 in shockCells) {
+      var sp2 = sk2.split(','), sx2 = +sp2[0] * TS - camX, sy2 = +sp2[1] * TS - camY;
+      if (sx2 < -TS || sy2 < -TS || sx2 > W || sy2 > H) continue;
+      var fl = 0.35 + 0.25 * Math.abs(Math.sin(now / 70 + (+sp2[0]) * 2.1 + (+sp2[1]) * 1.3));
+      ctx.fillStyle = 'rgba(60,140,255,' + fl + ')'; ctx.fillRect(sx2, sy2, TS, TS);
+      if (((now / 80 | 0) + (+sp2[0]) * 3 + (+sp2[1]) * 5) % 4 === 0) { ctx.strokeStyle = '#fff6a0'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.moveTo(sx2 + TS * 0.2, sy2 + TS * 0.3); ctx.lineTo(sx2 + TS * 0.5, sy2 + TS * 0.55); ctx.lineTo(sx2 + TS * 0.4, sy2 + TS * 0.6); ctx.lineTo(sx2 + TS * 0.8, sy2 + TS * 0.8); ctx.stroke(); }
+    }
     // [2026-10-28] 용암 칸 -- 일렁이는 붉은 바닥 + 거품
     for (var lk in lavaCells) {
       var lp = lk.split(','), lx = +lp[0] * TS - camX, ly = +lp[1] * TS - camY;
@@ -3428,7 +3488,7 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
-    if (stunnedMe()) drawBandage(cx, cy - 3 * scale, now); // [2026-11-04] 붕대 스턴
+    if (stunnedMe()) { if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now); else drawBandage(cx, cy - 3 * scale, now); } // [2026-11-04] 붕대 스턴, [2026-11-05] 감전
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
@@ -3448,13 +3508,20 @@ var TowerMine = (function () {
       ctx.fillStyle = isDay ? 'rgba(255,220,120,0.06)' : 'rgba(10,20,70,0.38)';
       ctx.fillRect(0, 0, W, H);
       if (!isDay) { // [2026-11-05] "밤이 되면 시야가 어두워지게" -- 캐릭터 둘레(약 4칸)만 밝고 멀수록 캄캄하게
-        var nlx = cx + TS / 2, nly = cy + TS / 2, ng = ctx.createRadialGradient(nlx, nly, TS * 2.5, nlx, nly, TS * 9);
+        // [2026-11-05] 마물의 숲 입구는 "조금 떨어진 곳은 빨간 눈만 보이게" -- 더 좁고 거의 캄캄하게(눈은 그 위에 덧그린다)
+        var nlx = cx + TS / 2, nly = cy + TS / 2, ng = ctx.createRadialGradient(nlx, nly, TS * (wildNight ? 1.8 : 2.5), nlx, nly, TS * (wildNight ? 5.5 : 9));
         ng.addColorStop(0, 'rgba(4,6,20,0)');
-        ng.addColorStop(0.5, 'rgba(4,6,20,0.45)');
-        ng.addColorStop(1, 'rgba(4,6,20,0.78)');
+        ng.addColorStop(0.5, 'rgba(4,6,20,' + (wildNight ? 0.72 : 0.45) + ')');
+        ng.addColorStop(1, 'rgba(4,6,20,' + (wildNight ? 0.97 : 0.78) + ')');
         ctx.fillStyle = ng;
         ctx.fillRect(0, 0, W, H);
       }
+    }
+    if (map.thunder && stormNext && stormNext - nowSrv() < 1500 && stormNext > nowSrv()) { ctx.fillStyle = 'rgba(160,200,255,' + (0.08 + 0.08 * Math.sin(now / 40)) + ')'; ctx.fillRect(0, 0, W, H); } // [2026-11-05] 낙뢰 직전 깜빡임
+    if (performance.now() - stormT0 < 700) { // [2026-11-05] 전체 낙뢰 -- 화면이 하얗게 번쩍, 하늘에서 내 머리 위로 번개
+      var sq = (performance.now() - stormT0) / 700;
+      ctx.fillStyle = 'rgba(220,235,255,' + (0.55 * (1 - sq)) + ')'; ctx.fillRect(0, 0, W, H);
+      if (sq < 0.6) { var sx3 = cx + TS / 2, pts3 = [[sx3, 0]]; for (var si3 = 1; si3 <= 8; si3++) pts3.push([sx3 + (Math.sin(stormT0 + si3 * 7.3) * TS * 0.8), (cy + TS / 2) * si3 / 8]); ctx.save(); ctx.shadowColor = '#7ad8ff'; ctx.shadowBlur = 14 * dpr; ctx.strokeStyle = '#fffbd0'; ctx.lineWidth = 4 * dpr; ctx.beginPath(); pts3.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.stroke(); ctx.restore(); }
     }
     if (redEyes && redEyes.length) { // [2026-11-05] 마물의 숲 밤 -- 어둠 속에서 빛나는 붉은 눈
       var eg = 0.75 + 0.25 * Math.sin(now / 240);
@@ -3554,10 +3621,19 @@ var TowerMine = (function () {
     });
     // [2026-10-28] 불덩이 -- 보스 칸에서 내 칸으로 BOLT_MS 동안 날아가며 꼬리를 남긴다
     //  [2026-10-30] "땅에 맞는 것 같다" -- 날아가는 동안 내가 움직여도 따라오고(지금 그려진 내 자리), 몸통에 맞아 터진다(고리 + 불똥)
+    // [2026-11-05] 번개 줄기 -- 지그재그 노란 선 + 푸른 잔광
+    zaps = zaps.filter(function (z) { return performance.now() - z.t0 < ZAP_MS; });
+    zaps.forEach(function (z) {
+      var q = (performance.now() - z.t0) / ZAP_MS, n = 7, pts = [];
+      for (var i = 0; i <= n; i++) { var k = i / n, j = i === 0 || i === n ? 0 : (Math.sin(z.seed + i * 12.9898 + Math.floor(q * 6)) * 0.45); var nxv = -(z.y1 - z.y0), nyv = z.x1 - z.x0, ln = Math.hypot(nxv, nyv) || 1; pts.push([(z.x0 + (z.x1 - z.x0) * k + nxv / ln * j) * TS - camX, (z.y0 + (z.y1 - z.y0) * k + nyv / ln * j) * TS - camY]); }
+      ctx.save(); ctx.globalAlpha = 1 - q; ctx.shadowColor = '#7ad8ff'; ctx.shadowBlur = 10 * dpr;
+      [[6, 'rgba(122,216,255,0.6)'], [2.5, '#fff6a0']].forEach(function (st2) { ctx.lineWidth = st2[0] * dpr; ctx.strokeStyle = st2[1]; ctx.beginPath(); pts.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.stroke(); });
+      ctx.restore();
+    });
     bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
       var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
-      var c0 = b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-04] 붕대
+      var c0 = b.spear ? '#fff6a0' : b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.spear ? '#4ad8ff' : b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-05] 전기창 // [2026-11-04] 붕대
       if (k < 1) {
         for (var tr = 3; tr >= 0; tr--) {
           var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 0.5;
@@ -3765,7 +3841,7 @@ var TowerMine = (function () {
   /** [2026-11-03] "게임 시작 때 모든 리소스 로딩을 먼저, 진행 중엔 매끄럽게" -- 모든 맵(버전이 바뀐 것만)을 6개씩 나눠 받고 광석 그림도 미리 만든다.
    *  처음 한 번은 몇 초 걸리고, 그 뒤엔 저장본(localStorage)으로 바로. 실패한 맵은 그냥 두고(들어갈 때 다시 받는다) 게임은 시작한다. */
   function preloadAll(vers) {
-    for (var g = 1; g <= 64; g++) { try { oreIcon(g); } catch (e) { } }
+    for (var g = 1; g <= 65; g++) { try { oreIcon(g); } catch (e) { } }
     var ids = Object.keys(vers || {}).filter(function (id) { return !(mapMem[id] && mapMem[id].version === vers[id]); });
     if (!ids.length) return Promise.resolve();
     var done = 0, total = ids.length, i = 0;

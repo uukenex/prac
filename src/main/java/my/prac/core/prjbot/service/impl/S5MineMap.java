@@ -124,6 +124,9 @@ public final class S5MineMap {
     /** [2026-10-30] 화산의 심장 -- 용암 거신을 낮에 쓰러뜨리면 확률로. */
     public static final String VOLCANO_HEART_CODE = "VOLCANO_HEART", VOLCANO_HEART_NAME = "화산의 심장";
     public static final int VOLCANO_HEART_GRADE = 64;
+    /** [2026-11-05] 번개의 심장(등급 값 65) -- 마물의 숲 입구 천둥 황소 처치 보상(검기 번개 속성 재료). */
+    public static final String THUNDER_HEART_CODE = "THUNDER_HEART", THUNDER_HEART_NAME = "번개의 심장";
+    public static final int THUNDER_HEART_GRADE = 65;
     public static final String ICE_HEART_CODE = "ICE_HEART";
     public static final String ICE_HEART_NAME = "얼음의 심장";
     public static final int ICE_HEART_GRADE = 33;

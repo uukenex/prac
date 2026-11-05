@@ -242,7 +242,9 @@ public final class S5MineMobs {
         new Type("빙하기 매머드", 22, "mammoth", "#c8dcef", S5MineMap.WESTROAD).herd(),
         new Type("매머드 족장", 22, "mammoth", "#8a3a2a", S5MineMap.WESTROAD).herd(),
         new Type("태고의 매머드 왕", 23, "mammoth", "#5a2a1a", S5MineMap.WESTROAD).herd(),
-        new Type("거신 코뿔소", 23, "quad", "#4a4040", S5MineMap.WESTROAD).herd()
+        new Type("거신 코뿔소", 23, "quad", "#4a4040", S5MineMap.WESTROAD).herd(),
+        // [2026-11-05] 마물의 숲 입구 보스 -- 밤에 마물 500마리를 쓰러뜨리면 맵 가운데에. 번개 속성, 지금까지 보스 중 체력/공격 으뜸(26단계 x1.5 / x1.1 = 체력 약 790만, 공격 약 3.5만).
+        new Type("천둥 황소", 26, "human", "#3a4a8a").asBoss().strong(1.5, 1.1).showLv(105).asRanged().el(2) // 2 = EL_THUNDER
     ));
     public static final int DUMMY_TYPE = indexOf("허수아비");
     /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
@@ -323,6 +325,7 @@ public final class S5MineMobs {
     public static final int ANT_BOSS_TYPE = indexOf("여왕개미");
     /** [2026-10-28] 용암섬(다도해 마지막 섬) 보스. */
     public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
+    public static final int THUNDER_BOSS_TYPE = indexOf("천둥 황소"); // [2026-11-05] 마물의 숲 입구
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
 
     private static int indexOf(String name) {
@@ -563,6 +566,18 @@ public final class S5MineMobs {
                 for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
                 out.add(new S5MineMap.Mob(out.size(), type, nx, ny, ca, rankOf(seed, out.size(), TYPES.get(type))));
             }
+        }
+        if (m.bossX() >= 0) { // [2026-11-05] 천둥 황소(평소엔 없음 -- S55MineServiceImpl.mineBossDead가 밤 마물 500마리 뒤에만 살려 둔다). 늘 목록 맨 끝.
+            List<Integer> bc = new ArrayList<>();
+            bc.add(m.bossY() * m.w + m.bossX());
+            for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) {
+                int nx = m.bossX() + dx, ny = m.bossY() + dy;
+                if ((dx == 0 && dy == 0) || Math.abs(dx) + Math.abs(dy) > BOSS_ROAM) continue;
+                if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) bc.add(ny * m.w + nx);
+            }
+            int[] ca = new int[bc.size()];
+            for (int i = 0; i < ca.length; i++) ca[i] = bc.get(i);
+            out.add(new S5MineMap.Mob(out.size(), THUNDER_BOSS_TYPE, m.bossX(), m.bossY(), ca));
         }
         return out;
     }
