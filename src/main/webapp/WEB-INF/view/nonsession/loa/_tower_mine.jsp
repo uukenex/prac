@@ -893,6 +893,7 @@ var TowerMine = (function () {
       var o = mobSt[id];
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
     }
+    thunderUntil = d.hideUntil && d.hideUntil > tn ? d.hideUntil : 0; // [2026-11-05] 천둥 황소 남은 시간(맵 안 모두에게)
     if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
       map.mobs.forEach(function (mb) { var mt = map.mobTypes[mb.k]; if (mt && !mt.boss) ns[mb.id] = { hp: 0, du: d.hideUntil, fx: mb.x, fy: mb.y, fu: 0 }; });
       if (hideNoticeT !== d.hideUntil) { hideNoticeT = d.hideUntil; flashT0 = performance.now(); msg('⚡ 마물들이 한순간에 숲 속으로 흩어졌어요... 숲 한가운데에서 천둥이 울려요!', 4500); }
@@ -1047,13 +1048,14 @@ var TowerMine = (function () {
     el.hp.title = (rb ? 'Lv.' + c.lv + '(환생' + rb + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
         + (ready ? ' -- 환생 가능! 왕도 12시 방향 성당 신부님께' : '');
     // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
-    for (var fit = 0; fit < 3; fit++) {
-      var hs = fit === 2 && h >= 100000 ? Math.floor(h / 1000) + 'k' : String(h);
+    // [2026-11-05] "체력바 옆 숫자가 UI를 넘어온다" -- 환생 안 한 사람도 넘치면 줄이고(예전엔 환생한 사람만), 1.2만 -> "12.3k", 그래도 넘치면 "1.4M"
+    for (var fit = 0; fit < 4; fit++) {
+      var hs = fit === 3 && h >= 1000000 ? (h / 1000000).toFixed(h < 10000000 ? 1 : 0) + 'M' : fit >= 2 && h >= 10000 ? (h / 1000).toFixed(h < 100000 ? 1 : 0) + 'k' : String(h);
       el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
           + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex' + (ready ? ' ready' : '') + '"><i style="width:' + ep + '%"></i></span>'
           + (ready ? '<span class="hp-rb">✨ 환생 가능!</span>' : '');
       var hl = el.hp.firstChild;
-      if (!rb || !hl || hl.scrollWidth <= hl.clientWidth + 1) break;
+      if (!hl || hl.scrollWidth <= hl.clientWidth + 1) break;
     }
   }
   // [2026-10-24] 자동채광 -- 켜 두면 캐릭터가 스스로 가장 가까운(30칸 안) 안 캔 칸으로 걸어가서 캔다. 방향키/끌기로 잠깐 직접 조작할 수 있다.
@@ -2602,7 +2604,7 @@ var TowerMine = (function () {
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
   function stunnedMe() { return stunUntil > nowSrv(); }
   // [2026-11-05] 천둥 황소 -- 전기 장판 칸, 번개 줄기(전광석화/밀쳐내기), 전체 낙뢰, 감전 스턴, 마물이 숨은 시각
-  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450;
+  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0;
   function shockSet(list) { var n = {}; (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; }); shockCells = n; }
   function zapAdd(x0, y0, x1, y1) { zaps.push({ x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), seed: Math.random() * 1000 }); }
   function stunMsg() { return zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : '🩹 붕대에 묶여 움직일 수 없어요!'; }
@@ -4070,6 +4072,18 @@ var TowerMine = (function () {
       }
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
+    // [2026-11-05] "보스 1시간 카운트는 맵 안 모두에게" -- 천둥 황소가 나와 있는 동안 화면 위 가운데에 남은 시간
+    if (thunderUntil > 0 && map.id === 'westroad') {
+      var tl = Math.max(0, thunderUntil - nowSrv());
+      if (tl > 0) {
+        var tmm = Math.floor(tl / 60000), tss = Math.floor(tl / 1000) % 60, ttx = '⚡ 천둥 황소  ' + tmm + ':' + (tss < 10 ? '0' : '') + tss;
+        ctx.font = 'bold ' + Math.round(15 * dpr) + 'px monospace'; ctx.textAlign = 'center';
+        var tw = ctx.measureText(ttx).width + 20 * dpr, ty = Math.round(H * 0.12);
+        ctx.globalAlpha = 0.78; ctx.fillStyle = '#10142a'; ctx.fillRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1 * dpr; ctx.strokeRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
+        ctx.fillStyle = '#ffe14d'; ctx.fillText(ttx, W / 2, ty);
+      }
+    }
     // [2026-11-04] 빙결 몸부림 게이지 -- 캐릭터 위에 얼음 막대(횟수는 안 보여 줌) + 깜빡이는 ⬅️➡️⚔️
     if (frozenMe()) {
       var ip = curPos(now), ix = ip.x * TS - camX + TS / 2, iy = ip.y * TS - camY - 14 * dpr, bw = TS * 1.3, bh = 7 * dpr;

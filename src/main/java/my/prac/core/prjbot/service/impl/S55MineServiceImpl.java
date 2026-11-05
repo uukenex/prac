@@ -1109,8 +1109,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  밤마다 마물 처치 수를 모두 함께 센다(서버 메모리). MINE_THUNDER_NEED에 닿으면 마물은 모두 숨고(mineHidden) 황소가 MINE_THUNDER_BOSS_MS 동안 나타난다.
     //  쓰러뜨리거나 시간이 지나면 마물이 돌아온다. 한 밤에 한 번. 스킬(mineThunderSkills): 전광석화(멀면 딱 붙고 가까우면 밀쳐냄), 멀면 전기창(맞은 자리 3x3 폭발),
     //  붙어 있으면 밀쳐내고 근접 장판, 그리고 전체 맵 낙뢰(감전 스턴 -- 환경 턴).
-    static final int MINE_THUNDER_NEED = 200; // [2026-11-05] 500 -> 200
-    static final long MINE_THUNDER_BOSS_MS = 20 * 60_000L;
+    // [2026-11-05] "밤에만 세고, 낮이 돼도 사라지지 않게. 누적 500이 되면 0으로 돌리며 보스가 나타나고 1시간 뒤 사라진다. 사라지면 일반 몹이 다시.
+    //  1시간 카운트는 맵 안 모두에게" -- 밤마다 0으로 돌리던 것/한 밤에 한 번 제한을 없앴다. 누적 수는 TBOT_S5_CONFIG(MINE_THUNDER_CFG)에 10마리마다 적어
+    //  배포/재시작에도 이어진다(최대 9마리 손실). 남은 시간은 mineMobs의 hideUntil로 화면에 보인다.
+    static final int MINE_THUNDER_NEED = 500; // [2026-11-05] 밤 처치 누적
+    static final long MINE_THUNDER_BOSS_MS = 60 * 60_000L; // [2026-11-05] 20분 -> 1시간
+    static final String MINE_THUNDER_CFG = "MINE_THUNDER_KILLS";
+    static volatile boolean mineThunderLoaded = false;
     static final Object MINE_THUNDER_LOCK = new Object();
     static volatile long mineThunderNight = Long.MIN_VALUE, mineThunderDoneNight = Long.MIN_VALUE, mineThunderUntil = 0;
     static volatile boolean mineThunderKilled = false;
@@ -1121,20 +1126,31 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     void mineThunderKill(S5MineMap map, S5MineMobs.Type t, long now) {
         if (!S5MineMap.WESTROAD.equals(map.id) || t.boss || !S5MineMap.night(now)) return;
-        long ni = S5MineMap.nightIndex(now);
-        synchronized (MINE_THUNDER_LOCK) {
-            if (ni == mineThunderDoneNight || mineThunderOn(now)) return;
-            if (ni != mineThunderNight) { mineThunderNight = ni; mineThunderKills = 0; }
-            if (++mineThunderKills < MINE_THUNDER_NEED) return;
-            mineThunderDoneNight = ni;
-            mineThunderKilled = false;
-            mineThunderUntil = now + MINE_THUNDER_BOSS_MS;
+        if (!mineThunderLoaded) {
+            synchronized (MINE_THUNDER_LOCK) {
+                if (!mineThunderLoaded) {
+                    try { String v = dao.selectConfigValue(MINE_THUNDER_CFG); if (v != null && !v.trim().isEmpty()) mineThunderKills = Math.max(0, Integer.parseInt(v.trim())); } catch (Exception ignore) { }
+                    mineThunderLoaded = true;
+                }
+            }
         }
+        int k;
+        synchronized (MINE_THUNDER_LOCK) {
+            if (mineThunderOn(now)) return;
+            k = ++mineThunderKills;
+            if (k >= MINE_THUNDER_NEED) {
+                mineThunderKills = k = 0;
+                mineThunderKilled = false;
+                mineThunderUntil = now + MINE_THUNDER_BOSS_MS;
+            }
+        }
+        if (k % 10 == 0) { try { dao.upsertConfigValue(MINE_THUNDER_CFG, String.valueOf(k), "west forest night kills toward thunder bull (set by app)"); } catch (Exception ignore) { } }
+        if (k > 0) return;
         S5MineMap.Mob boss = mineBossOf(map);
         if (boss != null) {
             S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
             int bmax = S5MineMobs.hp(bt, boss.rank);
-            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), k -> new MobState(bmax));
+            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, boss.id), kk -> new MobState(bmax));
             synchronized (bs) { bs.respawn(bmax); bs.target = null; bs.frozenUntil = 0; bs.fx = boss.x; bs.fy = boss.y; bs.regenAt = now; bs.nearAt = now; bs.lastHitAt = 0; }
         }
         MINE_SHOCK.clear();
@@ -3912,9 +3928,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int wp = MINE_WEAPON_RANK_P10K[rank];
         if (java.util.Arrays.asList(type.maps).contains(S5MineMap.WESTROAD)) wp /= 2;
         if (mineLuckOn(items, System.currentTimeMillis())) wp *= 2; // [2026-11-05] 행운의 주문서 -- 드랍률 2배 // [2026-11-05] "마물의 숲 장비 드랍은 다른 맵의 절반(등급 비율은 같게)"
+        boolean admin = isMineAdmin(userName);
+        if (admin) wp = Math.min(10000, wp * 10); // [2026-11-05] "관리자 드랍률 자체도 올려줘"(이펙트 시험용) -- 10배
         for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
         if (dw == null) return;
         int g = mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
+        if (admin && dw.maxGrade >= 4 && g < 4 && RND.nextInt(100) < 70) g = 4 + RND.nextInt(dw.maxGrade - 3); // [2026-11-05] "관리자 전설 이상 잘 나오게"(이펙트 시험용) -- 70%는 전설~최고 등급
         if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급
             dao.addUserOre(userName, dw.shard, g + 1);
             msg.append(" 🧩 이미 있는 ").append(dw.name).append("이라 분해했어요. ").append(mineCodeName(dw.shard)).append(" +").append(g + 1);

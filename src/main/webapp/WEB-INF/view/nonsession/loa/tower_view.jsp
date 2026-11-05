@@ -884,7 +884,7 @@
     .mine-auto-btn.on{ background:#1f6b3a; color:#d6ffe0; }
     .mine-hp{ font:800 12px/1.15 ui-monospace, Consolas, monospace; padding:4px 7px; color:#ffd0d0; box-sizing:border-box; position:absolute; left:104px; right:118px; max-width:420px; bottom:calc(22px + env(safe-area-inset-bottom)); } /* [2026-10-30] "체력바는 메뉴 옆에 길게" */
     .mine-overlay.npc-open .mine-hp{ display:none; } /* [2026-10-28] "체력바가 너무 길어서 화면을 가린다" -- 폭 고정, 숫자는 현재 체력만 */
-    .mine-hp .hp-l{ display:flex; justify-content:space-between; align-items:baseline; gap:4px; white-space:nowrap; }
+    .mine-hp .hp-l{ display:flex; justify-content:space-between; align-items:baseline; gap:4px; white-space:nowrap; overflow:hidden; } /* [2026-11-05] 숫자가 칸 밖으로 안 나가게 */
     .mine-hp .hp-n{ font-size:11px; color:#fff; }
     .mine-hp:empty{ display:none; }
     .mine-bar{ display:block; height:5px; margin-top:3px; background:#2a1d1d; border:1px solid #140d0a; }
