@@ -784,6 +784,8 @@
     .mine-atk.near{ filter:none; opacity:1; animation:mineAtkPulse 1s ease-in-out infinite; }
     .mine-atk:active{ transform:translateY(3px); box-shadow:0 2px 0 #7a1a12; }
     .mine-atk:disabled{ filter:grayscale(1); opacity:.5; animation:none; }
+    .mine-nova{ position:absolute; right:30px; bottom:calc(250px + env(safe-area-inset-bottom)); width:60px; height:60px; border-radius:50%; font-size:28px; line-height:1; background:#8a3ad0; border:3px solid #140d0a; box-shadow:0 5px 0 #3e1466; cursor:pointer; }
+    .mine-nova:active{ transform:translateY(3px); box-shadow:0 2px 0 #3e1466; }
     @keyframes mineAtkPulse{ 0%,100%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 0 rgba(255,90,70,.6); } 50%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 8px rgba(255,90,70,0); } }
     .mine-eq-slot{ margin:10px 0 4px; font-weight:800; font-size:13px; }
     .mine-eq-slot small{ font-weight:600; opacity:.7; margin-left:4px; }

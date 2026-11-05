@@ -236,6 +236,8 @@ public interface BotS5Service {
     /** [2026-10-24] 광산 몬스터 상태 조회 / 공격. */
     HashMap<String, Object> mineMobs(String mapId);
     HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc, String dir);
+    /** [2026-11-05] 관리자 전체 공격 -- 화면(나를 가운데로 가로 hw, 세로 hh칸)의 몬스터 모두에게 일반 공격 한 방씩. */
+    HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh);
     /** [2026-11-04] 검기 -- 인벤토리 스킬 탭에서 속성 el의 검기를 lv단계로(0 = 끔). */
     HashMap<String, Object> mineAuraSet(String userName, int el, int lv);
     /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기. */

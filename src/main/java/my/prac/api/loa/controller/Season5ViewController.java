@@ -848,6 +848,17 @@ public class Season5ViewController {
     }
 
     /** [2026-10-24] 웹 광산 공격 -- (x, y)에 서서 바로 옆 몬스터(mob = 맵 안 번호)를 때린다. 처치/레벨 업/쓰러짐만 로그. */
+    /** [2026-11-05] 관리자 전체 공격(화면 안 몬스터 모두). */
+    @GetMapping("/api/tower-mine-nova")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineNova(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam(value = "hw", defaultValue = "8") int hw, @RequestParam(value = "hh", defaultValue = "8") int hh,
+            @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineNova(userName, mapId, ver, x, y, hw, hh));
+    }
+
     @GetMapping("/api/tower-mine-attack")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineAttack(@RequestParam(value = "userName", defaultValue = "") String userName,

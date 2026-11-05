@@ -669,7 +669,8 @@ var TowerMine = (function () {
     if (s && s.du > t) return null;
     if (m.d && !s) return null; // [2026-10-28] 대주교 수하 -- 불려 나오기 전엔 없다
     if (s && s.fu > t) {
-      if (s.ox != null && t - s.mt < 950) { var q = Math.max(0, (t - s.mt) / 950); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
+      var md = s.md || 950; // [2026-11-05] 걷는 시간 = 위치가 바뀐 간격(끊김 없이 다음 위치까지 이어 걷게)
+      if (s.ox != null && t - s.mt < md) { var q = Math.max(0, (t - s.mt) / md); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
       return { x: s.fx, y: s.fy, cx: s.fx, cy: s.fy };
     }
     var SL = map.mobSlotMs || 3000, slot = Math.floor(t / SL);
@@ -867,8 +868,15 @@ var TowerMine = (function () {
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
   function mobStOf(a, old) {
     var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중
-    if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) { n.ox = old.fx; n.oy = old.fy; n.mt = t; }
-    else if (old && old.mt != null && t - old.mt < 950) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; } // [2026-11-03] 450 -> 950(1초 턴 사이를 이어서)
+    // [2026-11-05] "화면 안인데도 다가올 때 끊겨 보인다" -- 예전엔 새 위치가 오면 옛 목표 칸에서 다시 출발(덜 걸었으면 툭 튐)하고 늘 0.95초만 걸었다(턴이 늦으면 멈칫).
+    //  이제 지금 보이는 자리에서 출발하고, 걷는 시간은 지난번 위치가 바뀐 뒤 흐른 시간(0.6~2.2초)이라 다음 위치가 올 즈음 도착한다.
+    if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) {
+      var omd = old.md || 950, cx0 = old.fx, cy0 = old.fy;
+      if (old.ox != null && t - old.mt < omd) { var oq = Math.max(0, (t - old.mt) / omd); cx0 = old.ox + (old.fx - old.ox) * oq; cy0 = old.oy + (old.fy - old.oy) * oq; }
+      n.ox = cx0; n.oy = cy0; n.mt = t; n.md = Math.max(600, Math.min(2200, old.pt ? t - old.pt : 950)); n.pt = t;
+    }
+    else if (old && old.mt != null && t - old.mt < (old.md || 950)) { n.ox = old.ox; n.oy = old.oy; n.mt = old.mt; n.md = old.md; n.pt = old.pt; } // [2026-11-03] 450 -> 950(1초 턴 사이를 이어서)
+    else if (old && old.pt && old.fx === n.fx && old.fy === n.fy) n.pt = old.pt;
     return n;
   }
   function pollMobs() {
@@ -898,7 +906,7 @@ var TowerMine = (function () {
     if (bound) return;
     bound = true;
     el.ov = $('mineOverlay'); el.cv = $('mineCanvas'); el.coord = $('mineCoord'); el.terr = $('mineTerr'); el.ping = $('minePing');
-    el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn'); el.atk = $('mineAtkBtn'); el.menu = $('mineMenu'); el.menuBtn = $('mineMenuBtn'); // [2026-10-28] 공격 버튼 분리, ☰ 메뉴
+    el.sta = $('mineSta'); el.regen = $('mineRegen'); el.mini = $('mineMini'); el.dig = $('mineDigBtn'); el.atk = $('mineAtkBtn'); el.nova = $('mineNovaBtn'); el.menu = $('mineMenu'); el.menuBtn = $('mineMenuBtn'); // [2026-10-28] 공격 버튼 분리, ☰ 메뉴
     el.msg = $('mineMsg'); el.load = $('mineLoading'); el.log = $('mineLog'); el.smith = $('mineSmith');
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
     el.cold = $('mineCold'); // [2026-10-26] 한기/안전지대/눈바람 남은 시간
@@ -1220,6 +1228,8 @@ var TowerMine = (function () {
     // [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- ⛏️는 캐기만, ⚔️는 바로 옆 몬스터가 있을 때 또렷해진다
     var near = !P.moving && adjMob();
     if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
+    var novaShow = st && st.adminMaps ? '' : 'none'; // [2026-11-05] 관리자 전체 공격 버튼
+    if (el.nova && el.nova.style.display !== novaShow) el.nova.style.display = novaShow;
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
     var digShow = map.noDig ? 'none' : '';
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
@@ -3089,7 +3099,7 @@ var TowerMine = (function () {
     dig();
   }
   // [2026-11-04] 검기 -- st.aura = { l: 배운 단계[9], a: 켠 단계[9] }(속성 번호 1~8 = 땅/번개/물/얼음/바람/불/어둠/빛)
-  var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 300, auraFx = [];
+  var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 620, auraFx = []; // [2026-11-05] "검기가 느리게 나가면" 300 -> 620
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
   function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now() }); } // [2026-11-04] 속성마다 자기 단계만큼
@@ -3310,6 +3320,49 @@ var TowerMine = (function () {
       if (d && d.ok) { st.aura = d.aura; if (smithOpen) renderSmith(smithNpc); msg(v ? '🌀 ' + ELEM_NAME[e] + ' 검기 ' + v + '단계 · 사거리 ' + auraRange() + '칸' : '🌀 ' + ELEM_NAME[e] + ' 검기를 껐어요.', 1800); }
       else msg((d && d.message) || '바꾸지 못했어요.');
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  // [2026-11-05] "공격 버튼 위에 화면 전체를 공격하는 전체 공격기 -- 관리자용(칼로 베는 이펙트)" -- 서버 mineNova(화면 안 몬스터 모두 일반 공격 한 방씩, 보스는 체력 1까지)
+  var NOVA_FX_MS = 560, novaFx = [], novaBusy = false, lastNovaT = 0;
+  function novaCuts() {
+    var c = [];
+    for (var i = 0; i < 6; i++) {
+      var y0 = -0.1 + Math.random() * 0.75, y1 = y0 + 0.25 + Math.random() * 0.35;
+      c.push(i % 2 ? [1.05, y0, -0.05, y1] : [-0.05, y0, 1.05, y1]);
+    }
+    return c;
+  }
+  function novaBtn() {
+    setMenu(false);
+    if (!opened || !map || busy || fade || novaBusy || !(st && st.adminMaps)) return;
+    if (stunnedMe() || frozenMe()) return;
+    var now = performance.now();
+    if (now - lastNovaT < 1500) return;
+    lastNovaT = now; novaBusy = true; P.digT0 = now; P.swing = true;
+    novaFx.push({ t0: now, cuts: novaCuts() });
+    var TSn = T * scale, hw = Math.ceil(el.cv.width / TSn / 2), hh = Math.ceil(el.cv.height / TSn / 2);
+    apiFast('/api/tower-mine-nova?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&hw=' + hw + '&hh=' + hh + verQ()).then(function (d) {
+      novaBusy = false;
+      if (!d || d.tooFast) return;
+      if (d.reload) { reload(); return; }
+      if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
+      if (!d.ok) { if (d.message) msg(d.message); return; }
+      var t = performance.now(), exSum = 0, kn = 0;
+      (d.novaMobs || []).forEach(function (am, j) {
+        var mm = map.mobs && map.mobs[am.id], p = mm && mm._p ? { x: mm._p.x, y: mm._p.y } : { x: am.row[3], y: am.row[4] };
+        mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
+        mobHitAt[am.id] = t;
+        var dl = (j % 12) * 22;
+        novaFx.push({ t0: t + dl, mx: p.x, my: p.y });
+        (am.hits || []).forEach(function (h) { floats.push({ x: p.x, y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : '#ffffff', big: !!h[2], t0: t + dl + 60 }); });
+        if (am.killed) { exSum += am.exp || 0; kn++; }
+      });
+      lootDrops(d.novaDrops, P.x, P.y);
+      if (d.ores) st.ores = d.ores;
+      if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, P.x, P.y); }
+      if (exSum > 0) killFeed('+' + exSum.toLocaleString() + ' 경험치' + (kn > 1 ? '  ×' + kn : ''));
+      if (d.combat) setCombat(d.combat);
+      if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
+    }).catch(function () { novaBusy = false; });
   }
   function atkBtn() {
     setMenu(false); // [2026-11-05]
@@ -3963,19 +4016,58 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1;
     });
     // [2026-11-04] 검기 -- 속성마다 그 색의 초승달 칼날이 바라보는 방향으로 사거리만큼 날아간다(속성이 많으면 겹겹이 조금씩 늦게)
-    auraFx = auraFx.filter(function (f) { return now - f.t0 < AURA_FX_MS + 120; });
+    // [2026-11-05] "검기 더 진하고 두껍게" -- 굵기 약 2배, 바깥 번짐 + 밝은 심, 끝까지 진하게. 관리자는 폭 3칸이라 칼날도 3칸 너비.
+    auraFx = auraFx.filter(function (f) { return now - f.t0 < AURA_FX_MS + 180; });
+    var auraWide = !!(st && st.adminMaps);
     auraFx.forEach(function (f) {
-      var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 120 : 1;
+      var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 180 : 1;
+      k = 1 - (1 - k) * (1 - k); // 처음엔 빠르게, 끝에서 느려지며 멎는다
       var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
-        var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(2, 6 - i * 0.5) * dpr;
-        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * TS * 0.4, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * TS * 0.4, rr = TS * (0.5 + i * 0.07); // [2026-11-05] 폭 1칸 그대로(옆 폭은 나중에 업그레이드)
-        ctx.globalAlpha = Math.max(0, fo * (k < 1 ? 0.95 : 0.7)); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw;
-        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - 1.05, ang + 1.05); ctx.stroke();
-        ctx.globalAlpha = Math.max(0, fo * 0.35); ctx.lineWidth = lw * 2.2; // 잔광
-        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.25, cy - dy * TS * 0.25, rr, ang - 0.8, ang + 0.8); ctx.stroke();
+        var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(5, 12 - i * 0.8) * dpr;
+        var rr = TS * ((auraWide ? 1.5 : 0.5) + i * 0.07), back = TS * 0.4 + (auraWide ? TS : 0); // [2026-11-05] 관리자 폭 3칸 -- 칼날 반지름 3배, 앞 끝은 같은 자리
+        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * back, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * back, sp = auraWide ? 0.62 : 1.05;
+        ctx.globalAlpha = Math.max(0, fo * 0.4); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw * 2.4; // 바깥 번짐
+        ctx.beginPath(); ctx.arc(cx - dx * TS * 0.2, cy - dy * TS * 0.2, rr, ang - sp * 0.8, ang + sp * 0.8); ctx.stroke();
+        ctx.globalAlpha = Math.max(0, fo); ctx.lineWidth = lw; // 칼날
+        ctx.beginPath(); ctx.arc(cx, cy, rr, ang - sp, ang + sp); ctx.stroke();
+        ctx.globalAlpha = Math.max(0, fo * 0.85); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5 * dpr, lw * 0.28); // 밝은 심
+        ctx.beginPath(); ctx.arc(cx + dx * lw * 0.15, cy + dy * lw * 0.15, rr, ang - sp * 0.85, ang + sp * 0.85); ctx.stroke();
       });
+      ctx.globalAlpha = 1; ctx.lineCap = 'butt';
+    });
+    // [2026-11-05] 관리자 전체 공격 -- 화면을 가로지르는 칼자국 여러 줄(잠깐 어두워짐) + 맞은 몬스터마다 X자 베기
+    novaFx = novaFx.filter(function (f) { return now - f.t0 < (f.cuts ? NOVA_FX_MS : 380); });
+    novaFx.forEach(function (f) {
+      var e0 = now - f.t0;
+      if (e0 < 0) return;
+      ctx.lineCap = 'round';
+      if (f.cuts) {
+        var nk = e0 / NOVA_FX_MS;
+        ctx.globalAlpha = 0.3 * (1 - nk); ctx.fillStyle = '#05030a'; ctx.fillRect(0, 0, W, H);
+        f.cuts.forEach(function (c, i) {
+          var s0 = e0 - i * 55, kk = Math.max(0, Math.min(1, s0 / 130));
+          if (kk <= 0) return;
+          var fo = Math.max(0, 1 - Math.max(0, s0 - 130) / (NOVA_FX_MS - 130 - i * 55));
+          var x0 = c[0] * W, y0 = c[1] * H, xe = x0 + (c[2] * W - x0) * kk, ye = y0 + (c[3] * H - y0) * kk;
+          ctx.globalAlpha = 0.5 * fo; ctx.strokeStyle = '#ff3a4a'; ctx.lineWidth = 16 * dpr;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(xe, ye); ctx.stroke();
+          ctx.globalAlpha = fo; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4 * dpr;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(xe, ye); ctx.stroke();
+        });
+      } else {
+        var q = Math.min(1, e0 / 140), fo2 = e0 > 140 ? 1 - (e0 - 140) / 240 : 1, mx = f.mx * TS - camX + TS / 2, my = f.my * TS - camY + TS / 2, r = TS * 0.6;
+        [[-1, -1, 1, 1], [1, -1, -1, 1]].forEach(function (c, i) {
+          var qq = Math.max(0, Math.min(1, q * 2 - i));
+          if (qq <= 0) return;
+          var x0 = mx + c[0] * r, y0 = my + c[1] * r, x1 = x0 + (c[2] - c[0]) * r * qq, y1 = y0 + (c[3] - c[1]) * r * qq;
+          ctx.globalAlpha = Math.max(0, fo2 * 0.55); ctx.strokeStyle = '#ff3a4a'; ctx.lineWidth = 9 * dpr;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+          ctx.globalAlpha = Math.max(0, fo2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5 * dpr;
+          ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+        });
+      }
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
     // [2026-11-04] 빙결 몸부림 게이지 -- 캐릭터 위에 얼음 막대(횟수는 안 보여 줌) + 깜빡이는 ⬅️➡️⚔️
@@ -4446,7 +4538,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

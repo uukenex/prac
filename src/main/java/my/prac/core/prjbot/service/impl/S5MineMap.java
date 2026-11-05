@@ -2361,7 +2361,7 @@ public final class S5MineMap {
         for (int i = 0; i < caves.length; i++) portals.add(new Portal(caves[i][0], caves[i][1] + 5, 'M', null, 0, 0, caveNames[i] + " (가시덩굴이 얽혀 막혀 있다)"));
         byte[][] o = new byte[h][w]; // [2026-11-05] "이 맵은 채광 불가" -- 광석 없음(화면도 캐기 버튼/자동채광을 숨긴다)
         S5MineMap m = new S5MineMap(WESTROAD, "왕도 서쪽 마물의 숲 입구", false, w, h, sx, sy, t, o, portals); // [2026-11-05] 이름 바꿈(왕도 서쪽길 -> 마물의 숲 입구)
-        m.bossX = bx; m.bossY = by; // [2026-11-05] 밤에 마물 500마리를 쓰러뜨리면 맵 가운데에 천둥 황소
+        m.bossX = bx; m.bossY = by; // [2026-11-05] 밤에 마물 200마리를 쓰러뜨리면 맵 가운데에 천둥 황소
         return m;
     }
 

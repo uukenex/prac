@@ -1105,11 +1105,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return false;
     }
 
-    // ---- [2026-11-05] 마물의 숲 입구 천둥 황소 -- "이번 밤 동안 500마리를 잡으면 모든 몬스터가 사라지고 맵 가운데 번개의 힘을 받은 소 보스, 번개의 심장".
+    // ---- [2026-11-05] 마물의 숲 입구 천둥 황소 -- ("200마리로 완화" -- 처음엔 500) "이번 밤 동안 500마리를 잡으면 모든 몬스터가 사라지고 맵 가운데 번개의 힘을 받은 소 보스, 번개의 심장".
     //  밤마다 마물 처치 수를 모두 함께 센다(서버 메모리). MINE_THUNDER_NEED에 닿으면 마물은 모두 숨고(mineHidden) 황소가 MINE_THUNDER_BOSS_MS 동안 나타난다.
     //  쓰러뜨리거나 시간이 지나면 마물이 돌아온다. 한 밤에 한 번. 스킬(mineThunderSkills): 전광석화(멀면 딱 붙고 가까우면 밀쳐냄), 멀면 전기창(맞은 자리 3x3 폭발),
     //  붙어 있으면 밀쳐내고 근접 장판, 그리고 전체 맵 낙뢰(감전 스턴 -- 환경 턴).
-    static final int MINE_THUNDER_NEED = 500;
+    static final int MINE_THUNDER_NEED = 200; // [2026-11-05] 500 -> 200
     static final long MINE_THUNDER_BOSS_MS = 20 * 60_000L;
     static final Object MINE_THUNDER_LOCK = new Object();
     static volatile long mineThunderNight = Long.MIN_VALUE, mineThunderDoneNight = Long.MIN_VALUE, mineThunderUntil = 0;
@@ -1259,7 +1259,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 보스(type)가 쓰러진 지 2시간이 안 됐는지. 보스가 아니면 false. */
     boolean mineBossDead(int type) {
-        if (type == S5MineMobs.THUNDER_BOSS_TYPE) return !mineThunderOn(System.currentTimeMillis()); // [2026-11-05] 밤 마물 500마리 뒤에만
+        if (type == S5MineMobs.THUNDER_BOSS_TYPE) return !mineThunderOn(System.currentTimeMillis()); // [2026-11-05] 밤 마물 200마리(MINE_THUNDER_NEED) 뒤에만
         String key = mineBossKey(type);
         return key != null && mineBossDeadKey(key);
     }
@@ -1318,6 +1318,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_BOSS_AGGRO_RANGE = 12;
     static final long MINE_MOB_STRIKE_GAP_MS = 1_500L;
     static final long MINE_CHASE_STEP_MS = 600L;
+    static final long MINE_CHASE_STEP_MS_FOREST = 333L, MINE_CHASE_CATCH_MS = 2_000L; // [2026-11-05] 마물의 숲 입구 3배(1초 턴에 3칸), 늦은 턴은 2초어치까지 따라잡기
     static final long MINE_ENGAGE_TTL_MS = 10_000L;
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 MINE_PREEMPT_LV_GAP 이상 높으면 MINE_PREEMPT_RANGE칸 안에서 먼저 인식(7칸부터 풀림)
     static final int MINE_PREEMPT_LV_GAP = 20;
@@ -1491,9 +1492,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.target == null) s.target = userName;
                 boolean splitting = s.splitUntil > now; // [2026-10-28] 닌자 두목 분신술 중엔 제자리에서 안 때린다(자세로 찾게)
                 // 쫓아온다(한 칸) -- [2026-10-28] 대주교는 제자리, 수하(fast)는 플레이어보다 3배쯤 빨리(초당 약 20칸) 여러 칸
-                long stepGap = type.fast ? MINE_FAST_STEP_MS : MINE_CHASE_STEP_MS;
+                // [2026-11-05] "마물의 숲 입구 몬스터 이속 3배" -- 그 맵(보스 제외)은 칸 간격 1/3. "다가올 때 끊겨 보인다" -- 1초 턴이 조금 늦거나 한 번 건너뛰면
+                //  예전엔 그동안 한 칸만 와서 멈칫했다. 이제 지난 시간만큼(최대 MINE_CHASE_CATCH_MS어치) 칸 수를 정한다.
+                long stepGap = type.fast ? MINE_FAST_STEP_MS : S5MineMap.WESTROAD.equals(map.id) && !type.boss ? MINE_CHASE_STEP_MS_FOREST : MINE_CHASE_STEP_MS;
                 if (!type.stay && !splitting && userName.equals(s.target) && dist > 1 && now - s.lastMoveAt >= stepGap) {
-                    int steps = type.fast ? (int) Math.min(dist - 1, Math.min(25, (now - s.lastMoveAt) / stepGap)) : 1;
+                    int steps = type.fast ? (int) Math.min(dist - 1, Math.min(25, (now - s.lastMoveAt) / stepGap))
+                            : (int) Math.max(1, Math.min(dist - 1, Math.min(MINE_CHASE_CATCH_MS, now - s.lastMoveAt) / stepGap));
                     for (int st = 0; st < steps; st++) {
                         int dx = Integer.signum(x - s.fx), dy = Integer.signum(y - s.fy);
                         int[][] tries = Math.abs(x - s.fx) >= Math.abs(y - s.fy) ? new int[][] { { dx, 0 }, { 0, dy } } : new int[][] { { 0, dy }, { dx, 0 } };
@@ -3985,11 +3989,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dv == null || range <= 0) return new long[] { 0, 0 };
         java.util.Map<Integer, Integer> line = new java.util.HashMap<>(); // 칸 -> 몇 칸 앞
         // [2026-11-05] "검기가 여러 마리 타격" -- 바라보는 줄(+ 양옆 MINE_AURA_SIDE줄, 지금 0)의 몬스터를 가까운 순으로 최대 MINE_AURA_MAX_TARGETS마리. 속성 사거리(몇 칸 앞)는 그대로.
-        for (int k = 1; k <= range; k++) for (int sd = -MINE_AURA_SIDE; sd <= MINE_AURA_SIDE; sd++) {
+        int side = isMineAdmin(userName) ? 1 : MINE_AURA_SIDE; // [2026-11-05] "관리자 검기 폭 3칸" -- 양옆 한 줄씩
+        for (int k = 1; k <= range; k++) for (int sd = -side; sd <= side; sd++) {
             int lx = x + dv[0] * k - dv[1] * sd, ly = y + dv[1] * k + dv[0] * sd;
             if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) continue;
             line.putIfAbsent(ly * map.w + lx, k);
         }
+        return mineSweepCells(userName, map, items, line, MINE_AURA_MAX_TARGETS, skipMob, now, msg, out, (ot, dist) -> mineAuraHits(aura, atkBase, ot, dist), "auraMobs", "auraDrops", "🌀 검기로 ");
+    }
+
+    /** 칸 묶음(line: 칸 -> 거리) 위의 몬스터를 가까운 순으로 maxT마리까지 hitsFn(종류, 거리) 피해 -- 검기/관리자 전체 공격이 같이 쓴다. 보스는 체력 1에서 멈춘다. */
+    long[] mineSweepCells(String userName, S5MineMap map, Map<String, Integer> items, java.util.Map<Integer, Integer> line, int maxT, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out,
+            java.util.function.BiFunction<S5MineMobs.Type, Integer, List<int[]>> hitsFn, String mobsKey, String dropsKey, String verb) {
         List<HashMap<String, Object>> hitList = new ArrayList<>();
         List<HashMap<String, Object>> drops = new ArrayList<>();
         int mind = mineMindExpPct(items);
@@ -4011,7 +4022,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (hitCell >= 0) tg.add(new int[] { om.id, hitCell, dist });
         }
         tg.sort((p, q) -> Integer.compare(p[2], q[2]));
-        if (tg.size() > MINE_AURA_MAX_TARGETS) tg = tg.subList(0, MINE_AURA_MAX_TARGETS);
+        if (tg.size() > maxT) tg = tg.subList(0, maxT);
         for (int[] tq : tg) {
             S5MineMap.Mob om = map.mobs().get(tq[0]);
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
@@ -4019,7 +4030,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int hitCell = tq[1], dist = tq[2];
             int omMax = S5MineMobs.hp(ot, om.rank);
             MobState s = MINE_MOB_STATE.computeIfAbsent(key, k -> new MobState(omMax));
-            List<int[]> hs = mineAuraHits(aura, atkBase, ot, dist);
+            List<int[]> hs = hitsFn.apply(ot, dist);
             int sum = 0;
             for (int[] h : hs) sum += h[1];
             boolean dead = false;
@@ -4060,7 +4071,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
-                msg.append(msg.length() > 0 ? " " : "").append("🌀 검기로 ").append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
+                msg.append(msg.length() > 0 ? " " : "").append(verb).append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
                 if (!ot.noReward) {
                     drops.addAll(mineMobDrops(userName, map, ot, msg, om.rank));
                     mineWeaponDrop(userName, items, ot, om.rank, msg, out);
@@ -4070,8 +4081,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             hitList.add(m);
         }
-        out.put("auraMobs", hitList);
-        if (!drops.isEmpty()) out.put("auraDrops", drops);
+        out.put(mobsKey, hitList);
+        if (!drops.isEmpty()) out.put(dropsKey, drops);
         if (kills > 0) out.put("ores", mineOreList(userName));
         return new long[] { kills, expSum };
     }
@@ -4090,6 +4101,64 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
         }
         return new long[] { lv, exp, hp, lock, up };
+    }
+
+    // [2026-11-05] "공격 버튼 위에 화면 전체를 공격하는 전체 공격기 -- 관리자용(칼로 베는 이펙트)".
+    //  화면에 보이는 칸(나를 가운데로 가로 hw, 세로 hh칸까지, 최대 MINE_NOVA_HALF)의 몬스터를 가까운 순으로 MINE_NOVA_MAX마리, 일반 공격 한 방씩(치명 10%, 속성 상성).
+    //  보스는 체력 1에서 멈춘다(검기와 같음 -- 마지막 한 방은 직접). 쿨타임 MINE_NOVA_GAP_MS.
+    static final int MINE_NOVA_HALF = 20, MINE_NOVA_MAX = 40;
+    static final long MINE_NOVA_GAP_MS = 1_500L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_NOVA_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!isMineAdmin(userName)) { out.put("message", "관리자만 쓸 수 있어요."); return out; }
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        Long last = MINE_NOVA_AT.get(userName);
+        if (last != null && now - last < MINE_NOVA_GAP_MS) { out.put("tooFast", true); return out; }
+        MINE_NOVA_AT.put(userName, now);
+        HashMap<String, Object> row = mineRowLocked(userName);
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        int water = mineWalkMode(items);
+        int[] pos = minePos(row, map, water);
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) { out.put("reload", true); out.put("message", "다른 곳에서 위치가 바뀌었어요. 다시 불러올게요."); return out; }
+        if (!mineWalk(map, x, y, water) || !mineMoveOk(pos, longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) {
+            out.put("resyncX", pos[0]);
+            out.put("resyncY", pos[1]);
+            out.put("message", "이동 기록이 맞지 않아 마지막 저장 위치(" + pos[0] + ", " + pos[1] + ")로 돌아갑니다.");
+            return out;
+        }
+        int lv = mineLv(row);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        int hp = mineHpNow(row, now, lock, rb);
+        double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items);
+        int ax = Math.max(1, Math.min(MINE_NOVA_HALF, hw)), ay = Math.max(1, Math.min(MINE_NOVA_HALF, hh));
+        java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
+        for (int yy = Math.max(0, y - ay); yy <= Math.min(map.h - 1, y + ay); yy++)
+            for (int xx = Math.max(0, x - ax); xx <= Math.min(map.w - 1, x + ax); xx++) cells.put(yy * map.w + xx, Math.abs(xx - x) + Math.abs(yy - y));
+        StringBuilder msg = new StringBuilder();
+        long[] r = mineSweepCells(userName, map, items, cells, MINE_NOVA_MAX, -1, now, msg, out, (ot, dist) -> {
+            boolean crit = RND.nextInt(100) < 10;
+            int d = Math.max(1, (int) Math.round(atkBase * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot)));
+            List<int[]> l = new ArrayList<>();
+            l.add(new int[] { 0, d, crit ? 1 : 0 });
+            return l;
+        }, "novaMobs", "novaDrops", "⚔️ 전체 베기로 ");
+        long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
+        dao.updateMinePos(userName, map.id, x, y, now);
+        dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
+        out.put("ok", true);
+        out.put("levelUp", (int) g[4]);
+        out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
+        out.put("message", msg.length() > 0 ? msg.toString() : null);
+        return out;
     }
 
     /** [2026-11-04] 옆에 몬스터가 없을 때 검기만 날리기(공격 버튼) -- mineAttack(mobId = -1). */
