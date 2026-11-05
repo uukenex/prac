@@ -1184,8 +1184,13 @@ var TowerMine = (function () {
     mobOcc = {};
     if (map.mobs) {
       var tS = nowSrv();
+      // [2026-11-05] "마물의 숲(1,400마리)이 끊겨 보인다" -- 매 프레임 모든 몬스터의 위치/칸 표를 새로 만들던 것을, 화면 둘레(+4칸) 안 몬스터와
+      //  쫓아오는(서버가 붙잡은) 몬스터, 보스만 계산한다. 나머지는 화면 밖이라 그릴 일도, 막거나 공격할 일도 없다.
+      var cvw = el.cv ? Math.ceil(el.cv.width / (T * scale) / 2) + 4 : 24, cvh = el.cv ? Math.ceil(el.cv.height / (T * scale) / 2) + 4 : 16, lastI = map.mobs.length - 1;
       for (var mi = 0; mi < map.mobs.length; mi++) {
-        var mm = map.mobs[mi], mp = mobPos(mm, tS);
+        var mm = map.mobs[mi], mst = mobSt[mm.id];
+        if (mi !== lastI && !(mst && mst.fu > tS) && (Math.abs(mm.x - P.x) > cvw || Math.abs(mm.y - P.y) > cvh)) { mm._p = null; continue; }
+        var mp = mobPos(mm, tS);
         if (mp) {
           mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm;
           if ((map.mobTypes[mm.k] || {}).boss) { mobOcc[(mp.cx + 1) + ',' + mp.cy] = mm; mobOcc[mp.cx + ',' + (mp.cy + 1)] = mm; mobOcc[(mp.cx + 1) + ',' + (mp.cy + 1)] = mm; } // [2026-10-29] 보스 = 2x2칸

@@ -34,6 +34,8 @@ public final class S5MineMobs {
         /** [2026-10-28] 설산 봉우리 -- "80레벨 몬스터인데 더 강하게": 체력/공격 배수(경험치는 체력 배수만큼), 화면 레벨 표시(0 = 1 + 4(단계-1)),
          *  보스 선공 거리(0 = 대주교 4칸 / 그 밖 보스 2칸). */
         public double hpMul = 1, atkMul = 1;
+        /** [2026-11-05] 경험치만 따로 곱하는 배수(마물의 숲 무리 -- 체력은 많고 경험치는 적게). */
+        public double expMul = 1;
         /** [2026-10-28] "다도해 몬스터 체력 소폭 낮춰줘" -> "체력 30%, 공격력 30% 너프" -- 체력/공격만 곱한다(경험치는 그대로, hpMul과 달리). */
         public double hpCut = 1, atkCut = 1;
         public int lvShow, aggro;
@@ -76,7 +78,8 @@ public final class S5MineMobs {
         Type aggroRange(int r) { aggro = r; return this; }
         /** [2026-11-05] 왕도 서쪽길 무리 -- "체력은 많고 공격력은 적당하게, 한 전투가 오래", "인식 범위가 넓고 리젠이 빠르게": 체력 x3(경험치도 x3) / 공격 x0.6,
          *  늘 선공(HERD_AGGRO칸 안), 쓰러지면 HERD_RESPAWN_MS 뒤 다시. */
-        Type herd() { hpMul = 3.0; atkMul = 0.6; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
+        // [2026-11-05] "경험치를 많이 줄이고(기존 대비 20%), 몬스터가 더 강하게, 체력은 많게" -- 체력 x3 -> x4.5, 공격 x0.6 -> x0.9, 경험치는 x3 -> x0.6(expMul로 따로)
+        Type herd() { hpMul = 4.5; atkMul = 0.9; expMul = 0.6 / 4.5; firstStrike = true; aggro = HERD_AGGRO; respawnOverride = HERD_RESPAWN_MS; return this; }
         /** 화면/안내에 보이는 레벨. */
         public int lv() { return lvShow > 0 ? lvShow : 1 + 4 * (tier - 1); }
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
@@ -84,7 +87,7 @@ public final class S5MineMobs {
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
         public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
-        public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul); }
+        public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul * expMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
         public long respawnMs() { return respawnOverride > 0 ? respawnOverride : 20_000L + tier * 4_000L; }
     }
