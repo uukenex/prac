@@ -1199,6 +1199,7 @@ var TowerMine = (function () {
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   }
   function update(now) {
+    gossipTick(now); // [2026-11-05] 왕도 주민 소문
     // [2026-10-24] 몬스터가 서 있는 칸(지나갈 수 없음, 공격 대상) + ⛏️/⚔️ 버튼 모양 + 체력 표시
     mobOcc = {};
     if (map.mobs) {
@@ -2717,6 +2718,20 @@ var TowerMine = (function () {
   }
   // [2026-10-27] 왕도 주민 -- "왕도 내 움직이는 NPC(말풍선으로만 말하고 대화 창 없음)". 서버가 준 길(칸 목록)을 시각으로 왕복해서
   //  모든 화면에서 같은 자리에 보인다. 길을 막지 않고(지나갈 수 있음), 7초마다 셋 중 하나꼴로 3.6초 말풍선. 외형은 번호로 정해진다.
+  // [2026-11-05] 왕도 주민 소문(유저 이야기) -- 왕도에 있는 동안 1분마다 서버에서 받아 온다
+  var gossip = [], gossipT = -1e9;
+  function gossipTick(now) {
+    if (!map || map.id !== 'city' || now - gossipT < 60000) return;
+    gossipT = now;
+    fetch(cfg.base + '/api/tower-mine-gossip').then(function (r) { return r.json(); }).then(function (d) { if (d && d.lines) gossip = d.lines; }).catch(function () { });
+  }
+  function myNick() { var u = (cfg && cfg.user) || ''; var i = u.indexOf('/'); return i > 0 ? u.slice(0, i) : u; }
+  /** [2026-11-05] 캐릭터 머리 위 이름 -- 작은 글씨 + 검은 테두리. */
+  function nameTag(text, x, y, col) {
+    ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3 * dpr; ctx.strokeStyle = 'rgba(0,0,0,.85)'; ctx.strokeText(text, x, y);
+    ctx.fillStyle = col || '#fff'; ctx.fillText(text, x, y);
+  }
   var CIT_LINES = ['왕도 아스테리아에 오신 걸 환영해요!', '분수대 물이 오늘따라 맑네요~', '성당 신부님께 기도하면 여기서 깨어난대요.', '텔레포트 게이트가 공짜래요!',
     '동문 밖 길엔 와이번이 나온대요...', '초원 오크들이 요즘 부쩍 사나워졌어요.', '왕도 대장장이 솜씨가 최고예요!', '설산을 넘어오셨다고요? 대단해요!',
     '빵 사러 가는 길이에요~', '기사단이 순찰 중이니 안심하세요.', '어젯밤 별빛석이 떨어지는 걸 봤어요!', '광산에서 미스릴을 캤다는 소문이 있어요.',
@@ -2860,7 +2875,7 @@ var TowerMine = (function () {
         var cur = others[o.id];
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
-        cur.dir = o.d || 'down'; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; // [2026-10-28] 얼음 여왕 빙결
+        cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; // [2026-10-28] 얼음 여왕 빙결
       });
       for (var id in others) if (!seen[id]) delete others[id];
       drawMini(); // [2026-10-28] 미니맵에 다른 유저 위치
@@ -3574,7 +3589,7 @@ var TowerMine = (function () {
         if (cxp < -TS || cyp < -TS * 2 || cxp > W || cyp > H) continue;
         ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(cxp + 3 * scale, cyp + 13 * scale, 10 * scale, 3 * scale);
         ctx.drawImage(citSprite(ci, cp.dir, cp.moving ? 1 + Math.floor(now / 170) % 2 : 0), cxp, cyp - 3 * scale, TS, TS);
-        if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) drawBubble(CIT_LINES[mix(ci + 7, cwin) % CIT_LINES.length], cxp + TS / 2, cyp - 6 * scale);
+        if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) { var gl = gossip.length && mix(ci + 3, cwin) % 3 !== 0 ? gossip : CIT_LINES; drawBubble(gl[mix(ci + 7, cwin) % gl.length], cxp + TS / 2, cyp - 6 * scale); } // [2026-11-05] 셋 중 둘은 유저 소문
       }
     }
     // [2026-10-24] 다른 유저(이름 없이) -- 1초마다 받은 칸 사이를 걸어서, 인사하면 말풍선
@@ -3590,7 +3605,8 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1;
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
-      if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - 6 * scale);
+      if (ou.n) nameTag(ou.n, ox + TS / 2, oy - 4 * scale, '#ffffff'); // [2026-11-05] 닉네임
+      if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - (ou.n ? 9 : 6) * scale);
     }
     if (hermitOn()) { // [2026-10-30] 은둔한 대장장이
       var hxp = Math.round(hermit.x * TS - camX), hyp = Math.round(hermit.y * TS - camY);
@@ -3620,7 +3636,8 @@ var TowerMine = (function () {
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
     if (stunnedMe()) { if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now); else drawBandage(cx, cy - 3 * scale, now); } // [2026-11-04] 붕대 스턴, [2026-11-05] 감전
-    if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 6 * scale); // [2026-10-24] 내가 한 인사
+    nameTag(myNick(), cx + TS / 2, cy - 4 * scale, '#ffe14d'); // [2026-11-05] 내 닉네임(노란색)
+    if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
     if (sv < 2) { // 2단계 이상이면 어둠 없음(전체가 보임)

@@ -2339,6 +2339,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("drops", type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank));
             out.put("ores", mineOreList(userName));
+            if (type.boss) { // [2026-11-05] 왕도 소문 -- 혼자서 / 일행이
+                int fighters = 0;
+                for (MineEngage me2 : MINE_ENGAGE.values()) if (map.version().equals(me2.mapVer) && now - me2.at <= MINE_ENGAGE_TTL_MS && me2.mobs.containsKey(mob.id)) fighters++;
+                mineGossipAdd(mineNick(userName) + (fighters <= 1 ? " 님이 혼자서 " : " 님 일행이 ") + type.name + "을(를) 쓰러뜨렸대요!");
+            }
         } else {
             counter = mineCoatHit(items, counter); // [2026-10-26] 방한 외투 -- 받는 피해 2배([2026-10-28] 갑옷 1.5배)
             if (counter > 0 && mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 반격에 맞아도 끊긴다
@@ -2797,6 +2802,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             code = S5MineMap.ORE_CODES[g - 1];
             name = S5MineMap.ORE_NAMES[g - 1];
             if (g == 6 && S5MineMap.isArchi(map.id)) { // [2026-10-28] "다도해 지역에선 별빛석 없이 달빛석만" -- 별빛석 칸은 달빛석(캔 칸 기록도 20)
+                mineGossipAdd(mineNick(userName) + " 님이 " + map.name + " (" + x + ", " + y + ") 근처에서 달빛석을 캤대요!"); // [2026-11-05] 왕도 소문
                 g = S5MineMap.MOON_STONE_GRADE;
                 code = S5MineMap.MOON_STONE_CODE;
                 name = S5MineMap.MOON_STONE_NAME;
@@ -3889,6 +3895,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, dw.code + "_M", mask | (1 << g)); // [2026-10-30] 처음 나온 등급은 보관(등급별로 골라 든다)
             items.put(dw.code + "_M", mask | (1 << g));
             if (cur < 0) { dao.upsertMineItem(userName, dw.code, g + 1); items.put(dw.code, g + 1); } // 처음 얻은 무기 -- 그 등급을 고른 등급으로(장착은 직접). [2026-10-30] "자동 교체 없애줘"
+            if (g >= 4) mineGossipAdd(mineNick(userName) + " 님이 " + MINE_GRADE_KO[Math.min(g, MINE_GRADE_KO.length - 1)] + " " + dw.name + "을(를) 손에 넣었대요!"); // [2026-11-05] 왕도 소문
             msg.append(" 🗡️ ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g)).append(" (인벤토리 무기 칸에서 등급을 골라 장착할 수 있어요)");
         }
         out.put("dropGrade", g);
@@ -4171,7 +4178,44 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return items.getOrDefault(MINE_ITEM_WEAPON_SLOT, 0) == 1 && items.getOrDefault(MINE_ITEM_PARASOL, 0) > 0;
     }
 
+    // [2026-11-05] "왕도 NPC가 유저 이야기를 -- 곧 5환생, 환생하면 날개, 혼자서 보스, 달빛석 발견 좌표" -- 왕도 주민 말풍선(화면이 1분마다 받아 간다).
+    //  사건(보스 처치/달빛석/전설 이상 무기)은 서버 메모리에 최근 30개(6시간), 환생 임박은 유저 표에서 2분마다 다시 센다.
+    static final java.util.concurrent.ConcurrentLinkedDeque<Object[]> MINE_GOSSIP = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    static final long MINE_GOSSIP_TTL_MS = 6 * 3_600_000L;
+    static volatile List<String> mineGossipRb = new ArrayList<>();
+    static volatile long mineGossipRbAt = 0;
+    static String mineNick(String u) { int i = u == null ? -1 : u.indexOf('/'); return i > 0 ? u.substring(0, i) : u; }
+    static void mineGossipAdd(String text) {
+        MINE_GOSSIP.addFirst(new Object[] { System.currentTimeMillis(), text });
+        while (MINE_GOSSIP.size() > 30) MINE_GOSSIP.pollLast();
+    }
+    @Override
+    public List<String> mineGossip() {
+        long now = System.currentTimeMillis();
+        List<String> out = new ArrayList<>();
+        for (Object[] g : MINE_GOSSIP) if (now - (Long) g[0] <= MINE_GOSSIP_TTL_MS && out.size() < 10) out.add((String) g[1]);
+        if (now - mineGossipRbAt > 120_000L) {
+            mineGossipRbAt = now;
+            List<String> rbl = new ArrayList<>();
+            try {
+                for (HashMap<String, Object> row : dao.selectAllMineUsers()) {
+                    String u = strVal(row.get("USER_NAME"), "");
+                    if (u == null || u.isEmpty() || isMineAdmin(u)) continue;
+                    int lv = mineLv(row);
+                    if (lv < 95) continue;
+                    int rb = mineRebirth(mineItems(u));
+                    rbl.add(mineNick(u) + " 님이 곧 " + (rb + 1) + "환생을 한대요!");
+                }
+            } catch (Exception ignore) { }
+            mineGossipRb = rbl;
+        }
+        out.addAll(mineGossipRb);
+        out.add("환생을 하면 등 뒤에 날개가 돋아난다더라고요.");
+        return out;
+    }
+
     // [2026-11-05] "금괴 반복 소모 -- 왕도 상인, 10분간 경험치 3배, 드랍률 2배" -- 행운의 주문서. 끝나는 시각은 광산 아이템 LUCK_UNTIL(초)에, 사면 남은 시간에 10분을 더한다.
+    static final String[] MINE_GRADE_KO = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
     static final String MINE_ITEM_LUCK = "LUCK_UNTIL";
     static final long MINE_LUCK_MS = 10 * 60_000L;
     static final String[][] MINE_LUCK_COST = { { S5MineMap.BAR_CODES[3], "1" } }; // 금괴 1개
@@ -5679,6 +5723,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("y", o.y);
             m.put("d", o.dir);
             m.put("look", o.look);
+            if (minePStealthOf(e.getKey(), now) == null) m.put("n", mineNick(e.getKey())); // [2026-11-05] "플레이어 위에 닉네임"(은신 중엔 숨김)
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
             if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true);
             if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)

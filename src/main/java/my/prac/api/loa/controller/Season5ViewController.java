@@ -959,6 +959,15 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-05] 왕도 주민 소문. */
+    @GetMapping("/api/tower-mine-gossip")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineGossip() {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("lines", s5Service.mineGossip());
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-11-05] 왕도 상인 -- 행운의 주문서. */
     @GetMapping("/api/tower-mine-cityshop")
     @ResponseBody

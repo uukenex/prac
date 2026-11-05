@@ -311,6 +311,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineArchiShop(String userName, String action, String code);
     /** [2026-11-05] 왕도 상인 -- 행운의 주문서(금괴, 10분 경험치 3배 / 드랍률 2배). action list / buy. */
     HashMap<String, Object> mineCityShop(String userName, String action);
+    /** [2026-11-05] 왕도 주민 소문(유저 이야기) -- 최근 사건 + 환생 임박. */
+    List<String> mineGossip();
     HashMap<String, Object> mineGemCut(String userName, int gemIdx, int times);
     HashMap<String, Object> mineArtisan(String userName, int gemIdx);
 
