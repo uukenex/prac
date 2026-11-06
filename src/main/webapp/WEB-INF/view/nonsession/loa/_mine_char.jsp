@@ -207,9 +207,17 @@ window.MineChar = (function () {
       if (top.s === 'bat') { px(g, wd, 2, 10); px(g, wd, 13, 10); }
       px(g, top.s === 'wings' ? '#ffe97a' : '#c0283a', 4, 10, 8, 1);
     }
+    // [2026-11-06] 용병 옷차림 치장: 메이드복 / 기모노 / 무녀복 / 학원 블레이저 / 고딕 드레스
+    else if (top.s === 'maid') { if (dir !== 'up') { px(g, '#ffffff', 6, 7, 4, 1); px(g, '#f8f8fa', 6, 8, 4, 4); px(g, '#f8f8fa', 5, 10, 6, 2); } else px(g, '#f8f8fa', 6, 10, 4, 1); }
+    else if (top.s === 'kimono') { if (dir !== 'up') { px(g, '#f8f8fa', 6, 7); px(g, '#f8f8fa', 9, 7); px(g, '#f8f8fa', 7, 8, 2, 1); } px(g, '#e2b040', 4, 9, 8, 2); px(g, shade(robe, 0.45), 5, 11); px(g, shade(robe, 0.45), 10, 8); px(g, robe, 4, 12, 8, 2); px(g, robeD, 4, 13, 8, 1); }
+    else if (top.s === 'miko') { if (dir !== 'up') px(g, '#c8303c', 7, 7, 2, 1); px(g, '#c8303c', 4, 10, 8, 2); px(g, '#c8303c', 4, 12, 8, 2); px(g, '#a82030', 4, 13, 8, 1); }
+    else if (top.s === 'blazer') { if (dir !== 'up') { px(g, '#f8f8fa', 7, 7, 2, 1); px(g, '#c03040', 7, 8, 2, 3); px(g, '#e2b040', 5, 10); } px(g, robeD, 4, 11, 8, 1); }
+    else if (top.s === 'gothic') { if (dir !== 'up') px(g, '#c0202a', 7, 7, 2, 2); px(g, '#c0202a', 4, 10, 8, 1); }
     else if (top.s === 'rainbow') { ['#e8433a', '#f08a30', '#ffcf30', '#4fbf6a', '#3a8ae8'].forEach(function (rc, i) { px(g, rc, 4, 7 + i, 8, 1); }); }
     else px(g, belt, 4, 10, 8, 1);
     if (fem) { px(g, robe, 3, 11, 10, 2); px(g, robeD, 3, 12, 10, 1); } // 치마처럼 퍼지는 아랫단
+    if (top.s === 'maid' || top.s === 'gothic') px(g, top.s === 'maid' ? '#f8f8fa' : '#c0202a', fem ? 3 : 4, fem ? 12 : 11, fem ? 10 : 8, 1); // [2026-11-06] 프릴 단
+    if (fem && (top.s === 'miko' || top.s === 'kimono')) { px(g, top.s === 'miko' ? '#c8303c' : robe, 3, 11, 10, 2); px(g, top.s === 'miko' ? '#a82030' : robeD, 3, 12, 10, 1); }
     if (side) { px(g, robeD, 7, 8, 2, 3); px(g, skin, 8, 11); }
     else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, skin, 3, 11); px(g, skin, 12, 11); }
     px(g, skin, 4, 1, 8, 6);
@@ -239,6 +247,10 @@ window.MineChar = (function () {
       else if (hat.s === 'halo') { px(g, hc, 4, 0, 8, 1); px(g, '#ffffff', 6, 0, 2, 1); }
       else if (hat.s === 'beret') { px(g, hc, 3, 1, 9, 2); px(g, hc, 5, 0, 6, 1); px(g, hd, 11, 1); px(g, hd, 7, 0); }
       else if (hat.s === 'ribbon') { px(g, hc, 9, 0, 4, 2); px(g, hd, 10, 0, 2, 2); px(g, '#ffffff', 9, 0); }
+      // [2026-11-06] 용병 머리 장식 치장
+      else if (hat.s === 'maidband') { px(g, hc, 4, 1, 8, 1); px(g, hc, 5, 0); px(g, hc, 7, 0, 2, 1); px(g, hc, 10, 0); px(g, '#d8d0e0', 4, 1); px(g, '#d8d0e0', 11, 1); }
+      else if (hat.s === 'sunhat') { px(g, hc, 1, 2, 14, 1); px(g, hc, 4, 0, 8, 2); px(g, '#4a6ad0', 4, 1, 8, 1); px(g, hd, 1, 2); px(g, hd, 14, 2); }
+      else if (hat.s === 'kanzashi') { px(g, hc, 10, 0, 2, 2); px(g, '#f4f0f0', 11, 0); px(g, '#e2b040', 9, 1); px(g, '#e2b040', 8, 2); }
       else if (hat.s === 'tiara') { px(g, hc, 5, 1, 6, 1); px(g, hc, 7, 0, 2, 1); px(g, '#ff8ad8', 7, 1, 2, 1); px(g, '#ffffff', 5, 0); px(g, '#ffffff', 10, 0); }
       else if (hat.s === 'gmcrown') { // 운영자 왕관 -- 뾰족한 큰 왕관 + 보석
         px(g, hc, 3, 1, 10, 2); px(g, hc, 3, 0); px(g, hc, 6, 0); px(g, hc, 9, 0); px(g, hc, 12, 0);

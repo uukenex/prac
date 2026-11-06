@@ -3047,7 +3047,7 @@ var TowerMine = (function () {
     for (var p in b) lk[p] = b[p];
     lk.hair = h; lk.hat = h + '|neko'; lk.tail = h; lk.job = t | 0;
     var hp = MERC_HD[t | 0] || MERC_HD[0], hs = hp[(ni | 0) % hp.length]; // [2026-11-06] 초상화 기반 64x64 모습
-    if (hs) { lk.hd = {}; for (var q in hs) lk.hd[q] = hs[q]; lk.hd.job = t | 0; }
+    if (hs) { lk.hd = {}; for (var q in hs) lk.hd[q] = hs[q]; lk.hd.job = t | 0; lk.hd.ears = 0; } // [2026-11-06] "SD 캐릭터는 귀 없는 버전으로만"
     return lk;
   }
   // [2026-11-06] "도트 해상도를 32x32 정도로" -- 용병은 MineChar.neko(32x32 고양이 소녀)로 그린다
@@ -3302,7 +3302,8 @@ var TowerMine = (function () {
     ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(x + 3 * sc, y + 13 * sc, 10 * sc, 3 * sc);
     var ad = now - atkT, dig = ad >= 0 && ad < 360 ? (ad < 180 ? 3 : 4) : 0;
     if (rest) ctx.globalAlpha = 0.55;
-    ctx.drawImage(mercSprite(t, mp.dir, mp.mv ? 1 + Math.floor(now / 150) % 2 : 0, dig, skin), x, y - 3 * sc, V.TS, V.TS);
+    var spr = mercSprite(t, mp.dir, mp.mv ? 1 + Math.floor(now / 150) % 2 : 0, dig, skin), sz = spr.width >= 64 ? Math.round(V.TS * 1.15) : V.TS; // [2026-11-06] 64x64 용병은 1.15배(발 기준)
+    ctx.drawImage(spr, x - Math.round((sz - V.TS) / 2), y - 3 * sc - (sz - V.TS), sz, sz);
     ctx.globalAlpha = 1;
     if (rest) { ctx.font = Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💤', x + V.TS * 0.8, y - 2 * sc - Math.sin(now / 300) * 2 * sc); }
     else if (hpf != null && hpf < 1) {

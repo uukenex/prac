@@ -7183,7 +7183,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineCos("WING_PURPLE", "wing", "별빛 보라 날개 염색", "#c8a8ff", new String[][] { mineCost(2, 5) }),
         new MineCos("WING_RED", "wing", "불사조 날개 염색", "#ff7a5a", new String[][] { mineCost(1, 8) }),
         new MineCos("WING_BLACK", "wing", "흑요 날개 염색", "#4a4458", new String[][] { mineCost(5, 5), mineCost(8, 1) }),
-        new MineCos("WING_RAINBOW", "wing", "무지개 날개 염색", "rainbow", new String[][] { mineCost(8, 3), mineSeven(3) })
+        new MineCos("WING_RAINBOW", "wing", "무지개 날개 염색", "rainbow", new String[][] { mineCost(8, 3), mineSeven(3) }),
+        // [2026-11-06] "치장상점에 용병들이 입는 옷도" -- 용병 옷차림(메이드/기모노/무녀/교복/고딕)과 머리 장식. 맨 뒤에만 붙인다.
+        new MineCos("TOP_MAID", "top", "메이드복", "#2a2230|maid", new String[][] { mineCost(0, 8), mineCost(5, 3) }),
+        new MineCos("TOP_MAID_PINK", "top", "분홍 메이드복", "#f8b4c6|maid", new String[][] { mineCost(5, 6), mineCost(6, 3) }),
+        new MineCos("TOP_KIMONO", "top", "동백 기모노", "#5a1a2a|kimono", new String[][] { mineCost(1, 6), mineBar(3, 1) }),
+        new MineCos("TOP_KIMONO_PINK", "top", "벚꽃 기모노", "#e86090|kimono", new String[][] { mineCost(5, 6), mineBar(3, 1) }),
+        new MineCos("TOP_MIKO", "top", "무녀복", "#f2f4fc|miko", new String[][] { mineCost(1, 4), mineCost(3, 4) }),
+        new MineCos("TOP_BLAZER", "top", "학원 블레이저", "#2a3a6a|blazer", new String[][] { mineCost(2, 5), mineOre(3, 40) }),
+        new MineCos("TOP_GOTHIC", "top", "고딕 드레스", "#1e1a20|gothic", new String[][] { mineCost(1, 8), mineCost(6, 4), mineCost(8, 1) }),
+        new MineCos("HAT_MAIDBAND", "hat", "메이드 머리띠", "#ffffff|maidband", new String[][] { mineCost(0, 6) }),
+        new MineCos("HAT_SUNHAT", "hat", "하얀 챙모자", "#f8f8fb|sunhat", new String[][] { mineCost(3, 5), mineOre(3, 30) }),
+        new MineCos("HAT_KANZASHI", "hat", "꽃 비녀", "#e04050|kanzashi", new String[][] { mineCost(5, 4) }),
+        new MineCos("BOT_HAKAMA", "bottom", "붉은 하카마", "#c8303c", new String[][] { mineCost(1, 3) }),
+        new MineCos("BOT_PLEATED", "bottom", "검은 주름치마", "#2a2428", new String[][] { mineOre(2, 80), mineCost(0, 2) })
     );
     /** [2026-10-28] 바람의 신 -- 화면 한 칸 이동 시간을 기본(140ms)의 1/5로. */
     static final String MINE_COS_SPEED = "SHOE_GM";
