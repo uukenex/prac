@@ -4622,7 +4622,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 평타 설명(단계 s = 1 + 레벨/20). */
     static String mineMercSkill(int c, int el, int s) {
         String en = S5MineMobs.ELEM_NAMES[el];
-        if (c == 0) return en + " 검기 평타 " + s + "단계 · 대상과 둘레 " + s + "칸에 공격력의 " + s * MINE_AURA_PCT + "% " + en + " 피해";
+        if (c == 0) return en + " 검기 " + s + "단계 · 베는 쪽 " + s + "칸 줄에 공격력의 " + s * MINE_AURA_PCT + "% " + en + " 피해 (플레이어 검기와 같음)";
         if (c == 1) return (el == S5MineMobs.EL_FIRE ? "불화살" : el == S5MineMobs.EL_THUNDER ? "번개 화살" : "물화살") + " · 한 명에게 피해 +" + 20 * s + "%";
         return (el == S5MineMobs.EL_FIRE ? "파이어볼" : el == S5MineMobs.EL_THUNDER ? "라이트닝볼" : "아이스볼") + " · 한 명"; // [2026-11-06] 속성별 구슬
     }
@@ -4802,14 +4802,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<Integer> hitIds = new ArrayList<>();
         List<Double> hitMul = new ArrayList<>();
         java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int k = hitIds.indexOf(hid); if (k >= 0) hitMul.set(k, hitMul.get(k) + hm); else { hitIds.add(hid); hitMul.add(hm); } };
-        addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : cls == 0 ? 1 + st * MINE_AURA_PCT / 100.0 : 1.0);
+        addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : 1.0);
         List<int[]> cands = new ArrayList<>(); // 싸우는 몬스터 {id, fx, fy}
         for (Integer id : e.mobs.keySet()) {
             if (id < 0 || id >= map.mobs().size()) continue;
             MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
             if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now)) cands.add(new int[] { id, s.fx, s.fy });
         }
-        if (ps != null && cls == 0) for (int[] cd : cands) if (cd[0] != pick && Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= st) addHit.accept(cd[0], st * MINE_AURA_PCT / 100.0); // 검기 평타
+        // [2026-11-06] "용병 검기를 플레이어 평타 검기(강화)와 같은 것으로" -- 대상 옆(나 쪽)에 선 용병이 대상 쪽으로 st칸 줄을 벤다: 그 줄(대상 뒤까지)의 싸우는 몬스터에게
+        //  공격력의 st x 5% 속성 피해(플레이어 검기 mineAuraHits와 같은 비율, 무리는 auraTaken 배). 대상은 평타 그대로. 방향은 나 -> 대상의 큰 축.
+        if (ps != null && cls == 0) {
+            int ddx = ps.fx - x, ddy = ps.fy - y, dvx = Math.abs(ddx) >= Math.abs(ddy) ? Integer.signum(ddx) : 0, dvy = dvx == 0 ? Integer.signum(ddy) : 0;
+            if (dvx == 0 && dvy == 0) dvy = 1;
+            int mx0 = ps.fx - dvx, my0 = ps.fy - dvy; // 용병 자리(대상 바로 앞)
+            for (int[] cd : cands) {
+                if (cd[0] == pick) continue;
+                for (int kq = 1; kq <= st; kq++) if (cd[1] == mx0 + dvx * kq && cd[2] == my0 + dvy * kq) { addHit.accept(cd[0], st * MINE_AURA_PCT / 100.0); break; }
+            }
+            mo.put("adir", new int[] { dvx, dvy });
+        }
         int s2 = mlv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (mlv - MINE_MERC_SKILL_LV) / 20) : 0;
         HashMap<String, Object> sk = null;
         boolean cast = false;

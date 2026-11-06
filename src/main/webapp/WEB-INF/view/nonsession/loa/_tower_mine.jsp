@@ -3119,8 +3119,16 @@ var TowerMine = (function () {
       });
       return;
     }
-    if (f.c === 0) { // 전사: 속성 베기 + 검기 파동
+    if (f.c === 0) { // 전사: 속성 베기(검기 칼날은 플레이어 검기 그림 auraFx로 -- mercApply)
       var a = Math.min(1, age / 150), al = 1 - Math.max(0, (age - 150) / 320);
+      if (f.k !== 'ring') {
+        if (al > 0) {
+          ctx.globalAlpha = al; ctx.lineCap = 'round';
+          ctx.strokeStyle = C[2]; ctx.lineWidth = 5 * s; ctx.beginPath(); ctx.arc(ex - 2 * s, ey + 2 * s, TS * 0.6, -2.4, -2.4 + 2.3 * a); ctx.stroke();
+          ctx.strokeStyle = C[0]; ctx.lineWidth = 2.2 * s; ctx.beginPath(); ctx.arc(ex - 2 * s, ey + 2 * s, TS * 0.6, -2.4, -2.4 + 2.3 * a); ctx.stroke();
+        }
+        return;
+      }
       if (al > 0) {
         ctx.globalAlpha = al; ctx.lineCap = 'round';
         ctx.strokeStyle = C[2]; ctx.lineWidth = 5 * s; ctx.beginPath(); ctx.arc(ex - 2 * s, ey + 2 * s, TS * 0.6, -2.4, -2.4 + 2.3 * a); ctx.stroke();
@@ -3284,6 +3292,10 @@ var TowerMine = (function () {
       else merc.tg.t = t;
       merc.atkT = t;
       mercShot(mt, m.el, m.st, merc.x == null ? P.x : merc.x, merc.y == null ? P.y : merc.y, m.tx, m.ty, m.sp, t + (mt ? 0 : 110), null, m.tg);
+      if (mt === 0 && m.adir) { // [2026-11-06] 용병 검기 = 플레이어 검기 칼날(속성 색, 단계 칸만큼 앞으로)
+        var adr = m.adir[0] > 0 ? 'right' : m.adir[0] < 0 ? 'left' : m.adir[1] < 0 ? 'up' : 'down';
+        auraFx.push({ x: m.tx - m.adir[0], y: m.ty - m.adir[1], dir: adr, r: m.st, els: [m.el], rs: [m.st], t0: t, w: false, m: true });
+      }
       // [2026-11-06] "동료가 실제 얼마 데미지를 무슨 속성(색)으로 줬는지 (동료 이모티콘)으로" -- 🐱 + 피해, 속성 색(불 주황 / 번개 노랑 / 물 파랑), 상성이면 크게 + !
       //  "메테오는 땅에 닿을 때 데미지" -- 2차 스킬이 나간 턴은 스킬이 닿는 때에 숫자(와 쓰러짐)
       var land = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 420 : m.sk.k === 'chain' ? 200 : fly, ecol = MERC_DMG_COL[m.el] || '#ffd27a';
@@ -4540,8 +4552,9 @@ var TowerMine = (function () {
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
         var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(5, 12 - i * 0.8) * dpr;
-        var rr = TS * ((auraWide ? 1.5 : 0.5) + i * 0.07), back = TS * 0.4 + (auraWide ? TS : 0); // [2026-11-05] 관리자 폭 3칸 -- 칼날 반지름 3배, 앞 끝은 같은 자리
-        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * back, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * back, sp = auraWide ? 0.62 : 1.05;
+        var fw = auraWide && !f.m; // [2026-11-06] 용병 검기(f.m)는 폭 1칸
+        var rr = TS * ((fw ? 1.5 : 0.5) + i * 0.07), back = TS * 0.4 + (fw ? TS : 0); // [2026-11-05] 관리자 폭 3칸 -- 칼날 반지름 3배, 앞 끝은 같은 자리
+        var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * back, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * back, sp = fw ? 0.62 : 1.05;
         ctx.globalAlpha = Math.max(0, fo * 0.4); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw * 2.4; // 바깥 번짐
         ctx.beginPath(); ctx.arc(cx - dx * TS * 0.2, cy - dy * TS * 0.2, rr, ang - sp * 0.8, ang + sp * 0.8); ctx.stroke();
         ctx.globalAlpha = Math.max(0, fo); ctx.lineWidth = lw; // 칼날
