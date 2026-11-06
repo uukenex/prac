@@ -113,7 +113,10 @@ public class S55MineSocket {
         m = new HashMap<>();
         for (java.lang.reflect.Method md : Season5ViewController.class.getMethods()) {
             org.springframework.web.bind.annotation.GetMapping gm = md.getAnnotation(org.springframework.web.bind.annotation.GetMapping.class);
-            if (gm == null) continue;
+            org.springframework.web.bind.annotation.RequestMapping rm = md.getAnnotation(org.springframework.web.bind.annotation.RequestMapping.class); // [2026-11-06] GET도 받는 @RequestMapping(위치 저장 등)
+            String[] paths = gm != null ? (gm.value().length > 0 ? gm.value() : gm.path())
+                    : rm != null && (rm.method().length == 0 || java.util.Arrays.asList(rm.method()).contains(org.springframework.web.bind.annotation.RequestMethod.GET)) ? (rm.value().length > 0 ? rm.value() : rm.path()) : null;
+            if (paths == null) continue;
             boolean ok = true;
             for (java.lang.reflect.Parameter p : md.getParameters()) {
                 org.springframework.web.bind.annotation.RequestParam rp = p.getAnnotation(org.springframework.web.bind.annotation.RequestParam.class);
@@ -122,7 +125,7 @@ public class S55MineSocket {
                         || !(t == String.class || t == int.class || t == long.class || t == double.class || t == boolean.class || t == Integer.class || t == Long.class)) { ok = false; break; }
             }
             if (!ok) continue;
-            for (String ps : gm.value().length > 0 ? gm.value() : gm.path()) if (ps.startsWith("/api/tower-mine")) m.put(ps, md);
+            for (String ps : paths) if (ps.startsWith("/api/tower-mine")) m.put(ps, md);
         }
         GET_ROUTES = m;
         return m;

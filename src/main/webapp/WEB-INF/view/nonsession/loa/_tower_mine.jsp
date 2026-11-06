@@ -924,7 +924,7 @@ var TowerMine = (function () {
   function pollMobs() {
     if (!opened || !map || !map.mobs || !map.mobs.length) return;
     var mid = map.id;
-    fetch(cfg.base + '/api/tower-mine-mobs?mapId=' + encodeURIComponent(mid)).then(function (r) { return r.json(); }).then(function (d) { applyMobs(d, mid); }).catch(function () { });
+    api('/api/tower-mine-mobs?mapId=' + encodeURIComponent(mid)).then(function (d) { applyMobs(d, mid); }) /* [2026-11-06] 소켓이 열려 있으면 소켓으로 */.catch(function () { });
   }
   function applyMobs(d, mid) {
     if (!map || map.id !== mid || !d) return;
@@ -2966,7 +2966,7 @@ var TowerMine = (function () {
   function gossipTick(now) {
     if (!map || now - gossipT < 60000) return;
     gossipT = now;
-    fetch(cfg.base + '/api/tower-mine-gossip').then(function (r) { return r.json(); }).then(function (d) { if (d && d.lines) gossip = d.lines; if (d && d.updates) updLines = d.updates; }).catch(function () { });
+    api('/api/tower-mine-gossip').then(function (d) { /* [2026-11-06] 소켓이 열려 있으면 소켓으로 */ if (d && d.lines) gossip = d.lines; if (d && d.updates) updLines = d.updates; }).catch(function () { });
   }
   // [2026-11-05] 용병(동료) -- 평소엔 내가 지나온 칸을 두세 칸 뒤에서 따라오고, 전투 턴(서버)이 고른 몬스터 옆 칸으로 달려가 싸운다(흩어짐).
   //  체력이 다하면 내 뒤 칸에서 쉰다(흐리게 + 💤). 다른 유저의 용병도 같은 식(쉬는 중/싸우는 칸은 위치 알림으로 온다).
@@ -4702,10 +4702,10 @@ var TowerMine = (function () {
     if (wsOk && ws && ws.readyState === 1 && path.indexOf('/api/tower-mine') === 0) return wsCall(path).then(function (d) { return d && d._http ? apiRaw(path) : d; }).then(apiPost);
     return apiRaw(path).then(apiPost);
   }
-  function wsCall(path) {
+  function wsCall(path, tmo) {
     return new Promise(function (ok, no) {
       var i = ++wsSeq, sock = ws;
-      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () { delete wsWait[i]; if (ws === sock) { wsClose(); wsTimer = setTimeout(wsOpen, 3000); } no(new Error('timeout')); }, 8000) };
+      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () { delete wsWait[i]; if (ws === sock) { wsClose(); wsTimer = setTimeout(wsOpen, 3000); } no(new Error('timeout')); }, tmo || 8000) };
       ws.send(JSON.stringify({ i: i, p: path }));
     });
   }
@@ -4721,11 +4721,16 @@ var TowerMine = (function () {
   //  한 번도 못 열고 끊기면(막힘) 이 화면에선 예전 주소로 돌아간다.
   var wsDirectBad = false, wsVia = 0; // [2026-11-05] 지금 소켓 길(1 서울 CloudFront / 2 예전 주소) -- 관리자 통신 상태에
   //  [2026-11-04] 서버 주소는 숨긴다(사용자 지시) -- wsHost는 서울 지점 중계(CloudFront) 도메인. 보안 연결도 되니 https 화면도 wss://로.
-  function wsDirect() { return !!(st && st.wsHost && !wsDirectBad); }
+  // [2026-11-06] "폰/PC가 HTTP로 통신할 때가 있다 -- 전부 ws로" -- 입장(첫 상태)도 소켓으로 보내려고, 지난번에 받은 서울 주소(wsHost)를 이 기기에 기억해 두고 입장 전에 소켓부터 연다.
+  var wsHostMem = (function () { try { return localStorage.getItem('tw-mine-wshost') || ''; } catch (e) { return ''; } })();
+  function wsHostOf() { return (st && st.wsHost) || wsHostMem; }
+  function wsDirect() { return !!(wsHostOf() && !wsDirectBad); }
+  /** 소켓이 열릴 때까지(최대 ms) 기다린다 -- 못 열면 그냥 진행(HTTP). */
+  function wsReady(ms) { return new Promise(function (res) { if (wsOk || !ws) { res(); return; } var t0 = Date.now(), iv = setInterval(function () { if (wsOk || !ws || Date.now() - t0 > ms) { clearInterval(iv); res(); } }, 40); }); }
   function wsOpen() {
     if (!opened || ws || !window.WebSocket) return;
     var direct = wsDirect(), opened1 = false;
-    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + (direct ? st.wsHost : location.host) + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; if (direct) { wsDirectBad = true; wsOpen(); } return; }
+    try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + (direct ? wsHostOf() : location.host) + cfg.base.replace(/\/loa$/, '') + '/s55ws?u=' + encodeURIComponent(cfg.user)); } catch (e) { ws = null; if (direct) { wsDirectBad = true; wsOpen(); } return; }
     ws.onopen = function () { wsOk = true; wsRetry = 0; opened1 = true; wsVia = direct ? 1 : 2; };
     ws.onmessage = function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -4814,7 +4819,8 @@ var TowerMine = (function () {
       var c = JSON.parse(localStorage.getItem(key) || 'null');
       if (c && c.version === ver && c.rows) { mapMem[id] = c; return Promise.resolve(c); }
     } catch (e) { }
-    return fetch(cfg.base + '/api/tower-mine-map?mapId=' + encodeURIComponent(id)).then(function (r) { return r.json(); }).then(function (m) {
+    var mapPath = '/api/tower-mine-map?mapId=' + encodeURIComponent(id), mapHttp = function () { return fetch(cfg.base + mapPath).then(function (r) { return r.json(); }); };
+    return (wsOk && ws && ws.readyState === 1 ? wsCall(mapPath, 15000).then(function (d) { return d && d._http ? mapHttp() : d; }, mapHttp) : mapHttp()).then(function (m) { // [2026-11-06] 소켓이 열려 있으면 소켓으로(실패하면 HTTP -- 읽기만이라 다시 보내도 된다)
       if (m.error || !m.rows) throw new Error(m.error || '맵을 불러오지 못했어요.');
       try { localStorage.removeItem('tw-mine-map'); localStorage.setItem(key, JSON.stringify(m)); } catch (e) { }
       mapMem[id] = m;
@@ -4845,6 +4851,7 @@ var TowerMine = (function () {
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
     if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
+    if (s.wsHost && s.wsHost !== wsHostMem) { wsHostMem = s.wsHost; try { localStorage.setItem('tw-mine-wshost', s.wsHost); } catch (e) { } } // [2026-11-06] 다음 입장 때 소켓을 먼저
     buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
@@ -4909,6 +4916,10 @@ var TowerMine = (function () {
     var body = new URLSearchParams();
     body.append('userName', cfg.user); body.append('mapId', map.id); body.append('x', x); body.append('y', y); body.append('v', map.version || '');
     if (exit) body.append('exit', '1');
+    if (!exit && wsOk && ws && ws.readyState === 1) { // [2026-11-06] 걷는 중 저장은 소켓으로(나갈 때는 창이 닫히며 소켓이 끊길 수 있어 예전처럼 sendBeacon)
+      wsCall('/api/tower-mine-pos?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&v=' + encodeURIComponent(map.version || '')).catch(function () { lastSaved = ''; });
+      return;
+    }
     try {
       if (!(navigator.sendBeacon && navigator.sendBeacon(cfg.base + '/api/tower-mine-pos', body))) {
         fetch(cfg.base + '/api/tower-mine-pos', { method: 'POST', body: body, keepalive: true });
@@ -5042,7 +5053,8 @@ var TowerMine = (function () {
     raf = requestAnimationFrame(loop);
     exitSent = false;
     var vers = null;
-    api('/api/tower-mine?enter=1').then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
+    if (netMode() === 'ws') wsOpen(); // [2026-11-06] 입장 요청도 소켓으로 -- 기억해 둔 서울 주소로 먼저 열고(최대 1.5초) 보낸다
+    wsReady(1500).then(function () { return api('/api/tower-mine?enter=1'); }).then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
       if (s.error) throw new Error(s.error);
       vers = s.mapVers;
       return enterState(s);
