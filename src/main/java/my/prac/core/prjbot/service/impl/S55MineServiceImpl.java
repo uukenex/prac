@@ -4555,7 +4555,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineOfSet(String userName, Map<String, Integer> items, int i, String f, int v) { dao.upsertMineItem(userName, mineOfKey(i, f), v); items.put(mineOfKey(i, f), v); }
     void mineMercOffers(String userName, Map<String, Integer> items) {
         List<Integer> free = new ArrayList<>();
-        for (int c = 0; c < MINE_MERC_NAMES.length; c++) if (mineMercLv(items, c) <= 0) free.add(c);
+        for (int c = 0; c < MINE_MERC_NAMES.length; c++) free.add(c); // [2026-11-06] "다른 용병을 고르면 지금 용병은 떠나고 대체" -- 후보는 모든 직업에서
         for (int i = 0; i < MINE_MERC_OFFERS; i++) {
             int t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
             if (t >= 0 && free.contains(t)) continue;
@@ -4593,13 +4593,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("skill", mineMercSkill(c, el, mineMercStage(lv)));
         m.put("sal", mineCostText(cost));
         m.put("can", mineCostOk(cost, have));
-        m.put("owned", mineMercLv(items, c) > 0);
+        m.put("owned", false); // [2026-11-06] 이제 늘 계약 가능(지금 용병과 바뀐다)
         return m;
     }
     static final String[] MINE_MERC_NAMES = { "전사", "궁수", "마법사" };
     static final String[] MINE_MERC_WEAPON = { "기본 칼", "기본 활", "기본 지팡이" };
     static final int[] MINE_MERC_REACH = { 5, 7, 6 };
-    static final double[] MINE_MERC_DMG = { 1.2, 1.0, 0.8 };
+    static final double[] MINE_MERC_DMG = { 1.2, 1.0, 1.0 }; // [2026-11-06] 마법사 평타가 한 명(파이어볼)이라 0.8 -> 1.0
+    static final int MINE_MERC_SKILL_LV = 40;
+    static final long MINE_MERC_SKILL_MS = 20_000L, MINE_MERC_RAIN_MS = 5_000L;
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
     static final double MINE_MERC_EXP_PCT = 1.0;
@@ -4615,17 +4617,26 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineAtk(Math.max(1, mineMercLv(items, c))) * MINE_MERC_DMG[c]); }
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
+    /** 평타 설명(단계 s = 1 + 레벨/20). */
     static String mineMercSkill(int c, int el, int s) {
         String en = S5MineMobs.ELEM_NAMES[el];
-        if (c == 0) return en + " 검기 " + s + "단계 · 대상과 둘레 " + s + "칸에 공격력의 " + s * MINE_AURA_PCT + "% " + en + " 피해";
-        if (c == 1) return (el == S5MineMobs.EL_FIRE ? (s >= 3 ? "불비 화살" : "불화살") : el == S5MineMobs.EL_THUNDER ? "번개 화살" : "물화살") + " · 한 명에게 피해 +" + 20 * s + "%";
-        if (el == S5MineMobs.EL_FIRE) return (s >= 3 ? "메테오" : "화염구") + " · 대상 둘레 " + s + "칸 폭발";
-        if (el == S5MineMobs.EL_THUNDER) return "체인 라이트닝 · " + (s + 1) + "마리에게 튕김";
-        return "토네이도 · 지나가는 길 + 대상 둘레 " + (s + 1) / 2 + "칸";
+        if (c == 0) return en + " 검기 평타 " + s + "단계 · 대상과 둘레 " + s + "칸에 공격력의 " + s * MINE_AURA_PCT + "% " + en + " 피해";
+        if (c == 1) return (el == S5MineMobs.EL_FIRE ? "불화살" : el == S5MineMobs.EL_THUNDER ? "번개 화살" : "물화살") + " · 한 명에게 피해 +" + 20 * s + "%";
+        return (el == S5MineMobs.EL_FIRE ? "파이어볼" : el == S5MineMobs.EL_THUNDER ? "라이트닝볼" : "아이스볼") + " · 한 명"; // [2026-11-06] 속성별 구슬
+    }
+    /** [2026-11-06] 2차 스킬 설명(단계 s2 = 1~3, 40/60/80레벨). */
+    static String mineMercSkill2(int c, int el, int s2) {
+        if (c == 0) return "이기어검 " + s2 + "단계 · 가까운 " + (3 + 2 * s2) + "마리에 날아가는 검(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
+        if (c == 1) return "화살비 " + s2 + "단계 · 둘레 " + (1 + s2) + "칸 땅에 5초(매초 공격력 x" + mineFmtPct(0.6 + 0.2 * s2) + ")";
+        if (el == S5MineMobs.EL_THUNDER) return "체인 라이트닝 " + s2 + "단계 · " + (2 + 2 * s2) + "번 튕김(공격력 x2부터 85%씩)";
+        if (el == S5MineMobs.EL_WATER) return "토네이도 " + s2 + "단계 · 지나가는 길 + 둘레 " + (1 + s2) + "칸(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
+        return "메테오 " + s2 + "단계 · 둘레 " + (2 + s2) + "칸 폭발(공격력 x" + mineFmtPct(2.0 + 0.5 * s2) + ")";
     }
     static final class MercSt {
         int cls = -1, max, hp, target = -1, tx, ty;
-        long restUntil, at, fightAt, atkAt, struckAt;
+        long restUntil, at, fightAt, atkAt, struckAt, skillAt, rainUntil; // [2026-11-06] 2차 스킬 쿨타임, 화살비
+        int rainX, rainY, rainR;
+        double rainMul;
     }
     static final java.util.concurrent.ConcurrentHashMap<String, MercSt> MINE_MERC = new java.util.concurrent.ConcurrentHashMap<>();
     /** 지금 체력(쉬기 끝/싸우지 않는 동안 회복 반영, 용병이 바뀌면 가득, 레벨이 올라 최대 체력이 늘면 그만큼 더). 부를 때 ms에 synchronized. */
@@ -4658,6 +4669,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("st", s);
         m.put("skill", mineMercSkill(c, el, s));
         if (s < 5) { m.put("nextLv", s * 20); m.put("skillNext", mineMercSkill(c, el, s + 1)); }
+        int s2 = lv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (lv - MINE_MERC_SKILL_LV) / 20) : 0; // [2026-11-06] 2차 스킬
+        m.put("s2", s2);
+        m.put("skill2", mineMercSkill2(c, el, Math.max(1, s2)));
+        if (s2 < 3) { m.put("next2Lv", MINE_MERC_SKILL_LV + s2 * 20); if (s2 > 0) m.put("skill2Next", mineMercSkill2(c, el, s2 + 1)); }
         m.put("ni", mineMercNi(items, c, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
         m.put("nm", mineMercNm(items, c, "NM")); // [2026-11-06] 이름 / 급여
         m.put("paidUntil", items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L);
@@ -4742,47 +4757,73 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ms.target = pick;
         }
         if (pick < 0) return new long[] { 0, 0 };
-        int el = mineMercEl(items, cls), st = mineMercStage(mineMercLv(items, cls)), atk = mineMercAtk(items, cls);
+        int mlv = mineMercLv(items, cls), el = mineMercEl(items, cls), st = mineMercStage(mlv), atk = mineMercAtk(items, cls);
         MobState ps = MINE_MOB_STATE.get(mineMobKey(map, pick));
-        // 맞을 몬스터와 배수(첫째 = 대상)
+        // [2026-11-06] "40레벨에 2차 스킬, 쿨타임(20초)마다" -- 평타(1~99): 전사 속성 검기(대상 + 둘레 s칸) / 궁수 속성 화살(한 명 +20% x s) / 마법사 파이어볼(한 명).
+        //  2차(40레벨부터, 40/60/80에 1~3단계): 전사 이기어검(가까운 3+2단계마리에 날아가는 검), 마법사 불 메테오(대상 둘레 2+단계칸) / 번개 체인 라이트닝(2+2x단계번 튕김) /
+        //  물 토네이도(나 -> 대상 길 + 둘레 1+단계칸), 궁수 화살비(대상 둘레 1+단계칸 땅에 5초 -- 매초 그 안의 싸우는 몬스터).
         List<Integer> hitIds = new ArrayList<>();
         List<Double> hitMul = new ArrayList<>();
-        hitIds.add(pick);
-        hitMul.add(cls == 1 ? 1 + 0.2 * st : cls == 0 ? 1 + st * MINE_AURA_PCT / 100.0 : 1.0);
-        if (ps != null && (cls == 0 || cls == 2)) {
-            if (cls == 2 && el == S5MineMobs.EL_THUNDER) { // 체인 -- 가장 가까운 다음 몬스터로(3칸 안) s+1번, 85%씩
-                int cx = ps.fx, cy = ps.fy;
-                double mul = 1.0;
-                for (int hop = 0; hop < st + 1; hop++) {
-                    int nb = -1, nd = 99;
-                    for (Integer id : e.mobs.keySet()) {
-                        if (hitIds.contains(id) || id < 0 || id >= map.mobs().size()) continue;
-                        MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
-                        if (!mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now)) continue;
-                        int d = Math.abs(s.fx - cx) + Math.abs(s.fy - cy);
-                        if (d <= 3 && d < nd) { nd = d; nb = id; }
-                    }
-                    if (nb < 0) break;
-                    mul *= 0.85;
-                    hitIds.add(nb); hitMul.add(mul);
-                    MobState ns = MINE_MOB_STATE.get(mineMobKey(map, nb));
-                    cx = ns.fx; cy = ns.fy;
-                }
-            } else {
-                int rad = cls == 0 ? st : el == S5MineMobs.EL_WATER ? (st + 1) / 2 : st;
-                for (Integer id : e.mobs.keySet()) {
-                    if (id == pick || id < 0 || id >= map.mobs().size()) continue;
-                    MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
-                    if (!mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now)) continue;
-                    boolean in = Math.max(Math.abs(s.fx - ps.fx), Math.abs(s.fy - ps.fy)) <= rad;
-                    if (!in && cls == 2 && el == S5MineMobs.EL_WATER) { // 토네이도가 지나가는 길(나 -> 대상 선분에서 1칸 안)
-                        double vx = ps.fx - x, vy = ps.fy - y, l2 = vx * vx + vy * vy, t = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((s.fx - x) * vx + (s.fy - y) * vy) / l2));
-                        in = Math.hypot(s.fx - (x + vx * t), s.fy - (y + vy * t)) <= 1.0;
-                    }
-                    if (in) { hitIds.add(id); hitMul.add(cls == 0 ? st * MINE_AURA_PCT / 100.0 : 0.7); }
-                }
-            }
+        java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int k = hitIds.indexOf(hid); if (k >= 0) hitMul.set(k, hitMul.get(k) + hm); else { hitIds.add(hid); hitMul.add(hm); } };
+        addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : cls == 0 ? 1 + st * MINE_AURA_PCT / 100.0 : 1.0);
+        List<int[]> cands = new ArrayList<>(); // 싸우는 몬스터 {id, fx, fy}
+        for (Integer id : e.mobs.keySet()) {
+            if (id < 0 || id >= map.mobs().size()) continue;
+            MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
+            if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now)) cands.add(new int[] { id, s.fx, s.fy });
         }
+        if (ps != null && cls == 0) for (int[] cd : cands) if (cd[0] != pick && Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= st) addHit.accept(cd[0], st * MINE_AURA_PCT / 100.0); // 검기 평타
+        int s2 = mlv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (mlv - MINE_MERC_SKILL_LV) / 20) : 0;
+        HashMap<String, Object> sk = null;
+        boolean cast = false;
+        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= MINE_MERC_SKILL_MS) { ms.skillAt = now; cast = true; } }
+        if (cast) {
+            sk = new HashMap<>();
+            sk.put("x", ps.fx); sk.put("y", ps.fy); sk.put("s", s2);
+            List<int[]> pts = new ArrayList<>();
+            if (cls == 0) { // 이기어검
+                List<int[]> nb = new ArrayList<>();
+                for (int[] cd : cands) if (Math.abs(cd[1] - x) + Math.abs(cd[2] - y) <= 6) nb.add(cd);
+                nb.sort((p, q) -> Math.abs(p[1] - x) + Math.abs(p[2] - y) - Math.abs(q[1] - x) - Math.abs(q[2] - y));
+                for (int k = 0; k < Math.min(nb.size(), 3 + 2 * s2); k++) { addHit.accept(nb.get(k)[0], 1.5 + 0.5 * s2); pts.add(new int[] { nb.get(k)[1], nb.get(k)[2], nb.get(k)[0] }); }
+                sk.put("k", "sword"); sk.put("nm", "이기어검");
+            } else if (cls == 1) { // 화살비
+                synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = 1 + s2; ms.rainUntil = now + MINE_MERC_RAIN_MS; ms.rainMul = 0.6 + 0.2 * s2; }
+                sk.put("k", "rain"); sk.put("r", 1 + s2); sk.put("until", now + MINE_MERC_RAIN_MS); sk.put("nm", "화살비");
+            } else if (el == S5MineMobs.EL_THUNDER) { // 체인 라이트닝
+                addHit.accept(pick, 2.0);
+                int cx = ps.fx, cy = ps.fy;
+                double mul = 2.0;
+                List<Integer> used = new ArrayList<>();
+                used.add(pick);
+                for (int hop = 0; hop < 2 + 2 * s2; hop++) {
+                    int[] nb = null; int nd = 99;
+                    for (int[] cd : cands) { if (used.contains(cd[0])) continue; int d = Math.abs(cd[1] - cx) + Math.abs(cd[2] - cy); if (d <= 3 && d < nd) { nd = d; nb = cd; } }
+                    if (nb == null) break;
+                    mul *= 0.85;
+                    used.add(nb[0]); addHit.accept(nb[0], mul); pts.add(new int[] { nb[1], nb[2], nb[0] });
+                    cx = nb[1]; cy = nb[2];
+                }
+                sk.put("k", "chain"); sk.put("nm", "체인 라이트닝");
+            } else if (el == S5MineMobs.EL_WATER) { // 토네이도
+                int rad = 1 + s2;
+                double vx = ps.fx - x, vy = ps.fy - y, l2 = vx * vx + vy * vy;
+                for (int[] cd : cands) {
+                    double t = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((cd[1] - x) * vx + (cd[2] - y) * vy) / l2));
+                    if (Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= rad || Math.hypot(cd[1] - (x + vx * t), cd[2] - (y + vy * t)) <= 1.0) addHit.accept(cd[0], 1.5 + 0.5 * s2);
+                }
+                sk.put("k", "tornado"); sk.put("r", rad); sk.put("nm", "토네이도");
+            } else { // 메테오
+                int rad = 2 + s2;
+                for (int[] cd : cands) if (Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= rad) addHit.accept(cd[0], 2.0 + 0.5 * s2);
+                sk.put("k", "meteor"); sk.put("r", rad); sk.put("nm", "메테오");
+            }
+            sk.put("pts", pts);
+            mo.put("sk", sk);
+        }
+        long rainUntil; int rx, ry, rr; double rm;
+        synchronized (ms) { rainUntil = ms.rainUntil; rx = ms.rainX; ry = ms.rainY; rr = ms.rainR; rm = ms.rainMul; }
+        if (rainUntil > now && !cast) for (int[] cd : cands) if (Math.max(Math.abs(cd[1] - rx), Math.abs(cd[2] - ry)) <= rr) addHit.accept(cd[0], rm); // 화살비 -- 땅에 남아 매초
         long kills = 0, expSum = 0;
         List<HashMap<String, Object>> allDrops = new ArrayList<>();
         List<long[]> rows = new ArrayList<>();
@@ -4812,7 +4853,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 rows.add(mineMobRow(id, s));
                 if (hi == 0) { mo.put("tx", s.fx); mo.put("ty", s.fy); mo.put("dmg", dmg); if (beat) mo.put("beat", true); }
-                else sp.add(new int[] { s.fx, s.fy, dmg });
+                else sp.add(new int[] { s.fx, s.fy, dmg, id }); // [2026-11-06] 4번째 = 몬스터 번호(화면이 그려진 자리로 조준)
             }
             if (!dead) continue;
             if (hi == 0) primaryDead = true;
@@ -4882,11 +4923,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             String[][] cost = cOk ? MINE_MERC_SALARY[Math.floorMod(items.getOrDefault(mineOfKey(oi, "SAL"), 0), MINE_MERC_SALARY.length)] : null;
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
-            else if (mineMercCount(items) >= MINE_MERC_MAX) { ok = false; msg = "지금은 용병을 한 명만 데리고 있을 수 있어요."; } // [2026-11-06] "지금은 1개만"
-            else if (mineMercLv(items, c) > 0) { ok = false; msg = "이미 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요."; }
             else if (!mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "첫날 급여(" + mineCostText(cost) + ")가 모자라요." + mineLackText(cost, userName); }
             else {
                 mineTakeCost(userName, cost, 1);
+                StringBuilder gone = new StringBuilder(); // [2026-11-06] "현재 용병은 사라지고 대체" -- 지금 용병(들)과의 계약을 끝낸다(레벨/경험치/급여 기록도)
+                for (int oc = 0; oc < MINE_MERC_NAMES.length; oc++) if (mineMercLv(items, oc) > 0) {
+                    gone.append(gone.length() > 0 ? ", " : "").append(mineMercNm(items, oc, "NM"));
+                    for (String f : new String[] { "LV", "EXP", "PAID", "MANUAL" }) mineMercSet(userName, items, oc, f, 0);
+                    mineMercSet(userName, items, oc, "WARN", -1);
+                }
                 int lv = items.getOrDefault(mineOfKey(oi, "LV"), MINE_MERC_LV_MIN), el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE);
                 mineMercSet(userName, items, c, "LV", lv);
                 mineMercSet(userName, items, c, "EXP", 0);
@@ -4896,8 +4941,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, "SAL", RND.nextInt(MINE_MERC_SALARY.length));
                 mineMercSet(userName, items, c, "MANUAL", 0);
                 mineOfSet(userName, items, oi, "T", 0); // 이 칸(과 같은 직업 칸)은 새로 뽑는다
-                if (mineMercOn(items) < 0) { dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, c + 1); items.put(MINE_ITEM_MERC_ON, c + 1); }
-                msg = "🛡️ Lv." + lv + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요! 첫날 급여 " + mineCostText(cost) + "를 줬어요."
+                dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, c + 1); items.put(MINE_ITEM_MERC_ON, c + 1); // 새 용병이 바로 함께
+                msg = (gone.length() > 0 ? "👋 " + gone + "은(는) 떠났어요. " : "") + "🛡️ Lv." + lv + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요! 첫날 급여 " + mineCostText(cost) + "를 줬어요."
                     + " 다음 급여는 내일 " + mineCostText(MINE_MERC_SALARY[mineMercSal(items, c, "SAL")]) + "(자동 차감)예요.";
             }
         } else if ("pay".equals(action)) { // 급여(선금) 하루치
@@ -4913,6 +4958,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, "WARN", -1);
                 msg = "💰 " + mineMercNm(items, c, "NM") + "에게 급여 " + mineCostText(cost) + "를 줬어요. 다음 급여는 " + mineCostText(MINE_MERC_SALARY[mineMercSal(items, c, "SAL")]) + "예요.";
             }
+        } else if ("lv99".equals(action)) { // [2026-11-06] "관리자는 레벨을 99로 올리는 기능"
+            if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
+            else if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else { mineMercSet(userName, items, c, "LV", MINE_LV_MAX); mineMercSet(userName, items, c, "EXP", 0); msg = "🛠️ " + mineMercNm(items, c, "NM") + "을(를) Lv." + MINE_LV_MAX + "로 올렸어요."; }
         } else if ("auto".equals(action)) { // 자동 차감 켜기/끄기
             if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
             else {

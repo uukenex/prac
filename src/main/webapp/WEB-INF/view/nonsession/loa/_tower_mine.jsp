@@ -878,8 +878,33 @@ var TowerMine = (function () {
     return null;
   }
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
+  // [2026-11-06] "몬스터가 쓰러지는 이미지" -- 화면에 보이던 몬스터가 막 쓰러지면(살아 있던 상태 -> 쓰러짐) 그 자리에서 옆으로 넘어지며 흐려지고 먼지가 인다.
+  //  맵에 막 들어온 첫 목록(예전에 쓰러진 것들)은 빼려고 mobDeathReady(첫 몬스터 목록을 받은 뒤 true).
+  var mobDeaths = [], mobDeathReady = false;
+  function mobDeathAdd(id) {
+    var mb = map && map.mobs ? map.mobs[id] : null, p = mb && mb._p, ty = mb && map.mobTypes[mb.k];
+    if (!p || !ty || ty.boss || BOSS_ART[ty.name]) return;
+    mobDeaths.push({ k: mb.k, x: p.x, y: p.y, t0: performance.now(), dir: mb.id % 2 ? 1 : -1 });
+    if (mobDeaths.length > 30) mobDeaths.shift();
+  }
+  function mobDeathDraw(now, TS, camX, camY) {
+    mobDeaths = mobDeaths.filter(function (d) { return now - d.t0 < 900; });
+    mobDeaths.forEach(function (d) {
+      var q = (now - d.t0) / 900, fall = Math.min(1, q / 0.32), x = d.x * TS - camX, y = d.y * TS - camY, sc = TS / 16;
+      ctx.save();
+      ctx.globalAlpha = q < 0.55 ? 1 : 1 - (q - 0.55) / 0.45;
+      ctx.translate(x + TS / 2, y + TS - 2 * sc + (q > 0.55 ? (q - 0.55) * 6 * sc : 0));
+      ctx.rotate(d.dir * fall * fall * Math.PI / 2); // 발밑을 축으로 옆으로 넘어진다
+      if (q < 0.18) ctx.filter = 'brightness(2.2)'; // 맞은 순간 하얗게 번쩍
+      ctx.drawImage(mobSprite(d.k), -TS / 2, -TS, TS, TS);
+      ctx.restore();
+      if (fall >= 1 && q < 0.8) for (var i = 0; i < 5; i++) { var a2 = Math.PI * (0.9 + i * 0.3), r2 = (3 + (q - 0.32) * 18) * sc; fxDot(x + TS / 2 + d.dir * 5 * sc + Math.cos(a2) * r2, y + TS - 2 * sc + Math.sin(a2) * r2 * 0.4, (1.6 - q) * sc, 'rgba(210,190,150,.8)', 0.8 - q); }
+      ctx.globalAlpha = 1;
+    });
+  }
   function mobStOf(a, old) {
     var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중
+    if (mobDeathReady && n.du > t && n.du < t + 3600000 && !(old && old.du > t)) mobDeathAdd(a[0]); // [2026-11-06] 쓰러짐(수하 숨김 = 아주 먼 시각은 뺀다)
     // [2026-11-05] "화면 안인데도 다가올 때 끊겨 보인다" -- 예전엔 새 위치가 오면 옛 목표 칸에서 다시 출발(덜 걸었으면 툭 튐)하고 늘 0.95초만 걸었다(턴이 늦으면 멈칫).
     //  이제 지금 보이는 자리에서 출발하고, 걷는 시간은 지난번 위치가 바뀐 뒤 흐른 시간(0.6~2.2초)이라 다음 위치가 올 즈음 도착한다.
     if (old && old.fu > t && n.fu > t && (old.fx !== n.fx || old.fy !== n.fy)) {
@@ -921,6 +946,7 @@ var TowerMine = (function () {
       if (hideNoticeT !== d.hideUntil) { hideNoticeT = d.hideUntil; flashT0 = performance.now(); msg('⚡ 마물들이 한순간에 숲 속으로 흩어졌어요... 숲 한가운데에서 천둥이 울려요!', 4500); }
     }
     mobSt = ns;
+    mobDeathReady = true; // [2026-11-06] 첫 목록을 받은 뒤부터 쓰러짐 그림
   }
 
   // ---------------------------------------------------------------- 화면
@@ -1931,7 +1957,7 @@ var TowerMine = (function () {
   function mercSumHtml(m) {
     return MERC_ICON[m.t | 0] + ' <b>' + (m.name || '전사') + '</b> Lv.' + (m.lv || '?') + (m.elName ? ' · ' + (EL_ICON[m.el] || '') + m.elName : '') + '<br>공격력 ' + fmtN(m.atk) + ' · 체력 ' + (m.hp != null ? fmtN(m.hp) + '/' : '') + fmtN(m.max);
   }
-  var MERC_GROW = ['20레벨마다 검기 +1단계(범위·피해)', '20레벨마다 한 명 피해 +20%', '20레벨마다 마법 범위가 넓어져요'];
+  var MERC_GROW = ['20레벨마다 검기 +1단계(범위·피해)', '20레벨마다 한 명 피해 +20%', '속성 구슬(파이어볼 / 라이트닝볼 / 아이스볼) 한 명'];
   function mercMgrHtml() {
     var list = st.mercs || [], on = list.filter(function (x) { return x.on; })[0], own = list.filter(function (x) { return x.owned; });
     if (mercSel == null || !list[mercSel] || (own.length && !list[mercSel].owned)) mercSel = on ? on.t : own.length ? own[0].t : 0;
@@ -1945,16 +1971,20 @@ var TowerMine = (function () {
     }).join('') + '</div>';
     var m = list[mercSel] || {};
     if (!m.owned) return h + '<div class="mine-smith-say">아직 계약하지 않은 ' + (m.name || '용병') + '예요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
-    if (mercTabV === 'skill') {
-      h += '<div class="mine-smith-row"><span class="nm"><span>' + (EL_ICON[m.el] || '') + ' <b>' + m.elName + ' 특화</b> · ' + m.st + '단계</span><small>' + m.skill + '</small>'
+    if (mercTabV === 'skill') { // [2026-11-06] 평타(1~99, 20레벨마다) + 2차 스킬(40레벨부터, 20초마다, 40/60/80)
+      h += '<div class="mine-smith-row"><span class="nm"><span>' + (EL_ICON[m.el] || '') + ' <b>평타</b> · ' + m.elName + ' 특화 ' + m.st + '단계</span><small>' + m.skill + '</small>'
           + '<small>항상 ' + m.elName + ' 속성으로 공격 · 상성 몬스터에게 피해 x1.5</small>'
           + (m.skillNext ? '<small style="color:#9fe0ff">▶ Lv.' + m.nextLv + ' (' + (m.st + 1) + '단계): ' + m.skillNext + '</small>' : '<small>최고 단계예요</small>') + '</span></div>'
-          + '<div class="mine-smith-say"><small>' + MERC_GROW[m.t] + '<br>단계: 1(Lv.1) · 2(Lv.20) · 3(Lv.40) · 4(Lv.60) · 5(Lv.80)</small></div>';
+          + '<div class="mine-smith-row' + (m.s2 ? '' : ' lack') + '"><span class="nm"><span>✨ <b>2차 스킬</b> · ' + (m.s2 ? m.s2 + '단계 · 20초마다' : 'Lv.40에 열려요') + '</span><small>' + m.skill2 + '</small>'
+          + (m.skill2Next ? '<small style="color:#9fe0ff">▶ Lv.' + m.next2Lv + ' (' + (m.s2 + 1) + '단계): ' + m.skill2Next + '</small>' : m.s2 >= 3 ? '<small>최고 단계예요</small>' : '') + '</span></div>'
+          + '<div class="mine-smith-say"><small>평타: ' + MERC_GROW[m.t] + ' (1·20·40·60·80)<br>2차 스킬: 40·60·80레벨에 강화</small></div>';
+      if (st.adminMaps && m.lv < 99) h += '<div class="mine-smith-row"><span class="nm">🛠️ 관리자<small>용병 레벨을 99로</small></span><button type="button" onclick="TowerMine.mercLv99(' + m.t + ')">Lv.99</button></div>';
       return h;
     }
+    h += mercViewBtns();
     var pct = m.need ? Math.min(100, Math.round(m.exp * 100 / m.need)) : 100, dslot = function (a, b) { return '<div class="doll-slot on" style="cursor:default"><b>' + a + '</b><span>' + b + '</span></div>'; };
     h += '<div class="doll"><div class="doll-col">' + dslot('⚔️ 무기', m.weapon || '기본 무기') + dslot('🛡️ 갑옷', '기본 갑옷') + '</div>'
-        + '<div class="doll-char"><img src="' + mercImg(m.t, m.ni) + '" alt="' + m.name + '"><small>' + (m.nm || '') + ' Lv.' + m.lv + '</small></div>'
+        + '<div class="doll-char' + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(m.t, m.ni, m.nm) + '<small>' + (m.nm || '') + ' Lv.' + m.lv + '</small></div>'
         + '<div class="doll-col">' + dslot((EL_ICON[m.el] || '') + ' 속성', m.elName + ' 특화') + dslot('🌀 스킬', m.st + '단계') + '</div></div>'
         + '<div class="mine-smith-say">공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + ' · 사거리 ' + m.reach + '칸'
         + '<span class="mine-bar" style="margin-top:6px"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
@@ -1971,6 +2001,11 @@ var TowerMine = (function () {
         + '<small>다음 급여: <b>' + m.sal + '</b> · 자동 차감 ' + (m.auto ? '켜짐' : '꺼짐') + '</small></span>'
         + '<span class="merc-pay-btns"><button type="button" onclick="TowerMine.mercPay(' + m.t + ')">' + (m.unpaid ? '급여 주기' : '선금 1일') + '</button>'
         + '<button type="button" class="' + (m.auto ? 'on' : '') + '" onclick="TowerMine.mercAuto(' + m.t + ')">자동 ' + (m.auto ? 'ON' : 'OFF') + '</button></span></div>';
+  }
+  function mercLv99(c) { // [2026-11-06] 관리자 -- 용병 Lv.99
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=lv99&tier=' + c).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function mercPay(c) {
     if (busy) return;
@@ -2495,19 +2530,21 @@ var TowerMine = (function () {
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
       mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 · 급여는 하루마다 동괴 2 / 은괴 2 / 금괴 2 / 미스릴괴 1 중 하나(매번 바뀜)<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       if (ms2.offers) {
-        mh += '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
-          return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + '"><img src="' + mercImg(o.t, o.ni) + '" alt="' + o.nm + '">'
+        mh += mercViewBtns() + '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
+          return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(o.t, o.ni, o.nm)
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
-              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can && !ms2.full ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
+              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
         }).join('') + '</div>';
-        if (ms2.full) mh += '<div class="mine-smith-say"><small>지금은 용병을 한 명만 데리고 있을 수 있어요.</small></div>';
+        var curM = (st.mercs || []).filter(function (x) { return x.owned; })[0];
+        if (curM) mh += '<div class="mine-smith-say"><small>다른 용병과 계약하면 지금 함께하는 <b>' + curM.nm + '</b>은(는) 떠나고 새 용병으로 바뀌어요.</small></div>';
         if (mercAskI != null) { // [2026-11-06] "계약할까요 멘트를 인게임 팝업으로"
           var ao = ms2.offers.filter(function (o) { return o.i === mercAskI; })[0];
           if (ao) mh += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercHire(null)"><div class="eq-pop-box merc-ask"><div class="eq-pop-h">🛡️ 용병 계약<button type="button" onclick="TowerMine.mercHire(null)">✖</button></div>'
-              + '<div class="merc-ask-body"><img src="' + mercImg(ao.t, ao.ni) + '" alt="' + ao.nm + '"><div><b>' + ao.nm + '</b><br>' + MERC_ICON[ao.t] + ' ' + ao.job + ' · Lv.' + ao.lv + '<br><span class="mo-el' + ao.el + '">' + (EL_ICON[ao.el] || '') + ' ' + ao.elName + ' 특화</span><br><small>' + ao.skill + '</small></div></div>'
-              + '<div class="mine-smith-say">' + ao.nm + '와(과) 계약할까요?<br><small>첫날 급여 <b>' + ao.sal + '</b>를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.</small></div>'
+              + '<div class="merc-ask-body' + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(ao.t, ao.ni, ao.nm) + '<div><b>' + ao.nm + '</b><br>' + MERC_ICON[ao.t] + ' ' + ao.job + ' · Lv.' + ao.lv + '<br><span class="mo-el' + ao.el + '">' + (EL_ICON[ao.el] || '') + ' ' + ao.elName + ' 특화</span><br><small>' + ao.skill + '</small></div></div>'
+              + '<div class="mine-smith-say">' + ao.nm + '와(과) 계약할까요?<br><small>첫날 급여 <b>' + ao.sal + '</b>를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.</small>'
+              + (curM ? '<br><small style="color:#ffb04a">⚠️ 지금 용병 <b>' + curM.nm + '</b>(Lv.' + curM.lv + ')은(는) 떠나요. 레벨도 사라져요.</small>' : '') + '</div>'
               + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.mercHireGo(' + ao.i + ')">계약하기</button><button type="button" onclick="TowerMine.mercHire(null)">취소</button></div></div></div>';
         }
       } else mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
@@ -2932,6 +2969,7 @@ var TowerMine = (function () {
   var MERC_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a'];
   var MERC_ICON = ['⚔️', '🏹', '🔮'];
   var EL_ICON = { 6: '🔥', 2: '⚡', 3: '💧' };
+  var MERC_DMG_COL = { 6: '#ff8a3a', 2: '#ffe14d', 3: '#6ab8ff' }; // [2026-11-06] 동료 피해 숫자 속성 색
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, mercShop = null, mercSpr = {}, mercImgC = {};
   function mercLook(t, ni) {
@@ -2947,6 +2985,14 @@ var TowerMine = (function () {
     if (!mercSpr[key]) mercSpr[key] = mercCanvas(dir, step, dig, mercLook(t, k));
     return mercSpr[key];
   }
+  // [2026-11-06] "동료 이미지를 받아 소스에 저장하고 초상화 보기 / 캐릭터 보기 버튼(기본 캐릭터)" -- S5 동료(같은 이름) 초상화를 img_loa/s55/merc/{직업}_{이름 번호}.jpg로.
+  var mercView = (function () { try { return localStorage.getItem('tw-merc-view') === 'portrait' ? 'portrait' : 'char'; } catch (e) { return 'char'; } })();
+  function mercViewGo(v) { mercView = v === 'portrait' ? 'portrait' : 'char'; try { localStorage.setItem('tw-merc-view', mercView); } catch (e) { } if (smithOpen) renderSmith(smithNpc); }
+  function mercViewBtns() { return '<div class="merc-view"><button type="button" class="' + (mercView === 'char' ? 'on' : '') + '" onclick="TowerMine.mercView(\'char\')">🧍 캐릭터 보기</button><button type="button" class="' + (mercView === 'portrait' ? 'on' : '') + '" onclick="TowerMine.mercView(\'portrait\')">🖼️ 초상화 보기</button></div>'; }
+  function mercFaceImg(t, ni, alt) {
+    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=1" alt="' + (alt || '') + '" loading="lazy">';
+    return '<img src="' + mercImg(t, ni) + '" alt="' + (alt || '') + '">';
+  }
   function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
   // [2026-11-06] "이펙트가 중요해" -- 속성(불/번개/물) x 직업 x 단계(20레벨마다):
   //  전사 = 속성 색 베기 + 검기 파동(단계만큼 퍼짐), 궁수 = 불화살(3단계부터 하늘에서 불비) / 번개 화살 / 물화살,
@@ -2954,12 +3000,44 @@ var TowerMine = (function () {
   var mercFx = [];
   var EL_COL = { 6: ['#fff2a8', '#ff9a20', '#e8401a'], 2: ['#ffffff', '#a8dcff', '#4a8aff'], 3: ['#e8f8ff', '#6ac8ff', '#2a6ad0'] };
   function elc(el) { return EL_COL[el] || EL_COL[6]; }
-  function mercFly(f) { return f.c === 0 ? 0 : f.c === 1 ? 230 : f.el === 6 ? (f.s >= 3 ? 460 : 320) : f.el === 2 ? 40 : 440; }
-  function mercShot(c, el, st0, fx, fy, tx, ty, sp, now) {
-    mercFx.push({ c: c | 0, el: el | 0 || 6, s: st0 | 0 || 1, x0: fx, y0: fy, x1: tx, y1: ty, sp: sp || [], t0: now });
+  // [2026-11-06] k = 그림 종류: 'ball' 마법사 평타 파이어볼(속성 색), 'sword' 전사 2차 이기어검, 'skill' 마법사 2차(속성: 불 메테오 / 번개 체인 / 물 토네이도). 궁수 2차 화살비는 mercRains(땅에 남는다).
+  function mercFly(f) { return f.k === 'ball' ? 300 : f.k === 'sword' ? 620 : f.c === 0 ? 0 : f.c === 1 ? 230 : f.el === 6 ? (f.s >= 3 ? 460 : 320) : f.el === 2 ? 40 : 440; }
+  function mercShot(c, el, st0, fx, fy, tx, ty, sp, now, k, tid) {
+    mercFx.push({ c: c | 0, el: el | 0 || 6, s: st0 | 0 || 1, x0: fx, y0: fy, x1: tx, y1: ty, sp: sp || [], t0: now, k: k || ((c | 0) === 2 ? 'ball' : ''), tid: tid });
     if (mercFx.length > 24) mercFx.shift();
   }
+  // [2026-11-06] "원거리 공격이 허공에 쏘는 느낌 -- 상대 이미지에 잘 맞게" -- 서버가 준 칸 대신, 그 몬스터가 지금 화면에 그려진 자리(걷는 중 보간, 겹침 비껴 그리기, 보스 2칸 가운데)로.
+  function mobAt(id, fx, fy) {
+    var mb = id != null && map && map.mobs ? map.mobs[id] : null, p = mb && mb._p;
+    if (!p) return [fx, fy];
+    var ty = map.mobTypes[mb.k] || {}, ms = mobSt[id], jx = ms && ms.fu > nowSrv() && !ty.boss ? ((mb.id % 5) - 2) / 16 : 0, jy = ms && ms.fu > nowSrv() && !ty.boss ? ((((mb.id / 5) | 0) % 3) - 1) / 16 : 0;
+    return ty.boss ? [p.x + 0.5, p.y + 0.3] : [p.x + jx, p.y + jy - 0.15];
+  }
+  var mercRains = [];
+  function mercRainDraw(now, TS, camX, camY) { // 화살비 -- 둘레 r칸 땅에 화살이 계속 꽂힌다(끝날 때까지)
+    var tn = nowSrv();
+    mercRains = mercRains.filter(function (r) { return r.until > tn; });
+    mercRains.forEach(function (r) {
+      var C = elc(r.el), s = TS / 16, cx = r.x * TS - camX + TS / 2, cy = r.y * TS - camY + TS / 2, R2 = (r.r + 0.5) * TS, left = Math.min(1, (r.until - tn) / 600);
+      ctx.save();
+      ctx.globalAlpha = 0.16 * left; ctx.fillStyle = C[2]; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.5 * left; ctx.strokeStyle = C[1]; ctx.lineWidth = 1.2 * s; ctx.setLineDash([4 * s, 3 * s]); ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      var n = 6 + r.r * 4;
+      for (var i = 0; i < n; i++) {
+        var ph = ((now - r.t0) / 520 + i * 0.618) % 1, slot = Math.floor((now - r.t0) / 520 + i * 0.618);
+        var hx = Math.sin(slot * 12.9898 + i * 4.1) * 43758.5453, hy = Math.sin(slot * 78.233 + i * 2.7) * 12345.678;
+        hx = (hx - Math.floor(hx)) * 2 - 1; hy = (hy - Math.floor(hy)) * 2 - 1;
+        var gx = cx + hx * R2 * 0.9, gy = cy + hy * R2 * 0.65;
+        if (ph < 0.55) { var q = ph / 0.55, ax = gx + (1 - q) * 1.2 * TS, ay = gy - (1 - q) * 3.2 * TS;
+          ctx.globalAlpha = left; ctx.strokeStyle = '#c8a070'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(ax + 0.35 * TS, ay - 0.9 * TS); ctx.lineTo(ax, ay); ctx.stroke();
+          fxDot(ax, ay, 1.6 * s, C[1], left); fxDot(ax + 0.3 * TS, ay - 0.8 * TS, 1.2 * s, C[0], 0.6 * left);
+        } else { var q2 = (ph - 0.55) / 0.45; ctx.globalAlpha = left * (1 - q2); ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + 0.15 * TS, gy - 0.4 * TS); ctx.stroke(); fxBurst(gx, gy, r.el, q2, 4, s); }
+      }
+      ctx.restore();
+    });
+  }
   function mercFxDraw(now, TS, camX, camY) {
+    try { mercRainDraw(now, TS, camX, camY); } catch (e) { }
     mercFx = mercFx.filter(function (f) { return now - f.t0 < mercFly(f) + 520; });
     mercFx.forEach(function (f) {
       if (now < f.t0) return;
@@ -2987,7 +3065,49 @@ var TowerMine = (function () {
   function mercFxOne(f, now, TS, camX, camY) {
     var C = elc(f.el), s = TS / 16, fly = mercFly(f), age = now - f.t0, k = fly ? age / fly : 1;
     var P2 = function (x, y) { return [x * TS - camX + TS / 2, y * TS - camY + TS / 2]; };
-    var E = P2(f.x1, f.y1), S0 = P2(f.x0, f.y0), ex = E[0], ey = E[1], sx = S0[0], sy = S0[1];
+    var TP = mobAt(f.tid, f.x1, f.y1), E = P2(TP[0], TP[1]), S0 = P2(f.x0, f.y0), ex = E[0], ey = E[1], sx = S0[0], sy = S0[1];
+    if (f.k === 'ball') { // [2026-11-06] 마법사 평타 -- "속성별로 파이어볼 / 라이트닝볼 / 아이스볼"
+      if (k < 1) {
+        var bx0 = sx + (ex - sx) * k, by0 = sy + (ey - sy) * k, ux0 = (ex - sx) / (Math.hypot(ex - sx, ey - sy) || 1), uy0 = (ey - sy) / (Math.hypot(ex - sx, ey - sy) || 1);
+        if (f.el === 2) { // 라이트닝볼 -- 지지직 튀는 전기 구슬
+          for (var lb = 0; lb < 4; lb++) { var la = age / 45 + lb * 1.57; fxBolt(bx0, by0, bx0 + Math.cos(la) * 9 * s, by0 + Math.sin(la) * 9 * s, Math.floor(age / 40) + lb * 3, 1.6 * s, C, 0.6 * s); }
+          for (var ls = 1; ls <= 4; ls++) fxDot(bx0 - ux0 * ls * 3.5 * s + Math.sin(age / 15 + ls * 3) * 2 * s, by0 - uy0 * ls * 3.5 * s + Math.cos(age / 17 + ls) * 2 * s, 1.1 * s, ls % 2 ? '#ffffff' : C[1], 1 - ls * 0.2);
+        } else if (f.el === 3) { // 아이스볼 -- 얼음 결정 + 서리 조각 꼬리
+          for (var ib = 1; ib <= 5; ib++) { var ix = bx0 - ux0 * ib * 3 * s + Math.sin(ib * 2.3) * 1.5 * s, iy = by0 - uy0 * ib * 3 * s + Math.cos(ib * 1.7) * 1.5 * s, isz = (2.2 - ib * 0.3) * s;
+            ctx.globalAlpha = 1 - ib * 0.17; ctx.fillStyle = ib % 2 ? '#ffffff' : '#bfefff'; ctx.beginPath(); ctx.moveTo(ix, iy - isz); ctx.lineTo(ix + isz * 0.6, iy); ctx.lineTo(ix, iy + isz); ctx.lineTo(ix - isz * 0.6, iy); ctx.fill(); }
+        } else for (var bt = 5; bt >= 1; bt--) fxDot(bx0 - ux0 * bt * 3 * s + Math.sin(age / 25 + bt) * s, by0 - uy0 * bt * 3 * s, (3.4 - bt * 0.45) * s, bt < 2 ? C[0] : bt < 4 ? C[1] : C[2], 1 - bt * 0.15); // 파이어볼 불꽃 꼬리
+        var BC = f.el === 3 ? ['#bfeaff', '#4ab0f0', '#2a6ad0'] : C, bg = ctx.createRadialGradient(bx0, by0, 0, bx0, by0, 5.5 * s);
+        bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.35, BC[0]); bg.addColorStop(0.7, BC[1]); bg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = 1; ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(bx0, by0, 5.5 * s, 0, Math.PI * 2); ctx.fill();
+        if (f.el === 3) { ctx.save(); ctx.translate(bx0, by0); ctx.rotate(age / 120); ctx.globalAlpha = 0.9; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.8 * s; ctx.strokeRect(-2.4 * s, -2.4 * s, 4.8 * s, 4.8 * s); ctx.restore(); }
+      } else if (f.el === 3) { // 아이스볼 -- 맞으면 얼음 조각이 흩어진다
+        var iq = Math.min(1, (age - fly) / 320);
+        for (var sh = 0; sh < 8; sh++) { var sa = sh * 0.785 + 0.3, sd = (2 + iq * 9) * s, sxx = ex + Math.cos(sa) * sd, syy = ey + Math.sin(sa) * sd + iq * iq * 4 * s, ss = 1.8 * s;
+          ctx.globalAlpha = 1 - iq; ctx.fillStyle = sh % 2 ? '#ffffff' : '#9fe0ff'; ctx.beginPath(); ctx.moveTo(sxx, syy - ss); ctx.lineTo(sxx + ss * 0.6, syy); ctx.lineTo(sxx, syy + ss); ctx.lineTo(sxx - ss * 0.6, syy); ctx.fill(); }
+        fxDot(ex, ey, (4 - iq * 3) * s, '#e8f8ff', 1 - iq);
+      } else fxBurst(ex, ey, f.el, Math.min(1, (age - fly) / 320), 9, s);
+      return;
+    }
+    if (f.k === 'sword') { // [2026-11-06] 전사 2차 -- 이기어검: 빛나는 검이 하나씩 휘어 날아가 꽂힌다
+      var pts = f.sp && f.sp.length ? f.sp : [[f.x1, f.y1]];
+      pts.forEach(function (q, i) {
+        var kk = (age - i * 45) / 260;
+        if (kk < 0) return;
+        var Q2 = mobAt(q[2], q[0], q[1]), E2 = P2(Q2[0], Q2[1]);
+        if (kk < 1) {
+          var side = i % 2 ? 1 : -1, cx2 = sx + (E2[0] - sx) * kk - Math.sin(kk * Math.PI) * (E2[1] - sy) * 0.25 * side, cy2 = sy + (E2[1] - sy) * kk + Math.sin(kk * Math.PI) * (E2[0] - sx) * 0.25 * side - Math.sin(kk * Math.PI) * TS * 0.6;
+          var ang = Math.atan2(E2[1] - cy2, E2[0] - cx2);
+          ctx.save(); ctx.translate(cx2, cy2); ctx.rotate(ang);
+          ctx.globalAlpha = 0.35; ctx.fillStyle = C[1]; ctx.fillRect(-14 * s, -2.5 * s, 22 * s, 5 * s);
+          ctx.globalAlpha = 1; ctx.fillStyle = '#eef4fb'; ctx.beginPath(); ctx.moveTo(10 * s, 0); ctx.lineTo(-3 * s, -1.6 * s); ctx.lineTo(-3 * s, 1.6 * s); ctx.fill();
+          ctx.fillStyle = C[0]; ctx.fillRect(-3 * s, -0.4 * s, 12 * s, 0.8 * s);
+          ctx.fillStyle = '#ffd23f'; ctx.fillRect(-4.5 * s, -3 * s, 1.5 * s, 6 * s);
+          ctx.fillStyle = '#5a3a1a'; ctx.fillRect(-8.5 * s, -0.9 * s, 4 * s, 1.8 * s);
+          ctx.restore();
+        } else fxBurst(E2[0], E2[1], f.el, Math.min(1, (kk - 1) * 260 / 300), 8, s);
+      });
+      return;
+    }
     if (f.c === 0) { // 전사: 속성 베기 + 검기 파동
       var a = Math.min(1, age / 150), al = 1 - Math.max(0, (age - 150) / 320);
       if (al > 0) {
@@ -3003,7 +3123,7 @@ var TowerMine = (function () {
       return;
     }
     if (f.c === 1) { // 궁수
-      if (f.el === 6 && f.s >= 3) { // 불비 -- 하늘에서 불화살이 쏟아진다
+      if (f.k === 'firerain') { // (예전 불비 -- 이제 궁수 2차 화살비가 mercRains로)
         var n = 2 + f.s;
         for (var r = 0; r < n; r++) {
           var t0 = r * 55, ra = (age - t0) / 260;
@@ -3035,7 +3155,7 @@ var TowerMine = (function () {
     // 마법사
     if (f.el === 2) { // 체인 라이트닝 -- 나 -> 대상 -> 튕긴 순서
       if (age > 420) return;
-      var nodes = [[sx, sy], [ex, ey]].concat((f.sp || []).map(function (q2) { return P2(q2[0], q2[1]); })), fade = age < 260 ? 1 : 1 - (age - 260) / 160;
+      var nodes = [[sx, sy], [ex, ey]].concat((f.sp || []).map(function (q2) { var Q3 = mobAt(q2[2], q2[0], q2[1]); return P2(Q3[0], Q3[1]); })), fade = age < 260 ? 1 : 1 - (age - 260) / 160;
       var shown = Math.min(nodes.length - 1, 1 + Math.floor(age / 45));
       for (var c2 = 0; c2 < shown; c2++) { ctx.globalAlpha = fade; fxBolt(nodes[c2][0], nodes[c2][1], nodes[c2 + 1][0], nodes[c2 + 1][1], c2 * 7 + Math.floor(age / 50), 0.22 * TS, C, 1.6 * s); }
       for (var c3 = 1; c3 <= shown; c3++) { fxDot(nodes[c3][0], nodes[c3][1], (4 + Math.sin(age / 25 + c3) * 1.5) * s, 'rgba(168,220,255,.55)', fade); fxDot(nodes[c3][0], nodes[c3][1], 2 * s, '#ffffff', fade); }
@@ -3145,20 +3265,32 @@ var TowerMine = (function () {
   function mercApply(m) {
     if (!st) return;
     st.merc = m;
-    var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
-    if (m.row) mobSt[m.row[0]] = mobStOf(m.row, mobSt[m.row[0]]);
-    (m.rows || []).forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); // 둘레/체인 몬스터
+    var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st, k: mt === 2 ? 'ball' : '' }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
+    var rowsAll = (m.row ? [m.row] : []).concat(m.rows || []), applyRows = function () { rowsAll.forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); }; // 둘레/체인 몬스터
+    if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
     if (m.tx != null) {
       if (!merc.tg || merc.tg.x !== m.tx || merc.tg.y !== m.ty) merc.tg = { x: m.tx, y: m.ty, t: t };
       else merc.tg.t = t;
       merc.atkT = t;
-      mercShot(mt, m.el, m.st, merc.x == null ? P.x : merc.x, merc.y == null ? P.y : merc.y, m.tx, m.ty, m.sp, t + (mt ? 0 : 110));
-      floats.push({ x: m.tx, y: m.ty - 0.3, text: ei + m.dmg + (m.beat ? '!' : ''), color: m.beat ? '#ffe14d' : '#ffd27a', t0: t + fly + (mt ? 0 : 110) });
-      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: ei + q[2], color: '#ffc8a0', t0: t + fly + (m.el === 2 ? 45 * (i + 1) : 60) }); });
+      mercShot(mt, m.el, m.st, merc.x == null ? P.x : merc.x, merc.y == null ? P.y : merc.y, m.tx, m.ty, m.sp, t + (mt ? 0 : 110), null, m.tg);
+      // [2026-11-06] "동료가 실제 얼마 데미지를 무슨 속성(색)으로 줬는지 (동료 이모티콘)으로" -- 🐱 + 피해, 속성 색(불 주황 / 번개 노랑 / 물 파랑), 상성이면 크게 + !
+      //  "메테오는 땅에 닿을 때 데미지" -- 2차 스킬이 나간 턴은 스킬이 닿는 때에 숫자(와 쓰러짐)
+      var land = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 420 : m.sk.k === 'chain' ? 200 : fly, ecol = MERC_DMG_COL[m.el] || '#ffd27a';
+      floats.push({ x: m.tx, y: m.ty - 0.3, text: '🐱' + m.dmg + (m.beat ? '!' : ''), color: ecol, big: !!m.beat, t0: t + land });
+      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: '🐱' + q[2], color: ecol, t0: t + land + (m.sk && (m.sk.k === 'sword' || m.sk.k === 'chain') ? 45 * (i + 1) : 40) }); });
+    }
+    if (m.sk) { // [2026-11-06] 2차 스킬(20초마다) -- 이름을 머리 위에, 이펙트
+      var sk = m.sk, mx0 = merc.x == null ? P.x : merc.x, my0 = merc.y == null ? P.y : merc.y;
+      if (sk.k === 'rain') mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: m.el, t0: t });
+      else if (sk.k === 'sword') mercShot(0, m.el, sk.s, mx0, my0, sk.x, sk.y, sk.pts, t + 120, 'sword');
+      else if (sk.k === 'meteor') mercShot(2, 6, Math.max(3, sk.r), mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg);
+      else if (sk.k === 'chain') mercShot(2, 2, sk.s, mx0, my0, sk.x, sk.y, sk.pts, t + 120, 'skill', m.tg);
+      else if (sk.k === 'tornado') mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg);
+      floats.push({ x: mx0, y: my0 - 1, text: '✨ ' + sk.nm, color: '#ffe9a8', big: true, t0: t });
     }
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
     if (m.down) { merc.tg = null; killFeed('💤 ' + (m.nm || m.name) + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
-    if (m.exp) killFeed('+' + m.exp + ' 경험치', '#9fe0ff'); // [2026-11-06] "(용병) 이런 거 없애줘"
+    if (m.exp) killFeed('🐱 +' + m.exp + ' 경험치 (동료)', '#d8a8ff'); // [2026-11-06] "동료가 획득한 경험치는 (동료)로, 색 다르게"
     if (m.ores) st.ores = m.ores;
     if (m.drops) lootDrops(m.drops, m.tx, m.ty);
     if (m.dropGrade != null || m.dropShard) weaponLoot(m, m.tx, m.ty);
@@ -4480,6 +4612,7 @@ var TowerMine = (function () {
       ctx.fillText('⬅️ ➡️ ⚔️', ix, iy - 7 * dpr);
       ctx.globalAlpha = 1;
     }
+    try { mobDeathDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-06] 몬스터 쓰러짐
     try { mercFxDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-06] 용병 공격 이펙트
     // 캔 광석 글자
     floats = floats.filter(function (f) { return now - f.t0 < 1400; });
@@ -4687,7 +4820,7 @@ var TowerMine = (function () {
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
     if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
-    buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
+    buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
@@ -4950,7 +5083,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

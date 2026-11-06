@@ -20,7 +20,7 @@ public final class S5MineMobs {
     public static final long SLOT_MS = 3000L;
     /** [2026-11-05] 왕도 서쪽길 무리 몬스터 -- 인식 범위(보통 선공 6칸), 다시 나타나기까지. */
     static final int HERD_AGGRO = 7;
-    static final long HERD_RESPAWN_MS = 6_000L;
+    static final long HERD_RESPAWN_MS = 8_000L; // [2026-11-06] "왕도 서쪽 젠 타임 조금만 늦춰줘" -- 6초 -> 8초
 
     public static final class Type {
         public final String name, kind, color;
