@@ -2629,7 +2629,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("helmet", helmetTier);
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
         out.put("aura", mineAuraInfo(items)); // [2026-11-04] 검기(배운 단계/켠 단계)
-        if (isMineAdmin(userName)) { List<String> pay = new ArrayList<>(); mineMercPayroll(userName, items, System.currentTimeMillis(), pay); if (!pay.isEmpty()) out.put("mercPay", pay); out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis())); out.put("mercs", mineMercCards(items)); } // [2026-11-06] 미접속 동안 밀린 급여도 // [2026-11-06] 용병 관리(직업별 3칸) // [2026-11-05] 용병(시험 중 -- 관리자만)
+        { List<String> pay = new ArrayList<>(); mineMercPayroll(userName, items, System.currentTimeMillis(), pay); if (!pay.isEmpty()) out.put("mercPay", pay); out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis())); out.put("mercs", mineMercCards(items)); } // [2026-11-06] 미접속 동안 밀린 급여도 // [2026-11-06] 용병 관리(직업별 3칸) // [2026-11-05] 용병(시험 중 -- 관리자만)
         out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
@@ -4709,7 +4709,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-06] "용병 경험치는 플레이어가 얻는 경험치의 1%, 1레벨 용병이 99레벨 몬스터를 같이 잡아도 렙업이 과하지 않게" -- 데리고 다니는 용병에게. out.mercXp. */
     // [2026-11-06] "용병 소환 후 같이 처치하면 최소 경험치 1씩은" -- 처치 수(kills)만큼은 꼭 받는다(1% 보정/상한보다 우선).
     void mineMercShare(String userName, long gain, int mobLv, long kills, HashMap<String, Object> out) {
-        if ((gain <= 0 && kills <= 0) || !isMineAdmin(userName)) return;
+        if (gain <= 0 && kills <= 0) return;
         Map<String, Integer> items = mineItems(userName);
         int c = mineMercOn(items);
         if (c < 0) return;
@@ -4736,7 +4736,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 전투 턴의 용병 차례 -- {처치 수, 경험치}. 결과는 out.merc(+ 드랍/무기). 둘레/체인으로 맞은 몬스터는 sp = [[칸x, 칸y, 피해], ...](체인은 튕긴 순서). */
     long[] mineMercTurn(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, MineEngage e, HashMap<String, Object> out) {
-        if (!isMineAdmin(userName)) return new long[] { 0, 0 }; // [2026-11-05] "용병은 관리자만 -- 충분히 테스트한 뒤 일반 유저에게 알림"
+        // [2026-11-06] "용병 열어줘" -- 모든 유저(예전: 관리자만)
         List<String> pay = new ArrayList<>(); // [2026-11-06] 급여 날이 지났으면 자동 차감(안내)
         mineMercPayroll(userName, items, now, pay);
         if (!pay.isEmpty()) { out.put("mercPay", pay); out.put("mercs", mineMercCards(items)); }
@@ -4953,7 +4953,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Transactional
     public HashMap<String, Object> mineMercShop(String userName, String action, int tier, String code) {
         if (!mineAccess(userName)) return mineClosed();
-        if (!isMineAdmin(userName)) { // [2026-11-05] 시험 중 -- 관리자만
+        if (false) { // [2026-11-06] "용병 열어줘" -- 예전: 시험 중 관리자만
             HashMap<String, Object> closed = new HashMap<>();
             closed.put("ok", false);
             closed.put("message", "용병소는 아직 문을 열지 않았네.\n쓸 만한 놈들을 추리는 중이라... 조금만 기다려 주게.");
@@ -6769,7 +6769,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercOn(lit) : -1; if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
             MinePresence o = e.getValue();
             if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
