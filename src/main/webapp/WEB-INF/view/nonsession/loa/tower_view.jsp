@@ -946,6 +946,13 @@
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-msg, #mineNpcLine{ white-space:pre-line; }
+    .merc-offers .merc-offer{ min-width:150px; display:flex; flex-direction:column; align-items:center; gap:3px; } /* [2026-11-06] 용병 계약 후보 */
+    .merc-offer small{ display:block; text-align:center; font-size:11px; line-height:1.35; }
+    .merc-offer .mo-sk{ color:#c9c3d6; }
+    .mo-el6{ color:#ffb060; } .mo-el2{ color:#a8dcff; } .mo-el3{ color:#7ac8ff; }
+    .merc-pay.lack{ border-color:#ffb04a; }
+    .merc-pay .merc-pay-btns{ display:flex; flex-direction:column; gap:4px; }
+    .merc-pay .merc-pay-btns button.on{ background:#2f6b3f; }
     .merc-card .merc-gear{ display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; } /* [2026-11-06] 용병 관리 -- 무기/갑옷 칸 */
     .merc-card .merc-gear button{ font-size:11px; padding:3px 6px; }
     .mine-npc-bubble .talk-more{ position:absolute; right:8px; bottom:4px; font-size:11px; color:#a8742a; animation:mineTalkMore 1s ease-in-out infinite; } /* [2026-11-06] 나눈 대사 -- 누르면 다음 */

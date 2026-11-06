@@ -1939,7 +1939,7 @@ var TowerMine = (function () {
     var h = '<div class="mine-smith-head inv-head">🛡️ 용병 관리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
         + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('skill', '🌀 스킬') + '</div></div>';
     h += '<div class="eq-tabs merc-sel">' + list.map(function (x) {
-      return '<button type="button" class="' + (x.t === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.t + ')">' + MERC_ICON[x.t] + ' ' + x.name + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : '') + '</button>';
+      return '<button type="button" class="' + (x.t === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.t + ')">' + MERC_ICON[x.t] + ' ' + (x.owned && x.nm ? x.nm : x.name) + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : x.unpaid && x.owned ? ' ⚠️' : '') + '</button>';
     }).join('') + '</div>';
     var m = list[mercSel] || {};
     if (!m.owned) return h + '<div class="mine-smith-say">아직 계약하지 않은 ' + (m.name || '용병') + '예요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
@@ -1961,18 +1961,45 @@ var TowerMine = (function () {
     }
     var pct = m.need ? Math.min(100, Math.round(m.exp * 100 / m.need)) : 100, dslot = function (a, b) { return '<div class="doll-slot on" style="cursor:default"><b>' + a + '</b><span>' + b + '</span></div>'; };
     h += '<div class="doll"><div class="doll-col">' + dslot('⚔️ 무기', m.weapon || '기본 무기') + dslot('🛡️ 갑옷', '기본 갑옷') + '</div>'
-        + '<div class="doll-char"><img src="' + mercImg(m.t, m.skin) + '" alt="' + m.name + '"><small>Lv.' + m.lv + '</small></div>'
+        + '<div class="doll-char"><img src="' + mercImg(m.t, m.skin) + '" alt="' + m.name + '"><small>' + (m.nm || '') + ' Lv.' + m.lv + '</small></div>'
         + '<div class="doll-col">' + dslot((EL_ICON[m.el] || '') + ' 속성', m.elName + ' 특화') + dslot('🌀 스킬', m.st + '단계') + '</div></div>'
         + '<div class="mine-smith-say">공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + ' · 사거리 ' + m.reach + '칸'
         + '<span class="mine-bar" style="margin-top:6px"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
         + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + ' · 내가 얻는 경험치의 1%</small><br><small>장비는 기본 장비만 써요.</small></div>'
-        + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>';
+        + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : m.unpaid ? '⚠️ 급여가 밀려 쉬는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.want || m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>'
+        + mercPayHtml(m);
     return h;
+  }
+  // [2026-11-06] 급여 -- 남은 기간(선금 포함), 다음 급여, 하루치 주기(선금, 7일까지), 자동 차감 켜기/끄기
+  function mercLeft(ms) { if (ms <= 0) return '0분'; var d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), mi = Math.floor(ms % 3600000 / 60000); return (d ? d + '일 ' : '') + (d || h ? h + '시간' : mi + '분'); }
+  function mercPayHtml(m) {
+    var left = (m.paidUntil || 0) - nowSrv();
+    return '<div class="mine-smith-row merc-pay' + (m.unpaid ? ' lack' : '') + '"><span class="nm">💰 급여 <small>' + (m.unpaid ? '밀렸어요 -- 주면 바로 다시 일해요' : '남은 기간 ' + mercLeft(left) + (left > 86400000 ? ' (선금 포함)' : '')) + '</small>'
+        + '<small>다음 급여: <b>' + m.sal + '</b> · 자동 차감 ' + (m.auto ? '켜짐' : '꺼짐') + '</small></span>'
+        + '<span class="merc-pay-btns"><button type="button" onclick="TowerMine.mercPay(' + m.t + ')">' + (m.unpaid ? '급여 주기' : '선금 1일') + '</button>'
+        + '<button type="button" class="' + (m.auto ? 'on' : '') + '" onclick="TowerMine.mercAuto(' + m.t + ')">자동 ' + (m.auto ? 'ON' : 'OFF') + '</button></span></div>';
+  }
+  function mercPay(c) {
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=pay&tier=' + c).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function mercAuto(c) {
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=auto&tier=' + c).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  /** 급여 자동 차감/밀림 안내(접속할 때 밀린 날 포함). */
+  function mercPayNote(list) {
+    if (!list || !list.length) return;
+    list.forEach(function (t) { killFeed(t, /⚠️|⏰/.test(t) ? '#ffb04a' : '#ffe9a8'); });
+    msg(list.join('\n'), 6000);
   }
   function mercSelGo(c) { mercSel = c; if (smithOpen) renderSmith(smithNpc); }
   function mercTabGo(t) { mercTabV = t; if (smithOpen) renderSmith(smithNpc); }
   function mercAfter(d) {
     if (d.list) st.mercs = d.list;
+    if (d.mercPay) setTimeout(function () { mercPayNote(d.mercPay); }, 3300);
     st.merc = d.merc || null;
     if (d.ores) st.ores = d.ores;
     mercShop = d;
@@ -2477,13 +2504,17 @@ var TowerMine = (function () {
     if (smithView === 'merc') { // [2026-11-05] 왕도 용병소
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
-      mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 계약 (Lv.5~30 무작위)<br>레벨·경험치는 용병마다 따로 · 장비와 데리고 다니기는 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
-      var MERC_DESC = ['몬스터 옆으로 달려가 속성 검기로 베요<br>20레벨마다 검기 +1단계', '7칸 밖에서 속성 화살을 쏴요<br>20레벨마다 한 명 피해 증가', '6칸 밖에서 속성 마법을 써요<br>20레벨마다 범위 증가'];
-      (ms2.list || st.mercs || []).forEach(function (it) {
-        mh += '<div class="mine-smith-row"><span class="nm">' + MERC_ICON[it.t] + ' ' + it.name + (it.owned ? ' Lv.' + it.lv : '') + '<small>' + MERC_DESC[it.t] + '</small></span>'
-            + (it.owned ? '<button type="button" data-lack="1" disabled>계약함</button>' : '<button type="button" onclick="TowerMine.mercHire(' + it.t + ')">계약</button>') + '</div>';
-      });
-      if (!ms2.list) mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
+      // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
+      mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 · 급여는 하루마다 동괴 2 / 은괴 2 / 금괴 2 / 미스릴괴 1 중 하나(매번 바뀜)<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
+      if (ms2.offers) {
+        mh += '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
+          return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + '"><img src="' + mercImg(o.t, 0) + '" alt="' + o.nm + '">'
+              + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
+              + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
+              + '<small class="mo-sk">' + o.skill + '</small>'
+              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.t + ')">계약</button>') + '</div>';
+        }).join('') + '</div>';
+      } else mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
       el.smith.innerHTML = mh;
       return;
     }
@@ -2675,6 +2706,8 @@ var TowerMine = (function () {
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
       if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치
+      if (d.mercs) { st.mercs = d.mercs; if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc); } // [2026-11-06] 급여 차감/밀림
+      if (d.mercPay) { mercPayNote(d.mercPay); if (!d.merc && st) st.merc = null; }
       if (d.levelUp) floats.push({ x: P.x, y: P.y - 1, text: '⬆️ 레벨 업!', color: '#ffe14d', big: true, t0: performance.now() });
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30]
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
@@ -3786,8 +3819,8 @@ var TowerMine = (function () {
   var cityShop = null;
   function mercHire(t) { // [2026-11-05] 왕도 용병소 -- 더 센 용병으로 바꿔 고용
     if (busy) return;
-    var it = mercShop && mercShop.list && mercShop.list[t];
-    if (!confirm(MERC_ICON[t] + ' ' + (it ? it.name : '용병') + '와(과) 계약할까요? 레벨은 5~30 중 무작위예요.')) return;
+    var o = mercShop && mercShop.offers && mercShop.offers[t];
+    if (!confirm(MERC_ICON[t] + ' ' + (o ? 'Lv.' + o.lv + ' ' + o.elName + ' ' + o.job + ' ' + o.nm : '용병') + '와(과) 계약할까요?\n첫날 급여 ' + (o ? o.sal : '') + '를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.')) return;
     busy = true;
     api('/api/tower-mine-merc?action=hire&tier=' + t).then(function (d) {
       busy = false;
@@ -4637,6 +4670,7 @@ var TowerMine = (function () {
   function enterState(s) {
     st = s;
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
+    if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
     buildSprites(s.look); setCombat(s.combat); mobSt = {}; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
@@ -4901,7 +4935,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercSkin: mercSkin, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSkin: mercSkin, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
