@@ -1159,7 +1159,7 @@ var TowerMine = (function () {
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
     miniCtx.clearRect(0, 0, v.w, v.h);
     if (v.x0 < 0 || v.y0 < 0) { miniCtx.fillStyle = '#0b0912'; miniCtx.fillRect(0, 0, v.w, v.h); } // 레터박스 띠
-    if (map.noMap) { // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
+    if (map.noMap && !(st && st.adminMaps)) { // [2026-11-06] 관리자는 개미굴에서도 지도가 보인다 // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
       miniCtx.fillStyle = '#120c08'; miniCtx.fillRect(0, 0, v.w, v.h);
       miniCtx.fillStyle = '#6a4a30'; miniCtx.font = 'bold ' + Math.round(v.w / 5) + 'px sans-serif'; miniCtx.textAlign = 'center'; miniCtx.textBaseline = 'middle';
       miniCtx.fillText('?', v.w / 2, v.h / 2);

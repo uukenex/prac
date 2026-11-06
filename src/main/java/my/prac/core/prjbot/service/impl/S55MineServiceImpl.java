@@ -1403,10 +1403,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static double mineNightAtk(S5MineMap map, S5MineMobs.Type t, long now) { return mineNightWild(map, t, now) ? MINE_NIGHT_ATK : 1.0; }
     static long mineNightExp(S5MineMap map, S5MineMobs.Type t, long exp, long now) {
-        if (S5MineMap.WESTROAD.equals(map.id) && !t.boss && t.tier <= MINE_WEST_LOW_TIER) exp *= MINE_WEST_LOW_EXP; // [2026-11-06] "왕도 서쪽 저레벨 구간(가운데~마을) 경험치 2배" -- 14~18단계(왕도 서문에서 맵 절반까지)
+        if (S5MineMap.WESTROAD.equals(map.id) && !t.boss) exp *= MINE_WEST_EXP; // [2026-11-06] "왕도 서쪽 전체적으로 경험치 2배(방금 한 저레벨 구간 포함)" -- 마물 전부(천둥 황소 제외), 밤 1.5배와 곱
         return mineNightWild(map, t, now) ? Math.round(exp * MINE_NIGHT_EXP) : exp;
     }
-    static final int MINE_WEST_LOW_TIER = 18, MINE_WEST_LOW_EXP = 2;
+    static final int MINE_WEST_EXP = 2;
 
     static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
         return t.firstStrike || 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
