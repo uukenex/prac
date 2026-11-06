@@ -4466,7 +4466,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-06] 용병 -- "궁수/마법사/전사 3개로, 직업별 외형, 원거리 공격, 공격 이펙트" + "레벨과 경험치는 따로, 스탯은 플레이어 레벨에 따른 스탯과 동일, 환생 없음,
     //  처음 계약 때 레벨 5~30, 메뉴에 용병 관리(최대 3칸, 직업별)" + "경험치는 플레이어가 얻는 경험치의 1%(레벨 차이 보정), 장비는 없음(기본 칼/활/지팡이, 기본 갑옷),
     //  치장은 직업별로, 스킬은 불/물/번개 -- 계약 때 특화 속성을 무작위로, 항상 그 속성으로 공격, 20레벨마다 강화(전사 검기 +1단계 / 마법사 범위 / 궁수 한 명 피해)".
-    //  직업마다 한 명씩 계약(왕도 용병소) -- MERC{c}_LV / _EXP / _EL(속성) / _SKIN(치장 0~2), 데리고 다니는 건 한 명(MERC_ON = 직업 + 1, 0 = 없음).
+    //  직업마다 한 명씩 계약(왕도 용병소) -- MERC{c}_LV / _EXP / _EL(속성) / _NM(이름 번호 = 모습), 데리고 다니는 건 한 명(MERC_ON = 직업 + 1, 0 = 없음).
     //  공격력 = mineAtk(용병 레벨) x 직업 배수(전사 1.2 / 궁수 1.0 / 마법사 0.8), 체력 = mineHpMax(용병 레벨, 0). 상성 몬스터에겐 x1.5(무기 속성 부여와 같은 표).
     //  단계 s = 1 + 레벨/20(최대 5): 전사 = 속성 검기 s단계(대상 + 대상 둘레 s칸의 싸우는 몬스터에게 공격력 s x 5%), 궁수 = 한 명 피해 +20% x s,
     //  마법사 = 불: 대상 둘레 s칸 폭발(s >= 3 메테오) / 번개: s+1마리에게 튕기는 체인(3칸 안, 85%씩) / 물: 나 -> 대상 사이 길(1칸) + 대상 둘레 (s+1)/2칸 토네이도. 둘레는 70%.
@@ -4478,10 +4478,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  선금은 MINE_MERC_PREPAY_DAYS일 앞까지. 계약 때 첫날 급여를 낸다. 계약 후보(직업마다 하나 -- 이름/레벨/속성/첫 급여)는 MERC{c}_O* 에 두고 계약하면 새로 뽑는다.
     static final String[][][] MINE_MERC_SALARY = { { mineBar(0, 2) }, { mineBar(2, 2) }, { mineBar(3, 2) }, { mineBar(4, 1) } };
     static final int MINE_MERC_DAY_MIN = 1440, MINE_MERC_PREPAY_DAYS = 7, MINE_MERC_PAY_LOOP = 30;
+    // [2026-11-06] "용병은 전부 여자 캐릭으로, S5 동료 이름 재사용" -- BotS5ServiceImpl.NAME_POOL_BY_JOB_GRADE의 여자 이름에서 직업마다 10명(번호 = 화면 머리색).
     static final String[][] MINE_MERC_NAMEPOOL = {
-        { "카일", "브란", "로덴", "가렛", "하르딘", "볼크", "테오", "세드릭", "마르쿠스", "단테" },
-        { "리아", "엘린", "시엔", "아르테", "노아", "피오나", "레아", "카렌", "실비", "유나" },
-        { "멀린", "아이라", "젤다", "오린", "셀레네", "루시안", "카시아", "모르간", "에반", "티아" } };
+        { "시노", "나기", "사쿠라", "히나", "모모카", "노조미", "아사히", "코하루", "스이렌", "아마네" },
+        { "나나", "아야", "미사키", "유즈키", "리코", "마유", "하루카", "세리나", "츠키미", "스즈네" },
+        { "유키", "아오이", "미유", "리사", "사야", "마이", "유나", "카나", "미코토", "세라" } };
+    static int mineMercNi(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_NAMEPOOL[c].length); }
     static String mineMercNm(Map<String, Integer> items, int c, String f) { String[] p = MINE_MERC_NAMEPOOL[c]; return p[Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), p.length)]; }
     static int mineMercSal(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_SALARY.length); }
     static boolean mineMercPaid(Map<String, Integer> items, int c, long now) { return items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L > now; }
@@ -4538,6 +4540,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("t", c);
         m.put("job", MINE_MERC_NAMES[c]);
         m.put("nm", mineMercNm(items, c, "ONM"));
+        m.put("ni", mineMercNi(items, c, "ONM"));
         m.put("lv", lv);
         m.put("el", el);
         m.put("elName", S5MineMobs.ELEM_NAMES[el]);
@@ -4552,8 +4555,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MINE_MERC_REACH = { 5, 7, 6 };
     static final double[] MINE_MERC_DMG = { 1.2, 1.0, 0.8 };
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
-    static final int[] MINE_MERC_SKIN_LV = { 1, 30, 60 };
-    static final String[][] MINE_MERC_SKINS = { { "견습 전사", "붉은 기사", "황금 검성" }, { "숲의 사냥꾼", "바람의 궁수", "달빛 명궁" }, { "견습 마법사", "불꽃 술사", "대마법사" } };
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
     static final double MINE_MERC_EXP_PCT = 1.0;
     static final int MINE_MERC_EXP_GAP = 10, MINE_MERC_EXP_CAP_PCT = 10;
@@ -4563,7 +4564,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineMercLv(Map<String, Integer> items, int c) { return Math.max(0, Math.min(MINE_LV_MAX, items.getOrDefault(mineMercKey(c, "LV"), 0))); }
     static int mineMercEl(Map<String, Integer> items, int c) { int e = items.getOrDefault(mineMercKey(c, "EL"), 0); for (int x : MINE_MERC_ELS) if (x == e) return e; return S5MineMobs.EL_FIRE; }
     static int mineMercStage(int lv) { return Math.min(5, 1 + Math.max(0, lv) / 20); }
-    static int mineMercSkin(Map<String, Integer> items, int c) { int k = items.getOrDefault(mineMercKey(c, "SKIN"), 0); return k >= 0 && k < 3 && mineMercLv(items, c) >= MINE_MERC_SKIN_LV[k] ? k : 0; }
     /** 데리고 다니는 용병 직업(-1 = 없음). */
     static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 && mineMercPaid(items, c, System.currentTimeMillis()) ? c : -1; } // [2026-11-06] 급여가 밀리면 쉰다
     static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineAtk(Math.max(1, mineMercLv(items, c))) * MINE_MERC_DMG[c]); }
@@ -4612,7 +4612,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("st", s);
         m.put("skill", mineMercSkill(c, el, s));
         if (s < 5) { m.put("nextLv", s * 20); m.put("skillNext", mineMercSkill(c, el, s + 1)); }
-        m.put("skin", mineMercSkin(items, c));
+        m.put("ni", mineMercNi(items, c, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
         m.put("nm", mineMercNm(items, c, "NM")); // [2026-11-06] 이름 / 급여
         m.put("paidUntil", items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L);
         m.put("unpaid", !mineMercPaid(items, c, System.currentTimeMillis()));
@@ -4878,17 +4878,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, on ? c + 1 : 0);
                 items.put(MINE_ITEM_MERC_ON, on ? c + 1 : 0);
                 msg = on ? "🛡️ " + MINE_MERC_NAMES[c] + "와(과) 함께 다녀요." : "🛡️ " + MINE_MERC_NAMES[c] + "은(는) 용병소에서 쉬어요.";
-            }
-        } else if ("skin".equals(action)) { // 직업별 치장(용병 레벨로 열림)
-            int k = -1;
-            try { k = Integer.parseInt(code == null ? "" : code.trim()); } catch (NumberFormatException ex) { k = -1; }
-            if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
-            else if (k < 0 || k > 2) { ok = false; msg = "그런 치장은 없어요."; }
-            else if (mineMercLv(items, c) < MINE_MERC_SKIN_LV[k]) { ok = false; msg = MINE_MERC_SKINS[c][k] + "은(는) 용병 Lv." + MINE_MERC_SKIN_LV[k] + "부터 입을 수 있어요."; }
-            else {
-                dao.upsertMineItem(userName, mineMercKey(c, "SKIN"), k);
-                items.put(mineMercKey(c, "SKIN"), k);
-                msg = "👗 " + MINE_MERC_NAMES[c] + "이(가) " + MINE_MERC_SKINS[c][k] + " 차림으로 갈아입었어요.";
             }
         }
         MinePresence pr = MINE_PRESENCE.get(userName);
@@ -6592,7 +6581,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile long at, lookAt, bubbleAt;
         volatile HashMap<String, Object> look;
         volatile int merc = -1; // [2026-11-05] 데리고 다니는 용병([2026-11-06] 직업 0 전사 / 1 궁수 / 2 마법사, -1 = 없음 -- 지금은 관리자만)
-        volatile int mercEl, mercSt, mercSkin; // [2026-11-06] 용병 속성/단계/치장(화면 이펙트·그림)
+        volatile int mercEl, mercSt, mercNi; // [2026-11-06] 용병 속성/단계/이름 번호(화면 이펙트·그림)
         MinePresence(String id) { this.id = id; }
     }
     static final java.util.concurrent.ConcurrentHashMap<String, MinePresence> MINE_PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -6621,7 +6610,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercOn(lit) : -1; if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercSkin = mineMercSkin(lit, me.merc); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercOn(lit) : -1; if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
             MinePresence o = e.getValue();
             if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
@@ -6637,7 +6626,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 m.put("mc", o.merc);
                 m.put("me", o.mercEl);
                 m.put("ms", o.mercSt);
-                m.put("ml", o.mercSkin);
+                m.put("ml", o.mercNi);
                 MercSt ms = MINE_MERC.get(e.getKey());
                 if (ms != null && ms.restUntil > now) m.put("mr", 1);
                 else if (ms != null && now - ms.atkAt < 2_500L) m.put("mt", new int[] { ms.tx, ms.ty });

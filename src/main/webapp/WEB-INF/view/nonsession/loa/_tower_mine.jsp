@@ -1925,8 +1925,8 @@ var TowerMine = (function () {
   }
   function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
   // [2026-11-06] "메뉴에 용병 관리(최대 3칸, 직업별)" + "용병 관리 창은 인벤토리의 장비/치장/스킬 탭을 그대로" -- 위에 직업 3칸(계약한 용병 고르기), 아래 탭.
-  //  장비 = 기본 칼/활/지팡이 + 기본 갑옷(바꿀 수 없음), 치장 = 직업별 3벌(용병 레벨로 열림), 스킬 = 특화 속성 + 20레벨마다 단계.
-  var mercSel = null, mercTabV = 'gear';
+  //  장비 = 기본 칼/활/지팡이 + 기본 갑옷(바꿀 수 없음), 스킬 = 특화 속성 + 20레벨마다 단계.
+  var mercSel = null, mercTabV = 'gear'; // [2026-11-06] 치장 탭은 없앰(이름마다 모습)
   function fmtN(v) { v = +v || 0; return v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'k' : String(v); }
   function mercSumHtml(m) {
     return MERC_ICON[m.t | 0] + ' <b>' + (m.name || '전사') + '</b> Lv.' + (m.lv || '?') + (m.elName ? ' · ' + (EL_ICON[m.el] || '') + m.elName : '') + '<br>공격력 ' + fmtN(m.atk) + ' · 체력 ' + (m.hp != null ? fmtN(m.hp) + '/' : '') + fmtN(m.max);
@@ -1937,21 +1937,12 @@ var TowerMine = (function () {
     if (mercSel == null || !list[mercSel]) mercSel = on ? on.t : 0;
     var tab = function (id, label) { return '<button type="button" class="' + (mercTabV === id ? 'on' : '') + '" onclick="TowerMine.mercTab(\'' + id + '\')">' + label + '</button>'; };
     var h = '<div class="mine-smith-head inv-head">🛡️ 용병 관리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
-        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('skill', '🌀 스킬') + '</div></div>';
+        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('skill', '🌀 스킬') + '</div></div>';
     h += '<div class="eq-tabs merc-sel">' + list.map(function (x) {
       return '<button type="button" class="' + (x.t === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.t + ')">' + MERC_ICON[x.t] + ' ' + (x.owned && x.nm ? x.nm : x.name) + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : x.unpaid && x.owned ? ' ⚠️' : '') + '</button>';
     }).join('') + '</div>';
     var m = list[mercSel] || {};
     if (!m.owned) return h + '<div class="mine-smith-say">아직 계약하지 않은 ' + (m.name || '용병') + '예요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
-    if (mercTabV === 'look') {
-      h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + mercImg(m.t, m.skin, d) + '" alt="">'; }).join('')
-          + '</div><div class="mine-smith-say">' + m.name + ' 전용 치장이에요. 용병 레벨이 오르면 새 치장이 열려요.</div></div><div class="cos-car">';
-      (MERC_SKINS[m.t] || []).forEach(function (lk, k) {
-        h += '<div class="cos-card' + (k === m.skin ? ' worn' : '') + '"><img src="' + mercImg(m.t, k) + '" alt=""><div class="cos-nm">' + MERC_SKIN_NAMES[m.t][k] + '</div>'
-            + (k === m.skin ? '<span class="mine-worn">착용 중</span>' : m.lv >= MERC_SKIN_LV[k] ? '<button type="button" onclick="TowerMine.mercSkin(' + m.t + ', ' + k + ')">입기</button>' : '<span class="mine-worn" style="opacity:.6">Lv.' + MERC_SKIN_LV[k] + '부터</span>') + '</div>';
-      });
-      return h + '</div>';
-    }
     if (mercTabV === 'skill') {
       h += '<div class="mine-smith-row"><span class="nm"><span>' + (EL_ICON[m.el] || '') + ' <b>' + m.elName + ' 특화</b> · ' + m.st + '단계</span><small>' + m.skill + '</small>'
           + '<small>항상 ' + m.elName + ' 속성으로 공격 · 상성 몬스터에게 피해 x1.5</small>'
@@ -1961,7 +1952,7 @@ var TowerMine = (function () {
     }
     var pct = m.need ? Math.min(100, Math.round(m.exp * 100 / m.need)) : 100, dslot = function (a, b) { return '<div class="doll-slot on" style="cursor:default"><b>' + a + '</b><span>' + b + '</span></div>'; };
     h += '<div class="doll"><div class="doll-col">' + dslot('⚔️ 무기', m.weapon || '기본 무기') + dslot('🛡️ 갑옷', '기본 갑옷') + '</div>'
-        + '<div class="doll-char"><img src="' + mercImg(m.t, m.skin) + '" alt="' + m.name + '"><small>' + (m.nm || '') + ' Lv.' + m.lv + '</small></div>'
+        + '<div class="doll-char"><img src="' + mercImg(m.t, m.ni) + '" alt="' + m.name + '"><small>' + (m.nm || '') + ' Lv.' + m.lv + '</small></div>'
         + '<div class="doll-col">' + dslot((EL_ICON[m.el] || '') + ' 속성', m.elName + ' 특화') + dslot('🌀 스킬', m.st + '단계') + '</div></div>'
         + '<div class="mine-smith-say">공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + ' · 사거리 ' + m.reach + '칸'
         + '<span class="mine-bar" style="margin-top:6px"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
@@ -2010,11 +2001,6 @@ var TowerMine = (function () {
     if (busy) return;
     busy = true;
     api('/api/tower-mine-merc?action=use&tier=' + c).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
-  }
-  function mercSkin(c, k) {
-    if (busy) return;
-    busy = true;
-    api('/api/tower-mine-merc?action=skin&tier=' + c + '&code=' + k).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
@@ -2508,7 +2494,7 @@ var TowerMine = (function () {
       mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 · 급여는 하루마다 동괴 2 / 은괴 2 / 금괴 2 / 미스릴괴 1 중 하나(매번 바뀜)<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       if (ms2.offers) {
         mh += '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
-          return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + '"><img src="' + mercImg(o.t, 0) + '" alt="' + o.nm + '">'
+          return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + '"><img src="' + mercImg(o.t, o.ni) + '" alt="' + o.nm + '">'
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
@@ -2926,26 +2912,24 @@ var TowerMine = (function () {
   }
   // [2026-11-05] 용병(동료) -- 평소엔 내가 지나온 칸을 두세 칸 뒤에서 따라오고, 전투 턴(서버)이 고른 몬스터 옆 칸으로 달려가 싸운다(흩어짐).
   //  체력이 다하면 내 뒤 칸에서 쉰다(흐리게 + 💤). 다른 유저의 용병도 같은 식(쉬는 중/싸우는 칸은 위치 알림으로 온다).
-  // [2026-11-06] "궁수, 마법사, 전사 3개로, 직업별 외형" + "치장은 직업별로 새롭게" -- 직업마다 3벌(용병 Lv.1/30/60에 열림, 서버 MINE_MERC_SKINS와 같은 순서).
-  //  장비는 없다(전사 기본 칼 / 궁수 기본 활 / 마법사 기본 지팡이, 기본 갑옷). 날개는 그리지 않는다.
-  var MERC_SKINS = [
-    [{ gender: 0, hair: '#3a2a1a', top: '#8a96a6|armor', hat: '#b8c0ca|helmet', bottom: '#2c45a3', shoes: '#4a3a2a', weapon: 'sword' },
-     { gender: 0, hair: '#5a1a10', top: '#a8323a|cape', hat: '#c0c8d0|helmet', bottom: '#2a2a30', shoes: '#3a2a20', weapon: 'sword' },
-     { gender: 1, hair: '#f0d060', top: '#e0b030|armor', hat: '#e8c84a|crown', bottom: '#7a2a2a', shoes: '#5a3a10', weapon: 'sword' }],
-    [{ gender: 1, hair: '#c8843a', top: '#3f7a3a|hoodie', hat: '', bottom: '#5a4a2a', shoes: '#5b3a1e', weapon: 'bow' },
-     { gender: 1, hair: '#5a3a1a', top: '#6a8a3a|fur', hat: '#2a6a3a|beret', bottom: '#3a3a2a', shoes: '#4a3a1a', weapon: 'bow' },
-     { gender: 1, hair: '#ffffff', top: '#c8d0ff|star', hat: '#c8d0ff|tiara', bottom: '#3a3a6a', shoes: '#2a2a4a', weapon: 'bow' }],
-    [{ gender: 0, hair: '#d8dde6', top: '#4a2a8a|star', hat: '#3a2a7a|wizard', bottom: '#2a1a4a', shoes: '#2a1a3a', weapon: 'staff' },
-     { gender: 1, hair: '#ff8a3a', top: '#8a2a1a|star', hat: '#5a1a10|wizard', bottom: '#3a1a10', shoes: '#2a1008', weapon: 'staff' },
-     { gender: 0, hair: '#ffffff', top: '#e8e8f0|star', hat: '#2a2a6a|wizard', bottom: '#2a2a6a', shoes: '#1a1a3a', weapon: 'staff' }]
+  // [2026-11-06] "용병은 전부 여자 캐릭, S5 동료(고양이 소녀 초상화)를 캐릭터화, 용병 치장은 없앰" -- 직업 옷 + 고양이 귀(머리색) + 꼬리, 이름(번호)마다 머리색.
+  //  전사 = 은빛 갑옷 + 기본 칼, 궁수 = 초록 망토 + 기본 활, 마법사 = 별빛 로브 + 기본 지팡이. 날개는 그리지 않는다.
+  var MERC_BASE = [
+    { gender: 1, top: '#c0c8d4|armor', bottom: '#7a2a3a', shoes: '#4a3a2a', weapon: 'sword' },
+    { gender: 1, top: '#3f8a4a|cape', bottom: '#5a4a2a', shoes: '#5b3a1e', weapon: 'bow' },
+    { gender: 1, top: '#5a3aa0|star', bottom: '#2a1a4a', shoes: '#2a1a3a', weapon: 'staff' }
   ];
-  var MERC_SKIN_NAMES = [['견습 전사', '붉은 기사', '황금 검성'], ['숲의 사냥꾼', '바람의 궁수', '달빛 명궁'], ['견습 마법사', '불꽃 술사', '대마법사']];
-  var MERC_SKIN_LV = [1, 30, 60];
+  var MERC_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a'];
   var MERC_ICON = ['⚔️', '🏹', '🔮'];
   var EL_ICON = { 6: '🔥', 2: '⚡', 3: '💧' };
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, mercShop = null, mercSpr = {}, mercImgC = {};
-  function mercLook(t, k) { var a = MERC_SKINS[t] || MERC_SKINS[0]; return a[k | 0] || a[0]; }
+  function mercLook(t, ni) {
+    var b = MERC_BASE[t] || MERC_BASE[0], h = MERC_HAIR[(ni | 0) % MERC_HAIR.length], lk = {};
+    for (var p in b) lk[p] = b[p];
+    lk.hair = h; lk.hat = h + '|neko'; lk.tail = h;
+    return lk;
+  }
   function mercSprite(t, dir, step, dig, k) {
     var key = t + dir + step + '_' + dig + '_' + (k | 0);
     if (!mercSpr[key]) mercSpr[key] = MineChar.sprite(dir, step, dig, mercLook(t, k));
@@ -3128,7 +3112,7 @@ var TowerMine = (function () {
     if (g[0] === P.x && g[1] === P.y && !rest) g = mercBehind(P.x, P.y, P.dir);
     mercMove(merc, g[0], g[1], now);
     if (fight && !merc.mv) mercFace(merc, merc.tg.x, merc.tg.y);
-    mercDraw(merc, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, merc.atkT, now, V, mi.skin);
+    mercDraw(merc, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, merc.atkT, now, V, mi.ni);
   }
   function mercDrawOther(ou, op, now, V) {
     var mp = ou.mp || (ou.mp = { x: null, y: null, dir: 'down' }), ox = Math.round(op.x), oy = Math.round(op.y), g;
@@ -4935,7 +4919,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSkin: mercSkin, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

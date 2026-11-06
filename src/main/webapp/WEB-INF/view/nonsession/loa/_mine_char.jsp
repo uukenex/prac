@@ -182,6 +182,8 @@ window.MineChar = (function () {
     var lx = side ? 6 : 5, rx = 9;
     var lh = step === 1 ? 2 : 3, rh = step === 2 ? 2 : 3;
     if (top.s === 'cape' && dir === 'up') px(g, robeD, 3, 7, 10, 7); // 기사 망토는 뒤에서 보면 등을 덮는다
+    var tailC = lk.tail, tailD = tailC ? shade(tailC, -0.25) : ''; // [2026-11-06] 용병(고양이 소녀) 꼬리 -- 앞/옆은 몸 뒤로, 뒷모습은 등 위에
+    if (tailC && dir !== 'up') (side ? [[3, 12], [2, 11], [2, 10], [1, 9], [1, 8], [2, 7]] : [[12, 12], [13, 11], [13, 10], [14, 9], [14, 8], [13, 7]]).forEach(function (q, i) { px(g, i >= 4 ? tailD : tailC, q[0], q[1]); });
     px(g, pants, lx, 12, 2, lh); px(g, boot, lx, 12 + lh, 2, 1);
     px(g, pants, rx, 12, 2, rh); px(g, boot, rx, 12 + rh, 2, 1);
     if (shoe.s === 'wing') { px(g, '#ffffff', lx - 1, 11 + lh); px(g, '#ffffff', rx + 2, 11 + rh); } // 발목의 작은 날개
@@ -218,6 +220,7 @@ window.MineChar = (function () {
       px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5);
       if (fem) { px(g, '#1a1a1a', 5, 3); px(g, '#1a1a1a', 10, 3); px(g, '#d9536f', 7, 6, 2, 1); } // 속눈썹 + 입술
     }
+    if (tailC && dir === 'up') [[8, 11], [9, 12], [10, 12], [11, 11], [12, 10], [12, 9]].forEach(function (q, i) { px(g, i >= 4 ? tailD : tailC, q[0], q[1]); });
     if (hat.s) { // 모자는 머리 위에 덮어 그린다
       var hc = hat.c, hd = shade(hc, -0.3);
       if (hat.s === 'straw') { px(g, hc, 2, 2, 12, 1); px(g, hc, 5, 0, 6, 2); px(g, '#b5251f', 5, 1, 6, 1); }
@@ -226,6 +229,7 @@ window.MineChar = (function () {
       else if (hat.s === 'wizard') { px(g, hc, 7, 0, 2, 1); px(g, hc, 6, 1, 4, 1); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 8, 1); }
       else if (hat.s === 'crown') { px(g, hc, 4, 1, 8, 1); px(g, hc, 4, 0); px(g, hc, 7, 0, 2, 1); px(g, hc, 11, 0); px(g, '#d4104f', 7, 1, 2, 1); }
       // [2026-10-28] 치장 추가
+      else if (hat.s === 'neko') { g.clearRect(3, 0, 10, 1); px(g, hc, 4, 0, 2, 1); px(g, hc, 10, 0, 2, 1); px(g, '#f29bb0', 5, 0); px(g, '#f29bb0', 10, 0); px(g, hd, 6, 1, 4, 1); } // [2026-11-06] 용병 고양이 귀 -- 머리 위로 뾰족 튀어나오게(귀 사이는 비움)
       else if (hat.s === 'cat') { px(g, hc, 4, 0, 2, 2); px(g, hc, 10, 0, 2, 2); px(g, '#f29bb0', 5, 1); px(g, '#f29bb0', 10, 1); }
       else if (hat.s === 'flower') { px(g, '#3a9a4a', 4, 1, 8, 1); px(g, hc, 4, 0); px(g, hc, 7, 0, 2, 1); px(g, hc, 11, 0); px(g, '#ffe14d', 5, 1); px(g, '#ffe14d', 10, 1); }
       else if (hat.s === 'santa') { px(g, hc, 5, 0, 6, 2); px(g, hc, 11, 1); px(g, '#ffffff', 12, 1); px(g, '#ffffff', 4, 2, 8, 1); }
