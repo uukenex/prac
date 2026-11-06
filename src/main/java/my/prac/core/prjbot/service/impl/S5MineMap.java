@@ -119,6 +119,10 @@ public final class S5MineMap {
     /** [2026-10-29] 무기 조각(60~63, 등급 = NINJA_SHARD_GRADE + 번호): 닌자의 검 / 비철도 / 카타나 / 백화검. */
     public static final String[] WEAPON_SHARD_CODES = { NINJA_SHARD_CODE, "BICHUL_SHARD", "KATANA_SHARD", "BAEKHWA_SHARD" };
     public static final String[] WEAPON_SHARD_NAMES = { NINJA_SHARD_NAME, "비철도 조각", "카타나 조각", "백화검 조각" };
+    /** [2026-11-06] 갑옷 조각(66~69, 등급 = ARMOR_SHARD_GRADE + 번호): 사슬 갑옷 / 무사의 흉갑 / 닌자의 갑주 / 백화 갑주 -- 같은 등급이 또 나오면 분해, 강화 재료. */
+    public static final String[] ARMOR_SHARD_CODES = { "ARMOR_SHARD_1", "ARMOR_SHARD_2", "ARMOR_SHARD_3", "ARMOR_SHARD_4" };
+    public static final String[] ARMOR_SHARD_NAMES = { "사슬 갑옷 조각", "무사의 흉갑 조각", "닌자의 갑주 조각", "백화 갑주 조각" };
+    public static final int ARMOR_SHARD_GRADE = 66;
     public static final String PEAK = "snowpeak";
     /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
     /** [2026-10-30] 화산의 심장 -- 용암 거신을 낮에 쓰러뜨리면 확률로. */

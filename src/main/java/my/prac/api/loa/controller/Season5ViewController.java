@@ -902,6 +902,16 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineEquipRing(userName, code));
     }
 
+    /** [2026-11-06] 무기/갑옷 강화. */
+    @GetMapping("/api/tower-mine-enhance")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineEnhance(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam("code") String code) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineEnhance(userName, code);
+        if (out.containsKey("enhOk")) mineLog(userName, "[웹] 광산 강화 " + code, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-10-24] 웹 광산 대장장이 [합성] -- 요일석 7종 -> 칠요석. */
     @GetMapping("/api/tower-mine-synth")
     @ResponseBody

@@ -280,6 +280,8 @@ public interface BotS5Service {
     /** [2026-10-24] 광산 장비(장신구/장화) 만들기·올리기, 반지 바꿔 끼기, 칠요석 합성, 선장 퀘스트(give/craft). */
     HashMap<String, Object> mineCraft(String userName, String code);
     HashMap<String, Object> mineEquipRing(String userName, String code);
+    /** [2026-11-06] 무기/갑옷 강화(+1, 확률). */
+    HashMap<String, Object> mineEnhance(String userName, String code);
     HashMap<String, Object> mineSynthSeven(String userName, int times);
     HashMap<String, Object> mineCaptain(String userName, String action);
     /** [2026-10-24] 명품상점 -- action buy/wear/gender. */
