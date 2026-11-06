@@ -3290,7 +3290,7 @@ var TowerMine = (function () {
     }
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
     if (m.down) { merc.tg = null; killFeed('💤 ' + (m.nm || m.name) + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
-    if (m.exp) killFeed('🐱 +' + m.exp + ' 경험치 (동료)', '#d8a8ff'); // [2026-11-06] "동료가 획득한 경험치는 (동료)로, 색 다르게"
+    if (m.exp) killFeed('내 경험치 +' + m.exp, '#9fe0ff'); // [2026-11-06] "동료가 벌어 준 경험치는 표기할 필요 없고, 동료가 획득한 / 내가 획득한 경험치로" -- 용병이 잡은 몬스터 경험치도 내 것
     if (m.ores) st.ores = m.ores;
     if (m.drops) lootDrops(m.drops, m.tx, m.ty);
     if (m.dropGrade != null || m.dropShard) weaponLoot(m, m.tx, m.ty);
@@ -3300,6 +3300,7 @@ var TowerMine = (function () {
     if (!st || !x) return;
     if (st.mercs) st.mercs[x.t] = x;
     if (st.merc && st.merc.t === x.t) { for (var p in x) if (p !== 'gain' && p !== 'up') st.merc[p] = x[p]; }
+    if (x.gain) killFeed('🐱 동료 경험치 +' + x.gain, '#d8a8ff'); // [2026-11-06] 동료가 획득한 경험치
     if (x.gain && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.6, text: '+' + x.gain, color: '#9fe0ff', t0: performance.now() + 150 }); // [2026-11-06] 용병 경험치(처치마다 최소 1)
     if (x.up) { killFeed('🎉 ' + (x.nm || x.name) + ' Lv.' + x.lv + '!', '#ffe14d'); if (merc.x != null) floats.push({ x: merc.x, y: merc.y - 1, text: '⬆️ Lv.' + x.lv, color: '#ffe14d', big: true, t0: performance.now() }); }
     if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc);
@@ -3681,7 +3682,7 @@ var TowerMine = (function () {
     if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치(내 경험치의 1%)
     var exSum = d.killed && d.expGain ? d.expGain : 0, kn = d.killed ? 1 : 0;
     (d.auraMobs || []).forEach(function (am) { if (am.killed) { exSum += am.exp || 0; kn++; } });
-    if (exSum > 0) killFeed('+' + exSum.toLocaleString() + ' 경험치' + (kn > 1 ? '  ×' + kn : ''));
+    if (exSum > 0) killFeed('내 경험치 +' + exSum.toLocaleString() + (kn > 1 ? '  ×' + kn : ''));
   }
   // 왼쪽 빈 화면 -- 글씨만(그림자) 떠올랐다가 1.6초 뒤 위로 살짝 떠오르며 사라진다. 최대 6줄.
   var killBox = null;
@@ -3829,7 +3830,7 @@ var TowerMine = (function () {
       lootDrops(d.novaDrops, P.x, P.y);
       if (d.ores) st.ores = d.ores;
       if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, P.x, P.y); }
-      if (exSum > 0) killFeed('+' + exSum.toLocaleString() + ' 경험치' + (kn > 1 ? '  ×' + kn : ''));
+      if (exSum > 0) killFeed('내 경험치 +' + exSum.toLocaleString() + (kn > 1 ? '  ×' + kn : ''));
       if (d.combat) setCombat(d.combat);
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
     }).catch(function () { novaBusy = false; });
