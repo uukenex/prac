@@ -911,6 +911,7 @@ var TowerMine = (function () {
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
     }
     thunderUntil = d.hideUntil && d.hideUntil > tn ? d.hideUntil : 0; // [2026-11-05] 천둥 황소 남은 시간(맵 안 모두에게)
+    if (d.thunderNeed) { thunderKills = d.thunderKills || 0; thunderNeed = d.thunderNeed; } // [2026-11-06] 절반부터 전기
     if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
       map.mobs.forEach(function (mb) { var mt = map.mobTypes[mb.k]; if (mt && !mt.boss) ns[mb.id] = { hp: 0, du: d.hideUntil, fx: mb.x, fy: mb.y, fu: 0 }; });
       if (hideNoticeT !== d.hideUntil) { hideNoticeT = d.hideUntil; flashT0 = performance.now(); msg('⚡ 마물들이 한순간에 숲 속으로 흩어졌어요... 숲 한가운데에서 천둥이 울려요!', 4500); }
@@ -1830,9 +1831,8 @@ var TowerMine = (function () {
   function equipHtml() {
     var tab = function (id, label) { return '<button type="button" class="' + (equipTab === id ? 'on' : '') + '" onclick="TowerMine.equipTab(\'' + id + '\')">' + label + '</button>'; };
     var h = '<div class="mine-smith-head inv-head">🎒 인벤토리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
-        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('skill', '🌀 스킬') + tab('enh', '🔨 강화') + tab('etc', '📦 기타') + '</div></div>';
+        + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('look', '👗 치장') + tab('skill', '🌀 스킬') + tab('etc', '📦 기타') + '</div></div>';
     if (equipTab === 'etc') return h + invEtcHtml();
-    if (equipTab === 'enh') return h + enhHtml(); // [2026-11-06]
     if (equipTab === 'skill') return h + skillHtml(); // [2026-11-04] 검기
     if (equipTab === 'look') {
       var lk = st.look || {};
@@ -1870,7 +1870,8 @@ var TowerMine = (function () {
   function dollHtml() {
     var slot = function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
-      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + '</b><span>' + (w ? gradeName(w.name, w.grade) : '없음') + '</span></button>';
+      var en = sl.id === 'weapon' && st.wenh && st.wenh.lv ? ' <b style="color:#ffd27a">+' + st.wenh.lv + '</b>' : ''; // [2026-11-06] 무기 칸 강화
+      return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + en + '</b><span>' + (w ? gradeName(w.name, w.grade) : '없음') + '</span></button>';
     };
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
     var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'armor', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>' // [2026-11-06] 갑옷 칸 -- 좌우 4칸씩
@@ -1892,29 +1893,23 @@ var TowerMine = (function () {
             + (e.worn ? (off ? '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[1] + '</button>' : '<span class="mine-worn">사용 중</span>')
                 : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[0] + '</button>') + '</div>';
       });
+      if (sl.id === 'weapon') h += wenhHtml(); // [2026-11-06] "강화는 슬롯에" -- 무기 칸 팝업 아래
       h += '</div></div>';
     }
     return h;
   }
-  // [2026-11-06] 인벤토리 강화 탭 -- 가진 무기/갑옷마다 +단계, 지금 성능(등급 몫 + 강화 몫), 다음 단계 확률/성능/재료, [강화] 버튼
-  function enhHtml() {
-    var list = st.enh || [], h = '<div class="mine-smith-say">🔨 <b>무기 강화</b> -- 1강마다 무기 공격력 +10%, 5강마다 전설 이상의 공격력 % 옵션만큼 더 올라요. '
-        + '1강 100%, 2강부터 5%씩 낮아져요(최대 +20강 5%). 16강부터는 대장장이가 만드는 은하수 조각이 들어가요. 실패하면 재료만 사라지고 단계는 그대로예요. 강화는 그 장비의 모든 등급에 함께 적용돼요.</div>';
-    if (!list.length) return h + '<div class="mine-eq-empty">강화할 무기가 없어요. 20·40·60·80레벨 근처 몬스터가 드물게 떨어뜨려요.</div>';
-    [false, true].forEach(function (ar) {
-      var rows = list.filter(function (e) { return !!e.armor === ar; });
-      if (!rows.length) return;
-      h += '<div class="cos-slot-h">' + (ar ? '🛡️ 갑옷' : '⚔️ 무기') + '</div>';
-      rows.forEach(function (e) {
-        h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(e.name, e.grade) + ' <b style="color:#ffd27a">+' + e.enh + '</b></span><small>' + e.effect + '</small>';
-        if (e.pct != null) h += '<small style="color:#9fe0ff">다음 +' + (e.enh + 1) + ' (성공 ' + e.pct + '%) -- ' + e.nextEffect + '</small>' + costHtml(e.costs) + '</span>'
-            + '<button type="button" ' + (e.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhance(\'' + e.code + '\')">강화</button></div>';
-        else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
-      });
-    });
+  // [2026-11-06] "강화는 슬롯에 강화되는 형태로, 따로 탭은 없어도" -- 무기 칸 팝업 아래: 칸 단계, 지금 무기 성능(등급 몫 + 강화 몫), 다음 단계 확률/성능/재료
+  function wenhHtml() {
+    var w = st.wenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🔨 <b>무기 칸 강화 +' + (w.lv || 0) + '</b> -- 칸에 쌓여서 어떤 무기를 장착해도 그대로 적용돼요. 1강마다 무기 공격력 +10%, 5강마다 전설 이상의 공격력 % 옵션만큼 더. '
+        + '1강 100%, 2강부터 5%씩 낮아져요(+20강 5%). 실패하면 재료만 사라져요. 16강부터 은하수 조각.</div>';
+    if (!w.name) return h + '<div class="mine-eq-empty">드랍 무기를 장착해야 강화할 수 있어요.</div>';
+    h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + w.effect + '</small>';
+    if (w.pct != null) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' (성공 ' + w.pct + '%) -- ' + w.nextEffect + '</small>' + costHtml(w.costs) + '</span>'
+        + '<button type="button" ' + (w.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhance()">강화</button></div>';
+    else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
     return h;
   }
-  function enhance(code) { gearAct('/api/tower-mine-enhance?code=' + encodeURIComponent(code)); }
+  function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
     ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20 || g === 70; }], // [2026-11-06] 은하수 조각 // [2026-10-28] 빙석, 달빛석도 광석
@@ -2495,7 +2490,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'enh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'wenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -2628,7 +2623,7 @@ var TowerMine = (function () {
       if (d.lava) lavaSet(d.lava); // [2026-10-28] 용암섬
       if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
       if (d.stormNext) stormNext = d.stormNext;
-      if (d.shockDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.shockDmg + '⚡', color: '#ffe94a', t0: t });
+      if (d.shockDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.shockDmg + '⚡', color: '#ffe94a', t0: t }); // [2026-11-06] 황소가 나와 있으면 초당 1% 감전도 여기
       if (d.storm) { stormT0 = performance.now(); flashT0 = stormT0; if (d.stunUntil) { stunUntil = d.stunUntil; zapStunUntil = d.stunUntil; } floats.push({ x: P.x, y: P.y - 0.7, text: '⚡ 감전! -' + (d.stormDmg || 0), color: '#ffe94a', big: true, t0: t }); }
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
@@ -2643,7 +2638,7 @@ var TowerMine = (function () {
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
   function stunnedMe() { return stunUntil > nowSrv(); }
   // [2026-11-05] 천둥 황소 -- 전기 장판 칸, 번개 줄기(전광석화/밀쳐내기), 전체 낙뢰, 감전 스턴, 마물이 숨은 시각
-  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0;
+  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0, thunderKills = 0, thunderNeed = 0, ambZapT = 0;
   function shockSet(list) { var n = {}; (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; }); shockCells = n; }
   function zapAdd(x0, y0, x1, y1) { zaps.push({ x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), seed: Math.random() * 1000 }); }
   function stunMsg() { return zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : '🩹 붕대에 묶여 움직일 수 없어요!'; }
@@ -4141,12 +4136,27 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
     // [2026-11-05] "보스 1시간 카운트는 맵 안 모두에게" -- 천둥 황소가 나와 있는 동안 화면 위 가운데에 남은 시간
+    // [2026-11-06] "보스 카운트가 절반을 넘으면 맵에 전기가 점점" -- 절반(0) ~ 다 참(1)에 따라 푸른 깜빡임과 하늘에서 떨어지는 번개가 잦아지고, 황소가 나오면 가장 세게
+    if (map.id === 'westroad') {
+      var tOn = thunderUntil > nowSrv(), half = thunderNeed / 2, tk = tOn ? 1 : thunderNeed && thunderKills >= half ? Math.min(1, (thunderKills - half) / Math.max(1, half)) : -1;
+      if (tk >= 0) {
+        var fl = 0.5 + 0.5 * Math.sin(now / 90 + Math.sin(now / 37) * 2);
+        ctx.fillStyle = 'rgba(110,160,255,' + ((0.025 + 0.07 * tk) * fl) + ')'; ctx.fillRect(0, 0, W, H);
+        var dtz = Math.min(0.2, Math.max(0, (now - (ambZapT || now)) / 1000)); ambZapT = now;
+        if (Math.random() < dtz * (0.35 + 2.4 * tk)) {
+          var vx = W / TS, vy = H / TS, zx = camX / TS + Math.random() * vx, zy = camY / TS + vy * (0.25 + Math.random() * 0.7);
+          zapAdd(zx + (Math.random() - 0.5) * 3, camY / TS - 1, zx, zy);
+          if (tk > 0.6 && Math.random() < 0.4) flashT0 = now - 120;
+        }
+      }
+    } else ambZapT = 0;
+    // [2026-11-06] "남은 시간이 가려진다, 1분 이상이면 분만" -- 위쪽(지도/좌표와 겹치던 곳) 대신 아래 가운데(체력바 위)
     if (thunderUntil > 0 && map.id === 'westroad') {
       var tl = Math.max(0, thunderUntil - nowSrv());
       if (tl > 0) {
-        var tmm = Math.floor(tl / 60000), tss = Math.floor(tl / 1000) % 60, ttx = '⚡ 천둥 황소  ' + tmm + ':' + (tss < 10 ? '0' : '') + tss;
+        var ttx = '⚡ 천둥 황소  ' + (tl >= 60000 ? Math.floor(tl / 60000) + '분' : Math.ceil(tl / 1000) + '초');
         ctx.font = 'bold ' + Math.round(15 * dpr) + 'px monospace'; ctx.textAlign = 'center';
-        var tw = ctx.measureText(ttx).width + 20 * dpr, ty = Math.round(H * 0.12);
+        var tw = ctx.measureText(ttx).width + 20 * dpr, ty = Math.round(H - 118 * dpr);
         ctx.globalAlpha = 0.78; ctx.fillStyle = '#10142a'; ctx.fillRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
         ctx.globalAlpha = 1; ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1 * dpr; ctx.strokeRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
         ctx.fillStyle = '#ffe14d'; ctx.fillText(ttx, W / 2, ty);
