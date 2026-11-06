@@ -2927,15 +2927,17 @@ var TowerMine = (function () {
   function mercLook(t, ni) {
     var b = MERC_BASE[t] || MERC_BASE[0], h = MERC_HAIR[(ni | 0) % MERC_HAIR.length], lk = {};
     for (var p in b) lk[p] = b[p];
-    lk.hair = h; lk.hat = h + '|neko'; lk.tail = h;
+    lk.hair = h; lk.hat = h + '|neko'; lk.tail = h; lk.job = t | 0;
     return lk;
   }
+  // [2026-11-06] "도트 해상도를 32x32 정도로" -- 용병은 MineChar.neko(32x32 고양이 소녀)로 그린다
+  function mercCanvas(dir, step, dig, lk) { return MineChar.neko ? MineChar.neko(dir, step, dig, lk) : MineChar.sprite(dir, step, dig, lk); }
   function mercSprite(t, dir, step, dig, k) {
     var key = t + dir + step + '_' + dig + '_' + (k | 0);
-    if (!mercSpr[key]) mercSpr[key] = MineChar.sprite(dir, step, dig, mercLook(t, k));
+    if (!mercSpr[key]) mercSpr[key] = mercCanvas(dir, step, dig, mercLook(t, k));
     return mercSpr[key];
   }
-  function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = MineChar.sprite(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
+  function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
   // [2026-11-06] "이펙트가 중요해" -- 속성(불/번개/물) x 직업 x 단계(20레벨마다):
   //  전사 = 속성 색 베기 + 검기 파동(단계만큼 퍼짐), 궁수 = 불화살(3단계부터 하늘에서 불비) / 번개 화살 / 물화살,
   //  마법사 = 화염구(3단계부터 메테오) + 폭발 / 체인 라이트닝(튕긴 순서대로) / 토네이도(나 -> 대상으로 지나가며 휩쓴 뒤 그 자리에서 휘몰아침).

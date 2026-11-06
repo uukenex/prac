@@ -329,6 +329,109 @@ window.MineChar = (function () {
   }
   /** 날개 때문에 그림이 16x16보다 넓은지(환생 1 이상). */
   function wide(lk) { return !!(lk && (lk.rebirth | 0) > 0); }
-  return { sprite: charSprite, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
+  // ---- [2026-11-06] "용병 도트 해상도를 32x32 정도로" -- 용병(고양이 소녀) 전용 32x32 그림. lk = { hair '#색', job 0 전사 / 1 궁수 / 2 마법사, weapon }.
+  //  얼굴(눈·하이라이트·볼터치·입), 들쭉날쭉한 앞머리, 긴 뒷머리, 안쪽이 분홍인 고양이 귀, 꼬리, 직업 옷(전사 은빛 흉갑+견갑 / 궁수 초록 튜닉+화살통 끈 / 마법사 금테 별빛 로브).
+  //  방향 down / right / up(left = right 뒤집기), step 0~2 = 걸음, dig 3/4 = 공격(무기는 gear32 그대로 32 격자에 겹친다).
+  var NEKO_JOB = [
+    { o: '#c8d0dc', od: '#8a96a6', ol: '#ffffff', b: '#8a2a3a', bd: '#5a1a26', leg: '#8a96a6', shoe: '#4a3a2a', belt: '#7a4a1f' },
+    { o: '#3f8a4a', od: '#2a6a34', ol: '#6ac87a', b: '#5a4a2a', bd: '#3a2e1a', leg: '#f6d2b0', shoe: '#5b3a1e', belt: '#7a4a1f' },
+    { o: '#5a3aa0', od: '#3a2a7a', ol: '#8a6ad0', b: '#5a3aa0', bd: '#3a2a7a', leg: '#2a1a3a', shoe: '#2a1a3a', belt: '#ffd84a' }
+  ];
+  function nekoSprite(dir, step, dig, lk) {
+    lk = lk || {};
+    if (dir === 'left') {
+      var src = nekoSprite('right', step, dig, lk), c2 = mk(src.width, src.height), g2 = c2.getContext('2d');
+      g2.translate(src.width, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
+      return c2;
+    }
+    var c = mk(32, 32), g = c.getContext('2d'), J0 = NEKO_JOB[lk.job | 0] || NEKO_JOB[0];
+    var H = lk.hair || '#2b1d16', HD = shade(H, -0.3), HL = shade(H, 0.35), S = '#f6d2b0', SD = '#e2b08a', E = '#3a2340', EI = '#6a4aa0', PK = '#ff9aa8', IN = '#f29bb0';
+    var side = dir === 'right', up = dir === 'up', st = step | 0;
+    var P = function (col, x, y, w, h) { px(g, col, x, y, w, h); };
+    var tail = function (pts) { pts.forEach(function (q, i) { P(i >= pts.length - 2 ? HL : i % 3 === 2 ? HD : H, q[0], q[1], 2, 2); }); };
+    var ear = function (x0, flip) { // 귀 -- 아래 폭 5칸, 꼭짓점 위
+      [[1, 0, 1], [1, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 5]].forEach(function (r) { P(H, flip ? x0 + 4 - r[0] - r[2] + 1 : x0 + r[0], r[1], r[2], 1); });
+      P(IN, flip ? x0 + 2 : x0 + 2, 2, 1, 2); P(IN, flip ? x0 + 1 : x0 + 3, 3, 1, 1);
+    };
+    // 1) 몸 뒤 -- 꼬리, 긴 뒷머리
+    if (!up) tail(side ? [[8, 24], [6, 23], [5, 21], [4, 19], [4, 17], [5, 15]] : [[23, 24], [25, 23], [26, 21], [27, 19], [27, 17], [26, 15]]);
+    if (side) P(H, 9, 10, 5, 14);
+    else if (!up) { P(H, 7, 12, 3, 12); P(H, 22, 12, 3, 12); P(HD, 7, 23, 3, 1); P(HD, 22, 23, 3, 1); }
+    // 2) 다리/신발(걸음)
+    var lu = st === 1 ? 1 : 0, ru = st === 2 ? 1 : 0;
+    if (side) {
+      var fx = st === 1 ? 17 : st === 2 ? 15 : 16, bx = st === 1 ? 13 : st === 2 ? 15 : 14;
+      P(J0.leg, bx, 26, 2, 4); P(J0.shoe, bx, 30, 3, 2);
+      P(J0.leg, fx, 26, 2, 4); P(J0.shoe, fx, 30, 3, 2);
+    } else {
+      P(J0.leg, 12, 26 - lu, 2, 4); P(J0.shoe, 11, 30 - lu, 4, 2);
+      P(J0.leg, 18, 26 - ru, 2, 4); P(J0.shoe, 17, 30 - ru, 4, 2);
+    }
+    // 3) 치마/로브 아랫단
+    var skirt = function (x0, w0, rows) { for (var r = 0; r < rows; r++) P(r === rows - 1 ? J0.bd : J0.b, x0 - (r >> 1), 23 + r, w0 + (r >> 1) * 2, 1); };
+    if (side) skirt(12, 8, (lk.job | 0) === 2 ? 6 : 4);
+    else skirt(11, 10, (lk.job | 0) === 2 ? 6 : 4);
+    // 4) 몸통 + 팔
+    if (side) {
+      P(J0.o, 12, 17, 8, 6); P(J0.od, 12, 17, 1, 6);
+      P(J0.belt, 12, 22, 8, 1);
+      P(J0.od, 16, 17, 3, 6); P(J0.o, 17, 17, 2, 5); P(S, 17, 23, 2, 1); // 앞팔 + 손
+    } else {
+      P(J0.o, 11, 17, 10, 6); P(J0.od, 11, 17, 1, 6); P(J0.od, 20, 17, 1, 6);
+      P(J0.belt, 11, 22, 10, 1);
+      P(J0.o, 9, 17, 2, 6); P(J0.o, 21, 17, 2, 6); P(J0.od, 9, 22, 2, 1); P(J0.od, 21, 22, 2, 1);
+      P(S, 9, 23, 2, 1); P(S, 21, 23, 2, 1);
+    }
+    var job = lk.job | 0;
+    if (!up) {
+      if (job === 0) { // 흉갑 광택 + 견갑
+        P(J0.ol, side ? 14 : 13, 18, side ? 3 : 6, 1); P(J0.od, side ? 13 : 12, 20, side ? 6 : 8, 1);
+        if (side) P('#e8eef6', 15, 16, 4, 2); else { P('#e8eef6', 8, 16, 4, 2); P('#e8eef6', 20, 16, 4, 2); }
+      } else if (job === 1) { // 흰 깃 + 화살통 끈
+        P('#e8e0c0', side ? 15 : 14, 17, side ? 3 : 4, 1);
+        if (!side) for (var k = 0; k < 6; k++) P('#5a3a1a', 12 + k + (k >> 1), 17 + k, 1, 1);
+      } else { // 금 깃 + 가운데 금테 + 별
+        P('#ffd84a', side ? 15 : 13, 17, side ? 4 : 6, 1); if (!side) P('#ffd84a', 15, 18, 2, 10);
+        P('#ffe14d', side ? 14 : 12, 20, 1, 1); P('#ffffff', side ? 18 : 19, 24, 1, 1); P('#ffe14d', side ? 13 : 18, 26, 1, 1);
+      }
+    } else if (job === 1) for (var q = 0; q < 6; q++) P('#7a4a1f', 19 - q, 17 + q, 1, 1); // 등의 화살통 끈
+    // 5) 머리
+    if (up) { // 뒷모습 -- 머리카락이 머리와 등을 덮는다
+      P(H, 8, 4, 16, 13); P(H, 9, 3, 14, 1); P(H, 9, 17, 14, 6); P(HD, 9, 22, 14, 1);
+      for (var u = 0; u < 4; u++) P(HD, 11 + u * 3, 8 + (u % 2) * 3, 1, 12);
+      P(HL, 12, 5, 6, 1);
+      ear(7, false); ear(20, true);
+      tail([[17, 25], [19, 25], [21, 24], [22, 22], [22, 20], [21, 18]]);
+      return nekoFinish(c, dir, step, dig, lk);
+    }
+    if (side) {
+      P(S, 14, 7, 9, 10); P(SD, 14, 16, 8, 1); P(S, 16, 16, 2, 1); // 얼굴(오른쪽)
+      P(H, 10, 3, 13, 5); P(H, 9, 5, 6, 12); P(HD, 9, 15, 5, 2); // 정수리 + 뒤통수
+      for (var bx2 = 15; bx2 <= 22; bx2++) P(H, bx2, 7, 1, 2 + (bx2 * 7 % 3 === 0 ? 1 : 0)); // 앞머리
+      P(H, 14, 7, 2, 8); P(HL, 12, 4, 6, 1);
+      ear(9, false); ear(16, true);
+      P(E, 19, 11, 2, 3); P(EI, 19, 13, 2, 1); P('#ffffff', 19, 11, 1, 1);
+      P(PK, 21, 14, 1, 1); P('#c0505a', 22, 15, 1, 1);
+      return nekoFinish(c, dir, step, dig, lk);
+    }
+    P(S, 9, 8, 14, 9); P(S, 10, 16, 12, 1); P(SD, 11, 16, 10, 1); P(S, 15, 16, 2, 1); // 얼굴 + 목
+    P(H, 9, 3, 14, 5); P(H, 8, 5, 16, 3); P(H, 8, 8, 2, 9); P(H, 22, 8, 2, 9); // 정수리 + 옆머리
+    for (var x = 10; x <= 21; x++) P(H, x, 8, 1, 1 + ((x * 7) % 3)); // 들쭉날쭉한 앞머리
+    P(HD, 8, 15, 2, 2); P(HD, 22, 15, 2, 2); P(HL, 12, 4, 7, 1); P(HL, 11, 5, 2, 1);
+    ear(7, false); ear(20, true);
+    P(E, 11, 11, 2, 3); P(E, 19, 11, 2, 3); P(EI, 11, 13, 2, 1); P(EI, 19, 13, 2, 1); P('#ffffff', 11, 11, 1, 1); P('#ffffff', 19, 11, 1, 1); // 눈
+    P(PK, 9, 14, 2, 1); P(PK, 21, 14, 2, 1); P('#c0505a', 15, 15, 2, 1); // 볼터치 + 입
+    return nekoFinish(c, dir, step, dig, lk);
+  }
+  function nekoFinish(c, dir, step, dig, lk) {
+    outline(c, '#140d0a');
+    var wl = mk(32, 32), fl = mk(32, 32);
+    FX = fl.getContext('2d');
+    var drew = gear32(wl.getContext('2d'), dir, step, dig, lk);
+    FX = null;
+    if (drew) { var g = c.getContext('2d'); g.drawImage(outline(wl, '#140d0a'), 0, 0); g.drawImage(fl, 0, 0); }
+    return c;
+  }
+  return { sprite: charSprite, neko: nekoSprite, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
 })();
 </script>
