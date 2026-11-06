@@ -1989,6 +1989,8 @@ var TowerMine = (function () {
         + '<div class="mine-smith-say">공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + ' · 사거리 ' + m.reach + '칸'
         + '<span class="mine-bar" style="margin-top:6px"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
         + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + ' · 내가 얻는 경험치의 1%</small><br><small>장비는 기본 장비만 써요.</small></div>'
+        + '<div class="mine-smith-say" style="margin-bottom:4px">공격 방식</div><div class="merc-view merc-mode"><button type="button" class="' + (m.mode ? '' : 'on') + '" onclick="TowerMine.mercMode(0)">🤝 협공 모드<small>나와 싸우는 몬스터만</small></button>'
+        + '<button type="button" class="' + (m.mode ? 'on' : '') + '" onclick="TowerMine.mercMode(1)">⚔️ 선공 모드<small>사거리 안 몬스터를 먼저</small></button></div>' // [2026-11-06] 선공/협공
         + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : m.unpaid ? '⚠️ 급여가 밀려 쉬는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.want || m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>'
         + mercPayHtml(m);
     return h;
@@ -2001,6 +2003,11 @@ var TowerMine = (function () {
         + '<small>다음 급여: <b>' + m.sal + '</b> · 자동 차감 ' + (m.auto ? '켜짐' : '꺼짐') + '</small></span>'
         + '<span class="merc-pay-btns"><button type="button" onclick="TowerMine.mercPay(' + m.t + ')">' + (m.unpaid ? '급여 주기' : '선금 1일') + '</button>'
         + '<button type="button" class="' + (m.auto ? 'on' : '') + '" onclick="TowerMine.mercAuto(' + m.t + ')">자동 ' + (m.auto ? 'ON' : 'OFF') + '</button></span></div>';
+  }
+  function mercMode(md) { // [2026-11-06] 용병 선공 / 협공
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=mode&tier=' + md).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function mercLv99(c) { // [2026-11-06] 관리자 -- 용병 Lv.99
     if (busy) return;
@@ -2692,7 +2699,11 @@ var TowerMine = (function () {
       var ty = map.mobTypes[mb.k];
       return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (ty.aggro || 6); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
     });
-    if (!fight && !nearBoss && !nearStrong && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
+    var mercPre = !fight && st.merc && st.merc.mode === 1 && !(st.merc.rest > nowSrv()) && (map.mobs || []).some(function (mb) { // [2026-11-06] 용병 선공 모드 -- 사거리 안 몬스터가 보이면 전투 턴(서버가 하나 골라 먼저 친다)
+      var ty = map.mobTypes[mb.k];
+      return ty && !ty.boss && !ty.minion && !ty.dummy && mb._p && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (st.merc.reach || 5);
+    });
+    if (!fight && !nearBoss && !nearStrong && !mercPre && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
     tickC = function (d) { // [2026-11-03] 1초 턴(presTick)에 함께 -- 응답의 c
       bossBusy = false;
@@ -5084,7 +5095,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

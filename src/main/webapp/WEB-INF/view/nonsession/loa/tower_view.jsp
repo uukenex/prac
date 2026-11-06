@@ -954,6 +954,7 @@
     .merc-ask-body{ display:flex; gap:10px; align-items:center; margin:6px 0 8px; font-size:13px; line-height:1.5; } /* [2026-11-06] 용병 계약 팝업 */
     .merc-view{ display:flex; gap:6px; margin:4px 0 8px; } /* [2026-11-06] 용병 초상화 보기 / 캐릭터 보기 */
     .merc-view button{ flex:1; font-size:12px; padding:5px 0; font-weight:800; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
+    .merc-mode button small{ display:block; font-size:10px; font-weight:600; opacity:.8; margin-top:2px; }
     .merc-view button.on{ background:#3a2f55; border-color:#ffe14d; }
     img.merc-portrait{ image-rendering:auto !important; object-fit:cover; object-position:50% 12%; }
     .doll-char.pt img.merc-portrait{ width:120px; height:160px; }

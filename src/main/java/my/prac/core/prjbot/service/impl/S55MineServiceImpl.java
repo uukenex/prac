@@ -4492,6 +4492,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  마법사 = 불: 대상 둘레 s칸 폭발(s >= 3 메테오) / 번개: s+1마리에게 튕기는 체인(3칸 안, 85%씩) / 물: 나 -> 대상 사이 길(1칸) + 대상 둘레 (s+1)/2칸 토네이도. 둘레는 70%.
     //  반격은 전사 1.5초 / 원거리 3초마다. 경험치 = 내가 얻은 경험치 x 1%(몬스터가 용병보다 10레벨 넘게 높으면 1레벨마다 -3%, 최소 5%), 한 번에 그 레벨 필요치의 10%까지.
     static final String MINE_ITEM_MERC_ON = "MERC_ON";
+    static final String MINE_ITEM_MERC_MODE = "MERC_MODE"; // [2026-11-06] 0 협공(기본) / 1 선공
     // [2026-11-06] "급여(동괴 2 / 은괴 2 / 금괴 2 / 미스릴괴 1 중 하나, 매번 무작위)를 1일마다 줘야 계약 유지 -- 선금 또는 자동 차감, 차감될 때 안내, 처음 계약부터,
     //  미접속 시에도 시간이 흐른다" -- MERC{c}_PAID = 급여가 치러진 끝 시각(분, epoch), MERC{c}_SAL = 다음에 낼 급여(MINE_MERC_SALARY 번호), MERC{c}_MANUAL = 1이면 자동 차감 끔.
     //  끝 시각이 지나면(접속 안 한 동안 포함) 다음 요청 때 하루치씩 자동으로 낸다(한 번에 최대 MINE_MERC_PAY_LOOP일). 모자라면 그 용병은 쉬고(따라오지 않음), 용병 관리에서 주면 그때부터 하루.
@@ -4681,6 +4682,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("sal", mineCostText(MINE_MERC_SALARY[mineMercSal(items, c, "SAL")]));
         m.put("auto", items.getOrDefault(mineMercKey(c, "MANUAL"), 0) <= 0);
         m.put("want", items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1 == c);
+        m.put("mode", items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1 ? 1 : 0); // [2026-11-06] 선공/협공
         return m;
     }
     static List<HashMap<String, Object>> mineMercCards(Map<String, Integer> items) {
@@ -4739,7 +4741,41 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (cls < 0) return new long[] { 0, 0 };
         HashMap<String, Object> mo = mineMercInfo(userName, items, now);
         out.put("merc", mo);
-        if (e == null || e.mobs.isEmpty() || map.boat()) return new long[] { 0, 0 };
+        if (map.boat()) return new long[] { 0, 0 };
+        // [2026-11-06] "용병을 선공 모드 / 협공 모드로 고르기" -- 협공(기본) = 나와 싸우는 몬스터만, 선공 = 싸우는 몬스터가 사거리 안에 없으면
+        //  사거리 안의 가장 가까운 몬스터를 골라 먼저 친다(그 몬스터는 나와의 싸움에 들어와 쫓아온다). 보스/수하/허수아비/분신/숨은 마물은 고르지 않는다.
+        if (items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1) {
+            boolean any = false;
+            if (e != null) for (Integer id : e.mobs.keySet()) {
+                if (id < 0 || id >= map.mobs().size()) continue;
+                MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
+                if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now) && Math.abs(s.fx - x) + Math.abs(s.fy - y) <= MINE_MERC_REACH[cls]) { any = true; break; }
+            }
+            if (!any) {
+                int bestId = -1, bestD = 99, bx = 0, by = 0;
+                for (S5MineMap.Mob mb : map.mobs()) {
+                    if (Math.abs(mb.x - x) + Math.abs(mb.y - y) > MINE_MERC_REACH[cls] + 6) continue;
+                    S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
+                    if (mt.boss || mt.minion || mt.dummy || mt.clone || mineHidden(map, mt, now)) continue;
+                    MobState s = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
+                    if (s != null && (s.deadUntil > now || (mt.ninja && s.stealth))) continue;
+                    int mx, my;
+                    if (s != null && s.frozenUntil > now) { mx = s.fx; my = s.fy; }
+                    else { int[] cs = mineMobCells(mb, s != null ? s : new MobState(S5MineMobs.hp(mt, mb.rank)), now, map); mx = cs[cs.length / 2] % map.w; my = cs[cs.length / 2] / map.w; }
+                    int d = Math.abs(mx - x) + Math.abs(my - y);
+                    if (d <= MINE_MERC_REACH[cls] && d < bestD) { bestD = d; bestId = mb.id; bx = mx; by = my; }
+                }
+                if (bestId >= 0) {
+                    S5MineMap.Mob mb = map.mobs().get(bestId);
+                    MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, bestId), kk -> new MobState(S5MineMobs.hp(S5MineMobs.TYPES.get(mb.type), mb.rank)));
+                    synchronized (s) { if (s.frozenUntil <= now) { s.fx = bx; s.fy = by; } s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS); s.target = userName; }
+                    mineEngage(userName, map, bestId, now, 0L);
+                    e = MINE_ENGAGE.get(userName);
+                    out.put("mercPre", bestId);
+                }
+            }
+        }
+        if (e == null || e.mobs.isEmpty()) return new long[] { 0, 0 };
         MercSt ms = MINE_MERC.get(userName);
         int pick = -1, best = 99, reach = MINE_MERC_REACH[cls];
         synchronized (ms) {
@@ -4959,6 +4995,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, "WARN", -1);
                 msg = "💰 " + mineMercNm(items, c, "NM") + "에게 급여 " + mineCostText(cost) + "를 줬어요. 다음 급여는 " + mineCostText(MINE_MERC_SALARY[mineMercSal(items, c, "SAL")]) + "예요.";
             }
+        } else if ("mode".equals(action)) { // [2026-11-06] 선공 / 협공 -- tier = 0 협공, 1 선공
+            int md = tier == 1 ? 1 : 0;
+            dao.upsertMineItem(userName, MINE_ITEM_MERC_MODE, md);
+            items.put(MINE_ITEM_MERC_MODE, md);
+            msg = md == 1 ? "⚔️ 선공 모드 -- 용병이 사거리 안의 몬스터를 먼저 공격해요." : "🤝 협공 모드 -- 용병이 나와 싸우는 몬스터만 함께 공격해요.";
         } else if ("lv99".equals(action)) { // [2026-11-06] "관리자는 레벨을 99로 올리는 기능"
             if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
             else if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
