@@ -4628,7 +4628,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** [2026-11-06] 2차 스킬 설명(단계 s2 = 1~3, 40/60/80레벨). */
     static String mineMercSkill2(int c, int el, int s2) {
-        if (c == 0) return "이기어검 " + s2 + "단계 · 가까운 " + (3 + 2 * s2) + "마리에 날아가는 검(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
+        if (c == 0) return "이기어검 " + s2 + "단계 · 검 " + (3 + 2 * s2) + "자루가 가까운 몬스터들에게 나눠 꽂힘(한 마리면 전부, 자루마다 공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
         if (c == 1) return "화살비 " + s2 + "단계 · 둘레 " + (1 + s2) + "칸 땅에 5초(매초 공격력 x" + mineFmtPct(0.6 + 0.2 * s2) + ")";
         if (el == S5MineMobs.EL_THUNDER) return "체인 라이트닝 " + s2 + "단계 · " + (2 + 2 * s2) + "번 튕김(공격력 x2부터 85%씩)";
         if (el == S5MineMobs.EL_WATER) return "토네이도 " + s2 + "단계 · 지나가는 길 + 둘레 " + (1 + s2) + "칸(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
@@ -4833,7 +4833,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 List<int[]> nb = new ArrayList<>();
                 for (int[] cd : cands) if (Math.abs(cd[1] - x) + Math.abs(cd[2] - y) <= 6) nb.add(cd);
                 nb.sort((p, q) -> Math.abs(p[1] - x) + Math.abs(p[2] - y) - Math.abs(q[1] - x) - Math.abs(q[2] - y));
-                for (int k = 0; k < Math.min(nb.size(), 3 + 2 * s2); k++) { addHit.accept(nb.get(k)[0], 1.5 + 0.5 * s2); pts.add(new int[] { nb.get(k)[1], nb.get(k)[2], nb.get(k)[0] }); }
+                // [2026-11-06] "한 마리에게 다 꽂히도록, 여러 마리면 나누어서" -- 검 3+2x단계 자루를 가까운 순으로 돌아가며(한 마리면 전부 그 몬스터에게)
+                if (nb.isEmpty()) nb.add(new int[] { pick, ps.fx, ps.fy });
+                for (int k = 0; k < 3 + 2 * s2; k++) { int[] tq = nb.get(k % nb.size()); addHit.accept(tq[0], 1.5 + 0.5 * s2); pts.add(new int[] { tq[1], tq[2], tq[0] }); }
                 sk.put("k", "sword"); sk.put("nm", "이기어검");
             } else if (cls == 1) { // 화살비
                 synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = 1 + s2; ms.rainUntil = now + MINE_MERC_RAIN_MS; ms.rainMul = 0.6 + 0.2 * s2; }
