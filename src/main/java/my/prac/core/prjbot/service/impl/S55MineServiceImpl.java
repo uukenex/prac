@@ -4616,6 +4616,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineMercLv(Map<String, Integer> items, int c) { return Math.max(0, Math.min(MINE_LV_MAX, items.getOrDefault(mineMercKey(c, "LV"), 0))); }
     static int mineMercEl(Map<String, Integer> items, int c) { int e = items.getOrDefault(mineMercKey(c, "EL"), 0); for (int x : MINE_MERC_ELS) if (x == e) return e; return S5MineMobs.EL_FIRE; }
     static int mineMercStage(int lv) { return Math.min(5, 1 + Math.max(0, lv) / 20); }
+    static int mineMercStage2(int lv) { return lv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (lv - MINE_MERC_SKILL_LV) / 20) : 0; }
+    // [2026-11-06] "스킬 탭에서 끔/1/2/3 골라 안 쓸 수 있게" -- MERC{c}_S1(평타 단계) / MERC{c}_S2(2차 스킬 단계): 0 = 가장 높은 단계(기본), 9 = 끔, 1~ = 그 단계(열린 데까지).
+    static final int MINE_MERC_SEL_OFF = 9;
+    static int mineMercSel(Map<String, Integer> items, int c, String f, int max) {
+        int v = items.getOrDefault(mineMercKey(c, f), 0);
+        return v == MINE_MERC_SEL_OFF ? 0 : v >= 1 && v <= max ? v : max;
+    }
     /** 데리고 다니는 용병 직업(-1 = 없음). */
     static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 && mineMercPaid(items, c, System.currentTimeMillis()) ? c : -1; } // [2026-11-06] 급여가 밀리면 쉰다
     static final double MINE_MERC_ATK_MUL = 0.7; // [2026-11-06] "동료 공격 성능 30% 정도만 줄이자"
@@ -4671,13 +4678,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("on", mineMercOn(items) == c);
         m.put("el", el);
         m.put("elName", S5MineMobs.ELEM_NAMES[el]);
+        int sMax = s, s2Max = mineMercStage2(lv); // [2026-11-06] 열린 단계 / 고른 단계(0 = 끔) -- 화면 스킬 탭
+        s = mineMercSel(items, c, "S1", sMax);
+        int s2 = mineMercSel(items, c, "S2", s2Max);
         m.put("st", s);
-        m.put("skill", mineMercSkill(c, el, s));
-        if (s < 5) { m.put("nextLv", s * 20); m.put("skillNext", mineMercSkill(c, el, s + 1)); }
-        int s2 = lv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (lv - MINE_MERC_SKILL_LV) / 20) : 0; // [2026-11-06] 2차 스킬
+        m.put("stMax", sMax);
+        m.put("stSel", items.getOrDefault(mineMercKey(c, "S1"), 0));
+        m.put("skill", mineMercSkill(c, el, Math.max(1, s)));
+        if (sMax < 5) { m.put("nextLv", sMax * 20); m.put("skillNext", mineMercSkill(c, el, sMax + 1)); }
         m.put("s2", s2);
-        m.put("skill2", mineMercSkill2(c, el, Math.max(1, s2)));
-        if (s2 < 3) { m.put("next2Lv", MINE_MERC_SKILL_LV + s2 * 20); if (s2 > 0) m.put("skill2Next", mineMercSkill2(c, el, s2 + 1)); }
+        m.put("s2Max", s2Max);
+        m.put("s2Sel", items.getOrDefault(mineMercKey(c, "S2"), 0));
+        m.put("skill2", mineMercSkill2(c, el, Math.max(1, s2 > 0 ? s2 : s2Max)));
+        if (s2Max < 3) { m.put("next2Lv", MINE_MERC_SKILL_LV + s2Max * 20); if (s2Max > 0) m.put("skill2Next", mineMercSkill2(c, el, s2Max + 1)); }
+        List<String> d1 = new ArrayList<>(), d2 = new ArrayList<>();
+        for (int k = 1; k <= 5; k++) d1.add(mineMercSkill(c, el, k));
+        for (int k = 1; k <= 3; k++) d2.add(mineMercSkill2(c, el, k));
+        m.put("skills1", d1);
+        m.put("skills2", d2);
         m.put("ni", mineMercNi(items, c, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
         m.put("nm", mineMercNm(items, c, "NM")); // [2026-11-06] 이름 / 급여
         m.put("paidUntil", items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L);
@@ -4797,7 +4815,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ms.target = pick;
         }
         if (pick < 0) return new long[] { 0, 0 };
-        int mlv = mineMercLv(items, cls), el = mineMercEl(items, cls), st = mineMercStage(mlv), atk = mineMercAtk(items, cls);
+        int mlv = mineMercLv(items, cls), el = mineMercEl(items, cls), st = mineMercSel(items, cls, "S1", mineMercStage(mlv)), atk = mineMercAtk(items, cls); // [2026-11-06] 고른 평타 단계(0 = 끔)
         MobState ps = MINE_MOB_STATE.get(mineMobKey(map, pick));
         // [2026-11-06] "40레벨에 2차 스킬, 쿨타임(20초)마다" -- 평타(1~99): 전사 속성 검기(대상 + 둘레 s칸) / 궁수 속성 화살(한 명 +20% x s) / 마법사 파이어볼(한 명).
         //  2차(40레벨부터, 40/60/80에 1~3단계): 전사 이기어검(가까운 3+2단계마리에 날아가는 검), 마법사 불 메테오(대상 둘레 2+단계칸) / 번개 체인 라이트닝(2+2x단계번 튕김) /
@@ -4814,7 +4832,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         // [2026-11-06] "용병 검기를 플레이어 평타 검기(강화)와 같은 것으로" -- 대상 옆(나 쪽)에 선 용병이 대상 쪽으로 st칸 줄을 벤다: 그 줄(대상 뒤까지)의 싸우는 몬스터에게
         //  공격력의 st x 5% 속성 피해(플레이어 검기 mineAuraHits와 같은 비율, 무리는 auraTaken 배). 대상은 평타 그대로. 방향은 나 -> 대상의 큰 축.
-        if (ps != null && cls == 0) {
+        if (ps != null && cls == 0 && st > 0) {
             int ddx = ps.fx - x, ddy = ps.fy - y, dvx = Math.abs(ddx) >= Math.abs(ddy) ? Integer.signum(ddx) : 0, dvy = dvx == 0 ? Integer.signum(ddy) : 0;
             if (dvx == 0 && dvy == 0) dvy = 1;
             int mx0 = ps.fx - dvx, my0 = ps.fy - dvy; // 용병 자리(대상 바로 앞)
@@ -4824,7 +4842,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             mo.put("adir", new int[] { dvx, dvy });
         }
-        int s2 = mlv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (mlv - MINE_MERC_SKILL_LV) / 20) : 0;
+        int s2 = mineMercSel(items, cls, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
         HashMap<String, Object> sk = null;
         boolean cast = false;
         if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= MINE_MERC_SKILL_MS) { ms.skillAt = now; cast = true; } }
@@ -5010,6 +5028,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, "SAL", RND.nextInt(MINE_MERC_SALARY.length));
                 mineMercSet(userName, items, c, "WARN", -1);
                 msg = "💰 " + mineMercNm(items, c, "NM") + "에게 급여 " + mineCostText(cost) + "를 줬어요. 다음 급여는 " + mineCostText(MINE_MERC_SALARY[mineMercSal(items, c, "SAL")]) + "예요.";
+            }
+        } else if ("skill".equals(action)) { // [2026-11-06] 스킬 단계 고르기 -- tier = 직업, code = "1:n"(평타) / "2:n"(2차), n = 0 끔 / 1~ 단계
+            String cd = code == null ? "" : code.trim();
+            int which = cd.startsWith("2:") ? 2 : cd.startsWith("1:") ? 1 : 0, n = -1;
+            try { n = Integer.parseInt(cd.substring(2)); } catch (Exception ex) { n = -1; }
+            int mlv = cOk ? mineMercLv(items, c) : 0, max = which == 2 ? mineMercStage2(mlv) : mineMercStage(mlv);
+            if (!cOk || mlv <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else if (which == 0 || n < 0 || n > (which == 2 ? 3 : 5)) { ok = false; msg = "그런 단계는 없어요."; }
+            else if (n > max) { ok = false; msg = (which == 2 ? "2차 스킬 " : "평타 ") + n + "단계는 용병 Lv." + (which == 2 ? MINE_MERC_SKILL_LV + (n - 1) * 20 : (n - 1) * 20) + "부터 열려요."; }
+            else {
+                mineMercSet(userName, items, c, which == 2 ? "S2" : "S1", n == 0 ? MINE_MERC_SEL_OFF : n);
+                msg = (which == 2 ? "✨ 2차 스킬을 " : "🗡️ 평타를 ") + (n == 0 ? "껐어요." : n + "단계로 맞췄어요.");
             }
         } else if ("mode".equals(action)) { // [2026-11-06] 선공 / 협공 -- tier = 0 협공, 1 선공
             int md = tier == 1 ? 1 : 0;

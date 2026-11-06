@@ -1971,13 +1971,27 @@ var TowerMine = (function () {
     }).join('') + '</div>';
     var m = list[mercSel] || {};
     if (!m.owned) return h + '<div class="mine-smith-say">아직 계약하지 않은 ' + (m.name || '용병') + '예요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
-    if (mercTabV === 'skill') { // [2026-11-06] 평타(1~99, 20레벨마다) + 2차 스킬(40레벨부터, 20초마다, 40/60/80)
-      h += '<div class="mine-smith-row"><span class="nm"><span>' + (EL_ICON[m.el] || '') + ' <b>평타</b> · ' + m.elName + ' 특화 ' + m.st + '단계</span><small>' + m.skill + '</small>'
-          + '<small>항상 ' + m.elName + ' 속성으로 공격 · 상성 몬스터에게 피해 x1.5</small>'
-          + (m.skillNext ? '<small style="color:#9fe0ff">▶ Lv.' + m.nextLv + ' (' + (m.st + 1) + '단계): ' + m.skillNext + '</small>' : '<small>최고 단계예요</small>') + '</span></div>'
-          + '<div class="mine-smith-row' + (m.s2 ? '' : ' lack') + '"><span class="nm"><span>✨ <b>2차 스킬</b> · ' + (m.s2 ? m.s2 + '단계 · 20초마다' : 'Lv.40에 열려요') + '</span><small>' + m.skill2 + '</small>'
-          + (m.skill2Next ? '<small style="color:#9fe0ff">▶ Lv.' + m.next2Lv + ' (' + (m.s2 + 1) + '단계): ' + m.skill2Next + '</small>' : m.s2 >= 3 ? '<small>최고 단계예요</small>' : '') + '</span></div>'
-          + '<div class="mine-smith-say"><small>평타: ' + MERC_GROW[m.t] + ' (1·20·40·60·80)<br>2차 스킬: 40·60·80레벨에 강화</small></div>';
+    if (mercTabV === 'skill') { // [2026-11-06] "스킬 설명, 아이콘, 데미지 비율 + 끔/1/2/3 골라 안 쓰게" -- 평타(20레벨마다 1~5) / 2차 스킬(40/60/80에 1~3, 20초마다)
+      var ic1 = MERC_SK_ICON[m.t], ic2 = m.t === 0 ? '⚔️' : m.t === 1 ? '🌧️' : m.el === 6 ? '☄️' : m.el === 2 ? '⚡' : '🌪️';
+      var nm1 = m.t === 0 ? m.elName + ' 검기' : m.t === 1 ? (m.el === 6 ? '불화살' : m.el === 2 ? '번개 화살' : '물화살') : (m.el === 6 ? '파이어볼' : m.el === 2 ? '라이트닝볼' : '아이스볼');
+      var nm2 = m.t === 0 ? '이기어검' : m.t === 1 ? '화살비' : m.el === 6 ? '메테오' : m.el === 2 ? '체인 라이트닝' : '토네이도';
+      var selRow = function (which, cur, max, top, lvOf) { // 끔 / 1 / 2 ... (열리지 않은 단계는 자물쇠)
+        var r = '<div class="merc-sk-sel">', o = cur === 0;
+        r += '<button type="button" class="' + (o ? 'on' : '') + '" onclick="TowerMine.mercSkill(' + m.t + ', ' + which + ', 0)">끔</button>';
+        for (var n = 1; n <= top; n++) r += n <= max ? '<button type="button" class="' + (cur === n ? 'on' : '') + '" onclick="TowerMine.mercSkill(' + m.t + ', ' + which + ', ' + n + ')">' + n + '</button>'
+            : '<button type="button" class="lock" disabled title="Lv.' + lvOf(n) + '부터">🔒' + n + '</button>';
+        return r + '</div>';
+      };
+      var list = function (arr, cur, max, lvOf) { return '<div class="merc-sk-list">' + (arr || []).map(function (d, i) { var n = i + 1; return '<div class="' + (n === cur ? 'on' : n > max ? 'lock' : '') + '"><b>' + n + '단계</b> <span>Lv.' + lvOf(n) + '</span><br>' + d + '</div>'; }).join('') + '</div>'; };
+      var lv1 = function (n) { return Math.max(1, (n - 1) * 20); }, lv2 = function (n) { return 40 + (n - 1) * 20; };
+      h += '<div class="merc-sk"><div class="merc-sk-h"><span class="ico">' + ic1 + '</span><div><b>평타 · ' + nm1 + '</b><small>' + (EL_ICON[m.el] || '') + ' ' + m.elName + ' 속성 · 공격할 때마다 · 상성 몬스터 피해 x1.5</small></div></div>';
+      if (m.t === 2) h += '<div class="merc-sk-cur">' + m.skill + '<br><small>평타는 단계 없이 늘 한 명(구슬은 속성마다 모양이 달라요)</small></div>';
+      else h += selRow(1, m.st, m.stMax, 5, lv1) + '<div class="merc-sk-cur">' + (m.st ? '▶ ' + m.st + '단계 · ' + (m.skills1 || [])[m.st - 1] : '꺼져 있어요 -- 단계 효과 없이 기본 공격만') + '</div>' + list(m.skills1, m.st, m.stMax, lv1);
+      h += '</div>';
+      h += '<div class="merc-sk' + (m.s2Max ? '' : ' lock') + '"><div class="merc-sk-h"><span class="ico">' + ic2 + '</span><div><b>2차 스킬 · ' + nm2 + '</b><small>쿨타임 20초 · 40레벨에 열리고 60·80레벨에 강화</small></div></div>'
+          + (m.s2Max ? selRow(2, m.s2, m.s2Max, 3, lv2) + '<div class="merc-sk-cur">' + (m.s2 ? '▶ ' + m.s2 + '단계 · ' + (m.skills2 || [])[m.s2 - 1] : '꺼져 있어요 -- 20초마다 쓰지 않아요') + '</div>' : '<div class="merc-sk-cur">🔒 용병 Lv.40에 열려요 (지금 Lv.' + m.lv + ')</div>')
+          + list(m.skills2, m.s2, m.s2Max, lv2) + '</div>';
+      h += '<div class="mine-smith-say"><small>피해는 모두 용병 공격력(공격력 ' + fmtN(m.atk) + ') 기준이에요. 끄거나 낮은 단계를 고르면 그만큼 약하게 공격해요.</small></div>';
       if (st.adminMaps && m.lv < 99) h += '<div class="mine-smith-row"><span class="nm">🛠️ 관리자<small>용병 레벨을 99로</small></span><button type="button" onclick="TowerMine.mercLv99(' + m.t + ')">Lv.99</button></div>';
       return h;
     }
@@ -2003,6 +2017,11 @@ var TowerMine = (function () {
         + '<small>다음 급여: <b>' + m.sal + '</b> · 자동 차감 ' + (m.auto ? '켜짐' : '꺼짐') + '</small></span>'
         + '<span class="merc-pay-btns"><button type="button" onclick="TowerMine.mercPay(' + m.t + ')">' + (m.unpaid ? '급여 주기' : '선금 1일') + '</button>'
         + '<button type="button" class="' + (m.auto ? 'on' : '') + '" onclick="TowerMine.mercAuto(' + m.t + ')">자동 ' + (m.auto ? 'ON' : 'OFF') + '</button></span></div>';
+  }
+  function mercSkill(c, which, n) { // [2026-11-06] 스킬 단계 고르기(0 = 끔)
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=skill&tier=' + c + '&code=' + which + ':' + n).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function mercMode(md) { // [2026-11-06] 용병 선공 / 협공
     if (busy) return;
@@ -2980,6 +2999,7 @@ var TowerMine = (function () {
   var MERC_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a'];
   var MERC_ICON = ['⚔️', '🏹', '🔮'];
   var EL_ICON = { 6: '🔥', 2: '⚡', 3: '💧' };
+  var MERC_SK_ICON = ['🗡️', '🏹', '🔮']; // [2026-11-06] 용병 평타 아이콘
   var MERC_DMG_COL = { 6: '#ff8a3a', 2: '#ffe14d', 3: '#6ab8ff' }; // [2026-11-06] 동료 피해 숫자 속성 색
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, mercShop = null, mercSpr = {}, mercImgC = {};
@@ -3292,7 +3312,7 @@ var TowerMine = (function () {
       else merc.tg.t = t;
       merc.atkT = t;
       mercShot(mt, m.el, m.st, merc.x == null ? P.x : merc.x, merc.y == null ? P.y : merc.y, m.tx, m.ty, m.sp, t + (mt ? 0 : 110), null, m.tg);
-      if (mt === 0 && m.adir) { // [2026-11-06] 용병 검기 = 플레이어 검기 칼날(속성 색, 단계 칸만큼 앞으로)
+      if (mt === 0 && m.adir && m.st > 0) { // [2026-11-06] 용병 검기 = 플레이어 검기 칼날(속성 색, 단계 칸만큼 앞으로)
         var adr = m.adir[0] > 0 ? 'right' : m.adir[0] < 0 ? 'left' : m.adir[1] < 0 ? 'up' : 'down';
         auraFx.push({ x: m.tx - m.adir[0], y: m.ty - m.adir[1], dir: adr, r: m.st, els: [m.el], rs: [m.st], t0: t, w: false, m: true });
       }
@@ -5120,7 +5140,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

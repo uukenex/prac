@@ -954,6 +954,21 @@
     .merc-ask-body{ display:flex; gap:10px; align-items:center; margin:6px 0 8px; font-size:13px; line-height:1.5; } /* [2026-11-06] 용병 계약 팝업 */
     .merc-view{ display:flex; gap:6px; margin:4px 0 8px; } /* [2026-11-06] 용병 초상화 보기 / 캐릭터 보기 */
     .merc-view button{ flex:1; font-size:12px; padding:5px 0; font-weight:800; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
+    .merc-sk{ margin:6px 0 10px; padding:8px; background:rgba(255,255,255,.04); border:2px solid rgba(244,240,230,.25); } /* [2026-11-06] 용병 스킬 탭 */
+    .merc-sk.lock{ opacity:.75; }
+    .merc-sk-h{ display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+    .merc-sk-h .ico{ font-size:26px; line-height:1; width:36px; height:36px; display:flex; align-items:center; justify-content:center; background:#2a2340; border:2px solid #f4f0e6; }
+    .merc-sk-h b{ display:block; font-size:13px; } .merc-sk-h small{ display:block; font-size:11px; color:#c9c3d6; }
+    .merc-sk-sel{ display:flex; gap:4px; margin:4px 0; }
+    .merc-sk-sel button{ flex:1; font-size:12px; font-weight:800; padding:4px 0; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
+    .merc-sk-sel button.on{ background:#ffd27a; color:#1a1424; border-color:#ffe14d; }
+    .merc-sk-sel button.lock{ opacity:.4; cursor:default; }
+    .merc-sk-cur{ font-size:12px; color:#ffe9a8; margin:4px 0; line-height:1.45; }
+    .merc-sk-list{ display:flex; flex-direction:column; gap:3px; font-size:11px; line-height:1.4; color:#c9c3d6; }
+    .merc-sk-list > div{ padding:3px 6px; border-left:3px solid rgba(244,240,230,.2); }
+    .merc-sk-list > div.on{ border-left-color:#ffd27a; color:#fff; background:rgba(255,210,122,.08); }
+    .merc-sk-list > div.lock{ opacity:.45; }
+    .merc-sk-list span{ color:#9fe0ff; }
     .merc-mode button small{ display:block; font-size:10px; font-weight:600; opacity:.8; margin-top:2px; }
     .merc-view button.on{ background:#3a2f55; border-color:#ffe14d; }
     img.merc-portrait{ image-rendering:auto !important; object-fit:cover; object-position:50% 12%; }
