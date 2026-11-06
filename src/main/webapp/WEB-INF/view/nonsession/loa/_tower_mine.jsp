@@ -2554,7 +2554,8 @@ var TowerMine = (function () {
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
-      mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 · 급여는 하루마다 동괴 2 / 은괴 2 / 금괴 2 / 미스릴괴 1 중 하나(매번 바뀜)<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
+      mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병(Lv.' + ms2.curLv + ')보다 2~15레벨 낮은 동료들이에요 · 계약하면 지금 용병은 떠나요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
+        + '<br>급여는 하루마다 동괴 / 은괴 / 금괴 / 미스릴괴 중 하나(레벨 20마다 1개씩 늘어 최대 5개), 가끔 세공된 보석<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       if (ms2.offers) {
         mh += mercViewBtns() + '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
           return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(o.t, o.ni, o.nm)
@@ -3000,7 +3001,7 @@ var TowerMine = (function () {
   var MERC_ICON = ['⚔️', '🏹', '🔮'];
   var EL_ICON = { 6: '🔥', 2: '⚡', 3: '💧' };
   var MERC_SK_ICON = ['🗡️', '🏹', '🔮']; // [2026-11-06] 용병 평타 아이콘
-  var MERC_DMG_COL = { 6: '#ff8a3a', 2: '#ffe14d', 3: '#6ab8ff' }; // [2026-11-06] 동료 피해 숫자 속성 색
+  var MERC_DMG_COL = { 6: '#ff6a2a', 2: '#ffe14d', 3: '#5ab0ff' }; // [2026-11-06] 동료 피해 숫자 속성 색(불 주황빨강 / 번개 노랑 / 물 파랑) + 속성 아이콘
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, mercShop = null, mercSpr = {}, mercImgC = {};
   function mercLook(t, ni) {
@@ -3021,7 +3022,7 @@ var TowerMine = (function () {
   function mercViewGo(v) { mercView = v === 'portrait' ? 'portrait' : 'char'; try { localStorage.setItem('tw-merc-view', mercView); } catch (e) { } if (smithOpen) renderSmith(smithNpc); }
   function mercViewBtns() { return '<div class="merc-view"><button type="button" class="' + (mercView === 'char' ? 'on' : '') + '" onclick="TowerMine.mercView(\'char\')">🧍 캐릭터 보기</button><button type="button" class="' + (mercView === 'portrait' ? 'on' : '') + '" onclick="TowerMine.mercView(\'portrait\')">🖼️ 초상화 보기</button></div>'; }
   function mercFaceImg(t, ni, alt) {
-    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=1" alt="' + (alt || '') + '" loading="lazy">';
+    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=2" alt="' + (alt || '') + '" loading="lazy">';
     return '<img src="' + mercImg(t, ni) + '" alt="' + (alt || '') + '">';
   }
   function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
@@ -3029,7 +3030,7 @@ var TowerMine = (function () {
   //  전사 = 속성 색 베기 + 검기 파동(단계만큼 퍼짐), 궁수 = 불화살(3단계부터 하늘에서 불비) / 번개 화살 / 물화살,
   //  마법사 = 화염구(3단계부터 메테오) + 폭발 / 체인 라이트닝(튕긴 순서대로) / 토네이도(나 -> 대상으로 지나가며 휩쓴 뒤 그 자리에서 휘몰아침).
   var mercFx = [];
-  var EL_COL = { 6: ['#fff2a8', '#ff9a20', '#e8401a'], 2: ['#ffffff', '#a8dcff', '#4a8aff'], 3: ['#e8f8ff', '#6ac8ff', '#2a6ad0'] };
+  var EL_COL = { 6: ['#fff2a8', '#ff9a20', '#e8401a'], 2: ['#ffffff', '#fff27a', '#ffc21a'], 3: ['#e8f8ff', '#6ac8ff', '#2a6ad0'] }; // [2026-11-06] 번개는 노랑(물 파랑과 구별)
   function elc(el) { return EL_COL[el] || EL_COL[6]; }
   // [2026-11-06] k = 그림 종류: 'ball' 마법사 평타 파이어볼(속성 색), 'sword' 전사 2차 이기어검, 'skill' 마법사 2차(속성: 불 메테오 / 번개 체인 / 물 토네이도). 궁수 2차 화살비는 mercRains(땅에 남는다).
   function mercFly(f) { return f.k === 'ball' ? 300 : f.k === 'sword' ? 620 : f.c === 0 ? 0 : f.c === 1 ? 230 : f.el === 6 ? (f.s >= 3 ? 460 : 320) : f.el === 2 ? 40 : 440; }
@@ -3312,15 +3313,16 @@ var TowerMine = (function () {
       else merc.tg.t = t;
       merc.atkT = t;
       mercShot(mt, m.el, m.st, merc.x == null ? P.x : merc.x, merc.y == null ? P.y : merc.y, m.tx, m.ty, m.sp, t + (mt ? 0 : 110), null, m.tg);
+      if (mt === 0 && m.ms) merc.tg.g = [m.ms[0], m.ms[1]]; // [2026-11-06] 검사 용병이 서는 칸 = 서버가 검기를 내는 칸
       if (mt === 0 && m.adir && m.st > 0) { // [2026-11-06] 용병 검기 = 플레이어 검기 칼날(속성 색, 단계 칸만큼 앞으로)
         var adr = m.adir[0] > 0 ? 'right' : m.adir[0] < 0 ? 'left' : m.adir[1] < 0 ? 'up' : 'down';
-        auraFx.push({ x: m.tx - m.adir[0], y: m.ty - m.adir[1], dir: adr, r: m.st, els: [m.el], rs: [m.st], t0: t, w: false, m: true });
+        auraFx.push({ x: m.ms ? m.ms[0] : m.tx - m.adir[0], y: m.ms ? m.ms[1] : m.ty - m.adir[1], dir: adr, r: m.st, els: [m.el], rs: [m.st], t0: t, w: false, m: true });
       }
       // [2026-11-06] "동료가 실제 얼마 데미지를 무슨 속성(색)으로 줬는지 (동료 이모티콘)으로" -- 🐱 + 피해, 속성 색(불 주황 / 번개 노랑 / 물 파랑), 상성이면 크게 + !
       //  "메테오는 땅에 닿을 때 데미지" -- 2차 스킬이 나간 턴은 스킬이 닿는 때에 숫자(와 쓰러짐)
       var land = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 420 : m.sk.k === 'chain' ? 200 : fly, ecol = MERC_DMG_COL[m.el] || '#ffd27a';
-      floats.push({ x: m.tx, y: m.ty - 0.3, text: '🐱' + m.dmg + (m.beat ? '!' : ''), color: ecol, big: !!m.beat, t0: t + land });
-      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: '🐱' + q[2], color: ecol, t0: t + land + (m.sk && (m.sk.k === 'sword' || m.sk.k === 'chain') ? 45 * (i + 1) : 40) }); });
+      floats.push({ x: m.tx, y: m.ty - 0.3, text: '🐱' + ei + m.dmg + (m.beat ? '!' : ''), color: ecol, big: !!m.beat, t0: t + land });
+      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: '🐱' + ei + q[2], color: ecol, t0: t + land + (m.sk && (m.sk.k === 'sword' || m.sk.k === 'chain') ? 45 * (i + 1) : 40) }); });
     }
     if (m.sk) { // [2026-11-06] 2차 스킬(20초마다) -- 이름을 머리 위에, 이펙트
       var sk = m.sk, mx0 = merc.x == null ? P.x : merc.x, my0 = merc.y == null ? P.y : merc.y;
