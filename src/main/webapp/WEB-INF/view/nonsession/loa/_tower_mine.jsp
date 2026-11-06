@@ -1887,7 +1887,7 @@ var TowerMine = (function () {
       if (!rows.length) h += '<div class="mine-eq-empty">' + sl.none + '</div>';
       rows.forEach(function (e) {
         var off = e.worn && e.code !== 'SWORD' && e.code !== 'BASIC_PICK'; // 무기/채집 도구는 해제하면 기본(칼/기본 곡괭이) -- 기본은 "사용 중"
-        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + eqTip(e) + '</small>'
+        h += '<div class="mine-smith-row' + (e.worn ? ' worn' : '') + '"><span class="nm">' + (e.worn ? '✔ ' : '') + gradeName(e.name, e.grade) + '<small>' + (e.grades ? effLines(eqTip(e)) : eqTip(e)) + '</small>'
             + (e.grades && e.grades.length ? '<span class="gchips">' + e.grades.map(function (g) { // [2026-10-30] 무기 등급별 보관 -- 가진 등급을 색 칩으로, 누르면 그 등급을 든다
                 return '<button type="button" class="gchip' + (g === e.grade ? ' on' : '') + (g === 7 ? ' g7' : '') + '"' + (g < 7 ? ' style="background:' + GRADE_COL[g] + '"' : '') + ' onclick="TowerMine.equipRing(\'' + e.code + '#' + g + '\')" aria-label="등급 ' + (g + 1) + '"></button>';
               }).join('') + '</span>' : '') + '</span>'
@@ -1900,13 +1900,20 @@ var TowerMine = (function () {
     return h;
   }
   // [2026-11-06] "강화는 슬롯에 강화되는 형태로, 따로 탭은 없어도" -- 무기 칸 팝업 아래: 칸 단계, 지금 무기 성능(등급 몫 + 강화 몫), 다음 단계 확률/성능/재료
+  // [2026-11-06] "강화 표시에 탭이나 엔터" -- "공격력 +5400 (등급 3600 + 강화 1800) · 공격력 +9% (...)"를 옵션마다 한 줄, 등급/강화 몫은 들여 쓴 다음 줄로
+  function effLines(s) {
+    return String(s || '').split(' · ').map(function (p) {
+      var m = p.match(/^(.*?) \(등급 (.*?) \+ 강화 (.*?)\)$/);
+      return m ? m[1] + '<br><span style="opacity:.7">&nbsp;&nbsp;└ 등급 ' + m[2] + ' · 강화 +' + m[3] + '</span>' : p;
+    }).join('<br>');
+  }
   function wenhHtml(atNpc) { // [2026-11-06] atNpc = 무기 강화사 창(버튼), 아니면 인벤토리 무기 칸 팝업(보기만)
-    var w = st.wenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🔨 <b>무기 칸 강화 +' + (w.lv || 0) + '</b> -- 칸에 쌓여서 어떤 무기를 장착해도 그대로 적용돼요. 1강마다 무기 공격력 +10%, 5강마다 전설 이상의 공격력 % 옵션만큼 더. '
-        + '1강 100%, 2강부터 5%씩 낮아져요(+20강 5%). 실패하면 재료만 사라져요. 16강부터 은하수 조각.</div>';
+    var w = st.wenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🔨 <b>무기 칸 강화 +' + (w.lv || 0) + '</b> · 어떤 무기를 들어도 적용<br>'
+        + '<small>1강마다 공격력 +10% · 5강마다 공격력 % +1 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
     if (!w.name) return h + '<div class="mine-eq-empty">드랍 무기를 장착해야 강화할 수 있어요.</div>';
-    h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + w.effect + '</small>';
-    if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' (성공 ' + w.pct + '%) · 왕도 5시 방향 무기 강화사에게서 강화</small></span></div>';
-    else if (w.pct != null) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' (성공 ' + w.pct + '%) -- ' + w.nextEffect + '</small>' + costHtml(w.costs) + '</span>'
+    h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + effLines(w.effect) + '</small>';
+    if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>왕도 5시 방향 무기 강화사에게서</small></span></div>';
+    else if (w.pct != null) h += '<small style="color:#9fe0ff;margin-top:6px">▶ 다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>' + effLines(w.nextEffect) + '</small>' + costHtml(w.costs) + '</span>'
         + '<button type="button" ' + (w.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhance()">강화</button></div>';
     else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
     return h;

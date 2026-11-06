@@ -968,7 +968,7 @@ public final class S5MineMap {
         placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
         placeNpc(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
         placeNpc(ct, cc, cc + 10, "artisan", "왕도 장인", "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
-        placeNpc(ct, cc + ENH_NPC_DX, cc + ENH_NPC_DY, "enhancer", "무기 강화사", "칼은 두드릴수록 강해지는 법이지. 무기 칸을 맡기게. 다만... 망치가 빗나가도 원망은 말게나."); // [2026-11-06] 왕도 5시 방향
+        placeNpc(ct, cc + ENH_NPC_DX, cc + ENH_NPC_DY, "enhancer", "무기 강화사", "무기 칸을 맡기게. 빗나가도 원망은 말고."); // [2026-11-06] "말이 너무 많다" -- 짧게 // [2026-11-06] 왕도 5시 방향
         placeNpc(ct, cc + MERC_NPC_DX, cc + MERC_NPC_DY, "mercenary", "용병소 대장", "혼자 다니기엔 광산이 험하지. 쓸 만한 놈을 붙여 주겠네. 지치면 뒤에서 숨 좀 돌리게 해 주게나."); // [2026-11-05] 왕도 용병소
         S5MineMap av = out.get(ARCHI);
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);

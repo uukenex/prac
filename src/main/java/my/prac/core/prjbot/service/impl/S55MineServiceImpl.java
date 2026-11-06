@@ -3870,7 +3870,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String effect(int g) { return effect(g, 0); }
         // [2026-11-06] 강화 -- 1강마다 기본 성능(공격력/받는 피해 감소) +10%, 5강마다 전설 이상의 추가 옵션(무기 공격력 %, 갑옷 초당 회복)만큼 더.
         int atkEnh(int g, int e) { return (int) Math.round(atkAt(g) * MINE_ENH_BASE_PCT / 100.0 * e); }
-        int pctEnh(int g, int e) { return g >= MINE_ENH_OPT_GRADE ? pctAt(g) * (e / MINE_ENH_OPT_EVERY) : 0; }
+        // [2026-11-06] "5강에 8%+1%, 10강에 8%+2%" -- 전설 이상(공격력 % 옵션이 있는 무기)은 5강마다 공격력 % +1(예전: 옵션 값만큼)
+        int pctEnh(int g, int e) { return g >= MINE_ENH_OPT_GRADE && pctAt(g) > 0 ? e / MINE_ENH_OPT_EVERY : 0; }
         /** 갑옷 초당 체력 회복 %(전설부터 0.5) / 강화 몫. */
         double regenAt(int g) { return armor && g >= MINE_ENH_OPT_GRADE ? MINE_ARMOR_REGEN : 0; }
         double regenEnh(int g, int e) { return regenAt(g) * (e / MINE_ENH_OPT_EVERY); }
