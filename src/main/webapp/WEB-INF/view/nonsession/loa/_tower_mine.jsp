@@ -2998,6 +2998,44 @@ var TowerMine = (function () {
     { gender: 1, top: '#5a3aa0|star', bottom: '#2a1a4a', shoes: '#2a1a3a', weapon: 'staff' }
   ];
   var MERC_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a'];
+  // [2026-11-06] "초상화 기반 용병 캐릭터(64x64)" -- 이름 번호(MINE_MERC_NAMEPOOL 순서)마다 초상화에서 본 모습: 머리색/모양(long 긴 / twin 양갈래 / short 짧은 / bob 단발 / bun 올림),
+  //  눈, 윗옷/치마, 장식색(acc 리본·넥타이), 고양이 귀(ears), 메이드(apron/band/frill), 기모노(kimono/obi), 모자(hat/beret) 등. MineChar.nekoHD가 그린다.
+  var MERC_HD = (function () {
+    var W = '#f8f8fa';
+    return [
+      [ // 전사
+        { hair: '#e8e0f0', style: 'long', eye: '#e0405a', top: '#2a2230', skirt: '#2a2230', acc: '#1a1420', shirt: W, sleeve: W, ears: 1, orn: '#e04060', frill: 1, legs: '#2a2230' }, // 렌지
+        { hair: '#b49884', style: 'long', eye: '#5a78d8', top: '#6e6e7a', skirt: '#ececf0', acc: '#222228', shirt: W, tie: 1, ears: 1 }, // 아츠시
+        { hair: '#eeecf0', style: 'long', eye: '#e8b030', top: '#1e1a20', skirt: '#1e1a20', acc: '#c0202a', orn: '#c0202a', frill: 1, frillCol: '#c0202a', legs: '#1e1a20' }, // 츠요시
+        { hair: '#f6e0a0', style: 'long', eye: '#e0a030', top: '#f6eef2', skirt: '#e86090', acc: '#c03050', obi: '#c03050', kimono: 1, ears: 1, orn: '#8a8ae0' }, // 고우키
+        { hair: '#e0204a', style: 'twin', eye: '#8a90b0', top: '#f2b4c4', skirt: '#2a2428', acc: '#1e1a20', belt: '#1e1a20', orn: '#1e1a20' }, // 타이가
+        { hair: '#8ec0cc', style: 'twin', eye: '#e8603a', top: '#3a8c5c', skirt: '#5a6070', acc: '#e04a3a', sleeve: '#c8ccd4', ears: 1 }, // 유이토
+        { hair: '#efe9f6', style: 'long', eye: '#e8c040', top: '#2a2230', skirt: '#2a2230', acc: '#f08ab0', apron: 1, frill: 1, ears: 1, orn: '#f08ab0', legs: '#f4f4f6' }, // 카게로우
+        { hair: '#3a2622', style: 'bun', eye: '#48c060', top: '#5a1a2a', skirt: '#5a1a2a', acc: '#d0a040', obi: '#d0a040', kimono: 1, ears: 1, orn: '#e04050', orn2: '#f4f0f0' }, // 나기
+        { hair: '#d8c4d4', style: 'long', eye: '#9050c0', top: '#2a3a6a', skirt: '#4a5a7a', acc: '#c03040', shirt: W, tie: 1, ears: 1, orn: '#e04050' }, // 야토
+        { hair: '#d8dade', style: 'long', eye: '#e02030', top: '#2a2228', skirt: '#3a3238', acc: '#c02030', band: 1, bandCol: '#1e1a20', legs: '#2a2228' } // 시노
+      ],
+      [ // 궁수
+        { hair: '#f2d6cc', style: 'long', eye: '#40b4c4', top: '#c6a676', skirt: '#b8946a', acc: '#c0303a', shirt: W, ears: 1 }, // 세리나
+        { hair: '#f08ca8', style: 'long', eye: '#8a5ac8', top: '#f4a8bc', skirt: '#2a1e22', acc: '#2a1e22', ears: 1, orn: '#ffffff' }, // 츠키미
+        { hair: '#2c2434', style: 'long', eye: '#e8b030', top: '#1e1e28', skirt: '#1e1e28', acc: '#f4f4f6', apron: 1, frill: 1, band: 1, legs: '#1e1e28' }, // 스즈네
+        { hair: '#4a84dc', style: 'long', eye: '#f0c040', top: '#f2f4fc', skirt: '#c8303c', acc: '#4a70c8', obi: '#4a70c8', kimono: 1, ears: 1, orn: '#f05080' }, // 아마츠
+        { hair: '#f4f2f6', style: 'bob', eye: '#c84aa8', top: '#f2f2f6', skirt: '#2a2230', acc: '#3a58c0', tie: 1, band: 1, frill: 1, ears: 1 } // 히카리
+      ],
+      [ // 마법사
+        { hair: '#8c5232', style: 'short', eye: '#e88030', top: '#6a4a30', skirt: '#c8a888', acc: '#3a2a20', shirt: W, tie: 1, ears: 1, orb: '#ff9a3a' }, // 리오
+        { hair: '#b8a080', style: 'long', eye: '#7a6a5a', top: '#8a8070', skirt: '#8a8070', acc: '#2a2a2a', ears: 1, legs: '#222226', orb: '#c8e0a0' }, // 카나
+        { hair: '#9c6a4a', style: 'long', eye: '#4a84c4', top: '#f2f2f6', skirt: '#f2f2f6', acc: '#d03040', collar: '#2a3a6a', ears: 1, orb: '#6ac8ff' }, // 미코토
+        { hair: '#b88ae0', style: 'long', eye: '#8ad040', top: '#f4f4f6', skirt: '#2a2830', acc: '#222228', sleeve: '#b8b8c0', beret: '#2a2830', orb: '#c8a0ff' }, // 세라
+        { hair: '#9cc890', style: 'long', eye: '#8a80c8', top: '#f4f6e4', skirt: '#f4f6e4', acc: '#f0a020', frill: 1, frillCol: '#f0b040', band: 1, bandCol: '#f8f4dc', orb: '#b0f080' }, // 아리스
+        { hair: '#4ec8c0', style: 'twin', eye: '#3a7ad8', top: '#f2f2f6', skirt: '#222228', acc: '#e85090', sleeve: '#e85090', tie: 1, ears: 1, orb: '#7af0e0' }, // 코하루
+        { hair: '#d89050', style: 'long', eye: '#4a70d0', top: '#f4f0f0', skirt: '#1e1e24', acc: '#1e1e24', tie: 1, band: 1, ears: 1, legs: '#1e1e24', orb: '#ffc080' }, // 미레이
+        { hair: '#f8a0b8', style: 'twin', eye: '#e04878', top: '#f8b4c6', skirt: '#f8b4c6', acc: '#e04878', apron: 1, frill: 1, band: 1, ears: 1, legs: '#f8f8fa', orb: '#ff8ab8' }, // 스이렌
+        { hair: '#94c8f0', style: 'long', eye: '#3a90d8', top: '#f2f6fc', skirt: '#f2f6fc', acc: '#4a6ad0', hat: 1, frill: 1, orb: '#9ad8ff' }, // 아마네
+        { hair: '#e8e6f0', style: 'long', eye: '#b090d8', top: '#f4f4f6', skirt: '#f4f4f6', acc: '#1e1a20', frill: 1, frillCol: '#2a2228', obi: '#2a2228', orn: '#1e1a20', orb: '#e0d0ff' } // 미코
+      ]
+    ];
+  })();
   var MERC_ICON = ['⚔️', '🏹', '🔮'];
   var EL_ICON = { 6: '🔥', 2: '⚡', 3: '💧' };
   var MERC_SK_ICON = ['🗡️', '🏹', '🔮']; // [2026-11-06] 용병 평타 아이콘
@@ -3008,10 +3046,13 @@ var TowerMine = (function () {
     var b = MERC_BASE[t] || MERC_BASE[0], h = MERC_HAIR[(ni | 0) % MERC_HAIR.length], lk = {};
     for (var p in b) lk[p] = b[p];
     lk.hair = h; lk.hat = h + '|neko'; lk.tail = h; lk.job = t | 0;
+    var hp = MERC_HD[t | 0] || MERC_HD[0], hs = hp[(ni | 0) % hp.length]; // [2026-11-06] 초상화 기반 64x64 모습
+    if (hs) { lk.hd = {}; for (var q in hs) lk.hd[q] = hs[q]; lk.hd.job = t | 0; }
     return lk;
   }
   // [2026-11-06] "도트 해상도를 32x32 정도로" -- 용병은 MineChar.neko(32x32 고양이 소녀)로 그린다
-  function mercCanvas(dir, step, dig, lk) { return MineChar.neko ? MineChar.neko(dir, step, dig, lk) : MineChar.sprite(dir, step, dig, lk); }
+  // [2026-11-06] "초상화 기반으로 다시, 64x64" -- MineChar.nekoHD(초상화마다 머리색/모양/옷/귀), 없으면 예전 32x32
+  function mercCanvas(dir, step, dig, lk) { return lk.hd && MineChar.nekoHD ? MineChar.nekoHD(dir, step, dig, lk.hd) : MineChar.neko ? MineChar.neko(dir, step, dig, lk) : MineChar.sprite(dir, step, dig, lk); }
   function mercSprite(t, dir, step, dig, k) {
     var key = t + dir + step + '_' + dig + '_' + (k | 0);
     if (!mercSpr[key]) mercSpr[key] = mercCanvas(dir, step, dig, mercLook(t, k));
@@ -3022,7 +3063,7 @@ var TowerMine = (function () {
   function mercViewGo(v) { mercView = v === 'portrait' ? 'portrait' : 'char'; try { localStorage.setItem('tw-merc-view', mercView); } catch (e) { } if (smithOpen) renderSmith(smithNpc); }
   function mercViewBtns() { return '<div class="merc-view"><button type="button" class="' + (mercView === 'char' ? 'on' : '') + '" onclick="TowerMine.mercView(\'char\')">🧍 캐릭터 보기</button><button type="button" class="' + (mercView === 'portrait' ? 'on' : '') + '" onclick="TowerMine.mercView(\'portrait\')">🖼️ 초상화 보기</button></div>'; }
   function mercFaceImg(t, ni, alt) {
-    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=2" alt="' + (alt || '') + '" loading="lazy">';
+    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=3" alt="' + (alt || '') + '" loading="lazy">';
     return '<img src="' + mercImg(t, ni) + '" alt="' + (alt || '') + '">';
   }
   function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }

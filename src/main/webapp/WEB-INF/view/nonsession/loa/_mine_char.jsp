@@ -432,6 +432,185 @@ window.MineChar = (function () {
     if (drew) { var g = c.getContext('2d'); g.drawImage(outline(wl, '#140d0a'), 0, 0); g.drawImage(fl, 0, 0); }
     return c;
   }
-  return { sprite: charSprite, neko: nekoSprite, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
+  // [2026-11-06] "초상화 기반으로 용병 캐릭터를 다시, 32x32보다 높은 해상도(64x64)" -- 64칸 좌표로 모양(머리 모양/귀/옷/장식/무기)을 정의하고
+  //  칸마다 그 자리의 맨 위 모양 색을 칠한 뒤, 머리 윤기/그늘, 안쪽 경계, 눈(픽셀 단계), 바깥 외곽선을 입힌다. d = 용병 한 명의 모습(_tower_mine.jsp MERC_HD).
+  //  방향: down(정면) / up(뒤) / right(옆, left는 뒤집기), step 1/2 = 걸음, dig 3/4 = 공격(무기 휘두르기 / 시위 당기기 / 지팡이 들기).
+  var hdC = {};
+  function hdHex(c) { c = c.replace('#', ''); return [0, 2, 4].map(function (i) { return parseInt(c.substr(i, 2), 16); }); }
+  function hdShade(c, k) { return '#' + hdHex(c).map(function (v) { v = Math.round(k < 0 ? v * (1 + k) : v + (255 - v) * k); v = Math.max(0, Math.min(255, v)); return ('0' + v.toString(16)).slice(-2); }).join(''); }
+  function hdEll(cx, cy, rx, ry) { return function (u, v) { var a = (u - cx) / rx, b = (v - cy) / ry; return a * a + b * b <= 1; }; }
+  function hdRect(x0, y0, x1, y1) { return function (u, v) { return u >= x0 && u <= x1 && v >= y0 && v <= y1; }; }
+  function hdTri(ax, ay, bx, by, cx, cy) {
+    return function (u, v) {
+      var d1 = (u - bx) * (ay - by) - (ax - bx) * (v - by), d2 = (u - cx) * (by - cy) - (bx - cx) * (v - cy), d3 = (u - ax) * (cy - ay) - (cx - ax) * (v - ay);
+      return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+    };
+  }
+  function hdTrap(y0, y1, hw0, hw1, cx) { return function (u, v) { if (v < y0 || v > y1) return false; var t = (v - y0) / (y1 - y0); return Math.abs(u - cx) <= hw0 + (hw1 - hw0) * t; }; }
+  function hdAnd(a, b) { return function (u, v) { return a(u, v) && b(u, v); }; }
+  function hdOr() { var fs = arguments; return function (u, v) { for (var i = 0; i < fs.length; i++) if (fs[i](u, v)) return true; return false; }; }
+  function hdSaw(p, amp) { return function (u) { var t = (u / p) % 1; if (t < 0) t += 1; return amp * Math.abs(t * 2 - 1); }; }
+  function hdRot(f, px0, py0, ang) { var c = Math.cos(-ang), s = Math.sin(-ang); return function (u, v) { var x = u - px0, y = v - py0; return f(px0 + x * c - y * s, py0 + x * s + y * c); }; }
+  function hdMove(f, dx, dy) { return function (u, v) { return f(u - dx, v - dy); }; }
+  function hdBuild(d, dir, step, dig) {
+    var L = [], add = function (g, col, f) { L.push({ g: g, c: col, f: f }); };
+    var side = dir === 'right', back = dir === 'up', front = !side && !back;
+    var H = d.hair, S = '#fde3cf', T = d.top, K = d.skirt || T, A = d.acc || '#d03040', st = d.style, W = '#f8f8fa';
+    var cx = side ? 32.5 : 32, head = hdEll(32, 21, 14.5, 13.8), job = d.job | 0;
+    var jag = function (bot, p, a) { return function (u, v) { return v < bot - hdSaw(p, a)(u); }; };
+    // -- 머리 뒤쪽(정면/옆: 몸 뒤, 뒤: 몸 앞에 다시 그림)
+    var backHair = function () {
+      if (st === 'long') add('hair', H, hdAnd(side ? hdEll(27, 31, 13.5, 21.5) : hdEll(32, 31, 17, 22), jag(51, 5, 3)));
+      if (st === 'twin') {
+        if (side) add('hair', H, hdAnd(hdEll(18.5, 37, 5.5, 15), jag(51, 4, 2)));
+        else { add('hair', H, hdAnd(hdEll(13.5, 37, 5.5, 15), jag(51, 4, 2))); add('hair', H, hdAnd(hdEll(50.5, 37, 5.5, 15), jag(51, 4, 2))); }
+      }
+      if (st === 'short' || st === 'bob' || st === 'twin' || st === 'bun') add('hair', H, side ? hdEll(29.5, 24, 15, 12.5) : hdEll(32, 24, 16.5, st === 'bob' ? 13.5 : 12.5));
+      if (st === 'bun') add('hair', H, side ? hdEll(24.5, 8, 6, 5.2) : hdEll(32, 6.5, 6.5, 5.5));
+    };
+    if (!back) backHair();
+    // -- 무기(뒤 모습은 몸 뒤)
+    var hand = side ? [35.6, 48] : back ? [22.6, 48] : [41.4, 48], wx = hand[0] + (side ? 1.6 : back ? -1.6 : 3.2);
+    var weapon = function () {
+      if (job === 0) {
+        var ang = dig === 3 ? -0.7 : dig === 4 ? 1.1 : 0, R = function (f) { return ang ? hdRot(f, hand[0], hand[1], back ? -ang : ang) : f; };
+        add('blade', '#e6edf5', R(hdOr(hdTri(wx - 1, 16, wx + 1, 16, wx, 12.5), hdRect(wx - 1, 16, wx + 1, 45))));
+        add('blade', '#ffffff', R(hdRect(wx - 1, 17, wx - 0.2, 44)));
+        add('guard', '#e2b040', R(hdRect(wx - 3.6, 45, wx + 3.6, 46.8)));
+        add('grip', '#6a3a24', R(hdRect(wx - 0.8, 46.8, wx + 0.8, 51.5)));
+      } else if (job === 1) {
+        var bx = side ? 26 : back ? 38 : 33, dirX = back ? -1 : 1, pull = dig === 3 ? 3 : 0;
+        add('bow', '#8a5a2a', function (u, v) { var r = Math.hypot(u - bx, v - 44), a = Math.atan2(v - 44, (u - bx) * dirX); return Math.abs(r - 15) <= 1.1 && Math.abs(a) <= 1.0; });
+        add('string', '#f4ead0', function (u, v) { var sx = bx + dirX * (15 * Math.cos(1.0) - pull * (1 - Math.abs(v - 44) / (15 * Math.sin(1.0)))); return Math.abs(u - sx) <= 0.45 && Math.abs(v - 44) <= 15 * Math.sin(1.0); });
+        if (dig === 3) add('blade', '#e6edf5', hdRect(Math.min(bx + dirX * 5, bx + dirX * 18), 43.6, Math.max(bx + dirX * 5, bx + dirX * 18), 44.4));
+      } else {
+        var up = dig ? -3 : 0;
+        add('grip', '#7a4a2a', hdRect(wx - 0.9, 18 + up, wx + 0.9, 60 + up));
+        add('orb', d.orb || A, hdEll(wx, 15.5 + up, dig ? 4.6 : 3.8, dig ? 4.6 : 3.8));
+        add('orbHi', '#ffffff', hdEll(wx - 1.1, 14.3 + up, 1.1, 1.1));
+      }
+    };
+    if (back) weapon();
+    // -- 다리/신발(걸음)
+    var LG = d.legs || S, SH = d.shoes || '#3a2a30';
+    if (side) {
+      var fo = step === 1 ? 2.2 : step === 2 ? -2.2 : 0;
+      add('leg', LG, hdOr(hdRect(29.4 - fo, 52, 32.2 - fo, 60), hdRect(32.8 + fo, 52, 35.6 + fo, 60)));
+      add('shoe', SH, hdOr(hdEll(31.6 - fo, 61, 3.4, 2.1), hdEll(35 + fo, 61, 3.4, 2.1)));
+    } else {
+      var l1 = step === 1 ? 1.6 : 0, r1 = step === 2 ? 1.6 : 0;
+      add('leg', LG, hdOr(hdRect(27.3, 52, 30.2, 60 - l1), hdRect(33.8, 52, 36.7, 60 - r1)));
+      add('shoe', SH, hdOr(hdEll(28.6, 61 - l1, 3.2, 2.1), hdEll(35.4, 61 - r1, 3.2, 2.1)));
+    }
+    // -- 치마/기모노 아랫단, 프릴
+    var sk = side ? [8.5, 11.5] : [9.5, 13.5];
+    if (d.kimono) add('skirt', K, hdTrap(44, 59, side ? 8.5 : 9.5, side ? 10 : 11.5, cx));
+    else add('skirt', K, hdTrap(44, 53.5, sk[0], sk[1], cx));
+    if (d.frill) add('frill', d.frillCol || W, hdAnd(hdTrap(44, 54.5, sk[0], sk[1] + 1, cx), function (u, v) { return v > 52.2 - hdSaw(2.4, 1.2)(u); }));
+    // -- 몸통/팔/손
+    add('top', T, hdTrap(34.5, 46, side ? 6.5 : 7.5, side ? 8 : 9.5, cx));
+    if (front) {
+      if (d.collar) add('collar', d.collar, hdOr(hdTri(24.5, 34.5, 32, 34.5, 32, 40), hdTri(39.5, 34.5, 32, 34.5, 32, 40)));
+      if (d.shirt) add('shirt', d.shirt, hdTri(28.5, 34.5, 35.5, 34.5, 32, 42));
+      if (d.apron) add('apron', W, hdOr(hdRect(27.5, 41.5, 36.5, 52), hdTrap(38, 41.5, 3.5, 4.5, 32)));
+    }
+    if (side && d.apron) add('apron', W, hdRect(35, 41.5, 40.5, 52));
+    if (d.obi) add('obi', d.obi, hdRect(cx - 8.4, 42.5, cx + 8.4, 45.5));
+    if (d.belt) add('obi', d.belt, hdRect(cx - 8.2, 44.5, cx + 8.2, 45.6));
+    if (back && d.apron) add('apron', W, hdOr(hdTri(26.5, 41, 26.5, 46, 32, 43.5), hdTri(37.5, 41, 37.5, 46, 32, 43.5)));
+    var arm = side ? [hdTrap(36, 46.5, 2.2, 2.8, 34.6)] : [hdTrap(36, 46.5, 2.2, 2.8, 22.6), hdTrap(36, 46.5, 2.2, 2.8, 41.4)];
+    add('top', T, hdOr.apply(null, arm));
+    if (d.sleeve) add('shirt', d.sleeve, side ? hdRect(31.8, 44.5, 37.4, 46.6) : hdOr(hdRect(20, 44.5, 25.2, 46.6), hdRect(38.8, 44.5, 44, 46.6)));
+    add('skin', S, side ? hdEll(35.6, 48, 2.2, 2) : hdOr(hdEll(22.6, 48, 2.2, 2), hdEll(41.4, 48, 2.2, 2)));
+    if (front) {
+      if (d.tie) add('acc', A, hdOr(hdRect(31.2, 36.5, 32.8, 43), hdTri(30.8, 42.5, 33.2, 42.5, 32, 44.5)));
+      else add('acc', A, hdOr(hdTri(27.5, 35, 27.5, 39.5, 32, 37.2), hdTri(36.5, 35, 36.5, 39.5, 32, 37.2), hdEll(32, 37.2, 1.5, 1.4)));
+    } else if (side) add('acc', A, hdOr(hdTri(36, 35, 36, 39.5, 39.5, 37.2), hdEll(38.6, 37.2, 1.4, 1.4)));
+    if (!back) weapon();
+    // -- 머리
+    add('skin', S, hdRect(29.3, 32, 34.7, 35.5));
+    add('hair', H, head);
+    if (back) backHair();
+    if (front) {
+      add('skin', S, hdAnd(hdEll(32, 25.5, 12.2, 10.3), function (u, v) { return v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
+      add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 34), hdEll(19, 25, 3, 10)), hdAnd(hdRect(43.4, 19, 46.6, 34), hdEll(45, 25, 3, 10))));
+      if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9; }));
+    } else if (side) {
+      add('skin', S, hdAnd(hdEll(36.5, 25.5, 10, 10.3), function (u, v) { return u > 31.5 && v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
+      add('skin', S, hdAnd(hdEll(40.5, 27, 6.6, 8.6), function (u, v) { return v > 21; })); // 볼/턱이 앞으로
+      add('hair', H, hdAnd(hdRect(28, 18, 32, 34), hdEll(30, 26, 3, 9.5))); // 귀 앞 옆머리
+      if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9 && u < 44; }));
+    }
+    if (d.ears) {
+      var E1 = side ? hdTri(17.5, 15, 21, 2.5, 28.5, 9.5) : hdTri(16.6, 15, 19.5, 2.5, 27.5, 9.5), E2 = side ? hdTri(31, 10, 36, 1.5, 42, 8.5) : hdTri(47.4, 15, 44.5, 2.5, 36.5, 9.5);
+      add('hair', H, hdOr(E1, E2));
+      if (!back) add('earIn', '#f6a8b8', side ? hdTri(34, 8.6, 36, 4.6, 39.4, 8) : hdOr(hdTri(19.6, 11.5, 20.6, 6, 24.4, 9.6), hdTri(44.4, 11.5, 43.4, 6, 39.6, 9.6)));
+    }
+    if (d.band) add('band', d.bandCol || W, hdAnd(hdEll(32, 21, 15.2, 14.5), hdAnd(function (u, v) { return !hdEll(32, 22.5, 14.2, 13)(u, v); }, function (u, v) { return v < 13 && v > 5; })));
+    if (d.orn && !back) add('acc', d.orn, side ? hdEll(27, 12.5, 2.2, 2) : hdEll(20.5, 12.5, 2.2, 2));
+    if (d.orn && back) add('acc', d.orn, hdEll(43.5, 12.5, 2.2, 2));
+    if (st === 'bun' && d.orn2) add('acc', d.orn2, side ? hdOr(hdEll(20.5, 6, 2, 2), hdEll(28.5, 5, 1.8, 1.8)) : hdOr(hdEll(27, 4.5, 2, 2), hdEll(37, 5, 1.8, 1.8)));
+    if (d.hat) {
+      add('hat', W, hdEll(32, 11.5, side ? 19 : 21, 4.2));
+      add('hat', W, hdAnd(hdEll(side ? 31 : 32, 9, 11.5, 8), function (u, v) { return v <= 11.5; }));
+      add('acc', A, hdAnd(hdEll(side ? 31 : 32, 9, 11.6, 8), function (u, v) { return v > 7.6 && v <= 10.2; }));
+    }
+    if (d.beret) add('hat', d.beret, hdOr(hdAnd(hdEll(side ? 30 : 32, 10, 15.5, 7.5), function (u, v) { return v <= 12.5; }), hdEll(side ? 30 : 32, 3.4, 1.4, 1.4)));
+    return L;
+  }
+  /** 64x64 용병 한 장(캐시). */
+  function nekoHD(dir, step, dig, d, N) {
+    N = N || 64;
+    var key = JSON.stringify(d) + dir + (step | 0) + (dig | 0) + N;
+    if (hdC[key]) return hdC[key];
+    if (dir === 'left') {
+      var src = nekoHD('right', step, dig, d, N), c2 = mk(N, N), g2 = c2.getContext('2d');
+      g2.translate(N, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
+      return (hdC[key] = c2);
+    }
+    var L = hdBuild(d, dir, step | 0, dig | 0), k = 64 / N, col = new Array(N * N), grp = new Array(N * N), x, y, i;
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      var u = (x + 0.5) * k, v = (y + 0.5) * k;
+      for (i = L.length - 1; i >= 0; i--) if (L[i].f(u, v)) { col[y * N + x] = L[i].c; grp[y * N + x] = L[i].g; break; }
+    }
+    var gat = function (xx, yy) { return xx < 0 || yy < 0 || xx >= N || yy >= N ? null : grp[yy * N + xx]; };
+    var out = col.slice(), H = d.hair, HL = hdShade(H, 0.35), HD = hdShade(H, -0.28), side = dir === 'right', back = dir === 'up';
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      i = y * N + x; var g = grp[i], c = col[i];
+      if (!c) continue;
+      var uu = (x + 0.5) * k, vv = (y + 0.5) * k;
+      if (g === 'hair') {
+        var r = Math.hypot((uu - 32) / 14.5, (vv - 21) / 13.8);
+        if (vv < 17 && r > 0.6 && r < 0.78 && Math.abs(uu - (side ? 35 : 32)) < 11) out[i] = HL;
+        else if (back ? vv > 30 && uu > 36 : side ? uu < 27 && vv > 22 : uu > 38 && vv > 22) out[i] = HD;
+      }
+      if ((g === 'top' || g === 'skirt') && (side ? uu < 30 : uu > 35.5)) out[i] = hdShade(c, -0.14);
+      var gb = gat(x, y + 1);
+      if (gb && gb !== g && ((g === 'hair' && gb === 'skin') || (g === 'top' && gb !== 'top') || (g === 'skirt' && gb === 'leg'))) out[i] = hdShade(out[i], -0.3);
+    }
+    if (!back) { // 눈 / 입 / 볼
+      var eye = function (u0, u1) {
+        var x0 = Math.round(u0 / k), x1 = Math.max(x0 + 1, Math.round(u1 / k) - 1), y0 = Math.round(23.5 / k), y1 = Math.max(y0 + 2, Math.round(30 / k) - 1), xx, yy;
+        for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { var t = (yy - y0) / Math.max(1, y1 - y0); out[yy * N + xx] = yy === y0 ? '#2a1a26' : t < 0.5 ? hdShade(d.eye, -0.35) : t > 0.85 ? hdShade(d.eye, 0.35) : d.eye; }
+        out[(y0 + 1) * N + x0] = '#ffffff';
+        if (N >= 56) { out[(y0 + 1) * N + x0 + 1] = '#ffffff'; out[(y0 + 2) * N + x0] = '#ffffff'; }
+        out[y0 * N + x0 - 1] = '#2a1a26'; out[y0 * N + x1 + 1] = '#2a1a26';
+      };
+      var dot = function (u0, v0, c2, w) { var bx = Math.round(u0 / k), by = Math.round(v0 / k); out[by * N + bx] = c2; if (w && N >= 56) out[by * N + bx + 1] = c2; };
+      if (side) { eye(37.8, 42); dot(42.5, 32.3, '#b8505e'); dot(38.5, 31, '#f7a8a8', 1); }
+      else { eye(23.6, 29.2); eye(34.8, 40.4); dot(31.5, 32.3, '#b8505e', 1); dot(24.5, 31, '#f7a8a8', 1); dot(39.5, 31, '#f7a8a8', 1); }
+    }
+    var fin = out.slice(), at = function (xx, yy) { return xx < 0 || yy < 0 || xx >= N || yy >= N ? null : col[yy * N + xx]; };
+    for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
+      if (out[y * N + x]) continue;
+      var nb = at(x, y - 1) || at(x, y + 1) || at(x - 1, y) || at(x + 1, y);
+      if (nb) fin[y * N + x] = hdShade(nb, -0.62);
+    }
+    var cv = mk(N, N), gg = cv.getContext('2d'), im = gg.createImageData(N, N);
+    for (i = 0; i < N * N; i++) if (fin[i]) { var c3 = hdHex(fin[i]); im.data[i * 4] = c3[0]; im.data[i * 4 + 1] = c3[1]; im.data[i * 4 + 2] = c3[2]; im.data[i * 4 + 3] = 255; }
+    gg.putImageData(im, 0, 0);
+    return (hdC[key] = cv);
+  }
+  return { sprite: charSprite, neko: nekoSprite, nekoHD: nekoHD, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
 })();
 </script>
