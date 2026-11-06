@@ -3934,13 +3934,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_WEAPON_ENH = MINE_ENH_PREFIX + "WEAPON";
     static int mineWeaponEnh(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_ENH_MAX, items.getOrDefault(MINE_ITEM_WEAPON_ENH, 0))); }
     static int mineEnhPct(int n) { return Math.max(5, 100 - 5 * (n - 1)); }
+    static final int MINE_ENH_SHARDS = 10;
     /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11~15강 달빛석 n-10,
      *  [2026-11-06] "16강부터는 달빛석 + 칠요석을 합친 은하수 조각" -- 16강부터 달빛석 대신 은하수 조각 n-10(달빛석 개수를 이어서, 칠요석은 따로 안 듦). */
     static String[][] mineEnhCost(MineWeapon w, int n) {
         List<String[]> l = new ArrayList<>();
         l.add(mineBar(4, n));
         l.add(mineBar(3, n));
-        l.add(new String[] { w.shard, String.valueOf((n + 1) / 2) });
+        l.add(new String[] { w.shard, String.valueOf(MINE_ENH_SHARDS) }); // [2026-11-06] "강화할 때 조각 10개씩" -- 예전 ceil(n/2)
         if (n >= 6) l.add(mineStar(n - 5));
         if (n >= 11 && n < 16) l.add(new String[] { S5MineMap.MOON_STONE_CODE, String.valueOf(n - 10) });
         if (n >= 16) l.add(new String[] { S5MineMap.GALAXY_CODE, String.valueOf(n - 10) });
@@ -3995,6 +3996,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         double r = RND.nextDouble() * tot;
         for (int g = 0; g <= maxGrade; g++) { r -= w[g]; if (r < 0) return g; }
         return 0;
+    }
+    // [2026-11-06] 보스 장비 -- 처치 시 MINE_BOSS_GEAR_PCT%, 등급은 영웅부터: 영웅 70% / 전설 22% / 유물 6% / 고대 1.8% / 신화 0.2%(그 장비 최고 등급까지만, 비율대로).
+    static final int MINE_BOSS_GEAR_PCT = 50;
+    static final int[] MINE_BOSS_GRADE_W = { 0, 0, 0, 700, 220, 60, 18, 2 };
+    static int mineBossGradeRoll(int maxGrade) {
+        int tot = 0;
+        for (int g = 3; g <= maxGrade; g++) tot += MINE_BOSS_GRADE_W[g];
+        int r = RND.nextInt(Math.max(1, tot));
+        for (int g = 3; g <= maxGrade; g++) { r -= MINE_BOSS_GRADE_W[g]; if (r < 0) return g; }
+        return Math.min(3, maxGrade);
     }
     static MineWeapon mineWeaponOf(String code) { for (MineWeapon w : MINE_WEAPONS) if (w.code.equals(code)) return w; return null; }
     static int mineWeaponGrade(Map<String, Integer> items, MineWeapon w) { return items.getOrDefault(w.code, 0) - 1; }
@@ -4056,10 +4067,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineLuckOn(items, System.currentTimeMillis())) wp *= 2; // [2026-11-05] 행운의 주문서 -- 드랍률 2배 // [2026-11-05] "마물의 숲 장비 드랍은 다른 맵의 절반(등급 비율은 같게)"
         boolean admin = isMineAdmin(userName);
         if (admin) wp = Math.min(10000, wp * 10); // [2026-11-05] "관리자 드랍률 자체도 올려줘"(이펙트 시험용) -- 10배
-        for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
-        if (dw == null) for (MineWeapon a : mineArmorDrops(type)) if (RND.nextInt(10000) < wp) { dw = a; break; } // [2026-11-06] 갑옷 -- 무기와 같은 확률로 따로
+        int bossG = -1;
+        if (type.boss) { // [2026-11-06] "보스들도 장비를 -- 최소 영웅부터(신화는 엄청 낮게)": MINE_BOSS_GEAR_PCT%로 보스 레벨에 가장 가까운 무기/갑옷 하나(닌자 두목 = 닌자 장비)
+            if (type.noReward || type.clone || type.dummy || (!admin && RND.nextInt(100) >= MINE_BOSS_GEAR_PCT)) return;
+            List<MineWeapon> cand = new ArrayList<>();
+            if (type.ninja) { cand.add(mineWeaponOf(MINE_ITEM_NINJA_SWORD)); cand.add(mineArmorOf("ARMOR_NINJA")); }
+            else {
+                int best = -1;
+                for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr)
+                    if (best < 0 || Math.abs(type.lv() - w.lv) < Math.abs(type.lv() - best) || (Math.abs(type.lv() - w.lv) == Math.abs(type.lv() - best) && w.lv > best)) best = w.lv;
+                for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr) if (w.lv == best) cand.add(w);
+            }
+            dw = cand.get(RND.nextInt(cand.size()));
+            bossG = mineBossGradeRoll(dw.maxGrade);
+        } else {
+            for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
+            if (dw == null) for (MineWeapon a : mineArmorDrops(type)) if (RND.nextInt(10000) < wp) { dw = a; break; } // [2026-11-06] 갑옷 -- 무기와 같은 확률로 따로
+        }
         if (dw == null) return;
-        int g = mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
+        int g = bossG >= 0 ? bossG : mineGradeRoll(dw.maxGrade, rank), cur = mineWeaponGrade(items, dw), mask = mineWeaponMask(items, dw);
         if (admin && dw.maxGrade >= 4 && g < 4 && RND.nextInt(100) < 70) g = 4 + RND.nextInt(dw.maxGrade - 3); // [2026-11-05] "관리자 전설 이상 잘 나오게"(이펙트 시험용) -- 70%는 전설~최고 등급
         if ((mask & (1 << g)) != 0) { // [2026-10-30] "분해는 같은 등급이 또 나왔을 때만" -- 이미 가진 등급
             dao.addUserOre(userName, dw.shard, g + 1);
