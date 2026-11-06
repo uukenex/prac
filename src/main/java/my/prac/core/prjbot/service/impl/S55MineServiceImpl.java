@@ -1402,7 +1402,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return S5MineMap.WESTROAD.equals(map.id) && !t.boss && S5MineMap.night(now);
     }
     static double mineNightAtk(S5MineMap map, S5MineMobs.Type t, long now) { return mineNightWild(map, t, now) ? MINE_NIGHT_ATK : 1.0; }
-    static long mineNightExp(S5MineMap map, S5MineMobs.Type t, long exp, long now) { return mineNightWild(map, t, now) ? Math.round(exp * MINE_NIGHT_EXP) : exp; }
+    static long mineNightExp(S5MineMap map, S5MineMobs.Type t, long exp, long now) {
+        if (S5MineMap.WESTROAD.equals(map.id) && !t.boss && t.tier <= MINE_WEST_LOW_TIER) exp *= MINE_WEST_LOW_EXP; // [2026-11-06] "왕도 서쪽 저레벨 구간(가운데~마을) 경험치 2배" -- 14~18단계(왕도 서문에서 맵 절반까지)
+        return mineNightWild(map, t, now) ? Math.round(exp * MINE_NIGHT_EXP) : exp;
+    }
+    static final int MINE_WEST_LOW_TIER = 18, MINE_WEST_LOW_EXP = 2;
 
     static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
         return t.firstStrike || 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
@@ -2482,10 +2486,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
      *  미스릴은 9단계 몬스터의 8%뿐), 별빛석은 안 나옴. 보석은 캘 때와 같은 확률에 흔한 보석만 1.5배(5% -> 7.5%), 다이아 0.2%. */
     /** [2026-10-29] rank = 개체 단계 -- 하급: 광석 40%·보석 x0.7 / 보통: 55%·x1 / 상급: 85%·개수 x2·보석 x2(무기 확률·등급은 mineWeaponPermil/mineGradeRoll). */
     static final int[] MINE_RANK_ORE_PCT = { 40, 55, 85 };
+    static final int MINE_WEST_GEM_P10K = 100; // [2026-11-06] 마물의 숲 보석 1%
     static final double[] MINE_RANK_GEM_MUL = { 0.7, 1.0, 2.0 };
     List<HashMap<String, Object>> mineMobDrops(String userName, S5MineMap map, S5MineMobs.Type type, StringBuilder msg, int rank) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (S5MineMap.WESTROAD.equals(map.id)) return drops; // [2026-11-05] "그 맵은 몬스터가 광석을 안 떨어뜨려도 된다" -- 처치마다 DB에 쓰던 것도 없어진다(경험치는 공격마다 한 번에)
+        if (S5MineMap.WESTROAD.equals(map.id)) { // [2026-11-05] "그 맵은 몬스터가 광석을 안 떨어뜨려도 된다" -- 처치마다 DB에 쓰던 것도 없어진다(경험치는 공격마다 한 번에)
+            // [2026-11-06] "보석 드랍 1% 확률, 모든 보석" -- 땅 보석 9종 + 바다 보석 5종 중 하나(고르게), 행운의 주문서면 2%. 맞을 때만 아이템을 읽고 쓴다.
+            int roll = RND.nextInt(10000);
+            if (roll >= MINE_WEST_GEM_P10K * 2 || (roll >= MINE_WEST_GEM_P10K && !mineLuckOn(mineItems(userName), System.currentTimeMillis()))) return drops;
+            int k = RND.nextInt(S5MineMap.GEM_CODES.length + S5MineMap.SEA_GEM_CODES.length);
+            boolean sea = k >= S5MineMap.GEM_CODES.length;
+            int i = sea ? k - S5MineMap.GEM_CODES.length : k;
+            String code = sea ? S5MineMap.SEA_GEM_CODES[i] : S5MineMap.GEM_CODES[i], name = sea ? S5MineMap.SEA_GEM_NAMES[i] : S5MineMap.GEM_NAMES[i];
+            dao.addUserOre(userName, code, 1);
+            drops.add(mineDrop((sea ? S5MineMap.SEA_GEM_GRADE_BASE : S5MineMap.GEM_GRADE_BASE) + i, name, 1));
+            msg.append(" · 💎 ").append(name).append(" 1개!");
+            return drops;
+        }
         Map<String, Integer> dit = mineItems(userName);
         int dm = mineLuckOn(dit, System.currentTimeMillis()) ? 2 : 1; // [2026-11-05] 행운의 주문서 -- 드랍률 2배(광석/보석/빙석 확률)
         if (RND.nextInt(100) < MINE_RANK_ORE_PCT[rank] * dm) {
