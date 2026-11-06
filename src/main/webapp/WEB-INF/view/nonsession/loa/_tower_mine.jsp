@@ -3028,10 +3028,10 @@ var TowerMine = (function () {
         var hx = Math.sin(slot * 12.9898 + i * 4.1) * 43758.5453, hy = Math.sin(slot * 78.233 + i * 2.7) * 12345.678;
         hx = (hx - Math.floor(hx)) * 2 - 1; hy = (hy - Math.floor(hy)) * 2 - 1;
         var gx = cx + hx * R2 * 0.9, gy = cy + hy * R2 * 0.65;
-        if (ph < 0.55) { var q = ph / 0.55, ax = gx + (1 - q) * 1.2 * TS, ay = gy - (1 - q) * 3.2 * TS;
-          ctx.globalAlpha = left; ctx.strokeStyle = '#c8a070'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(ax + 0.35 * TS, ay - 0.9 * TS); ctx.lineTo(ax, ay); ctx.stroke();
-          fxDot(ax, ay, 1.6 * s, C[1], left); fxDot(ax + 0.3 * TS, ay - 0.8 * TS, 1.2 * s, C[0], 0.6 * left);
-        } else { var q2 = (ph - 0.55) / 0.45; ctx.globalAlpha = left * (1 - q2); ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + 0.15 * TS, gy - 0.4 * TS); ctx.stroke(); fxBurst(gx, gy, r.el, q2, 4, s); }
+        if (ph < 0.55) { var q = ph / 0.55, ax = gx, ay = gy - (1 - q) * 3.2 * TS; // [2026-11-06] "화살비는 수직으로"
+          ctx.globalAlpha = left; ctx.strokeStyle = '#c8a070'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(ax, ay - 0.9 * TS); ctx.lineTo(ax, ay); ctx.stroke();
+          fxDot(ax, ay, 1.6 * s, C[1], left); fxDot(ax - 1.2 * s, ay - 0.85 * TS, 1 * s, C[0], 0.6 * left); fxDot(ax + 1.2 * s, ay - 0.85 * TS, 1 * s, C[0], 0.6 * left);
+        } else { var q2 = (ph - 0.55) / 0.45; ctx.globalAlpha = left * (1 - q2); ctx.strokeStyle = '#8a6a40'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx, gy - 0.4 * TS); ctx.stroke(); fxBurst(gx, gy, r.el, q2, 4, s); }
       }
       ctx.restore();
     });
