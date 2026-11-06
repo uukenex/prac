@@ -2293,7 +2293,7 @@ var TW = (function () {
     if (name === 'party' || name === 'inven') loadPartyAndEquip();
     if (name === 'inven' && invTab === 'etc') renderInvEtc();
     if (name === 'inven' && invTab === 'ore') renderInvOre();
-    if (name === 'mine') renderMinePanel();
+    if (name === 'mine') { renderMinePanel(); if (mineOpen) openMine(); } // [2026-11-06] "S5에서 광산 연결되는 페이지 랜딩 없애줘" -- 탭을 누르면 바로 광산으로(나오면 그 탭의 내 현황 카드)
     if (name === 'mineshop') renderMineShop();
     if (name === 'settings') renderDockEdit();
     if (name === 'msg') loadMessages();
