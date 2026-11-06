@@ -2212,6 +2212,7 @@ var TW = (function () {
   // [2026-10-23] 광산/광산상점은 서버가 허용한 유저(관리자 또는 전체 오픈)에게만 보인다(tower-status mineOpen).
   var mineOpen = false;
   var MINE_TABS = { mine: true, mineshop: true };
+  var GONE_TABS = { mine: true }; // [2026-11-06] "S5 화면에 광산 탭 없애줘" -- 하단 메뉴/설정 목록에서 뺀다(광산은 람쥐봇 링크 go=mine, 광산 앱으로)
   function applyDockLayout(str) {
     lastDockStr = str || '';
     dockLayout = parseDockLayout(str);
@@ -2221,7 +2222,7 @@ var TW = (function () {
       var b = inner.querySelector('.dbtn[data-tab="' + k + '"]');
       if (!b) return;
       inner.appendChild(b); // 순서대로 다시 붙이면 그 순서가 된다
-      b.style.display = dockLayout.hidden[k] || (MINE_TABS[k] && !mineOpen) ? 'none' : '';
+      b.style.display = dockLayout.hidden[k] || GONE_TABS[k] || (MINE_TABS[k] && !mineOpen) ? 'none' : '';
     });
     if (document.getElementById('panel-settings').classList.contains('active')) renderDockEdit();
   }
@@ -2231,7 +2232,7 @@ var TW = (function () {
     box.innerHTML = '';
     var inner = document.querySelector('.dock-inner');
     dockLayout.order.forEach(function (k, i) {
-      if (MINE_TABS[k] && !mineOpen) return; // 광산 미오픈이면 설정 목록에서도 숨김
+      if (GONE_TABS[k] || (MINE_TABS[k] && !mineOpen)) return; // 광산 미오픈이면 설정 목록에서도 숨김
       var b = inner && inner.querySelector('.dbtn[data-tab="' + k + '"]');
       var icn = b ? (b.querySelector('.d-icn') || {}).textContent : '';
       var name = b ? b.textContent.replace(icn, '').trim() : k;
