@@ -3953,6 +3953,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.selectMineUserForUpdate(userName); // 같은 유저의 동시 요청은 여기서 줄 선다
         Map<String, Integer> items = mineItems(userName);
         if (!"weapon".equals(code)) return mineGearResult(userName, false, "갑옷 칸 강화는 아직 할 수 없어요."); // [2026-11-06] "강화는 무기만, 방어구는 추후 다른 대륙에서" -- 무기 칸만
+        HashMap<String, Object> erow = dao.selectMineUser(userName); // [2026-11-06] "무기 강화 전용 NPC" -- 왕도 5시 방향 무기 강화사 앞에서만
+        if (erow == null || !S5MineMap.CITY.equals(strVal(erow.get("MAP_ID"), "")) || !mineAtNpc(erow, "enhancer")) return mineGearResult(userName, false, "왕도 5시 방향 무기 강화사 앞에서만 강화할 수 있어요.");
         MineWeapon w = mineWeaponOn(items); // [2026-11-06] 칸 강화 -- 칸에 든 무기의 조각을 쓴다
         if (w == null) return mineGearResult(userName, false, "무기 칸에 드랍 무기를 장착해야 강화할 수 있어요.");
         int cur = mineWeaponEnh(items), g = mineWeaponGrade(items, w);

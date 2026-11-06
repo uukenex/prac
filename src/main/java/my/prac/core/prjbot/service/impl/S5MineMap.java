@@ -968,6 +968,7 @@ public final class S5MineMap {
         placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
         placeNpc(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
         placeNpc(ct, cc, cc + 10, "artisan", "왕도 장인", "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
+        placeNpc(ct, cc + ENH_NPC_DX, cc + ENH_NPC_DY, "enhancer", "무기 강화사", "칼은 두드릴수록 강해지는 법이지. 무기 칸을 맡기게. 다만... 망치가 빗나가도 원망은 말게나."); // [2026-11-06] 왕도 5시 방향
         placeNpc(ct, cc + MERC_NPC_DX, cc + MERC_NPC_DY, "mercenary", "용병소 대장", "혼자 다니기엔 광산이 험하지. 쓸 만한 놈을 붙여 주겠네. 지치면 뒤에서 숨 좀 돌리게 해 주게나."); // [2026-11-05] 왕도 용병소
         S5MineMap av = out.get(ARCHI);
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
@@ -2573,6 +2574,9 @@ public final class S5MineMap {
     /** [2026-11-05] 왕도 용병소(가운데 c 기준 칸 차이): 마당 {x0, y0, x1, y1}, 건물, 대장 자리. */
     static final int[] MERC_YARD = { -44, 14, -16, 34 }, MERC_HALL = { -38, 18, -22, 27 };
     static final int MERC_NPC_DX = -30, MERC_NPC_DY = 29;
+    // [2026-11-06] "대도시 5시 방향 건물을 다 허물고 무기 강화 전용 NPC" -- 용병소와 좌우 대칭(남동쪽): 마당 + 건물 + 무기 강화사
+    static final int[] ENH_YARD = { 16, 14, 44, 34 }, ENH_HALL = { 22, 18, 38, 27 };
+    static final int ENH_NPC_DX = 30, ENH_NPC_DY = 29;
     static S5MineMap generateCity(long seed) {
         int w = 120, h = 120, c = w / 2, wt = 3, road = 3;
         Random r = new Random(seed);
@@ -2596,6 +2600,7 @@ public final class S5MineMap {
                 if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
                 if (x >= tx0 - 2 && x <= tx1 + 2 && y >= ty0 - 2 && y <= ty1 + 2) { clear = false; break; } // [2026-10-30] "1시 방향 집들이 어색" -- 마당에 잘려 조각난 건물이 남지 않게 아예 안 짓는다
                 if (x < c && y > c) { clear = false; break; } // [2026-11-05] "왕도 7시 방향 건물을 전부 없애고 용병소" -- 남서쪽엔 안 짓는다(난수 소비는 그대로)
+                if (x > c && y > c) { clear = false; break; } // [2026-11-06] "5시 방향 건물들 다 허물고" -- 남동쪽도(무기 강화사)
             }
             if (!clear) continue;
             for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
@@ -2606,6 +2611,10 @@ public final class S5MineMap {
         for (int y = c + MERC_YARD[1]; y <= c + MERC_YARD[3]; y++) for (int x = c + MERC_YARD[0]; x <= c + MERC_YARD[2]; x++) t[y][x] = 's';
         for (int y = c + MERC_HALL[1]; y <= c + MERC_HALL[3]; y++) for (int x = c + MERC_HALL[0]; x <= c + MERC_HALL[2]; x++) t[y][x] = 'K';
         for (int x = c + MERC_YARD[2]; x < c - road; x++) for (int y = c + MERC_NPC_DY + 1; y <= c + MERC_NPC_DY + 2; y++) t[y][x] = 's';
+        // [2026-11-06] 무기 강화소(남동쪽) -- 용병소와 대칭
+        for (int y = c + ENH_YARD[1]; y <= c + ENH_YARD[3]; y++) for (int x = c + ENH_YARD[0]; x <= c + ENH_YARD[2]; x++) t[y][x] = 's';
+        for (int y = c + ENH_HALL[1]; y <= c + ENH_HALL[3]; y++) for (int x = c + ENH_HALL[0]; x <= c + ENH_HALL[2]; x++) t[y][x] = 'K';
+        for (int x = c + road + 1; x <= c + ENH_YARD[0]; x++) for (int y = c + ENH_NPC_DY + 1; y <= c + ENH_NPC_DY + 2; y++) t[y][x] = 's';
         List<int[]> dummies = new ArrayList<>();
         for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) dummies.add(new int[] { tx0 + 7 + i * 8, ty0 + 4 + j * 6 }); // [2026-10-30] 속성별 아홉(S5MineMobs.DUMMY_TYPES 순서)
         // 가운데 광장(돌바닥 원) + 분수
