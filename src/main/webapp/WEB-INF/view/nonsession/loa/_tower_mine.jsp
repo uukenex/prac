@@ -50,6 +50,7 @@ var TowerMine = (function () {
   ORE_NAME[61] = '비철도 조각'; ORE_COL[61] = ['#6a5a4a', '#d8c8b0']; ORE_NAME[62] = '카타나 조각'; ORE_COL[62] = ['#5a2a2a', '#f0c8c8']; ORE_NAME[63] = '백화검 조각'; ORE_COL[63] = ['#c8c8d8', '#ffffff'];
   ORE_NAME[66] = '사슬 갑옷 조각'; ORE_COL[66] = ['#6a7078', '#d0d6de']; ORE_NAME[67] = '무사의 흉갑 조각'; ORE_COL[67] = ['#7a2a24', '#e8b0a0']; // [2026-11-06] 갑옷 조각(66~69)
   ORE_NAME[68] = '닌자의 갑주 조각'; ORE_COL[68] = ['#2a2e3a', '#9aa4c0']; ORE_NAME[69] = '백화 갑주 조각'; ORE_COL[69] = ['#d8d8e8', '#fff8e0'];
+  ORE_NAME[70] = '은하수 조각'; ORE_COL[70] = ['#1a1e4a', '#c8d8ff']; RARE_GEM[70] = 1; // [2026-11-06] 달빛석 + 칠요석
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
   ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
@@ -591,6 +592,15 @@ var TowerMine = (function () {
       px(g, '#2a6ad8', 4, 4, 3, 2); px(g, '#2a6ad8', 9, 4, 3, 2); px(g, '#2a6ad8', 3, 5, 10, 4); px(g, '#2a6ad8', 4, 9, 8, 2); px(g, '#2a6ad8', 5, 11, 6, 1); px(g, '#2a6ad8', 6, 12, 4, 1); px(g, '#2a6ad8', 7, 13, 2, 1);
       px(g, '#8ac8ff', 5, 5, 2, 1); px(g, '#ffe94a', 8, 5, 2, 2); px(g, '#ffe94a', 7, 7, 2, 2); px(g, '#ffe94a', 6, 9, 3, 1); px(g, '#ffe94a', 8, 10, 1, 2); px(g, '#fff8c0', 8, 5);
       outline(c, '#0a1a3a');
+      oreIcons[grade] = c.toDataURL();
+      return oreIcons[grade];
+    }
+    if (grade === 70) { // [2026-11-06] 은하수 조각 -- 남색 조각 안에 흘러가는 은하수(별 점)
+      [[6, 1, 4, 1], [4, 2, 8, 2], [3, 4, 10, 3], [2, 7, 11, 3], [3, 10, 9, 2], [5, 12, 5, 2], [7, 14, 2, 1]].forEach(function (r) { px(g, '#1a1e4a', r[0], r[1], r[2], r[3]); });
+      [[4, 9], [5, 8], [6, 7], [7, 7], [8, 6], [9, 5], [10, 5], [11, 4]].forEach(function (p) { px(g, '#6a5ad8', p[0], p[1], 1, 2); });
+      [[5, 8], [7, 7], [9, 5], [11, 4]].forEach(function (p) { px(g, '#ffffff', p[0], p[1]); });
+      px(g, '#c8d8ff', 4, 4); px(g, '#ffe8a0', 10, 10); px(g, '#c8d8ff', 7, 12); px(g, '#f0c8ff', 12, 7);
+      outline(c, '#05061a');
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
@@ -1437,6 +1447,7 @@ var TowerMine = (function () {
         + costHtml(stones) + '</span>'
         + '<button type="button" ' + can + 'onclick="TowerMine.synth(1)">1개</button>'
         + '<button type="button" ' + can + 'onclick="TowerMine.synth(9999)">최대</button></div>'
+        + galaxyHtml()
         + copperHtml();
   }
   // [2026-10-28] "구리 광석 사용처를 늘려줘" -- 구리 정련(구리 20 -> 철광석 1), 오늘의 구리 납품(하루 1번 구리 100 -> 오늘 요일석 3 + 곡괭이 내구도 +50)
@@ -1887,15 +1898,15 @@ var TowerMine = (function () {
   }
   // [2026-11-06] 인벤토리 강화 탭 -- 가진 무기/갑옷마다 +단계, 지금 성능(등급 몫 + 강화 몫), 다음 단계 확률/성능/재료, [강화] 버튼
   function enhHtml() {
-    var list = st.enh || [], h = '<div class="mine-smith-say">🔨 <b>강화</b> -- 1강마다 기본 성능 +10%, 5강마다 전설 이상의 추가 옵션(무기 공격력 %, 갑옷 초당 회복)만큼 더 올라요. '
-        + '1강 100%, 2강부터 5%씩 낮아져요(최대 +20강 5%). 실패하면 재료만 사라지고 단계는 그대로예요. 강화는 그 장비의 모든 등급에 함께 적용돼요.</div>';
-    if (!list.length) return h + '<div class="mine-eq-empty">강화할 무기·갑옷이 없어요. 20·40·60·80레벨 근처 몬스터가 드물게 떨어뜨려요.</div>';
+    var list = st.enh || [], h = '<div class="mine-smith-say">🔨 <b>무기 강화</b> -- 1강마다 무기 공격력 +10%, 5강마다 전설 이상의 공격력 % 옵션만큼 더 올라요. '
+        + '1강 100%, 2강부터 5%씩 낮아져요(최대 +20강 5%). 16강부터는 대장장이가 만드는 은하수 조각이 들어가요. 실패하면 재료만 사라지고 단계는 그대로예요. 강화는 그 장비의 모든 등급에 함께 적용돼요.</div>';
+    if (!list.length) return h + '<div class="mine-eq-empty">강화할 무기가 없어요. 20·40·60·80레벨 근처 몬스터가 드물게 떨어뜨려요.</div>';
     [false, true].forEach(function (ar) {
       var rows = list.filter(function (e) { return !!e.armor === ar; });
       if (!rows.length) return;
       h += '<div class="cos-slot-h">' + (ar ? '🛡️ 갑옷' : '⚔️ 무기') + '</div>';
       rows.forEach(function (e) {
-        h += '<div class="mine-smith-row"><span class="nm">' + gradeName(e.name, e.grade) + ' <b style="color:#ffd27a">+' + e.enh + '</b><small>' + e.effect + '</small>';
+        h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(e.name, e.grade) + ' <b style="color:#ffd27a">+' + e.enh + '</b></span><small>' + e.effect + '</small>';
         if (e.pct != null) h += '<small style="color:#9fe0ff">다음 +' + (e.enh + 1) + ' (성공 ' + e.pct + '%) -- ' + e.nextEffect + '</small>' + costHtml(e.costs) + '</span>'
             + '<button type="button" ' + (e.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhance(\'' + e.code + '\')">강화</button></div>';
         else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
@@ -1906,7 +1917,7 @@ var TowerMine = (function () {
   function enhance(code) { gearAct('/api/tower-mine-enhance?code=' + encodeURIComponent(code)); }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
-    ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20; }], // [2026-10-28] 빙석, 달빛석도 광석
+    ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20 || g === 70; }], // [2026-11-06] 은하수 조각 // [2026-10-28] 빙석, 달빛석도 광석
     ['💎 보석', function (g) { return (g >= 21 && g <= 29) || (g >= 34 && g <= 38); }],
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
@@ -2484,7 +2495,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'enh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'enh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -3567,6 +3578,16 @@ var TowerMine = (function () {
   }
   function equipRing(code) { gearAct('/api/tower-mine-ring?code=' + encodeURIComponent(code)); }
   function synth(times) { gearAct('/api/tower-mine-synth?times=' + times); }
+  // [2026-11-06] 은하수 조각 -- 달빛석 1 + 칠요석 1(16강부터 강화 재료)
+  function galaxyHtml() {
+    var gm = st.galaxyMax || 0, can = gm > 0 ? '' : 'data-lack="1" ';
+    return '<div class="mine-smith-say">달빛석의 음기에 칠요석을 하나 녹여 넣으면... 밤하늘을 통째로 가둔 듯한 조각이 되지. 아주 높은 강화에 쓴다더군.</div>'
+        + '<div class="mine-smith-row"><img src="' + oreIcon(70) + '" alt=""><span class="nm">은하수 조각<small>보유 ' + oreHave(70) + '개 · 지금 ' + gm + '개 만들 수 있어요</small>'
+        + costHtml([{ grade: 20, name: ORE_NAME[20], have: oreHave(20), need: 1 }, { grade: 18, name: ORE_NAME[18], have: oreHave(18), need: 1 }]) + '</span>'
+        + '<button type="button" ' + can + 'onclick="TowerMine.synthGalaxy(1)">1개</button>'
+        + '<button type="button" ' + can + 'onclick="TowerMine.synthGalaxy(9999)">최대</button></div>';
+  }
+  function synthGalaxy(times) { gearAct('/api/tower-mine-synth-galaxy?times=' + times); }
   function captain(action) { gearAct('/api/tower-mine-captain?action=' + action); }
   var smithNpc = null;
   function openSmith(n, view) {
@@ -4599,7 +4620,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

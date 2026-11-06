@@ -842,14 +842,14 @@
     .eq-pop-h{ display:flex; justify-content:space-between; align-items:center; gap:8px; font-weight:800; margin-bottom:8px; }
     .eq-pop-h small{ font-weight:600; opacity:.7; }
     .eq-pop-h button{ border:2px solid #f4f0e6; background:#a33a3a; color:#fff; cursor:pointer; padding:2px 8px; }
-    .inv-head .eq-tabs{ flex-basis:100%; margin:8px 0 0; }
+    .inv-head .eq-tabs{ flex-basis:100%; margin:8px 0 0; gap:4px; }
     .minv-cat{ margin:0 0 10px; }
     .minv-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(128px, 1fr)); gap:6px; }
     .minv-item{ display:flex; align-items:center; gap:4px; padding:5px 6px; font-size:12px; background:rgba(255,255,255,.06); border:1px solid rgba(244,240,230,.25); }
     .minv-item img{ width:20px; height:20px; image-rendering:pixelated; flex:none; }
     .minv-item span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .minv-item b{ color:#ffe14d; font-variant-numeric:tabular-nums; }
-    .eq-tabs button{ flex:1; padding:7px 0; font-size:13px; font-weight:800; background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
+    .eq-tabs button{ flex:1; min-width:0; white-space:nowrap; letter-spacing:-.5px; padding:7px 0; font-size:12px; font-weight:800; /* [2026-11-06] 탭 5개(강화) -- 한 줄로 */ background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
     .eq-tabs button.on{ background:#ffcf4a; color:#2a1d10; border-color:#ffcf4a; }
     .cos-card.worn{ border-color:#ffe14d; background:rgba(255,225,77,.12); }
     .cos-card.gm{ border-color:#b07cff; }

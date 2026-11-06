@@ -483,6 +483,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.THUNDER_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.ARMOR_SHARD_CODES)).toArray(String[]::new); // [2026-11-06] 갑옷 조각
+        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE)).toArray(String[]::new); // [2026-11-06] 은하수 조각
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
             scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
@@ -3852,7 +3853,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MineWeapon(String code, String name, int slot, int lv, int atk, double step, int maxGrade, int pctFrom, int pct0, String shard, boolean armor) {
             this.code = code; this.name = name; this.slot = slot; this.lv = lv; this.atk = atk; this.step = step; this.maxGrade = maxGrade; this.pctFrom = pctFrom; this.pct0 = pct0; this.shard = shard; this.armor = armor;
         }
-        int atkAt(int g) { return (int) Math.round(atk * (1 + step * g)); }
+        // [2026-11-06] 갑옷은 "이전 레벨 신화가 다음 레벨 전설보다 좋게" -- 등급마다 x1.3(곱, 신화 = x6.27 / 전설 = x2.86). 무기는 그대로(합, 등급마다 +step).
+        int atkAt(int g) { return (int) Math.round(armor ? atk * Math.pow(MINE_ARMOR_GRADE_MUL, g) : atk * (1 + step * g)); }
         /** 공격력 %(합연산) -- pctFrom 등급부터 pct0, 등급마다 +1(pctFrom < 0 = 없음). */
         int pctAt(int g) { return pctFrom < 0 || g < pctFrom ? 0 : pct0 + (g - pctFrom); }
         String effect(int g) { return effect(g, 0); }
@@ -3881,15 +3883,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static String mineFmtPct(double v) { return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(Math.round(v * 10) / 10.0); }
     // ---- [2026-11-06] 갑옷(몬스터 드랍) -- "갑옷류 장비를 무기처럼 드랍/등급. 받는 피해 감소(고정 수치), 전설 이상은 초당 체력 회복 0.5%,
-    //  20/40/60/80 장비, 무기와 달리 20/40도 신화까지, 유물부터 한기·햇빛 방어(동굴 시야는 x)". 갑옷 칸은 하나(ARMOR_SLOT = slot), 등급마다 +20%.
+    //  20/40/60/80 장비, 무기와 달리 20/40도 신화까지, 유물부터 한기·햇빛 방어(동굴 시야는 x)". 갑옷 칸은 하나(ARMOR_SLOT = slot).
+    //  [2026-11-06] "이전 레벨 신화 > 다음 레벨 전설, 고레벨 피해 감소는 줄이기" -- 기본 5/25/120/500(등급마다 +20%) -> 8/16/34/72(등급마다 x1.3):
+    //  일반/전설/신화 = 20: 8/23/50, 40: 16/46/100, 60: 34/97/213, 80: 72/206/452.
     //  드랍은 무기와 같은 몬스터/확률로 따로 굴린다(무기가 나오지 않았을 때만 -- 한 번에 하나). 같은 등급이 또 나오면 그 갑옷 조각으로.
     static final String MINE_ITEM_ARMOR_SLOT = "ARMOR_SLOT";
-    static final double MINE_ARMOR_REGEN = 0.5;
+    static final double MINE_ARMOR_REGEN = 0.5, MINE_ARMOR_GRADE_MUL = 1.3;
     static final MineWeapon[] MINE_ARMORS = {
-        new MineWeapon("ARMOR_CHAIN", "사슬 갑옷", 1, 20, 5, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[0], true),
-        new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 25, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
-        new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 120, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
-        new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 500, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
+        new MineWeapon("ARMOR_CHAIN", "사슬 갑옷", 1, 20, 8, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[0], true),
+        new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 16, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
+        new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 34, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
+        new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 72, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
     };
     static MineWeapon mineArmorOf(String code) { for (MineWeapon w : MINE_ARMORS) if (w.code.equals(code)) return w; return null; }
     static MineWeapon mineArmorOn(Map<String, Integer> items) {
@@ -3916,15 +3920,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_ENH_MAX = 20, MINE_ENH_BASE_PCT = 10, MINE_ENH_OPT_EVERY = 5, MINE_ENH_OPT_GRADE = 4;
     static int mineEnh(Map<String, Integer> items, String code) { return Math.max(0, Math.min(MINE_ENH_MAX, items.getOrDefault(MINE_ENH_PREFIX + code, 0))); }
     static int mineEnhPct(int n) { return Math.max(5, 100 - 5 * (n - 1)); }
-    /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11강부터 달빛석 n-10, 16강부터 칠요석 n-15. */
+    /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11~15강 달빛석 n-10,
+     *  [2026-11-06] "16강부터는 달빛석 + 칠요석을 합친 은하수 조각" -- 16강부터 달빛석 대신 은하수 조각 n-10(달빛석 개수를 이어서, 칠요석은 따로 안 듦). */
     static String[][] mineEnhCost(MineWeapon w, int n) {
         List<String[]> l = new ArrayList<>();
         l.add(mineBar(4, n));
         l.add(mineBar(3, n));
         l.add(new String[] { w.shard, String.valueOf((n + 1) / 2) });
         if (n >= 6) l.add(mineStar(n - 5));
-        if (n >= 11) l.add(new String[] { S5MineMap.MOON_STONE_CODE, String.valueOf(n - 10) });
-        if (n >= 16) l.add(mineSeven(n - 15));
+        if (n >= 11 && n < 16) l.add(new String[] { S5MineMap.MOON_STONE_CODE, String.valueOf(n - 10) });
+        if (n >= 16) l.add(new String[] { S5MineMap.GALAXY_CODE, String.valueOf(n - 10) });
         return l.toArray(new String[0][]);
     }
     @Override
@@ -3936,6 +3941,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         MineWeapon w = mineWeaponOf(code);
         if (w == null) w = mineArmorOf(code);
+        if (w != null && w.armor) return mineGearResult(userName, false, "갑옷 강화는 아직 할 수 없어요."); // [2026-11-06] "강화는 무기만, 방어구는 추후 다른 대륙에서"
         if (w == null || mineWeaponGrade(items, w) < 0) return mineGearResult(userName, false, "강화할 장비가 없어요.");
         int cur = mineEnh(items, w.code), g = mineWeaponGrade(items, w);
         if (cur >= MINE_ENH_MAX) return mineGearResult(userName, false, w.name + "은(는) 이미 +" + MINE_ENH_MAX + "강이에요.");
@@ -5397,6 +5403,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.SEAL_CODE.equals(code)) return S5MineMap.SEAL_GRADE;
         for (int i = 0; i < S5MineMap.WEAPON_SHARD_CODES.length; i++) if (S5MineMap.WEAPON_SHARD_CODES[i].equals(code)) return S5MineMap.NINJA_SHARD_GRADE + i; // [2026-10-29] 무기 조각 60~63
         for (int i = 0; i < S5MineMap.ARMOR_SHARD_CODES.length; i++) if (S5MineMap.ARMOR_SHARD_CODES[i].equals(code)) return S5MineMap.ARMOR_SHARD_GRADE + i; // [2026-11-06] 갑옷 조각 66~69
+        if (S5MineMap.GALAXY_CODE.equals(code)) return S5MineMap.GALAXY_GRADE; // [2026-11-06] 은하수 조각
         if (S5MineMap.MOON_STONE_CODE.equals(code)) return S5MineMap.MOON_STONE_GRADE; // [2026-10-28]
         for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.SEA_GEM_CODES[i].equals(code)) return S5MineMap.SEA_GEM_GRADE_BASE + i; // [2026-10-28] 바다 보석
         if (S5MineMap.NINJA_BOOK_CODE.equals(code)) return S5MineMap.NINJA_BOOK_GRADE;
@@ -5424,6 +5431,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (g == S5MineMap.THUNDER_HEART_GRADE) return S5MineMap.THUNDER_HEART_NAME; // [2026-11-05]
         if (g >= S5MineMap.NINJA_SHARD_GRADE && g < S5MineMap.NINJA_SHARD_GRADE + S5MineMap.WEAPON_SHARD_NAMES.length) return S5MineMap.WEAPON_SHARD_NAMES[g - S5MineMap.NINJA_SHARD_GRADE]; // [2026-10-29]
         if (g >= S5MineMap.ARMOR_SHARD_GRADE && g < S5MineMap.ARMOR_SHARD_GRADE + S5MineMap.ARMOR_SHARD_NAMES.length) return S5MineMap.ARMOR_SHARD_NAMES[g - S5MineMap.ARMOR_SHARD_GRADE]; // [2026-11-06]
+        if (g == S5MineMap.GALAXY_GRADE) return S5MineMap.GALAXY_NAME; // [2026-11-06]
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g == S5MineMap.CUT_ICE_GRADE) return S5MineMap.CUT_ICE_NAME;
@@ -5671,7 +5679,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("equip", mineEquipList(items)); // [2026-10-28] 🎒 장비 창(반지 하나, 옷 하나, 장갑 하나)
         out.put("armorRegen", mineArmorRegen(items)); // [2026-11-06] 화면 체력도 같이 오르게
         List<HashMap<String, Object>> enh = new ArrayList<>(); // [2026-11-06] 인벤토리 강화 탭
-        for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr) {
+        for (MineWeapon w : MINE_WEAPONS) { // [2026-11-06] 강화는 무기만(갑옷은 추후 다른 대륙에서)
             int g = mineWeaponGrade(items, w);
             if (g < 0) continue;
             int e = mineEnh(items, w.code);
@@ -5737,6 +5745,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (String c : S5MineMap.DAY_STONE_CODES) sevenMax = Math.min(sevenMax, have.getOrDefault(c, 0) / MINE_SEVEN_DAY_STONES);
         sevenMax = Math.min(sevenMax, have.getOrDefault(S5MineMap.ORE_CODES[5], 0)); // [2026-10-25] 칠요석 하나에 별빛석 1개
         out.put("sevenMax", sevenMax); // 지금 칠요석을 몇 개 합성할 수 있는지
+        out.put("galaxyMax", Math.min(have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0), have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0))); // [2026-11-06] 은하수 조각
         out.put("sevenDayNeed", MINE_SEVEN_DAY_STONES); // [2026-10-28] 칠요석 하나에 요일석 종류마다 몇 개
         out.put("deliverDone", items.getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == mineToday()); // [2026-10-28] 오늘 구리 납품 했는지
         mineLookPayload(items, have, out, isMineAdmin(userName)); // [2026-10-24] 명품상점(외형)
@@ -6041,6 +6050,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineTakeCost(userName, cost, n);
         dao.addUserOre(userName, S5MineMap.SEVEN_STONE_CODE, n);
         return mineGearResult(userName, true, "🌈 요일석 7종과 별빛석을 합쳐 칠요석 " + n + "개를 만들었어요! (보유 " + (have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0) + n) + "개)");
+    }
+
+    /** [2026-11-06] 대장장이 [합성] -- 달빛석 1 + 칠요석 1 -> 은하수 조각 1. times = 몇 개(가진 만큼으로 줄인다). */
+    static final String[][] MINE_GALAXY_COST = { { S5MineMap.MOON_STONE_CODE, "1" }, { S5MineMap.SEVEN_STONE_CODE, "1" } };
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineSynthGalaxy(String userName, int times) {
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        dao.selectMineUserForUpdate(userName);
+        Map<String, Integer> have = mineOreHave(userName);
+        int n = Math.min(Math.max(1, times), Math.min(have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0), have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0)));
+        if (n < 1) return mineGearResult(userName, false, "달빛석 1개와 칠요석 1개가 있어야 은하수 조각을 만들 수 있어요.");
+        mineTakeCost(userName, MINE_GALAXY_COST, n);
+        dao.addUserOre(userName, S5MineMap.GALAXY_CODE, n);
+        return mineGearResult(userName, true, "🌌 달빛과 일곱 요일의 빛을 한데 가두어 은하수 조각 " + n + "개를 만들었어요! (보유 " + (have.getOrDefault(S5MineMap.GALAXY_CODE, 0) + n) + "개)");
     }
 
     /** 바닷가 선장 -- action "give" = 금광석 10개 주기(MINE_CAPTAIN_SCAM_PCT 확률로 먹튀, 아니면 용왕의 반지 이야기 = 퀘스트 시작),

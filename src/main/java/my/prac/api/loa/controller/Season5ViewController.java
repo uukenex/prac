@@ -913,6 +913,17 @@ public class Season5ViewController {
     }
 
     /** [2026-10-24] 웹 광산 대장장이 [합성] -- 요일석 7종 -> 칠요석. */
+    /** [2026-11-06] 대장간 은하수 조각 합성. */
+    @GetMapping("/api/tower-mine-synth-galaxy")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineSynthGalaxy(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "times", defaultValue = "1") int times) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineSynthGalaxy(userName, times);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 대장간 은하수 조각 합성 x" + times, String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+
     @GetMapping("/api/tower-mine-synth")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineSynth(@RequestParam(value = "userName", defaultValue = "") String userName,

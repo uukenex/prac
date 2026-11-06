@@ -123,6 +123,9 @@ public final class S5MineMap {
     public static final String[] ARMOR_SHARD_CODES = { "ARMOR_SHARD_1", "ARMOR_SHARD_2", "ARMOR_SHARD_3", "ARMOR_SHARD_4" };
     public static final String[] ARMOR_SHARD_NAMES = { "사슬 갑옷 조각", "무사의 흉갑 조각", "닌자의 갑주 조각", "백화 갑주 조각" };
     public static final int ARMOR_SHARD_GRADE = 66;
+    /** [2026-11-06] 은하수 조각(등급 값 70) -- 달빛석 1 + 칠요석 1(대장장이 합성). 음의 기운을 머금은 재료(나중에 음양석 재료), 16강부터 강화 재료. */
+    public static final String GALAXY_CODE = "GALAXY_SHARD", GALAXY_NAME = "은하수 조각";
+    public static final int GALAXY_GRADE = 70;
     public static final String PEAK = "snowpeak";
     /** 얼음의 심장(등급 값 33) -- 설산 봉우리 보스 보상. */
     /** [2026-10-30] 화산의 심장 -- 용암 거신을 낮에 쓰러뜨리면 확률로. */

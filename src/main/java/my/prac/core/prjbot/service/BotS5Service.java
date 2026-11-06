@@ -283,6 +283,8 @@ public interface BotS5Service {
     /** [2026-11-06] 무기/갑옷 강화(+1, 확률). */
     HashMap<String, Object> mineEnhance(String userName, String code);
     HashMap<String, Object> mineSynthSeven(String userName, int times);
+    /** [2026-11-06] 달빛석 + 칠요석 -> 은하수 조각. */
+    HashMap<String, Object> mineSynthGalaxy(String userName, int times);
     HashMap<String, Object> mineCaptain(String userName, String action);
     /** [2026-10-24] 명품상점 -- action buy/wear/gender. */
     HashMap<String, Object> mineLook(String userName, String action, String code, String slot);
