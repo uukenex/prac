@@ -4507,10 +4507,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_MERC_SAL_CUT = 10, MINE_MERC_SAL_CUT_PCT = 10, MINE_MERC_BAR_MAX = 5;
     static int mineMercRollSal(int lv) {
         if (RND.nextInt(100) < MINE_MERC_SAL_CUT_PCT) return MINE_MERC_SAL_CUT + RND.nextInt(Math.min(S5MineMap.GEM_CODES.length, 3 + 2 * Math.min(3, Math.max(0, lv) / 20)));
-        return RND.nextInt(MINE_MERC_SALARY.length);
+        int k = RND.nextInt(MINE_MERC_SALARY.length);
+        return k == 3 && lv >= MINE_MERC_MITHRIL2_LV && RND.nextBoolean() ? MINE_MERC_SAL_MITHRIL2 : k;
     }
+    // [2026-11-06] "미스릴괴는 40레벨 이상~99레벨일 때 1~2개" -- 미스릴괴는 레벨 구간으로 늘지 않고 1개, 40레벨부터는 뽑을 때 반반으로 2개(SAL 4).
+    static final int MINE_MERC_MITHRIL2_LV = 40, MINE_MERC_SAL_MITHRIL2 = 4;
     static String[][] mineMercSalCost(int sal, int lv) {
         if (sal >= MINE_MERC_SAL_CUT) return new String[][] { mineCut(Math.floorMod(sal - MINE_MERC_SAL_CUT, S5MineMap.GEM_CODES.length), 1) };
+        if (sal == MINE_MERC_SAL_MITHRIL2 || sal == 3) return new String[][] { mineBar(4, sal == MINE_MERC_SAL_MITHRIL2 && lv >= MINE_MERC_MITHRIL2_LV ? 2 : 1) };
         String[] b = MINE_MERC_SALARY[Math.floorMod(sal, MINE_MERC_SALARY.length)][0];
         return new String[][] { { b[0], String.valueOf(Math.min(MINE_MERC_BAR_MAX, Integer.parseInt(b[1]) + Math.min(4, Math.max(0, lv) / 20))) } };
     }

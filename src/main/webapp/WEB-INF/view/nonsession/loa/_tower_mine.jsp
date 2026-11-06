@@ -2555,7 +2555,7 @@ var TowerMine = (function () {
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
       mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병(Lv.' + ms2.curLv + ')보다 2~15레벨 낮은 동료들이에요 · 계약하면 지금 용병은 떠나요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
-        + '<br>급여는 하루마다 동괴 / 은괴 / 금괴 / 미스릴괴 중 하나(레벨 20마다 1개씩 늘어 최대 5개), 가끔 세공된 보석<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
+        + '<br>급여는 하루마다 동괴 / 은괴 / 금괴(레벨 20마다 1개씩 늘어 최대 5개) / 미스릴괴(1개, 40레벨부터 1~2개) 중 하나, 가끔 세공된 보석<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       if (ms2.offers) {
         mh += mercViewBtns() + '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
           return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(o.t, o.ni, o.nm)
