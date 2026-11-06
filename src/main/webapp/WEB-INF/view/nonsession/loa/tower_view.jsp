@@ -946,6 +946,15 @@
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-msg, #mineNpcLine{ white-space:pre-line; }
+    .merc-job-h{ font-weight:800; font-size:13px; color:#ffe9a8; margin:8px 2px 4px; } /* [2026-11-06] 용병소 직업 줄 */
+    .merc-job-h small{ color:#c9c3d6; font-weight:600; }
+    @media (min-width:900px){ /* [2026-11-06] PC -- 상점/NPC 창(대장장이, 명품상점, 강화사, 세공사, 용병소, 인벤토리 등)을 옆으로 넓게. 용병소는 줄마다 5명이 한눈에 */
+      .mine-smith{ width:min(1180px,94vw); max-height:88vh; }
+      .mine-smith .cos-car{ flex-wrap:wrap; overflow-x:visible; }
+      .mine-smith.merc-wide .merc-offers{ overflow-x:visible; }
+      .mine-smith.merc-wide .merc-offers .merc-offer{ flex:1 1 0; min-width:0; }
+      .mine-smith.merc-wide .merc-offer > img:not(.merc-portrait){ width:96px; height:96px; }
+    }
     .merc-offers .merc-offer{ min-width:150px; display:flex; flex-direction:column; align-items:center; gap:3px; } /* [2026-11-06] 용병 계약 후보 */
     .merc-offer small{ display:block; text-align:center; font-size:11px; line-height:1.35; }
     .merc-offer .mo-sk{ color:#c9c3d6; }

@@ -2518,6 +2518,7 @@ var TowerMine = (function () {
     startTalk(); // [2026-10-24] NPC 초상화/대사
   }
   function renderSmithView(n) {
+    if (el.smith) el.smith.classList.toggle('merc-wide', smithView === 'merc'); // [2026-11-06] "PC는 옆 화면이 넓으니 용병소는 옆으로 넓게"
     if (smithView === 'priest') {
       el.smith.innerHTML = priestHtml(n);
       return;
@@ -2557,13 +2558,19 @@ var TowerMine = (function () {
       mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병(Lv.' + ms2.curLv + ')보다 2~15레벨 낮은 동료들이에요 · 계약하면 지금 용병은 떠나요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
         + '<br>급여는 하루마다 동괴 / 은괴 / 금괴(레벨 20마다 1개씩 늘어 최대 5개) / 미스릴괴(1개, 40레벨부터 1~2개) 중 하나, 가끔 세공된 보석<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       if (ms2.offers) {
-        mh += mercViewBtns() + '<div class="cos-car merc-offers">' + ms2.offers.map(function (o) {
+        // [2026-11-06] "직업별로 5명씩, 3줄로" -- 전사 / 궁수 / 마법사 줄(모바일은 줄마다 옆으로 넘기기, PC는 넓은 창에 5명이 한 줄로)
+        var offCard = function (o) {
           return '<div class="cos-card merc-offer' + (o.owned ? ' worn' : '') + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(o.t, o.ni, o.nm)
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
               + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
-        }).join('') + '</div>';
+        };
+        mh += mercViewBtns();
+        [0, 1, 2].forEach(function (jt) {
+          var row = ms2.offers.filter(function (o) { return (o.t | 0) === jt; });
+          if (row.length) mh += '<div class="merc-job-h">' + MERC_ICON[jt] + ' ' + ['전사', '궁수', '마법사'][jt] + ' <small>' + row.length + '명</small></div><div class="cos-car merc-offers">' + row.map(offCard).join('') + '</div>';
+        });
         var curM = (st.mercs || []).filter(function (x) { return x.owned; })[0];
         if (curM) mh += '<div class="mine-smith-say"><small>다른 용병과 계약하면 지금 함께하는 <b>' + curM.nm + '</b>은(는) 떠나고 새 용병으로 바뀌어요.</small></div>';
         if (mercAskI != null) { // [2026-11-06] "계약할까요 멘트를 인게임 팝업으로"

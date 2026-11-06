@@ -4577,28 +4577,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     // [2026-11-06] "한 5명 중 선택" -- 계약 후보 MINE_MERC_OFFERS칸(MERCOF{i}_T = 직업 + 1, _LV, _EL, _NM, _SAL). 아직 계약 안 한 직업에서만 뽑고(칸 수가 적은 직업 먼저),
     //  같은 직업끼리는 이름이 겹치지 않게. 계약하거나 그 직업을 이미 계약했으면 그 칸은 새로 뽑는다(모든 직업을 계약했으면 비운다).
-    static final int MINE_MERC_OFFERS = 5;
+    static final int MINE_MERC_OFFERS_PER = 5, MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3; // [2026-11-06] "직업별 5명씩, 3줄로" -- 칸 i의 직업 = i / 5
     static final int MINE_MERC_MAX = 1; // [2026-11-06] "용병 관리 창엔 1개만(지금은 1개만)" -- 계약은 한 명까지
     static int mineMercCount(Map<String, Integer> items) { int n = 0; for (int c = 0; c < MINE_MERC_NAMES.length; c++) if (mineMercLv(items, c) > 0) n++; return n; }
     static final boolean MINE_MERC_HITTABLE = false; // [2026-11-06] 용병은 몬스터에게 맞지 않는다(쓰러져 쉬는 일 없음)
     static String mineOfKey(int i, String f) { return "MERCOF" + i + "_" + f; }
     void mineOfSet(String userName, Map<String, Integer> items, int i, String f, int v) { dao.upsertMineItem(userName, mineOfKey(i, f), v); items.put(mineOfKey(i, f), v); }
     void mineMercOffers(String userName, Map<String, Integer> items) {
-        List<Integer> free = new ArrayList<>();
-        for (int c = 0; c < MINE_MERC_NAMES.length; c++) free.add(c); // [2026-11-06] "다른 용병을 고르면 지금 용병은 떠나고 대체" -- 후보는 모든 직업에서
+        // [2026-11-06] "직업별로 5명씩 3줄" -- 칸 0~4 전사 / 5~9 궁수 / 10~14 마법사. 같은 직업 줄에서는 이름이 겹치지 않게(남은 이름 중에서).
+        //  계약한 칸(T = 0)이나 예전 배치(다른 직업)는 새로 뽑는다.
         for (int i = 0; i < MINE_MERC_OFFERS; i++) {
-            int t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
-            if (t >= 0 && free.contains(t)) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
-            if (free.isEmpty()) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; }
-            int c = free.get(0), best = 99;
-            for (int fc : free) { int n = 0; for (int j = 0; j < MINE_MERC_OFFERS; j++) if (items.getOrDefault(mineOfKey(j, "T"), 0) - 1 == fc) n++; if (n < best || (n == best && RND.nextBoolean())) { best = n; c = fc; } }
-            int nm = RND.nextInt(MINE_MERC_NAMEPOOL[c].length);
-            for (int tries = 0; tries < 20; tries++) {
-                boolean dup = false;
-                for (int j = 0; j < MINE_MERC_OFFERS; j++) if (j != i && items.getOrDefault(mineOfKey(j, "T"), 0) - 1 == c && items.getOrDefault(mineOfKey(j, "NM"), -1) == nm) dup = true;
-                if (!dup) break;
-                nm = RND.nextInt(MINE_MERC_NAMEPOOL[c].length);
+            int c = i / MINE_MERC_OFFERS_PER, t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
+            if (t == c) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
+            int len = MINE_MERC_NAMEPOOL[c].length;
+            List<Integer> left = new ArrayList<>();
+            for (int n = 0; n < len; n++) {
+                boolean used = false;
+                for (int j = c * MINE_MERC_OFFERS_PER; j < (c + 1) * MINE_MERC_OFFERS_PER; j++)
+                    if (j != i && items.getOrDefault(mineOfKey(j, "T"), 0) - 1 == c && Math.floorMod(items.getOrDefault(mineOfKey(j, "NM"), -1), len) == n) used = true;
+                if (!used) left.add(n);
             }
+            int nm = left.isEmpty() ? RND.nextInt(len) : left.get(RND.nextInt(left.size()));
             mineOfSet(userName, items, i, "T", c + 1);
             mineOfSet(userName, items, i, "LV", MINE_MERC_LV_MIN + RND.nextInt(MINE_MERC_LV_MAX0 - MINE_MERC_LV_MIN + 1));
             mineOfSet(userName, items, i, "EL", MINE_MERC_ELS[RND.nextInt(MINE_MERC_ELS.length)]);
