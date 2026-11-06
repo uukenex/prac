@@ -1933,12 +1933,14 @@ var TowerMine = (function () {
   }
   var MERC_GROW = ['20레벨마다 검기 +1단계(범위·피해)', '20레벨마다 한 명 피해 +20%', '20레벨마다 마법 범위가 넓어져요'];
   function mercMgrHtml() {
-    var list = st.mercs || [], on = list.filter(function (x) { return x.on; })[0];
-    if (mercSel == null || !list[mercSel]) mercSel = on ? on.t : 0;
+    var list = st.mercs || [], on = list.filter(function (x) { return x.on; })[0], own = list.filter(function (x) { return x.owned; });
+    if (mercSel == null || !list[mercSel] || (own.length && !list[mercSel].owned)) mercSel = on ? on.t : own.length ? own[0].t : 0;
     var tab = function (id, label) { return '<button type="button" class="' + (mercTabV === id ? 'on' : '') + '" onclick="TowerMine.mercTab(\'' + id + '\')">' + label + '</button>'; };
     var h = '<div class="mine-smith-head inv-head">🛡️ 용병 관리 <span><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></span>'
         + '<div class="eq-tabs">' + tab('gear', '⚔️ 장비') + tab('skill', '🌀 스킬') + '</div></div>';
-    h += '<div class="eq-tabs merc-sel">' + list.map(function (x) {
+    if (own.length <= 1) { // [2026-11-06] "1개만 노출(지금은 1개만)" -- 계약한 용병 한 명만(없으면 안내)
+      if (!own.length) return h + '<div class="mine-smith-say">아직 계약한 용병이 없어요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
+    } else h += '<div class="eq-tabs merc-sel">' + list.filter(function (x) { return x.owned; }).map(function (x) {
       return '<button type="button" class="' + (x.t === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.t + ')">' + MERC_ICON[x.t] + ' ' + (x.owned && x.nm ? x.nm : x.name) + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : x.unpaid && x.owned ? ' ⚠️' : '') + '</button>';
     }).join('') + '</div>';
     var m = list[mercSel] || {};
@@ -2498,8 +2500,16 @@ var TowerMine = (function () {
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
-              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.t + ')">계약</button>') + '</div>';
+              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can && !ms2.full ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
         }).join('') + '</div>';
+        if (ms2.full) mh += '<div class="mine-smith-say"><small>지금은 용병을 한 명만 데리고 있을 수 있어요.</small></div>';
+        if (mercAskI != null) { // [2026-11-06] "계약할까요 멘트를 인게임 팝업으로"
+          var ao = ms2.offers.filter(function (o) { return o.i === mercAskI; })[0];
+          if (ao) mh += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercHire(null)"><div class="eq-pop-box merc-ask"><div class="eq-pop-h">🛡️ 용병 계약<button type="button" onclick="TowerMine.mercHire(null)">✖</button></div>'
+              + '<div class="merc-ask-body"><img src="' + mercImg(ao.t, ao.ni) + '" alt="' + ao.nm + '"><div><b>' + ao.nm + '</b><br>' + MERC_ICON[ao.t] + ' ' + ao.job + ' · Lv.' + ao.lv + '<br><span class="mo-el' + ao.el + '">' + (EL_ICON[ao.el] || '') + ' ' + ao.elName + ' 특화</span><br><small>' + ao.skill + '</small></div></div>'
+              + '<div class="mine-smith-say">' + ao.nm + '와(과) 계약할까요?<br><small>첫날 급여 <b>' + ao.sal + '</b>를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.</small></div>'
+              + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.mercHireGo(' + ao.i + ')">계약하기</button><button type="button" onclick="TowerMine.mercHire(null)">취소</button></div></div></div>';
+        }
       } else mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
       el.smith.innerHTML = mh;
       return;
@@ -3147,7 +3157,7 @@ var TowerMine = (function () {
       (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: ei + q[2], color: '#ffc8a0', t0: t + fly + (m.el === 2 ? 45 * (i + 1) : 60) }); });
     }
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
-    if (m.down) { merc.tg = null; killFeed('💤 용병 ' + m.name + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
+    if (m.down) { merc.tg = null; killFeed('💤 ' + (m.nm || m.name) + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
     if (m.exp) killFeed('+' + m.exp + ' 경험치', '#9fe0ff'); // [2026-11-06] "(용병) 이런 거 없애줘"
     if (m.ores) st.ores = m.ores;
     if (m.drops) lootDrops(m.drops, m.tx, m.ty);
@@ -3158,7 +3168,8 @@ var TowerMine = (function () {
     if (!st || !x) return;
     if (st.mercs) st.mercs[x.t] = x;
     if (st.merc && st.merc.t === x.t) { for (var p in x) if (p !== 'gain' && p !== 'up') st.merc[p] = x[p]; }
-    if (x.up) { killFeed('🎉 용병 ' + x.name + ' Lv.' + x.lv + '!', '#ffe14d'); if (merc.x != null) floats.push({ x: merc.x, y: merc.y - 1, text: '⬆️ Lv.' + x.lv, color: '#ffe14d', big: true, t0: performance.now() }); }
+    if (x.gain && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.6, text: '+' + x.gain, color: '#9fe0ff', t0: performance.now() + 150 }); // [2026-11-06] 용병 경험치(처치마다 최소 1)
+    if (x.up) { killFeed('🎉 ' + (x.nm || x.name) + ' Lv.' + x.lv + '!', '#ffe14d'); if (merc.x != null) floats.push({ x: merc.x, y: merc.y - 1, text: '⬆️ Lv.' + x.lv, color: '#ffe14d', big: true, t0: performance.now() }); }
     if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc);
   }
   // [2026-11-06] "마물의 숲에서 몹이 뭉치면 렉" -- 캔버스에서 가장 비싼 일이 테두리 글자(strokeText). 이름표/피해 숫자를 작은 그림으로 한 번 그려 두고 drawImage로 다시 쓴다.
@@ -3805,8 +3816,13 @@ var TowerMine = (function () {
   var cityShop = null;
   function mercHire(t) { // [2026-11-05] 왕도 용병소 -- 더 센 용병으로 바꿔 고용
     if (busy) return;
-    var o = mercShop && mercShop.offers && mercShop.offers[t];
-    if (!confirm(MERC_ICON[t] + ' ' + (o ? 'Lv.' + o.lv + ' ' + o.elName + ' ' + o.job + ' ' + o.nm : '용병') + '와(과) 계약할까요?\n첫날 급여 ' + (o ? o.sal : '') + '를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.')) return;
+    mercAskI = t; // [2026-11-06] 브라우저 확인창 대신 게임 안 팝업(t = 후보 칸, null = 닫기)
+    if (smithOpen) renderSmith(smithNpc);
+  }
+  var mercAskI = null;
+  function mercHireGo(t) {
+    if (busy) return;
+    mercAskI = null;
     busy = true;
     api('/api/tower-mine-merc?action=hire&tier=' + t).then(function (d) {
       busy = false;
@@ -4521,7 +4537,20 @@ var TowerMine = (function () {
   function apiRaw(path) {
     return fetch(cfg.base + path + (path.indexOf('?') < 0 ? '?' : '&') + 'userName=' + encodeURIComponent(cfg.user)).then(function (r) { return r.json(); });
   }
-  function api(path) { return apiRaw(path).then(apiPost); }
+  // [2026-11-06] "전부 ws로 하기로 한 거 아니었나" -- 1초 턴/공격/캐기뿐 아니라 광산 요청(/api/tower-mine*)은 소켓이 열려 있으면 전부 소켓으로(서버 S55MineSocket.generic이
+  //  컨트롤러의 같은 메서드를 부른다). 서버가 {_http: true}로 답하면(소켓으로 못 받는 주소) 그때만 HTTP. 소켓이 없으면 예전처럼 HTTP.
+  //  답이 8초 안에 안 오면 실패로 끝낸다(사고팔기 같은 요청이 두 번 되지 않게 HTTP로 다시 보내지 않는다).
+  function api(path) {
+    if (wsOk && ws && ws.readyState === 1 && path.indexOf('/api/tower-mine') === 0) return wsCall(path).then(function (d) { return d && d._http ? apiRaw(path) : d; }).then(apiPost);
+    return apiRaw(path).then(apiPost);
+  }
+  function wsCall(path) {
+    return new Promise(function (ok, no) {
+      var i = ++wsSeq, sock = ws;
+      wsWait[i] = { ok: ok, no: no, t: setTimeout(function () { delete wsWait[i]; if (ws === sock) { wsClose(); wsTimer = setTimeout(wsOpen, 3000); } no(new Error('timeout')); }, 8000) };
+      ws.send(JSON.stringify({ i: i, p: path }));
+    });
+  }
   function apiPost(d) {
     // [2026-10-23] 2일 주기 맵 리셋 중 -- 안내 후 광산에서 나간다(리셋이 끝나면 다시 들어오면 새 맵)
     if (d && d.resetting && opened && map) { msg(d.message || d.error, 4000); setTimeout(close, 2500); }
@@ -4921,7 +4950,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

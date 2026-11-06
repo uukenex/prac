@@ -99,7 +99,67 @@ public class S55MineSocket {
             case "/api/tower-mine-dig":
                 return c.apiTowerMineDig(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.getOrDefault("v", ""), a.getOrDefault("dir", "down")).getBody();
             default:
-                return new HashMap<String, Object>();
+                return generic(c, path, a, userName);
+        }
+    }
+
+    // [2026-11-06] "접속했는데 왜 ws로 안 하고 http지? 전부 ws로 하기로 한 거 아니었나?" -- 1초 턴/공격/캐기/전체 베기만 소켓이었다. 이제 광산 화면이 보내는
+    //  나머지 GET 요청(/api/tower-mine*)도 소켓으로: Season5ViewController에서 그 주소의 @GetMapping 메서드를 찾아 @RequestParam 이름대로 값을 넣어 부른다
+    //  (userName은 연결한 유저). 인자가 @RequestParam 단순 값(String/int/long/double/boolean)뿐인 메서드만 -- 아니면 {"_http": true}로 답해 화면이 HTTP로 보낸다.
+    private static volatile Map<String, java.lang.reflect.Method> GET_ROUTES;
+    private static Map<String, java.lang.reflect.Method> getRoutes() {
+        Map<String, java.lang.reflect.Method> m = GET_ROUTES;
+        if (m != null) return m;
+        m = new HashMap<>();
+        for (java.lang.reflect.Method md : Season5ViewController.class.getMethods()) {
+            org.springframework.web.bind.annotation.GetMapping gm = md.getAnnotation(org.springframework.web.bind.annotation.GetMapping.class);
+            if (gm == null) continue;
+            boolean ok = true;
+            for (java.lang.reflect.Parameter p : md.getParameters()) {
+                org.springframework.web.bind.annotation.RequestParam rp = p.getAnnotation(org.springframework.web.bind.annotation.RequestParam.class);
+                Class<?> t = p.getType();
+                if (rp == null || (rp.value().isEmpty() && rp.name().isEmpty())
+                        || !(t == String.class || t == int.class || t == long.class || t == double.class || t == boolean.class || t == Integer.class || t == Long.class)) { ok = false; break; }
+            }
+            if (!ok) continue;
+            for (String ps : gm.value().length > 0 ? gm.value() : gm.path()) if (ps.startsWith("/api/tower-mine")) m.put(ps, md);
+        }
+        GET_ROUTES = m;
+        return m;
+    }
+    private static Object generic(Season5ViewController c, String path, Map<String, String> a, String userName) throws Exception {
+        java.lang.reflect.Method md = getRoutes().get(path);
+        HashMap<String, Object> http = new HashMap<>();
+        http.put("_http", true);
+        if (md == null) return http;
+        java.lang.reflect.Parameter[] ps = md.getParameters();
+        Object[] args = new Object[ps.length];
+        for (int i = 0; i < ps.length; i++) {
+            org.springframework.web.bind.annotation.RequestParam rp = ps[i].getAnnotation(org.springframework.web.bind.annotation.RequestParam.class);
+            String nm = rp.value().isEmpty() ? rp.name() : rp.value();
+            String v = "userName".equals(nm) ? userName : a.get(nm);
+            if (v == null && !org.springframework.web.bind.annotation.ValueConstants.DEFAULT_NONE.equals(rp.defaultValue())) v = rp.defaultValue();
+            Class<?> t = ps[i].getType();
+            if (v == null) {
+                if (rp.required() || t.isPrimitive()) return http; // HTTP라면 400 -- 그쪽에 맡긴다
+                args[i] = null;
+                continue;
+            }
+            try {
+                args[i] = t == String.class ? v : t == int.class || t == Integer.class ? Integer.valueOf(v.trim()) : t == long.class || t == Long.class ? Long.valueOf(v.trim())
+                        : t == double.class ? Double.valueOf(v.trim()) : Boolean.valueOf(v.trim());
+            } catch (NumberFormatException e) {
+                return http;
+            }
+        }
+        try {
+            Object r = md.invoke(c, args);
+            return r instanceof org.springframework.http.ResponseEntity ? ((org.springframework.http.ResponseEntity<?>) r).getBody() : r;
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("ok", false);
+            err.put("message", "요청을 처리하지 못했어요. 다시 시도해 주세요.");
+            return err;
         }
     }
 
