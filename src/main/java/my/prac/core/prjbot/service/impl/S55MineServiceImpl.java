@@ -1606,7 +1606,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mobs.add(mineMobRow(id, s));
             }
         }
-        long[] mercR = mineMercTurn(userName, map, items, lv, rb, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
+        long[] mercR = mineMercTurn(userName, map, items, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
         long mercExp = mercR[1];
         Debuff pdb = MINE_DEBUFF.get(userName); // [2026-10-28] 여왕개미 독 -- 전투 턴마다 지난 시간만큼
         if (pdb != null && pdb.poisonUntil > pdb.poisonAt && hp - dmgSum > 0) {
@@ -2570,7 +2570,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("helmet", helmetTier);
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
         out.put("aura", mineAuraInfo(items)); // [2026-11-04] 검기(배운 단계/켠 단계)
-        if (isMineAdmin(userName)) out.put("merc", mineMercInfo(userName, items, mineLv(row), mineRebirth(items), System.currentTimeMillis())); // [2026-11-05] 용병(시험 중 -- 관리자만)
+        if (isMineAdmin(userName)) { out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis())); out.put("mercs", mineMercCards(items)); } // [2026-11-06] 용병 관리(직업별 3칸) // [2026-11-05] 용병(시험 중 -- 관리자만)
         out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
@@ -4425,46 +4425,51 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  플레이어와 싸우는 몬스터(인식) 중 플레이어 MINE_MERC_REACH칸 안에서 하나를 골라(전에 치던 것 우선) 공격 1번, 그 몬스터의 반격(1.5초마다)은 용병이 맞는다.
     //  처치하면 경험치/드랍은 플레이어 것(보스는 검기처럼 마지막 1은 못 깎음). 체력이 0이면 MINE_MERC_REST_MS 동안 뒤에서 쉬고 가득 차서 돌아온다.
     //  싸우지 않을 땐 초당 최대 체력의 5%씩 찬다. 체력은 메모리(MINE_MERC, 서버 재시작 = 가득).
-    // [2026-11-06] "용병도 플레이어 레벨 및 스탯을 동일하게(날개 이펙트 x), 장비를 별도로 장착(이미 사용자가 착용 중인 건 안 됨),
-    //  등급별 용병 대신 궁수/마법사/전사 3개로, 직업별 외형, 원거리 공격, 공격 이펙트" (예전 등급 MERC_TIER 0~6은 더 안 씀):
-    //  레벨/환생은 플레이어 것 그대로 -- 공격력 = (mineAtk(lv) x (1 + 환생 몫 + 용병 무기 공격력 %) + 용병 무기 공격력) x 직업 배수, 체력 = mineHpMax(lv, rb).
-    //  용병 무기/갑옷(MERC_W/MERC_WG, MERC_A/MERC_AG = 칸 번호 / 등급 + 1)은 내가 가진 드랍 장비 중 내가 지금 착용하지 않은 장비만(같은 코드는 안 됨).
-    //  내가 그 장비를 착용하면 용병 것은 빠진다. 장비 레벨 제한은 플레이어 레벨로. 무기 칸 강화는 플레이어 것이라 용병엔 없다.
+    // [2026-11-06] 용병 -- "궁수/마법사/전사 3개로, 직업별 외형, 원거리 공격, 공격 이펙트, 장비는 따로(이미 사용자가 착용 중인 건 안 됨)"
+    //  + "용병은 레벨과 경험치를 따로, 스탯은 플레이어 레벨에 따른 스탯과 동일, 환생은 없음, 처음 계약 때 레벨 5~30, 메뉴에 용병 관리(최대 3칸, 직업별)".
+    //  직업마다 한 명씩 계약(왕도 용병소, Lv.5~30 무작위) -- MERC{c}_LV / MERC{c}_EXP, 장비 MERC{c}_W/_WG(무기 칸 번호/등급 + 1), MERC{c}_A/_AG(갑옷).
+    //  데리고 다니는 건 한 명(MERC_ON = 직업 + 1, 0 = 없음). 공격력 = (mineAtk(용병 레벨) x (1 + 무기 공격력 %) + 무기 공격력) x 직업 배수, 체력 = mineHpMax(용병 레벨, 0).
+    //  용병 경험치 = 용병이 쓰러뜨린 몬스터의 경험치(플레이어도 그대로 받는다). 필요 경험치는 플레이어 표(환생 0)와 같고 99레벨까지.
+    //  장비: 내가 가진 드랍 무기/갑옷 중 내가 착용하지 않은 것(같은 장비 = 같은 코드, 한 장비는 한 명만). 내가 그 장비를 착용하면 용병 것은 빠진다. 장비 레벨 제한은 용병 레벨로.
     //  직업: 전사 = 근접(몬스터 옆으로 달려가 벤다, 피해 x1.2, 반격 1.5초마다), 궁수 = 원거리 7칸(화살, x1.0), 마법사 = 원거리 6칸(마법탄, x0.8, 맞은 몬스터 둘레 1칸도 같이).
-    //  원거리 직업은 반격을 3초마다 맞는다. 갑옷은 받는 피해를 고정 수치만큼 줄인다(최소 1). 고용(직업 바꾸기)은 왕도 용병소에서 무료, 장비는 인벤토리에서.
-    static final String MINE_ITEM_MERC_CLASS = "MERC_CLASS", MINE_ITEM_MERC_W = "MERC_W", MINE_ITEM_MERC_WG = "MERC_WG", MINE_ITEM_MERC_A = "MERC_A", MINE_ITEM_MERC_AG = "MERC_AG";
+    //  원거리 직업은 반격을 3초마다 맞는다. 갑옷은 받는 피해를 고정 수치만큼 줄인다(최소 1).
+    static final String MINE_ITEM_MERC_ON = "MERC_ON";
     static final String[] MINE_MERC_NAMES = { "전사", "궁수", "마법사" };
     static final int[] MINE_MERC_REACH = { 5, 7, 6 };
     static final double[] MINE_MERC_DMG = { 1.2, 1.0, 0.8 };
+    static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
     static final long MINE_MERC_REST_MS = 20_000L;
     static final double MINE_MERC_REGEN = 0.05;
-    static int mineMercClass(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_MERC_NAMES.length - 1, items.getOrDefault(MINE_ITEM_MERC_CLASS, 0))); }
-    static int mineMercGrade(Map<String, Integer> items, MineWeapon w) {
-        int g = items.getOrDefault(w.armor ? MINE_ITEM_MERC_AG : MINE_ITEM_MERC_WG, 0) - 1;
+    static String mineMercKey(int c, String f) { return "MERC" + c + "_" + f; }
+    static int mineMercLv(Map<String, Integer> items, int c) { return Math.max(0, Math.min(MINE_LV_MAX, items.getOrDefault(mineMercKey(c, "LV"), 0))); }
+    /** 데리고 다니는 용병 직업(-1 = 없음). */
+    static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 ? c : -1; }
+    static int mineMercGrade(Map<String, Integer> items, int c, MineWeapon w) {
+        int g = items.getOrDefault(mineMercKey(c, w.armor ? "AG" : "WG"), 0) - 1;
         return g >= 0 && g <= w.maxGrade && (mineWeaponMask(items, w) & (1 << g)) != 0 ? g : -1;
     }
-    /** 용병이 든 무기/입은 갑옷(없거나, 내가 같은 장비를 착용 중이거나, 레벨이 모자라면 null). */
-    static MineWeapon mineMercGear(Map<String, Integer> items, boolean armor, int lv) {
-        int s = items.getOrDefault(armor ? MINE_ITEM_MERC_A : MINE_ITEM_MERC_W, 0);
+    /** 용병 c가 든 무기/입은 갑옷(없거나, 내가 같은 장비를 착용 중이거나, 용병 레벨이 모자라면 null). */
+    static MineWeapon mineMercGear(Map<String, Integer> items, int c, boolean armor) {
+        int s = items.getOrDefault(mineMercKey(c, armor ? "A" : "W"), 0);
         if (s <= 0) return null;
         for (MineWeapon w : armor ? MINE_ARMORS : MINE_WEAPONS) if (w.slot == s)
-            return (armor ? mineArmorOn(items) : mineWeaponOn(items)) == w || mineMercGrade(items, w) < 0 || lv < w.lv ? null : w;
+            return (armor ? mineArmorOn(items) : mineWeaponOn(items)) == w || mineMercGrade(items, c, w) < 0 || mineMercLv(items, c) < w.lv ? null : w;
         return null;
     }
-    static int mineMercAtk(Map<String, Integer> items, int lv, int rb) {
-        MineWeapon w = mineMercGear(items, false, lv);
-        int g = w == null ? -1 : mineMercGrade(items, w);
-        double mul = 1 + MINE_RB_ATK_BONUS * rb + (w == null ? 0 : w.pctAt(g) / 100.0);
-        return (int) Math.round((mineAtk(lv) * mul + (w == null ? 0 : w.atkAt(g))) * MINE_MERC_DMG[mineMercClass(items)]);
+    static int mineMercAtk(Map<String, Integer> items, int c) {
+        MineWeapon w = mineMercGear(items, c, false);
+        int g = w == null ? -1 : mineMercGrade(items, c, w);
+        double mul = 1 + (w == null ? 0 : w.pctAt(g) / 100.0);
+        return (int) Math.round((mineAtk(Math.max(1, mineMercLv(items, c))) * mul + (w == null ? 0 : w.atkAt(g))) * MINE_MERC_DMG[c]);
     }
-    static int mineMercHp(int lv, int rb) { return mineHpMax(lv, rb); }
-    static int mineMercDef(Map<String, Integer> items, int lv) { MineWeapon a = mineMercGear(items, true, lv); return a == null ? 0 : a.atkAt(mineMercGrade(items, a)); }
+    static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
+    static int mineMercDef(Map<String, Integer> items, int c) { MineWeapon a = mineMercGear(items, c, true); return a == null ? 0 : a.atkAt(mineMercGrade(items, c, a)); }
     static final class MercSt {
         int cls = -1, max, hp, target = -1, tx, ty;
         long restUntil, at, fightAt, atkAt, struckAt;
     }
     static final java.util.concurrent.ConcurrentHashMap<String, MercSt> MINE_MERC = new java.util.concurrent.ConcurrentHashMap<>();
-    /** 지금 체력(쉬기 끝/싸우지 않는 동안 회복 반영, 직업이 바뀌면 가득, 레벨이 올라 최대 체력이 늘면 그만큼 더). 부를 때 ms에 synchronized. */
+    /** 지금 체력(쉬기 끝/싸우지 않는 동안 회복 반영, 용병이 바뀌면 가득, 레벨이 올라 최대 체력이 늘면 그만큼 더). 부를 때 ms에 synchronized. */
     static void mineMercRefresh(MercSt ms, int cls, int max, long now) {
         if (ms.cls != cls) { ms.cls = cls; ms.max = max; ms.hp = max; ms.restUntil = 0; ms.target = -1; }
         if (ms.max != max) { ms.hp = Math.max(1, Math.min(max, ms.hp + Math.max(0, max - ms.max))); ms.max = max; }
@@ -4480,32 +4485,51 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         r.put("effect", w.effect(g));
         return r;
     }
-    static HashMap<String, Object> mineMercInfo(String userName, Map<String, Integer> items, int lv, int rb, long now) {
-        MercSt ms = MINE_MERC.computeIfAbsent(userName, u -> new MercSt());
-        int cls = mineMercClass(items), max = mineMercHp(lv, rb);
+    /** 용병 c 한 칸(용병 관리 창) -- 계약 안 했으면 {t, name, owned:false}. */
+    static HashMap<String, Object> mineMercCard(Map<String, Integer> items, int c) {
         HashMap<String, Object> m = new HashMap<>();
+        int lv = mineMercLv(items, c);
+        m.put("t", c);
+        m.put("name", MINE_MERC_NAMES[c]);
+        m.put("reach", MINE_MERC_REACH[c]);
+        m.put("owned", lv > 0);
+        if (lv <= 0) return m;
+        m.put("lv", lv);
+        m.put("exp", items.getOrDefault(mineMercKey(c, "EXP"), 0));
+        m.put("need", lv >= MINE_LV_MAX ? 0 : mineExpNeed(lv, 0));
+        m.put("atk", mineMercAtk(items, c));
+        m.put("def", mineMercDef(items, c));
+        m.put("max", mineMercHp(items, c));
+        m.put("on", mineMercOn(items) == c);
+        MineWeapon w = mineMercGear(items, c, false), a = mineMercGear(items, c, true);
+        if (w != null) { m.put("w", mineMercGearRow(w, mineMercGrade(items, c, w))); m.put("wl", mineWeaponLook(w)); }
+        if (a != null) m.put("a", mineMercGearRow(a, mineMercGrade(items, c, a)));
+        return m;
+    }
+    static List<HashMap<String, Object>> mineMercCards(Map<String, Integer> items) {
+        List<HashMap<String, Object>> l = new ArrayList<>();
+        for (int c = 0; c < MINE_MERC_NAMES.length; c++) l.add(mineMercCard(items, c));
+        return l;
+    }
+    /** 데리고 다니는 용병(없으면 null) -- 칸 정보 + 지금 체력/쉬기. */
+    static HashMap<String, Object> mineMercInfo(String userName, Map<String, Integer> items, long now) {
+        int c = mineMercOn(items);
+        if (c < 0) return null;
+        HashMap<String, Object> m = mineMercCard(items, c);
+        MercSt ms = MINE_MERC.computeIfAbsent(userName, u -> new MercSt());
         synchronized (ms) {
-            mineMercRefresh(ms, cls, max, now);
-            m.put("t", cls);
-            m.put("name", MINE_MERC_NAMES[cls]);
-            m.put("lv", lv);
-            m.put("atk", mineMercAtk(items, lv, rb));
-            m.put("def", mineMercDef(items, lv));
-            m.put("reach", MINE_MERC_REACH[cls]);
+            mineMercRefresh(ms, c, mineMercHp(items, c), now);
             m.put("hp", ms.hp);
-            m.put("max", max);
             m.put("rest", ms.restUntil);
         }
-        MineWeapon w = mineMercGear(items, false, lv), a = mineMercGear(items, true, lv);
-        if (w != null) { m.put("w", mineMercGearRow(w, mineMercGrade(items, w))); m.put("wl", mineWeaponLook(w)); }
-        if (a != null) m.put("a", mineMercGearRow(a, mineMercGrade(items, a)));
         return m;
     }
     /** 전투 턴의 용병 차례 -- {처치 수, 경험치}. 결과는 out.merc(+ 드랍/무기). 마법사는 맞은 몬스터 둘레 1칸의 싸우는 몬스터도 같이 맞는다(sp = [[칸x, 칸y, 피해], ...]). */
-    long[] mineMercTurn(String userName, S5MineMap map, Map<String, Integer> items, int lv, int rb, int x, int y, long now, MineEngage e, HashMap<String, Object> out) {
+    long[] mineMercTurn(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, MineEngage e, HashMap<String, Object> out) {
         if (!isMineAdmin(userName)) return new long[] { 0, 0 }; // [2026-11-05] "용병은 관리자만 -- 충분히 테스트한 뒤 일반 유저에게 알림"
-        int cls = mineMercClass(items);
-        HashMap<String, Object> mo = mineMercInfo(userName, items, lv, rb, now);
+        int cls = mineMercOn(items);
+        if (cls < 0) return new long[] { 0, 0 };
+        HashMap<String, Object> mo = mineMercInfo(userName, items, now);
         out.put("merc", mo);
         if (e == null || e.mobs.isEmpty() || map.boat()) return new long[] { 0, 0 };
         MercSt ms = MINE_MERC.get(userName);
@@ -4527,7 +4551,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ms.target = pick;
         }
         if (pick < 0) return new long[] { 0, 0 };
-        int atk = mineMercAtk(items, lv, rb), def = mineMercDef(items, lv);
+        int atk = mineMercAtk(items, cls), def = mineMercDef(items, cls);
         List<Integer> hitIds = new ArrayList<>();
         hitIds.add(pick);
         MobState ps = MINE_MOB_STATE.get(mineMobKey(map, pick));
@@ -4604,6 +4628,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (kills == 0) return new long[] { 0, 0 };
         mo.put("killed", true);
         mo.put("exp", expSum);
+        // [2026-11-06] "용병은 레벨과 경험치를 따로" -- 용병이 쓰러뜨린 몬스터 경험치를 용병에게도(환생 없음, 99레벨까지)
+        int mlv = mineMercLv(items, cls), lv0 = mlv;
+        long mexp = items.getOrDefault(mineMercKey(cls, "EXP"), 0) + expSum;
+        while (mlv < MINE_LV_MAX && mexp >= mineExpNeed(mlv, 0)) { mexp -= mineExpNeed(mlv, 0); mlv++; }
+        if (mlv >= MINE_LV_MAX) mexp = 0;
+        int mexpI = (int) Math.min(Integer.MAX_VALUE, mexp);
+        dao.upsertMineItem(userName, mineMercKey(cls, "EXP"), mexpI);
+        items.put(mineMercKey(cls, "EXP"), mexpI);
+        if (mlv != lv0) {
+            dao.upsertMineItem(userName, mineMercKey(cls, "LV"), mlv);
+            items.put(mineMercKey(cls, "LV"), mlv);
+            mo.put("lvUp", mlv);
+            mo.putAll(mineMercInfo(userName, items, now));
+            mo.put("killed", true);
+            mo.put("exp", expSum);
+        } else {
+            mo.put("exp2", mexpI);
+        }
         if (!allDrops.isEmpty()) mo.put("drops", allDrops);
         mo.put("ores", mineOreList(userName));
         return new long[] { kills, expSum };
@@ -4622,66 +4664,73 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         Map<String, Integer> items = mineItems(userName);
-        int cur = mineMercClass(items), lv = row == null ? 1 : mineLv(row), rb = mineRebirth(items);
         boolean ok = true;
         String msg = "";
-        if ("hire".equals(action)) { // 직업 바꾸기(무료)
-            if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 고용할 수 있어요."; }
-            else if (tier < 0 || tier >= MINE_MERC_NAMES.length) { ok = false; msg = "그런 용병은 없어요."; }
-            else if (tier == cur) { ok = false; msg = "이미 함께하는 " + MINE_MERC_NAMES[tier] + "예요."; }
+        int c = tier;
+        boolean cOk = c >= 0 && c < MINE_MERC_NAMES.length;
+        if ("hire".equals(action)) { // 계약(직업마다 한 번, Lv.5~30 무작위)
+            if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
+            else if (!cOk) { ok = false; msg = "그런 용병은 없어요."; }
+            else if (mineMercLv(items, c) > 0) { ok = false; msg = "이미 계약한 " + MINE_MERC_NAMES[c] + "예요."; }
             else {
-                dao.upsertMineItem(userName, MINE_ITEM_MERC_CLASS, tier);
-                items.put(MINE_ITEM_MERC_CLASS, tier);
-                MinePresence pr = MINE_PRESENCE.get(userName);
-                if (pr != null) pr.lookAt = 0;
-                msg = "🛡️ " + MINE_MERC_NAMES[tier] + " 용병을 고용했어요! 장비는 그대로 넘겨받았어요.";
-                cur = tier;
+                int lv = MINE_MERC_LV_MIN + RND.nextInt(MINE_MERC_LV_MAX0 - MINE_MERC_LV_MIN + 1);
+                dao.upsertMineItem(userName, mineMercKey(c, "LV"), lv);
+                dao.upsertMineItem(userName, mineMercKey(c, "EXP"), 0);
+                items.put(mineMercKey(c, "LV"), lv);
+                items.put(mineMercKey(c, "EXP"), 0);
+                if (mineMercOn(items) < 0) { dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, c + 1); items.put(MINE_ITEM_MERC_ON, c + 1); }
+                msg = "🛡️ Lv." + lv + " " + MINE_MERC_NAMES[c] + "와(과) 계약했어요!";
+            }
+        } else if ("use".equals(action)) { // 데리고 다니기 / 쉬게 하기
+            if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else {
+                boolean on = mineMercOn(items) != c;
+                dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, on ? c + 1 : 0);
+                items.put(MINE_ITEM_MERC_ON, on ? c + 1 : 0);
+                msg = on ? "🛡️ " + MINE_MERC_NAMES[c] + "와(과) 함께 다녀요." : "🛡️ " + MINE_MERC_NAMES[c] + "은(는) 용병소에서 쉬어요.";
             }
         } else if ("gear".equals(action)) { // 용병 장비 -- code = 장비 코드#등급(장착) / OFF_W, OFF_A(해제)
-            String c = code == null ? "" : code;
-            if ("OFF_W".equals(c) || "OFF_A".equals(c)) {
-                boolean ar = "OFF_A".equals(c);
-                dao.upsertMineItem(userName, ar ? MINE_ITEM_MERC_A : MINE_ITEM_MERC_W, 0);
-                items.put(ar ? MINE_ITEM_MERC_A : MINE_ITEM_MERC_W, 0);
-                msg = "🛡️ 용병의 " + (ar ? "갑옷" : "무기") + "을(를) 해제했어요.";
+            String cd = code == null ? "" : code;
+            if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else if ("OFF_W".equals(cd) || "OFF_A".equals(cd)) {
+                boolean ar = "OFF_A".equals(cd);
+                dao.upsertMineItem(userName, mineMercKey(c, ar ? "A" : "W"), 0);
+                items.put(mineMercKey(c, ar ? "A" : "W"), 0);
+                msg = "🛡️ " + MINE_MERC_NAMES[c] + "의 " + (ar ? "갑옷" : "무기") + "을(를) 해제했어요.";
             } else {
                 int gi = -1;
-                if (c.indexOf('#') > 0) { try { gi = Integer.parseInt(c.substring(c.indexOf('#') + 1)); } catch (NumberFormatException ex) { gi = -1; } c = c.substring(0, c.indexOf('#')); }
-                MineWeapon w = mineWeaponOf(c);
-                if (w == null) w = mineArmorOf(c);
+                if (cd.indexOf('#') > 0) { try { gi = Integer.parseInt(cd.substring(cd.indexOf('#') + 1)); } catch (NumberFormatException ex) { gi = -1; } cd = cd.substring(0, cd.indexOf('#')); }
+                MineWeapon w = mineWeaponOf(cd);
+                if (w == null) w = mineArmorOf(cd);
+                int mlv = mineMercLv(items, c);
                 if (w == null) { ok = false; msg = "용병에게 줄 수 없는 장비예요."; }
                 else {
                     if (gi < 0) gi = mineWeaponGrade(items, w);
+                    String f = w.armor ? "A" : "W";
                     if (gi < 0 || gi > w.maxGrade || (mineWeaponMask(items, w) & (1 << gi)) == 0) { ok = false; msg = "그 등급의 " + w.name + "은(는) 없어요."; }
                     else if ((w.armor ? mineArmorOn(items) : mineWeaponOn(items)) == w) { ok = false; msg = w.name + "은(는) 내가 착용 중이라 용병에게 줄 수 없어요."; }
-                    else if (lv < w.lv) { ok = false; msg = w.name + "은(는) Lv." + w.lv + "부터예요. (용병도 내 레벨 Lv." + lv + ")"; }
+                    else if (mlv < w.lv) { ok = false; msg = w.name + "은(는) Lv." + w.lv + "부터예요. (" + MINE_MERC_NAMES[c] + " Lv." + mlv + ")"; }
                     else {
-                        dao.upsertMineItem(userName, w.armor ? MINE_ITEM_MERC_A : MINE_ITEM_MERC_W, w.slot);
-                        dao.upsertMineItem(userName, w.armor ? MINE_ITEM_MERC_AG : MINE_ITEM_MERC_WG, gi + 1);
-                        items.put(w.armor ? MINE_ITEM_MERC_A : MINE_ITEM_MERC_W, w.slot);
-                        items.put(w.armor ? MINE_ITEM_MERC_AG : MINE_ITEM_MERC_WG, gi + 1);
-                        MinePresence pr = MINE_PRESENCE.get(userName);
-                        if (pr != null) pr.lookAt = 0;
-                        msg = "🛡️ 용병에게 " + w.name + "을(를) 장착했어요. " + w.effect(gi);
+                        for (int o = 0; o < MINE_MERC_NAMES.length; o++) if (o != c && items.getOrDefault(mineMercKey(o, f), 0) == w.slot) { // 한 장비는 한 명만
+                            dao.upsertMineItem(userName, mineMercKey(o, f), 0);
+                            items.put(mineMercKey(o, f), 0);
+                        }
+                        dao.upsertMineItem(userName, mineMercKey(c, f), w.slot);
+                        dao.upsertMineItem(userName, mineMercKey(c, f + "G"), gi + 1);
+                        items.put(mineMercKey(c, f), w.slot);
+                        items.put(mineMercKey(c, f + "G"), gi + 1);
+                        msg = "🛡️ " + MINE_MERC_NAMES[c] + "에게 " + w.name + "을(를) 장착했어요.";
                     }
                 }
             }
         }
-        List<HashMap<String, Object>> list = new ArrayList<>();
-        for (int t = 0; t < MINE_MERC_NAMES.length; t++) {
-            HashMap<String, Object> m = new HashMap<>();
-            m.put("t", t);
-            m.put("name", MINE_MERC_NAMES[t]);
-            m.put("reach", MINE_MERC_REACH[t]);
-            m.put("dmg", (int) Math.round(MINE_MERC_DMG[t] * 100));
-            list.add(m);
-        }
+        MinePresence pr = MINE_PRESENCE.get(userName);
+        if (pr != null && ok && !"list".equals(action)) pr.lookAt = 0;
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", ok);
         out.put("message", msg);
-        out.put("cur", cur);
-        out.put("list", list);
-        out.put("merc", mineMercInfo(userName, items, lv, rb, System.currentTimeMillis()));
+        out.put("list", mineMercCards(items));
+        out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis()));
         out.put("ores", mineOreList(userName));
         return out;
     }
@@ -5996,7 +6045,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (pickGrade >= 0) dao.upsertMineItem(userName, ea.code, pickGrade + 1);
             }
             dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, on ? ea.slot : 0);
-            if (on) { dao.upsertMineItem(userName, MINE_ITEM_COAT_SLOT, 0); if (it.getOrDefault(MINE_ITEM_MERC_A, 0) == ea.slot) dao.upsertMineItem(userName, MINE_ITEM_MERC_A, 0); } // [2026-11-06] "갑옷과 옷은 한 칸" -- 외투는 벗는다, 용병이 입던 같은 갑옷은 내가
+            if (on) { dao.upsertMineItem(userName, MINE_ITEM_COAT_SLOT, 0); for (int mc = 0; mc < MINE_MERC_NAMES.length; mc++) if (it.getOrDefault(mineMercKey(mc, "A"), 0) == ea.slot) dao.upsertMineItem(userName, mineMercKey(mc, "A"), 0); } // [2026-11-06] "갑옷과 옷은 한 칸" -- 외투는 벗는다, 용병이 입던 같은 갑옷은 내가
             int ag = pickGrade >= 0 ? pickGrade : mineWeaponGrade(it, ea);
             return mineGearResult(userName, true, on ? "🛡️ " + ea.name + "을(를) 장착했어요. " + ea.effect(ag, mineEnh(it, ea.code)) : "🛡️ " + ea.name + "을(를) 해제했어요.");
         }
@@ -6008,7 +6057,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             dao.upsertMineItem(userName, ew.code, pickGrade + 1);
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, ew.slot);
-            if (it.getOrDefault(MINE_ITEM_MERC_W, 0) == ew.slot) dao.upsertMineItem(userName, MINE_ITEM_MERC_W, 0); // [2026-11-06] 용병이 들던 같은 무기는 내가
+            for (int mc = 0; mc < MINE_MERC_NAMES.length; mc++) if (it.getOrDefault(mineMercKey(mc, "W"), 0) == ew.slot) dao.upsertMineItem(userName, mineMercKey(mc, "W"), 0); // [2026-11-06] 용병이 들던 같은 무기는 내가
             return mineGearResult(userName, true, "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(pickGrade));
         }
         if (ew != null) { // [2026-10-29] 드랍 무기 -- 든 채로 다시 누르면 칼로
@@ -6020,7 +6069,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             }
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? ew.slot : 0);
-            if (on && it.getOrDefault(MINE_ITEM_MERC_W, 0) == ew.slot) dao.upsertMineItem(userName, MINE_ITEM_MERC_W, 0); // [2026-11-06] 용병이 들던 같은 무기는 내가
+            if (on) for (int mc = 0; mc < MINE_MERC_NAMES.length; mc++) if (it.getOrDefault(mineMercKey(mc, "W"), 0) == ew.slot) dao.upsertMineItem(userName, mineMercKey(mc, "W"), 0); // [2026-11-06] 용병이 들던 같은 무기는 내가
             return mineGearResult(userName, true, on ? "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(mineWeaponGrade(it, ew)) : "🗡️ 칼을 장착했어요.");
         }
         if ("SWORD".equals(code) || MINE_ITEM_PARASOL.equals(code)) { // [2026-10-28] 무기 칸
@@ -6400,7 +6449,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercClass(lit) : -1; MineWeapon mw = me.merc >= 0 ? mineMercGear(lit, false, 999) : null; me.mercW = mw == null ? null : mineWeaponLook(mw); me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = isMineAdmin(userName) ? mineMercOn(lit) : -1; MineWeapon mw = me.merc >= 0 ? mineMercGear(lit, me.merc, false) : null; me.mercW = mw == null ? null : mineWeaponLook(mw); me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
             MinePresence o = e.getValue();
             if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;

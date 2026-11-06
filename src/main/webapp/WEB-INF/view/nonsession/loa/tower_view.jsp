@@ -946,6 +946,8 @@
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-msg, #mineNpcLine{ white-space:pre-line; }
+    .merc-card .merc-gear{ display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; } /* [2026-11-06] 용병 관리 -- 무기/갑옷 칸 */
+    .merc-card .merc-gear button{ font-size:11px; padding:3px 6px; }
     .mine-npc-bubble .talk-more{ position:absolute; right:8px; bottom:4px; font-size:11px; color:#a8742a; animation:mineTalkMore 1s ease-in-out infinite; } /* [2026-11-06] 나눈 대사 -- 누르면 다음 */
     @keyframes mineTalkMore{ 50%{ transform:translateY(2px); opacity:.5; } }
     @media (prefers-reduced-motion: reduce){ .mine-npc-bubble .talk-more{ animation:none; } } /* [2026-10-30] 문장마다 줄바꿈(brk) */

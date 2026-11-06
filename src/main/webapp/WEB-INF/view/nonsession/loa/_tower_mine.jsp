@@ -1251,6 +1251,8 @@ var TowerMine = (function () {
     if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
     var novaShow = st && st.adminMaps ? '' : 'none'; // [2026-11-05] 관리자 전체 공격 버튼
     if (el.nova && el.nova.style.display !== novaShow) el.nova.style.display = novaShow;
+    var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
+    if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
     var digShow = map.noDig ? 'none' : '';
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
@@ -1387,7 +1389,7 @@ var TowerMine = (function () {
     else if (n.kind === 'smelter' || n.kind === 'gemcutter' || n.kind === 'artisan') { setAuto(false); openSmith(n, n.kind); } // [2026-10-28] 광석 전문가 / 보석 세공사 / 왕도 장인
     else if (n.kind === 'citymerchant') { setAuto(false); openSmith(n, 'citymerchant'); api('/api/tower-mine-cityshop?action=list').then(function (d) { cityShop = d; if (d && d.luckUntil != null) st.luckUntil = d.luckUntil; if (smithOpen && smithView === 'citymerchant') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 상인
     else if (n.kind === 'enhancer') { setAuto(false); openSmith(n, 'enh'); } // [2026-11-06] 무기 강화사
-    else if (n.kind === 'mercenary') { setAuto(false); openSmith(n, 'merc'); api('/api/tower-mine-merc?action=list').then(function (d) { mercShop = d; if (d && d.merc) st.merc = d.merc; if (smithOpen && smithView === 'merc') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 용병소
+    else if (n.kind === 'mercenary') { setAuto(false); openSmith(n, 'merc'); api('/api/tower-mine-merc?action=list').then(function (d) { mercShop = d; if (d && d.list) st.mercs = d.list; if (d && d.merc) st.merc = d.merc; if (smithOpen && smithView === 'merc') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 용병소
     else if (n.kind === 'archishop') { setAuto(false); openSmith(n, 'archishop'); api('/api/tower-mine-archishop?action=list').then(function (d) { applyGear(d); if (smithOpen && smithView === 'archishop') renderSmith(smithNpc); }).catch(function () {}); } // [2026-10-28] 다도해 상인
   }
   // ---------------------------------------------------------------- 대장간(곡괭이 강화: 최대/현재 내구도 함께 증가)
@@ -1876,9 +1878,8 @@ var TowerMine = (function () {
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
     var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'armor', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>' // [2026-11-06] 갑옷 칸 -- 좌우 4칸씩
         + '<div class="doll-char"><img src="' + lookImg(st.look || {}, 'down') + '" alt="내 캐릭터"><small>Lv.' + myLv() + '</small></div>'
-        + '<div class="doll-col">' + ['necklace', 'boots', 'tool'].map(function (k) { return slot(by[k]); }).join('') + (st.merc ? mercSlotHtml() : '') + '</div></div>'
+        + '<div class="doll-col">' + ['necklace', 'boots', 'tool'].map(function (k) { return slot(by[k]); }).join('') + '</div></div>'
         + '<div class="mine-smith-say">칸을 누르면 그 부위에 장착할 수 있는 장비가 나와요.</div>';
-    if (eqPop === 'merc' && st.merc) return h + mercPopHtml(); // [2026-11-06] 용병 장비
     if (eqPop && by[eqPop]) {
       var sl = by[eqPop], rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
       var verb = ['장착', '해제']; // [2026-10-30] "들기, 걸기 대신 장착/해제로"
@@ -1919,46 +1920,68 @@ var TowerMine = (function () {
     return h;
   }
   function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
-  // [2026-11-06] "용병도 장비를 별도로 장착(이미 사용자가 착용 중인 건 안 됨)" -- 인벤토리 🛡️ 용병 칸: 내 드랍 무기/갑옷 중 내가 안 쓰는 것을 등급 골라 장착
-  function mercSumHtml(m) {
-    return MERC_ICON[m.t | 0] + ' <b>' + (m.name || '전사') + '</b> Lv.' + (m.lv || myLv()) + '<br>공격력 ' + fmtN(m.atk) + ' · 체력 ' + (m.hp != null ? fmtN(m.hp) + '/' + fmtN(m.max) : '?') + (m.def ? ' · 받는 피해 -' + m.def : '')
-        + '<br>무기 ' + (m.w ? gradeName(m.w.name, m.w.grade) : '없음') + ' · 갑옷 ' + (m.a ? gradeName(m.a.name, m.a.grade) : '없음');
-  }
+  // [2026-11-06] "메뉴에 용병 관리(최대 3칸, 직업별)" -- 계약한 용병마다 레벨/경험치/능력치/장비, 데리고 다니기는 한 명.
+  //  장비: 내 드랍 무기/갑옷 중 내가 착용하지 않은 것을 등급 골라 장착(한 장비는 한 명만 -- 다른 용병 것이면 옮겨 온다).
+  var mercPop = null; // { c: 직업, s: 'weapon' | 'armor' }
   function fmtN(v) { v = +v || 0; return v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1e4 ? (v / 1e3).toFixed(1) + 'k' : String(v); }
-  function mercSlotHtml() {
-    var m = st.merc;
-    return '<button type="button" class="doll-slot' + (m.w || m.a ? ' on' : '') + '" onclick="TowerMine.eqPop(\'merc\')"><b>' + MERC_ICON[m.t | 0] + ' 용병</b><span>' + (m.name || '') + ' · ' + ((m.w ? 1 : 0) + (m.a ? 1 : 0)) + '/2</span></button>';
+  function mercSumHtml(m) {
+    return MERC_ICON[m.t | 0] + ' <b>' + (m.name || '전사') + '</b> Lv.' + (m.lv || '?') + '<br>공격력 ' + fmtN(m.atk) + ' · 체력 ' + (m.hp != null ? fmtN(m.hp) + '/' : '') + fmtN(m.max) + (m.def ? ' · 받는 피해 -' + m.def : '');
   }
-  function mercPopHtml() {
-    var m = st.merc, h = '<div class="eq-pop" onclick="if (event.target === this) TowerMine.eqPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">🛡️ 용병 장비 <small>내가 착용 중인 장비는 못 줘요</small>'
-        + '<button type="button" onclick="TowerMine.eqPop(null)">✖</button></div><div class="mine-smith-say">' + mercSumHtml(m) + '</div>';
-    [['weapon', '⚔️ 무기', m.w, 'OFF_W'], ['armor', '🛡️ 갑옷', m.a, 'OFF_A']].forEach(function (sec) {
-      var rows = (st.equip || []).filter(function (e) { return e.slot === sec[0] && e.grades && e.grades.length; });
-      h += '<div class="cos-slot-h" style="margin-top:8px">' + sec[1] + '</div>';
-      if (!rows.length) h += '<div class="mine-eq-empty">줄 수 있는 ' + (sec[0] === 'weapon' ? '드랍 무기' : '갑옷') + '가 없어요.</div>';
-      rows.forEach(function (e) {
-        var on = sec[2] && sec[2].code === e.code, og = on ? sec[2].grade : null;
-        h += '<div class="mine-smith-row' + (on ? ' worn' : '') + '"><span class="nm">' + (on ? '✔ ' : '') + gradeName(e.name.replace(/ \+\d+$/, ''), on ? og : e.grade)
-            + '<small>' + (on ? effLines(sec[2].effect) : e.worn ? '내가 착용 중' : '등급을 골라 장착') + '</small>'
-            + (e.worn ? '' : '<span class="gchips">' + e.grades.map(function (g) {
-                return '<button type="button" class="gchip' + (g === og ? ' on' : '') + (g === 7 ? ' g7' : '') + '"' + (g < 7 ? ' style="background:' + GRADE_COL[g] + '"' : '') + ' onclick="TowerMine.mercGear(\'' + e.code + '#' + g + '\')" aria-label="등급 ' + (g + 1) + '"></button>';
-              }).join('') + '</span>') + '</span>'
-            + (on ? '<button type="button" onclick="TowerMine.mercGear(\'' + sec[3] + '\')">해제</button>' : e.worn ? '<span class="mine-worn">내 장비</span>' : '<button type="button" onclick="TowerMine.mercGear(\'' + e.code + '#' + e.grade + '\')">장착</button>') + '</div>';
-      });
+  function mercMgrHtml() {
+    var h = npcHead('🛡️ 용병 관리', false) + '<div class="mine-smith-say">직업마다 한 명씩 계약할 수 있고, 데리고 다니는 건 한 명이에요.<br><small>레벨·경험치는 용병마다 따로 · 능력치는 같은 레벨의 나와 같아요(환생 없음)</small></div>';
+    (st.mercs || []).forEach(function (m) {
+      if (!m.owned) {
+        h += '<div class="mine-smith-row merc-card"><span class="nm">' + MERC_ICON[m.t] + ' ' + m.name + '<small>아직 계약 안 함<br>왕도 7시 방향 용병소에서 계약 (Lv.5~30)</small></span></div>';
+        return;
+      }
+      var pct = m.need ? Math.min(100, Math.round(m.exp * 100 / m.need)) : 100;
+      h += '<div class="mine-smith-row merc-card' + (m.on ? ' worn' : '') + '"><span class="nm"><span>' + (m.on ? '✔ ' : '') + MERC_ICON[m.t] + ' <b>' + m.name + '</b> Lv.' + m.lv + '</span>'
+          + '<span class="mine-bar" title="경험치"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
+          + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + '</small>'
+          + '<small>공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + (m.def ? ' · 받는 피해 -' + m.def : '') + ' · 사거리 ' + m.reach + '칸</small>'
+          + '<span class="merc-gear"><button type="button" onclick="TowerMine.mercPop(' + m.t + ', \'weapon\')">⚔️ ' + (m.w ? gradeName(m.w.name, m.w.grade) : '무기 없음') + '</button>'
+          + '<button type="button" onclick="TowerMine.mercPop(' + m.t + ', \'armor\')">🛡️ ' + (m.a ? gradeName(m.a.name, m.a.grade) : '갑옷 없음') + '</button></span></span>'
+          + '<button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>';
+    });
+    if (mercPop) h += mercPopHtml(mercPop.c, mercPop.s);
+    return h;
+  }
+  function mercPopHtml(c, sl) {
+    var m = (st.mercs || [])[c] || {}, cur = sl === 'weapon' ? m.w : m.a, off = sl === 'weapon' ? 'OFF_W' : 'OFF_A';
+    var h = '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">' + MERC_ICON[c] + ' ' + (m.name || '') + ' Lv.' + (m.lv || '?') + ' ' + (sl === 'weapon' ? '⚔️ 무기' : '🛡️ 갑옷')
+        + ' <small>내가 착용 중인 장비는 못 줘요</small><button type="button" onclick="TowerMine.mercPop(null)">✖</button></div>';
+    var rows = (st.equip || []).filter(function (e) { return e.slot === sl && e.grades && e.grades.length; });
+    if (!rows.length) h += '<div class="mine-eq-empty">줄 수 있는 ' + (sl === 'weapon' ? '드랍 무기' : '갑옷') + '가 없어요.</div>';
+    rows.forEach(function (e) {
+      var on = cur && cur.code === e.code, og = on ? cur.grade : null, nm = e.name.replace(/ \+\d+$/, ''), lvm = (e.effect || '').match(/Lv\.(\d+)부터/), need = lvm ? +lvm[1] : 0;
+      var lack = need > (m.lv || 0);
+      h += '<div class="mine-smith-row' + (on ? ' worn' : '') + '"><span class="nm">' + (on ? '✔ ' : '') + gradeName(nm, on ? og : e.grade)
+          + '<small>' + (on ? effLines(cur.effect) : e.worn ? '내가 착용 중' : lack ? 'Lv.' + need + '부터 (용병 Lv.' + m.lv + ')' : '등급을 골라 장착') + '</small>'
+          + (e.worn || lack ? '' : '<span class="gchips">' + e.grades.map(function (g) {
+              return '<button type="button" class="gchip' + (g === og ? ' on' : '') + (g === 7 ? ' g7' : '') + '"' + (g < 7 ? ' style="background:' + GRADE_COL[g] + '"' : '') + ' onclick="TowerMine.mercGear(' + c + ', \'' + e.code + '#' + g + '\')" aria-label="등급 ' + (g + 1) + '"></button>';
+            }).join('') + '</span>') + '</span>'
+          + (on ? '<button type="button" onclick="TowerMine.mercGear(' + c + ', \'' + off + '\')">해제</button>' : e.worn ? '<span class="mine-worn">내 장비</span>' : lack ? '' : '<button type="button" onclick="TowerMine.mercGear(' + c + ', \'' + e.code + '#' + e.grade + '\')">장착</button>') + '</div>';
     });
     return h + '</div></div>';
   }
-  function mercGear(code) {
+  function mercPopGo(c, s) { mercPop = c == null ? null : { c: c, s: s }; if (smithOpen) renderSmith(smithNpc); }
+  function mercAfter(d) {
+    if (d.list) st.mercs = d.list;
+    st.merc = d.merc || null;
+    if (d.ores) st.ores = d.ores;
+    mercShop = d;
+    msg(d.message || '완료', 3200);
+    if (smithOpen) renderSmith(smithNpc);
+  }
+  function mercUse(c) {
     if (busy) return;
     busy = true;
-    api('/api/tower-mine-merc?action=gear&code=' + encodeURIComponent(code)).then(function (d) {
-      busy = false;
-      if (!d) return;
-      mercShop = d;
-      if (d.merc) st.merc = d.merc;
-      msg(d.message || '완료', 3200);
-      if (smithOpen) renderSmith(smithNpc);
-    }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+    api('/api/tower-mine-merc?action=use&tier=' + c).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function mercGear(c, code) {
+    if (busy) return;
+    busy = true;
+    api('/api/tower-mine-merc?action=gear&tier=' + c + '&code=' + encodeURIComponent(code)).then(function (d) { busy = false; if (d) mercAfter(d); }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
@@ -2443,15 +2466,16 @@ var TowerMine = (function () {
         + '<button type="button" ' + (cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>';
       return;
     }
+    if (smithView === 'mercmgr') { el.smith.innerHTML = mercMgrHtml(); return; } // [2026-11-06] 용병 관리
     if (smithView === 'enh') { el.smith.innerHTML = npcHead('🔨 ' + n.name, false) + talkBlock(n, n.line) + wenhHtml(true); return; } // [2026-11-06] 무기 강화사
     if (smithView === 'merc') { // [2026-11-05] 왕도 용병소
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
-      if (st.merc) mh += '<div class="mine-smith-say">' + mercSumHtml(mi2) + '<br><small>레벨·기본 능력치는 나와 같아요. 장비는 🎒 인벤토리의 🛡️ 용병 칸에서.</small></div>';
+      if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
+      mh += '<div class="mine-smith-say"><small>직업마다 한 명씩 계약 (Lv.5~30 무작위)<br>레벨·경험치는 용병마다 따로 · 장비와 데리고 다니기는 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
       var MERC_DESC = ['몬스터 옆으로 달려가 베요<br>피해 x1.2 · 반격을 맞아요', '7칸 밖에서 화살을 쏴요<br>피해 x1.0 · 반격을 덜 맞아요', '6칸 밖에서 마법탄을 쏴요<br>피해 x0.8 · 둘레 1칸도 함께'];
-      (ms2.list || []).forEach(function (it) {
-        var own = it.t === ms2.cur;
-        mh += '<div class="mine-smith-row"><span class="nm">' + MERC_ICON[it.t] + ' ' + it.name + '<small>' + MERC_DESC[it.t] + '</small></span>'
-            + (own ? '<button type="button" data-lack="1" disabled>함께하는 중</button>' : '<button type="button" onclick="TowerMine.mercHire(' + it.t + ')">고용</button>') + '</div>';
+      (ms2.list || st.mercs || []).forEach(function (it) {
+        mh += '<div class="mine-smith-row"><span class="nm">' + MERC_ICON[it.t] + ' ' + it.name + (it.owned ? ' Lv.' + it.lv : '') + '<small>' + MERC_DESC[it.t] + '</small></span>'
+            + (it.owned ? '<button type="button" data-lack="1" disabled>계약함</button>' : '<button type="button" onclick="TowerMine.mercHire(' + it.t + ')">계약</button>') + '</div>';
       });
       if (!ms2.list) mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
       el.smith.innerHTML = mh;
@@ -3019,6 +3043,9 @@ var TowerMine = (function () {
     }
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
     if (m.down) { merc.tg = null; killFeed('💤 용병 ' + m.name + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
+    var card = st.mercs && st.mercs[mt]; // [2026-11-06] 용병 관리 칸도 같이
+    if (card && m.exp2 != null) card.exp = m.exp2;
+    if (m.lvUp) { if (st.mercs) st.mercs[mt] = m; killFeed('🎉 용병 ' + m.name + ' Lv.' + m.lvUp + '!', '#ffe14d'); if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc); }
     if (m.exp) killFeed('+' + m.exp + ' 경험치 (🛡️ ' + m.name + ')', '#9fe0ff');
     if (m.ores) st.ores = m.ores;
     if (m.drops) lootDrops(m.drops, m.tx, m.ty);
@@ -3558,6 +3585,7 @@ var TowerMine = (function () {
   function menuGo(k) {
     setMenu(false);
     if (k === 'equip') openEquip();
+    else if (k === 'merc') { if (opened && map) { mercPop = null; openSmith({ name: '용병 관리', line: '', kind: 'mercmgr' }, 'mercmgr'); } } // [2026-11-06] 용병 관리
     else if (k === 'home') goVillage();
     else if (k === 'log') toggleLog();
     else if (k === 'exit') close();
@@ -3649,17 +3677,13 @@ var TowerMine = (function () {
   function mercHire(t) { // [2026-11-05] 왕도 용병소 -- 더 센 용병으로 바꿔 고용
     if (busy) return;
     var it = mercShop && mercShop.list && mercShop.list[t];
-    if (!confirm(MERC_ICON[t] + ' ' + (it ? it.name : '용병') + '(으)로 바꿔 고용할까요? 장비는 그대로 넘겨받아요.')) return;
+    if (!confirm(MERC_ICON[t] + ' ' + (it ? it.name : '용병') + '와(과) 계약할까요? 레벨은 5~30 중 무작위예요.')) return;
     busy = true;
     api('/api/tower-mine-merc?action=hire&tier=' + t).then(function (d) {
       busy = false;
       if (!d) return;
-      mercShop = d;
-      if (d.merc) st.merc = d.merc;
-      if (d.ores) st.ores = d.ores;
       if (d.ok) flashT0 = performance.now();
-      msg(d.message || '완료', 3200);
-      if (smithOpen) renderSmith(smithNpc);
+      mercAfter(d);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function cityBuy() { // [2026-11-05] 왕도 상인 -- 행운의 주문서
@@ -4768,7 +4792,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, talkNext: talkNext, mercGear: mercGear, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercUse: mercUse, mercPop: mercPopGo, talkNext: talkNext, mercGear: mercGear, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

@@ -18,6 +18,7 @@
   <button type="button" class="mine-btn mine-menu-btn mpx" id="mineMenuBtn" onclick="TowerMine.toggleMenu()" aria-expanded="false" aria-controls="mineMenu">☰ 메뉴</button>
   <div class="mine-menu mpx" id="mineMenu">
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('equip')">🎒 인벤토리</button>
+    <button type="button" class="mine-menu-item mpx" id="mineMercMenu" style="display:none" onclick="TowerMine.menuGo('merc')">🛡️ 용병 관리</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('home')">🏠 마을로</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 기록</button>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>
