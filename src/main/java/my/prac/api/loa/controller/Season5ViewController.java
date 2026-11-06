@@ -816,9 +816,10 @@ public class Season5ViewController {
     @GetMapping("/api/tower-mine-merc")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMerc(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "tier", defaultValue = "0") int tier) {
+            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "tier", defaultValue = "0") int tier,
+            @RequestParam(value = "code", defaultValue = "") String code) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineMercShop(userName, action, tier);
+        HashMap<String, Object> out = s5Service.mineMercShop(userName, action, tier, code); // [2026-11-06] action=gear&code=장비#등급 / OFF_W / OFF_A
         if ("hire".equals(action) && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 용병 고용", String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }

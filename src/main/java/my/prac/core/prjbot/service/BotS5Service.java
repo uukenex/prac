@@ -245,7 +245,7 @@ public interface BotS5Service {
     /** [2026-11-05] 2환생 특전 -- 검기 사범에게서 아직 안 배운 속성 하나를 1단계로 무료(한 번). */
     HashMap<String, Object> mineAuraGift(String userName, int el);
     /** [2026-11-05] 왕도 용병소 -- action list(보기) / hire(tier). */
-    HashMap<String, Object> mineMercShop(String userName, String action, int tier);
+    HashMap<String, Object> mineMercShop(String userName, String action, int tier, String code);
     /** [2026-11-04] 빙결 몸부림 -- n번 채우면 얼음이 깨진다. */
     HashMap<String, Object> mineIceStruggle(String userName, int n);
     HashMap<String, Object> mineGoVillage(String userName);

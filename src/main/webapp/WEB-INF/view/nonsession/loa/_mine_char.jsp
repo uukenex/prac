@@ -114,10 +114,35 @@ window.MineChar = (function () {
       P(g, ird, 18, up ? 4 : 27); P(g, ird, 31, up ? 4 : 27);
     }
   }
+  // [2026-11-06] 용병 궁수의 활 / 마법사의 지팡이(32 격자). drawn = 쏘는 중 -- 활은 시위를 당겨 화살을 메기고, 지팡이는 끝의 구슬이 밝게 빛난다.
+  function bow32(g, dir, side, drawn) {
+    var wd = '#a8743a', wdd = '#5a3a1a', st = '#f0ece0';
+    if (side) { // 옆모습: 앞(오른쪽)으로 세워 든 활, 시위는 몸 쪽
+      var bx = drawn ? 23 : 25;
+      for (var y = 9; y <= 31; y++) P(g, y % 4 ? wd : wdd, bx + Math.round(Math.sin((y - 9) / 22 * Math.PI) * 4), y);
+      for (var y2 = 10; y2 <= 30; y2++) P(g, st, bx - (drawn ? Math.round((1 - Math.abs(y2 - 20) / 10) * 4) : 0), y2);
+      if (drawn) { for (var x = bx - 4; x <= bx + 5; x++) P(g, '#c8a070', x, 20); P(g, '#e8e8f0', bx + 6, 20); P(g, '#e8e8f0', bx + 5, 19); P(g, '#e8e8f0', bx + 5, 21); P(g, '#ff5a4a', bx - 4, 19); P(g, '#ff5a4a', bx - 4, 21); }
+    } else { // 앞/뒤: 몸 옆에 세워 든다
+      var hx = dir === 'up' ? 5 : 25;
+      for (var y3 = 10; y3 <= 30; y3++) P(g, y3 % 4 ? wd : wdd, hx + Math.round(Math.sin((y3 - 10) / 20 * Math.PI) * 3), y3);
+      for (var y4 = 11; y4 <= 29; y4++) P(g, st, hx - (drawn && y4 > 15 && y4 < 25 ? 1 : 0), y4);
+      if (drawn && dir !== 'up') for (var y5 = 13; y5 <= 27; y5++) P(g, y5 === 13 ? '#e8e8f0' : '#c8a070', hx - 2, y5);
+    }
+  }
+  function staff32(g, dir, side, glow, f) {
+    var wd = '#7a4a22', wdd = '#4a2a12', hx = side ? (glow ? 26 : 24) : dir === 'up' ? 5 : 25, top = glow ? 5 : 8;
+    for (var y = top + 3; y <= 31; y++) { P(g, y % 3 ? wd : wdd, hx, y); P(g, wdd, hx + 1, y); }
+    P(g, wd, hx - 1, top + 2); P(g, wd, hx + 2, top + 2); P(g, wd, hx - 2, top + 1); P(g, wd, hx + 3, top + 1); // 구슬을 쥔 갈고리
+    for (var j = 0; j < 3; j++) for (var i = 0; i < 4; i++) P(g, i === 1 && j === 0 ? '#ffffff' : j === 2 ? '#6a3ad0' : '#9a6aff', hx - 1 + i, top - 1 + j);
+    var fx = FX || g, gc = glow ? '#e8d8ff' : '#b89aff';
+    [[-3, 0], [4, 0], [1, -4], [0, 3], [-2, -3], [3, -3]].slice(0, glow ? 6 : f % 2 ? 2 : 0).forEach(function (q) { P(fx, gc, hx + q[0], top + q[1]); });
+  }
   /** 손에 든 것(32 격자) -- 무기(가만히/휘두르기)나 곡괭이. 그린 게 있으면 true. */
   function gear32(g, dir, step, dig, lk) {
     var side = dir === 'right', wk = lk.weapon || 'sword', W = W32[wk] || W32.sword, f = step | 0;
     if (dig === 1 || dig === 2) { pick32(g, dir, side, dig); return true; }
+    if (wk === 'bow') { bow32(g, dir, side, dig === 3 || dig === 4); return true; } // [2026-11-06] 용병 궁수
+    if (wk === 'staff') { staff32(g, dir, side, dig === 3 || dig === 4, f); return true; } // [2026-11-06] 용병 마법사
     if (!dig) {
       if (wk === 'parasol') { // 머리 위로 펼친 분홍 양산(가장자리 물결, 흰 줄) + 손잡이
         var hx = side ? 18 : 24;

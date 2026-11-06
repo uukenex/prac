@@ -916,7 +916,8 @@
     .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:7px 12px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
     @keyframes minePatchGlow{ 50%{ filter:brightness(1.25); } }
     @media (prefers-reduced-motion: reduce){ .mine-patch{ animation:none; } }
-    .mine-msg{ position:absolute; z-index:6; left:104px; right:118px; max-width:420px; bottom:calc(54px + env(safe-area-inset-bottom)); padding:6px 10px; font-size:12px; display:none; text-align:center; pointer-events:none; box-sizing:border-box; } /* [2026-11-04] "가운데 멘트가 화면을 많이 가린다" -- 체력바 바로 위(체력바와 같은 폭) */
+    .mine-msg{ position:absolute; z-index:6; left:12px; right:116px; margin:0 auto; max-width:520px; bottom:calc(118px + env(safe-area-inset-bottom)); padding:7px 12px; font-size:13px; line-height:1.45; word-break:keep-all; display:none; text-align:center; pointer-events:none; box-sizing:border-box; } /* [2026-11-06] "메시지 박스가 너무 아래, 조금만 나오고 다음 줄로" -- 왼쪽 끝부터(오른쪽 버튼 줄만 비움) 넓게, 체력바보다 위로 */
+    @media (min-width:700px){ .mine-msg{ left:0; right:0; } } /* [2026-11-04] "가운데 멘트가 화면을 많이 가린다" -- 체력바 바로 위(체력바와 같은 폭) */
     .mine-loading{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; }
     /* [2026-10-23] 대장간(곡괭이 강화) 창 */
     .mine-smith{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:min(340px,92vw); max-height:80vh; overflow:auto; padding:12px; font-size:13px; display:none; z-index:2; }
@@ -944,7 +945,10 @@
     .gr7{ background:linear-gradient(90deg,#ff4a4a,#ffa500,#ffe14d,#4fd16a,#4a9eff,#b56cff); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:800; }
 
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
-    .mine-msg, #mineNpcLine{ white-space:pre-line; } /* [2026-10-30] 문장마다 줄바꿈(brk) */
+    .mine-msg, #mineNpcLine{ white-space:pre-line; }
+    .mine-npc-bubble .talk-more{ position:absolute; right:8px; bottom:4px; font-size:11px; color:#a8742a; animation:mineTalkMore 1s ease-in-out infinite; } /* [2026-11-06] 나눈 대사 -- 누르면 다음 */
+    @keyframes mineTalkMore{ 50%{ transform:translateY(2px); opacity:.5; } }
+    @media (prefers-reduced-motion: reduce){ .mine-npc-bubble .talk-more{ animation:none; } } /* [2026-10-30] 문장마다 줄바꿈(brk) */
     .mine-smith-say{ font-size:12px; font-weight:600; color:#ffe9a8; margin-bottom:8px; }
     .mine-smith-dur{ margin-bottom:8px; }
     .mine-smith-menu{ display:flex; gap:8px; }
