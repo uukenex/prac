@@ -906,6 +906,10 @@ var TowerMine = (function () {
     if (d.now) srvOff = d.now - Date.now();
     var ns = {}, tn = nowSrv();
     (d.mobs || []).forEach(function (a) { ns[a[0]] = mobStOf(a, mobSt[a[0]]); });
+    if (d.near) for (var nid in mobSt) { // [2026-11-06] 큰 맵은 서버가 내 둘레(near)만 보낸다 -- 그 밖의 예전 상태는 그대로 둔다
+      var no = mobSt[nid], nb = map.mobs[nid];
+      if (!ns[nid] && no && nb && Math.max(Math.abs(nb.x - d.near[0]), Math.abs(nb.y - d.near[1])) > d.near[2] && Math.max(Math.abs((no.fx | 0) - d.near[0]), Math.abs((no.fy | 0) - d.near[1])) > d.near[2]) ns[nid] = no;
+    }
     for (var id in mobSt) { // [2026-11-03] 방금(1.5초 안) 공격하며 세운 몬스터는 그 응답이 오기 전에 만든 목록이 덮지 않게
       var o = mobSt[id];
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
@@ -3138,6 +3142,24 @@ var TowerMine = (function () {
     if (x.up) { killFeed('🎉 용병 ' + x.name + ' Lv.' + x.lv + '!', '#ffe14d'); if (merc.x != null) floats.push({ x: merc.x, y: merc.y - 1, text: '⬆️ Lv.' + x.lv, color: '#ffe14d', big: true, t0: performance.now() }); }
     if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc);
   }
+  // [2026-11-06] "마물의 숲에서 몹이 뭉치면 렉" -- 캔버스에서 가장 비싼 일이 테두리 글자(strokeText). 이름표/피해 숫자를 작은 그림으로 한 번 그려 두고 drawImage로 다시 쓴다.
+  //  share = true(이름표)는 같은 글자끼리 나눠 쓰고(600개 넘으면 비움), 피해 숫자는 그 숫자에만 붙여 둔다. (x, y) = 예전 textAlign center 글자의 기준선 자리.
+  var textImgC = {}, textImgN = 0;
+  function textImg(text, font, fill, lw, share) {
+    var key = share ? font + '|' + fill + '|' + lw + '|' + text : null;
+    if (key && textImgC[key]) return textImgC[key];
+    var g0 = (textImg.m || (textImg.m = document.createElement('canvas').getContext('2d')));
+    g0.font = font;
+    var tw = g0.measureText(text).width, fs = parseInt((font.match(/(\d+)px/) || [0, 12])[1], 10), pad = Math.ceil(lw) + 2;
+    var c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(tw + pad * 2)); c.height = Math.ceil(fs * 1.4 + pad * 2);
+    var g = c.getContext('2d'), by = Math.round(pad + fs * 1.05);
+    g.font = font; g.textAlign = 'center'; g.lineWidth = lw; g.strokeStyle = '#000';
+    g.strokeText(text, c.width / 2, by); g.fillStyle = fill; g.fillText(text, c.width / 2, by);
+    c._by = by; c._tw = tw;
+    if (key) { if (++textImgN > 600) { textImgC = {}; textImgN = 1; } textImgC[key] = c; }
+    return c;
+  }
+  function drawTextImg(c, x, y) { ctx.drawImage(c, Math.round(x - c.width / 2), Math.round(y - c._by)); }
   function myNick() { var u = (cfg && cfg.user) || ''; var i = u.indexOf('/'); return i > 0 ? u.slice(0, i) : u; }
   /** [2026-11-05] 캐릭터 머리 위 이름 -- 작은 글씨 + 검은 테두리. */
   function nameTag(text, x, y, col) {
@@ -4035,6 +4057,7 @@ var TowerMine = (function () {
     if (map.mobs) {
       // [2026-10-28] 닌자 두목 분신술 -- 분신은 두목과 똑같이(그림/크기/이름/체력 막대) 그리고, 분신이 나와 있는 동안 진짜만 인을 맺은 자세
       var bossM = map.mobs[map.mobs.length - 1], bossT = bossM && map.mobTypes[bossM.k], splitOn = false;
+      var tagCells = {};
       if (bossT && bossT.boss) for (var si = 0; si < map.mobs.length; si++) { var stt = map.mobTypes[map.mobs[si].k]; if (stt && stt.clone && map.mobs[si]._p) { splitOn = true; break; } }
       for (var mi = 0; mi < map.mobs.length; mi++) {
         var mb = map.mobs[mi], mp = mb._p;
@@ -4072,11 +4095,10 @@ var TowerMine = (function () {
           ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + 2 * scale, my - 3 * scale, Math.max(1, 12 * scale * ms.hp / hpMx), scale);
           }
         }
-        if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4) {
-          ctx.font = 'bold ' + Math.round(11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+        if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
+          tagCells[mp.cx + ',' + mp.cy] = 1;
           var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
-          ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
-          ctx.fillStyle = ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff'; ctx.fillText(nm, mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale);
+          drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }
     }
@@ -4430,11 +4452,9 @@ var TowerMine = (function () {
       if (now < f.t0) return; // [2026-11-06] 화살/마법탄이 닿은 뒤에
       var k = (now - f.t0) / 1400, fx = f.x * TS - camX + TS / 2, fy = f.y * TS - camY - k * 36 * dpr - 6 * dpr;
       ctx.globalAlpha = 1 - k * k;
-      ctx.font = 'bold ' + Math.round((f.big ? 17 : 14) * dpr) + 'px monospace';
-      ctx.textAlign = 'center';
-      if (f.icon) ctx.drawImage(f.icon, fx - 9 * dpr - ctx.measureText(f.text).width / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
-      ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText(f.text, fx + 9 * dpr, fy);
-      ctx.fillStyle = f.color; ctx.fillText(f.text, fx + 9 * dpr, fy);
+      if (!f._im) f._im = textImg(f.text, 'bold ' + Math.round((f.big ? 17 : 14) * dpr) + 'px monospace', f.color, 4 * dpr, false); // [2026-11-06] 렉 -- 글자는 한 번만 그리고 떠 있는 동안 그림으로
+      if (f.icon) ctx.drawImage(f.icon, fx - 9 * dpr - f._im._tw / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
+      drawTextImg(f._im, fx + 9 * dpr, fy);
       ctx.globalAlpha = 1;
     });
     if (now - flashT0 < 420) { ctx.fillStyle = 'rgba(255,255,255,' + (0.55 * (1 - (now - flashT0) / 420)) + ')'; ctx.fillRect(0, 0, W, H); }
@@ -4624,6 +4644,7 @@ var TowerMine = (function () {
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       map = m;
+      setTimeout(function () { try { var seen = {}; (m.mobs || []).forEach(function (mb) { if (seen[mb.k] || map !== m) return; seen[mb.k] = 1; mobSprite(mb.k); }); } catch (e) { } }, 0); // [2026-11-06] 몬스터 그림은 종류마다 한 번 그려 두고 다시 쓴다 -- 맵에 들어올 때 미리(처음 마주칠 때 멈칫하지 않게)
       portalAt = {};
       (m.portals || []).forEach(function (p) { portalAt[p.x + ',' + p.y] = p; });
       npcAt = {};

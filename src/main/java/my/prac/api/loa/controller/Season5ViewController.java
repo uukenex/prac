@@ -786,7 +786,7 @@ public class Season5ViewController {
             if (Boolean.TRUE.equals(eo.get("died"))) mineLog(userName, "[웹] 광산 추위에 쓰러짐", String.valueOf(eo.get("message")));
             out.put("e", eo);
         }
-        if ("1".equals(m)) out.put("m", s5Service.mineMobs(mapId));
+        if ("1".equals(m)) out.put("m", s5Service.mineMobs(mapId, x, y)); // [2026-11-06] 마물의 숲 렉 -- 맵 공유 스냅샷 + 내 둘레만
         long srvMs = (System.nanoTime() - t0) / 1_000_000L;
         out.put("ms", srvMs);
         if (pg >= 0) my.prac.core.util.S55AdminPush.netSrv(userName, srvMs); // [2026-11-04] 관리자 통신 상태에 서버 처리 시간도

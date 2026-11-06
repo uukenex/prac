@@ -235,6 +235,7 @@ public interface BotS5Service {
     HashMap<String, Object> mineWarp(String userName, String mapId, String ver, int x, int y, int px, int py, String dest);
     /** [2026-10-24] 광산 몬스터 상태 조회 / 공격. */
     HashMap<String, Object> mineMobs(String mapId);
+    HashMap<String, Object> mineMobs(String mapId, int x, int y); // [2026-11-06] 공유 스냅샷 + 큰 맵은 내 둘레만
     HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc, String dir);
     /** [2026-11-05] 관리자 전체 공격 -- 화면(나를 가운데로 가로 hw, 세로 hh칸)의 몬스터 모두에게 일반 공격 한 방씩. */
     HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh);

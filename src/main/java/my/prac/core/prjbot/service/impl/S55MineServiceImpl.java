@@ -970,6 +970,42 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return new int[] { S5MineMobs.cellAt(mob, now - S5MineMobs.SLOT_MS), S5MineMobs.cellAt(mob, now), S5MineMobs.cellAt(mob, now + S5MineMobs.SLOT_MS) };
     }
 
+    // [2026-11-06] "왕도 서쪽(마물의 숲, 1,400마리)에서 몹이 뭉치면 렉" -- (1) 같은 맵의 몬스터 상태는 MINE_MOBS_SNAP_MS 동안 한 번만 만들어 함께 쓰고
+    //  (예전엔 사람마다 1초마다 서버 전체 몬스터 상태표를 처음부터 훑었다), (2) 몬스터가 MINE_MOBS_BIG마리 넘는 맵은 내 둘레 MINE_MOBS_NEAR칸 안 줄만 보낸다
+    //  (보스/수하 줄은 늘). 화면은 near 밖의 예전 상태를 그대로 둔다.
+    static final long MINE_MOBS_SNAP_MS = 250L;
+    static final int MINE_MOBS_BIG = 300, MINE_MOBS_NEAR = 40;
+    static final java.util.concurrent.ConcurrentHashMap<String, Object[]> MINE_MOBS_SNAP = new java.util.concurrent.ConcurrentHashMap<>();
+    @Override
+    @SuppressWarnings("unchecked")
+    public HashMap<String, Object> mineMobs(String mapId, int x, int y) {
+        HashMap<String, Object> full = mineMobsShared(mapId);
+        HashMap<String, Object> out = new HashMap<>(full);
+        out.put("now", System.currentTimeMillis());
+        S5MineMap map = mapId == null ? null : S5MineMap.get(mapId);
+        Object lo = full.get("mobs");
+        if (map == null || map.mobs().size() <= MINE_MOBS_BIG || !(lo instanceof List) || x < 0 || y < 0) return out;
+        List<long[]> near = new ArrayList<>();
+        for (long[] r : (List<long[]>) lo) {
+            int id = (int) r[0];
+            S5MineMobs.Type t = id >= 0 && id < map.mobs().size() ? S5MineMobs.TYPES.get(map.mobs().get(id).type) : null;
+            S5MineMap.Mob mb = t == null ? null : map.mobs().get(id);
+            if (t == null || t.boss || t.minion || Math.max(Math.abs(r[3] - x), Math.abs(r[4] - y)) <= MINE_MOBS_NEAR || Math.max(Math.abs(mb.x - x), Math.abs(mb.y - y)) <= MINE_MOBS_NEAR) near.add(r);
+        }
+        out.put("mobs", near);
+        out.put("near", new int[] { x, y, MINE_MOBS_NEAR });
+        return out;
+    }
+    HashMap<String, Object> mineMobsShared(String mapId) {
+        long now = System.currentTimeMillis();
+        S5MineMap map = mapId == null ? null : S5MineMap.get(mapId);
+        String key = map == null ? "" : map.version();
+        Object[] sn = MINE_MOBS_SNAP.get(key);
+        if (sn != null && now - (Long) sn[0] < MINE_MOBS_SNAP_MS) { @SuppressWarnings("unchecked") HashMap<String, Object> c = (HashMap<String, Object>) sn[1]; return c; }
+        HashMap<String, Object> out = mineMobs(mapId);
+        if (map != null) MINE_MOBS_SNAP.put(key, new Object[] { now, out });
+        return out;
+    }
     /** 화면이 1.5초마다 묻는 맵의 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만): [id, hp, deadUntil, fx, fy, frozenUntil]. 오래 안 맞은 몬스터는 다 회복(목록에서 뺀다). */
     @Override
     public HashMap<String, Object> mineMobs(String mapId) {
