@@ -1585,7 +1585,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
                 boolean thunderBoss = map.mobs().get(id).type == S5MineMobs.THUNDER_BOSS_TYPE;
                 if (thunderBoss && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
-                    dmgSum += mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
+                    int tsd = mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
+                    dmgSum += tsd;
+                    if (tsd > 0) killerName = type.name; // [2026-11-06] "null에게 쓰러졌어요" -- 천둥 황소 기술/원거리에 쓰러지면 이름이 비어 있었다
                     if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
                     dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1));
                 }
@@ -1596,6 +1598,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS));
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
                         dmgSum += d;
+                        killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
                         HashMap<String, Object> h = new HashMap<>();
                         h.put("mobId", id);
                         h.put("dmg", d);
@@ -1700,7 +1703,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
-                out.put("message", (shattered ? "🧊 얼어붙은 채로 " + killerName + "의 일격을 맞아 산산조각 났어요... " : "💫 " + killerName + "에게 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out));
+                out.put("message", (shattered ? "🧊 얼어붙은 채로 " + (killerName == null ? "" : killerName + "의 ") + "일격을 맞아 산산조각 났어요... " : killerName == null ? "💫 쓰러졌어요... " : "💫 " + killerName + "에게 쓰러졌어요... ") + mineRespawn(userName, items, now) + " 깨어났어요." + mineLockText(out));
                 if (shattered) out.put("shattered", true);
             }
         }
