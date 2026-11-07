@@ -1054,7 +1054,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("mobs", list);
         if (S5MineMap.WESTROAD.equals(map.id) && mineThunderOn(now)) out.put("hideUntil", mineThunderUntil); // [2026-11-05] 천둥 황소 -- 이때까지 마물(보스 제외)은 없음
-        if (S5MineMap.WESTROAD.equals(map.id)) { mineThunderLoad(); out.put("thunderKills", mineThunderKills); out.put("thunderNeed", MINE_THUNDER_NEED); } // [2026-11-06] 절반부터 화면에 전기(점점 세게)
+        if (S5MineMap.WESTROAD.equals(map.id)) { mineThunderLoad(); out.put("thunderKills", mineThunderKills); out.put("thunderNeed", MINE_THUNDER_NEED); if (mineThunderRestAt > now) out.put("thunderRestAt", mineThunderRestAt); } // [2026-11-06] 절반부터 화면에 전기(점점 세게)
         return out;
     }
 
@@ -1170,6 +1170,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final Object MINE_THUNDER_LOCK = new Object();
     static volatile long mineThunderNight = Long.MIN_VALUE, mineThunderDoneNight = Long.MIN_VALUE, mineThunderUntil = 0;
     static volatile boolean mineThunderKilled = false;
+    // [2026-11-08] "천둥 보스가 처치되면 최소 2시간 있다가부터 몬스터 카운팅" -- 쓰러진 시각 + MINE_THUNDER_REST_MS까지는 밤 처치를 세지 않는다(설정에 적어 재시작에도 이어진다).
+    static final long MINE_THUNDER_REST_MS = 2 * 3_600_000L;
+    static final String MINE_THUNDER_REST_CFG = "MINE_THUNDER_REST_AT";
+    static volatile long mineThunderRestAt = 0;
     static int mineThunderKills = 0;
     static boolean mineThunderOn(long now) { return now < mineThunderUntil && !mineThunderKilled; }
     /** 황소가 나와 있는 동안 마물의 숲 입구 마물(보스 제외)은 없는 것으로 본다. */
@@ -1180,7 +1184,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineThunderLoad();
         int k;
         synchronized (MINE_THUNDER_LOCK) {
-            if (mineThunderOn(now)) return;
+            if (mineThunderOn(now) || now < mineThunderRestAt) return; // [2026-11-08] 쓰러진 뒤 2시간은 안 센다
             k = ++mineThunderKills;
             if (k >= MINE_THUNDER_NEED) {
                 mineThunderKills = k = 0;
@@ -1196,6 +1200,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             synchronized (MINE_THUNDER_LOCK) {
                 if (!mineThunderLoaded) {
                     try { String v = dao.selectConfigValue(MINE_THUNDER_CFG); if (v != null && !v.trim().isEmpty()) mineThunderKills = Math.max(0, Integer.parseInt(v.trim())); } catch (Exception ignore) { }
+                    try { String v = dao.selectConfigValue(MINE_THUNDER_REST_CFG); if (v != null && !v.trim().isEmpty()) mineThunderRestAt = Long.parseLong(v.trim()); } catch (Exception ignore) { } // [2026-11-08]
                     mineThunderLoaded = true;
                 }
             }
@@ -1223,6 +1228,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 황소를 쓰러뜨렸다 -- 마물이 곧(쓰러져 있던 것도 3초 안에) 돌아온다. */
     void mineThunderEnd(S5MineMap map, long now) {
         mineThunderKilled = true;
+        mineThunderLoad();
+        mineThunderRestAt = now + MINE_THUNDER_REST_MS; // [2026-11-08] 2시간 뒤부터 다시 센다
+        try { dao.upsertConfigValue(MINE_THUNDER_REST_CFG, String.valueOf(mineThunderRestAt), "thunder bull killed -> night kills count again after this time (ms, set by app)"); } catch (Exception ignore) { }
         MINE_SHOCK.clear();
         MINE_THUNDER_NEXT.clear();
         String prefix = map.version() + ":";
@@ -2596,7 +2604,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         List<HashMap<String, Object>> bosses = new ArrayList<>();
-        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7 }) { // [2026-10-28] 설산 봉우리(얼음 여왕), 용암섬(용암 거신)
+        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER }) { // [2026-10-28] 설산 봉우리(얼음 여왕), 용암섬(용암 거신) // [2026-11-08] 피라미드 지하(파라오 미라)
             S5MineMap.Mob bmob = mineBossOf(S5MineMap.get(bm));
             if (bmob == null) continue;
             HashMap<String, Object> b = new HashMap<>();

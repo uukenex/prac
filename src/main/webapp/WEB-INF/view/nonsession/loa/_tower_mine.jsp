@@ -940,7 +940,7 @@ var TowerMine = (function () {
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
     }
     thunderUntil = d.hideUntil && d.hideUntil > tn ? d.hideUntil : 0; // [2026-11-05] 천둥 황소 남은 시간(맵 안 모두에게)
-    if (d.thunderNeed) { thunderKills = d.thunderKills || 0; thunderNeed = d.thunderNeed; } // [2026-11-06] 절반부터 전기
+    if (d.thunderNeed) { thunderKills = d.thunderKills || 0; thunderNeed = d.thunderNeed; thunderRestAt = d.thunderRestAt || 0; } // [2026-11-06] 절반부터 전기 // [2026-11-08] 쓰러진 뒤 2시간 쉼
     if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
       map.mobs.forEach(function (mb) { var mt = map.mobTypes[mb.k]; if (mt && !mt.boss) ns[mb.id] = { hp: 0, du: d.hideUntil, fx: mb.x, fy: mb.y, fu: 0 }; });
       if (hideNoticeT !== d.hideUntil) { hideNoticeT = d.hideUntil; flashT0 = performance.now(); msg('⚡ 마물들이 한순간에 숲 속으로 흩어졌어요... 숲 한가운데에서 천둥이 울려요!', 4500); }
@@ -1703,7 +1703,8 @@ var TowerMine = (function () {
     WORLD_NODES.forEach(function (n) { info[n.id] = n; });
     var STY = { walk: 'stroke="#f4f0e6" stroke-width="3"', sea: 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"', fall: 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"' };
     var bossOf = {};
-    ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map] = b; });
+    ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map === 'pyramidb' ? 'pyramid' : b.map] = b; }); // [2026-11-08] 파라오 미라(피라미드 지하) -- 피라미드 칸에
+    var leftTxt = function (ms) { var m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + m % 60 + '분' : '') : m + '분'; };
     var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
     var here = null, lines = '', nodes = '', labels = '';
     WORLD_REGIONS.forEach(function (R) {
@@ -1734,7 +1735,7 @@ var TowerMine = (function () {
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - nw / 2 + 2;
           labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
-              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 보스 ' + hhmm(bb.nextAt) + '</text>';
+              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 ' + (bb.name || '보스') + ' ' + hhmm(bb.nextAt) + (bb.nextAt > Date.now() ? ' (' + leftTxt(bb.nextAt - Date.now()) + ' 뒤)' : '') + '</text>'; // [2026-11-08] 다시 나타나는 시각 + 남은 시간
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
             + (flr ? '<rect x="' + (n.x - nw / 2 + 5) + '" y="' + (n.y - H / 2 - 5) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="2"/>' : '')
@@ -2853,7 +2854,7 @@ var TowerMine = (function () {
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
   function stunnedMe() { return stunUntil > nowSrv(); }
   // [2026-11-05] 천둥 황소 -- 전기 장판 칸, 번개 줄기(전광석화/밀쳐내기), 전체 낙뢰, 감전 스턴, 마물이 숨은 시각
-  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0, thunderKills = 0, thunderNeed = 0, ambZapT = 0;
+  var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0, thunderKills = 0, thunderNeed = 0, thunderRestAt = 0, ambZapT = 0;
   function shockSet(list) { var n = {}; (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; }); shockCells = n; }
   function zapAdd(x0, y0, x1, y1) { zaps.push({ x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), seed: Math.random() * 1000 }); }
   function stunMsg() { return zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : '🩹 붕대에 묶여 움직일 수 없어요!'; }
@@ -4928,6 +4929,14 @@ var TowerMine = (function () {
       }
     } else ambZapT = 0;
     // [2026-11-06] "남은 시간이 가려진다, 1분 이상이면 분만" -- 위쪽(지도/좌표와 겹치던 곳) 대신 아래 가운데(체력바 위)
+    if (thunderRestAt > nowSrv() && !(thunderUntil > nowSrv()) && map.id === 'westroad') { // [2026-11-08] 천둥 황소가 쓰러진 뒤 2시간 -- 밤 처치를 세지 않는다
+      var rl = thunderRestAt - nowSrv(), rtx = '⚡ 천둥 황소 휴식  ' + (rl >= 3600000 ? Math.floor(rl / 3600000) + '시간 ' : '') + Math.ceil((rl % 3600000) / 60000) + '분 뒤부터 다시 세요';
+      ctx.font = 'bold ' + Math.round(13 * dpr) + 'px monospace'; ctx.textAlign = 'center';
+      var rw = ctx.measureText(rtx).width + 20 * dpr, ry = Math.round(H - 118 * dpr);
+      ctx.globalAlpha = 0.7; ctx.fillStyle = '#10142a'; ctx.fillRect(W / 2 - rw / 2, ry - 16 * dpr, rw, 22 * dpr);
+      ctx.globalAlpha = 1; ctx.fillStyle = '#b8c8ff'; ctx.fillText(rtx, W / 2, ry);
+      ctx.textAlign = 'left';
+    }
     if (thunderUntil > 0 && map.id === 'westroad') {
       var tl = Math.max(0, thunderUntil - nowSrv());
       if (tl > 0) {
