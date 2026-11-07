@@ -4157,6 +4157,14 @@ var TowerMine = (function () {
       msg((d && d.message) || '배우지 못했어요.', 3000);
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
+  function ultGift(k) { // [2026-11-08] 3환생 특전
+    if (!confirm('🎁 3환생 특전(한 번만)으로 ' + ULT_NAME[k] + ' 1레벨을 받을까요?')) return;
+    api('/api/tower-mine-ult-gift?k=' + k).then(function (d) {
+      if (d && d.ok) { st.ult = d.ult; flashT0 = performance.now(); }
+      if (smithOpen) renderSmith(smithNpc);
+      msg((d && d.message) || '받지 못했어요.', 3500);
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function ultLearn(k) {
     api('/api/tower-mine-ult-learn?k=' + k).then(function (d) {
       if (d && d.ok) { st.ult = d.ult; if (d.ores) st.ores = d.ores; flashT0 = performance.now(); }
@@ -4169,14 +4177,13 @@ var TowerMine = (function () {
     var wl = st && st.whirl, moon = oreHave(MOON_G);
     var h = npcHead('🌪️ ' + (n ? n.name : '돌개 사범'), false) + talkBlock(n, n ? n.line : '');
     if (!wl || !st.ult) return h + SK3_LOCK;
-    h += '<div class="mine-smith-say">공격하면 내 둘레 8칸을 한꺼번에 베어요. 단계마다 공격력의 5% 속성 피해(최대 25%). 재료는 검기와 같아요: n단계 = 보스 드랍템 (2n-1) + 달빛석 (2n-1) + 세공된 바다 보석 5개 · 달빛석 보유 ' + moon + '</div>';
+    h += '<div class="mine-smith-say">공격하면 내 둘레 8칸을 한꺼번에 베어요. 단계마다 공격력의 5% 속성 피해(최대 25%). 8속성 모두 배울 수 있어요. n단계 = 보스 드랍템 (2n-1) + 달빛석 (2n-1) + 세공된 바다 보석 5개(보스가 없는 속성은 별빛석 (2n-1) + 달빛석 (2n-1)) · 달빛석 보유 ' + moon + '</div>';
     for (var e = 1; e <= 8; e++) {
-      var L = (wl.l && wl.l[e]) || 0, b = AURA_BOSS[e];
+      var L = (wl.l && wl.l[e]) || 0, b = AURA_BOSS[e] || [6, '보스가 없는 속성 -- 별빛석으로', 0]; // [2026-11-08] "돌개는 모든 속성" -- 보스가 없는 속성은 별빛석 + 달빛석
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 돌개베기</span> ' + L + '/5';
-      if (!b) { h += '<div class="mine-smith-row">' + head + '<small>이 속성의 보스는 아직 없어요 (추가 예정)</small></span><button type="button" data-lack="1" disabled>준비 중</button></div>'; continue; }
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; continue; }
-      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), hs = oreHave(b[2]), ok = hb >= c && moon >= c && hs >= 5;
-      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + ' + ' + ORE_NAME[b[2]] + ' 5 (보유 ' + hs + ') · ' + b[1] + '</small></span>'
+      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), hs = b[2] ? oreHave(b[2]) : 99, ok = hb >= c && moon >= c && hs >= 5;
+      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + (b[2] ? ' + ' + ORE_NAME[b[2]] + ' 5 (보유 ' + hs + ')' : '') + ' · ' + b[1] + '</small></span>'
           + '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.whirlLearn(' + e + ')">배우기</button></div>';
     }
     return h + '<div class="mine-smith-say">배운 단계는 인벤토리 🌀 스킬 탭에서 골라 켜고 끌 수 있어요.</div>';
@@ -4185,6 +4192,13 @@ var TowerMine = (function () {
     var u = st && st.ult, gx = oreHave(GALAXY_G);
     var h = npcHead('⚔️ ' + (n ? n.name : '필살 사범'), false) + talkBlock(n, n ? n.line : '');
     if (!u) return h + SK3_LOCK;
+    // [2026-11-08] 3환생 특전 -- 아직 안 배운 필살기 하나를 1레벨로 무료(한 번)
+    if (u.gift === 1) {
+      var gb = '';
+      [['🌧️', '만검진'], ['💥', '일섬참']].forEach(function (s, k) { if (!((u.l || [])[k] | 0)) gb += '<button type="button" class="mine-mini-btn" onclick="TowerMine.ultGift(' + k + ')">' + s[0] + ' ' + s[1] + '</button>'; });
+      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>3환생 특전</b> -- 필살기 하나를 1레벨로 무료로 가르쳐 준대요. (한 번만)'
+          + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
+    } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
     h += '<div class="mine-smith-say">두 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 둥근 버튼의 왼쪽 반이 만검진, 오른쪽 반이 일섬참 -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
     [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return 800 + 150 * (lv - 1); }, '%로 베고 5초 기절']].forEach(function (s, k) {
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
@@ -5455,7 +5469,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

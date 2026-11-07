@@ -243,6 +243,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineUltLearn(String userName, int k);
     HashMap<String, Object> mineUlt(String userName, String mapId, String ver, int x, int y, int k, int t);
     HashMap<String, Object> mineUltReset(String userName);
+    /** [2026-11-08] 3환생 특전 -- 필살기 하나 1레벨 무료. */
+    HashMap<String, Object> mineUltGift(String userName, int k);
     /** [2026-11-04] 검기 -- 인벤토리 스킬 탭에서 속성 el의 검기를 lv단계로(0 = 끔). */
     HashMap<String, Object> mineAuraSet(String userName, int el, int lv);
     /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기. */

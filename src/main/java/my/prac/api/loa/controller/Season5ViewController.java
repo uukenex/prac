@@ -960,6 +960,14 @@ public class Season5ViewController {
         }
         return ResponseEntity.ok(out);
     }
+    @GetMapping("/api/tower-mine-ult-gift")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineUltGift(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "k", defaultValue = "0") int k) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineUltGift(userName, k);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 필살기 3환생 특전", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
     @GetMapping("/api/tower-mine-ult-reset")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineUltReset(@RequestParam(value = "userName", defaultValue = "") String userName) {

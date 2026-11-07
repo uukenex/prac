@@ -2714,10 +2714,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             out.put("adminMaps", maps);
         }
-        boolean sk3 = mineSkill3Ok(userName, items); // [2026-11-07] 3환생 스킬 -- 돌개베기(배운 게 있거나 배울 수 있으면), 필살기
-        HashMap<String, Object> wi = mineWhirlInfo(items);
-        if (sk3 || mineWhirlOn((int[]) wi.get("l"))) out.put("whirl", wi);
-        if (sk3) out.put("ult", mineUltInfo(userName, items));
+        HashMap<String, Object> wi = mineWhirlInfo(items); // [2026-11-07] 3환생 스킬 -- 돌개베기(배운 게 있거나 배울 수 있으면), 필살기
+        if (mineWhirlOk(userName, items) || mineWhirlOn((int[]) wi.get("l"))) out.put("whirl", wi);
+        if (mineUltOk(userName, items)) out.put("ult", mineUltInfo(userName, items));
         return out;
     }
 
@@ -4410,7 +4409,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     // ---- [2026-11-07] 3환생 스킬 -- 왕도 검기 사범 옆 두 선생 ----
     // "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)". 기존 관리자용 전체 공격은 없앴다(필살기로 대신).
-    //  MINE_SKILL3_OPEN = false 동안은 관리자만 배우고 쓴다(열면 환생 MINE_SKILL3_RB번 이상).
+    //  돌개베기는 MINE_WHIRL_OPEN, 필살기는 MINE_ULT_OPEN -- 열면 환생 MINE_SKILL3_RB번 이상(닫혀 있으면 관리자만).
     //  돌개베기(돌개 사범): 검기와 같은 재료/피해 -- 속성별 1~5단계(WHIRL_L{e} 배운 단계, WHIRL_A{e} 켠 단계), 공격할 때 내 둘레 8칸 몬스터에게 켠 속성마다
     //   공격력 x 단계 x 5% 속성 피해(상성 x1.5). 그림은 관리자 돌개바람(whirl.png). 결과는 검기 결과(auraMobs/auraDrops)에 합쳐 보낸다.
     //  필살기(필살 사범): 만검진(광역, ULT_L0)과 일섬참(단일, ULT_L1) 둘 다 배워 쓴다. 배울 때 은하수 조각 2/5/8/11/14개(레벨마다 따로), 쿨타임은 둘이 공유(2분).
@@ -4418,17 +4417,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //   일섬참: 화면에 보이는 가장 가까운 몬스터 하나에게 공격력의 800%(+레벨당 150%). 보이는 몬스터가 없으면 쿨타임을 쓰지 않는다.
     //   [2026-11-07] "체력 1에서 멈추는 것 없이 필살기로도 잡을 수 있게" -- 보스도 쓰러뜨린다(분신술 닌자 두목만 예외). 일섬참에 맞고 살아남은 몬스터는 5초 기절.
     //   관리자는 쿨타임 초기화 버튼(mineUltReset).
-    static final boolean MINE_SKILL3_OPEN = false;
+    // [2026-11-08] "필살 사범한테 스킬 배울 수 있게, 3환생부터는 무료로 1개 선택" -- 필살기만 연다(돌개베기는 아직 관리자만). 3환생 특전: 필살기 하나를 1레벨로 무료(한 번, ULT_RB_GIFT).
+    static final boolean MINE_WHIRL_OPEN = true, MINE_ULT_OPEN = true; // [2026-11-08] "돌개도 열어 주고"
     static final int MINE_SKILL3_RB = 3;
-    boolean mineSkill3Ok(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_SKILL3_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
+    static final String MINE_ITEM_ULT_GIFT = "ULT_RB_GIFT";
+    boolean mineWhirlOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_WHIRL_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
+    boolean mineUltOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_ULT_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
     static final String MINE_SKILL3_NO = "이 기술은 " + MINE_SKILL3_RB + "번째 환생을 마친 사람에게만 가르치네.";
 
     /** [2026-11-07] 관리자 -- 검기/돌개베기(보스가 있는 속성)와 필살기 둘 다 배운 단계 5로. */
     static void mineAdminSkills(Map<String, Integer> items) {
         for (int e = 1; e <= 8; e++) {
+            items.put(mineWhirlKey(false, e), MINE_AURA_MAX); // [2026-11-08] 돌개베기는 8속성 모두
             if (MINE_AURA_BOSS_ITEM[e] == null) continue;
             items.put(mineAuraKey(false, e), MINE_AURA_MAX);
-            items.put(mineWhirlKey(false, e), MINE_AURA_MAX);
         }
         items.put(mineUltKey(0), MINE_ULT_MAX);
         items.put(mineUltKey(1), MINE_ULT_MAX);
@@ -4477,17 +4479,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "whirlmaster")) { out.put("message", "왕도 돌개 사범 앞에서만 배울 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
-        if (!mineSkill3Ok(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
-        if (el < 1 || el > 8 || MINE_AURA_BOSS_ITEM[el] == null) { out.put("message", "그 속성의 돌개베기는 아직 가르칠 수 없네. (그 속성의 보스가 나타나면)"); return out; }
+        if (!mineWhirlOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
+        if (el < 1 || el > 8) return out; // [2026-11-08] "돌개는 모든 속성 열어 줘" -- 8속성 모두
         int cur = Math.min(items.getOrDefault(mineWhirlKey(false, el), 0), MINE_AURA_MAX), act = items.getOrDefault(mineWhirlKey(true, el), 0);
         if (cur >= MINE_AURA_MAX) { out.put("message", "이미 " + S5MineMobs.ELEM_NAMES[el] + " 돌개베기를 끝까지 익혔네."); return out; }
         int nx = cur + 1, n = mineAuraCost(nx);
-        String[] need = { MINE_AURA_BOSS_ITEM[el], S5MineMap.MOON_STONE_CODE, S5MineMap.seaCutCode(MINE_AURA_SEA[el]) };
-        int[] qty = { n, n, MINE_AURA_SEA_QTY }; // 검기와 같은 재료
+        boolean bossEl = MINE_AURA_BOSS_ITEM[el] != null; // 보스가 없는 속성(물/바람/빛)은 보스 드랍템 대신 별빛석(같은 개수), 세공 바다 보석 없음
+        String[] need = bossEl ? new String[] { MINE_AURA_BOSS_ITEM[el], S5MineMap.MOON_STONE_CODE, S5MineMap.seaCutCode(MINE_AURA_SEA[el]) } : new String[] { S5MineMap.ORE_CODES[5], S5MineMap.MOON_STONE_CODE };
+        int[] qty = bossEl ? new int[] { n, n, MINE_AURA_SEA_QTY } : new int[] { n, n }; // 검기와 같은 재료
         for (int i = 0; i < need.length; i++) {
             if (dao.takeUserOre(userName, need[i], qty[i]) > 0) continue;
             for (int j = 0; j < i; j++) dao.addUserOre(userName, need[j], qty[j]);
-            out.put("message", mineCodeName(need[0]) + " " + n + "개, " + S5MineMap.MOON_STONE_NAME + " " + n + "개, " + mineCodeName(need[2]) + " " + MINE_AURA_SEA_QTY + "개가 있어야 해요.");
+            out.put("message", mineCodeName(need[0]) + " " + n + "개, " + S5MineMap.MOON_STONE_NAME + " " + n + "개" + (bossEl ? ", " + mineCodeName(need[2]) + " " + MINE_AURA_SEA_QTY + "개" : "") + "가 있어야 해요.");
             return out;
         }
         dao.upsertMineItem(userName, mineWhirlKey(false, el), nx);
@@ -4532,7 +4535,32 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Long at = MINE_ULT_AT.get(userName);
         m.put("cd", at == null ? 0 : Math.max(0, MINE_ULT_GAP_MS - (System.currentTimeMillis() - at)));
         m.put("gap", MINE_ULT_GAP_MS);
+        m.put("gift", items.getOrDefault(MINE_ITEM_ULT_GIFT, 0) > 0 ? 2 : 1); // [2026-11-08] 3환생 특전 -- 1 = 받을 수 있음, 2 = 받음
         return m;
+    }
+    /** [2026-11-08] 3환생 특전 -- 필살 사범 앞에서 아직 안 배운 필살기 하나를 1레벨로 무료(한 번). */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineUltGift(String userName, int k) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "ultmaster")) { out.put("message", "왕도 필살 사범 앞에서만 받을 수 있어요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineUltOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
+        if (items.getOrDefault(MINE_ITEM_ULT_GIFT, 0) > 0) { out.put("message", "3환생 특전은 이미 받았어요."); return out; }
+        if (k < 0 || k > 1) return out;
+        if (mineUltLv(items, k) > 0) { out.put("message", "이미 배운 필살기예요. 아직 안 배운 쪽을 골라 주세요."); return out; }
+        dao.upsertMineItem(userName, mineUltKey(k), 1);
+        dao.upsertMineItem(userName, MINE_ITEM_ULT_GIFT, 1);
+        items.put(mineUltKey(k), 1);
+        items.put(MINE_ITEM_ULT_GIFT, 1);
+        out.put("ok", true);
+        out.put("message", "🎁 필살 사범: 세 번째 환생을 축하하네! " + MINE_ULT_NAME[k] + " 1레벨을 거저 가르쳐 주지.");
+        out.put("ult", mineUltInfo(userName, items));
+        return out;
     }
     @Override
     @Transactional
@@ -4544,7 +4572,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "ultmaster")) { out.put("message", "왕도 필살 사범 앞에서만 배울 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
-        if (!mineSkill3Ok(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
+        if (!mineUltOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
         if (k < 0 || k > 1) return out;
         int cur = mineUltLv(items, k);
         if (cur >= MINE_ULT_MAX) { out.put("message", "이미 " + MINE_ULT_NAME[k] + "을(를) 끝까지 익혔네."); return out; }
@@ -4604,7 +4632,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (now - z.last < MINE_ULT_TICK_MS - 150) { out.put("tooFast", true); return out; }
             ulv = z.lv;
         } else {
-            if (!mineSkill3Ok(userName, items)) { out.put("message", "필살기는 " + MINE_SKILL3_RB + "번째 환생부터 쓸 수 있어요."); return out; }
+            if (!mineUltOk(userName, items)) { out.put("message", "필살기는 " + MINE_SKILL3_RB + "번째 환생부터 쓸 수 있어요."); return out; }
             ulv = mineUltLv(items, k);
             if (ulv <= 0) { out.put("message", "아직 " + MINE_ULT_NAME[k] + "을(를) 배우지 않았어요. (왕도 필살 사범)"); return out; }
             if (prevAt != null && now - prevAt < MINE_ULT_GAP_MS) { out.put("message", "⏳ 필살기는 " + ((MINE_ULT_GAP_MS - (now - prevAt)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); out.put("ult", mineUltInfo(userName, items)); return out; }
