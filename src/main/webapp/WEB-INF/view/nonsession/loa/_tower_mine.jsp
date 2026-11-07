@@ -3396,7 +3396,7 @@ var TowerMine = (function () {
     if (m.shock) shockSet([]);
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
     if (m.down) { merc.tg = null; killFeed('💤 ' + (m.nm || m.name) + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
-    if (m.exp) killFeed('내 경험치 +' + m.exp, '#9fe0ff'); // [2026-11-06] "동료가 벌어 준 경험치는 표기할 필요 없고, 동료가 획득한 / 내가 획득한 경험치로" -- 용병이 잡은 몬스터 경험치도 내 것
+    if (m.kexp) killFeed('내 경험치 +' + m.kexp, '#9fe0ff'); // [2026-11-08] kexp = 이번 턴 용병 처치 경험치(exp는 용병이 모은 경험치라 처치 없이도 늘 있었다) // [2026-11-06] "동료가 벌어 준 경험치는 표기할 필요 없고, 동료가 획득한 / 내가 획득한 경험치로" -- 용병이 잡은 몬스터 경험치도 내 것
     if (m.ores) st.ores = m.ores;
     if (m.drops) lootDrops(m.drops, m.tx, m.ty);
     if (m.dropGrade != null || m.dropShard) weaponLoot(m, m.tx, m.ty);
@@ -3725,6 +3725,7 @@ var TowerMine = (function () {
   }
   /** layer 0 = 캐릭터 뒤쪽 반(캐릭터보다 먼저), 1 = 앞쪽 반(캐릭터 다음). x, y = 캐릭터 그림 왼쪽 위. */
   function whirlDraw(layer, x, y, now, oid) {
+    var TS = T * scale; // [2026-11-08] "공격하면 캐릭터가 사라지고 피해 숫자가 늦게" -- TS는 draw() 안 변수라 여기서 오류가 나 그 프레임 나머지(내 캐릭터, 숫자)가 안 그려졌다
     for (var i = 0; i < auraFx.length; i++) {
       var f = auraFx[i];
       if (!f.w || (f.oid || '') !== (oid || '')) continue; // [2026-11-07] oid = 다른 사람(없으면 나)

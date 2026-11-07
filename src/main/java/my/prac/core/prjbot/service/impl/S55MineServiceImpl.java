@@ -1702,7 +1702,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long[] mg = mineAuraExp(userName, lv, exp, hp, lock, rb, mercExp, false, out);
             lv = (int) mg[0]; exp = mg[1]; hp = (int) mg[2]; lock = (int) mg[3];
             Object mo2 = out.get("merc");
-            if (mo2 instanceof Map) { @SuppressWarnings("unchecked") Map<String, Object> mm = (Map<String, Object>) mo2; mm.put("exp", mg[5]); } // [2026-11-07] 화면의 "내 경험치 +"는 실제로 오른 만큼(가득 차 있으면 0 -- 안 띄움)
+            if (mo2 instanceof Map) { @SuppressWarnings("unchecked") Map<String, Object> mm = (Map<String, Object>) mo2; mm.put("kexp", mg[5]); } // [2026-11-07] 화면의 "내 경험치 +"는 실제로 오른 만큼(가득 차 있으면 0 -- 안 띄움)
             if (mg[4] > 0) out.put("levelUp", (int) mg[4]);
         }
         if (healed > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + healed); out.put("healed", healed); } // [2026-10-28] 재생의 장갑
@@ -5294,7 +5294,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (got > 0) mo.put("got", got);
         if (kills == 0) return new long[] { 0, 0 };
         mo.put("killed", true);
-        mo.put("exp", expSum);
+        mo.put("kexp", expSum); // [2026-11-08] 처치 경험치 -- "exp"는 용병 카드(모은 경험치)와 이름이 겹쳐 매 턴 "내 경험치 +"가 떴다
         if (!allDrops.isEmpty()) mo.put("drops", allDrops);
         mo.put("ores", mineOreList(userName));
         return new long[] { kills, expSum };
