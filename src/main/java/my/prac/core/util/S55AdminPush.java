@@ -46,6 +46,14 @@ public class S55AdminPush {
     private static final ConcurrentHashMap<String, Deque<HashMap<String, Object>>> QUEUE = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> THROTTLE = new ConcurrentHashMap<>();
     private static final int QUEUE_MAX = 30;
+    // [2026-11-07] "관리자 앱에 '새 알림이 있어요'는 왜 띄우니" -- 알림이 잇달아 나면 푸시도 여러 번 가는데, 첫 푸시가 깨서 쌓인 알림을 다 가져가면
+    //  다음 푸시는 가져갈 게 없어 기본 문구("새 알림이 있어요")를 띄웠다(크롬은 푸시마다 알림을 꼭 하나 띄우게 한다).
+    //  -> 아직 안 가져간 알림이 있으면(이미 보낸 푸시가 가져갈 것) 푸시를 또 보내지 않는다(PUSH_RESEND_MS 지나면 다시 -- 푸시가 사라진 경우 대비),
+    //     그래도 빈손으로 깨면 마지막에 보여 준 알림을 같은 태그로 조용히 다시 띄운다(이미 떠 있으면 그대로 바뀌기만 한다).
+    private static final ConcurrentHashMap<String, Long> LAST_POST = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, HashMap<String, Object>> LAST_SHOWN = new ConcurrentHashMap<>();
+    private static final long PUSH_RESEND_MS = 60_000L;
+    private static long pushSeq = 0;
     /** [2026-11-04] 화면 안 알림용 최근 알림(서버 전체 50개, id = 증가 번호). */
     private static final Deque<HashMap<String, Object>> RECENT = new ArrayDeque<>();
     private static long recentSeq = 0;
@@ -144,6 +152,12 @@ public class S55AdminPush {
         List<HashMap<String, Object>> out = new ArrayList<>();
         Deque<HashMap<String, Object>> q = endpoint == null ? null : QUEUE.get(endpoint);
         if (q != null) synchronized (q) { out.addAll(q); q.clear(); }
+        if (endpoint != null && !out.isEmpty()) LAST_SHOWN.put(endpoint, out.get(out.size() - 1));
+        else if (endpoint != null && LAST_SHOWN.get(endpoint) != null) { // [2026-11-07] 빈손 -- 마지막 알림을 조용히 다시(같은 태그)
+            HashMap<String, Object> re = new HashMap<>(LAST_SHOWN.get(endpoint));
+            re.put("re", true);
+            out.add(re);
+        }
         return out;
     }
 
@@ -154,13 +168,19 @@ public class S55AdminPush {
         HashMap<String, Object> n = new HashMap<>();
         n.put("title", title);
         n.put("body", body);
-        n.put("t", System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        n.put("t", now);
+        n.put("id", ++pushSeq); // [2026-11-07] 알림 태그(다시 띄울 때 같은 알림으로 바뀌게)
         for (String ep : subs) {
             Deque<HashMap<String, Object>> q = QUEUE.computeIfAbsent(ep, k -> new ArrayDeque<>());
-            synchronized (q) { q.addLast(n); while (q.size() > QUEUE_MAX) q.removeFirst(); }
+            boolean pending;
+            synchronized (q) { pending = !q.isEmpty(); q.addLast(n); while (q.size() > QUEUE_MAX) q.removeFirst(); }
+            Long lp = LAST_POST.get(ep);
+            if (pending && lp != null && now - lp < PUSH_RESEND_MS) continue; // [2026-11-07] 이미 간 푸시가 같이 가져간다
+            LAST_POST.put(ep, now);
             try {
                 int code = post(ep);
-                if (code == 404 || code == 410) { dao.deleteS55PushSub(ep); QUEUE.remove(ep); }
+                if (code == 404 || code == 410) { dao.deleteS55PushSub(ep); QUEUE.remove(ep); LAST_POST.remove(ep); LAST_SHOWN.remove(ep); }
                 else if (code >= 300) logger.warn("[푸시] {} 응답 {}", ep.substring(0, Math.min(60, ep.length())), code);
             } catch (Exception e) {
                 logger.warn("[푸시] 보내기 실패: {}", e.getMessage());

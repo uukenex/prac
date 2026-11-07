@@ -192,8 +192,10 @@ public class S55MineController {
                 + "  e.waitUntil(self.registration.pushManager.getSubscription().then(function (sub) {\n"
                 + "    return fetch('/mine/push-pull?endpoint=' + encodeURIComponent(sub ? sub.endpoint : ''), { cache: 'no-store' }).then(function (r) { return r.json(); });\n"
                 + "  }).catch(function () { return []; }).then(function (list) {\n"
-                + "    if (!list || !list.length) return self.registration.showNotification('람쥐 광산', { body: '새 알림이 있어요.', icon: '/img_loa/s55/icon-192.png', tag: 's55' });\n"
-                + "    return Promise.all(list.slice(-5).map(function (n, i) { return self.registration.showNotification(n.title || '람쥐 광산', { body: n.body || '', icon: '/img_loa/s55/icon-192.png', tag: 's55-' + n.t + '-' + i, timestamp: n.t }); }));\n"
+                // [2026-11-07] "'새 알림이 있어요'는 왜 띄우니" -- 가져올 게 없으면 서버가 마지막 알림을 re로 돌려준다(같은 태그로 조용히 다시 -- 떠 있으면 그대로).
+                //  그것도 없으면(서버 재시작 직후 등) 이미 떠 있는 알림이 있을 땐 아무것도 안 띄우고, 하나도 없을 때만 조용히 짧은 문구.
+                + "    if (!list || !list.length) return self.registration.getNotifications().then(function (ns) { if (ns && ns.length) return; return self.registration.showNotification('람쥐 광산', { body: '관리자 알림', icon: '/img_loa/s55/icon-192.png', tag: 's55', silent: true }); });\n"
+                + "    return Promise.all(list.slice(-5).map(function (n, i) { return self.registration.showNotification(n.title || '람쥐 광산', { body: n.body || '', icon: '/img_loa/s55/icon-192.png', tag: 's55-' + (n.id || (n.t + '-' + i)), timestamp: n.t, silent: !!n.re }); }));\n"
                 + "  }));\n"
                 + "});\n"
                 + "self.addEventListener('notificationclick', function (e) {\n"

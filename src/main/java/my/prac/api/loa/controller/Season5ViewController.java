@@ -793,17 +793,31 @@ public class Season5ViewController {
     /** [2026-10-24] 웹 광산 몬스터 상태(체력이 줄었거나 쓰러졌거나 멈춘 것만) -- 화면이 1.5초마다. */
     private static final String[] GRADE_NAMES = { "일반", "고급", "희귀", "영웅", "전설", "유물", "고대", "신화" };
 
-    /** [2026-11-04] 관리자 폰 알림 -- 보스 처치, 전설(4) 이상 무기(드랍/은둔한 대장장이 등급업). 관리자 본인 것은 보내지 않는다. */
+    /** [2026-11-04] 관리자 폰 알림 -- 보스 처치, 신화(7) 무기(드랍/은둔한 대장장이 등급업). 관리자 본인 것은 보내지 않는다.
+     *  [2026-11-07] "전설 이상 알림 -> 신화로", "보스 처치 알림은 보스 전용 아이템 드랍 유무만(경험치나 다른 아이템은 빼고)". */
+    static final int MINE_ALERT_GRADE = 7;
     private void mineAdminAlerts(String userName, java.util.Map<String, Object> out, String mapId) {
         if (out == null || !Boolean.TRUE.equals(out.get("ok")) || s5Service.s55IsAdmin(userName)) return;
-        if (Boolean.TRUE.equals(out.get("bossKilled"))) {
-            String m = String.valueOf(out.get("message"));
-            my.prac.core.util.S55AdminPush.notify("👑 보스 처치", userName + " -- " + (m.length() > 80 ? m.substring(0, 80) + "..." : m));
-        }
+        if (Boolean.TRUE.equals(out.get("bossKilled"))) mineBossAlert(userName, out, "");
         Object g = out.get("dropGrade");
         Object nm = out.get("dropName");
-        if (g instanceof Number && ((Number) g).intValue() >= 4 && ((Number) g).intValue() < GRADE_NAMES.length && nm != null)
+        if (g instanceof Number && ((Number) g).intValue() >= MINE_ALERT_GRADE && ((Number) g).intValue() < GRADE_NAMES.length && nm != null)
             my.prac.core.util.S55AdminPush.notify("🗡️ " + GRADE_NAMES[((Number) g).intValue()] + " 장비", userName + " 님이 " + nm + " (" + GRADE_NAMES[((Number) g).intValue()] + ")");
+    }
+
+    /** [2026-11-07] 보스 처치 알림 -- "닉네임 -- 보스 이름 처치(용병과 함께)" + 전용 아이템이 나왔으면 그 이름, 아니면 "전용 아이템 없음". */
+    @SuppressWarnings("unchecked")
+    private void mineBossAlert(String userName, java.util.Map<String, Object> o, String how) {
+        StringBuilder got = new StringBuilder();
+        Object dl = o.get("drops");
+        if (dl instanceof List) for (Object d : (List<Object>) dl) {
+            if (!(d instanceof java.util.Map)) continue;
+            Object dg = ((java.util.Map<String, Object>) d).get("grade");
+            if (dg instanceof Number && my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineBossItemGrade(((Number) dg).intValue()))
+                got.append(got.length() > 0 ? ", " : "").append(((java.util.Map<String, Object>) d).get("name"));
+        }
+        Object bn = o.get("bossName");
+        my.prac.core.util.S55AdminPush.notify("👑 보스 처치", userName + " -- " + (bn == null ? "보스" : bn) + " 처치" + how + " · " + (got.length() > 0 ? "🎁 전용 아이템: " + got : "전용 아이템 없음"));
     }
 
     /** [2026-11-03] 시즌 5.5 경량화 -- "1초마다 따로 보내던 요청(위치 알림 / 전투 턴 / 환경 턴 / 몬스터 상태)을 하나로".
@@ -831,6 +845,11 @@ public class Season5ViewController {
         if ("1".equals(c)) {
             HashMap<String, Object> co = s5Service.mineCombatTick(userName, mapId, ver, x, y);
             if (Boolean.TRUE.equals(co.get("died"))) mineLog(userName, "[웹] 광산 몬스터에게 쓰러짐", String.valueOf(co.get("message")));
+            Object cm = co.get("merc"); // [2026-11-07] 용병이 쓰러뜨린 보스도 관리자 알림
+            if (cm instanceof java.util.Map && Boolean.TRUE.equals(((java.util.Map<?, ?>) cm).get("bossKilled")) && !s5Service.s55IsAdmin(userName)) {
+                @SuppressWarnings("unchecked") java.util.Map<String, Object> cmm = (java.util.Map<String, Object>) cm;
+                mineBossAlert(userName, cmm, "(용병과 함께)");
+            }
             out.put("c", co);
         }
         if ("1".equals(e)) {

@@ -3583,20 +3583,38 @@ var TowerMine = (function () {
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
         cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; cur.mc = o.mc; cur.mr = !!o.mr; cur.mt = o.mt || null; // [2026-11-05] 용병 // [2026-10-28] 얼음 여왕 빙결
+        if (o.a && o.a.length) { // [2026-11-07] 다른 사람 공격 -- 처음 보는 번호만, 서버 시각 간격대로
+          var fresh = o.a.filter(function (a) { return a.s > (cur.as || 0); }), base = fresh.length ? fresh[0].at : 0;
+          fresh.forEach(function (a) { othAtkPlay(cur, o.id, a, Math.max(0, Math.min(1500, a.at - base))); cur.as = Math.max(cur.as || 0, a.s); });
+        }
       });
       for (var id in others) if (!seen[id]) delete others[id];
       drawMini(); // [2026-10-28] 미니맵에 다른 유저 위치
     }).catch(function () { presBusy = false; if (tc) bossBusy = false; if (te) coldBusy = false; });
   }
+  // [2026-11-07] "다른 사람 공격 모션 보이게, 피해 숫자도 다른 색으로" -- 휘두르기(0.38초) + 켠 검기 + 피해 숫자(연보라, 조금 작게 -- 내 숫자와 구분)
+  var OTH_DMG_COL = '#c9b8f0', OTH_CRIT_COL = '#f2b8ff';
+  function othAtkPlay(cur, oid, a, delay) {
+    var t = performance.now() + delay;
+    cur.swT0 = t; cur.swDir = a.d || cur.dir || 'down';
+    if (a.au && a.au.length) {
+      var els = a.au.map(function (q) { return q[0]; }), rs = a.au.map(function (q) { return Math.min(5, q[1]); });
+      auraFx.push({ x: cur.x, y: cur.y, dir: cur.swDir, r: Math.max.apply(null, rs), els: els, rs: rs, t0: t, w: !!a.w, o: 1, oid: oid });
+    }
+    (a.h || []).slice(0, 12).forEach(function (h, i) {
+      var el = h[3] >= 10 ? h[3] - 10 : 0;
+      floats.push({ x: h[0] + (i ? (i % 2 ? 0.3 : -0.3) : 0), y: h[1] - 0.28 * i, text: (h[3] === 1 ? '💥' : '') + (el ? ELEM_ICON[el] : '') + h[2], color: h[3] === 1 ? OTH_CRIT_COL : OTH_DMG_COL, sm: 1, t0: t + 110 + 60 * i });
+    });
+  }
   function otherPos(o, now) {
     var k = Math.min(1, (now - o.t0) / 950);
     return { x: o.fx + (o.x - o.fx) * k, y: o.fy + (o.y - o.fy) * k, moving: k < 1 };
   }
-  function otherSprite(look, dir, step) {
+  function otherSprite(look, dir, step, dk) {
     var key = JSON.stringify(look || {});
     if (!otherSprites[key]) otherSprites[key] = {};
-    var c = otherSprites[key], sk = dir + step;
-    if (!c[sk]) c[sk] = charSprite(dir, step, 0, look || {});
+    var c = otherSprites[key], sk = dir + step + (dk || 0);
+    if (!c[sk]) c[sk] = charSprite(dir, step, dk || 0, look || {}); // [2026-11-07] dk 3/4 = 무기 휘두르기
     return c[sk];
   }
   function nearOther() {
@@ -3696,10 +3714,10 @@ var TowerMine = (function () {
     return (whirlTints[col] = c);
   }
   /** layer 0 = 캐릭터 뒤쪽 반(캐릭터보다 먼저), 1 = 앞쪽 반(캐릭터 다음). x, y = 캐릭터 그림 왼쪽 위. */
-  function whirlDraw(layer, x, y, now) {
+  function whirlDraw(layer, x, y, now, oid) {
     for (var i = 0; i < auraFx.length; i++) {
       var f = auraFx[i];
-      if (!f.w) continue;
+      if (!f.w || (f.oid || '') !== (oid || '')) continue; // [2026-11-07] oid = 다른 사람(없으면 나)
       var e0 = now - f.t0, life = AURA_FX_MS + 180;
       if (e0 < 0 || e0 >= life) continue;
       var al = Math.min(1, 0.55 + e0 / 260) * (e0 > AURA_FX_MS ? 1 - (e0 - AURA_FX_MS) / 180 : 1), fr = Math.floor(e0 / 45) % WHIRL_N;
@@ -3814,7 +3832,7 @@ var TowerMine = (function () {
       mobHitAt[am.id] = performance.now();
       var dl = 60 + j * 40;
       (am.hits || []).forEach(function (h, i) { floats.push({ x: p.x + (i % 2 ? 0.3 : -0.3), y: p.y - 0.32 * i, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * i }); });
-      if (am.killed) { anyKill = true; floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); }
+      if (am.killed) { anyKill = true; if (!d.expFull) floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); } // [2026-11-07] 경험치가 가득 찬(안 오르는) 처치는 EXP 숫자를 안 띄운다
     });
     lootDrops(d.auraDrops, fxp, fyp); // [2026-11-04] 화면 구석 카드
     if (!d.killed && d.dropGrade != null) { flashT0 = t; weaponLoot(d, fxp, fyp); }
@@ -3823,6 +3841,7 @@ var TowerMine = (function () {
     if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치(내 경험치의 1%)
     var exSum = d.killed && d.expGain ? d.expGain : 0, kn = d.killed ? 1 : 0;
     (d.auraMobs || []).forEach(function (am) { if (am.killed) { exSum += am.exp || 0; kn++; } });
+    if (d.expReal != null) exSum = d.expReal; // [2026-11-07] 실제로 오른 경험치(99레벨 가득이면 0 -- 안 띄움)
     if (exSum > 0) killFeed('내 경험치 +' + exSum.toLocaleString() + (kn > 1 ? '  ×' + kn : ''));
   }
   // 왼쪽 빈 화면 -- 글씨만(그림자) 떠올랐다가 1.6초 뒤 위로 살짝 떠오르며 사라진다. 최대 6줄.
@@ -3968,6 +3987,7 @@ var TowerMine = (function () {
         (am.hits || []).forEach(function (h) { floats.push({ x: p.x, y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : '#ffffff', big: !!h[2], t0: t + dl + 60 }); });
         if (am.killed) { exSum += am.exp || 0; kn++; }
       });
+      if (d.expReal != null) exSum = d.expReal; // [2026-11-07] 실제로 오른 경험치
       lootDrops(d.novaDrops, P.x, P.y);
       if (d.ores) st.ores = d.ores;
       if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, P.x, P.y); }
@@ -4056,7 +4076,7 @@ var TowerMine = (function () {
         lootDrops(d.drops, fxp, fyp); // [2026-11-04] "드랍 아이템 효과가 가운데 상자를 가린다" -- 화면 구석 카드 -> 왼쪽 아래로 빨려 들어감
         if (d.dropGrade != null) api('/api/tower-mine').then(function (s2) { if (s2 && !s2.error) { st.equip = s2.equip; st.gear = s2.gear; if (s2.ores) st.ores = s2.ores; if (s2.look) st.look = s2.look; if (smithOpen) renderSmith(smithNpc); } }).catch(function () { }); // [2026-10-29] "무기를 얻었는데 인벤토리에 안 보인다" -- 장비 목록/조각을 바로 다시 받는다
         if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, fxp, fyp); } // [2026-10-29] 같은 등급 이하 = 분해 // [2026-10-29] 닌자의 검 -- 등급은 색으로만
-        floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 });
+        if (d.expGain > 0) floats.push({ x: fxp, y: fyp + 0.4, text: '+' + d.expGain + ' EXP', color: '#9fe0ff', t0: t + 100 }); // [2026-11-07] 경험치가 가득 차 안 오르면 안 띄운다
         if (d.bossKilled || d.shrineKey || (d.ninjaKills && d.ninjaKills % 10 === 0)) msg(d.message || '', 3600); // [2026-11-05] 처치 문구는 왼쪽 경험치 줄로(auraShow) -- 보스 처치/신궁 열쇠/수색 진행만 가운데에
       }
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
@@ -4432,8 +4452,11 @@ var TowerMine = (function () {
       if (map.boat) drawBoat(ox, oy - 3 * scale, now); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
-      ctx.drawImage(otherSprite(ou.look, ou.dir || "down", op.moving ? 1 + Math.floor(now / 160) % 2 : 0), ox, oy - 3 * scale, TS, TS);
+      var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
+      if (auraFx.length) { var oA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, ox, oy - 3 * scale, now, oid); ctx.globalAlpha = oA; } // [2026-11-07] 관리자 돌개바람(뒤)
+      ctx.drawImage(otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw), ox, oy - 3 * scale, TS, TS);
       ctx.globalAlpha = 1;
+      if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
       if (ou.n) nameTag(ou.n, ox + TS / 2, oy - 4 * scale, '#ffffff'); // [2026-11-05] 닉네임
@@ -4648,12 +4671,13 @@ var TowerMine = (function () {
     var auraWide = !!(st && st.adminMaps);
     auraFx.forEach(function (f) {
       var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 180 : 1;
+      if (el0 < 0) return; // [2026-11-07] 다른 사람 공격 -- 서버 시각 간격만큼 늦게 시작
       k = 1 - (1 - k) * (1 - k); // 처음엔 빠르게, 끝에서 느려지며 멎는다
       var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
         var kk = Math.max(0, Math.min(1, (k - i * 0.06) / (1 - Math.min(0.5, i * 0.06)))), dist = 0.5 + ((f.rs ? f.rs[i] : f.r) - 0.2) * kk, lw = Math.max(5, 12 - i * 0.8) * dpr;
-        var fw = auraWide && !f.m; // [2026-11-06] 용병 검기(f.m)는 폭 1칸
+        var fw = (f.o ? f.w : auraWide) && !f.m; // [2026-11-06] 용병 검기(f.m)는 폭 1칸 // [2026-11-07] 다른 사람 검기(f.o)는 그 사람이 관리자일 때만 넓게
         var rr = TS * ((fw ? 1.5 : 0.5) + i * 0.07), back = TS * 0.4 + (fw ? TS : 0); // [2026-11-05] 관리자 폭 3칸 -- 칼날 반지름 3배, 앞 끝은 같은 자리
         var cx = (f.x + dx * dist) * TS - camX + TS / 2 - dx * back, cy = (f.y + dy * dist) * TS - camY + TS / 2 - dy * back, sp = fw ? 0.62 : 1.05;
         ctx.globalAlpha = Math.max(0, fo * 0.4); ctx.strokeStyle = AURA_COL[e]; ctx.lineWidth = lw * 2.4; // 바깥 번짐
@@ -4746,7 +4770,7 @@ var TowerMine = (function () {
       if (now < f.t0) return; // [2026-11-06] 화살/마법탄이 닿은 뒤에
       var k = (now - f.t0) / 1400, fx = f.x * TS - camX + TS / 2, fy = f.y * TS - camY - k * 36 * dpr - 6 * dpr;
       ctx.globalAlpha = 1 - k * k;
-      if (!f._im) f._im = textImg(f.text, 'bold ' + Math.round((f.big ? 17 : 14) * dpr) + 'px monospace', f.color, 4 * dpr, false); // [2026-11-06] 렉 -- 글자는 한 번만 그리고 떠 있는 동안 그림으로
+      if (!f._im) f._im = textImg(f.text, 'bold ' + Math.round((f.big ? 17 : f.sm ? 12 : 14) * dpr) + 'px monospace', f.color, 4 * dpr, false); // [2026-11-06] 렉 -- 글자는 한 번만 그리고 떠 있는 동안 그림으로
       if (f.icon) ctx.drawImage(f.icon, fx - 9 * dpr - f._im._tw / 2 - 8 * dpr, fy - 12 * dpr, 16 * dpr, 16 * dpr);
       drawTextImg(f._im, fx + 9 * dpr, fy);
       ctx.globalAlpha = 1;

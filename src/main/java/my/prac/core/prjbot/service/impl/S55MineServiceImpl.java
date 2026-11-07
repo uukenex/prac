@@ -1696,6 +1696,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineMercShare(userName, mercExp, lv, mercR[0], out); // [2026-11-06] 용병 경험치(용병 처치 -- 몬스터 레벨 대신 내 레벨로, 처치마다 최소 1)
             long[] mg = mineAuraExp(userName, lv, exp, hp, lock, rb, mercExp, false, out);
             lv = (int) mg[0]; exp = mg[1]; hp = (int) mg[2]; lock = (int) mg[3];
+            Object mo2 = out.get("merc");
+            if (mo2 instanceof Map) { @SuppressWarnings("unchecked") Map<String, Object> mm = (Map<String, Object>) mo2; mm.put("exp", mg[5]); } // [2026-11-07] 화면의 "내 경험치 +"는 실제로 오른 만큼(가득 차 있으면 0 -- 안 띄움)
             if (mg[4] > 0) out.put("levelUp", (int) mg[4]);
         }
         if (healed > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + healed); out.put("healed", healed); } // [2026-10-28] 재생의 장갑
@@ -2377,6 +2379,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
             long baseExp = mineLuckExp(items, mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
+            int lv0 = lv; long exp0 = exp; // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다)
             exp += expGain;
             mineMercShare(userName, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
             while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; }
@@ -2387,10 +2390,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 hp = mineHpMax(lv, rb);
                 if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
             }
-            msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(expGain).append(mindPct > 0 ? " (📿+" + mindPct + "%)" : "");
+            long expReal = mineExpReal(lv0, exp0, lv, exp, rb); // [2026-11-07] "경험치가 실제로 안 오르는 양이 표기" -- 가득 찬 99레벨은 처치해도 경험치가 안 오른다. 오른 만큼만 알린다
+            if (expReal < expGain) out.put("expFull", true);
+            out.merge("expReal", expReal, (p, q) -> (Long) p + (Long) q);
+            msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요!").append(expReal > 0 ? " 경험치 +" + expReal + (mindPct > 0 ? " (📿+" + mindPct + "%)" : "") : "");
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
             if (out.containsKey("rebirthReadyNow")) msg.append(" ✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.");
-            out.put("expGain", expGain);
+            out.put("expGain", expReal);
             if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
                 mineBossKilledNow(MINE_RAID_KEY, userName, now); // [2026-10-28] 2시간 뒤 다시
@@ -2449,6 +2455,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> killDrops = type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank);
             if (type.boss && !type.noReward) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
+            if (type.boss) out.put("bossName", type.name); // [2026-11-07] 관리자 알림(보스 전용 아이템이 나왔는지만)
             out.put("drops", killDrops);
             out.put("ores", mineOreList(userName));
             if (type.boss) { // [2026-11-05] 왕도 소문 -- 혼자서 / 일행이
@@ -2491,6 +2498,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("healUntil", mineHealUntil(userName)); // [2026-10-28] 재생의 장갑 -- 이때까지 화면이 전투 턴을 부른다
         if (msg.length() > 0) out.put("message", msg.toString());
         if (died) out.put("state", mineState(userName));
+        minePresAtk(userName, dir, aura, out); // [2026-11-07] 다른 사람 화면에 공격 모션/피해 숫자
         return out;
     }
 
@@ -4334,8 +4342,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** [2026-11-04] 검기 경험치 -- 더하고 레벨 업. {lv, exp, hp, lock, 오른 레벨 수}. */
     long[] mineAuraExp(String userName, int lv, long exp, int hp, int lock, int rb, long gain, boolean died, HashMap<String, Object> out) {
-        if (gain <= 0) return new long[] { lv, exp, hp, lock, 0 };
+        if (gain <= 0) return new long[] { lv, exp, hp, lock, 0, 0 };
         boolean wasReady = mineRebirthReady(lv, exp, rb);
+        int lv0 = lv; long exp0 = exp;
         exp += gain;
         int up = 0;
         while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
@@ -4345,7 +4354,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             hp = mineHpMax(lv, rb);
             if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
         }
-        return new long[] { lv, exp, hp, lock, up };
+        long real = mineExpReal(lv0, exp0, lv, exp, rb); // [2026-11-07] 실제로 오른 경험치
+        if (real < gain) out.put("expFull", true);
+        out.merge("expReal", real, (p, q) -> (Long) p + (Long) q);
+        return new long[] { lv, exp, hp, lock, up, real };
+    }
+    /** [2026-11-07] (lv0, exp0) -> (lv1, exp1) 사이에 실제로 오른 경험치(지나간 레벨들의 필요치 + 남은 차이). 99레벨 상한에서 잘린 만큼은 빠진다. */
+    /** [2026-11-07] 보스 전용 아이템(드랍 등급) -- 대주교의 인장, 닌자의 비급서, 얼음의 심장, 사막의 심장, 화산의 심장, 번개의 심장. 관리자 보스 처치 알림에 이것만 알린다. */
+    public static boolean mineBossItemGrade(int g) {
+        return g == S5MineMap.SEAL_GRADE || g == S5MineMap.NINJA_BOOK_GRADE || g == S5MineMap.ICE_HEART_GRADE || g == S5MineMap.DESERT_HEART_GRADE
+                || g == S5MineMap.VOLCANO_HEART_GRADE || g == S5MineMap.THUNDER_HEART_GRADE;
+    }
+    static long mineExpReal(int lv0, long exp0, int lv1, long exp1, int rb) {
+        long s = exp1 - exp0;
+        for (int l = lv0; l < lv1; l++) s += mineExpNeed(l, rb);
+        return Math.max(0, s);
     }
 
     // [2026-11-05] "공격 버튼 위에 화면 전체를 공격하는 전체 공격기 -- 관리자용(칼로 베는 이펙트)".
@@ -4451,6 +4474,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("levelUp", (int) g[4]);
         out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
         if (msg.length() > 0) out.put("message", msg.toString());
+        minePresAtk(userName, dir, aura, out); // [2026-11-07] 다른 사람 화면에 검기
         return out;
     }
 
@@ -5068,6 +5092,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             drops.addAll(kd);
         }
         mo.put("bossKilled", true);
+        mo.put("bossName", ot.name); // [2026-11-07] 관리자 알림
         mo.put("bossMsg", "👑 용병과 함께 " + ot.name + "을(를) 쓰러뜨렸어요!" + msg);
         mineGossipAdd(mineNick(userName) + " 님이 용병과 함께 " + ot.name + "을(를) 쓰러뜨렸대요!");
     }
@@ -6879,7 +6904,57 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile HashMap<String, Object> look;
         volatile int merc = -1; // [2026-11-05] 데리고 다니는 용병([2026-11-06] 직업 0 전사 / 1 궁수 / 2 마법사, -1 = 없음 -- 지금은 관리자만)
         volatile int mercEl, mercSt, mercNi; // [2026-11-06] 용병 속성/단계/이름 번호(화면 이펙트·그림)
+        final java.util.ArrayDeque<HashMap<String, Object>> atks = new java.util.ArrayDeque<>(); // [2026-11-07] 최근 공격(다른 사람 화면용)
         MinePresence(String id) { this.id = id; }
+    }
+    // [2026-11-07] "다른 사람 공격 모션 보이게, 피해 숫자도 다른 색으로" -- 공격(일반 공격/검기만 쓰기)마다 {s: 번호, d: 방향, h: [[x, y, 피해, 종류]], au: [[속성, 단계]], w: 관리자 폭}을
+    //  남겨 두고(MINE_PRES_ATK_MS 동안, 최대 6개), 같은 맵 사람들의 1초 위치 알림에 실어 보낸다. 화면은 번호로 처음 본 것만 재생한다(휘두르기 + 검기 + 피해 숫자).
+    //  종류: 0 보통, 1 치명, 10 + 속성 = 검기 속성 피해.
+    static final long MINE_PRES_ATK_MS = 1_800L;
+    static final java.util.concurrent.atomic.AtomicLong MINE_PRES_ATK_SEQ = new java.util.concurrent.atomic.AtomicLong();
+    @SuppressWarnings("unchecked")
+    void minePresAtk(String userName, String dir, int[] aura, HashMap<String, Object> out) {
+        try {
+            if (out == null || !Boolean.TRUE.equals(out.get("ok"))) return;
+            MinePresence me = MINE_PRESENCE.get(userName);
+            if (me == null) return;
+            List<int[]> h = new ArrayList<>();
+            Object fx = out.get("mobFx"), fy = out.get("mobFy");
+            if (fx instanceof Number && fy instanceof Number) {
+                int mx = ((Number) fx).intValue(), my = ((Number) fy).intValue();
+                Object hs = out.get("hits");
+                if (hs instanceof int[]) { int[] hv = (int[]) hs; boolean[] cs = (boolean[]) out.get("hitCrits"); for (int i = 0; i < hv.length; i++) h.add(new int[] { mx, my, hv[i], cs != null && cs[i] ? 1 : 0 }); }
+                else if (out.get("dmg") instanceof Number && ((Number) out.get("dmg")).intValue() > 0) h.add(new int[] { mx, my, ((Number) out.get("dmg")).intValue(), Boolean.TRUE.equals(out.get("crit")) ? 1 : 0 });
+                Object am = out.get("aura");
+                if (am instanceof List) for (Object o : (List<Object>) am) if (o instanceof int[]) { int[] a = (int[]) o; h.add(new int[] { mx, my, a[1], 10 + a[0] }); }
+            }
+            Object ams = out.get("auraMobs");
+            if (ams instanceof List) for (Object o : (List<Object>) ams) {
+                if (!(o instanceof Map)) continue;
+                Map<String, Object> m = (Map<String, Object>) o;
+                Object row = m.get("row"), hl = m.get("hits");
+                if (!(row instanceof long[]) || !(hl instanceof List)) continue;
+                long[] rw = (long[]) row;
+                for (Object q : (List<Object>) hl) if (q instanceof int[]) { int[] a = (int[]) q; h.add(new int[] { (int) rw[3], (int) rw[4], a[1], 10 + a[0] }); }
+            }
+            List<int[]> au = new ArrayList<>();
+            boolean auraFired = out.containsKey("aura") || out.containsKey("auraMobs") || Boolean.TRUE.equals(out.get("auraOnly"));
+            if (auraFired && aura != null) for (int e = 1; e < aura.length && e <= 8; e++) if (aura[e] > 0) au.add(new int[] { e, aura[e] });
+            if (h.isEmpty() && au.isEmpty()) return;
+            if (h.size() > 24) h = h.subList(0, 24);
+            HashMap<String, Object> a = new HashMap<>();
+            long now = System.currentTimeMillis();
+            a.put("s", MINE_PRES_ATK_SEQ.incrementAndGet());
+            a.put("at", now);
+            a.put("d", dir != null && dir.matches("up|down|left|right") ? dir : me.dir);
+            a.put("h", h);
+            if (!au.isEmpty()) a.put("au", au);
+            if (isMineAdmin(userName)) a.put("w", 1);
+            synchronized (me.atks) {
+                me.atks.addLast(a);
+                while (me.atks.size() > 6 || (!me.atks.isEmpty() && now - (Long) me.atks.peekFirst().get("at") > MINE_PRES_ATK_MS)) me.atks.removeFirst();
+            }
+        } catch (Exception ignore) { } // 화면 표시용 -- 공격 결과에 영향 없게
     }
     static final java.util.concurrent.ConcurrentHashMap<String, MinePresence> MINE_PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_PRESENCE_TTL_MS = 10_000L;
@@ -6927,6 +7002,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 MercSt ms = MINE_MERC.get(e.getKey());
                 if (ms != null && ms.restUntil > now) m.put("mr", 1);
                 else if (ms != null && now - ms.atkAt < 2_500L) m.put("mt", new int[] { ms.tx, ms.ty });
+            }
+            synchronized (o.atks) { // [2026-11-07] 최근 공격(휘두르기/검기/피해 숫자)
+                List<HashMap<String, Object>> al = new ArrayList<>();
+                for (HashMap<String, Object> a : o.atks) if (now - (Long) a.get("at") <= MINE_PRES_ATK_MS) al.add(a);
+                if (!al.isEmpty()) m.put("a", al);
             }
             if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true);
             if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
