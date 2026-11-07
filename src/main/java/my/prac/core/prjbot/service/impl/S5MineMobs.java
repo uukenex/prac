@@ -89,7 +89,9 @@ public final class S5MineMobs {
         // [2026-10-28] "전체적 다운스케일링" -- 단계마다 체력 x2 -> x1.457, 공격 x1.94 -> x1.413, 경험치 x2.7 -> x1.40.
         //  플레이어(BotS5ServiceImpl: 레벨마다 체력/공격 x1.09, 필요 경험치 x1.12)와 같은 비율로 줄여 적정 레벨에서 3번쯤 때리면 쓰러지는 것과
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
-        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
+        // [2026-11-07] "고레벨 사냥터 체력을 바뀐 공격력 곡선에 맞추자" -- 플레이어 공격력이 80레벨부터 직선(99레벨 10,000)으로 완만해진 만큼, 적정 레벨(1 + 4 x (단계 - 1))이 80을 넘는
+        //  몬스터(보스 포함) 체력도 같은 비율(새 곡선 / 예전 9% 곡선, 둘 다 계단식 너프 포함)로 줄인다. 80 이하 그대로.
+        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut * hpCurve(1 + 4 * (tier - 1))); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul * expMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
@@ -267,6 +269,8 @@ public final class S5MineMobs {
         int v = new Random(seed * 1_000_003L + id * 7919L).nextInt(100);
         return v < 30 ? 0 : v < 80 ? 1 : 2;
     }
+    /** [2026-11-07] 적정 레벨 lv 몬스터의 체력 배수(80 이하 1, 넘으면 플레이어 공격력 새 곡선 / 예전 곡선). */
+    static double hpCurve(int lv) { return lv <= 80 ? 1.0 : S55MineServiceImpl.mineAtk(lv) / S55MineServiceImpl.mineAtkExp(lv); }
     public static int hp(Type t, int rank) { return Math.max(1, (int) Math.round(t.hp() * RANK_HP[rank])); }
     public static int atk(Type t, int rank) { return Math.max(1, (int) Math.round(t.atk() * RANK_ATK[rank])); }
     public static long exp(Type t, int rank) { return Math.max(1, Math.round(t.exp() * RANK_HP[rank])); }
