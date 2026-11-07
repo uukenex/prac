@@ -3681,19 +3681,39 @@ var TowerMine = (function () {
   var AURA_COL = ['', '#d8a860', '#ffe14d', '#4aa8ff', '#a8f4ff', '#8ef08e', '#ff6a3a', '#b07aff', '#fff4b0'], AURA_FX_MS = 620, auraFx = []; // [2026-11-05] "검기가 느리게 나가면" 300 -> 620
   function auraEls() { var a = (st && st.aura && st.aura.a) || [], out = []; for (var e = 1; e <= 8; e++) if (a[e] > 0) out.push(e); return out; }
   function auraRange() { var a = (st && st.aura && st.aura.a) || [], r = 0; for (var e = 1; e <= 8; e++) r = Math.max(r, a[e] || 0); return Math.min(5, r); }
-  // [2026-11-07] "관리자 공격 때 소용돌이가 별로 -- 마법사 토네이도처럼 주변에 토네이도가 되게, 이미지 파일로" -- img_loa/s55/fx/tornado.png(8프레임 32x48, 흰~회색)를 속성 색으로 물들여 둘레 8칸에 띄운다.
-  var TORNADO_FW = 32, TORNADO_FH = 48, TORNADO_N = 8, tornadoImg = null, tornadoTints = {};
-  function tornadoLoad() { if (!tornadoImg) { tornadoImg = new Image(); tornadoImg.src = cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/fx/tornado.png?v=1'; } return tornadoImg.complete && tornadoImg.naturalWidth > 0; }
-  function tornadoSheet(col) {
-    if (!tornadoLoad()) return null;
-    if (tornadoTints[col]) return tornadoTints[col];
-    var c = document.createElement('canvas'); c.width = tornadoImg.naturalWidth; c.height = tornadoImg.naturalHeight;
-    var g = c.getContext('2d'); g.drawImage(tornadoImg, 0, 0);
-    g.globalCompositeOperation = 'multiply'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); // 흰 곳은 속성 색, 회색은 어두운 속성 색
-    g.globalCompositeOperation = 'destination-in'; g.drawImage(tornadoImg, 0, 0); // 투명한 곳은 그대로 투명
-    return (tornadoTints[col] = c);
+  // [2026-11-07] "관리자 공격 -- 캐릭터 본인 칸 주변에 돌개바람, 참고 이미지처럼 3D 느낌" -- img_loa/s55/fx/whirl.png(12프레임 96x72, 6줄 = 앞뒤 x 줄기 3개).
+  //  기울어진 바닥 원을 칼바람 세 줄기가 돈다. 뒤쪽 반은 캐릭터보다 먼저, 앞쪽 반은 캐릭터 다음에 그려서 캐릭터를 감싸는 것처럼 보인다. 줄기마다 켠 속성 색으로 물들인다.
+  var WHIRL_FW = 96, WHIRL_FH = 72, WHIRL_N = 12, whirlImg = null, whirlTints = {};
+  function whirlLoad() { if (!whirlImg) { whirlImg = new Image(); whirlImg.src = cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/fx/whirl.png?v=1'; } return whirlImg.complete && whirlImg.naturalWidth > 0; }
+  function whirlSheet(col) {
+    if (!whirlLoad()) return null;
+    if (whirlTints[col]) return whirlTints[col];
+    var c = document.createElement('canvas'); c.width = whirlImg.naturalWidth; c.height = whirlImg.naturalHeight;
+    var g = c.getContext('2d'); g.drawImage(whirlImg, 0, 0);
+    g.globalCompositeOperation = 'hue'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); // 불 색 -> 속성 색(흰 심은 그대로 희게)
+    g.globalCompositeOperation = 'saturation'; g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(whirlImg, 0, 0); // 투명한 곳은 그대로
+    return (whirlTints[col] = c);
   }
-  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (st && st.adminMaps) tornadoLoad(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now(), w: !!(st && st.adminMaps) }); } // [2026-11-05] w = 관리자 둘레 회오리 // [2026-11-04] 속성마다 자기 단계만큼
+  /** layer 0 = 캐릭터 뒤쪽 반(캐릭터보다 먼저), 1 = 앞쪽 반(캐릭터 다음). x, y = 캐릭터 그림 왼쪽 위. */
+  function whirlDraw(layer, x, y, now) {
+    for (var i = 0; i < auraFx.length; i++) {
+      var f = auraFx[i];
+      if (!f.w) continue;
+      var e0 = now - f.t0, life = AURA_FX_MS + 180;
+      if (e0 < 0 || e0 >= life) continue;
+      var al = Math.min(1, 0.55 + e0 / 260) * (e0 > AURA_FX_MS ? 1 - (e0 - AURA_FX_MS) / 180 : 1), fr = Math.floor(e0 / 45) % WHIRL_N;
+      var w = TS * 3, h = w * WHIRL_FH / WHIRL_FW, dx = Math.round(x + TS / 2 - w / 2), dy = Math.round(y + TS * 0.85 - h * 0.62);
+      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.max(0, al); ctx.imageSmoothingEnabled = true;
+      for (var sk = 0; sk < 3; sk++) {
+        var sh = whirlSheet(AURA_COL[f.els[sk % f.els.length]] || '#ff9a3a');
+        if (!sh) break;
+        ctx.drawImage(sh, fr * WHIRL_FW, (layer * 3 + sk) * WHIRL_FH, WHIRL_FW, WHIRL_FH, dx, dy, w, h);
+      }
+      ctx.restore();
+    }
+  }
+  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; if (st && st.adminMaps) whirlLoad(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now(), w: !!(st && st.adminMaps) }); } // [2026-11-05] w = 관리자(둘레 공격) -- [2026-11-07] 돌개바람은 whirlDraw가 캐릭터 앞뒤로 // [2026-11-04] 속성마다 자기 단계만큼
   // [2026-11-04] 획득 카드 -- 화면 가운데(조금 위)에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
   var lootBox = null;
   function lootDrops(list, px, py) {
@@ -4453,8 +4473,10 @@ var TowerMine = (function () {
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0, st && st.look && st.look.wing); } catch (e) { } }
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
+    if (auraFx.length) { var hidA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, cx, cy - 3 * scale, now); ctx.globalAlpha = hidA; } // [2026-11-07] 관리자 돌개바람(뒤쪽 반)
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
+    if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
     if (stunnedMe()) { if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now); else drawBandage(cx, cy - 3 * scale, now); } // [2026-11-04] 붕대 스턴, [2026-11-05] 감전
@@ -4627,20 +4649,6 @@ var TowerMine = (function () {
     auraFx.forEach(function (f) {
       var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 180 : 1;
       k = 1 - (1 - k) * (1 - k); // 처음엔 빠르게, 끝에서 느려지며 멎는다
-      if (f.w) { // [2026-11-07] 관리자 -- 내 둘레 8칸에 토네이도(이미지)가 솟아 천천히 돌다가 흩어진다(속성이 여럿이면 하나씩 번갈아 그 색)
-        var wx = f.x * TS - camX + TS / 2, wy = f.y * TS - camY + TS / 2, grow = Math.min(1, el0 / 140), turn = (el0 / (AURA_FX_MS + 180)) * Math.PI * 0.5;
-        var tw = TS * 1.25, th = tw * TORNADO_FH / TORNADO_FW, sm = ctx.imageSmoothingEnabled;
-        ctx.imageSmoothingEnabled = false;
-        for (var ti = 0; ti < 8; ti++) {
-          var sh = tornadoSheet(AURA_COL[f.els[ti % f.els.length]] || '#ffffff');
-          if (!sh) break;
-          var ta = ti * Math.PI / 4 + turn, tr = TS * 1.2, fr = (Math.floor(el0 / 55) + ti * 3) % TORNADO_N;
-          var bx = wx + Math.cos(ta) * tr, by = wy + Math.sin(ta) * tr + TS * 0.4, sw = tw * (0.55 + 0.45 * grow), shh = th * (0.35 + 0.65 * grow);
-          ctx.globalAlpha = Math.max(0, fo);
-          ctx.drawImage(sh, fr * TORNADO_FW, 0, TORNADO_FW, TORNADO_FH, Math.round(bx - sw / 2), Math.round(by - shh), Math.round(sw), Math.round(shh));
-        }
-        ctx.imageSmoothingEnabled = sm; ctx.globalAlpha = 1;
-      }
       var dx = f.dir === 'left' ? -1 : f.dir === 'right' ? 1 : 0, dy = f.dir === 'up' ? -1 : f.dir === 'down' ? 1 : 0, ang = Math.atan2(dy, dx);
       ctx.lineCap = 'round';
       f.els.forEach(function (e, i) {
