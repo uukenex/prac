@@ -237,10 +237,12 @@ public interface BotS5Service {
     HashMap<String, Object> mineMobs(String mapId);
     HashMap<String, Object> mineMobs(String mapId, int x, int y); // [2026-11-06] 공유 스냅샷 + 큰 맵은 내 둘레만
     HashMap<String, Object> mineAttack(String userName, String mapId, String ver, int x, int y, int mobId, int mc, String dir);
-    /** [2026-11-05] 관리자 전체 공격 -- 화면(나를 가운데로 가로 hw, 세로 hh칸)의 몬스터 모두에게 일반 공격 한 방씩. */
-    HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh);
-    /** [2026-11-07] 전체 스킬 모양(0 칼자국 / 1 살 / 2 천검). */
-    HashMap<String, Object> mineNovaFx(String userName, int s);
+    /** [2026-11-07] 3환생 스킬 -- 돌개베기(배우기/켜기), 필살기 만검진(k 0, t = 장판 타격 번호)/일섬참(k 1), 관리자 쿨타임 초기화. */
+    HashMap<String, Object> mineWhirlLearn(String userName, int el);
+    HashMap<String, Object> mineWhirlSet(String userName, int el, int lv);
+    HashMap<String, Object> mineUltLearn(String userName, int k);
+    HashMap<String, Object> mineUlt(String userName, String mapId, String ver, int x, int y, int k, int t);
+    HashMap<String, Object> mineUltReset(String userName);
     /** [2026-11-04] 검기 -- 인벤토리 스킬 탭에서 속성 el의 검기를 lv단계로(0 = 끔). */
     HashMap<String, Object> mineAuraSet(String userName, int el, int lv);
     /** [2026-11-04] 왕도 검기 사범 -- 속성 el의 검기 다음 단계 배우기. */

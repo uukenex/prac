@@ -2478,9 +2478,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (killed) { MineEngage me = MINE_ENGAGE.get(userName); if (me != null) me.mobs.remove(mobId); }
         if (auraMain != null) out.put("aura", auraMain);
-        if (auraRange > 0 && !evade && !cloneHit) { // [2026-11-04] 검기 -- 바라보는 방향 앞 사거리 칸의 다른 몬스터
+        if ((auraRange > 0 || mineWhirlOn(mineWhirlActive(items))) && !evade && !cloneHit) { // [2026-11-04] 검기 -- 바라보는 방향 앞 사거리 칸의 다른 몬스터 // [2026-11-07] + 돌개베기(둘레 8칸)
             StringBuilder am = new StringBuilder();
-            long[] ar = mineAuraSweep(userName, map, items, aura, auraRange, atkBase, x, y, dir, mobId, now, am, out);
+            long[] ar = auraRange > 0 ? mineAuraSweep(userName, map, items, aura, auraRange, atkBase, x, y, dir, mobId, now, am, out) : new long[] { 0, 0 };
+            long[] wr = mineWhirlSweep(userName, map, items, atkBase, x, y, now, am, out);
+            ar[0] += wr[0]; ar[1] += wr[1];
             if (ar[0] > 0) {
                 mineMercShare(userName, ar[1], lv, ar[0], out); // [2026-11-06] 용병 경험치(검기 처치)
                 long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, ar[1], died, out);
@@ -2692,13 +2694,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             out.put("adminMaps", maps);
         }
-        if (mineNovaOk(userName, items)) { // [2026-11-07] 전체 스킬(버튼 + 스킬 탭 모양 고르기)
-            HashMap<String, Object> nv = new HashMap<>();
-            boolean na = isMineAdmin(userName);
-            nv.put("fx", Math.max(na ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, items.getOrDefault(MINE_ITEM_NOVA_FX, na ? 0 : 1))));
-            nv.put("gap", isMineAdmin(userName) ? MINE_NOVA_GAP_MS : MINE_NOVA_USER_GAP_MS);
-            out.put("nova", nv);
-        }
+        boolean sk3 = mineSkill3Ok(userName, items); // [2026-11-07] 3환생 스킬 -- 돌개베기(배운 게 있거나 배울 수 있으면), 필살기
+        HashMap<String, Object> wi = mineWhirlInfo(items);
+        if (sk3 || mineWhirlOn((int[]) wi.get("l"))) out.put("whirl", wi);
+        if (sk3) out.put("ult", mineUltInfo(userName, items));
         return out;
     }
 
@@ -4378,47 +4377,165 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return Math.max(0, s);
     }
 
-    // [2026-11-05] "공격 버튼 위에 화면 전체를 공격하는 전체 공격기 -- 관리자용(칼로 베는 이펙트)".
-    //  화면에 보이는 칸(나를 가운데로 가로 hw, 세로 hh칸까지, 최대 MINE_NOVA_HALF)의 몬스터를 가까운 순으로 MINE_NOVA_MAX마리, 일반 공격 한 방씩(치명 10%, 속성 상성).
-    //  보스는 체력 1에서 멈춘다(검기와 같음 -- 마지막 한 방은 직접). 쿨타임 MINE_NOVA_GAP_MS.
-    static final int MINE_NOVA_HALF = 20, MINE_NOVA_MAX = 40;
-    static final long MINE_NOVA_GAP_MS = 1_500L;
-    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_NOVA_AT = new java.util.concurrent.ConcurrentHashMap<>();
-    // [2026-11-07] "3차 환생자 이상은 전체 스킬 -- 아직 오픈하지 말고, 모양을 고를 수 있게(바람의나라 혈겁만파/분혼경천 모티브)".
-    //  MINE_NOVA_OPEN = false 동안은 관리자만. 열면 환생 MINE_NOVA_REBIRTH번 이상(쿨타임 MINE_NOVA_USER_GAP_MS). 모양(광산 아이템 NOVA_FX): 0 칼자국 / 1 살(殺) / 2 천검 -- 화면만 다르고 피해는 같다.
-    static final boolean MINE_NOVA_OPEN = false;
-    static final int MINE_NOVA_REBIRTH = 3;
-    static final long MINE_NOVA_USER_GAP_MS = 30_000L;
-    static final String MINE_ITEM_NOVA_FX = "NOVA_FX";
-    static final int MINE_NOVA_STYLES = 3;
-    static final double MINE_NOVA_ZAN_MUL = 1.2, MINE_NOVA_RAIN_MUL = 0.35;
-    static final int MINE_NOVA_RAIN_HITS = 4;
-    boolean mineNovaOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_NOVA_OPEN && mineRebirth(items) >= MINE_NOVA_REBIRTH); }
+    // ---- [2026-11-07] 3환생 스킬 -- 왕도 검기 사범 옆 두 선생 ----
+    // "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)". 기존 관리자용 전체 공격은 없앴다(필살기로 대신).
+    //  MINE_SKILL3_OPEN = false 동안은 관리자만 배우고 쓴다(열면 환생 MINE_SKILL3_RB번 이상).
+    //  돌개베기(돌개 사범): 검기와 같은 재료/피해 -- 속성별 1~5단계(WHIRL_L{e} 배운 단계, WHIRL_A{e} 켠 단계), 공격할 때 내 둘레 8칸 몬스터에게 켠 속성마다
+    //   공격력 x 단계 x 5% 속성 피해(상성 x1.5). 그림은 관리자 돌개바람(whirl.png). 결과는 검기 결과(auraMobs/auraDrops)에 합쳐 보낸다.
+    //  필살기(필살 사범): 만검진(광역, ULT_L0)과 일섬참(단일, ULT_L1) 둘 다 배워 쓴다. 배울 때 은하수 조각 2/5/8/11/14개(레벨마다 따로), 쿨타임은 둘이 공유(2분).
+    //   만검진: 쓴 자리(둘레 MINE_ULT_ZONE_R칸 = 7x7)에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 125%(+레벨당 20%) x 5번(화면이 1초마다 다음 타격을 부른다).
+    //   일섬참: 화면에 보이는 가장 가까운 몬스터 하나에게 공격력의 800%(+레벨당 150%). 보이는 몬스터가 없으면 쿨타임을 쓰지 않는다.
+    //   보스는 검기처럼 체력 1에서 멈춘다(마지막 한 방은 직접). 관리자는 쿨타임 초기화 버튼(mineUltReset).
+    static final boolean MINE_SKILL3_OPEN = false;
+    static final int MINE_SKILL3_RB = 3;
+    boolean mineSkill3Ok(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_SKILL3_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
+    static final String MINE_SKILL3_NO = "이 기술은 " + MINE_SKILL3_RB + "번째 환생을 마친 사람에게만 가르치네.";
+
+    static String mineWhirlKey(boolean active, int e) { return (active ? "WHIRL_A" : "WHIRL_L") + e; }
+    static int[] mineWhirlActive(Map<String, Integer> items) {
+        int[] a = new int[9];
+        for (int e = 1; e <= 8; e++) a[e] = Math.max(0, Math.min(Math.min(items.getOrDefault(mineWhirlKey(true, e), 0), items.getOrDefault(mineWhirlKey(false, e), 0)), MINE_AURA_MAX));
+        return a;
+    }
+    static boolean mineWhirlOn(int[] w) { for (int e = 1; e <= 8; e++) if (w[e] > 0) return true; return false; }
+    static HashMap<String, Object> mineWhirlInfo(Map<String, Integer> items) {
+        HashMap<String, Object> m = new HashMap<>();
+        int[] l = new int[9];
+        for (int e = 1; e <= 8; e++) l[e] = Math.min(items.getOrDefault(mineWhirlKey(false, e), 0), MINE_AURA_MAX);
+        m.put("l", l);
+        m.put("a", mineWhirlActive(items));
+        return m;
+    }
+    /** 돌개베기 -- 내 둘레 8칸 몬스터에게 켠 속성 피해. 결과를 검기 결과(auraMobs/auraDrops)에 합친다. 반환 {처치 수, 경험치}. */
+    @SuppressWarnings("unchecked")
+    long[] mineWhirlSweep(String userName, S5MineMap map, Map<String, Integer> items, double atkBase, int x, int y, long now, StringBuilder msg, HashMap<String, Object> out) {
+        int[] w = mineWhirlActive(items);
+        if (!mineWhirlOn(w)) return new long[] { 0, 0 };
+        java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) {
+            int lx = x + ox, ly = y + oy;
+            if ((ox != 0 || oy != 0) && lx >= 0 && ly >= 0 && lx < map.w && ly < map.h) cells.put(ly * map.w + lx, 1);
+        }
+        long[] r = mineSweepCells(userName, map, items, cells, 8, -1, now, msg, out, (ot, dist) -> mineAuraHits(w, atkBase, ot, 1), "whirlMobs", "whirlDrops", "🌪️ 돌개베기로 ");
+        Object wm = out.remove("whirlMobs"), wd = out.remove("whirlDrops");
+        if (wm instanceof List && !((List<Object>) wm).isEmpty()) { List<Object> l = out.get("auraMobs") instanceof List ? new ArrayList<>((List<Object>) out.get("auraMobs")) : new ArrayList<>(); l.addAll((List<Object>) wm); out.put("auraMobs", l); }
+        if (wd instanceof List && !((List<Object>) wd).isEmpty()) { List<Object> l = out.get("auraDrops") instanceof List ? new ArrayList<>((List<Object>) out.get("auraDrops")) : new ArrayList<>(); l.addAll((List<Object>) wd); out.put("auraDrops", l); }
+        List<Integer> els = new ArrayList<>();
+        for (int e = 1; e <= 8; e++) if (w[e] > 0) els.add(e);
+        out.put("whirl", els); // 다른 사람 화면(돌개바람 색)
+        return r;
+    }
     @Override
-    public HashMap<String, Object> mineNovaFx(String userName, int s) {
+    @Transactional
+    public HashMap<String, Object> mineWhirlLearn(String userName, int el) {
         HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "whirlmaster")) { out.put("message", "왕도 돌개 사범 앞에서만 배울 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
-        if (!mineNovaOk(userName, items)) { out.put("ok", false); out.put("message", "전체 스킬은 " + MINE_NOVA_REBIRTH + "번째 환생부터 쓸 수 있어요."); return out; }
-        int v = Math.max(isMineAdmin(userName) ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, s)); // 0 칼자국은 관리자만
-        dao.upsertMineItem(userName, MINE_ITEM_NOVA_FX, v);
+        if (!mineSkill3Ok(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
+        if (el < 1 || el > 8 || MINE_AURA_BOSS_ITEM[el] == null) { out.put("message", "그 속성의 돌개베기는 아직 가르칠 수 없네. (그 속성의 보스가 나타나면)"); return out; }
+        int cur = Math.min(items.getOrDefault(mineWhirlKey(false, el), 0), MINE_AURA_MAX), act = items.getOrDefault(mineWhirlKey(true, el), 0);
+        if (cur >= MINE_AURA_MAX) { out.put("message", "이미 " + S5MineMobs.ELEM_NAMES[el] + " 돌개베기를 끝까지 익혔네."); return out; }
+        int nx = cur + 1, n = mineAuraCost(nx);
+        String[] need = { MINE_AURA_BOSS_ITEM[el], S5MineMap.MOON_STONE_CODE, S5MineMap.seaCutCode(MINE_AURA_SEA[el]) };
+        int[] qty = { n, n, MINE_AURA_SEA_QTY }; // 검기와 같은 재료
+        for (int i = 0; i < need.length; i++) {
+            if (dao.takeUserOre(userName, need[i], qty[i]) > 0) continue;
+            for (int j = 0; j < i; j++) dao.addUserOre(userName, need[j], qty[j]);
+            out.put("message", mineCodeName(need[0]) + " " + n + "개, " + S5MineMap.MOON_STONE_NAME + " " + n + "개, " + mineCodeName(need[2]) + " " + MINE_AURA_SEA_QTY + "개가 있어야 해요.");
+            return out;
+        }
+        dao.upsertMineItem(userName, mineWhirlKey(false, el), nx);
+        items.put(mineWhirlKey(false, el), nx);
+        if (act == cur) { dao.upsertMineItem(userName, mineWhirlKey(true, el), nx); items.put(mineWhirlKey(true, el), nx); }
         out.put("ok", true);
-        out.put("fx", v);
+        out.put("message", "🌪️ 돌개 사범: " + S5MineMobs.ELEM_NAMES[el] + " 돌개베기 " + nx + "단계를 익혔네! (둘레 8칸에 공격력의 " + nx * MINE_AURA_PCT + "% 속성 피해)");
+        out.put("whirl", mineWhirlInfo(items));
+        out.put("ores", mineOreList(userName));
         return out;
     }
     @Override
     @Transactional
-    public HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh) {
+    public HashMap<String, Object> mineWhirlSet(String userName, int el, int lv) {
+        HashMap<String, Object> out = new HashMap<>();
+        if (!mineAccess(userName)) return mineClosed();
+        Map<String, Integer> items = mineItems(userName);
+        int have = Math.min(items.getOrDefault(mineWhirlKey(false, el), 0), MINE_AURA_MAX);
+        if (el < 1 || el > 8 || lv < 0 || lv > have) { out.put("ok", false); out.put("message", "아직 배우지 않은 단계예요."); return out; }
+        dao.upsertMineItem(userName, mineWhirlKey(true, el), lv);
+        items.put(mineWhirlKey(true, el), lv);
+        out.put("ok", true);
+        out.put("whirl", mineWhirlInfo(items));
+        return out;
+    }
+
+    static final String[] MINE_ULT_NAME = { "만검진", "일섬참" };
+    static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 3, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 30;
+    static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
+    static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L;
+    static String mineUltKey(int k) { return "ULT_L" + k; }
+    static int mineUltLv(Map<String, Integer> items, int k) { return Math.max(0, Math.min(MINE_ULT_MAX, items.getOrDefault(mineUltKey(k), 0))); }
+    static double mineUltPct(int k, int lv) { return k == 0 ? 1.25 + 0.20 * (lv - 1) : 8.0 + 1.5 * (lv - 1); } // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ULT_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 마지막으로 쓴 시각(쿨타임 공유)
+    static final class UltZone { String mapId; int cx, cy, lv, n; long last; }
+    static final java.util.concurrent.ConcurrentHashMap<String, UltZone> MINE_ULT_ZONE = new java.util.concurrent.ConcurrentHashMap<>();
+    HashMap<String, Object> mineUltInfo(String userName, Map<String, Integer> items) {
+        HashMap<String, Object> m = new HashMap<>();
+        m.put("l", new int[] { mineUltLv(items, 0), mineUltLv(items, 1) });
+        Long at = MINE_ULT_AT.get(userName);
+        m.put("cd", at == null ? 0 : Math.max(0, MINE_ULT_GAP_MS - (System.currentTimeMillis() - at)));
+        m.put("gap", MINE_ULT_GAP_MS);
+        return m;
+    }
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineUltLearn(String userName, int k) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
-        boolean novaAdmin = isMineAdmin(userName);
-        if (!novaAdmin && !mineNovaOk(userName, mineItems(userName))) { out.put("message", "전체 스킬은 " + MINE_NOVA_REBIRTH + "번째 환생부터 쓸 수 있어요."); return out; } // [2026-11-07] 3환생 이상(아직 비공개 -- MINE_NOVA_OPEN)
+        if (!mineAccess(userName)) return mineClosed();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "ultmaster")) { out.put("message", "왕도 필살 사범 앞에서만 배울 수 있어요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineSkill3Ok(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
+        if (k < 0 || k > 1) return out;
+        int cur = mineUltLv(items, k);
+        if (cur >= MINE_ULT_MAX) { out.put("message", "이미 " + MINE_ULT_NAME[k] + "을(를) 끝까지 익혔네."); return out; }
+        int nx = cur + 1, n = MINE_ULT_COST[nx];
+        if (dao.takeUserOre(userName, S5MineMap.GALAXY_CODE, n) <= 0) { out.put("message", S5MineMap.GALAXY_NAME + " " + n + "개가 있어야 해요."); return out; }
+        dao.upsertMineItem(userName, mineUltKey(k), nx);
+        items.put(mineUltKey(k), nx);
+        out.put("ok", true);
+        out.put("message", "⚔️ 필살 사범: " + MINE_ULT_NAME[k] + " " + nx + "레벨을 익혔네! (" + (k == 0 ? "5초 동안 1초마다 공격력의 " + Math.round(mineUltPct(0, nx) * 100) + "%" : "공격력의 " + Math.round(mineUltPct(1, nx) * 100) + "% 한 방") + ")");
+        out.put("ult", mineUltInfo(userName, items));
+        out.put("ores", mineOreList(userName));
+        return out;
+    }
+    @Override
+    public HashMap<String, Object> mineUltReset(String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        if (!isMineAdmin(userName)) { out.put("ok", false); out.put("message", "관리자만 쓸 수 있어요."); return out; }
+        MINE_ULT_AT.remove(userName);
+        out.put("ok", true);
+        out.put("message", "⟳ 필살기 쿨타임을 초기화했어요.");
+        out.put("ult", mineUltInfo(userName, mineItems(userName)));
+        return out;
+    }
+    /** 필살기 -- k 0 만검진(t 0 = 쓰기, 1~4 = 장판의 다음 타격), 1 일섬참. */
+    @Override
+    @Transactional
+    public HashMap<String, Object> mineUlt(String userName, String mapId, String ver, int x, int y, int k, int t) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (k < 0 || k > 1) return out;
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
-        Long last = MINE_NOVA_AT.get(userName);
-        if (last != null && now - last < (novaAdmin ? MINE_NOVA_GAP_MS : MINE_NOVA_USER_GAP_MS)) { out.put("tooFast", true); if (!novaAdmin) out.put("message", "⏳ 전체 스킬은 " + ((MINE_NOVA_USER_GAP_MS - (now - last)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); return out; }
-        MINE_NOVA_AT.put(userName, now);
+        if (mineFrozen(userName, now) != null) { out.put("frozen", true); out.put("message", MINE_FROZEN_BLOCK); return out; }
         HashMap<String, Object> row = mineRowLocked(userName);
         S5MineMap map = mineMapOf(row);
         Map<String, Integer> items = mineItems(userName);
@@ -4432,36 +4549,69 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         int lv = mineLv(row);
+        String block = mineMapBlock(map, items, lv);
+        if (block != null) { out.put("message", block); return out; }
+        int ulv;
+        UltZone z = null;
+        Long prevAt = MINE_ULT_AT.get(userName);
+        if (k == 0 && t > 0) { // 장판의 다음 타격
+            z = MINE_ULT_ZONE.get(userName);
+            if (z == null || !map.id.equals(z.mapId) || z.n >= MINE_ULT_TICKS) { out.put("ended", true); return out; }
+            if (now - z.last < MINE_ULT_TICK_MS - 150) { out.put("tooFast", true); return out; }
+            ulv = z.lv;
+        } else {
+            if (!mineSkill3Ok(userName, items)) { out.put("message", "필살기는 " + MINE_SKILL3_RB + "번째 환생부터 쓸 수 있어요."); return out; }
+            ulv = mineUltLv(items, k);
+            if (ulv <= 0) { out.put("message", "아직 " + MINE_ULT_NAME[k] + "을(를) 배우지 않았어요. (왕도 필살 사범)"); return out; }
+            if (prevAt != null && now - prevAt < MINE_ULT_GAP_MS) { out.put("message", "⏳ 필살기는 " + ((MINE_ULT_GAP_MS - (now - prevAt)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); out.put("ult", mineUltInfo(userName, items)); return out; }
+            MINE_ULT_AT.put(userName, now);
+            if (k == 0) { z = new UltZone(); z.mapId = map.id; z.cx = x; z.cy = y; z.lv = ulv; MINE_ULT_ZONE.put(userName, z); }
+        }
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         int hp = mineHpNow(row, now, lock, rb);
-        double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items);
-        int ax = Math.max(1, Math.min(MINE_NOVA_HALF, hw)), ay = Math.max(1, Math.min(MINE_NOVA_HALF, hh));
+        final double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), pct = mineUltPct(k, ulv);
         java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
-        for (int yy = Math.max(0, y - ay); yy <= Math.min(map.h - 1, y + ay); yy++)
-            for (int xx = Math.max(0, x - ax); xx <= Math.min(map.w - 1, x + ax); xx++) cells.put(yy * map.w + xx, Math.abs(xx - x) + Math.abs(yy - y));
+        int maxT;
+        if (k == 0) {
+            for (int yy = Math.max(0, z.cy - MINE_ULT_ZONE_R); yy <= Math.min(map.h - 1, z.cy + MINE_ULT_ZONE_R); yy++)
+                for (int xx = Math.max(0, z.cx - MINE_ULT_ZONE_R); xx <= Math.min(map.w - 1, z.cx + MINE_ULT_ZONE_R); xx++) cells.put(yy * map.w + xx, Math.max(Math.abs(xx - z.cx), Math.abs(yy - z.cy)));
+            maxT = MINE_ULT_ZONE_MAXT;
+            z.n++; z.last = now;
+            if (z.n >= MINE_ULT_TICKS) MINE_ULT_ZONE.remove(userName, z);
+            HashMap<String, Object> zo = new HashMap<>();
+            zo.put("x", z.cx); zo.put("y", z.cy); zo.put("n", z.n); zo.put("r", MINE_ULT_ZONE_R);
+            out.put("zone", zo);
+        } else {
+            int[] v = MINE_MERC_VIEW.get(userName);
+            int hw = v == null ? MINE_MERC_VIEW_W : v[0], hh = v == null ? MINE_MERC_VIEW_H : v[1];
+            for (int yy = Math.max(0, y - hh); yy <= Math.min(map.h - 1, y + hh); yy++)
+                for (int xx = Math.max(0, x - hw); xx <= Math.min(map.w - 1, x + hw); xx++) cells.put(yy * map.w + xx, Math.abs(xx - x) + Math.abs(yy - y));
+            maxT = 1;
+        }
         StringBuilder msg = new StringBuilder();
-        // [2026-11-07] 전체 스킬 -- 0 칼자국(관리자): 한 방 / 1 참(斬): 한 방 x MINE_NOVA_ZAN_MUL / 2 검우(劍雨): MINE_NOVA_RAIN_HITS번 x MINE_NOVA_RAIN_MUL(타격마다 치명)
-        final int nfx = Math.max(novaAdmin ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, items.getOrDefault(MINE_ITEM_NOVA_FX, novaAdmin ? 0 : 1)));
-        final double nMul = nfx == 1 ? MINE_NOVA_ZAN_MUL : nfx == 2 ? MINE_NOVA_RAIN_MUL : 1.0;
-        final int nHits = nfx == 2 ? MINE_NOVA_RAIN_HITS : 1;
-        long[] r = mineSweepCells(userName, map, items, cells, MINE_NOVA_MAX, -1, now, msg, out, (ot, dist) -> {
+        long[] r = mineSweepCells(userName, map, items, cells, maxT, -1, now, msg, out, (ot, dist) -> {
             List<int[]> l = new ArrayList<>();
-            for (int k = 0; k < nHits; k++) {
-                boolean crit = RND.nextInt(100) < 10;
-                int d = Math.max(1, (int) Math.round(atkBase * nMul * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot)));
-                l.add(new int[] { 0, d, crit ? 1 : 0 });
-            }
+            boolean crit = RND.nextInt(100) < 10;
+            l.add(new int[] { 0, Math.max(1, (int) Math.round(atkBase * pct * (0.9 + RND.nextDouble() * 0.2) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot))), crit ? 1 : 0 });
             return l;
-        }, "novaMobs", "novaDrops", nfx == 1 ? "⚔️ 참(斬)으로 " : nfx == 2 ? "⚔️ 검우로 " : "⚔️ 전체 베기로 ");
-        out.put("novaFx", nfx);
-        mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(전체 베기)
+        }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ");
+        Object um = out.get("ultMobs");
+        if (k == 1 && (!(um instanceof List) || ((List<?>) um).isEmpty())) { // 보이는 몬스터가 없다 -- 쿨타임을 돌려준다
+            if (prevAt == null) MINE_ULT_AT.remove(userName); else MINE_ULT_AT.put(userName, prevAt);
+            out.put("message", "화면에 벨 몬스터가 없어요.");
+            out.put("ult", mineUltInfo(userName, items));
+            return out;
+        }
+        mineMercShare(userName, r[1], lv, r[0], out);
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
         out.put("ok", true);
+        out.put("k", k);
         out.put("levelUp", (int) g[4]);
         out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
+        out.put("ult", mineUltInfo(userName, items));
         out.put("message", msg.length() > 0 ? msg.toString() : null);
         return out;
     }
@@ -4492,13 +4642,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (block != null) { out.put("message", block); return out; }
         int[] aura = mineAuraActive(items);
         int range = mineAuraRange(aura);
-        if (range <= 0) { out.put("message", "켜 둔 검기가 없어요. (인벤토리 스킬 탭)"); return out; }
+        boolean whirlOn = mineWhirlOn(mineWhirlActive(items)); // [2026-11-07] 돌개베기
+        if (range <= 0 && !whirlOn) { out.put("message", "켜 둔 검기가 없어요. (인벤토리 스킬 탭)"); return out; }
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         int hp = mineHpNow(row, now, lock, rb);
         mineBerserkLow(items, hp, mineHpMax(lv, rb)); // [2026-11-04] 광전사의 장갑 2단계
         StringBuilder msg = new StringBuilder();
         long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
+        long[] wr = mineWhirlSweep(userName, map, items, mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
+        r = new long[] { r[0] + wr[0], r[1] + wr[1] };
         mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         int kh = mineRegenKillHeal(items, (int) r[0], mineHpMax((int) g[0], rb)); // [2026-11-04] 재생의 장갑 2단계
@@ -6976,7 +7129,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<int[]> au = new ArrayList<>();
             boolean auraFired = out.containsKey("aura") || out.containsKey("auraMobs") || Boolean.TRUE.equals(out.get("auraOnly"));
             if (auraFired && aura != null) for (int e = 1; e < aura.length && e <= 8; e++) if (aura[e] > 0) au.add(new int[] { e, aura[e] });
-            if (h.isEmpty() && au.isEmpty()) return;
+            if (h.isEmpty() && au.isEmpty() && !(out.get("whirl") instanceof List)) return;
             if (h.size() > 24) h = h.subList(0, 24);
             HashMap<String, Object> a = new HashMap<>();
             long now = System.currentTimeMillis();
@@ -6986,6 +7139,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             a.put("h", h);
             if (!au.isEmpty()) a.put("au", au);
             if (isMineAdmin(userName)) a.put("w", 1);
+            if (out.get("whirl") instanceof List) a.put("wl", out.get("whirl")); // [2026-11-07] 돌개베기(켠 속성)
             synchronized (me.atks) {
                 me.atks.addLast(a);
                 while (me.atks.size() > 6 || (!me.atks.isEmpty() && now - (Long) me.atks.peekFirst().get("at") > MINE_PRES_ATK_MS)) me.atks.removeFirst();

@@ -94,8 +94,6 @@ public class S55MineSocket {
             case "/api/tower-mine-attack":
                 return c.apiTowerMineAttack(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), num(a, "mob"), a.getOrDefault("v", ""),
                         a.containsKey("mc") ? num(a, "mc") : -1, a.getOrDefault("d", "")).getBody();
-            case "/api/tower-mine-nova": // [2026-11-05] 관리자 전체 베기(빠진 길이라 빈 답 -> 효과 없음)
-                return c.apiTowerMineNova(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.containsKey("hw") ? num(a, "hw") : 8, a.containsKey("hh") ? num(a, "hh") : 8, a.getOrDefault("v", "")).getBody();
             case "/api/tower-mine-dig":
                 return c.apiTowerMineDig(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.getOrDefault("v", ""), a.getOrDefault("dir", "down")).getBody();
             default:

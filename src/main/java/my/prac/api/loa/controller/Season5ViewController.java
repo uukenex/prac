@@ -920,23 +920,45 @@ public class Season5ViewController {
     }
 
     /** [2026-10-24] 웹 광산 공격 -- (x, y)에 서서 바로 옆 몬스터(mob = 맵 안 번호)를 때린다. 처치/레벨 업/쓰러짐만 로그. */
-    /** [2026-11-05] 관리자 전체 공격(화면 안 몬스터 모두). */
-    @GetMapping("/api/tower-mine-nova")
+    /** [2026-11-07] 3환생 스킬 -- 돌개베기 배우기/켜기, 필살기 배우기/쓰기, 관리자 쿨타임 초기화. */
+    @GetMapping("/api/tower-mine-whirl-learn")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineNova(@RequestParam(value = "userName", defaultValue = "") String userName,
+    public ResponseEntity<?> apiTowerMineWhirlLearn(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "el", defaultValue = "0") int el) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineWhirlLearn(userName, el);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 돌개베기 배움", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+    @GetMapping("/api/tower-mine-whirl")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineWhirl(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "el", defaultValue = "0") int el, @RequestParam(value = "lv", defaultValue = "0") int lv) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineWhirlSet(userName, el, lv));
+    }
+    @GetMapping("/api/tower-mine-ult-learn")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineUltLearn(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "k", defaultValue = "0") int k) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineUltLearn(userName, k);
+        if (Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 필살기 배움", String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
+    }
+    @GetMapping("/api/tower-mine-ult")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineUlt(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam(value = "hw", defaultValue = "8") int hw, @RequestParam(value = "hh", defaultValue = "8") int hh,
+            @RequestParam(value = "k", defaultValue = "0") int k, @RequestParam(value = "t", defaultValue = "0") int t,
             @RequestParam(value = "v", defaultValue = "") String ver) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineNova(userName, mapId, ver, x, y, hw, hh));
+        HashMap<String, Object> out = s5Service.mineUlt(userName, mapId, ver, x, y, k, t);
+        if (t == 0 && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 필살기 " + (k == 0 ? "만검진" : "일섬참"), String.valueOf(out.get("message")));
+        return ResponseEntity.ok(out);
     }
-
-    /** [2026-11-07] 전체 스킬 모양 고르기(인벤토리 스킬 탭). */
-    @GetMapping("/api/tower-mine-nova-fx")
+    @GetMapping("/api/tower-mine-ult-reset")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineNovaFx(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "s", defaultValue = "0") int s) {
+    public ResponseEntity<?> apiTowerMineUltReset(@RequestParam(value = "userName", defaultValue = "") String userName) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        return ResponseEntity.ok(s5Service.mineNovaFx(userName, s));
+        return ResponseEntity.ok(s5Service.mineUltReset(userName));
     }
 
     @GetMapping("/api/tower-mine-attack")

@@ -784,8 +784,14 @@
     .mine-atk.near{ filter:none; opacity:1; animation:mineAtkPulse 1s ease-in-out infinite; }
     .mine-atk:active{ transform:translateY(3px); box-shadow:0 2px 0 #7a1a12; }
     .mine-atk:disabled{ filter:grayscale(1); opacity:.5; animation:none; }
-    .mine-nova{ position:absolute; right:30px; bottom:calc(250px + env(safe-area-inset-bottom)); width:60px; height:60px; border-radius:50%; font-size:28px; line-height:1; background:#8a3ad0; border:3px solid #140d0a; box-shadow:0 5px 0 #3e1466; cursor:pointer; }
-    .mine-nova:active{ transform:translateY(3px); box-shadow:0 2px 0 #3e1466; }
+    /* [2026-11-07] 필살기 버튼 -- 왼쪽 반 만검진 / 오른쪽 반 일섬참, 쿨타임은 어둡게 덮은 부채꼴 + 남은 시간 */
+    .mine-ult{ position:absolute; right:30px; bottom:calc(250px + env(safe-area-inset-bottom)); width:62px; height:62px; border-radius:50%; border:3px solid #140d0a; box-shadow:0 5px 0 #3e1466; overflow:hidden; display:flex; }
+    .mine-ult button{ flex:1 1 0; min-width:0; border:0; margin:0; padding:0; font-size:20px; line-height:1; color:#fff; cursor:pointer; }
+    .mine-ult .l{ background:#c8622a; border-right:2px solid #140d0a; }
+    .mine-ult .r{ background:#6a3ad0; }
+    .mine-ult button:active{ filter:brightness(1.3); }
+    .mine-ult .cd{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:800 15px monospace; color:#fff; text-shadow:0 0 3px #000; pointer-events:none; }
+    .mine-ult-rst{ position:absolute; right:26px; bottom:calc(322px + env(safe-area-inset-bottom)); height:24px; padding:0 8px; border-radius:12px; background:#2a2238; border:2px solid #140d0a; color:#ffe9a8; font:800 11px sans-serif; cursor:pointer; }
     @keyframes mineAtkPulse{ 0%,100%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 0 rgba(255,90,70,.6); } 50%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 8px rgba(255,90,70,0); } }
     .mine-eq-slot{ margin:10px 0 4px; font-weight:800; font-size:13px; }
     .mine-eq-slot small{ font-weight:600; opacity:.7; margin-left:4px; }
