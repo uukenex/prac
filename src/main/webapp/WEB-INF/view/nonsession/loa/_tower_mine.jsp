@@ -5047,7 +5047,10 @@ var TowerMine = (function () {
   //  [2026-11-04] 서버 주소는 숨긴다(사용자 지시) -- wsHost는 서울 지점 중계(CloudFront) 도메인. 보안 연결도 되니 https 화면도 wss://로.
   // [2026-11-06] "폰/PC가 HTTP로 통신할 때가 있다 -- 전부 ws로" -- 입장(첫 상태)도 소켓으로 보내려고, 지난번에 받은 서울 주소(wsHost)를 이 기기에 기억해 두고 입장 전에 소켓부터 연다.
   var wsHostMem = (function () { try { return localStorage.getItem('tw-mine-wshost') || ''; } catch (e) { return ''; } })();
-  function wsHostOf() { return (st && st.wsHost) || wsHostMem; }
+  // [2026-11-08] "로컬에서 반영 사항이 안 보인다" -- 로컬(localhost/사설 IP)에서 연 화면도 라이브 서버의 서울 직통 주소로 소켓을 열어
+  //  맵/상태/공격이 전부 라이브로 갔다. 로컬에서 열었으면 직통 주소를 쓰지 않는다(그 페이지를 준 서버로).
+  var WS_LOCAL = /^(localhost|127\.|10\.|192\.168\.|\[?::1\]?$)/.test(location.hostname);
+  function wsHostOf() { return WS_LOCAL ? null : (st && st.wsHost) || wsHostMem; }
   function wsDirect() { return !!(wsHostOf() && !wsDirectBad); }
   /** 소켓이 열릴 때까지(최대 ms) 기다린다 -- 못 열면 그냥 진행(HTTP). */
   function wsReady(ms) { return new Promise(function (res) { if (wsOk || !ws) { res(); return; } var t0 = Date.now(), iv = setInterval(function () { if (wsOk || !ws || Date.now() - t0 > ms) { clearInterval(iv); res(); } }, 40); }); }
