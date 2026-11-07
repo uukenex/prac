@@ -952,6 +952,12 @@ public class Season5ViewController {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineUlt(userName, mapId, ver, x, y, k, t);
         if (t == 0 && Boolean.TRUE.equals(out.get("ok"))) mineLog(userName, "[웹] 광산 필살기 " + (k == 0 ? "만검진" : "일섬참"), String.valueOf(out.get("message")));
+        if (Boolean.TRUE.equals(out.get("bossKilled")) && !s5Service.s55IsAdmin(userName)) { // [2026-11-07] 필살기로 쓰러뜨린 보스도 관리자 알림
+            HashMap<String, Object> bo = new HashMap<>();
+            bo.put("bossName", out.get("bossName"));
+            bo.put("drops", out.get("ultDrops"));
+            mineBossAlert(userName, bo, "(필살기)");
+        }
         return ResponseEntity.ok(out);
     }
     @GetMapping("/api/tower-mine-ult-reset")
