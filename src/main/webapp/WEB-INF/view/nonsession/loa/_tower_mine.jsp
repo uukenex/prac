@@ -1283,6 +1283,7 @@ var TowerMine = (function () {
     if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
     var ultShow = st && st.ult && (((st.ult.l || [])[0] | 0) + ((st.ult.l || [])[1] | 0) > 0 || st.adminMaps) ? '' : 'none', rstShow = ultShow === '' && st.adminMaps ? '' : 'none'; // [2026-11-07] 필살기 버튼(배웠거나 관리자), 관리자 쿨 초기화
     if (el.ult && el.ult.style.display !== ultShow) el.ult.style.display = ultShow;
+    if (el.ult && st && st.ult) { var ulq = st.ult.l || []; el.ult.classList.toggle('lk0', !(ulq[0] | 0)); el.ult.classList.toggle('lk1', !(ulq[1] | 0)); } // [2026-11-08] 하나만 배웠으면 안 배운 조각은 흐리게 + 자물쇠
     if (el.ultRst && el.ultRst.style.display !== rstShow) el.ultRst.style.display = rstShow;
     var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
     if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;

@@ -785,15 +785,25 @@
     .mine-atk:active{ transform:translateY(3px); box-shadow:0 2px 0 #7a1a12; }
     .mine-atk:disabled{ filter:grayscale(1); opacity:.5; animation:none; }
     /* [2026-11-07] 필살기 버튼 -- 왼쪽 반 만검진 / 오른쪽 반 일섬참, 쿨타임은 어둡게 덮은 부채꼴 + 남은 시간 */
-    .mine-ult{ position:absolute; right:30px; bottom:calc(250px + env(safe-area-inset-bottom)); width:62px; height:62px; border-radius:50%; border:3px solid #140d0a; box-shadow:0 5px 0 #3e1466; overflow:hidden; display:flex; }
-    .mine-ult button{ flex:1 1 0; min-width:0; border:0; margin:0; padding:0; font-size:20px; line-height:1; color:#fff; cursor:pointer; }
-    .mine-ult .l{ background:#c8622a; border-right:2px solid #140d0a; }
-    .mine-ult .r{ background:#6a3ad0; }
-    .mine-ult button:active{ filter:brightness(1.3); }
-    .mine-ult button{ position:relative; }
+    .mine-ult{ position:absolute; right:28px; bottom:calc(248px + env(safe-area-inset-bottom)); width:66px; height:66px; display:block; } /* [2026-11-08] 태극 모양(SVG) */
+    .mine-ult svg{ display:block; width:66px; height:68px; overflow:visible; }
+    .mine-ult .sh{ fill:#1a1440; }
+    .mine-ult .ya{ fill:#2a62c8; cursor:pointer; } /* X 만검진 -- 음(파랑) */
+    .mine-ult .yb{ fill:#c8323a; cursor:pointer; } /* C 일섬참 -- 양(빨강) */
+    .mine-ult .ya:active, .mine-ult .yb:active{ filter:brightness(1.35); }
+    .mine-ult .sc{ fill:none; stroke:#140d0a; stroke-width:2.5; pointer-events:none; }
+    .mine-ult .rim{ fill:none; stroke:#140d0a; stroke-width:3; pointer-events:none; }
+    .mine-ult image, .mine-ult text, .mine-ult .ultkey{ pointer-events:none; }
+    .mine-ult .lk{ display:none; font-size:18px; text-anchor:middle; dominant-baseline:middle; }
+    .mine-ult.lk0 .ya, .mine-ult.lk1 .yb{ filter:grayscale(1) brightness(.55); } /* [2026-11-08] 안 배운 쪽 -- 흐리게 + 자물쇠 */
+    .mine-ult.lk0 .ia, .mine-ult.lk1 .ib{ opacity:.25; }
+    .mine-ult.lk0 .lka, .mine-ult.lk1 .lkb{ display:inline; }
+    .mine-ult .ultkey{ display:none; }
+    .mine-ult .ultkey rect{ fill:rgba(0,0,0,.55); }
+    .mine-ult .ultkey text{ font:800 10px monospace; fill:#fff; text-anchor:middle; }
     .mine-ult i{ display:none; position:absolute; left:50%; bottom:5px; transform:translateX(-50%); font:800 9px/1.2 monospace; font-style:normal; color:#fff; background:rgba(0,0,0,.5); padding:0 3px; border-radius:3px; pointer-events:none; } /* [2026-11-07] 단축키 X / C -- 키보드가 있는 PC에서만 */
-    @media (hover:hover) and (pointer:fine){ .mine-ult i{ display:block; } }
-    .mine-ult .cd{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:800 15px monospace; color:#fff; text-shadow:0 0 3px #000; pointer-events:none; }
+    @media (hover:hover) and (pointer:fine){ .mine-ult .ultkey{ display:inline; } }
+    .mine-ult .cd{ position:absolute; left:0; top:0; width:66px; height:66px; border-radius:50%; display:flex; align-items:center; justify-content:center; font:800 15px monospace; color:#fff; text-shadow:0 0 3px #000; pointer-events:none; }
     .mine-ult-rst{ position:absolute; right:26px; bottom:calc(322px + env(safe-area-inset-bottom)); height:24px; padding:0 8px; border-radius:12px; background:#2a2238; border:2px solid #140d0a; color:#ffe9a8; font:800 11px sans-serif; cursor:pointer; }
     @keyframes mineAtkPulse{ 0%,100%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 0 rgba(255,90,70,.6); } 50%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 8px rgba(255,90,70,0); } }
     .mine-eq-slot{ margin:10px 0 4px; font-weight:800; font-size:13px; }
