@@ -803,7 +803,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     // [2026-11-07] "고레벨에서 갑자기 너무 세진다 -- 99레벨은 플레이어 기준 20% 너프, 그 아래 레벨도 계단식" -- 20레벨마다 5%씩(1~19 그대로, 20~39 -5%, 40~59 -10%, 60~79 -15%, 80~99 -20%).
     static double mineAtkStep(int lv) { return 1.0 - 0.05 * Math.min(4, Math.max(0, lv) / 20); }
-    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv)); }
+    // [2026-11-07] "플레이어 공격력도 용병과 비슷한 곡선(노환생 기준)" -- 80레벨까지는 그대로(레벨마다 9% + 계단식 너프), 80 -> 99는 직선으로 완만하게(80레벨 값 -> 99레벨 10,000).
+    static final double MINE_ATK_LV99 = 10_000;
+    static double mineAtkExp(int lv) { return 6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv); }
+    static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round(a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0); }
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
