@@ -3982,7 +3982,7 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   // [2026-11-07] 3환생 스킬 -- 필살기(⚔️ 위 둥근 버튼: 왼쪽 반 만검진 / 오른쪽 반 일섬참, 쿨타임 공유 2분) + 관리자 쿨타임 초기화. 예전 관리자 전체 공격은 없앴다.
-  //  만검진: 쓴 자리 7x7 바닥에 금빛 장판, 5초 동안 검이 연달아 떨어진다(서버 타격은 1초마다 -- 화면이 다음 타격을 부른다). [2026-11-07] "칼이 옆으로 25도" -- 왼쪽 위에서 비스듬히.
+  //  만검진: 쓴 자리 13x13 바닥에 금빛 장판, 5초 동안 검이 연달아 떨어진다(서버 타격은 1초마다 -- 화면이 다음 타격을 부른다). [2026-11-07] "칼이 옆으로 25도" -- 왼쪽 위에서 비스듬히.
   //  일섬참: 화면에 보이는 가장 가까운 몬스터 위에 '斬'이 찍히고 대각선으로 크게 베어진다. 그림 img_loa/s55/fx/sword.png, zan.png.
   var novaFx = [], ultFx = [], ultBusy = false, ultReadyAt = 0, ultSeen = null, ultHudT = -1, ultImgs = {};
   var ULT_ANG = 0.44, ULT_SIN = Math.sin(0.44), ULT_COS = Math.cos(0.44); // [2026-11-07] 만검진 칼 기울기 25도
@@ -4072,7 +4072,9 @@ var TowerMine = (function () {
   /** 만검진 -- 떨어질 검 40자루(시각, 칸 안 자리)를 한 번만 정해 둔다. */
   function ultSwords(r, seed) {
     var R = ultRnd(seed), a = [];
-    for (var i = 0; i < 80; i++) a.push({ t: 120 + i * 58, x: (R() * 2 - 1) * (r + 0.3), y: (R() * 2 - 1) * (r + 0.3) * 0.75 }); // [2026-11-07] "칼이 떨어지는 속도를 빠르게" -- 0.058초마다 한 자루
+    // [2026-11-07] "칼이 떨어지는 속도를 빠르게" -- 반경 3칸(7x7)에 0.058초마다 한 자루. [2026-11-08] 범위 +3칸 -- 넓이에 맞춰 자루 수를 늘린다(빽빽함은 그대로)
+    var n = Math.round(80 * Math.pow((r + 0.5) / 3.5, 2)), gap = 4640 / n;
+    for (var i = 0; i < n; i++) a.push({ t: 120 + i * gap, x: (R() * 2 - 1) * (r + 0.3), y: (R() * 2 - 1) * (r + 0.3) * 0.75 });
     return a;
   }
   /** 바닥 장판(몬스터·캐릭터보다 먼저). */
@@ -4181,7 +4183,7 @@ var TowerMine = (function () {
     var h = npcHead('⚔️ ' + (n ? n.name : '필살 사범'), false) + talkBlock(n, n ? n.line : '');
     if (!u) return h + SK3_LOCK;
     h += '<div class="mine-smith-say">두 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 둥근 버튼의 왼쪽 반이 만검진, 오른쪽 반이 일섬참 -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
-    [['🌧️', '만검진', '쓴 자리 7x7에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return 800 + 150 * (lv - 1); }, '%로 베고 5초 기절']].forEach(function (s, k) {
+    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return 800 + 150 * (lv - 1); }, '%로 베고 5초 기절']].forEach(function (s, k) {
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(GALAXY_G) + '" alt="">' + head + '<small>' + s[2] + s[3](5) + s[4] + ' · 끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; return; }
       var c = ULT_COST[L + 1];

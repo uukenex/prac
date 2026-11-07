@@ -4412,7 +4412,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  돌개베기(돌개 사범): 검기와 같은 재료/피해 -- 속성별 1~5단계(WHIRL_L{e} 배운 단계, WHIRL_A{e} 켠 단계), 공격할 때 내 둘레 8칸 몬스터에게 켠 속성마다
     //   공격력 x 단계 x 5% 속성 피해(상성 x1.5). 그림은 관리자 돌개바람(whirl.png). 결과는 검기 결과(auraMobs/auraDrops)에 합쳐 보낸다.
     //  필살기(필살 사범): 만검진(광역, ULT_L0)과 일섬참(단일, ULT_L1) 둘 다 배워 쓴다. 배울 때 은하수 조각 2/5/8/11/14개(레벨마다 따로), 쿨타임은 둘이 공유(2분).
-    //   만검진: 쓴 자리(둘레 MINE_ULT_ZONE_R칸 = 7x7)에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 125%(+레벨당 20%) x 5번(화면이 1초마다 다음 타격을 부른다).
+    //   만검진: 쓴 자리(둘레 MINE_ULT_ZONE_R칸 = 13x13, [2026-11-08] 7x7에서 +3칸)에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 125%(+레벨당 20%) x 5번(화면이 1초마다 다음 타격을 부른다).
     //   일섬참: 화면에 보이는 가장 가까운 몬스터 하나에게 공격력의 800%(+레벨당 150%). 보이는 몬스터가 없으면 쿨타임을 쓰지 않는다.
     //   [2026-11-07] "체력 1에서 멈추는 것 없이 필살기로도 잡을 수 있게" -- 보스도 쓰러뜨린다(분신술 닌자 두목만 예외). 일섬참에 맞고 살아남은 몬스터는 5초 기절.
     //   관리자는 쿨타임 초기화 버튼(mineUltReset).
@@ -4513,7 +4513,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     static final String[] MINE_ULT_NAME = { "만검진", "일섬참" };
-    static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 3, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 30, MINE_ULT_ZONE_SPLIT = 4;
+    static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 6, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 40, /* [2026-11-08] "X 스킬 범위 +3칸" -- 반경 3(7x7) -> 6(13x13) */ MINE_ULT_ZONE_SPLIT = 4;
     static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
     // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 차고, 0이 되면 3초 동안 못 때린다(쓰러진 것처럼 사라졌다 다 찬 채로).
     static final long MINE_SIM_HEAL_MS = 5_000L, MINE_SIM_DOWN_MS = 3_000L;
