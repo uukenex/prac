@@ -25,7 +25,7 @@
   </div>
   <button type="button" class="mine-greet mpx" id="mineGreetBtn" onclick="TowerMine.greet()">👋 안녕하세요</button>
   <%-- [2026-11-07] 필살기 -- 한 버튼을 반으로(왼쪽 만검진 / 오른쪽 일섬참, 쿨타임 공유), 관리자는 위에 쿨 초기화 --%>
-  <div class="mine-ult" id="mineUlt" style="display:none"><button type="button" class="l" onclick="TowerMine.ult(0)" aria-label="만검진" title="만검진 (광역 필살)">🌧️</button><button type="button" class="r" onclick="TowerMine.ult(1)" aria-label="일섬참" title="일섬참 (단일 필살)">💥</button><span class="cd" id="mineUltCd" style="display:none"></span></div>
+  <div class="mine-ult" id="mineUlt" style="display:none"><button type="button" class="l" onclick="TowerMine.ult(0)" aria-label="만검진" title="만검진 (광역 필살, X)">🌧️<i>X</i></button><button type="button" class="r" onclick="TowerMine.ult(1)" aria-label="일섬참" title="일섬참 (단일 필살, C)">💥<i>C</i></button><span class="cd" id="mineUltCd" style="display:none"></span></div>
   <button type="button" class="mine-ult-rst" id="mineUltRst" style="display:none" onclick="TowerMine.ultReset()">⟳ 쿨 초기화</button>
   <button type="button" class="mine-atk" id="mineAtkBtn" onclick="TowerMine.atkBtn()" aria-label="무기로 공격" title="무기로 공격 (스페이스)">⚔️</button>
   <button type="button" class="mine-dig" id="mineDigBtn" onclick="TowerMine.digBtn()" aria-label="캐기" title="캐기 (Z)">⛏️<span class="dig-n" id="mineSta"></span></button>

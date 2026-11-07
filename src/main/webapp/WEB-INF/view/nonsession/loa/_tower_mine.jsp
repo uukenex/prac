@@ -984,6 +984,8 @@ var TowerMine = (function () {
       //  Enter는 예전처럼 옆에 몬스터가 있으면 공격, 없으면 캐기.
       if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); atkBtn(); }
       else if (e.code === 'KeyZ' || e.key === 'z' || e.key === 'Z') { e.preventDefault(); digBtn(); }
+      else if ((e.code === 'KeyX' || e.key === 'x' || e.key === 'X') && st && st.ult) { e.preventDefault(); ultBtn(0); } // [2026-11-07] 필살기 단축키 -- X 만검진(왼쪽) / C 일섬참(오른쪽)
+      else if ((e.code === 'KeyC' || e.key === 'c' || e.key === 'C') && st && st.ult) { e.preventDefault(); ultBtn(1); }
       else if (e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
       else if (e.key === 'Escape') close();
     });

@@ -200,6 +200,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     Map<String, Integer> mineItems(String userName) {
         Map<String, Integer> out = new HashMap<>();
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
+        if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
         return out;
     }
 
@@ -4412,6 +4413,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     boolean mineSkill3Ok(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_SKILL3_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
     static final String MINE_SKILL3_NO = "이 기술은 " + MINE_SKILL3_RB + "번째 환생을 마친 사람에게만 가르치네.";
 
+    /** [2026-11-07] 관리자 -- 검기/돌개베기(보스가 있는 속성)와 필살기 둘 다 배운 단계 5로. */
+    static void mineAdminSkills(Map<String, Integer> items) {
+        for (int e = 1; e <= 8; e++) {
+            if (MINE_AURA_BOSS_ITEM[e] == null) continue;
+            items.put(mineAuraKey(false, e), MINE_AURA_MAX);
+            items.put(mineWhirlKey(false, e), MINE_AURA_MAX);
+        }
+        items.put(mineUltKey(0), MINE_ULT_MAX);
+        items.put(mineUltKey(1), MINE_ULT_MAX);
+    }
     static String mineWhirlKey(boolean active, int e) { return (active ? "WHIRL_A" : "WHIRL_L") + e; }
     static int[] mineWhirlActive(Map<String, Integer> items) {
         int[] a = new int[9];

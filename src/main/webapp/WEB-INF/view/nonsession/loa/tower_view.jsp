@@ -790,6 +790,9 @@
     .mine-ult .l{ background:#c8622a; border-right:2px solid #140d0a; }
     .mine-ult .r{ background:#6a3ad0; }
     .mine-ult button:active{ filter:brightness(1.3); }
+    .mine-ult button{ position:relative; }
+    .mine-ult i{ display:none; position:absolute; left:50%; bottom:5px; transform:translateX(-50%); font:800 9px/1.2 monospace; font-style:normal; color:#fff; background:rgba(0,0,0,.5); padding:0 3px; border-radius:3px; pointer-events:none; } /* [2026-11-07] 단축키 X / C -- 키보드가 있는 PC에서만 */
+    @media (hover:hover) and (pointer:fine){ .mine-ult i{ display:block; } }
     .mine-ult .cd{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font:800 15px monospace; color:#fff; text-shadow:0 0 3px #000; pointer-events:none; }
     .mine-ult-rst{ position:absolute; right:26px; bottom:calc(322px + env(safe-area-inset-bottom)); height:24px; padding:0 8px; border-radius:12px; background:#2a2238; border:2px solid #140d0a; color:#ffe9a8; font:800 11px sans-serif; cursor:pointer; }
     @keyframes mineAtkPulse{ 0%,100%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 0 rgba(255,90,70,.6); } 50%{ box-shadow:0 5px 0 #7a1a12, 0 0 0 8px rgba(255,90,70,0); } }
