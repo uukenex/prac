@@ -801,7 +801,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineRebirthGain(Map<String, Integer> items, int grade, String code) {
         return grade >= 1 && grade <= 5 && S5MineMap.ORE_CODES[grade - 1].equals(code) ? mineRebirthGain(items) : 1;
     }
-    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1)); }
+    // [2026-11-07] "고레벨에서 갑자기 너무 세진다 -- 99레벨은 플레이어 기준 20% 너프, 그 아래 레벨도 계단식" -- 20레벨마다 5%씩(1~19 그대로, 20~39 -5%, 40~59 -10%, 60~79 -15%, 80~99 -20%).
+    static double mineAtkStep(int lv) { return 1.0 - 0.05 * Math.min(4, Math.max(0, lv) / 20); }
+    static int mineAtk(int lv) { return (int) Math.round(6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv)); }
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
@@ -4655,8 +4657,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 데리고 다니는 용병 직업(-1 = 없음). */
     static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 && mineMercPaid(items, c, System.currentTimeMillis()) ? c : -1; } // [2026-11-06] 급여가 밀리면 쉰다
     static final double MINE_MERC_ATK_MUL = 0.7; // [2026-11-06] "동료 공격 성능 30% 정도만 줄이자"
-    // [2026-11-07] "용병이 지금 대비 초반 구간은 2배부터 만렙까지 1.8배 세게" -- 레벨 1 x2.0에서 99 x1.8까지 고르게 줄어든다.
-    static double mineMercLvMul(int lv) { return 2.0 - 0.2 * (Math.max(1, Math.min(MINE_LV_MAX, lv)) - 1) / (double) (MINE_LV_MAX - 1); }
+    // [2026-11-07] "고레벨 때는 1.8배 안 해도 세다 -- 용병은 10% 증가" -- (같은 날 2배~1.8배였던 것을) 레벨 상관없이 1.1배. 바탕 공격력(mineAtk)의 고레벨 계단식 너프는 용병에도 그대로.
+    static double mineMercLvMul(int lv) { return 1.1; }
     static int mineMercAtk(Map<String, Integer> items, int c) { int lv = Math.max(1, mineMercLv(items, c)); return (int) Math.round(mineAtk(lv) * MINE_MERC_DMG[c] * MINE_MERC_ATK_MUL * mineMercLvMul(lv)); }
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
