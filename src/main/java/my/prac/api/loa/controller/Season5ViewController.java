@@ -98,6 +98,30 @@ public class Season5ViewController {
         return "nonsession/loa/s5_battle_log_view";
     }
 
+    /** [2026-11-07] "관리자 로그 뷰도 프로그레시브 웹앱으로" -- 로그 뷰어 / 광산 캐릭터 현황 설치용(시작 = 로그 뷰어, 범위 /loa/). 서비스 워커는 아무것도 저장하지 않는다. */
+    @GetMapping("/admin-manifest.webmanifest")
+    @ResponseBody
+    public ResponseEntity<String> adminManifest() {
+        String m = "{\"name\":\"람쥐 관리자 로그\",\"short_name\":\"람쥐관리\",\"description\":\"람쥐탑 로그 뷰어 / 광산 캐릭터 현황(관리자)\","
+                + "\"start_url\":\"/loa/tower-battle-log\",\"scope\":\"/loa/\",\"display\":\"standalone\","
+                + "\"background_color\":\"#14101e\",\"theme_color\":\"#14101e\",\"lang\":\"ko\","
+                + "\"icons\":[{\"src\":\"/img_loa/s55/icon-192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\",\"purpose\":\"any maskable\"},"
+                + "{\"src\":\"/img_loa/s55/icon-512.png\",\"sizes\":\"512x512\",\"type\":\"image/png\",\"purpose\":\"any maskable\"}]}";
+        return ResponseEntity.ok().contentType(org.springframework.http.MediaType.valueOf("application/manifest+json;charset=UTF-8")).cacheControl(org.springframework.http.CacheControl.noCache()).body(m);
+    }
+    /** [2026-11-07] 관리자 앱 서비스 워커(범위 /loa/tower-battle-log -- 탑 화면 등 다른 페이지는 건드리지 않는다). 저장 없음, 오프라인일 때 안내만. */
+    @GetMapping("/admin-sw.js")
+    @ResponseBody
+    public ResponseEntity<String> adminSw() {
+        String js = "self.addEventListener('install', function (e) { self.skipWaiting(); });\n"
+                + "self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });\n"
+                + "self.addEventListener('fetch', function (e) {\n"
+                + "  if (e.request.mode !== 'navigate') return;\n"
+                + "  e.respondWith(fetch(e.request).catch(function () { return new Response('<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width\"><body style=\"background:#14101e;color:#fff;font-family:sans-serif;text-align:center;padding-top:30vh\"><p>인터넷에 연결되어 있지 않아요.</p></body>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } }); }));\n"
+                + "});\n";
+        return ResponseEntity.ok().contentType(org.springframework.http.MediaType.valueOf("application/javascript;charset=UTF-8")).cacheControl(org.springframework.http.CacheControl.noCache()).body(js);
+    }
+
     /** [2026-10-25] "캐릭터별 현재 위치, 장착 아이템들, 레벨, 보유 수량 보이는 페이지" 요청 -- 로그 뷰어처럼 카카오 로그인 필요. 데이터는 /api/tower-mine-users. */
     @GetMapping("/tower-mine-users")
     public String mineUsersViewPage(HttpSession session, HttpServletResponse resp) {

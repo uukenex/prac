@@ -102,6 +102,11 @@
     .empty, .loading{ text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 0; }
     @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
   </style>
+  <link rel="manifest" href="/loa/admin-manifest.webmanifest"><%-- [2026-11-07] 관리자 앱(PWA) 설치 --%>
+  <meta name="theme-color" content="#14101e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/img_loa/s55/icon-192.png">
 </head>
 <body>
 <script>
@@ -117,7 +122,7 @@
 </script>
   <div class="wrap">
     <div class="top">
-      <h1>⛏️ 광산 캐릭터 현황 <a href="/loa/tower-battle-log">📜 로그 뷰어</a></h1>
+      <h1>⛏️ 광산 캐릭터 현황 <a href="/loa/tower-battle-log">📜 로그 뷰어</a> <a href="#" id="pwaBtn" hidden>📲 앱 설치</a></h1>
       <div class="bar">
         <input type="text" id="q" placeholder="캐릭터 이름 / 맵 검색">
         <select id="sort">
@@ -214,9 +219,11 @@
       +       '<div><small>채광</small><b class="num">' + n(u.totalDig) + '</b></div>'
       +       '<div><small>처치</small><b class="num">' + n(u.kills) + '</b></div>'
       +       '<div><small>치장</small><b class="num">' + n(u.cosOwned) + '</b></div>'
+      +       '<div><small>🐱 용병</small><b class="num">' + (u.merc ? 'Lv.' + u.merc.lv : '-') + '</b></div>' // [2026-11-07] 용병 레벨
       +     '</div>'
       +     '<div class="look">🌀 검기 ' + auraTxt(u) + (u.luckUntil > Date.now() ? ' · 🍀 행운 ' + Math.ceil((u.luckUntil - Date.now()) / 60000) + '분' : '') + '</div>' // [2026-11-05] 검기 단계
       +     (u.dragonQuest === 1 ? '<div class="look">🌊 선장 퀘스트 진행 중</div>' : '')
+      +     (u.merc ? '<div class="look">🐱 용병 ' + esc(u.merc.job) + ' ' + esc(u.merc.nm) + ' Lv.' + u.merc.lv + ' · ' + ({ 6: '🔥 불', 2: '⚡ 번개', 3: '💧 물' }[u.merc.el] || '') + (u.merc.unpaid ? ' · ⚠️ 급여 밀림' : u.merc.on ? ' · 함께 다니는 중' : ' · 쉬는 중') + '</div>' : '') // [2026-11-07] 용병
       +     '<div class="look" title="' + esc(look.replace(/<[^>]+>/g, '')) + '">👗 ' + (look || '기본 외형') + '</div>'
       +   '</div>'
       + '</div>'
@@ -286,6 +293,14 @@
   qs('vTable').addEventListener('click', function () { setView('table'); });
   load();
   schedule();
+})();
+</script>
+<script>/* [2026-11-07] 관리자 앱(PWA) -- 서비스 워커 등록 + 설치 버튼(브라우저가 설치를 허락할 때만 보인다) */
+(function () {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/loa/admin-sw.js', { scope: '/loa/tower-battle-log' }).catch(function () { });
+  var dp = null, b = document.getElementById('pwaBtn');
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); dp = e; if (b) b.hidden = false; });
+  if (b) b.onclick = function (e) { e.preventDefault(); if (!dp) return; dp.prompt(); dp.userChoice.then(function () { dp = null; b.hidden = true; }); };
 })();
 </script>
 </body>

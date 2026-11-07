@@ -5314,6 +5314,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int lv = mineLv(row);
                     if (lv < 95) continue;
                     int rb = mineRebirth(mineItems(u));
+                    if (rb >= MINE_REBIRTH_MAX) continue; // [2026-11-07] "5환생이 끝인데 NPC가 곧 6환생한다고 한다" -- 마지막 환생까지 한 사람은 빼기
                     rbl.add(mineNick(u) + " 님이 곧 " + (rb + 1) + "환생을 한대요!");
                 }
             } catch (Exception ignore) { }
@@ -7027,6 +7028,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("auraL", al);
             m.put("auraA", aa);
             m.put("luckUntil", mineLuckUntil(items));
+        }
+        for (int mc = 0; mc < MINE_MERC_NAMES.length; mc++) { // [2026-11-07] "관리자 화면에 용병 레벨도" -- 계약한 용병(직업/이름/레벨/속성, 함께 다니는지, 급여 밀림)
+            int mlv = mineMercLv(items, mc);
+            if (mlv <= 0) continue;
+            HashMap<String, Object> mm = new HashMap<>();
+            mm.put("job", MINE_MERC_NAMES[mc]);
+            mm.put("nm", mineMercNm(items, mc, "NM"));
+            mm.put("lv", mlv);
+            mm.put("el", mineMercEl(items, mc));
+            mm.put("on", mineMercOn(items) == mc);
+            mm.put("unpaid", !mineMercPaid(items, mc, System.currentTimeMillis()));
+            m.put("merc", mm);
         }
         m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
         m.put("expNeed", mineExpNeed(lv, rb));

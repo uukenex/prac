@@ -112,6 +112,11 @@
 
     .loading{ text-align:center; color:var(--ink-soft); font-size:13px; padding:20px 0; }
   </style>
+  <link rel="manifest" href="/loa/admin-manifest.webmanifest"><%-- [2026-11-07] 관리자 앱(PWA) 설치 --%>
+  <meta name="theme-color" content="#14101e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/img_loa/s55/icon-192.png">
 </head>
 <body>
 <!-- [2026-09-30] 시즌5 카카오 로그인: 세션 만료(API 401) 시 로그인 화면으로, 우상단에 닉네임/로그아웃 표시. -->
@@ -138,7 +143,7 @@
 </script>
 
   <div class="wrap">
-    <h1>📜 람쥐탑 로그 뷰어 <a href="/loa/tower-mine-users">⛏️ 광산 캐릭터 현황 →</a></h1>
+    <h1>📜 람쥐탑 로그 뷰어 <a href="/loa/tower-mine-users">⛏️ 광산 캐릭터 현황 →</a> <a href="#" id="pwaBtn" hidden>📲 앱 설치</a></h1>
     <div class="sub">채팅 명령어 + 웹 액션을 유저별로 조회(관리자용, SPA와 별도 페이지) -- 최근 24시간 이내만</div>
 
     <div class="layout"><div class="side">
@@ -481,5 +486,13 @@
     }).catch(function () { /* 그림이 없어도 로그는 그대로 보인다 */ });
   })();
   </script>
+<script>/* [2026-11-07] 관리자 앱(PWA) -- 서비스 워커 등록 + 설치 버튼(브라우저가 설치를 허락할 때만 보인다) */
+(function () {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/loa/admin-sw.js', { scope: '/loa/tower-battle-log' }).catch(function () { });
+  var dp = null, b = document.getElementById('pwaBtn');
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); dp = e; if (b) b.hidden = false; });
+  if (b) b.onclick = function (e) { e.preventDefault(); if (!dp) return; dp.prompt(); dp.userChoice.then(function () { dp = null; b.hidden = true; }); };
+})();
+</script>
 </body>
 </html>
