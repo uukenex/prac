@@ -3542,11 +3542,7 @@ var TowerMine = (function () {
     } else box.style.display = 'none';
     el.ov.style.setProperty('--patch-h', box.style.display === 'block' ? (box.offsetHeight + 4) + 'px' : '0px');
   }
-  function presTick() {
-    if (!opened || !map || presBusy) return;
-    presBusy = true;
-    var mid = map.id;
-    // [2026-11-07] "같은 아이디로 이미 접속 중이면 안 되게" -- 이 광산 화면(탭)의 번호. 같은 탭 새로고침은 같은 번호(sessionStorage).
+  // [2026-11-07] "같은 아이디로 이미 접속 중이면 안 되게" -- 이 광산 화면(탭)의 번호. 같은 탭 새로고침은 같은 번호(sessionStorage).
   var mineCid = (function () { var v = ''; try { v = sessionStorage.getItem('tw-mine-cid') || ''; } catch (e) { } if (!/^[a-z0-9]{6,20}$/.test(v)) { v = Math.random().toString(36).slice(2, 12) + Date.now().toString(36).slice(-4); try { sessionStorage.setItem('tw-mine-cid', v); } catch (e) { } } return v; })();
   var dupClosing = false;
   function dupKick(m) { // 다른 곳에서 들어와 이 화면을 끝낸다
@@ -3557,7 +3553,11 @@ var TowerMine = (function () {
   }
   /** [2026-11-07] 화면에 보이는 칸 수(가로/세로 절반) -- 용병 선공 범위(서버에도 1초 턴으로 알린다). */
   function viewHalf() { var TSn = T * scale; return el && el.cv && TSn > 0 ? [Math.max(3, Math.floor(el.cv.width / TSn / 2)), Math.max(3, Math.floor(el.cv.height / TSn / 2))] : [9, 6]; }
-  // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
+  function presTick() {
+    if (!opened || !map || presBusy) return;
+    presBusy = true;
+    var mid = map.id;
+    // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
