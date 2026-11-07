@@ -71,6 +71,7 @@ public class S55MineController {
         }
         Map<String, Object> me = me(req);
         req.setAttribute("nickname", me == null ? "" : String.valueOf(me.get("nickname")));
+        req.setAttribute("kakaoId", kid); // [2026-11-07] "카톡이 두 개라 기존 계정에 못 들어온다 -- 이미 연결된 계정도 지금 카톡 로그인 ID를 띄워 줘(관리자가 DB로 직접 연결)"
         String user = s5Service.s55LinkedUser(kid);
         if (user == null) {
             req.setAttribute("mode", "link");

@@ -1506,6 +1506,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             e = MINE_ENGAGE.get(userName);
         }
         int healed = mineHealDue(userName, now); // [2026-10-28] 재생의 장갑 -- 지난 1초만큼 회복
+        boolean mercPreTick = mineMercPreMode(items); // [2026-11-07] 용병 선공 모드
+        if ((e == null || e.mobs.isEmpty()) && mercPreTick && mineMercPreempt(userName, map, items, x, y, now, out)) e = MINE_ENGAGE.get(userName); // [2026-11-07] "선공 모드인데 공격을 안 해" -- 싸우는 몬스터가 없으면 전투 턴이 여기서 끝나 용병 차례가 오지 않았다
         if (e == null || e.mobs.isEmpty()) {
             mineDisengageAll(userName);
             out.put("ok", true);
@@ -1552,7 +1554,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
-                if (type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? minePreemptRange(type) + 1 : MINE_AGGRO_RANGE)) { // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
+                if ((type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? minePreemptRange(type) + 1 : MINE_AGGRO_RANGE)) && !(!type.boss && !type.minion && mercPreTick && mineMercInView(userName, s.fx - x, s.fy - y))) { // [2026-11-07] 용병 선공으로 끌어들인 몬스터는 화면 안이면 안 풀린다 // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
                     e.mobs.remove(id);
                     released++;
                     if (userName.equals(s.target)) { s.target = null; s.frozenUntil = Math.max(now, s.splitUntil); } // 다시 제자리로 걸어간다([2026-10-28] 분신술 중엔 그 자리에)
@@ -1946,6 +1948,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             fz.put("x", me.x);
             fz.put("y", me.y);
             fz.put("until", Math.max(me.until, now + 3000)); // [2026-10-28] 여왕이 깨어 있는 동안은 계속 언 채로(화면이 저절로 풀린 걸로 보지 않게)
+            fz.put("k", me.until); // [2026-11-07] "빙결 게이지가 초기화된다" -- 15초가 지나면 until이 매초 바뀌어 화면이 새 얼음으로 보고 몸부림 수를 0으로 돌렸다. 얼음마다 안 바뀌는 번호
             out.put("frozen", fz);
         }
         String th = MINE_ICE_THAWED.remove(userName);
@@ -4652,7 +4655,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 데리고 다니는 용병 직업(-1 = 없음). */
     static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 && mineMercPaid(items, c, System.currentTimeMillis()) ? c : -1; } // [2026-11-06] 급여가 밀리면 쉰다
     static final double MINE_MERC_ATK_MUL = 0.7; // [2026-11-06] "동료 공격 성능 30% 정도만 줄이자"
-    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineAtk(Math.max(1, mineMercLv(items, c))) * MINE_MERC_DMG[c] * MINE_MERC_ATK_MUL); }
+    // [2026-11-07] "용병이 지금 대비 초반 구간은 2배부터 만렙까지 1.8배 세게" -- 레벨 1 x2.0에서 99 x1.8까지 고르게 줄어든다.
+    static double mineMercLvMul(int lv) { return 2.0 - 0.2 * (Math.max(1, Math.min(MINE_LV_MAX, lv)) - 1) / (double) (MINE_LV_MAX - 1); }
+    static int mineMercAtk(Map<String, Integer> items, int c) { int lv = Math.max(1, mineMercLv(items, c)); return (int) Math.round(mineAtk(lv) * MINE_MERC_DMG[c] * MINE_MERC_ATK_MUL * mineMercLvMul(lv)); }
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
     /** 평타 설명(단계 s = 1 + 레벨/20). */
@@ -4775,6 +4780,52 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (up > 0) x.put("up", up);
         out.put("mercXp", x);
     }
+    // [2026-11-07] 용병 선공 -- 화면이 1초 턴마다 보내는 보이는 칸 수(가로/세로 절반, vw/vh). 이 안에 보이는 몬스터를 선공 모드 용병이 먼저 친다.
+    static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_MERC_VIEW = new java.util.concurrent.ConcurrentHashMap<>();
+    static final int MINE_MERC_VIEW_W = 9, MINE_MERC_VIEW_H = 6, MINE_MERC_VIEW_MAX = 16;
+    @Override
+    public void mineView(String userName, int vw, int vh) {
+        if (userName == null || vw <= 0 || vh <= 0) return;
+        MINE_MERC_VIEW.put(userName, new int[] { Math.min(MINE_MERC_VIEW_MAX, vw), Math.min(MINE_MERC_VIEW_MAX, vh) });
+    }
+    static boolean mineMercInView(String userName, int dx, int dy) {
+        int[] v = MINE_MERC_VIEW.get(userName);
+        return Math.abs(dx) <= (v == null ? MINE_MERC_VIEW_W : v[0]) && Math.abs(dy) <= (v == null ? MINE_MERC_VIEW_H : v[1]);
+    }
+    /** 선공 모드로 데리고 다니는 용병이 있나. */
+    static boolean mineMercPreMode(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1 && mineMercOn(items) >= 0; }
+    /** [2026-11-07] 선공 -- 화면에 보이는 가장 가까운 몬스터(보스/수하/허수아비/분신/숨은 마물 빼고)를 싸움에 끌어들인다(그 몬스터는 나를 쫓아온다). 끌어들였으면 true. */
+    boolean mineMercPreempt(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, HashMap<String, Object> out) {
+        if (map.boat() || !mineMercPreMode(items)) return false;
+        int bestId = -1, bestD = 999, bx = 0, by = 0;
+        for (S5MineMap.Mob mb : map.mobs()) {
+            if (Math.abs(mb.x - x) > MINE_MERC_VIEW_MAX + 8 || Math.abs(mb.y - y) > MINE_MERC_VIEW_MAX + 8) continue;
+            S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
+            if (mt.boss || mt.minion || mt.dummy || mt.clone || mineHidden(map, mt, now)) continue;
+            MobState s = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
+            if (s != null && (s.deadUntil > now || (mt.ninja && s.stealth))) continue;
+            if (s != null && s.target != null && !userName.equals(s.target) && mineEngaged(s.target, now)) continue; // 다른 사람이 싸우는 몬스터는 두고
+            int mx, my;
+            if (s != null && s.frozenUntil > now) { mx = s.fx; my = s.fy; }
+            else { int[] cs = mineMobCells(mb, s != null ? s : new MobState(S5MineMobs.hp(mt, mb.rank)), now, map); mx = cs[cs.length / 2] % map.w; my = cs[cs.length / 2] / map.w; }
+            if (!mineMercInView(userName, mx - x, my - y)) continue;
+            int d = Math.abs(mx - x) + Math.abs(my - y);
+            if (d < bestD) { bestD = d; bestId = mb.id; bx = mx; by = my; }
+        }
+        if (bestId < 0) return false;
+        S5MineMap.Mob mb = map.mobs().get(bestId);
+        S5MineMobs.Type bt = S5MineMobs.TYPES.get(mb.type);
+        MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, bestId), kk -> new MobState(S5MineMobs.hp(bt, mb.rank)));
+        synchronized (s) {
+            if (s.deadUntil > 0 && s.deadUntil <= now) s.respawn(S5MineMobs.hp(bt, mb.rank));
+            if (s.frozenUntil <= now) { s.fx = bx; s.fy = by; }
+            s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS);
+            s.target = userName;
+        }
+        mineEngage(userName, map, bestId, now, 0L);
+        out.put("mercPre", bestId);
+        return true;
+    }
     static boolean mineMercCan(S5MineMap map, S5MineMobs.Type ot, MobState s, long now) {
         return s != null && s.deadUntil <= now && !ot.dummy && !ot.clone && !mineHidden(map, ot, now) && !(ot.ninja && s.stealth);
     }
@@ -4789,42 +4840,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> mo = mineMercInfo(userName, items, now);
         out.put("merc", mo);
         if (map.boat()) return new long[] { 0, 0 };
-        // [2026-11-06] "용병을 선공 모드 / 협공 모드로 고르기" -- 협공(기본) = 나와 싸우는 몬스터만, 선공 = 싸우는 몬스터가 사거리 안에 없으면
-        //  사거리 안의 가장 가까운 몬스터를 골라 먼저 친다(그 몬스터는 나와의 싸움에 들어와 쫓아온다). 보스/수하/허수아비/분신/숨은 마물은 고르지 않는다.
-        if (items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1) {
+        // [2026-11-06] "용병을 선공 모드 / 협공 모드로 고르기" -- 협공(기본) = 나와 싸우는 몬스터만, 선공 = 싸우는 몬스터가 칠 수 있는 데 없으면
+        //  [2026-11-07] "선공 모드인데 공격을 안 해 -- 플레이어 기준 맵에 보이면 선공" -- 화면에 보이는(MINE_MERC_VIEW) 가장 가까운 몬스터를 골라 싸움에 끌어들인다(mineMercPreempt).
+        if (mineMercPreMode(items)) {
             boolean any = false;
             if (e != null) for (Integer id : e.mobs.keySet()) {
                 if (id < 0 || id >= map.mobs().size()) continue;
                 MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
-                if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now) && Math.abs(s.fx - x) + Math.abs(s.fy - y) <= MINE_MERC_REACH[cls]) { any = true; break; }
+                if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now) && mineMercInView(userName, s.fx - x, s.fy - y)) { any = true; break; }
             }
-            if (!any) {
-                int bestId = -1, bestD = 99, bx = 0, by = 0;
-                for (S5MineMap.Mob mb : map.mobs()) {
-                    if (Math.abs(mb.x - x) + Math.abs(mb.y - y) > MINE_MERC_REACH[cls] + 6) continue;
-                    S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
-                    if (mt.boss || mt.minion || mt.dummy || mt.clone || mineHidden(map, mt, now)) continue;
-                    MobState s = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
-                    if (s != null && (s.deadUntil > now || (mt.ninja && s.stealth))) continue;
-                    int mx, my;
-                    if (s != null && s.frozenUntil > now) { mx = s.fx; my = s.fy; }
-                    else { int[] cs = mineMobCells(mb, s != null ? s : new MobState(S5MineMobs.hp(mt, mb.rank)), now, map); mx = cs[cs.length / 2] % map.w; my = cs[cs.length / 2] / map.w; }
-                    int d = Math.abs(mx - x) + Math.abs(my - y);
-                    if (d <= MINE_MERC_REACH[cls] && d < bestD) { bestD = d; bestId = mb.id; bx = mx; by = my; }
-                }
-                if (bestId >= 0) {
-                    S5MineMap.Mob mb = map.mobs().get(bestId);
-                    MobState s = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, bestId), kk -> new MobState(S5MineMobs.hp(S5MineMobs.TYPES.get(mb.type), mb.rank)));
-                    synchronized (s) { if (s.frozenUntil <= now) { s.fx = bx; s.fy = by; } s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS); s.target = userName; }
-                    mineEngage(userName, map, bestId, now, 0L);
-                    e = MINE_ENGAGE.get(userName);
-                    out.put("mercPre", bestId);
-                }
-            }
+            if (!any && mineMercPreempt(userName, map, items, x, y, now, out)) e = MINE_ENGAGE.get(userName);
         }
         if (e == null || e.mobs.isEmpty()) return new long[] { 0, 0 };
         MercSt ms = MINE_MERC.get(userName);
         int pick = -1, best = 99, reach = MINE_MERC_REACH[cls];
+        boolean preMode = mineMercPreMode(items); // [2026-11-07] 선공 모드 -- 화면에 보이면 친다(전사는 그 옆으로 달려간다)
         synchronized (ms) {
             ms.fightAt = now;
             if (ms.restUntil > now) return new long[] { 0, 0 };
@@ -4834,7 +4864,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
                 if (!mineMercCan(map, S5MineMobs.TYPES.get(om.type), s, now)) continue;
                 int d = Math.abs(s.fx - x) + Math.abs(s.fy - y);
-                if (d > reach) continue;
+                if (d > reach && !(preMode && mineMercInView(userName, s.fx - x, s.fy - y))) continue;
                 if (id == ms.target) { pick = id; break; }
                 if (d < best) { best = d; pick = id; }
             }
@@ -4950,14 +4980,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean dead = false;
             synchronized (s) {
                 if (s.deadUntil > now) continue;
+                if (s.deadUntil > 0) s.respawn(omMax); // [2026-11-07] 다시 나타난 몬스터는 체력을 채우고(검기/공격과 같게)
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 s.lastHitAt = now;
                 s.hp -= dmg;
-                if (ot.boss) s.hp = Math.max(1, s.hp);
+                // [2026-11-07] "용병으로 적 타격 시 안 죽는 문제" -- 보스는 용병 공격으로 체력 1에서 멈췄다(내가 얼어 있거나 못 때리면 영영). 이제 용병도 쓰러뜨린다
+                //  (보상/기록은 mineMercBossKilled -- 내가 쓰러뜨린 것과 같게). 분신술·은신이 있는 닌자 두목만 예전처럼 마지막 한 방은 내가.
+                if (om.type == S5MineMobs.SHRINE_BOSS_TYPE) s.hp = Math.max(1, s.hp);
                 if (s.hp <= 0) {
                     dead = true;
                     s.hp = 0;
-                    s.deadUntil = ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
+                    s.deadUntil = ot.boss ? now + MINE_BOSS_RESPAWN_MS : ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
                     s.frozenUntil = 0;
                     s.stealth = false;
                 }
@@ -4972,9 +5005,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mineMindExpPct(items) / 100;
             kills++;
             expSum += g;
+            if (ot.boss) mineMercBossKilled(userName, map, om, ot, now, mo, allDrops); // [2026-11-07] 용병이 쓰러뜨린 보스
             if (!ot.noReward) {
                 StringBuilder dm = new StringBuilder();
-                allDrops.addAll(mineMobDrops(userName, map, ot, dm, om.rank));
+                if (!ot.boss) allDrops.addAll(mineMobDrops(userName, map, ot, dm, om.rank));
                 mineWeaponDrop(userName, items, ot, om.rank, dm, mo);
             }
         }
@@ -5004,6 +5038,28 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!allDrops.isEmpty()) mo.put("drops", allDrops);
         mo.put("ores", mineOreList(userName));
         return new long[] { kills, expSum };
+    }
+
+    /** [2026-11-07] 용병이 보스를 쓰러뜨렸을 때 -- 내가 쓰러뜨린 것과 같은 기록(다시 나타나는 시각)/효과(빙결·용암·낙뢰 끝)/보상. 안내는 mo.bossMsg. */
+    void mineMercBossKilled(String userName, S5MineMap map, S5MineMap.Mob om, S5MineMobs.Type ot, long now, HashMap<String, Object> mo, List<HashMap<String, Object>> drops) {
+        StringBuilder msg = new StringBuilder();
+        int t = om.type;
+        if (t == S5MineMobs.THUNDER_BOSS_TYPE) { mineThunderEnd(map, now); mo.put("shock", Collections.emptyList()); }
+        if (t == S5MineMobs.RAID_BOSS_TYPE) { mineRaidAwakeUntil = 0; mineBossKilledNow(MINE_RAID_KEY, userName, now); }
+        if (t == S5MineMobs.ICE_BOSS_TYPE) { mineIceAwakeUntil = 0; mineIceNextFreeze = 0; mineIceThawAll(); mineBossKilledNow(MINE_ICE_KEY, userName, now); }
+        if (t == S5MineMobs.PHARAOH_BOSS_TYPE) { mineBossKilledNow(MINE_PHARAOH_KEY, userName, now); MINE_RANGED_NEXT.clear(); }
+        if (t == S5MineMobs.LAVA_BOSS_TYPE) { mineBossKilledNow(MINE_LAVA_KEY, userName, now); MINE_RANGED_NEXT.clear(); MINE_LAVA.clear(); mo.put("lava", Collections.emptyList()); }
+        if (t == S5MineMobs.BOSS_TYPE) mineBossKilledNow(MINE_BOSS_KEY, userName, now);
+        if (!ot.noReward) {
+            List<HashMap<String, Object>> kd = t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg)
+                    : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg)
+                    : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : mineBossDrops(userName, msg);
+            mineBossShine(userName, kd, msg);
+            drops.addAll(kd);
+        }
+        mo.put("bossKilled", true);
+        mo.put("bossMsg", "👑 용병과 함께 " + ot.name + "을(를) 쓰러뜨렸어요!" + msg);
+        mineGossipAdd(mineNick(userName) + " 님이 용병과 함께 " + ot.name + "을(를) 쓰러뜨렸대요!");
     }
 
     @Override

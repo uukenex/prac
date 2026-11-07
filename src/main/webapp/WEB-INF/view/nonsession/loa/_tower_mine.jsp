@@ -2728,7 +2728,8 @@ var TowerMine = (function () {
     });
     var mercPre = !fight && st.merc && st.merc.mode === 1 && !(st.merc.rest > nowSrv()) && (map.mobs || []).some(function (mb) { // [2026-11-06] 용병 선공 모드 -- 사거리 안 몬스터가 보이면 전투 턴(서버가 하나 골라 먼저 친다)
       var ty = map.mobTypes[mb.k];
-      return ty && !ty.boss && !ty.minion && !ty.dummy && mb._p && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (st.merc.reach || 5);
+      var vh2 = viewHalf(); // [2026-11-07] "선공 -- 플레이어 기준 맵에 보이면"
+      return ty && !ty.boss && !ty.minion && !ty.dummy && mb._p && Math.abs(mb._p.cx - P.x) <= vh2[0] && Math.abs(mb._p.cy - P.y) <= vh2[1] && !(mobSt[mb.id] && mobSt[mb.id].du > nowSrv());
     });
     if (!fight && !nearBoss && !nearStrong && !mercPre && !frozenMe() && !(healUntil > nowSrv())) return; // [2026-10-28] 재생의 장갑 회복 중에도 // [2026-10-28] 얼어 있으면 얼음 여왕이 쫓아오는 것도 받는다
     lastBossT = now; bossBusy = true;
@@ -2872,7 +2873,7 @@ var TowerMine = (function () {
   function iceStruggle(now) {
     if (!frozenMe() || iceStruggleBusy || now - iceStruggleT < 120) return;
     iceStruggleT = now;
-    var k = iceSt.frozen.until;
+    var k = iceSt.frozen.k || iceSt.frozen.until; // [2026-11-07] 얼음마다 안 바뀌는 번호(예전 until은 15초 뒤 매초 바뀌어 수가 0으로 돌아갔다)
     if (k !== iceStruggleKey) { iceStruggleKey = k; iceStruggleN = 0; }
     iceStruggleN++;
     floats.push({ x: P.x + (Math.random() - 0.5) * 0.8, y: P.y - 0.2, text: '❄', color: '#bfefff', t0: now });
@@ -3299,7 +3300,7 @@ var TowerMine = (function () {
     if (d < 0.03) { mp.x = gx; mp.y = gy; mp.mv = false; return; }
     mp.mv = true;
     mp.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-    var k = Math.min(1, (d > 3 ? 11 : 6.5) * dt / d);
+    var k = Math.min(1, (d > 3 ? 13 : 9) * dt / d); // [2026-11-07] 바짝 따라오게 조금 빨리
     mp.x += dx * k; mp.y += dy * k;
   }
   function mercFace(mp, tx, ty) { var dx = tx - mp.x, dy = ty - mp.y; mp.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); }
@@ -3324,12 +3325,12 @@ var TowerMine = (function () {
     if (!mi || !map || map.boat) return;
     if (merc.map !== map.id) { merc.map = map.id; merc.x = null; merc.trail = []; merc.tg = null; }
     var tr = merc.trail, l = tr[tr.length - 1];
-    if (!l || l[0] !== P.x || l[1] !== P.y) { tr.push([P.x, P.y]); if (tr.length > 4) tr.shift(); }
+    if (!l || l[0] !== P.x || l[1] !== P.y) { tr.push([P.x, P.y]); if (tr.length > 2) tr.shift(); } // [2026-11-07] "더 바짝 붙어서" -- 내가 한 걸음 전에 있던 칸
     var rest = mi.rest > nowSrv(), fight = !rest && merc.tg && now - merc.tg.t < 1800, g;
     if (rest) g = mercBehind(P.x, P.y, P.dir);
     else if (fight && (mi.t | 0) > 0) g = merc.x != null && Math.abs(Math.round(merc.x) - P.x) + Math.abs(Math.round(merc.y) - P.y) <= 2 && !(Math.round(merc.x) === P.x && Math.round(merc.y) === P.y) ? [Math.round(merc.x), Math.round(merc.y)] : mercBehind(P.x, P.y, P.dir); // [2026-11-06] 궁수/마법사 -- 제자리(내 곁)에서 쏜다
     else if (fight) g = merc.tg.g || (merc.tg.g = mercBeside(merc.tg.x, merc.tg.y, Math.round(merc.x == null ? P.x : merc.x), Math.round(merc.y == null ? P.y : merc.y), P.x, P.y));
-    else g = tr.length >= 3 ? tr[0] : mercBehind(P.x, P.y, P.dir);
+    else g = tr.length >= 2 ? tr[0] : mercBehind(P.x, P.y, P.dir);
     if (g[0] === P.x && g[1] === P.y && !rest) g = mercBehind(P.x, P.y, P.dir);
     mercMove(merc, g[0], g[1], now);
     if (fight && !merc.mv) mercFace(merc, merc.tg.x, merc.tg.y);
@@ -3382,6 +3383,8 @@ var TowerMine = (function () {
       else if (sk.k === 'tornado') mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg);
       floats.push({ x: mx0, y: my0 - 1, text: '✨ ' + sk.nm, color: '#ffe9a8', big: true, t0: t });
     }
+    if (m.bossMsg) { msg(m.bossMsg, 5000); killFeed(m.bossMsg, '#ffe14d'); } // [2026-11-07] 용병이 쓰러뜨린 보스
+    if (m.shock) shockSet([]);
     if (m.got && merc.x != null) floats.push({ x: merc.x, y: merc.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });
     if (m.down) { merc.tg = null; killFeed('💤 ' + (m.nm || m.name) + '이(가) 지쳐서 뒤에서 쉬어요', '#c9c3d6'); }
     if (m.exp) killFeed('내 경험치 +' + m.exp, '#9fe0ff'); // [2026-11-06] "동료가 벌어 준 경험치는 표기할 필요 없고, 동료가 획득한 / 내가 획득한 경험치로" -- 용병이 잡은 몬스터 경험치도 내 것
@@ -3543,11 +3546,13 @@ var TowerMine = (function () {
     if (!opened || !map || presBusy) return;
     presBusy = true;
     var mid = map.id;
-    // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
+    /** [2026-11-07] 화면에 보이는 칸 수(가로/세로 절반) -- 용병 선공 범위(서버에도 1초 턴으로 알린다). */
+  function viewHalf() { var TSn = T * scale; return el && el.cv && TSn > 0 ? [Math.max(3, Math.floor(el.cv.width / TSn / 2)), Math.max(3, Math.floor(el.cv.height / TSn / 2))] : [9, 6]; }
+  // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
-    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (st && st.merc && st.merc.mode === 1 ? '&vw=' + viewHalf()[0] + '&vh=' + viewHalf()[1] : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
       showPing(performance.now() - pt0, pws, r && r.ms);
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);

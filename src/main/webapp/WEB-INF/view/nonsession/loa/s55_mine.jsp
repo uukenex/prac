@@ -7,6 +7,7 @@
   String mode = String.valueOf(request.getAttribute("mode"));
   String nickEsc = request.getAttribute("nickname") == null ? "" : String.valueOf(request.getAttribute("nickname")).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
   String userEsc = request.getAttribute("userName") == null ? "" : String.valueOf(request.getAttribute("userName")).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+  String kidEsc = request.getAttribute("kakaoId") == null ? "" : String.valueOf(request.getAttribute("kakaoId")).replaceAll("[^0-9A-Za-z_-]", ""); // [2026-11-07] 지금 카카오 로그인 ID(숫자)
 %><!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -46,6 +47,9 @@
     .s55-top img{ width:28px; height:28px; image-rendering:pixelated; }
     .s55-top .who{ flex:1; min-width:0; color:#cfc8e8; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .s55-top a{ color:#a89ec8; font-size:12px; white-space:nowrap; }
+    .s55-kid{ font-size:11px; color:#a89ec8; margin:-4px 0 10px; text-align:right; user-select:all; -webkit-user-select:all; } /* [2026-11-07] 지금 카카오 로그인 ID */
+    .s55-kidbox{ margin:10px 0 0; padding:8px; border:2px dashed #a89ec8; font-size:12px; color:#cfc8e8; line-height:1.6; }
+    .s55-kidbox b{ user-select:all; -webkit-user-select:all; color:#fee500; }
     /* [2026-11-04] 관리자 알림 칸 + 화면 안 알림 */
     .s55-adm{ margin:0 0 10px; padding:8px 10px; background:rgba(20,16,30,.88); border:2px solid #ffd27a; box-shadow:3px 3px 0 rgba(0,0,0,.6); font-size:12px; }
     .s55-adm-h{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
@@ -101,6 +105,7 @@
     <a href="#" onclick="s55Guide(); return false;">📲 앱 설치</a>
     <a href="<%=ctx%>/loa/s5/logout">로그아웃</a>
   </div>
+  <div class="s55-kid">카카오 로그인 ID <%=kidEsc%></div>
   <% if (request.getAttribute("vapidPub") != null) { %>
   <%-- [2026-11-04] "관리자 알림은 승인 구조 없이 무조건 받도록, 수신되는지 확인이 안 된다" -- 들어오면 자동으로 구독(허용 창은 처음 한 번 -- 브라우저 규칙),
        폰 알림이 꺼져 있어도 앱을 띄워 둔 동안은 화면 안 알림(10초마다 /mine/admin-alerts) + 최근 알림 목록 + 상태 + 시험 알림 --%>
@@ -201,6 +206,7 @@
     <button type="button" class="s55-btn main" id="s55Check">확인</button>
     <div class="s55-confirm" id="s55Confirm" hidden></div>
     <div class="s55-msg" id="s55Msg"></div>
+    <div class="s55-kidbox">지금 로그인한 카카오 계정: <%=nickEsc%><br>카카오 로그인 ID <b><%=kidEsc%></b><br><small>기존 캐릭터에 못 들어가면 이 번호를 관리자에게 알려 주세요.</small></div>
     <div class="s55-small">카카오 계정 하나에 광산 캐릭터 하나가 이어져요. 다른 카카오 계정에 이미 이어진 닉네임은 쓸 수 없어요.<br><a href="<%=ctx%>/loa/s5/logout">다른 카카오 계정으로 로그인</a></div>
   </div>
 </div>
@@ -217,7 +223,7 @@
       $('s55Check').disabled = false;
       if (d.login === false) { location.reload(); return; }
       if (!d.ok) { say(d.message || '확인하지 못했어요.', 'err'); $('s55Confirm').hidden = true; return; }
-      if (d.taken) { say('이미 다른 카카오 계정에 이어진 닉네임이에요. 본인 캐릭터라면 관리자에게 문의해 주세요.', 'err'); $('s55Confirm').hidden = true; return; }
+      if (d.taken) { say('이미 다른 카카오 계정에 이어진 닉네임이에요. 본인 캐릭터라면 지금 카카오 로그인 ID <%=kidEsc%>을(를) 관리자에게 알려 주세요.', 'err'); $('s55Confirm').hidden = true; return; }
       picked = d.name; say('');
       var sim = (d.similar || []).map(function (c) { return '<button type="button" class="s55-btn s55-sim" data-n="' + esc(c.name) + '">' + esc(c.name) + ' (Lv.' + c.lv + ')</button>'; }).join(''); // [2026-11-04] 비슷한 닉네임 추천
       $('s55Confirm').innerHTML = (d.exists ? '기존 광산 캐릭터 <b>' + esc(d.name) + '</b> (Lv.' + d.lv + ')와 이을까요?'

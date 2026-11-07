@@ -769,9 +769,11 @@ public class Season5ViewController {
             @RequestParam(value = "m", defaultValue = "") String m,
             @RequestParam(value = "pg", defaultValue = "-1") int pg, @RequestParam(value = "dv", defaultValue = "-1") int dv,
             @RequestParam(value = "nw", defaultValue = "-1") int nw, @RequestParam(value = "fg", defaultValue = "0") int fg,
-            @RequestParam(value = "bg", defaultValue = "0") int bg, @RequestParam(value = "wv", defaultValue = "0") int wv) {
+            @RequestParam(value = "bg", defaultValue = "0") int bg, @RequestParam(value = "wv", defaultValue = "0") int wv,
+            @RequestParam(value = "vw", defaultValue = "0") int vw, @RequestParam(value = "vh", defaultValue = "0") int vh) {
         HashMap<String, Object> out = new HashMap<String, Object>();
         if (userName.trim().isEmpty()) return ResponseEntity.ok(out);
+        if (vw > 0) s5Service.mineView(userName, vw, vh); // [2026-11-07] 용병 선공 -- 화면에 보이는 범위
         if (pg >= 0) my.prac.core.util.S55AdminPush.net(userName, pg, dv, nw, fg, bg, wv); // [2026-11-04] "컴으로 하면 느리다" -- 유저별 핑/기기/통신 방식(관리자 화면)
         long t0 = System.nanoTime(); // [2026-11-04] 서버 처리 시간(ms) -- 화면 핑 옆에 "서버 n"으로(통신 지연과 나눠 보려고)
         my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName);
