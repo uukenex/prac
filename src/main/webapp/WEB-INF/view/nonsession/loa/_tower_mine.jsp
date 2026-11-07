@@ -1279,7 +1279,7 @@ var TowerMine = (function () {
     // [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- ⛏️는 캐기만, ⚔️는 바로 옆 몬스터가 있을 때 또렷해진다
     var near = !P.moving && adjMob();
     if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
-    var novaShow = st && st.adminMaps ? '' : 'none'; // [2026-11-05] 관리자 전체 공격 버튼
+    var novaShow = st && st.nova ? '' : 'none'; // [2026-11-05] 관리자 전체 공격 버튼 // [2026-11-07] 전체 스킬을 쓸 수 있는 사람
     if (el.nova && el.nova.style.display !== novaShow) el.nova.style.display = novaShow;
     var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
     if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;
@@ -3903,6 +3903,13 @@ var TowerMine = (function () {
       h += '</div>';
     }
     if (!any) h += '<div class="mine-eq-empty">아직 배운 검기가 없어요. 왕도 원소술사 옆 검기 사범에게서 보스 드랍템 + 달빛석 + 세공된 바다 보석으로 배울 수 있어요.</div>';
+    if (st && st.nova) { // [2026-11-07] 전체 스킬 모양 고르기
+      var nf = st.nova.fx | 0;
+      h += '<div class="mine-smith-say" style="margin-top:12px">⚔️ <b>전체 스킬</b> -- 화면에 보이는 몬스터를 모두 베어요. 둘 중 하나를 골라 ⚔️ 버튼에 걸어 두세요.<br>'
+        + '<b>참(斬)</b> 거대한 붓글씨가 찍히며 한 번에 강하게 · <b>검우(劍雨)</b> 빛줄기가 쏟아지는 동안 여러 번 나눠서</div><div style="display:flex;gap:4px;margin:6px 0 4px">';
+      for (var ns = st.adminMaps ? 0 : 1; ns < NOVA_STYLE_NAME.length; ns++) h += '<button type="button" class="mine-mini-btn" style="flex:1 1 0;padding:6px 0;' + (ns === nf ? 'background:#ffd27a;color:#1a1424;' : '') + '" onclick="TowerMine.novaFxSet(' + ns + ')">' + NOVA_STYLE_NAME[ns] + '</button>';
+      h += '</div>';
+    }
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
@@ -3954,6 +3961,69 @@ var TowerMine = (function () {
   }
   // [2026-11-05] "공격 버튼 위에 화면 전체를 공격하는 전체 공격기 -- 관리자용(칼로 베는 이펙트)" -- 서버 mineNova(화면 안 몬스터 모두 일반 공격 한 방씩, 보스는 체력 1까지)
   var NOVA_FX_MS = 560, novaFx = [], novaBusy = false, lastNovaT = 0;
+  // [2026-11-07] "3환생 이상 전체 스킬 두 개를 각각(아직 비공개), 골라서 쓰게 -- 바람의나라 혈겁만파/분혼경천은 모티브만(똑같이 말고)".
+  //  스킬 1 참(斬): 화면을 덮는 거대한 보랏빛 붓글씨 '斬'이 찍히며 한 번에 강하게 벤다(img_loa/s55/fx/zan.png).
+  //  스킬 2 검우(劍雨): 화면 가득 빛줄기(흰/노랑/주황)가 비스듬히 쏟아지고 번개가 치는 동안 여러 번 나눠 벤다.
+  //  0 칼자국은 처음 만든 관리자용(관리자만 고를 수 있다). 피해 방식은 서버 mineNova(모양마다 다름).
+  var NOVA_STYLE_MS = [560, 1300, 2200], NOVA_STYLE_NAME = ['칼자국', '참(斬)', '검우(劍雨)'], novaImgs = {};
+  function novaImg(n) {
+    if (!novaImgs[n]) { var im = new Image(); im.src = cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/fx/' + n + '.png?v=1'; novaImgs[n] = im; }
+    var i = novaImgs[n]; return i.complete && i.naturalWidth ? i : null;
+  }
+  function novaRnd(seed) { var s = seed % 2147483647; if (s <= 0) s += 2147483646; return function () { s = s * 16807 % 2147483647; return (s - 1) / 2147483646; }; }
+  /** 검우 빛줄기/번개 -- 한 번만 정해 둔다(화면 크기 비율). */
+  function novaRain(seed) {
+    var R = novaRnd(seed), st = [], bo = [];
+    for (var i = 0; i < 640; i++) st.push({ x: R() * 1.4, y: -0.3 + R() * 1.1, l: 0.16 + R() * 0.22, t: 230 + R() * 1550, c: R() < 0.55 ? 0 : R() < 0.6 ? 1 : 2, w: 1 + R() * 1.6 });
+    for (var j = 0; j < 7; j++) { var p = [], x = 0.1 + R() * 0.8, y = -0.05; while (y < 0.55 + R() * 0.4) { p.push([x, y]); x += (R() - 0.5) * 0.12; y += 0.04 + R() * 0.07; } bo.push({ t: 300 + R() * 1400, p: p }); }
+    return { st: st, bo: bo };
+  }
+  function novaBigDraw(f, e0, W, H, pcx, pcy, TSz, dpr) {
+    var D = NOVA_STYLE_MS[f.style];
+    if (f.style === 1) { // 참(斬)
+      var a = e0 < D - 300 ? 1 : Math.max(0, 1 - (e0 - (D - 300)) / 300);
+      ctx.globalAlpha = 0.38 * a; ctx.fillStyle = '#0c0618'; ctx.fillRect(0, 0, W, H);
+      var im = novaImg('zan');
+      if (im) {
+        var q = Math.min(1, e0 / 110), ez = 1 - (1 - q) * (1 - q), sc = 1.4 - 0.4 * ez + (e0 > 900 ? (e0 - 900) / 400 * 0.08 : 0);
+        var al = e0 < 110 ? q : e0 > 900 ? Math.max(0, 1 - (e0 - 900) / 400) : 1, sz = Math.min(W, H) * 1.02 * sc;
+        var sh = e0 > 110 && e0 < 300 ? (1 - (e0 - 110) / 190) * 7 * dpr : 0, sx = sh ? (Math.random() - 0.5) * 2 * sh : 0, sy = sh ? (Math.random() - 0.5) * 2 * sh : 0;
+        ctx.globalAlpha = al * 0.92; ctx.drawImage(im, W / 2 - sz / 2 + sx, H * 0.47 - sz / 2 + sy, sz, sz);
+        if (e0 < 200) { ctx.globalAlpha = (1 - e0 / 200) * 0.45; ctx.fillStyle = '#e8e0ff'; ctx.fillRect(0, 0, W, H); } // 번쩍
+      }
+      return;
+    }
+    // 검우
+    var rn = f.rain || (f.rain = novaRain(f.seed || 1)), end = D - 300, fo = e0 < end ? 1 : Math.max(0, 1 - (e0 - end) / 300);
+    ctx.globalAlpha = 0.22 * fo; ctx.fillStyle = '#100c04'; ctx.fillRect(0, 0, W, H);
+    var dx = -0.42, dy = 1, dl = Math.hypot(dx, dy); dx /= dl; dy /= dl; // "/" 모양으로 왼쪽 아래로 쏟아진다
+    var COL = ['#ffffff', '#fff3a0', '#ffa83a'];
+    ctx.lineCap = 'round';
+    rn.st.forEach(function (s) {
+      var k = (e0 - s.t) / 300;
+      if (k < 0 || k > 1) return;
+      var L = s.l * H, hx = s.x * W + dx * k * H * 0.45, hy = s.y * H + dy * k * H * 0.45;
+      ctx.globalAlpha = (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85 * 0.7) * fo;
+      ctx.strokeStyle = COL[s.c]; ctx.lineWidth = s.w * 1.6 * dpr;
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx * L, hy - dy * L); ctx.stroke();
+    });
+    rn.bo.forEach(function (b) {
+      var k = (e0 - b.t) / 130;
+      if (k < 0 || k > 1) return;
+      ctx.globalAlpha = (1 - k) * fo; ctx.strokeStyle = '#ffe85a'; ctx.lineWidth = 2.2 * dpr;
+      ctx.beginPath(); b.p.forEach(function (q2, i) { if (i) ctx.lineTo(q2[0] * W, q2[1] * H); else ctx.moveTo(q2[0] * W, q2[1] * H); }); ctx.stroke();
+      ctx.globalAlpha = (1 - k) * 0.5 * fo; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.9 * dpr; ctx.stroke();
+    });
+    ctx.lineCap = 'butt';
+    if (e0 > 200 && e0 < 560) { var q3 = (e0 - 200) / 360; ctx.globalAlpha = (1 - q3) * 0.4 * fo; ctx.fillStyle = '#fffbe8'; ctx.fillRect(0, 0, W, H); } // 쏟아지기 시작할 때 한 번 번쩍
+  }
+  /** 인벤토리 스킬 탭 -- 전체 스킬 모양 고르기. */
+  function novaFxSet(s) {
+    api('/api/tower-mine-nova-fx?s=' + s).then(function (d) {
+      if (d && d.ok) { if (st.nova) st.nova.fx = d.fx; novaImg('zan'); if (smithOpen) renderSmith(smithNpc); msg('⚔️ 전체 스킬 모양: ' + NOVA_STYLE_NAME[d.fx], 1600); }
+      else msg((d && d.message) || '바꾸지 못했어요.');
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
   function novaCuts() {
     var c = [];
     for (var i = 0; i < 6; i++) {
@@ -3964,12 +4034,13 @@ var TowerMine = (function () {
   }
   function novaBtn() {
     setMenu(false);
-    if (!opened || !map || busy || fade || novaBusy || !(st && st.adminMaps)) return;
+    if (!opened || !map || busy || fade || novaBusy || !(st && st.nova)) return; // [2026-11-07] 관리자 -> 전체 스킬을 쓸 수 있는 사람(지금은 관리자만, 열면 3환생 이상)
     if (stunnedMe() || frozenMe()) return;
-    var now = performance.now();
-    if (now - lastNovaT < 1500) return;
+    var now = performance.now(), nst = (st.nova.fx | 0) % NOVA_STYLE_MS.length;
+    if (now - lastNovaT < (st.nova.gap || 1500)) { if (st.nova.gap > 1500) msg('⏳ 전체 스킬은 ' + Math.ceil((st.nova.gap - (now - lastNovaT)) / 1000) + '초 뒤에 다시 쓸 수 있어요.', 1400); return; }
     lastNovaT = now; novaBusy = true; P.digT0 = now; P.swing = true;
-    novaFx.push({ t0: now, cuts: novaCuts() });
+    if (nst === 1) novaImg('zan');
+    novaFx.push({ t0: now, main: 1, style: nst, seed: 1 + Math.floor(Math.random() * 2e9), cuts: nst ? null : novaCuts() }); // [2026-11-07] 모양(0 칼자국 / 1 참 / 2 검우)
     var TSn = T * scale, hw = Math.ceil(el.cv.width / TSn / 2), hh = Math.ceil(el.cv.height / TSn / 2);
     apiFast('/api/tower-mine-nova?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&hw=' + hw + '&hh=' + hh + verQ()).then(function (d) {
       novaBusy = false;
@@ -3982,9 +4053,9 @@ var TowerMine = (function () {
         var mm = map.mobs && map.mobs[am.id], p = mm && mm._p ? { x: mm._p.x, y: mm._p.y } : { x: am.row[3], y: am.row[4] };
         mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
         mobHitAt[am.id] = t;
-        var dl = (j % 12) * 22;
-        novaFx.push({ t0: t + dl, mx: p.x, my: p.y });
-        (am.hits || []).forEach(function (h) { floats.push({ x: p.x, y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : '#ffffff', big: !!h[2], t0: t + dl + 60 }); });
+        var dl = nst === 1 ? 140 + (j % 12) * 25 : nst === 2 ? 280 + (j * 137) % 500 : (j % 12) * 22; // [2026-11-07] 참 = 글자가 찍힌 직후, 검우 = 빛줄기가 쏟아지는 동안(타격마다 0.38초씩 더)
+        novaFx.push({ t0: t + dl, mx: p.x, my: p.y, col: nst === 1 ? '#8a6aff' : nst === 2 ? '#ffb02a' : null });
+        (am.hits || []).forEach(function (h, hi) { var hd = nst === 2 ? hi * 380 : 0; floats.push({ x: p.x + (nst === 2 ? (hi % 2 ? 0.25 : -0.25) : 0), y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : '#ffffff', big: !!h[2], t0: t + dl + 60 + hd }); if (hi && nst === 2) novaFx.push({ t0: t + dl + hd, mx: p.x, my: p.y, col: '#ffb02a' }); }); // [2026-11-07] 검우 -- 나눠 벤 만큼 시간차로
         if (am.killed) { exSum += am.exp || 0; kn++; }
       });
       if (d.expReal != null) exSum = d.expReal; // [2026-11-07] 실제로 오른 경험치
@@ -4690,10 +4761,11 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1; ctx.lineCap = 'butt';
     });
     // [2026-11-05] 관리자 전체 공격 -- 화면을 가로지르는 칼자국 여러 줄(잠깐 어두워짐) + 맞은 몬스터마다 X자 베기
-    novaFx = novaFx.filter(function (f) { return now - f.t0 < (f.cuts ? NOVA_FX_MS : 380); });
+    novaFx = novaFx.filter(function (f) { return now - f.t0 < (f.main ? NOVA_STYLE_MS[f.style | 0] : 380); });
     novaFx.forEach(function (f) {
       var e0 = now - f.t0;
       if (e0 < 0) return;
+      if (f.main && f.style) { novaBigDraw(f, e0, W, H, pos.x * TS - camX + TS / 2, pos.y * TS - camY + TS / 2, TS, dpr); ctx.globalAlpha = 1; ctx.lineCap = 'butt'; return; } // [2026-11-07] 참 / 검우
       ctx.lineCap = 'round';
       if (f.cuts) {
         var nk = e0 / NOVA_FX_MS;
@@ -4714,7 +4786,7 @@ var TowerMine = (function () {
           var qq = Math.max(0, Math.min(1, q * 2 - i));
           if (qq <= 0) return;
           var x0 = mx + c[0] * r, y0 = my + c[1] * r, x1 = x0 + (c[2] - c[0]) * r * qq, y1 = y0 + (c[3] - c[1]) * r * qq;
-          ctx.globalAlpha = Math.max(0, fo2 * 0.55); ctx.strokeStyle = '#ff3a4a'; ctx.lineWidth = 9 * dpr;
+          ctx.globalAlpha = Math.max(0, fo2 * 0.55); ctx.strokeStyle = f.col || '#ff3a4a'; ctx.lineWidth = 9 * dpr;
           ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
           ctx.globalAlpha = Math.max(0, fo2); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5 * dpr;
           ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
@@ -5248,7 +5320,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, novaBtn: novaBtn, novaFxSet: novaFxSet, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

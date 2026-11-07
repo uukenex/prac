@@ -931,6 +931,14 @@ public class Season5ViewController {
         return ResponseEntity.ok(s5Service.mineNova(userName, mapId, ver, x, y, hw, hh));
     }
 
+    /** [2026-11-07] 전체 스킬 모양 고르기(인벤토리 스킬 탭). */
+    @GetMapping("/api/tower-mine-nova-fx")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineNovaFx(@RequestParam(value = "userName", defaultValue = "") String userName, @RequestParam(value = "s", defaultValue = "0") int s) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        return ResponseEntity.ok(s5Service.mineNovaFx(userName, s));
+    }
+
     @GetMapping("/api/tower-mine-attack")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineAttack(@RequestParam(value = "userName", defaultValue = "") String userName,

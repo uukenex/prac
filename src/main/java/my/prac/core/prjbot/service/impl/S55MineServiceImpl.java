@@ -2692,6 +2692,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             out.put("adminMaps", maps);
         }
+        if (mineNovaOk(userName, items)) { // [2026-11-07] 전체 스킬(버튼 + 스킬 탭 모양 고르기)
+            HashMap<String, Object> nv = new HashMap<>();
+            boolean na = isMineAdmin(userName);
+            nv.put("fx", Math.max(na ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, items.getOrDefault(MINE_ITEM_NOVA_FX, na ? 0 : 1))));
+            nv.put("gap", isMineAdmin(userName) ? MINE_NOVA_GAP_MS : MINE_NOVA_USER_GAP_MS);
+            out.put("nova", nv);
+        }
         return out;
     }
 
@@ -4377,18 +4384,40 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_NOVA_HALF = 20, MINE_NOVA_MAX = 40;
     static final long MINE_NOVA_GAP_MS = 1_500L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_NOVA_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    // [2026-11-07] "3차 환생자 이상은 전체 스킬 -- 아직 오픈하지 말고, 모양을 고를 수 있게(바람의나라 혈겁만파/분혼경천 모티브)".
+    //  MINE_NOVA_OPEN = false 동안은 관리자만. 열면 환생 MINE_NOVA_REBIRTH번 이상(쿨타임 MINE_NOVA_USER_GAP_MS). 모양(광산 아이템 NOVA_FX): 0 칼자국 / 1 살(殺) / 2 천검 -- 화면만 다르고 피해는 같다.
+    static final boolean MINE_NOVA_OPEN = false;
+    static final int MINE_NOVA_REBIRTH = 3;
+    static final long MINE_NOVA_USER_GAP_MS = 30_000L;
+    static final String MINE_ITEM_NOVA_FX = "NOVA_FX";
+    static final int MINE_NOVA_STYLES = 3;
+    static final double MINE_NOVA_ZAN_MUL = 1.2, MINE_NOVA_RAIN_MUL = 0.35;
+    static final int MINE_NOVA_RAIN_HITS = 4;
+    boolean mineNovaOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_NOVA_OPEN && mineRebirth(items) >= MINE_NOVA_REBIRTH); }
+    @Override
+    public HashMap<String, Object> mineNovaFx(String userName, int s) {
+        HashMap<String, Object> out = new HashMap<>();
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineNovaOk(userName, items)) { out.put("ok", false); out.put("message", "전체 스킬은 " + MINE_NOVA_REBIRTH + "번째 환생부터 쓸 수 있어요."); return out; }
+        int v = Math.max(isMineAdmin(userName) ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, s)); // 0 칼자국은 관리자만
+        dao.upsertMineItem(userName, MINE_ITEM_NOVA_FX, v);
+        out.put("ok", true);
+        out.put("fx", v);
+        return out;
+    }
     @Override
     @Transactional
     public HashMap<String, Object> mineNova(String userName, String mapId, String ver, int x, int y, int hw, int hh) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
-        if (!isMineAdmin(userName)) { out.put("message", "관리자만 쓸 수 있어요."); return out; }
+        boolean novaAdmin = isMineAdmin(userName);
+        if (!novaAdmin && !mineNovaOk(userName, mineItems(userName))) { out.put("message", "전체 스킬은 " + MINE_NOVA_REBIRTH + "번째 환생부터 쓸 수 있어요."); return out; } // [2026-11-07] 3환생 이상(아직 비공개 -- MINE_NOVA_OPEN)
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
         Long last = MINE_NOVA_AT.get(userName);
-        if (last != null && now - last < MINE_NOVA_GAP_MS) { out.put("tooFast", true); return out; }
+        if (last != null && now - last < (novaAdmin ? MINE_NOVA_GAP_MS : MINE_NOVA_USER_GAP_MS)) { out.put("tooFast", true); if (!novaAdmin) out.put("message", "⏳ 전체 스킬은 " + ((MINE_NOVA_USER_GAP_MS - (now - last)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); return out; }
         MINE_NOVA_AT.put(userName, now);
         HashMap<String, Object> row = mineRowLocked(userName);
         S5MineMap map = mineMapOf(row);
@@ -4412,13 +4441,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int yy = Math.max(0, y - ay); yy <= Math.min(map.h - 1, y + ay); yy++)
             for (int xx = Math.max(0, x - ax); xx <= Math.min(map.w - 1, x + ax); xx++) cells.put(yy * map.w + xx, Math.abs(xx - x) + Math.abs(yy - y));
         StringBuilder msg = new StringBuilder();
+        // [2026-11-07] 전체 스킬 -- 0 칼자국(관리자): 한 방 / 1 참(斬): 한 방 x MINE_NOVA_ZAN_MUL / 2 검우(劍雨): MINE_NOVA_RAIN_HITS번 x MINE_NOVA_RAIN_MUL(타격마다 치명)
+        final int nfx = Math.max(novaAdmin ? 0 : 1, Math.min(MINE_NOVA_STYLES - 1, items.getOrDefault(MINE_ITEM_NOVA_FX, novaAdmin ? 0 : 1)));
+        final double nMul = nfx == 1 ? MINE_NOVA_ZAN_MUL : nfx == 2 ? MINE_NOVA_RAIN_MUL : 1.0;
+        final int nHits = nfx == 2 ? MINE_NOVA_RAIN_HITS : 1;
         long[] r = mineSweepCells(userName, map, items, cells, MINE_NOVA_MAX, -1, now, msg, out, (ot, dist) -> {
-            boolean crit = RND.nextInt(100) < 10;
-            int d = Math.max(1, (int) Math.round(atkBase * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot)));
             List<int[]> l = new ArrayList<>();
-            l.add(new int[] { 0, d, crit ? 1 : 0 });
+            for (int k = 0; k < nHits; k++) {
+                boolean crit = RND.nextInt(100) < 10;
+                int d = Math.max(1, (int) Math.round(atkBase * nMul * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot)));
+                l.add(new int[] { 0, d, crit ? 1 : 0 });
+            }
             return l;
-        }, "novaMobs", "novaDrops", "⚔️ 전체 베기로 ");
+        }, "novaMobs", "novaDrops", nfx == 1 ? "⚔️ 참(斬)으로 " : nfx == 2 ? "⚔️ 검우로 " : "⚔️ 전체 베기로 ");
+        out.put("novaFx", nfx);
         mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(전체 베기)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         dao.updateMinePos(userName, map.id, x, y, now);
