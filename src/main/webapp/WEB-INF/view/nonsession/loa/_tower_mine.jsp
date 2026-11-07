@@ -3546,13 +3546,23 @@ var TowerMine = (function () {
     if (!opened || !map || presBusy) return;
     presBusy = true;
     var mid = map.id;
-    /** [2026-11-07] 화면에 보이는 칸 수(가로/세로 절반) -- 용병 선공 범위(서버에도 1초 턴으로 알린다). */
+    // [2026-11-07] "같은 아이디로 이미 접속 중이면 안 되게" -- 이 광산 화면(탭)의 번호. 같은 탭 새로고침은 같은 번호(sessionStorage).
+  var mineCid = (function () { var v = ''; try { v = sessionStorage.getItem('tw-mine-cid') || ''; } catch (e) { } if (!/^[a-z0-9]{6,20}$/.test(v)) { v = Math.random().toString(36).slice(2, 12) + Date.now().toString(36).slice(-4); try { sessionStorage.setItem('tw-mine-cid', v); } catch (e) { } } return v; })();
+  var dupClosing = false;
+  function dupKick(m) { // 다른 곳에서 들어와 이 화면을 끝낸다
+    if (!opened) return;
+    dupClosing = true;
+    close();
+    setTimeout(function () { try { alert(m || '다른 곳에서 접속해 이 화면은 종료됐어요.'); } catch (e) { } }, 50);
+  }
+  /** [2026-11-07] 화면에 보이는 칸 수(가로/세로 절반) -- 용병 선공 범위(서버에도 1초 턴으로 알린다). */
   function viewHalf() { var TSn = T * scale; return el && el.cv && TSn > 0 ? [Math.max(3, Math.floor(el.cv.width / TSn / 2)), Math.max(3, Math.floor(el.cv.height / TSn / 2))] : [9, 6]; }
   // [2026-11-03] 시즌 5.5 경량화 -- 위치 알림 + 전투 턴 + 환경 턴 + 몬스터 상태를 요청 하나로(/api/tower-mine-tick)
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
-    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (st && st.merc && st.merc.mode === 1 ? '&vw=' + viewHalf()[0] + '&vh=' + viewHalf()[1] : '') + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (st && st.merc && st.merc.mode === 1 ? '&vw=' + viewHalf()[0] + '&vh=' + viewHalf()[1] : '') + '&cid=' + mineCid + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
+      if (r && r.dup) { dupKick(r.message); return; } // [2026-11-07] 다른 곳에서 같은 캐릭터로 들어와 있다
       showPing(performance.now() - pt0, pws, r && r.ms);
       if (tc) tc(r && r.c);
       if (te) te(r && r.e);
@@ -4991,7 +5001,7 @@ var TowerMine = (function () {
     if (exit) exitSent = true;
     var body = new URLSearchParams();
     body.append('userName', cfg.user); body.append('mapId', map.id); body.append('x', x); body.append('y', y); body.append('v', map.version || '');
-    if (exit) body.append('exit', '1');
+    if (exit) { body.append('exit', '1'); body.append('cid', mineCid); } // [2026-11-07] 나가면 바로 다른 곳에서 들어올 수 있게
     if (!exit && wsOk && ws && ws.readyState === 1) { // [2026-11-06] 걷는 중 저장은 소켓으로(나갈 때는 창이 닫히며 소켓이 끊길 수 있어 예전처럼 sendBeacon)
       wsCall('/api/tower-mine-pos?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&v=' + encodeURIComponent(map.version || '')).catch(function () { lastSaved = ''; });
       return;
@@ -5130,7 +5140,8 @@ var TowerMine = (function () {
     exitSent = false;
     var vers = null;
     if (netMode() === 'ws') wsOpen(); // [2026-11-06] 입장 요청도 소켓으로 -- 기억해 둔 서울 주소로 먼저 열고(최대 1.5초) 보낸다
-    wsReady(1500).then(function () { return api('/api/tower-mine?enter=1'); }).then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
+    wsReady(1500).then(function () { return api('/api/tower-mine?enter=1&cid=' + mineCid); }).then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
+      if (s.dup) { var de = new Error(s.message); de.dup = true; throw de; } // [2026-11-07] 같은 캐릭터로 이미 접속 중
       if (s.error) throw new Error(s.error);
       vers = s.mapVers;
       return enterState(s);
@@ -5150,13 +5161,15 @@ var TowerMine = (function () {
         savePos();
       }, SAVE_MS);
     }).catch(function (e) {
+      if (e && e.dup) { el.load.style.whiteSpace = 'pre-line'; el.load.textContent = e.message; return; } // [2026-11-07] 다른 곳에서 접속 중 -- 안내만
       el.load.textContent = '광산을 불러오지 못했어요. (' + (e && e.message ? e.message : '오류') + ')';
     });
   }
   function close() {
     if (!opened) return;
     setMenu(false);
-    if (map) saveBeacon(true);
+    if (map && !dupClosing) saveBeacon(true); // [2026-11-07] 다른 곳에서 들어와 끝나는 화면은 위치를 저장하지 않는다(그쪽 캐릭터를 옛 자리로 되돌리지 않게)
+    dupClosing = false;
     closeSmith();
     opened = false;
     cancelAnimationFrame(raf);

@@ -650,14 +650,36 @@ public class Season5ViewController {
     }
 
     /** [2026-10-23] 웹 광산 -- 내 곡괭이 내구도/저장 위치/캔 칸/광석 보유. enter=1이면 광산 입장(화면을 열 때/다시 돌아왔을 때) 로그. */
+    // [2026-11-07] "이미 접속 중인데 같은 아이디로 안 되게 -- 접속을 종료하고 들어오라고 안내" -- 광산 화면(탭)마다 번호(cid)를 두고 유저마다 지금 화면 하나만 기억한다.
+    //  다른 화면이 MINE_CLIENT_TTL_MS 안에 1초 턴을 보냈으면 새 입장을 막는다(같은 탭 새로고침은 같은 번호라 그대로). 그 화면이 나가면(exit) 바로 풀리고,
+    //  창을 그냥 닫았으면 TTL 뒤 풀린다. 오래 멈춰 있던(백그라운드) 화면이 돌아왔는데 그 사이 다른 화면이 들어와 있으면 그 화면에 dup을 보내 끝낸다.
+    static final java.util.concurrent.ConcurrentHashMap<String, Object[]> MINE_CLIENT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_CLIENT_TTL_MS = 10_000L;
+    static final String MINE_DUP_MSG = "⚠️ 이미 다른 곳(다른 기기나 다른 창)에서 이 캐릭터로 광산에 접속 중이에요.\n그쪽 광산을 먼저 종료한 뒤 다시 들어와 주세요.\n(창을 그냥 닫았다면 10초쯤 뒤에 들어올 수 있어요)";
+    /** 다른 화면이 접속 중이면 true(이 화면은 못 들어감). 아니면 이 화면을 지금 화면으로 기억한다. */
+    static boolean mineClientDup(String userName, String cid) {
+        if (cid == null || cid.isEmpty()) return false;
+        long now = System.currentTimeMillis();
+        Object[] cur = MINE_CLIENT.get(userName);
+        if (cur != null && !cid.equals(cur[0]) && now - (Long) cur[1] < MINE_CLIENT_TTL_MS) return true;
+        MINE_CLIENT.put(userName, new Object[] { cid, now });
+        return false;
+    }
+
     @GetMapping("/api/tower-mine")
     @ResponseBody
     public ResponseEntity<?> apiTowerMine(@RequestParam(value = "userName", defaultValue = "") String userName,
-            @RequestParam(value = "enter", defaultValue = "") String enter) {
+            @RequestParam(value = "enter", defaultValue = "") String enter, @RequestParam(value = "cid", defaultValue = "") String cid) {
         if (userName.trim().isEmpty()) {
             HashMap<String, Object> err = new HashMap<>();
             err.put("error", "유저명을 입력하세요.");
             return ResponseEntity.ok(err);
+        }
+        if ("1".equals(enter) && mineClientDup(userName, cid)) { // [2026-11-07] 같은 캐릭터로 이미 접속 중
+            HashMap<String, Object> dup = new HashMap<>();
+            dup.put("dup", true);
+            dup.put("message", MINE_DUP_MSG);
+            return ResponseEntity.ok(dup);
         }
         HashMap<String, Object> st = s5Service.mineState(userName);
         // [2026-11-04] "속도 개선 뒤 공격/자동채광이 느리다" -- WebSocket은 설정값 S55_WS = 1일 때만(기본은 예전처럼 HTTP). 배포 없이 켜고 끈다(/갱신).
@@ -697,8 +719,10 @@ public class Season5ViewController {
     @ResponseBody
     public ResponseEntity<?> apiTowerMinePos(@RequestParam(value = "userName", defaultValue = "") String userName,
             @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
-            @RequestParam(value = "exit", defaultValue = "") String exit, @RequestParam(value = "v", defaultValue = "") String ver) {
+            @RequestParam(value = "exit", defaultValue = "") String exit, @RequestParam(value = "v", defaultValue = "") String ver,
+            @RequestParam(value = "cid", defaultValue = "") String cid) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        if ("1".equals(exit) && !cid.isEmpty()) { Object[] cur = MINE_CLIENT.get(userName); if (cur != null && cid.equals(cur[0])) MINE_CLIENT.remove(userName, cur); } // [2026-11-07] 나가면 바로 다른 곳에서 들어올 수 있게
         my.prac.core.prjbot.service.impl.S5MineSessionLog.touch(userName); // [2026-10-28] 접속 기록 -- 화면이 살아 있음
         HashMap<String, Object> out = s5Service.mineSavePos(userName, mapId, ver, x, y);
         if ("1".equals(exit) && out.get("error") == null) { // 광산을 나갈 때/화면을 벗어날 때 -- 서버가 받아들인 최종 위치로 기록
@@ -770,9 +794,11 @@ public class Season5ViewController {
             @RequestParam(value = "pg", defaultValue = "-1") int pg, @RequestParam(value = "dv", defaultValue = "-1") int dv,
             @RequestParam(value = "nw", defaultValue = "-1") int nw, @RequestParam(value = "fg", defaultValue = "0") int fg,
             @RequestParam(value = "bg", defaultValue = "0") int bg, @RequestParam(value = "wv", defaultValue = "0") int wv,
-            @RequestParam(value = "vw", defaultValue = "0") int vw, @RequestParam(value = "vh", defaultValue = "0") int vh) {
+            @RequestParam(value = "vw", defaultValue = "0") int vw, @RequestParam(value = "vh", defaultValue = "0") int vh,
+            @RequestParam(value = "cid", defaultValue = "") String cid) {
         HashMap<String, Object> out = new HashMap<String, Object>();
         if (userName.trim().isEmpty()) return ResponseEntity.ok(out);
+        if (mineClientDup(userName, cid)) { out.put("dup", true); out.put("message", MINE_DUP_MSG); return ResponseEntity.ok(out); } // [2026-11-07] 다른 화면이 들어와 있다 -- 이 화면은 끝낸다
         if (vw > 0) s5Service.mineView(userName, vw, vh); // [2026-11-07] 용병 선공 -- 화면에 보이는 범위
         if (pg >= 0) my.prac.core.util.S55AdminPush.net(userName, pg, dv, nw, fg, bg, wv); // [2026-11-04] "컴으로 하면 느리다" -- 유저별 핑/기기/통신 방식(관리자 화면)
         long t0 = System.nanoTime(); // [2026-11-04] 서버 처리 시간(ms) -- 화면 핑 옆에 "서버 n"으로(통신 지연과 나눠 보려고)

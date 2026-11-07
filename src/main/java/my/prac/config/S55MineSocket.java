@@ -90,7 +90,7 @@ public class S55MineSocket {
             case "/api/tower-mine-tick":
                 return c.apiTowerMineTick(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), a.getOrDefault("d", "down"), a.getOrDefault("v", ""),
                         a.getOrDefault("c", ""), a.getOrDefault("e", ""), a.getOrDefault("m", ""),
-                        a.containsKey("pg") ? num(a, "pg") : -1, num(a, "dv"), num(a, "nw"), num(a, "fg"), num(a, "bg"), num(a, "wv"), num(a, "vw"), num(a, "vh")).getBody();
+                        a.containsKey("pg") ? num(a, "pg") : -1, num(a, "dv"), num(a, "nw"), num(a, "fg"), num(a, "bg"), num(a, "wv"), num(a, "vw"), num(a, "vh"), a.getOrDefault("cid", "")).getBody();
             case "/api/tower-mine-attack":
                 return c.apiTowerMineAttack(userName, a.getOrDefault("mapId", ""), num(a, "x"), num(a, "y"), num(a, "mob"), a.getOrDefault("v", ""),
                         a.containsKey("mc") ? num(a, "mc") : -1, a.getOrDefault("d", "")).getBody();
