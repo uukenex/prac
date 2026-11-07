@@ -123,9 +123,19 @@ public class S55MineController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(out); // [2026-11-04] 들어올 때마다 자동 구독 -- 알림은 [시험 알림]으로만
     }
 
+    // [2026-11-08] "TBOT_S55_MINE_LINK 조회가 너무 잦다(10초마다 두 번)" -- 관리자 알림/통신 상태 화면이 10초마다 부를 때마다 카카오 연결을 DB에서 다시 찾았다.
+    //  한 번 확인한 결과(카카오 ID + 관리자 여부)를 로그인 세션에 기억한다(연결이 생긴 뒤에만 -- 로그아웃하면 세션과 함께 사라진다).
+    static final String SESSION_ADMIN = "s55AdminKid";
     private boolean adminSession(HttpServletRequest req) {
-        String kid = kakaoId(req), user = kid == null ? null : s5Service.s55LinkedUser(kid);
-        return user != null && s5Service.s55IsAdmin(user);
+        String kid = kakaoId(req);
+        if (kid == null) return false;
+        HttpSession s = req.getSession(false);
+        Object c = s == null ? null : s.getAttribute(SESSION_ADMIN);
+        if (c instanceof String && ((String) c).startsWith(kid + "|")) return ((String) c).endsWith("|1");
+        String user = s5Service.s55LinkedUser(kid);
+        boolean ok = user != null && s5Service.s55IsAdmin(user);
+        if (s != null && user != null) s.setAttribute(SESSION_ADMIN, kid + "|" + (ok ? 1 : 0));
+        return ok;
     }
 
     /** [2026-11-04] 화면 안 관리자 알림(10초마다) -- 관리자만. */
