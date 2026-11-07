@@ -4656,10 +4656,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 데리고 다니는 용병 직업(-1 = 없음). */
     static int mineMercOn(Map<String, Integer> items) { int c = items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1; return c >= 0 && c < MINE_MERC_NAMES.length && mineMercLv(items, c) > 0 && mineMercPaid(items, c, System.currentTimeMillis()) ? c : -1; } // [2026-11-06] 급여가 밀리면 쉰다
-    static final double MINE_MERC_ATK_MUL = 0.7; // [2026-11-06] "동료 공격 성능 30% 정도만 줄이자"
-    // [2026-11-07] "고레벨 때는 1.8배 안 해도 세다 -- 용병은 10% 증가" -- (같은 날 2배~1.8배였던 것을) 레벨 상관없이 1.1배. 바탕 공격력(mineAtk)의 고레벨 계단식 너프는 용병에도 그대로.
-    static double mineMercLvMul(int lv) { return 1.1; }
-    static int mineMercAtk(Map<String, Integer> items, int c) { int lv = Math.max(1, mineMercLv(items, c)); return (int) Math.round(mineAtk(lv) * MINE_MERC_DMG[c] * MINE_MERC_ATK_MUL * mineMercLvMul(lv)); }
+    // [2026-11-07] "80레벨과 99레벨 차이가 너무 극명 -- 80레벨 3천이면 99레벨은 1만이 적당, 대신 80 아래에선 고정으로 올라가는 수치를 올려" --
+    //  용병 공격력(궁수/마법사 기준, 전사는 x1.2)을 플레이어 곡선(mineAtk, 레벨마다 9%씩 불어남) 대신 두 구간 직선으로: Lv.1 40 -> Lv.80 3,000(레벨마다 약 37.5씩),
+    //  Lv.80 3,000 -> Lv.99 10,000(레벨마다 약 368씩). (같은 날의 2배~1.8배 / 1.1배는 이것으로 바뀜)
+    static final double MINE_MERC_ATK_LV1 = 40, MINE_MERC_ATK_LV80 = 3_000, MINE_MERC_ATK_LV99 = 10_000;
+    static double mineMercBaseAtk(int lv) {
+        lv = Math.max(1, Math.min(MINE_LV_MAX, lv));
+        return lv <= 80 ? MINE_MERC_ATK_LV1 + (MINE_MERC_ATK_LV80 - MINE_MERC_ATK_LV1) * (lv - 1) / 79.0 : MINE_MERC_ATK_LV80 + (MINE_MERC_ATK_LV99 - MINE_MERC_ATK_LV80) * (lv - 80) / 19.0;
+    }
+    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[c]); }
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
     /** 평타 설명(단계 s = 1 + 레벨/20). */
