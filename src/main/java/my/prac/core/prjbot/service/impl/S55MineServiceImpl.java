@@ -2268,6 +2268,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
             } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
+                s.fx = hitCell % map.w; s.fy = hitCell / map.w; // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
                 if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type, 1);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
@@ -4325,6 +4326,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
                 s.lastHitAt = now;
+                if (ot.dummy) { s.fx = hitCell % map.w; s.fy = hitCell / map.w; } // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
                 if (ot.sim) { s.hp -= sum; if (s.hp <= 0) { s.hp = 0; s.deadUntil = now + MINE_SIM_DOWN_MS; } } // [2026-11-07] 보스 허수아비 -- 줄기만 하고 처치/보상 없음
                 if (!ot.dummy) {
                     s.hp -= sum;
@@ -4658,7 +4660,40 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo((int) g[0], g[1], (int) g[2], now, mineEngaged(userName, now), (int) g[3], rb));
         out.put("ult", mineUltInfo(userName, items));
         out.put("message", msg.length() > 0 ? msg.toString() : null);
+        minePresUlt(userName, k, t, out); // [2026-11-08] 다른 사람 화면에도 필살기
         return out;
+    }
+    /** [2026-11-08] "필살 스킬이 다른 사람한테 보이게" -- 일반 공격처럼 위치 알림에 실어 보낸다. u = 0 만검진(z = [x, y, 반경], 쓸 때만) / 1 일섬참, h = 맞은 몬스터 피해 숫자. */
+    @SuppressWarnings("unchecked")
+    void minePresUlt(String userName, int k, int t, HashMap<String, Object> out) {
+        try {
+            MinePresence me = MINE_PRESENCE.get(userName);
+            if (me == null) return;
+            List<int[]> h = new ArrayList<>();
+            Object um = out.get("ultMobs");
+            if (um instanceof List) for (Object o : (List<Object>) um) {
+                if (!(o instanceof Map)) continue;
+                Map<String, Object> m = (Map<String, Object>) o;
+                Object row = m.get("row"), hl = m.get("hits");
+                if (!(row instanceof long[]) || !(hl instanceof List)) continue;
+                long[] rw = (long[]) row;
+                for (Object q : (List<Object>) hl) if (q instanceof int[]) { int[] a = (int[]) q; h.add(new int[] { (int) rw[3], (int) rw[4], a[1], a[2] == 1 ? 1 : 0 }); }
+            }
+            if (h.size() > 24) h = h.subList(0, 24);
+            HashMap<String, Object> a = new HashMap<>();
+            long now = System.currentTimeMillis();
+            a.put("s", MINE_PRES_ATK_SEQ.incrementAndGet());
+            a.put("at", now);
+            a.put("d", me.dir);
+            a.put("h", h);
+            if (t == 0) a.put("u", k); // 쓸 때만 그림(장판/斬), 만검진의 다음 타격은 숫자만
+            Object zo = out.get("zone");
+            if (k == 0 && t == 0 && zo instanceof Map) { Map<String, Object> z = (Map<String, Object>) zo; a.put("z", new int[] { (Integer) z.get("x"), (Integer) z.get("y"), (Integer) z.get("r") }); }
+            synchronized (me.atks) {
+                me.atks.addLast(a);
+                while (me.atks.size() > 6 || (!me.atks.isEmpty() && now - (Long) me.atks.peekFirst().get("at") > MINE_PRES_ATK_MS)) me.atks.removeFirst();
+            }
+        } catch (Exception ignore) { } // 화면 표시용
     }
 
     /** [2026-11-04] 옆에 몬스터가 없을 때 검기만 날리기(공격 버튼) -- mineAttack(mobId = -1). */

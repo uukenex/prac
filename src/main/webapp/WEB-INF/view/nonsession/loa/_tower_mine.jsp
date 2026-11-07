@@ -3607,6 +3607,9 @@ var TowerMine = (function () {
   function othAtkPlay(cur, oid, a, delay) {
     var t = performance.now() + delay;
     cur.swT0 = t; cur.swDir = a.d || cur.dir || 'down';
+    // [2026-11-08] 다른 사람 필살기 -- 만검진 장판(바닥 + 떨어지는 칼) / 일섬참 斬(화면 전체 어둡게·번쩍은 내 것만)
+    if (a.u === 0 && a.z) { ultImg('sword'); ultFx.push({ k: 0, x: a.z[0], y: a.z[1], r: a.z[2], t0: t, sw: ultSwords(a.z[2], a.s || 1), o: 1 }); }
+    if (a.u === 1 && a.h && a.h.length) { ultImg('zan'); ultFx.push({ k: 1, x: a.h[0][0], y: a.h[0][1], t0: t, o: 1 }); }
     if (a.au && a.au.length) {
       var els = a.au.map(function (q) { return q[0]; }), rs = a.au.map(function (q) { return Math.min(5, q[1]); });
       auraFx.push({ x: cur.x, y: cur.y, dir: cur.swDir, r: Math.max.apply(null, rs), els: els, rs: rs, t0: t, w: !!a.w && !(a.wl && a.wl.length), o: 1, oid: oid });
@@ -4125,7 +4128,7 @@ var TowerMine = (function () {
       // 일섬참
       var zan = ultImg('zan'), tx = f.x * TS - camX + TS / 2, ty = f.y * TS - camY + TS / 2;
       var q0 = Math.min(1, t / 110), al = t < 110 ? q0 : t > 700 ? Math.max(0, 1 - (t - 700) / 400) : 1, sc = 1.5 - 0.5 * (1 - (1 - q0) * (1 - q0));
-      ctx.globalAlpha = 0.3 * al; ctx.fillStyle = '#0c0618'; ctx.fillRect(0, 0, W, H);
+      if (!f.o) { ctx.globalAlpha = 0.3 * al; ctx.fillStyle = '#0c0618'; ctx.fillRect(0, 0, W, H); } // [2026-11-08] 다른 사람 것은 화면을 어둡게 하지 않는다
       var sz = TS * 4.2 * sc;
       if (zan) { ctx.globalAlpha = al * 0.95; ctx.drawImage(zan, tx - sz / 2, ty - sz / 2, sz, sz); }
       if (t > 120) {
@@ -4135,7 +4138,7 @@ var TowerMine = (function () {
         ctx.globalAlpha = fo3; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4 * dpr; ctx.stroke();
         ctx.lineCap = 'butt';
       }
-      if (t < 160) { ctx.globalAlpha = (1 - t / 160) * 0.5; ctx.fillStyle = '#e8e0ff'; ctx.fillRect(0, 0, W, H); }
+      if (t < 160 && !f.o) { ctx.globalAlpha = (1 - t / 160) * 0.5; ctx.fillStyle = '#e8e0ff'; ctx.fillRect(0, 0, W, H); }
       ctx.globalAlpha = 1;
     });
   }
