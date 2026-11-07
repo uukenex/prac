@@ -4030,11 +4030,11 @@ var TowerMine = (function () {
   function ultApply(d, t, k) {
     var exSum = 0, kn = 0;
     (d.ultMobs || []).forEach(function (am, j) {
-      var p = ultMobPos(am), dl = k === 1 ? 130 : 60 + (j % 10) * 30;
+      var p = ultMobPos(am), dl = k === 1 ? 130 : (j % 10) * 15;
       mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
       mobHitAt[am.id] = t;
-      novaFx.push({ t0: t + dl, mx: p.x, my: p.y, col: k === 1 ? '#8a6aff' : '#ffb02a' });
-      (am.hits || []).forEach(function (h) { floats.push({ x: p.x, y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : k === 1 ? '#e8dcff' : '#ffe9a8', big: k === 1 || !!h[2], t0: t + dl + 60 }); });
+      // [2026-11-07] 만검진 -- 1초 피해를 4번으로 나눠 0.25초 간격으로(숫자 + X자 베기)
+      (am.hits || []).forEach(function (h, hi) { var hd = k === 0 ? hi * 250 : 0; novaFx.push({ t0: t + dl + hd, mx: p.x, my: p.y, col: k === 1 ? '#8a6aff' : '#ffb02a' }); floats.push({ x: p.x + (k === 0 ? (hi % 2 ? 0.25 : -0.25) : 0), y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : k === 1 ? '#e8dcff' : '#ffe9a8', big: k === 1 || !!h[2], t0: t + dl + 60 + hd }); });
       if (am.killed) { exSum += am.exp || 0; kn++; }
     });
     if (d.expReal != null) exSum = d.expReal;
@@ -4068,7 +4068,7 @@ var TowerMine = (function () {
   /** 만검진 -- 떨어질 검 40자루(시각, 칸 안 자리)를 한 번만 정해 둔다. */
   function ultSwords(r, seed) {
     var R = ultRnd(seed), a = [];
-    for (var i = 0; i < 40; i++) a.push({ t: 150 + i * 115, x: (R() * 2 - 1) * (r + 0.3), y: (R() * 2 - 1) * (r + 0.3) * 0.75 });
+    for (var i = 0; i < 80; i++) a.push({ t: 120 + i * 58, x: (R() * 2 - 1) * (r + 0.3), y: (R() * 2 - 1) * (r + 0.3) * 0.75 }); // [2026-11-07] "칼이 떨어지는 속도를 빠르게" -- 0.058초마다 한 자루
     return a;
   }
   /** 바닥 장판(몬스터·캐릭터보다 먼저). */
@@ -4099,7 +4099,7 @@ var TowerMine = (function () {
         f.sw.forEach(function (s) {
           var e = t - s.t;
           if (e < 0 || e > 700) return;
-          var x = (f.x + s.x) * TS - camX + TS / 2, y = (f.y + s.y) * TS - camY + TS * 0.7, sh = TS * 1.6, sww = sh / 3, fall = 180, k2 = Math.min(1, e / fall), d = (1 - k2) * (1 - k2) * TS * 5;
+          var x = (f.x + s.x) * TS - camX + TS / 2, y = (f.y + s.y) * TS - camY + TS * 0.7, sh = TS * 1.6, sww = sh / 3, fall = 90, k2 = Math.min(1, e / fall), d = (1 - k2) * (1 - k2) * TS * 5; // [2026-11-07] 떨어지는 시간 0.18 -> 0.09초
           ctx.save(); ctx.translate(x - ULT_SIN * d, y - ULT_COS * d); ctx.rotate(-ULT_ANG); // 칼끝이 닿는 점을 기준으로 25도 기울여 날아온다
           ctx.globalAlpha = (e < fall ? 1 : Math.max(0, 1 - (e - fall) / 520)) * fo;
           if (sw) ctx.drawImage(sw, -sww / 2, -sh, sww, sh);
@@ -4254,6 +4254,7 @@ var TowerMine = (function () {
       else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv + (d.elHit ? ' x1.5' : ''), color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
       else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + d.dmg + (d.elHit ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
       auraShow(d, fxp, fyp, t); // [2026-11-04] 검기 -- 속성 숫자 + 너머 몬스터
+      if (d.simDown) msg('🎯 ' + ((map.mobTypes[m.k] || {}).name || '보스 허수아비') + '의 체력이 0이 됐어요! 3초 뒤 다 찬 채로 다시 일어나요.', 2400); // [2026-11-07] 보스 허수아비
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30] 자객의 목걸이
       if (d.assassinOn) floats.push({ x: P.x, y: P.y - 0.6, text: '🥷 은신!', color: '#c8c8ff', big: true, t0: t + 80 });
       if (d.dodged) floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + 180 });
@@ -4593,7 +4594,8 @@ var TowerMine = (function () {
         if (ms && ms.fu > nowSrv() && !ty.boss) { mx += ((mb.id % 5) - 2) * scale; my += (((mb.id / 5) | 0) % 3 - 1) * scale; } // [2026-11-05] 쫓아오며 겹친 몬스터 -- 조금씩 비껴 그려 여러 마리인 게 보이게
         if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
         ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
-        if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
+        if (ty.sim != null) { var sw2 = TS * 2; ctx.drawImage(mobSprite(ty.sim, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - sw2 / 2), Math.round(my + TS - sw2 - bob), sw2, sw2); } // [2026-11-07] 보스 허수아비 -- 그 보스 그림(2칸 크기)
+        else if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
           ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS, my + TS, TS * 1.5, 0, Math.PI * 2); ctx.fill();
           var bw = TS * 2.4; // [2026-10-29] 보스 2x2칸 -- 그림은 두 칸 가운데, 발은 아래 칸
           ctx.drawImage(mobSprite(sk, pose, Math.floor(now / 480 + bid)), Math.round(mx + TS - bw / 2), Math.round(my + 2 * TS - bw - bob), bw, bw);
@@ -4607,7 +4609,12 @@ var TowerMine = (function () {
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력
         if (ms && ms.hp > hpMx) hpMx = ms.hp; // [2026-10-30] 저장된 옛 맵 정보라도 막대가 넘치거나 안 보이지 않게
-        if (ms && ms.hp > 0 && ms.hp < hpMx) {
+        if (ty.sim != null) { // [2026-11-07] 보스 허수아비 -- 체력 막대 + 숫자를 늘 보여 준다(5초 안 맞으면 다 참)
+          var shp = ms ? Math.max(0, ms.hp) : hpMx, sbw = 40 * scale, sbx = mx + TS / 2 - sbw / 2, sby = my + TS - 2 * TS - 6 * scale;
+          ctx.fillStyle = '#140d0a'; ctx.fillRect(sbx - scale, sby - scale, sbw + 2 * scale, 5 * scale);
+          ctx.fillStyle = '#e8433a'; ctx.fillRect(sbx, sby, Math.max(shp > 0 ? 1 : 0, sbw * shp / hpMx), 3 * scale);
+          drawTextImg(textImg(shp.toLocaleString() + ' / ' + hpMx.toLocaleString(), 'bold ' + Math.round(9 * dpr) + 'px monospace', '#ffffff', 3 * dpr, true), mx + TS / 2, sby - 3 * scale);
+        } else if (ms && ms.hp > 0 && ms.hp < hpMx) {
           if (ty.boss) { // [2026-10-30] 보스 -- 2칸 폭으로 그림 위에
             ctx.fillStyle = '#140d0a'; ctx.fillRect(mx + TS - 15 * scale, my - 9 * scale, 30 * scale, 4 * scale);
             ctx.fillStyle = '#e8433a'; ctx.fillRect(mx + TS - 14 * scale, my - 8 * scale, Math.max(1, 28 * scale * ms.hp / hpMx), 2 * scale);
@@ -4618,7 +4625,7 @@ var TowerMine = (function () {
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
           tagCells[mp.cx + ',' + mp.cy] = 1;
-          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
+          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }

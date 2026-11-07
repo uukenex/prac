@@ -733,6 +733,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("boss", ty.boss);
             m.put("el", ty.elem()); // [2026-10-29] 속성
             if (ty.dummy) m.put("dummy", true);
+            if (ty.sim) { m.put("sim", ty.simIndex()); m.put("lv", ty.simOf().lvShow > 0 ? ty.simOf().lvShow : 1 + 4 * (ty.simOf().tier - 1)); } // [2026-11-07] 보스 허수아비(그림 = 그 보스)
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
@@ -1036,6 +1037,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     mineBossRegen(s, bmax, now, map, map.mobs().get((int) id));
                     if (s.hp < bmax || s.target != null) { list.add(mineMobRow((int) id, s)); seen.add(id); continue; }
                 }
+                if (bt != null && bt.sim && s.deadUntil <= now && (s.hp <= 0 || now - s.lastHitAt >= MINE_SIM_HEAL_MS)) { MINE_MOB_STATE.remove(e.getKey(), s); continue; } // [2026-11-07] 보스 허수아비 -- 다 참
                 if (minion && s.deadUntil <= now && s.frozenUntil <= now) s.deadUntil = Long.MAX_VALUE / 2; // [2026-10-28] 아무도 안 싸우면 수하는 물러난다
                 if (!minion && s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS) { MINE_MOB_STATE.remove(e.getKey(), s); continue; }
                 list.add(mineMobRow((int) id, s)); // [2026-10-28] 7번째 = 은신 중(1)
@@ -2186,6 +2188,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (mineHidden(map, type, now) || (mob.type == S5MineMobs.THUNDER_BOSS_TYPE && mineBossDead(mob.type))) { out.put("message", "⚡ 마물이 숲 속으로 사라졌어요."); out.put("mobDeadUntil", Math.max(now + 3_000L, mineThunderUntil)); return out; } // [2026-11-05] 숨은 마물 / 나오지 않은 천둥 황소
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
+            if (type.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = mobMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
             if (type.boss) mineBossRegen(s, mobMax, now, map, mob); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
             for (int c : mineMobCells(mob, s, now, map)) { // [2026-10-29] 보스는 2x2칸, "공격할 때 본인 위치도" -- 내 칸(0)과 둘레 8칸(1)
@@ -2259,6 +2262,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type, 1);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
+                if (type.sim) { // [2026-11-07] 보스 허수아비 -- 체력이 줄고, 0이 되면 MINE_SIM_DOWN_MS 동안 못 때린다(그 뒤 다 찬 채로)
+                    s.hp -= dmg;
+                    if (auraMain != null) for (int[] h : auraMain) s.hp -= h[1];
+                    if (s.hp <= 0) { s.hp = 0; s.deadUntil = now + MINE_SIM_DOWN_MS; out.put("simDown", true); }
+                }
             } else {
                 s.hp -= dmg;
                 if (auraRange > 0) { auraMain = mineAuraHits(aura, atkBase, type, 1); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
@@ -4304,9 +4312,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (s.deadUntil > now) continue;
                 if (s.deadUntil > 0) s.respawn(omMax);
+                if (ot.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = omMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
                 s.lastHitAt = now;
+                if (ot.sim) { s.hp -= sum; if (s.hp <= 0) { s.hp = 0; s.deadUntil = now + MINE_SIM_DOWN_MS; } } // [2026-11-07] 보스 허수아비 -- 줄기만 하고 처치/보상 없음
                 if (!ot.dummy) {
                     s.hp -= sum;
                     if (ot.boss && (!ult || om.type == S5MineMobs.SHRINE_BOSS_TYPE)) s.hp = Math.max(1, s.hp); // [2026-11-07] 필살기는 보스도 쓰러뜨린다
@@ -4484,8 +4494,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     static final String[] MINE_ULT_NAME = { "만검진", "일섬참" };
-    static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 3, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 30;
+    static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 3, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 30, MINE_ULT_ZONE_SPLIT = 4;
     static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
+    // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 차고, 0이 되면 3초 동안 못 때린다(쓰러진 것처럼 사라졌다 다 찬 채로).
+    static final long MINE_SIM_HEAL_MS = 5_000L, MINE_SIM_DOWN_MS = 3_000L;
     static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L, MINE_ULT_STUN_MS = 5_000L; // [2026-11-07] "일섬참 맞은 대상은 기절 5초"
     static String mineUltKey(int k) { return "ULT_L" + k; }
     static int mineUltLv(Map<String, Integer> items, int k) { return Math.max(0, Math.min(MINE_ULT_MAX, items.getOrDefault(mineUltKey(k), 0))); }
@@ -4603,8 +4615,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         StringBuilder msg = new StringBuilder();
         long[] r = mineSweepCells(userName, map, items, cells, maxT, -1, now, msg, out, (ot, dist) -> {
             List<int[]> l = new ArrayList<>();
-            boolean crit = RND.nextInt(100) < 10;
-            l.add(new int[] { 0, Math.max(1, (int) Math.round(atkBase * pct * (0.9 + RND.nextDouble() * 0.2) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot))), crit ? 1 : 0 });
+            int nh = k == 0 ? MINE_ULT_ZONE_SPLIT : 1; // [2026-11-07] "만검진은 초당 1회 말고 4번 정도로 나눠서" -- 화면은 0.25초 간격으로 띄운다
+            for (int q = 0; q < nh; q++) {
+                boolean crit = RND.nextInt(100) < 10;
+                l.add(new int[] { 0, Math.max(1, (int) Math.round(atkBase * pct / nh * (0.9 + RND.nextDouble() * 0.2) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot))), crit ? 1 : 0 });
+            }
             return l;
         }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ", true, k == 1 ? MINE_ULT_STUN_MS : 0L);
         Object um = out.get("ultMobs");

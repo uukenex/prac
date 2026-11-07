@@ -56,7 +56,14 @@ public final class S5MineMobs {
         /** [2026-10-29] 속성(S5MineMobs.EL_*, -1 = 아직 안 정함 -- elem()이 이름/맵으로 정한다), dummy = 왕도 훈련장 허수아비(맞아도 안 줄고 반격/인식 없음). */
         int elem = -1;
         public boolean dummy;
-        public int elem() { if (elem < 0) elem = S5MineMobs.elemOf(this); return elem; }
+        // [2026-11-07] "왕도 1시 방향 허수아비를 보스 시뮬레이션으로" -- sim = 그 보스와 같은 체력/속성, 공격·인식 없음, 5초 안 맞으면 다 참, 0이 되면 잠깐 못 때림.
+        public boolean sim;
+        String simName;
+        private Type simOf;
+        public Type simOf() { if (simOf == null && simName != null) simOf = TYPES.get(indexOf(simName)); return simOf; }
+        public int simIndex() { return simName == null ? -1 : indexOf(simName); }
+        Type asSim(String boss) { simName = boss; sim = true; return asDummy(); }
+        public int elem() { if (simName != null) return simOf().elem(); if (elem < 0) elem = S5MineMobs.elemOf(this); return elem; }
         Type asDummy() { dummy = true; stay = true; noReward = true; return this; }
         Type asDummy(int el) { elem = el; return asDummy(); } // [2026-10-30] 속성별 허수아비
         Type el(int e) { elem = e; return this; } // [2026-11-04] 속성을 이름/맵 대신 직접
@@ -91,7 +98,7 @@ public final class S5MineMobs {
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
         // [2026-11-07] "고레벨 사냥터 체력을 바뀐 공격력 곡선에 맞추자" -- 플레이어 공격력이 80레벨부터 직선(99레벨 10,000)으로 완만해진 만큼, 적정 레벨(1 + 4 x (단계 - 1))이 80을 넘는
         //  몬스터(보스 포함) 체력도 같은 비율(새 곡선 / 예전 9% 곡선, 둘 다 계단식 너프 포함)로 줄인다. 80 이하 그대로.
-        public int hp() { return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut * hpCurve(1 + 4 * (tier - 1))); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
+        public int hp() { if (simName != null) return simOf().hp(); return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut * hpCurve(1 + 4 * (tier - 1))); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
         public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul * expMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
@@ -253,8 +260,18 @@ public final class S5MineMobs {
         new Type("태고의 매머드 왕", 23, "mammoth", "#5a2a1a", S5MineMap.WESTROAD).herd(),
         new Type("거신 코뿔소", 23, "quad", "#4a4040", S5MineMap.WESTROAD).herd(),
         // [2026-11-05] 마물의 숲 입구 보스 -- 밤에 마물 200마리(처음 500)를 쓰러뜨리면 맵 가운데에. 번개 속성, 지금까지 보스 중 체력/공격 으뜸(26단계 x1.5 / x1.1 = 체력 약 790만, 공격 약 3.5만).
-        new Type("천둥 황소", 26, "human", "#3a4a8a").asBoss().strong(1.5, 1.1).showLv(105).asRanged().el(2) // 2 = EL_THUNDER
+        new Type("천둥 황소", 26, "human", "#3a4a8a").asBoss().strong(1.5, 1.1).showLv(105).asRanged().el(2), // 2 = EL_THUNDER
+        // [2026-11-07] 왕도 1시 방향 보스 허수아비(보스 시뮬레이션) -- 목록 맨 끝에 덧붙인다(앞 번호가 바뀌지 않게). 그림/체력/속성은 그 보스 것.
+        new Type("고대 광석 골렘 허수아비", 1, "human", "#c8a050").asSim("고대 광석 골렘"),
+        new Type("타락한 대주교 허수아비", 1, "human", "#c8a050").asSim("타락한 대주교"),
+        new Type("얼음 여왕 허수아비", 1, "human", "#c8a050").asSim("얼음 여왕"),
+        new Type("닌자 두목 허수아비", 1, "human", "#c8a050").asSim("닌자 두목"),
+        new Type("용암 거신 허수아비", 1, "human", "#c8a050").asSim("용암 거신"),
+        new Type("파라오 미라 허수아비", 1, "human", "#c8a050").asSim("파라오 미라"),
+        new Type("천둥 황소 허수아비", 1, "human", "#c8a050").asSim("천둥 황소")
     ));
+    /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
+    public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
     public static final int DUMMY_TYPE = indexOf("허수아비");
     /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
     public static final int[] DUMMY_TYPES = { DUMMY_TYPE, indexOf("불 허수아비"), indexOf("물 허수아비"), indexOf("얼음 허수아비"), indexOf("바람 허수아비"), indexOf("땅 허수아비"), indexOf("번개 허수아비"), indexOf("어둠 허수아비"), indexOf("빛 허수아비") };
@@ -494,7 +511,7 @@ public final class S5MineMobs {
             out.add(new S5MineMap.Mob(out.size(), type, x, y, ca, rankOf(seed, out.size(), TYPES.get(type)))); // [2026-10-29] 개체 단계
         }
         int dmi = 0;
-        for (int[] q : m.dummySpots()) out.add(new S5MineMap.Mob(out.size(), DUMMY_TYPES[dmi++ % DUMMY_TYPES.length], q[0], q[1], new int[] { q[1] * m.w + q[0] })); // [2026-10-29] 왕도 훈련장 허수아비
+        for (int[] q : m.dummySpots()) { if (dmi >= SIM_TYPES.length) break; out.add(new S5MineMap.Mob(out.size(), SIM_TYPES[dmi++], q[0], q[1], new int[] { q[1] * m.w + q[0] })); } // [2026-11-07] 속성 허수아비 아홉 -> 보스 허수아비 일곱 // [2026-10-29] 왕도 훈련장 허수아비
         for (int[] q : m.queenSpots()) { // [2026-10-28] 개미굴 여왕개미 셋(보스 아님 -- 목록 맨 끝이 아니어도 된다)
             List<Integer> qc = new ArrayList<>();
             qc.add(q[1] * m.w + q[0]);
