@@ -160,8 +160,12 @@
   }
   function pct(a, b) { return b > 0 ? Math.max(0, Math.min(100, a / b * 100)) : 0; }
   // 광산 화면 인벤토리(EQ_SLOTS)와 같은 칸, 같은 배치
-  var SLOTS = { weapon: '⚔️ 무기', ring: '💍 반지', gloves: '🧤 장갑', coat: '🧥 옷', necklace: '📿 목걸이', boots: '👢 신발', tool: '⛏️ 채집 도구' };
-  var SLOT_ORDER = ['weapon', 'ring', 'gloves', 'coat', 'necklace', 'boots', 'tool'];
+  // [2026-11-08] "옷도 갑옷 통합된 것 반영" -- 게임처럼 갑옷과 방한 외투가 한 칸(armor)
+  var SLOTS = { weapon: '⚔️ 무기', ring: '💍 반지', gloves: '🧤 장갑', armor: '🛡️ 갑옷·옷', necklace: '📿 목걸이', boots: '👢 신발', tool: '⛏️ 채집 도구' };
+  var SLOT_ORDER = ['weapon', 'ring', 'gloves', 'armor', 'necklace', 'boots', 'tool'];
+  // [2026-11-08] "장비류도 무슨 등급인지" -- 게임 GRADE_NAME/GRADE_COL과 같은 순서
+  var GRADE_NAME = ['일반', '고급', '희귀', '영웅', '전설', '유물', '고대', '신화'], GRADE_COL = ['#e8e4f0', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffe14d'];
+  function gradeTag(g) { return g == null || g < 0 ? '' : ' <em style="font-style:normal;font-weight:800;color:' + (GRADE_COL[g] || '#fff') + '">(' + (GRADE_NAME[g] || g) + ')</em>'; }
   var LOOK = { hat: '모자', hair: '머리', top: '상의', bottom: '하의', shoes: '신발' };
   function wornOf(u, sl) {
     var rows = (u.equip || []).filter(function (e) { return e.slot === sl; });
@@ -174,7 +178,7 @@
   function slot(u, sl, cls) {
     var o = wornOf(u, sl);
     return '<div class="slot' + (o.w ? ' on' : '') + (cls ? ' ' + cls : '') + '" title="' + esc(o.w ? o.w.effect : '') + '"><b>' + SLOTS[sl] + '</b><span>'
-      + esc(o.w ? o.w.name : '없음') + '</span></div>'; // 효과는 칸에 마우스를 올리면(title)
+      + esc(o.w ? o.w.name : '없음') + (o.w ? gradeTag(o.w.grade) : '') + '</span></div>'; // 효과는 칸에 마우스를 올리면(title) // [2026-11-08] 등급
   }
   function meter(label, a, b, color) {
     return '<div class="bar-row"><div class="k"><span>' + label + '</span><span class="num">' + n(a) + ' / ' + n(b) + '</span></div>'
@@ -199,6 +203,12 @@
     for (var e = 1; e <= 8; e++) { var l = (u.auraL || [])[e] || 0, a = (u.auraA || [])[e] || 0; if (l > 0) s.push(AURA_ICON[e] + (a !== l ? a + '/' + l : l)); }
     return s.length ? s.join(' ') : '<span style="color:var(--ink-soft)">-</span>';
   }
+  function whirlTxt(u) { // [2026-11-08] 돌개베기 -- 검기와 같은 모양(켠/배운)
+    var s = [];
+    for (var e = 1; e <= 8; e++) { var l = (u.whirlL || [])[e] || 0, a = (u.whirlA || [])[e] || 0; if (l > 0) s.push(AURA_ICON[e] + (a !== l ? a + '/' + l : l)); }
+    return s.length ? s.join(' ') : '<span style="color:var(--ink-soft)">-</span>';
+  }
+  function ultTxt(u) { var l = u.ultL || [0, 0]; return (l[0] | 0) + (l[1] | 0) ? '🌧️ 만검진 Lv.' + (l[0] | 0) + ' · 💥 일섬참 Lv.' + (l[1] | 0) : '<span style="color:var(--ink-soft)">-</span>'; }
   function card(u) {
     var look = Object.keys(LOOK).filter(function (k) { return u.look && u.look[k]; }).map(function (k) { return LOOK[k] + ' <span>' + esc(u.look[k]) + '</span>'; }).join(' · ');
     return '<div class="ch' + (u.online ? ' on' : '') + '">'
@@ -207,7 +217,7 @@
       + '<div class="body">'
       +   '<div class="doll"><div class="doll-col">' + slot(u, 'weapon') + slot(u, 'ring') + slot(u, 'gloves') + '</div>'
       +     '<div class="doll-char">' + img(u) + '<small>' + (u.gender === 1 ? '♀' : '♂') + ' Lv.' + u.lv + '</small></div>'
-      +     '<div class="doll-col">' + slot(u, 'coat') + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool') + '</div>'
+      +     '<div class="doll-col">' + slot(u, 'armor') + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool') + '</div>'
       +   '<div class="stats">'
       +     meter('❤️ 체력', u.hp, u.hpMax, 'var(--hp)')
       +     meter('✨ 경험치', u.exp, u.expNeed, 'var(--exp)')
@@ -220,8 +230,11 @@
       +       '<div><small>처치</small><b class="num">' + n(u.kills) + '</b></div>'
       +       '<div><small>치장</small><b class="num">' + n(u.cosOwned) + '</b></div>'
       +       '<div><small>🐱 용병</small><b class="num">' + (u.merc ? 'Lv.' + u.merc.lv : '-') + '</b></div>' // [2026-11-07] 용병 레벨
+      +       '<div><small>⚔️ 필살</small><b class="num">' + ((u.ultL || [])[0] | 0) + ' / ' + ((u.ultL || [])[1] | 0) + '</b></div>' // [2026-11-08] 만검진 / 일섬참 레벨
       +     '</div>'
       +     '<div class="look">🌀 검기 ' + auraTxt(u) + (u.luckUntil > Date.now() ? ' · 🍀 행운 ' + Math.ceil((u.luckUntil - Date.now()) / 60000) + '분' : '') + '</div>' // [2026-11-05] 검기 단계
+      +     '<div class="look">🌪️ 돌개베기 ' + whirlTxt(u) + '</div>' // [2026-11-08] 주변 공격
+      +     '<div class="look">⚔️ 필살 ' + ultTxt(u) + '</div>'
       +     (u.dragonQuest === 1 ? '<div class="look">🌊 선장 퀘스트 진행 중</div>' : '')
       +     (u.merc ? '<div class="look">🐱 용병 ' + esc(u.merc.job) + ' ' + esc(u.merc.nm) + ' Lv.' + u.merc.lv + ' · ' + ({ 6: '🔥 불', 2: '⚡ 번개', 3: '💧 물' }[u.merc.el] || '') + (u.merc.unpaid ? ' · ⚠️ 급여 밀림' : u.merc.on ? ' · 함께 다니는 중' : ' · 쉬는 중') + '</div>' : '') // [2026-11-07] 용병
       +     '<div class="look" title="' + esc(look.replace(/<[^>]+>/g, '')) + '">👗 ' + (look || '기본 외형') + '</div>'
@@ -237,7 +250,7 @@
     var mini = function (a, b, c) { return '<span class="mini"><i style="width:' + pct(a, b) + '%;background:' + c + '"></i></span>'; };
     return '<div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>캐릭터</th><th class="r">Lv</th><th>위치</th><th class="r">체력</th><th class="r">경험치</th><th class="r">공격</th><th class="r">곡괭이</th>'
       + SLOT_ORDER.map(function (s) { return '<th>' + SLOTS[s] + '</th>'; }).join('')
-      + '<th class="r">⛏️광석</th><th class="r">💎보석</th><th class="r">✨세공</th><th class="r">채광</th><th class="r">처치</th><th>🌀 검기</th></tr></thead><tbody>'
+      + '<th class="r">⛏️광석</th><th class="r">💎보석</th><th class="r">✨세공</th><th class="r">채광</th><th class="r">처치</th><th>🌀 검기</th><th>🌪️ 돌개</th><th>⚔️ 필살</th><th>🐱 용병</th></tr></thead><tbody>' // [2026-11-08] 돌개베기/필살(만검진/일섬참)/용병
       + list.map(function (u) {
           return '<tr class="' + (u.online ? 'on' : '') + '"><td>' + img(u) + '</td><td><b>' + esc(u.userName) + '</b></td><td class="r">' + lvBadge(u) + '</td>'
             + '<td>' + esc(u.mapName) + ' <span class="num" style="color:var(--ink-soft)">' + u.x + ',' + u.y + '</span> · ' + (u.online ? '<span style="color:var(--on)">접속 중</span>' : '<span style="color:var(--ink-soft)">' + ago(u.lastAt) + '</span>') + '</td>'
@@ -245,9 +258,9 @@
             + '<td class="r num">' + Math.floor(pct(u.exp, u.expNeed)) + '%' + mini(u.exp, u.expNeed, 'var(--exp)') + '</td>'
             + '<td class="r num" style="color:var(--gold)">' + n(u.atk) + '</td>'
             + '<td class="r num">' + n(u.pickDur) + mini(u.pickDur, u.pickMax, 'var(--dur)') + '</td>'
-            + SLOT_ORDER.map(function (s) { var o = wornOf(u, s); return '<td class="eq' + (o.w ? '' : ' off') + '" title="' + esc(o.w ? o.w.effect : '') + '">' + esc(o.w ? o.w.name : '-') + '</td>'; }).join('')
+            + SLOT_ORDER.map(function (s) { var o = wornOf(u, s); return '<td class="eq' + (o.w ? '' : ' off') + '" title="' + esc(o.w ? o.w.effect : '') + '">' + esc(o.w ? o.w.name : '-') + (o.w ? gradeTag(o.w.grade) : '') + '</td>'; }).join('') // [2026-11-08] 등급
             + '<td class="r num">' + n(top(u, 0)) + '</td><td class="r num">' + n(top(u, 1)) + '</td><td class="r num">' + n(top(u, 3)) + '</td>'
-            + '<td class="r num">' + n(u.totalDig) + '</td><td class="r num">' + n(u.kills) + '</td><td>' + auraTxt(u) + '</td></tr>';
+            + '<td class="r num">' + n(u.totalDig) + '</td><td class="r num">' + n(u.kills) + '</td><td>' + auraTxt(u) + '</td><td>' + whirlTxt(u) + '</td><td class="num">' + ((u.ultL || [])[0] | 0) + ' / ' + ((u.ultL || [])[1] | 0) + '</td><td class="num">' + (u.merc ? 'Lv.' + u.merc.lv : '-') + '</td></tr>'; // [2026-11-08]
         }).join('')
       + '</tbody></table></div>';
   }

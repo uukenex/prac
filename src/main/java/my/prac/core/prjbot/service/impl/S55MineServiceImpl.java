@@ -7406,6 +7406,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             for (int e = 1; e <= 8; e++) al[e] = Math.max(0, Math.min(items.getOrDefault(mineAuraKey(false, e), 0), MINE_AURA_MAX));
             m.put("auraL", al);
             m.put("auraA", aa);
+            HashMap<String, Object> wi = mineWhirlInfo(items); // [2026-11-08] "관리자 뷰에 주변 공격(돌개베기) 레벨, 필살 레벨"
+            m.put("whirlL", wi.get("l"));
+            m.put("whirlA", wi.get("a"));
+            m.put("ultL", new int[] { mineUltLv(items, 0), mineUltLv(items, 1) });
             m.put("luckUntil", mineLuckUntil(items));
         }
         for (int mc = 0; mc < MINE_MERC_NAMES.length; mc++) { // [2026-11-07] "관리자 화면에 용병 레벨도" -- 계약한 용병(직업/이름/레벨/속성, 함께 다니는지, 급여 밀림)
