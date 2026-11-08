@@ -4048,7 +4048,7 @@ var TowerMine = (function () {
     if (d.expReal != null) exSum = d.expReal;
     if (d.bossMsg) { msg(d.bossMsg, 5000); killFeed(d.bossMsg, '#ffe14d'); flashT0 = t; } // [2026-11-07] 필살기로 쓰러뜨린 보스
     if (d.shock) shockSet([]);
-    if (k === 1 && (d.ultMobs || []).some(function (am) { return !am.killed; })) floats.push({ x: ultMobPos(d.ultMobs[0]).x, y: ultMobPos(d.ultMobs[0]).y - 0.9, text: '💫 기절 5초', color: '#ffe94a', t0: t + 300 }); // [2026-11-07] 일섬참 기절
+    if (k === 1 && (d.ultMobs || []).some(function (am) { return !am.killed; })) floats.push({ x: ultMobPos(d.ultMobs[0]).x, y: ultMobPos(d.ultMobs[0]).y - 0.9, text: '💫 기절 ' + Math.round((d.stunMs || 2000) / 1000) + '초', color: '#ffe94a', t0: t + 300 }); // [2026-11-07] 일섬참 기절
     lootDrops(d.ultDrops, P.x, P.y);
     if (d.ores) st.ores = d.ores;
     if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, P.x, P.y); }
@@ -4201,7 +4201,7 @@ var TowerMine = (function () {
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
     } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
     h += '<div class="mine-smith-say">두 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 둥근 버튼의 왼쪽 반이 만검진, 오른쪽 반이 일섬참 -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
-    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return 800 + 150 * (lv - 1); }, '%로 베고 5초 기절']].forEach(function (s, k) {
+    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (800 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, '']].forEach(function (s, k) {
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(GALAXY_G) + '" alt="">' + head + '<small>' + s[2] + s[3](5) + s[4] + ' · 끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; return; }
       var c = ULT_COST[L + 1];

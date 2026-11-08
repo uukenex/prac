@@ -4522,7 +4522,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
     // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 차고, 0이 되면 3초 동안 못 때린다(쓰러진 것처럼 사라졌다 다 찬 채로).
     static final long MINE_SIM_HEAL_MS = 5_000L, MINE_SIM_DOWN_MS = 3_000L;
-    static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L, MINE_ULT_STUN_MS = 5_000L; // [2026-11-07] "일섬참 맞은 대상은 기절 5초"
+    static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L, MINE_ULT_STUN_MS = 2_000L, MINE_ULT_STUN_LV_MS = 1_000L; // [2026-11-07] "일섬참 맞은 대상은 기절 5초" -> [2026-11-08] "2초(레벨당 1초씩 증가)" -- 1레벨 2초 ~ 5레벨 6초
     static String mineUltKey(int k) { return "ULT_L" + k; }
     static int mineUltLv(Map<String, Integer> items, int k) { return Math.max(0, Math.min(MINE_ULT_MAX, items.getOrDefault(mineUltKey(k), 0))); }
     static double mineUltPct(int k, int lv) { return k == 0 ? 1.25 + 0.20 * (lv - 1) : 8.0 + 1.5 * (lv - 1); } // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
@@ -4670,7 +4670,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 l.add(new int[] { 0, Math.max(1, (int) Math.round(atkBase * pct / nh * (0.9 + RND.nextDouble() * 0.2) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot))), crit ? 1 : 0 });
             }
             return l;
-        }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ", true, k == 1 ? MINE_ULT_STUN_MS : 0L);
+        }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ", true, k == 1 ? MINE_ULT_STUN_MS + MINE_ULT_STUN_LV_MS * (ulv - 1) : 0L);
+        if (k == 1) out.put("stunMs", MINE_ULT_STUN_MS + MINE_ULT_STUN_LV_MS * (ulv - 1));
         Object um = out.get("ultMobs");
         if (k == 1 && (!(um instanceof List) || ((List<?>) um).isEmpty())) { // 보이는 몬스터가 없다 -- 쿨타임을 돌려준다
             if (prevAt == null) MINE_ULT_AT.remove(userName); else MINE_ULT_AT.put(userName, prevAt);
