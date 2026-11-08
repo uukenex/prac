@@ -249,6 +249,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.SHRINE3, 89);
         MINE_MIN_LV.put(S5MineMap.SHRINE_BOSS, 93);
         MINE_MIN_LV.put(S5MineMap.FOREST, 90); // [2026-11-08] 마물의 숲 미궁
+        MINE_MIN_LV.put(S5MineMap.HARPY_NEST, 95);
         MINE_MIN_LV.put(S5MineMap.ARCHISEA, 73);
         int[] isleLv = { 73, 73, 77, 77, 81, 85, 89 };
         for (int i = 0; i < S5MineMap.ISLE_IDS.length; i++) MINE_MIN_LV.put(S5MineMap.ISLE_IDS[i], isleLv[i]);
@@ -703,6 +704,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
         out.put("noDig", !map.hasOre() && !map.veinMine());
+        if (!map.trees().isEmpty()) out.put("trees", map.trees()); // [2026-11-08] 하피의 둥지 대형 나무(왼위 x, y -- 3x2칸)
         out.put("thunder", S5MineMap.WESTROAD.equals(map.id)); // [2026-11-05] 마물의 숲 입구 -- 화면이 1초마다 환경 턴(천둥 황소 장판/전체 감전)
         out.put("vein", map.veinMine()); // [2026-10-28] 설산 동굴 -- 앞의 얼음 광맥을 연속 채광
         out.put("noMap", map.noMap()); // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳 // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
@@ -1025,6 +1027,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineGate() != null) { out.put("mobs", Collections.emptyList()); return out; }
         S5MineMap map = S5MineMap.get(mapId);
         String prefix = map.version() + ":";
+        if (S5MineMap.HARPY_NEST.equals(map.id)) mineHarpySync(map, now, out); // [2026-11-08] 하피 자리(나무 사이를 옮겨 다님) + 나무 상태
         List<long[]> list = new ArrayList<>();
         java.util.Set<Long> seen = new java.util.HashSet<>();
         for (java.util.Map.Entry<String, MobState> e : MINE_MOB_STATE.entrySet()) {
@@ -1097,7 +1100,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 보스 종류 -> 쓰러진 시각 설정 키(보스가 아니거나 따로 셈하는 보스면 null). */
     static String mineBossKey(int type) {
         return type == S5MineMobs.BOSS_TYPE ? MINE_BOSS_KEY : type == S5MineMobs.RAID_BOSS_TYPE ? MINE_RAID_KEY : type == S5MineMobs.ICE_BOSS_TYPE ? MINE_ICE_KEY
-                : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : type == S5MineMobs.PHARAOH_BOSS_TYPE ? MINE_PHARAOH_KEY : null;
+                : type == S5MineMobs.LAVA_BOSS_TYPE ? MINE_LAVA_KEY : type == S5MineMobs.PHARAOH_BOSS_TYPE ? MINE_PHARAOH_KEY : type == S5MineMobs.HARPY_BOSS_TYPE ? MINE_HARPY_KEY : null;
     }
 
     boolean mineBossDead() {
@@ -1111,6 +1114,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
     // [2026-11-04] 피라미드 지하 파라오 미라 -- 보스 공통(2시간 뒤 다시). 붕대 감기 = 원거리 공격에 맞으면 MINE_STUN_MS 동안 못 움직이고 못 때린다(화면 + 공격/캐기 서버도 막음).
     static final String MINE_PHARAOH_KEY = "MINE_PHARAOH_KILLED";
+    static final String MINE_HARPY_KEY = "MINE_HARPY_KILLED"; // [2026-11-08] 하피 -- 쓰러지고 2시간 뒤 다시
     static final long MINE_STUN_MS = 2_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_STUN = new java.util.concurrent.ConcurrentHashMap<>();
     static boolean mineStunned(String userName, long now) { Long u = userName == null ? null : MINE_STUN.get(userName); return u != null && u > now; }
@@ -1571,6 +1575,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int[] cs = mineMobCells(map.mobs().get(id), s, now, map);
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
+                boolean harpyMoving = false;
+                if (map.mobs().get(id).type == S5MineMobs.HARPY_BOSS_TYPE) { int[] hz = mineHarpyNow(map, now); s.fx = hz[0]; s.fy = hz[1]; harpyMoving = hz[4] == 1; } // [2026-11-08] 하피 -- 나무 사이를 옮겨 다닌다
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
                 if ((type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? minePreemptRange(type) + 1 : MINE_AGGRO_RANGE)) && !(!type.boss && !type.minion && mercPreTick && mineMercInView(userName, s.fx - x, s.fy - y))) { // [2026-11-07] 용병 선공으로 끌어들인 몬스터는 화면 안이면 안 풀린다 // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
@@ -1613,11 +1619,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
                     dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1));
                 }
-                if (!thunderBoss && !stunned && type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
+                if (!thunderBoss && !stunned && type.ranged && (map.mobs().get(id).type != S5MineMobs.HARPY_BOSS_TYPE || harpyMoving) && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
-                        MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS));
+                        MINE_RANGED_NEXT.put(userName, now + (harpyMoving ? MINE_HARPY_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
                         dmgSum += d;
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
@@ -2199,6 +2205,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s.deadUntil > now) { out.put("message", "이미 쓰러진 " + type.name + "이에요."); out.put("mobDeadUntil", s.deadUntil); return out; }
             if (mineHidden(map, type, now) || (mob.type == S5MineMobs.THUNDER_BOSS_TYPE && mineBossDead(mob.type))) { out.put("message", "⚡ 마물이 숲 속으로 사라졌어요."); out.put("mobDeadUntil", Math.max(now + 3_000L, mineThunderUntil)); return out; } // [2026-11-05] 숨은 마물 / 나오지 않은 천둥 황소
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
+            int[] harpyAt = mob.type == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyNow(map, now) : null; // [2026-11-08] 하피 -- 지금 자리로
+            if (harpyAt != null) { s.fx = harpyAt[0]; s.fy = harpyAt[1]; s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS); }
+            if (harpyAt != null && harpyAt[2] == 1) { out.put("harpyHidden", true); out.put("message", "🌳 하피 여왕이 나무 뒤에 숨었어요 -- 공격이 닿지 않아요."); return out; } // [2026-11-08] 나무 뒤 = 필살기까지 모두 무효
             if (type.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = mobMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
             if (type.boss) mineBossRegen(s, mobMax, now, map, mob); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
             int hitCell = -1;
@@ -2226,6 +2235,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (hv instanceof int[]) for (int hi = 0; hi < ((int[]) hv).length; hi++) ((int[]) hv)[hi] *= 2;
                 assassinHit = true;
             }
+            if (harpyAt != null && harpyAt[3] == 0) { dmg = 0; Object hv0 = out.get("hits"); if (hv0 instanceof int[]) java.util.Arrays.fill((int[]) hv0, 0); out.put("harpyImmune", true); } // 날고 있어 일반 공격은 무효(검기는 들어감)
             double vul = mineVulnMul(s, now); // [2026-11-08] 만검진 받는 피해 증가
             if (vul > 1) { dmg = (int) Math.round(dmg * vul); Object hv2 = out.get("hits"); if (hv2 instanceof int[]) for (int hi = 0; hi < ((int[]) hv2).length; hi++) ((int[]) hv2)[hi] = (int) Math.round(((int[]) hv2)[hi] * vul); }
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
@@ -2437,6 +2447,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
             mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
+            if (mob.type == S5MineMobs.HARPY_BOSS_TYPE) { // [2026-11-08] 하피 처치 -- 2시간 뒤 다시
+                mineBossKilledNow(MINE_HARPY_KEY, userName, now);
+                mineHarpyReset();
+                msg.insert(0, "👑 하피 여왕을 쓰러뜨렸어요! ");
+                out.put("bossKilled", true);
+            }
             if (mob.type == S5MineMobs.PHARAOH_BOSS_TYPE) { // [2026-11-04] 파라오 미라 처치 -- 2시간 뒤 다시
                 mineBossKilledNow(MINE_PHARAOH_KEY, userName, now);
                 MINE_RANGED_NEXT.clear();
@@ -2694,7 +2710,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST }) { // [2026-11-08] 마물의 숲 미궁 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST }) { // [2026-11-08] 마물의 숲 미궁, 하피의 둥지 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -3124,7 +3140,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         // [2026-10-24] 초원/왕도는 관리자만이었다가 [2026-10-27] "왕도 일반 플레이어들에게 오픈" -- 막지 않는다.
-        String block = S5MineMap.FOREST.equals(target.id) && !isMineAdmin(userName) ? "🌿 가시덩굴이 얽혀 아직 들어갈 수 없어요. (준비 중)" // [2026-11-08] 마물의 숲 미궁 -- 지금은 관리자만
+        String block = (S5MineMap.FOREST.equals(target.id) || S5MineMap.HARPY_NEST.equals(target.id)) && !isMineAdmin(userName) ? "🌿 가시덩굴이 얽혀 아직 들어갈 수 없어요. (준비 중)" // [2026-11-08] 마물의 숲 미궁 -- 지금은 관리자만
                 : S5MineMap.isArchi(target.id) && !mineArchiMapOpen(userName, target.id) // [2026-10-28] 다도해 -- 본섬만 모두에게, 나머지는 운영자만
                 ? (S5MineMap.isShrineFloor(target.id) || S5MineMap.SHRINE_BOSS.equals(target.id) ? "🔒 신궁은 아직 준비 중이에요. 곧 열려요!" : "🌊 아직 열리지 않은 바다예요.") : mineMapBlock(target, items, mineLv(row));
         if (block != null) {
@@ -4278,6 +4294,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (lx < 0 || ly < 0 || lx >= map.w || ly >= map.h) continue;
             line.putIfAbsent(ly * map.w + lx, k);
         }
+        if (S5MineMap.HARPY_NEST.equals(map.id) && aura[6] > 0) mineTreeFire(map, line.keySet(), aura[6], now, out); // [2026-11-08] 불 검기 -- 나무에 불
         return mineSweepCells(userName, map, items, line, MINE_AURA_MAX_TARGETS, skipMob, now, msg, out, (ot, dist) -> mineAuraHits(aura, atkBase, ot, dist), "auraMobs", "auraDrops", "🌀 검기로 ");
     }
 
@@ -4303,6 +4320,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (om.id == skipMob) continue;
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
             if (ot.clone || mineBossDead(om.type) || mineHidden(map, ot, now)) continue; // [2026-11-05] 천둥 황소 동안 마물은 숨음
+            if (om.type == S5MineMobs.HARPY_BOSS_TYPE && mineHarpyNow(map, now)[2] == 1) continue; // [2026-11-08] 나무 뒤 하피 -- 필살기도 안 맞는다
             MobState s0 = MINE_MOB_STATE.get(mineMobKey(map, om.id));
             if (ot.minion && s0 == null) continue; // 불려 나오지 않은 수하
             if (s0 != null && s0.deadUntil > now) continue; // 쓰러져 있는 몬스터는 자리를 차지하지 않는다
@@ -4420,6 +4438,96 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return Math.max(0, s);
     }
 
+    // ---- [2026-11-08] 하피의 둥지(보스룸) -- 관리자만(mineWarp) ----
+    // "못 가는 대형 나무들, 보스가 움직이다 나무 뒤로 가면 플레이어 공격에 면역(필살기도), 나무 사이 이동 중엔 원거리 공격, 나무를 불로 태우는 기믹(불 검기로 많이 때려야),
+    //  숲 전체를 태우면 보스 그로기(숲이 다시 자랄 때까지 약해짐), 숲 재생 2시간, 하피 체력은 천둥 황소의 2배".
+    //  하피(asStay)는 살아 있는 나무 위쪽(수관 뒤)에 MINE_HARPY_PERCH_MS 앉아 있고(숨음 -- 모든 공격 무효), MINE_HARPY_MOVE_MS 동안 다음 나무로 옮겨 가며
+    //  MINE_HARPY_SHOT_MS마다 깃털(원거리)을 쏜다. 앉은 나무에 불이 붙으면 바로 떠난다. 숲이 남아 있는 동안은 날고 있어 일반 공격(과 용병)은 무효, 검기/돌개베기/필살기만.
+    //  나무: 불 검기/불 돌개베기가 닿으면 그 단계만큼 쌓여 MINE_TREE_FIRE_NEED에 닿으면 불붙고(맞은 나무만, 번지지 않음) MINE_TREE_BURN_MS 뒤 다 탄다.
+    //  다 탄 나무는 MINE_TREE_REGROW_MS 뒤 다시 자란다. 나무가 모두 다 타 있으면 하피는 둥지 가운데 내려앉아 약해진다(숨지 못하고 일반 공격도 들어감).
+    static final int MINE_TREE_FIRE_NEED = 60;
+    static final long MINE_TREE_BURN_MS = 8_000L, MINE_TREE_REGROW_MS = 2 * 3_600_000L, MINE_HARPY_PERCH_MS = 6_000L, MINE_HARPY_MOVE_MS = 4_000L, MINE_HARPY_SHOT_MS = 1_500L;
+    static final java.util.concurrent.ConcurrentHashMap<Integer, long[]> MINE_TREES = new java.util.concurrent.ConcurrentHashMap<>(); // 나무 번호 -> {불 쌓인 양, 불붙은 시각}
+    static final Object MINE_HARPY_LOCK = new Object();
+    static int mineHarpyTree = -1, mineHarpyFx, mineHarpyFy, mineHarpyTx, mineHarpyTy;
+    static long mineHarpyAt = 0;
+    static boolean mineHarpyMoving = false;
+    /** 0 살아 있음 / 1 불타는 중 / 2 다 탐(다시 자랄 때까지). */
+    static int mineTreeState(int i, long now) {
+        long[] t = MINE_TREES.get(i);
+        if (t == null || t[1] == 0) return 0;
+        long e = now - t[1];
+        if (e < MINE_TREE_BURN_MS) return 1;
+        if (e < MINE_TREE_BURN_MS + MINE_TREE_REGROW_MS) return 2;
+        MINE_TREES.remove(i, t);
+        return 0;
+    }
+    static boolean mineForestBurnt(S5MineMap map, long now) {
+        if (map.trees().isEmpty()) return false;
+        for (int i = 0; i < map.trees().size(); i++) if (mineTreeState(i, now) != 2) return false;
+        return true;
+    }
+    /** 불 검기/돌개베기가 닿은 칸(cells) 위의 살아 있는 나무에 불을 쌓는다. 불이 붙은 나무 번호를 out.treeFire로. */
+    static void mineTreeFire(S5MineMap map, java.util.Set<Integer> cells, int lv, long now, HashMap<String, Object> out) {
+        List<int[]> tr = map.trees();
+        for (int i = 0; i < tr.size(); i++) {
+            int[] tp = tr.get(i);
+            boolean hit = false;
+            for (int y = tp[1]; y < tp[1] + 2 && !hit; y++) for (int x = tp[0]; x < tp[0] + 3; x++) if (cells.contains(y * map.w + x)) { hit = true; break; }
+            if (!hit || mineTreeState(i, now) != 0) continue;
+            long[] t = MINE_TREES.computeIfAbsent(i, k -> new long[2]);
+            synchronized (t) {
+                t[0] += lv;
+                if (t[0] >= MINE_TREE_FIRE_NEED && t[1] == 0) { t[1] = now; out.put("treeFire", i); }
+            }
+        }
+    }
+    static int[] mineHarpyPerch(S5MineMap map, int i) { int[] t = map.trees().get(i); return new int[] { t[0] + 1, t[1] - 2 }; } // 나무 위쪽(뒤) -- 화면은 수관에 가려 그린다
+    static void mineHarpyReset() { synchronized (MINE_HARPY_LOCK) { mineHarpyTree = -1; mineHarpyAt = 0; mineHarpyMoving = false; } }
+    /** 하피 지금 자리 {x, y, 숨음 1/0, 약해짐 1/0, 옮기는 중 1/0}. 부를 때마다 시간에 맞춰 다음 단계로 넘어간다. */
+    static int[] mineHarpyNow(S5MineMap map, long now) {
+        synchronized (MINE_HARPY_LOCK) {
+            if (mineForestBurnt(map, now)) { mineHarpyTree = -1; mineHarpyMoving = false; return new int[] { map.bossX(), map.bossY(), 0, 1, 0 }; }
+            List<int[]> tr = map.trees();
+            List<Integer> live = new ArrayList<>();
+            for (int i = 0; i < tr.size(); i++) if (mineTreeState(i, now) == 0) live.add(i);
+            if (mineHarpyAt == 0) { // 처음 -- 살아 있는 나무 하나에 앉아 있다
+                mineHarpyTree = live.isEmpty() ? -1 : live.get(RND.nextInt(live.size()));
+                int[] p = mineHarpyTree < 0 ? new int[] { map.bossX(), map.bossY() } : mineHarpyPerch(map, mineHarpyTree);
+                mineHarpyFx = mineHarpyTx = p[0]; mineHarpyFy = mineHarpyTy = p[1];
+                mineHarpyAt = now; mineHarpyMoving = false;
+            }
+            if (!mineHarpyMoving && (now - mineHarpyAt >= MINE_HARPY_PERCH_MS || mineHarpyTree < 0 || mineTreeState(mineHarpyTree, now) != 0)) { // 떠난다
+                live.remove(Integer.valueOf(mineHarpyTree));
+                int nt = live.isEmpty() ? -1 : live.get(RND.nextInt(live.size()));
+                int[] p = nt < 0 ? new int[] { map.bossX(), map.bossY() } : mineHarpyPerch(map, nt);
+                mineHarpyFx = mineHarpyTx; mineHarpyFy = mineHarpyTy; mineHarpyTx = p[0]; mineHarpyTy = p[1];
+                mineHarpyTree = nt; mineHarpyAt = now; mineHarpyMoving = true;
+            } else if (mineHarpyMoving && now - mineHarpyAt >= MINE_HARPY_MOVE_MS) { mineHarpyMoving = false; mineHarpyAt = now; }
+            int x = mineHarpyTx, y = mineHarpyTy;
+            if (mineHarpyMoving) { double k = Math.min(1, (now - mineHarpyAt) / (double) MINE_HARPY_MOVE_MS); x = (int) Math.round(mineHarpyFx + (mineHarpyTx - mineHarpyFx) * k); y = (int) Math.round(mineHarpyFy + (mineHarpyTy - mineHarpyFy) * k); }
+            boolean hidden = !mineHarpyMoving && mineHarpyTree >= 0 && mineTreeState(mineHarpyTree, now) == 0;
+            return new int[] { x, y, hidden ? 1 : 0, 0, mineHarpyMoving ? 1 : 0 };
+        }
+    }
+    /** 몬스터 상태(화면 1초 턴) -- 하피 자리를 맞추고 {harpy: {hide, weak, move}, trees: [[번호, 상태, 불 쌓인 양]]}. */
+    void mineHarpySync(S5MineMap map, long now, HashMap<String, Object> out) {
+        S5MineMap.Mob bm = mineBossOf(map);
+        if (bm != null && !mineBossDead(bm.type)) {
+            int[] hz = mineHarpyNow(map, now);
+            int bmax = S5MineMobs.hp(S5MineMobs.TYPES.get(bm.type), bm.rank);
+            MobState bs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, bm.id), k -> new MobState(bmax));
+            synchronized (bs) { if (bs.deadUntil <= now) { bs.fx = hz[0]; bs.fy = hz[1]; bs.frozenUntil = now + 2_000L; } }
+            HashMap<String, Object> hm = new HashMap<>();
+            hm.put("hide", hz[2] == 1); hm.put("weak", hz[3] == 1); hm.put("move", hz[4] == 1);
+            out.put("harpy", hm);
+        }
+        List<long[]> ts = new ArrayList<>();
+        for (int i = 0; i < map.trees().size(); i++) { long[] t = MINE_TREES.get(i); ts.add(new long[] { i, mineTreeState(i, now), t == null ? 0 : Math.min(MINE_TREE_FIRE_NEED, t[0]) }); }
+        out.put("trees", ts);
+        out.put("treeNeed", MINE_TREE_FIRE_NEED);
+    }
+
     // ---- [2026-11-07] 3환생 스킬 -- 왕도 검기 사범 옆 두 선생 ----
     // "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)". 기존 관리자용 전체 공격은 없앴다(필살기로 대신).
     //  돌개베기는 MINE_WHIRL_OPEN, 필살기는 MINE_ULT_OPEN -- 열면 환생 MINE_SKILL3_RB번 이상(닫혀 있으면 관리자만).
@@ -4473,6 +4581,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int lx = x + ox, ly = y + oy;
             if ((ox != 0 || oy != 0) && lx >= 0 && ly >= 0 && lx < map.w && ly < map.h) cells.put(ly * map.w + lx, 1);
         }
+        if (S5MineMap.HARPY_NEST.equals(map.id) && w[6] > 0) mineTreeFire(map, cells.keySet(), w[6], now, out); // [2026-11-08] 불 돌개베기 -- 나무에 불
         long[] r = mineSweepCells(userName, map, items, cells, 8, -1, now, msg, out, (ot, dist) -> mineAuraHits(w, atkBase, ot, 1), "whirlMobs", "whirlDrops", "🌪️ 돌개베기로 ");
         Object wm = out.remove("whirlMobs"), wd = out.remove("whirlDrops");
         if (wm instanceof List && !((List<Object>) wm).isEmpty()) { List<Object> l = out.get("auraMobs") instanceof List ? new ArrayList<>((List<Object>) out.get("auraMobs")) : new ArrayList<>(); l.addAll((List<Object>) wm); out.put("auraMobs", l); }
@@ -5344,6 +5453,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
             MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
             if (s == null) continue;
+            if (om.type == S5MineMobs.HARPY_BOSS_TYPE && mineHarpyNow(map, now)[3] == 0) continue; // [2026-11-08] 하피 -- 용병 공격은 일반 공격(숲이 다 타기 전엔 무효)
             boolean beat = S5MineMobs.elemBeats(el, ot.elem());
             int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * hitMul.get(hi) * (beat ? 1.5 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
             boolean dead = false;
@@ -5418,6 +5528,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (t == S5MineMobs.RAID_BOSS_TYPE) { mineRaidAwakeUntil = 0; mineBossKilledNow(MINE_RAID_KEY, userName, now); }
         if (t == S5MineMobs.ICE_BOSS_TYPE) { mineIceAwakeUntil = 0; mineIceNextFreeze = 0; mineIceThawAll(); mineBossKilledNow(MINE_ICE_KEY, userName, now); }
         if (t == S5MineMobs.PHARAOH_BOSS_TYPE) { mineBossKilledNow(MINE_PHARAOH_KEY, userName, now); MINE_RANGED_NEXT.clear(); }
+        if (t == S5MineMobs.HARPY_BOSS_TYPE) { mineBossKilledNow(MINE_HARPY_KEY, userName, now); mineHarpyReset(); } // [2026-11-08]
         if (t == S5MineMobs.LAVA_BOSS_TYPE) { mineBossKilledNow(MINE_LAVA_KEY, userName, now); MINE_RANGED_NEXT.clear(); MINE_LAVA.clear(); mo.put("lava", Collections.emptyList()); }
         if (t == S5MineMobs.BOSS_TYPE) mineBossKilledNow(MINE_BOSS_KEY, userName, now);
         if (!ot.noReward) {

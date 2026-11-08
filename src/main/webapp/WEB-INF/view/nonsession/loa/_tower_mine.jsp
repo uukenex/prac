@@ -506,6 +506,7 @@ var TowerMine = (function () {
       case '~': return map && (map.id === 'north' ? y < map.h - 20 : /^snow/.test(map.id)) ? tiles.ice[v % 2] : tiles.water[(wf + (x + y) % 2) % 2]; // 설원/설산 호수는 얼음
       case 'T': return tiles.tree[v % 2];
       case 'F': return tiles.forest[v % 2]; // [2026-11-05] 울창한 숲
+      case 'E': return tiles.grass[v % 3]; // [2026-11-08] 하피의 둥지 대형 나무 밑(나무는 따로 위에 그린다 -- forestTreesDraw)
       case 's': return tiles.stone[v % 2];
       case 'W': return tiles.castleWall[v % 2];
       case 'K': { // 아래가 길이면 1층 앞면, [2026-10-27] 위 두 줄은 지붕, 그 사이는 층마다 창(높은 건물)
@@ -662,6 +663,7 @@ var TowerMine = (function () {
   // ---------------------------------------------------------------- [2026-10-24] 몬스터
   // 위치는 시각으로 정한다(서버 S5MineMobs.cellAt과 같은 식) -- 체력/쓰러짐/멈춤만 서버에서 1.5초마다 받아 온다(mobSt).
   var mobHitAt = {}; // [2026-11-03] 공격한 순간(몬스터 흔들림)
+  var treeSt = [], treeNeed = 60, harpySt = null, harpyImmT = 0; // [2026-11-08] 하피의 둥지 -- 나무 [번호, 상태 0 살아 있음/1 불탐/2 다 탐, 불 쌓인 양], 하피 {hide, weak, move}
   var mobSt = {}, srvOff = 0, mobTimer = 0, mobSprites = {}, mobOcc = {}, atkBusy = false, lastAtkT = 0;
   function mix(a, b) {
     var h = (Math.imul(a, 0x9E3779B1 | 0) + Math.imul(b, 0x85EBCA77 | 0)) | 0;
@@ -694,7 +696,7 @@ var TowerMine = (function () {
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
   // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
   //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
-  var BOSS_ART = { '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull' };
+  var BOSS_ART = { '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull', '하피 여왕': 'harpy' };
   var bossArt = (function () {
     function painter(g) {
       var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
@@ -707,6 +709,32 @@ var TowerMine = (function () {
       };
     }
     var ART = {
+      harpy: function (pt, pf, f, pose) { // [2026-11-08] 하피 -- 바람 보스. 연두·청록 깃털 날개(프레임마다 위/아래 날갯짓), 사람 얼굴과 긴 은발, 노란 새 다리와 발톱, 바람 줄기
+        var w0 = '#5ab89a', w1 = '#2f7a68', w2 = '#a8ecd0', sk = '#f0c8a8', sk2 = '#c89878', hr = '#d8e4ec', hr2 = '#9aa8b8', ft = '#e8b830', ft2 = '#a87a18', k = '#140d0a';
+        var up = f ? 1 : 0;
+        // 날개 -- 위로(0) / 아래로(1)
+        var wing = function (dir) {
+          for (var i = 0; i < 7; i++) { var x0 = 24 + dir * (6 + i * 2.6), y0 = up ? 26 + i * 1.4 : 12 + i * 0.6, len = 11 - i * 0.6;
+            pt.L(24 + dir * 5, 22, x0, y0, w1, 2);
+            for (var j = 0; j < len; j++) pt.P(x0 + dir * 0.3 * j, y0 + j, j < 2 ? w2 : (j % 3 ? w0 : w1)); }
+          pt.E(24 + dir * 9, up ? 27 : 18, 6, 4, w0); pt.E(24 + dir * 8, up ? 26 : 17, 3, 2, w2);
+        };
+        wing(-1); wing(1);
+        // 몸(깃털 덮인 가슴) + 꼬리깃
+        pt.E(24, 28, 7, 9, w0); pt.E(24, 26, 5, 6, w2); for (var by = 22; by < 36; by += 3) pt.R(20, by, 9, 1, w1);
+        pt.L(21, 36, 18, 41, w1, 2); pt.L(27, 36, 30, 41, w1, 2); pt.L(24, 37, 24, 42, w0, 2);
+        // 새 다리 + 발톱
+        pt.R(20, 37, 2, 6, ft); pt.R(27, 37, 2, 6, ft); pt.P(18, 43, ft2); pt.P(19, 44, ft2); pt.P(21, 44, ft2); pt.P(29, 44, ft2); pt.P(30, 44, ft2); pt.P(26, 44, ft2);
+        // 얼굴 + 긴 은발(바람에 날림)
+        pt.E(24, 13, 5, 6, sk); pt.R(20, 15, 8, 1, sk2);
+        for (var hy = 6; hy < 24; hy++) { var flow = Math.round(Math.sin(hy * 0.5 + (f ? 1.2 : 0)) * 1.5); pt.R(17 + flow, hy, 3, 1, hy % 3 ? hr : hr2); pt.R(29 + flow, hy, 3, 1, hy % 3 ? hr : hr2); }
+        pt.R(19, 6, 11, 3, hr); pt.R(20, 8, 3, 2, hr); pt.R(26, 8, 3, 2, hr);
+        pf.R(21, 12, 2, 2, '#8affd8'); pf.R(26, 12, 2, 2, '#8affd8'); // 빛나는 청록 눈(바람 속성)
+        pt.P(24, 16, '#c05050');
+        // 바람 줄기(프레임마다 자리 바뀜)
+        var ws = f ? [[2, 34, 10, 32], [38, 36, 46, 33], [6, 8, 13, 6]] : [[3, 30, 11, 29], [37, 31, 45, 29], [35, 6, 42, 4]];
+        ws.forEach(function (q) { pf.L(q[0], q[1], q[2], q[3], 'rgba(220,255,240,.85)'); pf.P(q[2] + 1, q[3] - 1, '#ffffff'); });
+      },
       pharaoh: function (pt, pf, f) { // [2026-11-04] 파라오 미라 -- 금·청 줄무늬 네메스 두건과 코브라 장식, 붕대 감긴 몸, 흩날리는 붕대, 보랏빛 눈(어둠 속성)
         var w0 = '#d8c8a0', w1 = '#a8946a', w2 = '#f0e6cc', gd = '#e8b830', bl = '#2a4aa8', u = f ? 1 : 0;
         pt.R(17, 34, 6, 12, w0); pt.R(26, 34, 6, 12, w0); for (var ly = 35; ly < 46; ly += 3) { pt.R(17, ly, 6, 1, w1); pt.R(26, ly, 6, 1, w1); }
@@ -940,6 +968,8 @@ var TowerMine = (function () {
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
     }
     thunderUntil = d.hideUntil && d.hideUntil > tn ? d.hideUntil : 0; // [2026-11-05] 천둥 황소 남은 시간(맵 안 모두에게)
+    if (d.trees) { treeSt = d.trees; treeNeed = d.treeNeed || treeNeed; } // [2026-11-08] 하피의 둥지
+    harpySt = d.harpy || null;
     if (d.thunderNeed) { thunderKills = d.thunderKills || 0; thunderNeed = d.thunderNeed; thunderRestAt = d.thunderRestAt || 0; } // [2026-11-06] 절반부터 전기 // [2026-11-08] 쓰러진 뒤 2시간 쉼
     if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
       map.mobs.forEach(function (mb) { var mt = map.mobTypes[mb.k]; if (mt && !mt.boss) ns[mb.id] = { hp: 0, du: d.hideUntil, fx: mb.x, fy: mb.y, fu: 0 }; });
@@ -3839,7 +3869,63 @@ var TowerMine = (function () {
     });
   }
   /** 공격 응답의 검기 -- 바로 앞 적의 속성 숫자(aura), 너머 몬스터(auraMobs: 상태/숫자/처치), 드랍. */
+  // [2026-11-08] 하피의 둥지 대형 나무 -- 48x64(3칸 x 4칸, 아래 2칸이 지나갈 수 없는 밑동 'E'), 상태 0 보통 / 1 불탐(2프레임) / 2 다 탐(2시간 뒤 다시 자람).
+  //  캐릭터 위에 그린다(수관 뒤에 앉은 하피가 가려진다). 내가 수관 밑에 있으면 반투명. 불이 쌓이는 중이면 밑동 아래에 주황 막대.
+  var bigTreeCache = {};
+  function bigTreeArt(st, f) {
+    var key = st + ':' + f;
+    if (bigTreeCache[key]) return bigTreeCache[key];
+    var c = document.createElement('canvas'); c.width = 48; c.height = 64;
+    var g = c.getContext('2d'), s0 = 7;
+    var r = function () { s0 = (s0 * 16807) % 2147483647; return s0 / 2147483647; };
+    var P = function (x, y, col) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 64) return; g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+    var Rr = function (x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    var E = function (cx, cy, rx, ry, col) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + .5) + (y * y) / (ry * ry + .5) <= 1) P(cx + x, cy + y, col); };
+    if (st === 2) { // 다 탄 나무 -- 검은 줄기와 앙상한 가지, 잿더미, 깜빡이는 불씨
+      Rr(20, 26, 8, 34, '#1a1210'); Rr(21, 26, 2, 34, '#2a201a'); Rr(19, 58, 10, 4, '#120c0a');
+      [[24, 30, 10, 18], [24, 34, 38, 22], [24, 40, 8, 32], [24, 38, 40, 30], [24, 28, 24, 12]].forEach(function (b) { var n = Math.max(Math.abs(b[2] - b[0]), Math.abs(b[3] - b[1])); for (var i = 0; i <= n; i++) P(b[0] + (b[2] - b[0]) * i / n, b[1] + (b[3] - b[1]) * i / n, '#1a1210'); });
+      for (var a = 0; a < 60; a++) P(6 + r() * 36, 56 + r() * 6, r() < .5 ? '#4a4440' : '#6a625a');
+      for (var e = 0; e < 6; e++) P(10 + r() * 28, 20 + r() * 36, (e + f) % 2 ? '#ff6a2a' : '#ffb03a');
+      return (bigTreeCache[key] = c);
+    }
+    var lf = st === 1 ? ['#2a4a1a', '#3a5a20', '#5a5a1a'] : ['#1e4a22', '#2a6a2c', '#3e8a38', '#5aa848'];
+    Rr(19, 40, 10, 22, '#4a2e1a'); Rr(20, 40, 3, 22, '#6a4428'); Rr(26, 40, 2, 22, '#2e1c10'); Rr(15, 58, 18, 4, '#3a2414'); Rr(13, 60, 6, 2, '#3a2414'); Rr(29, 60, 6, 2, '#3a2414');
+    E(24, 24, 22, 20, lf[0]); E(22, 21, 19, 17, lf[1]); E(19, 16, 13, 11, lf[2]); if (lf[3]) E(16, 12, 7, 6, lf[3]);
+    for (var i = 0; i < 90; i++) { var x = 4 + r() * 40, y = 6 + r() * 36; if (((x - 24) * (x - 24)) / 484 + ((y - 24) * (y - 24)) / 400 < 1) P(x, y, r() < .5 ? lf[0] : lf[2]); }
+    if (st === 1) { // 불탐 -- 잎이 그을리고 불꽃이 위로 넘실(프레임마다 모양 바뀜), 연기
+      s0 = f ? 31 : 17;
+      for (var k = 0; k < 14; k++) { var fx = 6 + r() * 36, fy = 8 + r() * 30, h = 4 + r() * 8; for (var j = 0; j < h; j++) { var w = Math.max(0, 2 - j / 4); Rr(fx - w, fy - j, 1 + w * 2, 1, j < h * .3 ? '#ffe46a' : j < h * .7 ? '#ff8a2a' : '#e0401a'); } }
+      for (var q = 0; q < 10; q++) { var sx = 10 + r() * 28, sy = r() * 10; P(sx, sy, 'rgba(80,80,80,.7)'); P(sx + 1, sy - 1, 'rgba(120,120,120,.5)'); }
+    }
+    return (bigTreeCache[key] = c);
+  }
+  function forestTreesDraw(now, TS, camX, camY, W, H) {
+    var f = Math.floor(now / 260) % 2, burnt = 0;
+    map.trees.forEach(function (tp, i) {
+      var q = treeSt[i] || [i, 0, 0], st0 = q[1] | 0;
+      if (st0 === 2) burnt++;
+      var x = tp[0] * TS - camX, y = (tp[1] - 2) * TS - camY;
+      if (x > W || y > H || x + 3 * TS < 0 || y + 4 * TS < 0) return;
+      var under = st0 !== 2 && P.x >= tp[0] && P.x <= tp[0] + 2 && P.y >= tp[1] - 2 && P.y < tp[1];
+      if (under) ctx.globalAlpha = 0.5;
+      ctx.drawImage(bigTreeArt(st0, st0 ? f : 0), Math.round(x), Math.round(y), 3 * TS, 4 * TS);
+      ctx.globalAlpha = 1;
+      if (st0 === 0 && q[2] > 0) { // 불이 쌓이는 중
+        var bw = 2 * TS, bx = Math.round(x + TS / 2), by = Math.round(y + 4 * TS + 2);
+        ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(bx, by, bw, 4);
+        ctx.fillStyle = '#ff8a2a'; ctx.fillRect(bx, by, Math.round(bw * Math.min(1, q[2] / treeNeed)), 4);
+      }
+    });
+    // 화면 위 가운데 -- 남은 나무 / 하피 상태
+    var tot = map.trees.length, txt = burnt >= tot ? '🔥 숲이 모두 타 버렸어요 -- 하피가 땅에 내려앉았어요!' : '🌳 남은 나무 ' + (tot - burnt) + ' / ' + tot + (harpySt && harpySt.hide ? '  ·  하피가 나무 뒤에 숨었어요' : harpySt && harpySt.move ? '  ·  하피가 날아오르고 있어요' : '');
+    ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+    var tw = ctx.measureText(txt).width + 18;
+    ctx.fillStyle = 'rgba(10,24,16,.72)'; ctx.fillRect(Math.round(W / 2 - tw / 2), 34, Math.round(tw), 22);
+    ctx.fillStyle = burnt >= tot ? '#ffb03a' : '#c8f0d8'; ctx.fillText(txt, W / 2, 50);
+    ctx.textAlign = 'left';
+  }
   function auraShow(d, fxp, fyp, t) {
+    if (d.treeFire != null) { msg('🔥 나무에 불이 붙었어요!', 2600); treeSt.forEach(function (q) { if (q[0] === d.treeFire) { q[1] = 1; q[2] = treeNeed; } }); } // [2026-11-08] 하피의 둥지
     (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
     var anyKill = false;
     (d.auraMobs || []).forEach(function (am, j) {
@@ -4276,6 +4362,7 @@ var TowerMine = (function () {
       if (d.mobDeadUntil != null) mobSt[m.id] = mobStOf([m.id, d.mobHp, d.mobDeadUntil, d.mobFx, d.mobFy, d.mobFrozenUntil, d.mobStealth ? 1 : 0], mobSt[m.id]);
       (d.mobRows || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); }); // [2026-10-28] 분신술 -- 분신/두목 상태
       if (!d.ok) { if (d.message && !d.far) msg(d.message); return; }
+      if (d.harpyImmune) { var hit0 = performance.now(); floats.push({ x: mp ? mp.x : P.x, y: (mp ? mp.y : P.y) - 0.2, text: '🪶 무효', color: '#bfeee0', big: false, t0: hit0 }); if (hit0 - harpyImmT > 6000) { harpyImmT = hit0; msg('🪶 하피가 날고 있어 일반 공격이 닿지 않아요. 검기와 필살기만 들어가요.', 3200); } } // [2026-11-08]
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴 -- 반격에 맞음
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       lastSaved = map.id + ':' + P.x + ',' + P.y;
@@ -4738,6 +4825,7 @@ var TowerMine = (function () {
     if (stunnedMe()) { if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now); else drawBandage(cx, cy - 3 * scale, now); } // [2026-11-04] 붕대 스턴, [2026-11-05] 감전
     nameTag(myNick(), cx + TS / 2, cy - 4 * scale, '#ffe14d'); // [2026-11-05] 내 닉네임(노란색)
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사
+    if (map.trees) { try { forestTreesDraw(now, TS, camX, camY, W, H); } catch (e) { } } // [2026-11-08] 하피의 둥지 대형 나무
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
     if (sv < 2) { // 2단계 이상이면 어둠 없음(전체가 보임)

@@ -268,7 +268,9 @@ public final class S5MineMobs {
         new Type("닌자 두목 허수아비", 1, "human", "#c8a050").asSim("닌자 두목"),
         new Type("용암 거신 허수아비", 1, "human", "#c8a050").asSim("용암 거신"),
         new Type("파라오 미라 허수아비", 1, "human", "#c8a050").asSim("파라오 미라"),
-        new Type("천둥 황소 허수아비", 1, "human", "#c8a050").asSim("천둥 황소")
+        new Type("천둥 황소 허수아비", 1, "human", "#c8a050").asSim("천둥 황소"),
+        // [2026-11-08] 하피의 둥지 보스 -- 바람 속성, 체력은 천둥 황소의 2배(26단계 x3.0), 나무 사이를 옮겨 다니고(asStay -- 쫓아오지 않음, 자리는 서버 mineHarpyNow), 옮기는 중에 원거리
+        new Type("하피 여왕", 26, "human", "#5ab89a").asBoss().strong(3.0, 1.1).showLv(110).asRanged().asStay().el(5) // 5 = EL_WIND
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
@@ -355,6 +357,7 @@ public final class S5MineMobs {
     public static final int LAVA_BOSS_TYPE = indexOf("용암 거신");
     public static final int THUNDER_BOSS_TYPE = indexOf("천둥 황소"); // [2026-11-05] 마물의 숲 입구
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
+    public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -547,7 +550,7 @@ public final class S5MineMobs {
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
