@@ -2769,7 +2769,7 @@ var TowerMine = (function () {
     // [2026-10-28] 레벨 차이 선공 -- 몬스터 레벨이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(서버 mineMobPreempts와 같은 식)
     var nearStrong = !fight && !nearBoss && (map.mobs || []).some(function (mb) {
       var ty = map.mobTypes[mb.k];
-      return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - myLv() >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (ty.aggro || 6); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
+      return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - Math.min(99, myLv()) >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (ty.aggro || 6); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
     });
     var mercPre = !fight && st.merc && st.merc.mode === 1 && !(st.merc.rest > nowSrv()) && (map.mobs || []).some(function (mb) { // [2026-11-06] 용병 선공 모드 -- 사거리 안 몬스터가 보이면 전투 턴(서버가 하나 골라 먼저 친다)
       var ty = map.mobTypes[mb.k];

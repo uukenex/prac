@@ -758,6 +758,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-28] "체력 최대치/한 번에 얻는 경험치를 낮추고 전체적 다운스케일" -- 예전 1.18 / 1.18 / 1.32에서 줄였다(몬스터도 S5MineMobs에서 같은 비율로).
     //  저장된 레벨 안 경험치는 처음 한 번 새 필요치 비율로 바꾼다(mineRescaleOnce). 레벨 상한 60 -> 99(숫자가 작아져 M_EXP NUMBER(12) 걱정 없음).
     static final int MINE_LV_MAX = 99;
+    // [2026-11-08] "진환생은 99레벨 이후도 쭉 100레벨 이상으로 레벨업(능력치는 99레벨에서 멈춤)" -- 진환생만 MINE_LV_TRUE_MAX까지 오른다.
+    //  능력치(체력 mineHpMax / 공격력 mineAtk / 선공 레벨 차이 mineMobPreempts)는 99레벨 값에서 멈춘다. 250 = 필요 경험치가 long을 넘지 않는 넉넉한 끝.
+    static final int MINE_LV_TRUE_MAX = 250;
+    //  DB M_EXP가 NUMBER(12)라 한 레벨 필요 경험치가 MINE_EXP_STORE_MAX를 넘는 레벨에서 멈춘다(진환생1 약 170, 진환생5 약 145) -- 컬럼을 넓히면 이 값도 올린다.
+    static final long MINE_EXP_STORE_MAX = 999_999_999_999L;
+    static final int[] MINE_LV_CAP_RB = new int[16]; // 환생 횟수별(MINE_REBIRTH_MAX 이하)
+    static int mineLvCap(int rb) {
+        if (rb <= MINE_REBIRTH_BASE) return MINE_LV_MAX;
+        int r = Math.min(MINE_REBIRTH_MAX, rb);
+        if (MINE_LV_CAP_RB[r] == 0) { int c = MINE_LV_MAX; while (c < MINE_LV_TRUE_MAX && mineExpNeed(c + 1, r) <= MINE_EXP_STORE_MAX) c++; MINE_LV_CAP_RB[r] = c; }
+        return MINE_LV_CAP_RB[r];
+    }
+    /** [2026-11-08] "진환생은 무기/방어구 장착 제한 해제" -- 장비 레벨(20/40/60/80...)이 모자라도 든다. */
+    static boolean mineGearLvOk(int lv, Map<String, Integer> items, int need) { return lv >= need || mineTrueRebirth(items); }
     static final long MINE_HP_FULL_MS = 60_000L;
     static final long MINE_ATTACK_GAP_MS = 380L;
     static final long MINE_MOB_FREEZE_MS = 8_000L;
@@ -806,7 +820,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
     /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
     static final double MINE_RB_HP_BONUS = 0.5;
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, lv - 1) * (1 + MINE_RB_HP_BONUS * rb)); }
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, Math.min(MINE_LV_MAX, lv) - 1) * (1 + MINE_RB_HP_BONUS * rb)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
     /** [2026-10-28] "환생 보너스 추가 광석은 미스릴 이하 광석만" -- 구리~미스릴(등급 1~5) 광석일 때만 x(1 + 회차), 별빛석/요일석/보석 등은 1배. */
@@ -829,9 +843,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double MINE_RB_ATK_BONUS = 0.5;
     /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
     static final double MINE_RB_EXP_MUL = 2;
-    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(MINE_RB_EXP_MUL, rb)); }
+    // [2026-11-08] 진환생 80레벨부터 필요 경험치 MINE_TRUE_RB_EXP80배 더 -- 사용자 지시로 비공개(화면/신부 설명에 쓰지 않는다).
+    static final int MINE_TRUE_RB_EXP80 = 5;
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(MINE_RB_EXP_MUL, rb) * (rb > MINE_REBIRTH_BASE && lv >= 80 ? MINE_TRUE_RB_EXP80 : 1)); }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
-    static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && exp >= mineExpNeed(MINE_LV_MAX, rb); }
+    static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && (lv > MINE_LV_MAX || exp >= mineExpNeed(MINE_LV_MAX, rb)); } // [2026-11-08] 진환생은 99를 넘어 오르므로 100레벨 이상이면(= 99레벨을 가득 채움)
 
     // [2026-10-28] 다운스케일 1회 변환 -- 레벨 안 경험치를 (새 필요치 / 예전 필요치) 비율로(바꾸지 않으면 다음 처치 때 레벨이 몇십씩 오른다).
     //  배포 뒤 첫 광산 요청(mineGate)에서 한 번만 DB로 바꾸고 설정값 MINE_SCALE_VER = 2를 남긴다(서버를 다시 켜도 다시 안 함).
@@ -856,7 +872,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     int mineLv(HashMap<String, Object> row) {
-        return Math.max(1, Math.min(MINE_LV_MAX, intVal(row.get("M_LV"), 1)));
+        return Math.max(1, Math.min(MINE_LV_TRUE_MAX, intVal(row.get("M_LV"), 1))); // [2026-11-08] 진환생은 100레벨 이상(능력치 함수들이 99에서 멈춘다)
     }
 
     // [2026-10-25] "몬스터와 전투 시 최대 체력 10%씩 잠겨 최대 50%까지, 레벨업하거나 대도시 성당 신부에게 치료받으면 정상으로" --
@@ -1437,7 +1453,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_WEST_EXP = 2;
 
     static boolean mineMobPreempts(S5MineMobs.Type t, int lv) {
-        return t.firstStrike || 1 + 4 * (t.tier - 1) - lv >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
+        return t.firstStrike || 1 + 4 * (t.tier - 1) - Math.min(MINE_LV_MAX, lv) >= MINE_PREEMPT_LV_GAP; // [2026-10-28] 설산 동굴 박쥐는 늘 선공
     }
 
     static final class MineEngage {
@@ -2421,9 +2437,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int lv0 = lv; long exp0 = exp; // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다)
             exp += expGain;
             mineMercShare(userName, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
-            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; }
+            while (lv < mineLvCap(rb) && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; } // [2026-11-08] 진환생은 99를 넘어
             // [2026-10-28] 99레벨에선 경험치를 다음 레벨 필요치(= 환생 조건)에서 멈춘다(막대가 가득 찬 채로, 숫자가 끝없이 쌓이지 않게)
-            if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb));
+            if (lv >= mineLvCap(rb)) exp = Math.min(exp, mineExpNeed(mineLvCap(rb), rb));
             if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
             if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
                 hp = mineHpMax(lv, rb);
@@ -2618,10 +2634,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap map = mineMapOf(row);
         HashMap<String, Object> out = new HashMap<>();
         { // [2026-10-29] 무기 장착 레벨 -- 들고 있는 무기보다 레벨이 낮으면(환생 직후 등) 칼로 바꿔 든다
-            MineWeapon hw = mineWeaponOn(mineItems(userName));
-            if (hw != null && mineLv(row) < hw.lv) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); out.put("weaponOffMsg", "🗡️ " + hw.name + "은(는) Lv." + hw.lv + "부터라 칼로 바꿔 들었어요."); }
+            Map<String, Integer> gi = mineItems(userName);
+            MineWeapon hw = mineWeaponOn(gi);
+            if (hw != null && !mineGearLvOk(mineLv(row), gi, hw.lv)) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); out.put("weaponOffMsg", "🗡️ " + hw.name + "은(는) Lv." + hw.lv + "부터라 칼로 바꿔 들었어요."); }
             MineWeapon ha = mineArmorOn(mineItems(userName)); // [2026-11-06] 갑옷도
-            if (ha != null && mineLv(row) < ha.lv) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); out.put("weaponOffMsg", "🛡️ " + ha.name + "은(는) Lv." + ha.lv + "부터라 벗었어요."); }
+            if (ha != null && !mineGearLvOk(mineLv(row), gi, ha.lv)) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); out.put("weaponOffMsg", "🛡️ " + ha.name + "은(는) Lv." + ha.lv + "부터라 벗었어요."); }
         }
         putMinePick(out, minePickDur(row), minePickMax(row));
         out.put("pickUpgrades", minePickUpgradeList());
@@ -4419,8 +4436,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int lv0 = lv; long exp0 = exp;
         exp += gain;
         int up = 0;
-        while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
-        if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb));
+        while (lv < mineLvCap(rb) && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; } // [2026-11-08] 진환생은 99를 넘어
+        if (lv >= mineLvCap(rb)) exp = Math.min(exp, mineExpNeed(mineLvCap(rb), rb));
         if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
         if (up > 0 && !died) {
             hp = mineHpMax(lv, rb);
@@ -6980,7 +6997,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (on) {
                 HashMap<String, Object> ar = dao.selectMineUser(userName);
                 int alv = ar == null ? 1 : mineLv(ar);
-                if (alv < ea.lv) return mineGearResult(userName, false, "🛡️ " + ea.name + "은(는) Lv." + ea.lv + "부터 입을 수 있어요. (지금 Lv." + alv + ")");
+                if (!mineGearLvOk(alv, it, ea.lv)) return mineGearResult(userName, false, "🛡️ " + ea.name + "은(는) Lv." + ea.lv + "부터 입을 수 있어요. (지금 Lv." + alv + ")");
                 if (pickGrade >= 0) dao.upsertMineItem(userName, ea.code, pickGrade + 1);
             }
             dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, on ? ea.slot : 0);
@@ -6993,7 +7010,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (pickGrade < 0 || pickGrade > ew.maxGrade || (mineWeaponMask(it, ew) & (1 << pickGrade)) == 0) return mineGearResult(userName, false, "그 등급의 " + ew.name + "은(는) 없어요.");
             HashMap<String, Object> wr = dao.selectMineUser(userName);
             int wlv = wr == null ? 1 : mineLv(wr);
-            if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
+            if (!mineGearLvOk(wlv, it, ew.lv)) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             dao.upsertMineItem(userName, ew.code, pickGrade + 1);
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, ew.slot);
             return mineGearResult(userName, true, "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(pickGrade));
@@ -7004,7 +7021,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (on) { // [2026-10-29] "무기 장착 레벨 제한" -- 무기 레벨(20/40/60/80) 이상이어야 든다
                 HashMap<String, Object> wr = dao.selectMineUser(userName);
                 int wlv = wr == null ? 1 : mineLv(wr);
-                if (wlv < ew.lv) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
+                if (!mineGearLvOk(wlv, it, ew.lv)) return mineGearResult(userName, false, "🗡️ " + ew.name + "은(는) Lv." + ew.lv + "부터 들 수 있어요. (지금 Lv." + wlv + ")");
             }
             dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, on ? ew.slot : 0);
             return mineGearResult(userName, true, on ? "🗡️ " + ew.name + "을(를) 장착했어요. " + ew.effect(mineWeaponGrade(it, ew)) : "🗡️ 칼을 장착했어요.");
