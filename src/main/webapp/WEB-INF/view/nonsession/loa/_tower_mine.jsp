@@ -1101,8 +1101,11 @@ var TowerMine = (function () {
   function lvLabel(c, compact) {
     var rb = c.rebirth | 0;
     if (!rb) return 'Lv.' + c.lv;
-    return 'Lv.' + c.lv + '<span class="rb">' + (compact ? '✦' + rb : '(환생' + rb + ')') + '</span>';
+    return 'Lv.' + c.lv + '<span class="rb">' + (compact ? (rb > RB_BASE ? '✦진' + (rb - RB_BASE) : '✦' + rb) : '(' + rbName(rb) + ')') + '</span>';
   }
+  /** [2026-11-08] "환생3" / "진환생1"(6환생부터 진환생 -- 서버 mineRbName). */
+  function rbName(rb) { return rb > RB_BASE ? '진환생' + (rb - RB_BASE) : '환생' + rb; }
+  function rbStage(rb) { return rb > RB_BASE ? '진환생 ' + (rb - RB_BASE) + '단계' : '환생 ' + rb + '단계'; }
   function hpNow() {
     var c = st && st.combat;
     if (!c) return 0;
@@ -1126,7 +1129,7 @@ var TowerMine = (function () {
     var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready;
     if (el.hp._k === key) return;
     el.hp._k = key;
-    el.hp.title = (rb ? 'Lv.' + c.lv + '(환생' + rb + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
+    el.hp.title = (rb ? 'Lv.' + c.lv + '(' + rbName(rb) + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
         + (ready ? ' -- 환생 가능! 왕도 12시 방향 성당 신부님께' : '');
     // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
     // [2026-11-05] "체력바 옆 숫자가 UI를 넘어온다" -- 환생 안 한 사람도 넘치면 줄이고(예전엔 환생한 사람만), 1.2만 -> "12.3k", 그래도 넘치면 "1.4M"
@@ -2196,7 +2199,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
-  var priestConfirm = false, RB_MAX = 5;
+  var priestConfirm = false, RB_MAX = 10, RB_BASE = 5; // [2026-11-08] 5환생 다음은 진환생1~5(서버 MINE_REBIRTH_BASE/MAX)
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
   var ENCH_HITS = 1000, ENCH_HITS_ELEM = 500; // 성당 신부 1000번, [2026-10-29] 원소술사 500번
@@ -2215,33 +2218,34 @@ var TowerMine = (function () {
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
     var line = ready ? '때가 되었군요. 수많은 고비를 넘은 영혼이여, 원한다면 여신의 이름으로 새 날개를 달아 다시 태어나게 해 드리지요.' : (n ? n.line : '');
-    var rbSub = rb >= RB_MAX ? '환생 ' + RB_MAX + '단계 완료' : ready ? '지금 환생할 수 있어요!' : 'Lv.99 + 경험치 가득일 때';
+    var rbSub = rb >= RB_MAX ? rbStage(RB_MAX) + ' 완료' : ready ? (rb >= RB_BASE ? '지금 진환생할 수 있어요!' : '지금 환생할 수 있어요!') : 'Lv.99 + 경험치 가득일 때';
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
         + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
         + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1개 · ' + ENCH_HITS + '번 · 어둠 x1.5</small></button>' : '') // [2026-10-29]
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
-        + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ 환생' + (rb ? ' (지금 ' + rb + '단계)' : '') + '<small>' + rbSub + '</small></button></div>';
+        + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ ' + (rb >= RB_BASE ? '진환생' : '환생') + (rb ? ' (지금 ' + rbStage(rb) + ')' : '') + '<small>' + rbSub + '</small></button></div>';
     // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). "환생 시 멘트 조정" -- 좋아지는 것 / 어려워지는 것 / 그대로인 것으로 나눠서
     if (priestConfirm && ready) {
       var nrb = rb + 1;
-      if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>환생 ' + nrb + '단계</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
+      if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>' + rbStage(nrb) + '</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
           + '<b>✨ 강해지는 것</b><br>'
           + '· 최대 체력 <b>+' + (nrb * 50) + '%</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
           + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
           + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + (nrb >= 5 ? ' (다도해 햇빛을 완전히 막아요)' : '') + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
-          + '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_MAX + '단계)<br>'
+          + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_BASE + '단계)<br>')
           + '<b>⏳ 다시 쌓는 것</b><br>'
-          + '· 레벨이 <b>Lv.1(환생' + nrb + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
+          + '· 레벨이 <b>Lv.1(' + rbName(nrb) + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
           + '· 레벨마다 필요한 경험치 <b>x' + rbMul(2, nrb) + '</b> (환생할 때마다 2배씩)<br>'
+          + (nrb > RB_BASE ? '· 왕도 상인의 <b>행운의 주문서</b>(경험치 3배)를 더 이상 쓸 수 없어요<br>' : '') // [2026-11-08] 진환생
           + '<b>🎒 그대로인 것</b><br>'
           + '· 광석·보석·장비·치장은 모두 그대로예요.'
           + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirthFinal\')">다음</button>'
           + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
-      else html += '<div class="mine-rb-box">⚠️ <b>최종 확인</b><br>정말 <b>환생 ' + nrb + '단계</b>로 다시 태어날까요?<br>지금 <b>Lv.' + c.lv + '</b>가 <b>Lv.1</b>로 돌아가며, <b>되돌릴 수 없어요.</b>'
-          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirth\')">🕊️ 최종 확인 -- 환생하기</button>'
+      else html += '<div class="mine-rb-box">⚠️ <b>최종 확인</b><br>정말 <b>' + rbStage(nrb) + '</b>로 다시 태어날까요?<br>지금 <b>Lv.' + c.lv + '</b>가 <b>Lv.1</b>로 돌아가며, <b>되돌릴 수 없어요.</b>'
+          + '<div class="mine-smith-menu"><button type="button" class="rb-on" onclick="TowerMine.priestAct(\'rebirth\')">🕊️ 최종 확인 -- ' + (nrb > RB_BASE ? '진환생' : '환생') + '하기</button>'
           + '<button type="button" onclick="TowerMine.priestAct(\'rebirthNo\')">그만두기</button></div></div>';
     }
     return html;
@@ -2260,7 +2264,7 @@ var TowerMine = (function () {
       if (d.rebirthDone) { // [2026-10-28] 환생 -- 날개는 st.combat.rebirth로 그린다(외형도 같이 갱신)
         if (d.look) st.look = d.look;
         flashT0 = performance.now();
-        banner = { text: '🕊️ 환생 ' + d.rebirth + '단계! Lv.1(환생' + d.rebirth + ')', t0: performance.now() };
+        banner = { text: '🕊️ ' + rbStage(d.rebirth) + '! Lv.1(' + rbName(d.rebirth) + ')', t0: performance.now() };
       }
       msg(d.message || d.error || '완료', d.rebirthDone ? 5000 : 3000);
       if (smithOpen) renderSmith(smithNpc);
@@ -2584,10 +2588,10 @@ var TowerMine = (function () {
       return;
     }
     if (smithView === 'citymerchant') { // [2026-11-05] 왕도 상인 -- 행운의 주문서
-      var lu = (st && st.luckUntil) || 0, left = lu - nowSrv(), cs = cityShop || {};
+      var lu = (st && st.luckUntil) || 0, left = lu - nowSrv(), cs = cityShop || {}, trb = ((st && st.combat && st.combat.rebirth) | 0) > RB_BASE; // [2026-11-08] 진환생은 못 씀
       el.smith.innerHTML = npcHead('🍀 ' + n.name, false) + talkBlock(n, n.line)
-        + '<div class="mine-smith-row"><span class="nm">📜 행운의 주문서 (10분)<small>경험치 3배 · 드랍률 2배' + (left > 0 ? ' · 남은 시간 ' + Math.ceil(left / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
-        + '<button type="button" ' + (cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>';
+        + '<div class="mine-smith-row"><span class="nm">📜 행운의 주문서 (10분)<small>경험치 3배 · 드랍률 2배' + (left > 0 ? ' · 남은 시간 ' + Math.ceil(left / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (trb ? '진환생하면 쓸 수 없어요' : cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
+        + '<button type="button" ' + (trb ? 'disabled ' : cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>';
       return;
     }
     if (smithView === 'mercmgr') { el.smith.innerHTML = mercMgrHtml(); return; } // [2026-11-06] 용병 관리

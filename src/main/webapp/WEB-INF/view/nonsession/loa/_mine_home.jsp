@@ -116,7 +116,7 @@ window.MineHome = (function () {
     var look = Object.keys(LOOK).filter(function (k) { return u.look && u.look[k]; }).map(function (k) { return LOOK[k] + ' <span>' + esc(u.look[k]) + '</span>'; }).join(' · ');
     var img = window.MineChar ? '<img class="' + (MineChar.wide && MineChar.wide(u.lookRaw) ? 'wide' : '') + '" src="' + MineChar.dataUrl(u.lookRaw || {}, true) + '" alt="">' : '';
     return '<div class="ch' + (u.online ? ' on' : '') + '">'
-      + '<div class="ch-head"><span class="dot"></span><span class="ch-name">' + esc(u.userName) + '</span><span class="lv' + (u.rebirth > 0 ? ' rb' : '') + '">Lv.' + u.lv + (u.rebirth > 0 ? ' ✦' + u.rebirth : '') + '</span>'
+      + '<div class="ch-head"><span class="dot"></span><span class="ch-name">' + esc(u.userName) + '</span><span class="lv' + (u.rebirth > 0 ? ' rb' : '') + '">Lv.' + u.lv + (u.rebirth > 5 ? ' ✦진' + (u.rebirth - 5) : u.rebirth > 0 ? ' ✦' + u.rebirth : '') + '</span>'
       +   '<span class="where">📍 <b>' + esc(u.mapName) + '</b> <span class="num">' + u.x + ',' + u.y + '</span>' + (u.online ? ' · <span style="color:var(--on)">접속 중</span>' : '') + '</span></div>'
       + '<div class="body"><div class="doll"><div class="doll-col">' + slot(u, 'weapon') + slot(u, 'ring') + slot(u, 'gloves') + '</div>'
       +   '<div class="doll-char">' + img + '<small>' + (u.gender === 1 ? '♀' : '♂') + ' Lv.' + u.lv + '</small></div>'

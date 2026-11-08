@@ -195,7 +195,7 @@
       }).join('') + '</div></div>';
     }).join('');
   }
-  function lvBadge(u) { return '<span class="lv' + (u.rebirth > 0 ? ' rb' : '') + '">Lv.' + u.lv + (u.rebirth > 0 ? ' ✦' + u.rebirth : '') + '</span>'; }
+  function lvBadge(u) { return '<span class="lv' + (u.rebirth > 0 ? ' rb' : '') + '">Lv.' + u.lv + (u.rebirth > 5 ? ' ✦진' + (u.rebirth - 5) : u.rebirth > 0 ? ' ✦' + u.rebirth : '') + '</span>'; }
   // [2026-11-05] "유저별 검기 단계 업그레이드 현황" -- 배운 속성만 아이콘 + 단계(켠 단계가 다르면 켠/배운)
   var AURA_ICON = ['', '🪨', '⚡', '💧', '❄️', '🌪️', '🔥', '🌑', '☀️'];
   function auraTxt(u) {

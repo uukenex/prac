@@ -793,9 +793,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-10-28] "99레벨 경험치 꽉 차면 왕도 12시 성당 신부에게 환생, 환생하면 체력 1.5배, 필요 경험치 3배, 레벨 1로(Lv1(환생1)), 날개 이펙트" --
     //  환생 횟수 rb(0~5, TBOT_S5_MINE_ITEM의 REBIRTH)만큼 겹쳐 곱한다: 최대 체력 x 1.5^rb, 필요 경험치 x 3^rb. 공격력은 그대로.
     static final String MINE_ITEM_REBIRTH = "REBIRTH";
-    static final int MINE_REBIRTH_MAX = 5;
+    // [2026-11-08] "5환생 이후 진환생 -- 진환생1로 시작하고 6환생과 같은 개념" -- 환생 횟수 rb를 그대로 이어서 센다(6 = 진환생1 ... 10 = 진환생5).
+    //  효과(체력/공격력/광물/방한·햇빛·동굴 밝기 +회차, 필요 경험치 x2^회차)도 그대로 이어진다. 진환생부터는 왕도 상인 행운의 주문서(금괴, 경험치 3배)를 못 쓴다(mineLuckUntil).
+    static final int MINE_REBIRTH_BASE = 5, MINE_REBIRTH_MAX = 10;
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
+    static boolean mineTrueRebirth(Map<String, Integer> items) { return mineRebirth(items) > MINE_REBIRTH_BASE; }
+    /** "환생3" / "진환생1"(6환생). */
+    static String mineRbName(int rb) { return rb > MINE_REBIRTH_BASE ? "진환생" + (rb - MINE_REBIRTH_BASE) : "환생" + rb; }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감" -- [2026-10-29] 방한/햇빛/동굴 밝기 단계 +1(x회차)로 바꿈
     //  -> 최대 체력 x (1 + rb)([2026-10-30] x (1 + 0.5 rb)), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
@@ -5787,7 +5792,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (lv < 95) continue;
                     int rb = mineRebirth(mineItems(u));
                     if (rb >= MINE_REBIRTH_MAX) continue; // [2026-11-07] "5환생이 끝인데 NPC가 곧 6환생한다고 한다" -- 마지막 환생까지 한 사람은 빼기
-                    rbl.add(mineNick(u) + " 님이 곧 " + (rb + 1) + "환생을 한대요!");
+                    rbl.add(mineNick(u) + " 님이 곧 " + mineRbName(rb + 1) + "을 한대요!");
                 }
             } catch (Exception ignore) { }
             mineGossipRb = rbl;
@@ -5802,7 +5807,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_LUCK = "LUCK_UNTIL";
     static final long MINE_LUCK_MS = 10 * 60_000L;
     static final String[][] MINE_LUCK_COST = { { S5MineMap.BAR_CODES[3], "1" } }; // 금괴 1개
-    static long mineLuckUntil(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_LUCK, 0) * 1000L; }
+    static long mineLuckUntil(Map<String, Integer> items) { return mineTrueRebirth(items) ? 0L : items.getOrDefault(MINE_ITEM_LUCK, 0) * 1000L; } // [2026-11-08] 진환생은 행운의 주문서가 듣지 않는다
     static boolean mineLuckOn(Map<String, Integer> items, long now) { return mineLuckUntil(items) > now; }
     static long mineLuckExp(Map<String, Integer> items, long exp, long now) { return mineLuckOn(items, now) ? exp * 3 : exp; }
 
@@ -5818,6 +5823,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String msg = "";
         if ("buy".equals(action)) {
             if (!mineAtNpc(row, "citymerchant")) { ok = false; msg = "왕도의 왕도 상인에게서만 살 수 있어요."; }
+            else if (mineTrueRebirth(items)) { ok = false; msg = "🍀 왕도 상인: 진환생하신 분께는 행운의 주문서가 듣지 않아요. 스스로의 힘으로 오르셔야 해요."; } // [2026-11-08]
             else if (!mineCostOk(MINE_LUCK_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_LUCK_COST) + " 필요" + mineLackText(MINE_LUCK_COST, userName) + ")"; }
             else {
                 mineTakeCost(userName, MINE_LUCK_COST, 1);
@@ -5832,7 +5838,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("message", msg);
         out.put("luckUntil", mineLuckUntil(items));
         out.put("cost", mineCostText(MINE_LUCK_COST));
-        out.put("can", mineCostOk(MINE_LUCK_COST, mineOreHave(userName)));
+        out.put("can", mineCostOk(MINE_LUCK_COST, mineOreHave(userName)) && !mineTrueRebirth(items));
+        if (mineTrueRebirth(items)) out.put("trueRb", true); // [2026-11-08] 진환생 -- 주문서 못 씀
         out.put("ores", mineOreList(userName));
         return out;
     }
@@ -7306,7 +7313,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean locked, long now, HashMap<String, Object> out) {
         out.put("ok", false);
         if (!S5MineMap.CITY.equals(mineMapOf(row).id)) { out.put("message", "🙏 성당 신부: 환생 의식은 왕도 성당에서만 올릴 수 있어요."); return out; }
-        if (rb >= MINE_REBIRTH_MAX) { out.put("message", "🙏 성당 신부: 이미 " + MINE_REBIRTH_MAX + "번의 환생을 마쳤어요. 더 오를 곳이 없답니다."); return out; }
+        if (rb >= MINE_REBIRTH_MAX) { out.put("message", "🙏 성당 신부: 이미 " + mineRbName(MINE_REBIRTH_MAX) + "까지 마쳤어요. 더 오를 곳이 없답니다."); return out; }
         if (!mineRebirthReady(lv, exp, rb)) {
             out.put("message", "🙏 성당 신부: 아직 때가 아니에요. Lv." + MINE_LV_MAX + "에서 경험치를 가득 채우면 다시 오세요. (지금 Lv." + lv
                     + (lv >= MINE_LV_MAX ? ", 경험치 " + exp + " / " + mineExpNeed(MINE_LV_MAX, rb) : "") + ")");
@@ -7329,8 +7336,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("look", mineLookOf(items));
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
-        out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! 환생 " + nrb + "단계 -- Lv.1(환생" + nrb + ")로 다시 태어났어요. "
-                + "최대 체력 +" + (nrb * 50) + "% · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + ".");
+        out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생 " + (nrb - MINE_REBIRTH_BASE) : "환생 " + nrb) + "단계 -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
+                + "최대 체력 +" + (nrb * 50) + "% · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + "."
+                + (nrb > MINE_REBIRTH_BASE ? " 이제 행운의 주문서는 쓸 수 없어요." : ""));
         return out;
     }
 
