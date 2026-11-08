@@ -903,7 +903,7 @@ var TowerMine = (function () {
     });
   }
   function mobStOf(a, old) {
-    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1, su: a[7] || 0 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중, [2026-11-07] su = 일섬참 기절 끝 시각
+    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1, su: a[7] || 0, vu: a[8] || 0, vp: a[9] || 0 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중, [2026-11-07] su = 일섬참 기절 끝 시각
     if (mobDeathReady && n.du > t && n.du < t + 3600000 && !(old && old.du > t)) mobDeathAdd(a[0]); // [2026-11-06] 쓰러짐(수하 숨김 = 아주 먼 시각은 뺀다)
     // [2026-11-05] "화면 안인데도 다가올 때 끊겨 보인다" -- 예전엔 새 위치가 오면 옛 목표 칸에서 다시 출발(덜 걸었으면 툭 튐)하고 늘 0.95초만 걸었다(턴이 늦으면 멈칫).
     //  이제 지금 보이는 자리에서 출발하고, 걷는 시간은 지난번 위치가 바뀐 뒤 흐른 시간(0.6~2.2초)이라 다음 위치가 올 즈음 도착한다.
@@ -4023,6 +4023,7 @@ var TowerMine = (function () {
         for (var i = 1; i < 5; i++) (function (n) { setTimeout(function () { ultTick(mid, n); }, n * 1000); })(i);
       }
       if (k === 1) { var m0 = (d.ultMobs || [])[0]; if (m0) { var p0 = ultMobPos(m0); ultFx.push({ k: 1, x: p0.x, y: p0.y, t0: t }); } }
+      if (k === 1 && d.dashX != null) { var ox0 = P.x, oy0 = P.y; setPos(d.dashX, d.dashY); ultFx.push({ k: 2, x0: ox0, y0: oy0, x: d.dashX, y: d.dashY, t0: t }); } // [2026-11-08] 일섬참 -- 대상 바로 옆으로 붙는다(지나온 길에 잔상)
       ultApply(d, t, k);
     }).catch(function () { ultBusy = false; });
   }
@@ -4083,7 +4084,7 @@ var TowerMine = (function () {
   }
   /** 바닥 장판(몬스터·캐릭터보다 먼저). */
   function ultFloorDraw(now, TS, camX, camY) {
-    ultFx = ultFx.filter(function (f) { return now - f.t0 < (f.k === 0 ? ULT_ZONE_MS + 400 : 1100); });
+    ultFx = ultFx.filter(function (f) { return now - f.t0 < (f.k === 0 ? ULT_ZONE_MS + 400 : f.k === 2 ? 320 : 1100); });
     ultFx.forEach(function (f) {
       if (f.k !== 0) return;
       var t = now - f.t0, cx = f.x * TS - camX + TS / 2, cy = f.y * TS - camY + TS / 2 + TS * 0.2, rad = TS * (f.r + 0.5), fo = t > ULT_ZONE_MS ? Math.max(0, 1 - (t - ULT_ZONE_MS) / 400) : 1, on = Math.min(1, t / 250);
@@ -4124,6 +4125,14 @@ var TowerMine = (function () {
           }
         });
         ctx.imageSmoothingEnabled = sm; ctx.globalAlpha = 1;
+        return;
+      }
+      if (f.k === 2) { // [2026-11-08] 일섬참으로 붙을 때 지나온 길 -- 흰 빛줄기가 빠르게 사라진다
+        var qd = t / 320, ax = f.x0 * TS - camX + TS / 2, ay = f.y0 * TS - camY + TS / 2, bx = f.x * TS - camX + TS / 2, by = f.y * TS - camY + TS / 2;
+        ctx.lineCap = 'round'; ctx.globalAlpha = Math.max(0, 1 - qd) * 0.5; ctx.strokeStyle = '#b8a0ff'; ctx.lineWidth = 12 * dpr;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.globalAlpha = Math.max(0, 1 - qd); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3 * dpr; ctx.stroke();
+        ctx.lineCap = 'butt'; ctx.globalAlpha = 1;
         return;
       }
       // 일섬참
@@ -4201,7 +4210,7 @@ var TowerMine = (function () {
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
     } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
     h += '<div class="mine-smith-say">두 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 둥근 버튼의 왼쪽 반이 만검진, 오른쪽 반이 일섬참 -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
-    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (800 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, '']].forEach(function (s, k) {
+    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, '']].forEach(function (s, k) {
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(GALAXY_G) + '" alt="">' + head + '<small>' + s[2] + s[3](5) + s[4] + ' · 끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; return; }
       var c = ULT_COST[L + 1];
@@ -4629,6 +4638,7 @@ var TowerMine = (function () {
           if (wildNight && EYE_PX[ty.kind]) EYE_PX[ty.kind].forEach(function (e) { redEyes.push([mx + (e[0] + 0.5) * scale, my - 2 * scale - bob + (e[1] + 0.5) * scale]); });
         }
         ctx.globalAlpha = 1;
+        if (ms && ms.vu > nowSrv() && ms.vp > 0) drawTextImg(textImg('🔻+' + ms.vp + '%', 'bold ' + Math.round(10 * dpr) + 'px monospace', '#ff8a6a', 3 * dpr, true), mx + (ty.boss ? TS : TS / 2), my - (ty.boss ? TS * 1.3 : 8 * scale)); // [2026-11-08] 만검진 받는 피해 증가
         if (ms && ms.su > nowSrv()) { try { drawZapStun(ty.boss ? mx + TS / 2 : mx, (ty.boss ? my + TS : my) - 3 * scale, now); } catch (e) { } } // [2026-11-07] 일섬참 기절(5초) -- 감전과 같은 불꽃
         if (bid !== mb.id) ms = mobSt[bid]; // 분신 체력 막대 = 두목 체력
         var hpMx = bid !== mb.id ? ty.hp : Math.max(1, Math.round(ty.hp * RANK_HP[mb.r == null ? 1 : mb.r])); // [2026-10-29] 개체 단계별 최대 체력

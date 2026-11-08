@@ -773,6 +773,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
         long regenAt;     // [2026-10-29] 보스 체력 회복을 마지막으로 반영한 시각
         long stunUntil;   // [2026-11-07] 일섬참에 맞아 기절(이때까지 움직이지도 때리지도 기술을 쓰지도 않는다)
+        long vulnUntil; int vulnPct; // [2026-11-08] 만검진 -- 받는 피해 +vulnPct%(이때까지)
         long nearAt;      // [2026-10-30] 보스 MINE_BOSS_ALONE_RANGE칸 안에 누가 있던 마지막 시각
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
@@ -1455,7 +1456,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     static long[] mineMobRow(int id, MobState s) {
-        return new long[] { id, s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil, s.stealth ? 1 : 0, s.stunUntil }; // [2026-10-28] 7번째 = 닌자 은신 중, [2026-11-07] 8번째 = 기절 끝 시각
+        return new long[] { id, s.hp, s.deadUntil, s.fx, s.fy, s.frozenUntil, s.stealth ? 1 : 0, s.stunUntil, s.vulnUntil, s.vulnPct }; // [2026-10-28] 7번째 = 닌자 은신 중, [2026-11-07] 8번째 = 기절 끝 시각, [2026-11-08] 9/10번째 = 받는 피해 증가(끝 시각, %)
     }
 
     /** [2026-10-25] 전투 턴 -- 화면이 인식 중이거나 보스 2칸 안일 때 1초마다 부른다. 보스는 2칸 안에 들어오면 먼저 인식(선공).
@@ -2224,6 +2225,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (hv instanceof int[]) for (int hi = 0; hi < ((int[]) hv).length; hi++) ((int[]) hv)[hi] *= 2;
                 assassinHit = true;
             }
+            double vul = mineVulnMul(s, now); // [2026-11-08] 만검진 받는 피해 증가
+            if (vul > 1) { dmg = (int) Math.round(dmg * vul); Object hv2 = out.get("hits"); if (hv2 instanceof int[]) for (int hi = 0; hi < ((int[]) hv2).length; hi++) ((int[]) hv2)[hi] = (int) Math.round(((int[]) hv2)[hi] * vul); }
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -2269,7 +2272,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
             } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
                 s.fx = hitCell % map.w; s.fy = hitCell / map.w; // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
-                if (auraRange > 0) auraMain = mineAuraHits(aura, atkBase, type, 1);
+                if (auraRange > 0) auraMain = mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
                 if (type.sim) { // [2026-11-07] 보스 허수아비 -- 체력이 줄고, 0이 되면 MINE_SIM_DOWN_MS 동안 못 때린다(그 뒤 다 찬 채로)
@@ -2279,7 +2282,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
             } else {
                 s.hp -= dmg;
-                if (auraRange > 0) { auraMain = mineAuraHits(aura, atkBase, type, 1); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
+                if (auraRange > 0) { auraMain = mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 s.lastHitAt = now;
                 if (shrineBoss) { if (s.hitters == null) s.hitters = new java.util.HashSet<>(); s.hitters.add(userName); }
                 if (s.hp <= 0) {
@@ -4284,6 +4287,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-07] ult = 필살기("마지막 한 방은 직접" 없이 보스도 쓰러뜨린다 -- 분신술 닌자 두목만 예외), stunMs = 맞고 살아남은 몬스터 기절(일섬참 5초). */
     long[] mineSweepCells(String userName, S5MineMap map, Map<String, Integer> items, java.util.Map<Integer, Integer> line, int maxT, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out,
             java.util.function.BiFunction<S5MineMobs.Type, Integer, List<int[]>> hitsFn, String mobsKey, String dropsKey, String verb, boolean ult, long stunMs) {
+        return mineSweepCells(userName, map, items, line, maxT, skipMob, now, msg, out, hitsFn, mobsKey, dropsKey, verb, ult, stunMs, 0);
+    }
+    /** [2026-11-08] vulnAdd = 맞은 몬스터의 받는 피해 증가를 이만큼(%) 쌓는다(만검진). */
+    long[] mineSweepCells(String userName, S5MineMap map, Map<String, Integer> items, java.util.Map<Integer, Integer> line, int maxT, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out,
+            java.util.function.BiFunction<S5MineMobs.Type, Integer, List<int[]>> hitsFn, String mobsKey, String dropsKey, String verb, boolean ult, long stunMs, int vulnAdd) {
         List<HashMap<String, Object>> hitList = new ArrayList<>();
         List<HashMap<String, Object>> drops = new ArrayList<>();
         int mind = mineMindExpPct(items);
@@ -4323,6 +4331,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.deadUntil > 0) s.respawn(omMax);
                 if (ot.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = omMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
+                double vul = mineVulnMul(s, now); // [2026-11-08] 만검진 받는 피해 증가(이번 타격부터 쌓인 만큼)
+                if (vul > 1) { mineVulnApply(hs, vul); sum = 0; for (int[] h : hs) sum += h[1]; }
+                if (vulnAdd > 0) mineVulnAdd(s, vulnAdd, now);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
                 s.lastHitAt = now;
                 if (ot.dummy) { s.fx = hitCell % map.w; s.fy = hitCell / map.w; } // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
@@ -4414,7 +4425,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //   공격력 x 단계 x 5% 속성 피해(상성 x1.5). 그림은 관리자 돌개바람(whirl.png). 결과는 검기 결과(auraMobs/auraDrops)에 합쳐 보낸다.
     //  필살기(필살 사범): 만검진(광역, ULT_L0)과 일섬참(단일, ULT_L1) 둘 다 배워 쓴다. 배울 때 은하수 조각 2/5/8/11/14개(레벨마다 따로), 쿨타임은 둘이 공유(2분).
     //   만검진: 쓴 자리(둘레 MINE_ULT_ZONE_R칸 = 13x13, [2026-11-08] 7x7에서 +3칸)에 5초 동안 검이 떨어지는 장판 -- 1초마다 공격력의 125%(+레벨당 20%) x 5번(화면이 1초마다 다음 타격을 부른다).
-    //   일섬참: 화면에 보이는 가장 가까운 몬스터 하나에게 공격력의 800%(+레벨당 150%). 보이는 몬스터가 없으면 쿨타임을 쓰지 않는다.
+    //   일섬참: 화면에 보이는 가장 가까운 몬스터 하나에게 공격력의 700%(+레벨당 150%, [2026-11-08] 800 -> 700). 보이는 몬스터가 없으면 쿨타임을 쓰지 않는다.
     //   [2026-11-07] "체력 1에서 멈추는 것 없이 필살기로도 잡을 수 있게" -- 보스도 쓰러뜨린다(분신술 닌자 두목만 예외). 일섬참에 맞고 살아남은 몬스터는 5초 기절.
     //   관리자는 쿨타임 초기화 버튼(mineUltReset).
     // [2026-11-08] "필살 사범한테 스킬 배울 수 있게, 3환생부터는 무료로 1개 선택" -- 필살기만 연다(돌개베기는 아직 관리자만). 3환생 특전: 필살기 하나를 1레벨로 무료(한 번, ULT_RB_GIFT).
@@ -4517,6 +4528,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return out;
     }
 
+    // [2026-11-08] "만검진에 4히트마다 방어 감소(받는 피해 증가) 10%씩" -- 만검진 한 번(1초, 4타)마다 맞은 몬스터의 받는 피해 +10%(최대 50%),
+    //  마지막으로 쌓인 뒤 MINE_VULN_MS 동안. 내 공격/검기/돌개베기/필살기/용병 피해 모두에 곱한다(쌓이기 전 피해부터 -- 만검진 첫 타격엔 없음).
+    static final int MINE_ULT_VULN_PCT = 10, MINE_VULN_MAX = 50;
+    static final long MINE_VULN_MS = 5_000L;
+    static double mineVulnMul(MobState s, long now) { return s != null && s.vulnUntil > now && s.vulnPct > 0 ? 1 + s.vulnPct / 100.0 : 1.0; }
+    static List<int[]> mineVulnApply(List<int[]> hits, double vul) { if (hits != null && vul > 1) for (int[] h : hits) h[1] = (int) Math.round(h[1] * vul); return hits; }
+    static void mineVulnAdd(MobState s, int pct, long now) { s.vulnPct = Math.min(MINE_VULN_MAX, (s.vulnUntil > now ? s.vulnPct : 0) + pct); s.vulnUntil = now + MINE_VULN_MS; }
     static final String[] MINE_ULT_NAME = { "만검진", "일섬참" };
     static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 6, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 40, /* [2026-11-08] "X 스킬 범위 +3칸" -- 반경 3(7x7) -> 6(13x13) */ MINE_ULT_ZONE_SPLIT = 4;
     static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
@@ -4525,7 +4543,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L, MINE_ULT_STUN_MS = 2_000L, MINE_ULT_STUN_LV_MS = 1_000L; // [2026-11-07] "일섬참 맞은 대상은 기절 5초" -> [2026-11-08] "2초(레벨당 1초씩 증가)" -- 1레벨 2초 ~ 5레벨 6초
     static String mineUltKey(int k) { return "ULT_L" + k; }
     static int mineUltLv(Map<String, Integer> items, int k) { return Math.max(0, Math.min(MINE_ULT_MAX, items.getOrDefault(mineUltKey(k), 0))); }
-    static double mineUltPct(int k, int lv) { return k == 0 ? 1.25 + 0.20 * (lv - 1) : 8.0 + 1.5 * (lv - 1); } // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
+    static double mineUltPct(int k, int lv) { return k == 0 ? 1.25 + 0.20 * (lv - 1) : 7.0 + 1.5 * (lv - 1); } // [2026-11-08] "일섬참 배율 100% 줄이자" -- 800% -> 700%(+레벨당 150%) // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ULT_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 마지막으로 쓴 시각(쿨타임 공유)
     static final class UltZone { String mapId; int cx, cy, lv, n; long last; }
     static final java.util.concurrent.ConcurrentHashMap<String, UltZone> MINE_ULT_ZONE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -4670,7 +4688,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 l.add(new int[] { 0, Math.max(1, (int) Math.round(atkBase * pct / nh * (0.9 + RND.nextDouble() * 0.2) * (crit ? 1.6 : 1.0) * mineElemMul(items, ot))), crit ? 1 : 0 });
             }
             return l;
-        }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ", true, k == 1 ? MINE_ULT_STUN_MS + MINE_ULT_STUN_LV_MS * (ulv - 1) : 0L);
+        }, "ultMobs", "ultDrops", k == 0 ? "⚔️ 만검진으로 " : "⚔️ 일섬참으로 ", true, k == 1 ? MINE_ULT_STUN_MS + MINE_ULT_STUN_LV_MS * (ulv - 1) : 0L, k == 0 ? MINE_ULT_VULN_PCT : 0);
         if (k == 1) out.put("stunMs", MINE_ULT_STUN_MS + MINE_ULT_STUN_LV_MS * (ulv - 1));
         Object um = out.get("ultMobs");
         if (k == 1 && (!(um instanceof List) || ((List<?>) um).isEmpty())) { // 보이는 몬스터가 없다 -- 쿨타임을 돌려준다
@@ -4681,7 +4699,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         mineMercShare(userName, r[1], lv, r[0], out);
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
-        dao.updateMinePos(userName, map.id, x, y, now);
+        int px = x, py = y;
+        if (k == 1) { // [2026-11-08] "일섬 사용 시 맞춘 대상에게 바싹 붙게" -- 대상(보스는 2x2) 둘레 8칸 중 걸을 수 있고 지금 자리에서 가장 가까운 칸으로
+            Object m0 = ((List<?>) um).get(0);
+            long[] rw = m0 instanceof Map && ((Map<?, ?>) m0).get("row") instanceof long[] ? (long[]) ((Map<?, ?>) m0).get("row") : null;
+            Object mid = m0 instanceof Map ? ((Map<?, ?>) m0).get("id") : null;
+            if (rw != null && mid instanceof Integer) {
+                S5MineMobs.Type tt = S5MineMobs.TYPES.get(map.mobs().get((Integer) mid).type);
+                int tx = (int) rw[3], ty = (int) rw[4], fw = tt.boss ? 2 : 1, best = 1 << 30;
+                for (int yy = ty - 1; yy <= ty + fw; yy++) for (int xx = tx - 1; xx <= tx + fw; xx++) {
+                    if (xx >= tx && xx < tx + fw && yy >= ty && yy < ty + fw) continue; // 몬스터 칸
+                    if (!mineWalk(map, xx, yy, water)) continue;
+                    int d = Math.abs(xx - x) + Math.abs(yy - y);
+                    if (d < best) { best = d; px = xx; py = yy; }
+                }
+                if (px != x || py != y) { out.put("dashX", px); out.put("dashY", py); }
+            }
+        }
+        dao.updateMinePos(userName, map.id, px, py, now);
         dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
         out.put("ok", true);
         out.put("k", k);
@@ -5313,6 +5348,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (s.deadUntil > now) continue;
                 if (s.deadUntil > 0) s.respawn(omMax); // [2026-11-07] 다시 나타난 몬스터는 체력을 채우고(검기/공격과 같게)
+                dmg = (int) Math.round(dmg * mineVulnMul(s, now)); // [2026-11-08] 만검진 받는 피해 증가
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 s.lastHitAt = now;
                 s.hp -= dmg;
