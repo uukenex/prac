@@ -2199,7 +2199,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
-  var priestConfirm = false, RB_MAX = 10, RB_BASE = 5; // [2026-11-08] 5환생 다음은 진환생1~5(서버 MINE_REBIRTH_BASE/MAX)
+  var priestConfirm = false, RB_MAX = 6, RB_BASE = 5; // [2026-11-08] 5환생 다음은 진환생1 하나(서버 MINE_REBIRTH_BASE/MAX)
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
   var ENCH_HITS = 1000, ENCH_HITS_ELEM = 500; // 성당 신부 1000번, [2026-10-29] 원소술사 500번

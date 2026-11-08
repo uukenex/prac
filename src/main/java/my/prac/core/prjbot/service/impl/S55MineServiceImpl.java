@@ -758,18 +758,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-28] "체력 최대치/한 번에 얻는 경험치를 낮추고 전체적 다운스케일" -- 예전 1.18 / 1.18 / 1.32에서 줄였다(몬스터도 S5MineMobs에서 같은 비율로).
     //  저장된 레벨 안 경험치는 처음 한 번 새 필요치 비율로 바꾼다(mineRescaleOnce). 레벨 상한 60 -> 99(숫자가 작아져 M_EXP NUMBER(12) 걱정 없음).
     static final int MINE_LV_MAX = 99;
-    // [2026-11-08] "진환생은 99레벨 이후도 쭉 100레벨 이상으로 레벨업(능력치는 99레벨에서 멈춤)" -- 진환생만 MINE_LV_TRUE_MAX까지 오른다.
-    //  능력치(체력 mineHpMax / 공격력 mineAtk / 선공 레벨 차이 mineMobPreempts)는 99레벨 값에서 멈춘다. 250 = 필요 경험치가 long을 넘지 않는 넉넉한 끝.
-    static final int MINE_LV_TRUE_MAX = 250;
-    //  DB M_EXP가 NUMBER(12)라 한 레벨 필요 경험치가 MINE_EXP_STORE_MAX를 넘는 레벨에서 멈춘다(진환생1 약 170, 진환생5 약 145) -- 컬럼을 넓히면 이 값도 올린다.
-    static final long MINE_EXP_STORE_MAX = 999_999_999_999L;
-    static final int[] MINE_LV_CAP_RB = new int[16]; // 환생 횟수별(MINE_REBIRTH_MAX 이하)
-    static int mineLvCap(int rb) {
-        if (rb <= MINE_REBIRTH_BASE) return MINE_LV_MAX;
-        int r = Math.min(MINE_REBIRTH_MAX, rb);
-        if (MINE_LV_CAP_RB[r] == 0) { int c = MINE_LV_MAX; while (c < MINE_LV_TRUE_MAX && mineExpNeed(c + 1, r) <= MINE_EXP_STORE_MAX) c++; MINE_LV_CAP_RB[r] = c; }
-        return MINE_LV_CAP_RB[r];
-    }
+    // [2026-11-08] "진환생은 99레벨 이후도 쭉 100레벨 이상으로 레벨업(능력치는 99레벨에서 멈춤)", "최고 레벨 제한 없이" -- 진환생은 끝없이 오른다(MINE_LV_TRUE_MAX = M_LV NUMBER(4) 끝).
+    //  능력치(체력 mineHpMax / 공격력 mineAtk / 선공 레벨 차이 mineMobPreempts)는 99레벨 값에서 멈춘다.
+    static final int MINE_LV_TRUE_MAX = 9999;
+    static int mineLvCap(int rb) { return rb > MINE_REBIRTH_BASE ? MINE_LV_TRUE_MAX : MINE_LV_MAX; }
     /** [2026-11-08] "진환생은 무기/방어구 장착 제한 해제" -- 장비 레벨(20/40/60/80...)이 모자라도 든다. */
     static boolean mineGearLvOk(int lv, Map<String, Integer> items, int need) { return lv >= need || mineTrueRebirth(items); }
     static final long MINE_HP_FULL_MS = 60_000L;
@@ -809,7 +801,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_REBIRTH = "REBIRTH";
     // [2026-11-08] "5환생 이후 진환생 -- 진환생1로 시작하고 6환생과 같은 개념" -- 환생 횟수 rb를 그대로 이어서 센다(6 = 진환생1 ... 10 = 진환생5).
     //  효과(체력/공격력/광물/방한·햇빛·동굴 밝기 +회차, 필요 경험치 x2^회차)도 그대로 이어진다. 진환생부터는 왕도 상인 행운의 주문서(금괴, 경험치 3배)를 못 쓴다(mineLuckUntil).
-    static final int MINE_REBIRTH_BASE = 5, MINE_REBIRTH_MAX = 10;
+    static final int MINE_REBIRTH_BASE = 5, MINE_REBIRTH_MAX = 6; // [2026-11-08] "진환생은 1만 있어"
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     static boolean mineTrueRebirth(Map<String, Integer> items) { return mineRebirth(items) > MINE_REBIRTH_BASE; }
@@ -843,9 +835,37 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double MINE_RB_ATK_BONUS = 0.5;
     /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
     static final double MINE_RB_EXP_MUL = 2;
-    // [2026-11-08] 진환생 80레벨부터 필요 경험치 MINE_TRUE_RB_EXP80배 더 -- 사용자 지시로 비공개(화면/신부 설명에 쓰지 않는다).
+    // [2026-11-08] 진환생 -- "80레벨부터 필요 경험치 5배(비공개)", "필요량은 컬럼을 늘리기보다 들어오는 경험치 감소로, 플레이어한테는 그대로 들어오는 것처럼".
+    //  화면/DB의 필요 경험치(mineExpNeed)는 99레벨 값에서 더 커지지 않고, 대신 들어오는 경험치를 mineTrueRbDiv(80레벨부터 5배, 99레벨 뒤로 레벨마다 1.12배)로 나눠 쌓는다(mineExpAdd).
+    //  처치 문구의 "경험치 +N"은 나누기 전 값 그대로. 결과는 예전 식(필요량 x 5 x 1.12^레벨)과 같다. 비공개 -- 화면/신부 설명에 쓰지 않는다.
     static final int MINE_TRUE_RB_EXP80 = 5;
-    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, lv - 1) * Math.pow(MINE_RB_EXP_MUL, rb) * (rb > MINE_REBIRTH_BASE && lv >= 80 ? MINE_TRUE_RB_EXP80 : 1)); }
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, (rb > MINE_REBIRTH_BASE ? Math.min(MINE_LV_MAX, lv) : lv) - 1) * Math.pow(MINE_RB_EXP_MUL, rb)); }
+    static double mineTrueRbDiv(int lv, int rb) { return rb <= MINE_REBIRTH_BASE ? 1 : (lv >= 80 ? MINE_TRUE_RB_EXP80 : 1) * Math.pow(1.12, Math.max(0, lv - MINE_LV_MAX)); }
+    /** 경험치 더하기 + 레벨 업 -- {레벨, 레벨 안 경험치, 오른 레벨 수, 화면에 알릴 오른 경험치}. 5환생까지는 99레벨에서 가득 찬 채로 멈춘다(넘친 건 안 오름). */
+    static long[] mineExpAdd(int lv, long exp, long gain, int rb) {
+        int lv0 = lv, up = 0;
+        long exp0 = exp;
+        if (rb <= MINE_REBIRTH_BASE) {
+            exp += gain;
+            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
+            if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb)); // [2026-10-28] 99레벨에선 다음 레벨 필요치(= 환생 조건)에서 멈춘다
+            return new long[] { lv, exp, up, mineExpReal(lv0, exp0, lv, exp, rb) };
+        }
+        double raw = gain; // 진환생 -- 나누기 전 경험치로 다음 레벨까지 남은 만큼씩 쓴다
+        while (lv < MINE_LV_TRUE_MAX) {
+            long need = mineExpNeed(lv, rb);
+            double d = mineTrueRbDiv(lv, rb), toNext = Math.max(0, need - exp) * d;
+            if (raw < toNext) {
+                double add = raw / d;
+                long a = (long) Math.floor(add);
+                if (RND.nextDouble() < add - a) a++; // 작은 값도 평균으로는 들어가게
+                exp = Math.min(need - 1, exp + a);
+                break;
+            }
+            raw -= toNext; exp = 0; lv++; up++;
+        }
+        return new long[] { lv, exp, up, gain };
+    }
     /** 환생할 수 있나 -- 99레벨 + 경험치 가득(다음 레벨 필요치 이상) + 아직 5번 안 함. */
     static boolean mineRebirthReady(int lv, long exp, int rb) { return lv >= MINE_LV_MAX && rb < MINE_REBIRTH_MAX && (lv > MINE_LV_MAX || exp >= mineExpNeed(MINE_LV_MAX, rb)); } // [2026-11-08] 진환생은 99를 넘어 오르므로 100레벨 이상이면(= 99레벨을 가득 채움)
 
@@ -2434,18 +2454,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
             long baseExp = mineLuckExp(items, mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
-            int lv0 = lv; long exp0 = exp; // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다)
-            exp += expGain;
+            long[] xa = mineExpAdd(lv, exp, expGain, rb); // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다), [2026-11-08] 진환생은 99를 넘어
+            lv = (int) xa[0]; exp = xa[1]; levelUp += (int) xa[2];
             mineMercShare(userName, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
-            while (lv < mineLvCap(rb) && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; levelUp++; } // [2026-11-08] 진환생은 99를 넘어
-            // [2026-10-28] 99레벨에선 경험치를 다음 레벨 필요치(= 환생 조건)에서 멈춘다(막대가 가득 찬 채로, 숫자가 끝없이 쌓이지 않게)
-            if (lv >= mineLvCap(rb)) exp = Math.min(exp, mineExpNeed(mineLvCap(rb), rb));
             if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
             if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
                 hp = mineHpMax(lv, rb);
                 if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
             }
-            long expReal = mineExpReal(lv0, exp0, lv, exp, rb); // [2026-11-07] "경험치가 실제로 안 오르는 양이 표기" -- 가득 찬 99레벨은 처치해도 경험치가 안 오른다. 오른 만큼만 알린다
+            long expReal = xa[3]; // [2026-11-07] "경험치가 실제로 안 오르는 양이 표기" -- 가득 찬 99레벨은 처치해도 경험치가 안 오른다. 오른 만큼만 알린다
             if (expReal < expGain) out.put("expFull", true);
             out.merge("expReal", expReal, (p, q) -> (Long) p + (Long) q);
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요!").append(expReal > 0 ? " 경험치 +" + expReal + (mindPct > 0 ? " (📿+" + mindPct + "%)" : "") : "");
@@ -4433,17 +4450,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     long[] mineAuraExp(String userName, int lv, long exp, int hp, int lock, int rb, long gain, boolean died, HashMap<String, Object> out) {
         if (gain <= 0) return new long[] { lv, exp, hp, lock, 0, 0 };
         boolean wasReady = mineRebirthReady(lv, exp, rb);
-        int lv0 = lv; long exp0 = exp;
-        exp += gain;
-        int up = 0;
-        while (lv < mineLvCap(rb) && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; } // [2026-11-08] 진환생은 99를 넘어
-        if (lv >= mineLvCap(rb)) exp = Math.min(exp, mineExpNeed(mineLvCap(rb), rb));
+        long[] xa = mineExpAdd(lv, exp, gain, rb); // [2026-11-08] 진환생은 99를 넘어
+        lv = (int) xa[0]; exp = xa[1];
+        int up = (int) xa[2];
         if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
         if (up > 0 && !died) {
             hp = mineHpMax(lv, rb);
             if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
         }
-        long real = mineExpReal(lv0, exp0, lv, exp, rb); // [2026-11-07] 실제로 오른 경험치
+        long real = xa[3]; // [2026-11-07] 실제로 오른 경험치
         if (real < gain) out.put("expFull", true);
         out.merge("expReal", real, (p, q) -> (Long) p + (Long) q);
         return new long[] { lv, exp, hp, lock, up, real };
