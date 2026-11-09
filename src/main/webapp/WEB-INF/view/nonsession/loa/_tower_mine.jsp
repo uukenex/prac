@@ -2234,7 +2234,7 @@ var TowerMine = (function () {
           + '· 최대 체력 <b>+' + (nrb * 50) + '%</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
           + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
-          + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + (nrb >= 5 ? ' (다도해 햇빛을 완전히 막아요)' : '') + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
+          + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
           + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_BASE + '단계)<br>')
           + '<b>⏳ 다시 쌓는 것</b><br>'
           + '· 레벨이 <b>Lv.1(' + rbName(nrb) + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
@@ -3009,7 +3009,7 @@ var TowerMine = (function () {
     if (map && map.archi && map.sun) { // [2026-10-28] 다도해 -- 낮(햇빛 %)/밤, 남은 분
       var tn = nowSrv(), day = archiDay(tn), heat = cold ? cold.heat : 0;
       var hr = cold && cold.heatRate != null ? cold.heatRate : (heat || map.sun);
-      var at = (inSafe() ? '🌴 그늘' : !day ? '🌙 밤' : hr > 0 ? '☀️ -' + rateTxt(hr) + '%/초' : '😇 햇빛 막음(환생)') + ' ' + archiLeftMin(tn) + '분'; // [2026-10-28] 환생 경감 반영
+      var at = (inSafe() ? '🌴 그늘' : !day ? '🌙 밤' : hr > 0 ? '☀️ -' + rateTxt(hr) + '%/초' : '😇 햇빛 막음') + ' ' + archiLeftMin(tn) + '분'; // [2026-10-28] 환생 경감 반영
       if (el.cold._t !== at) { el.cold._t = at; el.cold.textContent = at; }
       el.cold.style.display = 'block';
       return;
