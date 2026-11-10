@@ -95,6 +95,16 @@ public final class S5MineMap {
     public static final String WESTROAD = "westroad";
     public static final String FOREST = "forestmaze"; // [2026-11-08] 마물의 숲 미궁(지금은 관리자만 -- S55MineServiceImpl.mineWarp)
     public static final String HARPY_NEST = "harpynest"; // [2026-11-08] 하피의 둥지(보스룸, 지금은 관리자만)
+    // [2026-11-11] 두고개식 미궁 -- 방 FOREST_ROOM_N개(0번 = FOREST = 입구 방), 미로의 끝방, 둥지 뒤 나루터. 모두 관리자만(isForestZone).
+    public static final String FOREST_END = "forestend", HARPY_FERRY = "harpyferry";
+    static final int FOREST_ROOM_N = 15;
+    public static final String[] FOREST_ROOM_IDS = forestRoomIds();
+    private static String[] forestRoomIds() { String[] a = new String[FOREST_ROOM_N]; a[0] = FOREST; for (int i = 1; i < a.length; i++) a[i] = FOREST + i; return a; }
+    /** 미궁 방(입구 방 포함). */
+    public static boolean isForestRoom(String id) { return id != null && id.startsWith(FOREST); }
+    /** 미궁 방 + 끝방 + 하피의 둥지 + 나루터(지금은 관리자만 -- S55MineServiceImpl.mineWarp). */
+    public static boolean isForestZone(String id) { return isForestRoom(id) || FOREST_END.equals(id) || HARPY_NEST.equals(id) || HARPY_FERRY.equals(id); }
+    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); return Collections.unmodifiableList(l); }
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -197,9 +207,9 @@ public final class S5MineMap {
         return ms + (p < ARCHI_DAY_MS ? ARCHI_DAY_MS - p : ARCHI_CYCLE_MS - p);
     }
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
-    private static final List<String> IDS = Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
+    private static final List<String> IDS = withForest(Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST); // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST)); // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -669,7 +679,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 10; // [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 11; // [2026-11-11] 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1045,38 +1055,21 @@ public final class S5MineMap {
         { // [2026-11-05] 왕도 서문 <-> 왕도 서쪽길(맨 뒤 -- 앞 맵들의 몬스터 자리는 그대로). 왕도는 NPC/주민 그대로 다시 넣는다.
             S5MineMap wr0 = generateWestRoad(seed + 80), ctw = out.get(CITY);
             S5MineMap wr = relink(wr0, retarget(wr0, CITY, besidePortal(ctw, WESTROAD)), null);
-            // [2026-11-08] "마물의 숲 입구의 통로 3곳이 미궁으로" -- 가시덩굴로 막혀 있던 숲 던전 입구 셋을 미궁 아래 입구 셋(서쪽부터)에 잇는다.
-            S5MineMap fm0 = generateForestMaze();
+            // [2026-11-08] "마물의 숲 입구의 통로 3곳이 미궁으로" -- [2026-11-11] 셋 다 같은 미궁의 입구 방(FOREST) 아래쪽으로. 입구 방 남쪽 통로는 가운데 동굴 앞으로.
             List<Portal> caves = new ArrayList<>();
             for (Portal p : wr.portals) if (p.target == null && p.kind == 'M') caves.add(p);
             caves.sort((p, q) -> Integer.compare(p.x, q.x));
-            List<Portal> fwp = new ArrayList<>(), ffp = new ArrayList<>();
-            for (Portal p : wr.portals) {
-                int ci = caves.indexOf(p);
-                if (ci < 0) { fwp.add(p); continue; }
-                int ex = FOREST_ENTRIES[Math.min(ci, FOREST_ENTRIES.length - 1)] * FOREST_SCALE;
-                fwp.add(new Portal(p.x, p.y, p.kind, FOREST, ex, fm0.h - 2, "숲 던전 입구 -- 마물의 숲 미궁"));
-            }
-            for (Portal p : fm0.portals) {
-                if (WESTROAD.equals(p.target)) { int ci = Math.max(0, java.util.Arrays.binarySearch(FOREST_ENTRIES, p.x / FOREST_SCALE)); Portal cv = caves.get(Math.min(ci, caves.size() - 1)); ffp.add(new Portal(p.x, p.y, p.kind, WESTROAD, cv.x, cv.y + 1, p.label)); }
-                else ffp.add(p);
-            }
+            Portal midCave = caves.get(caves.size() / 2);
+            List<Portal> fwp = new ArrayList<>();
+            for (Portal p : wr.portals) fwp.add(caves.contains(p) ? new Portal(p.x, p.y, p.kind, FOREST, ROOM_W / 2, ROOM_W - 2, "숲 던전 입구 -- 마물의 숲 미궁") : p);
             wr = relink(wr, fwp, null);
-            // [2026-11-08] 미궁 위 출구 <-> 하피의 둥지 아래 문
-            S5MineMap hn0 = generateHarpyNest();
-            List<Portal> ffp2 = new ArrayList<>();
-            for (Portal p : ffp) ffp2.add(p.target == null && p.y == 0 ? new Portal(p.x, p.y, p.kind, HARPY_NEST, hn0.spawnX, hn0.spawnY, "하피의 둥지") : p);
-            S5MineMap fm = relink(fm0, ffp2, null);
-            List<Portal> hp = new ArrayList<>();
-            for (Portal p : hn0.portals) hp.add(FOREST.equals(p.target) ? new Portal(p.x, p.y, p.kind, FOREST, fm.portals.stream().filter(q -> HARPY_NEST.equals(q.target)).findFirst().map(q -> q.x).orElse(fm.spawnX), 1, p.label) : p);
-            S5MineMap hn = relink(hn0, hp, null);
+            List<S5MineMap> fws = forestWorld(midCave.x, midCave.y + 1);
             placeNpc(wr, wr.spawnX - 5, wr.spawnY - 2, "forestguard", "숲 입구 파수꾼", "멈추게! 요즘 숲에서 마물이 미친 듯이 불어나고 있네. 하나를 베면 둘이 달려들고, 쓰러뜨려도 금세 다시 우르르 몰려나오지... 안쪽으로 갈수록 산만 한 놈들뿐일세. 각오가 없다면 돌아가게."); // [2026-11-05]
             S5MineMap ctn = relink(ctw, retarget(ctw, WESTROAD, new int[] { wr.spawnX, wr.spawnY }), ctw.npcs);
             ctn.citizens = ctw.citizens;
             out.put(CITY, ctn);
             out.put(WESTROAD, wr);
-            out.put(FOREST, fm); // [2026-11-08] 맨 뒤(앞 맵들의 몬스터 배치 시드가 안 바뀌게)
-            out.put(HARPY_NEST, hn); // [2026-11-08] 그 뒤
+            for (S5MineMap fm : fws) out.put(fm.id, fm); // [2026-11-08] 맨 뒤(앞 맵들의 몬스터 배치 시드가 안 바뀌게) -- [2026-11-11] 미궁 방들, 끝방, 둥지, 나루터
         }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -2408,17 +2401,78 @@ public final class S5MineMap {
         return m;
     }
 
-    // [2026-11-08] 마물의 숲 미궁 -- "통로 맵은 미로(미궁), 지나면 보스룸", "맵 초기화 때 맵이 안 바뀌게" -- 고정 시드(FOREST_SEED)로 늘 같은 미로.
-    //  방 FOREST_ROOMS x FOREST_ROOMS 칸 미로(깊이 우선)에 막다른 길만 있지 않게 벽을 군데군데 더 뚫고, FOREST_SCALE배로 키워 길 폭 2칸.
-    //  벽 = 지나갈 수 없는 울창한 숲(F), 길 = 흙길(,), 어두운 맵(시야 좁음). 아래쪽 입구 셋(FOREST_ENTRIES)은 마물의 숲 입구의 숲 던전 입구 셋으로,
-    //  위쪽 가운데 출구는 하피의 둥지(보스룸 -- 아직 없어 막힘). 몬스터는 아직 없다(관리자 길 확인용).
+    // [2026-11-11] 마물의 숲 미궁(두고개 모티브) -- "10x10칸 방, 동서남북 통로, 남쪽으로 가면 들어왔던 입구로, 지금 어디인지 모르게(계속 같은 맵을 도는 것처럼), 방마다 다른 몬스터".
+    //  방은 모두 같은 이름/같은 모양/지도 없음. 동/서/북 통로는 고정 시드(FOREST_SEED -- 맵 초기화 때 안 바뀜)로 섞어 잇는다:
+    //  맞는 통로를 차례로(FOREST_PATH_LEN개 방) 고르면 끝방, 틀린 통로는 길에서 벗어난 방이나 처음 두 방으로. 남쪽 통로는 어느 방이든 입구 방으로(입구 방 남쪽은 마물의 숲 입구).
+    //  끝방(FOREST_END, 몬스터 없음 -- 쉼터) 북쪽 -> 하피의 둥지 -> 둥지 위쪽 -> 강이 보이는 나루터(HARPY_FERRY).
     static final long FOREST_SEED = 20261108L;
-    static final int FOREST_ROOMS = 20, FOREST_SCALE = 2;
-    static final int[] FOREST_ENTRIES = { 7, 21, 35 }; // 격자 x(홀수) -- 서쪽/가운데/동쪽
-    // [2026-11-08] 하피의 둥지(보스룸) -- 숲 벽으로 둘러싼 풀밭에 지나갈 수 없는 대형 나무(3x2칸 'E') 열두 그루, 가운데는 비워 둔다(숲이 다 타면 하피가 내려앉는 곳).
-    //  나무 위쪽 두 줄(하피가 앉는 자리 -- 화면은 나무 수관에 가려 그린다)은 비운다. 아래 가운데 문은 미궁 위 출구로. 잡몹 없음(하피만).
+    static final int FOREST_PATH_LEN = 7, ROOM_W = 10;
+    /** 미궁 방 FOREST_ROOM_N개 + 끝방 + 둥지 + 나루터(포탈을 다 이어서). wrX, wrY = 입구 방 남쪽 통로가 내려 주는 마물의 숲 입구 칸. */
+    static List<S5MineMap> forestWorld(int wrX, int wrY) {
+        int n = FOREST_ROOM_N, c = ROOM_W / 2, L = ROOM_W - 1;
+        int[][] ex = forestExits();
+        List<S5MineMap> out = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            List<Portal> ps = new ArrayList<>();
+            String[] tg = new String[3];
+            for (int d = 0; d < 3; d++) tg[d] = ex[i][d] < 0 ? FOREST_END : FOREST_ROOM_IDS[ex[i][d]];
+            ps.add(new Portal(L, c, 'G', tg[0], 1, c, "동쪽 숲길"));
+            ps.add(new Portal(0, c, 'G', tg[1], L - 1, c, "서쪽 숲길"));
+            ps.add(new Portal(c, 0, 'G', tg[2], c, L - 1, "북쪽 숲길"));
+            ps.add(i == 0 ? new Portal(c, L, 'G', WESTROAD, wrX, wrY, "남쪽 숲길") : new Portal(c, L, 'G', FOREST, c, L - 1, "남쪽 숲길"));
+            out.add(forestRoom(FOREST_ROOM_IDS[i], "마물의 숲 미궁", ps, false));
+        }
+        List<Portal> ep = new ArrayList<>();
+        ep.add(new Portal(c, 0, 'G', HARPY_NEST, HARPY_NEST_W / 2, HARPY_NEST_H - 3, "짙은 바람이 불어오는 숲길"));
+        ep.add(new Portal(c, L, 'G', FOREST, c, L - 1, "남쪽 숲길"));
+        out.add(forestRoom(FOREST_END, "미로의 끝방", ep, true));
+        out.add(generateHarpyNest());
+        out.add(generateHarpyFerry());
+        return out;
+    }
+    /** 방마다 {동, 서, 북} 통로가 가는 방 번호(-1 = 끝방). 고정 시드. */
+    static int[][] forestExits() {
+        int n = FOREST_ROOM_N;
+        Random r = new Random(FOREST_SEED);
+        List<Integer> rest = new ArrayList<>();
+        for (int i = 1; i < n; i++) rest.add(i);
+        Collections.shuffle(rest, r);
+        int[] path = new int[FOREST_PATH_LEN];
+        for (int i = 1; i < path.length; i++) path[i] = rest.get(i - 1);
+        List<Integer> pool = new ArrayList<>(rest.subList(path.length - 1, rest.size())); // 길에서 벗어난 방들 + 처음 두 방
+        pool.add(path[0]); pool.add(path[1]);
+        int[][] ex = new int[n][3];
+        for (int[] e : ex) java.util.Arrays.fill(e, -2);
+        for (int i = 0; i < path.length; i++) ex[path[i]][r.nextInt(3)] = i + 1 < path.length ? path[i + 1] : -1;
+        boolean[][] fixed = new boolean[n][3];
+        for (int i = 0; i < n; i++) for (int d = 0; d < 3; d++) fixed[i][d] = ex[i][d] != -2;
+        for (int i = 0; i < n; i++) for (int d = 0; d < 3; d++) if (ex[i][d] == -2) { int q; do { q = pool.get(r.nextInt(pool.size())); } while (q == i); ex[i][d] = q; }
+        for (int q : pool) { // 아무 통로도 들어오지 않는 방이 없게(그 방 몬스터도 만나게) -- 들어오는 길이 둘 이상인 방으로 가던 틀린 통로 하나를 돌린다
+            int[] in = new int[n];
+            for (int i = 0; i < n; i++) for (int d = 0; d < 3; d++) if (ex[i][d] >= 0 && ex[i][d] != i) in[ex[i][d]]++;
+            if (in[q] > 0) continue;
+            outer:
+            for (int k = 0; k < n * 3; k++) { int i = r.nextInt(n), d = r.nextInt(3); if (i != q && !fixed[i][d] && ex[i][d] >= 0 && in[ex[i][d]] >= 2) { ex[i][d] = q; break outer; } }
+        }
+        return ex;
+    }
+    /** 10x10 숲 방 -- 둘레는 지나갈 수 없는 숲(F), 통로 칸은 문(G), 가운데 열십자 흙길, 나무 둘(통과). 끝방은 동/서 통로 없이 쉼터. */
+    static S5MineMap forestRoom(String id, String name, List<Portal> ps, boolean end) {
+        int w = ROOM_W, c = w / 2, L = w - 1;
+        char[][] t = new char[w][w];
+        for (int y = 0; y < w; y++) for (int x = 0; x < w; x++) t[y][x] = x == 0 || y == 0 || x == L || y == L ? 'F' : (x == c || y == c) ? ',' : '.';
+        t[3][3] = 'T'; t[6][6] = 'T';
+        for (Portal p : ps) t[p.y][p.x] = 'G';
+        S5MineMap m = new S5MineMap(id, name, false, w, w, c, L - 1, t, new byte[w][w], ps);
+        m.noMap = true; // 지도 없음(지금 어디인지 모르게)
+        if (end) m.safe.add(new int[] { c, c, 6 });
+        return m;
+    }
+    static final int HARPY_NEST_W = 46, HARPY_NEST_H = 38, FERRY_W = 30, FERRY_H = 22;
+    // [2026-11-08] 하피의 둥지(보스룸) -- 숲 벽으로 둘러싼 풀밭에 지나갈 수 없는 대형 나무(3x2칸 'E'), 가운데는 비워 둔다(숲이 다 타면 하피가 내려앉는 곳).
+    //  나무 위쪽 두 줄(하피가 앉는 자리 -- 화면은 나무 수관에 가려 그린다)은 비운다. 잡몹 없음(하피만). [2026-11-11] 아래 문 = 미로의 끝방, 위 문 = 나루터.
     static S5MineMap generateHarpyNest() {
-        int w = 46, h = 38;
+        int w = HARPY_NEST_W, h = HARPY_NEST_H;
         char[][] t = new char[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = (x < 2 || y < 2 || x >= w - 2 || y >= h - 2) ? 'F' : '.';
         List<int[]> trees = new ArrayList<>();
@@ -2431,52 +2485,38 @@ public final class S5MineMap {
         }
         t[h - 2][cx] = '.';
         t[h - 1][cx] = 'G';
+        t[1][cx] = '.';
+        t[0][cx] = 'G';
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(cx, h - 1, 'G', FOREST, 0, 0, "마물의 숲 미궁으로"));
+        portals.add(new Portal(cx, h - 1, 'G', FOREST_END, ROOM_W / 2, 1, "미로의 끝방으로"));
+        portals.add(new Portal(cx, 0, 'G', HARPY_FERRY, FERRY_W / 2, FERRY_H - 3, "강이 보이는 나루터로"));
         byte[][] o = new byte[h][w];
         S5MineMap m = new S5MineMap(HARPY_NEST, "하피의 둥지", false, w, h, cx, h - 3, t, o, portals);
         m.trees = Collections.unmodifiableList(trees);
         m.bossX = cx - 1; m.bossY = cy - 1;
         return m;
     }
-
-    static S5MineMap generateForestMaze() {
-        int N = 2 * FOREST_ROOMS + 1, S = FOREST_SCALE, w = N * S, h = N * S;
-        Random r = new Random(FOREST_SEED);
-        boolean[][] open = new boolean[N][N];
-        java.util.ArrayDeque<int[]> st = new java.util.ArrayDeque<>();
-        open[N - 2][N / 2 | 1] = true;
-        st.push(new int[] { N / 2 | 1, N - 2 });
-        int[][] dv = { { 2, 0 }, { -2, 0 }, { 0, 2 }, { 0, -2 } };
-        while (!st.isEmpty()) {
-            int[] c = st.peek();
-            List<int[]> nb = new ArrayList<>();
-            for (int[] d : dv) { int nx = c[0] + d[0], ny = c[1] + d[1]; if (nx > 0 && ny > 0 && nx < N - 1 && ny < N - 1 && !open[ny][nx]) nb.add(new int[] { nx, ny, d[0] / 2, d[1] / 2 }); }
-            if (nb.isEmpty()) { st.pop(); continue; }
-            int[] n = nb.get(r.nextInt(nb.size()));
-            open[c[1] + n[3]][c[0] + n[2]] = true;
-            open[n[1]][n[0]] = true;
-            st.push(new int[] { n[0], n[1] });
-        }
-        for (int k = 0; k < FOREST_ROOMS * 3; k++) { // 고리 -- 두 길 사이 벽을 더 뚫는다
-            int x = 1 + r.nextInt(N - 2), y = 1 + r.nextInt(N - 2);
-            if ((x + y) % 2 == 1 && !open[y][x] && ((x % 2 == 0 && open[y][x - 1] && open[y][x + 1]) || (y % 2 == 0 && open[y - 1][x] && open[y + 1][x]))) open[y][x] = true;
-        }
+    /** [2026-11-11] "보스맵 뒤쪽은 강이 보이는 나루터" -- 위쪽은 강(~), 가운데로 나무 선착장(H), 아래는 숲 풀밭(안전지대), 아래 문은 하피의 둥지 위 문으로. */
+    static S5MineMap generateHarpyFerry() {
+        int w = FERRY_W, h = FERRY_H, cx = w / 2;
         char[][] t = new char[h][w];
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = open[y / S][x / S] ? ',' : 'F';
-        List<Portal> portals = new ArrayList<>();
-        for (int ex : FOREST_ENTRIES) { // 아래 입구 -- 맨 아래 줄 한 칸이 문, 옆 칸은 숲
-            for (int yy = h - S - 1; yy < h - 1; yy++) for (int xx = ex * S; xx < ex * S + S; xx++) t[yy][xx] = ',';
-            t[h - 1][ex * S] = 'G';
-            portals.add(new Portal(ex * S, h - 1, 'G', WESTROAD, 0, 0, "마물의 숲 입구로"));
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            char c;
+            if (y < 8) c = '~';
+            else if (x < 2 || x >= w - 2 || y >= h - 2) c = 'F';
+            else if (y == 8) c = ':'; // 강가 자갈
+            else c = (x * 7 + y * 13) % 11 == 0 ? 'T' : '.';
+            t[y][x] = c;
         }
-        int ox = (N / 2 | 1) * S; // 위 가운데 출구(하피의 둥지 -- 아직 막힘)
-        for (int yy = 1; yy <= S; yy++) for (int xx = ox; xx < ox + S; xx++) t[yy][xx] = ',';
-        t[0][ox] = 'G';
-        portals.add(new Portal(ox, 0, 'G', null, 0, 0, "하피의 둥지 (짙은 바람이 길을 막고 있다)"));
-        byte[][] o = new byte[h][w]; // 광석 없음
-        int sx = FOREST_ENTRIES[1] * S, sy = h - 2;
-        return new S5MineMap(FOREST, "마물의 숲 미궁", true, w, h, sx, sy, t, o, portals);
+        for (int y = 2; y < 9; y++) { t[y][cx - 1] = 'H'; t[y][cx] = 'H'; } // 선착장
+        for (int y = 9; y < h - 1; y++) t[y][cx] = ',';
+        t[h - 1][cx] = 'G';
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(cx, h - 1, 'G', HARPY_NEST, HARPY_NEST_W / 2, 2, "하피의 둥지로"));
+        S5MineMap m = new S5MineMap(HARPY_FERRY, "마물의 숲 나루터", false, w, h, cx, h - 3, t, new byte[h][w], portals);
+        m.safe.add(new int[] { cx, 14, 16 });
+        placeNpc(m, cx + 4, 11, "forestguard", "나루터 뱃사공", "강 건너로 가는 배는 아직 없다네. 바람이 이렇게 사나워서야, 원...");
+        return m;
     }
 
     /** [2026-10-28] 설산 봉우리 가는 길(84x200, 한기 4) -- 설산 마을 북문(아래 G)에서 봉우리(위 G)까지 길게 굽이치는 3칸 눈길.

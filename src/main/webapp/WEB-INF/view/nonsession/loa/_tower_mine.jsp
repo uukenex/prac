@@ -663,7 +663,7 @@ var TowerMine = (function () {
   // ---------------------------------------------------------------- [2026-10-24] 몬스터
   // 위치는 시각으로 정한다(서버 S5MineMobs.cellAt과 같은 식) -- 체력/쓰러짐/멈춤만 서버에서 1.5초마다 받아 온다(mobSt).
   var mobHitAt = {}; // [2026-11-03] 공격한 순간(몬스터 흔들림)
-  var treeSt = [], treeNeed = 60, harpySt = null, harpyImmT = 0; // [2026-11-08] 하피의 둥지 -- 나무 [번호, 상태 0 살아 있음/1 불탐/2 다 탐, 불 쌓인 양], 하피 {hide, weak, move}
+  var treeSt = [], treeNeed = 60, harpySt = null, harpyImmT = 0, harpyGustAt = 0; // [2026-11-08] 하피의 둥지 -- 나무 [번호, 상태 0 살아 있음/1 불탐/2 다 탐, 불 쌓인 양], 하피 {hide, weak, move}
   var mobSt = {}, srvOff = 0, mobTimer = 0, mobSprites = {}, mobOcc = {}, atkBusy = false, lastAtkT = 0;
   function mix(a, b) {
     var h = (Math.imul(a, 0x9E3779B1 | 0) + Math.imul(b, 0x85EBCA77 | 0)) | 0;
@@ -2876,6 +2876,8 @@ var TowerMine = (function () {
       if (d.stormNext) stormNext = d.stormNext;
       if (d.shockDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.shockDmg + '⚡', color: '#ffe94a', t0: t }); // [2026-11-06] 황소가 나와 있으면 초당 1% 감전도 여기
       if (d.storm) { stormT0 = performance.now(); flashT0 = stormT0; if (d.stunUntil) { stunUntil = d.stunUntil; zapStunUntil = d.stunUntil; } floats.push({ x: P.x, y: P.y - 0.7, text: '⚡ 감전! -' + (d.stormDmg || 0), color: '#ffe94a', big: true, t0: t }); }
+      if (d.gustNext) harpyGustAt = d.gustNext; // [2026-11-11] 하피 돌풍(다음 시각 -- 2초 전부터 화면 위에 경고)
+      if (d.gust) { flashT0 = performance.now(); if (d.knockX != null) setPos(d.knockX, d.knockY); floats.push({ x: P.x, y: P.y - 0.7, text: '🌪️ 돌풍! -' + (d.gustDmg || 0), color: '#bfeee0', big: true, t0: t }); msg('🌪️ 하피 여왕의 돌풍에 날려 갔어요!', 2400); }
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
@@ -3922,6 +3924,8 @@ var TowerMine = (function () {
     });
     // 화면 위 가운데 -- 남은 나무 / 하피 상태
     var tot = map.trees.length, txt = burnt >= tot ? '🔥 숲이 모두 타 버렸어요 -- 하피가 땅에 내려앉았어요!' : '🌳 남은 나무 ' + (tot - burnt) + ' / ' + tot + (harpySt && harpySt.hide ? '  ·  하피가 나무 뒤에 숨었어요' : harpySt && harpySt.move ? '  ·  하피가 날아오르고 있어요' : '');
+    var gl = harpyGustAt - nowSrv();
+    if (gl > 0 && gl < 2000) txt = '🌪️ 돌풍이 몰려와요!'; // [2026-11-11] 하피 돌풍 2초 전
     ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
     var tw = ctx.measureText(txt).width + 18;
     ctx.fillStyle = 'rgba(10,24,16,.72)'; ctx.fillRect(Math.round(W / 2 - tw / 2), 34, Math.round(tw), 22);
@@ -3929,7 +3933,7 @@ var TowerMine = (function () {
     ctx.textAlign = 'left';
   }
   function auraShow(d, fxp, fyp, t) {
-    if (d.treeFire != null) { msg('🔥 나무에 불이 붙었어요!', 2600); treeSt.forEach(function (q) { if (q[0] === d.treeFire) { q[1] = 1; q[2] = treeNeed; } }); } // [2026-11-08] 하피의 둥지
+    if (d.treeFire != null) { msg(d.treeCombo ? '🔥⚡ 불과 번개에 나무가 무너져요!' : '🔥 나무가 무너지기 시작했어요!', 2600); treeSt.forEach(function (q) { if (q[0] === d.treeFire) { q[1] = 1; q[2] = treeNeed; } }); } // [2026-11-08] 하피의 둥지
     (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
     var anyKill = false;
     (d.auraMobs || []).forEach(function (am, j) {

@@ -816,6 +816,7 @@ public class Season5ViewController {
             if (dg instanceof Number && my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineBossItemGrade(((Number) dg).intValue()))
                 got.append(got.length() > 0 ? ", " : "").append(((java.util.Map<String, Object>) d).get("name"));
         }
+        if ("하피의 검".equals(o.get("dropName")) && o.get("dropGrade") instanceof Number) got.append(got.length() > 0 ? ", " : "").append(my.prac.core.prjbot.service.impl.S55MineServiceImpl.MINE_GRADE_KO[((Number) o.get("dropGrade")).intValue()]).append(" 하피의 검"); // [2026-11-11] 하피 여왕 전용 무기
         Object bn = o.get("bossName");
         my.prac.core.util.S55AdminPush.notify("👑 보스 처치", userName + " -- " + (bn == null ? "보스" : bn) + " 처치" + how + " · " + (got.length() > 0 ? "🎁 전용 아이템: " + got : "전용 아이템 없음"));
     }

@@ -270,7 +270,23 @@ public final class S5MineMobs {
         new Type("파라오 미라 허수아비", 1, "human", "#c8a050").asSim("파라오 미라"),
         new Type("천둥 황소 허수아비", 1, "human", "#c8a050").asSim("천둥 황소"),
         // [2026-11-08] 하피의 둥지 보스 -- 바람 속성, 체력은 천둥 황소의 2배(26단계 x3.0), 나무 사이를 옮겨 다니고(asStay -- 쫓아오지 않음, 자리는 서버 mineHarpyNow), 옮기는 중에 원거리
-        new Type("하피 여왕", 26, "human", "#5ab89a").asBoss().strong(3.0, 1.1).showLv(110).asRanged().asStay().el(5) // 5 = EL_WIND
+        new Type("하피 여왕", 26, "human", "#5ab89a").asBoss().strong(3.0, 1.1).showLv(110).asRanged().asStay().el(5), // 5 = EL_WIND
+        // [2026-11-11] 마물의 숲 미궁(두고개식) -- "방마다 다른 몬스터": 방 하나에 한 종류(24단계 Lv.93), 방 네 귀퉁이에 한 마리씩(spawnForestRoom). 목록 맨 끝(앞 번호가 안 바뀌게).
+        new Type("숲 늑대", 24, "quad", "#5a6a5a", S5MineMap.FOREST),
+        new Type("독버섯 정령", 24, "blob", "#b84ad8", S5MineMap.FOREST + "1"),
+        new Type("가시덩굴 괴물", 24, "blob", "#3a7a2a", S5MineMap.FOREST + "2"),
+        new Type("숲 트롤", 24, "human", "#6a8a4a", S5MineMap.FOREST + "3"),
+        new Type("고목 정령", 24, "human", "#7a5a3a", S5MineMap.FOREST + "4"),
+        new Type("마물 사슴", 24, "quad", "#9a6a3a", S5MineMap.FOREST + "5"),
+        new Type("올빼미 마수", 24, "flyer", "#8a7a5a", S5MineMap.FOREST + "6"),
+        new Type("독나방", 24, "flyer", "#c8c84a", S5MineMap.FOREST + "7"),
+        new Type("숲 거미", 24, "crab", "#3a3a2a", S5MineMap.FOREST + "8"),
+        new Type("숲 도깨비", 24, "human", "#4a6aa8", S5MineMap.FOREST + "9"),
+        new Type("이끼 골렘", 24, "human", "#5a7a5a", S5MineMap.FOREST + "10"),
+        new Type("덩굴 뱀", 24, "snake", "#4a8a3a", S5MineMap.FOREST + "11"),
+        new Type("멧돼지 마수", 24, "quad", "#5a3a2a", S5MineMap.FOREST + "12"),
+        new Type("까마귀 마수", 24, "flyer", "#2a2a3a", S5MineMap.FOREST + "13"),
+        new Type("숲 요정", 24, "small", "#8ae8a0", S5MineMap.FOREST + "14")
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
@@ -465,7 +481,26 @@ public final class S5MineMobs {
         return S5MineMap.walkable(c) && c != 'V' && c != 'P' && c != 'H';
     }
 
+    /** [2026-11-11] 미궁 방(10x10) -- 그 방 몬스터 한 종류를 네 귀퉁이에 한 마리씩(집 칸 + 둘레 한 칸). */
+    static List<S5MineMap.Mob> spawnForestRoom(S5MineMap m, long seed) {
+        List<S5MineMap.Mob> out = new ArrayList<>();
+        int type = -1;
+        for (int i = 0; i < TYPES.size() && type < 0; i++) for (String mm : TYPES.get(i).maps) if (mm.equals(m.id)) { type = i; break; }
+        if (type < 0) return out;
+        char[][] t = m.terrainGrid();
+        for (int[] q : new int[][] { { 2, 2 }, { m.w - 3, 2 }, { 2, m.h - 3 }, { m.w - 3, m.h - 3 } }) {
+            List<Integer> cells = new ArrayList<>();
+            cells.add(q[1] * m.w + q[0]);
+            for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) { int nx = q[0] + dv[0], ny = q[1] + dv[1]; if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx); }
+            int[] ca = new int[cells.size()];
+            for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
+            out.add(new S5MineMap.Mob(out.size(), type, q[0], q[1], ca, rankOf(seed, out.size(), TYPES.get(type))));
+        }
+        return out;
+    }
+
     static List<S5MineMap.Mob> spawn(S5MineMap m, long seed) {
+        if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();
         Random r = new Random(seed);
