@@ -459,6 +459,7 @@ public final class S5MineMap {
     public int sun() { return sun; }
     public boolean boat() { return boat; }
     public boolean noMap() { return noMap; }
+    public int mazeLeft() { return mazeLeft; } // [2026-11-11] 미궁 방 -- 미로의 끝방까지 가장 적은 걸음(통로 수), 미궁 밖은 -1
     public boolean veinMine() { return veinMine; }
 
     public boolean safeAt(int x, int y) {
@@ -589,6 +590,7 @@ public final class S5MineMap {
     private int cold;                                  // [2026-10-26] 한기 단계(초당 최대 체력 %), 0 = 없음
     private int sun;                                   // [2026-10-28] 다도해 낮 햇빛 피해(초당 최대 체력 %), 0 = 없음
     private boolean boat;                              // [2026-10-28] 다도해 뱃길 -- 배를 타고 물 위로 다닌다(물 칸이 길)
+    private int mazeLeft = -1;
     private boolean noMap;                             // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(화면이 미니맵을 가린다)
     private boolean veinMine;                          // [2026-10-28] 설산 동굴 -- 땅은 못 파고 얼음 광맥(I)을 앞에서 연속 채광
     private List<int[]> chestSpots = Collections.emptyList(); // [2026-10-28] 개미굴 보물 상자 자리 {x, y, 담긴 양 0~1000}(buildWorld가 NPC로 세운다)
@@ -679,7 +681,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 11; // [2026-11-11] 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 12; // [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1093,6 +1095,7 @@ public final class S5MineMap {
         n.sun = m.sun;
         n.boat = m.boat;
         n.noMap = m.noMap;
+        n.mazeLeft = m.mazeLeft;
         n.veinMine = m.veinMine;
         n.chestSpots = m.chestSpots;
         n.queenSpots = m.queenSpots;
@@ -2426,6 +2429,15 @@ public final class S5MineMap {
         ep.add(new Portal(c, 0, 'G', HARPY_NEST, HARPY_NEST_W / 2, HARPY_NEST_H - 3, "짙은 바람이 불어오는 숲길"));
         ep.add(new Portal(c, L, 'G', FOREST, c, L - 1, "남쪽 숲길"));
         out.add(forestRoom(FOREST_END, "미로의 끝방", ep, true));
+        // [2026-11-11] "힌트로 미궁의 끝까지 몇 걸음" -- 끝방에서 거꾸로(들어오는 통로를 따라) 센 가장 적은 통로 수
+        java.util.Map<String, Integer> dist = new java.util.HashMap<>();
+        java.util.ArrayDeque<String> q = new java.util.ArrayDeque<>();
+        dist.put(FOREST_END, 0); q.add(FOREST_END);
+        while (!q.isEmpty()) {
+            String cur = q.poll();
+            for (S5MineMap fm : out) if (!dist.containsKey(fm.id)) for (Portal p : fm.portals) if (cur.equals(p.target)) { dist.put(fm.id, dist.get(cur) + 1); q.add(fm.id); break; }
+        }
+        for (S5MineMap fm : out) if (isForestRoom(fm.id)) fm.mazeLeft = dist.getOrDefault(fm.id, -1);
         out.add(generateHarpyNest());
         out.add(generateHarpyFerry());
         return out;

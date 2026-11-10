@@ -1196,6 +1196,7 @@ var TowerMine = (function () {
   //  가로세로 1.8배 넘게 긴 맵은 플레이어 주변 정사각 창만 보여 주고(따라 움직임), 그 밖의 정사각이 아닌 맵은 늘리지 않고 비율 그대로(CSS object-fit).
   function miniView() {
     var w = map.w, h = map.h;
+    if (Math.max(w, h) < 40) return { x0: -Math.floor((40 - w) / 2), y0: -Math.floor((40 - h) / 2), w: 40, h: 40 }; // [2026-11-11] 미궁 방(10x10)처럼 작은 맵은 확대하지 않고 가운데에 작게
     // [2026-10-28] "늘어져 보이는 걸 방지, 좌우로 기니 상하 레터박스, 전체를 볼 수 있어야" -- 긴 맵도 통째로, 정사각 캔버스 가운데에 두고 위아래(좌우) 빈 띠
     if (w > h * 1.8) return { x0: 0, y0: -Math.floor((w - h) / 2), w: w, h: w };
     if (h > w * 1.8) return { x0: -Math.floor((h - w) / 2), y0: 0, w: h, h: h };
@@ -2795,6 +2796,9 @@ var TowerMine = (function () {
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
+        var hmb = map.mobs && map.mobs[h.mobId], hwind = !!(hmb && (map.mobTypes[hmb.k] || {}).name === '하피 여왕'); // [2026-11-11] 하피 공격은 바람 속성
+        if (hwind && h.ranged) { var bw0 = boltFrom(h); bolts.push({ fx: bw0.fx, fy: bw0.fy, me: true, t0: t, wind: true }); floats.push({ x: P.x, y: P.y - 0.3, text: '🌪️🪶 -' + h.dmg, color: '#7ae8c8', big: true, t0: t + BOLT_MS }); return; }
+        if (hwind) { floats.push({ x: P.x, y: P.y - 0.3, text: '🌪️ -' + h.dmg, color: '#7ae8c8', big: true, t0: t + k * 160 }); return; }
         if (h.poison) { floats.push({ x: P.x + 0.3, y: P.y - 0.1, text: '-' + h.dmg + '☠️', color: '#9ad84a', t0: t + k * 120 }); return; } // [2026-10-28] 여왕개미 독
         if (h.venom) { // [2026-10-28] 여왕개미 독산 -- 초록 덩이, 맞으면 느려지고 중독
           var bv = boltFrom(h); bolts.push({ fx: bv.fx, fy: bv.fy, me: true, t0: t, venom: true });
@@ -4834,6 +4838,14 @@ var TowerMine = (function () {
     nameTag(myNick(), cx + TS / 2, cy - 4 * scale, '#ffe14d'); // [2026-11-05] 내 닉네임(노란색)
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사
     if (map.trees) { try { forestTreesDraw(now, TS, camX, camY, W, H); } catch (e) { } } // [2026-11-08] 하피의 둥지 대형 나무
+    if (map.mazeLeft != null) { // [2026-11-11] 미궁 힌트 -- "미궁의 끝까지 몇 걸음"(통로를 지날 때마다 1걸음)
+      var mz = '🌲 미궁의 끝까지 ' + map.mazeLeft + '걸음';
+      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+      var mzw = ctx.measureText(mz).width + 18;
+      ctx.fillStyle = 'rgba(10,24,16,.72)'; ctx.fillRect(Math.round(W / 2 - mzw / 2), 34, Math.round(mzw), 22);
+      ctx.fillStyle = '#c8f0d8'; ctx.fillText(mz, W / 2, 50);
+      ctx.textAlign = 'left';
+    }
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
     if (sv < 2) { // 2단계 이상이면 어둠 없음(전체가 보임)
@@ -4978,7 +4990,7 @@ var TowerMine = (function () {
     bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
       var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
-      var c0 = b.spear ? '#fff6a0' : b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.spear ? '#4ad8ff' : b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-05] 전기창 // [2026-11-04] 붕대
+      var c0 = b.wind ? '#f0fff8' : b.spear ? '#fff6a0' : b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.wind ? '#3ac8a0' : b.spear ? '#4ad8ff' : b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-11] 하피 깃털(바람) // [2026-11-05] 전기창 // [2026-11-04] 붕대
       if (k < 1) {
         for (var tr = 3; tr >= 0; tr--) {
           var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 0.5;

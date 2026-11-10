@@ -710,6 +710,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!map.trees().isEmpty()) out.put("trees", map.trees()); // [2026-11-08] 하피의 둥지 대형 나무(왼위 x, y -- 3x2칸)
         out.put("thunder", S5MineMap.WESTROAD.equals(map.id)); // [2026-11-05] 마물의 숲 입구 -- 화면이 1초마다 환경 턴(천둥 황소 장판/전체 감전)
         out.put("vein", map.veinMine()); // [2026-10-28] 설산 동굴 -- 앞의 얼음 광맥을 연속 채광
+        if (map.mazeLeft() >= 0) out.put("mazeLeft", map.mazeLeft()); // [2026-11-11] 미궁 힌트 -- 끝방까지 몇 걸음
         out.put("noMap", map.noMap()); // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳 // [2026-10-28] 캘 칸이 없는 맵 -- 화면이 캐기 버튼(옆에 몬스터가 있을 때만 공격 버튼)과 자동채광을 숨긴다
         if (map.outdoor()) { // [2026-11-05] "모든 필드에 밤과 낮" -- 바깥 맵은 화면이 같은 시각으로 밤을 어둡게
             out.put("outdoor", true);
