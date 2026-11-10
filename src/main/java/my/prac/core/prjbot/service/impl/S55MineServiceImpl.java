@@ -4422,6 +4422,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("id", om.id);
             m.put("hits", hs);
             m.put("row", row);
+            m.put("cell", hitCell); // [2026-11-10] 맞은 칸(쓰러진 몬스터는 row의 자리가 비어 있다 -- 일섬참 붙기)
             if (dead) {
                 m.put("killed", true);
                 kills++;
@@ -4854,7 +4855,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             Object mid = m0 instanceof Map ? ((Map<?, ?>) m0).get("id") : null;
             if (rw != null && mid instanceof Integer) {
                 S5MineMobs.Type tt = S5MineMobs.TYPES.get(map.mobs().get((Integer) mid).type);
-                int tx = (int) rw[3], ty = (int) rw[4], fw = tt.boss ? 2 : 1, best = 1 << 30;
+                Object hc = ((Map<?, ?>) m0).get("cell"); // [2026-11-10] "일반 몬스터에 일섬참 쓰면 0,0으로 이동" -- 한 방에 쓰러진 몬스터는 row 자리(fx, fy)가 0,0일 수 있어 맞은 칸으로
+                int tx = hc instanceof Integer ? (Integer) hc % map.w : (int) rw[3], ty = hc instanceof Integer ? (Integer) hc / map.w : (int) rw[4], fw = tt.boss ? 2 : 1, best = 1 << 30;
                 for (int yy = ty - 1; yy <= ty + fw; yy++) for (int xx = tx - 1; xx <= tx + fw; xx++) {
                     if (xx >= tx && xx < tx + fw && yy >= ty && yy < ty + fw) continue; // 몬스터 칸
                     if (!mineWalk(map, xx, yy, water)) continue;
