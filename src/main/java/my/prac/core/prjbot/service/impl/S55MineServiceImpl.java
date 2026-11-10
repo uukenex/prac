@@ -1159,6 +1159,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_LAVA_KEY = "MINE_LAVA_KILLED";
     // [2026-11-04] 피라미드 지하 파라오 미라 -- 보스 공통(2시간 뒤 다시). 붕대 감기 = 원거리 공격에 맞으면 MINE_STUN_MS 동안 못 움직이고 못 때린다(화면 + 공격/캐기 서버도 막음).
     static final String MINE_PHARAOH_KEY = "MINE_PHARAOH_KILLED";
+    static final boolean MINE_FOREST_OPEN = true; // [2026-11-11] "일반 유저에게 오픈" -- 마물의 숲 미궁/끝방/하피의 둥지/나루터(false면 관리자만)
     static final String MINE_HARPY_KEY = "MINE_HARPY_KILLED"; // [2026-11-08] 하피 -- 쓰러지고 2시간 뒤 다시
     static final long MINE_STUN_MS = 2_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_STUN = new java.util.concurrent.ConcurrentHashMap<>();
@@ -3183,7 +3184,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         // [2026-10-24] 초원/왕도는 관리자만이었다가 [2026-10-27] "왕도 일반 플레이어들에게 오픈" -- 막지 않는다.
-        String block = S5MineMap.isForestZone(target.id) && !isMineAdmin(userName) /* [2026-11-11] 미궁 방/끝방/둥지/나루터 */ ? "🌿 가시덩굴이 얽혀 아직 들어갈 수 없어요. (준비 중)" // [2026-11-08] 마물의 숲 미궁 -- 지금은 관리자만
+        String block = S5MineMap.isForestZone(target.id) && !MINE_FOREST_OPEN && !isMineAdmin(userName) /* [2026-11-11] 미궁 방/끝방/둥지/나루터 -- 같은 날 일반 유저에게 엶(MINE_FOREST_OPEN) */ ? "🌿 가시덩굴이 얽혀 아직 들어갈 수 없어요. (준비 중)" // [2026-11-08] 마물의 숲 미궁 -- 지금은 관리자만
                 : S5MineMap.isArchi(target.id) && !mineArchiMapOpen(userName, target.id) // [2026-10-28] 다도해 -- 본섬만 모두에게, 나머지는 운영자만
                 ? (S5MineMap.isShrineFloor(target.id) || S5MineMap.SHRINE_BOSS.equals(target.id) ? "🔒 신궁은 아직 준비 중이에요. 곧 열려요!" : "🌊 아직 열리지 않은 바다예요.") : mineMapBlock(target, items, mineLv(row));
         if (block != null) {
