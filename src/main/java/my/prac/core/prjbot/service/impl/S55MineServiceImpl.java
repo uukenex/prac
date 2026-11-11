@@ -707,6 +707,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ice", S5MineMap.PEAK.equals(map.id)); // [2026-10-28] 설산 봉우리 -- 얼음 여왕 빙결(환경 턴), 얼음땡
         out.put("hot", mineHotMap(map)); // [2026-10-28] 더운 곳(방한 장비를 끼면 더위 피해) -- 화면이 1초마다 환경 턴
         out.put("noDig", !map.hasOre() && !map.veinMine());
+        if (map.hasOre()) out.put("noOre", map.noOreRuns()); // [2026-11-11] 못 캐는 칸 -- 자동채광이 건너뛴다
         if (!map.trees().isEmpty()) out.put("trees", map.trees()); // [2026-11-08] 하피의 둥지 대형 나무(왼위 x, y -- 3x2칸)
         out.put("thunder", S5MineMap.WESTROAD.equals(map.id)); // [2026-11-05] 마물의 숲 입구 -- 화면이 1초마다 환경 턴(천둥 황소 장판/전체 감전)
         out.put("vein", map.veinMine()); // [2026-10-28] 설산 동굴 -- 앞의 얼음 광맥을 연속 채광
@@ -817,12 +818,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
     static final double MINE_RB_HP_BONUS = 0.5;
     static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
-    // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -- 79레벨까지는 그대로(레벨마다 9%), 80레벨부터 직선 두 구간:
-    //  80레벨 45,000 -> 90레벨 80,000(레벨마다 +3,500) -> 99레벨 120,000(레벨마다 약 +4,444). 예전 9% 곡선은 80 36,204 / 90 85,707 / 99 186,147.
-    static final double MINE_HP_LV80 = 45_000, MINE_HP_LV90 = 80_000, MINE_HP_LV99 = 120_000;
+    // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -> 같은 날 "99레벨은 16만, 그 아래는 그에 맞게 더 올리고, 80레벨부터 1만 정도씩"
+    //  -- 80레벨 50,000 -> 99레벨 160,000 직선(레벨마다 약 +5,789 -- 99레벨 16만에서 1만씩이면 80레벨이 음수라 가능한 만큼 크게).
+    //  79 -> 80에서 갑자기 뛰지 않게 71~79레벨은 70레벨 값(15,293)에서 80레벨 값까지 같은 배율(레벨마다 약 x1.126)로 잇는다. 70레벨까지는 그대로(레벨마다 9%).
+    //  예전 9% 곡선: 80 36,204 / 90 85,707 / 99 186,147.
+    static final double MINE_HP_LV80 = 50_000, MINE_HP_LV99 = 160_000;
     static double mineHpBase(int lv) {
-        if (lv < 80) return 40 * Math.pow(1.09, lv - 1);
-        return lv <= 90 ? MINE_HP_LV80 + (MINE_HP_LV90 - MINE_HP_LV80) * (lv - 80) / 10.0 : MINE_HP_LV90 + (MINE_HP_LV99 - MINE_HP_LV90) * (lv - 90) / 9.0;
+        if (lv <= 70) return 40 * Math.pow(1.09, lv - 1);
+        if (lv < 80) { double h70 = 40 * Math.pow(1.09, 69); return h70 * Math.pow(MINE_HP_LV80 / h70, (lv - 70) / 10.0); }
+        return MINE_HP_LV80 + (MINE_HP_LV99 - MINE_HP_LV80) * (lv - 80) / 19.0;
     }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }

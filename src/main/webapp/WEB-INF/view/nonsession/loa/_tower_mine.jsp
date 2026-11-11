@@ -1154,9 +1154,15 @@ var TowerMine = (function () {
     if (!opened || !map) return;
     setAuto(!auto, !auto ? '🤖 자동채광 시작! 캐릭터가 알아서 주변을 돌며 캐요. (방향키로 잠깐 조작 가능)' : '🤖 자동채광을 껐어요.');
   }
+  /** [2026-11-11] "땅파기 불가능한 곳은 그냥 지나치게" -- 서버가 알려 준 광석 없는 칸(map.noOre: {y, x, 길이} 구간)을 맵마다 한 번 표로. */
+  function noOreCell(x, y) {
+    if (!map || !map.noOre) return false;
+    if (!map._noOre) { var s = map._noOre = {}; map.noOre.forEach(function (r) { for (var i = 0; i < r[2]; i++) s[(r[1] + i) + ',' + r[0]] = 1; }); }
+    return !!map._noOre[x + ',' + y];
+  }
   function minable(x, y) {
     var c = cellAt(x, y), k = x + ',' + y;
-    return 'VTYPH~'.indexOf(c) < 0 && WALK.indexOf(c) >= 0 && !dug[k] && !noOre[k];
+    return 'VTYPHe~'.indexOf(c) < 0 && WALK.indexOf(c) >= 0 && !dug[k] && !noOre[k] && !noOreCell(x, y);
   }
   /** 가장 가까운 캘 칸으로 가는 첫 걸음 방향(넓이 우선 탐색, 30칸 안). 없으면 null. */
   function autoStep() {
@@ -5532,6 +5538,7 @@ var TowerMine = (function () {
     if (c === 'V') { msg('마을에서는 캘 수 없어요. 마을 밖으로 나가 보세요.'); return; }
     if (c === 'T') { msg('나무 밑은 캘 수 없어요. 옆 칸에서 캐 보세요.'); return; }
     if (dug[x + ',' + y]) { msg('이미 캔 자리예요. 다른 곳을 찾아보세요.'); return; }
+    if (noOreCell(x, y) || c === 'e') { msg('여기서는 캘 수 없어요.'); return; } // [2026-11-11] 서버에 묻지 않고 바로(곡괭이질 시간 낭비 없이)
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now(); P.swing = false; // 곡괭이

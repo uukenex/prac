@@ -684,7 +684,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 12; // [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 13; // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -700,6 +700,26 @@ public final class S5MineMap {
             if (GUIDE_MAPS.contains(id)) hsh = 31 * hsh + GUIDE_MAPS.hashCode(); // [2026-11-05] 이동 안내원 목적지가 늘면 안내원 있는 맵도 다시 받게(베이스캠프 추가 때 설산 마을 화면이 옛 목록을 들고 있었음)
             hsh = 31 * hsh + PAYLOAD_REV; // [2026-10-28] 맵 정보에 새 항목이 생기면 올린다(화면이 저장해 둔 옛 맵 정보를 다시 받게)
             v = version = id + "-" + w + "x" + h + "-" + Integer.toHexString(hsh);
+        }
+        return v;
+    }
+
+    private volatile List<int[]> noOreRuns;
+    /** [2026-11-11] "땅파기 불가능한 곳은 그냥 지나치게" -- 지나갈 수 있는데 광석이 없는 칸(마을/입구 둘레/NPC 둘레 등, 화면이 지형만으로 모르는 칸)을
+     *  줄마다 이어진 구간 {y, x, 길이}로. 화면 자동채광/캐기가 이 칸은 고르지 않는다. 화면이 지형으로 아는 칸(V T Y P H e)은 뺀다. */
+    public List<int[]> noOreRuns() {
+        List<int[]> v = noOreRuns;
+        if (v == null) {
+            v = new ArrayList<>();
+            for (int y = 0; y < h; y++) {
+                int x0 = -1;
+                for (int x = 0; x <= w; x++) {
+                    boolean nd = x < w && ore[y][x] == 0 && walkable(terrain[y][x]) && "VTYPHe".indexOf(terrain[y][x]) < 0;
+                    if (nd && x0 < 0) x0 = x;
+                    if (!nd && x0 >= 0) { v.add(new int[] { y, x0, x - x0 }); x0 = -1; }
+                }
+            }
+            noOreRuns = v;
         }
         return v;
     }
