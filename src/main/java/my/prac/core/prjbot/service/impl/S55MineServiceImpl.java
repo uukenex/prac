@@ -1669,7 +1669,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
-                        MINE_RANGED_NEXT.put(userName, now + (harpyMoving ? (mineHarpyNow(map, now)[2] == 1 ? MINE_HARPY_HIDE_SHOT_MS : MINE_HARPY_SHOT_MS) : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
+                        boolean pharaoh = map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE;
+                        // [2026-11-11] "하피나 미라가 공격 안 한다 -- 둘 다 원거리 공격을 해야" -- 예전엔 6~10초에 한 번(인식 3초 뒤 첫 발)이라 떨어져 싸우면 거의 안 때리는 것처럼 보였다.
+                        //  하피 = 2.5초마다(옮기는 중 1.5초), 파라오 미라 = 3초마다 어둠 화살(붕대 스턴은 MINE_PHARAOH_STUN_GAP_MS에 한 번).
+                        MINE_RANGED_NEXT.put(userName, now + (harpyBoss ? (harpyMoving && mineHarpyNow(map, now)[2] != 1 ? MINE_HARPY_SHOT_MS : MINE_HARPY_HIDE_SHOT_MS)
+                                : pharaoh ? MINE_PHARAOH_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
                         dmgSum += d;
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
@@ -1688,7 +1692,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                             h.put("venom", true);
                             out.put("slowUntil", db.slowUntil);
                             out.put("poisonUntil", db.poisonUntil);
-                        } else if (map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) { // [2026-11-04] 붕대 감기 -- 스턴
+                        } else if (pharaoh && now - MINE_PHARAOH_STUN_AT.getOrDefault(userName, 0L) < MINE_PHARAOH_STUN_GAP_MS) { // [2026-11-11] 붕대 사이엔 어둠 화살(스턴 없음)
+                            h.put("dark", true);
+                        } else if (pharaoh) { // [2026-11-04] 붕대 감기 -- 스턴
+                            MINE_PHARAOH_STUN_AT.put(userName, now);
                             MINE_STUN.put(userName, now + MINE_STUN_MS);
                             h.put("stun", true);
                             out.put("stunUntil", now + MINE_STUN_MS);
@@ -4529,7 +4536,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_TREE_CHOP_NEED = 10; // [2026-11-11] "곡괭이로 채광할 수도 -- 10회 정도면 쓰러져 밑동만" -- 여럿이 함께 찍은 횟수
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CHOP_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_TREE_BURN_MS = 8_000L, MINE_TREE_REGROW_MS = 2 * 3_600_000L, MINE_HARPY_PERCH_MS = 6_000L, MINE_HARPY_MOVE_MS = 4_000L, MINE_HARPY_SHOT_MS = 1_500L;
-    static final long MINE_HARPY_HIDE_SHOT_MS = 2_500L; // [2026-11-11] "하피가 나무에 숨어서도 공격" -- 숨어 있는 동안(6초)에도 깃털 2.5초마다(예전엔 6~10초라 거의 못 쏨)
+    static final long MINE_PHARAOH_SHOT_MS = 3_000L, MINE_PHARAOH_STUN_GAP_MS = 9_000L; // [2026-11-11] 파라오 미라 원거리 3초마다, 붕대(스턴)는 9초에 한 번
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_PHARAOH_STUN_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_HARPY_HIDE_SHOT_MS = 2_500L; // 체력 절반 전(둥지 가운데)에도 같은 간격 // [2026-11-11] "하피가 나무에 숨어서도 공격" -- 숨어 있는 동안(6초)에도 깃털 2.5초마다(예전엔 6~10초라 거의 못 쏨)
     static final int MINE_HARPY_SHOT_RANGE = 18; // 숨은 나무가 멀어도 닿게(다른 보스 12칸)
     static final java.util.concurrent.ConcurrentHashMap<Integer, long[]> MINE_TREES = new java.util.concurrent.ConcurrentHashMap<>(); // 나무 번호 -> {불 쌓인 양, 불붙은 시각}
     static final Object MINE_HARPY_LOCK = new Object();

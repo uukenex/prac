@@ -2822,6 +2822,11 @@ var TowerMine = (function () {
           floats.push({ x: P.x, y: P.y - 0.3, text: '🧪 -' + h.dmg + ' 느려짐·중독', color: '#9ad84a', big: true, t0: t + BOLT_MS });
           return;
         }
+        if (h.ranged && h.dark) { // [2026-11-11] 파라오 미라 어둠 화살(붕대 사이)
+          var bdk = boltFrom(h); bolts.push({ fx: bdk.fx, fy: bdk.fy, me: true, t0: t, dark: true });
+          floats.push({ x: P.x, y: P.y - 0.3, text: '🌑 -' + h.dmg, color: '#c8a8ff', big: true, t0: t + BOLT_MS });
+          return;
+        }
         if (h.ranged && h.stun) { // [2026-11-04] 파라오 미라 붕대 감기 -- 붕대가 날아와 감기고 잠깐 못 움직인다
           var bb = boltFrom(h); bolts.push({ fx: bb.fx, fy: bb.fy, me: true, t0: t, bandage: true });
           floats.push({ x: P.x, y: P.y - 0.3, text: '🩹 붕대! -' + h.dmg, color: '#f0e6cc', big: true, t0: t + BOLT_MS });
@@ -5055,7 +5060,7 @@ var TowerMine = (function () {
     bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
       var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
-      var c0 = b.wind ? '#f0fff8' : b.spear ? '#fff6a0' : b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.wind ? '#3ac8a0' : b.spear ? '#4ad8ff' : b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-11] 하피 깃털(바람) // [2026-11-05] 전기창 // [2026-11-04] 붕대
+      var c0 = b.dark ? '#e0ccff' : b.wind ? '#f0fff8' : b.spear ? '#fff6a0' : b.bandage ? '#f4ead0' : b.venom ? '#d8ff8a' : '#ffe08a', c1 = b.dark ? '#5a2a9a' : b.wind ? '#3ac8a0' : b.spear ? '#4ad8ff' : b.bandage ? '#b8a478' : b.venom ? '#6ab82a' : '#ff7a1a'; // [2026-11-11] 파라오 어둠 화살 // [2026-11-11] 하피 깃털(바람) // [2026-11-05] 전기창 // [2026-11-04] 붕대
       if (k < 1) {
         for (var tr = 3; tr >= 0; tr--) {
           var kk = Math.max(0, k - tr * 0.06), bx = (b.fx + (tx - b.fx) * kk) * TS - camX + TS / 2, by = (b.fy + (ty - b.fy) * kk) * TS - camY + TS / 2 - Math.sin(kk * Math.PI) * TS * 0.5;
