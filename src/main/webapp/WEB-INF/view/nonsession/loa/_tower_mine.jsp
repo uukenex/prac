@@ -3944,7 +3944,7 @@ var TowerMine = (function () {
     });
   }
   // [2026-11-11] "미궁의 끝까지 몇 걸음이 안 나온다" -- 밤/어두운 맵 덧칠보다 먼저 그려서 가려졌다. 덧칠 뒤(ultHud 옆)에 그린다. 둥지(남은 나무/돌풍)도 같이.
-  function forestHud(W) {
+  function forestHud(W, H) {
     if (map.trees) {
       var burnt = 0; map.trees.forEach(function (tp, i) { if (((treeSt[i] || [i, 0, 0])[1] | 0) === 2) burnt++; });
       var tot = map.trees.length, txt = burnt >= tot ? '🔥 숲이 모두 타 버렸어요 -- 하피가 땅에 내려앉았어요!' : '🌳 남은 나무 ' + (tot - burnt) + ' / ' + tot + (harpySt && harpySt.hide ? '  ·  하피가 나무 뒤에 숨었어요' : harpySt && harpySt.move ? '  ·  하피가 날아오르고 있어요' : '');
@@ -3956,12 +3956,13 @@ var TowerMine = (function () {
       ctx.fillStyle = burnt >= tot ? '#ffb03a' : '#c8f0d8'; ctx.fillText(txt, W / 2, 50);
       ctx.textAlign = 'left';
     }
-    if (map.mazeLeft != null) { // [2026-11-11] 미궁 힌트 -- "미궁의 끝까지 몇 걸음"(통로를 지날 때마다 1걸음)
+    if (map.mazeLeft != null) { // [2026-11-11] 미궁 힌트 -- "미궁의 끝까지 몇 걸음"(통로를 지날 때마다 1걸음). "너무 안 보인다" -- 천둥 황소 타이머처럼 체력 바 위, 크게
       var mz = '🌲 미궁의 끝까지 ' + map.mazeLeft + '걸음';
-      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-      var mzw = ctx.measureText(mz).width + 18;
-      ctx.fillStyle = 'rgba(10,24,16,.72)'; ctx.fillRect(Math.round(W / 2 - mzw / 2), 34, Math.round(mzw), 22);
-      ctx.fillStyle = '#c8f0d8'; ctx.fillText(mz, W / 2, 50);
+      ctx.font = 'bold ' + Math.round(18 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+      var mzw = ctx.measureText(mz).width + 28 * dpr, mzy = Math.round(H - 118 * dpr);
+      ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2414'; ctx.fillRect(W / 2 - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#7cf08a'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(W / 2 - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
+      ctx.fillStyle = '#c8ffd0'; ctx.fillText(mz, W / 2, mzy);
       ctx.textAlign = 'left';
     }
   }
@@ -5072,7 +5073,7 @@ var TowerMine = (function () {
     });
     if (ultFx.length) ultFxDraw(now, TS, camX, camY, W, H);
     ultHud();
-    try { forestHud(W); } catch (e) { } // [2026-11-11] 미궁 걸음 / 둥지 남은 나무(밤 덧칠 뒤)
+    try { forestHud(W, H); } catch (e) { } // [2026-11-11] 미궁 걸음 / 둥지 남은 나무(밤 덧칠 뒤)
     // [2026-11-05] "보스 1시간 카운트는 맵 안 모두에게" -- 천둥 황소가 나와 있는 동안 화면 위 가운데에 남은 시간
     // [2026-11-06] "보스 카운트가 절반을 넘으면 맵에 전기가 점점" -- 절반(0) ~ 다 참(1)에 따라 푸른 깜빡임과 하늘에서 떨어지는 번개가 잦아지고, 황소가 나오면 가장 세게
     if (map.id === 'westroad') {
