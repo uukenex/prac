@@ -53,6 +53,7 @@ var TowerMine = (function () {
   ORE_NAME[70] = '은하수 조각'; ORE_COL[70] = ['#1a1e4a', '#c8d8ff']; RARE_GEM[70] = 1; // [2026-11-06] 달빛석 + 칠요석
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
+  ORE_NAME[71] = '바람의 심장'; ORE_COL[71] = ['#3ac8a0', '#f0fff8']; RARE_GEM[71] = 1; // [2026-11-11] 하피 여왕
   ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { ORE_NAME[40 + i] = n; ORE_COL[40 + i] = ORE_COL[1 + i]; });
@@ -1669,6 +1670,9 @@ var TowerMine = (function () {
     { id: 'cave4', name: '광산 동굴 4층', x: 52, y: 52, fill: '#1a1424', ink: '#e8d8ff' }, // [2026-10-28] 3층 보스가 지키는 문 너머
     { id: 'north', name: '북쪽 끝 설원', x: 262, y: 100, fill: '#eef3f8', ink: '#2a3440' },
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
+    { id: 'forestmaze', name: '마물의 숲 미궁 🌲', x: -42, y: -40, fill: '#2e5a2e', ink: '#e8ffe0', w: 76 }, // [2026-11-11] 두고개식 미궁(방 15개 + 끝방은 한 칸으로)
+    { id: 'harpynest', name: '하피의 둥지 🪶', x: -42, y: -110, fill: '#3a7a68', ink: '#f0fff8', w: 76 }, // [2026-11-11] 하피 여왕
+    { id: 'harpyferry', name: '마물의 숲 나루터', x: -150, y: -110, fill: '#3a6a8a', ink: '#f0f8ff', w: 76 }, // [2026-11-11] 둥지 뒤 강가
     { id: 'westroad', name: '마물의 숲 입구 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
     { id: 'pyramid', name: '피라미드 📦', x: -42, y: 242, fill: '#d8b060', ink: '#3b2a10', w: 76 }, // 개미굴을 빠져나오면
@@ -1701,9 +1705,9 @@ var TowerMine = (function () {
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
       links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['cave3', 'cave4'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
     { id: 'desert', name: '🏜️ 사막·왕도', vh: 410,
-      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['westroad', 44, 170], ['steppe', 160, 240], ['desert', 160, 310],
+      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['westroad', 44, 170], ['forestmaze', 44, 100], ['harpynest', 44, 30], ['harpyferry', -64, 30], ['steppe', 160, 240], ['desert', 160, 310],
         ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
-      links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'westroad'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
+      links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'westroad'], ['westroad', 'forestmaze'], ['forestmaze', 'harpynest'], ['harpynest', 'harpyferry'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
     { id: 'snow', name: '❄️ 설원·설산', vh: 420,
       nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 150], ['snowcave2', 272, 230], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
         ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
@@ -1765,7 +1769,7 @@ var TowerMine = (function () {
       }
       Object.keys(N).forEach(function (k) {
         var n = N[k], nw = n.w || W, flr = WORLD_FLOOR[n.id], nmT = flr ? n.name.replace(/\s*\d층/, '') : n.name;
-        var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]));
+        var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id))); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - nw / 2 + 2;
@@ -1808,7 +1812,19 @@ var TowerMine = (function () {
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
         + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
+    if (adminW && st.mazeGraph) svg += mazeGraphHtml(st.mazeGraph); // [2026-11-11] 관리자 -- 미궁 안 전체 지도
     return npcHead('🗺️ 전체 지도', false) + svg;
+  }
+  /** [2026-11-11] 관리자 미궁 지도 -- 방(몬스터)마다 동/서/북/남 통로가 가는 방, 끝방까지 걸음. 끝방 쪽으로 가는 통로는 ✔, 지금 있는 방은 📍. 걸음이 적은 방부터. */
+  function mazeGraphHtml(g) {
+    var by = {}; g.forEach(function (r) { by[r.id] = r; });
+    var nm = function (id) { return id === 'forestend' ? '🏁 미로의 끝방' : id === 'westroad' ? '🚪 마물의 숲 입구' : by[id] ? by[id].mob : id; };
+    var rows = g.slice().sort(function (a, b) { return (a.left < 0 ? 99 : a.left) - (b.left < 0 ? 99 : b.left); }).map(function (r) {
+      var cell = function (d, lb) { var tg = r[d], ok = tg === 'forestend' || (by[tg] && by[tg].left >= 0 && by[tg].left < r.left); return '<span style="margin-right:8px' + (ok ? ';color:#7cf08a;font-weight:800' : '') + '">' + lb + ' ' + escAttr(nm(tg)) + (ok ? ' ✔' : '') + '</span>'; };
+      return '<div class="mine-smith-row" style="display:block' + (map && map.id === r.id ? ';outline:2px solid #ffd23f' : '') + '"><b>' + (map && map.id === r.id ? '📍 ' : '') + escAttr(r.mob) + '</b> <small>(' + (r.id === 'forestmaze' ? '입구 방 · ' : '') + '끝까지 ' + r.left + '걸음)</small><br><small>'
+          + cell('e', '동→') + cell('w', '서→') + cell('n', '북→') + cell('s', '남→') + '</small></div>';
+    }).join('');
+    return '<div class="mine-smith-say" style="margin-top:8px">🌲 <b>마물의 숲 미궁 지도</b> (관리자만) -- ✔ = 끝방에 가까워지는 통로</div>' + rows;
   }
   var worldHere = null;
   // [2026-10-30] 접속 인원 -- 위치 알림으로 받는다(이름 없이 숫자만). 맵별 인원은 전체 지도를 가장 크게 확대했을 때만 보인다(.world-close)
@@ -2113,7 +2129,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65; }],
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71; }],
     ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }] // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
   ];
   function invEtcHtml() {

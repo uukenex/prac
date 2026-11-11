@@ -19,6 +19,7 @@ window.MineOre = (function () {
   [['#f4eee4', '#ffffff'], ['#ff7a8a', '#ffd0d8'], ['#9a5ad8', '#e0c8ff'], ['#8ad8d0', '#fff0f8'], ['#3a3a4a', '#b8b8d0']].forEach(function (c, i) { col[34 + i] = c; });
   name[39] = '사막의 심장'; col[39] = ['#e8a23a', '#fff0c0'];
   name[64] = '화산의 심장'; col[64] = ['#d8341a', '#ffd08a']; // [2026-10-30]
+  name[65] = '번개의 심장'; col[65] = ['#2a6ad8', '#ffe94a']; name[71] = '바람의 심장'; col[71] = ['#3ac8a0', '#f0fff8']; // [2026-11-11]
   name[60] = '닌자의 검 조각'; col[60] = ['#4a4f5c', '#d8dee8']; // [2026-10-29] 무기 조각 60~63
   name[61] = '비철도 조각'; col[61] = ['#6a5a4a', '#d8c8b0']; name[62] = '카타나 조각'; col[62] = ['#5a2a2a', '#f0c8c8']; name[63] = '백화검 조각'; col[63] = ['#c8c8d8', '#ffffff'];
   ['동괴', '철괴', '은괴', '금괴', '미스릴괴'].forEach(function (n, i) { name[40 + i] = n; col[40 + i] = col[1 + i]; });
@@ -32,7 +33,7 @@ window.MineOre = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64; }],
+    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71; }],
     ['🧩 조각', function (g) { return g >= 60 && g <= 63; }]
   ];
   var byNameMap = {};

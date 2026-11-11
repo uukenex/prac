@@ -41,6 +41,7 @@ window.MineChar = (function () {
     katana:  { bl: '#e8eef4', hi: '#ffffff', dk: '#9aa8b8', hg: '#1c1c22', hgd: '#d8b040', hd: '#b01c2c', hdd: '#141418', bw: 2, n: 15, curve: 1, tassel: '#e8303a', trail: '#dff0ff' },
     ninja:   { bl: '#5a6070', hi: '#d8e4f0', dk: '#2a2e38', hg: '#3a3f4a', hgd: '#1a1c22', hd: '#141418', hdd: '#3a4a7a', bw: 2, n: 14, bolt: 1, trail: '#a8dcff' },
     baekhwa: { bl: '#ffe060', hi: '#ffffff', dk: '#ff8a1a', hg: '#5a1a10', hgd: '#2a0a06', hd: '#2a1a14', hdd: '#7a2a10', bw: 3, n: 13, fire: 1, trail: '#ffb030' },
+    harpy:   { bl: '#7ae8c8', hi: '#f0fff8', dk: '#2a9a78', hg: '#e8fff4', hgd: '#5ab89a', hd: '#1e4a3a', hdd: '#3a7a5a', bw: 3, n: 15, wind: 1, trail: '#bfeee0' }, // [2026-11-11] 하피의 검 -- 비취색 날, 깃털 날개 코등이, 칼날을 감는 바람, 손잡이 깃털 장식
     parasol: { bl: '#ff8ab8', hi: '#ffd0e4', dk: '#e05a90', hg: '#8a5a2b', hgd: '#5a3a1a', hd: '#8a5a2b', hdd: '#5a3a1a', bw: 2, n: 11, trail: '#ffc8dc' }
   };
   function P(g, c, x, y) { if (c) { g.fillStyle = c; g.fillRect(x, y, 1, 1); } else g.clearRect(x, y, 1, 1); }
@@ -53,9 +54,11 @@ window.MineChar = (function () {
     var af = function (i, j, c) { P(FX || g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
     for (var i = -4; i <= 0; i++) for (var j = 0; j < 2; j++) at(i, j, (i + j) % 2 ? W.hd : W.hdd); // 손잡이 + 감은 끈
     at(-5, 0, W.hgd); at(-5, 1, W.hgd);
+    if (W.wind) { var wx0 = hx - dx * 5, wy0 = hy - dy * 5; for (var k0 = 1; k0 <= 4; k0++) P(g, k0 % 2 ? '#5ad8b0' : '#f0fff8', wx0 + (k0 > 2 ? 1 : 0), wy0 + k0); } // 손잡이 깃털 장식
     if (W.tassel) { var tx = hx - dx * 5, ty = hy - dy * 5; for (var k = 1; k <= 5; k++) P(g, k % 2 ? W.tassel : '#ff7a7a', tx + (k > 3 ? 1 : 0), ty + k); }
     if (W.curve) { for (var a = -1; a <= 2; a++) { at(1, a, W.hg); at(2, a, W.hg); } at(1, -1, W.hgd); at(2, 2, W.hgd); } // 둥근 코등이 + 금테
     else if (W.fire) { for (var b = -2; b <= bw + 1; b++) at(1, b, W.hg); at(1, -2, '#ff6a1a'); at(1, bw + 1, '#ff6a1a'); }
+    else if (W.wind) { for (var b4 = -3; b4 <= bw + 2; b4++) at(1, b4, b4 < 0 || b4 >= bw ? W.hg : W.hgd); at(0, -3, W.hg); at(0, bw + 2, W.hg); at(2, -4, '#bfeee0'); at(2, bw + 3, '#bfeee0'); at(1, -4, '#ffffff'); at(1, bw + 3, '#ffffff'); } // 깃털 날개 코등이
     else if (W.bolt) { for (var b2 = -1; b2 <= bw; b2++) at(1, b2, W.hg); at(1, -1, '#7ab8ff'); at(1, bw, '#7ab8ff'); }
     else { for (var b3 = -2; b3 <= bw + 1; b3++) at(1, b3, W.hg); at(1, -2, W.hgd); at(1, bw + 1, W.hgd); }
     var b0 = W.curve ? 3 : 2;
@@ -74,6 +77,7 @@ window.MineChar = (function () {
       for (var j3 = 0; j3 < w; j3++) at(ii, j3 + sh, j3 === 0 ? W.hi : j3 === w - 1 ? W.dk : W.bl);
       if (W.curve && s % 3 === 1) at(ii, sh + 1, '#ffffff'); // 물결 무늬(하몬)
       if (W.chip && (s === 3 || s === 7)) at(ii, bw - 1, null); // 이 빠진 날
+      if (W.wind && (s + f * 2) % 5 === 0) { af(ii, -2, '#bfeee0'); af(ii + 1, -3, '#ffffff'); af(ii + 2, bw + 1, '#bfeee0'); af(ii + 3, bw + 2, '#ffffff'); } // 칼날을 감고 오르는 바람
       if (W.bolt && s % 5 !== 4) { // 칼날을 휘감는 푸른 번개
         var zl = [-2, -3, -4, -3][(s + f) % 4], zr = bw + [1, 2, 3, 2][(s + f + 2) % 4];
         af(ii, zl, s % 2 ? '#a8dcff' : '#ffffff'); af(ii, zr, s % 2 ? '#ffffff' : '#7ab8ff'); if (s % 3 === 0) af(ii + 1, zl + 1, '#7ab8ff');
@@ -81,6 +85,7 @@ window.MineChar = (function () {
     }
     var te = b0 + n;
     if (W.fire) { at(te, 1, '#ffe060'); af(te + 1, f % 2, '#ff9a20'); af(te + 2, 1 - f % 2, '#e8401a'); af(te + 1, 2 - f % 2, '#ffb030'); af(te + 3, f % 2 ? 0 : 2, '#ffd040'); } // 칼끝 불꽃
+    if (W.wind) { at(te, 1, '#f0fff8'); af(te + 1, f % 2 ? 0 : 2, '#bfeee0'); af(te + 2, 1, '#ffffff'); } // 칼끝 바람
     if (W.bolt) { af(te, -1, '#ffffff'); af(te + 1, 0, '#a8dcff'); af(te, 2, '#7ab8ff'); af(te + 2, 1, '#ffffff'); } // 칼끝 번개
   }
   /** 벨 때 궤적 -- (cx, cy) 중심, 반지름 r, 각도 a0 -> a1. 닌자의 검은 두껍고 큰 초승달. */

@@ -146,6 +146,9 @@ public final class S5MineMap {
     /** [2026-11-05] 번개의 심장(등급 값 65) -- 마물의 숲 입구 천둥 황소 처치 보상(검기 번개 속성 재료). */
     public static final String THUNDER_HEART_CODE = "THUNDER_HEART", THUNDER_HEART_NAME = "번개의 심장";
     public static final int THUNDER_HEART_GRADE = 65;
+    /** [2026-11-11] 하피 여왕 고유 증표 -- 바람의 심장(처치 시 MINE_HARPY_DROP_PCT%). */
+    public static final String WIND_HEART_CODE = "WIND_HEART", WIND_HEART_NAME = "바람의 심장";
+    public static final int WIND_HEART_GRADE = 71;
     public static final String ICE_HEART_CODE = "ICE_HEART";
     public static final String ICE_HEART_NAME = "얼음의 심장";
     public static final int ICE_HEART_GRADE = 33;
