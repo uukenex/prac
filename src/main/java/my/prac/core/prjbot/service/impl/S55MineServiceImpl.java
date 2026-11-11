@@ -1621,8 +1621,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int[] cs = mineMobCells(map.mobs().get(id), s, now, map);
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
-                boolean harpyMoving = false; // [2026-11-11] 체력 절반부터 나무 패턴(숨음/옮김) -- 깃털을 더 자주
-                if (map.mobs().get(id).type == S5MineMobs.HARPY_BOSS_TYPE) { int[] hz = mineHarpyNow(map, now); s.fx = hz[0]; s.fy = hz[1]; harpyMoving = hz[2] == 1 || hz[4] == 1; } // [2026-11-08] 하피 -- 나무 사이를 옮겨 다닌다
+                boolean harpyMoving = false, harpyBoss = map.mobs().get(id).type == S5MineMobs.HARPY_BOSS_TYPE; // [2026-11-11] 체력 절반부터 나무 패턴(숨음/옮김) -- 깃털을 더 자주
+                if (harpyBoss) { int[] hz = mineHarpyNow(map, now); s.fx = hz[0]; s.fy = hz[1]; harpyMoving = hz[2] == 1 || hz[4] == 1; } // [2026-11-08] 하피 -- 나무 사이를 옮겨 다닌다
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1)); // [2026-10-29] 보스 2x2칸까지의 거리
                 if ((type.boss || type.minion ? dist >= MINE_BOSS_LEASH : dist >= (mineMobPreempts(type, lv) ? minePreemptRange(type) + 1 : MINE_AGGRO_RANGE)) && !(!type.boss && !type.minion && mercPreTick && mineMercInView(userName, s.fx - x, s.fy - y))) { // [2026-11-07] 용병 선공으로 끌어들인 몬스터는 화면 안이면 안 풀린다 // [2026-10-29] 보스 = 50칸 // 선공 몬스터는 인식 범위(6칸) 밖에서 풀린다. [2026-10-28] 보스는 거리로는 안 풀린다(맵을 벗어나거나 쓰러져야)
@@ -1665,11 +1665,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
                     dist = Math.max(0, Math.max(s.fx - x, x - s.fx - 1)) + Math.max(0, Math.max(s.fy - y, y - s.fy - 1));
                 }
-                if (!thunderBoss && !stunned && type.ranged && (dist >= 2 || type.venom || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
+                if (!thunderBoss && !stunned && type.ranged && (dist >= 2 || type.venom || harpyMoving || map.mobs().get(id).type == S5MineMobs.LAVA_BOSS_TYPE || map.mobs().get(id).type == S5MineMobs.PHARAOH_BOSS_TYPE) && dist <= (harpyBoss ? MINE_HARPY_SHOT_RANGE : MINE_BOSS_AGGRO_RANGE) && hp - dmgSum > 0) { // [2026-11-11] "하피가 나무에 숨어서도 공격" -- 붙어 있어도, 더 멀리서도(MINE_HARPY_SHOT_RANGE) // [2026-10-28] 용암 거신 -- 가끔 불덩이([2026-10-30] 붙어 있어도 던져 발밑을 용암으로)
                     Long nx = MINE_RANGED_NEXT.get(userName);
                     if (nx == null) MINE_RANGED_NEXT.put(userName, now + MINE_RANGED_MIN_MS / 2); // 막 인식 -- 3초 뒤 첫 불덩이
                     else if (now >= nx) {
-                        MINE_RANGED_NEXT.put(userName, now + (harpyMoving ? MINE_HARPY_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
+                        MINE_RANGED_NEXT.put(userName, now + (harpyMoving ? (mineHarpyNow(map, now)[2] == 1 ? MINE_HARPY_HIDE_SHOT_MS : MINE_HARPY_SHOT_MS) : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
                         dmgSum += d;
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
@@ -4526,6 +4526,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_TREE_CHOP_NEED = 10; // [2026-11-11] "곡괭이로 채광할 수도 -- 10회 정도면 쓰러져 밑동만" -- 여럿이 함께 찍은 횟수
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CHOP_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_TREE_BURN_MS = 8_000L, MINE_TREE_REGROW_MS = 2 * 3_600_000L, MINE_HARPY_PERCH_MS = 6_000L, MINE_HARPY_MOVE_MS = 4_000L, MINE_HARPY_SHOT_MS = 1_500L;
+    static final long MINE_HARPY_HIDE_SHOT_MS = 2_500L; // [2026-11-11] "하피가 나무에 숨어서도 공격" -- 숨어 있는 동안(6초)에도 깃털 2.5초마다(예전엔 6~10초라 거의 못 쏨)
+    static final int MINE_HARPY_SHOT_RANGE = 18; // 숨은 나무가 멀어도 닿게(다른 보스 12칸)
     static final java.util.concurrent.ConcurrentHashMap<Integer, long[]> MINE_TREES = new java.util.concurrent.ConcurrentHashMap<>(); // 나무 번호 -> {불 쌓인 양, 불붙은 시각}
     static final Object MINE_HARPY_LOCK = new Object();
     static int mineHarpyTree = -1, mineHarpyFx, mineHarpyFy, mineHarpyTx, mineHarpyTy;

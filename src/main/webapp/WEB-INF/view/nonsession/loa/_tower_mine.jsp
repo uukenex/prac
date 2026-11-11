@@ -1704,7 +1704,7 @@ var TowerMine = (function () {
       nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', -58, 40], ['cave3', -58, 100], ['cave2', -58, 160], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
       links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['cave3', 'cave4'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
-    { id: 'desert', name: '🏜️ 사막·왕도', vh: 410,
+    { id: 'desert', name: '🏜️ 사막·왕도', vh: 410, tx: 226,
       nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['westroad', 44, 170], ['forestmaze', 44, 100], ['harpynest', 44, 30], ['harpyferry', -64, 30], ['steppe', 160, 240], ['desert', 160, 310],
         ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
       links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'westroad'], ['westroad', 'forestmaze'], ['forestmaze', 'harpynest'], ['harpynest', 'harpyferry'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
@@ -1727,7 +1727,7 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [20, 800] } /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [680, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
+  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
   var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
@@ -1744,7 +1744,7 @@ var TowerMine = (function () {
     var bossOf = {};
     ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map === 'pyramidb' ? 'pyramid' : b.map] = b; }); // [2026-11-08] 파라오 미라(피라미드 지하) -- 피라미드 칸에
     var leftTxt = function (ms) { var m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + m % 60 + '분' : '') : m + '분'; };
-    var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); };
+    var hhmm = function (ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }; // [2026-11-11] 오늘이면 시각만(칸 위 한 줄에 들어가게)
     var here = null, lines = '', nodes = '', labels = '';
     WORLD_REGIONS.forEach(function (R) {
       var o = WORLD_PLACE[R.id], N = {};
@@ -1754,7 +1754,7 @@ var TowerMine = (function () {
         if (!n || n.locked || n.dev) return;
         N[e[0]] = { id: n.id, x: o[0] + e[1], y: o[1] + e[2], name: n.name, fill: n.fill, ink: n.ink, w: n.w, town: n.town };
       });
-      labels += '<text x="' + (o[0] + 6) + '" y="' + (o[1] + 14) + '" class="wr">' + R.name + '</text>';
+      labels += '<text x="' + (o[0] + (R.tx || 6)) + '" y="' + (o[1] + 14) + '" class="wr">' + R.name + '</text>'; // [2026-11-11] tx -- 맨 윗줄 칸(하피의 둥지 보스 글자)과 안 겹치게
       R.links.forEach(function (l) {
         var p = N[l[0]], q = N[l[1]];
         if (!p || !q) return;
@@ -1772,9 +1772,9 @@ var TowerMine = (function () {
         var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id))); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
-          var bb = bossOf[n.id], by = n.y + H / 2 + 25, bx = n.x - nw / 2 + 2;
-          labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">👑 보스 출현 중</text>'
-              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">💤 ' + (bb.name || '보스') + ' ' + hhmm(bb.nextAt) + (bb.nextAt > Date.now() ? ' (' + leftTxt(bb.nextAt - Date.now()) + ' 뒤)' : '') + '</text>'; // [2026-11-08] 다시 나타나는 시각 + 남은 시간
+          var bb = bossOf[n.id], by = n.y - H / 2 - 5, bx = n.x - nw / 2 + 2, bh = isHere ? '📍 ' : ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
+          labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">' + bh + '👑 보스 출현 중</text>'
+              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">' + bh + '💤 ' + (bb.name || '보스') + ' ' + hhmm(bb.nextAt) + (bb.nextAt > Date.now() ? ' (' + leftTxt(bb.nextAt - Date.now()) + ' 뒤)' : '') + '</text>'; // [2026-11-08] 다시 나타나는 시각 + 남은 시간
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
             + (flr ? '<rect x="' + (n.x - nw / 2 + 5) + '" y="' + (n.y - H / 2 - 5) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="2"/>' : '')
@@ -1783,7 +1783,7 @@ var TowerMine = (function () {
             + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + nmT + '</text>'
             + (flr ? '<text x="' + (n.x - nw / 2 + 3) + '" y="' + (n.y - H / 2 + 10) + '" class="wf">' + flr + '</text>' : '')
             + (adminW ? '</g>' : '')
-            + (isHere ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
+            + (isHere && !bossOf[n.id] ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
             + '<text x="' + (n.x + nw / 2) + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="end" class="wc" data-cnt="' + n.id + '">👥 ' + (mapN[n.id] || 0) + '</text>'
             + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
       });
@@ -3973,26 +3973,38 @@ var TowerMine = (function () {
     });
   }
   // [2026-11-11] "미궁의 끝까지 몇 걸음이 안 나온다" -- 밤/어두운 맵 덧칠보다 먼저 그려서 가려졌다. 덧칠 뒤(ultHud 옆)에 그린다. 둥지(남은 나무/돌풍)도 같이.
+  // [2026-11-11] "미궁 몇 걸음이 메시지 박스랑 겹친다(폴드 접은 화면)" -- 아래 가운데 안내는 체력 바 바로 위(메시지 박스는 아래 118px부터 위로),
+  //  좁은 화면이면 오른쪽 버튼 줄(118px)을 피해 왼쪽으로. hudBotY = 글자 기준선(상자 = 기준선 -21 ~ +9, 화면 배율 곱한 값).
+  function hudBotY(H) {
+    var r = el.hp && el.hp.offsetParent ? el.hp.getBoundingClientRect() : null, c = el.cv.getBoundingClientRect();
+    if (!r || !r.height || !c.height) return Math.round(H - 118 * dpr);
+    var k = H / c.height;
+    return Math.round((Math.min(r.top - c.top, c.height - 64) - 15) * k);
+  }
+  function hudCx(W, w) {
+    if (W / dpr >= 700) return W / 2;
+    return Math.max(8 * dpr + w / 2, Math.min(W / 2, W - 118 * dpr - w / 2));
+  }
   function forestHud(W, H) {
     if (map.trees) { // [2026-11-11] "남은 나무는 안 알려줘도 돼" -- 돌풍 2초 전 경고만(체력 바 위, 크게)
       var gl = harpyGustAt - nowSrv();
       if (gl > 0 && gl < 2000) {
         var gtx = '🌪️ 돌풍이 몰려와요!';
         ctx.font = 'bold ' + Math.round(18 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
-        var gw = ctx.measureText(gtx).width + 28 * dpr, gy = Math.round(H - 118 * dpr);
-        ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2420'; ctx.fillRect(W / 2 - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
-        ctx.globalAlpha = 1; ctx.strokeStyle = '#7ae8c8'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(W / 2 - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
-        ctx.fillStyle = '#e8fff4'; ctx.fillText(gtx, W / 2, gy);
+        var gw = ctx.measureText(gtx).width + 28 * dpr, gy = hudBotY(H), gx = hudCx(W, gw);
+        ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2420'; ctx.fillRect(gx - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#7ae8c8'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(gx - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
+        ctx.fillStyle = '#e8fff4'; ctx.fillText(gtx, gx, gy);
         ctx.textAlign = 'left';
       }
     }
     if (map.mazeLeft != null) { // [2026-11-11] 미궁 힌트 -- "미궁의 끝까지 몇 걸음"(통로를 지날 때마다 1걸음). "너무 안 보인다" -- 천둥 황소 타이머처럼 체력 바 위, 크게
       var mz = '🌲 미궁의 끝까지 ' + map.mazeLeft + '걸음';
       ctx.font = 'bold ' + Math.round(18 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
-      var mzw = ctx.measureText(mz).width + 28 * dpr, mzy = Math.round(H - 118 * dpr);
-      ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2414'; ctx.fillRect(W / 2 - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
-      ctx.globalAlpha = 1; ctx.strokeStyle = '#7cf08a'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(W / 2 - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
-      ctx.fillStyle = '#c8ffd0'; ctx.fillText(mz, W / 2, mzy);
+      var mzw = ctx.measureText(mz).width + 28 * dpr, mzy = hudBotY(H), mzx = hudCx(W, mzw);
+      ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2414'; ctx.fillRect(mzx - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
+      ctx.globalAlpha = 1; ctx.strokeStyle = '#7cf08a'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(mzx - mzw / 2, mzy - 21 * dpr, mzw, 30 * dpr);
+      ctx.fillStyle = '#c8ffd0'; ctx.fillText(mz, mzx, mzy);
       ctx.textAlign = 'left';
     }
   }
@@ -5123,9 +5135,9 @@ var TowerMine = (function () {
     if (thunderRestAt > nowSrv() && !(thunderUntil > nowSrv()) && map.id === 'westroad') { // [2026-11-08] 천둥 황소가 쓰러진 뒤 2시간 -- 밤 처치를 세지 않는다
       var rl = thunderRestAt - nowSrv(), rtx = '⚡ 천둥 황소 휴식  ' + (rl >= 3600000 ? Math.floor(rl / 3600000) + '시간 ' : '') + Math.ceil((rl % 3600000) / 60000) + '분 뒤부터 다시 세요';
       ctx.font = 'bold ' + Math.round(13 * dpr) + 'px monospace'; ctx.textAlign = 'center';
-      var rw = ctx.measureText(rtx).width + 20 * dpr, ry = Math.round(H - 118 * dpr);
-      ctx.globalAlpha = 0.7; ctx.fillStyle = '#10142a'; ctx.fillRect(W / 2 - rw / 2, ry - 16 * dpr, rw, 22 * dpr);
-      ctx.globalAlpha = 1; ctx.fillStyle = '#b8c8ff'; ctx.fillText(rtx, W / 2, ry);
+      var rw = ctx.measureText(rtx).width + 20 * dpr, ry = hudBotY(H) - 2 * dpr, rx = hudCx(W, rw); // [2026-11-11] 메시지 박스와 안 겹치게(hudBotY)
+      ctx.globalAlpha = 0.7; ctx.fillStyle = '#10142a'; ctx.fillRect(rx - rw / 2, ry - 16 * dpr, rw, 22 * dpr);
+      ctx.globalAlpha = 1; ctx.fillStyle = '#b8c8ff'; ctx.fillText(rtx, rx, ry);
       ctx.textAlign = 'left';
     }
     if (thunderUntil > 0 && map.id === 'westroad') {
@@ -5133,10 +5145,10 @@ var TowerMine = (function () {
       if (tl > 0) {
         var ttx = '⚡ 천둥 황소  ' + (tl >= 60000 ? Math.floor(tl / 60000) + '분' : Math.ceil(tl / 1000) + '초');
         ctx.font = 'bold ' + Math.round(15 * dpr) + 'px monospace'; ctx.textAlign = 'center';
-        var tw = ctx.measureText(ttx).width + 20 * dpr, ty = Math.round(H - 118 * dpr);
-        ctx.globalAlpha = 0.78; ctx.fillStyle = '#10142a'; ctx.fillRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
-        ctx.globalAlpha = 1; ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1 * dpr; ctx.strokeRect(W / 2 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
-        ctx.fillStyle = '#ffe14d'; ctx.fillText(ttx, W / 2, ty);
+        var tw = ctx.measureText(ttx).width + 20 * dpr, ty = hudBotY(H) - 2 * dpr, tx0 = hudCx(W, tw); // [2026-11-11] 메시지 박스와 안 겹치게(hudBotY)
+        ctx.globalAlpha = 0.78; ctx.fillStyle = '#10142a'; ctx.fillRect(tx0 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 1 * dpr; ctx.strokeRect(tx0 - tw / 2, ty - 17 * dpr, tw, 24 * dpr);
+        ctx.fillStyle = '#ffe14d'; ctx.fillText(ttx, tx0, ty);
       }
     }
     // [2026-11-04] 빙결 몸부림 게이지 -- 캐릭터 위에 얼음 막대(횟수는 안 보여 줌) + 깜빡이는 ⬅️➡️⚔️
