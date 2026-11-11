@@ -4307,10 +4307,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_AURA_MAX = 5, MINE_AURA_PCT = 5; // [2026-11-04] "10%씩 말고 5%씩(속성별 최대 25%)"
     /** [2026-11-04] "달빛석 + 보스 처치 재화로 검기 강화" -- 속성별 보스 드랍템(땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장,
      *  어둠 = 타락한 대주교의 인장, 나머지는 보스가 생기면). n단계를 배우려면 그 드랍템 2n-1개 + 달빛석 2n-1개(1/3/5/7/9). */
-    static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, S5MineMap.THUNDER_HEART_CODE /* [2026-11-05] 번개 = 천둥 황소 */, null, S5MineMap.ICE_HEART_CODE, null, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
+    static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, S5MineMap.THUNDER_HEART_CODE /* [2026-11-05] 번개 = 천둥 황소 */, null, S5MineMap.ICE_HEART_CODE, S5MineMap.WIND_HEART_CODE /* [2026-11-11] 바람 = 하피 여왕 */, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
     static int mineAuraCost(int lv) { return 2 * lv - 1; }
     /** [2026-11-04] "달빛석뿐 아니라 세공된 바다의 보석도" -- 속성별 세공 바다 보석(S5MineMap.seaCutCode 번호): 땅 = 자수정, 얼음 = 진주, 불 = 산호석, 어둠 = 흑진주. 같은 개수(2n-1). */
-    static final int[] MINE_AURA_SEA = { -1, 2, 3, -1, 0, -1, 1, 4, -1 }; // [2026-11-05] 번개 = 세공 바다 보석 3번
+    static final int[] MINE_AURA_SEA = { -1, 2, 3, -1, 0, 0, 1, 4, -1 }; // [2026-11-11] 바람 = 세공 진주(0) // [2026-11-05] 번개 = 세공 바다 보석 3번
     static final int MINE_AURA_SEA_QTY = 5; // [2026-11-04] "세공 바다 보석은 2n-1 말고 고정 5개"
     static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
     static int[] mineAuraActive(Map<String, Integer> items) {
