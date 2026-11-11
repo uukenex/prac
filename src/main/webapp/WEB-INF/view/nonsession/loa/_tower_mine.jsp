@@ -1768,24 +1768,24 @@ var TowerMine = (function () {
         R.channel.isles.forEach(function (id) { var p = N[id]; if (p) lines += '<line x1="' + chx + '" y1="' + p.y + '" x2="' + p.x + '" y2="' + p.y + '" ' + STY.sea + '/>'; });
       }
       Object.keys(N).forEach(function (k) {
-        var n = N[k], nw = n.w || W, flr = WORLD_FLOOR[n.id], nmT = flr ? n.name.replace(/\s*\d층/, '') : n.name;
+        var n = N[k], flr = WORLD_FLOOR[n.id], dm = (st && st.mapDims && st.mapDims[n.id]) || [100, 100]; // [2026-11-11] "실제 맵 크기를 반영해 크기가 조금씩 다르게" -- 넓이의 제곱근 비율(10칸 미궁 ~ 300칸 다도해)
+        var nw = Math.round(14 + 5.2 * Math.sqrt(dm[0])), nh = Math.round(8 + 1.9 * Math.sqrt(dm[1]));
         var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id))); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
-          var bb = bossOf[n.id], by = n.y - H / 2 - 5, bx = n.x - nw / 2 + 2, bh = isHere ? '📍 ' : ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
+          var bb = bossOf[n.id], by = n.y - nh / 2 - 5, bx = n.x - nw / 2, bh = ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
           labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">' + bh + '👑 보스 출현 중</text>'
               : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">' + bh + '💤 ' + (bb.name || '보스') + ' ' + hhmm(bb.nextAt) + (bb.nextAt > Date.now() ? ' (' + leftTxt(bb.nextAt - Date.now()) + ' 뒤)' : '') + '</text>'; // [2026-11-08] 다시 나타나는 시각 + 남은 시간
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
-            + (flr ? '<rect x="' + (n.x - nw / 2 + 5) + '" y="' + (n.y - H / 2 - 5) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="2"/>' : '')
-            + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - H / 2) + '" width="' + nw + '" height="' + H + '" fill="' + n.fill + '"'
-            + ' stroke="' + (isHere ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (isHere ? 4 : 2) + '"/>'
-            + '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" class="wn" fill="' + n.ink + '">' + nmT + '</text>'
-            + (flr ? '<text x="' + (n.x - nw / 2 + 3) + '" y="' + (n.y - H / 2 + 10) + '" class="wf">' + flr + '</text>' : '')
-            + (adminW ? '</g>' : '')
-            + (isHere && !bossOf[n.id] ? '<text x="' + n.x + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="middle" class="wh">📍 여기</text>' : '')
-            + '<text x="' + (n.x + nw / 2) + '" y="' + (n.y - H / 2 - 4) + '" text-anchor="end" class="wc" data-cnt="' + n.id + '">👥 ' + (mapN[n.id] || 0) + '</text>'
-            + (!n.town && minLvOf(n.id) > 1 ? '<text x="' + n.x + '" y="' + (n.y + H / 2 + 12) + '" text-anchor="middle" class="wl"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>권장 Lv.' + minLvOf(n.id) + '</text>' : '');
+            // [2026-11-11] "사각형 안에 이름 말고 배경 없는 글씨, 권장 레벨 대신 Lv30 피라미드, 인원은 언제든" -- 칸(맵 크기) 안엔 인원만, 이름은 칸 아래 떠 있는 글씨
+            + (flr ? '<rect x="' + (n.x - nw / 2 + 4) + '" y="' + (n.y - nh / 2 - 4) + '" width="' + nw + '" height="' + nh + '" rx="3" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="1.5"/>' : '')
+            + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - nh / 2) + '" width="' + nw + '" height="' + nh + '" rx="3" fill="' + n.fill + '"'
+            + ' stroke="' + (isHere ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (isHere ? 3.5 : 1.5) + '"/>'
+            + '<text x="' + n.x + '" y="' + (n.y + 3.5) + '" text-anchor="middle" class="wc" fill="' + n.ink + '" data-cnt="' + n.id + '">👥' + (mapN[n.id] || 0) + '</text>'
+            + '<text x="' + n.x + '" y="' + (n.y + nh / 2 + 11) + '" text-anchor="middle" class="wn' + (isHere ? ' wn-here' : '') + '">'
+            + (isHere ? '📍 ' : '') + (!n.town && minLvOf(n.id) > 1 ? '<tspan class="wlv"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>Lv' + minLvOf(n.id) + '</tspan> ' : '') + n.name + '</text>'
+            + (adminW ? '</g>' : '');
       });
     });
     WORLD_CROSS.forEach(function (c) { // 구간 사이 길
@@ -1835,7 +1835,7 @@ var TowerMine = (function () {
   }
   function worldCounts() {
     var sv = document.getElementById('mineWorldSvg');
-    if (sv) sv.querySelectorAll('[data-cnt]').forEach(function (t) { t.textContent = '👥 ' + (mapN[t.getAttribute('data-cnt')] || 0); });
+    if (sv) sv.querySelectorAll('[data-cnt]').forEach(function (t) { t.textContent = '👥' + (mapN[t.getAttribute('data-cnt')] || 0); });
   }
   function worldApply() {
     var el2 = document.getElementById('mineWorldSvg');
@@ -2062,13 +2062,14 @@ var TowerMine = (function () {
         + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + ' · 내가 얻는 경험치의 1%</small><br><small>장비는 기본 장비만 써요.</small></div>'
         + '<div class="mine-smith-say" style="margin-bottom:4px">공격 방식</div><div class="merc-view merc-mode"><button type="button" class="' + (m.mode ? '' : 'on') + '" onclick="TowerMine.mercMode(0)">🤝 협공 모드<small>나와 싸우는 몬스터만</small></button>'
         + '<button type="button" class="' + (m.mode ? 'on' : '') + '" onclick="TowerMine.mercMode(1)">⚔️ 선공 모드<small>사거리 안 몬스터를 먼저</small></button></div>' // [2026-11-06] 선공/협공
-        + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : m.unpaid ? '⚠️ 급여가 밀려 쉬는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.want || m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>'
+        + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.want || m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>'
         + mercPayHtml(m);
     return h;
   }
   // [2026-11-06] 급여 -- 남은 기간(선금 포함), 다음 급여, 하루치 주기(선금, 7일까지), 자동 차감 켜기/끄기
   function mercLeft(ms) { if (ms <= 0) return '0분'; var d = Math.floor(ms / 86400000), h = Math.floor(ms % 86400000 / 3600000), mi = Math.floor(ms % 3600000 / 60000); return (d ? d + '일 ' : '') + (d || h ? h + '시간' : mi + '분'); }
   function mercPayHtml(m) {
+    return ''; // [2026-11-11] 날마다 내던 급여 없앰(처음 계약 때 한 번만)
     var left = (m.paidUntil || 0) - nowSrv();
     return '<div class="mine-smith-row merc-pay' + (m.unpaid ? ' lack' : '') + '"><span class="nm">💰 급여 <small>' + (m.unpaid ? '밀렸어요 -- 주면 바로 다시 일해요' : '남은 기간 ' + mercLeft(left) + (left > 86400000 ? ' (선금 포함)' : '')) + '</small>'
         + '<small>다음 급여: <b>' + m.sal + '</b> · 자동 차감 ' + (m.auto ? '켜짐' : '꺼짐') + '</small></span>'
@@ -2618,7 +2619,7 @@ var TowerMine = (function () {
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
       mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병(Lv.' + ms2.curLv + ')보다 2~15레벨 낮은 동료들이에요 · 계약하면 지금 용병은 떠나요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
-        + '<br>급여는 하루마다 동괴 / 은괴 / 금괴(레벨 20마다 1개씩 늘어 최대 5개) / 미스릴괴(1개, 40레벨부터 1~2개) 중 하나, 가끔 세공된 보석<br>급여가 밀리면 쉬어요 · 선금·자동 차감은 ☰ 메뉴 → 🛡️ 용병 관리</small></div>';
+        + '<br>' + (ms2.offers && ms2.offers.some(function (o) { return o.free; }) ? '교체는 무료예요 · 급여는 처음 계약할 때 한 번만 냈어요' : '급여는 처음 계약할 때 한 번만 내요(동괴 / 은괴 / 금괴 / 미스릴괴 중 하나, 가끔 세공된 보석) · 그 뒤로는 교체도 무료') + '</small></div>'; // [2026-11-11] 날마다 내던 급여 없앰
       if (ms2.offers) {
         // [2026-11-06] "직업별로 5명씩, 3줄로" -- 전사 / 궁수 / 마법사 줄(모바일은 줄마다 옆으로 넘기기, PC는 넓은 창에 5명이 한 줄로)
         var offCard = function (o) {
@@ -2626,7 +2627,7 @@ var TowerMine = (function () {
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
-              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>첫 급여 ' + o.sal + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
+              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>' + (o.free ? '🆓 무료' : '첫 급여 ' + o.sal) + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ')">계약</button>') + '</div>';
         };
         mh += mercViewBtns();
         [0, 1, 2].forEach(function (jt) {
@@ -2639,7 +2640,7 @@ var TowerMine = (function () {
           var ao = ms2.offers.filter(function (o) { return o.i === mercAskI; })[0];
           if (ao) mh += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercHire(null)"><div class="eq-pop-box merc-ask"><div class="eq-pop-h">🛡️ 용병 계약<button type="button" onclick="TowerMine.mercHire(null)">✖</button></div>'
               + '<div class="merc-ask-body' + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(ao.t, ao.ni, ao.nm) + '<div><b>' + ao.nm + '</b><br>' + MERC_ICON[ao.t] + ' ' + ao.job + ' · Lv.' + ao.lv + '<br><span class="mo-el' + ao.el + '">' + (EL_ICON[ao.el] || '') + ' ' + ao.elName + ' 특화</span><br><small>' + ao.skill + '</small></div></div>'
-              + '<div class="mine-smith-say">' + ao.nm + '와(과) 계약할까요?<br><small>첫날 급여 <b>' + ao.sal + '</b>를 바로 줘요. 다음부터는 하루마다 자동 차감돼요.</small>'
+              + '<div class="mine-smith-say">' + ao.nm + '와(과) 계약할까요?<br><small>' + (ao.free ? '급여 없이 바로 계약해요.' : '첫 계약 급여 <b>' + ao.sal + '</b>를 바로 줘요. 앞으로 급여는 없어요(교체도 무료).') + '</small>'
               + (curM ? '<br><small style="color:#ffb04a">⚠️ 지금 용병 <b>' + curM.nm + '</b>(Lv.' + curM.lv + ')은(는) 떠나요. 레벨도 사라져요.</small>' : '') + '</div>'
               + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.mercHireGo(' + ao.i + ')">계약하기</button><button type="button" onclick="TowerMine.mercHire(null)">취소</button></div></div></div>';
         }
@@ -3689,7 +3690,7 @@ var TowerMine = (function () {
     return c[sk];
   }
   function nearOther() {
-    for (var id in others) { var o = others[id]; if (Math.abs(o.x - P.x) + Math.abs(o.y - P.y) <= 4) return true; }
+    for (var id in others) { var o = others[id]; if (Math.abs(o.x - P.x) + Math.abs(o.y - P.y) <= 8) return true; } // [2026-11-11] "너무 가까워야 인사가 된다" 4 -> 8칸(서버 MINE_GREET_RANGE와 같게)
     return false;
   }
   // [2026-10-28] 운영자 장비 -- "누가 봐도 운영진" + "화려하게 반짝이는 이펙트". (x, y) = 캐릭터 그림 왼쪽 위.

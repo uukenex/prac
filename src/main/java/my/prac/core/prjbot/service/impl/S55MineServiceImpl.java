@@ -2709,6 +2709,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         out.put("bosses", bosses);
+        HashMap<String, int[]> dims = new HashMap<>(); // [2026-11-11] 전체 지도 -- 맵 크기만큼 칸 크기를 다르게
+        for (String mid : S5MineMap.ids()) { S5MineMap dm = S5MineMap.get(mid); dims.put(mid, new int[] { dm.w, dm.h }); }
+        out.put("mapDims", dims);
         if (isMineAdmin(userName)) { // [2026-11-11] "관리자는 보스방이나 미궁 안 전체 지도" -- 미궁 방마다 몬스터 / 동·서·북·남 통로가 가는 곳 / 끝방까지 걸음
             List<HashMap<String, Object>> mg = new ArrayList<>();
             for (String rid : S5MineMap.FOREST_ROOM_IDS) {
@@ -5185,10 +5188,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         { "리오", "카나", "미코토", "세라", "아리스", "코하루", "미레이", "스이렌", "아마네", "미코" } };
     static int mineMercNi(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_NAMEPOOL[c].length); }
     static String mineMercNm(Map<String, Integer> items, int c, String f) { String[] p = MINE_MERC_NAMEPOOL[c]; return p[Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), p.length)]; }
-    static boolean mineMercPaid(Map<String, Integer> items, int c, long now) { return items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L > now; }
+    // [2026-11-11] "용병 급여는 최초 1번만, 교체 때도 안 받게" -- 날마다 내던 급여(자동 차감/선금/밀리면 쉼)를 없앴다. 계정에서 처음 계약할 때 한 번만 낸다(MERC_HIRED).
+    //  이미 용병이 있는 사람(예전에 계약)은 처음 계약을 마친 것으로 본다. MERC{c}_PAID/SAL/MANUAL/WARN 기록은 남아 있어도 쓰지 않는다.
+    static final String MINE_ITEM_MERC_HIRED = "MERC_HIRED";
+    static boolean mineMercHiredBefore(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_MERC_HIRED, 0) > 0 || mineMercCount(items) > 0; }
+    static boolean mineMercPaid(Map<String, Integer> items, int c, long now) { return true; }
     void mineMercSet(String userName, Map<String, Integer> items, int c, String f, int v) { dao.upsertMineItem(userName, mineMercKey(c, f), v); items.put(mineMercKey(c, f), v); }
     /** 급여 자동 차감(밀린 날만큼, 미접속 시간 포함) -- 안내 문구는 notes에. 모자라면 한 번만 알린다(MERC{c}_WARN = 그때의 PAID). */
     void mineMercPayroll(String userName, Map<String, Integer> items, long now, List<String> notes) {
+        if (now > 0) return; // [2026-11-11] 날마다 내던 급여 없앰(처음 계약 때 한 번만) -- 아래는 예전 차감 코드(쓰지 않음)
         int nowMin = (int) (now / 60_000L);
         Map<String, Integer> have = null;
         for (int c = 0; c < MINE_MERC_NAMES.length; c++) {
@@ -5270,8 +5278,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("el", el);
         m.put("elName", S5MineMobs.ELEM_NAMES[el]);
         m.put("skill", mineMercSkill(c, el, mineMercStage(lv)));
-        m.put("sal", mineCostText(cost));
-        m.put("can", mineCostOk(cost, have));
+        boolean free = mineMercHiredBefore(items); // [2026-11-11] 처음 계약 뒤엔(교체 포함) 무료
+        m.put("sal", free ? "무료" : mineCostText(cost));
+        m.put("free", free);
+        m.put("can", free || mineCostOk(cost, have));
         m.put("owned", false); // [2026-11-06] 이제 늘 계약 가능(지금 용병과 바뀐다)
         return m;
     }
@@ -5742,12 +5752,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             c = oi >= 0 && oi < MINE_MERC_OFFERS ? items.getOrDefault(mineOfKey(oi, "T"), 0) - 1 : -1;
             cOk = c >= 0 && c < MINE_MERC_NAMES.length;
             int ofLv = cOk ? mineOfLv(items, oi) : 0; // [2026-11-06] 지금 용병을 내보내기 전에(교체 후보는 지금 레벨 기준)
-            String[][] cost = cOk ? mineMercSalCost(items.getOrDefault(mineOfKey(oi, "SAL"), 0), ofLv) : null;
+            boolean free = mineMercHiredBefore(items); // [2026-11-11] 급여는 계정에서 처음 계약할 때 한 번만(교체는 무료)
+            String[][] cost = cOk && !free ? mineMercSalCost(items.getOrDefault(mineOfKey(oi, "SAL"), 0), ofLv) : null;
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
-            else if (!mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "첫날 급여(" + mineCostText(cost) + ")가 모자라요." + mineLackText(cost, userName); }
+            else if (cost != null && !mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "첫 계약 급여(" + mineCostText(cost) + ")가 모자라요." + mineLackText(cost, userName); }
             else {
-                mineTakeCost(userName, cost, 1);
+                if (cost != null) mineTakeCost(userName, cost, 1);
+                dao.upsertMineItem(userName, MINE_ITEM_MERC_HIRED, 1); items.put(MINE_ITEM_MERC_HIRED, 1);
                 StringBuilder gone = new StringBuilder(); // [2026-11-06] "현재 용병은 사라지고 대체" -- 지금 용병(들)과의 계약을 끝낸다(레벨/경험치/급여 기록도)
                 for (int oc = 0; oc < MINE_MERC_NAMES.length; oc++) if (mineMercLv(items, oc) > 0) {
                     gone.append(gone.length() > 0 ? ", " : "").append(mineMercNm(items, oc, "NM"));
@@ -5764,10 +5776,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, "MANUAL", 0);
                 mineOfSet(userName, items, oi, "T", 0); // 이 칸(과 같은 직업 칸)은 새로 뽑는다
                 dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, c + 1); items.put(MINE_ITEM_MERC_ON, c + 1); // 새 용병이 바로 함께
-                msg = (gone.length() > 0 ? "👋 " + gone + "은(는) 떠났어요. " : "") + "🛡️ Lv." + lv + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요! 첫날 급여 " + mineCostText(cost) + "를 줬어요."
-                    + " 다음 급여는 내일 " + mineCostText(mineMercCost(items, c)) + "(자동 차감)예요.";
+                msg = (gone.length() > 0 ? "👋 " + gone + "은(는) 떠났어요. " : "") + "🛡️ Lv." + lv + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요!" + (cost != null ? " 첫 계약 급여 " + mineCostText(cost) + "를 줬어요. 앞으로 급여는 없어요." : "");
             }
-        } else if ("pay".equals(action)) { // 급여(선금) 하루치
+        } else if ("pay".equals(action) || "auto".equals(action)) { // [2026-11-11] 날마다 내던 급여 없앰
+            ok = false; msg = "이제 용병 급여는 처음 계약할 때 한 번만 내요. 따로 줄 급여가 없어요.";
+        } else if ("pay-old".equals(action)) { // (예전) 급여(선금) 하루치
             int nowMin = (int) (now / 60_000L), paid = cOk ? items.getOrDefault(mineMercKey(c, "PAID"), 0) : 0;
             String[][] cost = cOk ? mineMercCost(items, c) : null;
             if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
@@ -5801,7 +5814,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
             else if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
             else { mineMercSet(userName, items, c, "LV", MINE_LV_MAX); mineMercSet(userName, items, c, "EXP", 0); msg = "🛠️ " + mineMercNm(items, c, "NM") + "을(를) Lv." + MINE_LV_MAX + "로 올렸어요."; }
-        } else if ("auto".equals(action)) { // 자동 차감 켜기/끄기
+        } else if ("auto-old".equals(action)) { // (예전) 자동 차감 켜기/끄기
             if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
             else {
                 boolean manual = items.getOrDefault(mineMercKey(c, "MANUAL"), 0) <= 0;
@@ -7588,7 +7601,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, MinePresence> MINE_PRESENCE = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_PRESENCE_TTL_MS = 10_000L;
     static final long MINE_BUBBLE_MS = 4_000L;
-    static final int MINE_GREET_RANGE = 4;
+    static final int MINE_GREET_RANGE = 8; // [2026-11-11] "너무 가까워야 인사가 된다" 4 -> 8칸
     static final int MINE_GREET_STONES = 5;
     static final String MINE_ITEM_GREET_DAY = "GREET_DAY";
     /** [2026-10-24] 바닷길 하루 보석 한도("바닷길 안에서는 하루 보석 50개까지") -- SEA_DAY = yyyyMMdd, SEA_CNT = 그날 캔 칸 수. */
