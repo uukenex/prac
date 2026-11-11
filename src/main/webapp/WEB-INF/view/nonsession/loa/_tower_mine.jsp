@@ -1323,7 +1323,7 @@ var TowerMine = (function () {
     var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
     if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
-    var digShow = map.noDig ? 'none' : '';
+    var digShow = map.noDig && !map.trees ? 'none' : ''; // [2026-11-11] 하피의 둥지 -- 캐기 버튼 = 곡괭이로 나무 찍기
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
     if (el.auto) { var autoShow = map.noDig || map.vein ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if ((map.noDig || map.vein) && auto) setAuto(false); } } // [2026-10-28] 설산 동굴은 자동채광 없음
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
@@ -3929,12 +3929,13 @@ var TowerMine = (function () {
     var f = Math.floor(now / 260) % 2, burnt = 0;
     map.trees.forEach(function (tp, i) {
       var q = treeSt[i] || [i, 0, 0], st0 = q[1] | 0;
-      if (st0 === 2) burnt++;
+      if (st0 >= 2) burnt++;
       var x = tp[0] * TS - camX, y = (tp[1] - 2) * TS - camY;
       if (x > W || y > H || x + 3 * TS < 0 || y + 4 * TS < 0) return;
-      var under = st0 !== 2 && P.x >= tp[0] && P.x <= tp[0] + 2 && P.y >= tp[1] - 2 && P.y < tp[1];
+      var under = st0 < 2 && P.x >= tp[0] && P.x <= tp[0] + 2 && P.y >= tp[1] - 2 && P.y < tp[1];
       if (under) ctx.globalAlpha = 0.5;
-      ctx.drawImage(bigTreeArt(st0, st0 ? f : 0), Math.round(x), Math.round(y), 3 * TS, 4 * TS);
+      ctx.drawImage(bigTreeArt(st0 === 3 ? 2 : st0, st0 ? f : 0), // [2026-11-11] 3 = 곡괭이에 쓰러짐(밑동 그림은 시안 승인 뒤)
+         Math.round(x), Math.round(y), 3 * TS, 4 * TS);
       ctx.globalAlpha = 1;
       if (st0 === 0 && q[2] > 0) { // 불이 쌓이는 중
         var bw = 2 * TS, bx = Math.round(x + TS / 2), by = Math.round(y + 4 * TS + 2);
@@ -3945,16 +3946,17 @@ var TowerMine = (function () {
   }
   // [2026-11-11] "미궁의 끝까지 몇 걸음이 안 나온다" -- 밤/어두운 맵 덧칠보다 먼저 그려서 가려졌다. 덧칠 뒤(ultHud 옆)에 그린다. 둥지(남은 나무/돌풍)도 같이.
   function forestHud(W, H) {
-    if (map.trees) {
-      var burnt = 0; map.trees.forEach(function (tp, i) { if (((treeSt[i] || [i, 0, 0])[1] | 0) === 2) burnt++; });
-      var tot = map.trees.length, txt = burnt >= tot ? '🔥 숲이 모두 타 버렸어요 -- 하피가 땅에 내려앉았어요!' : '🌳 남은 나무 ' + (tot - burnt) + ' / ' + tot + (harpySt && harpySt.hide ? '  ·  하피가 나무 뒤에 숨었어요' : harpySt && harpySt.move ? '  ·  하피가 날아오르고 있어요' : '');
+    if (map.trees) { // [2026-11-11] "남은 나무는 안 알려줘도 돼" -- 돌풍 2초 전 경고만(체력 바 위, 크게)
       var gl = harpyGustAt - nowSrv();
-      if (gl > 0 && gl < 2000) txt = '🌪️ 돌풍이 몰려와요!'; // [2026-11-11] 하피 돌풍 2초 전
-      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-      var tw = ctx.measureText(txt).width + 18;
-      ctx.fillStyle = 'rgba(10,24,16,.72)'; ctx.fillRect(Math.round(W / 2 - tw / 2), 34, Math.round(tw), 22);
-      ctx.fillStyle = burnt >= tot ? '#ffb03a' : '#c8f0d8'; ctx.fillText(txt, W / 2, 50);
-      ctx.textAlign = 'left';
+      if (gl > 0 && gl < 2000) {
+        var gtx = '🌪️ 돌풍이 몰려와요!';
+        ctx.font = 'bold ' + Math.round(18 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+        var gw = ctx.measureText(gtx).width + 28 * dpr, gy = Math.round(H - 118 * dpr);
+        ctx.globalAlpha = 0.82; ctx.fillStyle = '#0e2420'; ctx.fillRect(W / 2 - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#7ae8c8'; ctx.lineWidth = 1.5 * dpr; ctx.strokeRect(W / 2 - gw / 2, gy - 21 * dpr, gw, 30 * dpr);
+        ctx.fillStyle = '#e8fff4'; ctx.fillText(gtx, W / 2, gy);
+        ctx.textAlign = 'left';
+      }
     }
     if (map.mazeLeft != null) { // [2026-11-11] 미궁 힌트 -- "미궁의 끝까지 몇 걸음"(통로를 지날 때마다 1걸음). "너무 안 보인다" -- 천둥 황소 타이머처럼 체력 바 위, 크게
       var mz = '🌲 미궁의 끝까지 ' + map.mazeLeft + '걸음';
@@ -5456,8 +5458,27 @@ var TowerMine = (function () {
     floats.push({ x: P.x, y: P.y - 1.0, text: '💥 연속 채광 끊김!', color: '#ff8a8a', big: true, t0: performance.now() + 120 });
     msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 다시 20번을 캐야 해요.', 2400);
   }
+  // [2026-11-11] 하피의 둥지 -- "곡괭이로 채광할 수도, 10회 정도면 쓰러져 밑동만" -- 바라보는 칸(없으면 둘레 8칸)의 나무를 찍는다
+  var chopBusy = false;
+  function chopTree() {
+    if (!opened || !map || chopBusy || P.moving) return;
+    var dv = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[P.dir] || [0, 1];
+    var tx = P.x + dv[0], ty = P.y + dv[1];
+    if (cellAt(tx, ty) !== 'E') { tx = -1; for (var oy = -1; oy <= 1 && tx < 0; oy++) for (var ox = -1; ox <= 1; ox++) if (cellAt(P.x + ox, P.y + oy) === 'E') { tx = P.x + ox; ty = P.y + oy; break; } }
+    if (tx < 0) { msg('🪓 나무 바로 옆에서 캐면 곡괭이로 나무를 찍을 수 있어요.', 2200); return; }
+    chopBusy = true; P.digT0 = performance.now(); P.swing = false;
+    apiFast('/api/tower-mine-chop?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&tx=' + tx + '&ty=' + ty + verQ()).then(function (d) {
+      chopBusy = false;
+      if (!d || d.tooFast) return;
+      if (d.reload) { reload(); return; }
+      if (!d.ok) { if (d.message) msg(d.message, 2200); return; }
+      floats.push({ x: tx, y: ty - 0.3, text: '🪓 ' + d.chop + '/' + d.need, color: '#ffe0a0', t0: performance.now() });
+      if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
+    }).catch(function () { chopBusy = false; });
+  }
   function dig() {
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
+    if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
     if (P.moving) return;

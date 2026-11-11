@@ -2172,6 +2172,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_HARPY_DROP_PCT = 30;
     List<HashMap<String, Object>> mineHarpyDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = mineBossDrops(userName, msg);
+        dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[4], 1); // [2026-11-11] "하피 보상에 흑진주 100%"
+        drops.add(mineDrop(S5MineMap.SEA_GEM_GRADE_BASE + 4, S5MineMap.SEA_GEM_NAMES[4], 1));
+        msg.append(" · 💎 ").append(S5MineMap.SEA_GEM_NAMES[4]).append(" 1개");
         if (RND.nextInt(100) < MINE_HARPY_DROP_PCT || isMineAdmin(userName)) {
             dao.addUserOre(userName, S5MineMap.WIND_HEART_CODE, 1);
             drops.add(mineDrop(S5MineMap.WIND_HEART_GRADE, S5MineMap.WIND_HEART_NAME, 1));
@@ -4519,16 +4522,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  MINE_HARPY_SHOT_MS마다 깃털(원거리)을 쏜다. 앉은 나무에 불이 붙으면 바로 떠난다. 숲이 남아 있는 동안은 날고 있어 일반 공격(과 용병)은 무효, 검기/돌개베기/필살기만.
     //  나무: 불 검기/불 돌개베기가 닿으면 그 단계만큼 쌓여 MINE_TREE_FIRE_NEED에 닿으면 불붙고(맞은 나무만, 번지지 않음) MINE_TREE_BURN_MS 뒤 다 탄다.
     //  다 탄 나무는 MINE_TREE_REGROW_MS 뒤 다시 자란다. 나무가 모두 다 타 있으면 하피는 둥지 가운데 내려앉아 약해진다(숨지 못하고 일반 공격도 들어감).
-    static final int MINE_TREE_FIRE_NEED = 60;
+    static final int MINE_TREE_FIRE_NEED = 90; // [2026-11-11] "불타는 나무 쉽게 안 부서지게" 60 -> 90(5단계 불 검기 18번, 불+번개 같이면 9번)
+    static final int MINE_TREE_CHOP_NEED = 10; // [2026-11-11] "곡괭이로 채광할 수도 -- 10회 정도면 쓰러져 밑동만" -- 여럿이 함께 찍은 횟수
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CHOP_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final long MINE_TREE_BURN_MS = 8_000L, MINE_TREE_REGROW_MS = 2 * 3_600_000L, MINE_HARPY_PERCH_MS = 6_000L, MINE_HARPY_MOVE_MS = 4_000L, MINE_HARPY_SHOT_MS = 1_500L;
     static final java.util.concurrent.ConcurrentHashMap<Integer, long[]> MINE_TREES = new java.util.concurrent.ConcurrentHashMap<>(); // 나무 번호 -> {불 쌓인 양, 불붙은 시각}
     static final Object MINE_HARPY_LOCK = new Object();
     static int mineHarpyTree = -1, mineHarpyFx, mineHarpyFy, mineHarpyTx, mineHarpyTy;
     static long mineHarpyAt = 0;
     static boolean mineHarpyMoving = false;
-    /** 0 살아 있음 / 1 불타는 중 / 2 다 탐(다시 자랄 때까지). */
+    /** 0 살아 있음 / 1 불타는 중 / 2 다 탐 / 3 곡괭이에 쓰러져 밑동만(2, 3은 다시 자랄 때까지). */
     static int mineTreeState(int i, long now) {
         long[] t = MINE_TREES.get(i);
+        if (t != null && t.length > 5 && t[5] > 0) { if (now - t[5] < MINE_TREE_REGROW_MS) return 3; MINE_TREES.remove(i, t); return 0; } // [2026-11-11] 쓰러진 나무
         if (t == null || t[1] == 0) return 0;
         long e = now - t[1];
         if (e < MINE_TREE_BURN_MS) return 1;
@@ -4538,7 +4544,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static boolean mineForestBurnt(S5MineMap map, long now) {
         if (map.trees().isEmpty()) return false;
-        for (int i = 0; i < map.trees().size(); i++) if (mineTreeState(i, now) != 2) return false;
+        for (int i = 0; i < map.trees().size(); i++) if (mineTreeState(i, now) < 2) return false; // [2026-11-11] 다 탔거나 쓰러졌거나
         return true;
     }
     // [2026-11-11] "나무는 불 속성에 타지만 번개 속성도 공격되고, 동시 공격 받으면 더 잘 부서진다" -- 불/번개 단계를 더해 쌓고, 한 번에 둘 다이거나
@@ -4554,7 +4560,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean hit = false;
             for (int y = tp[1]; y < tp[1] + 2 && !hit; y++) for (int x = tp[0]; x < tp[0] + 3; x++) if (cells.contains(y * map.w + x)) { hit = true; break; }
             if (!hit || mineTreeState(i, now) != 0) continue;
-            long[] t = MINE_TREES.computeIfAbsent(i, k -> new long[4]);
+            long[] t = MINE_TREES.computeIfAbsent(i, k -> new long[6]);
             synchronized (t) {
                 int add = lv;
                 if ((fire > 0 && thunder > 0) || (fire > 0 && now - t[3] < MINE_TREE_COMBO_MS) || (thunder > 0 && now - t[2] < MINE_TREE_COMBO_MS)) { add *= MINE_TREE_COMBO_MUL; out.put("treeCombo", true); }
@@ -4564,6 +4570,45 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (t[0] >= MINE_TREE_FIRE_NEED && t[1] == 0) { t[1] = now; out.put("treeFire", i); }
             }
         }
+    }
+    /** [2026-11-11] 곡괭이로 나무 찍기 -- 내 자리(x, y) 둘레 8칸 안의 나무 칸(tx, ty). 찍은 횟수가 MINE_TREE_CHOP_NEED에 닿으면 쓰러져 밑동만 남는다(다시 자랄 때까지). */
+    public HashMap<String, Object> mineChopTree(String userName, String mapId, String ver, int x, int y, int tx, int ty) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        Long last = MINE_CHOP_AT.get(userName);
+        if (last != null && now - last < 400) { out.put("tooFast", true); return out; }
+        MINE_CHOP_AT.put(userName, now);
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) { out.put("reload", true); return out; }
+        if (map.trees().isEmpty()) { out.put("message", "여기서는 캘 수 없어요."); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        if (Math.max(Math.abs(tx - x), Math.abs(ty - y)) > 1) { out.put("message", "나무 바로 옆에서 나무 쪽을 바라보고 캐세요."); return out; }
+        int ti = -1;
+        for (int i = 0; i < map.trees().size(); i++) { int[] tp = map.trees().get(i); if (tx >= tp[0] && tx < tp[0] + 3 && ty >= tp[1] && ty < tp[1] + 2) { ti = i; break; } }
+        if (ti < 0) { out.put("message", "나무 바로 옆에서 나무 쪽을 바라보고 캐세요."); return out; }
+        int ts = mineTreeState(ti, now);
+        if (ts != 0) { out.put("message", ts == 3 ? "이미 쓰러진 나무예요." : "타 버린 나무예요."); return out; }
+        long[] t = MINE_TREES.computeIfAbsent(ti, k -> new long[6]);
+        int n;
+        boolean felled = false;
+        synchronized (t) {
+            t[4]++;
+            n = (int) Math.min(MINE_TREE_CHOP_NEED, t[4]);
+            if (t[4] >= MINE_TREE_CHOP_NEED && t[5] == 0 && t[1] == 0) { t[5] = now; felled = true; }
+        }
+        out.put("ok", true);
+        out.put("tree", ti);
+        out.put("chop", n);
+        out.put("need", MINE_TREE_CHOP_NEED);
+        if (felled) { out.put("felled", true); out.put("message", "🪓 나무가 쓰러졌어요!"); }
+        return out;
     }
     static int[] mineHarpyPerch(S5MineMap map, int i) { int[] t = map.trees().get(i); return new int[] { t[0] + 1, t[1] - 2 }; } // 나무 위쪽(뒤) -- 화면은 수관에 가려 그린다
     static void mineHarpyReset() { synchronized (MINE_HARPY_LOCK) { mineHarpyTree = -1; mineHarpyAt = 0; mineHarpyMoving = false; } }

@@ -722,6 +722,20 @@ public class Season5ViewController {
     }
 
     /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 곡괭이 내구도 1). v = 화면의 맵 version(바뀌었으면 reload). */
+    /** [2026-11-11] 하피의 둥지 -- 곡괭이로 나무 찍기(10번이면 쓰러짐). */
+    @GetMapping("/api/tower-mine-chop")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineChop(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "mapId", defaultValue = "") String mapId, @RequestParam("x") int x, @RequestParam("y") int y,
+            @RequestParam("tx") int tx, @RequestParam("ty") int ty, @RequestParam(value = "v", defaultValue = "") String ver) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        return ResponseEntity.ok(s5Service.mineChopTree(userName, mapId, ver, x, y, tx, ty));
+    }
+
     @GetMapping("/api/tower-mine-dig")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineDig(@RequestParam(value = "userName", defaultValue = "") String userName,
