@@ -664,7 +664,7 @@ var TowerMine = (function () {
   // ---------------------------------------------------------------- [2026-10-24] 몬스터
   // 위치는 시각으로 정한다(서버 S5MineMobs.cellAt과 같은 식) -- 체력/쓰러짐/멈춤만 서버에서 1.5초마다 받아 온다(mobSt).
   var mobHitAt = {}; // [2026-11-03] 공격한 순간(몬스터 흔들림)
-  var treeSt = [], treeNeed = 60, harpySt = null, harpyImmT = 0, harpyGustAt = 0; // [2026-11-08] 하피의 둥지 -- 나무 [번호, 상태 0 살아 있음/1 불탐/2 다 탐, 불 쌓인 양], 하피 {hide, weak, move}
+  var treeFallAt = {}, treeSt = [], treeNeed = 60, harpySt = null, harpyImmT = 0, harpyGustAt = 0; // [2026-11-08] 하피의 둥지 -- 나무 [번호, 상태 0 살아 있음/1 불탐/2 다 탐, 불 쌓인 양], 하피 {hide, weak, move}
   var mobSt = {}, srvOff = 0, mobTimer = 0, mobSprites = {}, mobOcc = {}, atkBusy = false, lastAtkT = 0;
   function mix(a, b) {
     var h = (Math.imul(a, 0x9E3779B1 | 0) + Math.imul(b, 0x85EBCA77 | 0)) | 0;
@@ -969,7 +969,7 @@ var TowerMine = (function () {
       if (o && o.loc && tn - o.loc < 1500 && (!ns[id] || ns[id].fu < o.fu)) ns[id] = o;
     }
     thunderUntil = d.hideUntil && d.hideUntil > tn ? d.hideUntil : 0; // [2026-11-05] 천둥 황소 남은 시간(맵 안 모두에게)
-    if (d.trees) { treeSt = d.trees; treeNeed = d.treeNeed || treeNeed; } // [2026-11-08] 하피의 둥지
+    if (d.trees) { d.trees.forEach(function (q) { var o = treeSt[q[0]]; if (q[1] === 3 && o && (o[1] | 0) === 0 && !treeFallAt[q[0]]) treeFallAt[q[0]] = performance.now(); if (q[1] !== 3) delete treeFallAt[q[0]]; }); treeSt = d.trees; treeNeed = d.treeNeed || treeNeed; } // [2026-11-08] 하피의 둥지, [2026-11-11] 쓰러지는 모습
     harpySt = d.harpy || null;
     if (d.thunderNeed) { thunderKills = d.thunderKills || 0; thunderNeed = d.thunderNeed; thunderRestAt = d.thunderRestAt || 0; } // [2026-11-06] 절반부터 전기 // [2026-11-08] 쓰러진 뒤 2시간 쉼
     if (d.hideUntil && d.hideUntil > tn) { // [2026-11-05] 천둥 황소가 나와 마물(보스 제외)이 모두 숨었다 -- 서버는 줄을 보내지 않고 시각만
@@ -3925,6 +3925,22 @@ var TowerMine = (function () {
     }
     return (bigTreeCache[key] = c);
   }
+  // [2026-11-11] 곡괭이에 쓰러진 나무 -- 밑동(잘린 면 나이테, 뿌리, 톱밥, 누운 통나무 토막, 새싹). 48x64(나무와 같은 틀).
+  var stumpCache = null;
+  function stumpArt() {
+    if (stumpCache) return stumpCache;
+    var c = document.createElement('canvas'); c.width = 48; c.height = 64; var g = c.getContext('2d');
+    var P1 = function (x, y, col) { g.fillStyle = col; g.fillRect(Math.round(x), Math.round(y), 1, 1); }, Rr = function (x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); };
+    var E = function (cx, cy, rx, ry, col) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + .5) + (y * y) / (ry * ry + .5) <= 1) P1(cx + x, cy + y, col); };
+    Rr(17, 50, 14, 10, '#4a2e1a'); Rr(18, 50, 3, 10, '#6a4428'); Rr(28, 50, 2, 10, '#2e1c10');
+    Rr(13, 58, 6, 3, '#3a2414'); Rr(29, 58, 6, 3, '#3a2414'); Rr(11, 60, 4, 2, '#3a2414'); Rr(33, 60, 4, 2, '#3a2414');
+    E(24, 50, 7, 2, '#c8a070'); E(24, 50, 5, 1, '#a8804a'); P1(24, 50, '#6a4428'); P1(21, 50, '#8a6038'); P1(27, 50, '#8a6038');
+    for (var i = 0; i < 9; i++) P1(14 + (i * 7) % 20, 61 + (i % 2), i % 3 ? '#d8b888' : '#b89060');
+    Rr(32, 55, 12, 4, '#5a3820'); Rr(32, 55, 12, 1, '#7a5030'); E(44, 57, 1, 2, '#c8a070');
+    P1(15, 48, '#5aa848'); P1(14, 47, '#7ad860'); P1(16, 47, '#3e8a38');
+    return (stumpCache = c);
+  }
+  var TREE_FALL_MS = 800;
   function forestTreesDraw(now, TS, camX, camY, W, H) {
     var f = Math.floor(now / 260) % 2, burnt = 0;
     map.trees.forEach(function (tp, i) {
@@ -3934,8 +3950,20 @@ var TowerMine = (function () {
       if (x > W || y > H || x + 3 * TS < 0 || y + 4 * TS < 0) return;
       var under = st0 < 2 && P.x >= tp[0] && P.x <= tp[0] + 2 && P.y >= tp[1] - 2 && P.y < tp[1];
       if (under) ctx.globalAlpha = 0.5;
-      ctx.drawImage(bigTreeArt(st0 === 3 ? 2 : st0, st0 ? f : 0), // [2026-11-11] 3 = 곡괭이에 쓰러짐(밑동 그림은 시안 승인 뒤)
-         Math.round(x), Math.round(y), 3 * TS, 4 * TS);
+      if (st0 === 3) { // [2026-11-11] 쓰러진 나무 -- 밑동, 방금 쓰러졌으면 밑동을 축으로 옆으로 넘어가며 흙먼지(TREE_FALL_MS)
+        ctx.drawImage(stumpArt(), Math.round(x), Math.round(y), 3 * TS, 4 * TS);
+        var fk = treeFallAt[i] ? (now - treeFallAt[i]) / TREE_FALL_MS : 1;
+        if (fk < 1) {
+          var ang = Math.min(1, fk * fk * 1.15) * 1.48, px0 = x + 1.5 * TS, py0 = y + 3.6 * TS;
+          ctx.save(); ctx.translate(px0, py0); ctx.rotate(ang); ctx.globalAlpha = fk > 0.8 ? (1 - fk) * 5 : 1;
+          ctx.beginPath(); ctx.rect(-1.5 * TS, -4 * TS, 3 * TS, 3.35 * TS); ctx.clip();
+          ctx.drawImage(bigTreeArt(0, 0), -1.5 * TS, -3.6 * TS, 3 * TS, 4 * TS);
+          ctx.restore();
+          if (fk > 0.45) { ctx.globalAlpha = Math.max(0, 0.6 * (1 - fk) / 0.55); for (var di = 0; di < 14; di++) { var da = di * 0.7, dr = TS * (0.25 + di * 0.1) * (0.6 + fk); ctx.fillStyle = di % 2 ? '#c8b898' : '#a89878'; ctx.fillRect(px0 + TS * fk + Math.cos(da) * dr, py0 - Math.abs(Math.sin(da)) * dr * 0.5, TS * 0.12, TS * 0.1); } ctx.globalAlpha = 1; }
+        } else if (treeFallAt[i]) delete treeFallAt[i];
+        return;
+      }
+      ctx.drawImage(bigTreeArt(st0, st0 ? f : 0), Math.round(x), Math.round(y), 3 * TS, 4 * TS);
       ctx.globalAlpha = 1;
       if (st0 === 0 && q[2] > 0) { // 불이 쌓이는 중
         var bw = 2 * TS, bx = Math.round(x + TS / 2), by = Math.round(y + 4 * TS + 2);
@@ -5473,7 +5501,7 @@ var TowerMine = (function () {
       if (d.reload) { reload(); return; }
       if (!d.ok) { if (d.message) msg(d.message, 2200); return; }
       floats.push({ x: tx, y: ty - 0.3, text: '🪓 ' + d.chop + '/' + d.need, color: '#ffe0a0', t0: performance.now() });
-      if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
+      if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeFallAt[d.tree] = performance.now(); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
     }).catch(function () { chopBusy = false; });
   }
   function dig() {
