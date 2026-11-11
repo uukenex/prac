@@ -816,7 +816,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
     /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
     static final double MINE_RB_HP_BONUS = 0.5;
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(40 * Math.pow(1.09, Math.min(MINE_LV_MAX, lv) - 1) * (1 + MINE_RB_HP_BONUS * rb)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -- 79레벨까지는 그대로(레벨마다 9%), 80레벨부터 직선 두 구간:
+    //  80레벨 45,000 -> 90레벨 80,000(레벨마다 +3,500) -> 99레벨 120,000(레벨마다 약 +4,444). 예전 9% 곡선은 80 36,204 / 90 85,707 / 99 186,147.
+    static final double MINE_HP_LV80 = 45_000, MINE_HP_LV90 = 80_000, MINE_HP_LV99 = 120_000;
+    static double mineHpBase(int lv) {
+        if (lv < 80) return 40 * Math.pow(1.09, lv - 1);
+        return lv <= 90 ? MINE_HP_LV80 + (MINE_HP_LV90 - MINE_HP_LV80) * (lv - 80) / 10.0 : MINE_HP_LV90 + (MINE_HP_LV99 - MINE_HP_LV90) * (lv - 90) / 9.0;
+    }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
     static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
     /** [2026-10-28] "환생 보너스 추가 광석은 미스릴 이하 광석만" -- 구리~미스릴(등급 1~5) 광석일 때만 x(1 + 회차), 별빛석/요일석/보석 등은 1배. */
@@ -965,7 +972,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int max = mineHpCap(mineLv(row), lock, rb);
         HpVirt hv = mineHpVirt(row);
         if (hv == null && row.get("M_HP") == null) return max;
-        int hp = hv != null ? hv.hp : intVal(row.get("M_HP"), max);
+        int hp = Math.min(max, hv != null ? hv.hp : intVal(row.get("M_HP"), max)); // [2026-11-11] 고레벨 최대 체력이 줄어도(80레벨부터 새 곡선) 넘치지 않게
         long hpAt = hv != null ? hv.at : longOf(row.get("M_HP_AT_MS"), now);
         String un = strVal(row.get("USER_NAME"), null);
         boolean fight = mineEngaged(un, now);
