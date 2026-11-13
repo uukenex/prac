@@ -894,7 +894,7 @@
     .mine-world .wh{ font:800 12px sans-serif; fill:#ffe14d; }
     .mine-world .wf{ font:800 10px sans-serif; fill:#ffd27a; paint-order:stroke; stroke:#140d0a; stroke-width:3px; stroke-linejoin:round; } /* [2026-10-30] 층 표시 */
     .mine-world .wc{ font:800 9px sans-serif; } /* [2026-11-11] 맵별 접속 인원 -- 언제든(칸 가운데, 칸 글자색) */
-    .mine-world .wn{ font:800 11px sans-serif; fill:#f4f0e6; paint-order:stroke; stroke:#1d1730; stroke-width:3.5px; stroke-linejoin:round; } /* [2026-11-11] 이름은 칸 밖, 배경 없이 */
+    .mine-world .wn{ font:800 12px sans-serif; fill:#ffc98a; paint-order:stroke; stroke:#0b0814; stroke-width:4px; stroke-linejoin:round; } /* [2026-11-13] "흐리고 너무 하얗다" -- 살구색 + 진한 테두리 */ /* [2026-11-11] 이름은 칸 밖, 배경 없이 */
     .mine-world .wn-here{ fill:#ffe14d; }
     .mine-world .wlv{ fill:#9fe0ff; font-size:10px; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
     .mine-world.world-close .wc{ display:block; }

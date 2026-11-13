@@ -1115,7 +1115,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("mobs", list);
         if (S5MineMap.WESTROAD.equals(map.id) && mineThunderOn(now)) out.put("hideUntil", mineThunderUntil); // [2026-11-05] 천둥 황소 -- 이때까지 마물(보스 제외)은 없음
-        if (S5MineMap.WESTROAD.equals(map.id)) { mineThunderLoad(); out.put("thunderKills", mineThunderKills); out.put("thunderNeed", MINE_THUNDER_NEED); if (mineThunderRestAt > now) out.put("thunderRestAt", mineThunderRestAt); } // [2026-11-06] 절반부터 화면에 전기(점점 세게)
+        if (S5MineMap.WESTROAD.equals(map.id)) { mineThunderLoad(); out.put("thunderKills", mineThunderKills); out.put("thunderNeed", MINE_THUNDER_NEED); } // [2026-11-06] 절반부터 화면에 전기(점점 세게)
         return out;
     }
 
@@ -1160,7 +1160,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     boolean mineBossDead() {
-        return mineBossDeadKey(MINE_BOSS_KEY);
+        return mineBossDead(S5MineMobs.BOSS_TYPE); // [2026-11-13] 소환
     }
 
     // [2026-10-28] "젠은 맵 초기화 시점 1회만(보스 공통)" -- 타락한 대주교도 동굴 3층 보스처럼 주기마다 한 번(MINE_RAID_KILLED = "주기|유저").
@@ -1243,11 +1243,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static boolean mineHidden(S5MineMap map, S5MineMobs.Type t, long now) { return S5MineMap.WESTROAD.equals(map.id) && !t.boss && mineThunderOn(now); }
 
     void mineThunderKill(S5MineMap map, S5MineMobs.Type t, long now) {
-        if (!S5MineMap.WESTROAD.equals(map.id) || t.boss || !S5MineMap.night(now)) return;
+        if (!S5MineMap.WESTROAD.equals(map.id) || t.boss) return; // [2026-11-13] "정해진 숫자만큼 처치하면 그냥 보스가 출현" -- 밤에만 세던 것 없앰
         mineThunderLoad();
         int k;
         synchronized (MINE_THUNDER_LOCK) {
-            if (mineThunderOn(now) || now < mineThunderRestAt) return; // [2026-11-08] 쓰러진 뒤 2시간은 안 센다
+            if (mineThunderOn(now)) return; // [2026-11-13] 쓰러진 뒤 2시간 쉼(mineThunderRestAt)도 없앰 -- 나와 있는 동안만 안 센다
             k = ++mineThunderKills;
             if (k >= MINE_THUNDER_NEED) {
                 mineThunderKills = k = 0;
@@ -1292,8 +1292,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineThunderEnd(S5MineMap map, long now) {
         mineThunderKilled = true;
         mineThunderLoad();
-        mineThunderRestAt = now + MINE_THUNDER_REST_MS; // [2026-11-08] 2시간 뒤부터 다시 센다
-        try { dao.upsertConfigValue(MINE_THUNDER_REST_CFG, String.valueOf(mineThunderRestAt), "thunder bull killed -> night kills count again after this time (ms, set by app)"); } catch (Exception ignore) { }
+        if (mineThunderRestAt > 0) { mineThunderRestAt = 0; try { dao.upsertConfigValue(MINE_THUNDER_REST_CFG, "0", "thunder bull rest (unused since 2026-11-13)"); } catch (Exception ignore) { } } // [2026-11-13] 쉼 없이 바로 다시 센다
         MINE_SHOCK.clear();
         MINE_THUNDER_NEXT.clear();
         String prefix = map.version() + ":";
@@ -1406,8 +1405,130 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 보스(type)가 쓰러진 지 2시간이 안 됐는지. 보스가 아니면 false. */
     boolean mineBossDead(int type) {
         if (type == S5MineMobs.THUNDER_BOSS_TYPE) return !mineThunderOn(System.currentTimeMillis()); // [2026-11-05] 밤 마물 200마리(MINE_THUNDER_NEED) 뒤에만
+        if (mineCallMap(type) != null) return !mineBossUp(type, System.currentTimeMillis()); // [2026-11-13] 보스룸 보스는 소환했을 때만
         String key = mineBossKey(type);
         return key != null && mineBossDeadKey(key);
+    }
+
+    // ---- [2026-11-13] 보스 소환 -- "기본적으로 보스룸에 보스가 없도록, 보스가 없을 때 NPC를 한 명 두어 개인별로 보스 소환(2시간 쿨타임).
+    //  2인 플레이 땐 바로 두 번 도전할 수도 있게(쿨타임이 사람마다), 소환하면 보스 관련 오브젝트 초기화(하피는 나무가 다시 자람)".
+    //  예전: 쓰러지고 2시간 뒤 저절로 다시(젠타임마다 같은 사람이 잡아 다른 사람은 늘 "보스 없음").
+    //  보스룸(동굴 3층/폐허/설산 봉우리/용암섬/피라미드 지하/하피의 둥지/닌자 두목의 방)의 보스는 소환된 동안만 있다(mineBossUp).
+    //  같은 날 "소환사 NPC는 보스가 처음 생성되는 곳에, 소환 시 3초 카운트를 크게 하고 사라지면서 보스 생성, 소환된 뒤 맵에 아무도 없이 10분 지나면 보스는 사라지게".
+    //  소환하면 MINE_CALL_DELAY_MS 뒤(MINE_CALL_AT = 나타나는 시각)에 나온다 -- 그동안 소환사 머리 위 카운트(맵 안 모두에게, 위치 알림 bossCall.at).
+    //  나온 뒤 쓰러지거나, 맵에 아무도 없는 채로(위치 알림 MINE_CALL_SEEN) MINE_CALL_LIFE_MS가 지나면 사라진다. 소환 기록은 메모리(배포하면 보스가 사라짐 -- 쿨타임은 DB라 남는다).
+    //  쿨타임은 유저 아이템 BCALL_<맵>(마지막 소환 시각, 분 단위). 소환사 NPC는 보스 집 칸에 서 있고(보스가 없을 때만, 화면 위치 알림 bossCall), 보스가 나오면 사라진다.
+    static final long MINE_CALL_CD_MS = 2 * 3_600_000L, MINE_CALL_LIFE_MS = 10 * 60_000L, MINE_CALL_DELAY_MS = 3_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_SEEN = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 누가 마지막으로 있던 시각
+    static final String MINE_ITEM_CALL = "BCALL_";
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 소환 시각
+    static final String[] MINE_CALL_MAPS = { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST, S5MineMap.SHRINE_BOSS };
+    /** 소환으로 나오는 보스의 맵(아니면 null). */
+    static String mineCallMap(int type) {
+        return type == S5MineMobs.BOSS_TYPE ? S5MineMap.CAVE3 : type == S5MineMobs.RAID_BOSS_TYPE ? S5MineMap.RUINS : type == S5MineMobs.ICE_BOSS_TYPE ? S5MineMap.PEAK
+                : type == S5MineMobs.LAVA_BOSS_TYPE ? S5MineMap.ISLE7 : type == S5MineMobs.PHARAOH_BOSS_TYPE ? S5MineMap.PYRAMID_UNDER : type == S5MineMobs.HARPY_BOSS_TYPE ? S5MineMap.HARPY_NEST
+                : type == S5MineMobs.SHRINE_BOSS_TYPE ? S5MineMap.SHRINE_BOSS : null;
+    }
+    static boolean mineCallRoom(String mapId) { for (String m : MINE_CALL_MAPS) if (m.equals(mapId)) return true; return false; }
+    /** 소환된 보스가 지금 나와 있는지. */
+    boolean mineBossUp(int type, long now) {
+        String mid = mineCallMap(type);
+        Long at = mid == null ? null : MINE_CALL_AT.get(mid);
+        if (at == null || now < at) return false; // 소환 카운트 중
+        String bk = mineBossKey(type);
+        if (bk != null && mineBossKilledAt(bk) >= at) return false; // 소환한 뒤 쓰러졌다
+        S5MineMap map = S5MineMap.get(mid);
+        S5MineMap.Mob bm = map == null ? null : mineBossOf(map);
+        MobState s = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
+        if (s != null && s.deadUntil > now) return false; // 닌자 두목(쓰러진 시각 기록 없음)
+        long last = Math.max(at, MINE_CALL_SEEN.getOrDefault(mid, 0L));
+        if (now - last >= MINE_CALL_LIFE_MS) { MINE_CALL_AT.remove(mid, at); return false; } // 맵에 아무도 없이 10분
+        return true;
+    }
+    /** 소환 카운트 중이면 보스가 나타나는 시각(아니면 0). */
+    static long mineCallPending(String mapId, long now) {
+        Long at = MINE_CALL_AT.get(mapId);
+        return at != null && now < at ? at : 0;
+    }
+    /** 내가 다음에 소환할 수 있는 시각(ms, 지금 되면 0). */
+    static long mineCallReadyAt(Map<String, Integer> items, String mapId) {
+        int m = items == null ? 0 : items.getOrDefault(MINE_ITEM_CALL + mapId, 0);
+        return m <= 0 ? 0 : m * 60_000L + MINE_CALL_CD_MS;
+    }
+    /** 소환사 NPC 자리(보스 집 칸). */
+    static int[] mineCallSpot(S5MineMap map) {
+        S5MineMap.Mob bm = mineBossOf(map);
+        return bm == null ? null : new int[] { bm.x, bm.y };
+    }
+    /** 보스와 그 둘레 오브젝트를 처음으로 -- 보스 체력, 수하/분신, 빙결/용암/원거리 차례, 하피 나무. */
+    void mineCallReset(S5MineMap map, long now) {
+        S5MineMap.Mob boss = mineBossOf(map);
+        if (boss == null) return;
+        for (S5MineMap.Mob mb : map.mobs()) {
+            S5MineMobs.Type t = S5MineMobs.TYPES.get(mb.type);
+            if (t.boss || t.minion || t.clone) MINE_MOB_STATE.remove(mineMobKey(map, mb.id));
+        }
+        S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
+        int bmax = S5MineMobs.hp(bt, boss.rank);
+        MobState bs = new MobState(bmax);
+        bs.fx = boss.x; bs.fy = boss.y; bs.regenAt = now; bs.nearAt = now;
+        MINE_MOB_STATE.put(mineMobKey(map, boss.id), bs);
+        int bid = boss.id;
+        for (MineEngage e : MINE_ENGAGE.values()) if (map.version().equals(e.mapVer)) e.mobs.keySet().removeIf(id -> id == bid);
+        MINE_RANGED_NEXT.clear();
+        if (boss.type == S5MineMobs.RAID_BOSS_TYPE) { mineRaidAwakeUntil = 0; mineRaidLastSummon = 0; }
+        if (boss.type == S5MineMobs.ICE_BOSS_TYPE) { mineIceAwakeUntil = 0; mineIceNextFreeze = 0; mineIceThawAll(); }
+        if (boss.type == S5MineMobs.LAVA_BOSS_TYPE) MINE_LAVA.clear();
+        if (boss.type == S5MineMobs.PHARAOH_BOSS_TYPE) MINE_PHARAOH_STUN_AT.clear();
+        if (boss.type == S5MineMobs.HARPY_BOSS_TYPE) { MINE_TREES.clear(); mineHarpyReset(); } // 나무가 모두 다시 자란다
+    }
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_TRY = new java.util.concurrent.ConcurrentHashMap<>();
+    /** [2026-11-13] 보스 소환사 -- action=info(지금 상태) / call(소환). */
+    public HashMap<String, Object> mineBossCall(String userName, String action) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        S5MineMap.Mob boss = map == null || !mineCallRoom(map.id) ? null : mineBossOf(map);
+        if (boss == null) { out.put("message", "여기엔 소환할 보스가 없어요."); return out; }
+        S5MineMobs.Type bt = S5MineMobs.TYPES.get(boss.type);
+        Map<String, Integer> items = mineItems(userName);
+        long ready = mineCallReadyAt(items, map.id);
+        boolean up = mineBossUp(boss.type, now);
+        out.put("boss", bt.name);
+        out.put("readyAt", ready);
+        out.put("up", up);
+        out.put("cdMin", MINE_CALL_CD_MS / 60_000L);
+        if (!"call".equals(action)) { out.put("ok", true); return out; }
+        Long last = MINE_CALL_TRY.get(userName);
+        if (last != null && now - last < 1_000L) { out.put("tooFast", true); return out; }
+        MINE_CALL_TRY.put(userName, now);
+        if (up) { out.put("message", "👑 " + bt.name + "이(가) 이미 나와 있어요!"); return out; }
+        if (mineCallPending(map.id, now) > 0) { out.put("message", "👑 " + bt.name + "이(가) 곧 나타나요!"); return out; }
+        if (ready > now) { out.put("message", "아직 다시 부를 수 없어요. " + mineCallLeft(ready - now) + " 뒤에 다시 와 주세요."); return out; }
+        int[] sp = mineCallSpot(map), pos = minePos(row, map, mineWalkMode(items));
+        if (sp == null || pos == null || Math.max(Math.abs(pos[0] - sp[0]), Math.abs(pos[1] - sp[1])) > 2) { out.put("message", "소환사 바로 곁에서 불러 주세요."); return out; }
+        synchronized (MINE_CALL_AT) {
+            if (mineBossUp(boss.type, now) || mineCallPending(map.id, now) > 0) { out.put("message", "👑 " + bt.name + "이(가) 이미 나와 있어요!"); return out; }
+            dao.upsertMineItem(userName, MINE_ITEM_CALL + map.id, (int) (now / 60_000L));
+            mineCallReset(map, now);
+            MINE_CALL_AT.put(map.id, now + MINE_CALL_DELAY_MS);
+            MINE_CALL_SEEN.put(map.id, now);
+        }
+        out.put("ok", true);
+        out.put("at", now + MINE_CALL_DELAY_MS);
+        out.put("readyAt", now / 60_000L * 60_000L + MINE_CALL_CD_MS);
+        out.put("message", "👑 " + bt.name + "을(를) 불러냈어요!");
+        return out;
+    }
+    static String mineCallLeft(long ms) {
+        long m = (ms + 59_999L) / 60_000L;
+        return m >= 60 ? (m / 60) + "시간" + (m % 60 > 0 ? " " + m % 60 + "분" : "") : m + "분";
     }
 
     static S5MineMap.Mob mineBossOf(S5MineMap map) {
@@ -1940,7 +2061,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_ICE_THAWED = new java.util.concurrent.ConcurrentHashMap<>();
 
     boolean mineIceBossDead() {
-        return mineBossDeadKey(MINE_ICE_KEY);
+        return mineBossDead(S5MineMobs.ICE_BOSS_TYPE); // [2026-11-13] 소환
     }
 
     /** 지금 얼어 있으면 그 얼음(없으면 null). 다 녹았거나 맵이 바뀌었으면 지운다. */
@@ -2257,7 +2378,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mobId < 0 || mobId >= map.mobs().size()) { out.put("message", "그 몬스터는 없어요."); return out; }
         S5MineMap.Mob mob = map.mobs().get(mobId);
         S5MineMobs.Type type = S5MineMobs.TYPES.get(mob.type);
-        if (mineBossDead(mob.type)) { out.put("message", "이번 맵에서는 이미 쓰러진 보스예요. 다음 맵 리셋 때 다시 나타나요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
+        if (mineBossDead(mob.type)) { out.put("message", "지금은 보스가 없어요. 보스 소환사에게 말을 걸면 불러낼 수 있어요."); out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); return out; }
         if (type.minion && MINE_MOB_STATE.get(mineMobKey(map, mobId)) == null) { out.put("mobId", mobId); out.put("mobDeadUntil", Long.MAX_VALUE / 2); out.put("far", true); return out; } // [2026-10-28] 불려 나오지 않은 수하
         int lv = mineLv(row);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
@@ -2701,28 +2822,32 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         List<HashMap<String, Object>> bosses = new ArrayList<>();
-        for (String bm : new String[] { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST }) { // [2026-11-11] 하피 여왕 // [2026-10-28] 설산 봉우리(얼음 여왕), 용암섬(용암 거신) // [2026-11-08] 피라미드 지하(파라오 미라)
+        // [2026-11-13] 보스 소환 -- 전체 지도 칸 위 젠타임 대신 지도 창 "👑 보스" 버튼 목록에 보스마다 내가 다시 소환할 수 있는 시각(callAt, 0 = 지금)
+        Map<String, Integer> callItems = mineItems(userName);
+        for (String bm : MINE_CALL_MAPS) {
             S5MineMap.Mob bmob = mineBossOf(S5MineMap.get(bm));
             if (bmob == null) continue;
+            if (S5MineMap.SHRINE_BOSS.equals(bm) && !mineArchiOpen(userName)) continue; // 닌자 두목은 다도해가 열린 사람만
             HashMap<String, Object> b = new HashMap<>();
             b.put("map", bm);
             b.put("name", S5MineMobs.TYPES.get(bmob.type).name);
+            b.put("mapName", S5MineMap.nameOf(bm));
             b.put("alive", !mineBossDead(bmob.type));
-            String bk = mineBossKey(bmob.type);
-            b.put("nextAt", bk == null ? S5MineMap.nextResetAt(now) : mineBossKilledAt(bk) + MINE_BOSS_RESPAWN_MS); // [2026-10-28] 쓰러지고 2시간 뒤
+            b.put("callAt", Math.max(0, mineCallReadyAt(callItems, bm)));
             bosses.add(b);
         }
-        if (mineArchiOpen(userName)) { // [2026-10-28] 닌자 두목 -- 맵 리셋이 아니라 쓰러지고 10분 뒤 다시(전체 지도에 다음 시각)
-            S5MineMap sbm = S5MineMap.get(S5MineMap.SHRINE_BOSS);
-            S5MineMap.Mob smob = mineBossOf(sbm);
-            if (smob != null) {
-                MobState ss = MINE_MOB_STATE.get(mineMobKey(sbm, smob.id));
-                long du = ss == null ? 0 : ss.deadUntil;
+        { // 천둥 황소 -- 소환 없이 마물의 숲 입구 마물 처치 수가 차면
+            S5MineMap wr = S5MineMap.get(S5MineMap.WESTROAD);
+            S5MineMap.Mob tmob = wr == null ? null : mineBossOf(wr);
+            if (tmob != null && tmob.type == S5MineMobs.THUNDER_BOSS_TYPE) {
+                mineThunderLoad();
                 HashMap<String, Object> b = new HashMap<>();
-                b.put("map", S5MineMap.SHRINE_BOSS);
-                b.put("name", S5MineMobs.TYPES.get(smob.type).name);
-                b.put("alive", du <= now);
-                b.put("nextAt", du);
+                b.put("map", S5MineMap.WESTROAD);
+                b.put("name", S5MineMobs.TYPES.get(tmob.type).name);
+                b.put("mapName", wr.name);
+                b.put("alive", mineThunderOn(now));
+                b.put("kills", mineThunderKills);
+                b.put("need", MINE_THUNDER_NEED);
                 bosses.add(b);
             }
         }
@@ -7684,6 +7809,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("online", online);
         out.put("mapN", mapN);
+        if (mineCallRoom(mapId)) { // [2026-11-13] 보스 소환사 -- 보스가 없을 때만 보스 집 칸에(소환 카운트 중이면 나타나는 시각 at)
+            MINE_CALL_SEEN.put(mapId, now); // 맵에 누가 있다(소환된 보스가 사라지지 않게)
+            S5MineMap cm = S5MineMap.get(mapId);
+            S5MineMap.Mob cb = cm == null ? null : mineBossOf(cm);
+            int[] sp = cm == null ? null : mineCallSpot(cm);
+            if (cb != null && sp != null && !mineBossUp(cb.type, now)) {
+                HashMap<String, Object> bc = new HashMap<>(); bc.put("x", sp[0]); bc.put("y", sp[1]);
+                long pa = mineCallPending(mapId, now);
+                if (pa > 0) bc.put("at", pa);
+                out.put("bossCall", bc);
+            }
+        }
         long[] hm = mineHermitNow(now); // [2026-10-30] 은둔한 대장장이
         if (hm != null && mapId.equals(mineHermitMaps()[(int) hm[0]])) { HashMap<String, Object> hr = new HashMap<>(); hr.put("x", hm[1]); hr.put("y", hm[2]); hr.put("until", hm[3]); out.put("hermit", hr); }
         if (hm != null && isMineAdmin(userName)) out.put("hermitAdmin", mineHermitMaps()[(int) hm[0]] + " (" + hm[1] + ", " + hm[2] + ")");

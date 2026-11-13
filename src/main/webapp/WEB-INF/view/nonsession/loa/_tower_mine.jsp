@@ -1376,6 +1376,8 @@ var TowerMine = (function () {
         var nx = P.x + (d === 'left' ? -1 : d === 'right' ? 1 : 0), ny = P.y + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
         if (hermitOn() && nx === hermit.x && ny === hermit.y) {
           talk(hermitNpc(), now); // [2026-10-30] 은둔한 대장장이
+        } else if (bossNpcOn() && nx === bossNpc.x && ny === bossNpc.y) {
+          talk(bossNpcObj(), now); // [2026-11-13] 보스 소환사
         } else if (walk(nx, ny)) {
           P.fx = P.x; P.fy = P.y; P.tx = nx; P.ty = ny; P.t0 = now; P.moving = true; P.step = P.step === 1 ? 2 : 1;
         } else if (PORTALS.indexOf(cellAt(nx, ny)) >= 0) {
@@ -1402,6 +1404,52 @@ var TowerMine = (function () {
   // [2026-10-30] 은둔한 대장장이 -- 위치 알림(presTick)으로 받는다. 맵 정보에 없고 지도에도 안 나온다.
   var hermit = null, hermitAdminSaid = '', hermitStep = 'talk', hermitList = null, hermitPick = null, hermitBusy = false;
   function hermitOn() { return !!(hermit && map && hermit.m === map.id && hermit.until > nowSrv()); }
+  // [2026-11-13] 보스 소환사 -- 보스룸에 보스가 없을 때 보스 집 칸에 선다(위치 알림 bossCall). 소환하면 3초 카운트(at) 뒤 사라지고 보스가 나온다.
+  var bossNpc = null, bossCallInfo = null, bossCallBusy = false, worldBossOpen = false;
+  function bossNpcOn() { return !!(bossNpc && map && bossNpc.m === map.id && !(bossNpc.at && bossNpc.at <= nowSrv())); }
+  function bossNpcObj() { return { x: bossNpc.x, y: bossNpc.y, kind: 'bosscall', name: '보스 소환사', line: '이곳의 주인을 불러내 드리지요. 한 번 부르면 두 시간 뒤에 다시 부를 수 있소.' }; }
+  function callLeftTxt(ms) { var m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + m % 60 + '분' : '') : m + '분'; }
+  function callHhmm(ms) { var d = new Date(ms - srvOff), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function bossCallHtml(n) {
+    var d = bossCallInfo, h = npcHead('🔮 ' + n.name, false) + talkBlock(n, n.line);
+    if (!d) return h + '<div class="mine-smith-say">...</div>';
+    if (!d.ok) return h + '<div class="mine-smith-say">' + escAttr(d.message || '...') + '</div>';
+    var left = (d.readyAt || 0) - nowSrv(), can = !d.up && left <= 0;
+    h += '<div class="mine-smith-say">👑 <b>' + escAttr(d.boss) + '</b> -- ' + (d.up ? '지금 나와 있어요!' : can ? '지금 불러낼 수 있어요.' : callHhmm(d.readyAt) + '부터 다시 부를 수 있어요 (' + callLeftTxt(left) + ' 뒤).')
+        + '<br><small>한 번 부르면 ' + Math.round((d.cdMin || 120) / 60) + '시간 뒤에 다시 부를 수 있어요. 사람마다 따로예요.</small></div>';
+    return h + '<div class="mine-smith-menu"><button type="button" ' + (can && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.bossCall()">👑 보스 소환</button></div>';
+  }
+  function bossCallGo() {
+    if (bossCallBusy) return;
+    bossCallBusy = true;
+    if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc);
+    api('/api/tower-mine-bosscall?action=call').then(function (d) {
+      bossCallBusy = false;
+      if (!d || d.tooFast) return;
+      if (d.ok) {
+        closeSmith();
+        if (bossNpc && map && bossNpc.m === map.id) bossNpc.at = d.at;
+        (st && st.bosses || []).forEach(function (b) { if (map && b.map === map.id) b.callAt = d.readyAt; });
+        msg(d.message || '👑 보스를 불러냈어요!', 3000);
+        return;
+      }
+      bossCallInfo = d;
+      if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc);
+      if (d.message) msg(d.message, 2600);
+    }).catch(function () { bossCallBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  /** 전체 지도 "👑 보스" -- 보스마다 지금 있는지 + 내가 다시 소환할 수 있는 시각(천둥 황소는 처치 수). */
+  function worldBossHtml() {
+    var L = (st && st.bosses) || [], tn = nowSrv();
+    var rows = L.map(function (b) {
+      var sub = b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
+          : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
+      return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
+          + (b.alive ? '<b style="color:#ff6a6a">👑 나와 있어요</b>' : '<span style="color:#a89ec8">💤 없음</span>') + '<br><small>' + sub + '</small></div>';
+    }).join('');
+    return '<div class="mine-smith-say" style="border:1px solid #ffd27a">👑 <b>보스</b> -- 보스룸 소환사에게 말을 걸어 불러내요. 소환은 보스마다, 사람마다 2시간에 한 번이에요.</div>'
+        + (rows || '<div class="mine-smith-say">아직 갈 수 있는 보스룸이 없어요.</div>');
+  }
   function hermitNpc() { return { x: hermit.x, y: hermit.y, kind: 'hermit', name: '???', line: '...' }; }
   function hermitHtml(n) {
     var h = npcHead('❔ ???', false) + talkBlock(n, '...');
@@ -1450,6 +1498,11 @@ var TowerMine = (function () {
     else if (n.kind === 'captain' && dg.quest >= 1) line = '재료는 다 모았나?';
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
     if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; openSmith(n, 'hermit'); return; } // [2026-10-30]
+    if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
+      setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
+      api('/api/tower-mine-bosscall?action=info').then(function (d) { bossCallInfo = d; if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc); }).catch(function () {});
+      return;
+    }
     if (n.kind === 'smith') openSmith(n, 'menu');
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
@@ -1780,8 +1833,7 @@ var TowerMine = (function () {
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y - nh / 2 - 5, bx = n.x - nw / 2, bh = ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
-          labels += bb.alive ? '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">' + bh + '👑 보스 출현 중</text>'
-              : '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#b8b0c8">' + bh + '💤 ' + (bb.name || '보스') + ' ' + hhmm(bb.nextAt) + (bb.nextAt > Date.now() ? ' (' + leftTxt(bb.nextAt - Date.now()) + ' 뒤)' : '') + '</text>'; // [2026-11-08] 다시 나타나는 시각 + 남은 시간
+          if (bb.alive) labels += '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">' + bh + '👑 보스 출현 중</text>'; // [2026-11-13] 젠타임은 없애고(소환) "👑 보스" 버튼 목록에 내 소환 가능 시각
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
             // [2026-11-11] "사각형 안에 이름 말고 배경 없는 글씨, 권장 레벨 대신 Lv30 피라미드, 인원은 언제든" -- 칸(맵 크기) 안엔 인원만, 이름은 칸 아래 떠 있는 글씨
@@ -1811,7 +1863,9 @@ var TowerMine = (function () {
     var svg = '<div class="world-ctrl">'
         + '<button type="button" onclick="TowerMine.worldZoom(1.3)">＋</button><button type="button" onclick="TowerMine.worldZoom(1 / 1.3)">－</button>'
         + '<button type="button" onclick="TowerMine.worldGo(\'me\')">📍 내 위치</button>'
+        + '<button type="button"' + (worldBossOpen ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.worldBoss()">👑 보스</button>' // [2026-11-13]
         + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
+        + (worldBossOpen ? worldBossHtml() : '')
         + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
         + '<rect x="-400" y="-400" width="' + (WORLD_SIZE[0] + 800) + '" height="' + (WORLD_SIZE[1] + 800) + '" fill="#1d1730"/>'
         + lines + nodes + labels + '</svg></div>'
@@ -2591,6 +2645,7 @@ var TowerMine = (function () {
       return;
     }
     if (smithView === 'hermit') { el.smith.innerHTML = hermitHtml(n); return; } // [2026-10-30]
+    if (smithView === 'bosscall') { el.smith.innerHTML = bossCallHtml(n); return; } // [2026-11-13]
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'aura') { el.smith.innerHTML = auraNpcHtml(n); return; } // [2026-11-04] 검기 사범
     if (smithView === 'whirl') { el.smith.innerHTML = whirlNpcHtml(n); return; } // [2026-11-07] 돌개 사범
@@ -3654,6 +3709,7 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      bossNpc = d.bossCall ? { m: mid, x: d.bossCall.x, y: d.bossCall.y, at: d.bossCall.at || (bossNpc && bossNpc.m === mid && bossNpc.at > nowSrv() ? bossNpc.at : 0) } : null; // [2026-11-13] 보스 소환사(at = 카운트가 끝나 보스가 나오는 시각)
       if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
       var now = performance.now(), seen = {};
       (d.others || []).forEach(function (o) {
@@ -4898,6 +4954,29 @@ var TowerMine = (function () {
         ctx.fillStyle = '#9fe0ff'; ctx.fillText('💬 ???', hxp + TS / 2, hyp - 6 * dpr);
       }
     }
+    if (bossNpcOn()) { // [2026-11-13] 보스 소환사(명품상점 주인 그림을 같이 쓴다)
+      var bxp = Math.round(bossNpc.x * TS - camX), byp = Math.round(bossNpc.y * TS - camY), cdn = bossNpc.at ? bossNpc.at - nowSrv() : 0;
+      if (!tiles.npc.boutique) tiles.npc.boutique = npcSprite('boutique');
+      if (cdn > 0) { ctx.save(); ctx.globalAlpha = Math.max(0.15, Math.min(1, cdn / 3000)); } // 카운트 동안 점점 흐려지며 사라진다
+      ctx.drawImage(tiles.npc.boutique, bxp, byp - 3 * scale, TS, TS);
+      if (cdn > 0) ctx.restore();
+      if (!(cdn > 0) && Math.abs(bossNpc.x - P.x) + Math.abs(bossNpc.y - P.y) <= 10) {
+        ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+        ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('🔮 보스 소환사', bxp + TS / 2, byp - 6 * dpr);
+        ctx.fillStyle = '#e0b0ff'; ctx.fillText('🔮 보스 소환사', bxp + TS / 2, byp - 6 * dpr);
+      }
+      if (cdn > 0) { // 화면 가운데 큰 숫자 3 -> 2 -> 1
+        var cn = Math.ceil(cdn / 1000), fr = 1 - (cdn % 1000) / 1000, fs = Math.round((90 + 40 * (1 - fr)) * dpr);
+        ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = Math.min(1, 0.35 + (1 - fr));
+        ctx.font = '900 ' + fs + 'px sans-serif'; ctx.lineWidth = 10 * dpr; ctx.strokeStyle = '#1a0a24'; ctx.strokeText(String(cn), W / 2, H * 0.42);
+        ctx.fillStyle = '#ffd23f'; ctx.fillText(String(cn), W / 2, H * 0.42);
+        ctx.globalAlpha = 1; ctx.font = '800 ' + Math.round(18 * dpr) + 'px sans-serif'; ctx.lineWidth = 5 * dpr;
+        ctx.strokeText('👑 보스 소환!', W / 2, H * 0.42 - fs * 0.75); ctx.fillStyle = '#ff9a6a'; ctx.fillText('👑 보스 소환!', W / 2, H * 0.42 - fs * 0.75);
+        ctx.restore();
+        if (cdn < 120 && !bossNpc.flashed) { bossNpc.flashed = true; flashT0 = performance.now(); }
+      }
+    }
     mercDrawMine(now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }); // [2026-11-05] 내 용병
     // 캐릭터
     var cx = Math.round(pos.x * TS - camX), cy = Math.round(pos.y * TS - camY);
@@ -5685,7 +5764,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
