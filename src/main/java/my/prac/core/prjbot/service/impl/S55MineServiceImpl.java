@@ -1225,7 +1225,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-05] "밤에만 세고, 낮이 돼도 사라지지 않게. 누적 500이 되면 0으로 돌리며 보스가 나타나고 1시간 뒤 사라진다. 사라지면 일반 몹이 다시.
     //  1시간 카운트는 맵 안 모두에게" -- 밤마다 0으로 돌리던 것/한 밤에 한 번 제한을 없앴다. 누적 수는 TBOT_S5_CONFIG(MINE_THUNDER_CFG)에 10마리마다 적어
     //  배포/재시작에도 이어진다(최대 9마리 손실). 남은 시간은 mineMobs의 hideUntil로 화면에 보인다.
-    static final int MINE_THUNDER_NEED = 500; // [2026-11-05] 밤 처치 누적
+    static final int MINE_THUNDER_NEED = 2000; // [2026-11-14] 500 -> 2000("천둥 보스가 복사된다" -- 밤/쉼 조건을 없애자 1분에 90마리씩 잡혀 5~6분마다 다시 나옴) // [2026-11-05] 밤 처치 누적
     static final long MINE_THUNDER_BOSS_MS = 60 * 60_000L; // [2026-11-05] 20분 -> 1시간
     static final String MINE_THUNDER_CFG = "MINE_THUNDER_KILLS";
     static final double MINE_THUNDER_AIR_PCT = 1.0; // [2026-11-06] 황소가 나와 있는 동안 맵 전체 초당 최대 체력 %
