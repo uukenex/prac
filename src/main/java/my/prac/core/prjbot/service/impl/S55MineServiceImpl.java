@@ -1458,8 +1458,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 소환사 NPC 자리(보스 집 칸). */
     static int[] mineCallSpot(S5MineMap map) {
         S5MineMap.Mob bm = mineBossOf(map);
-        return bm == null ? null : new int[] { bm.x, bm.y };
+        if (bm == null) return null;
+        if (S5MineMap.CAVE3.equals(map.id)) { // [2026-11-13] "지하 광산 3층 소환사가 길을 막는다 -- 맵 가운데로" -- 가운데에서 가까운, 둘레 8칸이 모두 트인 칸
+            int[] c = MINE_CALL_CENTER.get(map.version());
+            if (c == null) {
+                int cx = map.w / 2, cy = map.h / 2;
+                for (int d = 0; d < Math.max(map.w, map.h) && c == null; d++)
+                    for (int dy = -d; dy <= d && c == null; dy++) for (int dx = -d; dx <= d; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) != d) continue;
+                        int x = cx + dx, y = cy + dy;
+                        boolean open = map.walkable(x, y) && map.portalAt(x, y) == null;
+                        for (int yy = y - 1; yy <= y + 1 && open; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (!map.walkable(xx, yy)) { open = false; break; }
+                        if (open) { c = new int[] { x, y }; break; }
+                    }
+                if (c == null) c = new int[] { bm.x, bm.y };
+                MINE_CALL_CENTER.put(map.version(), c);
+            }
+            return c;
+        }
+        return new int[] { bm.x, bm.y };
     }
+    static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_CALL_CENTER = new java.util.concurrent.ConcurrentHashMap<>();
     /** 보스와 그 둘레 오브젝트를 처음으로 -- 보스 체력, 수하/분신, 빙결/용암/원거리 차례, 하피 나무. */
     void mineCallReset(S5MineMap map, long now) {
         S5MineMap.Mob boss = mineBossOf(map);
@@ -2752,8 +2771,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> drops = new ArrayList<>();
         if (S5MineMap.WESTROAD.equals(map.id)) { // [2026-11-05] "그 맵은 몬스터가 광석을 안 떨어뜨려도 된다" -- 처치마다 DB에 쓰던 것도 없어진다(경험치는 공격마다 한 번에)
             // [2026-11-06] "보석 드랍 1% 확률, 모든 보석" -- 땅 보석 9종 + 바다 보석 5종 중 하나(고르게), 행운의 주문서면 2%. 맞을 때만 아이템을 읽고 쓴다.
-            int roll = RND.nextInt(10000);
-            if (roll >= MINE_WEST_GEM_P10K * 2 || (roll >= MINE_WEST_GEM_P10K && !mineLuckOn(mineItems(userName), System.currentTimeMillis()))) return drops;
+            Map<String, Integer> wit = mineItems(userName);
+            int roll = (int) (RND.nextInt(10000) / mineHuntGemMul(wit)); // [2026-11-13] 사냥꾼의 목걸이
+            if (roll >= MINE_WEST_GEM_P10K * 2 || (roll >= MINE_WEST_GEM_P10K && !mineLuckOn(wit, System.currentTimeMillis()))) return drops;
             int k = RND.nextInt(S5MineMap.GEM_CODES.length + S5MineMap.SEA_GEM_CODES.length);
             boolean sea = k >= S5MineMap.GEM_CODES.length;
             int i = sea ? k - S5MineMap.GEM_CODES.length : k;
@@ -2776,7 +2796,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             drops.add(mineDrop(g, S5MineMap.ORE_NAMES[g - 1], qty));
             msg.append(" · ").append(S5MineMap.ORE_NAMES[g - 1]).append(' ').append(qty).append("개");
         }
-        int gi = S5MineMap.gemForMob(map.id, RND.nextInt(1000) / dm, 1.3 * MINE_RANK_GEM_MUL[rank]);
+        int gi = S5MineMap.gemForMob(map.id, (int) (RND.nextInt(1000) / dm / mineHuntGemMul(dit)), 1.3 * MINE_RANK_GEM_MUL[rank]); // [2026-11-13] 사냥꾼의 목걸이
         if (gi >= 0) {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[gi], 1);
             drops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + gi, S5MineMap.GEM_NAMES[gi], 1));
@@ -6631,8 +6651,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-25] 왕도 대장장이 단계 추가: 반지/목걸이 3단계, 장화 4단계(88ms = 약 +60%).
     static final int[] MINE_PLENTY_DOUBLE_PCT = { 0, 3, 8, 15 };
     static final int[] MINE_ABYSS_UP_PCT = { 0, 2, 5, 10 };
-    static final double[] MINE_SAND_GEM_MULT = { 1.0, 1.3, 1.6, 2.2 };
-    static final int[] MINE_STEP_MS = { 140, 126, 112, 100, 88 };
+    static final double[] MINE_SAND_GEM_MULT = { 1.0, 1.3, 1.6, 2.2, 3.0, 4.0 }; // [2026-11-13] "업그레이드 지원, 상승 폭 많게" -- 4단계 3배, 5단계 4배(왕도 대장장이). 사냥꾼의 목걸이도 같은 표
+    static final int[] MINE_STEP_MS = { 140, 126, 112, 100, 88, 74, 62 }; // [2026-11-13] 장화 5단계 +89%, 6단계 +126%(왕도 대장장이)
     /** 선장이 금광석만 받고 아무것도 안 알려줄 확률(%). */
     static final int MINE_CAPTAIN_SCAM_PCT = 40;
     static final int MINE_CAPTAIN_GOLD = 10;
@@ -6698,15 +6718,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             new String[][][] { { mineCost(6, 20) }, { mineCost(1, 5), mineCost(8, 1) }, { mineCost(1, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(1, 1) } },
             new String[] { "한 등급 위 광석이 나올 확률 2% (미스릴까지)", "한 등급 위 광석이 나올 확률 5% (미스릴까지)", "한 등급 위 광석이 나올 확률 10% (미스릴까지)" }, 2),
         new MineGear(MINE_ITEM_SAND_NECKLACE, "사막의 목걸이", "necklace",
-            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(4, 1) } },
-            new String[] { "보석이 나올 확률 1.3배", "보석이 나올 확률 1.6배", "보석이 나올 확률 2.2배" }, 2),
+            new String[][][] { { mineCost(4, 20) }, { mineCost(5, 5), mineCost(8, 1) }, { mineCost(5, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(4, 1) },
+                { mineCost(5, 80), mineCost(8, 10), mineSeven(5), mineBar(4, 2), mineBar(3, 3), mineCut(4, 3), mineStar(2) }, // [2026-11-13] 4·5단계
+                { mineCost(5, 150), mineCost(8, 20), mineSeven(10), mineBar(4, 5), mineCut(4, 6), mineStar(4), { S5MineMap.MOON_STONE_CODE, "3" } } },
+            new String[] { "캘 때 보석이 나올 확률 1.3배", "캘 때 보석이 나올 확률 1.6배", "캘 때 보석이 나올 확률 2.2배", "캘 때 보석이 나올 확률 3배", "캘 때 보석이 나올 확률 4배" }, 2),
+        // [2026-11-13] "몬스터 처치 시 보석 드랍율 목걸이(채광용과 같은 레벨로)" -- 사냥꾼의 목걸이(NECK_SLOT 4), 배수는 사막의 목걸이와 같은 표(MINE_SAND_GEM_MULT)
+        new MineGear("HUNT_NECKLACE", "사냥꾼의 목걸이", "necklace", // = MINE_ITEM_HUNT_NECKLACE
+            new String[][][] { { mineCost(2, 20) }, { mineCost(3, 5), mineCost(8, 1) }, { mineCost(3, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(3, 1) },
+                { mineCost(3, 80), mineCost(8, 10), mineSeven(5), mineBar(4, 2), mineBar(3, 3), mineCut(3, 3), mineStar(2) },
+                { mineCost(3, 150), mineCost(8, 20), mineSeven(10), mineBar(4, 5), mineCut(3, 6), mineStar(4), { S5MineMap.MOON_STONE_CODE, "3" } } },
+            new String[] { "몬스터를 쓰러뜨릴 때 보석이 나올 확률 1.3배", "몬스터를 쓰러뜨릴 때 보석이 나올 확률 1.6배", "몬스터를 쓰러뜨릴 때 보석이 나올 확률 2.2배", "몬스터를 쓰러뜨릴 때 보석이 나올 확률 3배", "몬스터를 쓰러뜨릴 때 보석이 나올 확률 4배" }, 2),
         new MineGear("MIND_NECKLACE", "정신의 목걸이", "necklace", // = MINE_ITEM_MIND_NECKLACE(아래 -- 앞에서 쓰면 forward reference)
             new String[][][] { { { S5MineMap.ORE_CODES[0], "30" }, { S5MineMap.ORE_CODES[1], "20" } }, { { S5MineMap.ORE_CODES[2], "40" }, { S5MineMap.ORE_CODES[3], "15" } },
                     { { S5MineMap.ORE_CODES[3], "60" }, { S5MineMap.ORE_CODES[4], "15" }, mineCost(0, 5) } }, // 1단계 = 구리 30 + 철 20(초보자도), 2단계 은 40 + 금 15, 3단계 금 60 + 미스릴 15 + 재스퍼 5
             new String[] { "몬스터를 쓰러뜨리면 경험치 +10%", "몬스터를 쓰러뜨리면 경험치 +20%", "몬스터를 쓰러뜨리면 경험치 +30%" }),
         new MineGear(MINE_ITEM_SWIFT_BOOTS, "신속의 장화", "boots",
-            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2), mineBar(1, 1) }, { mineCost(8, 15), mineSeven(3), mineBar(4, 1), mineBar(1, 2), mineCut(3, 1) } },
-            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%", "이동 속도 +60%" }, 3),
+            new String[][][] { { mineCost(8, 1) }, { mineCost(8, 2) }, { mineCost(8, 12), mineStar(2), mineBar(1, 1) }, { mineCost(8, 15), mineSeven(3), mineBar(4, 1), mineBar(1, 2), mineCut(3, 1) },
+                { mineCost(8, 20), mineSeven(6), mineBar(4, 3), mineBar(1, 4), mineCut(3, 3), mineStar(2) }, // [2026-11-13] 5·6단계
+                { mineCost(8, 30), mineSeven(12), mineBar(4, 6), mineCut(3, 6), mineStar(4), { S5MineMap.MOON_STONE_CODE, "3" } } },
+            new String[] { "이동 속도 +11%", "이동 속도 +25%", "이동 속도 +40%", "이동 속도 +60%", "이동 속도 +89%", "이동 속도 +126%" }, 3),
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
             new String[][][] { { mineCost(8, 3), mineSeven(5), mineBar(0, 1), mineBar(1, 1) } },
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
@@ -6766,7 +6796,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
     }
 
-    static int mineNeckSlotOf(String code) { return MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : MINE_ITEM_ASSASSIN_NECKLACE.equals(code) ? 3 : 1; }
+    static int mineNeckSlotOf(String code) { return MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : MINE_ITEM_ASSASSIN_NECKLACE.equals(code) ? 3 : MINE_ITEM_HUNT_NECKLACE.equals(code) ? 4 : 1; }
+    static final String MINE_ITEM_HUNT_NECKLACE = "HUNT_NECKLACE";
+    /** [2026-11-13] 사냥꾼의 목걸이 -- 몬스터 보석 확률 배수(걸고 있을 때만). */
+    static double mineHuntGemMul(Map<String, Integer> items) {
+        return MINE_ITEM_HUNT_NECKLACE.equals(mineNeckCode(items)) ? MINE_SAND_GEM_MULT[Math.min(items.getOrDefault(MINE_ITEM_HUNT_NECKLACE, 0), MINE_SAND_GEM_MULT.length - 1)] : 1.0;
+    }
     static final String MINE_ITEM_REGEN_GLOVES = "REGEN_GLOVES", MINE_ITEM_BERSERK_GLOVES = "BERSERK_GLOVES";
     /** [2026-10-30] 쌍격의 장갑(GLOVE_SLOT 4) -- 두 번(각 MINE_TWIN_PCT%), 타격마다 치명 +MINE_TWIN_CRIT, 초당 최대 체력 -MINE_TWIN_DRAIN_PCT%(mineHpNow). */
     static final String MINE_ITEM_TWIN_GLOVES = "TWIN_GLOVES";
@@ -6871,6 +6906,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int s = items.getOrDefault(MINE_ITEM_NECK_SLOT, 0);
         if (s == 2 && mind) return MINE_ITEM_MIND_NECKLACE;
         if (s == 3 && items.getOrDefault(MINE_ITEM_ASSASSIN_NECKLACE, 0) > 0) return MINE_ITEM_ASSASSIN_NECKLACE; // [2026-10-30]
+        if (s == 4 && items.getOrDefault(MINE_ITEM_HUNT_NECKLACE, 0) > 0) return MINE_ITEM_HUNT_NECKLACE; // [2026-11-13]
         if (sand) return MINE_ITEM_SAND_NECKLACE;
         return mind ? MINE_ITEM_MIND_NECKLACE : null;
     }
@@ -7096,7 +7132,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineHasDragonRing(items)) out.add(mineEquipRow("ring", MINE_ITEM_DRAGON_RING, "용왕의 반지", "물 위를 걸을 수 있음", ring == MINE_RING_DRAGON));
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
-        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_ASSASSIN_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
+        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_ASSASSIN_NECKLACE, MINE_ITEM_HUNT_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
             MineGear g = mineGear(bc);
             int t = g == null ? 0 : Math.min(items.getOrDefault(bc, 0), g.cost.length);
             if (t < 1) continue;
@@ -7340,7 +7376,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 장착했어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 해제했어요.");
         }
-        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code) || MINE_ITEM_ASSASSIN_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
+        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code) || MINE_ITEM_ASSASSIN_NECKLACE.equals(code) || MINE_ITEM_HUNT_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
             MineGear ng = mineGear(code);
             if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, ng.name + "이(가) 없어요. 대장장이에게서 만들 수 있어요.");
             boolean on = !code.equals(mineNeckCode(it));
