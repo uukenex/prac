@@ -3701,6 +3701,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     /** 왕도 장인 -- 곡괭이 최대 내구도가 MINE_ARTISAN_MIN 이상이면 세공된 보석 하나에 최대(와 지금) 내구도 +MINE_ARTISAN_GAIN(대장장이 상한 위로). */
+    // [2026-11-13] "10회차까지는 1개로 30, 20회차까지는 2개로 30 ..." -- 회차 = (최대 내구도 - 1000) / 30 + 1, 보석 = (회차 - 1) / 10 + 1개(같은 종류).
+    //  같은 날 예전에 1개씩 올린 유저는 쓴 보석 수로 새 규칙을 다시 계산해 맞췄다(남는 보석이 있으면 한 회차 더 -- S5_PICK_ARTISAN_MIGRATE.sql).
+    static int mineArtisanRound(int max) { return Math.max(0, (max - MINE_ARTISAN_MIN) / MINE_ARTISAN_GAIN) + 1; }
+    static int mineArtisanCost(int max) { return (mineArtisanRound(max) - 1) / 10 + 1; }
     @Override
     @Transactional
     public HashMap<String, Object> mineArtisan(String userName, int gemIdx) {
@@ -3710,10 +3714,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineAtNpc(row, "artisan")) return mineGearResult(userName, false, "왕도 장인에게서만 할 수 있어요.");
         int dur = minePickDur(row), max = minePickMax(row);
         if (max < MINE_ARTISAN_MIN) return mineGearResult(userName, false, "🔨 곡괭이 최대 내구도가 " + MINE_ARTISAN_MIN + " 이상이어야 해요. (지금 " + max + "  대장장이에게서 먼저 올려 주세요)");
-        if (gemIdx < 0 || gemIdx >= MINE_CUT_KINDS || dao.takeUserOre(userName, mineCutDst(gemIdx), 1) == 0)
-            return mineGearResult(userName, false, "세공된 보석이 있어야 해요. (보석 세공사에게서 만들 수 있어요)");
+        int cost = mineArtisanCost(max);
+        if (gemIdx < 0 || gemIdx >= MINE_CUT_KINDS || dao.takeUserOre(userName, mineCutDst(gemIdx), cost) == 0)
+            return mineGearResult(userName, false, "세공된 보석이 " + cost + "개 있어야 해요. (" + mineArtisanRound(max) + "회차 -- 보석 세공사에게서 만들 수 있어요)");
         dao.addMinePickMax(userName, MINE_ARTISAN_GAIN);
-        HashMap<String, Object> out = mineGearResult(userName, true, "🔨 " + mineCutDstName(gemIdx) + "을(를) 곡괭이에 박아 넣었어요! 최대 내구도 +" + MINE_ARTISAN_GAIN
+        HashMap<String, Object> out = mineGearResult(userName, true, "🔨 " + mineCutDstName(gemIdx) + " " + cost + "개를 곡괭이에 박아 넣었어요! (" + mineArtisanRound(max) + "회차) 최대 내구도 +" + MINE_ARTISAN_GAIN
                 + " (지금 " + (dur + MINE_ARTISAN_GAIN) + " / " + (max + MINE_ARTISAN_GAIN) + ")");
         out.put("durability", dur + MINE_ARTISAN_GAIN);
         out.put("durabilityMax", max + MINE_ARTISAN_GAIN);

@@ -4621,13 +4621,15 @@ var TowerMine = (function () {
       return h;
     }
     var mx = st.durabilityMax || 0;
-    h += '<div class="mine-smith-say">곡괭이 최대 내구도가 1000 이상이면, 세공된 보석 하나에 최대 내구도 +30 (지금 ' + (st.durability || 0) + ' / ' + mx + ')</div>';
+    var aRound = Math.max(0, Math.floor((mx - 1000) / 30)) + 1, aCost = Math.floor((aRound - 1) / 10) + 1; // [2026-11-13] 10회차마다 보석 +1개(서버 mineArtisanCost)
+    h += '<div class="mine-smith-say">곡괭이 최대 내구도가 1000 이상이면, 세공된 보석으로 최대 내구도 +30 (지금 ' + (st.durability || 0) + ' / ' + mx + ')'
+        + (mx >= 1000 ? '<br>다음은 <b>' + aRound + '회차</b> -- 같은 보석 <b>' + aCost + '개</b> (10회차마다 1개씩 늘어요)' : '') + '</div>';
     var any = false;
     CUT_LIST.forEach(function (cl, j) {
       var c = oreHave(cl[1]);
       if (!c) return;
       any = true;
-      h += row(cl[1], ORE_NAME[cl[1]], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 ? '' : 'data-lack="1" ') + 'onclick="TowerMine.artisan(' + j + ')">박아 넣기</button>');
+      h += row(cl[1], ORE_NAME[cl[1]], '보유 ' + c + '개', '<button type="button" ' + (mx >= 1000 && c >= aCost ? '' : 'data-lack="1" ') + 'onclick="TowerMine.artisan(' + j + ')">' + aCost + '개 박아 넣기</button>');
     });
     if (!any) h += '<div class="mine-smith-say">세공된 보석이 없어요. 마을의 보석 세공사에게서 만들 수 있어요.</div>';
     return h;
