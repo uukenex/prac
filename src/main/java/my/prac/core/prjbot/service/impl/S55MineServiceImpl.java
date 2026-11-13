@@ -2494,7 +2494,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 s.hp -= dmg;
                 if (auraRange > 0) { auraMain = mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 s.lastHitAt = now;
-                if (shrineBoss) { if (s.hitters == null) s.hitters = new java.util.HashSet<>(); s.hitters.add(userName); }
+                mineHitBy(s, type, userName); // [2026-11-13] 보스를 때린 사람(함께 싸운 보상) -- 예전엔 닌자 두목만
                 if (s.hp <= 0) {
                     killed = true;
                     s.hp = 0;
@@ -2504,7 +2504,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     splitEnd = s.splitUntil > now;
                     s.splitUntil = 0;
                     s.stealth = false;
-                    if (shrineBoss) bossHitters = s.hitters == null ? new java.util.HashSet<>() : new java.util.HashSet<>(s.hitters);
+                    if (type.boss) bossHitters = s.hitters == null ? new java.util.HashSet<>() : new java.util.HashSet<>(s.hitters); // [2026-11-13] 보스 공통
                 } else {
                     s.fx = hitCell % map.w;
                     s.fy = hitCell / map.w;
@@ -2691,6 +2691,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> killDrops = type.noReward ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : mob.type == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank);
             if (type.boss && !type.noReward) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
+            if (type.boss) { int sh = mineBossShare(userName, map, mob, bossHitters); if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!"); } // [2026-11-13]
             if (type.boss) out.put("bossName", type.name); // [2026-11-07] 관리자 알림(보스 전용 아이템이 나왔는지만)
             out.put("drops", killDrops);
             out.put("ores", mineOreList(userName));
@@ -4580,6 +4581,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (vulnAdd > 0) mineVulnAdd(s, vulnAdd, now);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
                 s.lastHitAt = now;
+                mineHitBy(s, ot, userName); // [2026-11-13] 함께 싸운 보상
                 if (ot.dummy) { s.fx = hitCell % map.w; s.fy = hitCell / map.w; } // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
                 if (ot.sim) { s.hp -= sum; if (s.hp <= 0) { s.hp = 0; s.deadUntil = now + MINE_SIM_DOWN_MS; } } // [2026-11-07] 보스 허수아비 -- 줄기만 하고 처치/보상 없음
                 if (!ot.dummy) {
@@ -5791,6 +5793,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 dmg = (int) Math.round(dmg * mineVulnMul(s, now)); // [2026-11-08] 만검진 받는 피해 증가
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 s.lastHitAt = now;
+                mineHitBy(s, ot, userName); // [2026-11-13] 용병이 때려도 주인이 함께 싸운 것
                 s.hp -= dmg;
                 // [2026-11-07] "용병으로 적 타격 시 안 죽는 문제" -- 보스는 용병 공격으로 체력 1에서 멈췄다(내가 얼어 있거나 못 때리면 영영). 이제 용병도 쓰러뜨린다
                 //  (보상/기록은 mineMercBossKilled -- 내가 쓰러뜨린 것과 같게). 분신술·은신이 있는 닌자 두목만 예전처럼 마지막 한 방은 내가.
@@ -5849,6 +5852,45 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     /** [2026-11-07] 용병이 보스를 쓰러뜨렸을 때 -- 내가 쓰러뜨린 것과 같은 기록(다시 나타나는 시각)/효과(빙결·용암·낙뢰 끝)/보상. 안내는 mo.bossMsg. */
+    /** [2026-11-13] 보스를 때린 사람 기록(허수아비 제외). 소환 때 상태를 새로 만들어 비워진다(mineCallReset). */
+    static void mineHitBy(MobState s, S5MineMobs.Type t, String userName) {
+        if (!t.boss || t.sim || t.dummy || t.noReward || userName == null) return;
+        if (s.hitters == null) s.hitters = new java.util.HashSet<>();
+        s.hitters.add(userName);
+    }
+    /** [2026-11-13] 보스 종류별 처치 보상(쓰러뜨린 사람과 같은 것). */
+    List<HashMap<String, Object>> mineBossKillDrops(String u, S5MineMap map, S5MineMap.Mob om, StringBuilder msg) {
+        int t = om.type;
+        return t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(u, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(u, msg)
+                : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(u, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(u, msg)
+                : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(u, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(u, msg)
+                : t == S5MineMobs.SHRINE_BOSS_TYPE ? mineMobDrops(u, map, S5MineMobs.TYPES.get(t), msg, om.rank) : mineBossDrops(u, msg);
+    }
+    /** [2026-11-13] "같이 싸운 사람 전부가 보상받게" -- 보스를 때린 사람(용병 포함) 중 쓰러뜨린 사람 말고 모두에게 같은 보상(보스 보상 + 달빛석/별빛석 확률 + 장비 드랍).
+     *  경험치는 쓰러뜨린 사람만. 소식은 1초 위치 알림(rewardMsg)으로. 돌려주는 값 = 받은 사람 수. */
+    int mineBossShare(String killer, S5MineMap map, S5MineMap.Mob om, java.util.Set<String> hitters) {
+        if (hitters == null || hitters.isEmpty()) return 0;
+        S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
+        if (!ot.boss || ot.noReward || ot.sim || ot.dummy) return 0;
+        int n = 0;
+        for (String u : hitters) {
+            if (u == null || u.equals(killer)) continue;
+            try {
+                StringBuilder m = new StringBuilder();
+                List<HashMap<String, Object>> kd = mineBossKillDrops(u, map, om, m);
+                mineBossShine(u, kd, m);
+                mineWeaponDrop(u, mineItems(u), ot, om.rank, m, new HashMap<String, Object>());
+                String got = m.toString().replace("👑 " + ot.name + "를 쓰러뜨렸어요!", "").replace("👑 " + ot.name + "을(를) 쓰러뜨렸어요!", "").trim(); // 천둥 황소 보상 문구의 처치 안내는 빼고
+                String line = "👑 " + ot.name + "이(가) 쓰러졌어요! 🤝 함께 싸운 보상" + (got.isEmpty() ? "을 받았어요!" : ": " + got);
+                MINE_SHRINE_REWARD_MSG.merge(u, line, (p, q) -> p + " / " + q);
+                n++;
+            } catch (Exception e) {
+                // 한 사람 보상이 실패해도 쓰러뜨린 사람 처리는 그대로
+            }
+        }
+        return n;
+    }
+
     void mineMercBossKilled(String userName, S5MineMap map, S5MineMap.Mob om, S5MineMobs.Type ot, long now, HashMap<String, Object> mo, List<HashMap<String, Object>> drops, String how) {
         StringBuilder msg = new StringBuilder();
         int t = om.type;
@@ -5865,6 +5907,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : mineBossDrops(userName, msg);
             mineBossShine(userName, kd, msg);
             drops.addAll(kd);
+            MobState ks = MINE_MOB_STATE.get(mineMobKey(map, om.id)); // [2026-11-13] 함께 싸운 사람
+            java.util.Set<String> hs;
+            if (ks == null) hs = null; else synchronized (ks) { hs = ks.hitters == null ? null : new java.util.HashSet<>(ks.hitters); }
+            int sh = mineBossShare(userName, map, om, hs);
+            if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!");
         }
         mo.put("bossKilled", true);
         mo.put("bossName", ot.name); // [2026-11-07] 관리자 알림
