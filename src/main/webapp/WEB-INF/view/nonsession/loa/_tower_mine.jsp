@@ -1160,12 +1160,16 @@ var TowerMine = (function () {
     if (!map._noOre) { var s = map._noOre = {}; map.noOre.forEach(function (r) { for (var i = 0; i < r[2]; i++) s[(r[1] + i) + ',' + r[0]] = 1; }); }
     return !!map._noOre[x + ',' + y];
   }
+  // [2026-11-13] 대광역 곡괭이(5x5) -- "자동캐기 시 캐고 나서 5칸은 이동한 뒤" -- 마지막으로 캔 곳에서 체비셰프 5칸 이상 떨어진 칸을 먼저 고른다(겹치지 않게)
+  var lastDig = null;
+  function wide5On() { var on = false; (st && st.gear || []).forEach(function (g) { if (g.code === 'WIDE_PICK5' && g.on) on = true; }); return on; }
+  function autoFar(x, y) { return !(wide5On() && lastDig && map && lastDig.m === map.id && Math.max(Math.abs(x - lastDig.x), Math.abs(y - lastDig.y)) < 5); }
   function minable(x, y) {
     var c = cellAt(x, y), k = x + ',' + y;
     return 'VTYPHe~'.indexOf(c) < 0 && WALK.indexOf(c) >= 0 && !dug[k] && !noOre[k] && !noOreCell(x, y);
   }
   /** 가장 가까운 캘 칸으로 가는 첫 걸음 방향(넓이 우선 탐색, 30칸 안). 없으면 null. */
-  function autoStep() {
+  function autoStep(far) {
     var W = map.w, start = P.x + P.y * W, seen = {}, first = {}, q = [start], head = 0;
     var D = [['up', 0, -1], ['down', 0, 1], ['left', -1, 0], ['right', 1, 0]];
     seen[start] = 1;
@@ -1176,7 +1180,7 @@ var TowerMine = (function () {
         if (seen[ni] || Math.abs(nx - P.x) + Math.abs(ny - P.y) > 30 || !walk(nx, ny)) continue;
         seen[ni] = 1;
         first[ni] = cur === start ? D[i][0] : first[cur];
-        if (minable(nx, ny)) return first[ni];
+        if (minable(nx, ny) && (!far || autoFar(nx, ny))) return first[ni];
         q.push(ni);
       }
     }
@@ -1360,9 +1364,11 @@ var TowerMine = (function () {
       }
       if (!d && auto && !smithOpen && !fade && !helmetBlocked()) { // [2026-10-24] 자동채광
         if (st.durability < 1) setAuto(false, '⛏️ 곡괭이 내구도가 다 닳아 자동채광을 멈췄어요.');
-        else if (minable(P.x, P.y)) { dig(); return; }
+        else if (minable(P.x, P.y) && autoFar(P.x, P.y)) { dig(); return; }
         else {
-          d = autoStep();
+          d = autoStep(true);
+          if (!d && minable(P.x, P.y)) { dig(); return; } // 5칸 밖에 캘 곳이 없으면 가까운 곳이라도
+          if (!d) d = autoStep(false);
           if (!d) setAuto(false, '🤖 근처(30칸)에 캘 곳이 없어 자동채광을 멈췄어요. 다른 곳으로 옮겨서 다시 켜 주세요.');
         }
       }
@@ -5642,7 +5648,19 @@ var TowerMine = (function () {
           recent.unshift({ mapName: map.name, x: w.x, y: w.y, grade: w.grade, at: Date.now() });
           var wi = new Image(); wi.src = oreIcon(w.grade);
           floats.push({ x: w.x, y: w.y, text: '+' + (w.gain || 1) + ' ' + w.oreName, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: wi, t0: performance.now() + 60 * (i + 1) });
+          if (w.gemGrade) { // [2026-11-13] 함께 캔 칸에서 나온 보석도(예전엔 가운데 칸 것만 보였다)
+            var wgi = new Image(), wgc = (ORE_COL[w.gemGrade] || ORE_COL[1])[1]; wgi.src = oreIcon(w.gemGrade);
+            floats.push({ x: w.x, y: w.y - 0.6, text: '+1 ' + w.gemName, color: wgc, big: !!RARE_GEM[w.gemGrade], icon: wgi, t0: performance.now() + 250 + 60 * (i + 1) });
+            killFeed('+1 ' + w.gemName, wgc, wgi.src);
+            if (RARE_GEM[w.gemGrade]) { flashT0 = performance.now(); msg('💎 ' + w.gemName + '! ' + map.name, 3600); }
+          }
+          if (w.cutGrade) {
+            var wci = new Image(); wci.src = oreIcon(w.cutGrade);
+            floats.push({ x: w.x, y: w.y - 1.0, text: '+1 ' + w.cutName, color: '#fff4b0', big: true, icon: wci, t0: performance.now() + 350 });
+            flashT0 = performance.now(); rainbowGo(w.x, w.y); killFeed('+1 ' + w.cutName, '#fff4b0', wci.src);
+          }
         });
+        if (wide5On()) lastDig = { m: map.id, x: x, y: y }; // [2026-11-13] 대광역 -- 자동채광은 5칸 떨어진 곳에서 다음
         if (d.ores) st.ores = d.ores;
         if (d.iceGain) { // [2026-10-28] 설산 빙석
           var iimg = new Image(); iimg.src = oreIcon(19);

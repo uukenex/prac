@@ -3056,6 +3056,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<int[]> around = new ArrayList<>();
         if (pickSlot == 1 && items.getOrDefault(MINE_ITEM_WIDE_PICK, 0) > 0) {
             for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) if (dx != 0 || dy != 0) around.add(new int[] { dx, dy });
+        } else if (pickSlot == 4 && items.getOrDefault(MINE_ITEM_WIDE_PICK5, 0) > 0) { // [2026-11-13] 대광역 곡괭이 5x5(가까운 칸부터)
+            for (int r2 = 1; r2 <= 2; r2++) for (int dy = -r2; dy <= r2; dy++) for (int dx = -r2; dx <= r2; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) == r2) around.add(new int[] { dx, dy });
         } else if (pickSlot == 3 && items.getOrDefault(MINE_ITEM_LINE_PICK, 0) > 0) {
             int[] v = "up".equals(dir) ? new int[] { 0, -1 } : "left".equals(dir) ? new int[] { -1, 0 } : "right".equals(dir) ? new int[] { 1, 0 } : new int[] { 0, 1 };
             around.add(v);
@@ -3124,7 +3126,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!wide.isEmpty()) {
             out.put("wide", wide);
             out.put("ores", mineOreList(userName));
-            msg += (pickSlot == 3 ? " ⛏️ 쌍날 +" : " ⛏️ 광역 +") + wide.size() + "칸";
+            msg += (pickSlot == 3 ? " ⛏️ 쌍날 +" : pickSlot == 4 ? " ⛏️ 대광역 +" : " ⛏️ 광역 +") + wide.size() + "칸";
+            int wg = 0; // [2026-11-13] "광역 곡괭이로 캘 때 보석이 잘 안 나온다" -- 함께 캔 칸의 보석은 이미 칸마다 나왔지만(사막의 목걸이 배수도) 안내/화면에 안 보였다
+            for (HashMap<String, Object> wc : wide) if (wc.get("gemGrade") != null) wg++;
+            if (wg > 0) msg += " 💎 주변 칸 보석 " + wg + "개!";
         }
         out.put("message", msg);
         return out;
@@ -6601,6 +6606,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_DETECT_PICK = "DETECT_PICK";
     /** [2026-10-25] 쌍날 곡괭이 -- 바라보는 방향 앞뒤 칸도 함께(PICK_SLOT 3). */
     static final String MINE_ITEM_LINE_PICK = "LINE_PICK";
+    /** [2026-11-13] 대광역 곡괭이 -- "3x3 말고 5x5도" 주변 5x5칸을 함께(PICK_SLOT 4, 칸마다 내구도 1). 왕도 대장장이만. */
+    static final String MINE_ITEM_WIDE_PICK5 = "WIDE_PICK5";
     static final String MINE_ITEM_PICK_SLOT = "PICK_SLOT";
     /** 탐지 곡괭이가 빛을 잃음 -- [2026-10-29] "탐지 후 12시간마다 한 번씩 회복(지금은 2일 주기 = 맵 리셋)": DETECT_OFF = 다시 빛나는 시각(epoch 분).
      *  (예전 값은 주기 번호 + 1이라 아주 작은 수 -- 지금 시각보다 작아 바로 회복된 것으로 본다.) */
@@ -6618,7 +6625,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     static int minePickSlotOf(String code) {
-        return MINE_ITEM_WIDE_PICK.equals(code) ? 1 : MINE_ITEM_DETECT_PICK.equals(code) ? 2 : MINE_ITEM_LINE_PICK.equals(code) ? 3 : 0;
+        return MINE_ITEM_WIDE_PICK.equals(code) ? 1 : MINE_ITEM_DETECT_PICK.equals(code) ? 2 : MINE_ITEM_LINE_PICK.equals(code) ? 3 : MINE_ITEM_WIDE_PICK5.equals(code) ? 4 : 0;
     }
     /** 단계별 효과(인덱스 = 단계, 0 = 없음). 장화 = 화면 한 칸 이동 시간(ms, 기본 140 -> 약 +11% / +25% / +40%). */
     //  [2026-10-25] 왕도 대장장이 단계 추가: 반지/목걸이 3단계, 장화 4단계(88ms = 약 +60%).
@@ -6703,6 +6710,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineGear(MINE_ITEM_WIDE_PICK, "광역 곡괭이", "tool",
             new String[][][] { { mineCost(8, 3), mineSeven(5), mineBar(0, 1), mineBar(1, 1) } },
             new String[] { "캘 때 주변 3x3칸도 함께 (칸마다 내구도 1)" }),
+        new MineGear(MINE_ITEM_WIDE_PICK5, "대광역 곡괭이", "tool", // [2026-11-13] 5x5 -- 광역 곡괭이(3x3)보다 훨씬 비싸게, 왕도 대장장이만
+            new String[][][] { { mineCost(8, 12), mineSeven(20), mineBar(1, 3), mineBar(4, 2), mineCut(8, 2) } },
+            new String[] { "캘 때 주변 5x5칸도 함께 (칸마다 내구도 1)" }, 0),
         new MineGear(MINE_ITEM_DETECT_PICK, "탐지 곡괭이", "tool",
             new String[][][] { { mineCost(8, 8), mineSeven(10), { S5MineMap.ORE_CODES[4], "10" }, mineBar(4, 1), mineBar(3, 1), mineCut(2, 1) } }, // "많이 비싸게"
             new String[] { "빛나는 돌(별빛석·달빛석)을 탐지할 때까지 주변 광석(사방 4칸)을 알아챌 수 있다 (멈추면 12시간 뒤 다시 빛나요)" }),
