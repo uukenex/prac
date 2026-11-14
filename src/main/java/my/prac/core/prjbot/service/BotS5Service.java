@@ -231,6 +231,7 @@ public interface BotS5Service {
     /** dir = 바라보는 방향(up/down/left/right) -- [2026-10-25] 쌍날 곡괭이(앞뒤 칸)용. */
     HashMap<String, Object> mineDig(String userName, String mapId, String ver, int x, int y, String dir);
     HashMap<String, Object> mineBossCall(String userName, String action); // [2026-11-13] 보스 소환사
+    HashMap<String, Object> mineWorldBoss(String userName, String action); // [2026-11-15] 월드보스
     HashMap<String, Object> mineChopTree(String userName, String mapId, String ver, int x, int y, int tx, int ty); // [2026-11-11] 하피의 둥지 나무 찍기
     HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
     /** dest = 배(판자) 포탈일 때 갈 항구 맵 ID(그 외 null). */

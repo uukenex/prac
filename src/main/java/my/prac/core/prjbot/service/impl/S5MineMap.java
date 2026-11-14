@@ -94,6 +94,7 @@ public final class S5MineMap {
      *  50~90레벨(14~23단계)이 왕도에서 멀어질수록 강해진다(S5MineMobs.tierAt). 다른 곳으로 가는 길은 없고, 맵 중간중간 동굴 셋(아직 막힘). */
     public static final String WESTROAD = "westroad";
     public static final String FOREST = "forestmaze"; // [2026-11-08] 마물의 숲 미궁(지금은 관리자만 -- S55MineServiceImpl.mineWarp)
+    public static final String WB_ARENA = "wbarena"; // [2026-11-15] 월드보스 전장(매일 21시, 어디서든 참여 버튼으로)
     public static final String HARPY_NEST = "harpynest"; // [2026-11-08] 하피의 둥지(보스룸, 지금은 관리자만)
     // [2026-11-11] 두고개식 미궁 -- 방 FOREST_ROOM_N개(0번 = FOREST = 입구 방), 미로의 끝방, 둥지 뒤 나루터. 모두 관리자만(isForestZone).
     public static final String FOREST_END = "forestend", HARPY_FERRY = "harpyferry";
@@ -212,7 +213,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = withForest(Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST)); // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA)); // [2026-11-15] + 월드보스 전장 // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -1096,6 +1097,7 @@ public final class S5MineMap {
             out.put(WESTROAD, wr);
             for (S5MineMap fm : fws) out.put(fm.id, fm); // [2026-11-08] 맨 뒤(앞 맵들의 몬스터 배치 시드가 안 바뀌게) -- [2026-11-11] 미궁 방들, 끝방, 둥지, 나루터
         }
+        out.put(WB_ARENA, generateWbArena(out.get(CITY))); // [2026-11-15] 월드보스 전장(맨 뒤)
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -2531,6 +2533,28 @@ public final class S5MineMap {
         m.bossX = cx - 1; m.bossY = cy - 1;
         return m;
     }
+    /** [2026-11-15] 월드보스 전장 -- 돌로 둘러싼 넓은 원형 광장(50x40), 가운데 거룡(2x2, 움직이지 않음), 아래 입구(참여하면 여기로), 아래 문 = 왕도 광장.
+     *  입구는 거룡에게서 12칸(인식 범위)보다 멀다. 잡몹 없음. */
+    static final int WB_W = 50, WB_H = 40;
+    static S5MineMap generateWbArena(S5MineMap city) {
+        int w = WB_W, h = WB_H, cx = w / 2, cy = h / 2 - 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double dx = (x - cx) / (w / 2.0 - 1.5), dy = (y - cy) / (h / 2.0 - 1.5);
+            boolean in = dx * dx + dy * dy <= 1.0 || (Math.abs(x - cx) <= 3 && y > cy);
+            t[y][x] = !in || x < 1 || y < 1 || x >= w - 1 || y >= h - 1 ? '^' : ((x + y) % 7 == 0 ? ':' : 's');
+        }
+        for (int y = cy + 6; y < h - 1; y++) for (int x = cx - 3; x <= cx + 3; x++) t[y][x] = 's';
+        t[h - 1][cx] = 'G';
+        int[] plaza = S55MineServiceImpl.mineCityPlaza(city);
+        List<Portal> portals = new ArrayList<>();
+        portals.add(new Portal(cx, h - 1, 'G', CITY, plaza[0], plaza[1], "왕도 광장으로"));
+        S5MineMap m = new S5MineMap(WB_ARENA, "월드보스 전장", false, w, h, cx, h - 3, t, new byte[h][w], portals);
+        m.safe.add(new int[] { cx, h - 4, 3 });
+        m.bossX = cx - 1; m.bossY = cy - 1;
+        return m;
+    }
+
     /** [2026-11-11] "보스맵 뒤쪽은 강이 보이는 나루터" -- 위쪽은 강(~), 가운데로 나무 선착장(H), 아래는 숲 풀밭(안전지대), 아래 문은 하피의 둥지 위 문으로. */
     static S5MineMap generateHarpyFerry() {
         int w = FERRY_W, h = FERRY_H, cx = w / 2;

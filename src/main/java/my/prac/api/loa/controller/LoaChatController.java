@@ -422,6 +422,9 @@ public class LoaChatController {
 			sender = removeEmojis(sender);
 			
 			String val = autoResponse(param0,param1,param2,room,sender,fulltxt);
+			if (val != null && !val.equals("")) { // [2026-11-15] 월드보스 예고/진행 -- 방마다 회차당 한 번 응답 끝에
+				try { String wbTail = my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineWbChatTail(room); if (wbTail != null) val += wbTail; } catch (Exception ignore) { }
+			}
 			
 			if(val!=null&&!val.equals("")) {
 				HashMap<String, Object> rtnMap = new HashMap<>();

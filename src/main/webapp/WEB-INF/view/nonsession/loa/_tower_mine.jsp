@@ -1445,10 +1445,32 @@ var TowerMine = (function () {
     }).catch(function () { bossCallBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   /** 전체 지도 "👑 보스" -- 보스마다 지금 있는지 + 내가 다시 소환할 수 있는 시각(천둥 황소는 처치 수). */
+  // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, hp(천분율), rank, n}: 예고 10분 전부터 화면 위 띠 + [참여](어디서든 전장 입구로)
+  var wbInfo = null, wbBar = null;
+  function wbRender() {
+    if (!el.ov) return;
+    if (!wbBar) { wbBar = document.createElement('div'); wbBar.className = 'mine-wb-bar'; el.ov.appendChild(wbBar); }
+    var w = wbInfo, tn = nowSrv();
+    if (!w || !map || tn >= w.end) { wbBar.style.display = 'none'; return; }
+    var inArena = map.id === 'wbarena', mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
+    var h;
+    if (!w.on) h = '⚔️ 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 등장 (' + mins(w.at - tn) + ' 뒤)';
+    else h = '⚔️ ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
+        + (w.rank ? ' · 내 기여 ' + w.rank + '위/' + w.n + '명' : w.n ? ' · ' + w.n + '명 참여' : '') + ' · ' + mins(w.end - tn) + ' 남음';
+    if (!inArena) h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">참여</button>';
+    wbBar.innerHTML = h;
+    wbBar.style.display = '';
+  }
+  function wbJoin() {
+    if (!opened || !map || busy) return;
+    setAuto(false);
+    travel('/api/tower-mine-wb?action=join', '월드보스 전장에 가지 못했어요.');
+  }
   function worldBossHtml() {
     var L = (st && st.bosses) || [], tn = nowSrv();
     var rows = L.map(function (b) {
-      var sub = b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
+      var sub = b.wbAt ? '⏰ 매일 21:00 30분 동안 -- 모두 함께(구간마다 보상)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
+          : b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
           : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
       return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
           + (b.alive ? '<b style="color:#ff6a6a">👑 나와 있어요</b>' : '<span style="color:#a89ec8">💤 없음</span>') + '<br><small>' + sub + '</small></div>';
@@ -3718,6 +3740,7 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      wbInfo = d.wb || null; wbRender(); // [2026-11-15] 월드보스
       bossNpc = d.bossCall ? { m: mid, x: d.bossCall.x, y: d.bossCall.y, at: d.bossCall.at || (bossNpc && bossNpc.m === mid && bossNpc.at > nowSrv() ? bossNpc.at : 0) } : null; // [2026-11-13] 보스 소환사(at = 카운트가 끝나 보스가 나오는 시각)
       if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
       var now = performance.now(), seen = {};
@@ -5787,7 +5810,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

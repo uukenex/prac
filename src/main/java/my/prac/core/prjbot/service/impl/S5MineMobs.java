@@ -82,6 +82,7 @@ public final class S5MineMobs {
         Type asStay() { stay = true; return this; }
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
         Type showLv(int lv) { lvShow = lv; return this; }
+        Type expx(double m) { expMul = m; return this; } // [2026-11-15]
         Type hpCut(double c) { hpCut = c; return this; }
         Type archiNerf() { hpCut = S5MineMobs.ARCHI_HP_CUT; atkCut = S5MineMobs.ARCHI_ATK_CUT; return this; }
         Type aggroRange(int r) { aggro = r; return this; }
@@ -286,7 +287,10 @@ public final class S5MineMobs {
         new Type("덩굴 뱀", 24, "snake", "#4a8a3a", S5MineMap.FOREST + "11"),
         new Type("멧돼지 마수", 24, "quad", "#5a3a2a", S5MineMap.FOREST + "12"),
         new Type("까마귀 마수", 24, "flyer", "#2a2a3a", S5MineMap.FOREST + "13"),
-        new Type("숲 요정", 24, "small", "#8ae8a0", S5MineMap.FOREST + "14")
+        new Type("숲 요정", 24, "small", "#8ae8a0", S5MineMap.FOREST + "14"),
+        // [2026-11-15] 월드보스 -- 매일 21시 월드보스 전장. 체력은 하피 여왕의 20배(모두가 함께), 움직이지 않고 원거리(공격은 플레이어 최대 체력 % -- S55MineServiceImpl.mineWb*),
+        //  경험치는 하피 여왕과 같게(expMul). 그림은 시안 승인 전까지 보스 기본 그림.
+        new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(60.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 60.0) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
@@ -374,6 +378,7 @@ public final class S5MineMobs {
     public static final int THUNDER_BOSS_TYPE = indexOf("천둥 황소"); // [2026-11-05] 마물의 숲 입구
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
     public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
+    public static final int WB_BOSS_TYPE = indexOf("심연의 거룡"); // [2026-11-15] 월드보스
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -578,14 +583,14 @@ public final class S5MineMobs {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
             // [2026-10-28] "보스도 움직이게" -- 집 둘레 BOSS_ROAM칸(마름모) 안의 칸을 돌아다닌다(예전: 상하좌우 한 칸). 대주교는 제단에서 움직이지 않는다
-            if (!raid) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) {
+            if (!raid && !S5MineMap.WB_ARENA.equals(m.id)) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) { // [2026-11-15] 월드보스도 제자리
                 int nx = m.bossX() + dx, ny = m.bossY() + dy;
                 if ((dx == 0 && dy == 0) || Math.abs(dx) + Math.abs(dy) > BOSS_ROAM) continue;
                 if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.WB_ARENA.equals(m.id) ? WB_BOSS_TYPE : S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
