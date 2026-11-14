@@ -30,7 +30,7 @@ public final class S5MineMobs {
         public boolean boss;
         /** [2026-10-28] 성당 옛터: minion = 대주교의 수하(평소엔 없고 보스가 불러낼 때만, 쓰러지면 다시 부를 때까지 없음), fast = 플레이어보다 3배쯤 빨리 쫓아옴,
          *  stay = 제자리(쫓아오지 않음 -- 대주교). */
-        public boolean minion, fast, stay;
+        public boolean minion, fast, stay, tower; // [2026-11-15] tower = 탑 보드 몬스터
         /** [2026-10-28] 설산 봉우리 -- "80레벨 몬스터인데 더 강하게": 체력/공격 배수(경험치는 체력 배수만큼), 화면 레벨 표시(0 = 1 + 4(단계-1)),
          *  보스 선공 거리(0 = 대주교 4칸 / 그 밖 보스 2칸). */
         public double hpMul = 1, atkMul = 1;
@@ -83,6 +83,8 @@ public final class S5MineMobs {
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
         Type showLv(int lv) { lvShow = lv; return this; }
         Type expx(double m) { expMul = m; return this; } // [2026-11-15]
+        Type asTower() { minion = true; tower = true; return this; } // [2026-11-15] 탑 몬스터(수하처럼 평소엔 없음, 빠르지 않음)
+        Type respawn(long ms) { respawnOverride = ms; return this; }
         Type hpCut(double c) { hpCut = c; return this; }
         Type archiNerf() { hpCut = S5MineMobs.ARCHI_HP_CUT; atkCut = S5MineMobs.ARCHI_ATK_CUT; return this; }
         Type aggroRange(int r) { aggro = r; return this; }
@@ -290,6 +292,19 @@ public final class S5MineMobs {
         new Type("숲 요정", 24, "small", "#8ae8a0", S5MineMap.FOREST + "14"),
         // [2026-11-15] 월드보스 -- 매일 21시 월드보스 전장. 체력은 하피 여왕의 20배(모두가 함께), 움직이지 않고 원거리(공격은 플레이어 최대 체력 % -- S55MineServiceImpl.mineWb*),
         //  경험치는 하피 여왕과 같게(expMul). 그림은 시안 승인 전까지 보스 기본 그림.
+        // [2026-11-15] 탑 몬스터 -- 보드의 전투 칸 안쪽에서 잠들어 있다가(asTower = 수하처럼 평소엔 없음) 그 칸을 밟으면 깨어나 덤빈다. 구역(10층)마다 셋 + 9층마다 수문장.
+        new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().showLv(95),
+        new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().showLv(96),
+        new Type("마력 인형", 24, "human", "#b07ad8").asTower().showLv(97),
+        new Type("청동 거인", 25, "human", "#c8883a").asBoss().strong(4.0, 1.1).showLv(100).respawn(60_000L),
+        new Type("탑 기사", 25, "human", "#a8b8c8").asTower().strong(1.5, 1.2).showLv(101),
+        new Type("그림자 마법사", 25, "human", "#4a3a6a").asTower().strong(1.5, 1.2).showLv(102),
+        new Type("강철 늑대", 25, "quad", "#9aa8b8").asTower().strong(1.5, 1.2).showLv(103),
+        new Type("은빛 기사단장", 26, "human", "#e0e8f0").asBoss().strong(4.0, 1.2).showLv(106).respawn(60_000L),
+        new Type("타락 천사", 26, "flyer", "#f0e0a0").asTower().strong(1.5, 1.3).showLv(107),
+        new Type("심연 마도사", 26, "human", "#5a2a8a").asTower().strong(1.5, 1.3).showLv(108),
+        new Type("흑요석 골렘", 26, "human", "#2a2a3a").asTower().strong(1.8, 1.3).showLv(109),
+        new Type("탑의 군주 대리인", 26, "human", "#ffd23f").asBoss().strong(6.0, 1.3).showLv(112).respawn(60_000L),
         new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(60.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 60.0) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
@@ -379,6 +394,10 @@ public final class S5MineMobs {
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
     public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
     public static final int WB_BOSS_TYPE = indexOf("심연의 거룡"); // [2026-11-15] 월드보스
+    /** [2026-11-15] 탑 -- 구역(0 = 1~10층, 1 = 11~20층, 2 = 21~30층)별 몬스터 셋, 수문장. */
+    static final String[][] TOWER_MOBS = { { "탑 수호병", "돌 가고일", "마력 인형" }, { "탑 기사", "그림자 마법사", "강철 늑대" }, { "타락 천사", "심연 마도사", "흑요석 골렘" } };
+    static final String[] TOWER_BOSSES = { "청동 거인", "은빛 기사단장", "탑의 군주 대리인" };
+    public static int towerBossType(int floor) { return indexOf(TOWER_BOSSES[Math.min(TOWER_BOSSES.length - 1, (floor - 1) / 10)]); }
 
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
@@ -506,6 +525,12 @@ public final class S5MineMobs {
 
     static List<S5MineMap.Mob> spawn(S5MineMap m, long seed) {
         if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
+        if (!m.board().isEmpty()) { // [2026-11-15] 탑 보드 -- 전투 칸(C)마다 칸 안쪽에 한 마리(구역 몬스터 셋을 돌아가며)
+            List<S5MineMap.Mob> tw = new ArrayList<>();
+            int blk = Math.min(TOWER_MOBS.length - 1, (S5MineMap.towerFloor(m.id) - 1) / 10), k = 0;
+            for (int[] b : m.board()) if (b[2] == 'C') tw.add(new S5MineMap.Mob(tw.size(), indexOf(TOWER_MOBS[blk][k++ % 3]), b[3], b[4], new int[] { b[4] * m.w + b[3] }));
+            return tw;
+        }
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();
         Random r = new Random(seed);
@@ -583,14 +608,14 @@ public final class S5MineMobs {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
             // [2026-10-28] "보스도 움직이게" -- 집 둘레 BOSS_ROAM칸(마름모) 안의 칸을 돌아다닌다(예전: 상하좌우 한 칸). 대주교는 제단에서 움직이지 않는다
-            if (!raid && !S5MineMap.WB_ARENA.equals(m.id)) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) { // [2026-11-15] 월드보스도 제자리
+            if (!raid && !S5MineMap.WB_ARENA.equals(m.id) && S5MineMap.towerFloor(m.id) == 0) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) { // [2026-11-15] 월드보스도 제자리
                 int nx = m.bossX() + dx, ny = m.bossY() + dy;
                 if ((dx == 0 && dy == 0) || Math.abs(dx) + Math.abs(dy) > BOSS_ROAM) continue;
                 if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.WB_ARENA.equals(m.id) ? WB_BOSS_TYPE : S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.towerFloor(m.id) > 0 ? towerBossType(S5MineMap.towerFloor(m.id)) : S5MineMap.WB_ARENA.equals(m.id) ? WB_BOSS_TYPE : S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;

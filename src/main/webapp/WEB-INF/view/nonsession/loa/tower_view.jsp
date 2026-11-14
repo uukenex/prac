@@ -895,6 +895,8 @@
     .mine-world .wf{ font:800 10px sans-serif; fill:#ffd27a; paint-order:stroke; stroke:#140d0a; stroke-width:3px; stroke-linejoin:round; } /* [2026-10-30] 층 표시 */
     .mine-world .wc{ font:800 9px sans-serif; } /* [2026-11-11] 맵별 접속 인원 -- 언제든(칸 가운데, 칸 글자색) */
     .mine-world .wn{ font:800 12px sans-serif; fill:#ffc98a; paint-order:stroke; stroke:#0b0814; stroke-width:4px; stroke-linejoin:round; } /* [2026-11-13] "흐리고 너무 하얗다" -- 살구색 + 진한 테두리 */ /* [2026-11-11] 이름은 칸 밖, 배경 없이 */
+    .mine-tw-bar{ position:absolute; left:50%; top:44px; transform:translateX(-50%); z-index:29; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(14,22,40,.9); border:1px solid #7ab8ff; color:#e0eeff; font:700 12px sans-serif; text-align:center; pointer-events:auto; } /* [2026-11-15] 탑 띠 */
+    .mine-tw-bar .tw-dice{ font-size:14px; }
     .mine-wb-bar{ position:absolute; left:50%; top:6px; transform:translateX(-50%); z-index:30; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(26,8,40,.9); border:1px solid #b06aff; color:#f0e0ff; font:700 12px sans-serif; text-align:center; pointer-events:auto; white-space:normal; } /* [2026-11-15] 월드보스 띠 */
     .mine-wb-bar .wb-hp{ display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:#3a2050; overflow:hidden; }
     .mine-wb-bar .wb-hp i{ display:block; height:100%; background:linear-gradient(90deg,#ff4a6a,#b06aff); }

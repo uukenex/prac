@@ -632,6 +632,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("spawnY", map.spawnY);
         out.put("version", map.version());
         out.put("rows", map.terrainRows());
+        if (!map.board().isEmpty()) { List<int[]> bd = new ArrayList<>(); for (int[] b : map.board()) bd.add(new int[] { b[0], b[1], b[2] }); out.put("board", bd); } // [2026-11-15] 탑 보드 칸 {x, y, 종류}
+        if (S5MineMap.towerFloor(map.id) > 0) out.put("tower", S5MineMap.towerFloor(map.id));
         List<HashMap<String, Object>> portals = new ArrayList<>();
         for (S5MineMap.Portal p : map.portals) {
             HashMap<String, Object> m = new HashMap<>();
@@ -1411,6 +1413,198 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineCallMap(type) != null) return !mineBossUp(type, System.currentTimeMillis()); // [2026-11-13] 보스룸 보스는 소환했을 때만
         String key = mineBossKey(type);
         return key != null && mineBossDeadKey(key);
+    }
+
+    // ---- [2026-11-15] 탑의 도시 + 탑 -- "하피 처치 후 나루터에서만 가는 신규 맵, 왕도보다 큰 마을, 그 지역의 탑은 시즌5 탑 등반과 같은 규칙 --
+    //  시즌5.5와 시즌5 탑이 잘 섞이게"(방식 A: 광산 캐릭터로 오르는 시즌5식 탑).
+    //  - 하피 여왕을 쓰러뜨린(함께 싸운 보상 포함) 사람만 나루터 뱃사공이 강 건너 탑의 도시로 태워 준다(MINE_ITEM_HARPY_CLEAR, mineHarpyDrops가 남긴다).
+    //  - 탑 1~8층(구역마다)은 시즌5처럼 끝없이 도는 칸 고리: 걸어서 못 움직이고 🎲 주사위(1~6)로만 칸을 옮긴다. 칸: 전투(칸 안쪽 몬스터가 깨어나 덤빈다 --
+    //    쓰러뜨려야 다시 굴린다) / 보물 / PP(시즌5 PP -- 그 사람의 시즌5 층 처치 PP 기준) / 함정(최대 체력 15%) / 행운(체력 가득 + 가끔 세공 보석) / 계단(위: 다음 층 열림, 아래).
+    //  - 9층마다 수문장(보스) -- 쓰러뜨리면(함께 싸운 사람도) 그 구역은 끝(아래 층으로 못 돌아간다), 10층마다 마을(쉼터, 탑 관리인/사제/대장장이).
+    //  - 기록은 광산 아이템 TW_MAX(올라갈 수 있는 가장 높은 층), TW_BLOCK(쓰러뜨린 마지막 수문장 층 -- 그 아래로는 못 감).
+    //  - 탑 몬스터를 쓰러뜨리면 경험치/광석/보석에 더해 시즌5 PP(처치 1번 몫, 수문장은 20번 몫). 시즌5 탑 기록이 없으면 PP 대신 달빛석 확률.
+    static final String MINE_ITEM_HARPY_CLEAR = "HARPY_CLEAR", MINE_ITEM_TW_MAX = "TW_MAX", MINE_ITEM_TW_BLOCK = "TW_BLOCK";
+    static final long MINE_TW_ROLL_MS = 1_200L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_TW_ROLL_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    /** 시즌5 PP 지급(그 사람 시즌5 층의 처치 PP x kills) -- 준 PP 글자(없으면 null). BotS5ServiceImpl이 채운다. */
+    String mineTowerPp(String userName, double kills) { return null; }
+    static int mineTwMax(Map<String, Integer> items) { return Math.max(1, items.getOrDefault(MINE_ITEM_TW_MAX, 1)); }
+    static int mineTwBlock(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_TW_BLOCK, 0); }
+    /** 보드에서 지금 서 있는 칸 번호(없으면 -1). */
+    static int mineTwIndex(S5MineMap map, int x, int y) {
+        List<int[]> bd = map.board();
+        for (int i = 0; i < bd.size(); i++) if (bd.get(i)[0] == x && bd.get(i)[1] == y) return i;
+        return -1;
+    }
+    /** 보드 칸 i(전투 칸)의 몬스터 -- 전투 칸 순서대로 놓였다(S5MineMobs.spawn). */
+    static S5MineMap.Mob mineTwMob(S5MineMap map, int i) {
+        int k = 0;
+        for (int j = 0; j < i; j++) if (map.board().get(j)[2] == 'C') k++;
+        return k < map.mobs().size() ? map.mobs().get(k) : null;
+    }
+    /** 탑 몬스터를 쓰러뜨렸다(처치 경로 셋에서) -- 시즌5 PP, 수문장이면 함께 싸운 사람 모두 그 구역 끝. 안내 글자(없으면 ""). */
+    String mineTowerKill(String userName, S5MineMap map, S5MineMap.Mob mob, S5MineMobs.Type t) {
+        int f = S5MineMap.towerFloor(map.id);
+        if (f <= 0 || !(t.tower || t.boss)) return "";
+        StringBuilder m = new StringBuilder();
+        try {
+            String pp = mineTowerPp(userName, t.boss ? 20 : 1);
+            if (pp != null) m.append(" · 💰 시즌5 PP +").append(pp);
+            else if (RND.nextInt(100) < (t.boss ? 100 : 5)) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); m.append(" · 🌙 달빛석 1"); }
+            if (t.boss) {
+                java.util.Set<String> us = new java.util.LinkedHashSet<>();
+                us.add(userName);
+                MobState s = MINE_MOB_STATE.get(mineMobKey(map, mob.id));
+                if (s != null) synchronized (s) { if (s.hitters != null) us.addAll(s.hitters); }
+                for (String u : us) {
+                    Map<String, Integer> it = mineItems(u);
+                    if (mineTwBlock(it) < f) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
+                    if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
+                    if (!u.equals(userName)) MINE_SHRINE_REWARD_MSG.merge(u, "🗼 탑 " + f + "층 수문장 " + t.name + "이(가) 쓰러졌어요! " + (f + 1) + "층 마을로 갈 수 있어요. (이제 " + f + "층 아래로는 못 내려가요)", (p, q) -> p + " / " + q);
+                }
+                m.append(" 🗼 ").append(f + 1).append("층 마을이 열렸어요! 탑 관리인이나 [층 이동]으로 올라가요. (이 구역은 끝 -- ").append(f).append("층 아래로는 못 내려가요)");
+            }
+        } catch (Exception e) { /* PP/기록 실패해도 처치는 그대로 */ }
+        return m.toString();
+    }
+    /** [2026-11-15] 탑 -- action=info / roll(주사위) / go&n(층 이동) / exit(탑의 도시로) / ferry(나루터 <-> 탑의 도시). */
+    public HashMap<String, Object> mineTower(String userName, String action, int n) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        int max = mineTwMax(items), block = mineTwBlock(items), floor = S5MineMap.towerFloor(map.id);
+        boolean admin = isMineAdmin(userName);
+        out.put("max", max);
+        out.put("block", block);
+        out.put("floor", floor);
+        if ("info".equals(action)) { out.put("ok", true); out.put("ferryOk", admin || items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) > 0); return out; }
+        if (mineFrozen(userName, now) != null || mineStunned(userName, now)) { out.put("message", "지금은 움직일 수 없어요."); return out; }
+        if ("ferry".equals(action)) {
+            if (S5MineMap.HARPY_FERRY.equals(map.id)) {
+                if (!admin && items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) < 1) { out.put("message", "⛵ 뱃사공: 하피 여왕이 날뛰는 동안엔 강을 못 건너네. 먼저 하피 여왕을 쓰러뜨리게!"); return out; }
+                S5MineMap c = S5MineMap.get(S5MineMap.TOWER_CITY);
+                mineDisengageAll(userName);
+                dao.updateMinePos(userName, c.id, c.spawnX, c.spawnY, now);
+                out.put("message", "⛵ 강을 건너 탑의 도시 엘리시온에 도착했어요!");
+            } else if (S5MineMap.TOWER_CITY.equals(map.id)) {
+                S5MineMap fr = S5MineMap.get(S5MineMap.HARPY_FERRY);
+                mineDisengageAll(userName);
+                dao.updateMinePos(userName, fr.id, fr.spawnX, fr.spawnY - 6, now);
+                out.put("message", "⛵ 마물의 숲 나루터로 돌아왔어요.");
+            } else { out.put("message", "뱃사공에게서만 배를 탈 수 있어요."); return out; }
+            out.put("ok", true);
+            out.put("state", mineState(userName));
+            return out;
+        }
+        if ("exit".equals(action)) {
+            if (floor <= 0) { out.put("message", "탑 안에서만 나갈 수 있어요."); return out; }
+            S5MineMap c = S5MineMap.get(S5MineMap.TOWER_CITY);
+            S5MineMap.Npc g = null;
+            for (S5MineMap.Npc q : c.npcs()) if ("towergate".equals(q.kind)) g = q;
+            mineDisengageAll(userName);
+            dao.updateMinePos(userName, c.id, g == null ? c.spawnX : g.x, g == null ? c.spawnY : g.y + 2, now);
+            out.put("ok", true);
+            out.put("message", "🗼 탑에서 나왔어요.");
+            out.put("state", mineState(userName));
+            return out;
+        }
+        if ("go".equals(action)) {
+            if (floor <= 0 && !(S5MineMap.TOWER_CITY.equals(map.id) && mineAtNpc(row, "towergate"))) { out.put("message", "탑 관리인에게 말하거나 탑 안에서 옮길 수 있어요."); return out; }
+            if (n < 1 || n > S5MineMap.TOWER_FLOORS) { out.put("message", "그런 층은 없어요."); return out; }
+            if (!admin && n > max) { out.put("message", "🪜 아직 " + n + "층으로 가는 계단을 못 찾았어요. (지금 " + max + "층까지)"); return out; }
+            if (!admin && n <= block) { out.put("message", "🔒 " + block + "층 수문장을 쓰러뜨려 그 아래로는 못 내려가요."); return out; }
+            MineEngage e = MINE_ENGAGE.get(userName);
+            if (e != null && !e.mobs.isEmpty() && mineEngaged(userName, now)) { out.put("message", "⚔️ 싸우는 중엔 층을 옮길 수 없어요."); return out; }
+            S5MineMap tm = S5MineMap.get(S5MineMap.towerId(n));
+            mineDisengageAll(userName);
+            dao.updateMinePos(userName, tm.id, tm.spawnX, tm.spawnY, now);
+            out.put("ok", true);
+            out.put("message", "🗼 " + tm.name + (tm.board().isEmpty() ? "" : " -- 🎲 주사위를 굴려 칸을 옮겨요. 계단(🪜)을 찾으면 위층이 열려요."));
+            out.put("state", mineState(userName));
+            return out;
+        }
+        if (!"roll".equals(action)) return out;
+        if (map.board().isEmpty()) { out.put("message", "주사위는 탑 보드 층에서만 굴려요."); return out; }
+        Long last = MINE_TW_ROLL_AT.get(userName);
+        if (last != null && now - last < MINE_TW_ROLL_MS) { out.put("tooFast", true); return out; }
+        MineEngage e = MINE_ENGAGE.get(userName);
+        if (e != null && mineEngaged(userName, now)) {
+            for (Integer id : e.mobs.keySet()) {
+                MobState ms = MINE_MOB_STATE.get(mineMobKey(map, id));
+                if (ms != null && ms.deadUntil <= now) { out.put("message", "⚔️ 먼저 몬스터를 쓰러뜨려야 다시 굴릴 수 있어요."); return out; }
+            }
+        }
+        MINE_TW_ROLL_AT.put(userName, now);
+        int[] pos = minePos(row, map, 0);
+        List<int[]> bd = map.board();
+        int idx = Math.max(0, mineTwIndex(map, pos[0], pos[1])), d = 1 + RND.nextInt(6), ni = (idx + d) % bd.size();
+        List<int[]> path = new ArrayList<>();
+        for (int k = 1; k <= d; k++) { int[] c = bd.get((idx + k) % bd.size()); path.add(new int[] { c[0], c[1] }); }
+        int[] tc = bd.get(ni);
+        dao.updateMinePos(userName, map.id, tc[0], tc[1], now);
+        out.put("ok", true);
+        out.put("roll", d);
+        out.put("path", path);
+        out.put("index", ni);
+        out.put("tile", String.valueOf((char) tc[2]));
+        StringBuilder msg = new StringBuilder("🎲 ").append(d).append(" -- ");
+        char ty = (char) tc[2];
+        int lv = mineLv(row), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        if (ty == 'C') {
+            S5MineMap.Mob mb = mineTwMob(map, ni);
+            if (mb != null) {
+                S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
+                int mmax = S5MineMobs.hp(mt, mb.rank);
+                MobState ms = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mb.id), k -> new MobState(mmax));
+                synchronized (ms) { ms.respawn(mmax); ms.fx = mb.x; ms.fy = mb.y; ms.target = userName; ms.frozenUntil = now + MINE_MOB_FREEZE_MS; ms.lastHitAt = 0; ms.stunUntil = 0; }
+                mineEngage(userName, map, mb.id, now, 0L);
+                msg.append("⚔️ ").append(mt.name).append("이(가) 깨어났어요! 쓰러뜨리면 다시 굴릴 수 있어요.");
+                out.put("mobId", mb.id);
+                out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, lock, rb), now, true, lock, rb));
+            }
+        } else if (ty == 'T') {
+            int g1 = RND.nextInt(S5MineMap.GEM_DIAMOND), g2 = RND.nextInt(S5MineMap.GEM_DIAMOND);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[g1], 1);
+            dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
+            msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
+            if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); }
+            String pp = mineTowerPp(userName, 2);
+            if (pp != null) msg.append(" · 💰 PP +").append(pp);
+            out.put("ores", mineOreList(userName));
+        } else if (ty == 'P') {
+            String pp = mineTowerPp(userName, 3);
+            if (pp != null) msg.append("💰 시즌5 PP +").append(pp);
+            else { dao.addUserOre(userName, S5MineMap.ORE_CODES[4], 3); msg.append("💰 미스릴 원석 3 (시즌5 탑 기록이 없어 PP 대신)"); out.put("ores", mineOreList(userName)); }
+        } else if (ty == 'X') {
+            int hpNow = mineHpNow(row, now, lock, rb), cut = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * 0.15)), nh = Math.max(1, hpNow - cut);
+            dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), nh, now, 0);
+            MINE_HP_VIRT.remove(userName);
+            msg.append("⚠️ 함정! 체력 -").append(hpNow - nh);
+            out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), nh, now, false, lock, rb));
+        } else if (ty == 'L') {
+            int full = mineHpCap(lv, lock, rb);
+            dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), full, now, 0);
+            MINE_HP_VIRT.remove(userName);
+            msg.append("🍀 행운의 칸! 체력이 가득 찼어요");
+            if (RND.nextInt(100) < 30) { int c = RND.nextInt(S5MineMap.GEM_DIAMOND); dao.addUserOre(userName, S5MineMap.cutCode(c), 1); msg.append(" · ✨ ").append(S5MineMap.cutName(c)); out.put("ores", mineOreList(userName)); }
+            out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), full, now, false, lock, rb));
+        } else if (ty == 'U') {
+            if (max < floor + 1) { dao.upsertMineItem(userName, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, floor + 1)); out.put("max", floor + 1); }
+            msg.append("🪜 올라가는 계단을 찾았어요! [층 이동]으로 ").append(floor + 1).append("층에 갈 수 있어요.");
+            out.put("stairs", floor + 1);
+        } else if (ty == 'D') {
+            msg.append("🪜 내려가는 계단이에요. ").append(floor - 1 > block ? "[층 이동]으로 " + (floor - 1) + "층에 갈 수 있어요." : "");
+        } else msg.append("시작 칸");
+        out.put("message", msg.toString());
+        return out;
     }
 
     // ---- [2026-11-15] 월드보스 -- "모두가 참여하고 보상을 순차 지급, 한 번에 모든 유저가 오면 좋겠다".
@@ -2538,6 +2732,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-11] "하피의 검과 바람의 심장 드랍률 30% 정도" -- 따로따로 MINE_HARPY_DROP_PCT%(하피의 검은 mineWeaponDrop, 등급은 일반 몬스터 무기와 같은 비율). 그 밖은 보스 공통 보상.
     static final int MINE_HARPY_DROP_PCT = 30;
     List<HashMap<String, Object>> mineHarpyDrops(String userName, StringBuilder msg) {
+        try { dao.upsertMineItem(userName, MINE_ITEM_HARPY_CLEAR, 1); } catch (Exception ignore) { } // [2026-11-15] 나루터에서 강 건너 탑의 도시로
         List<HashMap<String, Object>> drops = mineBossDrops(userName, msg);
         dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[4], 1); // [2026-11-11] "하피 보상에 흑진주 100%"
         drops.add(mineDrop(S5MineMap.SEA_GEM_GRADE_BASE + 4, S5MineMap.SEA_GEM_NAMES[4], 1));
@@ -2729,7 +2924,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     killed = true;
                     s.hp = 0;
                     // 보스(동굴 3층/타락한 대주교)는 다음 맵 리셋까지, [2026-10-28] 대주교 수하는 다시 불러낼 때까지, 닌자 두목은 10분 뒤(보상은 한 사람에 한 번)
-                    s.deadUntil = shrineBoss ? now + MINE_SHRINE_BOSS_RESPAWN_MS : type.boss ? now + MINE_BOSS_RESPAWN_MS : type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs(); // [2026-10-28] 보스 2시간
+                    s.deadUntil = shrineBoss ? now + MINE_SHRINE_BOSS_RESPAWN_MS : type.boss && type.respawnOverride > 0 ? now + type.respawnOverride : type.boss ? now + MINE_BOSS_RESPAWN_MS : type.minion ? Long.MAX_VALUE / 2 : now + type.respawnMs(); // [2026-10-28] 보스 2시간
                     s.frozenUntil = 0;
                     splitEnd = s.splitUntil > now;
                     s.splitUntil = 0;
@@ -2834,6 +3029,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (killed) {
             kills = 1;
             mineThunderKill(map, type, now); // [2026-11-05] 밤 마물 처치 수
+            msg.append(mineTowerKill(userName, map, mob, type)); // [2026-11-15] 탑 -- 시즌5 PP, 수문장
             if (mob.type == S5MineMobs.THUNDER_BOSS_TYPE) { // [2026-11-05] 천둥 황소 처치 -- 마물이 돌아온다
                 mineThunderEnd(map, now);
                 out.put("shock", Collections.emptyList());
@@ -4842,7 +5038,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (s.hp <= 0) {
                         dead = true;
                         s.hp = 0;
-                        s.deadUntil = ult && ot.boss ? now + MINE_BOSS_RESPAWN_MS : ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
+                        s.deadUntil = ult && ot.boss ? now + (ot.respawnOverride > 0 ? ot.respawnOverride : MINE_BOSS_RESPAWN_MS) : ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
                         s.stunUntil = 0;
                         s.frozenUntil = 0;
                         s.stealth = false;
@@ -4866,6 +5062,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 m.put("killed", true);
                 kills++;
                 mineThunderKill(map, ot, now); // [2026-11-05] 밤 마물 처치 수
+                msg.append(mineTowerKill(userName, map, om, ot)); // [2026-11-15] 탑
                 long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
@@ -6055,7 +6252,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.hp <= 0) {
                     dead = true;
                     s.hp = 0;
-                    s.deadUntil = ot.boss ? now + MINE_BOSS_RESPAWN_MS : ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
+                    s.deadUntil = ot.boss ? now + (ot.respawnOverride > 0 ? ot.respawnOverride : MINE_BOSS_RESPAWN_MS) : ot.minion ? Long.MAX_VALUE / 2 : now + ot.respawnMs();
                     s.frozenUntil = 0;
                     s.stealth = false;
                 }
@@ -6067,6 +6264,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (hi == 0) primaryDead = true;
             e.mobs.remove(id);
             mineThunderKill(map, ot, now);
+            String twm = mineTowerKill(userName, map, om, ot); // [2026-11-15] 탑 -- 용병이 쓰러뜨려도 PP/수문장
+            if (!twm.isEmpty()) mo.put("twMsg", twm);
             long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mineMindExpPct(items) / 100;
             kills++;
             expSum += g;

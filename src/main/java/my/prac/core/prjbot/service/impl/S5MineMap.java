@@ -94,6 +94,17 @@ public final class S5MineMap {
      *  50~90레벨(14~23단계)이 왕도에서 멀어질수록 강해진다(S5MineMobs.tierAt). 다른 곳으로 가는 길은 없고, 맵 중간중간 동굴 셋(아직 막힘). */
     public static final String WESTROAD = "westroad";
     public static final String FOREST = "forestmaze"; // [2026-11-08] 마물의 숲 미궁(지금은 관리자만 -- S55MineServiceImpl.mineWarp)
+    // [2026-11-15] 하피를 잡은 사람만 나루터에서 강을 건너 가는 탑의 도시 + 시즌5 규칙의 탑(tw1~tw30 -- 1~8 보드, 9 보스, 10 마을이 10층마다)
+    public static final String TOWER_CITY = "towercity";
+    public static final int TOWER_FLOORS = 30;
+    public static String towerId(int f) { return "tw" + f; }
+    /** 탑 층(탑이 아니면 0). */
+    public static int towerFloor(String id) {
+        if (id == null || !id.startsWith("tw") || id.length() < 3) return 0;
+        try { int f = Integer.parseInt(id.substring(2)); return f >= 1 && f <= TOWER_FLOORS ? f : 0; } catch (NumberFormatException e) { return 0; }
+    }
+    public static boolean towerBossFloor(int f) { return f % 10 == 9; }
+    public static boolean towerTownFloor(int f) { return f % 10 == 0; }
     public static final String WB_ARENA = "wbarena"; // [2026-11-15] 월드보스 전장(매일 21시, 어디서든 참여 버튼으로)
     public static final String HARPY_NEST = "harpynest"; // [2026-11-08] 하피의 둥지(보스룸, 지금은 관리자만)
     // [2026-11-11] 두고개식 미궁 -- 방 FOREST_ROOM_N개(0번 = FOREST = 입구 방), 미로의 끝방, 둥지 뒤 나루터. 모두 관리자만(isForestZone).
@@ -105,7 +116,7 @@ public final class S5MineMap {
     public static boolean isForestRoom(String id) { return id != null && id.startsWith(FOREST); }
     /** 미궁 방 + 끝방 + 하피의 둥지 + 나루터(지금은 관리자만 -- S55MineServiceImpl.mineWarp). */
     public static boolean isForestZone(String id) { return isForestRoom(id) || FOREST_END.equals(id) || HARPY_NEST.equals(id) || HARPY_FERRY.equals(id); }
-    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); return Collections.unmodifiableList(l); }
+    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int f = 1; f <= TOWER_FLOORS; f++) l.add(towerId(f)); /* [2026-11-15] 탑 층 */ for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); return Collections.unmodifiableList(l); }
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -213,7 +224,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = withForest(Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA)); // [2026-11-15] + 월드보스 전장 // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA, TOWER_CITY)); // [2026-11-15] + 월드보스 전장, 탑의 도시(탑 층은 withForest에서) // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -611,6 +622,8 @@ public final class S5MineMap {
     private List<int[]> citizens = Collections.emptyList(); // [2026-10-27] 왕도 주민이 오가는 길
     private List<Mob> mobs = Collections.emptyList();
     private int dockX = -1, dockY = -1; // [2026-10-24] 배에서 내리는 칸(항구 맵만)
+    private List<int[]> board = Collections.emptyList(); // [2026-11-15] 탑 보드 칸(순서대로) {x, y, 종류 문자, 안쪽 x, 안쪽 y}
+    public List<int[]> board() { return board; }
     private int bossX = -1, bossY = -1; // [2026-10-24] 보스 자리(동굴 3층만, S5MineMobs.spawn이 보스를 둔다)
 
     public int level() { return level; }
@@ -685,7 +698,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 13; // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 14; // [2026-11-15] 14: 탑 보드(board/tower), // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1098,6 +1111,14 @@ public final class S5MineMap {
             for (S5MineMap fm : fws) out.put(fm.id, fm); // [2026-11-08] 맨 뒤(앞 맵들의 몬스터 배치 시드가 안 바뀌게) -- [2026-11-11] 미궁 방들, 끝방, 둥지, 나루터
         }
         out.put(WB_ARENA, generateWbArena(out.get(CITY))); // [2026-11-15] 월드보스 전장(맨 뒤)
+        { // [2026-11-15] 나루터 뱃사공(강 건너 탑의 도시) + 탑의 도시 + 탑 층(맨 뒤)
+            S5MineMap fr = out.get(HARPY_FERRY);
+            List<Npc> frn = new ArrayList<>();
+            for (Npc n : fr.npcs) frn.add("forestguard".equals(n.kind) ? withKind(n, "riverferry", "나루터 뱃사공", "하피 여왕을 쓰러뜨렸다고? 그렇다면 바람도 잦아들었겠군. 강 건너 탑의 도시까지 태워 주지!") : n);
+            fr.npcs = Collections.unmodifiableList(frn);
+            out.put(TOWER_CITY, generateTowerCity());
+            for (int f = 1; f <= TOWER_FLOORS; f++) out.put(towerId(f), generateTowerFloor(f));
+        }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -2533,6 +2554,132 @@ public final class S5MineMap {
         m.bossX = cx - 1; m.bossY = cy - 1;
         return m;
     }
+    /** NPC 종류/이름/대사만 바꾼 복사본(자리·바닥은 그대로). */
+    private static Npc withKind(Npc n, String kind, String name, String line) {
+        Npc c = new Npc(n.x, n.y, kind, name, line);
+        c.ground = n.ground;
+        return c;
+    }
+    /** [2026-11-15] 탑의 도시(140x120) -- 왕도보다 큰 성벽 도시. 아래(남쪽)는 강과 나무 선착장(나루터에서 배로 도착, 뱃사공), 가운데 광장과 분수,
+     *  북쪽 가운데에 거대한 탑(Q -- 들어가는 문 앞에 탑 관리인), 동서로 붉은 지붕 건물 블록, 광장 옆 대장장이/신부. 광석 없음. */
+    static final int TCITY_W = 140, TCITY_H = 120;
+    static S5MineMap generateTowerCity() {
+        int w = TCITY_W, h = TCITY_H, c = w / 2, wt = 3, road = 3, cy = 62;
+        Random r = new Random(1115);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < wt || y < wt || x >= w - wt || y >= h - 14 ? 'W' : '.';
+        for (int y = h - 14; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = '~'; // 남쪽 강
+        for (int y = h - 14; y < h - 2; y++) for (int x = c - 2; x <= c + 2; x++) t[y][x] = 'H'; // 선착장
+        for (int y = wt; y < h - 14; y++) for (int x = wt; x < w - wt; x++) if (Math.abs(x - c) <= road || Math.abs(y - cy) <= road) t[y][x] = 's'; // 십자 대로
+        for (int y = h - 17; y < h - 14; y++) for (int x = c - road; x <= c + road; x++) t[y][x] = 's';
+        for (int y = 0; y < h - 14; y++) for (int x = 0; x < w; x++) if (Math.hypot(x - c, y - cy) < 15 && t[y][x] != 'W') t[y][x] = 's'; // 광장
+        for (int y = cy - 2; y <= cy + 2; y++) for (int x = c - 2; x <= c + 2; x++) if (Math.hypot(x - c, y - cy) < 2.6) t[y][x] = '~'; // 분수
+        // 거대한 탑(북쪽 가운데) -- 문 앞 돌마당
+        int qx0 = c - 12, qx1 = c + 12, qy0 = wt + 2, qy1 = wt + 26;
+        for (int y = qy0; y <= qy1; y++) for (int x = qx0; x <= qx1; x++) t[y][x] = 'Q';
+        for (int y = qy1 + 1; y <= qy1 + 4; y++) for (int x = qx0 - 2; x <= qx1 + 2; x++) t[y][x] = 's';
+        // 건물 블록(대로·광장·탑에서 떨어진 곳)
+        for (int by = wt + 3; by < h - 30; by += 13) for (int bx = wt + 3; bx < w - wt - 9; bx += 12) {
+            int bw = 6 + r.nextInt(3), bh = 7 + r.nextInt(3);
+            boolean clear = true;
+            for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++)
+                if (Math.abs(x - c) <= road + 2 || Math.abs(y - cy) <= road + 2 || Math.hypot(x - c, y - cy) < 18 || (x >= qx0 - 4 && x <= qx1 + 4 && y <= qy1 + 6)) { clear = false; break; }
+            if (!clear) continue;
+            for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
+            for (int x = bx - 1; x <= bx + bw; x++) t[by + bh][x] = 's';
+        }
+        for (int y = wt + 2; y < h - 16; y++) for (int x = wt + 2; x < w - wt - 2; x++) if (t[y][x] == '.' && r.nextDouble() < 0.05) t[y][x] = 'T';
+        int sx = c, sy = h - 4; // 선착장 끝(배에서 내리는 곳)
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'K';
+        S5MineMap m = new S5MineMap(TOWER_CITY, "탑의 도시 엘리시온", false, w, h, sx, sy, t, new byte[h][w], new ArrayList<>());
+        List<Npc> npcs = new ArrayList<>();
+        npcs.add(npcAtCell(t, c + 3, h - 5, "riverferry", "선착장 뱃사공", "마물의 숲 나루터로 돌아가려나? 언제든 태워 주지."));
+        npcs.add(npcAtCell(t, c, qy1 + 2, "towergate", "탑 관리인", "이 탑은 열 층마다 마을이 있고, 아홉째 층마다 수문장이 지키고 있소. 주사위를 굴려 칸을 밟고, 계단을 찾아 올라가시오."));
+        npcs.add(npcAtCell(t, c - 9, cy - 9, "smith", "도시 대장장이", "탑에서 쓸 장비라면 내게 맡기게."));
+        npcs.add(npcAtCell(t, c + 9, cy - 9, "priest", "도시 사제", "탑을 오르는 이에게 여신의 가호를. 상처를 치료해 드리지요."));
+        m.npcs = npcs;
+        m.safe.add(new int[] { c, cy, 14 });
+        return m;
+    }
+    /** 칸 (x, y)에 NPC를 세운다(그 칸 바닥을 기억하고 N으로). */
+    private static Npc npcAtCell(char[][] t, int x, int y, String kind, String name, String line) {
+        Npc n = new Npc(x, y, kind, name, line);
+        n.ground = t[y][x];
+        t[y][x] = 'N';
+        return n;
+    }
+    /** [2026-11-15] 탑 한 층 -- 보드(1~8), 보스(9), 마을(10). */
+    static S5MineMap generateTowerFloor(int f) {
+        if (towerTownFloor(f)) return towerTown(f);
+        if (towerBossFloor(f)) return towerBoss(f);
+        return towerBoard(f);
+    }
+    /** 보드 층 -- 시즌5 탑처럼 끝없이 도는 칸 고리(사각형 둘레, 칸 수 16 + 2 x (층 - 1) % 10). 가운데는 마당(전투 칸 몬스터가 칸 안쪽에서 잠들어 있다).
+     *  칸 종류(시즌5와 같은 이름): E 시작 / C 전투 / T 보물 / P PP / X 함정 / L 행운(특수) / U 올라가는 계단 / D 내려가는 계단(구역 첫 층엔 없음). */
+    static S5MineMap towerBoard(int f) {
+        int n = 16 + 2 * ((f - 1) % 10), a = n / 4 + 1, b = (n - 2 * a) / 2 + 2;
+        int w = a + 4, h = b + 4, ox = 2, oy = 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = 'W';
+        for (int y = oy; y < oy + b; y++) for (int x = ox; x < ox + a; x++) t[y][x] = (y == oy || y == oy + b - 1 || x == ox || x == ox + a - 1) ? 's' : ',';
+        List<int[]> ring = new ArrayList<>(); // 아래 줄 왼->오, 오른쪽 아래->위, 위 줄 오->왼, 왼쪽 위->아래
+        for (int x = ox; x < ox + a; x++) ring.add(new int[] { x, oy + b - 1 });
+        for (int y = oy + b - 2; y > oy; y--) ring.add(new int[] { ox + a - 1, y });
+        for (int x = ox + a - 1; x >= ox; x--) ring.add(new int[] { x, oy });
+        for (int y = oy + 1; y < oy + b - 1; y++) ring.add(new int[] { ox, y });
+        Random r = new Random(f * 7919L + 1115);
+        char[] ty = new char[ring.size()];
+        java.util.Arrays.fill(ty, 'C');
+        ty[0] = 'E';
+        List<Integer> free = new ArrayList<>();
+        for (int i = 1; i < ty.length; i++) free.add(i);
+        Collections.shuffle(free, r);
+        int k = 0;
+        ty[free.get(k++)] = 'U';
+        if (f % 10 != 1) ty[free.get(k++)] = 'D';
+        ty[free.get(k++)] = 'L';
+        for (int i = 0; i < 2; i++) ty[free.get(k++)] = 'T';
+        for (int i = 0; i < 2; i++) ty[free.get(k++)] = 'P';
+        for (int i = 0; i < 2 + (f % 10) / 4; i++) ty[free.get(k++)] = 'X';
+        List<int[]> bd = new ArrayList<>();
+        int cxi = ox + a / 2, cyi = oy + b / 2;
+        for (int i = 0; i < ring.size(); i++) {
+            int x = ring.get(i)[0], y = ring.get(i)[1];
+            int ix = x + Integer.signum(cxi - x), iy = y + Integer.signum(cyi - y);
+            if (ix <= ox || ix >= ox + a - 1) ix = Math.max(ox + 1, Math.min(ox + a - 2, ix));
+            if (iy <= oy || iy >= oy + b - 1) iy = Math.max(oy + 1, Math.min(oy + b - 2, iy));
+            bd.add(new int[] { x, y, ty[i], ix, iy });
+        }
+        S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층", false, w, h, ring.get(0)[0], ring.get(0)[1], t, new byte[h][w], new ArrayList<>());
+        m.board = Collections.unmodifiableList(bd);
+        return m;
+    }
+    /** 보스 층(9, 19, 29) -- 돌 광장 가운데 수문장, 아래 입구. */
+    static S5MineMap towerBoss(int f) {
+        int w = 32, h = 28, cx = w / 2, cy = h / 2 - 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : ((x * 3 + y) % 9 == 0 ? ':' : 's');
+        S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층 -- 수문장의 방", false, w, h, cx, h - 4, t, new byte[h][w], new ArrayList<>());
+        m.bossX = cx - 1; m.bossY = cy - 1;
+        return m;
+    }
+    /** 마을 층(10, 20, 30) -- 쉼터(안전지대), 탑 관리인/사제/대장장이. */
+    static S5MineMap towerTown(int f) {
+        int w = 30, h = 24, cx = w / 2, cy = h / 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : (Math.hypot(x - cx, y - cy) < 7 ? 's' : '.');
+        for (int y = cy - 1; y <= cy + 1; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = '~';
+        List<Npc> npcs = new ArrayList<>();
+        npcs.add(npcAtCell(t, cx, 4, "towergate", "탑 관리인", f + "층 마을까지 왔구려! 쉬었다 가시오. 위로 가려면 내게 말하시오."));
+        npcs.add(npcAtCell(t, cx - 6, cy, "priest", "탑 사제", "여기까지 오느라 고생했어요. 상처를 치료해 드리지요."));
+        npcs.add(npcAtCell(t, cx + 6, cy, "smith", "탑 대장장이", "장비 손볼 게 있으면 말하게."));
+        S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층 마을", false, w, h, cx, h - 4, t, new byte[h][w], new ArrayList<>());
+        m.npcs = npcs;
+        m.safe.add(new int[] { cx, cy, 12 });
+        return m;
+    }
+
     /** [2026-11-15] 월드보스 전장 -- 돌로 둘러싼 넓은 원형 광장(50x40), 가운데 거룡(2x2, 움직이지 않음), 아래 입구(참여하면 여기로), 아래 문 = 왕도 광장.
      *  입구는 거룡에게서 12칸(인식 범위)보다 멀다. 잡몹 없음. */
     static final int WB_W = 50, WB_H = 40;

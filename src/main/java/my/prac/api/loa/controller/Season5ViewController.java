@@ -722,6 +722,21 @@ public class Season5ViewController {
     }
 
     /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 곡괭이 내구도 1). v = 화면의 맵 version(바뀌었으면 reload). */
+    /** [2026-11-15] 탑 -- action=info / roll / go&n / exit / ferry. */
+    @GetMapping("/api/tower-mine-tw")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineTw(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "info") String action, @RequestParam(value = "n", defaultValue = "0") int n) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        HashMap<String, Object> r = s5Service.mineTower(userName, action, n);
+        if (("go".equals(action) || "ferry".equals(action)) && Boolean.TRUE.equals(r.get("ok"))) mineLog(userName, "[웹] 광산 탑", String.valueOf(r.get("message")));
+        return ResponseEntity.ok(r);
+    }
+
     /** [2026-11-15] 월드보스 -- action=info / join(전장으로) / start·stop(관리자). */
     @GetMapping("/api/tower-mine-wb")
     @ResponseBody
