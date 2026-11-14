@@ -1470,8 +1470,56 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         } catch (Exception e) { /* PP/기록 실패해도 처치는 그대로 */ }
         return m.toString();
     }
-    /** [2026-11-15] 증표 상인 -- 최종 장비를 등급별로 탑의 증표로 산다(일반~신화, 이미 가진 등급은 못 삼). 처음 산 장비는 그 등급을 고른 등급으로(장착은 직접). */
-    static final int[] MINE_TOKEN_PRICE = { 30, 50, 80, 120, 180, 270, 400, 600 };
+    // ---- [2026-11-15] 동료(용병) 장비 -- "탑의 증표로 동료 장비 뽑기, 동료 장비는 시즌5와 동일하게(장비 뽑기 / 악세 뽑기, 초급·중급·고급·최상급),
+    //  동료는 무적이라 방어력·방어막·부활은 무의미". 시즌5처럼 부위 여섯(무기/투구/갑옷 = 직업군 전용, 목걸이/반지/팔찌 = 공용), 등급 ★1~★6.
+    //  시즌5의 체력/공격/방어 자리를 공격 쪽으로 옮겼다: 무기 = 공격력 %, 투구 = 치명타 확률(2배 피해), 갑옷 = 상성 피해 +%(속성 상성 x1.5에 더해),
+    //  악세는 시즌5처럼 두 부위의 절반씩(목걸이 = 무기+갑옷, 반지 = 무기+투구, 팔찌 = 갑옷+투구).
+    //  가진 장비 = 아이템 MG_{부위}{직업 0 전사/1 궁수/2 마법사, 악세 9}_{★}(개수), 끼운 장비 = MERC{직업}_G{부위}(★, 0 = 없음 -- 끼우면 가진 개수에서 하나 빠지고 빼면 돌아온다).
+    //  뽑기는 탑의 도시·탑 마을의 증표 상인: 단계마다 증표 가격, 위 단계는 탑 수문장을 쓰러뜨려 연다(중급 9층 / 고급 19층 / 최상급 29층).
+    static final String[] MG_PARTS = { "W", "H", "A", "N", "R", "B" }, MG_PART_NAMES = { "무기", "투구", "갑옷", "목걸이", "반지", "팔찌" };
+    static final String[][] MG_ITEM_NAMES = { { "검", "투구", "갑주" }, { "활", "깃장식", "재킷" }, { "지팡이", "머리띠", "로브" } }; // 시즌5 직업군 이름(전사/궁수/마법사)
+    static final int[] MG_ATK = { 0, 5, 10, 16, 24, 34, 48 }, MG_CRIT = { 0, 2, 4, 6, 9, 12, 16 }, MG_BEAT = { 0, 10, 20, 32, 48, 66, 90 };
+    static final String[] MG_TIER_NAMES = { "초급", "중급", "고급", "최상급" };
+    static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
+    static final int[][] MG_TIER_RATE = { { 0, 600, 300, 90, 10, 0, 0 }, { 0, 0, 650, 250, 80, 18, 2 }, { 0, 0, 0, 600, 300, 90, 10 }, { 0, 0, 0, 0, 600, 320, 80 } }; // ★0~★6 천분율(중급·최상급은 시즌5 동료 계약서와 같은 비율)
+    static String mgCode(String part, int cls, int g) { return "MG_" + part + cls + "_" + g; }
+    static boolean mgAcc(String part) { return "N".equals(part) || "R".equals(part) || "B".equals(part); }
+    static String mgName(String part, int cls, int g) {
+        int pi = java.util.Arrays.asList(MG_PARTS).indexOf(part);
+        return "★" + g + " " + (mgAcc(part) ? MG_PART_NAMES[pi] : MG_ITEM_NAMES[Math.max(0, Math.min(2, cls))][pi] + "(" + MINE_MERC_NAMES[Math.max(0, Math.min(2, cls))] + ")");
+    }
+    /** 부위 하나의 효과 {공격력 %, 치명 %, 상성 %}. */
+    static int[] mgEff(String part, int g) {
+        g = Math.max(0, Math.min(6, g));
+        switch (part) {
+            case "W": return new int[] { MG_ATK[g], 0, 0 };
+            case "H": return new int[] { 0, MG_CRIT[g], 0 };
+            case "A": return new int[] { 0, 0, MG_BEAT[g] };
+            case "N": return new int[] { MG_ATK[g] / 2, 0, MG_BEAT[g] / 2 };
+            case "R": return new int[] { MG_ATK[g] / 2, MG_CRIT[g] / 2, 0 };
+            default: return new int[] { 0, MG_CRIT[g] / 2, MG_BEAT[g] / 2 };
+        }
+    }
+    static String mgEffText(String part, int g) {
+        int[] e = mgEff(part, g);
+        List<String> l = new ArrayList<>();
+        if (e[0] > 0) l.add("공격력 +" + e[0] + "%");
+        if (e[1] > 0) l.add("치명타 " + e[1] + "%");
+        if (e[2] > 0) l.add("상성 피해 +" + e[2] + "%");
+        return String.join(" · ", l);
+    }
+    /** 용병 c가 끼운 장비를 합친 효과 {공격력 %, 치명 %, 상성 %}. */
+    static int[] mineMgBonus(Map<String, Integer> items, int c) {
+        int[] s = new int[3];
+        for (String p : MG_PARTS) { int[] e = mgEff(p, items.getOrDefault(mineMercKey(c, "G" + p), 0)); for (int i = 0; i < 3; i++) s[i] += e[i]; }
+        return s;
+    }
+    static int mgRoll(int tier) {
+        int r = RND.nextInt(1000), acc = 0;
+        for (int g = 1; g <= 6; g++) { acc += MG_TIER_RATE[tier][g]; if (r < acc) return g; }
+        return 6;
+    }
+    /** [2026-11-15] 증표 상인(동료 장비 뽑기) + 동료 장비 끼우기 -- action=list / inv / pull·pull10(code = equip|acc, grade = 단계) / equip(code = 아이템, grade = 직업) / unequip(code = 부위, grade = 직업). */
     public HashMap<String, Object> mineTokenShop(String userName, String action, String code, int grade) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
@@ -1482,38 +1530,89 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUser(userName);
         if (row == null) return out;
         Map<String, Integer> items = mineItems(userName);
-        int have = mineOreHave(userName).getOrDefault(S5MineMap.TOWER_TOKEN_CODE, 0);
-        if ("buy".equals(action)) {
-            if (!mineAtNpc(row, "tokenshop")) { out.put("message", "증표 상인에게서만 살 수 있어요."); return out; }
-            MineWeapon w = MINE_ITEM_TOWER_SWORD.equals(code) ? mineWeaponOf(MINE_ITEM_TOWER_SWORD) : MINE_ITEM_TOWER_ARMOR.equals(code) ? mineArmorOf(MINE_ITEM_TOWER_ARMOR) : null;
-            if (w == null || grade < 0 || grade > w.maxGrade) { out.put("message", "그런 물건은 없어요."); return out; }
-            int mask = mineWeaponMask(items, w), price = MINE_TOKEN_PRICE[grade];
-            if ((mask & (1 << grade)) != 0) { out.put("message", "이미 가진 등급이에요."); return out; }
+        int have = mineOreHave(userName).getOrDefault(S5MineMap.TOWER_TOKEN_CODE, 0), block = mineTwBlock(items);
+        if ("pull".equals(action) || "pull10".equals(action)) {
+            boolean acc = "acc".equals(code);
+            int tier = grade, n = "pull10".equals(action) ? 10 : 1;
+            if (!mineAtNpc(row, "tokenshop")) { out.put("message", "증표 상인에게서만 뽑을 수 있어요."); return out; }
+            if (tier < 0 || tier > 3) { out.put("message", "그런 상자는 없어요."); return out; }
+            if (block < MG_TIER_UNLOCK[tier] && !isMineAdmin(userName)) { out.put("message", "🔒 " + MG_TIER_NAMES[tier] + " 상자는 탑 " + MG_TIER_UNLOCK[tier] + "층 수문장을 쓰러뜨리면 열려요."); return out; }
+            int price = MG_TIER_PRICE[tier] * n;
             if (have < price || dao.takeUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, price) == 0) { out.put("message", "🗼 " + S5MineMap.TOWER_TOKEN_NAME + "이(가) " + price + "개 있어야 해요. (보유 " + have + ")"); return out; }
-            dao.upsertMineItem(userName, w.code + "_M", mask | (1 << grade));
-            if (mineWeaponGrade(items, w) < 0) dao.upsertMineItem(userName, w.code, grade + 1);
-            if (grade >= 4) mineGossipAdd(mineNick(userName) + " 님이 탑의 증표로 " + MINE_GRADE_KO[Math.min(grade, MINE_GRADE_KO.length - 1)] + " " + w.name + "을(를) 손에 넣었대요!");
-            items = mineItems(userName);
             have -= price;
+            List<String> got = new ArrayList<>();
+            int best = 0;
+            for (int i = 0; i < n; i++) {
+                int g = mgRoll(tier), cls = acc ? 9 : RND.nextInt(3);
+                String part = acc ? MG_PARTS[3 + RND.nextInt(3)] : MG_PARTS[RND.nextInt(3)], ic = mgCode(part, cls, g);
+                int q = items.getOrDefault(ic, 0) + 1;
+                dao.upsertMineItem(userName, ic, q);
+                items.put(ic, q);
+                got.add(mgName(part, cls, g));
+                best = Math.max(best, g);
+            }
+            if (best >= 6) mineGossipAdd(mineNick(userName) + " 님이 " + MG_TIER_NAMES[tier] + " " + (acc ? "악세" : "장비") + " 상자에서 ★6 동료 장비를 뽑았대요!");
             out.put("ok", true);
-            out.put("message", (w.armor ? "🛡️ " : "🗡️ ") + MINE_GRADE_NAMES[grade] + " " + w.name + "을(를) 샀어요! " + w.effect(grade) + " (인벤토리 " + (w.armor ? "갑옷" : "무기") + " 칸에서 등급을 골라 장착)");
+            out.put("got", got);
+            out.put("best", best);
+            out.put("message", "🎁 " + MG_TIER_NAMES[tier] + " " + (acc ? "악세" : "장비") + " 상자 " + n + "번 -- " + String.join(", ", got));
+        } else if ("equip".equals(action)) {
+            int c = grade;
+            if (c < 0 || c > 2 || mineMercLv(items, c) <= 0) { out.put("message", "계약한 용병에게만 끼울 수 있어요."); return out; }
+            String[] p = code == null ? new String[0] : code.split("_");
+            if (p.length != 3 || !"MG".equals(p[0]) || p[1].length() != 2) { out.put("message", "그런 장비는 없어요."); return out; }
+            String part = p[1].substring(0, 1);
+            int cls = p[1].charAt(1) - '0', g;
+            try { g = Integer.parseInt(p[2]); } catch (NumberFormatException e) { out.put("message", "그런 장비는 없어요."); return out; }
+            if (!java.util.Arrays.asList(MG_PARTS).contains(part) || g < 1 || g > 6 || items.getOrDefault(code, 0) < 1) { out.put("message", "가진 장비가 아니에요."); return out; }
+            if (!mgAcc(part) && cls != c) { out.put("message", "이 장비는 " + MINE_MERC_NAMES[Math.max(0, Math.min(2, cls))] + " 전용이에요."); return out; }
+            String slot = mineMercKey(c, "G" + part);
+            int old = items.getOrDefault(slot, 0);
+            dao.upsertMineItem(userName, code, items.get(code) - 1);
+            items.put(code, items.get(code) - 1);
+            if (old > 0) { String oc = mgCode(part, mgAcc(part) ? 9 : c, old); int oq = items.getOrDefault(oc, 0) + 1; dao.upsertMineItem(userName, oc, oq); items.put(oc, oq); }
+            dao.upsertMineItem(userName, slot, g);
+            items.put(slot, g);
+            out.put("ok", true);
+            out.put("message", "🛡️ " + MINE_MERC_NAMES[c] + "에게 " + mgName(part, cls, g) + "을(를) 끼웠어요. (" + mgEffText(part, g) + ")");
+        } else if ("unequip".equals(action)) {
+            int c = grade;
+            if (c < 0 || c > 2 || !java.util.Arrays.asList(MG_PARTS).contains(code)) { out.put("message", "그런 칸은 없어요."); return out; }
+            String slot = mineMercKey(c, "G" + code);
+            int old = items.getOrDefault(slot, 0);
+            if (old <= 0) { out.put("message", "끼운 장비가 없어요."); return out; }
+            String oc = mgCode(code, mgAcc(code) ? 9 : c, old);
+            int oq = items.getOrDefault(oc, 0) + 1;
+            dao.upsertMineItem(userName, oc, oq);
+            items.put(oc, oq);
+            dao.upsertMineItem(userName, slot, 0);
+            items.put(slot, 0);
+            out.put("ok", true);
+            out.put("message", MINE_MERC_NAMES[c] + "의 " + MG_PART_NAMES[java.util.Arrays.asList(MG_PARTS).indexOf(code)] + "을(를) 뺐어요.");
         }
-        List<HashMap<String, Object>> list = new ArrayList<>();
-        for (MineWeapon w : new MineWeapon[] { mineWeaponOf(MINE_ITEM_TOWER_SWORD), mineArmorOf(MINE_ITEM_TOWER_ARMOR) }) {
+        List<HashMap<String, Object>> inv = new ArrayList<>(); // 가진 동료 장비(★ 높은 것부터)
+        for (int g = 6; g >= 1; g--) for (String part : MG_PARTS) for (int cls : mgAcc(part) ? new int[] { 9 } : new int[] { 0, 1, 2 }) {
+            int q = items.getOrDefault(mgCode(part, cls, g), 0);
+            if (q <= 0) continue;
             HashMap<String, Object> m = new HashMap<>();
-            m.put("code", w.code);
-            m.put("name", w.name);
-            m.put("armor", w.armor);
-            m.put("mask", mineWeaponMask(items, w));
-            List<String> eff = new ArrayList<>();
-            for (int g = 0; g <= w.maxGrade; g++) eff.add(w.effect(g));
-            m.put("eff", eff);
-            list.add(m);
+            m.put("code", mgCode(part, cls, g)); m.put("part", part); m.put("cls", cls); m.put("g", g); m.put("q", q);
+            m.put("name", mgName(part, cls, g)); m.put("eff", mgEffText(part, g));
+            inv.add(m);
         }
-        out.put("items", list);
-        out.put("price", MINE_TOKEN_PRICE);
-        out.put("grades", MINE_GRADE_NAMES);
+        out.put("inv", inv);
+        List<HashMap<String, Object>> tiers = new ArrayList<>();
+        for (int t = 0; t < 4; t++) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("name", MG_TIER_NAMES[t]); m.put("price", MG_TIER_PRICE[t]); m.put("unlock", MG_TIER_UNLOCK[t]);
+            m.put("open", block >= MG_TIER_UNLOCK[t] || isMineAdmin(userName));
+            List<String> rl = new ArrayList<>();
+            for (int g = 1; g <= 6; g++) if (MG_TIER_RATE[t][g] > 0) rl.add("★" + g + " " + (MG_TIER_RATE[t][g] % 10 == 0 ? String.valueOf(MG_TIER_RATE[t][g] / 10) : String.valueOf(MG_TIER_RATE[t][g] / 10.0)) + "%");
+            m.put("rate", String.join(" / ", rl));
+            tiers.add(m);
+        }
+        out.put("tiers", tiers);
         out.put("have", have);
+        out.put("mercs", mineMercCards(items));
         if (!out.containsKey("message")) out.put("ok", true);
         out.put("ores", mineOreList(userName));
         return out;
@@ -1744,7 +1843,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             } catch (Exception e) { /* 한 사람 실패해도 나머지는 */ }
         }
     }
-    /** 처치 -- 기여도 순위 보상(1위 / 2~3위 / 4~10위 / 참여), 10위까지 장비 드랍 한 번씩. */
+    /** 처치 -- 기여도 순위 보상(1~10위 같게 / 참여), 10위까지 장비 드랍 한 번씩. */
     void mineWbFinish(WbState st) {
         java.util.List<java.util.Map.Entry<String, Long>> rk = new ArrayList<>(st.score.entrySet());
         rk.sort((p, q) -> Long.compare(q.getValue(), p.getValue()));
@@ -1752,7 +1851,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int i = 0; i < rk.size(); i++) {
             String u = rk.get(i).getKey();
             try {
-                int r = i + 1, star = r == 1 ? 3 : r <= 3 ? 2 : r <= 10 ? 1 : 0, gal = r == 1 ? 3 : r <= 3 ? 2 : 0, seven = r == 1 ? 5 : r <= 3 ? 3 : r <= 10 ? 2 : 0;
+                int r = i + 1, star = r <= 10 ? 2 : 0, gal = r <= 10 ? 2 : 0, seven = r <= 10 ? 3 : 0; // [2026-11-15] "1~10위 모두 비슷한 보상" -- 1~10위 같게
                 StringBuilder m = new StringBuilder("👑 심연의 거룡을 함께 쓰러뜨렸어요! 기여도 ").append(r).append("위 / ").append(rk.size()).append("명 -- 🌙 달빛석 2 · 💎 다이아몬드 1");
                 dao.addUserOre(u, S5MineMap.MOON_STONE_CODE, 2);
                 dao.addUserOre(u, S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], 1);
@@ -4741,7 +4840,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 16, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
         new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 34, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
         new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 72, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
-        new MineWeapon("TOWER_ARMOR", "탑의 갑주", 5, 99, 100, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-15] 최종 장비(증표 상인만) = MINE_ITEM_TOWER_ARMOR
     };
     static MineWeapon mineArmorOf(String code) { for (MineWeapon w : MINE_ARMORS) if (w.code.equals(code)) return w; return null; }
     static MineWeapon mineArmorOn(Map<String, Integer> items) {
@@ -4811,9 +4909,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static final String MINE_ITEM_NINJA_SWORD = "NINJA_SWORD";
     static final String MINE_ITEM_HARPY_SWORD = "HARPY_SWORD";
-    static final String MINE_ITEM_TOWER_SWORD = "TOWER_SWORD", MINE_ITEM_TOWER_ARMOR = "TOWER_ARMOR"; // [2026-11-15] 최종 장비(증표 상인)
-    /** 무작위 드랍에서 빠지는 장비(하피의 검 = 하피 여왕 전용, 탑 장비 = 증표 상인 전용). */
-    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_TOWER_SWORD.equals(code) || MINE_ITEM_TOWER_ARMOR.equals(code); }
+    /** 무작위 드랍에서 빠지는 장비(하피의 검 = 하피 여왕 전용). */
+    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code); }
     static final MineWeapon[] MINE_WEAPONS = {
         new MineWeapon("BICHUL_SWORD", "비철도", 3, 20, 50, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[1]),
         new MineWeapon("KATANA", "카타나", 4, 40, 250, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[2]),
@@ -4821,8 +4918,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("BAEKHWA_SWORD", "백화검", 5, 80, 1500, 0.2, 7, 0, 1, S5MineMap.WEAPON_SHARD_CODES[3]),
         // [2026-11-11] 하피의 검 -- 하피 여왕만 떨어뜨린다(처치하면 반드시, 일반~신화). 99레벨부터. 백화검의 약 1.5배(공 2250 + 공격력 2%, 등급마다 +20%와 +1%). 조각은 백화검 조각.
         new MineWeapon(MINE_ITEM_HARPY_SWORD, "하피의 검", 6, 99, 2250, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]),
-        // [2026-11-15] 최종 장비 -- 탑의 도시 증표 상인에게서 탑의 증표로만(드랍 없음). 하피의 검보다 한 단계 위(공 3200, 공격력 % 3부터).
-        new MineWeapon(MINE_ITEM_TOWER_SWORD, "탑의 검", 7, 99, 3200, 0.2, 7, 0, 3, S5MineMap.WEAPON_SHARD_CODES[3]),
     };
     static final int MINE_WEAPON_DROP_LV_GAP = 4;
     /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 41.22% / 30% / 16% / 8% / 3.5% / 1% / 0.25% / 0.03%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로).
@@ -4892,7 +4987,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             case MINE_ITEM_NINJA_SWORD: return "ninja";
             case "BAEKHWA_SWORD": return "baekhwa";
             case MINE_ITEM_HARPY_SWORD: return "harpy"; // [2026-11-11] 하피의 검(시안 승인 -- _mine_char.jsp W32.harpy)
-            case MINE_ITEM_TOWER_SWORD: return "baekhwa"; // [2026-11-15] 탑의 검 -- 시안 승인 전까지 백화검 그림
             default: return "sword";
         }
     }
@@ -5971,7 +6065,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         lv = Math.max(1, Math.min(MINE_LV_MAX, lv));
         return lv <= 80 ? MINE_MERC_ATK_LV1 + (MINE_MERC_ATK_LV80 - MINE_MERC_ATK_LV1) * (lv - 1) / 79.0 : MINE_MERC_ATK_LV80 + (MINE_MERC_ATK_LV99 - MINE_MERC_ATK_LV80) * (lv - 80) / 19.0;
     }
-    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[c]); }
+    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[c] * (1 + mineMgBonus(items, c)[0] / 100.0)); } // [2026-11-15] 동료 장비 공격력 %
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
     /** 평타 설명(단계 s = 1 + 레벨/20). */
@@ -6013,6 +6107,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("reach", MINE_MERC_REACH[c]);
         m.put("weapon", MINE_MERC_WEAPON[c]);
         m.put("owned", lv > 0);
+        { // [2026-11-15] 동료 장비(칸마다 ★등급, 0 = 없음) + 합친 효과
+            HashMap<String, Integer> gs = new HashMap<>();
+            for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(6, items.getOrDefault(mineMercKey(c, "G" + p), 0))));
+            m.put("mg", gs);
+            m.put("mgb", mineMgBonus(items, c));
+        }
         if (lv <= 0) return m;
         int el = mineMercEl(items, c), s = mineMercStage(lv);
         m.put("lv", lv);
@@ -6291,7 +6391,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s == null) continue;
             if (om.type == S5MineMobs.HARPY_BOSS_TYPE && mineHarpyNow(map, now)[2] == 1) continue; // [2026-11-11] 나무 뒤에 숨은 하피만 용병도 못 때린다
             boolean beat = S5MineMobs.elemBeats(el, ot.elem());
-            int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * hitMul.get(hi) * (beat ? 1.5 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
+            int[] mgb = mineMgBonus(items, cls); // [2026-11-15] 동료 장비 -- 치명타(2배), 상성 피해 +%
+            boolean mcrit = mgb[1] > 0 && RND.nextInt(100) < mgb[1];
+            int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * hitMul.get(hi) * (beat ? 1.5 + mgb[2] / 100.0 : 1) * (mcrit ? 2 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
             boolean dead = false;
             synchronized (s) {
                 if (s.deadUntil > now) continue;

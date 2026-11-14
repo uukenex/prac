@@ -1503,7 +1503,7 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">...</div>';
     var lo = Math.max(1, (d.block | 0) + 1), max = d.max | 0;
     h += '<div class="mine-smith-say">올라갈 수 있는 층: <b>' + lo + ' ~ ' + max + '층</b>' + (d.block ? ' (🔒 ' + d.block + '층 아래는 수문장을 쓰러뜨려 끝난 구역)' : '')
-        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장, 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 최종 장비).</small></div>';
+        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장, 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기).</small></div>';
     var btns = '';
     for (var f = lo; f <= max; f++) {
       var lb = f % 10 === 0 ? '🏘️ ' + f + '층 마을' : f % 10 === 9 ? '👑 ' + f + '층 수문장' : '🗼 ' + f + '층';
@@ -1513,33 +1513,55 @@ var TowerMine = (function () {
     if (map && map.tower) h += '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twExit()">🚪 탑에서 나가기 (탑의 도시)</button></div>';
     return h;
   }
-  // [2026-11-15] 증표 상인 -- 최종 장비(탑의 검/탑의 갑주)를 등급별로 탑의 증표로
-  var tokenShop = null, tokenBusy = false;
+  // [2026-11-15] 증표 상인 = 동료(용병) 장비 뽑기(시즌5처럼 장비/악세, 초급~최상급) + 용병 관리 장비 탭에서 끼우기
+  var tokenShop = null, tokenBusy = false, mgInv = null, mgLoading = false, MG_SLOTS = [['W', '⚔️ 무기'], ['H', '⛑️ 투구'], ['A', '🛡️ 갑옷'], ['N', '📿 목걸이'], ['R', '💍 반지'], ['B', '📿 팔찌']];
   function tokenGo(act, code, g) {
     if (tokenBusy) return;
     tokenBusy = true;
-    api('/api/tower-mine-token?action=' + act + (code ? '&code=' + code + '&g=' + g : '')).then(function (d) {
-      tokenBusy = false;
+    api('/api/tower-mine-token?action=' + act + (code != null ? '&code=' + encodeURIComponent(code) + '&g=' + g : '')).then(function (d) {
+      tokenBusy = false; mgLoading = false;
       if (!d) return;
       if (d.ores) st.ores = d.ores;
-      if (d.items) tokenShop = d;
-      if (act === 'buy') { if (d.ok) { flashT0 = performance.now(); applyGear && d.gear && applyGear(d); } msg(d.message || '', 3600); }
-      if (smithOpen && smithView === 'token') renderSmith(smithNpc);
-    }).catch(function () { tokenBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+      if (d.tiers) tokenShop = d;
+      if (d.inv) mgInv = d.inv;
+      if (d.mercs) st.mercs = d.mercs;
+      if (act !== 'list') { if (d.ok && d.best >= 5) flashT0 = performance.now(); if (d.message) msg(d.message, act.indexOf('pull') === 0 ? 4200 : 2600); }
+      if (smithOpen && (smithView === 'token' || smithView === 'mercmgr')) renderSmith(smithNpc);
+    }).catch(function () { tokenBusy = false; mgLoading = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function tokenHtml(n) {
     var d = tokenShop, h = npcHead('🗼 ' + n.name, false) + talkBlock(n, n.line);
     if (!d) return h + '<div class="mine-smith-say">...</div>';
-    h += '<div class="mine-smith-say"><img src="' + oreIcon(72) + '" alt="" style="width:16px;vertical-align:middle"> 탑의 증표 <b>' + d.have + '</b>개 -- 탑 몬스터 1개 · 수문장 20개 · 보물 칸 2개 · 증표 칸 3개</div>';
-    (d.items || []).forEach(function (it) {
-      h += '<div class="mine-smith-say" style="border:1px solid #7ab8ff">' + (it.armor ? '🛡️ ' : '🗡️ ') + '<b>' + escAttr(it.name) + '</b> <small>(최종 장비 · 여기서만)</small><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">';
-      for (var g = 0; g < d.grades.length; g++) {
-        var own = (it.mask >> g) & 1, pr = d.price[g];
-        h += '<button type="button" class="mine-mini-btn" title="' + escAttr(it.eff[g]) + '"' + (own || d.have < pr ? ' disabled' : '') + ' onclick="TowerMine.tokenBuy(\'' + it.code + '\',' + g + ')">' + d.grades[g] + (own ? ' ✔' : ' · ' + pr) + '</button>';
-      }
-      h += '</div><small style="color:#a8b8d8">신화: ' + escAttr(it.eff[it.eff.length - 1]) + '</small></div>';
+    h += '<div class="mine-smith-say"><img src="' + oreIcon(72) + '" alt="" style="width:16px;vertical-align:middle"> 탑의 증표 <b>' + d.have + '</b>개 -- 탑 몬스터 1개 · 수문장 20개 · 보물 칸 2개 · 증표 칸 3개'
+        + '<br><small>뽑은 장비는 🛡️ 용병 관리 → ⚔️ 장비 탭에서 끼워요. 무기·투구·갑옷은 직업 전용, 악세는 공용.</small></div>';
+    [['equip', '⚔️ 장비 뽑기', '무기(공격력) · 투구(치명타) · 갑옷(상성 피해)'], ['acc', '💍 악세 뽑기', '목걸이 · 반지 · 팔찌 (두 효과를 절반씩)']].forEach(function (k) {
+      h += '<div class="mine-smith-say" style="border:1px solid #7ab8ff"><b>' + k[1] + '</b> <small>' + k[2] + '</small>';
+      d.tiers.forEach(function (t, i) {
+        h += '<div class="mine-smith-row"><span class="nm">' + t.name + ' · 증표 ' + t.price + '<small>' + t.rate + (t.open ? '' : ' · 🔒 탑 ' + t.unlock + '층 수문장') + '</small></span>'
+            + (t.open ? '<button type="button"' + (d.have < t.price ? ' data-lack="1"' : '') + ' onclick="TowerMine.mgPull(\'' + k[0] + '\',' + i + ',1)">1번</button><button type="button"' + (d.have < t.price * 10 ? ' data-lack="1"' : '') + ' onclick="TowerMine.mgPull(\'' + k[0] + '\',' + i + ',10)">10번</button>'
+                : '<button type="button" disabled>잠김</button>') + '</div>';
+      });
+      h += '</div>';
     });
     return h;
+  }
+  /** 용병 관리 장비 탭 -- 칸 여섯(끼운 장비/빼기) + 이 용병에게 맞는 가진 장비(끼우기). */
+  function mgGearHtml(m) {
+    if (mgInv == null && !mgLoading) { mgLoading = true; tokenGo('list'); }
+    var mg = m.mg || {}, b = m.mgb || [0, 0, 0], h = '<div class="mine-smith-say" style="border:1px solid #7ab8ff">🎒 <b>동료 장비</b> <small>공격력 +' + b[0] + '% · 치명타 ' + b[1] + '% · 상성 피해 +' + b[2] + '%</small>';
+    MG_SLOTS.forEach(function (s) {
+      var g = mg[s[0]] | 0;
+      h += '<div class="mine-smith-row"><span class="nm">' + s[1] + '<small>' + (g ? '★' + g + ' 끼움' : '비어 있음') + '</small></span>'
+          + (g ? '<button type="button" onclick="TowerMine.mgOff(\'' + s[0] + '\',' + m.t + ')">빼기</button>' : '') + '</div>';
+    });
+    var fit = (mgInv || []).filter(function (it) { return it.cls === 9 || it.cls === m.t; });
+    h += '<div style="margin-top:6px"><small>가진 장비 (이 용병이 낄 수 있는 것)</small></div>';
+    if (mgInv == null) h += '<div><small>...</small></div>';
+    else if (!fit.length) h += '<div><small>없어요. 탑의 도시·탑 마을의 증표 상인에게서 뽑을 수 있어요.</small></div>';
+    else fit.forEach(function (it) {
+      h += '<div class="mine-smith-row"><span class="nm">' + escAttr(it.name) + (it.q > 1 ? ' x' + it.q : '') + '<small>' + escAttr(it.eff) + '</small></span><button type="button" onclick="TowerMine.mgOn(\'' + it.code + '\',' + m.t + ')">끼우기</button></div>';
+    });
+    return h + '</div>';
   }
   function twGo(f) { closeSmith(); travel('/api/tower-mine-tw?action=go&n=' + f, '그 층으로 가지 못했어요.'); }
   function twExit() { closeSmith(); travel('/api/tower-mine-tw?action=exit', '탑에서 나가지 못했어요.'); }
@@ -2254,7 +2276,7 @@ var TowerMine = (function () {
         + '<div class="doll-col">' + dslot((EL_ICON[m.el] || '') + ' 속성', m.elName + ' 특화') + dslot('🌀 스킬', m.st + '단계') + '</div></div>'
         + '<div class="mine-smith-say">공격력 ' + fmtN(m.atk) + ' · 체력 ' + fmtN(m.max) + ' · 사거리 ' + m.reach + '칸'
         + '<span class="mine-bar" style="margin-top:6px"><i style="display:block;height:100%;width:' + pct + '%;background:#9fe0ff"></i></span>'
-        + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + ' · 내가 얻는 경험치의 1%</small><br><small>장비는 기본 장비만 써요.</small></div>'
+        + '<small>경험치 ' + (m.need ? fmtN(m.exp) + ' / ' + fmtN(m.need) : '최고 레벨') + ' · 내가 얻는 경험치의 1%</small></div>' + mgGearHtml(m) // [2026-11-15] 동료 장비
         + '<div class="mine-smith-say" style="margin-bottom:4px">공격 방식</div><div class="merc-view merc-mode"><button type="button" class="' + (m.mode ? '' : 'on') + '" onclick="TowerMine.mercMode(0)">🤝 협공 모드<small>나와 싸우는 몬스터만</small></button>'
         + '<button type="button" class="' + (m.mode ? 'on' : '') + '" onclick="TowerMine.mercMode(1)">⚔️ 선공 모드<small>사거리 안 몬스터를 먼저</small></button></div>' // [2026-11-06] 선공/협공
         + '<div class="mine-smith-row"><span class="nm">' + (m.on ? '✔ 함께 다니는 중' : '용병소에서 쉬는 중') + '</span><button type="button" onclick="TowerMine.mercUse(' + m.t + ')">' + (m.want || m.on ? '쉬게 하기' : '데리고 다니기') + '</button></div>'
@@ -5932,7 +5954,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { tokenBuy: function (c, g) { tokenGo('buy', c, g); }, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
