@@ -722,6 +722,22 @@ public class Season5ViewController {
     }
 
     /** [2026-10-23] 웹 광산 -- (x, y) 칸 캐기(그 칸에 서 있어야 함, 곡괭이 내구도 1). v = 화면의 맵 version(바뀌었으면 reload). */
+    /** [2026-11-15] 증표 상인 -- action=list / buy&code&g. */
+    @GetMapping("/api/tower-mine-token")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineToken(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "action", defaultValue = "list") String action, @RequestParam(value = "code", defaultValue = "") String code,
+            @RequestParam(value = "g", defaultValue = "-1") int g) {
+        if (userName.trim().isEmpty()) {
+            HashMap<String, Object> err = new HashMap<>();
+            err.put("error", "유저명을 입력하세요.");
+            return ResponseEntity.ok(err);
+        }
+        HashMap<String, Object> r = s5Service.mineTokenShop(userName, action, code, g);
+        if ("buy".equals(action) && Boolean.TRUE.equals(r.get("ok"))) mineLog(userName, "[웹] 광산 증표 상인", String.valueOf(r.get("message")));
+        return ResponseEntity.ok(r);
+    }
+
     /** [2026-11-15] 탑 -- action=info / roll / go&n / exit / ferry. */
     @GetMapping("/api/tower-mine-tw")
     @ResponseBody

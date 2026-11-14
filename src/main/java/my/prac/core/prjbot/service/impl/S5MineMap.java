@@ -160,6 +160,9 @@ public final class S5MineMap {
     public static final int THUNDER_HEART_GRADE = 65;
     /** [2026-11-11] 하피 여왕 고유 증표 -- 바람의 심장(처치 시 MINE_HARPY_DROP_PCT%). */
     public static final String WIND_HEART_CODE = "WIND_HEART", WIND_HEART_NAME = "바람의 심장";
+    /** [2026-11-15] 탑의 증표 -- 탑 몬스터/수문장/보물·증표 칸에서. 탑의 도시 증표 상인에게서 최종 장비(탑의 검/탑의 갑주)를 산다. */
+    public static final String TOWER_TOKEN_CODE = "TOWER_TOKEN", TOWER_TOKEN_NAME = "탑의 증표";
+    public static final int TOWER_TOKEN_GRADE = 72;
     public static final int WIND_HEART_GRADE = 71;
     public static final String ICE_HEART_CODE = "ICE_HEART";
     public static final String ICE_HEART_NAME = "얼음의 심장";
@@ -2595,6 +2598,7 @@ public final class S5MineMap {
         S5MineMap m = new S5MineMap(TOWER_CITY, "탑의 도시 엘리시온", false, w, h, sx, sy, t, new byte[h][w], new ArrayList<>());
         List<Npc> npcs = new ArrayList<>();
         npcs.add(npcAtCell(t, c + 3, h - 5, "riverferry", "선착장 뱃사공", "마물의 숲 나루터로 돌아가려나? 언제든 태워 주지."));
+        npcs.add(npcAtCell(t, c + 6, qy1 + 2, "tokenshop", "증표 상인", "탑에서 모은 증표를 가져오게. 이 도시에서만 다루는 최고의 장비를 내주지."));
         npcs.add(npcAtCell(t, c, qy1 + 2, "towergate", "탑 관리인", "이 탑은 열 층마다 마을이 있고, 아홉째 층마다 수문장이 지키고 있소. 주사위를 굴려 칸을 밟고, 계단을 찾아 올라가시오."));
         npcs.add(npcAtCell(t, c - 9, cy - 9, "smith", "도시 대장장이", "탑에서 쓸 장비라면 내게 맡기게."));
         npcs.add(npcAtCell(t, c + 9, cy - 9, "priest", "도시 사제", "탑을 오르는 이에게 여신의 가호를. 상처를 치료해 드리지요."));
@@ -2674,6 +2678,7 @@ public final class S5MineMap {
         npcs.add(npcAtCell(t, cx, 4, "towergate", "탑 관리인", f + "층 마을까지 왔구려! 쉬었다 가시오. 위로 가려면 내게 말하시오."));
         npcs.add(npcAtCell(t, cx - 6, cy, "priest", "탑 사제", "여기까지 오느라 고생했어요. 상처를 치료해 드리지요."));
         npcs.add(npcAtCell(t, cx + 6, cy, "smith", "탑 대장장이", "장비 손볼 게 있으면 말하게."));
+        npcs.add(npcAtCell(t, cx + 5, 4, "tokenshop", "증표 상인", "증표를 모아 왔나? 최고의 장비와 바꿔 주지."));
         S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층 마을", false, w, h, cx, h - 4, t, new byte[h][w], new ArrayList<>());
         m.npcs = npcs;
         m.safe.add(new int[] { cx, cy, 12 });

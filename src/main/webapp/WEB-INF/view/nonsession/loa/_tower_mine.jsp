@@ -53,6 +53,7 @@ var TowerMine = (function () {
   ORE_NAME[70] = '은하수 조각'; ORE_COL[70] = ['#1a1e4a', '#c8d8ff']; RARE_GEM[70] = 1; // [2026-11-06] 달빛석 + 칠요석
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
+  ORE_NAME[72] = '탑의 증표'; ORE_COL[72] = ['#3a5aa8', '#ffe9a8']; RARE_GEM[72] = 1; // [2026-11-15] 탑의 증표(그림은 시안 전까지 기본 광석 모양)
   ORE_NAME[71] = '바람의 심장'; ORE_COL[71] = ['#3ac8a0', '#f0fff8']; RARE_GEM[71] = 1; // [2026-11-11] 하피 여왕
   ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
@@ -360,7 +361,7 @@ var TowerMine = (function () {
     });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), towergate: npcSprite('guide') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1451,7 +1452,7 @@ var TowerMine = (function () {
   }
   /** 전체 지도 "👑 보스" -- 보스마다 지금 있는지 + 내가 다시 소환할 수 있는 시각(천둥 황소는 처치 수). */
   // [2026-11-15] 탑(시즌5식) -- 보드 층(map.board)은 걸어서 못 움직이고 🎲로만 칸을 옮긴다. 위쪽 띠: 층/칸 + [🎲] [🪜 층 이동] [나가기].
-  var twBar = null, twBusy = false, twInfo = null, TW_ICON = { E: '🏁', C: '⚔️', T: '📦', P: '💰', X: '⚠️', L: '🍀', U: '🔼', D: '🔽' };
+  var twBar = null, twBusy = false, twInfo = null, TW_ICON = { E: '🏁', C: '⚔️', T: '📦', P: '🗼', X: '⚠️', L: '🍀', U: '🔼', D: '🔽' };
   function twIndex() { var b = map && map.board; if (!b) return -1; for (var i = 0; i < b.length; i++) if (b[i][0] === P.x && b[i][1] === P.y) return i; return -1; }
   function twRender() {
     if (!el.ov) return;
@@ -1502,7 +1503,7 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">...</div>';
     var lo = Math.max(1, (d.block | 0) + 1), max = d.max | 0;
     h += '<div class="mine-smith-say">올라갈 수 있는 층: <b>' + lo + ' ~ ' + max + '층</b>' + (d.block ? ' (🔒 ' + d.block + '층 아래는 수문장을 쓰러뜨려 끝난 구역)' : '')
-        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장, 10층마다 마을. 몬스터를 쓰러뜨리면 시즌5 PP도 받아요.</small></div>';
+        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장, 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 최종 장비).</small></div>';
     var btns = '';
     for (var f = lo; f <= max; f++) {
       var lb = f % 10 === 0 ? '🏘️ ' + f + '층 마을' : f % 10 === 9 ? '👑 ' + f + '층 수문장' : '🗼 ' + f + '층';
@@ -1510,6 +1511,34 @@ var TowerMine = (function () {
     }
     h += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0">' + btns + '</div>';
     if (map && map.tower) h += '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twExit()">🚪 탑에서 나가기 (탑의 도시)</button></div>';
+    return h;
+  }
+  // [2026-11-15] 증표 상인 -- 최종 장비(탑의 검/탑의 갑주)를 등급별로 탑의 증표로
+  var tokenShop = null, tokenBusy = false;
+  function tokenGo(act, code, g) {
+    if (tokenBusy) return;
+    tokenBusy = true;
+    api('/api/tower-mine-token?action=' + act + (code ? '&code=' + code + '&g=' + g : '')).then(function (d) {
+      tokenBusy = false;
+      if (!d) return;
+      if (d.ores) st.ores = d.ores;
+      if (d.items) tokenShop = d;
+      if (act === 'buy') { if (d.ok) { flashT0 = performance.now(); applyGear && d.gear && applyGear(d); } msg(d.message || '', 3600); }
+      if (smithOpen && smithView === 'token') renderSmith(smithNpc);
+    }).catch(function () { tokenBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function tokenHtml(n) {
+    var d = tokenShop, h = npcHead('🗼 ' + n.name, false) + talkBlock(n, n.line);
+    if (!d) return h + '<div class="mine-smith-say">...</div>';
+    h += '<div class="mine-smith-say"><img src="' + oreIcon(72) + '" alt="" style="width:16px;vertical-align:middle"> 탑의 증표 <b>' + d.have + '</b>개 -- 탑 몬스터 1개 · 수문장 20개 · 보물 칸 2개 · 증표 칸 3개</div>';
+    (d.items || []).forEach(function (it) {
+      h += '<div class="mine-smith-say" style="border:1px solid #7ab8ff">' + (it.armor ? '🛡️ ' : '🗡️ ') + '<b>' + escAttr(it.name) + '</b> <small>(최종 장비 · 여기서만)</small><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">';
+      for (var g = 0; g < d.grades.length; g++) {
+        var own = (it.mask >> g) & 1, pr = d.price[g];
+        h += '<button type="button" class="mine-mini-btn" title="' + escAttr(it.eff[g]) + '"' + (own || d.have < pr ? ' disabled' : '') + ' onclick="TowerMine.tokenBuy(\'' + it.code + '\',' + g + ')">' + d.grades[g] + (own ? ' ✔' : ' · ' + pr) + '</button>';
+      }
+      h += '</div><small style="color:#a8b8d8">신화: ' + escAttr(it.eff[it.eff.length - 1]) + '</small></div>';
+    });
     return h;
   }
   function twGo(f) { closeSmith(); travel('/api/tower-mine-tw?action=go&n=' + f, '그 층으로 가지 못했어요.'); }
@@ -1602,6 +1631,7 @@ var TowerMine = (function () {
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
     if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; openSmith(n, 'hermit'); return; } // [2026-10-30]
     if (n.kind === 'towergate') { twFloors(); return; } // [2026-11-15] 탑 관리인
+    if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
     if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
       setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
@@ -2755,6 +2785,7 @@ var TowerMine = (function () {
     if (smithView === 'hermit') { el.smith.innerHTML = hermitHtml(n); return; } // [2026-10-30]
     if (smithView === 'bosscall') { el.smith.innerHTML = bossCallHtml(n); return; } // [2026-11-13]
     if (smithView === 'tower') { el.smith.innerHTML = towerHtml(n); return; } // [2026-11-15]
+    if (smithView === 'token') { el.smith.innerHTML = tokenHtml(n); return; } // [2026-11-15]
     if (smithView === 'river') { el.smith.innerHTML = riverHtml(n); return; } // [2026-11-15]
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'aura') { el.smith.innerHTML = auraNpcHtml(n); return; } // [2026-11-04] 검기 사범
@@ -5901,7 +5932,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { tokenBuy: function (c, g) { tokenGo('buy', c, g); }, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

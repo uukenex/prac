@@ -489,7 +489,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.THUNDER_HEART_CODE, S5MineMap.WIND_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.ARMOR_SHARD_CODES)).toArray(String[]::new); // [2026-11-06] 갑옷 조각
-        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE)).toArray(String[]::new); // [2026-11-06] 은하수 조각
+        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE, S5MineMap.TOWER_TOKEN_CODE)).toArray(String[]::new); // [2026-11-06] 은하수 조각, [2026-11-15] 탑의 증표
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
             scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
@@ -1422,12 +1422,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //    쓰러뜨려야 다시 굴린다) / 보물 / PP(시즌5 PP -- 그 사람의 시즌5 층 처치 PP 기준) / 함정(최대 체력 15%) / 행운(체력 가득 + 가끔 세공 보석) / 계단(위: 다음 층 열림, 아래).
     //  - 9층마다 수문장(보스) -- 쓰러뜨리면(함께 싸운 사람도) 그 구역은 끝(아래 층으로 못 돌아간다), 10층마다 마을(쉼터, 탑 관리인/사제/대장장이).
     //  - 기록은 광산 아이템 TW_MAX(올라갈 수 있는 가장 높은 층), TW_BLOCK(쓰러뜨린 마지막 수문장 층 -- 그 아래로는 못 감).
-    //  - 탑 몬스터를 쓰러뜨리면 경험치/광석/보석에 더해 시즌5 PP(처치 1번 몫, 수문장은 20번 몫). 시즌5 탑 기록이 없으면 PP 대신 달빛석 확률.
+    //  - 탑 몬스터를 쓰러뜨리면 경험치/광석/보석에 더해 탑의 증표(1개, 수문장은 함께 싸운 사람 모두 20개) -- [2026-11-15] 같은 날 "시즌5 PP는 안 줘도 된다,
+    //    시즌5.5의 탑의 증표로 대체 -- 최종 장비를 사는 재화로"(탑의 도시 증표 상인 mineTokenShop).
     static final String MINE_ITEM_HARPY_CLEAR = "HARPY_CLEAR", MINE_ITEM_TW_MAX = "TW_MAX", MINE_ITEM_TW_BLOCK = "TW_BLOCK";
     static final long MINE_TW_ROLL_MS = 1_200L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_TW_ROLL_AT = new java.util.concurrent.ConcurrentHashMap<>();
-    /** 시즌5 PP 지급(그 사람 시즌5 층의 처치 PP x kills) -- 준 PP 글자(없으면 null). BotS5ServiceImpl이 채운다. */
-    String mineTowerPp(String userName, double kills) { return null; }
+    static final int MINE_TW_TOKEN_KILL = 1, MINE_TW_TOKEN_BOSS = 20, MINE_TW_TOKEN_CHEST = 2, MINE_TW_TOKEN_TILE = 3;
+    /** 탑의 증표 n개 -- 안내 글자. */
+    String mineTowerToken(String userName, int n) {
+        dao.addUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, n);
+        return "🗼 " + S5MineMap.TOWER_TOKEN_NAME + " +" + n;
+    }
     static int mineTwMax(Map<String, Integer> items) { return Math.max(1, items.getOrDefault(MINE_ITEM_TW_MAX, 1)); }
     static int mineTwBlock(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_TW_BLOCK, 0); }
     /** 보드에서 지금 서 있는 칸 번호(없으면 -1). */
@@ -1448,9 +1453,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (f <= 0 || !(t.tower || t.boss)) return "";
         StringBuilder m = new StringBuilder();
         try {
-            String pp = mineTowerPp(userName, t.boss ? 20 : 1);
-            if (pp != null) m.append(" · 💰 시즌5 PP +").append(pp);
-            else if (RND.nextInt(100) < (t.boss ? 100 : 5)) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); m.append(" · 🌙 달빛석 1"); }
+            m.append(" · ").append(mineTowerToken(userName, t.boss ? MINE_TW_TOKEN_BOSS : MINE_TW_TOKEN_KILL));
             if (t.boss) {
                 java.util.Set<String> us = new java.util.LinkedHashSet<>();
                 us.add(userName);
@@ -1460,13 +1463,62 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     Map<String, Integer> it = mineItems(u);
                     if (mineTwBlock(it) < f) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
-                    if (!u.equals(userName)) MINE_SHRINE_REWARD_MSG.merge(u, "🗼 탑 " + f + "층 수문장 " + t.name + "이(가) 쓰러졌어요! " + (f + 1) + "층 마을로 갈 수 있어요. (이제 " + f + "층 아래로는 못 내려가요)", (p, q) -> p + " / " + q);
+                    if (!u.equals(userName)) MINE_SHRINE_REWARD_MSG.merge(u, "🗼 탑 " + f + "층 수문장 " + t.name + "이(가) 쓰러졌어요! " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + " · " + (f + 1) + "층 마을로 갈 수 있어요. (이제 " + f + "층 아래로는 못 내려가요)", (p, q) -> p + " / " + q);
                 }
                 m.append(" 🗼 ").append(f + 1).append("층 마을이 열렸어요! 탑 관리인이나 [층 이동]으로 올라가요. (이 구역은 끝 -- ").append(f).append("층 아래로는 못 내려가요)");
             }
         } catch (Exception e) { /* PP/기록 실패해도 처치는 그대로 */ }
         return m.toString();
     }
+    /** [2026-11-15] 증표 상인 -- 최종 장비를 등급별로 탑의 증표로 산다(일반~신화, 이미 가진 등급은 못 삼). 처음 산 장비는 그 등급을 고른 등급으로(장착은 직접). */
+    static final int[] MINE_TOKEN_PRICE = { 30, 50, 80, 120, 180, 270, 400, 600 };
+    public HashMap<String, Object> mineTokenShop(String userName, String action, String code, int grade) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        Map<String, Integer> items = mineItems(userName);
+        int have = mineOreHave(userName).getOrDefault(S5MineMap.TOWER_TOKEN_CODE, 0);
+        if ("buy".equals(action)) {
+            if (!mineAtNpc(row, "tokenshop")) { out.put("message", "증표 상인에게서만 살 수 있어요."); return out; }
+            MineWeapon w = MINE_ITEM_TOWER_SWORD.equals(code) ? mineWeaponOf(MINE_ITEM_TOWER_SWORD) : MINE_ITEM_TOWER_ARMOR.equals(code) ? mineArmorOf(MINE_ITEM_TOWER_ARMOR) : null;
+            if (w == null || grade < 0 || grade > w.maxGrade) { out.put("message", "그런 물건은 없어요."); return out; }
+            int mask = mineWeaponMask(items, w), price = MINE_TOKEN_PRICE[grade];
+            if ((mask & (1 << grade)) != 0) { out.put("message", "이미 가진 등급이에요."); return out; }
+            if (have < price || dao.takeUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, price) == 0) { out.put("message", "🗼 " + S5MineMap.TOWER_TOKEN_NAME + "이(가) " + price + "개 있어야 해요. (보유 " + have + ")"); return out; }
+            dao.upsertMineItem(userName, w.code + "_M", mask | (1 << grade));
+            if (mineWeaponGrade(items, w) < 0) dao.upsertMineItem(userName, w.code, grade + 1);
+            if (grade >= 4) mineGossipAdd(mineNick(userName) + " 님이 탑의 증표로 " + MINE_GRADE_KO[Math.min(grade, MINE_GRADE_KO.length - 1)] + " " + w.name + "을(를) 손에 넣었대요!");
+            items = mineItems(userName);
+            have -= price;
+            out.put("ok", true);
+            out.put("message", (w.armor ? "🛡️ " : "🗡️ ") + MINE_GRADE_NAMES[grade] + " " + w.name + "을(를) 샀어요! " + w.effect(grade) + " (인벤토리 " + (w.armor ? "갑옷" : "무기") + " 칸에서 등급을 골라 장착)");
+        }
+        List<HashMap<String, Object>> list = new ArrayList<>();
+        for (MineWeapon w : new MineWeapon[] { mineWeaponOf(MINE_ITEM_TOWER_SWORD), mineArmorOf(MINE_ITEM_TOWER_ARMOR) }) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("code", w.code);
+            m.put("name", w.name);
+            m.put("armor", w.armor);
+            m.put("mask", mineWeaponMask(items, w));
+            List<String> eff = new ArrayList<>();
+            for (int g = 0; g <= w.maxGrade; g++) eff.add(w.effect(g));
+            m.put("eff", eff);
+            list.add(m);
+        }
+        out.put("items", list);
+        out.put("price", MINE_TOKEN_PRICE);
+        out.put("grades", MINE_GRADE_NAMES);
+        out.put("have", have);
+        if (!out.containsKey("message")) out.put("ok", true);
+        out.put("ores", mineOreList(userName));
+        return out;
+    }
+
     /** [2026-11-15] 탑 -- action=info / roll(주사위) / go&n(층 이동) / exit(탑의 도시로) / ferry(나루터 <-> 탑의 도시). */
     public HashMap<String, Object> mineTower(String userName, String action, int n) {
         HashMap<String, Object> out = new HashMap<>();
@@ -1576,13 +1628,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
             msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
             if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); }
-            String pp = mineTowerPp(userName, 2);
-            if (pp != null) msg.append(" · 💰 PP +").append(pp);
+            msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST));
             out.put("ores", mineOreList(userName));
         } else if (ty == 'P') {
-            String pp = mineTowerPp(userName, 3);
-            if (pp != null) msg.append("💰 시즌5 PP +").append(pp);
-            else { dao.addUserOre(userName, S5MineMap.ORE_CODES[4], 3); msg.append("💰 미스릴 원석 3 (시즌5 탑 기록이 없어 PP 대신)"); out.put("ores", mineOreList(userName)); }
+            msg.append("🗼 증표 칸! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE));
+            out.put("ores", mineOreList(userName));
         } else if (ty == 'X') {
             int hpNow = mineHpNow(row, now, lock, rb), cut = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * 0.15)), nh = Math.max(1, hpNow - cut);
             dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), nh, now, 0);
@@ -4691,6 +4741,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 16, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
         new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 34, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
         new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 72, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
+        new MineWeapon("TOWER_ARMOR", "탑의 갑주", 5, 99, 100, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-15] 최종 장비(증표 상인만) = MINE_ITEM_TOWER_ARMOR
     };
     static MineWeapon mineArmorOf(String code) { for (MineWeapon w : MINE_ARMORS) if (w.code.equals(code)) return w; return null; }
     static MineWeapon mineArmorOn(Map<String, Integer> items) {
@@ -4705,7 +4756,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         java.util.List<String> ms = java.util.Arrays.asList(t.maps);
         if (t.ninja || ms.contains(S5MineMap.ARCHI)) out.add(mineArmorOf("ARMOR_NINJA"));
         if (ms.contains(S5MineMap.ISLE1) || ms.contains(S5MineMap.ISLE2) || ms.contains(S5MineMap.ISLE3) || ms.contains(S5MineMap.ISLE4) || ms.contains(S5MineMap.ISLE5) || ms.contains(S5MineMap.ISLE6) || ms.contains(S5MineMap.ISLE7)) out.add(mineArmorOf("ARMOR_BAEKHWA"));
-        if (!t.ninja) for (MineWeapon w : MINE_ARMORS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w)) out.add(w);
+        if (!t.ninja) for (MineWeapon w : MINE_ARMORS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w) && !mineNoRandomDrop(w.code)) out.add(w); // [2026-11-15] 탑의 갑주는 상인만
         return out;
     }
     static int mineArmorDef(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); if (a == null) return 0; int g = mineWeaponGrade(items, a), e = mineEnh(items, a.code); return a.atkAt(g) + a.atkEnh(g, e); }
@@ -4760,6 +4811,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static final String MINE_ITEM_NINJA_SWORD = "NINJA_SWORD";
     static final String MINE_ITEM_HARPY_SWORD = "HARPY_SWORD";
+    static final String MINE_ITEM_TOWER_SWORD = "TOWER_SWORD", MINE_ITEM_TOWER_ARMOR = "TOWER_ARMOR"; // [2026-11-15] 최종 장비(증표 상인)
+    /** 무작위 드랍에서 빠지는 장비(하피의 검 = 하피 여왕 전용, 탑 장비 = 증표 상인 전용). */
+    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_TOWER_SWORD.equals(code) || MINE_ITEM_TOWER_ARMOR.equals(code); }
     static final MineWeapon[] MINE_WEAPONS = {
         new MineWeapon("BICHUL_SWORD", "비철도", 3, 20, 50, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[1]),
         new MineWeapon("KATANA", "카타나", 4, 40, 250, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[2]),
@@ -4767,6 +4821,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("BAEKHWA_SWORD", "백화검", 5, 80, 1500, 0.2, 7, 0, 1, S5MineMap.WEAPON_SHARD_CODES[3]),
         // [2026-11-11] 하피의 검 -- 하피 여왕만 떨어뜨린다(처치하면 반드시, 일반~신화). 99레벨부터. 백화검의 약 1.5배(공 2250 + 공격력 2%, 등급마다 +20%와 +1%). 조각은 백화검 조각.
         new MineWeapon(MINE_ITEM_HARPY_SWORD, "하피의 검", 6, 99, 2250, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]),
+        // [2026-11-15] 최종 장비 -- 탑의 도시 증표 상인에게서 탑의 증표로만(드랍 없음). 하피의 검보다 한 단계 위(공 3200, 공격력 % 3부터).
+        new MineWeapon(MINE_ITEM_TOWER_SWORD, "탑의 검", 7, 99, 3200, 0.2, 7, 0, 3, S5MineMap.WEAPON_SHARD_CODES[3]),
     };
     static final int MINE_WEAPON_DROP_LV_GAP = 4;
     /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 41.22% / 30% / 16% / 8% / 3.5% / 1% / 0.25% / 0.03%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로).
@@ -4825,7 +4881,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                             || m.equals(S5MineMap.ISLE7))) {
             out.add(mineWeaponOf("BAEKHWA_SWORD"));
         }
-        if (!t.ninja) for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w) && !MINE_ITEM_HARPY_SWORD.equals(w.code)) out.add(w); // [2026-11-11] 하피의 검은 하피만
+        if (!t.ninja) for (MineWeapon w : MINE_WEAPONS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w) && !mineNoRandomDrop(w.code)) out.add(w); // [2026-11-11] 하피의 검은 하피만
         return out;
     }
     /** 화면 그림 이름(_mine_char.jsp WEAPON_LOOK의 키). */
@@ -4836,6 +4892,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             case MINE_ITEM_NINJA_SWORD: return "ninja";
             case "BAEKHWA_SWORD": return "baekhwa";
             case MINE_ITEM_HARPY_SWORD: return "harpy"; // [2026-11-11] 하피의 검(시안 승인 -- _mine_char.jsp W32.harpy)
+            case MINE_ITEM_TOWER_SWORD: return "baekhwa"; // [2026-11-15] 탑의 검 -- 시안 승인 전까지 백화검 그림
             default: return "sword";
         }
     }
@@ -4867,8 +4924,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             else {
                 int best = -1;
                 for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr)
-                    if (!MINE_ITEM_HARPY_SWORD.equals(w.code)) if (best < 0 || Math.abs(type.lv() - w.lv) < Math.abs(type.lv() - best) || (Math.abs(type.lv() - w.lv) == Math.abs(type.lv() - best) && w.lv > best)) best = w.lv;
-                for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr) if (w.lv == best && !MINE_ITEM_HARPY_SWORD.equals(w.code)) cand.add(w);
+                    if (!mineNoRandomDrop(w.code)) if (best < 0 || Math.abs(type.lv() - w.lv) < Math.abs(type.lv() - best) || (Math.abs(type.lv() - w.lv) == Math.abs(type.lv() - best) && w.lv > best)) best = w.lv;
+                for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr) if (w.lv == best && !mineNoRandomDrop(w.code)) cand.add(w);
             }
             dw = cand.get(RND.nextInt(cand.size()));
             bossG = harpy ? mineGradeRoll(dw.maxGrade, rank) : mineBossGradeRoll(dw.maxGrade); // [2026-11-11] 하피의 검은 일반 몬스터에게 무기가 떴을 때와 같은 등급 비율(일반~신화)
@@ -7383,6 +7440,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.VOLCANO_HEART_CODE.equals(code)) return S5MineMap.VOLCANO_HEART_GRADE; // [2026-10-30]
         if (S5MineMap.THUNDER_HEART_CODE.equals(code)) return S5MineMap.THUNDER_HEART_GRADE; // [2026-11-05]
         if (S5MineMap.WIND_HEART_CODE.equals(code)) return S5MineMap.WIND_HEART_GRADE; // [2026-11-11]
+        if (S5MineMap.TOWER_TOKEN_CODE.equals(code)) return S5MineMap.TOWER_TOKEN_GRADE; // [2026-11-15]
         for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         if (S5MineMap.CUT_ICE_CODE.equals(code)) return S5MineMap.CUT_ICE_GRADE; // [2026-10-28] 세공된 빙석
@@ -7405,6 +7463,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (g >= S5MineMap.NINJA_SHARD_GRADE && g < S5MineMap.NINJA_SHARD_GRADE + S5MineMap.WEAPON_SHARD_NAMES.length) return S5MineMap.WEAPON_SHARD_NAMES[g - S5MineMap.NINJA_SHARD_GRADE]; // [2026-10-29]
         if (g >= S5MineMap.ARMOR_SHARD_GRADE && g < S5MineMap.ARMOR_SHARD_GRADE + S5MineMap.ARMOR_SHARD_NAMES.length) return S5MineMap.ARMOR_SHARD_NAMES[g - S5MineMap.ARMOR_SHARD_GRADE]; // [2026-11-06]
         if (g == S5MineMap.GALAXY_GRADE) return S5MineMap.GALAXY_NAME; // [2026-11-06]
+        if (g == S5MineMap.TOWER_TOKEN_GRADE) return S5MineMap.TOWER_TOKEN_NAME; // [2026-11-15]
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g == S5MineMap.CUT_ICE_GRADE) return S5MineMap.CUT_ICE_NAME;

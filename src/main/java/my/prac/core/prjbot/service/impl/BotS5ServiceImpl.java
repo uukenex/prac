@@ -3312,20 +3312,6 @@ public class BotS5ServiceImpl extends S55MineServiceImpl implements BotS5Service
         p.put("TOTAL_PP_EARNED_EXT", earnedResult.getUnit());
     }
 
-    /** [2026-11-15] 광산 탑(시즌5식) -- 시즌5 PP를 그 사람 시즌5 최고 층의 처치 PP x kills만큼(낚시 보너스와 같은 기준). 시즌5 기록이 없으면 null. */
-    @Override
-    String mineTowerPp(String userName, double kills) {
-        HashMap<String, Object> p = dao.selectUserProgress(userName);
-        if (p == null) return null;
-        int floor = intVal(p.get("MAX_FLOOR_REACHED"), 0);
-        HashMap<String, Object> mon = dao.selectMonster(monsterBlockNo(floor), "N");
-        if (mon == null) return null;
-        PP perKill = PP.of(((Number) mon.get("PP_PER_KILL_VALUE")).doubleValue(), strVal(mon.get("PP_PER_KILL_EXT"), ""));
-        PP reward = perKill.multiply(floorPpMultiplier(floor) * kills);
-        addPp(userName, p, reward);
-        return reward.format();
-    }
-
     /** [2026-09-10] S4 낚시 연동 -- BotS4Service.grantFishingBonus 인터페이스 문서 참고. */
     @Override
     @Transactional
