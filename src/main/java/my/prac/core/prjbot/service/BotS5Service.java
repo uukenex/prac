@@ -233,7 +233,9 @@ public interface BotS5Service {
     HashMap<String, Object> mineBossCall(String userName, String action); // [2026-11-13] 보스 소환사
     HashMap<String, Object> mineWorldBoss(String userName, String action); // [2026-11-15] 월드보스
     HashMap<String, Object> mineTower(String userName, String action, int n); // [2026-11-15] 탑의 도시 + 시즌5식 탑
-    HashMap<String, Object> mineTokenShop(String userName, String action, String code, int grade); // [2026-11-15] 증표 상인
+    HashMap<String, Object> mineTokenShop(String userName, String action, String code, int grade);
+    /** [2026-11-15] 이 요청이 누구 것인지(탑 1인 층의 몬스터 상태를 가리려고) -- 유저 이름 없이 몬스터 목록만 묻는 주소에서 먼저 부른다. */
+    void mineCtx(String userName); // [2026-11-15] 증표 상인
     HashMap<String, Object> mineChopTree(String userName, String mapId, String ver, int x, int y, int tx, int ty); // [2026-11-11] 하피의 둥지 나무 찍기
     HashMap<String, Object> mineSavePos(String userName, String mapId, String ver, int x, int y);
     /** dest = 배(판자) 포탈일 때 갈 항구 맵 ID(그 외 null). */

@@ -1505,6 +1505,7 @@ var TowerMine = (function () {
     var bossNm = function (f) { return bn[(f - 9) / 10] || '수문장'; };
     h += '<div class="mine-smith-say">올라갈 수 있는 층: <b>' + lo + ' ~ ' + max + '층</b>' + (d.block ? ' (🔒 ' + d.block + '층 아래는 수문장을 쓰러뜨려 끝난 구역)' : '')
         + ' · 👑 오늘 수문장 <b>' + done + '/' + daily + '</b>'
+        + '<br><small>⚔️ 탑은 혼자 오르는 곳이에요(다른 사람과 따로, 층에 들어갈 때마다 처음부터). 몬스터가 강하니 체력을 봐 가며 굴리세요.</small>'
         + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장(하루 ' + daily + '번까지), 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기·보석 사기).</small></div>';
     var btns = '';
     for (var f = lo; f <= max; f++) {

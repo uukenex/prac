@@ -299,20 +299,23 @@ public final class S5MineMobs {
         // [2026-11-15] 같은 날 "보스는 시즌5 패턴·이름을, 난이도는 레벨 90 + 용병 90 + ★2 장비로 무난하게 이길 정도" -- 수문장 = 시즌5 구역 보스(9층 라텔 / 19층 검은 갱도왕 /
         //  29층 히드라), 수치는 fix(체력, 공격)로 직접. 기준 = 레벨 90(체력 약 10.8만, 무기 없이 한 방 약 7,300 x 초당 2번) + 전사 용병 90 ★2(평타 초당 약 1만 +
         //  20초마다 이기어검 약 50만). 몬스터는 내가 때릴 때마다 반격하므로(초당 2번) 공격 수치는 작게 잡는다. 시뮬레이션(scratch T2Check sim): 수문장 20 / 28 / 32초쯤(용병 속성이 상성이면 절반),
-        //  잃는 체력이 최대 체력의 35 / 50 / 60%쯤(무기·재생의 장갑이 있으면 더 여유). 잡몹은 3~5초, 한 마리에 6~13%.
+        //  잃는 체력이 최대 체력의 40 / 50 / 60%쯤(무기·재생의 장갑이 있으면 더 여유).
+        //  같은 날 "탑은 1인 인스턴스 던전 형태고, 일반 몬스터도 어려운 느낌이어야" -- 잡몹도 한 마리가 싸움이 되게(용병 이기어검 한 번에 안 쓰러지게): 체력 65만 / 70만 / 76만(골렘 84만),
+        //  공격 1,000 / 1,050 / 1,100. 시뮬레이션: 한 마리에 14 / 17 / 20초쯤, 잃는 체력이 최대 체력의 21 / 27 / 32%쯤 -- 두세 마리를 연달아 싸우면 쓰러지니 쉬어 가야 한다. 경험치는 다섯 배(expx).
+        //  수문장(마지막 값): 체력 120만 / 140만 / 160만, 공격 900 / 950 / 1,000 -- 21~27초쯤, 잃는 체력 30~40%쯤(용병 속성이 상성이 아니면 29층은 60%쯤까지).
         //  예전(단계 식): 잡몹 공격 1.1만~2.9만, 수문장 체력 720만~1190만 / 공격 2.5만~4.1만 -- 90레벨은 몇 초 만에 쓰러졌다.
-        new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().fix(64_000, 1_200).showLv(85),
-        new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().fix(64_000, 1_200).showLv(86),
-        new Type("마력 인형", 24, "human", "#b07ad8").asTower().fix(64_000, 1_200).showLv(87),
-        new Type("하수구의 지배자 라텔", 24, "quad", "#4a4a52").asBoss().fix(1_000_000, 800).expx(0.6).showLv(88).respawn(60_000L).el(7),
-        new Type("탑 기사", 24, "human", "#a8b8c8").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(87),
-        new Type("그림자 마법사", 24, "human", "#4a3a6a").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(88),
-        new Type("강철 늑대", 24, "quad", "#9aa8b8").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(89),
-        new Type("폐광의 검은 갱도왕", 24, "human", "#2a2a30").asBoss().fix(1_200_000, 800).expx(0.9).showLv(90).respawn(60_000L).el(1),
-        new Type("타락 천사", 25, "flyer", "#f0e0a0").asTower().fix(110_000, 1_600).strong(1.2, 1).showLv(89),
-        new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(110_000, 1_600).strong(1.2, 1).showLv(90),
-        new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(125_000, 1_600).strong(1.35, 1).showLv(91),
-        new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(1_300_000, 800).expx(0.85).showLv(92).respawn(60_000L).el(3),
+        new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().fix(650_000, 1_000).expx(5.0).showLv(85),
+        new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().fix(650_000, 1_000).expx(5.0).showLv(86),
+        new Type("마력 인형", 24, "human", "#b07ad8").asTower().fix(650_000, 1_000).expx(5.0).showLv(87),
+        new Type("하수구의 지배자 라텔", 24, "quad", "#4a4a52").asBoss().fix(1_200_000, 900).expx(0.6).showLv(88).respawn(60_000L).el(7),
+        new Type("탑 기사", 24, "human", "#a8b8c8").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(87),
+        new Type("그림자 마법사", 24, "human", "#4a3a6a").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(88),
+        new Type("강철 늑대", 24, "quad", "#9aa8b8").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(89),
+        new Type("폐광의 검은 갱도왕", 24, "human", "#2a2a30").asBoss().fix(1_400_000, 950).expx(0.9).showLv(90).respawn(60_000L).el(1),
+        new Type("타락 천사", 25, "flyer", "#f0e0a0").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(89),
+        new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(90),
+        new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(840_000, 1_100).strong(1.35, 1).expx(5.0).showLv(91),
+        new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(1_600_000, 1_000).expx(0.85).showLv(92).respawn(60_000L).el(3),
         new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(60.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 60.0) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */

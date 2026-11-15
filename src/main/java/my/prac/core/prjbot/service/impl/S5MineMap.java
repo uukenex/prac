@@ -640,6 +640,12 @@ public final class S5MineMap {
     public int dockX() { return dockX; }
     public int dockY() { return dockY; }
     public int bossX() { return bossX; }
+    /** [2026-11-15] "탑은 1인 인스턴스 던전 형태" -- 탑의 보드 층과 수문장 층은 사람마다 따로(몬스터 상태가 유저별, 다른 사람이 안 보인다). 마을 층(10층마다)은 함께. */
+    private int soloFlag = -1;
+    public boolean solo() {
+        if (soloFlag < 0) { int f = towerFloor(id); soloFlag = f > 0 && !towerTownFloor(f) ? 1 : 0; }
+        return soloFlag == 1;
+    }
     public int bossY() { return bossY; }
     public final int w, h, spawnX, spawnY;
     private final char[][] terrain;

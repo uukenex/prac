@@ -802,8 +802,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_LAST_ATTACK = new java.util.concurrent.ConcurrentHashMap<>();
 
+    // [2026-11-15] "탑은 1인 인스턴스 던전 형태" -- 1인 층(S5MineMap.solo)의 몬스터 상태는 유저마다 따로 둔다: 키 = 맵 버전 + "@유저:" + 번호.
+    //  누구의 요청인지는 MINE_CTX(요청 스레드마다 -- mineAccess / mineCtx가 적는다)로 안다. 층을 옮기거나 쓰러지면 내 인스턴스를 비운다(mineSoloReset -- 다시 들어가면 처음부터).
+    //  그래서 탑에서는 남의 몬스터를 때리거나 수문장을 함께 잡을 수 없고(보상도 혼자), 다른 사람도 안 보인다(minePresence).
+    static final ThreadLocal<String> MINE_CTX = new ThreadLocal<>();
+    static String mineMobPrefix(S5MineMap map) {
+        if (map.solo()) { String u = MINE_CTX.get(); if (u != null) return map.version() + "@" + u + ":"; }
+        return map.version() + ":";
+    }
     static String mineMobKey(S5MineMap map, int id) {
-        return map.version() + ":" + id;
+        return mineMobPrefix(map) + id;
+    }
+    /** 이 요청이 누구 것인지 적어 둔다(1인 층의 몬스터 상태를 가리려고) -- 유저 이름 없이 몬스터 목록만 묻는 주소에서 부른다. */
+    @Override
+    public void mineCtx(String userName) { MINE_CTX.set(userName == null || userName.trim().isEmpty() ? null : userName); }
+    /** 내 탑 인스턴스 비우기 -- 층을 옮기거나 쓰러지면. */
+    static void mineSoloReset(String userName) {
+        if (userName == null) return;
+        String tag = "@" + userName + ":";
+        MINE_MOB_STATE.keySet().removeIf(k -> k.contains(tag));
     }
 
     // [2026-10-28] "99레벨 경험치 꽉 차면 왕도 12시 성당 신부에게 환생, 환생하면 체력 1.5배, 필요 경험치 3배, 레벨 1로(Lv1(환생1)), 날개 이펙트" --
@@ -1073,6 +1090,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     HashMap<String, Object> mineMobsShared(String mapId) {
         long now = System.currentTimeMillis();
         S5MineMap map = mapId == null ? null : S5MineMap.get(mapId);
+        if (map != null && map.solo()) return mineMobs(mapId); // [2026-11-15] 1인 층(탑)은 사람마다 달라 공유 스냅샷을 안 쓴다
         String key = map == null ? "" : map.version();
         Object[] sn = MINE_MOBS_SNAP.get(key);
         if (sn != null && now - (Long) sn[0] < MINE_MOBS_SNAP_MS) { @SuppressWarnings("unchecked") HashMap<String, Object> c = (HashMap<String, Object>) sn[1]; return c; }
@@ -1088,7 +1106,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("now", now);
         if (mineGate() != null) { out.put("mobs", Collections.emptyList()); return out; }
         S5MineMap map = S5MineMap.get(mapId);
-        String prefix = map.version() + ":";
+        String prefix = mineMobPrefix(map); // [2026-11-15] 1인 층(탑)은 내 것만
         if (S5MineMap.HARPY_NEST.equals(map.id)) mineHarpySync(map, now, out); // [2026-11-08] 하피 자리(나무 사이를 옮겨 다님) + 나무 상태
         List<long[]> list = new ArrayList<>();
         java.util.Set<Long> seen = new java.util.HashSet<>();
@@ -1724,6 +1742,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             S5MineMap.Npc g = null;
             for (S5MineMap.Npc q : c.npcs()) if ("towergate".equals(q.kind)) g = q;
             mineDisengageAll(userName);
+            mineSoloReset(userName); // [2026-11-15]
             dao.updateMinePos(userName, c.id, g == null ? c.spawnX : g.x, g == null ? c.spawnY : g.y + 2, now);
             out.put("ok", true);
             out.put("message", "🗼 탑에서 나왔어요.");
@@ -1740,6 +1759,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (e != null && !e.mobs.isEmpty() && mineEngaged(userName, now)) { out.put("message", "⚔️ 싸우는 중엔 층을 옮길 수 없어요."); return out; }
             S5MineMap tm = S5MineMap.get(S5MineMap.towerId(n));
             mineDisengageAll(userName);
+            mineSoloReset(userName); // [2026-11-15] 1인 인스턴스 -- 층에 들어갈 때마다 처음부터
             dao.updateMinePos(userName, tm.id, tm.spawnX, tm.spawnY, now);
             out.put("ok", true);
             out.put("message", "🗼 " + tm.name + (tm.board().isEmpty() ? "" : " -- 🎲 주사위를 굴려 칸을 옮겨요. 계단(🪜)을 찾으면 위층이 열려요."));
@@ -2275,6 +2295,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 쓰러졌을 때 깨어나는 곳으로 옮기고 그곳 이름을 돌려준다(성당에서 기도했으면 왕도 성당, 아니면 평원 마을). */
     String mineRespawn(String userName, Map<String, Integer> items, long now) {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
+        mineSoloReset(userName); // [2026-11-15] 탑 1인 인스턴스 -- 쓰러지면 그 층은 처음부터
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
         MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
         MINE_PSTEALTH.remove(userName); // [2026-10-30] 자객의 목걸이 은신도 끝
@@ -2306,7 +2327,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_BOSS_ALONE_RANGE = 200;
     static final long MINE_BOSS_ALONE_MS = 20_000L;
     static void mineBossRegen(MobState s, int max, long now, S5MineMap map, S5MineMap.Mob mb) {
-        if (mb.type == S5MineMobs.WB_BOSS_TYPE) { s.regenAt = now; s.nearAt = now; return; } // [2026-11-15] 월드보스 -- 모두 쓰러져 있어도 회복 없음
+        if (mb.type == S5MineMobs.WB_BOSS_TYPE) { s.regenAt = now; s.nearAt = now; return; } // [2026-11-15] "월드보스는 체력 회복 없게" -- 모두 쓰러져 있거나 자리를 비워도 깎인 체력 그대로
+        if (map.solo()) { s.regenAt = now; s.nearAt = now; return; } // [2026-11-15] 탑 수문장(1인 인스턴스) -- 층을 나가거나 쓰러지면 통째로 처음부터(mineSoloReset), 그 전엔 회복 없음
         if (s.deadUntil <= now) {
             boolean near = false;
             for (MinePresence p : MINE_PRESENCE.values()) {
@@ -8697,9 +8719,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
         if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        int soloF = S5MineMap.towerFloor(mapId);
+        boolean soloMap = soloF > 0 && !S5MineMap.towerTownFloor(soloF); // [2026-11-15] 탑 1인 층 -- 다른 사람은 안 보인다
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
             MinePresence o = e.getValue();
-            if (o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
+            if (soloMap || o == me || now - o.at > MINE_PRESENCE_TTL_MS || !mapId.equals(o.mapId) || o.look == null) continue;
             HashMap<String, Object> m = new HashMap<>();
             m.put("id", o.id);
             m.put("x", o.x);
@@ -9232,6 +9256,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-23] 광산/광산상점을 쓸 수 있는지 -- 전체 오픈(MINE_OPEN_YN=Y)이거나 MINE_ADMIN_USERS에 있는 유저. */
     @Override
     public boolean mineAccess(String userName) {
+        if (userName != null) MINE_CTX.set(userName); // [2026-11-15] 1인 층(탑) 몬스터 상태를 유저별로 가리려고 -- 광산 요청은 모두 여기를 먼저 지난다
         if (MINE_OPEN) return true;
         if (userName == null || MINE_ADMIN_USERS == null) return false;
         for (String u : MINE_ADMIN_USERS.split("\\|")) if (u.trim().equals(userName.trim())) return true;
