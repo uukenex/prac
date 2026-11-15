@@ -320,7 +320,7 @@ public final class S5MineMobs {
         new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(90),
         new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(840_000, 1_100).strong(1.35, 1).expx(5.0).showLv(91),
         new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(1_600_000, 1_000).expx(0.85).showLv(92).respawn(60_000L).el(3),
-        new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(60.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 60.0).foot(3) // 7 = EL_DARK
+        new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(200.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 200.0).foot(3) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };

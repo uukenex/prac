@@ -1693,13 +1693,13 @@ var TowerMine = (function () {
   function worldBossHtml() {
     var L = (st && st.bosses) || [], tn = nowSrv();
     var rows = L.map(function (b) {
-      var sub = b.wbTest ? '🛠️ 일반 공개 전(관리자만) -- 아래 버튼으로 시험 회차를 열어요' : b.wbAt ? '⏰ 매일 21:00부터 30분 -- 함께 싸운 모두에게 같은 보상(맵 초기화마다 한 번)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
+      var sub = b.wbTest ? '🛠️ 일반 공개 전(관리자만) -- 아래 버튼으로 시험 회차를 열어요' : b.wbAt ? '⏰ 매시 정각부터 10분 -- 함께 싸운 모두에게 같은 보상(맵 초기화마다 한 번)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
           : b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
           : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
       return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
           + (b.alive ? '<b style="color:#ff6a6a">👑 나와 있어요</b>' : '<span style="color:#a89ec8">💤 없음</span>') + '<br><small>' + sub + '</small></div>';
     }).join('');
-    var adm = st && st.adminMaps ? '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.wbTest(\'start\')">🛠️ 월드보스 시험 회차 시작 (30분, 동쪽 성곽 내성)</button><button type="button" onclick="TowerMine.wbTest(\'stop\')">🛠️ 월드보스 회차 끝내기</button></div>' : ''; // [2026-11-15] 관리자 시험
+    var adm = st && st.adminMaps ? '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.wbTest(\'start\')">🛠️ 월드보스 시험 회차 시작 (10분, 동쪽 성곽 내성)</button><button type="button" onclick="TowerMine.wbTest(\'stop\')">🛠️ 월드보스 회차 끝내기</button></div>' : ''; // [2026-11-15] 관리자 시험
     return '<div class="mine-smith-say" style="border:1px solid #ffd27a">👑 <b>보스</b> -- 보스룸 소환사에게 말을 걸어 불러내요. 소환은 보스마다, 사람마다 2시간에 한 번이에요.</div>'
         + (rows || '<div class="mine-smith-say">아직 갈 수 있는 보스룸이 없어요.</div>') + adm;
   }
@@ -3176,7 +3176,7 @@ var TowerMine = (function () {
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3, text: '🔥 화염 -' + h.dmg, color: '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 화염 장판
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -5113,18 +5113,20 @@ var TowerMine = (function () {
       var bb = ((now / 700 + (+lp[0]) * 0.37 + (+lp[1]) * 0.61) % 1);
       ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
     }
-    // [2026-11-15] 거룡 화염 장판 -- 예고(붉은 칸이 안에서부터 차오름) -> 터짐(밝게 번쩍)
+    // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     if (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle')) {
-      var wzr = wbInfo.zr || 2, wzw = wbInfo.zw || 3000, wtn = nowSrv();
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60]];
       for (var wzi = 0; wzi < wbInfo.zones.length; wzi++) {
-        var wz = wbInfo.zones[wzi], wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
+        var wz = wbInfo.zones[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
+        var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
         if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
         if (wleft > 0) {
-          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp;
-          ctx.fillStyle = 'rgba(255,60,20,' + (0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
-          ctx.fillStyle = 'rgba(255,130,30,0.38)'; ctx.fillRect(wzx + (wzs - wg) / 2, wzy + (wzs - wg) / 2, wg, wg);
-          ctx.strokeStyle = 'rgba(255,210,80,' + (0.55 + 0.4 * Math.sin(now / 80)) + ')'; ctx.lineWidth = 2 * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
-        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,235,140,' + (0.85 * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
+          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = wzk === 3;
+          ctx.fillStyle = 'rgba(' + wc[0] + ',' + wc[1] + ',' + wc[2] + ',' + (big3 ? 0.08 + 0.14 * wp : 0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
+          ctx.fillStyle = 'rgba(' + wc[0] + ',' + Math.min(255, wc[1] + 60) + ',' + wc[2] + ',' + (big3 ? 0.16 : 0.36) + ')'; ctx.fillRect(wzx + (wzs - wg) / 2, wzy + (wzs - wg) / 2, wg, wg);
+          ctx.strokeStyle = 'rgba(255,220,120,' + (0.55 + 0.4 * Math.sin(now / (big3 ? 50 : 80))) + ')'; ctx.lineWidth = (big3 ? 4 : 2) * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
+          if (big3) drawTextImg(textImg('💥 멸망의 숨결 ' + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
+        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((wzk === 3 ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
       }
     }
     // [2026-10-24] 탐지 곡괭이 -- 주변의 안 캔 광석. [2026-10-28] "범위를 보여주고 물풍선으로" -- 탐지 범위 점선 테두리 + 광석 아이콘을 담은 물풍선이 둥실둥실
