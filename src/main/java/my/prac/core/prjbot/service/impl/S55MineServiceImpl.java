@@ -1075,8 +1075,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int oy = 0; oy < f; oy++) for (int ox = 0; ox < f; ox++) if (Math.max(Math.abs(fx + ox - cx), Math.abs(fy + oy - cy)) <= r) n++;
         return n;
     }
-    /** 피해 목록을 n배(걸친 칸 수만큼). */
-    static List<int[]> mineFootMul(List<int[]> hs, int n) { if (hs != null && n > 1) for (int[] h : hs) h[1] *= n; return hs; }
+    /** 바로 때린 몬스터에게 들어가는 검기 타격 -- 보스는 검기 줄에 걸친 칸마다 따로 굴린다({속성, 피해, 상성, 칸 번호, 칸 안 순번}), 보스가 아니면 예전 그대로. */
+    List<int[]> mineAuraMainHits(String userName, S5MineMap map, S5MineMobs.Type type, int hitCell, int x, int y, String dir, int range, int[] aura, double atkBase, double vul) {
+        int n = mineAuraFoot(userName, map, type, hitCell, x, y, dir, range);
+        if (n <= 1) return mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul);
+        List<int[]> out = new ArrayList<>();
+        for (int c = 0; c < n; c++) { int q = 0; for (int[] h : mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul)) out.add(new int[] { h[0], h[1], h[2], c, q++ }); }
+        return out;
+    }
     /** 내가 바로 때린 보스에게 들어가는 검기 -- 검기 줄에 걸친 보스 칸 수(보스가 아니면 1). */
     int mineAuraFoot(String userName, S5MineMap map, S5MineMobs.Type t, int cell, int x, int y, String dir, int range) {
         return t.foot() <= 1 ? 1 : mineFootHits(map, t, cell, mineAuraLine(userName, map, x, y, mineDirVec(dir), range).keySet());
@@ -3301,7 +3307,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineEngage(userName, map, mobId, now, now - MINE_MOB_STRIKE_GAP_MS / 2); // 곧 2배로 기습한다
             } else if (type.dummy) { // [2026-10-29] 허수아비 -- 맞아도 줄지 않고 반격/인식도 없다(데미지 시험)
                 s.fx = hitCell % map.w; s.fy = hitCell / map.w; // [2026-11-08] 허수아비 자리(다른 사람 화면의 피해 숫자 위치)
-                if (auraRange > 0) auraMain = mineFootMul(mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul), mineAuraFoot(userName, map, type, hitCell, x, y, dir, auraRange));
+                if (auraRange > 0) auraMain = mineAuraMainHits(userName, map, type, hitCell, x, y, dir, auraRange, aura, atkBase, vul);
                 s.lastHitAt = now;
                 out.put("dummyHit", true);
                 if (type.sim) { // [2026-11-07] 보스 허수아비 -- 체력이 줄고, 0이 되면 MINE_SIM_DOWN_MS 동안 못 때린다(그 뒤 다 찬 채로)
@@ -3312,7 +3318,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             } else {
                 int wbB = s.hp; // [2026-11-15] 월드보스 기여도
                 s.hp -= dmg;
-                if (auraRange > 0) { auraMain = mineFootMul(mineVulnApply(mineAuraHits(aura, atkBase, type, 1), vul), mineAuraFoot(userName, map, type, hitCell, x, y, dir, auraRange)); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
+                if (auraRange > 0) { auraMain = mineAuraMainHits(userName, map, type, hitCell, x, y, dir, auraRange, aura, atkBase, vul); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 if (mob.type == S5MineMobs.WB_BOSS_TYPE) s.hp = mineWbApply(userName, wbB, wbB - Math.max(0, s.hp), now, true); // [2026-11-15] 몫으로 바꿔 깎는다
                 s.lastHitAt = now;
                 mineHitBy(s, type, userName); // [2026-11-13] 보스를 때린 사람(함께 싸운 보상) -- 예전엔 닌자 두목만
@@ -5467,10 +5473,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int hitCell = tq[1], dist = tq[2];
             int omMax = S5MineMobs.hp(ot, om.rank);
             MobState s = MINE_MOB_STATE.computeIfAbsent(key, k -> new MobState(omMax));
-            List<int[]> hs = hitsFn.apply(ot, dist);
-            // [2026-11-15] "검기나 화살비, 검비 등 여러 칸 때리는 스킬은 한 칸당 데미지를 받게(이전 보스들 공통)" -- 검기/돌개베기/만검진은 보스가 걸친 칸 수만큼.
+            // [2026-11-15] "검기나 화살비, 검비 등 여러 칸 때리는 스킬은 한 칸당 데미지를 받게(이전 보스들 공통)" -- 검기/돌개베기/만검진은 보스가 걸친 칸마다 한 번씩.
+            //  같은 날 "맞은 만큼 숫자가 뜨게, 합산되지 않게" -- 칸마다 따로 굴린 피해를 따로 싣는다: 타격 = {속성, 피해, 상성/치명, 칸 번호, 칸 안 순번}, cells = 칸 번호 -> {dx, dy}.
             //  일섬참(stunMs > 0)은 화면의 몬스터를 한 번씩 베는 기술이라 칸 수와 무관.
-            if (stunMs <= 0) mineFootMul(hs, tq[3]);
+            List<int[]> hs;
+            List<int[]> hitCells = null;
+            if (stunMs <= 0 && tq[3] > 1) {
+                hs = new ArrayList<>();
+                hitCells = new ArrayList<>();
+                int fo = ot.foot();
+                for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) if (line.containsKey(hitCell + oy * map.w + ox)) {
+                    int ci = hitCells.size(), q = 0;
+                    for (int[] h : hitsFn.apply(ot, dist)) hs.add(new int[] { h[0], h[1], h[2], ci, q++ });
+                    hitCells.add(new int[] { ox, oy });
+                }
+            } else hs = hitsFn.apply(ot, dist);
             int sum = 0;
             for (int[] h : hs) sum += h[1];
             boolean dead = false;
@@ -5514,6 +5531,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             HashMap<String, Object> m = new HashMap<>();
             m.put("id", om.id);
             m.put("hits", hs);
+            if (hitCells != null) m.put("cells", hitCells); // [2026-11-15] 보스가 걸친 칸들(숫자를 칸마다)
             m.put("row", row);
             m.put("cell", hitCell); // [2026-11-10] 맞은 칸(쓰러진 몬스터는 row의 자리가 비어 있다 -- 일섬참 붙기)
             if (dead) {
@@ -6599,7 +6617,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         //  물 토네이도(나 -> 대상 길 + 둘레 1+단계칸), 궁수 화살비(대상 둘레 1+단계칸 땅에 5초 -- 매초 그 안의 싸우는 몬스터).
         List<Integer> hitIds = new ArrayList<>();
         List<Double> hitMul = new ArrayList<>();
-        java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int k = hitIds.indexOf(hid); if (k >= 0) hitMul.set(k, hitMul.get(k) + hm); else { hitIds.add(hid); hitMul.add(hm); } };
+        List<int[]> hitAt = new ArrayList<>(); // [2026-11-15] 칸마다 따로 맞는 타격의 칸(없으면 null = 몬스터 자리)
+        java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int k = hitIds.indexOf(hid); if (k >= 0) hitMul.set(k, hitMul.get(k) + hm); else { hitIds.add(hid); hitMul.add(hm); hitAt.add(null); } };
+        // [2026-11-15] "여러 칸 때리는 스킬은 한 칸당 데미지, 숫자도 맞은 만큼(합치지 않게)" -- 보스가 걸친 칸마다 따로 한 번: {몬스터 번호, 칸 x, 칸 y}
+        java.util.function.BiConsumer<int[], Double> addCell = (c, hm) -> { hitIds.add(c[0]); hitMul.add(hm); hitAt.add(new int[] { c[1], c[2] }); };
         addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : 1.0);
         List<int[]> cands = new ArrayList<>(); // 싸우는 몬스터 {id, fx, fy}
         for (Integer id : e.mobs.keySet()) {
@@ -6628,9 +6649,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mo.put("ms", new int[] { mx0, my0 });
             for (int[] cd : cands) { // [2026-11-15] 보스(2x2, 거룡 3x3)는 검기 줄에 걸친 칸마다 한 번씩 -- 대상(평타를 맞는 몬스터)은 첫 칸 말고 더 걸친 칸만큼
                 int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot(), n = 0;
-                for (int kq = 1; kq <= st; kq++) { int lx = mx0 + dvx * kq, ly = my0 + dvy * kq; if (lx >= cd[1] && lx < cd[1] + fo && ly >= cd[2] && ly < cd[2] + fo) n++; }
-                if (cd[0] == pick) n--;
-                if (n > 0) addHit.accept(cd[0], n * st * MINE_AURA_PCT / 100.0);
+                for (int kq = 1; kq <= st; kq++) {
+                    int lx = mx0 + dvx * kq, ly = my0 + dvy * kq;
+                    if (lx < cd[1] || lx >= cd[1] + fo || ly < cd[2] || ly >= cd[2] + fo) continue;
+                    if (n++ == 0 && cd[0] == pick) continue; // 대상의 첫 칸은 평타
+                    if (fo > 1) addCell.accept(new int[] { cd[0], lx, ly }, st * MINE_AURA_PCT / 100.0);
+                    else addHit.accept(cd[0], st * MINE_AURA_PCT / 100.0);
+                }
             }
             mo.put("adir", new int[] { dvx, dvy });
         }
@@ -6672,18 +6697,26 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int rad = 1 + s2;
                 double vx = ps.fx - x, vy = ps.fy - y, l2 = vx * vx + vy * vy;
                 for (int[] cd : cands) { // [2026-11-15] 걸친 칸마다
-                    int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot(), n = 0;
+                    int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
                     for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) {
                         int qx = cd[1] + ox, qy = cd[2] + oy;
                         double t = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((qx - x) * vx + (qy - y) * vy) / l2));
-                        if (Math.max(Math.abs(qx - ps.fx), Math.abs(qy - ps.fy)) <= rad || Math.hypot(qx - (x + vx * t), qy - (y + vy * t)) <= 1.0) n++;
+                        if (!(Math.max(Math.abs(qx - ps.fx), Math.abs(qy - ps.fy)) <= rad || Math.hypot(qx - (x + vx * t), qy - (y + vy * t)) <= 1.0)) continue;
+                        if (fo > 1) addCell.accept(new int[] { cd[0], qx, qy }, 1.5 + 0.5 * s2);
+                        else addHit.accept(cd[0], 1.5 + 0.5 * s2);
                     }
-                    if (n > 0) addHit.accept(cd[0], (1.5 + 0.5 * s2) * n);
                 }
                 sk.put("k", "tornado"); sk.put("r", rad); sk.put("nm", "토네이도");
             } else { // 메테오
                 int rad = 2 + s2;
-                for (int[] cd : cands) { int n = mineFootIn(S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type), cd[1], cd[2], ps.fx, ps.fy, rad); if (n > 0) addHit.accept(cd[0], (2.0 + 0.5 * s2) * n); } // [2026-11-15] 걸친 칸마다
+                for (int[] cd : cands) { // [2026-11-15] 걸친 칸마다 따로
+                    int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+                    for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) {
+                        if (Math.max(Math.abs(cd[1] + ox - ps.fx), Math.abs(cd[2] + oy - ps.fy)) > rad) continue;
+                        if (fo > 1) addCell.accept(new int[] { cd[0], cd[1] + ox, cd[2] + oy }, 2.0 + 0.5 * s2);
+                        else addHit.accept(cd[0], 2.0 + 0.5 * s2);
+                    }
+                }
                 sk.put("k", "meteor"); sk.put("r", rad); sk.put("nm", "메테오");
             }
             sk.put("pts", pts);
@@ -6691,7 +6724,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         long rainUntil; int rx, ry, rr; double rm;
         synchronized (ms) { rainUntil = ms.rainUntil; rx = ms.rainX; ry = ms.rainY; rr = ms.rainR; rm = ms.rainMul; }
-        if (rainUntil > now && !cast) for (int[] cd : cands) { int n = mineFootIn(S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type), cd[1], cd[2], rx, ry, rr); if (n > 0) addHit.accept(cd[0], rm * n); } // 화살비 -- 땅에 남아 매초, [2026-11-15] 걸친 칸마다
+        if (rainUntil > now && !cast) for (int[] cd : cands) { // 화살비 -- 땅에 남아 매초, [2026-11-15] 걸친 칸마다 따로
+            int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+            for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) {
+                if (Math.max(Math.abs(cd[1] + ox - rx), Math.abs(cd[2] + oy - ry)) > rr) continue;
+                if (fo > 1) addCell.accept(new int[] { cd[0], cd[1] + ox, cd[2] + oy }, rm);
+                else addHit.accept(cd[0], rm);
+            }
+        }
         long kills = 0, expSum = 0;
         List<HashMap<String, Object>> allDrops = new ArrayList<>();
         List<long[]> rows = new ArrayList<>();
@@ -6731,7 +6771,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 rows.add(mineMobRow(id, s));
                 if (hi == 0) { mo.put("tx", s.fx); mo.put("ty", s.fy); mo.put("dmg", dmg); if (beat) mo.put("beat", true); }
-                else sp.add(new int[] { s.fx, s.fy, dmg, id }); // [2026-11-06] 4번째 = 몬스터 번호(화면이 그려진 자리로 조준)
+                else { int[] hat = hitAt.get(hi); sp.add(new int[] { hat != null ? hat[0] : s.fx, hat != null ? hat[1] : s.fy, dmg, id }); } // [2026-11-06] 4번째 = 몬스터 번호(화면이 그려진 자리로 조준), [2026-11-15] 칸마다 맞은 타격은 그 칸에 숫자
             }
             if (!dead) continue;
             if (hi == 0) primaryDead = true;

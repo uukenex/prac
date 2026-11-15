@@ -4354,14 +4354,21 @@ var TowerMine = (function () {
   }
   function auraShow(d, fxp, fyp, t) {
     if (d.treeFire != null) { msg(d.treeCombo ? '🔥⚡ 불과 번개에 나무가 무너져요!' : '🔥 나무가 무너지기 시작했어요!', 2600); treeSt.forEach(function (q) { if (q[0] === d.treeFire) { q[1] = 1; q[2] = treeNeed; } }); } // [2026-11-08] 하피의 둥지
-    (d.aura || []).forEach(function (h, i) { floats.push({ x: fxp + (i % 2 ? 0.3 : -0.3), y: fyp - 0.32 * (i + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (i + 1) }); });
+    var anc = 0; (d.aura || []).forEach(function (h) { if (h.length > 3 && h[3] + 1 > anc) anc = h[3] + 1; }); // [2026-11-15] 보스가 검기에 걸친 칸 수 -- 칸마다 숫자를 옆으로 벌려 따로
+    (d.aura || []).forEach(function (h, i) {
+      var q = h.length > 3 ? h[4] : i, ox = h.length > 3 ? (h[3] - (anc - 1) / 2) * 0.9 : 0;
+      floats.push({ x: fxp + ox + (q % 2 ? 0.3 : -0.3) * (anc > 1 ? 0.5 : 1), y: fyp - 0.32 * (q + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (q + 1) + (h.length > 3 ? 45 * h[3] : 0) });
+    });
     var anyKill = false;
     (d.auraMobs || []).forEach(function (am, j) {
       var mm = map.mobs && map.mobs[am.id], p = mm && mm._p ? { x: mm._p.x, y: mm._p.y } : { x: am.row[3], y: am.row[4] };
       mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
       mobHitAt[am.id] = performance.now();
       var dl = 60 + j * 40;
-      (am.hits || []).forEach(function (h, i) { floats.push({ x: p.x + (i % 2 ? 0.3 : -0.3), y: p.y - 0.32 * i, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * i }); });
+      (am.hits || []).forEach(function (h, i) {
+        var cc = am.cells && h.length > 3 ? am.cells[h[3]] : null, q = cc ? h[4] : i, bx = cc ? am.row[3] + cc[0] : p.x, by = cc ? am.row[4] + cc[1] : p.y; // [2026-11-15] 보스가 걸친 칸마다 그 칸 위에 따로
+        floats.push({ x: bx + (q % 2 ? 0.3 : -0.3) * (cc ? 0.5 : 1), y: by - 0.32 * q, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * q + (cc ? 40 * h[3] : 0) });
+      });
       if (am.killed) { anyKill = true; if (!d.expFull) floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); } // [2026-11-07] 경험치가 가득 찬(안 오르는) 처치는 EXP 숫자를 안 띄운다
     });
     lootDrops(d.auraDrops, fxp, fyp); // [2026-11-04] 화면 구석 카드
@@ -4557,7 +4564,8 @@ var TowerMine = (function () {
       mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
       mobHitAt[am.id] = t;
       // [2026-11-07] 만검진 -- 1초 피해를 4번으로 나눠 0.25초 간격으로(숫자 + X자 베기)
-      (am.hits || []).forEach(function (h, hi) { var hd = k === 0 ? hi * 250 : 0; novaFx.push({ t0: t + dl + hd, mx: p.x, my: p.y, col: k === 1 ? '#8a6aff' : '#ffb02a' }); floats.push({ x: p.x + (k === 0 ? (hi % 2 ? 0.25 : -0.25) : 0), y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : k === 1 ? '#e8dcff' : '#ffe9a8', big: k === 1 || !!h[2], t0: t + dl + 60 + hd }); });
+      var pU = p;
+      (am.hits || []).forEach(function (h, hi0) { var cc = am.cells && h.length > 3 ? am.cells[h[3]] : null, hi = cc ? h[4] : hi0, p = cc ? { x: am.row[3] + cc[0], y: am.row[4] + cc[1] } : pU; var hd = k === 0 ? hi * 250 + (cc ? 60 * h[3] : 0) : 0; /* [2026-11-15] 보스가 걸친 칸마다 그 칸 위에 따로 */ novaFx.push({ t0: t + dl + hd, mx: p.x, my: p.y, col: k === 1 ? '#8a6aff' : '#ffb02a' }); floats.push({ x: p.x + (k === 0 ? (hi % 2 ? 0.25 : -0.25) : 0), y: p.y - 0.2, text: (h[2] ? '💥' : '') + h[1], color: h[2] ? '#ffd23f' : k === 1 ? '#e8dcff' : '#ffe9a8', big: k === 1 || !!h[2], t0: t + dl + 60 + hd }); });
       if (am.killed) { exSum += am.exp || 0; kn++; }
     });
     if (d.expReal != null) exSum = d.expReal;
