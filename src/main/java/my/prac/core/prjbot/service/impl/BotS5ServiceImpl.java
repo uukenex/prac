@@ -459,6 +459,8 @@ public class BotS5ServiceImpl extends S55MineServiceImpl implements BotS5Service
                     MINE_OPEN = "Y".equalsIgnoreCase(val.trim());
                     continue;
                 }
+                if ("MINE_TOWER_OPEN_YN".equals(key)) { MINE_TOWER_OPEN = "Y".equalsIgnoreCase(val.trim()); continue; } // [2026-11-15] 나루터 건너(탑의 도시·탑) 일반 공개
+                if ("MINE_WB_OPEN_YN".equals(key)) { MINE_WB_OPEN = "Y".equalsIgnoreCase(val.trim()); continue; } // [2026-11-15] 월드보스 일반 공개
                 if ("MINE_ADMIN_USERS".equals(key)) {
                     MINE_ADMIN_USERS = val;
                     continue;

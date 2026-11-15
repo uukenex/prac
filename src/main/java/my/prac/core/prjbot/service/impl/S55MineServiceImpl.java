@@ -265,7 +265,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
-        if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
+        if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
         int need = mineHelmetNeed(m), have = items.getOrDefault(MINE_ITEM_HELMET, 0);
         if (have < need) return "⛑️ " + m.name + "은(는) 광부 투구 " + need + "단계 이상이 있어야 움직일 수 있어요. (지금 " + have + "단계, 평원 마을 대장장이에게서 업그레이드)";
         if (m.requireItem() != null && items.getOrDefault(m.requireItem(), 0) < 1) {
@@ -1428,7 +1428,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 보스(type)가 쓰러진 지 2시간이 안 됐는지. 보스가 아니면 false. */
     boolean mineBossDead(int type) {
-        if (type == S5MineMobs.WB_BOSS_TYPE) { long nw = System.currentTimeMillis(); mineWbSync(nw); return !mineWbOn(nw); } // [2026-11-15] 월드보스 -- 매일 21시 30분 동안
+        if (type == S5MineMobs.WB_BOSS_TYPE) { long nw = System.currentTimeMillis(); mineWbSync(nw); return !mineWbOn(nw) || !mineWbOk(MINE_CTX.get()); } // [2026-11-15] 일반 공개 전엔 관리자에게만 있다 // [2026-11-15] 월드보스 -- 매일 21시 30분 동안
         if (type == S5MineMobs.THUNDER_BOSS_TYPE) return !mineThunderOn(System.currentTimeMillis()); // [2026-11-05] 밤 마물 200마리(MINE_THUNDER_NEED) 뒤에만
         if (mineCallMap(type) != null) return !mineBossUp(type, System.currentTimeMillis()); // [2026-11-13] 보스룸 보스는 소환했을 때만
         String key = mineBossKey(type);
@@ -1717,7 +1717,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("bossNames", S5MineMobs.TOWER_BOSS_NAMES);
         out.put("bossDone", mineTwBossToday(items, now));
         out.put("bossDaily", MINE_TW_BOSS_DAILY);
-        if ("info".equals(action)) { out.put("ok", true); out.put("ferryOk", admin || items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) > 0); return out; }
+        boolean towerOk = mineTowerOk(userName); // [2026-11-15] 일반 공개 전엔 관리자만
+        if ("info".equals(action)) { out.put("ok", true); out.put("ferryOk", towerOk && (admin || items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) > 0)); return out; }
+        if (!towerOk && !"exit".equals(action) && !("ferry".equals(action) && S5MineMap.TOWER_CITY.equals(map.id))) { // 이미 안에 있던 사람은 나갈 수만 있다
+            out.put("message", S5MineMap.HARPY_FERRY.equals(map.id) ? "⛵ 뱃사공: 강 건너편은 아직 길을 닦는 중이라네. 조금만 기다려 주게. (준비 중)" : "🚧 탑은 아직 준비 중이에요.");
+            return out;
+        }
         if (mineFrozen(userName, now) != null || mineStunned(userName, now)) { out.put("message", "지금은 움직일 수 없어요."); return out; }
         if ("ferry".equals(action)) {
             if (S5MineMap.HARPY_FERRY.equals(map.id)) {
@@ -1886,13 +1891,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 월드보스에 쓰러져 있으면 일어나는 시각, 아니면 0. */
     static long mineWbDownUntil(String userName, long now) { Long u = userName == null ? null : MINE_WB_DOWN.get(userName); return u != null && u > now ? u : 0; }
     /** 지금 월드보스 싸움터(진행 중 + 동쪽 성곽 내성 안)에 있는지 -- 여기서 쓰러지면 그 자리에서 10초 뒤 일어나고 최대 체력 잠금이 없다. */
-    static boolean mineWbZone(String userName, long now) {
+    boolean mineWbZone(String userName, long now) {
         MinePresence p = userName == null ? null : MINE_PRESENCE.get(userName);
-        return p != null && S5MineMap.CASTLE.equals(p.mapId) && mineWbOn(now) && S5MineMap.inRect(S5MineMap.CASTLE_KEEP, p.x, p.y);
+        return p != null && mineWbOk(userName) && S5MineMap.CASTLE.equals(p.mapId) && mineWbOn(now) && S5MineMap.inRect(S5MineMap.CASTLE_KEEP, p.x, p.y);
     }
     /** 지금(또는 곧) 회차의 시작 시각 -- 관리자 시험 회차가 살아 있으면 그것, 아니면 오늘 21시(21시 30분이 지났으면 내일 21시). */
     static long mineWbStart(long now) {
         if (mineWbForce > 0 && now < mineWbForce + MINE_WB_LEN_MS) return mineWbForce;
+        if (!MINE_WB_OPEN) return Long.MAX_VALUE / 4; // [2026-11-15] 일반 공개 전 -- 정해진 시각엔 안 나온다(관리자 시험 회차만)
         java.time.LocalDate d = java.time.Instant.ofEpochMilli(now).atZone(KST).toLocalDate();
         long s = d.atTime(MINE_WB_HOUR, 0).atZone(KST).toInstant().toEpochMilli();
         return now >= s + MINE_WB_LEN_MS ? d.plusDays(1).atTime(MINE_WB_HOUR, 0).atZone(KST).toInstant().toEpochMilli() : s;
@@ -1932,7 +1938,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 거룡이 맞았다 -- 맞기 전 체력 hpBefore, 원래 피해 dealt. 몫으로 바꿔 깎은 뒤의 체력을 돌려준다(몬스터 잠금 안에서 부른다). canKill = 이 공격으로 쓰러뜨려도 되는지(검기는 1에서 멈춤). */
     int mineWbApply(String userName, int hpBefore, int dealt, long now, boolean canKill) {
         WbState st = MINE_WB;
-        if (userName == null || st.killed || st.done || dealt <= 0 || st.start <= 0) return hpBefore;
+        if (userName == null || st.killed || st.done || dealt <= 0 || st.start <= 0 || !mineWbOk(userName)) return hpBefore;
         int atk = Math.max(1, MINE_WB_ATK.computeIfAbsent(userName, u -> { // 참여 버튼 없이 걸어온 사람 -- 처음 때릴 때 한 번
             try { HashMap<String, Object> r = dao.selectMineUser(u); return Math.max(1, mineAtk(mineLv(r), mineRebirth(mineItems(u)))); } catch (Exception e) { return 10_000; }
         }));
@@ -2050,6 +2056,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 위치 알림에 싣는 월드보스 소식(예고 10분 ~ 끝날 때까지, 없으면 null). */
     HashMap<String, Object> mineWbInfo(String userName, long now) {
+        if (!mineWbOk(userName)) return null; // [2026-11-15] 일반 공개 전엔 관리자만
         mineWbSync(now);
         long s = mineWbStart(now);
         if (now < s - MINE_WB_NOTICE_MS || now >= s + MINE_WB_LEN_MS) return null;
@@ -2082,7 +2089,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** [2026-11-15] 채팅 응답 끝에 붙이는 월드보스 알림(예고 ~ 진행 중, 방마다 회차당 한 번). 없으면 null. */
     public static String mineWbChatTail(String room) {
-        if (room == null || room.isEmpty()) return null;
+        if (room == null || room.isEmpty() || !MINE_WB_OPEN) return null; // [2026-11-15] 일반 공개 전엔 채팅 알림 없음(관리자 시험 회차도)
         long now = System.currentTimeMillis(), s = mineWbStart(now);
         if (now < s - MINE_WB_NOTICE_MS || now >= s + MINE_WB_LEN_MS) return null;
         WbState st = MINE_WB;
@@ -2121,7 +2128,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> info = mineWbInfo(userName, now);
         out.put("wb", info);
         if (!"join".equals(action)) { out.put("ok", true); return out; }
-        if (info == null) { out.put("message", "지금은 월드보스가 없어요. 매일 " + MINE_WB_HOUR + ":00에 동쪽 성곽에 나타나요."); return out; }
+        if (info == null) { out.put("message", MINE_WB_OPEN ? "지금은 월드보스가 없어요. 매일 " + MINE_WB_HOUR + ":00에 동쪽 성곽에 나타나요." : "지금은 월드보스가 없어요."); return out; }
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUser(userName);
         if (row == null) return out;
@@ -3636,13 +3643,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             b.put("callAt", Math.max(0, mineCallReadyAt(callItems, bm)));
             bosses.add(b);
         }
-        { // [2026-11-15] 월드보스 -- 매일 21시
+        if (mineWbOk(userName)) { // [2026-11-15] 월드보스 -- 매일 21시(일반 공개 전엔 관리자에게만, 시험 회차 버튼)
             HashMap<String, Object> b = new HashMap<>();
             b.put("map", S5MineMap.CASTLE);
             b.put("name", MINE_WB_NAME);
             b.put("mapName", "동쪽 성곽 내성");
             b.put("alive", mineWbOn(now));
-            b.put("wbAt", mineWbStart(now));
+            if (MINE_WB_OPEN) b.put("wbAt", mineWbStart(now));
+            else b.put("wbTest", true);
             bosses.add(b);
         }
         { // 천둥 황소 -- 소환 없이 마물의 숲 입구 마물 처치 수가 차면
@@ -9266,6 +9274,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-10-23] "광산/광산상점은 관리자만 열고, config로 일반 유저 오픈 여부를 결정" 요청 -- TBOT_S5_CONFIG.MINE_OPEN_YN('Y'면 전체 오픈, 기본 N),
     // MINE_ADMIN_USERS('|' 구분, 오픈 전에도 들어갈 수 있는 유저). /갱신으로 반영.
     static volatile boolean MINE_OPEN = false;
+    // [2026-11-15] "하피 나루터 이후와 월드보스는 관리자만 먼저 오픈 -- 내가 해 볼게" -- TBOT_S5_CONFIG.MINE_TOWER_OPEN_YN(나루터 건너 탑의 도시·탑) /
+    //  MINE_WB_OPEN_YN(월드보스: 매일 21시 회차, 화면 띠, 채팅 알림). 'Y'면 모두에게, 없거나 N이면 관리자만(기본). /갱신으로 반영.
+    //  닫혀 있는 동안 월드보스는 정해진 시각에 나오지 않고 관리자가 시험 회차(mineWorldBoss start)를 열었을 때만, 관리자에게만 보이고 맞는다.
+    static volatile boolean MINE_TOWER_OPEN = false, MINE_WB_OPEN = false;
+    boolean mineTowerOk(String userName) { return MINE_TOWER_OPEN || isMineAdmin(userName); }
+    boolean mineWbOk(String userName) { return MINE_WB_OPEN || isMineAdmin(userName); }
 
     static volatile String MINE_ADMIN_USERS = "";
 
