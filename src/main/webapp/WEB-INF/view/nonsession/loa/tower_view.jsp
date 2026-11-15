@@ -900,6 +900,7 @@
     .mine-wb-bar{ position:absolute; left:50%; top:6px; transform:translateX(-50%); z-index:30; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(26,8,40,.9); border:1px solid #b06aff; color:#f0e0ff; font:700 12px sans-serif; text-align:center; pointer-events:auto; white-space:normal; } /* [2026-11-15] 월드보스 띠 */
     .mine-wb-bar .wb-hp{ display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:#3a2050; overflow:hidden; }
     .mine-wb-bar .wb-hp i{ display:block; height:100%; background:linear-gradient(90deg,#ff4a6a,#b06aff); }
+    .mine-wb-down{ position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); z-index:31; padding:4px 10px; border-radius:8px; background:rgba(18,18,22,.72); color:#e6e6ee; font:700 12px sans-serif; white-space:nowrap; pointer-events:none; }
     .mine-world .wn-here{ fill:#ffe14d; }
     .mine-world .wlv{ fill:#9fe0ff; font-size:10px; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
     .mine-world.world-close .wc{ display:block; }

@@ -97,6 +97,8 @@ public final class S5MineMap {
     // [2026-11-15] 하피를 잡은 사람만 나루터에서 강을 건너 가는 탑의 도시 + 시즌5 규칙의 탑(tw1~tw30 -- 1~8 보드, 9 보스, 10 마을이 10층마다)
     public static final String TOWER_CITY = "towercity";
     public static final int TOWER_FLOORS = 30;
+    /** [2026-11-15] "100층까지 만들고 ... 아직 작업은 30층 아래 보스까지만" -- 계획한 꼭대기(층 목록에 준비 중으로 보인다). 열린 층은 TOWER_FLOORS. */
+    public static final int TOWER_TOP = 100;
     public static String towerId(int f) { return "tw" + f; }
     /** 탑 층(탑이 아니면 0). */
     public static int towerFloor(String id) {
@@ -701,7 +703,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 14; // [2026-11-15] 14: 탑 보드(board/tower), // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 15; // [2026-11-15] 15: 동쪽 성곽 거룡(월드보스) + 탑 수문장 이름, 14: 탑 보드(board/tower), // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1854,7 +1856,11 @@ public final class S5MineMap {
             score[y][x] = 0.55 * rich.fbm(x / 14.0, y / 14.0) + (inRect(CASTLE_WALL, x, y) ? 0.15 : 0) + (inRect(CASTLE_KEEP, x, y) ? 0.12 : 0) + 0.16 * r.nextDouble();
         }
         byte[][] o = assignOre(t, score, CASTLE_SHARE, skip);
-        return new S5MineMap(CASTLE, "동쪽 성곽", false, w, h, sx, sy, t, o, portals);
+        S5MineMap cm = new S5MineMap(CASTLE, "동쪽 성곽", false, w, h, sx, sy, t, o, portals);
+        // [2026-11-15] "월드보스는 동쪽 성곽 맵에 드래곤 형태로" -- 내성 한가운데(큰길 위, 기둥 없음). 평소엔 없고 월드보스 시간에만(S55MineServiceImpl.mineBossDead).
+        cm.bossX = (CASTLE_KEEP[0] + CASTLE_KEEP[2]) / 2 - 1; cm.bossY = cy - 1;
+        for (int y = cm.bossY - 1; y <= cm.bossY + 2; y++) for (int x = cm.bossX - 1; x <= cm.bossX + 2; x++) if (t[y][x] == 'W') t[y][x] = 's';
+        return cm;
     }
 
     /** 사각형 성벽(두께 th) + 안쪽 돌바닥 + 서쪽 가운데 성문(3칸). */
@@ -2702,8 +2708,7 @@ public final class S5MineMap {
         List<Portal> portals = new ArrayList<>();
         portals.add(new Portal(cx, h - 1, 'G', CITY, plaza[0], plaza[1], "왕도 광장으로"));
         S5MineMap m = new S5MineMap(WB_ARENA, "월드보스 전장", false, w, h, cx, h - 3, t, new byte[h][w], portals);
-        m.safe.add(new int[] { cx, h - 4, 3 });
-        m.bossX = cx - 1; m.bossY = cy - 1;
+        m.safe.add(new int[] { cx, h - 4, 3 }); // [2026-11-15] 월드보스가 동쪽 성곽으로 옮겨 가 이 전장은 비어 있다(맵 순서 때문에 남겨 둔다)
         return m;
     }
 

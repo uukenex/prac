@@ -1501,19 +1501,29 @@ var TowerMine = (function () {
   function towerHtml(n) {
     var d = twInfo, h = npcHead('🗼 ' + (n && n.name ? n.name : '탑'), false) + (n && n.line ? talkBlock(n, n.line) : '');
     if (!d) return h + '<div class="mine-smith-say">...</div>';
-    var lo = Math.max(1, (d.block | 0) + 1), max = d.max | 0;
+    var lo = Math.max(1, (d.block | 0) + 1), max = d.max | 0, top = d.top || max, open = d.open || max, bn = d.bossNames || [], daily = d.bossDaily || 3, done = Math.min(daily, d.bossDone | 0);
+    var bossNm = function (f) { return bn[(f - 9) / 10] || '수문장'; };
     h += '<div class="mine-smith-say">올라갈 수 있는 층: <b>' + lo + ' ~ ' + max + '층</b>' + (d.block ? ' (🔒 ' + d.block + '층 아래는 수문장을 쓰러뜨려 끝난 구역)' : '')
-        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장, 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기).</small></div>';
+        + ' · 👑 오늘 수문장 <b>' + done + '/' + daily + '</b>'
+        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장(하루 ' + daily + '번까지), 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기·보석 사기).</small></div>';
     var btns = '';
     for (var f = lo; f <= max; f++) {
-      var lb = f % 10 === 0 ? '🏘️ ' + f + '층 마을' : f % 10 === 9 ? '👑 ' + f + '층 수문장' : '🗼 ' + f + '층';
+      var lb = f % 10 === 0 ? '🏘️ ' + f + '층 마을' : f % 10 === 9 ? '👑 ' + f + '층 ' + escAttr(bossNm(f)) : '🗼 ' + f + '층';
       btns += '<button type="button" class="mine-mini-btn"' + (map && map.tower === f ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.twGo(' + f + ')">' + lb + '</button>';
     }
     h += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0">' + btns + '</div>';
     if (map && map.tower) h += '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twExit()">🚪 탑에서 나가기 (탑의 도시)</button></div>';
+    // [2026-11-15] 탑 전체(100층) -- 구역마다 수문장(시즌5 보스 이름). 열린 층(open) 위는 준비 중.
+    var plan = '';
+    for (var bf = 9; bf <= top; bf += 10) {
+      var stt = bf > open ? '🚧 준비 중' : (d.block | 0) >= bf ? '✅ 쓰러뜨림' : max >= bf ? '⚔️ 도전할 수 있어요' : '🔒 ' + (bf - 8) + '~' + (bf - 1) + '층을 올라야 해요';
+      plan += '<div class="mine-smith-row"><span class="nm"' + (bf > open ? ' style="opacity:.55"' : '') + '>👑 ' + bf + '층 ' + escAttr(bossNm(bf)) + '<small>' + stt + '</small></span></div>';
+    }
+    h += '<div class="mine-smith-say" style="border:1px solid #7ab8ff">🗼 <b>탑 ' + top + '층</b> <small>지금은 ' + open + '층까지 열려 있어요.</small>' + plan + '</div>';
     return h;
   }
   // [2026-11-15] 증표 상인 = 동료(용병) 장비 뽑기(시즌5처럼 장비/악세, 초급~최상급) + 용병 관리 장비 탭에서 끼우기
+  var tokenTab = 'gear'; // [2026-11-15] gear = 동료 장비 뽑기 / gem = 보석 사기
   var tokenShop = null, tokenBusy = false, mgInv = null, mgLoading = false, MG_SLOTS = [['W', '⚔️ 무기'], ['H', '⛑️ 투구'], ['A', '🛡️ 갑옷'], ['N', '📿 목걸이'], ['R', '💍 반지'], ['B', '📿 팔찌']];
   function tokenGo(act, code, g) {
     if (tokenBusy) return;
@@ -1534,6 +1544,19 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">...</div>';
     h += '<div class="mine-smith-say"><img src="' + oreIcon(72) + '" alt="" style="width:16px;vertical-align:middle"> 탑의 증표 <b>' + d.have + '</b>개 -- 탑 몬스터 1개 · 수문장 20개 · 보물 칸 2개 · 증표 칸 3개'
         + '<br><small>뽑은 장비는 🛡️ 용병 관리 → ⚔️ 장비 탭에서 끼워요. 무기·투구·갑옷은 직업 전용, 악세는 공용.</small></div>';
+    h += '<div style="display:flex;gap:4px;margin:6px 0">' + [['gear', '🎁 동료 장비 뽑기'], ['gem', '💎 보석 사기']].map(function (t) {
+      return '<button type="button" class="mine-mini-btn"' + (tokenTab === t[0] ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.tkTab(\'' + t[0] + '\')">' + t[1] + '</button>';
+    }).join('') + '</div>';
+    if (tokenTab === 'gem') { // [2026-11-15] "탑 증표로 원하는 보석을 구매"
+      h += '<div class="mine-smith-say" style="border:1px solid #7ad8a0"><b>💎 보석 사기</b> <small>원하는 보석을 골라 증표로 바꿔요.</small>';
+      (d.gems || []).forEach(function (g) {
+        var o = (st.ores || []).filter(function (q) { return q.code === g.code; })[0];
+        h += '<div class="mine-smith-row"><span class="nm">' + (o ? '<img src="' + oreIcon(o.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' : '') + escAttr(g.name) + ' · 증표 ' + g.price + '<small>보유 ' + (o ? o.qty : 0) + '개</small></span>'
+            + '<button type="button"' + (d.have < g.price ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',1)">1개</button>'
+            + '<button type="button"' + (d.have < g.price * 10 ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',10)">10개</button></div>';
+      });
+      return h + '</div>';
+    }
     [['equip', '⚔️ 장비 뽑기', '무기(공격력) · 투구(치명타) · 갑옷(상성 피해)'], ['acc', '💍 악세 뽑기', '목걸이 · 반지 · 팔찌 (두 효과를 절반씩)']].forEach(function (k) {
       h += '<div class="mine-smith-say" style="border:1px solid #7ab8ff"><b>' + k[1] + '</b> <small>' + k[2] + '</small>';
       d.tiers.forEach(function (t, i) {
@@ -1571,31 +1594,59 @@ var TowerMine = (function () {
         + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twFerry()">⛵ ' + (city ? '마물의 숲 나루터로' : '강 건너 탑의 도시로') + '</button></div>';
   }
   function twFerry() { closeSmith(); travel('/api/tower-mine-tw?action=ferry', '배를 타지 못했어요.'); }
-  // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, hp(천분율), rank, n}: 예고 10분 전부터 화면 위 띠 + [참여](어디서든 전장 입구로)
-  var wbInfo = null, wbBar = null;
+  // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, map, hp(천분율), n, act(지금 싸우는 사람), share(보상 조건 %), down(일어나는 시각), zones[[x, y, 터지는 시각]], zr, zw}:
+  //  예고 10분 전부터 화면 위 띠 + [참여](어디서든 동쪽 성곽 내성 앞으로). 쓰러지면 그 자리에서 10초(화면 회색 + 작은 카운트), 화염 장판은 예고 칸이 차오르다 터진다.
+  var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0;
   function wbRender() {
     if (!el.ov) return;
     if (!wbBar) { wbBar = document.createElement('div'); wbBar.className = 'mine-wb-bar'; el.ov.appendChild(wbBar); }
     var w = wbInfo, tn = nowSrv();
+    if (w && w.down && w.down > wbDownUntil) { wbDownUntil = w.down; wbDownShow(); }
     if (!w || !map || tn >= w.end) { wbBar.style.display = 'none'; return; }
-    var inArena = map.id === 'wbarena', mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
+    var inWb = map.id === (w.map || 'castle'), mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
     var h;
-    if (!w.on) h = '⚔️ 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 등장 (' + mins(w.at - tn) + ' 뒤)';
-    else h = '⚔️ ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
-        + (w.rank ? ' · 내 기여 ' + w.rank + '위/' + w.n + '명' : w.n ? ' · ' + w.n + '명 참여' : '') + ' · ' + mins(w.end - tn) + ' 남음';
-    if (!inArena) h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">참여</button>';
+    if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)';
+    else h = '🐉 ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
+        + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '')
+        + (w.share != null ? (w.share >= 100 ? ' · ✅ 보상 조건 달성' : ' · 내 참여 ' + w.share + '%') : '') + ' · ' + mins(w.end - tn) + ' 남음';
+    if (!inWb) h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">참여</button>';
     wbBar.innerHTML = h;
     wbBar.style.display = '';
   }
   function wbJoin() {
     if (!opened || !map || busy) return;
     setAuto(false);
-    travel('/api/tower-mine-wb?action=join', '월드보스 전장에 가지 못했어요.');
+    travel('/api/tower-mine-wb?action=join', '동쪽 성곽에 가지 못했어요.');
+  }
+  function downMe() { return wbDownUntil > nowSrv(); }
+  /** 월드보스에 쓰러짐 -- 자리는 그대로, 화면만 회색으로 두고 작은 카운트(10초) 뒤 일어난다. */
+  function wbFall(d) {
+    wbDownUntil = d.wbDown;
+    setAuto(false);
+    if (d.combat) setCombat(d.combat);
+    if (d.message) msg(d.message, 3000);
+    wbDownShow();
+  }
+  function wbDownShow() {
+    if (!el.ov || !el.cv) return;
+    if (!wbDownEl) { wbDownEl = document.createElement('div'); wbDownEl.className = 'mine-wb-down'; el.ov.appendChild(wbDownEl); }
+    var left = wbDownUntil - nowSrv();
+    if (left > 0) {
+      el.cv.style.filter = 'grayscale(1) brightness(.72)';
+      wbDownEl.textContent = '💫 ' + Math.ceil(left / 1000) + '초 뒤 다시 일어나요';
+      wbDownEl.style.display = '';
+      if (!wbDownTimer) wbDownTimer = setInterval(wbDownShow, 250);
+      return;
+    }
+    if (wbDownTimer) { clearInterval(wbDownTimer); wbDownTimer = 0; }
+    el.cv.style.filter = '';
+    wbDownEl.style.display = 'none';
+    if (wbDownUntil) { wbDownUntil = 0; floats.push({ x: P.x, y: P.y - 0.6, text: '✨ 다시 일어났어요!', color: '#ffe14d', big: true, t0: performance.now() }); }
   }
   function worldBossHtml() {
     var L = (st && st.bosses) || [], tn = nowSrv();
     var rows = L.map(function (b) {
-      var sub = b.wbAt ? '⏰ 매일 21:00 30분 동안 -- 모두 함께(구간마다 보상)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
+      var sub = b.wbAt ? '⏰ 매일 21:00부터 30분 -- 함께 싸운 모두에게 같은 보상(맵 초기화마다 한 번)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
           : b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
           : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
       return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
@@ -1954,7 +2005,7 @@ var TowerMine = (function () {
     return e ? { x: o[0] + e[1], y: o[1] + e[2] } : null;
   }
   function worldHtml() {
-    var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && st.adminMaps);
+    var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && (st.adminMaps || st.ringMaps)); // [2026-11-15] 용의 반지를 끼면 지역을 눌러 이동
     WORLD_NODES.forEach(function (n) { info[n.id] = n; });
     var STY = { walk: 'stroke="#f4f0e6" stroke-width="3"', sea: 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"', fall: 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"' };
     var bossOf = {};
@@ -2113,9 +2164,16 @@ var TowerMine = (function () {
   }
   /** [2026-10-28] 관리자 -- 전체 지도에서 누른 지역(맵) 시작점으로 이동(서버 mineAdminWarp가 관리자인지 다시 확인). */
   function worldWarp(id) {
-    if (!st || !st.adminMaps || busy || wMoved) return; // [2026-10-28] 끌다가 놓은 건 누른 게 아니다
-    var e = st.adminMaps.filter(function (m) { return m.id === id; })[0];
-    if (!e) { msg('이동할 수 없는 곳이에요.'); return; }
+    var wl = st && (st.adminMaps || st.ringMaps);
+    if (!wl || busy || wMoved) return; // [2026-10-28] 끌다가 놓은 건 누른 게 아니다
+    var e = wl.filter(function (m) { return m.id === id; })[0];
+    if (!e) { msg(st.adminMaps ? '이동할 수 없는 곳이에요.' : '💍 용의 반지로는 갈 수 없는 곳이에요.'); return; }
+    if (!st.adminMaps) { // [2026-11-15] 용의 반지 -- 한 시간에 한 번이라 한 번 더 묻는다
+      var rleft = (st.ringReadyAt || 0) - nowSrv();
+      if (rleft > 0) { msg('💍 용의 반지의 힘이 아직 돌아오지 않았어요. (' + callLeftTxt(rleft) + ' 뒤)'); return; }
+      if (map && map.id === id) { msg('이미 그곳에 있어요.'); return; }
+      if (!confirm('💍 용의 반지로 「' + e.name + '」(으)로 갈까요? (한 시간에 한 번)')) return;
+    }
     closeSmith();
     setAuto(false);
     travel('/api/tower-mine-admin-warp?mapId=' + encodeURIComponent(id) + '&x=' + (e.sx != null ? e.sx : 0) + '&y=' + (e.sy != null ? e.sy : 0), '이동하지 못했어요.');
@@ -3031,7 +3089,8 @@ var TowerMine = (function () {
       if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
       if (d.knockX != null) setPos(d.knockX, d.knockY); // [2026-11-05] 밀쳐내기
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
-      if (d.stunUntil) stunUntil = d.stunUntil; // [2026-11-04] 파라오 미라 붕대 스턴
+      if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
+      if (d.roar) { flashT0 = performance.now(); msg('🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       if (d.healed) floats.push({ x: P.x - 0.2, y: P.y - 0.5, text: '+' + d.healed + ' 💚', color: '#7cf08a', t0: performance.now() });
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
@@ -3069,7 +3128,8 @@ var TowerMine = (function () {
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : '') + '-' + h.dmg, color: h.x2 ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 });
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3, text: '🔥 화염 -' + h.dmg, color: '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 화염 장판
+        floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
       if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치
@@ -3081,7 +3141,8 @@ var TowerMine = (function () {
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
       // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
-      if (d.died && d.state) fallDown(d);
+      if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
+      else if (d.died && d.state) fallDown(d);
     };
   }
   // [2026-10-26] 한기 -- 한기 맵(설원/설산)에서 1초마다 서버에 묻는다(한기/눈바람 피해, 안전지대, 다음 눈바람 시각).
@@ -3131,7 +3192,8 @@ var TowerMine = (function () {
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
-      if (d.died && d.state) fallDown(d);
+      if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
+      else if (d.died && d.state) fallDown(d);
     };
   }
   var heatWarned = false;
@@ -3139,12 +3201,13 @@ var TowerMine = (function () {
   //  얼지 않은 동료가 2칸 안에 오면 풀린다(얼음땡). 서버가 환경 턴으로 알려 준다: iceAwake, nextFreezeAt, frozen {x, y, until}, thawed.
   var iceSt = null, iceWarned = 0;
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)
-  function stunnedMe() { return stunUntil > nowSrv(); }
+  function stunnedMe() { return stunUntil > nowSrv() || wbDownUntil > nowSrv(); } // [2026-11-15] + 월드보스에 쓰러져 있는 동안
+  var stunBand = false; // 붕대에 감긴 기절인지(파라오 미라) -- 아니면 별이 도는 기절(히드라/거룡의 포효)
   // [2026-11-05] 천둥 황소 -- 전기 장판 칸, 번개 줄기(전광석화/밀쳐내기), 전체 낙뢰, 감전 스턴, 마물이 숨은 시각
   var shockCells = {}, zaps = [], stormT0 = 0, stormNext = 0, zapStunUntil = 0, hideNoticeT = 0, ZAP_MS = 450, thunderUntil = 0, thunderKills = 0, thunderNeed = 0, thunderRestAt = 0, ambZapT = 0;
   function shockSet(list) { var n = {}; (list || []).forEach(function (c) { n[(c % map.w) + ',' + Math.floor(c / map.w)] = 1; }); shockCells = n; }
   function zapAdd(x0, y0, x1, y1) { zaps.push({ x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), seed: Math.random() * 1000 }); }
-  function stunMsg() { return zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : '🩹 붕대에 묶여 움직일 수 없어요!'; }
+  function stunMsg() { return wbDownUntil > nowSrv() ? '💫 쓰러져 있어요. 곧 다시 일어나요.' : zapStunUntil >= stunUntil ? '⚡ 감전되어 움직일 수 없어요!' : stunBand ? '🩹 붕대에 묶여 움직일 수 없어요!' : '💫 기절해서 움직일 수 없어요!'; }
   function drawZapStun(x, y, now) { // 감전 -- 캐릭터 둘레에 튀는 노란 불꽃
     var TS = T * scale;
     ctx.save(); ctx.strokeStyle = '#ffe94a'; ctx.lineWidth = Math.max(1, scale * 0.8); ctx.shadowColor = '#7ad8ff'; ctx.shadowBlur = 6 * scale;
@@ -4696,7 +4759,8 @@ var TowerMine = (function () {
       if (d.assassinOn) floats.push({ x: P.x, y: P.y - 0.6, text: '🥷 은신!', color: '#c8c8ff', big: true, t0: t + 80 });
       if (d.dodged) floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + 180 });
       if (d.enchLeft != null && st.ench) { st.ench.left = d.enchLeft; if (!d.enchLeft) st.ench.el = 0; updEnch(); }
-      if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : '') + '-' + d.counter, color: d.stealthHit ? '#ff3a6a' : '#ff9a3a', big: !!d.stealthHit, t0: t + 180 });
+      if (d.counter) floats.push({ x: P.x, y: P.y - 0.3, text: (d.stealthHit ? '🗡️ 2배! ' : d.heavy ? '💥 강타! ' : '') + '-' + d.counter + (d.stunHit ? ' 💫 기절' : ''), color: d.stealthHit || d.heavy ? '#ff3a6a' : '#ff9a3a', big: !!(d.stealthHit || d.heavy), t0: t + 180 }); // [2026-11-15] 탑 수문장 강타/기절
+      if (d.stunHit && d.stunUntil) { stunUntil = d.stunUntil; stunBand = false; }
       if (d.split) flashT0 = t; // [2026-10-28] 분신술 -- 가운데 멘트 없이 번쩍임만
       setCombat(d.combat);
       if (d.killed) {
@@ -4712,7 +4776,8 @@ var TowerMine = (function () {
       // [2026-10-25] 최대 체력 잠금 -- 새 전투마다 10%(최대 50%), 레벨업하면 풀림
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: t + 300 });
       if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
-      if (d.died && d.state) {
+      if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
+      else if (d.died && d.state) {
         setAuto(false);
         busy = true;
         fadeOutThen(function () { return Promise.resolve(d); }).then(function () { return enterState(d.state); })
@@ -4992,6 +5057,20 @@ var TowerMine = (function () {
       var bb = ((now / 700 + (+lp[0]) * 0.37 + (+lp[1]) * 0.61) % 1);
       ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
     }
+    // [2026-11-15] 거룡 화염 장판 -- 예고(붉은 칸이 안에서부터 차오름) -> 터짐(밝게 번쩍)
+    if (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle')) {
+      var wzr = wbInfo.zr || 2, wzw = wbInfo.zw || 3000, wtn = nowSrv();
+      for (var wzi = 0; wzi < wbInfo.zones.length; wzi++) {
+        var wz = wbInfo.zones[wzi], wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
+        if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
+        if (wleft > 0) {
+          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp;
+          ctx.fillStyle = 'rgba(255,60,20,' + (0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
+          ctx.fillStyle = 'rgba(255,130,30,0.38)'; ctx.fillRect(wzx + (wzs - wg) / 2, wzy + (wzs - wg) / 2, wg, wg);
+          ctx.strokeStyle = 'rgba(255,210,80,' + (0.55 + 0.4 * Math.sin(now / 80)) + ')'; ctx.lineWidth = 2 * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
+        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,235,140,' + (0.85 * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
+      }
+    }
     // [2026-10-24] 탐지 곡괭이 -- 주변의 안 캔 광석. [2026-10-28] "범위를 보여주고 물풍선으로" -- 탐지 범위 점선 테두리 + 광석 아이콘을 담은 물풍선이 둥실둥실
     if (scan && scan.map === map.id) {
       var sr = scan.r, bx = (scan.x - sr) * TS - camX, by = (scan.y - sr) * TS - camY, bw = (sr * 2 + 1) * TS;
@@ -5175,7 +5254,11 @@ var TowerMine = (function () {
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
-    if (stunnedMe()) { if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now); else drawBandage(cx, cy - 3 * scale, now); } // [2026-11-04] 붕대 스턴, [2026-11-05] 감전
+    if (stunUntil > nowSrv()) { // [2026-11-04] 붕대 스턴, [2026-11-05] 감전, [2026-11-15] 그 밖의 기절(머리 위 별)
+      if (zapStunUntil >= stunUntil) drawZapStun(cx, cy - 3 * scale, now);
+      else if (stunBand) drawBandage(cx, cy - 3 * scale, now);
+      else { ctx.font = (11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💫', cx + TS / 2 + Math.cos(now / 160) * TS * 0.25, cy - 4 * scale + Math.sin(now / 160) * TS * 0.08); }
+    }
     nameTag(myNick(), cx + TS / 2, cy - 4 * scale, '#ffe14d'); // [2026-11-05] 내 닉네임(노란색)
     if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사
     if (map.trees) { try { forestTreesDraw(now, TS, camX, camY, W, H); } catch (e) { } } // [2026-11-08] 하피의 둥지 대형 나무
@@ -5954,7 +6037,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { tkGem: function (c, n) { tokenGo('gem', c, n); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

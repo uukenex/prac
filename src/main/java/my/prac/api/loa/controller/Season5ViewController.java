@@ -734,7 +734,7 @@ public class Season5ViewController {
             return ResponseEntity.ok(err);
         }
         HashMap<String, Object> r = s5Service.mineTokenShop(userName, action, code, g);
-        if (action.startsWith("pull") && Boolean.TRUE.equals(r.get("ok"))) mineLog(userName, "[웹] 광산 증표 상인", String.valueOf(r.get("message")));
+        if ((action.startsWith("pull") || "gem".equals(action)) && Boolean.TRUE.equals(r.get("ok"))) mineLog(userName, "[웹] 광산 증표 상인", String.valueOf(r.get("message")));
         return ResponseEntity.ok(r);
     }
 

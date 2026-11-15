@@ -83,6 +83,9 @@ public final class S5MineMobs {
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
         Type showLv(int lv) { lvShow = lv; return this; }
         Type expx(double m) { expMul = m; return this; } // [2026-11-15]
+        /** [2026-11-15] 탑 -- 단계 식 대신 체력/공격을 직접(레벨 90 + 용병 90 + ★2 장비 기준으로 맞춘 값). 경험치는 단계 식 x expMul 그대로. */
+        int hpFix, atkFix;
+        Type fix(int h, int a) { hpFix = h; atkFix = a; return this; }
         Type asTower() { minion = true; tower = true; return this; } // [2026-11-15] 탑 몬스터(수하처럼 평소엔 없음, 빠르지 않음)
         Type respawn(long ms) { respawnOverride = ms; return this; }
         Type hpCut(double c) { hpCut = c; return this; }
@@ -101,8 +104,8 @@ public final class S5MineMobs {
         //  레벨당 처치 수 흐름은 그대로, 숫자만 작아졌다(예: 21단계 보스 체력 2억 -> 40만).
         // [2026-11-07] "고레벨 사냥터 체력을 바뀐 공격력 곡선에 맞추자" -- 플레이어 공격력이 80레벨부터 직선(99레벨 10,000)으로 완만해진 만큼, 적정 레벨(1 + 4 x (단계 - 1))이 80을 넘는
         //  몬스터(보스 포함) 체력도 같은 비율(새 곡선 / 예전 9% 곡선, 둘 다 계단식 너프 포함)로 줄인다. 80 이하 그대로.
-        public int hp() { if (simName != null) return simOf().hp(); return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut * hpCurve(1 + 4 * (tier - 1))); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
-        public int atk() { return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
+        public int hp() { if (simName != null) return simOf().hp(); if (hpFix > 0) return hpFix; return (int) Math.round(18 * Math.pow(1.457, tier - 1) * (boss ? 24 : 1) * hpMul * hpCut * hpCurve(1 + 4 * (tier - 1))); } // [2026-10-30] "보스 최대 체력 +100%" -- 보스 x12 -> x24
+        public int atk() { if (atkFix > 0) return atkFix; return (int) Math.round(4 * Math.pow(1.413, tier - 1) * (boss ? 1.4 : 1) * atkMul * atkCut); }
         public long exp() { return Math.round(6 * Math.pow(1.40, tier - 1) * (boss ? 15 : 1) * hpMul * expMul); }
         /** 쓰러진 뒤 다시 나타날 때까지(ms). 보스는 따로 -- [2026-10-28] "보스 공통 맵 초기화 때 1번만" (BotS5ServiceImpl). */
         public long respawnMs() { return respawnOverride > 0 ? respawnOverride : 20_000L + tier * 4_000L; }
@@ -293,18 +296,23 @@ public final class S5MineMobs {
         // [2026-11-15] 월드보스 -- 매일 21시 월드보스 전장. 체력은 하피 여왕의 20배(모두가 함께), 움직이지 않고 원거리(공격은 플레이어 최대 체력 % -- S55MineServiceImpl.mineWb*),
         //  경험치는 하피 여왕과 같게(expMul). 그림은 시안 승인 전까지 보스 기본 그림.
         // [2026-11-15] 탑 몬스터 -- 보드의 전투 칸 안쪽에서 잠들어 있다가(asTower = 수하처럼 평소엔 없음) 그 칸을 밟으면 깨어나 덤빈다. 구역(10층)마다 셋 + 9층마다 수문장.
-        new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().showLv(95),
-        new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().showLv(96),
-        new Type("마력 인형", 24, "human", "#b07ad8").asTower().showLv(97),
-        new Type("청동 거인", 25, "human", "#c8883a").asBoss().strong(4.0, 1.1).showLv(100).respawn(60_000L),
-        new Type("탑 기사", 25, "human", "#a8b8c8").asTower().strong(1.5, 1.2).showLv(101),
-        new Type("그림자 마법사", 25, "human", "#4a3a6a").asTower().strong(1.5, 1.2).showLv(102),
-        new Type("강철 늑대", 25, "quad", "#9aa8b8").asTower().strong(1.5, 1.2).showLv(103),
-        new Type("은빛 기사단장", 26, "human", "#e0e8f0").asBoss().strong(4.0, 1.2).showLv(106).respawn(60_000L),
-        new Type("타락 천사", 26, "flyer", "#f0e0a0").asTower().strong(1.5, 1.3).showLv(107),
-        new Type("심연 마도사", 26, "human", "#5a2a8a").asTower().strong(1.5, 1.3).showLv(108),
-        new Type("흑요석 골렘", 26, "human", "#2a2a3a").asTower().strong(1.8, 1.3).showLv(109),
-        new Type("탑의 군주 대리인", 26, "human", "#ffd23f").asBoss().strong(6.0, 1.3).showLv(112).respawn(60_000L),
+        // [2026-11-15] 같은 날 "보스는 시즌5 패턴·이름을, 난이도는 레벨 90 + 용병 90 + ★2 장비로 무난하게 이길 정도" -- 수문장 = 시즌5 구역 보스(9층 라텔 / 19층 검은 갱도왕 /
+        //  29층 히드라), 수치는 fix(체력, 공격)로 직접. 기준 = 레벨 90(체력 약 10.8만, 무기 없이 한 방 약 7,300 x 초당 2번) + 전사 용병 90 ★2(평타 초당 약 1만 +
+        //  20초마다 이기어검 약 50만). 몬스터는 내가 때릴 때마다 반격하므로(초당 2번) 공격 수치는 작게 잡는다. 시뮬레이션(scratch T2Check sim): 수문장 20 / 28 / 32초쯤(용병 속성이 상성이면 절반),
+        //  잃는 체력이 최대 체력의 35 / 50 / 60%쯤(무기·재생의 장갑이 있으면 더 여유). 잡몹은 3~5초, 한 마리에 6~13%.
+        //  예전(단계 식): 잡몹 공격 1.1만~2.9만, 수문장 체력 720만~1190만 / 공격 2.5만~4.1만 -- 90레벨은 몇 초 만에 쓰러졌다.
+        new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().fix(64_000, 1_200).showLv(85),
+        new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().fix(64_000, 1_200).showLv(86),
+        new Type("마력 인형", 24, "human", "#b07ad8").asTower().fix(64_000, 1_200).showLv(87),
+        new Type("하수구의 지배자 라텔", 24, "quad", "#4a4a52").asBoss().fix(1_000_000, 800).expx(0.6).showLv(88).respawn(60_000L).el(7),
+        new Type("탑 기사", 24, "human", "#a8b8c8").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(87),
+        new Type("그림자 마법사", 24, "human", "#4a3a6a").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(88),
+        new Type("강철 늑대", 24, "quad", "#9aa8b8").asTower().fix(85_000, 1_400).strong(1.3, 1).showLv(89),
+        new Type("폐광의 검은 갱도왕", 24, "human", "#2a2a30").asBoss().fix(1_200_000, 800).expx(0.9).showLv(90).respawn(60_000L).el(1),
+        new Type("타락 천사", 25, "flyer", "#f0e0a0").asTower().fix(110_000, 1_600).strong(1.2, 1).showLv(89),
+        new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(110_000, 1_600).strong(1.2, 1).showLv(90),
+        new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(125_000, 1_600).strong(1.35, 1).showLv(91),
+        new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(1_300_000, 800).expx(0.85).showLv(92).respawn(60_000L).el(3),
         new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(60.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 60.0) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
@@ -396,7 +404,10 @@ public final class S5MineMobs {
     public static final int WB_BOSS_TYPE = indexOf("심연의 거룡"); // [2026-11-15] 월드보스
     /** [2026-11-15] 탑 -- 구역(0 = 1~10층, 1 = 11~20층, 2 = 21~30층)별 몬스터 셋, 수문장. */
     static final String[][] TOWER_MOBS = { { "탑 수호병", "돌 가고일", "마력 인형" }, { "탑 기사", "그림자 마법사", "강철 늑대" }, { "타락 천사", "심연 마도사", "흑요석 골렘" } };
-    static final String[] TOWER_BOSSES = { "청동 거인", "은빛 기사단장", "탑의 군주 대리인" };
+    static final String[] TOWER_BOSSES = { "하수구의 지배자 라텔", "폐광의 검은 갱도왕", "늪지 여왕 히드라" };
+    /** [2026-11-15] 시즌5 구역 보스 이름(TBOT_S5_MONSTER_INFO, 9층 ~ 99층) -- 층 목록에 보인다. 지금 싸울 수 있는 건 앞의 셋. */
+    public static final String[] TOWER_BOSS_NAMES = { "하수구의 지배자 라텔", "폐광의 검은 갱도왕", "늪지 여왕 히드라", "화산의 심장 이프리트", "빙하의 폭군 프로스트자이언트",
+            "심연의 대공 모르드레드", "차원의 파괴자 아자토스", "천공의 대천사 세라핌", "고룡 바하무트", "종말의 마룡왕 니드호그" };
     public static int towerBossType(int floor) { return indexOf(TOWER_BOSSES[Math.min(TOWER_BOSSES.length - 1, (floor - 1) / 10)]); }
 
     private static int indexOf(String name) {
@@ -608,14 +619,14 @@ public final class S5MineMobs {
             List<Integer> cells = new ArrayList<>();
             cells.add(m.bossY() * m.w + m.bossX());
             // [2026-10-28] "보스도 움직이게" -- 집 둘레 BOSS_ROAM칸(마름모) 안의 칸을 돌아다닌다(예전: 상하좌우 한 칸). 대주교는 제단에서 움직이지 않는다
-            if (!raid && !S5MineMap.WB_ARENA.equals(m.id) && S5MineMap.towerFloor(m.id) == 0) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) { // [2026-11-15] 월드보스도 제자리
+            if (!raid && !S5MineMap.CASTLE.equals(m.id) && S5MineMap.towerFloor(m.id) == 0) for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) { // [2026-11-15] 월드보스도 제자리
                 int nx = m.bossX() + dx, ny = m.bossY() + dy;
                 if ((dx == 0 && dy == 0) || Math.abs(dx) + Math.abs(dy) > BOSS_ROAM) continue;
                 if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(t[ny][nx])) cells.add(ny * m.w + nx);
             }
             int[] ca = new int[cells.size()];
             for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-            int bt = S5MineMap.towerFloor(m.id) > 0 ? towerBossType(S5MineMap.towerFloor(m.id)) : S5MineMap.WB_ARENA.equals(m.id) ? WB_BOSS_TYPE : S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
+            int bt = S5MineMap.towerFloor(m.id) > 0 ? towerBossType(S5MineMap.towerFloor(m.id)) : S5MineMap.CASTLE.equals(m.id) ? WB_BOSS_TYPE : S5MineMap.PEAK.equals(m.id) ? ICE_BOSS_TYPE : raid ? RAID_BOSS_TYPE : S5MineMap.SHRINE_BOSS.equals(m.id) ? SHRINE_BOSS_TYPE : S5MineMap.ISLE7.equals(m.id) ? LAVA_BOSS_TYPE : S5MineMap.ANTNEST.equals(m.id) ? ANT_BOSS_TYPE : S5MineMap.PYRAMID_UNDER.equals(m.id) ? PHARAOH_BOSS_TYPE : S5MineMap.HARPY_NEST.equals(m.id) ? HARPY_BOSS_TYPE : BOSS_TYPE; // [2026-10-28] 설산 봉우리 = 얼음 여왕, 닌자 두목의 방 = 닌자 두목
             if (ca.length > 0) out.add(new S5MineMap.Mob(out.size(), bt, m.bossX(), m.bossY(), ca)); // 보스는 늘 목록 맨 끝
         }
         return out;
