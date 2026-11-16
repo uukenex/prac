@@ -1798,6 +1798,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** n층으로 들어간다(그 층 첫 방/수문장의 방/마을). 못 가면 지금 자리(stay, sx, sy)에 그대로 두고 까닭을 message로. */
     HashMap<String, Object> mineTowerEnter(String userName, Map<String, Integer> items, int n, S5MineMap stay, int sx, int sy, long now, HashMap<String, Object> out) {
+        return mineTowerEnter(userName, items, n, stay, sx, sy, now, out, false);
+    }
+    /** down = 아래 계단으로 내려왔다 -- [2026-11-16] "29층에서 28층으로 내려가면 바로 다시 올라갈 수 있게 계단층으로, 위쪽에서 리스폰": 방 층은 그 층의 계단방(위 계단 바로 아래)에, 수문장 층은 위 계단 앞에. */
+    HashMap<String, Object> mineTowerEnter(String userName, Map<String, Integer> items, int n, S5MineMap stay, int sx, int sy, long now, HashMap<String, Object> out, boolean down) {
         boolean admin = isMineAdmin(userName);
         int max = mineTwMax(items), block = mineTwBlock(items);
         String err = null;
@@ -1811,13 +1815,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", err);
             return out;
         }
-        S5MineMap tm = S5MineMap.get(S5MineMap.towerId(n));
+        boolean toStair = down && S5MineMap.towerRoomFloor(n);
+        S5MineMap tm = S5MineMap.get(toStair ? S5MineMap.towerStairId(n) : S5MineMap.towerId(n));
         mineDisengageAll(userName);
         mineSoloReset(userName); // 1인 인스턴스 -- 층에 들어갈 때마다 처음부터
-        MINE_TW_RUN.put(userName, new TwRun(n));
-        dao.updateMinePos(userName, tm.id, tm.spawnX, tm.spawnY, now);
+        TwRun nr = new TwRun(n);
+        int ex = tm.spawnX, ey = tm.spawnY;
+        if (toStair) { nr.step = S5MineMap.towerRooms(n); nr.type = 'U'; ex = tm.w / 2; ey = 2; } // 위 계단 바로 아래
+        else if (down) { ex = tm.w / 2; ey = 2; } // 수문장 층 -- 위 계단 앞
+        MINE_TW_RUN.put(userName, nr);
+        dao.updateMinePos(userName, tm.id, ex, ey, now);
         out.put("ok", true);
-        out.put("message", "🗼 " + tm.name + (S5MineMap.towerRoomFloor(n) ? " -- 오른쪽 문으로 나아가세요. 방을 " + S5MineMap.towerRooms(n) + "개 지나면 계단방이에요. (왼쪽 문 = 탑 밖)"
+        if (toStair) out.put("message", "🪜 " + n + "층 계단방으로 내려왔어요. 위쪽 계단으로 바로 다시 올라갈 수 있어요.");
+        else out.put("message", "🗼 " + tm.name + (S5MineMap.towerRoomFloor(n) ? " -- 오른쪽 문으로 나아가세요. 방을 " + S5MineMap.towerRooms(n) + "개 지나면 계단방이에요. (왼쪽 문 = 탑 밖)"
                 : S5MineMap.towerBossFloor(n) ? " -- 수문장을 쓰러뜨리면 위쪽 계단이 열려요." : " -- 쉬었다 가세요. 위쪽 계단이 다음 구역이에요."));
         out.put("state", mineState(userName));
         return out;
@@ -1862,7 +1872,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", "⚔️ 수문장과 싸우는 중엔 계단을 쓸 수 없어요. (왼쪽 문으로는 나갈 수 있어요)");
             return out;
         }
-        return mineTowerEnter(userName, items, tf, map, x, y, now, out);
+        return mineTowerEnter(userName, items, tf, map, x, y, now, out, tf < f);
     }
     /** 방의 오른쪽 문 -- 다음 방으로(이 순간 무슨 방인지 정해진다). 전투방이면 방을 지키는 몬스터를 쓰러뜨린 뒤에만. */
     HashMap<String, Object> mineTowerNext(String userName, HashMap<String, Object> row, S5MineMap map, Map<String, Integer> items, int f, int x, int y, long now, HashMap<String, Object> out) {
