@@ -2377,7 +2377,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-16] 악마(악마의 들판) 기술 -- 나와 싸우는 동안(전투 턴마다): 2칸 넘게 떨어지면 MINE_DEMON_BLINK_MS마다 내 곁으로 순간이동,
     //  MINE_DEMON_FIRE_MS마다 내 발밑에 지옥불(예고 1.8초, 3x3 -- 마도사는 둘레 세 곳 더, 발록은 5x5), 발록은 지면 강타(둘레 3칸 + 기절)도.
     static final int MINE_DEMON_NEED_FLOOR = 29;
-    static final long MINE_DEMON_BLINK_MS = 5_000L, MINE_DEMON_FIRE_MS = 6_500L, MINE_DEMON_SLAM_MS = 12_000L, MINE_DEMON_WARN_MS = 1_800L;
+    static final long MINE_DEMON_BLINK_MS = 3_500L, MINE_DEMON_FIRE_MS = 4_500L, MINE_DEMON_SLAM_MS = 9_000L, // [2026-11-17] 더 세게(5s/6.5s/12s -> 3.5s/4.5s/9s, 피해 150/220/240 -> 200/280/300)
+                       MINE_DEMON_WARN_MS = 1_800L;
     /** 순간이동했으면 true(거리를 다시 잰다). */
     boolean mineDemonSkills(S5MineMap map, MobState s, S5MineMobs.Type type, int x, int y, int dist, long now) {
         if (s.pat == null || s.pat.length != 3) s.pat = new long[] { now + 2_500L, now + 3_000L, now + 8_000L }; // {지옥불, 순간이동, 지면 강타}
@@ -2393,11 +2394,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (now >= s.pat[0]) {
             s.pat[0] = now + MINE_DEMON_FIRE_MS + RND.nextInt(1_500);
-            int pm = balrog ? 220 : 150;
+            int pm = balrog ? 280 : 200;
             mineZoneAdd(map, x, y, now + MINE_DEMON_WARN_MS, balrog ? 2 : 1, 8, MINE_DEMON_WARN_MS, pm, 0);
             if (mage) for (int k = 0; k < 3; k++) mineZoneAdd(map, x - 3 + RND.nextInt(7), y - 3 + RND.nextInt(7), now + MINE_DEMON_WARN_MS, 1, 8, MINE_DEMON_WARN_MS, pm, 0);
         }
-        if (balrog && now >= s.pat[2]) { s.pat[2] = now + MINE_DEMON_SLAM_MS; mineZoneAdd(map, s.fx, s.fy, now + MINE_DEMON_WARN_MS, 3, 6, MINE_DEMON_WARN_MS, 240, 1_200L); }
+        if (balrog && now >= s.pat[2]) { s.pat[2] = now + MINE_DEMON_SLAM_MS; mineZoneAdd(map, s.fx, s.fy, now + MINE_DEMON_WARN_MS, 3, 6, MINE_DEMON_WARN_MS, 300, 1_200L); }
         return moved;
     }
     // ---- [2026-11-16] 장판 공통 -- "탑 9·19·29층 수문장 패턴 다양화(거룡처럼)", 악마 들판의 지옥불. 거룡 장판과 같은 모양(예고 -> 터짐)·같은 판정을
@@ -7001,11 +7002,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (userName == null || vw <= 0 || vh <= 0) return;
         MINE_MERC_VIEW.put(userName, new int[] { Math.min(MINE_MERC_VIEW_MAX, vw), Math.min(MINE_MERC_VIEW_MAX, vh) });
     }
-    // [2026-11-17] "용병 공격 탐지 범위 줄여 줘 -- 2칸 정도": 선공 모드 용병이 먼저 끌어들이는/붙잡아 두는 범위를 화면 전체 -> 내 둘레 MINE_MERC_DETECT칸
+    // [2026-11-17] "용병 탐지 범위는 2칸으로가 아니라 기존 대비 2칸 줄여": 선공 모드 용병이 먼저 끌어들이는/붙잡아 두는 범위 = 화면 범위 - MINE_MERC_DETECT칸(최소 1칸)
     static final int MINE_MERC_DETECT = 2;
     static boolean mineMercInView(String userName, int dx, int dy) {
         int[] v = MINE_MERC_VIEW.get(userName);
-        int w = Math.min(MINE_MERC_DETECT, v == null ? MINE_MERC_VIEW_W : v[0]), h = Math.min(MINE_MERC_DETECT, v == null ? MINE_MERC_VIEW_H : v[1]);
+        int w = Math.max(1, (v == null ? MINE_MERC_VIEW_W : v[0]) - MINE_MERC_DETECT), h = Math.max(1, (v == null ? MINE_MERC_VIEW_H : v[1]) - MINE_MERC_DETECT);
         return Math.abs(dx) <= w && Math.abs(dy) <= h;
     }
     /** 선공 모드로 데리고 다니는 용병이 있나. */

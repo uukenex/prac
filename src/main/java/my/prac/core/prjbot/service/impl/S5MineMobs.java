@@ -329,10 +329,11 @@ public final class S5MineMobs {
         new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(200.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 200.0).foot(3), // 7 = EL_DARK
         // [2026-11-16] 악마의 들판(요새 도시 동문/서문 밖) -- "한 마리 한 마리가 보스급, 스킬 사용, 순간이동, 바닥 불길". 체력/공격은 정해진 값(fix), 늘 선공.
         //  떨어져 있으면 내 곁으로 순간이동하고 발밑에 지옥불을 일으킨다(S55MineServiceImpl.mineDemonSkills). 임프·마도사는 원거리도, 발록은 큰 불길 + 지면 강타(기절).
-        new Type("지옥불 임프", 26, "demon", "#d8502a").asDemon().fix(1_600_000, 26_000).expx(18).showLv(100).asRanged().el(6).respawn(180_000L),
-        new Type("악마 검사", 26, "demon", "#8a1a2a").asDemon().fix(2_600_000, 30_000).expx(30).showLv(104).el(7).respawn(180_000L),
-        new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(2_000_000, 27_000).expx(24).showLv(107).asRanged().el(7).respawn(180_000L),
-        new Type("발록", 26, "demon", "#4a1010").asDemon().fix(5_200_000, 36_000).expx(60).showLv(115).el(6).respawn(600_000L)
+        // [2026-11-17] "악마 더 세게" -- 체력/공격/경험치 x1.5, 기술도 더 자주/더 아프게(S55MineServiceImpl.mineDemonSkills)
+        new Type("지옥불 임프", 26, "demon", "#d8502a").asDemon().fix(2_400_000, 39_000).expx(27).showLv(100).asRanged().el(6).respawn(180_000L),
+        new Type("악마 검사", 26, "demon", "#8a1a2a").asDemon().fix(3_900_000, 45_000).expx(45).showLv(104).el(7).respawn(180_000L),
+        new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(3_000_000, 40_000).expx(36).showLv(107).asRanged().el(7).respawn(180_000L),
+        new Type("발록", 26, "demon", "#4a1010").asDemon().fix(7_800_000, 54_000).expx(90).showLv(115).el(6).respawn(600_000L)
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
