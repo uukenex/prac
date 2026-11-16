@@ -1570,7 +1570,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
                     for (int q = 0; q < MINE_TW_SEA_BOSS; q++) { int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length); dao.addUserOre(u, S5MineMap.SEA_GEM_CODES[sg], 1); sea.append(" · 🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]); }
                     txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + sea + " (오늘 수문장 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")"
-                            + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요. (이 구역은 끝 -- " + f + "층 아래로는 못 내려가요)" : "");
+                            + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요." : "");
                 }
                 if (u.equals(userName)) m.append(txt);
                 else MINE_SHRINE_REWARD_MSG.merge(u, "🗼 탑 " + f + "층 수문장 " + t.name + "이(가) 쓰러졌어요!" + txt, (p, q) -> p + " / " + q);
@@ -1803,7 +1803,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (n > S5MineMap.TOWER_FLOORS) err = "🚧 " + n + "층부터는 아직 준비 중이에요.";
         else if (n < 1) err = "그런 층은 없어요.";
         else if (!admin && n > max) err = "🪜 아직 " + n + "층으로 가는 계단을 못 찾았어요. (지금 " + max + "층까지)";
-        else if (!admin && n <= block) err = "🔒 " + block + "층 수문장을 쓰러뜨려 그 아래로는 못 내려가요.";
+        // [2026-11-16] "지난 층 다시 갈 수 있게" -- 수문장을 쓰러뜨린 구역 아래로도 올라가 본 층(max)까지는 언제든 간다(예전엔 끝난 구역은 잠겼다)
         else if (!admin && S5MineMap.towerBossFloor(n) && mineTwBossToday(items, now) >= MINE_TW_BOSS_DAILY) err = "⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 썼어요. 내일 다시 도전해 주세요.";
         if (err != null) {
             dao.updateMinePos(userName, stay.id, sx, sy, now);
