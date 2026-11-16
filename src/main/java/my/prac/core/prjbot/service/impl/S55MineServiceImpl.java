@@ -1496,6 +1496,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_HARPY_CLEAR = "HARPY_CLEAR", MINE_ITEM_TW_MAX = "TW_MAX", MINE_ITEM_TW_BLOCK = "TW_BLOCK";
     static final long MINE_TW_ROLL_MS = 1_200L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_TW_ROLL_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final int MINE_TW_SEA_PCT = 40, MINE_TW_SEA_BOSS = 2; // [2026-11-16] 탑 보물방 바다 보석 확률(%), 수문장 처치 바다 보석 개수
     static final int MINE_TW_TOKEN_KILL = 1, MINE_TW_TOKEN_BOSS = 20, MINE_TW_TOKEN_CHEST = 2, MINE_TW_TOKEN_TILE = 3;
     // [2026-11-15] 같은 날 "보스는 s5 패턴·이름을, 하루 3회 잡을 수 있는 룰은 동일하게" -- 수문장 = 시즌5 구역 보스.
     //  하루 3번(시즌5 BOSS_DAILY_KILL_LIMIT처럼 모든 수문장 공통, TWB_DAY = 날짜 yyyyMMdd / TWB_CNT = 그날 처치 수): 다 쓰면 수문장 층에 못 들어가고, 함께 싸워도 보상·진행이 없다.
@@ -1566,7 +1567,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     boolean first = mineTwBlock(it) < f;
                     if (first) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
-                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + " (오늘 수문장 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")"
+                    StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
+                    for (int q = 0; q < MINE_TW_SEA_BOSS; q++) { int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length); dao.addUserOre(u, S5MineMap.SEA_GEM_CODES[sg], 1); sea.append(" · 🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]); }
+                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + sea + " (오늘 수문장 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")"
                             + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요. (이 구역은 끝 -- " + f + "층 아래로는 못 내려가요)" : "");
                 }
                 if (u.equals(userName)) m.append(txt);
@@ -1587,12 +1590,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String[] MG_TIER_NAMES = { "초급", "중급", "고급", "최상급" };
     // [2026-11-15] "탑 증표로 원하는 보석을 구매할 수 있게" -- 증표 상인 보석 탭: 땅 보석 여덟 가지 MINE_TK_GEM / 다이아몬드 MINE_TK_DIAMOND / 세공 보석 MINE_TK_CUT 증표(고르는 대로, 1개·10개).
     static final int MINE_TK_GEM = 3, MINE_TK_DIAMOND = 12, MINE_TK_CUT = 10;
+    static final int[] MINE_TK_SEA = { 5, 5, 8, 8, 15 }; // [2026-11-16] 바다 보석 -- 진주 / 산호석 / 자수정 / 오팔 / 흑진주
     /** 증표로 사는 보석 {코드, 이름, 가격} -- 땅 보석, 다이아몬드, 세공 보석 순. */
     static List<Object[]> mineTokenGems() {
         List<Object[]> l = new ArrayList<>();
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.GEM_CODES[i], S5MineMap.GEM_NAMES[i], MINE_TK_GEM });
         l.add(new Object[] { S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], MINE_TK_DIAMOND });
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.cutCode(i), S5MineMap.cutName(i), MINE_TK_CUT });
+        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.SEA_GEM_CODES[i], S5MineMap.SEA_GEM_NAMES[i], MINE_TK_SEA[i] }); // [2026-11-16] "탑의 증표로 바다 보석도 교환"
         return l;
     }
     static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
@@ -1912,6 +1917,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 msg.append("⚔️ ").append(mt.name).append("이(가) 방을 지키고 있어요! 쓰러뜨려야 오른쪽 문이 열려요.");
             } else if (ty == 'T') {
                 int g1 = RND.nextInt(S5MineMap.GEM_DIAMOND), g2 = RND.nextInt(S5MineMap.GEM_DIAMOND);
+                if (RND.nextInt(100) < MINE_TW_SEA_PCT) { // [2026-11-16] "탑 내 보상도 바다 보석이 나오게" -- 보물방은 바다 보석이 하나 더
+                    int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length);
+                    dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[sg], 1);
+                    fxDrops.add(mineDrop(S5MineMap.SEA_GEM_GRADE_BASE + sg, S5MineMap.SEA_GEM_NAMES[sg], 1));
+                    msg.append("🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]).append(" · ");
+                }
                 dao.addUserOre(userName, S5MineMap.GEM_CODES[g1], 1);
                 dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
                 fxDrops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + g1, S5MineMap.GEM_NAMES[g1], 1));
