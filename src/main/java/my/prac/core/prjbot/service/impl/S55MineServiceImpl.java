@@ -797,9 +797,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long nearAt;      // [2026-10-30] 보스 MINE_BOSS_ALONE_RANGE칸 안에 누가 있던 마지막 시각
         int strikeN;      // [2026-11-15] 탑 수문장 -- 때린 횟수(강타 차례)
         long fxAt;        // [2026-11-16] 쓰러진 것을 위치 알림이 처음 본 시각(전리품 연출을 한 번만, -1 = 연출 없음)
+        long[] pat;       // [2026-11-16] 탑 수문장 패턴마다 다음에 쓸 시각
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
-        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; fxAt = 0; }
+        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; fxAt = 0; pat = null; }
     }
 
     static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -824,6 +825,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (userName == null) return;
         String tag = "@" + userName + ":";
         MINE_MOB_STATE.keySet().removeIf(k -> k.contains(tag));
+        MINE_ZONES.keySet().removeIf(k -> k.contains(tag)); // [2026-11-16] 내 장판도
     }
 
     // [2026-10-28] "99레벨 경험치 꽉 차면 왕도 12시 성당 신부에게 환생, 환생하면 체력 1.5배, 필요 경험치 3배, 레벨 1로(Lv1(환생1)), 날개 이펙트" --
@@ -2327,6 +2329,81 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (now >= st.roarNext) { st.roarNext = now + MINE_WB_ROAR_GAP_MS - stage * 5_000L; st.roarAt = now; st.roarSeq++; }
         }
     }
+    // ---- [2026-11-16] 장판 공통 -- "탑 9·19·29층 수문장 패턴 다양화(거룡처럼)", 악마 들판의 지옥불. 거룡 장판과 같은 모양(예고 -> 터짐)·같은 판정을
+    //  맵마다(1인 층은 사람마다 -- mineMobPrefix) 둔다. 장판 = {x, y, 터지는 시각, 반경, 종류, 예고 길이, 피해(최대 체력 천분율), 기절 ms}.
+    //  종류(화면 색/이름): 4 독 웅덩이 / 5 낙석 / 6 지면 강타(기절) / 7 맹독 숨결(큰 것 -- 테두리 밖으로) / 8 지옥불. 위치 알림(zones)으로 화면에 보내고, 전투 턴(mineZoneHit)에서 맞는다.
+    static final java.util.concurrent.ConcurrentHashMap<String, List<long[]>> MINE_ZONES = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ZONE_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
+    static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불" };
+    static void mineZoneAdd(S5MineMap map, int x, int y, long at, int r, int kind, long warn, int permil, long stunMs) {
+        List<long[]> l = MINE_ZONES.computeIfAbsent(mineMobPrefix(map), k -> new ArrayList<>());
+        synchronized (l) { l.removeIf(z -> at > z[2] + 4_000L); if (l.size() < 60) l.add(new long[] { x, y, at, r, kind, warn, permil, stunMs }); }
+    }
+    /** 화면에 보낼 장판 {x, y, 터지는 시각, 반경, 종류, 예고 길이}(없으면 null). */
+    static List<long[]> mineZoneList(S5MineMap map, long now) {
+        List<long[]> l = MINE_ZONES.get(mineMobPrefix(map));
+        if (l == null) return null;
+        List<long[]> o = new ArrayList<>();
+        synchronized (l) { for (long[] z : l) if (now <= z[2] + 600L) o.add(new long[] { z[0], z[1], z[2], z[3], z[4], z[5] }); }
+        return o.isEmpty() ? null : o;
+    }
+    /** 전투 턴에서 -- 방금 터진 장판 안에 서 있으면 종류마다 한 번씩 최대 체력 %(기절이 달린 것은 기절도). 받은 피해를 돌려준다. */
+    int mineZoneHit(String userName, S5MineMap map, int x, int y, int lv, int rb, long now, List<HashMap<String, Object>> hits, HashMap<String, Object> out) {
+        List<long[]> l = MINE_ZONES.get(mineMobPrefix(map));
+        if (l == null) return 0;
+        Long seenAt = MINE_ZONE_SEEN.put(userName, now);
+        long seen = seenAt == null ? now - 1_500L : Math.max(seenAt, now - 5_000L);
+        long[] best = new long[MINE_ZONE_NAME.length], stun = new long[MINE_ZONE_NAME.length];
+        synchronized (l) {
+            for (long[] z : l) {
+                if (z[2] <= seen || z[2] > now) continue;
+                int k = (int) Math.max(0, Math.min(MINE_ZONE_NAME.length - 1, z[4]));
+                if (Math.max(Math.abs(z[0] - x), Math.abs(z[1] - y)) <= z[3]) { best[k] = Math.max(best[k], z[6]); stun[k] = Math.max(stun[k], z[7]); }
+            }
+        }
+        int sum = 0;
+        S5MineMap.Mob bm = mineBossOf(map);
+        for (int k = 0; k < best.length; k++) {
+            if (best[k] <= 0) continue;
+            int d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * best[k] / 1000.0));
+            sum += d;
+            HashMap<String, Object> h = new HashMap<>();
+            h.put("mobId", bm == null ? -1 : bm.id);
+            h.put("dmg", d);
+            h.put("zone", true);
+            h.put("zk", k);
+            hits.add(h);
+            if (stun[k] > 0) { MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + stun[k])); out.put("stunUntil", MINE_STUN.get(userName)); }
+        }
+        return sum;
+    }
+    // 탑 수문장 패턴(층마다 다른 조합, 체력이 절반 아래면 잦아진다): {종류, 첫 시각, 간격, 예고, 반경, 피해 천분율, 기절 ms, 모양(0 내 발밑 / 1 곳곳 n개 + 내 발밑 / 2 수문장 둘레)}
+    static final long[][][] MINE_TW_PAT = {
+        { { 4, 6_000, 8_000, 2_200, 1, 120, 0, 0 }, { 6, 13_000, 15_000, 2_000, 3, 170, 1_200, 2 } }, // 9층 라텔 -- 독 웅덩이, 지면 강타
+        { { 5, 5_000, 10_000, 2_200, 1, 130, 0, 1 }, { 6, 12_000, 14_000, 2_000, 4, 180, 1_500, 2 }, { 4, 9_000, 9_000, 2_000, 1, 120, 0, 0 } }, // 19층 갱도왕 -- 낙석, 지면 강타, 발밑
+        { { 4, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 5, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 7, 25_000, 32_000, 4_500, 8, 350, 0, 2 } } // 29층 히드라 -- 독 웅덩이, 독비, 꼬리(지면 강타), 맹독 숨결
+    };
+    /** 수문장이 나와 싸우는 동안(전투 턴마다) -- 때가 된 패턴을 예고한다. */
+    static volatile boolean MINE_TW_PAT_ON = true; // 시험용(패턴 없이 수치만 볼 때 끈다)
+    void mineTwPattern(S5MineMap map, MobState s, int floor, int x, int y, int bmax, long now) {
+        if (!MINE_TW_PAT_ON) return;
+        long[][] ps = MINE_TW_PAT[Math.max(0, Math.min(2, floor / 10))];
+        if (s.pat == null || s.pat.length != ps.length) { s.pat = new long[ps.length]; for (int i = 0; i < ps.length; i++) s.pat[i] = now + ps[i][1]; }
+        boolean rage = s.hp * 2 < bmax;
+        int cx = s.fx, cy = s.fy; // 수문장 2x2의 왼쪽 위 -- 둘레 장판은 여기서 반경 +1
+        for (int i = 0; i < ps.length; i++) {
+            if (now < s.pat[i]) continue;
+            long[] p = ps[i];
+            s.pat[i] = now + (rage ? p[2] * 7 / 10 : p[2]);
+            long at = now + p[3];
+            int kind = (int) p[0], r = (int) p[4], pm = (int) p[5];
+            if (p[7] == 0) mineZoneAdd(map, x, y, at, r, kind, p[3], pm, p[6]);
+            else if (p[7] == 1) {
+                mineZoneAdd(map, x, y, at, r, kind, p[3], pm, p[6]);
+                for (int k = 0; k < (rage ? 8 : 5); k++) mineZoneAdd(map, Math.max(3, Math.min(map.w - 4, x - 6 + RND.nextInt(13))), Math.max(3, Math.min(map.h - 4, y - 6 + RND.nextInt(13))), at, r, kind, p[3], pm, p[6]);
+            } else mineZoneAdd(map, cx, cy, at, r, kind, p[3], pm, p[6]);
+        }
+    }
     /** 전투 턴에서 -- 방금 터진 장판 안에 서 있으면 종류마다 한 번씩 최대 체력 %(꼬리 휩쓸기는 기절도), 새 포효면 기절. 받은 피해를 돌려준다. */
     int mineWbPattern(String userName, int x, int y, int lv, int rb, long now, List<HashMap<String, Object>> hits, HashMap<String, Object> out) {
         WbState st = MINE_WB;
@@ -2887,6 +2964,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 }
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
+                if (type.boss && !stunned && S5MineMap.towerFloor(map.id) > 0 && S5MineMap.towerBossFloor(S5MineMap.towerFloor(map.id))) mineTwPattern(map, s, S5MineMap.towerFloor(map.id), x, y, S5MineMobs.hp(type, map.mobs().get(id).rank), now); // [2026-11-16] 탑 수문장 패턴
                 boolean thunderBoss = map.mobs().get(id).type == S5MineMobs.THUNDER_BOSS_TYPE;
                 if (thunderBoss && !stunned && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
                     int tsd = mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
@@ -2975,6 +3053,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.CASTLE.equals(map.id) && mineWbOn(now) && hp - dmgSum > 0) { // [2026-11-15] 거룡 화염 장판 / 포효
             int wbz = mineWbPattern(userName, x, y, lv, rb, now, hits, out);
             if (wbz > 0) { dmgSum += wbz; killerName = MINE_WB_NAME; }
+        }
+        if (hp - dmgSum > 0 && !MINE_ZONES.isEmpty()) { // [2026-11-16] 탑 수문장 / 악마의 장판
+            int zd = mineZoneHit(userName, map, x, y, lv, rb, now, hits, out);
+            if (zd > 0) { dmgSum += zd; if (killerName == null) killerName = "장판"; }
         }
         long[] mercR = mineMercTurn(userName, map, items, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
         long mercExp = mercR[1];
@@ -3639,6 +3721,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         if (ts[1] > 0) out.put("heavy", true);
                         twStunHit[0] = ts[2] > 0;
                     }
+                    if (s.stunUntil > now) { counter = 0; twStunHit[0] = false; } // [2026-11-16] "일섬참으로 기절한 몬스터가 반격하지 않게" -- 기절해 있는 동안은 때려도 반격(강타/기절 포함) 없음
                     if (s.target == null || !mineEngaged(s.target, now)) s.target = userName; // [2026-10-25] 이 유저를 쫓는다
                     mineEngage(userName, map, mobId, now, now); // 반격도 한 턴
                     if (mob.type == S5MineMobs.RAID_BOSS_TYPE) mineRaidAwakeUntil = now + MINE_RAID_AWAKE_MS; // [2026-10-28] 대주교가 깨어난다(마법)
@@ -6217,7 +6300,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_ULT_GAP_MS = 120_000L, MINE_ULT_TICK_MS = 1_000L, MINE_ULT_STUN_MS = 2_000L, MINE_ULT_STUN_LV_MS = 1_000L; // [2026-11-07] "일섬참 맞은 대상은 기절 5초" -> [2026-11-08] "2초(레벨당 1초씩 증가)" -- 1레벨 2초 ~ 5레벨 6초
     static String mineUltKey(int k) { return "ULT_L" + k; }
     static int mineUltLv(Map<String, Integer> items, int k) { return Math.max(0, Math.min(MINE_ULT_MAX, items.getOrDefault(mineUltKey(k), 0))); }
-    static double mineUltPct(int k, int lv) { return k == 0 ? 1.25 + 0.20 * (lv - 1) : 7.0 + 1.5 * (lv - 1); } // [2026-11-08] "일섬참 배율 100% 줄이자" -- 800% -> 700%(+레벨당 150%) // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
+    static double mineUltPct(int k, int lv) { return k == 0 ? 1.00 + 0.16 * (lv - 1) : 7.0 + 1.5 * (lv - 1); } // [2026-11-16] "만검진 데미지 20% 감소" -- 125%(+레벨당 20%) -> 100%(+레벨당 16%) // [2026-11-08] "일섬참 배율 100% 줄이자" -- 800% -> 700%(+레벨당 150%) // 만검진 = 한 번(1초)마다, 일섬참 = 한 방
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ULT_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 마지막으로 쓴 시각(쿨타임 공유)
     static final class UltZone { String mapId; int cx, cy, lv, n; long last; }
     static final java.util.concurrent.ConcurrentHashMap<String, UltZone> MINE_ULT_ZONE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -9173,6 +9256,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("online", online);
         out.put("mapN", mapN);
+        if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
         HashMap<String, Object> wbi = mineWbInfo(userName, now); // [2026-11-15] 월드보스 예고/진행
         if (wbi != null) out.put("wb", wbi);
         else if (now - mineWbGoneAt < 6_000L && mineWbOk(userName)) out.put("wbGone", mineWbGoneAt); // [2026-11-16] 거룡이 날아감(퇴장 연출)

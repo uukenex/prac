@@ -2159,7 +2159,7 @@ var TowerMine = (function () {
     wbBar.style.display = '';
   }
   // [2026-11-16] "월드보스 생성 시 인게임 알림" -- 어느 맵에 있든 화면 가운데 위에 큰 알림(예고 때 한 번, 나타난 순간 한 번 + [참여하기]). 7초 뒤 사라지고 누르면 닫힌다.
-  var wbAlertEl = null, wbAlertT = 0, wbPreSeen = 0, wbOnSeen = 0;
+  var wbAlertEl = null, wbAlertT = 0, wbPreSeen = 0, wbOnSeen = 0, mapZones = [];
   function wbAlert(title, sub, join) {
     if (!el.ov) return;
     if (!wbAlertEl) { wbAlertEl = document.createElement('div'); wbAlertEl.className = 'mine-wb-alert'; wbAlertEl.onclick = function (e) { if (!e.target || e.target.tagName !== 'BUTTON') wbAlertEl.style.display = 'none'; }; el.ov.appendChild(wbAlertEl); }
@@ -3694,7 +3694,7 @@ var TowerMine = (function () {
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -4501,7 +4501,7 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
-      wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
+      mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
       if (d.bossFx && d.bossFx.at !== bossFxSeen) { bossFxSeen = d.bossFx.at; bossLoot(d.bossFx); } // [2026-11-16] 보스가 막 쓰러졌다 -- 전리품이 쏟아진다
@@ -5634,19 +5634,20 @@ var TowerMine = (function () {
       ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
     }
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
-    if (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle')) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60]];
-      for (var wzi = 0; wzi < wbInfo.zones.length; wzi++) {
-        var wz = wbInfo.zones[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
+    var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
+    if (wzAll.length) {
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20]];
+      for (var wzi = 0; wzi < wzAll.length; wzi++) {
+        var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
         if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
         if (wleft > 0) {
-          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = wzk === 3;
+          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = wzk === 3 || wzk === 7;
           ctx.fillStyle = 'rgba(' + wc[0] + ',' + wc[1] + ',' + wc[2] + ',' + (big3 ? 0.08 + 0.14 * wp : 0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
           ctx.fillStyle = 'rgba(' + wc[0] + ',' + Math.min(255, wc[1] + 60) + ',' + wc[2] + ',' + (big3 ? 0.16 : 0.36) + ')'; ctx.fillRect(wzx + (wzs - wg) / 2, wzy + (wzs - wg) / 2, wg, wg);
           ctx.strokeStyle = 'rgba(255,220,120,' + (0.55 + 0.4 * Math.sin(now / (big3 ? 50 : 80))) + ')'; ctx.lineWidth = (big3 ? 4 : 2) * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
-          if (big3) drawTextImg(textImg('💥 멸망의 숨결 ' + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
-        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((wzk === 3 ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
+          if (big3) drawTextImg(textImg((wzk === 7 ? '☠️ 맹독 숨결 ' : '💥 멸망의 숨결 ') + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
+        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((wzk === 3 || wzk === 7 ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
       }
     }
     // [2026-10-24] 탐지 곡괭이 -- 주변의 안 캔 광석. [2026-10-28] "범위를 보여주고 물풍선으로" -- 탐지 범위 점선 테두리 + 광석 아이콘을 담은 물풍선이 둥실둥실
@@ -6340,7 +6341,7 @@ var TowerMine = (function () {
     if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
     if (s.wsHost && s.wsHost !== wsHostMem) { wsHostMem = s.wsHost; try { localStorage.setItem('tw-mine-wshost', s.wsHost); } catch (e) { } } // [2026-11-06] 다음 입장 때 소켓을 먼저
-    twDoorWas = false; twFx = null; spikePend = 0; spikeTotal = 0; spikeHitAt = {}; loot = []; lootPops = []; buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
+    mapZones = []; twDoorWas = false; twFx = null; spikePend = 0; spikeTotal = 0; spikeHitAt = {}; loot = []; lootPops = []; buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동

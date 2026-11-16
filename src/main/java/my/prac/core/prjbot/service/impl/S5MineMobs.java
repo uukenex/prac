@@ -313,15 +313,15 @@ public final class S5MineMobs {
         new Type("탑 수호병", 24, "human", "#8a8a9a").asTower().fix(650_000, 1_000).expx(5.0).showLv(85),
         new Type("돌 가고일", 24, "flyer", "#7a7a7a").asTower().fix(650_000, 1_000).expx(5.0).showLv(86),
         new Type("마력 인형", 24, "human", "#b07ad8").asTower().fix(650_000, 1_000).expx(5.0).showLv(87),
-        new Type("하수구의 지배자 라텔", 24, "quad", "#4a4a52").asBoss().fix(1_200_000, 900).expx(0.6).showLv(88).respawn(60_000L).el(7),
+        new Type("하수구의 지배자 라텔", 24, "quad", "#4a4a52").asBoss().fix(1_800_000, 1_000).expx(0.6).showLv(88).respawn(60_000L).el(7),
         new Type("탑 기사", 24, "human", "#a8b8c8").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(87),
         new Type("그림자 마법사", 24, "human", "#4a3a6a").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(88),
         new Type("강철 늑대", 24, "quad", "#9aa8b8").asTower().fix(700_000, 1_050).strong(1.3, 1).expx(5.0).showLv(89),
-        new Type("폐광의 검은 갱도왕", 24, "human", "#2a2a30").asBoss().fix(1_400_000, 950).expx(0.9).showLv(90).respawn(60_000L).el(1),
+        new Type("폐광의 검은 갱도왕", 24, "human", "#2a2a30").asBoss().fix(2_100_000, 1_080).expx(0.9).showLv(90).respawn(60_000L).el(1),
         new Type("타락 천사", 25, "flyer", "#f0e0a0").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(89),
         new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(90),
         new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(840_000, 1_100).strong(1.35, 1).expx(5.0).showLv(91),
-        new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(1_600_000, 1_000).expx(0.85).showLv(92).respawn(60_000L).el(3),
+        new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(2_400_000, 1_150).expx(0.85).showLv(92).respawn(60_000L).el(3),
         new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(200.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 200.0).foot(3) // 7 = EL_DARK
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
