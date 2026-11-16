@@ -1404,6 +1404,8 @@ var TowerMine = (function () {
     var c = cellAt(x, y);
     if (st && st.look && st.look.shoesCode === 'SHOE_GM') return !!map && x >= 0 && y >= 0 && x < map.w && y < map.h && PORTALS.indexOf(c) < 0 && c !== 'N'; // [2026-10-28] 바람의 신(운영자) -- 장애물/몬스터 통과, NPC/포탈 칸에선 멈춘다(말 걸기/들어가기)
     if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
+    var twd = twDecorCell(); // [2026-11-16] 탑 방 한가운데 상자/제단/샘은 돌아서 간다
+    if (twd && twd[0] === x && twd[1] === y) return false;
     if (antGate(x)) return false; // [2026-11-04] 사막 서쪽 방벽 문 -- Lv.41 미만은 서쪽으로 못 지나간다(바람에도)
     return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배
   }
@@ -1689,6 +1691,7 @@ var TowerMine = (function () {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
       antFallCheck(); // [2026-10-28] 사막 서쪽 -- 개미굴
+      if (twSpikeCell(P.x, P.y)) twSpikeStep(now); // [2026-11-16] 탑 함정방 가시
     }
     if (!P.moving && !busy && now - P.digT0 > 380) {
       var d = heldDir() || tapDir;
@@ -1800,6 +1803,182 @@ var TowerMine = (function () {
   // [2026-11-15] 탑(시즌5식) -- 보드 층(map.board)은 걸어서 못 움직이고 🎲로만 칸을 옮긴다. 위쪽 띠: 층/칸 + [🎲] [🪜 층 이동] [나가기].
   var twBar = null, twBusy = false, twInfo = null, TW_ICON = { E: '🏁', C: '⚔️', T: '📦', P: '🗼', X: '⚠️', L: '🍀', U: '🔼', D: '🔽' };
   function twIndex() { var b = map && map.board; if (!b) return -1; for (var i = 0; i < b.length; i++) if (b[i][0] === P.x && b[i][1] === P.y) return i; return -1; }
+  // ---- [2026-11-16] 전리품 연출 + 탑 방 구분 ----
+  //  "보물방, 몬스터방, 함정방 구분이 잘 안 된다 -- 함정방엔 바닥에 가시가 있어서 체력을 잃으면서 간다든가, 보물방은 상자와 아이템이 우수수 떨어지는 이펙트.
+  //   보스 처치 시에도 우수수 떨어지게(탑 보스 포함 모든 보스, 여러 사람이 같이 처치하면 그만큼 더 많이 떨어져서 해당되는 플레이어에게 흡수되는 이펙트)".
+  //  전리품(loot): 한 자리에서 솟구쳐 둘레에 떨어지고(LOOT_FLY) 잠깐 바닥에 놓였다가(rest) 받는 사람에게 빨려 들어간다(LOOT_IN). 받는 사람 = 나({me}) 또는 다른 사람({id} -- 위치 알림 번호).
+  //  탑 방: 보물방 = 한가운데 상자(들어서면 열리며 받은 것들이 쏟아진다), 증표방 = 증표 제단, 행운의 샘 = 샘, 함정방 = 가시 띠 셋(밟을 때마다 체력 -- 서버 mineTwSpikeHit).
+  var loot = [], lootPops = [], lootImgs = {}, LOOT_FLY = 620, LOOT_IN = 420, LOOT_GRADES = [21, 22, 23, 24, 25, 26, 27, 28, 29, 6, 20];
+  function lootImg(g) { var im = lootImgs[g]; if (!im) { im = lootImgs[g] = new Image(); im.src = oreIcon(g); } return im; }
+  function lootBurst(sx, sy, grades, n, tgs, spread, delay) {
+    var t0 = performance.now() + (delay || 0), gap = n > 40 ? 10 : 26;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, r = (0.55 + Math.random() * 0.95) * (spread || 2);
+      loot.push({ sx: sx, sy: sy, tx: sx + Math.cos(a) * r, ty: sy + Math.sin(a) * r * 0.72, g: grades[i % grades.length], tg: tgs[i % tgs.length], t0: t0 + i * gap, up: 1.5 + Math.random() * 1.7, rest: 480 + Math.random() * 360 + (n - i) * gap });
+    }
+    if (loot.length > 420) loot.splice(0, loot.length - 420);
+  }
+  function lootTarget(tg, now) {
+    if (!tg || tg.none) return null;
+    if (tg.me) { var c = curPos(now); return { x: c.x, y: c.y }; }
+    var o = others[tg.id];
+    if (!o) return null;
+    var op = otherPos(o, now);
+    return { x: op.x, y: op.y };
+  }
+  function lootDraw(now, TS, camX, camY) {
+    if (!loot.length && !lootPops.length) return;
+    var keep = [];
+    for (var i = 0; i < loot.length; i++) {
+      var p = loot[i], e = now - p.t0;
+      if (e < 0) { keep.push(p); continue; }
+      var x = p.tx, y = p.ty, z = 0, sc = 1, al = 1, resting = false;
+      if (e < LOOT_FLY) { var q = e / LOOT_FLY; x = p.sx + (p.tx - p.sx) * q; y = p.sy + (p.ty - p.sy) * q; z = Math.sin(q * Math.PI) * p.up; sc = 0.6 + 0.4 * q; }
+      else if (e < LOOT_FLY + p.rest) { var b = e - LOOT_FLY; z = b < 220 ? Math.sin(b / 220 * Math.PI) * 0.3 : 0; resting = true; } // 바닥에 닿아 한 번 튄다
+      else {
+        var q2 = (e - LOOT_FLY - p.rest) / LOOT_IN, tp = lootTarget(p.tg, now);
+        if (q2 >= 1) { if (tp) lootPops.push({ x: tp.x, y: tp.y, t0: now, g: p.g }); continue; }
+        if (!tp) al = 1 - q2;
+        else { var k = q2 * q2; x = p.tx + (tp.x - p.tx) * k; y = p.ty + (tp.y - 0.35 - p.ty) * k; z = Math.sin(q2 * Math.PI) * 0.45; sc = 1 - 0.4 * q2; }
+      }
+      var cx = x * TS - camX + TS / 2, cy = y * TS - camY + TS / 2, s = TS * 0.62 * sc;
+      if (cx > -TS && cy > -TS * 3 && cx < el.cv.width + TS && cy < el.cv.height + TS * 3) {
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.28 * al) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy + TS * 0.26, s * 0.34, s * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = al;
+        if (p.g === 'heal') { fxDot(cx, cy - z * TS, s * 0.3, '#7dffb0', al); fxDot(cx, cy - z * TS, s * 0.14, '#ffffff', al); }
+        else ctx.drawImage(lootImg(p.g), Math.round(cx - s / 2), Math.round(cy - s / 2 - z * TS), s, s);
+        if (resting && (i * 7 + Math.floor(now / 140)) % 11 === 0) fxDot(cx + s * 0.25, cy - s * 0.3, 1.4 * scale, '#ffffff', 0.9); // 놓여 있는 동안 반짝
+        ctx.globalAlpha = 1;
+      }
+      keep.push(p);
+    }
+    loot = keep;
+    lootPops = lootPops.filter(function (o) { return now - o.t0 < 260; });
+    lootPops.forEach(function (o) { // 빨려 들어간 자리 -- 작은 빛 고리
+      var q = (now - o.t0) / 260, cx = o.x * TS - camX + TS / 2, cy = o.y * TS - camY + TS * 0.3;
+      for (var i = 0; i < 5; i++) { var a = i * 1.2566 + o.t0 % 6; fxDot(cx + Math.cos(a) * TS * 0.45 * q, cy + Math.sin(a) * TS * 0.3 * q, (1 - q) * 1.8 * scale, o.g === 'heal' ? '#7dffb0' : o.g === 'hurt' ? '#ff6a5a' : '#ffe9a8', 1 - q); }
+      ctx.globalAlpha = 1;
+    });
+  }
+  /** 보스가 막 쓰러졌다(위치 알림 bossFx: {at, x, y, f 차지하는 칸, n 함께 싸운 사람 수, me 내가 그중 하나, us 화면에 있는 다른 사람들}) -- 사람이 많을수록 더 많이. */
+  var bossFxSeen = 0;
+  function bossLoot(f) {
+    var tgs = [];
+    if (f.me) tgs.push({ me: 1 });
+    (f.us || []).forEach(function (id) { tgs.push({ id: id }); });
+    if (!tgs.length) tgs.push({ none: 1 });
+    var fo = f.f || 2, n = Math.min(130, 16 + 14 * Math.max(1, f.n | 0));
+    lootBurst(f.x + (fo - 1) / 2, f.y + (fo - 1) / 2, LOOT_GRADES, n, tgs, 1.5 + fo * 0.75, 0);
+    flashT0 = performance.now();
+  }
+  // 탑 방 -- 한가운데 놓이는 것(보물방 T 상자 / 증표방 P 제단 / 행운의 샘 L)과 함정방(X) 가시
+  var twFx = null, twArt = null, spikePend = 0, spikeTotal = 0, spikeTimer = 0, spikeHitAt = {}, TW_SPIKE_MAX = 14;
+  function twRoomType() { var r = st && st.twRun; return map && map.tower && r && r.total && map.w === 23 ? r.type : ''; }
+  function twDecorCell() { return 'TPL'.indexOf(twRoomType() || '-') >= 0 ? [Math.floor(map.w / 2), Math.floor(map.h / 2)] : null; }
+  function twSpikeCell(x, y) { return twRoomType() === 'X' && y >= 2 && y <= map.h - 3 && (x === 6 || x === 7 || x === 10 || x === 11 || x === 14 || x === 15) && WALK.indexOf(cellAt(x, y)) >= 0; }
+  function twArtBuild() {
+    var A = twArt = {}, art = function (fn) { var c = mk(T, T); fn(c.getContext('2d')); return c; };
+    var chest = function (open) {
+      return outline(art(function (g) {
+        px(g, '#6a3f1e', 2, 7, 12, 7); px(g, '#8a5a32', 3, 8, 10, 5); px(g, '#5a3418', 3, 12, 10, 1);
+        px(g, '#d9b44a', 2, 7, 12, 1); px(g, '#d9b44a', 2, 13, 12, 1); px(g, '#d9b44a', 7, 7, 2, 7);
+        if (open) { px(g, '#a8743c', 2, 1, 12, 3); px(g, '#c89250', 3, 1, 10, 1); px(g, '#d9b44a', 7, 1, 2, 3); px(g, '#3a2210', 3, 4, 10, 3); px(g, '#ffd24a', 4, 5, 8, 2); px(g, '#fff6c0', 6, 4, 4, 2); }
+        else { px(g, '#a8743c', 2, 3, 12, 4); px(g, '#c89250', 3, 3, 10, 1); px(g, '#d9b44a', 7, 3, 2, 4); px(g, '#f6e3a0', 7, 8, 2, 2); px(g, '#7a5a1a', 7, 9, 2, 1); }
+      }), '#140d0a');
+    };
+    A.chest = [chest(false), chest(true)];
+    A.altar = outline(art(function (g) { // 증표 제단 -- 돌 받침 위에 떠 있는 푸른 증표
+      px(g, '#5a6080', 3, 12, 10, 2); px(g, '#8088a8', 4, 10, 8, 2); px(g, '#a8b0cc', 4, 10, 8, 1); px(g, '#d9b44a', 3, 12, 10, 1);
+      px(g, '#2c6fd0', 6, 3, 4, 6); px(g, '#7ad8ff', 7, 2, 2, 7); px(g, '#e8fbff', 7, 3, 1, 4); px(g, '#d9b44a', 6, 8, 4, 1);
+    }), '#140d0a');
+    A.spring = [0, 1].map(function (f) { // 행운의 샘 -- 돌 수반 + 솟는 물
+      return outline(art(function (g) {
+        px(g, '#5a6080', 2, 8, 12, 6); px(g, '#8088a8', 2, 7, 12, 2); px(g, '#a8b0cc', 3, 7, 10, 1);
+        px(g, '#2a8ad8', 3, 8, 10, 4); px(g, '#7ad8ff', 4, 9, 8, 2); px(g, '#e8fbff', f ? 5 : 9, 9, 2, 1);
+        px(g, '#9fe8ff', 7, f ? 2 : 3, 2, 6); px(g, '#ffffff', 7, f ? 1 : 2, 2, 2); px(g, '#c8f2ff', f ? 5 : 10, 5, 1, 2); px(g, '#c8f2ff', f ? 10 : 5, 4, 1, 2);
+      }), '#140d0a');
+    });
+    A.spike = [0, 1].map(function (hit) { // 가시 -- 0 = 솟아 있는 가시 넷, 1 = 밟은 순간(더 길고 끝이 붉다)
+      return art(function (g) {
+        px(g, 'rgba(120,16,28,.22)', 0, 0, T, T);
+        [[3, 4], [11, 4], [3, 12], [11, 12]].forEach(function (s) {
+          var h = hit ? 6 : 4;
+          px(g, '#12162a', s[0] - 2, s[1], 5, 2); // 구멍
+          px(g, '#5a5f6c', s[0] - 1, s[1] - 2, 3, 3); px(g, '#8a8f9c', s[0] - 1, s[1] - 2, 2, 3);
+          px(g, '#c8ccd6', s[0], s[1] - h + 1, 1, h - 2); px(g, '#8a8f9c', s[0] + 1, s[1] - h + 2, 1, h - 3);
+          px(g, hit ? '#ff5a4a' : '#f4f6fa', s[0], s[1] - h, 1, 1 + hit);
+        });
+      });
+    });
+  }
+  /** 방에 막 들어섰다(d = 문을 지난 응답) -- 받은 것(twDrops)이 있으면 조금 뒤 한가운데에서 쏟아져 나온다. */
+  function twRoomEnter(d) {
+    twFx = null; spikePend = 0; spikeTotal = 0; spikeHitAt = {};
+    var ty = twRoomType();
+    if (!ty || !twDecorCell()) return;
+    if (d && d.twDrops && d.twDrops.length) twFx = { t0: performance.now() + 650, drops: d.twDrops, type: ty };
+    else if (d && ty === 'L') twFx = { t0: performance.now() + 650, drops: [], type: ty };
+  }
+  /** 바닥 층(몬스터/캐릭터보다 먼저): 가시 띠, 한가운데 상자/제단/샘. */
+  function twRoomDraw(now, TS, camX, camY) {
+    var ty = twRoomType();
+    if (!ty) return;
+    if (!twArt) twArtBuild();
+    if (ty === 'X') {
+      for (var y = 2; y <= map.h - 3; y++) for (var x = 6; x <= 15; x++) {
+        if (!twSpikeCell(x, y)) continue;
+        var ht = spikeHitAt[x + ',' + y], hit = ht && now - ht < 320;
+        ctx.drawImage(twArt.spike[hit ? 1 : 0], Math.round(x * TS - camX), Math.round(y * TS - camY - (hit ? 0 : Math.max(0, Math.sin(now / 520 + x * 1.7)) * scale)), TS, TS);
+        if (!hit && (x * 5 + y * 3 + Math.floor(now / 170)) % 23 === 0) fxDot(x * TS - camX + (x % 2 ? 3.5 : 11.5) * scale, y * TS - camY + 1.5 * scale, 1.1 * scale, '#ffffff', 0.9); // 가시 끝 반짝
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    var dc = twDecorCell();
+    if (!dc) return;
+    var dx = Math.round(dc[0] * TS - camX), dy = Math.round(dc[1] * TS - camY), isOpen = !twFx || now >= twFx.t0, gl = 0.5 + 0.5 * Math.sin(now / 300);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(dx + TS / 2, dy + TS * 0.9, TS * 0.46, TS * 0.14, 0, 0, Math.PI * 2); ctx.fill();
+    if (ty === 'T') {
+      if (isOpen) { ctx.fillStyle = 'rgba(255,214,90,' + (0.16 + 0.1 * gl) + ')'; ctx.beginPath(); ctx.arc(dx + TS / 2, dy + TS * 0.35, TS * (0.75 + 0.1 * gl), 0, Math.PI * 2); ctx.fill(); }
+      ctx.drawImage(twArt.chest[isOpen ? 1 : 0], dx - Math.round(TS * 0.15), dy - Math.round(TS * 0.3), Math.round(TS * 1.3), Math.round(TS * 1.3));
+    } else if (ty === 'P') {
+      ctx.fillStyle = 'rgba(122,216,255,' + (0.14 + 0.12 * gl) + ')'; ctx.beginPath(); ctx.arc(dx + TS / 2, dy + TS * 0.3, TS * (0.7 + 0.12 * gl), 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(twArt.altar, dx - Math.round(TS * 0.15), dy - Math.round(TS * 0.3 + gl * 1.5 * scale), Math.round(TS * 1.3), Math.round(TS * 1.3));
+    } else {
+      ctx.fillStyle = 'rgba(125,255,176,' + (0.12 + 0.1 * gl) + ')'; ctx.beginPath(); ctx.arc(dx + TS / 2, dy + TS * 0.45, TS * (0.85 + 0.1 * gl), 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(twArt.spring[Math.floor(now / 260) % 2], dx - Math.round(TS * 0.15), dy - Math.round(TS * 0.3), Math.round(TS * 1.3), Math.round(TS * 1.3));
+      for (var i = 0; i < 4; i++) { var sq = ((now / 1300 + i * 0.25) % 1); fxDot(dx + TS / 2 + Math.sin(i * 2.3 + now / 700) * TS * 0.5, dy + TS * 0.5 - sq * TS * 1.1, 1.3 * scale, '#b8ffd8', 1 - sq); }
+      ctx.globalAlpha = 1;
+    }
+    if (twFx && !twFx.done && now >= twFx.t0) { // 열리는 순간 -- 받은 것들이 쏟아져 나와 나에게
+      twFx.done = true;
+      var gs = [];
+      twFx.drops.forEach(function (w) { for (var k = 0; k < Math.max(1, Math.min(4, w.qty | 0)); k++) gs.push(w.grade); });
+      if (ty === 'L') { lootBurst(dc[0], dc[1], ['heal'].concat(gs), 10, [{ me: 1 }], 1.5, 0); floats.push({ x: dc[0], y: dc[1] - 1, text: '🍀 체력이 가득 찼어요', color: '#7dffb0', big: true, t0: now }); }
+      else if (gs.length) {
+        flashT0 = now;
+        lootBurst(dc[0], dc[1], gs, ty === 'T' ? Math.max(14, gs.length * 3) : Math.max(6, gs.length * 2), [{ me: 1 }], ty === 'T' ? 2.2 : 1.5, 0);
+        twFx.drops.forEach(function (w, i) { var gi = lootImg(w.grade); floats.push({ x: dc[0], y: dc[1] - 1 - i * 0.55, text: '+' + w.qty + ' ' + w.name, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: gi, t0: now + LOOT_FLY + 1100 + i * 160 }); });
+      }
+    }
+  }
+  /** 함정방 가시를 밟았다 -- 그 칸 가시가 솟고 체력이 깎인다(밟은 수를 모아 서버에 알린다). */
+  function twSpikeStep(now) {
+    if (spikeTotal >= TW_SPIKE_MAX) return;
+    spikeTotal++; spikePend++;
+    spikeHitAt[P.x + ',' + P.y] = now;
+    var c = st && st.combat, dmg = c && c.hpMax ? Math.max(1, Math.round(c.hpMax * 0.025)) : 0;
+    floats.push({ x: P.x, y: P.y - 0.5, text: dmg ? '-' + dmg.toLocaleString() : '가시!', color: '#ff6a5a', t0: now });
+    for (var i = 0; i < 4; i++) lootPops.push({ x: P.x + (i % 2 ? 0.2 : -0.2), y: P.y + 0.3, t0: now + i * 30, g: 'hurt' });
+    if (!spikeTimer) spikeTimer = setTimeout(twSpikeFlush, 420);
+  }
+  function twSpikeFlush() {
+    spikeTimer = 0;
+    var n = spikePend;
+    spikePend = 0;
+    if (!n || !opened) return;
+    api('/api/tower-mine-tw?action=spike&n=' + n).then(function (d) { if (d && d.combat) { setCombat(d.combat); renderHp(); } if (spikePend && !spikeTimer) spikeTimer = setTimeout(twSpikeFlush, 420); }).catch(function () { });
+  }
   // [2026-11-16] "몬스터를 잡지 않으면 문이 아예 막히게(지금은 화면이 어두워졌다가 다시 됨)" -- 전투방(st.twRun.type C)에서 방을 지키는 몬스터(st.twRun.mob)가
   //  살아 있는 동안 오른쪽 문은 쇠창살로 닫혀 있고(R.doorShut) 밟아도 서버에 묻지 않는다(화면이 어두워지지 않는다). 쓰러뜨리면 그 자리에서 열린다.
   var twDoorWas = false;
@@ -2965,7 +3144,7 @@ var TowerMine = (function () {
   function guideHtml(n) {
     var admin = !!(st && st.adminMaps);
     // [2026-10-26] 설산 마을, [2026-10-27] 왕도는 한 번 걸어서 가 본 뒤에만
-    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && (d.id === 'city' ? st.visitedCity : d.id === 'archi' ? st.visitedArchi : st.visitedSnowtown))); });
+    var dests = (map.guideTo || []).filter(function (d) { return (!d.dev || admin) && (!d.needVisit || (st && (d.id === 'city' ? st.visitedCity : d.id === 'archi' ? st.visitedArchi : d.id === 'towercity' ? st.visitedTcity : st.visitedSnowtown))); });
     // [2026-10-25] 마을(평원 마을/왕도)끼리만 -- 왕도 길이 아직 안 열린 유저에겐 갈 곳이 없다고 안내
     if (!dests.length) return npcHead('🧭 ' + (n ? n.name : '이동 안내원'), false)
         + talkBlock(n, '지금은 모셔다 드릴 다른 마을이 없어요. 새 마을로 가는 길이 열리면 그때 꼭 찾아 주세요!');
@@ -4325,6 +4504,7 @@ var TowerMine = (function () {
       wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
+      if (d.bossFx && d.bossFx.at !== bossFxSeen) { bossFxSeen = d.bossFx.at; bossLoot(d.bossFx); } // [2026-11-16] 보스가 막 쓰러졌다 -- 전리품이 쏟아진다
       bossNpc = d.bossCall ? { m: mid, x: d.bossCall.x, y: d.bossCall.y, at: d.bossCall.at || (bossNpc && bossNpc.m === mid && bossNpc.at > nowSrv() ? bossNpc.at : 0) } : null; // [2026-11-13] 보스 소환사(at = 카운트가 끝나 보스가 나오는 시각)
       if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
       var now = performance.now(), seen = {};
@@ -5352,7 +5532,7 @@ var TowerMine = (function () {
     busy = true;
     fadeOutThen(function () { return api(path); }).then(function (d) {
       if (d.ok && d.state) {
-        return enterState(d.state).then(function () { var twr = map.tower && st.twRun && st.twRun.total ? st.twRun : null; fadeIn(twr && TW_ROOM[twr.type] ? TW_ROOM[twr.type] : twr && twr.step > 0 ? '🚪 빈 방' : '🗺️ ' + map.name); /* [2026-11-16] 탑 방은 무슨 방인지 크게 */ msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : (d.message || ''), 2600); });
+        return enterState(d.state).then(function () { twRoomEnter(d); var twr = map.tower && st.twRun && st.twRun.total ? st.twRun : null; fadeIn(twr && TW_ROOM[twr.type] ? TW_ROOM[twr.type] : twr && twr.step > 0 ? '🚪 빈 방' : '🗺️ ' + map.name); /* [2026-11-16] 탑 방은 무슨 방인지 크게 */ msg(map.wind ? '🌪️ 모래바람이 불어요! 가만히 있어도 옆으로 밀려나요.' : (d.message || ''), 2600); });
       }
       busy = false;
       if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
@@ -5487,6 +5667,7 @@ var TowerMine = (function () {
         ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(cx - br * 0.4, cy - br * 0.45, br * 0.18, br * 0.1, -0.6, 0, Math.PI * 2); ctx.fill(); // 풍선 반짝임
       });
     }
+    try { twRoomDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-16] 탑 방 -- 가시 띠 / 상자 / 제단 / 샘
     if (ultFx.length) ultFloorDraw(now, TS, camX, camY); // [2026-11-07] 만검진 바닥 장판(몬스터보다 먼저)
     // [2026-10-24] 몬스터(그림 + 맞은 몬스터 체력 막대 + 가까우면 이름)
     // [2026-11-05] 마물의 숲 입구 밤 -- 몬스터 눈이 빨갛게 빛난다(밤 어둠 위에 덧그리려고 자리만 모아 둔다). EYE_PX = 16칸 그림의 눈 자리.
@@ -5553,7 +5734,7 @@ var TowerMine = (function () {
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
           tagCells[mp.cx + ',' + mp.cy] = 1;
-          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
+          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS * (ty.foot || 2) / 2 : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }
@@ -5941,6 +6122,7 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1;
     }
     try { mobDeathDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-06] 몬스터 쓰러짐
+    try { lootDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-16] 전리품(쏟아졌다가 빨려 들어간다)
     try { mercFxDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-06] 용병 공격 이펙트
     // 캔 광석 글자
     floats = floats.filter(function (f) { return now - f.t0 < 1400; });
@@ -6158,7 +6340,7 @@ var TowerMine = (function () {
     if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦
     if (s.wsHost && s.wsHost !== wsHostMem) { wsHostMem = s.wsHost; try { localStorage.setItem('tw-mine-wshost', s.wsHost); } catch (e) { } } // [2026-11-06] 다음 입장 때 소켓을 먼저
-    twDoorWas = false; buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
+    twDoorWas = false; twFx = null; spikePend = 0; spikeTotal = 0; spikeHitAt = {}; loot = []; lootPops = []; buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동

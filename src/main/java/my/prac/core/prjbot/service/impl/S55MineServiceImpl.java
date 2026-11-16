@@ -698,7 +698,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", d);
                 m.put("name", S5MineMap.townName(d)); // [2026-10-25] 마을 이름(설원 = 설원 마을)
-                if (S5MineMap.SNOWTOWN.equals(d) || S5MineMap.CITY.equals(d) || S5MineMap.ARCHI.equals(d) || S5MineMap.SNOWROAD.equals(d)) m.put("needVisit", true); // [2026-10-26] 한 번 걸어서 가 본 뒤에만(화면도 그때만), [2026-10-27] 왕도도
+                if (S5MineMap.SNOWTOWN.equals(d) || S5MineMap.CITY.equals(d) || S5MineMap.ARCHI.equals(d) || S5MineMap.SNOWROAD.equals(d) || S5MineMap.TOWER_CITY.equals(d)) m.put("needVisit", true); // [2026-10-26] 한 번 걸어서 가 본 뒤에만(화면도 그때만), [2026-10-27] 왕도도
                 gl.add(m);
             }
             out.put("guideTo", gl);
@@ -748,6 +748,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ty.dummy) m.put("dummy", true);
             if (ty.sim) { m.put("sim", ty.simIndex()); m.put("lv", ty.simOf().lvShow > 0 ? ty.simOf().lvShow : 1 + 4 * (ty.simOf().tier - 1)); } // [2026-11-07] 보스 허수아비(그림 = 그 보스)
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
+            if (ty.champ) m.put("champ", true); // [2026-11-16] 챔피언 이름표
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
             if (ty.foot() > 2) m.put("foot", ty.foot()); // [2026-11-15] 거룡 3x3(보스 기본 2x2)
@@ -795,9 +796,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long vulnUntil; int vulnPct; // [2026-11-08] 만검진 -- 받는 피해 +vulnPct%(이때까지)
         long nearAt;      // [2026-10-30] 보스 MINE_BOSS_ALONE_RANGE칸 안에 누가 있던 마지막 시각
         int strikeN;      // [2026-11-15] 탑 수문장 -- 때린 횟수(강타 차례)
+        long fxAt;        // [2026-11-16] 쓰러진 것을 위치 알림이 처음 본 시각(전리품 연출을 한 번만, -1 = 연출 없음)
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
-        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; }
+        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; fxAt = 0; }
     }
 
     static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -1184,6 +1186,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-10-28] "처치된 보스는 2시간 뒤 재생성" -- 보스 공통(동굴 3층/대주교/얼음 여왕/용암 거신)으로 쓰러진 시각 + MINE_BOSS_RESPAWN_MS까지만 없다.
     //  쓰러진 시각은 설정값(키마다 "T시각|유저")에 남겨 서버를 다시 켜도 이어진다(예전 "주기|유저" 값은 이미 지난 것으로 본다).
     static final long MINE_BOSS_RESPAWN_MS = 2 * 3_600_000L;
+    static final long MINE_CHAMP_RESPAWN_MS = 30 * 60_000L; // [2026-11-16] 동굴 3층 챔피언(고대 광석 골렘) -- 쓰러진 뒤 30분
+    static final long MINE_BOSS_FX_MS = 8_000L; // [2026-11-16] 보스 전리품 연출을 알리는 시간
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_BOSS_KILLED_AT = new java.util.concurrent.ConcurrentHashMap<>();
 
     long mineBossKilledAt(String key) {
@@ -1208,7 +1212,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     boolean mineBossDeadKey(String key) {
-        return System.currentTimeMillis() < mineBossKilledAt(key) + MINE_BOSS_RESPAWN_MS;
+        return System.currentTimeMillis() < mineBossKilledAt(key) + (MINE_BOSS_KEY.equals(key) ? MINE_CHAMP_RESPAWN_MS : MINE_BOSS_RESPAWN_MS); // [2026-11-16] 동굴 3층 챔피언은 30분
     }
 
     /** 보스 종류 -> 쓰러진 시각 설정 키(보스가 아니거나 따로 셈하는 보스면 null). */
@@ -1738,7 +1742,26 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  같은 방의 왼쪽 문 앞에 다시 선다. 전투방은 방을 지키는 몬스터를 쓰러뜨려야 오른쪽 문이 열린다. S5MineMap.towerRooms(층)번 지나면 계단방(tw{층}s):
     //  위 계단 = 다음 층(올라갈 수 있는 층 TW_MAX가 는다), 아래 계단 = 아래층, 왼쪽 문은 언제나 탑 밖(탑 입구 맵). 수문장 층은 수문장을 쓰러뜨려야 위 계단이 열린다.
     //  지금 층에서 몇 번째 방인지/무슨 방인지는 메모리(MINE_TW_RUN -- 배포하면 그 층 첫 방부터).
-    static final class TwRun { final int floor; int step, mobId = -1; char type = 'E'; TwRun(int f) { floor = f; } }
+    static final class TwRun { final int floor; int step, mobId = -1, spike; char type = 'E'; TwRun(int f) { floor = f; } }
+    // [2026-11-16] "보물방/몬스터방/함정방 구분이 잘 안 된다 -- 함정방엔 바닥에 가시가 있어서 체력을 잃으면서 간다" -- 함정방은 들어설 때 한 번에 깎지 않고,
+    //  바닥의 가시 띠(mineTwSpikeCell: 세로 두 줄씩 세 띠)를 밟을 때마다 최대 체력의 MINE_TW_SPIKE_PCT씩(1 아래로는 안 내려간다). 화면이 밟은 수를 알리고(mineTower spike),
+    //  띠는 방을 가로질러 있어 적어도 MINE_TW_SPIKE_NEED번은 밟아야 하므로 덜 알린 채 오른쪽 문을 지나면 모자란 만큼 그때 깎는다. 한 방에서 MINE_TW_SPIKE_MAX번까지만.
+    static final double MINE_TW_SPIKE_PCT = 0.025;
+    static final int MINE_TW_SPIKE_NEED = 6, MINE_TW_SPIKE_MAX = 14;
+    static boolean mineTwSpikeCell(int x, int y) { return y >= 2 && y <= S5MineMap.TROOM_H - 3 && (x == 6 || x == 7 || x == 10 || x == 11 || x == 14 || x == 15); }
+    /** 가시를 k번 밟았다 -- 체력을 깎고 out(있으면)에 combat / spikeDmg. */
+    void mineTwSpikeHit(String userName, HashMap<String, Object> row, Map<String, Integer> items, TwRun run, int k, long now, HashMap<String, Object> out) {
+        k = Math.min(k, MINE_TW_SPIKE_MAX - run.spike);
+        if (k <= 0) return;
+        int lv = mineLv(row), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int hpNow = mineHpNow(row, now, lock, rb), cut = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * MINE_TW_SPIKE_PCT)) * k, nh = Math.max(1, hpNow - cut);
+        dao.updateMineCombat(userName, lv, exp, nh, now, 0);
+        MINE_HP_VIRT.remove(userName);
+        row.put("M_HP", nh); row.put("M_HP_AT_MS", now);
+        run.spike += k;
+        if (out != null) { out.put("combat", mineCombatInfo(lv, exp, nh, now, false, lock, rb)); out.put("spikeDmg", hpNow - nh); }
+    }
     static final java.util.concurrent.ConcurrentHashMap<String, TwRun> MINE_TW_RUN = new java.util.concurrent.ConcurrentHashMap<>();
     static final int[] MINE_TW_ROOM_PCT = { 50, 12, 10, 12, 8 }; // 전투 C / 보물 T / 증표 P / 함정 X / 행운 L (나머지 8% = 빈 방 E)
     static final String MINE_TW_ROOM_KEYS = "CTPXL";
@@ -1844,10 +1867,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 return out;
             }
         }
+        if (run.type == 'X' && run.spike < MINE_TW_SPIKE_NEED) mineTwSpikeHit(userName, row, items, run, MINE_TW_SPIKE_NEED - run.spike, now, null); // [2026-11-16] 가시 띠를 안 밟고는 못 지난다
         int total = S5MineMap.towerRooms(f), lv = mineLv(row), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         run.step++;
         run.mobId = -1;
+        run.spike = 0;
+        List<HashMap<String, Object>> fxDrops = new ArrayList<>(); // [2026-11-16] 방 한가운데 상자/제단에서 쏟아져 나와 빨려 들어오는 것들(화면 연출)
         mineDisengageAll(userName);
         mineSoloReset(userName);
         StringBuilder msg = new StringBuilder();
@@ -1877,26 +1903,28 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int g1 = RND.nextInt(S5MineMap.GEM_DIAMOND), g2 = RND.nextInt(S5MineMap.GEM_DIAMOND);
                 dao.addUserOre(userName, S5MineMap.GEM_CODES[g1], 1);
                 dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
+                fxDrops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + g1, S5MineMap.GEM_NAMES[g1], 1));
+                fxDrops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + g2, S5MineMap.GEM_NAMES[g2], 1));
                 msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
-                if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); }
+                if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); fxDrops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1)); }
                 msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST));
+                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_CHEST));
             } else if (ty == 'P') {
                 msg.append("🗼 증표가 놓인 방! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE));
-            } else if (ty == 'X') {
-                int hpNow = mineHpNow(row, now, lock, rb), cutHp = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * 0.15)), nh = Math.max(1, hpNow - cutHp);
-                dao.updateMineCombat(userName, lv, exp, nh, now, 0);
-                MINE_HP_VIRT.remove(userName);
-                msg.append("⚠️ 함정방! 체력 -").append(hpNow - nh);
+                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_TILE));
+            } else if (ty == 'X') { // [2026-11-16] 들어설 때 한 번에 깎지 않고 가시를 밟을 때마다(mineTwSpikeHit)
+                msg.append("⚠️ 함정방! 바닥에 가시가 솟아 있어요. 밟을 때마다 체력이 깎여요.");
             } else if (ty == 'L') {
                 dao.updateMineCombat(userName, lv, exp, mineHpCap(lv, lock, rb), now, 0);
                 MINE_HP_VIRT.remove(userName);
                 msg.append("🍀 행운의 샘! 체력이 가득 찼어요");
-                if (RND.nextInt(100) < 30) { int c = RND.nextInt(S5MineMap.GEM_DIAMOND); dao.addUserOre(userName, S5MineMap.cutCode(c), 1); msg.append(" · ✨ ").append(S5MineMap.cutName(c)); }
+                if (RND.nextInt(100) < 30) { int c = RND.nextInt(S5MineMap.GEM_DIAMOND); dao.addUserOre(userName, S5MineMap.cutCode(c), 1); msg.append(" · ✨ ").append(S5MineMap.cutName(c)); fxDrops.add(mineDrop(S5MineMap.CUT_GRADE_BASE + c, S5MineMap.cutName(c), 1)); }
             } else { run.type = 'E'; msg.append("조용한 빈 방이에요. 숨을 고르고 나아가세요."); }
         }
         out.put("ok", true);
         out.put("message", msg.toString());
         out.put("state", mineState(userName));
+        if (!fxDrops.isEmpty()) out.put("twDrops", fxDrops);
         return out;
     }
     /** [2026-11-15] 탑 -- action=info / go&n(층 이동) / exit(탑 입구로) / ferry(나루터 <-> 탑의 도시). 방 사이 이동은 문(mineWarp -> mineTowerPortal). */
@@ -1922,8 +1950,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("bossNames", S5MineMobs.TOWER_BOSS_NAMES);
         out.put("bossDone", mineTwBossToday(items, now));
         out.put("bossDaily", MINE_TW_BOSS_DAILY);
+        if ("spike".equals(action)) { // [2026-11-16] 함정방 가시를 밟았다(n번 -- 화면이 모아서 알린다)
+            TwRun sr = MINE_TW_RUN.get(userName);
+            out.put("ok", true);
+            if (sr != null && sr.type == 'X' && floor > 0 && sr.floor == floor && n > 0) mineTwSpikeHit(userName, row, items, sr, Math.min(n, 4), now, out);
+            return out;
+        }
         boolean towerOk = mineTowerOk(userName); // [2026-11-15] 일반 공개 전엔 관리자만
-        if ("info".equals(action)) { out.put("ok", true); out.put("ferryOk", towerOk && (admin || items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) > 0)); return out; }
+        if ("info".equals(action)) { out.put("ok", true); out.put("ferryOk", towerOk); return out; } // [2026-11-16] "하피 처치 기록이 없어도 이용할 수 있게"
         if (!towerOk && !"exit".equals(action) && !("ferry".equals(action) && S5MineMap.TOWER_CITY.equals(map.id))) { // 이미 안에 있던 사람은 나갈 수만 있다
             out.put("message", S5MineMap.HARPY_FERRY.equals(map.id) ? "⛵ 뱃사공: 강 건너편은 아직 길을 닦는 중이라네. 조금만 기다려 주게. (준비 중)" : "🚧 탑은 아직 준비 중이에요.");
             return out;
@@ -1931,8 +1965,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineFrozen(userName, now) != null || mineStunned(userName, now)) { out.put("message", "지금은 움직일 수 없어요."); return out; }
         if ("ferry".equals(action)) {
             if (S5MineMap.HARPY_FERRY.equals(map.id)) {
-                if (!admin && items.getOrDefault(MINE_ITEM_HARPY_CLEAR, 0) < 1) { out.put("message", "⛵ 뱃사공: 하피 여왕이 날뛰는 동안엔 강을 못 건너네. 먼저 하피 여왕을 쓰러뜨리게!"); return out; }
-                S5MineMap c = S5MineMap.get(S5MineMap.TOWER_CITY);
+                S5MineMap c = S5MineMap.get(S5MineMap.TOWER_CITY); // [2026-11-16] 하피 처치 기록 없이도 건넌다
+                if (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1) { dao.upsertMineItem(userName, MINE_ITEM_VISIT_TCITY, 1); items.put(MINE_ITEM_VISIT_TCITY, 1); }
                 mineDisengageAll(userName);
                 dao.updateMinePos(userName, c.id, c.spawnX, c.spawnY, now);
                 out.put("message", "⛵ 강을 건너 탑의 도시 엘리시온에 도착했어요!");
@@ -2451,10 +2485,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_SEEN = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 누가 마지막으로 있던 시각
     static final String MINE_ITEM_CALL = "BCALL_";
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 소환 시각
-    static final String[] MINE_CALL_MAPS = { S5MineMap.CAVE3, S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST, S5MineMap.SHRINE_BOSS };
+    static final String[] MINE_CALL_MAPS = { /* [2026-11-16] 동굴 3층은 소환 없이 30분마다 나타나는 챔피언으로 */ S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST, S5MineMap.SHRINE_BOSS };
     /** 소환으로 나오는 보스의 맵(아니면 null). */
     static String mineCallMap(int type) {
-        return type == S5MineMobs.BOSS_TYPE ? S5MineMap.CAVE3 : type == S5MineMobs.RAID_BOSS_TYPE ? S5MineMap.RUINS : type == S5MineMobs.ICE_BOSS_TYPE ? S5MineMap.PEAK
+        return type == S5MineMobs.RAID_BOSS_TYPE ? S5MineMap.RUINS : type == S5MineMobs.ICE_BOSS_TYPE ? S5MineMap.PEAK
                 : type == S5MineMobs.LAVA_BOSS_TYPE ? S5MineMap.ISLE7 : type == S5MineMobs.PHARAOH_BOSS_TYPE ? S5MineMap.PYRAMID_UNDER : type == S5MineMobs.HARPY_BOSS_TYPE ? S5MineMap.HARPY_NEST
                 : type == S5MineMobs.SHRINE_BOSS_TYPE ? S5MineMap.SHRINE_BOSS : null;
     }
@@ -4029,6 +4063,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("respawnCity", items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1); // [2026-10-24] 쓰러지면 왕도 성당에서
         out.put("visitedSnowtown", items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0); // [2026-10-26] 이동 안내원 목적지
         out.put("visitedCity", items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0 || isMineAdmin(userName)); // [2026-10-27]
+        if (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1 && (S5MineMap.TOWER_CITY.equals(map.id) || S5MineMap.TOWER_GATE.equals(map.id) || S5MineMap.towerFloor(map.id) > 0)) { // [2026-11-16] 이미 건너와 있는 사람도
+            try { dao.upsertMineItem(userName, MINE_ITEM_VISIT_TCITY, 1); items.put(MINE_ITEM_VISIT_TCITY, 1); } catch (Exception ignore) { }
+        }
+        out.put("visitedTcity", mineTowerOk(userName) && (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) > 0 || isMineAdmin(userName)));
         out.put("visitedArchi", items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0 || isMineAdmin(userName)); // [2026-10-28] 다도해 마을
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
         out.put("luckUntil", mineLuckUntil(items)); // [2026-11-05] 행운의 주문서
@@ -5236,6 +5274,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap.Npc g = map.guide();
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
+        if (S5MineMap.TOWER_CITY.equals(dest) && (!mineTowerOk(userName) || (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1 && !isMineAdmin(userName)))) { out.put("message", "🧭 탑의 도시는 마물의 숲 나루터에서 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-16]
         if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
         if (S5MineMap.ARCHI.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 다도해 마을은 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-28]
         if (S5MineMap.SNOWROAD.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 설산 베이스캠프는 설산 마을에 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-04]
@@ -5268,6 +5307,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_VISIT_SNOWTOWN = "VISIT_SNOWTOWN";
     static final String MINE_ITEM_SNOW_PATH = "SNOW_PATH"; // [2026-10-28] 설산을 아래층부터 순서대로 올라온 층(1~3)
     static final String MINE_ITEM_VISIT_ARCHI = "VISIT_ARCHI"; // [2026-10-28] 다도해 마을(본섬)에 한 번 도착(이동 안내원 목적지)
+    static final String MINE_ITEM_VISIT_TCITY = "VISIT_TCITY"; // [2026-11-16] 탑의 도시에 한 번 도착(이동 안내원 목적지) -- "한 번 이상 왕래가 있었다면 마을 간 이동(NPC)이 가능하게"
     static final String MINE_ITEM_VISIT_CITY = "VISIT_CITY"; // [2026-10-27] 왕도에 한 번 걸어서 도착(이동 안내원 목적지)
     static final String MINE_ITEM_COAT1 = "COAT1";
     static final String MINE_ITEM_COAT2 = "COAT2";
@@ -9136,6 +9176,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> wbi = mineWbInfo(userName, now); // [2026-11-15] 월드보스 예고/진행
         if (wbi != null) out.put("wb", wbi);
         else if (now - mineWbGoneAt < 6_000L && mineWbOk(userName)) out.put("wbGone", mineWbGoneAt); // [2026-11-16] 거룡이 날아감(퇴장 연출)
+        try { // [2026-11-16] "보스 처치 시에도 우수수 떨어지게(탑 보스 포함 모든 보스), 여러 사람이 같이 처치하면 그만큼 더 많이 떨어져 해당 플레이어에게 흡수되는 이펙트" --
+            //  이 맵의 보스가 막 쓰러졌으면(마지막으로 맞은 지 5초 안) MINE_BOSS_FX_MS 동안 알린다: 쓰러진 자리, 함께 싸운 사람(위치 알림 번호 -- 화면이 그 사람들에게 나눠 날린다), 내가 그중 하나인지.
+            S5MineMap pm = S5MineMap.get(mapId);
+            S5MineMap.Mob pb = pm == null ? null : mineBossOf(pm);
+            MobState ps = pb == null ? null : MINE_MOB_STATE.get(mineMobKey(pm, pb.id));
+            if (ps != null) synchronized (ps) {
+                if (ps.deadUntil > now && ps.hp <= 0) {
+                    if (ps.fxAt == 0) ps.fxAt = now - ps.lastHitAt < 5_000L ? now : -1;
+                    if (ps.fxAt > 0 && now - ps.fxAt < MINE_BOSS_FX_MS) {
+                        HashMap<String, Object> fx = new HashMap<>();
+                        List<String> ids = new ArrayList<>();
+                        boolean mine = false;
+                        java.util.Set<String> hs = ps.hitters == null ? new java.util.HashSet<>() : ps.hitters;
+                        for (String u : hs) { if (u.equals(userName)) { mine = true; continue; } MinePresence hp2 = MINE_PRESENCE.get(u); if (hp2 != null && mapId.equals(hp2.mapId) && now - hp2.at <= MINE_PRESENCE_TTL_MS && ids.size() < 16) ids.add(hp2.id); }
+                        fx.put("at", ps.fxAt); fx.put("x", ps.fx); fx.put("y", ps.fy); fx.put("f", S5MineMobs.TYPES.get(pb.type).foot());
+                        fx.put("n", Math.max(1, hs.size())); fx.put("me", mine || hs.isEmpty()); fx.put("us", ids);
+                        out.put("bossFx", fx);
+                    }
+                } else ps.fxAt = 0;
+            }
+        } catch (Exception ignore) { }
         if (mineCallRoom(mapId)) { // [2026-11-13] 보스 소환사 -- 보스가 없을 때만 보스 집 칸에(소환 카운트 중이면 나타나는 시각 at)
             MINE_CALL_SEEN.put(mapId, now); // 맵에 누가 있다(소환된 보스가 사라지지 않게)
             S5MineMap cm = S5MineMap.get(mapId);

@@ -452,10 +452,10 @@ public final class S5MineMap {
     /** [2026-10-25] "마을 간 이동이 활성화되는 느낌, NPC로" -- 이동 안내원(guide)이 서 있는 맵. 안내원끼리 무료로 오간다(왕도는 관리자만). */
     //  같은 날 "마을로 인식된 곳에서만, 사냥터만 있는 곳은 없애줘" -- 평원 마을(V)과 왕도만(바닷가/사막/성곽은 사냥터라 뺐다).
     //  [2026-10-25] 설원 북쪽 작은 마을도 마을이라 안내원을 둔다. [2026-10-26] 그 마을은 설산 3층 너머 "설산 마을"(SNOWTOWN)로 옮겼다.
-    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI, SNOWROAD)); // [2026-10-28] 다도해 마을(본섬)도, [2026-11-04] 설산 베이스캠프(봉우리 가는 길 맨 위)
+    public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI, SNOWROAD, TOWER_CITY)); // [2026-11-16] 탑의 도시(안내원은 generateTowerCity가 부두에 세운다) // [2026-10-28] 다도해 마을(본섬)도, [2026-11-04] 설산 베이스캠프(봉우리 가는 길 맨 위)
     /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
     public static String townName(String id) {
-        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : ARCHI.equals(id) ? "다도해 마을" : SNOWROAD.equals(id) ? "설산 베이스캠프" : nameOf(id);
+        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : TOWER_CITY.equals(id) ? "탑의 도시 엘리시온" : ARCHI.equals(id) ? "다도해 마을" : SNOWROAD.equals(id) ? "설산 베이스캠프" : nameOf(id);
     }
 
     // ---------------------------------------------------------------- [2026-10-26] 한기 / 눈바람 / 안전지대
@@ -719,7 +719,8 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 17; // [2026-11-15] 17: 탑 방 방식 + 탑의 도시 재건, 16: 거룡 3x3(몬스터 종류 foot), 15: 동쪽 성곽 거룡(월드보스) + 탑 수문장 이름, 14: 탑 보드(board/tower), // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
+    static final int PAYLOAD_REV = 18; // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
+    //   [2026-11-15] 17: 탑 방 방식 + 탑의 도시 재건, 16: 거룡 3x3(몬스터 종류 foot), 15: 동쪽 성곽 거룡(월드보스) + 탑 수문장 이름, 14: 탑 보드(board/tower), // [2026-11-11] 13: 광석 없는 칸(noOre -- 자동채광이 건너뛰게), [2026-11-11] 12: 미궁 남은 걸음(mazeLeft), 11: 두고개식 미궁 방/끝방/나루터, [2026-11-08] 10: 미궁 위 출구가 하피의 둥지로 열림(+ 대형 나무 trees), 9: 마물의 숲 입구 통로 셋이 미궁으로 열림(화면에 저장된 옛 "막힘" 포탈을 버리게), [2026-11-05] 8: 바깥 맵 낮밤(outdoor/dayAnchor), [2026-10-30] 보스 체력 2배 -- 화면이 저장해 둔 옛 최대 체력을 버리게, [2026-11-05] 7: 설산 마을 이동 안내원에 베이스캠프가 안 보이던 것
 
     public String version() {
         String v = version;
@@ -1015,7 +1016,7 @@ public final class S5MineMap {
         int qx = 0, qy = 0, qn = 0;
         for (Portal pt : an.portals) if (SHRINE.equals(pt.target) || SHRINE_BOSS.equals(pt.target)) { qx += pt.x; qy = pt.y; qn++; }
         if (qn > 0) placeNpc(an, qx / qn, qy + 4, "ninjaquest", "신궁 수문장", "신궁 안에 닌자들이 숨어들었소. 수색을 맡아 주시겠소? 100명을 처치하면 닌자 두목의 방 열쇠를 드리리다.");
-        for (String gid : GUIDE_MAPS) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
+        for (String gid : GUIDE_MAPS) if (!TOWER_CITY.equals(gid)) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
         // [2026-10-28] "왕도 대장장이, 치장상점은 가운데로(너무 아래쪽)" -- 남문 앞에서 가운데 광장 분수 남쪽 양옆으로(부활 칸 (c, c+5) 둘레는 비워 둔다)
@@ -2673,7 +2674,8 @@ public final class S5MineMap {
         ps.add(new Portal(c, 0, 'G', TOWER_GATE, GATE_W / 2, GATE_H - 2, "북문 -- 거대한 탑으로 가는 길"));
         S5MineMap m = new S5MineMap(TOWER_CITY, "탑의 도시 엘리시온", false, w, h, sx, sy, t, new byte[h][w], ps);
         List<Npc> npcs = new ArrayList<>();
-        npcs.add(npcAtCell(t, c + 3, h - 5, "riverferry", "선착장 뱃사공", "마물의 숲 나루터로 돌아가려나? 언제든 태워 주지."));
+        npcs.add(npcAtCell(t, c + 2, h - 6, "riverferry", "선착장 뱃사공", "마물의 숲 나루터로 돌아가려나? 언제든 태워 주지."));
+        npcs.add(npcAtCell(t, c - 5, riv - 3, "guide", "이동 안내원", "어디로 모실까요? 마을과 마을 사이는 제가 공짜로 데려다 드려요!")); // [2026-11-16] 마을 간 이동
         npcs.add(npcAtCell(t, c + 7, cy - 19, "tokenshop", "증표 상인", "탑에서 모은 증표를 가져오게. 자네 동료(용병)에게 맞는 장비 상자를 열어 주지. 보석도 바꿔 준다네."));
         npcs.add(npcAtCell(t, c - 50, cy - 5, "smith", "장인 회관 대장장이", "탑에서 쓸 장비라면 내게 맡기게."));
         npcs.add(npcAtCell(t, c + 58, cy - 5, "priest", "대신전 사제", "탑을 오르는 이에게 여신의 가호를. 상처를 치료해 드리지요."));

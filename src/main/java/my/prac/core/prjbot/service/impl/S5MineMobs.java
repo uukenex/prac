@@ -80,6 +80,8 @@ public final class S5MineMobs {
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
+        public boolean champ; // [2026-11-16] 챔피언(보스 그림/크기/보상은 그대로, 이름표만 "챔피언" -- 소환 없이 정해진 시간마다 다시 나타난다)
+        Type asChamp() { champ = true; return this; }
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
         Type showLv(int lv) { lvShow = lv; return this; }
         Type expx(double m) { expMul = m; return this; } // [2026-11-15]
@@ -157,7 +159,7 @@ public final class S5MineMobs {
         new Type("해마", 4, "small", "#f0b030", S5MineMap.SEAROAD),
         new Type("문어", 5, "blob", "#c0508a", S5MineMap.SEAROAD),
         new Type("바다뱀", 5, "snake", "#2f7ab0", S5MineMap.SEAROAD),
-        new Type("고대 광석 골렘", 9, "human", "#5a4a6a").asBoss(),
+        new Type("고대 광석 골렘", 9, "human", "#5a4a6a").asBoss().asChamp().respawn(30 * 60_000L), // [2026-11-16] "동굴 3층 보스가 안 보인다 -- 30분마다 등장하는 챔피언 몬스터로": 소환 없이 늘 있고 쓰러지면 30분 뒤 다시
         // [2026-10-26] 설산 1~3층 -- "레벨 40대가 많아져 설산부터 강한 몬스터". 10~13단계(적정 Lv.37~49). 보스 뒤에 덧붙이고 보스 번호는 찾아서 쓴다.
         new Type("설산 늑대", 10, "quad", "#dce6f2", S5MineMap.SNOW1),
         new Type("서리 설인", 10, "human", "#cfe0f5", S5MineMap.SNOW1),
