@@ -1590,14 +1590,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String[] MG_TIER_NAMES = { "초급", "중급", "고급", "최상급" };
     // [2026-11-15] "탑 증표로 원하는 보석을 구매할 수 있게" -- 증표 상인 보석 탭: 땅 보석 여덟 가지 MINE_TK_GEM / 다이아몬드 MINE_TK_DIAMOND / 세공 보석 MINE_TK_CUT 증표(고르는 대로, 1개·10개).
     static final int MINE_TK_GEM = 3, MINE_TK_DIAMOND = 12, MINE_TK_CUT = 10;
-    static final int[] MINE_TK_SEA = { 5, 5, 8, 8, 15 }; // [2026-11-16] 바다 보석 -- 진주 / 산호석 / 자수정 / 오팔 / 흑진주
+    static final int[] MINE_TK_SEA = { 5, 5, 8, 8, 15 }, MINE_TK_SEA_CUT = { 15, 15, 24, 24, 45 }; // [2026-11-16] 세공된 바다 보석(세공 보석 탭) // [2026-11-16] 바다 보석 -- 진주 / 산호석 / 자수정 / 오팔 / 흑진주
     /** 증표로 사는 보석 {코드, 이름, 가격} -- 땅 보석, 다이아몬드, 세공 보석 순. */
     static List<Object[]> mineTokenGems() {
         List<Object[]> l = new ArrayList<>();
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.GEM_CODES[i], S5MineMap.GEM_NAMES[i], MINE_TK_GEM });
         l.add(new Object[] { S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], MINE_TK_DIAMOND });
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.cutCode(i), S5MineMap.cutName(i), MINE_TK_CUT });
-        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.SEA_GEM_CODES[i], S5MineMap.SEA_GEM_NAMES[i], MINE_TK_SEA[i] }); // [2026-11-16] "탑의 증표로 바다 보석도 교환"
+        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.SEA_GEM_CODES[i], S5MineMap.SEA_GEM_NAMES[i], MINE_TK_SEA[i] });
+        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.seaCutCode(i), S5MineMap.seaCutName(i), MINE_TK_SEA_CUT[i] }); // [2026-11-16] "탑의 증표로 바다 보석도 교환"
         return l;
     }
     static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
