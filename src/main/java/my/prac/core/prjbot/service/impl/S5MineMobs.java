@@ -543,10 +543,10 @@ public final class S5MineMobs {
 
     static List<S5MineMap.Mob> spawn(S5MineMap m, long seed) {
         if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
-        if (!m.board().isEmpty()) { // [2026-11-15] 탑 보드 -- 전투 칸(C)마다 칸 안쪽에 한 마리(구역 몬스터 셋을 돌아가며)
+        if (m.twSpots() != null) { // [2026-11-15] 탑 방 -- 그 구역 몬스터 셋이 한 자리씩(평소엔 없음 -- 전투방이 되면 하나가 깨어난다, S55MineServiceImpl.mineTowerNext)
             List<S5MineMap.Mob> tw = new ArrayList<>();
-            int blk = Math.min(TOWER_MOBS.length - 1, (S5MineMap.towerFloor(m.id) - 1) / 10), k = 0;
-            for (int[] b : m.board()) if (b[2] == 'C') tw.add(new S5MineMap.Mob(tw.size(), indexOf(TOWER_MOBS[blk][k++ % 3]), b[3], b[4], new int[] { b[4] * m.w + b[3] }));
+            int blk = Math.min(TOWER_MOBS.length - 1, (S5MineMap.towerFloor(m.id) - 1) / 10);
+            for (int k = 0; k < m.twSpots().length; k++) { int[] sp = m.twSpots()[k]; tw.add(new S5MineMap.Mob(k, indexOf(TOWER_MOBS[blk][k % 3]), sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] })); }
             return tw;
         }
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)

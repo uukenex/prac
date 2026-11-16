@@ -1528,7 +1528,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (f <= 0 || !(t.tower || t.boss)) return "";
         StringBuilder m = new StringBuilder();
         try {
-            if (!t.boss) return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL);
+            if (!t.boss) return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL) + " 🚪 오른쪽 문이 열렸어요.";
             long now = System.currentTimeMillis();
             int day = mineToday(now);
             java.util.Set<String> us = new java.util.LinkedHashSet<>();
@@ -1547,7 +1547,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (first) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
                     txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + " (오늘 수문장 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")"
-                            + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 탑 관리인이나 [층 이동]으로 올라가요. (이 구역은 끝 -- " + f + "층 아래로는 못 내려가요)" : "");
+                            + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요. (이 구역은 끝 -- " + f + "층 아래로는 못 내려가요)" : "");
                 }
                 if (u.equals(userName)) m.append(txt);
                 else MINE_SHRINE_REWARD_MSG.merge(u, "🗼 탑 " + f + "층 수문장 " + t.name + "이(가) 쓰러졌어요!" + txt, (p, q) -> p + " / " + q);
@@ -1727,7 +1727,166 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return out;
     }
 
-    /** [2026-11-15] 탑 -- action=info / roll(주사위) / go&n(층 이동) / exit(탑의 도시로) / ferry(나루터 <-> 탑의 도시). */
+    // ---- [2026-11-15] 탑 방 방식 -- "실제로 주사위를 굴리는 건 안 해도 된다. 마물의 숲처럼 한 개 방을 반복 표현하는 방식으로, 오른쪽으로만 이동
+    //  (계단방은 위아래, 왼쪽은 탑 나가기). 오른쪽으로 가는 순간 주사위 굴리는 판정. 주사위 게임에 집착 안 해도 된다".
+    //  층마다 방 하나(tw{층})를 되풀이해 지난다: 오른쪽 문을 지나는 순간 다음 방이 무엇인지 정해지고(MINE_TW_ROOM_PCT -- 전투/보물/증표/함정/행운, 나머지 빈 방)
+    //  같은 방의 왼쪽 문 앞에 다시 선다. 전투방은 방을 지키는 몬스터를 쓰러뜨려야 오른쪽 문이 열린다. S5MineMap.towerRooms(층)번 지나면 계단방(tw{층}s):
+    //  위 계단 = 다음 층(올라갈 수 있는 층 TW_MAX가 는다), 아래 계단 = 아래층, 왼쪽 문은 언제나 탑 밖(탑 입구 맵). 수문장 층은 수문장을 쓰러뜨려야 위 계단이 열린다.
+    //  지금 층에서 몇 번째 방인지/무슨 방인지는 메모리(MINE_TW_RUN -- 배포하면 그 층 첫 방부터).
+    static final class TwRun { final int floor; int step, mobId = -1; char type = 'E'; TwRun(int f) { floor = f; } }
+    static final java.util.concurrent.ConcurrentHashMap<String, TwRun> MINE_TW_RUN = new java.util.concurrent.ConcurrentHashMap<>();
+    static final int[] MINE_TW_ROOM_PCT = { 50, 12, 10, 12, 8 }; // 전투 C / 보물 T / 증표 P / 함정 X / 행운 L (나머지 8% = 빈 방 E)
+    static final String MINE_TW_ROOM_KEYS = "CTPXL";
+    static TwRun mineTwRun(String userName, int f) {
+        TwRun r = MINE_TW_RUN.get(userName);
+        if (r == null || r.floor != f) { r = new TwRun(f); MINE_TW_RUN.put(userName, r); }
+        return r;
+    }
+    /** 탑 밖으로(탑 입구 맵의 큰 문 앞) -- 내 인스턴스와 진행을 비운다. */
+    void mineTowerLeave(String userName, long now) {
+        S5MineMap g = S5MineMap.get(S5MineMap.TOWER_GATE);
+        mineDisengageAll(userName);
+        mineSoloReset(userName);
+        MINE_TW_RUN.remove(userName);
+        int[] to = mineNearWalk(g, g.w / 2, S5MineMap.GATE_DOOR_Y + 1);
+        dao.updateMinePos(userName, g.id, to == null ? g.spawnX : to[0], to == null ? g.spawnY : to[1], now);
+    }
+    /** n층으로 들어간다(그 층 첫 방/수문장의 방/마을). 못 가면 지금 자리(stay, sx, sy)에 그대로 두고 까닭을 message로. */
+    HashMap<String, Object> mineTowerEnter(String userName, Map<String, Integer> items, int n, S5MineMap stay, int sx, int sy, long now, HashMap<String, Object> out) {
+        boolean admin = isMineAdmin(userName);
+        int max = mineTwMax(items), block = mineTwBlock(items);
+        String err = null;
+        if (n > S5MineMap.TOWER_FLOORS) err = "🚧 " + n + "층부터는 아직 준비 중이에요.";
+        else if (n < 1) err = "그런 층은 없어요.";
+        else if (!admin && n > max) err = "🪜 아직 " + n + "층으로 가는 계단을 못 찾았어요. (지금 " + max + "층까지)";
+        else if (!admin && n <= block) err = "🔒 " + block + "층 수문장을 쓰러뜨려 그 아래로는 못 내려가요.";
+        else if (!admin && S5MineMap.towerBossFloor(n) && mineTwBossToday(items, now) >= MINE_TW_BOSS_DAILY) err = "⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 썼어요. 내일 다시 도전해 주세요.";
+        if (err != null) {
+            dao.updateMinePos(userName, stay.id, sx, sy, now);
+            out.put("message", err);
+            return out;
+        }
+        S5MineMap tm = S5MineMap.get(S5MineMap.towerId(n));
+        mineDisengageAll(userName);
+        mineSoloReset(userName); // 1인 인스턴스 -- 층에 들어갈 때마다 처음부터
+        MINE_TW_RUN.put(userName, new TwRun(n));
+        dao.updateMinePos(userName, tm.id, tm.spawnX, tm.spawnY, now);
+        out.put("ok", true);
+        out.put("message", "🗼 " + tm.name + (S5MineMap.towerRoomFloor(n) ? " -- 오른쪽 문으로 나아가세요. 방을 " + S5MineMap.towerRooms(n) + "개 지나면 계단방이에요. (왼쪽 문 = 탑 밖)"
+                : S5MineMap.towerBossFloor(n) ? " -- 수문장을 쓰러뜨리면 위쪽 계단이 열려요." : " -- 쉬었다 가세요. 위쪽 계단이 다음 구역이에요."));
+        out.put("state", mineState(userName));
+        return out;
+    }
+    /** 탑 안팎의 문/계단(mineWarp에서) -- 탑과 상관없는 포탈이면 null(보통 포탈로). */
+    HashMap<String, Object> mineTowerPortal(String userName, HashMap<String, Object> row, S5MineMap map, S5MineMap.Portal p, Map<String, Integer> items, int x, int y, long now) {
+        int f = S5MineMap.towerFloor(map.id), tf = S5MineMap.towerFloor(p.target);
+        if (f <= 0 && tf <= 0) return null; // 탑 입구 맵의 남쪽 문(도시로) 같은 보통 포탈
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        boolean admin = isMineAdmin(userName), ok = mineTowerOk(userName);
+        if (f > 0 && S5MineMap.TOWER_GATE.equals(p.target)) { // 왼쪽 문 -- 탑 밖으로(언제나)
+            mineTowerLeave(userName, now);
+            out.put("ok", true);
+            out.put("message", "🚪 탑에서 나왔어요.");
+            out.put("state", mineState(userName));
+            return out;
+        }
+        if (!ok) { // 일반 공개 전
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("locked", true);
+            out.put("message", f > 0 ? "🚧 탑은 아직 준비 중이에요. 왼쪽 문으로 나갈 수 있어요." : "🚧 탑의 문은 아직 굳게 닫혀 있어요. (준비 중)");
+            return out;
+        }
+        MineEngage e = MINE_ENGAGE.get(userName);
+        if (f <= 0) { // 탑 입구의 큰 문 -- 가장 높이 올라간 층으로(수문장 층에서 막히면 그 까닭을 알려 준다)
+            int n = Math.max(mineTwBlock(items) + 1, Math.min(mineTwMax(items), S5MineMap.TOWER_FLOORS));
+            return mineTowerEnter(userName, items, admin ? Math.max(1, Math.min(mineTwMax(items), S5MineMap.TOWER_FLOORS)) : n, map, x, y, now, out);
+        }
+        if (map.id.equals(p.target)) return mineTowerNext(userName, row, map, items, f, x, y, now, out); // 오른쪽 문 -- 다음 방
+        if (tf > f) { // 위 계단
+            if (S5MineMap.towerBossFloor(f) && mineTwBlock(items) < f && !admin) {
+                dao.updateMinePos(userName, map.id, x, y, now);
+                out.put("locked", true);
+                out.put("message", "🔒 수문장을 쓰러뜨려야 위쪽 계단이 열려요.");
+                return out;
+            }
+            if (mineTwMax(items) < tf) { dao.upsertMineItem(userName, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, tf)); items.put(MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, tf)); }
+        }
+        if (e != null && !e.mobs.isEmpty() && mineEngaged(userName, now) && S5MineMap.towerBossFloor(f)) { // 수문장과 싸우는 중엔 계단으로 못 빠진다
+            dao.updateMinePos(userName, map.id, x, y, now);
+            out.put("message", "⚔️ 수문장과 싸우는 중엔 계단을 쓸 수 없어요. (왼쪽 문으로는 나갈 수 있어요)");
+            return out;
+        }
+        return mineTowerEnter(userName, items, tf, map, x, y, now, out);
+    }
+    /** 방의 오른쪽 문 -- 다음 방으로(이 순간 무슨 방인지 정해진다). 전투방이면 방을 지키는 몬스터를 쓰러뜨린 뒤에만. */
+    HashMap<String, Object> mineTowerNext(String userName, HashMap<String, Object> row, S5MineMap map, Map<String, Integer> items, int f, int x, int y, long now, HashMap<String, Object> out) {
+        TwRun run = mineTwRun(userName, f);
+        if (run.type == 'C' && run.mobId >= 0) {
+            MobState gs = MINE_MOB_STATE.get(mineMobKey(map, run.mobId));
+            if (gs != null && gs.deadUntil <= now && gs.hp > 0) {
+                dao.updateMinePos(userName, map.id, x, y, now);
+                out.put("locked", true);
+                out.put("message", "⚔️ 방을 지키는 몬스터를 쓰러뜨려야 문이 열려요.");
+                return out;
+            }
+        }
+        int total = S5MineMap.towerRooms(f), lv = mineLv(row), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        run.step++;
+        run.mobId = -1;
+        mineDisengageAll(userName);
+        mineSoloReset(userName);
+        StringBuilder msg = new StringBuilder();
+        if (run.step >= total) { // 계단방
+            S5MineMap sm = S5MineMap.get(S5MineMap.towerStairId(f));
+            run.type = 'U';
+            if (mineTwMax(items) < f + 1 && f + 1 <= S5MineMap.TOWER_FLOORS) dao.upsertMineItem(userName, MINE_ITEM_TW_MAX, f + 1);
+            dao.updateMinePos(userName, sm.id, sm.spawnX, sm.spawnY, now);
+            msg.append("🪜 계단방이에요! 위쪽 계단은 ").append(f + 1).append("층").append(f > 1 ? ", 아래쪽 계단은 " + (f - 1) + "층" : "").append(", 왼쪽 문은 탑 밖이에요.");
+        } else {
+            int r = RND.nextInt(100), acc = 0;
+            char ty = 'E';
+            for (int i = 0; i < MINE_TW_ROOM_PCT.length; i++) { acc += MINE_TW_ROOM_PCT[i]; if (r < acc) { ty = MINE_TW_ROOM_KEYS.charAt(i); break; } }
+            run.type = ty;
+            dao.updateMinePos(userName, map.id, map.spawnX, map.spawnY, now);
+            msg.append("🚪 ").append(run.step).append("/").append(total).append("번째 방 -- ");
+            if (ty == 'C' && !map.mobs().isEmpty()) {
+                S5MineMap.Mob mb = map.mobs().get(RND.nextInt(map.mobs().size()));
+                S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
+                int mmax = S5MineMobs.hp(mt, mb.rank);
+                MobState gs = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mb.id), k -> new MobState(mmax));
+                synchronized (gs) { gs.respawn(mmax); gs.fx = mb.x; gs.fy = mb.y; gs.target = userName; gs.frozenUntil = now + MINE_MOB_FREEZE_MS; gs.lastHitAt = 0; gs.stunUntil = 0; }
+                mineEngage(userName, map, mb.id, now, 0L);
+                run.mobId = mb.id;
+                msg.append("⚔️ ").append(mt.name).append("이(가) 방을 지키고 있어요! 쓰러뜨려야 오른쪽 문이 열려요.");
+            } else if (ty == 'T') {
+                int g1 = RND.nextInt(S5MineMap.GEM_DIAMOND), g2 = RND.nextInt(S5MineMap.GEM_DIAMOND);
+                dao.addUserOre(userName, S5MineMap.GEM_CODES[g1], 1);
+                dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
+                msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
+                if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); }
+                msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST));
+            } else if (ty == 'P') {
+                msg.append("🗼 증표가 놓인 방! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE));
+            } else if (ty == 'X') {
+                int hpNow = mineHpNow(row, now, lock, rb), cutHp = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * 0.15)), nh = Math.max(1, hpNow - cutHp);
+                dao.updateMineCombat(userName, lv, exp, nh, now, 0);
+                MINE_HP_VIRT.remove(userName);
+                msg.append("⚠️ 함정방! 체력 -").append(hpNow - nh);
+            } else if (ty == 'L') {
+                dao.updateMineCombat(userName, lv, exp, mineHpCap(lv, lock, rb), now, 0);
+                MINE_HP_VIRT.remove(userName);
+                msg.append("🍀 행운의 샘! 체력이 가득 찼어요");
+                if (RND.nextInt(100) < 30) { int c = RND.nextInt(S5MineMap.GEM_DIAMOND); dao.addUserOre(userName, S5MineMap.cutCode(c), 1); msg.append(" · ✨ ").append(S5MineMap.cutName(c)); }
+            } else { run.type = 'E'; msg.append("조용한 빈 방이에요. 숨을 고르고 나아가세요."); }
+        }
+        out.put("ok", true);
+        out.put("message", msg.toString());
+        out.put("state", mineState(userName));
+        return out;
+    }
+    /** [2026-11-15] 탑 -- action=info / go&n(층 이동) / exit(탑 입구로) / ferry(나루터 <-> 탑의 도시). 방 사이 이동은 문(mineWarp -> mineTowerPortal). */
     public HashMap<String, Object> mineTower(String userName, String action, int n) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
@@ -1776,105 +1935,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if ("exit".equals(action)) {
             if (floor <= 0) { out.put("message", "탑 안에서만 나갈 수 있어요."); return out; }
-            S5MineMap c = S5MineMap.get(S5MineMap.TOWER_CITY);
-            S5MineMap.Npc g = null;
-            for (S5MineMap.Npc q : c.npcs()) if ("towergate".equals(q.kind)) g = q;
-            mineDisengageAll(userName);
-            mineSoloReset(userName); // [2026-11-15]
-            dao.updateMinePos(userName, c.id, g == null ? c.spawnX : g.x, g == null ? c.spawnY : g.y + 2, now);
+            mineTowerLeave(userName, now);
             out.put("ok", true);
             out.put("message", "🗼 탑에서 나왔어요.");
             out.put("state", mineState(userName));
             return out;
         }
-        if ("go".equals(action)) {
-            if (floor <= 0 && !(S5MineMap.TOWER_CITY.equals(map.id) && mineAtNpc(row, "towergate"))) { out.put("message", "탑 관리인에게 말하거나 탑 안에서 옮길 수 있어요."); return out; }
-            if (n < 1 || n > S5MineMap.TOWER_FLOORS) { out.put("message", "그런 층은 없어요."); return out; }
-            if (!admin && n > max) { out.put("message", "🪜 아직 " + n + "층으로 가는 계단을 못 찾았어요. (지금 " + max + "층까지)"); return out; }
-            if (!admin && n <= block) { out.put("message", "🔒 " + block + "층 수문장을 쓰러뜨려 그 아래로는 못 내려가요."); return out; }
-            if (!admin && S5MineMap.towerBossFloor(n) && mineTwBossToday(items, now) >= MINE_TW_BOSS_DAILY) { out.put("message", "⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 썼어요. 내일 다시 도전해 주세요."); return out; }
+        if ("go".equals(action)) { // 탑 관리인(탑 입구/마을) 또는 탑 안의 [층 이동] -- 올라 본 층으로 바로
+            if (floor <= 0 && !(S5MineMap.TOWER_GATE.equals(map.id) && mineAtNpc(row, "towergate"))) { out.put("message", "탑 입구의 탑 관리인에게 말하거나 탑 안에서 옮길 수 있어요."); return out; }
             MineEngage e = MINE_ENGAGE.get(userName);
             if (e != null && !e.mobs.isEmpty() && mineEngaged(userName, now)) { out.put("message", "⚔️ 싸우는 중엔 층을 옮길 수 없어요."); return out; }
-            S5MineMap tm = S5MineMap.get(S5MineMap.towerId(n));
-            mineDisengageAll(userName);
-            mineSoloReset(userName); // [2026-11-15] 1인 인스턴스 -- 층에 들어갈 때마다 처음부터
-            dao.updateMinePos(userName, tm.id, tm.spawnX, tm.spawnY, now);
-            out.put("ok", true);
-            out.put("message", "🗼 " + tm.name + (tm.board().isEmpty() ? "" : " -- 🎲 주사위를 굴려 칸을 옮겨요. 계단(🪜)을 찾으면 위층이 열려요."));
-            out.put("state", mineState(userName));
-            return out;
+            int[] pos = minePos(row, map, 0);
+            return mineTowerEnter(userName, items, n, map, pos[0], pos[1], now, out);
         }
-        if (!"roll".equals(action)) return out;
-        if (map.board().isEmpty()) { out.put("message", "주사위는 탑 보드 층에서만 굴려요."); return out; }
-        Long last = MINE_TW_ROLL_AT.get(userName);
-        if (last != null && now - last < MINE_TW_ROLL_MS) { out.put("tooFast", true); return out; }
-        MineEngage e = MINE_ENGAGE.get(userName);
-        if (e != null && mineEngaged(userName, now)) {
-            for (Integer id : e.mobs.keySet()) {
-                MobState ms = MINE_MOB_STATE.get(mineMobKey(map, id));
-                if (ms != null && ms.deadUntil <= now) { out.put("message", "⚔️ 먼저 몬스터를 쓰러뜨려야 다시 굴릴 수 있어요."); return out; }
-            }
-        }
-        MINE_TW_ROLL_AT.put(userName, now);
-        int[] pos = minePos(row, map, 0);
-        List<int[]> bd = map.board();
-        int idx = Math.max(0, mineTwIndex(map, pos[0], pos[1])), d = 1 + RND.nextInt(6), ni = (idx + d) % bd.size();
-        List<int[]> path = new ArrayList<>();
-        for (int k = 1; k <= d; k++) { int[] c = bd.get((idx + k) % bd.size()); path.add(new int[] { c[0], c[1] }); }
-        int[] tc = bd.get(ni);
-        dao.updateMinePos(userName, map.id, tc[0], tc[1], now);
-        out.put("ok", true);
-        out.put("roll", d);
-        out.put("path", path);
-        out.put("index", ni);
-        out.put("tile", String.valueOf((char) tc[2]));
-        StringBuilder msg = new StringBuilder("🎲 ").append(d).append(" -- ");
-        char ty = (char) tc[2];
-        int lv = mineLv(row), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
-        if (ty == 'C') {
-            S5MineMap.Mob mb = mineTwMob(map, ni);
-            if (mb != null) {
-                S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
-                int mmax = S5MineMobs.hp(mt, mb.rank);
-                MobState ms = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, mb.id), k -> new MobState(mmax));
-                synchronized (ms) { ms.respawn(mmax); ms.fx = mb.x; ms.fy = mb.y; ms.target = userName; ms.frozenUntil = now + MINE_MOB_FREEZE_MS; ms.lastHitAt = 0; ms.stunUntil = 0; }
-                mineEngage(userName, map, mb.id, now, 0L);
-                msg.append("⚔️ ").append(mt.name).append("이(가) 깨어났어요! 쓰러뜨리면 다시 굴릴 수 있어요.");
-                out.put("mobId", mb.id);
-                out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), mineHpNow(row, now, lock, rb), now, true, lock, rb));
-            }
-        } else if (ty == 'T') {
-            int g1 = RND.nextInt(S5MineMap.GEM_DIAMOND), g2 = RND.nextInt(S5MineMap.GEM_DIAMOND);
-            dao.addUserOre(userName, S5MineMap.GEM_CODES[g1], 1);
-            dao.addUserOre(userName, S5MineMap.GEM_CODES[g2], 1);
-            msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
-            if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); }
-            msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST));
-            out.put("ores", mineOreList(userName));
-        } else if (ty == 'P') {
-            msg.append("🗼 증표 칸! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE));
-            out.put("ores", mineOreList(userName));
-        } else if (ty == 'X') {
-            int hpNow = mineHpNow(row, now, lock, rb), cut = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * 0.15)), nh = Math.max(1, hpNow - cut);
-            dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), nh, now, 0);
-            MINE_HP_VIRT.remove(userName);
-            msg.append("⚠️ 함정! 체력 -").append(hpNow - nh);
-            out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), nh, now, false, lock, rb));
-        } else if (ty == 'L') {
-            int full = mineHpCap(lv, lock, rb);
-            dao.updateMineCombat(userName, lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), full, now, 0);
-            MINE_HP_VIRT.remove(userName);
-            msg.append("🍀 행운의 칸! 체력이 가득 찼어요");
-            if (RND.nextInt(100) < 30) { int c = RND.nextInt(S5MineMap.GEM_DIAMOND); dao.addUserOre(userName, S5MineMap.cutCode(c), 1); msg.append(" · ✨ ").append(S5MineMap.cutName(c)); out.put("ores", mineOreList(userName)); }
-            out.put("combat", mineCombatInfo(lv, Math.max(0, longOf(row.get("M_EXP"), 0L)), full, now, false, lock, rb));
-        } else if (ty == 'U') {
-            if (max < floor + 1) { dao.upsertMineItem(userName, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, floor + 1)); out.put("max", floor + 1); }
-            msg.append("🪜 올라가는 계단을 찾았어요! [층 이동]으로 ").append(floor + 1).append("층에 갈 수 있어요.");
-            out.put("stairs", floor + 1);
-        } else if (ty == 'D') {
-            msg.append("🪜 내려가는 계단이에요. ").append(floor - 1 > block ? "[층 이동]으로 " + (floor - 1) + "층에 갈 수 있어요." : "");
-        } else msg.append("시작 칸");
-        out.put("message", msg.toString());
+        out.put("message", "이제 탑은 방을 지나며 올라가요. 오른쪽 문으로 나아가세요."); // [2026-11-15] 주사위(roll)는 없앴다
         return out;
     }
 
@@ -2367,6 +2441,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     String mineRespawn(String userName, Map<String, Integer> items, long now) {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         mineSoloReset(userName); // [2026-11-15] 탑 1인 인스턴스 -- 쓰러지면 그 층은 처음부터
+        MINE_TW_RUN.remove(userName);
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 얼음 여왕 빙결도 끝
         MINE_DEBUFF.remove(userName); // [2026-10-28] 여왕개미 독/슬로우도 끝
         MINE_PSTEALTH.remove(userName); // [2026-10-30] 자객의 목걸이 은신도 끝
@@ -3805,6 +3880,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("noticeId", nt[0]);
             out.put("notice", nt[1]);
         }
+        int twF = S5MineMap.towerFloor(map.id); // [2026-11-15] 탑 -- 지금 층에서 몇 번째 방 / 계단방까지 몇 개 / 무슨 방(C 전투 T 보물 P 증표 X 함정 L 행운 E 빈 방 U 계단방)
+        if (twF > 0) {
+            HashMap<String, Object> tr = new HashMap<>();
+            TwRun run = MINE_TW_RUN.get(userName);
+            boolean mine = run != null && run.floor == twF, stairRoom = S5MineMap.towerStairRoom(map.id);
+            tr.put("floor", twF);
+            tr.put("total", S5MineMap.towerRoomFloor(twF) ? S5MineMap.towerRooms(twF) : 0);
+            tr.put("step", stairRoom ? S5MineMap.towerRooms(twF) : mine ? run.step : 0);
+            tr.put("type", stairRoom ? "U" : mine ? String.valueOf(run.type) : "E");
+            out.put("twRun", tr);
+        }
         final boolean wyrmOn = mineWyrmOn(items); // [2026-11-15] 용의 반지 -- 관리자 전체 지도 이동과 같은 목록(들어갈 자격이 있는 곳만)
         if (isMineAdmin(userName) || wyrmOn) { // [2026-10-24] 관리자 전용 좌표 이동(화면 좌표 클릭) -- 고를 수 있는 맵 목록
             List<HashMap<String, Object>> maps = new ArrayList<>();
@@ -4220,6 +4306,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("locked", true);
             out.put("message", p.label.contains("눈바람") ? "🌨️ " + p.label + "." : "🔒 " + p.label + " -- 아직 갈 수 없어요. (준비 중)"); // [2026-10-25] 설원 마을 문
             return out;
+        }
+        if (S5MineMap.towerFloor(map.id) > 0 || S5MineMap.TOWER_GATE.equals(map.id)) { // [2026-11-15] 탑 -- 방의 문/계단, 탑 입구의 큰 문
+            HashMap<String, Object> tw = mineTowerPortal(userName, row, map, p, items, x, y, now);
+            if (tw != null) return tw;
         }
         // [2026-10-24] 배(판자 B) -- 항구(바닷가/남쪽 섬/북쪽 끝 설원) 중 다른 곳을 골라 그 항구의 내리는 칸으로
         boolean ship = S5MineMap.SHIP.equals(p.target);

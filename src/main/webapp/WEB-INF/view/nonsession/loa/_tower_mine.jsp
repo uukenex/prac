@@ -70,12 +70,12 @@ var TowerMine = (function () {
   var TERR_NAME = { '.': '풀밭', ',': '흙길', ':': '바위 지대', 'V': '마을', 'H': '다리', '~': '물', 'T': '숲', '^': '바위산',
                     'c': '동굴 바닥', 'r': '자갈 바닥', '#': '동굴 벽', 'h': '초가집', 'j': '초가집', 'k': '초가집', 'l': '초가집', 'G': '지역 통로', 'I': '얼음 광맥', 'F': '울창한 숲', 'M': '동굴 입구', 'U': '나가는 길', 'S': '지하로 가는 문',
                     'd': '모래', 'R': '사암', 'C': '선인장', 'b': '모래사장', 'P': '부두', 'q': '배', 'B': '배에 오르는 판자', 'N': 'NPC',
-                    's': '성 바닥', 'W': '성벽', 'n': '눈밭', 'Y': '눈 덮인 숲', 'K': '건물', 'Q': '성당', 'X': '텔레포트 게이트', 'u': '바다 모래', 'p': '용궁 길', 'e': '해초', 'O': '산호', 'L': '용궁 기둥', 'Z': '물' };
+                    's': '성 바닥', 'W': '성벽', 'n': '눈밭', 'Y': '눈 덮인 숲', 'K': '건물', 'Q': '성당', 'A': '조각상', 'i': '수정 가로등', 'g': '꽃밭', 'X': '텔레포트 게이트', 'u': '바다 모래', 'p': '용궁 길', 'e': '해초', 'O': '산호', 'L': '용궁 기둥', 'Z': '물' };
   var MINI_COL = { 'F': [24, 58, 30], '.': [95, 174, 69], ',': [201, 164, 106], ':': [143, 133, 120], 'V': [232, 215, 168], 'H': [139, 90, 43], '~': [58, 120, 212],
                    'T': [47, 125, 50], '^': [90, 78, 68], 'c': [107, 91, 75], 'r': [125, 109, 92], '#': [30, 24, 20],
                    'h': [190, 140, 60], 'j': [190, 140, 60], 'k': [190, 140, 60], 'l': [190, 140, 60],
                    'd': [227, 196, 122], 'R': [184, 135, 90], 'C': [63, 143, 58], 'b': [236, 217, 160], 'P': [139, 90, 43], 'q': [107, 66, 32], 'N': [64, 120, 255],
-                   's': [169, 164, 154], 'W': [74, 69, 64], 'n': [242, 246, 250], 'Y': [47, 93, 74], 'K': [168, 68, 58], 'Q': [223, 230, 242], 'X': [122, 92, 255], 'u': [111, 159, 192], 'p': [184, 72, 58], 'e': [47, 122, 106], 'O': [224, 122, 138], 'L': [138, 30, 30], 'Z': [58, 120, 212], 'I': [127, 208, 240] };
+                   's': [169, 164, 154], 'W': [74, 69, 64], 'n': [242, 246, 250], 'Y': [47, 93, 74], 'K': [168, 68, 58], 'Q': [223, 230, 242], 'A': [217, 180, 74], 'i': [122, 216, 255], 'g': [226, 120, 160], 'X': [122, 92, 255], 'u': [111, 159, 192], 'p': [184, 72, 58], 'e': [47, 122, 106], 'O': [224, 122, 138], 'L': [138, 30, 30], 'Z': [58, 120, 212], 'I': [127, 208, 240] };
 
   var cfg = null, map = null, st = null, portalAt = {}, npcAt = {}, ship = null, lastWindT = 0, talkBubble = null, smithOpen = false;
   var el = {}, ctx = null, miniCtx = null, miniBase = null, scale = 3, dpr = 1;
@@ -320,6 +320,155 @@ var TowerMine = (function () {
         px(g, '#7a9ccf', 5, 5, 6, 9); px(g, '#7a9ccf', 6, 4, 4, 1); px(g, '#c9daf2', 7, 6, 2, 7); // 아치 창(스테인드글라스)
       });
     });
+    // ---- [2026-11-15] 탑의 도시 엘리시온 / 탑 입구 전용 그림(왕도와 다른 빛깔: 흰 대리석 + 금 상감, 푸른 모자이크 길, 푸른 지붕, 꽃나무) ----
+    var E = tiles.ely = {};
+    E.marble = [1, 2].map(function (s) {
+      return tile('#f1ece1', [['#e6dfd0', 9], ['#fbf8f1', 7]], 400 + s, function (g) {
+        px(g, '#d8d0bf', 0, 15, T, 1); px(g, '#d8d0bf', 15, 0, 1, T); px(g, '#fdfbf6', 0, 0, T, 1); px(g, '#fdfbf6', 0, 0, 1, T);
+        px(g, '#e4dccb', 3, 5, 4, 1); px(g, '#e4dccb', 6, 6, 3, 1); px(g, '#e4dccb', 10, 10, 3, 1);
+        if (s === 2) { px(g, '#d9b44a', 7, 5, 2, 6); px(g, '#d9b44a', 5, 7, 6, 2); px(g, '#f6e3a0', 7, 7, 2, 2); }
+      });
+    });
+    E.mosaic = [1, 2].map(function (s) {
+      return tile(s === 1 ? '#3557a8' : '#2c4a96', [['#27428a', 6]], 410 + s, function (g) {
+        px(g, '#e8c860', 0, 0, T, 1); px(g, '#e8c860', 0, 0, 1, T);
+        for (var i = 0; i < 4; i++) { px(g, '#7aa0e8', 8 - i, 4 + i, 1 + 2 * i, 1); px(g, '#7aa0e8', 8 - i, 12 - i, 1 + 2 * i, 1); }
+        px(g, '#f6e3a0', 7, 7, 3, 3); px(g, '#ffffff', 8, 8);
+      });
+    });
+    E.wall = [0, 1].map(function (s) { // 0 = 벽 윗면, 1 = 바닥과 닿는 아랫단(푸른 띠 + 금테)
+      return tile('#e9e4d8', [['#ddd6c6', 8]], 420 + s, function (g) {
+        for (var y = 0; y < T; y += 8) { px(g, '#bdb5a2', 0, y + 7, T, 1); px(g, '#bdb5a2', (y / 8) % 2 ? 4 : 12, y, 1, 7); px(g, '#f8f5ee', 0, y, T, 1); }
+        if (s === 1) { px(g, '#d9b44a', 0, 9, T, 1); px(g, '#3557a8', 0, 10, T, 3); px(g, '#7aa0e8', 0, 10, T, 1); px(g, '#8f8672', 0, 13, T, 3); }
+      });
+    });
+    E.roof = [1, 2].map(function (s) {
+      return tile('#2f5fae', [['#274f96', 8]], 430 + s, function (g) {
+        for (var y = 1; y < T; y += 4) { px(g, '#1f4080', 0, y + 2, T, 1); for (var x = (y % 8 === 1 ? 0 : 2); x < T; x += 4) px(g, '#5a8fe0', x, y, 2, 1); }
+        if (s === 2) { px(g, '#e8c860', 7, 5, 2, 6); px(g, '#f6e3a0', 6, 7, 4, 2); }
+      });
+    });
+    E.facade = [1, 2].map(function (s) {
+      return tile('#f4f0e6', [['#e8e2d3', 6]], 440 + s, function (g) {
+        px(g, '#d9b44a', 0, 0, T, 1); px(g, '#d6cdb8', 0, 15, T, 1);
+        [2, 10].forEach(function (x0) { px(g, '#3b5a8a', x0, 4, 4, 8); px(g, '#3b5a8a', x0 + 1, 3, 2, 1); px(g, s === 2 ? '#ffd66b' : '#8fb8e8', x0 + 1, 5, 2, 6); px(g, '#d9b44a', x0 - 1, 12, 6, 1); });
+      });
+    });
+    E.house = [1, 2].map(function (s) {
+      return tile('#f4f0e6', [['#e8e2d3', 6]], 450 + s, function (g) {
+        px(g, '#1f4080', 0, 0, T, 2); px(g, '#e8c860', 0, 2, T, 1); px(g, '#cfc6b0', 0, 15, T, 1);
+        if (s === 1) { px(g, '#d9b44a', 4, 5, 8, 10); px(g, '#5a3a1c', 5, 7, 6, 8); px(g, '#5a3a1c', 6, 6, 4, 1); px(g, '#7a5230', 6, 8, 2, 7); px(g, '#7a5230', 8, 8, 2, 7); px(g, '#f6e3a0', 7, 11, 2, 1); }
+        else { px(g, '#3b5a8a', 3, 5, 10, 6); px(g, '#8fb8e8', 4, 6, 3, 4); px(g, '#8fb8e8', 9, 6, 3, 4); px(g, '#3f8a3a', 2, 11, 12, 2); ['#e84a6a', '#ffd66b', '#e88ab0', '#ffffff'].forEach(function (c, i) { px(g, c, 3 + i * 3, 11); px(g, c, 4 + i * 3, 12); }); }
+      });
+    });
+    E.dome = [1, 2].map(function (s) { // 대신전 지붕(금빛)
+      return tile('#d9b44a', [['#c49a34', 8]], 460 + s, function (g) {
+        for (var y = 1; y < T; y += 4) { px(g, '#a8842a', 0, y + 2, T, 1); for (var x = (y % 8 === 1 ? 0 : 2); x < T; x += 4) px(g, '#f6e3a0', x, y, 2, 1); }
+        if (s === 2) { px(g, '#ffffff', 6, 5, 4, 6); px(g, '#ffffff', 5, 6, 6, 4); px(g, '#7ad8ff', 7, 7, 2, 2); }
+      });
+    });
+    E.templeWall = [1, 2].map(function (s) {
+      return tile('#f6f3ec', [['#eae5d8', 6]], 470 + s, function (g) {
+        px(g, '#d9b44a', 0, 0, T, 2); px(g, '#f6e3a0', 0, 0, T, 1);
+        px(g, '#d6cdb8', 1, 2, 2, 14); px(g, '#fdfbf6', 1, 2, 1, 14); px(g, '#d6cdb8', 13, 2, 2, 14); px(g, '#fdfbf6', 13, 2, 1, 14); // 기둥
+        px(g, '#2f5fae', 5, 5, 6, 10); px(g, '#2f5fae', 6, 4, 4, 1); px(g, s === 2 ? '#ffd66b' : '#7ad8ff', 7, 6, 2, 8); px(g, '#e84a6a', 6, 9, 1, 2); px(g, '#e84a6a', 9, 9, 1, 2);
+      });
+    });
+    E.lawn = [1, 2, 3].map(function (s) {
+      return tile('#6fc060', [['#5cae50', 14], ['#8ad878', 10]], 480 + s, function (g) {
+        if (s === 3) { px(g, '#f6a8c8', 3, 4); px(g, '#ffffff', 4, 4); px(g, '#ffe066', 11, 9); px(g, '#ffffff', 12, 10); px(g, '#f6a8c8', 7, 12); px(g, '#c8a8ff', 13, 3); }
+      });
+    });
+    E.tree = [1, 2].map(function (s) { // 꽃나무(분홍 / 흰)
+      return over(E.lawn[0], function (g) {
+        var a = s === 1 ? ['#e88ab0', '#f6b8d0', '#fbe0ea'] : ['#c8d4f0', '#e6ecfa', '#ffffff'];
+        px(g, 'rgba(0,0,0,.22)', 3, 13, 10, 2);
+        px(g, '#7a5230', 7, 9, 2, 5); px(g, '#5a3a1c', 8, 9, 1, 5);
+        px(g, a[0], 3, 4, 10, 6); px(g, a[0], 5, 2, 6, 9); px(g, a[1], 4, 3, 8, 5); px(g, a[1], 6, 2, 4, 1); px(g, a[2], 5, 4, 3, 2); px(g, a[2], 9, 6, 2, 1); px(g, a[2], 7, 3);
+        px(g, '#ffffff', 4, 6); px(g, '#ffffff', 10, 4); px(g, a[0], 2, 11); px(g, a[1], 12, 12);
+      });
+    });
+    E.bed = [1, 2].map(function (s) { // 꽃밭(낮은 울타리 + 꽃)
+      return tile('#3f8a3a', [['#327a30', 10], ['#4fa048', 8]], 490 + s, function (g, r) {
+        px(g, '#2a6628', 0, 0, T, 1); px(g, '#2a6628', 0, 15, T, 1);
+        var cs = ['#e84a6a', '#ffd66b', '#e88ab0', '#ffffff', '#c8a8ff', '#ff9a4a'];
+        for (var i = 0; i < 11; i++) { var x = 1 + Math.floor(r() * 13), y = 2 + Math.floor(r() * 11); px(g, cs[(i + s) % cs.length], x, y, 2, 2); px(g, '#fff6c0', x, y); }
+      });
+    });
+    E.statue = over(E.marble[0], function (g) { // 금빛 날개 여신상
+      px(g, 'rgba(0,0,0,.2)', 3, 14, 11, 2);
+      px(g, '#b9b2a0', 4, 11, 8, 4); px(g, '#e9e4d8', 4, 11, 8, 1); px(g, '#8f8672', 4, 14, 8, 1); px(g, '#d9b44a', 5, 12, 6, 1);
+      px(g, '#d9b44a', 7, 4, 2, 7); px(g, '#f6e3a0', 7, 2, 2, 2); px(g, '#a8842a', 8, 5, 1, 6);
+      px(g, '#e8c860', 4, 4, 3, 1); px(g, '#e8c860', 9, 4, 3, 1); px(g, '#e8c860', 3, 5, 3, 2); px(g, '#e8c860', 10, 5, 3, 2); px(g, '#f6e3a0', 2, 6, 2, 2); px(g, '#f6e3a0', 12, 6, 2, 2);
+      px(g, '#d9b44a', 6, 9, 4, 2);
+    });
+    E.lamp = [0, 1].map(function (f) { // 수정 가로등(빛이 깜빡)
+      return over(E.marble[0], function (g) {
+        px(g, 'rgba(0,0,0,.2)', 5, 14, 7, 2);
+        px(g, '#3a4468', 7, 6, 2, 9); px(g, '#5a6890', 7, 6, 1, 9); px(g, '#2a3050', 6, 14, 4, 1); px(g, '#d9b44a', 6, 9, 4, 1); px(g, '#d9b44a', 6, 6, 4, 1);
+        px(g, f ? 'rgba(160,236,255,.55)' : 'rgba(122,216,255,.35)', 4, 0, 8, 7);
+        px(g, '#7ad8ff', 6, 1, 4, 5); px(g, '#7ad8ff', 7, 0, 2, 1); px(g, f ? '#ffffff' : '#e8fbff', 7, 2, 2, 3);
+      });
+    });
+    E.bridge = tile('#e6e0d2', [['#d8d0bf', 8]], 495, function (g) {
+      px(g, '#b9b2a0', 0, 0, T, 2); px(g, '#b9b2a0', 0, 14, T, 2); px(g, '#f8f5ee', 0, 2, T, 1); px(g, '#f8f5ee', 0, 13, T, 1);
+      for (var x = 1; x < T; x += 4) { px(g, '#8f8672', x, 0, 1, 2); px(g, '#8f8672', x, 14, 1, 2); }
+      px(g, '#d9b44a', 7, 7, 2, 2); px(g, '#d8d0bf', 0, 7, 5, 1); px(g, '#d8d0bf', 11, 8, 5, 1);
+    });
+    E.gate = tile('#e9e4d8', [['#ddd6c6', 6]], 496, function (g) { // 금빛 아치문
+      px(g, '#a8842a', 2, 2, 12, 14); px(g, '#d9b44a', 3, 1, 10, 15); px(g, '#f6e3a0', 4, 1, 8, 1);
+      px(g, '#1f2f5a', 4, 4, 8, 12); px(g, '#1f2f5a', 5, 3, 6, 1); px(g, '#3557a8', 5, 6, 6, 10); px(g, '#7aa0e8', 7, 8, 2, 8); px(g, '#f6e3a0', 8, 4, 1, 12);
+    });
+    // ---- 탑 안(방/계단방/수문장의 방/마을) ----
+    var R = tiles.twr = {};
+    R.floor = [1, 2, 3].map(function (s) {
+      return tile('#4a4f66', [['#434860', 10], ['#555b76', 6]], 500 + s, function (g) {
+        px(g, '#353a4e', 0, 15, T, 1); px(g, '#353a4e', 15, 0, 1, T); px(g, '#5f6684', 0, 0, T, 1); px(g, '#5f6684', 0, 0, 1, T);
+        if (s === 2) { px(g, '#353a4e', 7, 0, 1, T); px(g, '#5f6684', 8, 0, 1, T); }
+        if (s === 3) { px(g, '#7ad8ff', 7, 5, 2, 1); px(g, '#7ad8ff', 5, 7, 6, 2); px(g, '#7ad8ff', 7, 10, 2, 1); px(g, '#c8f2ff', 7, 7, 2, 2); }
+      });
+    });
+    R.crack = over(R.floor[0], function (g) { px(g, '#2a2e40', 3, 3, 1, 3); px(g, '#2a2e40', 4, 6, 3, 1); px(g, '#2a2e40', 7, 7, 1, 4); px(g, '#2a2e40', 8, 11, 4, 1); px(g, '#2a2e40', 11, 4, 2, 1); });
+    R.carpet = tile('#8a2038', [['#7a1a30', 8]], 510, function (g) {
+      px(g, '#a52c48', 3, 3, 10, 10);
+      for (var i = 1; i < T; i += 4) { px(g, '#e8c860', i, 1); px(g, '#e8c860', i, 14); px(g, '#e8c860', 1, i); px(g, '#e8c860', 14, i); }
+      for (var k = 0; k < 3; k++) { px(g, '#e8c860', 8 - k, 5 + k, 1 + 2 * k, 1); px(g, '#e8c860', 8 - k, 11 - k, 1 + 2 * k, 1); }
+      px(g, '#fff0b0', 8, 8);
+    });
+    R.wall = [1, 2].map(function (s) {
+      return tile('#2a2e44', [['#242840', 8]], 520 + s, function (g) {
+        for (var y = 0; y < T; y += 4) { px(g, '#3c4262', 0, y, T, 1); px(g, '#1c2034', 0, y + 3, T, 1); for (var x = ((y / 4) % 2) * 4; x < T; x += 8) px(g, '#1c2034', x, y, 1, 4); }
+      });
+    });
+    R.wallFace = [0, 1, 2].map(function (f) { // 바닥과 닿는 벽면: 0 = 민벽, 1/2 = 횃불(두 프레임)
+      return tile('#343a58', [['#2e3450', 8]], 530, function (g) {
+        for (var y = 0; y < 12; y += 4) { px(g, '#454c70', 0, y, T, 1); px(g, '#242840', 0, y + 3, T, 1); for (var x = ((y / 4) % 2) * 4; x < T; x += 8) px(g, '#242840', x, y, 1, 4); }
+        px(g, '#b8943a', 0, 0, T, 1); px(g, '#1c2034', 0, 12, T, 4); px(g, '#12162a', 0, 15, T, 1);
+        if (f) {
+          px(g, 'rgba(255,170,60,' + (f === 1 ? 0.22 : 0.32) + ')', 3, 0, 10, 10);
+          px(g, '#5a4a2a', 7, 6, 2, 5); px(g, '#8a7240', 6, 6, 4, 1);
+          if (f === 1) { px(g, '#ff9a2a', 6, 2, 4, 4); px(g, '#ffe066', 7, 3, 2, 3); px(g, '#ff7a1a', 7, 1, 1, 1); }
+          else { px(g, '#ff7a1a', 6, 1, 4, 5); px(g, '#fff0a0', 7, 2, 2, 4); px(g, '#ff9a2a', 8, 0, 1, 1); }
+        }
+      });
+    });
+    R.pillar = over(R.floor[0], function (g) {
+      px(g, 'rgba(0,0,0,.3)', 4, 13, 10, 3);
+      px(g, '#8088a8', 4, 1, 8, 13); px(g, '#a8b0cc', 5, 1, 2, 13); px(g, '#5a6080', 10, 1, 2, 13);
+      px(g, '#d9b44a', 3, 1, 10, 2); px(g, '#f6e3a0', 3, 1, 10, 1); px(g, '#d9b44a', 3, 12, 10, 2); px(g, '#a8842a', 3, 13, 10, 1);
+    });
+    R.door = over(R.wall[0], function (g) { // 방 사이의 문(금테 + 푸른 빛)
+      px(g, '#a8842a', 1, 1, 14, 15); px(g, '#d9b44a', 2, 1, 12, 15); px(g, '#f6e3a0', 2, 1, 12, 1);
+      px(g, '#141a38', 3, 3, 10, 13); px(g, '#2c4a96', 4, 5, 8, 11); px(g, '#7aa0e8', 6, 7, 4, 9); px(g, '#c8e4ff', 7, 9, 2, 7);
+    });
+    R.up = tile('#5b6180', null, 540, function (g) { // 올라가는 계단(위로 갈수록 밝게)
+      ['#454a62', '#555b76', '#68708e', '#8088a8'].forEach(function (c, i) { px(g, c, 1, 12 - i * 4, 14, 4); px(g, '#2a2e40', 1, 15 - i * 4, 14, 1); });
+      px(g, '#d9b44a', 0, 0, 1, T); px(g, '#d9b44a', 15, 0, 1, T); px(g, '#f6e3a0', 7, 1, 2, 1); px(g, '#f6e3a0', 6, 2, 4, 1);
+    });
+    R.down = tile('#2a2e40', null, 541, function (g) { // 내려가는 계단(아래로 갈수록 어둡게)
+      ['#555b76', '#454a62', '#353a4e', '#1c2034'].forEach(function (c, i) { px(g, c, 1, i * 4, 14, 4); px(g, '#12162a', 1, 3 + i * 4, 14, 1); });
+      px(g, '#b8943a', 0, 0, 1, T); px(g, '#b8943a', 15, 0, 1, T); px(g, '#7ad8ff', 6, 13, 4, 1); px(g, '#7ad8ff', 7, 14, 2, 1);
+    });
     tiles.tele = [0, 1].map(function (f) {
       return over(tiles.stone[0], function (g) {
         for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -497,8 +646,148 @@ var TowerMine = (function () {
     return { x: sx, y: sy, w: w, h: h, img: c };
   }
   function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
+  // [2026-11-15] 탑의 도시 엘리시온 / 탑 입구(테마 1), 탑 안(테마 2) -- 같은 바닥 글자를 전용 그림으로 바꿔 그린다(없으면 null = 보통 그림).
+  //  탑 입구의 탑 정면(Q 덩어리)은 한 장의 큰 그림(faceBuild)을 칸마다 잘라 쓴다 -- 하늘까지 솟은 돌벽, 금빛 띠, 불 켜진 아치 창, 한가운데 빛나는 큰 문.
+  function themeOf() { return !map ? 0 : map.id === 'towercity' || map.id === 'towergate' ? 1 : /^tw\d/.test(map.id) ? 2 : 0; }
+  var faceCache = null;
+  function faceInfo() {
+    var key = map.id + '|' + map.w + 'x' + map.h;
+    if (faceCache && faceCache.key === key) return faceCache;
+    var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (var y = 0; y < map.h; y++) { var row = map.rows[y]; for (var x = 0; x < map.w; x++) if (row.charAt(x) === 'Q') { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
+    faceCache = { key: key, x0: x0, y0: y0, x1: x1, y1: y1, img: x1 < 0 ? null : faceBuild((x1 - x0 + 1) * T, (y1 - y0 + 1) * T), t: {} };
+    return faceCache;
+  }
+  function faceTile(x, y) {
+    var f = faceInfo();
+    if (!f.img || x < f.x0 || x > f.x1 || y < f.y0 || y > f.y1) return null;
+    var k = x + ',' + y, c = f.t[k];
+    if (!c) { c = f.t[k] = mk(T, T); c.getContext('2d').drawImage(f.img, (x - f.x0) * T, (y - f.y0) * T, T, T, 0, 0, T, T); }
+    return c;
+  }
+  /** 탑 정면 한 장(w x h 픽셀, 아래 가운데가 큰 문). */
+  function faceBuild(w, h) {
+    var c = mk(w, h), g = c.getContext('2d'), r = rng(777), cx = w >> 1, y, x, i;
+    function arch(ax, ay, aw, ah) { // 꼭대기가 둥근 모양(아래는 네모)
+      var hw = aw / 2;
+      for (var yy = 0; yy < ah; yy++) { var t2 = yy < hw ? Math.sqrt(Math.max(0, hw * hw - (hw - yy) * (hw - yy))) : hw; g.fillRect(Math.round(ax + hw - t2), Math.round(ay + yy), Math.max(1, Math.round(t2 * 2)), 1); }
+    }
+    function disc(dx, dy, rad) { for (var yy = -rad; yy <= rad; yy++) { var t2 = Math.sqrt(rad * rad - yy * yy); g.fillRect(Math.round(dx - t2), dy + yy, Math.max(1, Math.round(t2 * 2)), 1); } }
+    // 돌벽 -- 아래는 짙은 남색, 위로 갈수록 안개 속으로 옅어진다
+    for (y = 0; y < h; y++) { var k = y / h; g.fillStyle = 'rgb(' + Math.round(156 - 104 * k) + ',' + Math.round(170 - 108 * k) + ',' + Math.round(212 - 108 * k) + ')'; g.fillRect(0, y, w, 1); }
+    for (y = 0; y < h; y += 8) { g.fillStyle = 'rgba(16,20,44,' + (0.08 + 0.24 * y / h) + ')'; g.fillRect(0, y + 7, w, 1); for (x = ((y / 8) % 2) * 8; x < w; x += 16) g.fillRect(x, y, 1, 7); }
+    for (i = 0; i < 260; i++) { g.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(10,14,36,.10)'; g.fillRect(Math.floor(r() * w), Math.floor(r() * h), 2 + Math.floor(r() * 5), 1); }
+    // 버팀 기둥 여덟 -- 밝은 면과 그늘
+    var cols = [0.035, 0.155, 0.275, 0.395, 0.605, 0.725, 0.845, 0.965];
+    cols.forEach(function (q) { var p0 = Math.round(w * q) - 10; g.fillStyle = 'rgba(196,208,242,.26)'; g.fillRect(p0, 0, 20, h); g.fillStyle = 'rgba(255,255,255,.30)'; g.fillRect(p0, 0, 3, h); g.fillStyle = 'rgba(12,16,38,.38)'; g.fillRect(p0 + 17, 0, 3, h); });
+    // 금빛 띠 셋
+    var bands = [0.20, 0.46, 0.72];
+    bands.forEach(function (q) {
+      var yy = Math.round(h * q);
+      g.fillStyle = '#b8943a'; g.fillRect(0, yy, w, 7); g.fillStyle = '#f6e3a0'; g.fillRect(0, yy, w, 1); g.fillStyle = '#7a5f20'; g.fillRect(0, yy + 6, w, 1);
+      for (x = 4; x < w; x += 12) { g.fillStyle = '#f6e3a0'; g.fillRect(x, yy + 2, 3, 3); g.fillStyle = '#7ad8ff'; g.fillRect(x + 1, yy + 3, 1, 1); }
+      cols.forEach(function (q2) { var p0 = Math.round(w * q2) - 12; g.fillStyle = '#d9b44a'; g.fillRect(p0, yy - 3, 24, 13); g.fillStyle = '#f6e3a0'; g.fillRect(p0, yy - 3, 24, 2); g.fillStyle = '#7a5f20'; g.fillRect(p0, yy + 9, 24, 1); });
+    });
+    // 아치 창 -- 띠 사이마다(위로 갈수록 작게), 가운데 큰 문 위쪽은 비워 둔다
+    [[0.06, 9, 20], [0.26, 11, 26], [0.52, 13, 32], [0.78, 13, 30]].forEach(function (rw, ri) {
+      var yy = Math.round(h * rw[0]);
+      for (i = 0; i < cols.length - 1; i++) {
+        var a0 = w * cols[i], a1 = w * cols[i + 1], mid = i === 3;
+        if (mid && ri >= 1) continue;
+        var n = mid ? 4 : 2;
+        for (var j = 0; j < n; j++) {
+          var wx = Math.round(a0 + (a1 - a0) * (j + 1) / (n + 1) - rw[1] / 2), lit = (i * 3 + j + ri) % 3 !== 0;
+          g.fillStyle = '#b8943a'; arch(wx - 2, yy - 2, rw[1] + 4, rw[2] + 3);
+          g.fillStyle = '#161c3c'; arch(wx, yy, rw[1], rw[2]);
+          g.fillStyle = lit ? (ri % 2 ? '#ffd66b' : '#8fe0ff') : '#2c3868'; arch(wx + 2, yy + 3, rw[1] - 4, rw[2] - 5);
+          if (lit) { g.fillStyle = 'rgba(255,255,255,.75)'; g.fillRect(wx + 3, yy + 6, 2, rw[2] - 12); }
+          g.fillStyle = '#161c3c'; g.fillRect(wx + (rw[1] >> 1), yy + 2, 1, rw[2] - 2);
+        }
+      }
+    });
+    // 발치의 단
+    g.fillStyle = '#cfc7b4'; g.fillRect(0, h - 10, w, 10); g.fillStyle = '#f1ece1'; g.fillRect(0, h - 10, w, 2); g.fillStyle = '#9a927e'; g.fillRect(0, h - 5, w, 1);
+    // 한가운데 큰 문 -- 겹겹의 금빛 아치 틀 + 안쪽에서 새어 나오는 푸른 빛
+    var gw = 7 * T, gh = 12 * T, gx = cx - gw / 2, gy = h - gh;
+    g.fillStyle = '#5a4416'; arch(gx - 16, gy - 16, gw + 32, gh + 16);
+    g.fillStyle = '#b8943a'; arch(gx - 13, gy - 13, gw + 26, gh + 13);
+    g.fillStyle = '#f6e3a0'; arch(gx - 10, gy - 10, gw + 20, gh + 10);
+    g.fillStyle = '#d9b44a'; arch(gx - 8, gy - 8, gw + 16, gh + 8);
+    g.fillStyle = '#7a5f20'; arch(gx - 3, gy - 3, gw + 6, gh + 3);
+    g.fillStyle = '#0e1430'; arch(gx, gy, gw, gh);
+    for (i = 0; i < 7; i++) { g.fillStyle = 'rgba(' + (70 + i * 22) + ',' + (130 + i * 16) + ',255,' + (0.16 + 0.05 * i) + ')'; arch(gx + 6 + i * 7, gy + 10 + i * 13, gw - 12 - i * 14, gh - 10 - i * 13); }
+    g.fillStyle = 'rgba(255,255,255,.55)'; arch(cx - 5, gy + 110, 10, gh - 110);
+    for (i = 0; i < 26; i++) { g.fillStyle = 'rgba(200,240,255,' + (0.3 + r() * 0.5) + ')'; g.fillRect(Math.round(gx + 10 + r() * (gw - 20)), Math.round(gy + 30 + r() * (gh - 40)), 1, 1 + Math.floor(r() * 3)); } // 빛 티끌
+    for (i = 0; i < 9; i++) { g.fillStyle = '#f6e3a0'; g.fillRect(Math.round(gx - 6), gy + 30 + i * 18, 3, 3); g.fillRect(Math.round(gx + gw + 3), gy + 30 + i * 18, 3, 3); } // 문틀 징
+    // 문 위 둥근 창(금테 + 푸른 빛 + 바큇살)
+    var ry = gy - 40, rr = 26;
+    g.fillStyle = '#5a4416'; disc(cx, ry, rr + 5); g.fillStyle = '#d9b44a'; disc(cx, ry, rr + 3); g.fillStyle = '#f6e3a0'; disc(cx, ry, rr); g.fillStyle = '#16204a'; disc(cx, ry, rr - 3);
+    g.fillStyle = '#4f8cf0'; disc(cx, ry, rr - 7); g.fillStyle = '#9fd8ff'; disc(cx, ry, rr - 14); g.fillStyle = '#ffffff'; disc(cx, ry, 4);
+    g.fillStyle = '#d9b44a';
+    for (i = 0; i < 8; i++) { var an = i * Math.PI / 4; for (var q3 = 5; q3 < rr - 2; q3++) g.fillRect(Math.round(cx + Math.cos(an) * q3), Math.round(ry + Math.sin(an) * q3), 1, 1); }
+    // 진홍 깃발(금 문양) 양옆
+    [-1, 1].forEach(function (sg) {
+      var bx = cx + sg * (gw / 2 + 44) - 11, by = gy - 26, bl = 150;
+      g.fillStyle = '#5a4416'; g.fillRect(bx - 3, by - 4, 28, 4);
+      g.fillStyle = '#8a2038'; g.fillRect(bx, by, 22, bl); g.fillStyle = '#a52c48'; g.fillRect(bx + 3, by, 5, bl); g.fillStyle = '#5e1226'; g.fillRect(bx + 18, by, 4, bl);
+      for (var q4 = 0; q4 < 11; q4++) { g.fillStyle = '#8a2038'; g.fillRect(bx + q4, by + bl + q4, 1, 11 - q4); g.fillRect(bx + 21 - q4, by + bl + q4, 1, 11 - q4); }
+      g.fillStyle = '#e8c860'; g.fillRect(bx, by, 22, 3); g.fillRect(bx, by + bl - 3, 22, 2);
+      for (var q5 = 0; q5 < 6; q5++) { g.fillRect(bx + 10 - q5, by + 40 + q5, 2 + 2 * q5, 1); g.fillRect(bx + 10 - q5, by + 52 - q5, 2 + 2 * q5, 1); }
+      g.fillStyle = '#fff0b0'; g.fillRect(bx + 9, by + 44, 4, 5);
+      g.fillStyle = '#e8c860'; g.fillRect(bx + 10, by + 70, 2, 44); g.fillRect(bx + 5, by + 82, 12, 2);
+    });
+    // 꼭대기 안개/구름
+    for (i = 0; i < 34; i++) {
+      var ox = r() * w, oy = r() * h * 0.17, ow = 40 + r() * 90, al = 0.10 + r() * 0.16;
+      for (var q6 = 0; q6 < 5; q6++) { g.fillStyle = 'rgba(244,247,255,' + al + ')'; g.fillRect(Math.round(ox - ow / 2 + q6 * 6), Math.round(oy + q6 * 2 - 5), Math.max(4, Math.round(ow - q6 * 12)), 3); }
+    }
+    for (y = 0; y < Math.round(h * 0.07); y++) { g.fillStyle = 'rgba(236,241,255,' + (0.5 * (1 - y / (h * 0.07))) + ')'; g.fillRect(0, y, w, 1); }
+    return c;
+  }
+  function themeTile(th, c, x, y, v, wf) {
+    var E = tiles.ely, R = tiles.twr, below;
+    if (th === 1) {
+      switch (c) {
+        case 's': return E.marble[v % 7 === 0 ? 1 : 0];
+        case ',': return E.mosaic[(x + y) % 2];
+        case 'W': below = cellAt(x, y + 1); return E.wall[below === 'W' || below === '^' ? 0 : 1];
+        case '.': return E.lawn[v % 5 === 0 ? 2 : v % 2];
+        case 'T': return E.tree[v % 2];
+        case 'g': return E.bed[v % 2];
+        case 'A': return E.statue;
+        case 'i': return E.lamp[wf ? 1 : 0];
+        case 'H': return E.bridge;
+        case 'K': {
+          if (cellAt(x, y + 1) !== 'K') return E.house[v % 2];
+          var ku = 0; while (ku < 2 && cellAt(x, y - ku - 1) === 'K') ku++;
+          return ku < 2 ? E.roof[v % 9 === 0 ? 1 : 0] : E.facade[v % 4 === 0 ? 1 : 0];
+        }
+        case 'Q': {
+          if (map.id === 'towergate') return faceTile(x, y);
+          var qu = 0; while (qu < 3 && cellAt(x, y - qu - 1) === 'Q') qu++;
+          return qu < 3 && cellAt(x, y + 1) === 'Q' ? E.dome[qu === 1 && x % 4 === 0 ? 1 : 0] : E.templeWall[v % 3 === 0 ? 1 : 0];
+        }
+        case 'G': return (map.id === 'towergate' && faceTile(x, y)) || E.gate;
+      }
+      return null;
+    }
+    switch (c) {
+      case 's': return R.floor[v % 11 === 0 ? 2 : v % 2];
+      case ':': return R.crack;
+      case ',': return R.carpet;
+      case 'W': below = cellAt(x, y + 1); return below === 'W' || below === '^' || below === 'G' || below === 'S' ? R.wall[v % 2] : R.wallFace[x % 4 === 2 ? 1 + (wf ? 1 : 0) : 0];
+      case 'L': return R.pillar;
+      case 'G': return R.door;
+      case 'U': return R.up;
+      case 'S': return R.down;
+      case '.': return E.lawn[v % 5 === 0 ? 2 : v % 2];
+    }
+    return null;
+  }
   function tileFor(c, x, y, wf) {
     var v = hashXY(x, y), p;
+    var th = themeOf(); // [2026-11-15] 탑의 도시·탑 입구·탑 안은 전용 그림
+    if (th) { p = themeTile(th, c, x, y, v, wf); if (p) return p; p = null; }
     switch (c) {
       case '.': return tiles.grass[v % 3];
       case ',': return tiles.path[v % 2];
@@ -1494,14 +1783,16 @@ var TowerMine = (function () {
   // [2026-11-15] 탑(시즌5식) -- 보드 층(map.board)은 걸어서 못 움직이고 🎲로만 칸을 옮긴다. 위쪽 띠: 층/칸 + [🎲] [🪜 층 이동] [나가기].
   var twBar = null, twBusy = false, twInfo = null, TW_ICON = { E: '🏁', C: '⚔️', T: '📦', P: '🗼', X: '⚠️', L: '🍀', U: '🔼', D: '🔽' };
   function twIndex() { var b = map && map.board; if (!b) return -1; for (var i = 0; i < b.length; i++) if (b[i][0] === P.x && b[i][1] === P.y) return i; return -1; }
+  var TW_ROOM = { C: '⚔️ 전투방', T: '📦 보물방', P: '🗼 증표방', X: '⚠️ 함정방', L: '🍀 행운의 샘', U: '🪜 계단방' };
+  /** [2026-11-15] 탑 띠 -- 층 + 지금 방(st.twRun: floor/step/total/type) + [층 이동]. 주사위는 없앴다: 오른쪽 문을 지나는 순간 다음 방이 정해진다. */
   function twRender() {
     if (!el.ov) return;
     if (!twBar) { twBar = document.createElement('div'); twBar.className = 'mine-tw-bar'; el.ov.appendChild(twBar); }
     if (!map || !map.tower) { twBar.style.display = 'none'; return; }
-    var i = twIndex(), h = '🗼 ' + map.tower + '층' + (map.board ? ' · 칸 ' + (i < 0 ? '-' : (i + 1) + '/' + map.board.length) : '');
-    if (map.board) h += ' <button type="button" class="mine-mini-btn tw-dice"' + (twBusy ? ' disabled' : '') + ' onclick="TowerMine.twRoll()">🎲 굴리기</button>';
+    var r = (st && st.twRun) || null, h = '🗼 ' + map.tower + '층';
+    if (r && r.total) h += ' · 방 ' + Math.min(r.step | 0, r.total) + '/' + r.total + (TW_ROOM[r.type] ? ' · ' + TW_ROOM[r.type] : '') + (r.type === 'U' ? ' · 🔼 위 / 🔽 아래' : ' · 오른쪽 문 ▶');
     h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.twFloors()">🪜 층 이동</button>';
-    twBar.innerHTML = h;
+    if (twBar._h !== h) { twBar.innerHTML = h; twBar._h = h; }
     twBar.style.display = '';
   }
   function twRoll() {
@@ -1546,14 +1837,14 @@ var TowerMine = (function () {
     h += '<div class="mine-smith-say">올라갈 수 있는 층: <b>' + lo + ' ~ ' + max + '층</b>' + (d.block ? ' (🔒 ' + d.block + '층 아래는 수문장을 쓰러뜨려 끝난 구역)' : '')
         + ' · 👑 오늘 수문장 <b>' + done + '/' + daily + '</b>'
         + '<br><small>⚔️ 탑은 혼자 오르는 곳이에요(다른 사람과 따로, 층에 들어갈 때마다 처음부터). 몬스터가 강하니 체력을 봐 가며 굴리세요.</small>'
-        + '<br><small>🎲 주사위로 칸을 옮기고, 🔼 계단을 밟으면 위층이 열려요. 9층마다 수문장(하루 ' + daily + '번까지), 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기·보석 사기).</small></div>';
+        + '<br><small>방을 지나 오른쪽 문으로 나아가면 계단방이 나와요(위 계단 = 다음 층, 왼쪽 문 = 탑 밖). 9층마다 수문장(하루 ' + daily + '번까지), 10층마다 마을. 몬스터를 쓰러뜨리면 탑의 증표를 받아요(증표 상인에게서 동료 장비 뽑기·보석 사기).</small></div>';
     var btns = '';
     for (var f = lo; f <= max; f++) {
       var lb = f % 10 === 0 ? '🏘️ ' + f + '층 마을' : f % 10 === 9 ? '👑 ' + f + '층 ' + escAttr(bossNm(f)) : '🗼 ' + f + '층';
       btns += '<button type="button" class="mine-mini-btn"' + (map && map.tower === f ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.twGo(' + f + ')">' + lb + '</button>';
     }
     h += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0">' + btns + '</div>';
-    if (map && map.tower) h += '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twExit()">🚪 탑에서 나가기 (탑의 도시)</button></div>';
+    if (map && map.tower) h += '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twExit()">🚪 탑에서 나가기 (탑 입구)</button></div>';
     // [2026-11-15] 탑 전체(100층) -- 구역마다 수문장(시즌5 보스 이름). 열린 층(open) 위는 준비 중.
     var plan = '';
     for (var bf = 9; bf <= top; bf += 10) {
