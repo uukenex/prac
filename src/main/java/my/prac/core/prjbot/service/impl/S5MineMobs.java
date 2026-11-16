@@ -80,6 +80,8 @@ public final class S5MineMobs {
         Type asBoss() { boss = true; return this; }
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
+        public boolean demon; // [2026-11-16] 악마(악마의 들판) -- 순간이동/지옥불, 늘 선공
+        Type asDemon() { demon = true; firstStrike = true; return this; }
         public boolean champ; // [2026-11-16] 챔피언(보스 그림/크기/보상은 그대로, 이름표만 "챔피언" -- 소환 없이 정해진 시간마다 다시 나타난다)
         Type asChamp() { champ = true; return this; }
         Type strong(double hm, double am) { hpMul = hm; atkMul = am; return this; }
@@ -322,7 +324,13 @@ public final class S5MineMobs {
         new Type("심연 마도사", 25, "human", "#5a2a8a").asTower().fix(760_000, 1_100).strong(1.2, 1).expx(5.0).showLv(90),
         new Type("흑요석 골렘", 25, "human", "#2a2a3a").asTower().fix(840_000, 1_100).strong(1.35, 1).expx(5.0).showLv(91),
         new Type("늪지 여왕 히드라", 25, "snake", "#3a8a5a").asBoss().fix(2_400_000, 1_150).expx(0.85).showLv(92).respawn(60_000L).el(3),
-        new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(200.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 200.0).foot(3) // 7 = EL_DARK
+        new Type("심연의 거룡", 26, "human", "#6a2a9a").asBoss().strong(200.0, 1.0).showLv(120).asRanged().asStay().el(7).expx(3.0 / 200.0).foot(3), // 7 = EL_DARK
+        // [2026-11-16] 악마의 들판(요새 도시 동문/서문 밖) -- "한 마리 한 마리가 보스급, 스킬 사용, 순간이동, 바닥 불길". 체력/공격은 정해진 값(fix), 늘 선공.
+        //  떨어져 있으면 내 곁으로 순간이동하고 발밑에 지옥불을 일으킨다(S55MineServiceImpl.mineDemonSkills). 임프·마도사는 원거리도, 발록은 큰 불길 + 지면 강타(기절).
+        new Type("지옥불 임프", 26, "demon", "#d8502a").asDemon().fix(800_000, 1_250).expx(6.0).showLv(100).asRanged().el(6).respawn(180_000L),
+        new Type("악마 검사", 26, "demon", "#8a1a2a").asDemon().fix(1_300_000, 1_500).expx(10.0).showLv(104).el(7).respawn(180_000L),
+        new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(1_000_000, 1_300).expx(8.0).showLv(107).asRanged().el(7).respawn(180_000L),
+        new Type("발록", 26, "demon", "#4a1010").asDemon().fix(2_600_000, 1_700).expx(20.0).showLv(115).el(6).respawn(600_000L)
     ));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
@@ -419,6 +427,7 @@ public final class S5MineMobs {
             "심연의 대공 모르드레드", "차원의 파괴자 아자토스", "천공의 대천사 세라핌", "고룡 바하무트", "종말의 마룡왕 니드호그" };
     public static int towerBossType(int floor) { return indexOf(TOWER_BOSSES[Math.min(TOWER_BOSSES.length - 1, (floor - 1) / 10)]); }
 
+    static final String[] DEMON_NAMES = { "지옥불 임프", "악마 검사", "심연의 마도사", "발록" }; // [2026-11-16] S5MineMap.fixedMobs의 종류 번호
     private static int indexOf(String name) {
         for (int i = 0; i < TYPES.size(); i++) if (TYPES.get(i).name.equals(name)) return i;
         throw new IllegalStateException("mob type " + name);
@@ -550,6 +559,19 @@ public final class S5MineMobs {
             int blk = Math.min(TOWER_MOBS.length - 1, (S5MineMap.towerFloor(m.id) - 1) / 10);
             for (int k = 0; k < m.twSpots().length; k++) { int[] sp = m.twSpots()[k]; tw.add(new S5MineMap.Mob(k, indexOf(TOWER_MOBS[blk][k % 3]), sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] })); }
             return tw;
+        }
+        if (m.fixedMobs() != null) { // [2026-11-16] 악마의 들판 -- 자리와 종류가 정해져 있다(집 칸 + 둘레 한 칸)
+            List<S5MineMap.Mob> fm = new ArrayList<>();
+            char[][] ft = m.terrainGrid();
+            for (int[] q : m.fixedMobs()) {
+                List<Integer> cells = new ArrayList<>();
+                cells.add(q[1] * m.w + q[0]);
+                for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) { int nx = q[0] + dv[0], ny = q[1] + dv[1]; if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(ft[ny][nx])) cells.add(ny * m.w + nx); }
+                int[] ca = new int[cells.size()];
+                for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
+                fm.add(new S5MineMap.Mob(fm.size(), indexOf(DEMON_NAMES[q[2]]), q[0], q[1], ca));
+            }
+            return fm;
         }
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();

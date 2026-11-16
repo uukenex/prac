@@ -254,6 +254,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (String fr : S5MineMap.FOREST_ROOM_IDS) MINE_MIN_LV.put(fr, 90); // [2026-11-11] 두고개식 미궁 방
         MINE_MIN_LV.put(S5MineMap.FOREST_END, 90);
         MINE_MIN_LV.put(S5MineMap.HARPY_FERRY, 95);
+        MINE_MIN_LV.put(S5MineMap.DEMON_EAST, 95); // [2026-11-16] 악마의 들판
+        MINE_MIN_LV.put(S5MineMap.DEMON_WEST, 95);
         MINE_MIN_LV.put(S5MineMap.ARCHISEA, 73);
         int[] isleLv = { 73, 73, 77, 77, 81, 85, 89 };
         for (int i = 0; i < S5MineMap.ISLE_IDS.length; i++) MINE_MIN_LV.put(S5MineMap.ISLE_IDS[i], isleLv[i]);
@@ -266,6 +268,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
         if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
+        if (S5MineMap.DEMON_EAST.equals(m.id) || S5MineMap.DEMON_WEST.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로
+            String cu = MINE_CTX.get();
+            if (mineTwBlock(items) < MINE_DEMON_NEED_FLOOR && !(cu != null && isMineAdmin(cu)))
+                return "🛡️ 성문 수비대장: 멈추시오! 성문 밖은 악마들의 땅이오. 탑 " + MINE_DEMON_NEED_FLOOR + "층 수문장을 쓰러뜨린 증표를 가져오면 문을 열어 주겠소." + (mineTwBlock(items) > 0 ? " (지금 " + mineTwBlock(items) + "층 수문장까지)" : "");
+            return null;
+        }
         int need = mineHelmetNeed(m), have = items.getOrDefault(MINE_ITEM_HELMET, 0);
         if (have < need) return "⛑️ " + m.name + "은(는) 광부 투구 " + need + "단계 이상이 있어야 움직일 수 있어요. (지금 " + have + "단계, 평원 마을 대장장이에게서 업그레이드)";
         if (m.requireItem() != null && items.getOrDefault(m.requireItem(), 0) < 1) {
@@ -749,6 +757,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ty.sim) { m.put("sim", ty.simIndex()); m.put("lv", ty.simOf().lvShow > 0 ? ty.simOf().lvShow : 1 + 4 * (ty.simOf().tier - 1)); } // [2026-11-07] 보스 허수아비(그림 = 그 보스)
             if (ty.stay) m.put("stay", true); // [2026-10-28] 대주교 -- 제자리, 4칸 안에서 선공
             if (ty.champ) m.put("champ", true); // [2026-11-16] 챔피언 이름표
+            if (ty.demon) m.put("demon", true); // [2026-11-16] 악마(크게 그리고, 순간이동은 걷지 않고 번쩍)
             if (ty.minion) m.put("minion", true); // [2026-10-28] 레벨 차이 선공에서 뺀다(화면)
             if (ty.lvShow > 0) m.put("lv", ty.lvShow); // [2026-10-28] 얼음 여왕 -- 화면 레벨 Lv.95
             if (ty.foot() > 2) m.put("foot", ty.foot()); // [2026-11-15] 거룡 3x3(보스 기본 2x2)
@@ -2329,6 +2338,32 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (now >= st.roarNext) { st.roarNext = now + MINE_WB_ROAR_GAP_MS - stage * 5_000L; st.roarAt = now; st.roarSeq++; }
         }
     }
+    // ---- [2026-11-16] 악마(악마의 들판) 기술 -- 나와 싸우는 동안(전투 턴마다): 2칸 넘게 떨어지면 MINE_DEMON_BLINK_MS마다 내 곁으로 순간이동,
+    //  MINE_DEMON_FIRE_MS마다 내 발밑에 지옥불(예고 1.8초, 3x3 -- 마도사는 둘레 세 곳 더, 발록은 5x5), 발록은 지면 강타(둘레 3칸 + 기절)도.
+    static final int MINE_DEMON_NEED_FLOOR = 29;
+    static final long MINE_DEMON_BLINK_MS = 5_000L, MINE_DEMON_FIRE_MS = 6_500L, MINE_DEMON_SLAM_MS = 12_000L, MINE_DEMON_WARN_MS = 1_800L;
+    /** 순간이동했으면 true(거리를 다시 잰다). */
+    boolean mineDemonSkills(S5MineMap map, MobState s, S5MineMobs.Type type, int x, int y, int dist, long now) {
+        if (s.pat == null || s.pat.length != 3) s.pat = new long[] { now + 2_500L, now + 3_000L, now + 8_000L }; // {지옥불, 순간이동, 지면 강타}
+        boolean moved = false, balrog = "발록".equals(type.name), mage = "심연의 마도사".equals(type.name);
+        if (dist >= 3 && now >= s.pat[1]) {
+            int[][] around = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { -1, 1 }, { 1, -1 }, { -1, -1 } };
+            int st = RND.nextInt(around.length);
+            for (int i = 0; i < around.length; i++) {
+                int nx = x + around[(st + i) % around.length][0], ny = y + around[(st + i) % around.length][1];
+                if (map.walkable(nx, ny)) { s.fx = nx; s.fy = ny; s.lastMoveAt = now; moved = true; break; }
+            }
+            s.pat[1] = now + MINE_DEMON_BLINK_MS;
+        }
+        if (now >= s.pat[0]) {
+            s.pat[0] = now + MINE_DEMON_FIRE_MS + RND.nextInt(1_500);
+            int pm = balrog ? 220 : 150;
+            mineZoneAdd(map, x, y, now + MINE_DEMON_WARN_MS, balrog ? 2 : 1, 8, MINE_DEMON_WARN_MS, pm, 0);
+            if (mage) for (int k = 0; k < 3; k++) mineZoneAdd(map, x - 3 + RND.nextInt(7), y - 3 + RND.nextInt(7), now + MINE_DEMON_WARN_MS, 1, 8, MINE_DEMON_WARN_MS, pm, 0);
+        }
+        if (balrog && now >= s.pat[2]) { s.pat[2] = now + MINE_DEMON_SLAM_MS; mineZoneAdd(map, s.fx, s.fy, now + MINE_DEMON_WARN_MS, 3, 6, MINE_DEMON_WARN_MS, 240, 1_200L); }
+        return moved;
+    }
     // ---- [2026-11-16] 장판 공통 -- "탑 9·19·29층 수문장 패턴 다양화(거룡처럼)", 악마 들판의 지옥불. 거룡 장판과 같은 모양(예고 -> 터짐)·같은 판정을
     //  맵마다(1인 층은 사람마다 -- mineMobPrefix) 둔다. 장판 = {x, y, 터지는 시각, 반경, 종류, 예고 길이, 피해(최대 체력 천분율), 기절 ms}.
     //  종류(화면 색/이름): 4 독 웅덩이 / 5 낙석 / 6 지면 강타(기절) / 7 맹독 숨결(큰 것 -- 테두리 밖으로) / 8 지옥불. 위치 알림(zones)으로 화면에 보내고, 전투 턴(mineZoneHit)에서 맞는다.
@@ -2965,6 +3000,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 s.frozenUntil = Math.max(now + MINE_MOB_FREEZE_MS, s.splitUntil); // 인식 중엔 서버가 위치를 쥔다([2026-10-28] 분신술 자리는 끝날 때까지)
                 if (type.boss && !stunned && S5MineMap.towerFloor(map.id) > 0 && S5MineMap.towerBossFloor(S5MineMap.towerFloor(map.id))) mineTwPattern(map, s, S5MineMap.towerFloor(map.id), x, y, S5MineMobs.hp(type, map.mobs().get(id).rank), now); // [2026-11-16] 탑 수문장 패턴
+                if (type.demon && !stunned && mineDemonSkills(map, s, type, x, y, dist, now)) dist = Math.abs(s.fx - x) + Math.abs(s.fy - y); // [2026-11-16] 악마 -- 순간이동 / 지옥불
                 boolean thunderBoss = map.mobs().get(id).type == S5MineMobs.THUNDER_BOSS_TYPE;
                 if (thunderBoss && !stunned && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
                     int tsd = mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
