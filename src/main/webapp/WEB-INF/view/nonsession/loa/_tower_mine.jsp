@@ -320,7 +320,7 @@ var TowerMine = (function () {
         px(g, '#7a9ccf', 5, 5, 6, 9); px(g, '#7a9ccf', 6, 4, 4, 1); px(g, '#c9daf2', 7, 6, 2, 7); // 아치 창(스테인드글라스)
       });
     });
-    // ---- [2026-11-15] 탑의 도시 엘리시온 / 탑 입구 전용 그림(왕도와 다른 빛깔: 흰 대리석 + 금 상감, 푸른 모자이크 길, 푸른 지붕, 꽃나무) ----
+    // ---- [2026-11-15] 요새 도시 엘리시온 / 탑 입구 전용 그림(왕도와 다른 빛깔: 흰 대리석 + 금 상감, 푸른 모자이크 길, 푸른 지붕, 꽃나무) ----
     var E = tiles.ely = {};
     E.marble = [1, 2].map(function (s) {
       return tile('#f1ece1', [['#e6dfd0', 9], ['#fbf8f1', 7]], 400 + s, function (g) {
@@ -715,7 +715,7 @@ var TowerMine = (function () {
     return { x: sx, y: sy, w: w, h: h, img: c };
   }
   function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
-  // [2026-11-15] 탑의 도시 엘리시온 / 탑 입구(테마 1), 탑 안(테마 2) -- 같은 바닥 글자를 전용 그림으로 바꿔 그린다(없으면 null = 보통 그림).
+  // [2026-11-15] 요새 도시 엘리시온 / 탑 입구(테마 1), 탑 안(테마 2) -- 같은 바닥 글자를 전용 그림으로 바꿔 그린다(없으면 null = 보통 그림).
   //  탑 입구의 탑 정면(Q 덩어리)은 한 장의 큰 그림(faceBuild)을 칸마다 잘라 쓴다 -- 하늘까지 솟은 돌벽, 금빛 띠, 불 켜진 아치 창, 한가운데 빛나는 큰 문.
   function themeOf() { return !map ? 0 : map.id === 'towercity' || map.id === 'towergate' ? 1 : /^tw\d/.test(map.id) ? 2 : map.id === 'demoneast' || map.id === 'demonwest' ? 3 : 0; } // [2026-11-16] 3 = 악마의 들판
   var faceCache = null;
@@ -869,7 +869,7 @@ var TowerMine = (function () {
   }
   function tileFor(c, x, y, wf) {
     var v = hashXY(x, y), p;
-    var th = themeOf(); // [2026-11-15] 탑의 도시·탑 입구·탑 안은 전용 그림
+    var th = themeOf(); // [2026-11-15] 요새 도시·탑 입구·탑 안은 전용 그림
     if (th) { p = themeTile(th, c, x, y, v, wf); if (p) return p; p = null; }
     switch (c) {
       case '.': return tiles.grass[v % 3];
@@ -2211,7 +2211,7 @@ var TowerMine = (function () {
         + '<button type="button" onclick="TowerMine.mgPop(null)">✖</button></div>';
     if (g) h += '<div class="mine-smith-row worn"><span class="nm">✔ ' + escAttr(inf ? inf[0] : '★' + g) + '<small>' + escAttr(inf ? inf[1] : '') + '</small></span><button type="button" onclick="TowerMine.mgOff(\'' + s[0] + '\',' + m.t + ')">해제</button></div>';
     if (mgInv == null) h += '<div class="mine-eq-empty">...</div>';
-    else if (!rows.length && !g) h += '<div class="mine-eq-empty">가진 장비가 없어요. 탑의 도시·탑 마을의 증표 상인에게서 뽑을 수 있어요.</div>';
+    else if (!rows.length && !g) h += '<div class="mine-eq-empty">가진 장비가 없어요. 요새 도시·탑 마을의 증표 상인에게서 뽑을 수 있어요.</div>';
     rows.forEach(function (it) {
       h += '<div class="mine-smith-row"><span class="nm">' + escAttr(it.name) + (it.q > 1 ? ' x' + it.q : '') + '<small>' + escAttr(it.eff) + '</small></span><button type="button" onclick="TowerMine.mgOn(\'' + it.code + '\',' + m.t + ')">장착</button></div>';
     });
@@ -2222,7 +2222,7 @@ var TowerMine = (function () {
   function riverHtml(n) {
     var city = map && map.id === 'towercity';
     return npcHead('⛵ ' + n.name, false) + talkBlock(n, n.line)
-        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twFerry()">⛵ ' + (city ? '마물의 숲 나루터로' : '강 건너 탑의 도시로') + '</button></div>';
+        + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.twFerry()">⛵ ' + (city ? '마물의 숲 나루터로' : '강 건너 요새 도시로') + '</button></div>';
   }
   function twFerry() { closeSmith(); travel('/api/tower-mine-tw?action=ferry', '배를 타지 못했어요.'); }
   // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, map, hp(천분율), n, act(지금 싸우는 사람), share(보상 조건 %), down(일어나는 시각), zones[[x, y, 터지는 시각]], zr, zw}:
@@ -2592,6 +2592,10 @@ var TowerMine = (function () {
     { id: 'desert', name: '북쪽 사막', x: 160, y: 172, fill: '#e3c47a', ink: '#3b2a10' },
     { id: 'forestmaze', name: '마물의 숲 미궁 🌲', x: -42, y: -40, fill: '#2e5a2e', ink: '#e8ffe0', w: 76 }, // [2026-11-11] 두고개식 미궁(방 15개 + 끝방은 한 칸으로)
     { id: 'harpynest', name: '하피의 둥지 🪶', x: -42, y: -110, fill: '#3a7a68', ink: '#f0fff8', w: 76 }, // [2026-11-11] 하피 여왕
+    { id: 'towergate', name: '거대한 탑 입구 🗼', x: 0, y: 0, fill: '#3a4a7a', ink: '#f0f4ff', w: 76 }, // [2026-11-17] 전체 지도에 요새 도시 구간
+    { id: 'towercity', name: '요새 도시 엘리시온', x: 0, y: 0, fill: '#868b98', ink: '#ffffff', town: true },
+    { id: 'demonwest', name: '서쪽 악마의 들판 😈', x: 0, y: 0, fill: '#4a1a1a', ink: '#ffd0c0', w: 76 },
+    { id: 'demoneast', name: '동쪽 악마의 들판 😈', x: 0, y: 0, fill: '#4a1a1a', ink: '#ffd0c0', w: 76 },
     { id: 'harpyferry', name: '마물의 숲 나루터', x: -150, y: -110, fill: '#3a6a8a', ink: '#f0f8ff', w: 76 }, // [2026-11-11] 둥지 뒤 강가
     { id: 'westroad', name: '마물의 숲 입구 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
@@ -2620,6 +2624,9 @@ var TowerMine = (function () {
   // [2026-10-28] "전체 지도 보기가 어렵다, 지역 구간별로 나눠 놓으면" -- 네 구간(탭)으로 나눠 그린다. 처음엔 지금 있는 구간.
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
   var WORLD_REGIONS = [
+    { id: 'fort', name: '🏰 요새 도시', vh: 260, // [2026-11-17] 나루터 건너 -- 요새 도시(가운데), 북문 = 탑 입구, 동문/서문 = 악마의 들판
+      nodes: [['towergate', 135, 50], ['towercity', 135, 150], ['demonwest', 30, 150], ['demoneast', 240, 150], ['@ferry', 135, 235, 'desert', '⛵ 마물의 숲 나루터']],
+      links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['towercity', '@ferry', 'sea']] },
     { id: 'plain', name: '🌾 평원', vh: 390,
       nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', -58, 40], ['cave3', -58, 100], ['cave2', -58, 160], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
@@ -2647,8 +2654,8 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
-  var WORLD_CROSS = [['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
+  var WORLD_PLACE = { fort: [-400, -80], desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
+  var WORLD_CROSS = [['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
   var worldVB = null, wMoved = false;
@@ -2690,7 +2697,7 @@ var TowerMine = (function () {
       Object.keys(N).forEach(function (k) {
         var n = N[k], flr = WORLD_FLOOR[n.id], dm = (st && st.mapDims && st.mapDims[n.id]) || [100, 100]; // [2026-11-11] "실제 맵 크기를 반영해 크기가 조금씩 다르게" -- 넓이의 제곱근 비율(10칸 미궁 ~ 300칸 다도해)
         var nw = Math.round(14 + 5.2 * Math.sqrt(dm[0])), nh = Math.round(8 + 1.9 * Math.sqrt(dm[1]));
-        var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id))); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
+        var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id)) || (n.id === 'towergate' && !!map.tower)); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y - nh / 2 - 5, bx = n.x - nw / 2, bh = ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)

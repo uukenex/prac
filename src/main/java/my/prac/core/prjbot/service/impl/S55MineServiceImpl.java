@@ -2003,7 +2003,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1) { dao.upsertMineItem(userName, MINE_ITEM_VISIT_TCITY, 1); items.put(MINE_ITEM_VISIT_TCITY, 1); }
                 mineDisengageAll(userName);
                 dao.updateMinePos(userName, c.id, c.spawnX, c.spawnY, now);
-                out.put("message", "⛵ 강을 건너 탑의 도시 엘리시온에 도착했어요!");
+                out.put("message", "⛵ 강을 건너 요새 도시 엘리시온에 도착했어요!");
             } else if (S5MineMap.TOWER_CITY.equals(map.id)) {
                 S5MineMap fr = S5MineMap.get(S5MineMap.HARPY_FERRY);
                 mineDisengageAll(userName);
@@ -2325,12 +2325,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_WB_DOWN.clear();
         mineWbGoneAt = now;
         mineWbPoolSave(now);
+        mineWbVanish(now); // [2026-11-17] "10분에 딱 안 사라지고 플레이어를 공격하는 버그, 용병도 계속 공격" -- 날아가면 몬스터 상태도 쓰러진 것처럼(다음 회차에 새로 세운다), 싸움도 모두 풀기
         int left = (int) (Math.max(0, MINE_WB_POOL.hp) * 100L / Math.max(1, mineWbMax()));
         for (String u : st.lastHit.keySet()) {
             Double sh = MINE_WB_SHARE.get(u);
             if (sh != null) mineWbShareSave(u, sh, now);
             MINE_SHRINE_REWARD_MSG.merge(u, "🌫️ " + MINE_WB_NAME + "이(가) 하늘로 날아올랐어요. 남은 체력 " + left + "% -- " + (MINE_WB_POOL.test ? "(시험 회차)" : "깎인 체력은 그대로, 다음 정각에 이어서 싸워요!"), (p, q) -> p + " / " + q);
         }
+    }
+    /** 거룡을 맵에서 치운다 -- 쓰러진 것처럼(다음 회차 mineWbSync가 새 상태로 세운다), 붙잡은 싸움(내 것·용병 것)도 모두 푼다. */
+    void mineWbVanish(long now) {
+        S5MineMap a = S5MineMap.get(S5MineMap.CASTLE);
+        S5MineMap.Mob bm = a == null ? null : mineBossOf(a);
+        if (bm == null) return;
+        MobState bs = MINE_MOB_STATE.get(mineMobKey(a, bm.id));
+        if (bs != null) synchronized (bs) { if (bs.deadUntil <= now) bs.deadUntil = Long.MAX_VALUE / 4; bs.target = null; bs.frozenUntil = 0; }
+        int bid = bm.id;
+        for (MineEngage e : MINE_ENGAGE.values()) if (a.version().equals(e.mapVer)) e.mobs.keySet().removeIf(id -> id == bid);
+        MINE_RANGED_NEXT.clear();
+        synchronized (MINE_WB.zones) { MINE_WB.zones.clear(); }
     }
     /** 패턴 예고 -- 종류마다 제 주기로(체력이 줄수록 잦게): 화염 장판 / 심연의 비 / 꼬리 휩쓸기 / 멸망의 숨결, 그리고 포효. 전투 턴마다 불린다. */
     void mineWbZoneTick(WbState st, long now) {
@@ -4235,7 +4248,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY }) { // [2026-11-08] 마물의 숲 미궁, 하피의 둥지 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST }) { // [2026-11-08] 마물의 숲 미궁, 하피의 둥지 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -4821,7 +4834,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static boolean mineWarpListed(String mapId) {
         for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY }) if (id.equals(mapId)) return true;
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST }) if (id.equals(mapId)) return true;
         for (String id : S5MineMap.ARCHI_MAPS) if (id.equals(mapId)) return true;
         return false;
     }
@@ -5416,7 +5429,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap.Npc g = map.guide();
         if (g == null || Math.abs(g.x - x) + Math.abs(g.y - y) > 2) { out.put("message", "이동 안내원 바로 앞에서 말을 걸어 주세요."); return out; }
         if (dest == null || dest.equals(map.id) || !S5MineMap.GUIDE_MAPS.contains(dest)) { out.put("message", "🧭 어디로 갈지 골라 주세요."); return out; }
-        if (S5MineMap.TOWER_CITY.equals(dest) && (!mineTowerOk(userName) || (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1 && !isMineAdmin(userName)))) { out.put("message", "🧭 탑의 도시는 마물의 숲 나루터에서 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-16]
+        if (S5MineMap.TOWER_CITY.equals(dest) && (!mineTowerOk(userName) || (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) < 1 && !isMineAdmin(userName)))) { out.put("message", "🧭 요새 도시는 마물의 숲 나루터에서 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-16]
         if (S5MineMap.CITY.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 왕도는 왕도 남쪽 초원이나 왕도 북쪽 샛길을 지나 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-27]
         if (S5MineMap.ARCHI.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 다도해 마을은 배를 타고 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-10-28]
         if (S5MineMap.SNOWROAD.equals(dest) && items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) < 1 && !isMineAdmin(userName)) { out.put("message", "🧭 설산 베이스캠프는 설산 마을에 한 번 다녀오셔야 모셔다 드릴 수 있어요."); return out; } // [2026-11-04]
@@ -6988,9 +7001,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (userName == null || vw <= 0 || vh <= 0) return;
         MINE_MERC_VIEW.put(userName, new int[] { Math.min(MINE_MERC_VIEW_MAX, vw), Math.min(MINE_MERC_VIEW_MAX, vh) });
     }
+    // [2026-11-17] "용병 공격 탐지 범위 줄여 줘 -- 2칸 정도": 선공 모드 용병이 먼저 끌어들이는/붙잡아 두는 범위를 화면 전체 -> 내 둘레 MINE_MERC_DETECT칸
+    static final int MINE_MERC_DETECT = 2;
     static boolean mineMercInView(String userName, int dx, int dy) {
         int[] v = MINE_MERC_VIEW.get(userName);
-        return Math.abs(dx) <= (v == null ? MINE_MERC_VIEW_W : v[0]) && Math.abs(dy) <= (v == null ? MINE_MERC_VIEW_H : v[1]);
+        int w = Math.min(MINE_MERC_DETECT, v == null ? MINE_MERC_VIEW_W : v[0]), h = Math.min(MINE_MERC_DETECT, v == null ? MINE_MERC_VIEW_H : v[1]);
+        return Math.abs(dx) <= w && Math.abs(dy) <= h;
     }
     /** 선공 모드로 데리고 다니는 용병이 있나. */
     static boolean mineMercPreMode(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1 && mineMercOn(items) >= 0; }

@@ -456,7 +456,7 @@ public final class S5MineMap {
     public static final List<String> GUIDE_MAPS = Collections.unmodifiableList(Arrays.asList(FIELD, SNOWTOWN, CITY, ARCHI, SNOWROAD, TOWER_CITY)); // [2026-11-16] 탑의 도시(안내원은 generateTowerCity가 부두에 세운다) // [2026-10-28] 다도해 마을(본섬)도, [2026-11-04] 설산 베이스캠프(봉우리 가는 길 맨 위)
     /** 안내원 목적지 이름(맵 이름 대신 마을 이름). */
     public static String townName(String id) {
-        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : TOWER_CITY.equals(id) ? "탑의 도시 엘리시온" : ARCHI.equals(id) ? "다도해 마을" : SNOWROAD.equals(id) ? "설산 베이스캠프" : nameOf(id);
+        return FIELD.equals(id) ? "중앙 평원 마을" : SNOWTOWN.equals(id) ? "설산 마을" : CITY.equals(id) ? "왕도 아스테리아" : TOWER_CITY.equals(id) ? "요새 도시 엘리시온" : ARCHI.equals(id) ? "다도해 마을" : SNOWROAD.equals(id) ? "설산 베이스캠프" : nameOf(id);
     }
 
     // ---------------------------------------------------------------- [2026-10-26] 한기 / 눈바람 / 안전지대
@@ -1140,7 +1140,7 @@ public final class S5MineMap {
         { // [2026-11-15] 나루터 뱃사공(강 건너 탑의 도시) + 탑의 도시 + 탑 층(맨 뒤)
             S5MineMap fr = out.get(HARPY_FERRY);
             List<Npc> frn = new ArrayList<>();
-            for (Npc n : fr.npcs) frn.add("forestguard".equals(n.kind) ? withKind(n, "riverferry", "나루터 뱃사공", "하피 여왕을 쓰러뜨렸다고? 그렇다면 바람도 잦아들었겠군. 강 건너 탑의 도시까지 태워 주지!") : n);
+            for (Npc n : fr.npcs) frn.add("forestguard".equals(n.kind) ? withKind(n, "riverferry", "나루터 뱃사공", "하피 여왕을 쓰러뜨렸다고? 그렇다면 바람도 잦아들었겠군. 강 건너 요새 도시까지 태워 주지!") : n);
             fr.npcs = Collections.unmodifiableList(frn);
             out.put(TOWER_CITY, generateTowerCity());
             for (int f = 1; f <= TOWER_FLOORS; f++) out.put(towerId(f), generateTowerFloor(f));
@@ -2596,7 +2596,7 @@ public final class S5MineMap {
     }
     /** [2026-11-15] 탑의 도시(140x120) -- 왕도보다 큰 성벽 도시. 아래(남쪽)는 강과 나무 선착장(나루터에서 배로 도착, 뱃사공), 가운데 광장과 분수,
      *  북쪽 가운데에 거대한 탑(Q -- 들어가는 문 앞에 탑 관리인), 동서로 붉은 지붕 건물 블록, 광장 옆 대장장이/신부. 광석 없음. */
-    // [2026-11-15] 같은 날 "탑의 도시가 왕도와 구조가 너무 똑같다 -- 더 웅장하게, 더 화려하게, 자신 있는 대로. 북쪽 맵으로 이동해서 거대한 탑 입구로" --
+    // [2026-11-15] 같은 날 "요새 도시가 왕도와 구조가 너무 똑같다 -- 더 웅장하게, 더 화려하게, 자신 있는 대로. 북쪽 맵으로 이동해서 거대한 탑 입구로" --
     //  왕도(십자 대로 + 네모 블록)와 달리 물 위에 지은 둥근 도시: 한가운데 큰 분수, 그 둘레로 안쪽 운하 -> 대리석 광장 -> 꽃 정원 -> 바깥 운하가 겹겹이 두르고
     //  (운하마다 다리), 바깥은 고리 길을 따라 건물이 호를 그리며 늘어선다. 남북·동서 큰길은 가로등과 조각상이 줄지어 서고, 네 모서리엔 연못 정원, 동쪽엔 대신전, 서쪽엔 장인 회관.
     //  남쪽은 강과 넓은 대리석 부두(뱃사공), 북쪽 큰길 끝 성문을 나서면 탑 입구 맵(TOWER_GATE -- 하늘까지 솟은 탑의 정면과 큰 문).
@@ -2673,7 +2673,7 @@ public final class S5MineMap {
         // 북문 -- 성벽을 뚫고 탑 입구로
         for (int y = 1; y < wt; y++) for (int x = c - 4; x <= c + 4; x++) t[y][x] = Math.abs(x - c) <= 1 ? ',' : 's';
         t[0][c] = 'G';
-        // [2026-11-16] "탑의 도시를 요새 도시로, 동문·서문에 중무장한 경비병을 쫙" -- 성벽 안쪽에 덧벽, 성벽을 따라 성탑(L), 동문/서문과 문루.
+        // [2026-11-16] "요새 도시를 요새 도시로, 동문·서문에 중무장한 경비병을 쫙" -- 성벽 안쪽에 덧벽, 성벽을 따라 성탑(L), 동문/서문과 문루.
         for (int y = wt; y < riv - 6; y++) for (int x = wt; x < w - wt; x++) if (x == wt || x == w - wt - 1 || y == wt) t[y][x] = 'W'; // 덧벽
         for (int y = wt + 1; y < riv - 10; y += 14) for (int sg = 0; sg < 2; sg++) { // 동·서 성벽의 성탑(3x3)
             int x0 = sg == 0 ? wt + 1 : w - wt - 4;
@@ -2697,7 +2697,7 @@ public final class S5MineMap {
         ps.add(new Portal(c, 0, 'G', TOWER_GATE, GATE_W / 2, GATE_H - 2, "북문 -- 거대한 탑으로 가는 길"));
         ps.add(new Portal(w - 1, cy, 'G', DEMON_EAST, 2, DEMON_H / 2, "동문 -- 동쪽 악마의 들판")); // [2026-11-16]
         ps.add(new Portal(0, cy, 'G', DEMON_WEST, DEMON_W - 3, DEMON_H / 2, "서문 -- 서쪽 악마의 들판"));
-        S5MineMap m = new S5MineMap(TOWER_CITY, "탑의 도시 엘리시온", false, w, h, sx, sy, t, new byte[h][w], ps);
+        S5MineMap m = new S5MineMap(TOWER_CITY, "요새 도시 엘리시온", false, w, h, sx, sy, t, new byte[h][w], ps);
         List<Npc> npcs = new ArrayList<>();
         npcs.add(npcAtCell(t, c + 2, h - 6, "riverferry", "선착장 뱃사공", "마물의 숲 나루터로 돌아가려나? 언제든 태워 주지."));
         npcs.add(npcAtCell(t, c - 5, riv - 3, "guide", "이동 안내원", "어디로 모실까요? 마을과 마을 사이는 제가 공짜로 데려다 드려요!")); // [2026-11-16] 마을 간 이동
@@ -2737,7 +2737,7 @@ public final class S5MineMap {
         t[h - 1][cx] = 'G';
         List<Portal> ps = new ArrayList<>();
         ps.add(new Portal(cx, dy, 'G', towerId(1), 2, 6, "거대한 탑의 문"));
-        ps.add(new Portal(cx, h - 1, 'G', TOWER_CITY, TCITY_W / 2, 1, "탑의 도시 엘리시온으로"));
+        ps.add(new Portal(cx, h - 1, 'G', TOWER_CITY, TCITY_W / 2, 1, "요새 도시 엘리시온으로"));
         S5MineMap m = new S5MineMap(TOWER_GATE, "거대한 탑 입구", false, w, h, cx, h - 3, t, new byte[h][w], ps);
         List<Npc> npcs = new ArrayList<>();
         npcs.add(npcAtCell(t, cx + 3, dy + 1, "towergate", "탑 관리인", "이 탑은 열 층마다 마을이 있고, 아홉째 층마다 수문장이 지키고 있소. 방을 지나 오른쪽 문으로 나아가다 보면 계단방이 나온다오. 올라 본 층으로는 내가 바로 보내 주겠소."));
