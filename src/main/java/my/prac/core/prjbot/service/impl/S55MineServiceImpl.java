@@ -1964,6 +1964,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         int max = mineTwMax(items), block = mineTwBlock(items), floor = S5MineMap.towerFloor(map.id);
         boolean admin = isMineAdmin(userName);
+        if (admin) { max = S5MineMap.TOWER_FLOORS; block = Math.max(block, S5MineMap.TOWER_FLOORS - 1); } // [2026-11-16] "관리자는 전층 다 갈 수 있게" -- 층 목록/계획에 전층 클리어로
         out.put("max", max);
         out.put("block", block);
         out.put("floor", floor);
