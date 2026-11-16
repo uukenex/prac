@@ -1929,6 +1929,8 @@ var TowerMine = (function () {
   // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, map, hp(천분율), n, act(지금 싸우는 사람), share(보상 조건 %), down(일어나는 시각), zones[[x, y, 터지는 시각]], zr, zw}:
   //  예고 10분 전부터 화면 위 띠 + [참여](어디서든 동쪽 성곽 내성 앞으로). 쓰러지면 그 자리에서 10초(화면 회색 + 작은 카운트), 화염 장판은 예고 칸이 차오르다 터진다.
   var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0;
+  // [2026-11-16] "월드보스 등장/퇴장 이펙트 -- 날아서 오고 날아서 간다" -- 정각에 오른쪽 위 하늘에서 날아와 내려앉고(WB_FLY_MS), 시간이 다 되면 왼쪽 위 하늘로 날아간다(wbLeave).
+  var WB_FLY_MS = 2800, wbLandAt = 0, wbGoneSeen = 0, wbLeave = null;
   function wbRender() {
     if (!el.ov) return;
     if (!wbBar) { wbBar = document.createElement('div'); wbBar.className = 'mine-wb-bar'; el.ov.appendChild(wbBar); }
@@ -1942,7 +1944,7 @@ var TowerMine = (function () {
     }
     var inWb = map.id === (w.map || 'castle'), mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
     var h;
-    if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)';
+    if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)' + (w.hp != null && w.hp < 1000 ? ' · 남은 체력 ' + Math.max(1, Math.round(w.hp / 10)) + '%' : '');
     else h = '🐉 ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
         + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '')
         + (w.share != null ? (w.share >= 100 ? ' · ✅ 보상 조건 달성' : ' · 내 참여 ' + w.share + '%') : '') + ' · ' + mins(w.end - tn) + ' 남음';
@@ -1984,7 +1986,7 @@ var TowerMine = (function () {
   function worldBossHtml() {
     var L = (st && st.bosses) || [], tn = nowSrv();
     var rows = L.map(function (b) {
-      var sub = b.wbTest ? '🛠️ 일반 공개 전(관리자만) -- 아래 버튼으로 시험 회차를 열어요' : b.wbAt ? '⏰ 매시 정각부터 10분 -- 함께 싸운 모두에게 같은 보상(맵 초기화마다 한 번)' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
+      var sub = b.wbTest ? '🛠️ 일반 공개 전(관리자만) -- 아래 버튼으로 시험 회차를 열어요' : b.wbKilled ? '✅ 이번 맵 주기엔 쓰러졌어요 -- 맵이 초기화되면 다시 나타나요' : b.wbAt ? '⏰ 매시 정각부터 10분 -- 남은 체력 ' + Math.max(1, Math.round((b.wbHp == null ? 1000 : b.wbHp) / 10)) + '%(맵 초기화 때까지 이어져요) · 쓰러뜨리면 싸운 모두에게 같은 보상' + (b.alive ? '' : ' · 다음 ' + callHhmm(b.wbAt)) // [2026-11-15] 월드보스
           : b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
           : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
       return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
@@ -4275,6 +4277,7 @@ var TowerMine = (function () {
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
       wbInfo = d.wb || null; wbRender(); // [2026-11-15] 월드보스
+      if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
       bossNpc = d.bossCall ? { m: mid, x: d.bossCall.x, y: d.bossCall.y, at: d.bossCall.at || (bossNpc && bossNpc.m === mid && bossNpc.at > nowSrv() ? bossNpc.at : 0) } : null; // [2026-11-13] 보스 소환사(at = 카운트가 끝나 보스가 나오는 시각)
       if (d.hermitAdmin && d.hermitAdmin !== hermitAdminSaid) { hermitAdminSaid = d.hermitAdmin; msg('🕵️ 관리자 안내: 은둔한 대장장이 ' + d.hermitAdmin, 5000); }
@@ -5464,9 +5467,16 @@ var TowerMine = (function () {
         if (ty.sim != null) { var sw2 = TS * 2; ctx.drawImage(mobSprite(ty.sim, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - sw2 / 2), Math.round(my + TS - sw2 - bob), sw2, sw2); } // [2026-11-07] 보스 허수아비 -- 그 보스 그림(2칸 크기)
         else if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
           var bf = ty.foot || 2; // [2026-11-15] 거룡은 3x3칸
-          ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill();
+          var fo = 0; // [2026-11-16] 거룡 등장 -- 하늘에서 날아오는 중이면 1 -> 0
+          if (bf === 3 && wbInfo && wbInfo.on) {
+            var fa = nowSrv() - wbInfo.at;
+            if (fa >= 0 && fa < WB_FLY_MS) { fo = 1 - fa / WB_FLY_MS; fo = fo * fo; }
+            else if (wbLandAt !== wbInfo.at) { wbLandAt = wbInfo.at; if (fa >= WB_FLY_MS && fa < WB_FLY_MS + 1500) { flashT0 = performance.now(); msg('🐉 심연의 거룡이 내성에 내려앉았어요!', 2600); } }
+          }
+          if (!fo) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - fo)) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS * bf / 2, my + TS * bf - TS * 0.2, TS * bf * 0.5 * (1 - 0.6 * fo), TS * 0.36 * (1 - 0.6 * fo), 0, 0, Math.PI * 2); ctx.fill(); } // 내려앉을 자리의 그림자가 점점 커진다
           var bw = TS * 1.2 * bf; // [2026-10-29] 보스 2x2칸 -- 그림은 칸들 가운데, 발은 맨 아래 칸
-          ctx.drawImage(mobSprite(sk, pose, Math.floor(now / 480 + bid)), Math.round(mx + TS * bf / 2 - bw / 2), Math.round(my + bf * TS - bw - bob), bw, bw);
+          ctx.drawImage(mobSprite(sk, pose, Math.floor(now / (fo ? 150 : 480) + bid)), Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14), bw, bw);
         } else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
         else {
           ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
@@ -5754,6 +5764,21 @@ var TowerMine = (function () {
       [[6, 'rgba(122,216,255,0.6)'], [2.5, '#fff6a0']].forEach(function (st2) { ctx.lineWidth = st2[0] * dpr; ctx.strokeStyle = st2[1]; ctx.beginPath(); pts.forEach(function (p, i) { if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }); ctx.stroke(); });
       ctx.restore();
     });
+    if (wbLeave && map && map.id === 'castle') { // [2026-11-16] 거룡 퇴장 -- 날개를 치며 왼쪽 위 하늘로 멀어진다
+      var wlp = (now - wbLeave.t0) / WB_FLY_MS;
+      if (wlp >= 1) wbLeave = null;
+      else {
+        var wlm = null;
+        for (var wli = 0; wli < map.mobs.length; wli++) if ((map.mobTypes[map.mobs[wli].k] || {}).foot === 3) wlm = map.mobs[wli];
+        if (wlm) {
+          var wlo = wlp * wlp, wlx = wlm.x * TS - camX, wly = wlm.y * TS - camY, wlw = TS * 3.6;
+          ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - wlo)) + ')'; ctx.beginPath(); ctx.ellipse(wlx + TS * 1.5, wly + TS * 2.8, TS * 1.5 * (1 - 0.6 * wlo), TS * 0.36 * (1 - 0.6 * wlo), 0, 0, Math.PI * 2); ctx.fill();
+          ctx.globalAlpha = 1 - 0.55 * wlo;
+          ctx.drawImage(mobSprite(wlm.k, false, Math.floor(now / 150)), Math.round(wlx + TS * 1.5 - wlw / 2 - wlo * TS * 8), Math.round(wly + 3 * TS - wlw - wlo * TS * 14), wlw, wlw);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
     bolts = bolts.filter(function (b) { return now - b.t0 < BOLT_MS + BOLT_HIT_MS; });
     bolts.forEach(function (b) {
       var k = Math.min(1, (now - b.t0) / BOLT_MS), tx = b.me ? pos.x : b.tx, ty = (b.me ? pos.y : b.ty) - 0.2;
