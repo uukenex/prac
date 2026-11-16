@@ -1090,6 +1090,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 몬스터가 지금 있을 수 있는 칸들(멈춰 있으면 그 칸, 아니면 앞/지금/다음 시간 칸 -- 화면과 서버 시계 차이 허용). */
     static int[] mineMobCells(S5MineMap.Mob mob, MobState s, long now, S5MineMap map) {
+        if (mob.type == S5MineMobs.WB_BOSS_TYPE && MINE_WB.px >= 0) return new int[] { MINE_WB.py * map.w + MINE_WB.px }; // [2026-11-16] 거룡은 옮겨 다닌다
         if (s != null && s.frozenUntil > now) return new int[] { s.fy * map.w + s.fx };
         return new int[] { S5MineMobs.cellAt(mob, now - S5MineMobs.SLOT_MS), S5MineMobs.cellAt(mob, now), S5MineMobs.cellAt(mob, now + S5MineMobs.SLOT_MS) };
     }
@@ -1158,7 +1159,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 if (bt != null && bt.sim && s.deadUntil <= now && (s.hp <= 0 || now - s.lastHitAt >= MINE_SIM_HEAL_MS)) { MINE_MOB_STATE.remove(e.getKey(), s); continue; } // [2026-11-07] 보스 허수아비 -- 다 참
                 if (minion && s.deadUntil <= now && s.frozenUntil <= now) s.deadUntil = Long.MAX_VALUE / 2; // [2026-10-28] 아무도 안 싸우면 수하는 물러난다
-                if (!minion && s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS) { MINE_MOB_STATE.remove(e.getKey(), s); continue; }
+                if (!minion && s.deadUntil <= now && s.frozenUntil <= now && now - s.lastHitAt > MINE_MOB_HEAL_MS && !(map.solo() && s.hp > 0)) { MINE_MOB_STATE.remove(e.getKey(), s); continue; } // [2026-11-16] 탑(1인 층)의 살아 있는 몬스터는 그대로 둔다 -- 방을 지키는 몬스터가 사라져 문이 열리지 않게
                 list.add(mineMobRow((int) id, s)); // [2026-10-28] 7번째 = 은신 중(1)
                 seen.add(id);
             }
@@ -1528,7 +1529,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (f <= 0 || !(t.tower || t.boss)) return "";
         StringBuilder m = new StringBuilder();
         try {
-            if (!t.boss) return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL) + " 🚪 오른쪽 문이 열렸어요.";
+            if (!t.boss) {
+                TwRun run = MINE_TW_RUN.get(userName); // [2026-11-16] 방을 지키던 몬스터 -- 이제 오른쪽 문이 열린다
+                if (run != null && run.mobId == mob.id) run.mobId = -1;
+                return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL) + " 🚪 오른쪽 문이 열렸어요.";
+            }
             long now = System.currentTimeMillis();
             int day = mineToday(now);
             java.util.Set<String> us = new java.util.LinkedHashSet<>();
@@ -1822,9 +1827,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 방의 오른쪽 문 -- 다음 방으로(이 순간 무슨 방인지 정해진다). 전투방이면 방을 지키는 몬스터를 쓰러뜨린 뒤에만. */
     HashMap<String, Object> mineTowerNext(String userName, HashMap<String, Object> row, S5MineMap map, Map<String, Integer> items, int f, int x, int y, long now, HashMap<String, Object> out) {
         TwRun run = mineTwRun(userName, f);
-        if (run.type == 'C' && run.mobId >= 0) {
-            MobState gs = MINE_MOB_STATE.get(mineMobKey(map, run.mobId));
-            if (gs != null && gs.deadUntil <= now && gs.hp > 0) {
+        if (run.type == 'C' && run.mobId >= 0) { // [2026-11-16] 쓰러뜨리기 전엔 안 열린다(쓰러뜨리면 mineTowerKill이 mobId를 비운다). 화면도 문을 쇠창살로 닫아 둔다
+            final int gid = run.mobId;
+            S5MineMap.Mob gm = gid < map.mobs().size() ? map.mobs().get(gid) : null;
+            MobState gs = MINE_MOB_STATE.get(mineMobKey(map, gid));
+            if (gm == null || (gs != null && gs.deadUntil > now)) run.mobId = -1; // 이미 쓰러져 있다
+            else {
+                if (gs == null) { // 상태가 사라졌으면 다시 세운다
+                    final int gmax = S5MineMobs.hp(S5MineMobs.TYPES.get(gm.type), gm.rank);
+                    MobState ns = MINE_MOB_STATE.computeIfAbsent(mineMobKey(map, gid), k -> new MobState(gmax));
+                    synchronized (ns) { ns.fx = gm.x; ns.fy = gm.y; ns.frozenUntil = now + MINE_MOB_FREEZE_MS; }
+                }
                 dao.updateMinePos(userName, map.id, x, y, now);
                 out.put("locked", true);
                 out.put("message", "⚔️ 방을 지키는 몬스터를 쓰러뜨려야 문이 열려요.");
@@ -2000,9 +2013,55 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         final java.util.concurrent.ConcurrentHashMap<String, Long> lastHit = new java.util.concurrent.ConcurrentHashMap<>();
         final java.util.Set<String> rooms = java.util.concurrent.ConcurrentHashMap.newKeySet(); // 채팅 알림을 붙인 방
         final List<long[]> zones = new ArrayList<>(); // 장판 {x, y, 터지는 시각, 번호, 반경, 종류}
+        volatile int px = -1, py; // [2026-11-16] 거룡이 지금 선 자리(왼쪽 위 칸, -1 = 아직 집 자리)
+        volatile long moveNext;
         WbState(long start) { this.start = start; for (int k = 0; k < 4; k++) patNext[k] = start + MINE_WB_PAT_FIRST_MS[k]; roarNext = start + MINE_WB_ROAR_GAP_MS; }
     }
     static volatile WbState MINE_WB = new WbState(0);
+    // [2026-11-16] "거룡이 움직이면 좋겠어" -- 내성 안에서 MINE_WB_MOVE_GAP_MS마다(체력이 줄수록 잦게) 날아올라 MINE_WB_MOVE_MIN~MAX칸 떨어진 곳에 내려앉는다.
+    //  꼬리 휩쓸기/멸망의 숨결을 예고하는 동안과 기절해 있는 동안은 그 자리에 있다. 자리는 WbState.px/py(몬스터 상태 fx/fy에도 매초 적는다 -- mineWbMove).
+    static final long MINE_WB_MOVE_GAP_MS = 30_000L, MINE_WB_MOVE_FIRST_MS = 18_000L;
+    static final int MINE_WB_MOVE_MIN = 5, MINE_WB_MOVE_MAX = 10;
+    /** 거룡이 지금 선 자리(3x3의 왼쪽 위 칸). */
+    static int[] mineWbPos() {
+        S5MineMap a = S5MineMap.get(S5MineMap.CASTLE);
+        S5MineMap.Mob bm = a == null ? null : mineBossOf(a);
+        WbState st = MINE_WB;
+        if (bm == null) return new int[] { 0, 0 };
+        return st.px < 0 ? new int[] { bm.x, bm.y } : new int[] { st.px, st.py };
+    }
+    /** 때가 되면 자리를 옮기고, 지금 자리를 몬스터 상태에 적는다(매초 위치 알림에서 -- mineWbSync). */
+    void mineWbMove(WbState st, long now) {
+        if (st.start <= 0 || st.killed || st.done || now < st.start) return;
+        S5MineMap a = S5MineMap.get(S5MineMap.CASTLE);
+        S5MineMap.Mob bm = a == null ? null : mineBossOf(a);
+        MobState bs = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(a, bm.id));
+        if (bs == null) return;
+        if (st.px < 0) { st.px = bm.x; st.py = bm.y; st.moveNext = st.start + MINE_WB_MOVE_FIRST_MS; }
+        if (now >= st.moveNext) synchronized (st.zones) {
+            if (now >= st.moveNext) {
+                boolean hold = bs.stunUntil > now;
+                for (long[] z : st.zones) if (z[5] >= 2 && z[2] > now - 500L) hold = true;
+                if (hold) st.moveNext = now + 3_000L;
+                else {
+                    int[] k = S5MineMap.CASTLE_KEEP;
+                    for (int t = 0; t < 60; t++) {
+                        int nx = st.px - MINE_WB_MOVE_MAX + RND.nextInt(MINE_WB_MOVE_MAX * 2 + 1), ny = st.py - MINE_WB_MOVE_MAX + RND.nextInt(MINE_WB_MOVE_MAX * 2 + 1);
+                        int d = Math.max(Math.abs(nx - st.px), Math.abs(ny - st.py));
+                        if (d < MINE_WB_MOVE_MIN || nx < k[0] + 3 || ny < k[1] + 3 || nx + 2 > k[2] - 3 || ny + 2 > k[3] - 3) continue;
+                        if (Math.max(Math.abs(nx - bm.x), Math.abs(ny - bm.y)) > 14) continue; // 집 자리에서 너무 멀리는 안 간다
+                        boolean ok = true;
+                        for (int yy = ny; yy < ny + 3 && ok; yy++) for (int xx = nx; xx < nx + 3; xx++) if (!a.walkable(xx, yy)) { ok = false; break; }
+                        if (!ok) continue;
+                        st.px = nx; st.py = ny;
+                        break;
+                    }
+                    st.moveNext = now + MINE_WB_MOVE_GAP_MS - mineWbStage() * 5_000L;
+                }
+            }
+        }
+        synchronized (bs) { if (bs.deadUntil <= now) { bs.fx = st.px; bs.fy = st.py; bs.frozenUntil = Math.max(bs.frozenUntil, st.start + MINE_WB_LEN_MS + 5_000L); } }
+    }
     static volatile long mineWbForce = 0; // 관리자 시험 -- 이 시각에 바로 시작
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_WB_ATK = new java.util.concurrent.ConcurrentHashMap<>(); // 몫 기준 공격력(레벨·환생)
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_WB_DOWN = new java.util.concurrent.ConcurrentHashMap<>(); // 쓰러져 있는 사람 -> 일어나는 시각
@@ -2091,6 +2150,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         WbState st = MINE_WB;
         if (st.start > 0 && !st.done && !st.killed && now >= st.start + MINE_WB_LEN_MS) mineWbTimeout(st, now);
         long s = mineWbStart(now);
+        if (st.start == s && !st.done && !st.killed) mineWbMove(st, now); // [2026-11-16] 거룡 자리 옮기기
         if (st.start == s || now < s || MINE_WB_POOL.killed) return;
         synchronized (MINE_WB_ATK) {
             if (MINE_WB.start == s) return;
@@ -2209,7 +2269,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap a = S5MineMap.get(S5MineMap.CASTLE);
         S5MineMap.Mob bm = a == null ? null : mineBossOf(a);
         if (bm == null) return;
-        int cx = bm.x + 1, cy = bm.y + 1, stage = mineWbStage();
+        int[] wpos = mineWbPos(); // [2026-11-16] 지금 선 자리 기준
+        int cx = wpos[0] + 1, cy = wpos[1] + 1, stage = mineWbStage();
         synchronized (st.zones) {
             st.zones.removeIf(z -> now > z[2] + 3_000L);
             for (int k = 0; k < 4; k++) {
@@ -2263,7 +2324,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (st.roarSeq > seen[1]) {
             seen[1] = st.roarSeq;
-            if (bm != null && now - st.roarAt <= 3_000L && Math.abs(bm.x + 1 - x) + Math.abs(bm.y + 1 - y) <= MINE_WB_ROAR_RANGE) {
+            int[] rp = mineWbPos();
+            if (bm != null && now - st.roarAt <= 3_000L && Math.abs(rp[0] + 1 - x) + Math.abs(rp[1] + 1 - y) <= MINE_WB_ROAR_RANGE) {
                 MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_WB_ROAR_MS));
                 out.put("stunUntil", MINE_STUN.get(userName));
                 out.put("roar", true);
@@ -2755,6 +2817,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     s.fx = cs[cs.length / 2] % map.w; s.fy = cs[cs.length / 2] / map.w;
                 }
                 boolean harpyMoving = false, harpyBoss = map.mobs().get(id).type == S5MineMobs.HARPY_BOSS_TYPE; // [2026-11-11] 체력 절반부터 나무 패턴(숨음/옮김) -- 깃털을 더 자주
+                if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) { int[] wp = mineWbPos(); s.fx = wp[0]; s.fy = wp[1]; } // [2026-11-16] 거룡 -- 옮겨 다니는 자리
                 if (harpyBoss) { int[] hz = mineHarpyNow(map, now); s.fx = hz[0]; s.fy = hz[1]; harpyMoving = hz[2] == 1 || hz[4] == 1; } // [2026-11-08] 하피 -- 나무 사이를 옮겨 다닌다
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = mineFootDist(type, s, x, y); // [2026-10-29] 보스 2x2칸까지의 거리
@@ -3984,6 +4047,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             tr.put("total", S5MineMap.towerRoomFloor(twF) ? S5MineMap.towerRooms(twF) : 0);
             tr.put("step", stairRoom ? S5MineMap.towerRooms(twF) : mine ? run.step : 0);
             tr.put("type", stairRoom ? "U" : mine ? String.valueOf(run.type) : "E");
+            if (mine && !stairRoom && run.type == 'C' && run.mobId >= 0) tr.put("mob", run.mobId); // [2026-11-16] 전투방 -- 이 몬스터가 살아 있는 동안 화면이 오른쪽 문을 닫아 둔다
             out.put("twRun", tr);
         }
         final boolean wyrmOn = mineWyrmOn(items); // [2026-11-15] 용의 반지 -- 관리자 전체 지도 이동과 같은 목록(들어갈 자격이 있는 곳만)
@@ -6649,6 +6713,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(6, items.getOrDefault(mineMercKey(c, "G" + p), 0))));
             m.put("mg", gs);
             m.put("mgb", mineMgBonus(items, c));
+            HashMap<String, Object> gi = new HashMap<>(); // [2026-11-16] 칸마다 끼운 장비 이름/효과
+            for (String p : MG_PARTS) { int g = gs.get(p); if (g > 0) gi.put(p, new String[] { mgName(p, mgAcc(p) ? 9 : c, g), mgEffText(p, g) }); }
+            m.put("mgi", gi);
         }
         if (lv <= 0) return m;
         int el = mineMercEl(items, c), s = mineMercStage(lv);
@@ -9576,7 +9643,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-15] "하피 나루터 이후와 월드보스는 관리자만 먼저 오픈 -- 내가 해 볼게" -- TBOT_S5_CONFIG.MINE_TOWER_OPEN_YN(나루터 건너 탑의 도시·탑) /
     //  MINE_WB_OPEN_YN(월드보스: 매일 21시 회차, 화면 띠, 채팅 알림). 'Y'면 모두에게, 없거나 N이면 관리자만(기본). /갱신으로 반영.
     //  닫혀 있는 동안 월드보스는 정해진 시각에 나오지 않고 관리자가 시험 회차(mineWorldBoss start)를 열었을 때만, 관리자에게만 보이고 맞는다.
-    static volatile boolean MINE_TOWER_OPEN = false, MINE_WB_OPEN = false;
+    //  [2026-11-16] "월드보스와 탑 마을, 탑 오픈해줘" -- 기본값을 공개로(배포하면 모두에게). 다시 닫으려면 설정값을 'N'으로.
+    static volatile boolean MINE_TOWER_OPEN = true, MINE_WB_OPEN = true;
     boolean mineTowerOk(String userName) { return MINE_TOWER_OPEN || isMineAdmin(userName); }
     boolean mineWbOk(String userName) { return MINE_WB_OPEN || isMineAdmin(userName); }
 

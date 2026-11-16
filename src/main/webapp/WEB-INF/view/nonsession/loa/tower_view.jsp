@@ -900,6 +900,11 @@
     .mine-wb-bar{ position:absolute; left:50%; top:6px; transform:translateX(-50%); z-index:30; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(26,8,40,.9); border:1px solid #b06aff; color:#f0e0ff; font:700 12px sans-serif; text-align:center; pointer-events:auto; white-space:normal; } /* [2026-11-15] 월드보스 띠 */
     .mine-wb-bar .wb-hp{ display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:#3a2050; overflow:hidden; }
     .mine-wb-bar .wb-hp i{ display:block; height:100%; background:linear-gradient(90deg,#ff4a6a,#b06aff); }
+    .mine-wb-alert{ position:absolute; left:50%; top:20%; transform:translateX(-50%); z-index:32; width:min(340px, 88%); padding:10px 14px 12px; border-radius:10px; background:linear-gradient(180deg, rgba(52,16,80,.96), rgba(22,6,36,.96)); border:2px solid #c98aff; box-shadow:0 0 18px rgba(176,106,255,.55); color:#f6e8ff; text-align:center; font:700 13px sans-serif; pointer-events:auto; display:flex; flex-direction:column; gap:6px; align-items:center; cursor:pointer; } /* [2026-11-16] 월드보스 등장 알림 */
+    .mine-wb-alert b{ font-size:17px; color:#ffd27a; }
+    .mine-wb-alert span{ font-weight:600; line-height:1.4; word-break:keep-all; }
+    .mine-wb-alert.go{ animation:mineWbAlert .5s ease-out; }
+    @keyframes mineWbAlert{ from{ opacity:0; transform:translateX(-50%) translateY(-14px) scale(.92); } to{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
     .mine-wb-down{ position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); z-index:31; padding:4px 10px; border-radius:8px; background:rgba(18,18,22,.72); color:#e6e6ee; font:700 12px sans-serif; white-space:nowrap; pointer-events:none; }
     .mine-world .wn-here{ fill:#ffe14d; }
     .mine-world .wlv{ fill:#9fe0ff; font-size:10px; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
