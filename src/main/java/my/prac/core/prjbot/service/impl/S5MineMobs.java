@@ -120,7 +120,7 @@ public final class S5MineMobs {
     }
 
     /** kind(화면 도트 모양): small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
-    public static final List<Type> TYPES = Collections.unmodifiableList(java.util.Arrays.asList(
+    public static final List<Type> TYPES = Collections.unmodifiableList(withTowerFloors(java.util.Arrays.asList(
         new Type("다람쥐", 1, "small", "#b5651d", S5MineMap.FIELD),
         new Type("토끼", 1, "small", "#eeeeee", S5MineMap.FIELD),
         new Type("여우", 2, "quad", "#e07a2a", S5MineMap.FIELD),
@@ -334,7 +334,7 @@ public final class S5MineMobs {
         new Type("악마 검사", 26, "demon", "#8a1a2a").asDemon().fix(3_900_000, 45_000).expx(45).showLv(104).el(7).respawn(180_000L),
         new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(3_000_000, 40_000).expx(36).showLv(107).asRanged().el(7).respawn(180_000L),
         new Type("발록", 26, "demon", "#4a1010").asDemon().fix(7_800_000, 54_000).expx(90).showLv(115).el(6).respawn(600_000L)
-    ));
+    )));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
     public static final int DUMMY_TYPE = indexOf("허수아비");
@@ -428,7 +428,56 @@ public final class S5MineMobs {
     /** [2026-11-15] 시즌5 구역 보스 이름(TBOT_S5_MONSTER_INFO, 9층 ~ 99층) -- 층 목록에 보인다. 지금 싸울 수 있는 건 앞의 셋. */
     public static final String[] TOWER_BOSS_NAMES = { "하수구의 지배자 라텔", "폐광의 검은 갱도왕", "늪지 여왕 히드라", "화산의 심장 이프리트", "빙하의 폭군 프로스트자이언트",
             "심연의 대공 모르드레드", "차원의 파괴자 아자토스", "천공의 대천사 세라핌", "고룡 바하무트", "종말의 마룡왕 니드호그" };
-    public static int towerBossType(int floor) { return indexOf(TOWER_BOSSES[Math.min(TOWER_BOSSES.length - 1, (floor - 1) / 10)]); }
+    public static int towerBossType(int floor) { return TW_BOSS_IDX != null && floor >= 1 && floor < TW_BOSS_IDX.length && TW_BOSS_IDX[floor] >= 0 ? TW_BOSS_IDX[floor] : indexOf(TOWER_BOSSES[Math.min(TOWER_BOSSES.length - 1, (floor - 1) / 10)]); }
+    /** 층 f 방 몬스터 k번(0~2)의 종류 번호. */
+    public static int towerMobType(int floor, int k) { return TW_MOB_IDX != null && floor >= 1 && floor < TW_MOB_IDX.length && TW_MOB_IDX[floor] != null ? TW_MOB_IDX[floor][k % 3] : indexOf(TOWER_MOBS[Math.min(TOWER_MOBS.length - 1, (floor - 1) / 10)][k % 3]); }
+
+    // ---- [2026-11-17] "탑 50층까지 열고, 순차적으로 강해지게, 31층부터는 상승폭이 더 -- 용병 장비가 추가돼 더 쉬워지니 난이도를 올려야" --
+    //  층마다 따로 만든 몬스터(TYPES 맨 뒤에 붙인다 -- 앞 번호가 바뀌지 않게). 이름은 구역(10층)마다 같고 레벨/수치만 층마다 오른다.
+    //  방 몬스터: 1층 = 체력 130만 / 공격 2.4만(예전 1구역 값), 30층까지 층마다 체력 x1.04 / 공격 x1.03, 31층부터 층마다 체력 x1.08 / 공격 x1.06.
+    //  수문장(9/19/29/39/49층) = 그 층 방 몬스터의 체력 x9 / 공격 x1.25. 경험치는 체력에 비례(1층 방 몬스터 약 15.5만). 레벨 = 84 + 층.
+    static final int TW_GEN_FLOORS = 50, TW_BASE_HP = 1_300_000, TW_BASE_ATK = 24_000;
+    static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
+    static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
+    static int[] TW_BOSS_IDX;
+    public static double twHpAt(int f) { return TW_BASE_HP * Math.pow(TW_HP_UP, Math.min(f, 30) - 1) * Math.pow(TW_HP_UP31, Math.max(0, f - 30)); }
+    public static double twAtkAt(int f) { return TW_BASE_ATK * Math.pow(TW_ATK_UP, Math.min(f, 30) - 1) * Math.pow(TW_ATK_UP31, Math.max(0, f - 30)); }
+    private static List<Type> withTowerFloors(List<Type> base) {
+        // TYPES보다 뒤에 적힌 static 배열은 이때 아직 null이라 여기 지역 변수로
+        final String[][][] TW_BLOCK_MOBS = {
+            { { "탑 수호병", "human", "#8a8a9a" }, { "돌 가고일", "flyer", "#7a7a7a" }, { "마력 인형", "human", "#b07ad8" } },
+            { { "탑 기사", "human", "#a8b8c8" }, { "그림자 마법사", "human", "#4a3a6a" }, { "강철 늑대", "quad", "#9aa8b8" } },
+            { { "타락 천사", "flyer", "#f0e0a0" }, { "심연 마도사", "human", "#5a2a8a" }, { "흑요석 골렘", "human", "#2a2a3a" } },
+            { { "화염 정령", "flyer", "#ff7a2a" }, { "용암 기사", "human", "#c8401a" }, { "불꽃 사냥개", "quad", "#e85a1a" } },
+            { { "서리 망령", "flyer", "#a8e0ff" }, { "빙결 기사", "human", "#6aa8d8" }, { "설원 늑대", "quad", "#d8f0ff" } } };
+        final String[][] TW_BLOCK_BOSS = { { "하수구의 지배자 라텔", "quad", "#4a4a52", "7" }, { "폐광의 검은 갱도왕", "human", "#2a2a30", "1" }, { "늪지 여왕 히드라", "snake", "#3a8a5a", "3" },
+            { "화산의 심장 이프리트", "human", "#ff6a1a", "-1" }, { "빙하의 폭군 프로스트자이언트", "human", "#8ad8ff", "-1" } };
+        List<Type> l = new java.util.ArrayList<>(base);
+        int[][] mi = new int[TW_GEN_FLOORS + 1][];
+        int[] bi = new int[TW_GEN_FLOORS + 1];
+        java.util.Arrays.fill(bi, -1);
+        for (int f = 1; f <= TW_GEN_FLOORS; f++) {
+            int blk = Math.min(TW_BLOCK_MOBS.length - 1, (f - 1) / 10);
+            double hp = twHpAt(f), atk = twAtkAt(f);
+            if (f % 10 == 9) {
+                String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
+                int bh = (int) Math.min(Integer.MAX_VALUE, Math.round(hp * TW_BOSS_HP));
+                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atk * TW_BOSS_ATK)).expx(bh / (double) TW_BASE_HP).showLv(84 + f).respawn(60_000L);
+                if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
+                bi[f] = l.size(); l.add(t);
+            } else if (f % 10 != 0) {
+                mi[f] = new int[3];
+                for (int k = 0; k < 3; k++) {
+                    String[] d = TW_BLOCK_MOBS[blk][k];
+                    double hk = hp * (k == 2 ? 1.1 : 1.0);
+                    Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk), (int) Math.round(atk)).expx(15 * hk / TW_BASE_HP).showLv(84 + f + (k == 2 ? 1 : 0));
+                    mi[f][k] = l.size(); l.add(t);
+                }
+            }
+        }
+        TW_MOB_IDX = mi; TW_BOSS_IDX = bi;
+        return l;
+    }
 
     static final String[] DEMON_NAMES = { "지옥불 임프", "악마 검사", "심연의 마도사", "발록" }; // [2026-11-16] S5MineMap.fixedMobs의 종류 번호
     private static int indexOf(String name) {
@@ -559,8 +608,8 @@ public final class S5MineMobs {
         if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
         if (m.twSpots() != null) { // [2026-11-15] 탑 방 -- 그 구역 몬스터 셋이 한 자리씩(평소엔 없음 -- 전투방이 되면 하나가 깨어난다, S55MineServiceImpl.mineTowerNext)
             List<S5MineMap.Mob> tw = new ArrayList<>();
-            int blk = Math.min(TOWER_MOBS.length - 1, (S5MineMap.towerFloor(m.id) - 1) / 10);
-            for (int k = 0; k < m.twSpots().length; k++) { int[] sp = m.twSpots()[k]; tw.add(new S5MineMap.Mob(k, indexOf(TOWER_MOBS[blk][k % 3]), sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] })); }
+            int twf = S5MineMap.towerFloor(m.id); // [2026-11-17] 층마다 따로 만든 몬스터
+            for (int k = 0; k < m.twSpots().length; k++) { int[] sp = m.twSpots()[k]; tw.add(new S5MineMap.Mob(k, towerMobType(twf, k), sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] })); }
             return tw;
         }
         if (m.fixedMobs() != null) { // [2026-11-16] 악마의 들판 -- 자리와 종류가 정해져 있다(집 칸 + 둘레 한 칸)

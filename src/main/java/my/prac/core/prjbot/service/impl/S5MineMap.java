@@ -96,7 +96,8 @@ public final class S5MineMap {
     public static final String FOREST = "forestmaze"; // [2026-11-08] 마물의 숲 미궁(지금은 관리자만 -- S55MineServiceImpl.mineWarp)
     // [2026-11-15] 하피를 잡은 사람만 나루터에서 강을 건너 가는 탑의 도시 + 시즌5 규칙의 탑(tw1~tw30 -- 1~8 보드, 9 보스, 10 마을이 10층마다)
     public static final String TOWER_CITY = "towercity";
-    public static final int TOWER_FLOORS = 30;
+    public static final int TOWER_FLOORS = 50; // [2026-11-17] 30 -> 50(31층부터는 buildWorld 맨 뒤에서 만든다)
+    static final int TOWER_FLOORS_V1 = 30;
     /** [2026-11-15] "100층까지 만들고 ... 아직 작업은 30층 아래 보스까지만" -- 계획한 꼭대기(층 목록에 준비 중으로 보인다). 열린 층은 TOWER_FLOORS. */
     public static final int TOWER_TOP = 100;
     public static String towerId(int f) { return "tw" + f; }
@@ -720,7 +721,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 21; // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 22; // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1143,11 +1144,12 @@ public final class S5MineMap {
             for (Npc n : fr.npcs) frn.add("forestguard".equals(n.kind) ? withKind(n, "riverferry", "나루터 뱃사공", "하피 여왕을 쓰러뜨렸다고? 그렇다면 바람도 잦아들었겠군. 강 건너 요새 도시까지 태워 주지!") : n);
             fr.npcs = Collections.unmodifiableList(frn);
             out.put(TOWER_CITY, generateTowerCity());
-            for (int f = 1; f <= TOWER_FLOORS; f++) out.put(towerId(f), generateTowerFloor(f));
+            for (int f = 1; f <= TOWER_FLOORS_V1; f++) out.put(towerId(f), generateTowerFloor(f));
             out.put(TOWER_GATE, generateTowerGate()); // [2026-11-15] 탑 입구(맨 뒤)
-            for (int f = 1; f <= TOWER_FLOORS; f++) if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); // 계단방(맨 뒤)
+            for (int f = 1; f <= TOWER_FLOORS_V1; f++) if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); // 계단방(맨 뒤)
             out.put(DEMON_EAST, generateDemonField(true)); // [2026-11-16] 악마의 들판(맨 뒤)
             out.put(DEMON_WEST, generateDemonField(false));
+            for (int f = TOWER_FLOORS_V1 + 1; f <= TOWER_FLOORS; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-17] 31~50층(맨 뒤)
         }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
