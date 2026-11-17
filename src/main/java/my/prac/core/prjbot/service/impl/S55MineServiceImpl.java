@@ -868,10 +868,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
     static final double MINE_RB_HP_BONUS = 0.5;
     // [2026-11-17] "99레벨 이후도 조금씩 더 강해지게, 진환생 전에도 99레벨 이후 레벨업 가능, 진환생은 선택(강제하는 버튼/안내 없게)" --
-    //  99레벨을 넘으면 레벨마다 99레벨 체력/공격력의 MINE_LV_OVER_PCT%씩 더(환생 횟수와 상관없이). 5환생까지도 99에서 멈추지 않고 계속 오른다(mineExpAdd).
-    static final double MINE_LV_OVER_PCT = 1.0;
-    static double mineLvOver(int lv) { return 1 + MINE_LV_OVER_PCT / 100.0 * Math.max(0, lv - MINE_LV_MAX); }
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb) * mineLvOver(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    //  5환생까지도 99에서 멈추지 않고 계속 오른다(mineExpAdd).
+    //  같은 날 "진환생 전후가 왜 이렇게 차이 나? 똑같아야 -- 지금 기준에서 변경 없게, 99 이후는 레벨이 오를수록 공격력은 더 오르고 체력은 덜" --
+    //  처음엔 99레벨 값의 1%씩(환생 체력 배수까지 곱해져 진환생이 4배로 올랐다) -> 99 넘은 만큼 모두에게 같은 양을 더한다(99까지는 그대로):
+    //  k번째 레벨(100레벨 = 1) 공격력 +(MINE_OVER_ATK0 + MINE_OVER_ATK_UP x (k-1)), 체력 +max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN x (k-1)).
+    static final int MINE_OVER_ATK0 = 300, MINE_OVER_ATK_UP = 10, MINE_OVER_HP0 = 5_800, MINE_OVER_HP_DOWN = 150, MINE_OVER_HP_MIN = 500; // 99레벨 직전 한 레벨치(공격 +298, 체력 +5,789 -- 환생 전 기준)에서 이어진다
+    static long mineOverAtk(int lv) { long n = Math.max(0, lv - MINE_LV_MAX); return n * MINE_OVER_ATK0 + MINE_OVER_ATK_UP * n * (n - 1) / 2; }
+    static long mineOverHp(int lv) { long n = Math.max(0, lv - MINE_LV_MAX), s = 0; for (long k = 1; k <= n; k++) s += Math.max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN * (k - 1)); return s; }
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb) + mineOverHp(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
     // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -> 같은 날 "99레벨은 16만, 그 아래는 그에 맞게 더 올리고, 80레벨부터 1만 정도씩"
     //  -- 80레벨 50,000 -> 99레벨 160,000 직선(레벨마다 약 +5,789 -- 99레벨 16만에서 1만씩이면 80레벨이 음수라 가능한 만큼 크게).
     //  79 -> 80에서 갑자기 뛰지 않게 71~79레벨은 70레벨 값(15,293)에서 80레벨 값까지 같은 배율(레벨마다 약 x1.126)로 잇는다. 70레벨까지는 그대로(레벨마다 9%).
@@ -893,7 +897,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-07] "플레이어 공격력도 용병과 비슷한 곡선(노환생 기준)" -- 80레벨까지는 그대로(레벨마다 9% + 계단식 너프), 80 -> 99는 직선으로 완만하게(80레벨 값 -> 99레벨 10,000).
     static final double MINE_ATK_LV99 = 10_000;
     static double mineAtkExp(int lv) { return 6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv); }
-    static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round((a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0) * mineLvOver(lv)); } // [2026-11-17] 99 넘으면 레벨마다 +1%
+    static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round(a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0 + mineOverAtk(lv)); } // [2026-11-17] 99 넘으면 레벨마다 같은 양(오를수록 더)
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
