@@ -109,6 +109,26 @@ public final class S5MineMap {
     // [2026-11-15] 탑 방 방식 -- 층마다 방(tw{층})과 계단방(tw{층}s), 탑 입구 맵(TOWER_GATE: 탑의 도시 북문 밖, 거대한 탑의 정면).
     public static final String TOWER_GATE = "towergate";
     public static final String DEMON_EAST = "demoneast", DEMON_WEST = "demonwest"; // [2026-11-16] 악마의 들판(요새 도시 동문/서문 밖)
+    // [2026-11-17] 로드맵 -- 들판 2·3(Lv.105/115), 최후의 방어선(Lv.125, 서쪽3·동쪽3 사이), 마계 입구(방어선 북쪽, 포털), 혼돈스러운 마계(Lv.135, 1인).
+    public static final String DEMON_EAST2 = "demoneast2", DEMON_EAST3 = "demoneast3", DEMON_WEST2 = "demonwest2", DEMON_WEST3 = "demonwest3";
+    public static final String LAST_LINE = "lastline", ABYSS_GATE = "abyssgate", CHAOS = "chaos";
+    /** 악마의 들판(동/서, 1~3) 단계 0~2, 최후의 방어선 3, 그 밖 -1. */
+    public static int demonTier(String id) {
+        if (id == null) return -1;
+        if (LAST_LINE.equals(id)) return 3;
+        if (!id.startsWith(DEMON_EAST) && !id.startsWith(DEMON_WEST)) return -1;
+        return id.endsWith("3") ? 2 : id.endsWith("2") ? 1 : 0;
+    }
+    public static boolean isDemonField(String id) { int t = demonTier(id); return t >= 0 && t <= 2; }
+    public static boolean isDemonWest(String id) { return id != null && id.startsWith(DEMON_WEST); }
+    /** 곡괭이로 캐면 악마의 광석 조각이 함께 나오는 땅(들판 1~3 + 최후의 방어선). */
+    public static boolean isDemonLand(String id) { return demonTier(id) >= 0; }
+    // [2026-11-17] 새 재료 -- 황혼의 인장(서쪽 들판) / 여명의 인장(동쪽 들판): 둘을 합쳐 최후의 방어선 통행, 악마의 광석 조각(악마 땅 채광, 정제 10% 미스릴), 종말의 파편(혼돈스러운 마계)
+    public static final String DUSK_SEAL_CODE = "DUSK_SEAL", DUSK_SEAL_NAME = "황혼의 인장";
+    public static final String DAWN_SEAL_CODE = "DAWN_SEAL", DAWN_SEAL_NAME = "여명의 인장";
+    public static final String DEMON_ORE_CODE = "DEMON_ORE_SHARD", DEMON_ORE_NAME = "악마의 광석 조각";
+    public static final String DOOM_SHARD_CODE = "DOOM_SHARD", DOOM_SHARD_NAME = "종말의 파편";
+    public static final int DUSK_SEAL_GRADE = 73, DAWN_SEAL_GRADE = 74, DEMON_ORE_GRADE = 75, DOOM_SHARD_GRADE = 76;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
@@ -239,7 +259,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = withForest(Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA, TOWER_CITY, TOWER_GATE, DEMON_EAST, DEMON_WEST)); // [2026-11-16] + 악마의 들판(동/서) // [2026-11-15] + 월드보스 전장, 탑의 도시(탑 층은 withForest에서) // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA, TOWER_CITY, TOWER_GATE, DEMON_EAST, DEMON_WEST, DEMON_EAST2, DEMON_EAST3, DEMON_WEST2, DEMON_WEST3, LAST_LINE, ABYSS_GATE, CHAOS)); // [2026-11-17] + 로드맵 // [2026-11-16] + 악마의 들판(동/서) // [2026-11-15] + 월드보스 전장, 탑의 도시(탑 층은 withForest에서) // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -655,7 +675,7 @@ public final class S5MineMap {
     /** [2026-11-15] "탑은 1인 인스턴스 던전 형태" -- 탑의 보드 층과 수문장 층은 사람마다 따로(몬스터 상태가 유저별, 다른 사람이 안 보인다). 마을 층(10층마다)은 함께. */
     private int soloFlag = -1;
     public boolean solo() {
-        if (soloFlag < 0) { int f = towerFloor(id); soloFlag = f > 0 && !towerTownFloor(f) ? 1 : 0; }
+        if (soloFlag < 0) { int f = towerFloor(id); soloFlag = (f > 0 && !towerTownFloor(f)) || CHAOS.equals(id) ? 1 : 0; } // [2026-11-17] 혼돈스러운 마계도 1인
         return soloFlag == 1;
     }
     public int bossY() { return bossY; }
@@ -721,7 +741,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 22; // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 23; // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1147,9 +1167,16 @@ public final class S5MineMap {
             for (int f = 1; f <= TOWER_FLOORS_V1; f++) out.put(towerId(f), generateTowerFloor(f));
             out.put(TOWER_GATE, generateTowerGate()); // [2026-11-15] 탑 입구(맨 뒤)
             for (int f = 1; f <= TOWER_FLOORS_V1; f++) if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); // 계단방(맨 뒤)
-            out.put(DEMON_EAST, generateDemonField(true)); // [2026-11-16] 악마의 들판(맨 뒤)
-            out.put(DEMON_WEST, generateDemonField(false));
+            out.put(DEMON_EAST, generateDemonField(true, 0)); // [2026-11-16] 악마의 들판(맨 뒤)
+            out.put(DEMON_WEST, generateDemonField(false, 0));
             for (int f = TOWER_FLOORS_V1 + 1; f <= TOWER_FLOORS; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-17] 31~50층(맨 뒤)
+            out.put(DEMON_WEST2, generateDemonField(false, 1)); // [2026-11-17] 로드맵(맨 뒤)
+            out.put(DEMON_WEST3, generateDemonField(false, 2));
+            out.put(DEMON_EAST2, generateDemonField(true, 1));
+            out.put(DEMON_EAST3, generateDemonField(true, 2));
+            out.put(LAST_LINE, generateLastLine());
+            out.put(ABYSS_GATE, generateAbyssGate());
+            out.put(CHAOS, generateChaos());
         }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -2725,7 +2752,10 @@ public final class S5MineMap {
         int w = GATE_W, h = GATE_H, cx = w / 2, dy = GATE_DOOR_Y;
         char[][] t = new char[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 1 || x >= w - 2 || y >= h - 1 ? 'W' : 's';
-        for (int y = 1; y <= dy; y++) for (int x = 3; x <= w - 4; x++) t[y][x] = 'Q'; // 탑 정면
+        for (int y = 1; y <= dy; y++) for (int x = 5; x <= w - 6; x++) t[y][x] = 'Q'; // 탑 정면
+        // [2026-11-17] "탑을 위쪽까지 구경하고 싶어, 옆쪽 샛길 뚫어줘" -- 탑 양옆으로 두 칸 융단 샛길(꼭대기까지), 수정 가로등이 줄지어 서고 맨 위엔 전망대
+        for (int y = 1; y <= dy; y++) for (int sg = 0; sg < 2; sg++) { int lx = sg == 0 ? 2 : w - 5; t[y][lx] = ','; t[y][lx + 1] = ','; t[y][sg == 0 ? 4 : w - 3] = y % 6 == 3 ? 'i' : 's'; }
+        for (int sg = 0; sg < 2; sg++) for (int x = sg == 0 ? 2 : w - 5; x <= (sg == 0 ? 4 : w - 3); x++) t[1][x] = 's';
         for (int y = dy + 1; y < h - 1; y++) for (int x = cx - 2; x <= cx + 2; x++) t[y][x] = ','; // 융단
         for (int y = dy + 5; y <= dy + 6; y++) for (int x = 2; x < w - 2; x++) if (Math.abs(x - cx) > 2) t[y][x] = ','; // 층계참 띠
         for (int sg = -1; sg <= 1; sg += 2) {
@@ -2759,13 +2789,73 @@ public final class S5MineMap {
     static final int DEMON_W = 96, DEMON_H = 64, TCITY_GATE_Y = 60;
     int[][] fixedMobs;
     public int[][] fixedMobs() { return fixedMobs; }
-    static S5MineMap generateDemonField(boolean east) {
-        int w = DEMON_W, h = DEMON_H, cy = h / 2;
-        Random r = new Random(east ? 6661 : 6662);
+    static S5MineMap generateDemonField(boolean east, int tier) { // [2026-11-17] tier 0 = 들판 1(요새 도시 성문), 1 = 들판 2, 2 = 들판 3(안쪽 = 최후의 방어선)
+        int w = DEMON_W, h = DEMON_H, cy = h / 2, cx = w / 2;
+        Random r = new Random(tier == 0 ? (east ? 6661 : 6662) : (east ? 6671 : 6672) + tier * 10);
         char[][] t = new char[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : '.';
-        for (int i = 0; i < 18; i++) { // 용암 못(~)과 검은 바위(W) 덩어리, 둘레는 갈라진 땅(:)
-            int bx = 12 + r.nextInt(w - 24), by = 5 + r.nextInt(h - 10), rr = 2 + r.nextInt(4);
+        demonBlobs(t, r, 18 + tier * 5, 12); // 용암 못(~)과 검은 바위(W) 덩어리 -- 깊을수록 더 많이
+        for (int y = 3; y < h - 3; y++) for (int x = 3; x < w - 3; x++) if (t[y][x] == '.') { double q = r.nextDouble(); if (q < 0.035) t[y][x] = 'T'; else if (q < 0.10 + tier * 0.03) t[y][x] = ':'; }
+        List<Portal> ps = new ArrayList<>();
+        int sx, sy;
+        String nm = (east ? "동쪽 악마의 들판" : "서쪽 악마의 들판") + DEMON_FIELD_NAME[tier];
+        if (tier == 0) {
+            int gx = east ? 0 : w - 1;
+            for (int x = 1; x < w - 6; x++) { // 성문에서 들판 끝까지 굽이치는 무너진 길
+                int xx = east ? x : w - 1 - x, yy = cy + (int) Math.round(Math.sin(x / 9.0) * 4);
+                for (int k = -1; k <= 1; k++) t[yy + k][xx] = (x * 7 + k * 3) % 6 == 0 ? ':' : ',';
+            }
+            for (int y = cy - 3; y <= cy + 3; y++) for (int x = 1; x <= 9; x++) t[y][east ? x : w - 1 - x] = Math.abs(y - cy) <= 1 ? ',' : '.'; // 성문 앞 빈터
+            demonRoadV(t, cx, 1, cy); // [2026-11-17] 북쪽 = 들판 2
+            t[cy][gx] = 'G'; t[0][cx] = 'G';
+            sx = east ? 3 : w - 4; sy = cy;
+            ps.add(new Portal(gx, cy, 'G', TOWER_CITY, east ? TCITY_W - 2 : 1, TCITY_GATE_Y, "요새 도시 " + (east ? "동문" : "서문")));
+            ps.add(new Portal(cx, 0, 'G', demonFieldId(east, 1), cx, h - 3, (east ? "동쪽" : "서쪽") + " 악마의 들판 2"));
+        } else {
+            for (int y = h - 9; y <= h - 3; y++) for (int x = cx - 4; x <= cx + 4; x++) if (Math.abs(x - cx) > 1) t[y][x] = '.'; // (길보다 먼저) // 남문 앞 빈터
+            demonRoadV(t, cx, tier == 1 ? 1 : cy, h - 2);
+            t[h - 1][cx] = 'G';
+            sx = cx; sy = h - 3;
+            ps.add(new Portal(cx, h - 1, 'G', demonFieldId(east, tier - 1), cx, 2, (east ? "동쪽" : "서쪽") + " 악마의 들판" + DEMON_FIELD_NAME[tier - 1]));
+            if (tier == 1) { t[0][cx] = 'G'; ps.add(new Portal(cx, 0, 'G', demonFieldId(east, 2), cx, h - 3, (east ? "동쪽" : "서쪽") + " 악마의 들판 3")); }
+            else { // 안쪽(서쪽 들판은 동쪽 끝, 동쪽 들판은 서쪽 끝) = 최후의 방어선
+                int ix = east ? 0 : w - 1;
+                if (east) demonRoadH(t, cy, 1, cx); else demonRoadH(t, cy, cx, w - 2);
+                t[cy][ix] = 'G';
+                ps.add(new Portal(ix, cy, 'G', LAST_LINE, east ? LL_W - 3 : 2, LL_H / 2, "최후의 방어선"));
+            }
+        }
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'W';
+        S5MineMap m = new S5MineMap(demonFieldId(east, tier), nm, false, w, h, sx, sy, t, demonOre(t, r, sx, sy), ps);
+        int[][] avoid = new int[ps.size()][];
+        for (int i = 0; i < ps.size(); i++) avoid[i] = new int[] { ps.get(i).x, ps.get(i).y, 16 };
+        m.fixedMobs = demonSpots(t, r, 15, tier, 16, avoid);
+        return m;
+    }
+    // ---- [2026-11-17] 로드맵 -- 들판 2·3, 최후의 방어선, 마계 입구, 혼돈스러운 마계 ----
+    private static final double[] DEMON_SHARE = { 0, 24, 0.10, 0.25, 0.30 }; // 별빛석 없음, 미스릴 24칸, 금/은/철 비율
+    static final int LL_W = 120, LL_H = 76, ABYSS_W = 41, ABYSS_H = 33, CHAOS_W = 27, CHAOS_H = 21;
+    static final String[] DEMON_FIELD_NAME = { "", " 2", " 3" };
+    static String demonFieldId(boolean east, int tier) { return (east ? DEMON_EAST : DEMON_WEST) + (tier == 0 ? "" : String.valueOf(tier + 1)); }
+    /** 세로로 굽이치는 무너진 길(3칸) -- y0~y1, 가운데 cx. 문 근처(끝 4칸)는 곧게. */
+    private static void demonRoadV(char[][] t, int cx, int y0, int y1) {
+        for (int y = y0; y <= y1; y++) {
+            int off = (int) Math.round(Math.sin((y - y0) / 7.0) * 4 * Math.min(1.0, Math.min(y - y0, y1 - y) / 8.0)); // 끝으로 갈수록 곧게(문과 이어지게)
+            for (int k = -1; k <= 1; k++) t[y][cx + off + k] = (y * 5 + k * 3) % 6 == 0 ? ':' : ',';
+        }
+    }
+    private static void demonRoadH(char[][] t, int cy, int x0, int x1) {
+        for (int x = x0; x <= x1; x++) {
+            int off = (int) Math.round(Math.sin((x - x0) / 9.0) * 4 * Math.min(1.0, Math.min(x - x0, x1 - x) / 8.0));
+            for (int k = -1; k <= 1; k++) t[cy + off + k][x] = (x * 7 + k * 3) % 6 == 0 ? ':' : ',';
+        }
+    }
+    /** 용암 못 / 검은 바위 덩어리 n개(둘레는 갈라진 땅). */
+    private static void demonBlobs(char[][] t, Random r, int n, int margin) {
+        int h = t.length, w = t[0].length;
+        for (int i = 0; i < n; i++) {
+            int bx = margin + r.nextInt(w - margin * 2), by = 5 + r.nextInt(h - 10), rr = 2 + r.nextInt(4);
             char ch = i % 3 == 0 ? 'W' : '~';
             for (int y = by - rr - 1; y <= by + rr + 1; y++) for (int x = bx - rr - 2; x <= bx + rr + 2; x++) {
                 if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) continue;
@@ -2774,35 +2864,121 @@ public final class S5MineMap {
                 else if (d < rr + 1.3 && t[y][x] == '.') t[y][x] = ':';
             }
         }
-        for (int y = 3; y < h - 3; y++) for (int x = 3; x < w - 3; x++) if (t[y][x] == '.') { double q = r.nextDouble(); if (q < 0.035) t[y][x] = 'T'; else if (q < 0.10) t[y][x] = ':'; }
-        int gx = east ? 0 : w - 1;
-        for (int x = 1; x < w - 6; x++) { // 성문에서 들판 끝까지 굽이치는 무너진 길
-            int xx = east ? x : w - 1 - x, yy = cy + (int) Math.round(Math.sin(x / 9.0) * 4);
-            for (int k = -1; k <= 1; k++) t[yy + k][xx] = (x * 7 + k * 3) % 6 == 0 ? ':' : ',';
-        }
-        for (int y = cy - 3; y <= cy + 3; y++) for (int x = 1; x <= 9; x++) t[y][east ? x : w - 1 - x] = Math.abs(y - cy) <= 1 ? ',' : '.'; // 성문 앞 빈터
-        t[cy][gx] = 'G';
-        int sx = east ? 3 : w - 4;
-        boolean[][] reach = reachable(t, sx, cy);
-        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'W';
-        List<Portal> ps = new ArrayList<>();
-        ps.add(new Portal(gx, cy, 'G', TOWER_CITY, east ? TCITY_W - 2 : 1, TCITY_GATE_Y, "요새 도시 " + (east ? "동문" : "서문")));
-        S5MineMap m = new S5MineMap(east ? DEMON_EAST : DEMON_WEST, east ? "동쪽 악마의 들판" : "서쪽 악마의 들판", false, w, h, sx, cy, t, new byte[h][w], ps);
-        List<int[]> spots = new ArrayList<>(); // 악마 자리 -- 성문에서 16칸 넘게, 서로 8칸 넘게 떨어진 탁 트인 칸
-        for (int tries = 0; tries < 6000 && spots.size() < 15; tries++) {
+    }
+    /** 악마 자리 n곳 -- 들어오는 곳(xs, ys)들에서 far칸 넘게, 서로 8칸 넘게, 둘레가 트인 칸. kind = 0~2 번갈아, 가장 먼 곳은 3(발록). 번호 = 단계*4 + kind. */
+    private static int[][] demonSpots(char[][] t, Random r, int n, int tier, int far, int[][] avoid) {
+        int h = t.length, w = t[0].length;
+        List<int[]> spots = new ArrayList<>();
+        for (int tries = 0; tries < 8000 && spots.size() < n; tries++) {
             int x = 4 + r.nextInt(w - 8), y = 4 + r.nextInt(h - 8);
-            if (Math.abs(x - sx) < 16) continue;
             boolean ok = true;
+            for (int[] a : avoid) if (Math.abs(a[0] - x) + Math.abs(a[1] - y) < (a.length > 2 ? a[2] : far)) { ok = false; break; }
             for (int[] s : spots) if (Math.max(Math.abs(s[0] - x), Math.abs(s[1] - y)) < 8) { ok = false; break; }
             for (int yy = y - 1; yy <= y + 1 && ok; yy++) for (int xx = x - 1; xx <= x + 1; xx++) if (!walkable(t[yy][xx])) { ok = false; break; }
             if (ok) spots.add(new int[] { x, y, spots.size() % 3 });
         }
-        int far = -1; // 가장 깊은 자리는 발록
-        for (int i = 0; i < spots.size(); i++) if (far < 0 || Math.abs(spots.get(i)[0] - sx) > Math.abs(spots.get(far)[0] - sx)) far = i;
-        if (far >= 0) spots.get(far)[2] = 3;
-        m.fixedMobs = spots.toArray(new int[0][]);
+        int fi = -1; double fd = -1;
+        for (int i = 0; i < spots.size(); i++) { double d = 1e9; for (int[] a : avoid) d = Math.min(d, Math.abs(a[0] - spots.get(i)[0]) + Math.abs(a[1] - spots.get(i)[1])); if (d > fd) { fd = d; fi = i; } }
+        if (fi >= 0) spots.get(fi)[2] = 3;
+        for (int[] s : spots) s[2] += tier * 4;
+        return spots.toArray(new int[0][]);
+    }
+    private static byte[][] demonOre(char[][] t, Random r, int sx, int sy) {
+        int h = t.length, w = t[0].length;
+        double[][] score = new double[h][w];
+        boolean[][] skip = new boolean[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) { skip[y][x] = Math.abs(x - sx) + Math.abs(y - sy) <= 4 || t[y][x] == ','; score[y][x] = r.nextDouble(); }
+        return assignOre(t, score, DEMON_SHARE, skip);
+    }
+    /** [2026-11-17] 최후의 방어선(120x76, Lv.125) -- 무너진 요새 성벽 한 줄(북쪽, 군데군데 뚫림)과 그 앞 싸움터, 서문(서쪽 들판 3) / 동문(동쪽 들판 3) / 북쪽 = 마계 입구.
+     *  남쪽 한가운데 용암 해자에 둘러싸인 외딴 진지(안전지대 -- 좁은 다리 하나로만 이어짐): 지친 병사들, 악마의 광석 조각 정제사, 사제. */
+    static S5MineMap generateLastLine() {
+        int w = LL_W, h = LL_H, cx = w / 2, cy = h / 2;
+        Random r = new Random(7125);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : '.';
+        demonBlobs(t, r, 26, 10);
+        for (int y = 3; y < h - 3; y++) for (int x = 3; x < w - 3; x++) if (t[y][x] == '.') { double q = r.nextDouble(); if (q < 0.03) t[y][x] = 'T'; else if (q < 0.12) t[y][x] = ':'; }
+        int wy = 15; // 무너진 성벽(돌 성벽 L, 뚫린 곳은 잔해)
+        for (int x = 2; x < w - 2; x++) { boolean gap = Math.abs(x - cx) <= 2 || (x * 37 % 23 == 0) || (x % 29 >= 26); t[wy][x] = gap ? ':' : 'L'; t[wy + 1][x] = gap ? '.' : (x % 9 == 0 ? 'L' : t[wy + 1][x]); }
+        demonRoadH(t, cy, 1, w - 2);
+        demonRoadV(t, cx, 1, cy);
+        // 외딴 진지 -- 남쪽 가운데, 반지름 8 둥근 돌 바닥 + 둘레 성벽(L), 그 밖 용암 해자, 북쪽 다리(H) 하나
+        int ky = h - 14, kr = 8;
+        for (int y = ky - kr - 4; y <= ky + kr + 4; y++) for (int x = cx - kr - 5; x <= cx + kr + 5; x++) {
+            if (x < 3 || y < 3 || x >= w - 3 || y >= h - 3) continue;
+            double d = Math.hypot((x - cx) * 0.85, y - ky);
+            t[y][x] = d <= kr - 1 ? 's' : d <= kr + 0.3 ? 'L' : d <= kr + 3.2 ? '~' : t[y][x];
+        }
+        for (int y = cy + 2; y <= ky - kr + 1; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = y >= ky - kr - 3 ? 'H' : ',';
+        for (int y = ky - kr; y <= ky - kr + 1; y++) t[y][cx] = 's';
+        t[ky + 2][cx - 3] = 'i'; t[ky + 2][cx + 3] = 'i'; // 횃불(수정 가로등 칸 -- 화면이 불꽃으로)
+        t[cy][0] = 'G'; t[cy][w - 1] = 'G'; t[0][cx] = 'G';
+        int sx = cx, sy = ky + 1;
+        boolean[][] reach = reachable(t, sx, sy);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'W';
+        List<Portal> ps = new ArrayList<>();
+        ps.add(new Portal(0, cy, 'G', DEMON_WEST3, DEMON_W - 3, DEMON_H / 2, "서쪽 악마의 들판 3"));
+        ps.add(new Portal(w - 1, cy, 'G', DEMON_EAST3, 2, DEMON_H / 2, "동쪽 악마의 들판 3"));
+        ps.add(new Portal(cx, 0, 'G', ABYSS_GATE, ABYSS_W / 2, ABYSS_H - 3, "마계 입구"));
+        S5MineMap m = new S5MineMap(LAST_LINE, "최후의 방어선", false, w, h, sx, sy, t, demonOre(t, r, sx, sy), ps);
+        m.fixedMobs = demonSpots(t, r, 18, 3, 14, new int[][] { { 2, cy, 18 }, { w - 3, cy, 18 }, { cx, ky, kr + 14 }, { cx, 2, 12 } });
+        List<Npc> npcs = new ArrayList<>();
+        npcs.add(npcAtCell(t, cx - 3, ky - 2, "refiner", "악마 광석 정제사", "악마의 광석 조각을 가져오게. 불순물을 태워 내면 열에 하나쯤은 미스릴이 남지."));
+        npcs.add(npcAtCell(t, cx + 3, ky - 2, "priest", "종군 사제", "보급이 끊긴 지 오래지만, 상처를 돌봐 드릴 힘은 남아 있습니다."));
+        guardAt(t, npcs, cx - 1, ky - kr + 2, "knight", "방어선 지휘관", "여기가 최후의 방어선이오. 사방이 악마요 -- 후방과 연락이 끊긴 지 벌써 몇 주째라오. 그래도 이 진지만큼은 내주지 않겠소!");
+        for (int i = 0; i < LAST_GUARD_LINES.length; i++) guardAt(t, npcs, cx - 5 + (i % 3) * 5, ky + 3 + (i / 3) * 2, "guard", "지친 병사", LAST_GUARD_LINES[i]);
+        m.npcs = npcs;
+        m.safe.add(new int[] { cx, ky, kr });
         return m;
     }
+    static final String[] LAST_GUARD_LINES = {
+        "보급 마차가 끊긴 지 오래요... 남은 건 이 해자와 성벽뿐이오.",
+        "밤마다 북쪽 하늘이 붉게 갈라진다오. 마계의 문이 숨을 쉬는 소리지.",
+        "서쪽과 동쪽 들판의 인장을 둘 다 가져온 용사라니, 오랜만에 반가운 얼굴이구려.",
+        "저 문 너머로 들어간 자들은 엉뚱한 곳에서 깨어났다더군. 운이 나쁘면... 아니, 말을 말지.",
+        "이 진지 안에서는 놈들도 다리를 건너오지 못하오. 잠시 쉬어 가시오." };
+    /** [2026-11-17] 마계 입구(41x33) -- 갈라진 검붉은 땅 한가운데 거대한 포털(화면이 소용돌이 그림으로 -- 칸 하나가 문, 둘레 돌기둥). 남쪽 = 최후의 방어선.
+     *  포털: 전체 지도 아무 곳으로 떨어지거나, 5% 확률로 혼돈스러운 마계(S55MineServiceImpl.mineAbyssWarp). */
+    static S5MineMap generateAbyssGate() {
+        int w = ABYSS_W, h = ABYSS_H, cx = w / 2, py = 12;
+        Random r = new Random(7135);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : (r.nextDouble() < 0.07 ? ':' : '.');
+        for (int y = 2; y < h - 2; y++) for (int x = 2; x < w - 2; x++) { double d = Math.hypot(x - cx, (y - py) * 1.2); if (d > 13 && d < 15.5 && Math.abs(x - cx) > 2) t[y][x] = '~'; } // 용암 고리(남쪽은 길)
+        for (int y = py + 1; y < h - 1; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = ',';
+        for (int a = 0; a < 360; a += 30) { if (a > 60 && a < 120) continue; int x = cx + (int) Math.round(Math.cos(Math.toRadians(a)) * 5), y = py + (int) Math.round(Math.sin(Math.toRadians(a)) * 4); t[y][x] = 'W'; } // 돌기둥(남쪽 빼고)
+        for (int y = py - 2; y <= py; y++) for (int x = cx - 2; x <= cx + 2; x++) t[y][x] = 'W'; // 포털 몸체(지나갈 수 없음)
+        t[py][cx] = 'G';
+        t[h - 1][cx] = 'G';
+        List<Portal> ps = new ArrayList<>();
+        ps.add(new Portal(cx, py, 'G', CHAOS, CHAOS_W / 2, CHAOS_H / 2 + 5, "마계로 통하는 문"));
+        ps.add(new Portal(cx, h - 1, 'G', LAST_LINE, LL_W / 2, 2, "최후의 방어선으로"));
+        S5MineMap m = new S5MineMap(ABYSS_GATE, "마계 입구", false, w, h, cx, h - 3, t, new byte[h][w], ps);
+        m.abyssPortal = new int[] { cx, py };
+        return m;
+    }
+    int[] abyssPortal;
+    public int[] abyssPortal() { return abyssPortal; }
+    /** [2026-11-17] 혼돈스러운 마계(27x21, 1인) -- 검은 우주에 떠 있는 바위섬 하나. 악마화된 몬스터 한 마리와 싸운다(들어올 때 무작위로 깨어난다 -- 자리는 모든 종류가 한 칸에, 평소엔 없음).
+     *  쓰러뜨리면 남쪽 끝 귀환의 문(요새 도시)이 열린다. */
+    static S5MineMap generateChaos() {
+        int w = CHAOS_W, h = CHAOS_H, cx = w / 2, cy = h / 2;
+        Random r = new Random(7136);
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            double d = Math.hypot((x - cx) / 10.5, (y - cy) / 7.5) + (r.nextDouble() - 0.5) * 0.12;
+            t[y][x] = d < 1 ? (r.nextDouble() < 0.05 ? ':' : '.') : '^';
+        }
+        t[cy + 7][cx] = '.'; t[cy + 8][cx] = 'G';
+        List<Portal> ps = new ArrayList<>();
+        ps.add(new Portal(cx, cy + 8, 'G', TOWER_CITY, TCITY_W / 2, TCITY_H / 2, "귀환의 문 -- 요새 도시로"));
+        S5MineMap m = new S5MineMap(CHAOS, "혼돈스러운 마계", false, w, h, cx, cy + 5, t, new byte[h][w], ps);
+        m.chaosSpot = new int[] { cx, cy - 2 };
+        return m;
+    }
+    int[] chaosSpot;
+    public int[] chaosSpot() { return chaosSpot; }
     /** (x, y)가 걸을 수 있는 바닥이면 그 자리에 경비병/기사를 세운다(아니면 건너뛴다). */
     private static void guardAt(char[][] t, List<Npc> npcs, int x, int y, String kind, String name, String line) {
         if (y < 0 || x < 0 || y >= t.length || x >= t[0].length || (t[y][x] != 's' && t[y][x] != ',' && t[y][x] != '.')) return;

@@ -54,6 +54,10 @@ var TowerMine = (function () {
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
   ORE_NAME[72] = '탑의 증표'; ORE_COL[72] = ['#3a5aa8', '#ffe9a8']; RARE_GEM[72] = 1; // [2026-11-15] 탑의 증표(그림은 시안 전까지 기본 광석 모양)
+  ORE_NAME[73] = '황혼의 인장'; ORE_COL[73] = ['#c8501a', '#ffd08a']; RARE_GEM[73] = 1; // [2026-11-17] 서쪽 악마의 들판
+  ORE_NAME[74] = '여명의 인장'; ORE_COL[74] = ['#4a8ad8', '#fff0b0']; RARE_GEM[74] = 1; // 동쪽 악마의 들판
+  ORE_NAME[75] = '악마의 광석 조각'; ORE_COL[75] = ['#7a1a2a', '#ff6a5a']; // 악마의 땅 채광(정제 10% 미스릴)
+  ORE_NAME[76] = '종말의 파편'; ORE_COL[76] = ['#1a0a24', '#c86aff']; RARE_GEM[76] = 1; // 혼돈스러운 마계
   ORE_NAME[71] = '바람의 심장'; ORE_COL[71] = ['#3ac8a0', '#f0fff8']; RARE_GEM[71] = 1; // [2026-11-11] 하피 여왕
   ORE_NAME[64] = '화산의 심장'; ORE_COL[64] = ['#d8341a', '#ffd08a']; RARE_GEM[64] = 1; // [2026-10-30] 용암 거신(낮)
   // [2026-10-28] 괴(40~44 = 구리~미스릴, 광석 전문가), 세공된 보석(45~53, 보석 세공사)
@@ -568,9 +572,47 @@ var TowerMine = (function () {
         else px(g, '#e07a8a', 5, 5, 2, 2); // 산호 조각
       });
     });
+    // ---- [2026-11-17] 최후의 방어선(테마 3에 더) -- 진지 바닥(다진 흙 + 널빤지), 무너진 돌 성벽, 해자 널다리, 화톳불 ----
+    Dm.camp = [0, 1].map(function (s) { return tile('#5e4b3c', [['#544234', 12], ['#6a5646', 6]], 660 + s, function (g) { if (s) { px(g, '#7a5c3a', 1, 5, 14, 3); px(g, '#4a3624', 1, 8, 14, 1); px(g, '#8a6a46', 1, 5, 14, 1); px(g, '#4a3624', 6, 5, 1, 3); px(g, '#4a3624', 11, 5, 1, 3); } }); });
+    Dm.ruin = [0, 1].map(function (s) {
+      return tile('#6a6670', [['#5a5660', 10], ['#7a7680', 6], ['#2a1b20', 3]], 670 + s, function (g) {
+        px(g, '#4a4650', 0, 5, T, 1); px(g, '#4a4650', 0, 10, T, 1); px(g, '#4a4650', 5, 0, 1, 5); px(g, '#4a4650', 11, 5, 1, 5); px(g, '#4a4650', 3, 10, 1, 6);
+        px(g, '#8a8690', 0, 0, T, 1); px(g, '#1a1418', 9, 1, 3, 2); px(g, '#c8381a', 13, 12, 1, 2);
+        if (s) { px(g, '#3a2e34', 0, 13, T, 3); px(g, '#241c20', 0, 15, T, 1); }
+      });
+    });
+    Dm.plank = tile('#7a5a34', [['#6a4c2a', 10], ['#8a6a40', 5]], 680, function (g) { for (var i = 0; i < 4; i++) px(g, '#4a3418', 0, i * 4 + 3, T, 1); px(g, '#3a2a14', 1, 0, 1, T); px(g, '#3a2a14', 14, 0, 1, T); });
+    Dm.brazier = [0, 1].map(function (f) {
+      return over(Dm.camp[0], function (g) {
+        px(g, 'rgba(0,0,0,.3)', 4, 14, 8, 2); px(g, '#2a2228', 7, 9, 2, 6); px(g, '#2a2228', 5, 14, 6, 1);
+        px(g, '#3a3036', 3, 7, 10, 3); px(g, '#4a4046', 3, 7, 10, 1); px(g, '#1a1418', 4, 9, 8, 1);
+        px(g, '#c8381a', 4, f ? 3 : 4, 8, 4); px(g, '#ff7a2a', 5, f ? 2 : 3, 6, 4); px(g, '#ffb04a', 6, f ? 3 : 2, 4, 3); px(g, '#ffe08a', 7, f ? 3 : 4, 2, 2);
+        px(g, '#ff7a2a', f ? 4 : 11, f ? 1 : 2, 1, 1); px(g, '#ffb04a', f ? 10 : 6, 0, 1, 1);
+      });
+    });
+    // ---- [2026-11-17] 혼돈스러운 마계(테마 4) ----
+    var Ch = tiles.chaos = {};
+    Ch.space = [];
+    for (var cs = 0; cs < 5; cs++) for (var cf = 0; cf < 2; cf++) (function (s, f) {
+      var c = mk(T, T), g = c.getContext('2d'), r = rng(900 + s);
+      g.fillStyle = '#05030a'; g.fillRect(0, 0, T, T);
+      for (var i = 0; i < 3; i++) { var sx = Math.floor(r() * T), sy = Math.floor(r() * T), b = r(); px(g, b < 0.3 ? '#c8b8ff' : b < 0.55 ? '#ffd8e8' : '#ffffff', sx, sy); if (f && i === 0) { px(g, 'rgba(255,255,255,.5)', sx - 1, sy); px(g, 'rgba(255,255,255,.5)', sx + 1, sy); px(g, 'rgba(255,255,255,.5)', sx, sy - 1); px(g, 'rgba(255,255,255,.5)', sx, sy + 1); } }
+      Ch.space[s * 2 + f] = c;
+    })(cs, cf);
+    Ch.rock = [0, 1, 2].map(function (s) { return tile('#2a2230', [['#221a28', 12], ['#342a3c', 7], ['#3e2a4a', 3]], 910 + s, function (g) { if (s === 2) { px(g, '#7a3ac8', 4, 9, 3, 1); px(g, '#b06aff', 5, 9); } if (s === 1) { px(g, '#1a1220', 9, 3, 4, 1); px(g, '#1a1220', 12, 4, 1, 3); } }); });
+    Ch.vein = [0, 1].map(function (f) { return over(Ch.rock[0], function (g) { px(g, '#3a0a3a', 2, 4, 1, 5); px(g, '#3a0a3a', 3, 9, 6, 1); px(g, '#3a0a3a', 9, 9, 1, 4); px(g, '#3a0a3a', 10, 3, 4, 1); px(g, f ? '#ff4ad8' : '#b02aa8', 3, 9, 6, 1); px(g, f ? '#b02aa8' : '#ff4ad8', 10, 3, 4, 1); px(g, '#ffc8f8', f ? 5 : 11, f ? 9 : 3); }); });
+    Ch.under = [0, 1].map(function (s) { // 바위섬 밑면 -- 위는 바위, 아래로 갈수록 뾰족하게 우주로 사라진다
+      var c = mk(T, T), g = c.getContext('2d'); g.fillStyle = '#05030a'; g.fillRect(0, 0, T, T);
+      var cols = [7, 10, 5, 12, 8, 11, 6, 9, 13, 7, 10, 5, 12, 8, 11, 6];
+      for (var x = 0; x < T; x++) { var d = cols[(x + s * 5) % T]; px(g, '#1a1220', x, 0, 1, d); px(g, '#120c18', x, d - 2, 1, 2); if (x % 5 === 2) px(g, '#5a2a8a', x, d - 1, 1, 1); }
+      px(g, '#3e2a4a', 0, 0, T, 1);
+      return c;
+    });
+    Ch.gate = [0, 1].map(function (f) { return over(Ch.rock[1], function (g) { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2 + (f ? 0.5 : 0); px(g, i % 2 ? '#7af0ff' : '#ffe9a8', 8 + Math.round(Math.cos(a) * 5) - 1, 8 + Math.round(Math.sin(a) * 5) - 1, 2, 2); } px(g, '#c8f8ff', 6, 6, 4, 4); px(g, '#ffffff', 7, 7, 2, 2); }); });
+    Ch.gateShut = over(Ch.rock[1], function (g) { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; px(g, '#3a3044', 8 + Math.round(Math.cos(a) * 5) - 1, 8 + Math.round(Math.sin(a) * 5) - 1, 2, 2); } px(g, '#1a1220', 6, 6, 4, 4); px(g, '#6a6070', 4, 7, 8, 1); px(g, '#6a6070', 7, 4, 1, 8); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -658,8 +700,8 @@ var TowerMine = (function () {
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
     var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry';
-    var so = kind === 'smelter', gc = kind === 'gemcutter', ar = kind === 'artisan', ah = kind === 'archishop'; // [2026-10-28] 다도해 상인(푸른 옷) // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
-    var body = ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
+    var so = kind === 'smelter' || kind === 'refiner', gc = kind === 'gemcutter', ar = kind === 'artisan', ah = kind === 'archishop', rf = kind === 'refiner'; // [2026-11-17] 악마 광석 정제사 // [2026-10-28] 다도해 상인(푸른 옷) // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
+    var body = rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
@@ -670,6 +712,7 @@ var TowerMine = (function () {
     px(g, skin, 3, 8, 1, 3); px(g, skin, 12, 8, 1, 3);
     px(g, skin, 4, 1, 8, 6);
     px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4);
+    if (rf) { px(g, '#2a1a12', 5, 8, 6, 4); px(g, '#3a3036', 4, 3, 8, 2); px(g, '#ff9a3a', 5, 3, 2, 2); px(g, '#ff9a3a', 9, 3, 2, 2); px(g, '#ffe08a', 5, 3); px(g, '#ffe08a', 9, 3); px(g, '#2a2228', 11, 10, 4, 3); px(g, '#ff5a1a', 12, 10, 2, 1); px(g, '#ffb04a', 12, 9, 1, 1); } // [2026-11-17] 고글 + 도가니
     if (bq) {
       px(g, '#1a1a1a', 5, 0, 6, 1); px(g, '#1a1a1a', 3, 1, 10, 1); px(g, '#d4af37', 5, 0, 6, 1); // 실크햇 + 금띠
       px(g, '#3b2a1a', 6, 5, 4, 1); px(g, '#d4af37', 9, 3, 2, 2); // 콧수염 + 외알 안경
@@ -717,7 +760,7 @@ var TowerMine = (function () {
   function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
   // [2026-11-15] 요새 도시 엘리시온 / 탑 입구(테마 1), 탑 안(테마 2) -- 같은 바닥 글자를 전용 그림으로 바꿔 그린다(없으면 null = 보통 그림).
   //  탑 입구의 탑 정면(Q 덩어리)은 한 장의 큰 그림(faceBuild)을 칸마다 잘라 쓴다 -- 하늘까지 솟은 돌벽, 금빛 띠, 불 켜진 아치 창, 한가운데 빛나는 큰 문.
-  function themeOf() { return !map ? 0 : map.id === 'towercity' || map.id === 'towergate' ? 1 : /^tw\d/.test(map.id) ? 2 : map.id === 'demoneast' || map.id === 'demonwest' ? 3 : 0; } // [2026-11-16] 3 = 악마의 들판
+  function themeOf() { var id = map && map.id; return !map ? 0 : id === 'towercity' || id === 'towergate' ? 1 : /^tw\d/.test(id) ? 2 : /^demon(east|west)/.test(id) || id === 'lastline' || id === 'abyssgate' ? 3 : id === 'chaos' ? 4 : 0; } // [2026-11-17] 들판 2·3, 최후의 방어선, 마계 입구 = 3, 혼돈스러운 마계 = 4 // [2026-11-16] 3 = 악마의 들판
   var faceCache = null;
   function faceInfo() {
     var key = map.id + '|' + map.w + 'x' + map.h;
@@ -850,7 +893,21 @@ var TowerMine = (function () {
         case '~': return Dm.lava[(wf + (x + y) % 2) % 2];
         case 'W': below = cellAt(x, y + 1); return below === 'W' || below === '^' ? Dm.rock[v % 2] : Dm.rockFace;
         case 'T': return Dm.tree;
-        case 'G': return Dm.gate;
+        case 'G': return map.id === 'abyssgate' ? Dm.ground[0] : Dm.gate; // [2026-11-17] 마계 입구 포털은 위에 소용돌이(abyssDraw)
+        case 's': return Dm.camp[v % 13 === 0 ? 1 : 0]; // [2026-11-17] 최후의 방어선 진지 바닥
+        case 'L': return Dm.ruin[cellAt(x, y + 1) === 'L' ? 0 : 1]; // 무너진 돌 성벽
+        case 'H': return Dm.plank; // 해자 위 널다리
+        case 'i': return Dm.brazier[wf ? 1 : 0]; // 화톳불
+      }
+      return null;
+    }
+    if (th === 4) { // [2026-11-17] 혼돈스러운 마계 -- 검은 우주, 떠 있는 바위섬, 귀환의 문
+      var Ch = tiles.chaos;
+      switch (c) {
+        case '^': return cellAt(x, y - 1) === '.' || cellAt(x, y - 1) === ':' ? Ch.under[v % 2] : Ch.space[(v % 5) * 2 + (wf ? 1 : 0)];
+        case '.': return Ch.rock[v % 3];
+        case ':': return Ch.vein[wf ? 1 : 0];
+        case 'G': return st && st.chaosLock ? Ch.gateShut : Ch.gate[wf ? 1 : 0];
       }
       return null;
     }
@@ -969,6 +1026,22 @@ var TowerMine = (function () {
       outline(c, '#0a1a3a');
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
+    }
+    if (grade === 73 || grade === 74) { // [2026-11-17] 황혼의 인장(지는 해 -- 주황/보라) / 여명의 인장(뜨는 해 -- 금/하늘) -- 둥근 밀랍 인장에 반쪽 해
+      var dusk = grade === 73, rim = dusk ? '#7a2a3a' : '#2a5a9a', wax = dusk ? '#b8402a' : '#d8a83a', sun = dusk ? '#ffb04a' : '#fff0a0', sky = dusk ? '#6a2a7a' : '#7ac8ff';
+      [[5, 1, 6, 1], [3, 2, 10, 2], [2, 4, 12, 8], [3, 12, 10, 2], [5, 14, 6, 1]].forEach(function (r) { px(g, rim, r[0], r[1], r[2], r[3]); });
+      [[5, 2, 6, 1], [4, 3, 8, 1], [3, 4, 10, 8], [4, 12, 8, 1], [5, 13, 6, 1]].forEach(function (r) { px(g, wax, r[0], r[1], r[2], r[3]); });
+      px(g, sky, 4, 5, 8, 4); px(g, sun, 6, 7, 4, 2); px(g, sun, 7, 6, 2, 1); px(g, '#ffffff', 7, 7); px(g, rim, 4, 9, 8, 1);
+      for (var i = 0; i < 3; i++) px(g, sun, dusk ? 5 + i * 3 : 4 + i * 3, dusk ? 10 + (i % 2) : 4 - (i % 2), 1, 1);
+      outline(c, '#120a0a'); oreIcons[grade] = c.toDataURL(); return oreIcons[grade];
+    }
+    if (grade === 75 || grade === 76) { // [2026-11-17] 악마의 광석 조각(검붉은 결정에 검은 맥) / 종말의 파편(검은 조각에 보랏빛 금)
+      var dm = grade === 75, b1 = dm ? '#8a1a2a' : '#1a0a24', b2 = dm ? '#c8382a' : '#2a1438', gl = dm ? '#ff7a5a' : '#c86aff', vn = dm ? '#2a0a10' : '#ff4ad8';
+      [[7, 1, 2, 2], [6, 3, 4, 2], [5, 5, 6, 3], [4, 8, 8, 3], [5, 11, 6, 2], [6, 13, 4, 2]].forEach(function (r) { px(g, b1, r[0], r[1], r[2], r[3]); });
+      px(g, b2, 7, 3, 2, 9); px(g, b2, 6, 6, 1, 4); px(g, gl, 7, 2, 1, 2); px(g, gl, 8, 5, 1, 1);
+      px(g, vn, 5, 9, 3, 1); px(g, vn, 8, 10, 1, 3); px(g, vn, 9, 7, 2, 1); px(g, vn, 6, 12, 2, 1);
+      if (!dm) { px(g, '#ffc8f8', 8, 10); px(g, '#ffc8f8', 10, 7); }
+      outline(c, dm ? '#1a0408' : '#000000'); oreIcons[grade] = c.toDataURL(); return oreIcons[grade];
     }
     if (grade === 70) { // [2026-11-06] 은하수 조각 -- 남색 조각 안에 흘러가는 은하수(별 점)
       [[6, 1, 4, 1], [4, 2, 8, 2], [3, 4, 10, 3], [2, 7, 11, 3], [3, 10, 9, 2], [5, 12, 5, 2], [7, 14, 2, 1]].forEach(function (r) { px(g, '#1a1e4a', r[0], r[1], r[2], r[3]); });
@@ -1261,7 +1334,7 @@ var TowerMine = (function () {
   })();
   var EYE_PX = { mammoth: [[12, 5]], quad: [[13, 6]], human: [[6, 4], [9, 4]], small: [[12, 7]], flyer: [[7, 7], [8, 7]], crab: [[6, 7], [9, 7]], blob: [[6, 10], [9, 10]] }; // [2026-11-05] 몬스터 그림(16칸)의 눈 자리 -- 밤 붉은 눈
   function mobSprite(k, pose, f) {
-    var art = BOSS_ART[(map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임)
+    var art = BOSS_ART[(map.mobTypes[k] || {}).src || (map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임) // [2026-11-17] 악마화된 몬스터는 원래 그림
     if (art) { var bk = 'b' + k + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
     if (mobSprites[ck]) return mobSprites[ck];
@@ -1655,7 +1728,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -1903,6 +1976,29 @@ var TowerMine = (function () {
       loot.push({ sx: sx, sy: sy, tx: sx + Math.cos(a) * r, ty: sy + Math.sin(a) * r * 0.72, g: grades[i % grades.length], tg: tgs[i % tgs.length], t0: t0 + i * gap, up: 1.5 + Math.random() * 1.7, rest: 480 + Math.random() * 360 + (n - i) * gap });
     }
     if (loot.length > 420) loot.splice(0, loot.length - 420);
+  }
+  /** [2026-11-17] 마계 입구 -- 돌기둥 사이 거대한 포털(검보라 소용돌이 + 붉은 테 + 빨려 드는 불티). 문 칸(map.abyss) 위 2.6칸 반지름. */
+  function abyssDraw(now, TS, camX, camY) {
+    var a = map.abyss, cx = (a[0] + 0.5) * TS - camX, cy = (a[1] - 0.6) * TS - camY, R = TS * 2.6, t = now / 1000;
+    var gr = ctx.createRadialGradient(cx, cy, R * 0.1, cx, cy, R * 1.35);
+    gr.addColorStop(0, 'rgba(255,60,160,.35)'); gr.addColorStop(0.5, 'rgba(120,20,160,.22)'); gr.addColorStop(1, 'rgba(60,0,60,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, R * 1.35, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(cx, cy); ctx.scale(1, 1.15);
+    ctx.fillStyle = '#0a0410'; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    for (var k = 0; k < 4; k++) { // 소용돌이 팔
+      ctx.strokeStyle = ['#6a1aa8', '#c82a9a', '#3a0a6a', '#ff5ad8'][k]; ctx.lineWidth = Math.max(1, TS * (k === 3 ? 0.06 : 0.16)); ctx.beginPath();
+      for (var q = 0; q <= 40; q++) { var p = q / 40, ang = k * Math.PI / 2 - t * 1.6 + p * 5.2, rr = R * (0.95 - p * 0.85); if (q) ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr); else ctx.moveTo(Math.cos(ang) * rr, Math.sin(ang) * rr); }
+      ctx.stroke();
+    }
+    var core = ctx.createRadialGradient(0, 0, 0, 0, 0, R * 0.35); core.addColorStop(0, 'rgba(0,0,0,1)'); core.addColorStop(0.7, 'rgba(30,0,40,.9)'); core.addColorStop(1, 'rgba(30,0,40,0)');
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0, 0, R * 0.35, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,90,40,' + (0.65 + 0.3 * Math.sin(t * 3)) + ')'; ctx.lineWidth = Math.max(1, TS * 0.12); ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke(); // 붉은 테
+    ctx.strokeStyle = 'rgba(255,200,120,.5)'; ctx.lineWidth = Math.max(1, TS * 0.04); ctx.beginPath(); ctx.arc(0, 0, R * 1.04, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    for (var i = 0; i < 14; i++) { // 빨려 드는 불티
+      var ph = ((t * 0.45 + i / 14) % 1), ang2 = i * 2.4 + t * 0.8, rr2 = R * (2.1 - ph * 1.9);
+      fxDot(cx + Math.cos(ang2) * rr2, cy + Math.sin(ang2) * rr2 * 1.1, Math.max(1, TS * 0.07 * (1 - ph * 0.5)), i % 3 ? '#ff7ad8' : '#ffb04a', Math.min(1, ph * 2) * (1 - ph * 0.3));
+    }
   }
   function lootTarget(tg, now) {
     if (!tg || tg.none) return null;
@@ -2153,6 +2249,28 @@ var TowerMine = (function () {
   // [2026-11-15] 증표 상인 = 동료(용병) 장비 뽑기(시즌5처럼 장비/악세, 초급~최상급) + 용병 관리 장비 탭에서 끼우기
   var tokenTab = 'gear'; // [2026-11-15] gear = 동료 장비 뽑기 / gem = 보석 사기
   var tokenShop = null, tokenBusy = false, mgInv = null, mgLoading = false, MG_SLOTS = [['W', '⚔️ 무기'], ['H', '⛑️ 투구'], ['A', '🛡️ 갑옷'], ['N', '📿 목걸이'], ['R', '💍 반지'], ['B', '📿 팔찌']];
+  /** [2026-11-17] 최후의 방어선 -- 악마 광석 정제사: 조각 하나마다 10%로 미스릴 원석. */
+  var refineInfo = null, refineBusy = false;
+  function refineGo(act, n) {
+    if (refineBusy) return;
+    refineBusy = true;
+    api('/api/tower-mine-token?action=' + act + '&code=x&g=' + (n | 0)).then(function (d) {
+      refineBusy = false;
+      if (!d) return;
+      if (d.ores) st.ores = d.ores;
+      refineInfo = d;
+      if (act === 'refine' && d.message) { msg(d.message, 3600); if (d.got > 0) { flashT0 = performance.now(); var dc = smithNpc ? [smithNpc.x, smithNpc.y] : [P.x, P.y]; lootBurst(dc[0], dc[1] - 1, [5], Math.min(30, d.got), [{ me: 1 }], 1.4, 0); } }
+      if (smithOpen && smithView === 'refine') renderSmith(smithNpc);
+    }).catch(function () { refineBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function refineHtml(n) {
+    var d = refineInfo || {}, sh = d.shard | 0, ic = '<img src="' + oreIcon(75) + '" alt="" style="width:16px;vertical-align:middle"> ';
+    var h = npcHead('🔥 ' + n.name, false) + talkBlock(n, n.line);
+    h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>⚒️ 정제</b> <small>' + ic + '악마의 광석 조각 하나마다 ' + (d.pct || 10) + '% 확률로 미스릴 원석이 남아요. 실패하면 재가 돼요.</small>';
+    h += '<div class="mine-smith-row"><span class="nm">' + ic + '악마의 광석 조각<small>보유 ' + sh + '개 · 악마의 들판과 최후의 방어선에서 곡괭이로 캐면 나와요</small></span></div>';
+    [[1, '1개'], [10, '10개'], [0, '전부']].forEach(function (b) { h += '<button type="button" class="mine-mini-btn"' + (sh < Math.max(1, b[0]) ? ' data-lack="1"' : '') + ' onclick="TowerMine.refine(' + b[0] + ')">' + b[1] + ' 정제</button> '; });
+    return h + '</div>';
+  }
   function tokenGo(act, code, g) {
     if (tokenBusy) return;
     tokenBusy = true;
@@ -2362,6 +2480,7 @@ var TowerMine = (function () {
     if (n.kind === 'towergate') { twFloors(); return; } // [2026-11-15] 탑 관리인
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
+    if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
     if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
       setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
       api('/api/tower-mine-bosscall?action=info').then(function (d) { bossCallInfo = d; if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc); }).catch(function () {});
@@ -2599,6 +2718,13 @@ var TowerMine = (function () {
     { id: 'towercity', name: '요새 도시 엘리시온', x: 0, y: 0, fill: '#868b98', ink: '#ffffff', town: true },
     { id: 'demonwest', name: '서쪽 악마의 들판 😈', x: 0, y: 0, fill: '#4a1a1a', ink: '#ffd0c0', w: 76 },
     { id: 'demoneast', name: '동쪽 악마의 들판 😈', x: 0, y: 0, fill: '#4a1a1a', ink: '#ffd0c0', w: 76 },
+    { id: 'demonwest2', name: '서쪽 들판 2 😈', x: 0, y: 0, fill: '#5a1414', ink: '#ffd0c0', w: 76 }, // [2026-11-17] 로드맵
+    { id: 'demoneast2', name: '동쪽 들판 2 😈', x: 0, y: 0, fill: '#5a1414', ink: '#ffd0c0', w: 76 },
+    { id: 'demonwest3', name: '서쪽 들판 3 😈', x: 0, y: 0, fill: '#6a0e0e', ink: '#ffd0c0', w: 76 },
+    { id: 'demoneast3', name: '동쪽 들판 3 😈', x: 0, y: 0, fill: '#6a0e0e', ink: '#ffd0c0', w: 76 },
+    { id: 'lastline', name: '최후의 방어선 🛡️', x: 0, y: 0, fill: '#5a4a3e', ink: '#ffe9c8', w: 80 },
+    { id: 'abyssgate', name: '마계 입구 🌀', x: 0, y: 0, fill: '#3a0a4a', ink: '#f0c8ff', w: 76 },
+    { id: 'chaos', name: '혼돈스러운 마계 🌌', x: 0, y: 0, fill: '#0a0410', ink: '#c8a0ff', w: 84 },
     { id: 'harpyferry', name: '마물의 숲 나루터', x: -150, y: -110, fill: '#3a6a8a', ink: '#f0f8ff', w: 76 }, // [2026-11-11] 둥지 뒤 강가
     { id: 'westroad', name: '마물의 숲 입구 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
@@ -2627,9 +2753,11 @@ var TowerMine = (function () {
   // [2026-10-28] "전체 지도 보기가 어렵다, 지역 구간별로 나눠 놓으면" -- 네 구간(탭)으로 나눠 그린다. 처음엔 지금 있는 구간.
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
   var WORLD_REGIONS = [
-    { id: 'fort', name: '🏰 요새 도시', vh: 260, // [2026-11-17] 나루터 건너 -- 요새 도시(가운데), 북문 = 탑 입구, 동문/서문 = 악마의 들판
-      nodes: [['towergate', 135, 50], ['towercity', 135, 150], ['demonwest', 30, 150], ['demoneast', 240, 150], ['@ferry', 135, 235, 'desert', '⛵ 마물의 숲 나루터']],
-      links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['towercity', '@ferry', 'sea']] },
+    { id: 'fort', name: '🏰 요새 도시', vh: 440, // [2026-11-17] 로드맵 -- 요새 도시(가운데 아래), 북문 = 탑, 동/서 들판 1 -> 2 -> 3 -> 가운데 최후의 방어선 -> 마계 입구 -> 혼돈스러운 마계
+      nodes: [['chaos', 135, 40], ['abyssgate', 135, 105], ['lastline', 135, 175], ['demonwest3', 30, 175], ['demoneast3', 240, 175], ['demonwest2', 30, 250], ['demoneast2', 240, 250], ['towergate', 135, 260],
+        ['towercity', 135, 330], ['demonwest', 30, 330], ['demoneast', 240, 330], ['@ferry', 135, 410, 'desert', '⛵ 마물의 숲 나루터']],
+      links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['demonwest', 'demonwest2'], ['demoneast', 'demoneast2'], ['demonwest2', 'demonwest3'], ['demoneast2', 'demoneast3'],
+        ['demonwest3', 'lastline'], ['demoneast3', 'lastline'], ['lastline', 'abyssgate'], ['abyssgate', 'chaos', 'fall', '5%'], ['towercity', '@ferry', 'sea']] },
     { id: 'plain', name: '🌾 평원', vh: 390,
       nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', -58, 40], ['cave3', -58, 100], ['cave2', -58, 160], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
@@ -3070,7 +3198,8 @@ var TowerMine = (function () {
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
     ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71; }],
-    ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }] // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
+    ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }], // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
+    ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }] // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
   ];
   function invEtcHtml() {
     var ores = (st.ores || []).filter(function (o) { return o.qty > 0; }), used = {}, h = '';
@@ -3388,6 +3517,7 @@ var TowerMine = (function () {
     blackmarket: { skin: '#c8a080', hair: '#1a1322', cloth: '#2a1f33', clothD: '#1a1322' }, // [2026-10-26]
     furrier: { skin: '#f2c194', hair: '#5a3a22', cloth: '#8a5a32', clothD: '#6a4222' },
     daykeeper: { skin: '#e8c09a', hair: '#e8e8e8', cloth: '#5a5560', clothD: '#46424c' }, // [2026-10-28] 요일 동굴 문지기
+    refiner: { skin: '#c8906a', hair: '#2a1a12', cloth: '#4a1a1a', clothD: '#2a0e0e' }, // [2026-11-17] 악마 광석 정제사
     wallguard: { skin: '#d8a070', hair: '#3a2a1a', cloth: '#8a6a3a', clothD: '#5a4422' }, // [2026-11-04] 사막 경비병
     swordmaster: { skin: '#e8b48a', hair: '#1a1a22', cloth: '#7a2a2a', clothD: '#4a1818' }, // [2026-11-04] 검기 사범
     basecamp: { skin: '#e8b48a', hair: '#6a4a2a', cloth: '#3a6a9a', clothD: '#2a4a6a' }, // [2026-11-04] 베이스캠프 대장
@@ -3531,6 +3661,7 @@ var TowerMine = (function () {
     if (smithView === 'tower') { el.smith.innerHTML = towerHtml(n); return; } // [2026-11-15]
     if (smithView === 'token') { el.smith.innerHTML = tokenHtml(n); return; } // [2026-11-15]
     if (smithView === 'river') { el.smith.innerHTML = riverHtml(n); return; } // [2026-11-15]
+    if (smithView === 'refine') { el.smith.innerHTML = refineHtml(n); return; } // [2026-11-17]
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'aura') { el.smith.innerHTML = auraNpcHtml(n); return; } // [2026-11-04] 검기 사범
     if (smithView === 'whirl') { el.smith.innerHTML = whirlNpcHtml(n); return; } // [2026-11-07] 돌개 사범
@@ -5691,6 +5822,7 @@ var TowerMine = (function () {
         }
       }
     }
+    if (map.abyss) { try { abyssDraw(now, TS, camX, camY); } catch (e) { } } // [2026-11-17] 마계 입구 포털
     // [2026-10-28] 다도해 그늘(야자수) -- 시원한 그늘 둘레 + 가운데 야자수
     if (map.archi && map.safe) {
       map.safe.forEach(function (z) {
@@ -5806,6 +5938,13 @@ var TowerMine = (function () {
           var bw = TS * 1.2 * bf; // [2026-10-29] 보스 2x2칸 -- 그림은 칸들 가운데, 발은 맨 아래 칸
           ctx.drawImage(mobSprite(sk, pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6), bw, bw);
         } else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
+        else if (ty.chaos) { // [2026-11-17] 악마화된 몬스터 -- 원래 그림을 크게(보스였으면 2.2배, 아니면 1.8배), 발밑 검붉은 기운 + 보랏빛 일렁임
+          var chw = Math.round(TS * (ty.cboss ? (ty.src === '심연의 거룡' ? 3.6 : 3.0) : 2.0)), chp = 0.5 + 0.5 * Math.sin(now / 240 + mb.id);
+          ctx.fillStyle = 'rgba(120,0,40,' + (0.28 + 0.12 * chp) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS / 2, my + TS * 0.85, chw * 0.48, TS * 0.32, 0, 0, Math.PI * 2); ctx.fill();
+          ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + mb.id)), Math.round(mx + TS / 2 - chw / 2), Math.round(my + TS - chw - bob), chw, chw);
+          for (var ci = 0; ci < 5; ci++) fxDot(mx + TS / 2 + Math.cos(now / 300 + ci * 1.3) * chw * 0.42, my + TS - chw * (0.2 + 0.15 * ci) - bob, 1.6 * scale, ci % 2 ? '#c82aff' : '#ff2a5a', 0.4 + 0.4 * chp);
+          my -= Math.round(chw - TS) + 2 * scale;
+        }
         else if (ty.demon) { var dmw = Math.round(TS * 1.5); ctx.drawImage(mobSprite(sk), Math.round(mx + TS / 2 - dmw / 2), Math.round(my + TS - dmw - bob), dmw, dmw); my -= 7 * scale; } // [2026-11-16] 악마 -- 1.5배
         else {
           ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
@@ -6621,6 +6760,10 @@ var TowerMine = (function () {
         });
         if (wide5On()) lastDig = { m: map.id, x: x, y: y }; // [2026-11-13] 대광역 -- 자동채광은 5칸 떨어진 곳에서 다음
         if (d.ores) st.ores = d.ores;
+        if (d.demonOre) { // [2026-11-17] 악마의 땅 -- 캘 때마다 악마의 광석 조각
+          var dimg = new Image(); dimg.src = oreIcon(75);
+          floats.push({ x: x, y: y - 1.0, text: '+1 악마의 광석 조각', color: '#ff8a7a', icon: dimg, t0: performance.now() + 350 });
+        }
         if (d.iceGain) { // [2026-10-28] 설산 빙석
           var iimg = new Image(); iimg.src = oreIcon(19);
           floats.push({ x: x, y: y - 1.0, text: '+1 빙석', color: '#bfefff', icon: iimg, t0: performance.now() + 350 });
@@ -6743,7 +6886,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

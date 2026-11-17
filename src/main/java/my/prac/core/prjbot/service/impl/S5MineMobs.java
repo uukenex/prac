@@ -81,6 +81,10 @@ public final class S5MineMobs {
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
         public boolean demon; // [2026-11-16] 악마(악마의 들판) -- 순간이동/지옥불, 늘 선공
+        public int demonTier; // [2026-11-17] 들판 1/2/3/방어선 = 0/1/2/3(기술 피해가 단계마다 세진다)
+        /** [2026-11-17] 혼돈스러운 마계의 악마화된 몬스터(평소엔 없음 -- 들어올 때 하나가 깨어난다), src = 원래 몬스터 이름(화면 그림), chaosBoss = 원래 보스였음(보상). */
+        public boolean chaos, chaosBoss;
+        public String src;
         Type asDemon() { demon = true; firstStrike = true; return this; }
         public boolean champ; // [2026-11-16] 챔피언(보스 그림/크기/보상은 그대로, 이름표만 "챔피언" -- 소환 없이 정해진 시간마다 다시 나타난다)
         Type asChamp() { champ = true; return this; }
@@ -442,6 +446,16 @@ public final class S5MineMobs {
     static int[] TW_BOSS_IDX;
     public static double twHpAt(int f) { return TW_BASE_HP * Math.pow(TW_HP_UP, Math.min(f, 30) - 1) * Math.pow(TW_HP_UP31, Math.max(0, f - 30)); }
     public static double twAtkAt(int f) { return TW_BASE_ATK * Math.pow(TW_ATK_UP, Math.min(f, 30) - 1) * Math.pow(TW_ATK_UP31, Math.max(0, f - 30)); }
+    // ---- [2026-11-17] 로드맵 -- 악마 단계(들판 2 = Lv.105, 들판 3 = Lv.115, 최후의 방어선 = Lv.125): "레벨 10 차이는 엄청나다 -- 공격력 2배 이상, 체력 2.5배 이상, 경험치 1.5배 이상".
+    //  들판 1(기존 넷)에서 단계마다 체력 x2.5 / 공격 x2 / 경험치 x1.5, 레벨 +10. DEMON_IDX[단계*4 + 종류(임프/검사/마도사/발록)].
+    static final double DEMON_HP_UP = 2.5, DEMON_ATK_UP = 2.0, DEMON_EXP_UP = 1.5;
+    static int[] DEMON_IDX;
+    //  혼돈스러운 마계 -- 원래 몬스터(Lv.80 이상 보스·일반, 거룡 포함)의 그림, 이름 "악마화된 ...", 악마 기술(순간이동/지옥불).
+    //  [2026-11-17] 처음엔 원래 수치 x50이었다가 같은 날 "몬스터와 보스를 Lv.135에 맞게, 보스급은 3배 더 강하게" -- 모두 같은 Lv.135 수치
+    //  (최후의 방어선 마왕군 악마 검사 Lv.134 = 체력 6,094만 / 공격 36만 / 경험치 410만), 원래 보스였으면 체력·공격·경험치 x3.
+    static final int CHAOS_LV = 135;
+    static final double CHAOS_HP = 60_937_500, CHAOS_ATK = 360_000, CHAOS_EXP = 4_100_515, CHAOS_BOSS_MUL = 3;
+    public static int[] CHAOS_IDX;
     private static List<Type> withTowerFloors(List<Type> base) {
         // TYPES보다 뒤에 적힌 static 배열은 이때 아직 null이라 여기 지역 변수로
         final String[][][] TW_BLOCK_MOBS = {
@@ -476,6 +490,34 @@ public final class S5MineMobs {
             }
         }
         TW_MOB_IDX = mi; TW_BOSS_IDX = bi;
+        // 악마 단계
+        final String[] dn = { "지옥불 임프", "악마 검사", "심연의 마도사", "발록" };
+        final String[][] tn = { null, { "상급 지옥불 임프", "상급 악마 검사", "상급 심연의 마도사", "상급 발록" }, { "최상급 지옥불 임프", "최상급 악마 검사", "최상급 심연의 마도사", "최상급 발록" },
+            { "마왕군 지옥불 임프", "마왕군 악마 검사", "마왕군 심연의 마도사", "마왕군 대장 발록" } };
+        final String[][] tc = { null, { "#e8401a", "#9a102a", "#7a1ab8", "#5a0808" }, { "#ff2a10", "#6a0820", "#4a10a0", "#300404" }, { "#c81aa8", "#3a0418", "#2a0870", "#1a0210" } };
+        int[] di = new int[16];
+        for (int k = 0; k < 4; k++) for (int i = 0; i < base.size(); i++) if (base.get(i).name.equals(dn[k])) { di[k] = i; base.get(i).demonTier = 0; }
+        for (int tier = 1; tier <= 3; tier++) for (int k = 0; k < 4; k++) {
+            Type b = l.get(di[k]);
+            double hm = Math.pow(DEMON_HP_UP, tier), am = Math.pow(DEMON_ATK_UP, tier), em = Math.pow(DEMON_EXP_UP, tier);
+            Type t = new Type(tn[tier][k], b.tier, b.kind, tc[tier][k]).asDemon().fix((int) Math.min(Integer.MAX_VALUE, Math.round(b.hpFix * hm)), (int) Math.round(b.atkFix * am)).expx(b.expMul * em).showLv(b.lvShow + 10 * tier).el(b.elem).respawn(b.respawnOverride);
+            t.ranged = b.ranged; t.demonTier = tier;
+            di[tier * 4 + k] = l.size(); l.add(t);
+        }
+        DEMON_IDX = di;
+        // 악마화된 몬스터
+        List<Integer> ci = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (Type b : base) {
+            if (b.dummy || b.sim || b.clone || b.minion || b.noReward || b.demon || b.lv() < 80 || !seen.add(b.name)) continue; // Lv.80 이상만(약한 보스가 50배여도 너무 쉬워 신화 장비를 쉽게 얻지 않게)
+            long hp = Math.round(CHAOS_HP * (b.boss ? CHAOS_BOSS_MUL : 1)), atk = Math.round(CHAOS_ATK * (b.boss ? CHAOS_BOSS_MUL : 1)); // [2026-11-17] "Lv.135에 맞게, 보스급은 3배"
+            Type t = new Type("악마화된 " + b.name, b.tier, b.kind, b.color).fix((int) hp, (int) atk).showLv(Math.max(CHAOS_LV, b.lv())).el(b.elem());
+            t.minion = true; t.chaos = true; t.chaosBoss = b.boss; t.src = b.name; t.demon = true; t.firstStrike = true; t.ranged = b.ranged; t.demonTier = 3; t.footN = b.boss ? 2 : 0;
+            t.hpMul = 1; t.expMul = CHAOS_EXP * (b.boss ? CHAOS_BOSS_MUL : 1) / (6 * Math.pow(1.40, b.tier - 1)); // exp() = 6 x 1.4^(단계-1) x hpMul x expMul = CHAOS_EXP(보스 x3)
+            ci.add(l.size()); l.add(t);
+        }
+        CHAOS_IDX = new int[ci.size()];
+        for (int i = 0; i < ci.size(); i++) CHAOS_IDX[i] = ci.get(i);
         return l;
     }
 
@@ -612,6 +654,12 @@ public final class S5MineMobs {
             for (int k = 0; k < m.twSpots().length; k++) { int[] sp = m.twSpots()[k]; tw.add(new S5MineMap.Mob(k, towerMobType(twf, k), sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] })); }
             return tw;
         }
+        if (m.chaosSpot() != null) { // [2026-11-17] 혼돈스러운 마계 -- 악마화된 몬스터가 모두 한 자리에(평소엔 없음, 들어올 때 하나가 깨어난다)
+            List<S5MineMap.Mob> cm = new ArrayList<>();
+            int[] sp = m.chaosSpot();
+            for (int k = 0; k < CHAOS_IDX.length; k++) cm.add(new S5MineMap.Mob(k, CHAOS_IDX[k], sp[0], sp[1], new int[] { sp[1] * m.w + sp[0] }));
+            return cm;
+        }
         if (m.fixedMobs() != null) { // [2026-11-16] 악마의 들판 -- 자리와 종류가 정해져 있다(집 칸 + 둘레 한 칸)
             List<S5MineMap.Mob> fm = new ArrayList<>();
             char[][] ft = m.terrainGrid();
@@ -621,7 +669,7 @@ public final class S5MineMobs {
                 for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) { int nx = q[0] + dv[0], ny = q[1] + dv[1]; if (nx > 0 && ny > 0 && nx < m.w - 1 && ny < m.h - 1 && mobCell(ft[ny][nx])) cells.add(ny * m.w + nx); }
                 int[] ca = new int[cells.size()];
                 for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
-                fm.add(new S5MineMap.Mob(fm.size(), indexOf(DEMON_NAMES[q[2]]), q[0], q[1], ca));
+                fm.add(new S5MineMap.Mob(fm.size(), DEMON_IDX[q[2]], q[0], q[1], ca)); // [2026-11-17] 단계*4 + 종류
             }
             return fm;
         }
