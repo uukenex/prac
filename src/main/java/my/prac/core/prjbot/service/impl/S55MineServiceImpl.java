@@ -258,7 +258,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_MIN_LV.put(S5MineMap.DEMON_WEST, 95);
         MINE_MIN_LV.put(S5MineMap.DEMON_EAST2, 105); MINE_MIN_LV.put(S5MineMap.DEMON_WEST2, 105); // [2026-11-17] 로드맵
         MINE_MIN_LV.put(S5MineMap.DEMON_EAST3, 115); MINE_MIN_LV.put(S5MineMap.DEMON_WEST3, 115);
-        MINE_MIN_LV.put(S5MineMap.LAST_LINE, 125); MINE_MIN_LV.put(S5MineMap.ABYSS_GATE, 125); MINE_MIN_LV.put(S5MineMap.CHAOS, 135);
+        MINE_MIN_LV.put(S5MineMap.LAST_LINE, 125); MINE_MIN_LV.put(S5MineMap.ABYSS_GATE, 125); MINE_MIN_LV.put(S5MineMap.CHAOS, 135); MINE_MIN_LV.put(S5MineMap.DEMON_VILLAGE, 135);
         MINE_MIN_LV.put(S5MineMap.ARCHISEA, 73);
         int[] isleLv = { 73, 73, 77, 77, 81, 85, 89 };
         for (int i = 0; i < S5MineMap.ISLE_IDS.length; i++) MINE_MIN_LV.put(S5MineMap.ISLE_IDS[i], isleLv[i]);
@@ -271,10 +271,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
         if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
-        if (S5MineMap.demonTier(m.id) >= 0 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로 // [2026-11-17] 들판 2·3, 방어선, 마계도
+        if (S5MineMap.demonTier(m.id) >= 0 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id) || S5MineMap.DEMON_VILLAGE.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로 // [2026-11-17] 들판 2·3, 방어선, 마계도
             String cu = MINE_CTX.get();
             boolean adm = cu != null && isMineAdmin(cu);
-            if (S5MineMap.demonTier(m.id) == 3 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id)) { // [2026-11-17] "서쪽/동쪽 맵의 특수 아이템 두 개를 합쳐 최후의 방어선에 들어갈 수 있게"
+            if (S5MineMap.demonTier(m.id) == 3 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id) || S5MineMap.DEMON_VILLAGE.equals(m.id)) { // [2026-11-17] "서쪽/동쪽 맵의 특수 아이템 두 개를 합쳐 최후의 방어선에 들어갈 수 있게"
                 if (!adm && items.getOrDefault(MINE_ITEM_LL_PASS, 0) < 1) {
                     Map<String, Integer> hv = cu == null ? new HashMap<String, Integer>() : mineOreHave(cu);
                     int dk = hv.getOrDefault(S5MineMap.DUSK_SEAL_CODE, 0), dw = hv.getOrDefault(S5MineMap.DAWN_SEAL_CODE, 0);
@@ -2421,6 +2421,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_LL_PASS = "LL_PASS";
     static final int[] MINE_DSEAL_PCT = { 3, 5, 8 }; // 들판 1/2/3 일반 악마(발록은 반드시)
     static final int MINE_CHAOS_PCT = 5, MINE_REFINE_PCT = 10;
+    // [2026-11-17] "마계 마을도 웅장하게, 포털로 가끔 가도록 -- 가지면 3초 뒤 안내 없이 마을로 이동된 뒤 '마계 마을을 잠깐이나마 탐험했습니다'" --
+    //  포털: MINE_CHAOS_PCT% 혼돈스러운 마계, 그다음 MINE_VILLAGE_PCT% 마계 마을, 나머지 무작위 지역. 마을에 온 시각(MINE_VILLAGE_AT)부터 MINE_VILLAGE_MS 뒤
+    //  1초 턴(minePresence)이 요새 도시로 옮기고 villageOut을 보낸다(서버를 다시 켜서 시각이 없어도 바로 옮긴다).
+    static final int MINE_VILLAGE_PCT = 10;
+    static final long MINE_VILLAGE_MS = 3_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_VILLAGE_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final String MINE_VILLAGE_MSG = "🏯 마계 마을을 잠깐이나마 탐험했습니다.";
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_CHAOS_RUN = new java.util.concurrent.ConcurrentHashMap<>();
     /** 마계 입구 포털이 떨어뜨리는 곳(보통 지역 -- 탑/미궁 방/혼돈/잠긴 바다는 빼고). */
     static final String[] MINE_ABYSS_DESTS = { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.NORTH, S5MineMap.ISLAND, S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3,
@@ -2915,6 +2922,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return mineWbDownUntil(userName, now) > 0 ? "10초 뒤 그 자리에서 다시 일어나요." : w + " 깨어났어요.";
     }
     /** 쓰러졌을 때 깨어나는 곳으로 옮기고 그곳 이름을 돌려준다(성당에서 기도했으면 왕도 성당, 아니면 평원 마을). */
+    // [2026-11-17] "보스와 전투 중 죽었는데 보스 앞으로 소환되는 버그, 꽤 자주", "혼돈스러운 마계에서 죽으면 마을로 간다는 문구만 뜨고 몬스터만 없어진다" --
+    //  쓰러질 때 이미 출발해 있던 공격/검기/전투 턴 요청이 끝나면서 원래 자리(보스 앞, 혼돈)를 위치로 다시 써 버렸다(부활 이동보다 늦게).
+    //  쓰러진 시각을 적어 두고 MINE_DIED_GUARD_MS 동안은 그 요청들이 위치를 쓰지 않는다(mineJustDied).
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_DIED_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_DIED_GUARD_MS = 3_000L;
+    static boolean mineJustDied(String userName) { Long d = MINE_DIED_AT.get(userName); return d != null && System.currentTimeMillis() - d < MINE_DIED_GUARD_MS; }
     String mineRespawn(String userName, Map<String, Integer> items, long now) {
         mineDisengageAll(userName); // [2026-10-25] 쓰러지면 인식 끝
         mineSoloReset(userName); // [2026-11-15] 탑 1인 인스턴스 -- 쓰러지면 그 층은 처음부터
@@ -2929,6 +2942,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             MINE_WB_DOWN.put(userName, now + MINE_WB_DOWN_MS);
             return "10초 뒤 그 자리에서 다시";
         }
+        MINE_DIED_AT.put(userName, System.currentTimeMillis()); // [2026-11-17] 늦게 끝난 요청이 원래 자리로 되돌리지 않게
+        MINE_CHAOS_RUN.remove(userName); // [2026-11-17] 혼돈스러운 마계도 끝
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
         int[] hp0 = church ? mineCityPlaza(home) : new int[] { home.spawnX, home.spawnY };
@@ -3342,7 +3357,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         if (save || out.containsKey("died")) {
-            if (!out.containsKey("died") && dmgSum > 0) dao.updateMinePos(userName, map.id, x, y, now);
+            if (!out.containsKey("died") && dmgSum > 0 && !mineJustDied(userName)) dao.updateMinePos(userName, map.id, x, y, now); // [2026-11-17] 방금 쓰러졌으면 안 쓴다
             dao.updateMineCombat(userName, lv, exp, hp, now, (int) mercR[0]); // [2026-11-05] 용병 처치 수도
             MINE_HP_VIRT.remove(userName);
         } else mineHpKeep(userName, row, hp, now);
@@ -4164,7 +4179,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (am.length() > 0) msg.append(msg.length() > 0 ? " " : "").append(am);
         }
         if (!died) { int kh = mineRegenKillHeal(items, kills, mineHpMax(lv, rb)); if (kh > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + kh); out.put("killHeal", kh); } } // [2026-11-04] 재생의 장갑 2단계
-        if (!died) dao.updateMinePos(userName, map.id, x, y, now);
+        if (!died && !mineJustDied(userName)) dao.updateMinePos(userName, map.id, x, y, now); // [2026-11-17] 다른 요청(전투 턴)에서 방금 쓰러졌으면 위치를 되돌리지 않는다
+        else if (!died) hp = mineHpCap(lv, lock, rb); // 체력도 부활 체력 그대로
         dao.updateMineCombat(userName, lv, exp, hp, now, kills);
         out.put("levelUp", levelUp);
         out.put("died", died);
@@ -4400,7 +4416,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> maps = new ArrayList<>();
             for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST, S5MineMap.DEMON_WEST2, S5MineMap.DEMON_EAST2, S5MineMap.DEMON_WEST3, S5MineMap.DEMON_EAST3, S5MineMap.LAST_LINE, S5MineMap.ABYSS_GATE, S5MineMap.CHAOS }) { // [2026-11-08] 마물의 숲 미궁, 하피의 둥지 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST, S5MineMap.DEMON_WEST2, S5MineMap.DEMON_EAST2, S5MineMap.DEMON_WEST3, S5MineMap.DEMON_EAST3, S5MineMap.LAST_LINE, S5MineMap.ABYSS_GATE, S5MineMap.CHAOS, S5MineMap.DEMON_VILLAGE }) { // [2026-11-08] 마물의 숲 미궁, 하피의 둥지 // [2026-10-28] 개미굴/피라미드/설산 동굴도(전체 지도에서 눌러 이동)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id);
@@ -4849,7 +4865,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         // [2026-11-17] 마계 입구 포털 -- MINE_CHAOS_PCT%는 혼돈스러운 마계, 나머지는 전체 지도의 아무 곳
         boolean abyss = S5MineMap.ABYSS_GATE.equals(map.id) && S5MineMap.CHAOS.equals(p.target);
-        Object[] abyssTo = abyss && RND.nextInt(100) >= MINE_CHAOS_PCT ? mineAbyssPick(items, mineLv(row), water) : null;
+        int abyssRoll = abyss ? RND.nextInt(100) : -1;
+        S5MineMap villageMap = abyssRoll >= MINE_CHAOS_PCT && abyssRoll < MINE_CHAOS_PCT + MINE_VILLAGE_PCT ? S5MineMap.get(S5MineMap.DEMON_VILLAGE) : null; // [2026-11-17] 마계 마을
+        Object[] abyssTo = villageMap != null ? new Object[] { villageMap, villageMap.spawnX, villageMap.spawnY } : abyss && abyssRoll >= MINE_CHAOS_PCT ? mineAbyssPick(items, mineLv(row), water) : null;
         S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(ship || tele ? dest : p.target);
         if (S5MineMap.SEAROAD.equals(target.id) && water < 1) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
             dao.updateMinePos(userName, map.id, x, y, now);
@@ -4880,6 +4898,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
         String chaosMob = S5MineMap.CHAOS.equals(target.id) ? mineChaosStart(userName, target, now) : null; // [2026-11-17] 혼돈스러운 마계 -- 악마화된 몬스터 하나
+        if (S5MineMap.DEMON_VILLAGE.equals(target.id)) { // [2026-11-17] 마계 마을 -- 안내 없이(3초 뒤 요새 도시로)
+            MINE_VILLAGE_AT.put(userName, now);
+            out.put("ok", true);
+            out.put("village", true);
+            out.put("message", "");
+            out.put("state", mineState(userName));
+            return out;
+        }
         // [2026-10-28] "설산 1,2,3층 순서대로 밟아야 설산에 간 걸로 인정" -- 북쪽 끝 설원 -> 1층 -> 2층 -> 3층으로 올라온 만큼(SNOW_PATH 1~3)을 적고,
         //  3층까지 올라온 뒤 3층에서 마을로 들어가야 설산 마을 방문(이동 안내원 목적지). 마을에서 내려간 층은 안 친다.
         //  같은 날 "왕도 북쪽 샛길로 와도 인정" -- 샛길에서 서문으로 들어와도 방문.
@@ -5004,10 +5030,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** [2026-11-15] 전체 지도 이동 목록(관리자 화면 목록과 같다) -- 용의 반지가 갈 수 있는 곳을 가린다. */
     static boolean mineWarpListed(String mapId) {
-        if (S5MineMap.CHAOS.equals(mapId)) return false; // [2026-11-17] 혼돈스러운 마계는 마계 입구 포털로만(관리자 이동은 따로)
+        if (S5MineMap.CHAOS.equals(mapId) || S5MineMap.DEMON_VILLAGE.equals(mapId)) return false; // [2026-11-17] 혼돈스러운 마계 / 마계 마을은 마계 입구 포털로만(관리자 이동은 따로)
         for (String id : new String[] { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.DUNGEON, S5MineMap.CASTLE, S5MineMap.ISLAND, S5MineMap.NORTH, S5MineMap.STEPPE, S5MineMap.CITY, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.SEAROAD,
                     S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3, S5MineMap.SNOWTOWN, S5MineMap.ROYALROAD, S5MineMap.RUINS, S5MineMap.SNOWROAD, S5MineMap.PEAK,
-                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST, S5MineMap.DEMON_WEST2, S5MineMap.DEMON_EAST2, S5MineMap.DEMON_WEST3, S5MineMap.DEMON_EAST3, S5MineMap.LAST_LINE, S5MineMap.ABYSS_GATE, S5MineMap.CHAOS }) if (id.equals(mapId)) return true;
+                    S5MineMap.ANTNEST, S5MineMap.PYRAMID, S5MineMap.SNOWCAVE, S5MineMap.SNOWCAVE2, S5MineMap.CAVE4, S5MineMap.PYRAMID_UNDER, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.HARPY_NEST, S5MineMap.HARPY_FERRY, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE, S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST, S5MineMap.DEMON_WEST2, S5MineMap.DEMON_EAST2, S5MineMap.DEMON_WEST3, S5MineMap.DEMON_EAST3, S5MineMap.LAST_LINE, S5MineMap.ABYSS_GATE, S5MineMap.CHAOS, S5MineMap.DEMON_VILLAGE }) if (id.equals(mapId)) return true;
         for (String id : S5MineMap.ARCHI_MAPS) if (id.equals(mapId)) return true;
         return false;
     }
@@ -5050,6 +5076,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (p == null) { out.put("message", map.name + " (" + x + ", " + y + ") 근처에 설 수 있는 칸이 없어요."); return out; }
         dao.updateMinePos(userName, map.id, p[0], p[1], System.currentTimeMillis());
         if (S5MineMap.CHAOS.equals(map.id)) { mineDisengageAll(userName); String cm = mineChaosStart(userName, map, System.currentTimeMillis()); out.put("chaosMob", cm); } // [2026-11-17] 관리자 시험 -- 혼돈 몬스터도 깨운다
+        if (S5MineMap.DEMON_VILLAGE.equals(map.id)) MINE_VILLAGE_AT.put(userName, System.currentTimeMillis()); // [2026-11-17] 마계 마을 -- 3초
         MINE_ICE_FROZEN.remove(userName); // [2026-10-28] 관리자 이동 -- 얼어 있었으면 녹인다(다른 맵에서도 막히지 않게)
         out.put("ok", true);
         out.put("message", "🛠️ " + map.name + " (" + p[0] + ", " + p[1] + ")로 이동했어요." + (p[0] != x || p[1] != y ? " (입력한 칸에 설 수 없어 가장 가까운 칸으로)" : ""));
@@ -6805,7 +6832,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         int kh = mineRegenKillHeal(items, (int) r[0], mineHpMax((int) g[0], rb)); // [2026-11-04] 재생의 장갑 2단계
         if (kh > 0) { g[2] = Math.min(mineHpCap((int) g[0], (int) g[3], rb), g[2] + kh); out.put("killHeal", kh); }
-        dao.updateMinePos(userName, map.id, x, y, now);
+        if (mineJustDied(userName)) g[2] = mineHpCap((int) g[0], (int) g[3], rb); // [2026-11-17] 다른 요청에서 방금 쓰러졌으면 -- 위치는 그대로(부활한 곳), 체력은 부활 체력
+        else dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
         out.put("ok", true);
         out.put("auraOnly", true);
@@ -9469,6 +9497,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<HashMap<String, Object>> others = new ArrayList<>();
         out.put("others", others);
         if (!mineAccess(userName) || mapId == null || mapId.isEmpty()) return out;
+        if (S5MineMap.DEMON_VILLAGE.equals(mapId)) { // [2026-11-17] 마계 마을 -- 3초가 지나면 요새 도시로
+            Long va = MINE_VILLAGE_AT.get(userName);
+            if (va == null || now - va >= MINE_VILLAGE_MS) {
+                HashMap<String, Object> vr = dao.selectMineUser(userName);
+                if (vr != null && S5MineMap.DEMON_VILLAGE.equals(strVal(vr.get("MAP_ID"), ""))) { S5MineMap tc = S5MineMap.get(S5MineMap.TOWER_CITY); dao.updateMinePos(userName, tc.id, tc.spawnX, tc.spawnY, now); mineDisengageAll(userName); }
+                MINE_VILLAGE_AT.remove(userName);
+                out.put("villageOut", MINE_VILLAGE_MSG);
+                return out;
+            }
+        }
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;

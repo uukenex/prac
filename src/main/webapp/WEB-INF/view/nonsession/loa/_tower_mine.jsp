@@ -610,9 +610,32 @@ var TowerMine = (function () {
     });
     Ch.gate = [0, 1].map(function (f) { return over(Ch.rock[1], function (g) { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2 + (f ? 0.5 : 0); px(g, i % 2 ? '#7af0ff' : '#ffe9a8', 8 + Math.round(Math.cos(a) * 5) - 1, 8 + Math.round(Math.sin(a) * 5) - 1, 2, 2); } px(g, '#c8f8ff', 6, 6, 4, 4); px(g, '#ffffff', 7, 7, 2, 2); }); });
     Ch.gateShut = over(Ch.rock[1], function (g) { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; px(g, '#3a3044', 8 + Math.round(Math.cos(a) * 5) - 1, 8 + Math.round(Math.sin(a) * 5) - 1, 2, 2); } px(g, '#1a1220', 6, 6, 4, 4); px(g, '#6a6070', 4, 7, 8, 1); px(g, '#6a6070', 7, 4, 1, 8); });
+    // ---- [2026-11-17] 마계 마을(테마 5) -- 흑요석 판석(붉은 줄눈), 잿빛 땅, 뼈 다리, 뿔 달린 석상, 보랏빛 화톳불, 뾰족 지붕 집 ----
+    var Vd = tiles.dv = {};
+    Vd.pave = [0, 1].map(function (s) { return tile('#1e1724', [['#18121e', 10], ['#261d2e', 6]], 950 + s, function (g) { px(g, '#4a0e16', 0, 7, T, 1); px(g, '#4a0e16', 0, 15, T, 1); px(g, '#4a0e16', 7, 0, 1, 7); px(g, '#4a0e16', 15, 8, 1, 7); px(g, '#3a2e46', 0, 0, T, 1); px(g, '#3a2e46', 0, 8, T, 1); if (s) { px(g, '#c8381a', 3, 7, 3, 1); px(g, '#ff7a2a', 4, 7); px(g, '#8a2ac8', 10, 11, 2, 2); } }); });
+    Vd.ground = [0, 1, 2].map(function (s) { return tile('#2a2026', [['#221a20', 12], ['#33282e', 6], ['#1a1418', 3]], 960 + s); });
+    Vd.crack = [0, 1].map(function (f) { return over(Vd.ground[0], function (g) { px(g, '#120a0c', 3, 4, 1, 5); px(g, '#120a0c', 4, 9, 6, 1); px(g, '#120a0c', 10, 6, 1, 4); px(g, f ? '#ff7a2a' : '#c8381a', 4, 9, 6, 1); px(g, '#ffb04a', f ? 6 : 8, 9); }); });
+    Vd.bridge = (function () { var c = mk(T, T), g = c.getContext('2d'); g.drawImage(tiles.dem.lava[0], 0, 0); for (var i = 0; i < 4; i++) { px(g, '#d8ccb0', 0, i * 4, T, 3); px(g, '#a89878', 0, i * 4 + 2, T, 1); px(g, '#3a2a20', 0, i * 4 + 3, T, 1); } px(g, '#efe4cc', 1, 0, 2, T); px(g, '#efe4cc', 13, 0, 2, T); px(g, '#8a7a60', 3, 0, 1, T); px(g, '#8a7a60', 12, 0, 1, T); return c; })();
+    Vd.statue = over(Vd.pave[0], function (g) { // 뿔 달린 악마 석상(받침대 위)
+      px(g, 'rgba(0,0,0,.35)', 2, 14, 12, 2); px(g, '#3a3044', 3, 12, 10, 3); px(g, '#4e4458', 3, 12, 10, 1);
+      px(g, '#2a2232', 6, 5, 4, 7); px(g, '#2a2232', 5, 7, 6, 3); px(g, '#2a2232', 4, 6, 1, 4); px(g, '#2a2232', 11, 6, 1, 4); px(g, '#2a2232', 6, 2, 4, 3);
+      px(g, '#2a2232', 5, 1, 1, 2); px(g, '#2a2232', 4, 0, 1, 2); px(g, '#2a2232', 10, 1, 1, 2); px(g, '#2a2232', 11, 0, 1, 2); px(g, '#433a4e', 6, 2, 1, 9);
+      px(g, '#ff2a2a', 7, 3); px(g, '#ff2a2a', 9, 3);
+      px(g, '#1a141e', 2, 4, 2, 4); px(g, '#1a141e', 12, 4, 2, 4); px(g, '#1a141e', 1, 3, 1, 2); px(g, '#1a141e', 14, 3, 1, 2); // 접힌 날개
+    });
+    Vd.brazier = [0, 1].map(function (f) {
+      return over(Vd.pave[0], function (g) {
+        px(g, 'rgba(0,0,0,.3)', 4, 14, 8, 2); px(g, '#2a2228', 7, 9, 2, 6); px(g, '#2a2228', 5, 14, 6, 1); px(g, '#3a3036', 3, 7, 10, 3); px(g, '#d8ccb0', 3, 7, 1, 1); px(g, '#d8ccb0', 12, 7, 1, 1);
+        px(g, '#5a1a9a', 4, f ? 3 : 4, 8, 4); px(g, '#9a3aff', 5, f ? 2 : 3, 6, 4); px(g, '#d08aff', 6, f ? 3 : 2, 4, 3); px(g, '#ffffff', 7, f ? 3 : 4, 2, 1);
+        px(g, '#c86aff', f ? 4 : 11, f ? 1 : 2, 1, 1); px(g, '#c86aff', f ? 10 : 6, 0, 1, 1);
+      });
+    });
+    Vd.roof = [0, 1].map(function (s) { return tile('#2e1a2e', [['#261426', 10], ['#3a2238', 6]], 970 + s, function (g) { for (var i = 0; i < 4; i++) { px(g, '#1a0e1a', 0, i * 4 + 3, T, 1); px(g, '#4a2a46', (i * 5 + s * 3) % 13, i * 4, 3, 1); } }); });
+    Vd.ridge = [0, 1].map(function (s) { return over(Vd.roof[s], function (g) { g.clearRect(0, 0, T, 6); g.drawImage(Vd.ground[0], 0, 0, T, 6, 0, 0, T, 6); px(g, '#1a0e1a', 0, 5, T, 2); px(g, '#2e1a2e', s ? 2 : 9, 0, 3, 6); px(g, '#2e1a2e', s ? 3 : 10, 0, 1, 1); px(g, '#c8381a', s ? 3 : 10, 1); }); });
+    Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -695,6 +718,15 @@ var TowerMine = (function () {
     px(g, '#1a1626', 4, 1, 8, 4); px(g, '#0c0a12', 5, 3, 6, 2); px(g, '#24212b', 4, 7, 8, 5); px(g, '#ffb03a', 6, 4); px(g, '#ffb03a', 9, 4);
     return c;
   }
+  /** [2026-11-17] 마계 주민 -- 검보라 두건 망토, 작은 뿔, 빛나는 붉은 눈, 손에 보랏빛 등불. */
+  function demonfolkSprite() {
+    var c = mk(T, T), g = c.getContext('2d');
+    px(g, '#1a0e22', 4, 4, 8, 11); px(g, '#2a1838', 4, 4, 8, 1); px(g, '#120818', 4, 14, 8, 1); px(g, '#2a1838', 5, 6, 1, 8);
+    px(g, '#1a0e22', 5, 1, 6, 4); px(g, '#0a0410', 6, 3, 4, 3); px(g, '#ff2a2a', 6, 4); px(g, '#ff2a2a', 9, 4);
+    px(g, '#d8ccb0', 4, 0, 1, 2); px(g, '#d8ccb0', 11, 0, 1, 2); px(g, '#a89878', 5, 1); px(g, '#a89878', 10, 1);
+    px(g, '#3a3036', 12, 9, 1, 4); px(g, '#9a3aff', 12, 8, 2, 2); px(g, '#d08aff', 12, 8);
+    return outline(c, '#05020a');
+  }
   function npcSprite(kind) {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
@@ -760,14 +792,14 @@ var TowerMine = (function () {
   function hashXY(x, y) { var h = (x * 374761393 + y * 668265263) >>> 0; h = ((h ^ (h >>> 13)) * 1274126177) >>> 0; return h; }
   // [2026-11-15] 요새 도시 엘리시온 / 탑 입구(테마 1), 탑 안(테마 2) -- 같은 바닥 글자를 전용 그림으로 바꿔 그린다(없으면 null = 보통 그림).
   //  탑 입구의 탑 정면(Q 덩어리)은 한 장의 큰 그림(faceBuild)을 칸마다 잘라 쓴다 -- 하늘까지 솟은 돌벽, 금빛 띠, 불 켜진 아치 창, 한가운데 빛나는 큰 문.
-  function themeOf() { var id = map && map.id; return !map ? 0 : id === 'towercity' || id === 'towergate' ? 1 : /^tw\d/.test(id) ? 2 : /^demon(east|west)/.test(id) || id === 'lastline' || id === 'abyssgate' ? 3 : id === 'chaos' ? 4 : 0; } // [2026-11-17] 들판 2·3, 최후의 방어선, 마계 입구 = 3, 혼돈스러운 마계 = 4 // [2026-11-16] 3 = 악마의 들판
+  function themeOf() { var id = map && map.id; return !map ? 0 : id === 'towercity' || id === 'towergate' ? 1 : /^tw\d/.test(id) ? 2 : /^demon(east|west)/.test(id) || id === 'lastline' || id === 'abyssgate' ? 3 : id === 'chaos' ? 4 : id === 'demonvillage' ? 5 : 0; } // [2026-11-17] 들판 2·3, 최후의 방어선, 마계 입구 = 3, 혼돈스러운 마계 = 4 // [2026-11-16] 3 = 악마의 들판
   var faceCache = null;
   function faceInfo() {
     var key = map.id + '|' + map.w + 'x' + map.h;
     if (faceCache && faceCache.key === key) return faceCache;
     var x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
     for (var y = 0; y < map.h; y++) { var row = map.rows[y]; for (var x = 0; x < map.w; x++) if (row.charAt(x) === 'Q') { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } }
-    faceCache = { key: key, x0: x0, y0: y0, x1: x1, y1: y1, img: x1 < 0 ? null : faceBuild((x1 - x0 + 1) * T, (y1 - y0 + 1) * T), t: {} };
+    faceCache = { key: key, x0: x0, y0: y0, x1: x1, y1: y1, img: x1 < 0 ? null : (map.id === 'demonvillage' ? palaceBuild : faceBuild)((x1 - x0 + 1) * T, (y1 - y0 + 1) * T), t: {} }; // [2026-11-17] 마계 마을 = 마왕성
     return faceCache;
   }
   function faceTile(x, y) {
@@ -775,6 +807,49 @@ var TowerMine = (function () {
     if (!f.img || x < f.x0 || x > f.x1 || y < f.y0 || y > f.y1) return null;
     var k = x + ',' + y, c = f.t[k];
     if (!c) { c = f.t[k] = mk(T, T); c.getContext('2d').drawImage(f.img, (x - f.x0) * T, (y - f.y0) * T, T, T, 0, 0, T, T); }
+    return c;
+  }
+  /** [2026-11-17] 마계 마을 마왕성 정면 한 장(w x h 픽셀) -- 붉은 하늘과 핏빛 달, 뿔 달린 첨탑들, 흑요석 본성과 줄지은 불 켜진 창, 핏빛 깃발, 용암이 흐르는 큰 문, 문 위 뿔 문장. */
+  function palaceBuild(w, h) {
+    var c = mk(w, h), g = c.getContext('2d'), r = rng(1135), cx = w >> 1, i, y, x;
+    var sky = g.createLinearGradient(0, 0, 0, h); sky.addColorStop(0, '#120208'); sky.addColorStop(0.55, '#3a0a14'); sky.addColorStop(1, '#5a1414');
+    g.fillStyle = sky; g.fillRect(0, 0, w, h);
+    for (i = 0; i < 70; i++) { g.fillStyle = 'rgba(255,' + (120 + Math.floor(r() * 100)) + ',120,' + (0.25 + r() * 0.5) + ')'; g.fillRect(Math.floor(r() * w), Math.floor(r() * h * 0.5), 1, 1); }
+    var mx = Math.round(w * 0.16), my = Math.round(h * 0.2), mr = Math.round(h * 0.09); // 핏빛 달
+    var mg = g.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 3); mg.addColorStop(0, 'rgba(255,60,40,.45)'); mg.addColorStop(1, 'rgba(255,60,40,0)'); g.fillStyle = mg; g.fillRect(mx - mr * 3, my - mr * 3, mr * 6, mr * 6);
+    g.fillStyle = '#d83a2a'; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill(); g.fillStyle = '#ff7a5a'; g.beginPath(); g.arc(mx - mr * 0.25, my - mr * 0.2, mr * 0.55, 0, Math.PI * 2); g.fill(); g.fillStyle = '#a82418'; g.fillRect(mx + mr * 0.2, my + mr * 0.1, mr * 0.3, mr * 0.25);
+    function spire(sx, top, bw, col) { g.fillStyle = col; g.beginPath(); g.moveTo(sx - bw / 2, h); g.lineTo(sx - bw / 2, top + bw * 1.6); g.lineTo(sx, top); g.lineTo(sx + bw / 2, top + bw * 1.6); g.lineTo(sx + bw / 2, h); g.closePath(); g.fill(); }
+    function horns(hx, hy, s, col) { g.strokeStyle = col; g.lineWidth = Math.max(2, s * 0.35); g.beginPath(); g.moveTo(hx - s * 0.3, hy); g.quadraticCurveTo(hx - s * 1.4, hy - s * 0.2, hx - s * 1.2, hy - s * 1.6); g.stroke(); g.beginPath(); g.moveTo(hx + s * 0.3, hy); g.quadraticCurveTo(hx + s * 1.4, hy - s * 0.2, hx + s * 1.2, hy - s * 1.6); g.stroke(); }
+    for (i = 0; i < 11; i++) spire(w * (0.04 + i * 0.092) + (r() - 0.5) * 20, h * (0.12 + r() * 0.22), 18 + r() * 14, '#140c18'); // 뒤쪽 첨탑 숲
+    // 양옆 큰 탑
+    [[0.12, 0.08], [0.88, 0.08]].forEach(function (q) {
+      var tx = w * q[0], tw = w * 0.11, top = h * q[1];
+      g.fillStyle = '#1c1424'; g.fillRect(tx - tw / 2, top + tw * 1.2, tw, h); g.fillStyle = '#2e2238'; g.fillRect(tx - tw / 2, top + tw * 1.2, 3, h); g.fillStyle = '#100a14'; g.fillRect(tx + tw / 2 - 3, top + tw * 1.2, 3, h);
+      spire(tx, top, tw * 1.05, '#241a2e'); horns(tx, top + tw * 1.25, tw * 0.35, '#d8ccb0');
+      for (y = top + tw * 1.6; y < h - 30; y += 22) for (x = -1; x <= 1; x += 2) { g.fillStyle = r() < 0.75 ? '#ff6a2a' : '#3a1a1a'; g.fillRect(Math.round(tx + x * tw * 0.22 - 2), Math.round(y), 4, 9); }
+      g.fillStyle = '#ff7a2a'; g.fillRect(Math.round(tx - 2), Math.round(h * 0.55), 4, Math.round(h * 0.45)); g.fillStyle = '#ffb04a'; g.fillRect(Math.round(tx - 1), Math.round(h * 0.55), 2, Math.round(h * 0.45)); // 용암 폭포
+    });
+    // 본성
+    var kx0 = w * 0.2, kx1 = w * 0.8, ky = h * 0.34;
+    g.fillStyle = '#1a1220'; g.fillRect(kx0, ky, kx1 - kx0, h - ky);
+    for (x = kx0; x < kx1; x += 26) { g.fillStyle = '#2a1e32'; g.fillRect(Math.round(x), ky, 3, h - ky); g.fillStyle = '#0e0a12'; g.fillRect(Math.round(x + 23), ky, 2, h - ky); }
+    for (x = kx0; x < kx1; x += 14) { g.fillStyle = '#1a1220'; g.beginPath(); g.moveTo(x, ky); g.lineTo(x + 7, ky - 12); g.lineTo(x + 14, ky); g.fill(); } // 톱니 흉벽
+    for (y = ky + 14; y < h - 24; y += 26) for (x = kx0 + 12; x < kx1 - 12; x += 26) { if (Math.abs(x + 4 - cx) < w * 0.09) continue; var lit = r() < 0.7; g.fillStyle = lit ? '#ff5a2a' : '#2a1018'; g.fillRect(Math.round(x), Math.round(y), 8, 13); if (lit) { g.fillStyle = '#ffc06a'; g.fillRect(Math.round(x + 2), Math.round(y + 3), 4, 6); } g.fillStyle = '#0e0a12'; g.fillRect(Math.round(x), Math.round(y), 8, 2); }
+    // 가운데 높은 탑 + 큰 뿔
+    var ctw = w * 0.16; g.fillStyle = '#20162a'; g.fillRect(cx - ctw / 2, h * 0.12, ctw, h); spire(cx, -h * 0.05, ctw * 1.1, '#2a1e36'); horns(cx, h * 0.2, ctw * 0.42, '#efe4cc');
+    // 문장(문 위) -- 뿔 달린 원에 붉은 눈
+    var ey = h * 0.42, er = ctw * 0.22; g.fillStyle = '#5a0a14'; g.beginPath(); g.arc(cx, ey, er, 0, Math.PI * 2); g.fill(); g.strokeStyle = '#d8b04a'; g.lineWidth = 3; g.stroke();
+    horns(cx, ey - er * 0.7, er * 0.6, '#d8b04a'); g.fillStyle = '#ff2a2a'; g.beginPath(); g.ellipse(cx, ey, er * 0.55, er * 0.25, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = '#1a0004'; g.fillRect(cx - 2, ey - er * 0.22, 4, er * 0.44);
+    // 큰 문 -- 용암빛
+    var gw = w * 0.1, gh = h * 0.36, gx = cx - gw / 2, gy = h - gh;
+    var gg = g.createLinearGradient(0, gy, 0, h); gg.addColorStop(0, '#3a0a08'); gg.addColorStop(0.5, '#c8381a'); gg.addColorStop(1, '#ffb04a');
+    g.fillStyle = '#d8ccb0'; g.beginPath(); g.moveTo(gx - 6, h); g.lineTo(gx - 6, gy + gw * 0.5); g.quadraticCurveTo(cx, gy - gw * 0.55, gx + gw + 6, gy + gw * 0.5); g.lineTo(gx + gw + 6, h); g.fill();
+    g.fillStyle = gg; g.beginPath(); g.moveTo(gx, h); g.lineTo(gx, gy + gw * 0.5); g.quadraticCurveTo(cx, gy - gw * 0.4, gx + gw, gy + gw * 0.5); g.lineTo(gx + gw, h); g.fill();
+    for (i = 0; i < 5; i++) { g.fillStyle = '#2a0a06'; g.fillRect(Math.round(gx + gw * (0.15 + i * 0.18)), Math.round(gy + gw * 0.3), 3, Math.round(gh)); } // 창살
+    // 핏빛 깃발
+    [0.27, 0.36, 0.64, 0.73].forEach(function (q) { var bx = w * q, bl = h * 0.42; g.fillStyle = '#5a0a14'; g.fillRect(bx - 8, ky + 6, 16, bl); g.fillStyle = '#8a1424'; g.fillRect(bx - 6, ky + 6, 4, bl); for (var k = 0; k < 8; k++) { g.fillStyle = '#5a0a14'; g.fillRect(bx - 8 + k, ky + 6 + bl + k, 1, 8 - k); g.fillRect(bx + 7 - k, ky + 6 + bl + k, 1, 8 - k); } g.fillStyle = '#d8b04a'; g.fillRect(bx - 8, ky + 6, 16, 2); g.fillRect(bx - 1, ky + 20, 2, 18); g.fillRect(bx - 5, ky + 26, 10, 2); g.beginPath(); g.arc(bx, ky + 18, 4, 0, Math.PI * 2); g.fill(); });
+    // 아래 계단
+    for (i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#2a2232' : '#1e1726'; g.fillRect(0, h - 10 + i * 2.5, w, 3); }
     return c;
   }
   /** 탑 정면 한 장(w x h 픽셀, 아래 가운데가 큰 문). */
@@ -898,6 +973,25 @@ var TowerMine = (function () {
         case 'L': return Dm.ruin[cellAt(x, y + 1) === 'L' ? 0 : 1]; // 무너진 돌 성벽
         case 'H': return Dm.plank; // 해자 위 널다리
         case 'i': return Dm.brazier[wf ? 1 : 0]; // 화톳불
+      }
+      return null;
+    }
+    if (th === 5) { // [2026-11-17] 마계 마을
+      var Vt = tiles.dv;
+      switch (c) {
+        case ',': return Vt.pave[v % 9 === 0 ? 1 : 0];
+        case '.': return Vt.ground[v % 3];
+        case ':': return Vt.crack[wf ? 1 : 0];
+        case '~': return tiles.dem.lava[(wf + (x + y) % 2) % 2];
+        case 'H': return Vt.bridge;
+        case 'A': return Vt.statue;
+        case 'i': return Vt.brazier[wf ? 1 : 0];
+        case 'W': below = cellAt(x, y + 1); return below === 'W' || below === '^' ? tiles.dem.rock[v % 2] : tiles.dem.rockFace;
+        case 'Q': return faceTile(x, y) || Vt.pave[0];
+        case 'K': {
+          if (cellAt(x, y + 1) !== 'K') return Vt.wall[(x * 3 + y) % 4 === 1 ? 1 : 0];
+          return cellAt(x, y - 1) !== 'K' ? Vt.ridge[x % 2] : Vt.roof[v % 2];
+        }
       }
       return null;
     }
@@ -1728,7 +1822,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', demonfolk: '#ff6a8a', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -2784,7 +2878,7 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { fort: [-400, -80], desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
+  var WORLD_PLACE = { fort: [-400, -380], /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
   var WORLD_CROSS = [['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
@@ -4726,6 +4820,11 @@ var TowerMine = (function () {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
+      if (d && d.villageOut) { // [2026-11-17] 마계 마을 -- 3초 뒤 안내 없이 요새 도시로, 그다음 한 줄
+        var vmsg = d.villageOut; busy = true;
+        api('/api/tower-mine').then(enterState).then(function () { fadeIn(null); flashT0 = performance.now(); msg(vmsg, 4500); }).catch(function () { busy = false; fadeIn(null); });
+        return;
+      }
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]

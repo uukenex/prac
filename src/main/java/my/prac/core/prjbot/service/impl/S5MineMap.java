@@ -112,6 +112,7 @@ public final class S5MineMap {
     // [2026-11-17] 로드맵 -- 들판 2·3(Lv.105/115), 최후의 방어선(Lv.125, 서쪽3·동쪽3 사이), 마계 입구(방어선 북쪽, 포털), 혼돈스러운 마계(Lv.135, 1인).
     public static final String DEMON_EAST2 = "demoneast2", DEMON_EAST3 = "demoneast3", DEMON_WEST2 = "demonwest2", DEMON_WEST3 = "demonwest3";
     public static final String LAST_LINE = "lastline", ABYSS_GATE = "abyssgate", CHAOS = "chaos";
+    public static final String DEMON_VILLAGE = "demonvillage"; // [2026-11-17] 마계 마을 -- 마계 입구 포털로 가끔, 3초만 머문다
     /** 악마의 들판(동/서, 1~3) 단계 0~2, 최후의 방어선 3, 그 밖 -1. */
     public static int demonTier(String id) {
         if (id == null) return -1;
@@ -259,7 +260,7 @@ public final class S5MineMap {
     /** 지금 있는 맵 ID. 포탈 대상이 여기 없으면 잠긴 입구로 본다. */
     private static final List<String> IDS = withForest(Arrays.asList(FIELD, CAVE1, DESERT, BEACH, DUNGEON, CASTLE, ISLAND, NORTH, STEPPE, CITY, CAVE2, SEAROAD, CAVE3, SNOW1, SNOW2, SNOW3, SNOWTOWN, ROYALROAD, RUINS,
             ARCHI, SHRINE, ARCHISEA, ISLE1, ISLE2, ISLE3, ISLE4, ISLE5, ISLE6, ISLE7, SNOWROAD, PEAK, SHRINE2, SHRINE3, SHRINE_BOSS,
-            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA, TOWER_CITY, TOWER_GATE, DEMON_EAST, DEMON_WEST, DEMON_EAST2, DEMON_EAST3, DEMON_WEST2, DEMON_WEST3, LAST_LINE, ABYSS_GATE, CHAOS)); // [2026-11-17] + 로드맵 // [2026-11-16] + 악마의 들판(동/서) // [2026-11-15] + 월드보스 전장, 탑의 도시(탑 층은 withForest에서) // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
+            ANTNEST, PYRAMID, SNOWCAVE, SNOWCAVE2, CAVE4, PYRAMID_UNDER, WESTROAD, FOREST, HARPY_NEST, WB_ARENA, TOWER_CITY, TOWER_GATE, DEMON_EAST, DEMON_WEST, DEMON_EAST2, DEMON_EAST3, DEMON_WEST2, DEMON_WEST3, LAST_LINE, ABYSS_GATE, CHAOS, DEMON_VILLAGE)); // [2026-11-17] + 로드맵 // [2026-11-16] + 악마의 들판(동/서) // [2026-11-15] + 월드보스 전장, 탑의 도시(탑 층은 withForest에서) // [2026-11-11] + 미궁 방/끝방/나루터(withForest) // [2026-10-28] 여기 없으면 그 맵으로 가는 포탈이 잠긴 것으로 나온다(Portal.locked)
     /** [2026-10-28] 특수 재료 -- 빙석(설산에서 캘 때/설산 몬스터, 등급 값 19), 타락한 대주교 보상 인장(31). 같은 날 성유물 조각(30)은 없앴다. */
     public static final String ICE_STONE_CODE = "ICE_STONE";
     public static final String ICE_STONE_NAME = "빙석";
@@ -1177,6 +1178,7 @@ public final class S5MineMap {
             out.put(LAST_LINE, generateLastLine());
             out.put(ABYSS_GATE, generateAbyssGate());
             out.put(CHAOS, generateChaos());
+            out.put(DEMON_VILLAGE, generateDemonVillage()); // [2026-11-17] 마계 마을(맨 뒤)
         }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -2975,6 +2977,36 @@ public final class S5MineMap {
         ps.add(new Portal(cx, cy + 8, 'G', TOWER_CITY, TCITY_W / 2, TCITY_H / 2, "귀환의 문 -- 요새 도시로"));
         S5MineMap m = new S5MineMap(CHAOS, "혼돈스러운 마계", false, w, h, cx, cy + 5, t, new byte[h][w], ps);
         m.chaosSpot = new int[] { cx, cy - 2 };
+        return m;
+    }
+    /** [2026-11-17] 마계 마을(71x52) -- "마계 마을도 웅장하게". 북쪽 절반은 하늘을 찌르는 마왕성 정면(Q: 화면이 한 장의 큰 그림으로),
+     *  성 앞 흑요석 광장에서 남쪽으로 뻗은 대로, 대로 양옆 용암 수로와 뼈 다리, 뿔 달린 석상과 보랏빛 화톳불이 줄지어 서고, 그 바깥으로 뾰족 지붕 집들.
+     *  나가는 문은 없다 -- 마계 입구 포털로 가끔 떨어지고, 3초 뒤 요새 도시로 되돌아간다(S55MineServiceImpl.MINE_VILLAGE_MS). 몬스터 없음, 마계 주민만. */
+    static S5MineMap generateDemonVillage() {
+        int w = 71, h = 52, cx = w / 2, py = 19;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 1 || x >= w - 2 || y >= h - 1 ? 'W' : '.';
+        for (int y = 1; y <= py; y++) for (int x = 2; x <= w - 3; x++) t[y][x] = x >= 6 && x <= w - 7 ? 'Q' : 'W'; // 마왕성 정면(양옆은 바위 절벽)
+        for (int y = py + 1; y <= py + 4; y++) for (int x = 3; x <= w - 4; x++) t[y][x] = ','; // 성 앞 광장
+        for (int y = py + 5; y < h - 1; y++) for (int x = cx - 3; x <= cx + 3; x++) t[y][x] = ','; // 대로
+        for (int y = py + 6; y < h - 3; y++) for (int sg = -1; sg <= 1; sg += 2) for (int k = 5; k <= 6; k++) t[y][cx + sg * k] = (y - py) % 8 == 2 ? 'H' : '~'; // 용암 수로 + 뼈 다리
+        for (int y = py + 6; y < h - 3; y += 3) for (int sg = -1; sg <= 1; sg += 2) t[y][cx + sg * 4] = ((y - py) / 3) % 2 == 0 ? 'A' : 'i'; // 석상 / 화톳불
+        for (int sg = -1; sg <= 1; sg += 2) { t[py + 2][cx + sg * 9] = 'A'; t[py + 2][cx + sg * 15] = 'i'; t[py + 2][cx + sg * 21] = 'A'; t[py + 2][cx + sg * 27] = 'i'; }
+        int[][] houses = { { 10, 27 }, { 19, 27 }, { 10, 36 }, { 19, 36 }, { 10, 44 }, { 19, 44 } };
+        for (int[] hs : houses) for (int sg = 0; sg < 2; sg++) {
+            int hx = sg == 0 ? hs[0] : w - 1 - hs[0] - 6;
+            for (int y = hs[1]; y < hs[1] + 4 && y < h - 2; y++) for (int x = hx; x < hx + 7; x++) t[y][x] = 'K';
+            for (int x = hx; x < hx + 7; x++) if (hs[1] + 4 < h - 1) t[hs[1] + 4][x] = ','; // 집 앞 길
+        }
+        for (int y = py + 5; y < h - 1; y++) for (int x = 3; x < w - 3; x++) if (t[y][x] == '.' && (x * 7 + y * 13) % 29 == 0) t[y][x] = ':';
+        List<Portal> ps = new ArrayList<>();
+        S5MineMap m = new S5MineMap(DEMON_VILLAGE, "마계 마을", false, w, h, cx, py + 3, t, new byte[h][w], ps);
+        List<Npc> npcs = new ArrayList<>();
+        String[] lines = { "...인간? 이런 곳까지 어떻게 흘러들어 왔지?", "마왕 폐하의 성을 올려다보는 건 자유다. 들어갈 생각은 하지 마라.", "곧 문이 너를 뱉어 낼 거다. 운 좋은 줄 알아라.",
+            "인간의 냄새... 오랜만이군.", "이 수로의 불은 천 년째 꺼진 적이 없지.", "여긴 네가 올 곳이 아니야." };
+        int[][] at = { { cx - 8, py + 3 }, { cx + 8, py + 3 }, { cx - 2, py + 9 }, { cx + 2, py + 15 }, { cx - 2, py + 21 }, { cx + 2, py + 27 } };
+        for (int i = 0; i < at.length; i++) if (t[at[i][1]][at[i][0]] == ',') npcs.add(npcAtCell(t, at[i][0], at[i][1], "demonfolk", "마계 주민", lines[i]));
+        m.npcs = npcs;
         return m;
     }
     int[] chaosSpot;
