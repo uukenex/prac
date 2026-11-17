@@ -4182,6 +4182,7 @@ var TowerMine = (function () {
       if (d.levelUp) floats.push({ x: P.x, y: P.y - 1, text: '⬆️ 레벨 업!', color: '#ffe14d', big: true, t0: performance.now() });
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30]
       if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
+      if (d.iceBroke && !d.died) { if (iceSt) iceSt.frozen = null; iceStruggleN = 0; flashT0 = t; floats.push({ x: P.x, y: P.y - 0.9, text: '🧊 쨍그랑! -' + d.iceBroke, color: '#bfefff', big: true, t0: t }); msg(d.message || '🧊 얼음이 깨졌어요!', 2800); } // [2026-11-18] 언 채로 맞으면 최대 체력 50% + 얼음이 깨진다
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
       // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
@@ -4241,7 +4242,7 @@ var TowerMine = (function () {
     };
   }
   var heatWarned = false;
-  // [2026-10-28] 설산 봉우리 -- 얼음 여왕이 18초마다 한 명씩 얼린다(최대 15초). 언 동안 못 움직이고(서버도 막음), 여왕에게 맞으면 즉사.
+  // [2026-10-28] 설산 봉우리 -- 얼음 여왕이 18초마다 한 명씩 얼린다(최대 15초). 언 동안 못 움직이고(서버도 막음), 여왕에게 맞으면 즉사([2026-11-18] -> 최대 체력 50% + 얼음이 깨짐).
   //  얼지 않은 동료가 2칸 안에 오면 풀린다(얼음땡). 서버가 환경 턴으로 알려 준다: iceAwake, nextFreezeAt, frozen {x, y, until}, thawed.
   var iceSt = null, iceWarned = 0;
   var stunUntil = 0; // [2026-11-04] 파라오 미라 붕대에 감김(서버 시각까지)

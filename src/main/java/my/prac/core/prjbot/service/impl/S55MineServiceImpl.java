@@ -3546,7 +3546,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     }
                     boolean x2 = s.stealth && map.mobs().get(id).type != S5MineMobs.SHRINE_BOSS_TYPE; // [2026-10-28] 은신했던 닌자의 기습 -- 2배(닌자 두목은 은신을 유지한 채 보통 세기)
                     if (x2) { d *= MINE_NINJA_STEALTH_MULT; s.stealth = false; }
-                    if (iceHeld && id == boss.id) { d = Math.max(d, hp - dmgSum); shattered = true; } // [2026-10-28] 언 채로 맞으면 즉사
+                    if (iceHeld && id == boss.id) shattered = true; // [2026-11-18] 언 채로 맞으면 최대 체력 50%(아래에서 한 번에)
                     boolean dodged = !(iceHeld && id == boss.id) && minePStealthDodge(userName, now); // [2026-10-30] 자객의 목걸이 은신 -- 일반 공격 회피
                     if (dodged) d = 0;
                     dmgSum += d;
@@ -3601,7 +3601,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
         boolean fight = !e.mobs.isEmpty();
         if (dmgSum == 0 && healed == 0 && mercExp == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
-        if (dmgSum > 0 && mineFrozen(userName, now) != null && hp + healed - dmgSum > 0) { dmgSum = hp + healed; shattered = true; } // [2026-11-04] "빙결 상태에서 맞으면 즉사" -- 얼음 여왕뿐 아니라 어떤 공격이든
+        int iceHit = 0; // [2026-11-18] 빙결 상태에서 맞으면(어떤 공격이든) 즉사 대신 최대 체력 50% + 얼음이 깨진다
+        if (dmgSum > 0 && (shattered || mineFrozen(userName, now) != null)) {
+            iceHit = (int) Math.round(mineHpCap(lv, lock, rb) * MINE_ICE_HIT_PCT / 100.0);
+            dmgSum = Math.max(dmgSum, iceHit);
+            shattered = true;
+            if (MINE_ICE_FROZEN.remove(userName) != null) MINE_ICE_THAWED.remove(userName);
+        }
         boolean save = mineHpFlushDue(row, now) || hp + healed - dmgSum <= 0 || mercExp > 0; // [2026-11-05] 용병이 잡은 경험치는 바로 저장 // [2026-11-03] 체력만 바뀌면 메모리에(MINE_HP_VIRT), 쓰러지거나 15초마다 DB
         HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : null; // 쓰기 전에 같은 유저 요청 직렬화
         if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
@@ -3621,8 +3627,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dmgSum > 0) {
             if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
             if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * mineRegenPct(items)), now); // [2026-10-28] 재생의 장갑
-            if (shattered) dmgSum = Math.max(dmgSum, hp); // [2026-11-04] 다시 읽은 체력 기준으로도 즉사
             hp -= dmgSum;
+            if (shattered && hp > 0) { out.put("iceBroke", dmgSum); out.put("message", "🧊 얼어붙은 채로 " + (killerName == null ? "" : killerName + "의 ") + "일격을 맞아 얼음이 깨졌어요! (-" + String.format("%,d", dmgSum) + ")"); }
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
                 hp = mineHpCap(lv, lock, rb);
@@ -3748,7 +3754,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  얼음 여왕(24단계 보스, 화면 Lv.95, 체력 x1.5 / 공격 x1.1)은 4칸 안에 들어오면 먼저 인식하고 쫓아온다. 누가 여왕과 싸우는 동안(마지막 전투 턴/공격 + 15초 = 깨어 있음):
     //   - 빙결: 깨어난 뒤 8초, 그 뒤 18초마다 봉우리에 있는(최근 3초 위치 알림, 모닥불 밖, 아직 안 언) 플레이어 중 한 명을 그 자리에 얼린다(최대 15초).
     //     언 동안은 움직이기/캐기/공격/포탈/마을로를 서버가 막고, 여왕은 언 사람을 노려 쫓아간다(멀어도 인식이 안 풀림).
-    //   - 여왕이 언 사람을 때리면 즉사(남은 체력 전부 -- 몬스터에게 쓰러진 것과 같아 최대 체력 잠금 +1).
+    //   - 여왕이 언 사람을 때리면 즉사(남은 체력 전부 -- 몬스터에게 쓰러진 것과 같아 최대 체력 잠금 +1). [2026-11-18] -> 최대 체력 50% + 얼음이 깨진다(MINE_ICE_HIT_PCT).
     //   - 얼지 않은 다른 플레이어가 언 사람 2칸 안(위치 알림 기준)에 오면 풀린다(얼음땡). 혼자면 15초 뒤 저절로 녹는다(갇히지 않게).
     //   판정은 봉우리에 있는 모든 화면이 1초마다 부르는 환경 턴(mineColdTick)에서 한다. 언 동안엔 한기/눈바람 피해가 없다.
     //  보스 공통: 맵 주기마다 한 번(MINE_ICE_KILLED = "주기|유저"). 보상: 얼음의 심장 1(반드시) + 50% 다이아몬드 2 + 40% 별빛석 1.
@@ -3757,6 +3763,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_ICE_FIRST_MS = 8_000L, MINE_ICE_PERIOD_MS = 18_000L, MINE_ICE_FREEZE_MS = 15_000L;
     static final int MINE_ICE_RESCUE_RANGE = 2;
     static final long MINE_ICE_FRESH_MS = 6_000L; // [2026-11-04] 3초 -> 6초(통신이 느린 사람도 빙결 대상)
+    // [2026-11-18] "설산 보스 얼음 패턴 맞고 보스가 붙으면 50퍼센트 달게" -- 언 채로 맞으면 즉사 대신 최대 체력의 MINE_ICE_HIT_PCT%(맞은 피해가 더 크면 그만큼), 얼음은 그 일격에 깨진다.
+    static final int MINE_ICE_HIT_PCT = 50;
     static final String MINE_FROZEN_BLOCK = "🧊 얼어붙어서 꼼짝할 수 없어요! 동료가 곁(2칸)에 와야만 풀려요.";
     static volatile long mineIceAwakeUntil = 0;
     static volatile long mineIceNextFreeze = 0;
@@ -6074,7 +6082,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             this.code = code; this.name = name; this.slot = slot; this.lv = lv; this.atk = atk; this.step = step; this.maxGrade = maxGrade; this.pctFrom = pctFrom; this.pct0 = pct0; this.shard = shard; this.armor = armor;
         }
         // [2026-11-06] 갑옷은 "이전 레벨 신화가 다음 레벨 전설보다 좋게" -- 등급마다 x1.3(곱, 신화 = x6.27 / 전설 = x2.86). 무기는 그대로(합, 등급마다 +step).
-        int atkAt(int g) { return (int) Math.round(armor ? atk * Math.pow(MINE_ARMOR_GRADE_MUL, g) : atk * (1 + step * g)); }
+        int atkAt(int g) { return (int) Math.round(armor ? atk / Math.pow(MINE_ARMOR_GRADE_MUL, 7 - g) : atk * (1 + step * g)); } // [2026-11-18] 갑옷 atk = 신화 값
         /** 공격력 %(합연산) -- pctFrom 등급부터 pct0, 등급마다 +1(pctFrom < 0 = 없음). */
         int pctAt(int g) { return pctFrom < 0 || g < pctFrom ? 0 : pct0 + (g - pctFrom); }
         String effect(int g) { return effect(g, 0); }
@@ -6111,12 +6119,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  드랍은 무기와 같은 몬스터/확률로 따로 굴린다(무기가 나오지 않았을 때만 -- 한 번에 하나). 같은 등급이 또 나오면 그 갑옷 조각으로.
     static final String MINE_ITEM_ARMOR_SLOT = "ARMOR_SLOT";
     static final double MINE_ARMOR_REGEN = 0.5, MINE_ARMOR_GRADE_MUL = 1.3;
+    //  [2026-11-18] "갑옷류 피해 감소량 대폭, 신화 백화 갑주는 2500" -- 값을 신화 기준으로 적고(아래 등급은 1.3씩 나눔), 신화 기준 50/100/213/452/941 -> 150/300/800/2500/5000.
     static final MineWeapon[] MINE_ARMORS = {
-        new MineWeapon("ARMOR_CHAIN", "사슬 갑옷", 1, 20, 8, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[0], true),
-        new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 16, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
-        new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 34, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
-        new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 72, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
-        new MineWeapon("ARMOR_IMMORTAL", "심판의 갑옷", 5, 125, 150, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-17] 보로네오 전용(받는 피해 고정 감소 150 -- 백화 갑주의 약 2배)
+        new MineWeapon("ARMOR_CHAIN", "사슬 갑옷", 1, 20, 150, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[0], true),
+        new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 300, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
+        new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 800, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
+        new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 2500, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
+        new MineWeapon("ARMOR_IMMORTAL", "심판의 갑옷", 5, 125, 5000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-17] 보로네오 전용(받는 피해 고정 감소 -- 백화 갑주의 2배)
     };
     static MineWeapon mineArmorOf(String code) { for (MineWeapon w : MINE_ARMORS) if (w.code.equals(code)) return w; return null; }
     static MineWeapon mineArmorOn(Map<String, Integer> items) {
