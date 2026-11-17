@@ -805,7 +805,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-08] "진환생은 99레벨 이후도 쭉 100레벨 이상으로 레벨업(능력치는 99레벨에서 멈춤)", "최고 레벨 제한 없이" -- 진환생은 끝없이 오른다(MINE_LV_TRUE_MAX = M_LV NUMBER(4) 끝).
     //  능력치(체력 mineHpMax / 공격력 mineAtk / 선공 레벨 차이 mineMobPreempts)는 99레벨 값에서 멈춘다.
     static final int MINE_LV_TRUE_MAX = 9999;
-    static int mineLvCap(int rb) { return rb > MINE_REBIRTH_BASE ? MINE_LV_TRUE_MAX : MINE_LV_MAX; }
+    static int mineLvCap(int rb) { return rb >= MINE_REBIRTH_BASE ? MINE_LV_TRUE_MAX : MINE_LV_MAX; } // [2026-11-18] "5환생 이전은 100레벨 못 찍게" -- 0~4환생은 99에서 멈추고, 5환생·진환생만 99를 넘는다
     /** [2026-11-08] "진환생은 무기/방어구 장착 제한 해제" -- 장비 레벨(20/40/60/80...)이 모자라도 든다. */
     static boolean mineGearLvOk(int lv, Map<String, Integer> items, int need) { return lv >= need || mineTrueRebirth(items); }
     static final long MINE_HP_FULL_MS = 60_000L;
@@ -937,8 +937,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long exp0 = exp;
         if (rb <= MINE_REBIRTH_BASE) {
             exp += gain;
-            while (lv < MINE_LV_TRUE_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; } // [2026-11-17] 99에서 멈추지 않는다(환생은 선택) -- 99 넘어서도 필요 경험치는 레벨마다 1.12배
-            if (lv >= MINE_LV_TRUE_MAX) exp = Math.min(exp, mineExpNeed(lv, rb) - 1);
+            int cap = mineLvCap(rb); // [2026-11-18] 0~4환생은 99에서 경험치가 가득 찬 채로 멈춘다(환생할 수 있는 상태), 5환생은 [2026-11-17]처럼 99를 넘어 레벨마다 1.12배
+            while (lv < cap && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
+            if (lv >= cap) exp = Math.min(exp, cap == MINE_LV_MAX ? mineExpNeed(lv, rb) : mineExpNeed(lv, rb) - 1);
             return new long[] { lv, exp, up, mineExpReal(lv0, exp0, lv, exp, rb) };
         }
         double raw = gain; // 진환생 -- 나누기 전 경험치로 다음 레벨까지 남은 만큼씩 쓴다
@@ -9709,7 +9710,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!S5MineMap.CITY.equals(mineMapOf(row).id)) { out.put("message", "🙏 성당 신부: 환생 의식은 왕도 성당에서만 올릴 수 있어요."); return out; }
         if (rb >= MINE_REBIRTH_MAX) { out.put("message", "🙏 성당 신부: 이미 " + mineRbName(MINE_REBIRTH_MAX) + "까지 마쳤어요. 더 오를 곳이 없답니다."); return out; }
         if (!mineRebirthReady(lv, exp, rb)) {
-            out.put("message", "🙏 성당 신부: 아직 때가 아니에요. Lv." + (MINE_LV_MAX + 1) + " 이상이 되면 원할 때 다시 오세요. (지금 Lv." + lv
+            out.put("message", "🙏 성당 신부: 아직 때가 아니에요. " + (mineLvCap(rb) == MINE_LV_MAX ? "Lv." + MINE_LV_MAX + " 경험치를 가득 채우면" : "Lv." + (MINE_LV_MAX + 1) + " 이상이 되면") + " 원할 때 다시 오세요. (지금 Lv." + lv // [2026-11-18] 5환생 전은 99에서 멈춘다
                     + (lv >= MINE_LV_MAX ? ", 경험치 " + exp + " / " + mineExpNeed(MINE_LV_MAX, rb) : "") + ")");
             return out;
         }
