@@ -1587,18 +1587,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s != null) synchronized (s) { if (s.hitters != null) us.addAll(s.hitters); s.strikeN = 0; }
             for (String u : us) {
                 Map<String, Integer> it = mineItems(u);
+                // [2026-11-17] "수문장 반복 처치는 되게, 처음 올라가는 층은 가능, 이미 처치한 보스 보상만 하루 3회" --
+                //  처음 쓰러뜨린 수문장(TW_BLOCK < 층)은 언제나 보상 + 다음 층, 하루 횟수에도 안 센다. 이미 쓰러뜨린 수문장은 몇 번이고 잡을 수 있고 보상만 하루 MINE_TW_BOSS_DAILY번.
                 int cnt = mineTwBossToday(it, now);
+                boolean first = mineTwBlock(it) < f;
                 String txt;
-                if (cnt >= MINE_TW_BOSS_DAILY && !isMineAdmin(u)) txt = " ⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 써서 보상이 없어요. 내일 다시 도전해 주세요.";
+                if (!first && cnt >= MINE_TW_BOSS_DAILY && !isMineAdmin(u)) txt = " ⏳ 이미 쓰러뜨린 수문장 보상은 하루 " + MINE_TW_BOSS_DAILY + "번까지예요(오늘 " + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + "). 내일 다시 받을 수 있어요.";
                 else {
-                    dao.upsertMineItem(u, MINE_ITEM_TWB_DAY, day);
-                    dao.upsertMineItem(u, MINE_ITEM_TWB_CNT, cnt + 1);
-                    boolean first = mineTwBlock(it) < f;
+                    if (!first) { dao.upsertMineItem(u, MINE_ITEM_TWB_DAY, day); dao.upsertMineItem(u, MINE_ITEM_TWB_CNT, cnt + 1); }
                     if (first) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
                     StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
                     for (int q = 0; q < MINE_TW_SEA_BOSS; q++) { int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length); dao.addUserOre(u, S5MineMap.SEA_GEM_CODES[sg], 1); sea.append(" · 🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]); }
-                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + sea + " (오늘 수문장 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")"
+                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + sea + (first ? " (첫 처치!)" : " (오늘 반복 보상 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")")
                             + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요." : "");
                 }
                 if (u.equals(userName)) m.append(txt);
@@ -1863,7 +1864,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         else if (n < 1) err = "그런 층은 없어요.";
         else if (!admin && n > max) err = "🪜 아직 " + n + "층으로 가는 계단을 못 찾았어요. (지금 " + max + "층까지)";
         // [2026-11-16] "지난 층 다시 갈 수 있게" -- 수문장을 쓰러뜨린 구역 아래로도 올라가 본 층(max)까지는 언제든 간다(예전엔 끝난 구역은 잠겼다)
-        else if (!admin && S5MineMap.towerBossFloor(n) && mineTwBossToday(items, now) >= MINE_TW_BOSS_DAILY) err = "⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 썼어요. 내일 다시 도전해 주세요.";
+        else if (false && S5MineMap.towerBossFloor(n) && mineTwBossToday(items, now) >= MINE_TW_BOSS_DAILY) err = /* [2026-11-17] 수문장 층은 늘 들어간다(반복 보상만 하루 3번 -- mineTowerKill) */ "⏳ 오늘 수문장 처치 횟수(" + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + ")를 모두 썼어요. 내일 다시 도전해 주세요.";
         if (err != null) {
             dao.updateMinePos(userName, stay.id, sx, sy, now);
             out.put("message", err);
