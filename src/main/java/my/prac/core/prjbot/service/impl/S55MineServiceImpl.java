@@ -6518,7 +6518,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int i = 0; i < tr.size(); i++) {
             int[] tp = tr.get(i);
             boolean hit = false;
-            for (int y = tp[1]; y < tp[1] + 2 && !hit; y++) for (int x = tp[0]; x < tp[0] + 3; x++) if (cells.contains(y * map.w + x)) { hit = true; break; }
+            for (int y = tp[1] - 2; y < tp[1] + 2 && !hit; y++) for (int x = tp[0]; x < tp[0] + 3; x++) if (cells.contains(y * map.w + x)) { hit = true; break; } // [2026-11-17] "나무 잎 부분을 공격해도 나무가 공격받은 걸로" -- 밑동 + 수관(위 두 줄)
             if (!hit || mineTreeState(i, now) != 0) continue;
             long[] t = MINE_TREES.computeIfAbsent(i, k -> new long[6]);
             synchronized (t) {
@@ -6551,7 +6551,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
         if (Math.max(Math.abs(tx - x), Math.abs(ty - y)) > 1) { out.put("message", "나무 바로 옆에서 나무 쪽을 바라보고 캐세요."); return out; }
         int ti = -1;
-        for (int i = 0; i < map.trees().size(); i++) { int[] tp = map.trees().get(i); if (tx >= tp[0] && tx < tp[0] + 3 && ty >= tp[1] && ty < tp[1] + 2) { ti = i; break; } }
+        for (int i = 0; i < map.trees().size(); i++) { int[] tp = map.trees().get(i); if (tx >= tp[0] && tx < tp[0] + 3 && ty >= tp[1] - 2 && ty < tp[1] + 2) { ti = i; break; } } // [2026-11-17] 수관(위 두 줄)도 나무
         if (ti < 0) { out.put("message", "나무 바로 옆에서 나무 쪽을 바라보고 캐세요."); return out; }
         int ts = mineTreeState(ti, now);
         if (ts != 0) { out.put("message", ts == 3 ? "이미 쓰러진 나무예요." : "타 버린 나무예요."); return out; }

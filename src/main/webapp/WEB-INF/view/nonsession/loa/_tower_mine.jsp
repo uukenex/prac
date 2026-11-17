@@ -6913,7 +6913,9 @@ var TowerMine = (function () {
     if (!opened || !map || chopBusy || P.moving) return;
     var dv = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[P.dir] || [0, 1];
     var tx = P.x + dv[0], ty = P.y + dv[1];
-    if (cellAt(tx, ty) !== 'E') { tx = -1; for (var oy = -1; oy <= 1 && tx < 0; oy++) for (var ox = -1; ox <= 1; ox++) if (cellAt(P.x + ox, P.y + oy) === 'E') { tx = P.x + ox; ty = P.y + oy; break; } }
+    // [2026-11-17] 밑동(E)뿐 아니라 수관(나무 위 두 줄)도 나무 -- 바라보는 칸, 서 있는 칸(수관 밑), 둘레 8칸 순으로
+    var inTree = function (x, y) { return (map.trees || []).some(function (tp, i) { var q = treeSt[i] || [i, 0]; return (q[1] | 0) === 0 && x >= tp[0] && x <= tp[0] + 2 && y >= tp[1] - 2 && y <= tp[1] + 1; }); };
+    if (!inTree(tx, ty)) { tx = -1; if (inTree(P.x, P.y)) { tx = P.x; ty = P.y; } for (var oy = -1; oy <= 1 && tx < 0; oy++) for (var ox = -1; ox <= 1; ox++) if (inTree(P.x + ox, P.y + oy)) { tx = P.x + ox; ty = P.y + oy; break; } }
     if (tx < 0) { msg('🪓 나무 바로 옆에서 캐면 곡괭이로 나무를 찍을 수 있어요.', 2200); return; }
     chopBusy = true; P.digT0 = performance.now(); P.swing = false;
     apiFast('/api/tower-mine-chop?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&tx=' + tx + '&ty=' + ty + verQ()).then(function (d) {
