@@ -15,7 +15,11 @@
   // [2026-10-30] "서버와 1분 이상 통신이 안 되면(백그라운드 등) 접속 종료 멘트 후 다시 접속, 배포 때도" --
   //  모든 fetch의 성공/실패 시각을 적어 둔다. 광산이 열려 있으면 1분 넘게 성공한 응답이 없을 때(창이 숨어 있다 돌아온 경우 포함),
   //  광산 밖에선 실패가 이어져 1분이 넘을 때(서버 재시작/배포) 화면을 덮고 서버가 답할 때까지 3초마다 물어본 뒤 다시 불러온다(광산이 열려 있었으면 ?go=mine으로 광산까지).
-  var lastOk = Date.now(), lastFail = 0, lost = false, LOST_MS = 60 * 1000;
+  // [2026-11-17] "1분간 제자리면 접속 종료? 10분 정도로 늘리고 안내 멘트를 -- 제자리 공격키나 용병 사냥이 있을 수 있다" --
+  //  제자리라 끊는 규칙은 없고, 휴대폰이 손대지 않으면 화면을 끄는데 다시 켰을 때 1분 넘게 응답이 없었던 것으로 쳐서 끊겼다.
+  //  -> 광산이 열려 있는 동안 화면 꺼짐 방지(Wake Lock), 화면이 꺼졌거나 다른 앱에 갔다 와도 AWAY_MS(10분) 안이면 그대로 이어서,
+  //     넘으면 이유를 말해 주고 다시 접속. 화면을 보는 중 서버 응답이 1분 넘게 없을 때(진짜 끊김)는 예전 그대로.
+  var lastOk = Date.now(), lastFail = 0, lost = false, LOST_MS = 60 * 1000, AWAY_MS = 10 * 60 * 1000, hiddenAt = 0;
   window.twAlive = function () { lastOk = Date.now(); }; // [2026-11-03] 광산 WebSocket 응답도 "살아 있음"으로
   if (window.fetch) {
     var of = window.fetch;
@@ -33,16 +37,16 @@
     var qs = q.toString();
     return location.pathname + (qs ? '?' + qs : '') + location.hash;
   }
-  function lostCheck() {
+  function lostCheck(away) {
     if (lost || document.hidden) return;
     var gap = Date.now() - lastOk;
-    if (gap <= LOST_MS || !(mineOn() || lastFail > lastOk)) return;
+    if (!away && (gap <= LOST_MS || !(mineOn() || lastFail > lastOk))) return;
     lost = true;
     var el = document.createElement('div');
     el.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(10,8,20,.82);display:flex;align-items:center;justify-content:center;padding:16px;';
     el.innerHTML = '<div style="background:#221c33;color:#fff;border:2px solid #f4f0e6;border-radius:14px;padding:18px 20px;max-width:320px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.5);">'
         + '<div style="font-size:30px;margin-bottom:6px;">🔌</div><div style="font-weight:800;font-size:15px;margin-bottom:6px;">서버와의 접속이 끊겼어요</div>'
-        + '<div id="lostSub" style="font-size:13px;color:#cfc8e8;line-height:1.5;">1분 넘게 서버와 통신하지 못했어요.<br>다시 접속하는 중...</div></div>';
+        + '<div id="lostSub" style="font-size:13px;color:#cfc8e8;line-height:1.5;">' + (away ? '화면이 10분 넘게 꺼져 있었거나 다른 앱에 가 있어서<br>광산 접속을 종료했어요.' : '1분 넘게 서버와 통신하지 못했어요.') + '<br>다시 접속하는 중...</div></div>';
     document.body.appendChild(el);
     (function retry() {
       of('/loa/api/tower-page-build?t=' + Date.now(), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
@@ -57,7 +61,29 @@
     })();
   }
   setInterval(lostCheck, 5000);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) lostCheck(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { if (!hiddenAt) hiddenAt = Date.now(); return; }
+    var away = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = 0;
+    if (away > AWAY_MS && mineOn()) { lostCheck(true); return; }
+    if (away > 0) lastOk = Math.max(lastOk, Date.now()); // 10분 안 -- 1초 턴이 다시 돌 시간을 준다(그래도 1분 넘게 응답이 없으면 끊김)
+    lostCheck();
+    wakeSync();
+  });
+  // 광산에서는 화면이 저절로 꺼지지 않게(제자리 공격, 용병 사냥) -- 되는 브라우저에서만(안 되면 조용히 넘어간다). 화면이 숨으면 브라우저가 풀어 버려서 돌아올 때 다시 건다.
+  var wakeLk = null, wakeBusy = false;
+  function wakeSync() {
+    try {
+      if (!navigator.wakeLock) return;
+      var want = mineOn() && !document.hidden;
+      if (want && !wakeLk && !wakeBusy) {
+        wakeBusy = true;
+        navigator.wakeLock.request('screen').then(function (l) { wakeBusy = false; wakeLk = l; l.addEventListener('release', function () { if (wakeLk === l) wakeLk = null; }); }, function () { wakeBusy = false; });
+      } else if (!want && wakeLk) { var l2 = wakeLk; wakeLk = null; l2.release().catch(function () { }); }
+    } catch (e) { }
+  }
+  setInterval(wakeSync, 5000);
+  document.addEventListener('click', wakeSync, true); // 처음 한 번은 사용자가 누른 뒤에만 되는 브라우저가 있다
   /** [2026-11-03] "업데이트가 있을 땐 강력 새로고침" -- 새 빌드 번호 주소(?_b=, 화면 HTML은 저장 안 함 + CSS/JS도 ?v=새 번호)로 다시 받고, 저장해 둔 맵 정보도 비운다. */
   function hardReload(b) {
     try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('tw-mine-map') === 0) localStorage.removeItem(k); }); } catch (e) { }
