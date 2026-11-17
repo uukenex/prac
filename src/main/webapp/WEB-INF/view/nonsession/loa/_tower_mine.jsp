@@ -2724,7 +2724,6 @@ var TowerMine = (function () {
     { id: 'demoneast3', name: '동쪽 들판 3 😈', x: 0, y: 0, fill: '#6a0e0e', ink: '#ffd0c0', w: 76 },
     { id: 'lastline', name: '최후의 방어선 🛡️', x: 0, y: 0, fill: '#5a4a3e', ink: '#ffe9c8', w: 80 },
     { id: 'abyssgate', name: '마계 입구 🌀', x: 0, y: 0, fill: '#3a0a4a', ink: '#f0c8ff', w: 76 },
-    { id: 'chaos', name: '혼돈스러운 마계 🌌', x: 0, y: 0, fill: '#0a0410', ink: '#c8a0ff', w: 84 },
     { id: 'harpyferry', name: '마물의 숲 나루터', x: -150, y: -110, fill: '#3a6a8a', ink: '#f0f8ff', w: 76 }, // [2026-11-11] 둥지 뒤 강가
     { id: 'westroad', name: '마물의 숲 입구 🦣', x: -42, y: 28, fill: '#9a8a5a', ink: '#1a1408', w: 76 }, // [2026-11-05] 왕도 서문 너머(매머드 무리)
     { id: 'antnest', name: '개미굴 🐜', x: -42, y: 172, fill: '#4a2a1a', ink: '#ffd8b0', w: 76 }, // [2026-10-28] 사막 서쪽에서 빠짐
@@ -2754,10 +2753,10 @@ var TowerMine = (function () {
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
   var WORLD_REGIONS = [
     { id: 'fort', name: '🏰 요새 도시', vh: 440, // [2026-11-17] 로드맵 -- 요새 도시(가운데 아래), 북문 = 탑, 동/서 들판 1 -> 2 -> 3 -> 가운데 최후의 방어선 -> 마계 입구 -> 혼돈스러운 마계
-      nodes: [['chaos', 135, 40], ['abyssgate', 135, 105], ['lastline', 135, 175], ['demonwest3', 30, 175], ['demoneast3', 240, 175], ['demonwest2', 30, 250], ['demoneast2', 240, 250], ['towergate', 135, 260],
+      nodes: [['abyssgate', 135, 105], ['lastline', 135, 175], ['demonwest3', 30, 175], ['demoneast3', 240, 175], ['demonwest2', 30, 250], ['demoneast2', 240, 250], ['towergate', 135, 260],
         ['towercity', 135, 330], ['demonwest', 30, 330], ['demoneast', 240, 330], ['@ferry', 135, 410, 'desert', '⛵ 마물의 숲 나루터']],
       links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['demonwest', 'demonwest2'], ['demoneast', 'demoneast2'], ['demonwest2', 'demonwest3'], ['demoneast2', 'demoneast3'],
-        ['demonwest3', 'lastline'], ['demoneast3', 'lastline'], ['lastline', 'abyssgate'], ['abyssgate', 'chaos', 'fall', '5%'], ['towercity', '@ferry', 'sea']] },
+        ['demonwest3', 'lastline'], ['demoneast3', 'lastline'], ['lastline', 'abyssgate'], ['towercity', '@ferry', 'sea']] }, // [2026-11-17] 혼돈스러운 마계는 지도에 없다(정제사 소문으로만)
     { id: 'plain', name: '🌾 평원', vh: 390,
       nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', -58, 40], ['cave3', -58, 100], ['cave2', -58, 160], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],

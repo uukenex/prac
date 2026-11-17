@@ -2451,7 +2451,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         synchronized (gs) { gs.respawn(mmax); gs.fx = mb.x; gs.fy = mb.y; gs.target = userName; gs.frozenUntil = now + MINE_MOB_FREEZE_MS; gs.lastHitAt = 0; gs.stunUntil = 0; }
         mineEngage(userName, m, mb.id, now, 0L);
         MINE_CHAOS_RUN.put(userName, mb.id);
-        if (mt.chaosBoss) mineGossipAdd(mineNick(userName) + " 님이 혼돈스러운 마계에서 " + mt.name + "와(과) 마주쳤대요!");
         return mt.name;
     }
     /** 혼돈 -- 아직 살아 있는 내 몬스터 이름(없으면 null). */
@@ -2484,7 +2483,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     dao.upsertMineItem(u, dw.code + "_M", mask | (1 << g));
                     if (cur < 0) dao.upsertMineItem(u, dw.code, g + 1);
                     msg.append(dw.armor ? " 🛡️ " : " 🗡️ ").append(MINE_GRADE_KO[g]).append(" ").append(dw.name).append("을(를) 얻었어요! ").append(dw.effect(g));
-                    mineGossipAdd(mineNick(u) + " 님이 혼돈스러운 마계에서 " + MINE_GRADE_KO[g] + " " + dw.name + "을(를) 손에 넣었대요!");
+                    mineGossipAdd(mineNick(u) + " 님이 " + MINE_GRADE_KO[g] + " " + dw.name + "을(를) 손에 넣었대요!"); // [2026-11-17] 혼돈스러운 마계 소문은 정제사만 -- 어디서 얻었는지는 말하지 않는다
                 }
                 return d;
             }
@@ -2495,7 +2494,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             String ic = mgCode(part, cls, 7);
             dao.upsertMineItem(u, ic, it.getOrDefault(ic, 0) + 1);
             msg.append(" 🎁 ").append(mgName(part, cls, 7)).append("을(를) 얻었어요! (").append(mgEffText(part, 7)).append(")");
-            mineGossipAdd(mineNick(u) + " 님이 혼돈스러운 마계에서 ★7 동료 장비를 얻었대요!");
+            mineGossipAdd(mineNick(u) + " 님이 ★7 동료 장비를 얻었대요!");
             return d;
         }
         // 거룡 보상(별빛석 / 칠요석 / 은하수 조각, 낮은 확률로 용의 반지)
@@ -5025,6 +5024,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long nowR = System.currentTimeMillis(), ready = rit.getOrDefault(MINE_ITEM_WYRM_WARP, 0) * 60_000L + MINE_WYRM_CD_MS;
             if (nowR < ready) { out.put("message", "💍 용의 반지의 힘이 아직 돌아오지 않았어요. (" + mineCallLeft(ready - nowR) + " 뒤)"); return out; }
             if (!mineWarpListed(mapId)) { out.put("message", "💍 용의 반지로는 갈 수 없는 곳이에요."); return out; }
+            { HashMap<String, Object> rr = dao.selectMineUser(userName); if (rr != null && S5MineMap.CHAOS.equals(strVal(rr.get("MAP_ID"), ""))) { out.put("message", "💍 차원이 뒤틀린 곳이라 용의 반지의 힘이 닿지 않아요."); return out; } } // [2026-11-17] "혼돈스러운 마계는 차원 이동이라 장비 텔레포트를 못 써"
             S5MineMap dm = S5MineMap.get(mapId);
             String blk = mineMapBlock(dm, rit, 0);
             if (blk != null) { out.put("message", blk); return out; }
