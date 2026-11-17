@@ -635,7 +635,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -717,6 +717,18 @@ var TowerMine = (function () {
     var c = npcSprite('priest'), g = c.getContext('2d');
     px(g, '#1a1626', 4, 1, 8, 4); px(g, '#0c0a12', 5, 3, 6, 2); px(g, '#24212b', 4, 7, 8, 5); px(g, '#ffb03a', 6, 4); px(g, '#ffb03a', 9, 4);
     return c;
+  }
+  /** [2026-11-17] 월드보스 게시판 -- 나무 기둥 둘에 걸린 판, 붉은 거룡 문장 + 붙은 쪽지들. */
+  function wbBoardSprite() {
+    var c = mk(T, T), g = c.getContext('2d');
+    px(g, 'rgba(0,0,0,.28)', 2, 14, 12, 2);
+    px(g, '#5a3a1e', 2, 3, 2, 12); px(g, '#5a3a1e', 12, 3, 2, 12); px(g, '#7a5230', 2, 3, 1, 12); px(g, '#7a5230', 12, 3, 1, 12);
+    px(g, '#8a5e34', 1, 2, 14, 9); px(g, '#a8763e', 1, 2, 14, 1); px(g, '#5a3a1e', 1, 10, 14, 1); px(g, '#6a4524', 2, 3, 12, 7);
+    px(g, '#f0e2c0', 3, 4, 4, 5); px(g, '#e8d8b0', 9, 4, 4, 3); px(g, '#f0e2c0', 9, 8, 3, 2); // 쪽지
+    px(g, '#c8281e', 4, 5, 2, 2); px(g, '#8a1414', 3, 5, 1, 1); px(g, '#8a1414', 6, 5, 1, 1); px(g, '#c8281e', 4, 7, 2, 1); // 거룡 문장
+    px(g, '#7a6a50', 10, 5, 2, 1); px(g, '#7a6a50', 10, 6, 1, 1); px(g, '#7a6a50', 10, 9, 1, 1);
+    px(g, '#c8a040', 5, 4); px(g, '#c8a040', 11, 4); px(g, '#c8a040', 10, 8); // 압정
+    return outline(c, '#1a0e06');
   }
   /** [2026-11-17] 마계 주민 -- 검보라 두건 망토, 작은 뿔, 빛나는 붉은 눈, 손에 보랏빛 등불. */
   function demonfolkSprite() {
@@ -1822,7 +1834,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', demonfolk: '#ff6a8a', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -2343,6 +2355,31 @@ var TowerMine = (function () {
   // [2026-11-15] 증표 상인 = 동료(용병) 장비 뽑기(시즌5처럼 장비/악세, 초급~최상급) + 용병 관리 장비 탭에서 끼우기
   var tokenTab = 'gear'; // [2026-11-15] gear = 동료 장비 뽑기 / gem = 보석 사기
   var tokenShop = null, tokenBusy = false, mgInv = null, mgLoading = false, MG_SLOTS = [['W', '⚔️ 무기'], ['H', '⛑️ 투구'], ['A', '🛡️ 갑옷'], ['N', '📿 목걸이'], ['R', '💍 반지'], ['B', '📿 팔찌']];
+  /** [2026-11-17] 월드보스 게시판 -- 지금 상태/다음 출현, 이번 맵 주기(현재 보스)와 지난 주기(이전 보스): 남은 체력, 처치 시각, 기여도(몫 %·대략 피해), 받은 보상. */
+  var wbBoard = null;
+  function wbWhen(ms) { var d = new Date(ms), p = function (v) { return (v < 10 ? '0' : '') + v; }, t = new Date(); return (d.toDateString() === t.toDateString() ? '오늘' : (d.getMonth() + 1) + '/' + d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function wbBoardHtml(n) {
+    var d = wbBoard, h = npcHead('📜 ' + n.name, false);
+    if (!d) return h + '<div class="mine-smith-say">게시판을 읽는 중...</div>';
+    var lv = d.live || {}, now = nowSrv();
+    h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>🐉 심연의 거룡</b> · ' + (lv.closed ? '아직 나타나지 않아요' : lv.on ? '<b style="color:#ff6a5a">지금 동쪽 성곽에 출현 중!</b> (' + Math.max(1, Math.ceil((lv.end - now) / 60000)) + '분 남음)' : '다음 출현 <b>' + wbWhen(lv.next) + '</b>' + (lv.nextCycle ? ' <small>(이번 맵 주기엔 이미 쓰러짐 -- 맵 초기화 뒤)</small>' : '')) + '</div>';
+    function rwTxt(r) { if (!r) return ''; if (r < 0) return '보상 받음'; var s = '⭐' + d.star + ' 🔮' + d.seven, g = Math.floor(r / 10) % 10; if (g) s += ' 🌌' + g; if (r >= 100) s += ' 💍용의 반지'; return s; }
+    [['cur', '현재 보스'], ['prev', '이전 보스']].forEach(function (k) {
+      var b = d[k[0]];
+      if (!b) return;
+      var hasHp = b.hp >= 0, pct = hasHp && b.max ? Math.round(b.hp * 1000 / b.max) / 10 : null;
+      h += '<div class="mine-smith-say"><b>' + (k[0] === 'cur' ? '🔥 ' : '🕰️ ') + k[1] + '</b> <small>맵 주기 ' + b.cycle + ' (' + wbWhen(b.from) + ' ~)</small><br>'
+        + (b.killed ? '✅ 처치 -- <b>' + (b.killedAt ? wbWhen(b.killedAt) : '시각 기록 없음') + '</b>' : hasHp ? (b.hp < b.max ? '⚔️ 남은 체력 ' + pct + '%' : '💤 아직 아무도 상처 내지 못함') + (k[0] === 'prev' ? ' -- 쓰러뜨리지 못함' : '') : '기록 없음');
+      if (hasHp && b.max) h += '<div class="mine-bar hp" style="display:block;width:100%;margin:4px 0"><i style="width:' + (b.killed ? 0 : Math.min(100, pct)) + '%;background:#c8381a"></i></div>';
+      var ps = b.players || [];
+      if (!ps.length) h += '<small>함께 싸운 사람이 아직 없어요.</small>';
+      ps.forEach(function (p, i) {
+        h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (p.ok ? '' : ' · 보상 기준(' + b.minShare + ' 몫) 미달') + (p.rw ? ' · 🎁 ' + rwTxt(p.rw) : b.killed && p.ok ? ' · 🎁 보상 받음' : '') + '</small></span></div>';
+      });
+      h += '</div>';
+    });
+    return h + '<div class="mine-smith-say"><small>보상은 쓰러뜨렸을 때 기준 이상 싸운 모두에게 같게(별빛석 ' + d.star + ' · 칠요석 ' + d.seven + ', 확률로 은하수 조각 · 용의 반지). 맵 주기마다 한 번.</small></div>';
+  }
   /** [2026-11-17] 최후의 방어선 -- 악마 광석 정제사: 조각 하나마다 10%로 미스릴 원석. */
   var refineInfo = null, refineBusy = false;
   function refineGo(act, n) {
@@ -2574,6 +2611,7 @@ var TowerMine = (function () {
     if (n.kind === 'towergate') { twFloors(); return; } // [2026-11-15] 탑 관리인
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
+    if (n.kind === 'wbboard') { setAuto(false); wbBoard = null; openSmith(n, 'wbboard'); api('/api/tower-mine-wb?action=board').then(function (d) { wbBoard = d; if (smithOpen && smithView === 'wbboard') renderSmith(smithNpc); }).catch(function () { }); return; } // [2026-11-17] 월드보스 게시판
     if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
     if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
       setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
@@ -3755,6 +3793,7 @@ var TowerMine = (function () {
     if (smithView === 'token') { el.smith.innerHTML = tokenHtml(n); return; } // [2026-11-15]
     if (smithView === 'river') { el.smith.innerHTML = riverHtml(n); return; } // [2026-11-15]
     if (smithView === 'refine') { el.smith.innerHTML = refineHtml(n); return; } // [2026-11-17]
+    if (smithView === 'wbboard') { el.smith.innerHTML = wbBoardHtml(n); return; } // [2026-11-17] 월드보스 게시판
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
     if (smithView === 'aura') { el.smith.innerHTML = auraNpcHtml(n); return; } // [2026-11-04] 검기 사범
     if (smithView === 'whirl') { el.smith.innerHTML = whirlNpcHtml(n); return; } // [2026-11-07] 돌개 사범

@@ -950,6 +950,7 @@ public final class S5MineMap {
         int bx = field.spawnX + BOUTIQUE_DX, by = field.spawnY + BOUTIQUE_DY;
         field.terrain[by][bx] = 'N';
         fn.add(new Npc(bx, by, "boutique", "명품상점", "어서 오세요~ 반짝반짝 새 옷 한 벌 어떠세요? 성별도 바꿔 드려요."));
+        { Npc wb = wbBoardNear(field.terrain, field.spawnX + 3, field.spawnY + 2, "V"); if (wb != null) fn.add(wb); } // [2026-11-17] 월드보스 게시판
 
         Map<String, S5MineMap> out = new LinkedHashMap<>();
         out.put(FIELD, relink(field, fp, fn));
@@ -2735,6 +2736,7 @@ public final class S5MineMap {
         npcs.add(npcAtCell(t, c + 7, cy - 19, "tokenshop", "증표 상인", "탑에서 모은 증표를 가져오게. 자네 동료(용병)에게 맞는 장비 상자를 열어 주지. 보석도 바꿔 준다네."));
         npcs.add(npcAtCell(t, c - 50, cy - 5, "smith", "장인 회관 대장장이", "탑에서 쓸 장비라면 내게 맡기게."));
         npcs.add(npcAtCell(t, c + 58, cy - 5, "priest", "대신전 사제", "탑을 오르는 이에게 여신의 가호를. 상처를 치료해 드리지요."));
+        { Npc wb = wbBoardNear(t, c + 4, cy + 3, "s,"); if (wb != null) npcs.add(wb); } // [2026-11-17] 월드보스 게시판
         for (int sg = 0; sg < 2; sg++) { // [2026-11-16] 동문/서문 -- 길 양옆으로 늘어선 중무장 경비병(문마다 열둘) + 수비대장
             int gi = 0;
             for (int k = 0; k < 6; k++) for (int dy = -3; dy <= 3; dy += 6) {
@@ -3011,6 +3013,20 @@ public final class S5MineMap {
     }
     int[] chaosSpot;
     public int[] chaosSpot() { return chaosSpot; }
+    /** [2026-11-17] 월드보스 게시판 -- (x0, y0) 둘레에서 비어 있는 바닥 칸(둘레가 트인 곳)을 찾아 세운다. */
+    static final String WB_BOARD_LINE = "월드보스 소식이 빼곡히 붙어 있는 게시판이에요.";
+    static Npc wbBoardNear(char[][] t, int x0, int y0, String ground) {
+        for (int r = 2; r <= 12; r++) for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) != r) continue;
+            int x = x0 + dx, y = y0 + dy;
+            if (y < 1 || x < 1 || y >= t.length - 1 || x >= t[0].length - 1 || ground.indexOf(t[y][x]) < 0) continue;
+            int open = 0;
+            for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) if (ground.indexOf(t[y + d[1]][x + d[0]]) >= 0) open++;
+            if (open < 4) continue;
+            return npcAtCell(t, x, y, "wbboard", "월드보스 게시판", WB_BOARD_LINE);
+        }
+        return null;
+    }
     /** (x, y)가 걸을 수 있는 바닥이면 그 자리에 경비병/기사를 세운다(아니면 건너뛴다). */
     private static void guardAt(char[][] t, List<Npc> npcs, int x, int y, String kind, String name, String line) {
         if (y < 0 || x < 0 || y >= t.length || x >= t[0].length || (t[y][x] != 's' && t[y][x] != ',' && t[y][x] != '.')) return;
@@ -3434,6 +3450,7 @@ public final class S5MineMap {
         List<Npc> npcs = new ArrayList<>();
         npcs.add(new Npc(px, py, "priest", "성당 신부", "여신의 가호가 함께하기를. 상처를 치료하고, 쓰러지면 이곳에서 깨어나도록 기도해 드리지요. 미스릴괴를 바치면 무기에 성스러운 빛을 깃들여 드립니다."));
         npcs.add(new Npc(px + 3, py, "elementalist", "원소술사", "세공된 보석엔 원소가 깃들어 있지. 하나만 주면 자네 무기에 물·번개·불·땅의 힘을 불어넣어 주겠네."));
+        { Npc wb = wbBoardNear(t, c + 6, c + 6, "s"); if (wb != null) npcs.add(wb); } // [2026-11-17] 월드보스 게시판(광장 분수 옆)
         m.npcs = npcs;
         m.dummySpots = dummies;
         return m;

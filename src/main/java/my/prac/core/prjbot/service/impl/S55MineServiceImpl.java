@@ -2208,13 +2208,93 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  보상은 그 주기에 MINE_WB_MIN_SHARE몫 이상 싸운 모두(쓰러질 때 접속해 있지 않아도 -- 다음에 광산에 들어올 때 받는다, mineWbClaim), 주기마다 한 번.
     //  남은 체력은 설정(MINE_WB_POOL = "주기|체력|쓰러짐")에, 사람마다 싸운 몫은 아이템(WB_SHARE / WB_SHARE_CYC = 주기 + 1)에 가끔 적어 서버를 다시 켜도 이어진다.
     //  일반 공개 전(MINE_WB_OPEN = false) 관리자 시험 회차는 따로: 시작할 때마다 가득 찬 작은 체력(MINE_WB_TEST_TOTAL몫)으로, 저장하지 않는다.
-    static final class WbPool { int cycle = Integer.MIN_VALUE, hp = 1; boolean killed, test; long savedAt; }
+    static final class WbPool { int cycle = Integer.MIN_VALUE, hp = 1; boolean killed, test; long savedAt, killedAt; } // [2026-11-17] killedAt -- 게시판
     static final WbPool MINE_WB_POOL = new WbPool();
     static final String MINE_WB_POOL_KEY = "MINE_WB_POOL", MINE_ITEM_WB_SHARE = "WB_SHARE", MINE_ITEM_WB_SHARE_CYC = "WB_SHARE_CYC";
     static final double MINE_WB_TOTAL = 60_000, MINE_WB_TEST_TOTAL = 2_600, MINE_WB_MIN_SHARE = 100, MINE_WB_TEST_MIN_SHARE = 30;
     static final java.util.concurrent.ConcurrentHashMap<String, Double> MINE_WB_SHARE = new java.util.concurrent.ConcurrentHashMap<>(); // 이번 주기에 싸운 몫
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_WB_SHARE_SAVED = new java.util.concurrent.ConcurrentHashMap<>();
     static volatile long mineWbGoneAt = 0; // 거룡이 (못 잡은 채) 날아간 시각 -- 화면의 퇴장 연출
+    // ---- [2026-11-17] "마을에 월드보스 게시판 NPC -- 이전 보스, 현재 보스(현재 맵 주기), 다음 출현 시간, 누가 얼마씩 데미지 기여도, 언제 처치, 누가 무슨 템 나왔는지" ----
+    //  주기별 기록: 사람마다 WBS_<주기>(몫) / WBR_<주기>(받은 보상), 주기 결과는 설정 MINE_WB_C<주기>(체력|최대|처치|처치 시각). 게시판은 20초 모아 보여 준다.
+    static final String MINE_ITEM_WBS = "WBS_", MINE_ITEM_WBR = "WBR_", MINE_WB_CYC_KEY = "MINE_WB_C";
+    static volatile long MINE_WB_BOARD_AT = 0;
+    static volatile HashMap<String, Object> MINE_WB_BOARD = null;
+    HashMap<String, Object> mineWbBoard(long now) {
+        if (MINE_WB_BOARD != null && now - MINE_WB_BOARD_AT < 20_000L) { HashMap<String, Object> o = new HashMap<>(MINE_WB_BOARD); o.put("live", mineWbBoardLive(now)); return o; }
+        mineWbPool(now);
+        int cur = S5MineMap.cycleAt(now), max = mineWbMax();
+        HashMap<String, Object> out = new HashMap<>();
+        List<String> codes = java.util.Arrays.asList(MINE_ITEM_WBS + cur, MINE_ITEM_WBR + cur, MINE_ITEM_WBS + (cur - 1), MINE_ITEM_WBR + (cur - 1), MINE_ITEM_WB_SHARE, MINE_ITEM_WB_SHARE_CYC, MINE_ITEM_WB_CYCLE);
+        List<HashMap<String, Object>> rows;
+        try { rows = dao.selectMineItemsByCodes(codes); } catch (Exception e) { rows = new ArrayList<>(); }
+        for (int k = 0; k < 2; k++) {
+            int c = cur - k;
+            Map<String, Double> sh = new HashMap<>();
+            Map<String, Integer> rw = new HashMap<>();
+            Map<String, Integer> oldSh = new HashMap<>(), oldCyc = new HashMap<>(), oldRw = new HashMap<>();
+            for (HashMap<String, Object> r : rows) {
+                String u = strVal(r.get("USER_NAME"), ""), code = strVal(r.get("ITEM_CODE"), "");
+                int v = intVal(r.get("ITEM_LEVEL"), 0);
+                if ((MINE_ITEM_WBS + c).equals(code)) sh.put(u, (double) v);
+                else if ((MINE_ITEM_WBR + c).equals(code)) rw.put(u, v);
+                else if (MINE_ITEM_WB_SHARE.equals(code)) oldSh.put(u, v);
+                else if (MINE_ITEM_WB_SHARE_CYC.equals(code)) oldCyc.put(u, v);
+                else if (MINE_ITEM_WB_CYCLE.equals(code)) oldRw.put(u, v);
+            }
+            for (Map.Entry<String, Integer> e : oldCyc.entrySet()) if (e.getValue() == c + 1 && !sh.containsKey(e.getKey())) sh.put(e.getKey(), (double) oldSh.getOrDefault(e.getKey(), 0)); // 게시판 전 기록(사람마다 마지막 주기 몫 하나)
+            for (Map.Entry<String, Integer> e : oldRw.entrySet()) if (e.getValue() == c + 1 && !rw.containsKey(e.getKey())) rw.put(e.getKey(), -1); // 보상은 받았는데 무엇이 나왔는지는 기록 전
+            HashMap<String, Object> b = new HashMap<>();
+            b.put("cycle", c);
+            b.put("from", S5MineMap.RESET_ANCHOR_MS + (long) (c - 1) * S5MineMap.CYCLE_MS);
+            if (k == 0) {
+                for (Map.Entry<String, Double> e : MINE_WB_SHARE.entrySet()) if (!MINE_WB_POOL.test) sh.merge(e.getKey(), e.getValue(), Math::max); // 메모리(지금 싸우는 몫)가 더 새것
+                b.put("hp", Math.max(0, MINE_WB_POOL.hp)); b.put("max", max); b.put("killed", MINE_WB_POOL.killed); b.put("killedAt", MINE_WB_POOL.killedAt);
+            } else {
+                String v = null;
+                try { v = dao.selectConfigValue(MINE_WB_CYC_KEY + c); } catch (Exception ignore) { }
+                String[] a = v == null ? new String[0] : v.trim().split("\\|");
+                if (a.length >= 4) { b.put("hp", Integer.parseInt(a[0])); b.put("max", Integer.parseInt(a[1])); b.put("killed", "1".equals(a[2])); b.put("killedAt", Long.parseLong(a[3])); }
+                else { b.put("hp", -1); b.put("max", max); b.put("killed", false); b.put("killedAt", 0L); }
+            }
+            double tot = 0;
+            for (double d : sh.values()) tot += d;
+            int bmax = intVal(b.get("max"), max);
+            List<HashMap<String, Object>> ps = new ArrayList<>();
+            for (Map.Entry<String, Double> e : sh.entrySet()) {
+                if (e.getValue() <= 0) continue;
+                HashMap<String, Object> p = new HashMap<>();
+                p.put("nick", mineNick(e.getKey()));
+                p.put("share", Math.round(e.getValue()));
+                p.put("pct", tot > 0 ? Math.round(e.getValue() * 1000 / tot) / 10.0 : 0);
+                p.put("dmg", Math.round(e.getValue() * bmax / MINE_WB_TOTAL)); // 몫 하나 = 최대 체력 / MINE_WB_TOTAL
+                p.put("ok", e.getValue() >= MINE_WB_MIN_SHARE);
+                Integer r = rw.get(e.getKey());
+                if (r != null && r != 0) p.put("rw", r);
+                ps.add(p);
+            }
+            ps.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
+            b.put("players", ps);
+            b.put("minShare", MINE_WB_MIN_SHARE);
+            out.put(k == 0 ? "cur" : "prev", b);
+        }
+        out.put("star", MINE_WB_STAR); out.put("seven", MINE_WB_SEVEN); out.put("open", MINE_WB_OPEN);
+        MINE_WB_BOARD = out; MINE_WB_BOARD_AT = now;
+        HashMap<String, Object> o = new HashMap<>(out);
+        o.put("live", mineWbBoardLive(now));
+        return o;
+    }
+    /** 지금 상태(게시판 맨 위) -- on: 진행 중(끝나는 시각), next: 다음 출현 시각(이번 주기에 쓰러졌으면 다음 맵 주기 첫 회차). */
+    HashMap<String, Object> mineWbBoardLive(long now) {
+        HashMap<String, Object> l = new HashMap<>();
+        if (!MINE_WB_OPEN) { l.put("closed", true); return l; }
+        if (mineWbOn(now)) { l.put("on", true); l.put("end", mineWbStart(now) + MINE_WB_LEN_MS); return l; }
+        int cur = S5MineMap.cycleAt(now);
+        long next = mineWbStart(now);
+        if (MINE_WB_POOL.killed && MINE_WB_POOL.cycle == cur) { long ns = S5MineMap.RESET_ANCHOR_MS + (long) cur * S5MineMap.CYCLE_MS; next = (ns + MINE_WB_PERIOD_MS - 1) / MINE_WB_PERIOD_MS * MINE_WB_PERIOD_MS; l.put("nextCycle", true); }
+        l.put("next", next);
+        return l;
+    }
     static double mineWbMinShare() { return MINE_WB_POOL.test ? MINE_WB_TEST_MIN_SHARE : MINE_WB_MIN_SHARE; }
     /** 이번 주기의 거룡 체력을 준비한다 -- 주기가 바뀌었으면 가득, 서버가 막 켜졌으면 저장된 값에서. */
     void mineWbPool(long now) {
@@ -2228,13 +2308,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             p.test = !MINE_WB_OPEN;
             p.hp = max;
             p.killed = false;
+            p.killedAt = 0;
             MINE_WB_SHARE.clear();
             MINE_WB_SHARE_SAVED.clear();
             if (!p.test && fresh) {
                 try {
                     String v = dao.selectConfigValue(MINE_WB_POOL_KEY);
                     String[] a = v == null ? new String[0] : v.trim().split("\\|");
-                    if (a.length >= 3 && Integer.parseInt(a[0]) == cyc) { p.hp = Math.max(0, Math.min(max, Integer.parseInt(a[1]))); p.killed = "1".equals(a[2]); }
+                    if (a.length >= 3 && Integer.parseInt(a[0]) == cyc) { p.hp = Math.max(0, Math.min(max, Integer.parseInt(a[1]))); p.killed = "1".equals(a[2]); if (a.length >= 4) p.killedAt = Long.parseLong(a[3]); }
                 } catch (Exception e) { System.out.println("[광산] 월드보스 체력 읽기 실패: " + e.getMessage()); }
             }
             p.cycle = cyc;
@@ -2245,7 +2326,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         WbPool p = MINE_WB_POOL;
         if (p.test || p.cycle == Integer.MIN_VALUE) return;
         p.savedAt = now;
-        try { dao.upsertConfigValue(MINE_WB_POOL_KEY, p.cycle + "|" + Math.max(0, p.hp) + "|" + (p.killed ? 1 : 0), "world boss hp for this map cycle: cycle|hp|killed (set by app)"); }
+        try {
+            dao.upsertConfigValue(MINE_WB_POOL_KEY, p.cycle + "|" + Math.max(0, p.hp) + "|" + (p.killed ? 1 : 0) + "|" + p.killedAt, "world boss hp for this map cycle: cycle|hp|killed|killedAt (set by app)");
+            dao.upsertConfigValue(MINE_WB_CYC_KEY + p.cycle, Math.max(0, p.hp) + "|" + mineWbMax() + "|" + (p.killed ? 1 : 0) + "|" + p.killedAt, "world boss result of one map cycle: hp|max|killed|killedAt (board)"); // [2026-11-17] 게시판(지난 주기)
+        }
         catch (Exception e) { System.out.println("[광산] 월드보스 체력 저장 실패: " + e.getMessage()); }
     }
     void mineWbShareSave(String userName, double share, long now) {
@@ -2255,6 +2339,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         try {
             dao.upsertMineItem(userName, MINE_ITEM_WB_SHARE, (int) Math.min(Integer.MAX_VALUE, Math.round(share)));
             dao.upsertMineItem(userName, MINE_ITEM_WB_SHARE_CYC, p.cycle + 1);
+            dao.upsertMineItem(userName, MINE_ITEM_WBS + p.cycle, (int) Math.min(Integer.MAX_VALUE, Math.round(share))); // [2026-11-17] 게시판 -- 주기별 몫(지난 주기도 남는다)
         } catch (Exception e) { /* 다음 저장 때 */ }
     }
     static boolean mineWbOn(long now) {
@@ -2325,7 +2410,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if ((st.phase < 3 && ph >= 3) || (st.phase < 6 && ph >= 6)) { st.roarAt = now; st.roarSeq++; } // 체력 70% / 40% -- 포효
                 st.phase = ph;
             }
-            if (after <= 0 && !p.killed) { p.killed = true; st.killed = true; mineWbPoolSave(now); mineWbFinish(now); }
+            if (after <= 0 && !p.killed) { p.killed = true; p.killedAt = now; st.killed = true; mineWbPoolSave(now); mineWbFinish(now); }
             else if (now - p.savedAt > 10_000L) mineWbPoolSave(now);
         }
         Long sv = MINE_WB_SHARE_SAVED.get(userName);
@@ -2352,6 +2437,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 } else gal++; // 이미 가진 사람은 은하수 조각으로
             }
             if (gal > 0) { dao.addUserOre(u, S5MineMap.GALAXY_CODE, gal); m.append(" · 🌌 ").append(S5MineMap.GALAXY_NAME).append(' ').append(gal); }
+            try { dao.upsertMineItem(u, MINE_ITEM_WBR + (cyc - 1), 1 + 10 * gal + (m.indexOf("용의 반지") >= 0 ? 100 : 0)); } catch (Exception ignore) { } // [2026-11-17] 게시판 -- 받은 보상(1 = 별빛석·칠요석, +10 x 은하수 조각, +100 = 용의 반지)
+            MINE_WB_BOARD_AT = 0;
             MINE_SHRINE_REWARD_MSG.merge(u, m.toString(), (p, q) -> p + " / " + q);
         } catch (Exception e) { /* 한 사람 실패해도 나머지는 */ }
     }
@@ -2755,6 +2842,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
+        if ("board".equals(action)) { HashMap<String, Object> bo = mineWbBoard(now); bo.put("ok", true); return bo; } // [2026-11-17] 월드보스 게시판
         if (("start".equals(action) || "stop".equals(action)) && isMineAdmin(userName)) {
             if ("start".equals(action)) {
                 mineWbPool(now);
@@ -3622,8 +3710,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** [2026-10-30] "보스 드랍템 다회 획득, 대신 확률 30%" -- 처치마다 굴려서 나오면 주고 true. */
     static final int MINE_TOKEN_PCT = 30;
+    // [2026-11-17] "보스 심장 확률 5퍼센트 올려줘" -- 얼음/화산(여기)과 바람(하피 여왕)의 심장은 30% -> 35%(번개/사막은 원래 반드시). 대주교의 인장·하피의 검은 그대로 30%.
+    static final int MINE_HEART_PCT = 35;
     boolean mineTokenRoll(String userName, String code) {
-        if (RND.nextInt(100) >= MINE_TOKEN_PCT) return false;
+        if (RND.nextInt(100) >= (code != null && code.endsWith("_HEART") ? MINE_HEART_PCT : MINE_TOKEN_PCT)) return false;
         dao.addUserOre(userName, code, 1);
         return true;
     }
@@ -3761,7 +3851,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[4], 1); // [2026-11-11] "하피 보상에 흑진주 100%"
         drops.add(mineDrop(S5MineMap.SEA_GEM_GRADE_BASE + 4, S5MineMap.SEA_GEM_NAMES[4], 1));
         msg.append(" · 💎 ").append(S5MineMap.SEA_GEM_NAMES[4]).append(" 1개");
-        if (RND.nextInt(100) < MINE_HARPY_DROP_PCT || isMineAdmin(userName)) {
+        if (RND.nextInt(100) < MINE_HEART_PCT || isMineAdmin(userName)) { // [2026-11-17] 30 -> 35%
             dao.addUserOre(userName, S5MineMap.WIND_HEART_CODE, 1);
             drops.add(mineDrop(S5MineMap.WIND_HEART_GRADE, S5MineMap.WIND_HEART_NAME, 1));
             msg.append(" · 🌪️ ").append(S5MineMap.WIND_HEART_NAME).append(" 1개!!");
