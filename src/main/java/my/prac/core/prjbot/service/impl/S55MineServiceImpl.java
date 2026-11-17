@@ -2106,7 +2106,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //      2 꼬리 휩쓸기 -- 거룡 둘레 2칸, 1.8초 예고, 25% + 기절 MINE_WB_TAIL_STUN_MS
     //      3 멸망의 숨결(전체 공격기) -- 거룡 둘레 MINE_WB_PAT_R[3]칸 모두, 5초 예고, 55% -- 내성 벽 쪽으로 멀리 피해야 한다
     //    포효 -- MINE_WB_ROAR_GAP_MS마다 + 체력 70%/40%에서, 둘레 14칸 기절 MINE_WB_ROAR_MS.
-    static final long MINE_WB_PERIOD_MS = 3_600_000L, MINE_WB_LEN_MS = 10 * 60_000L, MINE_WB_NOTICE_MS = 3 * 60_000L, MINE_WB_CHAT_GAP_MS = 3 * 3_600_000L;
+    static final long MINE_WB_PERIOD_MS = 3_600_000L, MINE_WB_LEN_MS = 5 * 60_000L, /* [2026-11-17] "매시 정각부터 5분 동안만" (10분 -> 5분) */ MINE_WB_NOTICE_MS = 3 * 60_000L, MINE_WB_CHAT_GAP_MS = 3 * 3_600_000L;
     static final double[] MINE_WB_HIT_PCT = { 0.06, 0.08, 0.10 }; // 원거리 한 발 = 최대 체력 %, 체력 70% / 40% 아래로 세진다
     static final long[] MINE_WB_SHOT_MS = { 3_000L, 2_500L, 2_000L };
     static final double MINE_WB_MELEE_PCT = 0.08, MINE_WB_COUNTER_PCT = 0.008; // 붙어 있는데 안 때릴 때의 한 방 8%, 내가 때릴 때마다 돌아오는 반격 0.8%(초당 두 번쯤)
@@ -2290,6 +2290,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return bm == null ? 1 : S5MineMobs.hp(S5MineMobs.TYPES.get(bm.type), bm.rank);
     }
     /** 거룡이 맞았다 -- 맞기 전 체력 hpBefore, 원래 피해 dealt. 몫으로 바꿔 깎은 뒤의 체력을 돌려준다(몬스터 잠금 안에서 부른다). canKill = 이 공격으로 쓰러뜨려도 되는지(검기는 1에서 멈춤). */
+    // [2026-11-17] "참여 인원이 많을 때 플레이어들에게 공격력 버프 -- 2명 +20%, 3명 +50%, 4명 +100%, 5명 이상 +150%" --
+    //  지금 싸우는 사람(최근 MINE_WB_ACTIVE_MS 안에 때린 사람) 수로, 거룡에게 들어가는 피해(= 몫)에 곱한다. 화면 띠에 표시(mineWbInfo buff).
+    static double mineWbPartyMul(int n) { return n >= 5 ? 2.5 : n == 4 ? 2.0 : n == 3 ? 1.5 : n == 2 ? 1.2 : 1.0; }
+    static int mineWbActive(WbState st, long now) { int act = 0; for (Long t : st.lastHit.values()) if (now - t <= MINE_WB_ACTIVE_MS) act++; return act; }
     int mineWbApply(String userName, int hpBefore, int dealt, long now, boolean canKill) {
         WbState st = MINE_WB;
         WbPool p = MINE_WB_POOL;
@@ -2297,7 +2301,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int atk = Math.max(1, MINE_WB_ATK.computeIfAbsent(userName, u -> { // 참여 버튼 없이 걸어온 사람 -- 처음 때릴 때 한 번
             try { HashMap<String, Object> r = dao.selectMineUser(u); return Math.max(1, mineAtk(mineLv(r), mineRebirth(mineItems(u)))); } catch (Exception e) { return 10_000; }
         }));
-        double units = dealt / (double) atk;
+        st.lastHit.put(userName, now);
+        double units = dealt / (double) atk * mineWbPartyMul(mineWbActive(st, now)); // [2026-11-17] 인원 버프
         if (!p.test && !MINE_WB_SHARE.containsKey(userName)) { // 이번 주기에 앞서 싸운 몫(서버를 다시 켠 뒤 처음) -- 저장된 값에서 이어서
             try { Map<String, Integer> it = mineItems(userName); if (it.getOrDefault(MINE_ITEM_WB_SHARE_CYC, 0) == p.cycle + 1) MINE_WB_SHARE.putIfAbsent(userName, (double) it.getOrDefault(MINE_ITEM_WB_SHARE, 0)); } catch (Exception e) { /* 0부터 */ }
         }
@@ -2696,8 +2701,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             w.put("hp", bs == null ? 1000 : (int) (Math.max(0, bs.hp) * 1000L / mineWbMax()));
             Double my = MINE_WB_SHARE.get(userName);
             if (my != null) w.put("share", (int) Math.min(100, Math.round(my * 100 / mineWbMinShare()))); // 보상 조건을 채운 정도(%)
-            int act = 0;
-            for (Long t : st.lastHit.values()) if (now - t <= MINE_WB_ACTIVE_MS) act++;
+            int act = mineWbActive(st, now);
+            if (mineWbPartyMul(act) > 1) w.put("buff", (int) Math.round((mineWbPartyMul(act) - 1) * 100)); // [2026-11-17] 인원 버프 %
             w.put("n", MINE_WB_SHARE.size());
             w.put("act", act);
             long dn = mineWbDownUntil(userName, now);
@@ -2750,7 +2755,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (MINE_WB_POOL.test) synchronized (MINE_WB_POOL) { MINE_WB_POOL.hp = mineWbMax(); MINE_WB_POOL.killed = false; MINE_WB_SHARE.clear(); } // 일반 공개 전 시험 회차 -- 매번 가득 찬 작은 체력으로
                 if (MINE_WB_POOL.killed) { out.put("message", "🛠️ 이번 맵 주기엔 이미 쓰러뜨렸어요. 맵이 초기화되면 다시 나타나요."); return out; }
                 mineWbForce = Math.max(now, MINE_WB.start + 1); mineWbSync(mineWbForce); // 바로 앞 회차와 같은 밀리초여도 새 회차로
-                out.put("message", "🛠️ 월드보스 시험 회차를 지금 시작했어요(10분, 동쪽 성곽 내성)." + (MINE_WB_POOL.test ? "" : " 체력은 이번 주기에 깎인 그대로예요."));
+                out.put("message", "🛠️ 월드보스 시험 회차를 지금 시작했어요(5분, 동쪽 성곽 내성)." + (MINE_WB_POOL.test ? "" : " 체력은 이번 주기에 깎인 그대로예요."));
             } else { mineWbForce = 0; WbState st = MINE_WB; if (!st.done && !st.killed) mineWbTimeout(st, now); out.put("message", "🛠️ 월드보스 회차를 끝냈어요."); }
             out.put("ok", true);
             return out;
@@ -2758,7 +2763,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> info = mineWbInfo(userName, now);
         out.put("wb", info);
         if (!"join".equals(action)) { out.put("ok", true); return out; }
-        if (info == null) { out.put("message", MINE_WB_OPEN ? "지금은 월드보스가 없어요. 매시 정각에 동쪽 성곽에 나타나요(10분 동안)." : "지금은 월드보스가 없어요."); return out; }
+        if (info == null) { out.put("message", MINE_WB_OPEN ? "지금은 월드보스가 없어요. 매시 정각에 동쪽 성곽에 나타나요(5분 동안)." : "지금은 월드보스가 없어요."); return out; }
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUser(userName);
         if (row == null) return out;
@@ -6036,10 +6041,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-04] "달빛석 + 보스 처치 재화로 검기 강화" -- 속성별 보스 드랍템(땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장,
      *  어둠 = 타락한 대주교의 인장, 나머지는 보스가 생기면). n단계를 배우려면 그 드랍템 2n-1개 + 달빛석 2n-1개(1/3/5/7/9). */
     static final String[] MINE_AURA_BOSS_ITEM = { null, S5MineMap.DESERT_HEART_CODE, S5MineMap.THUNDER_HEART_CODE /* [2026-11-05] 번개 = 천둥 황소 */, null, S5MineMap.ICE_HEART_CODE, S5MineMap.WIND_HEART_CODE /* [2026-11-11] 바람 = 하피 여왕 */, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.SEAL_CODE, null };
-    static int mineAuraCost(int lv) { return 2 * lv - 1; }
+    static int mineAuraCost(int lv) { return Math.max(1, 2 * lv - 2); } // [2026-11-17] "검기나 돌개바람 가격을 조금씩 낮추고" -- 1/3/5/7/9 -> 1/2/4/6/8
     /** [2026-11-04] "달빛석뿐 아니라 세공된 바다의 보석도" -- 속성별 세공 바다 보석(S5MineMap.seaCutCode 번호): 땅 = 자수정, 얼음 = 진주, 불 = 산호석, 어둠 = 흑진주. 같은 개수(2n-1). */
     static final int[] MINE_AURA_SEA = { -1, 2, 3, -1, 0, 0, 1, 4, -1 }; // [2026-11-11] 바람 = 세공 진주(0) // [2026-11-05] 번개 = 세공 바다 보석 3번
-    static final int MINE_AURA_SEA_QTY = 5; // [2026-11-04] "세공 바다 보석은 2n-1 말고 고정 5개"
+    static final int MINE_AURA_SEA_QTY = 4; // [2026-11-17] 5 -> 4 // [2026-11-04] "세공 바다 보석은 2n-1 말고 고정 5개"
     static String mineAuraKey(boolean active, int e) { return (active ? "AURA_A" : "AURA_L") + e; }
     static int[] mineAuraActive(Map<String, Integer> items) {
         int[] a = new int[9];

@@ -2455,7 +2455,7 @@ var TowerMine = (function () {
     var h;
     if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)' + (w.hp != null && w.hp < 1000 ? ' · 남은 체력 ' + Math.max(1, Math.round(w.hp / 10)) + '%' : '');
     else h = '🐉 ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
-        + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '')
+        + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '') + (w.buff ? ' · <b style="color:#ffb04a">💪 공격력 +' + w.buff + '%</b>' : '') /* [2026-11-17] 인원 버프 */
         + (w.share != null ? (w.share >= 100 ? ' · ✅ 보상 조건 달성' : ' · 내 참여 ' + w.share + '%') : '') + ' · ' + mins(w.end - tn) + ' 남음';
     if (!inWb) h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">참여</button>';
     wbBar.innerHTML = h;
@@ -5311,7 +5311,7 @@ var TowerMine = (function () {
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
     var h = npcHead('🌀 ' + (n ? n.name : '검기 사범'), false) + talkBlock(n, n ? n.line : '')
-        + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 (2n-1) + 달빛석 (2n-1) + 세공된 바다 보석 5개 · 달빛석 보유 ' + moon + '</div>';
+        + '<div class="mine-smith-say">단계마다 공격력의 5% 속성 피해(최대 25%), 사거리 +1칸(최대 5칸). n단계 = 보스 드랍템 (2n-2, 1단계는 1) + 달빛석 (2n-2, 1단계는 1) + 세공된 바다 보석 4개 · 달빛석 보유 ' + moon + '</div>';
     // [2026-11-05] 2환생 특전 -- 아직 안 배운 속성 하나를 1단계로 무료(한 번). 속성 버튼을 따로 보여 준다.
     if (au.gift === 1) {
       var gb = '';
@@ -5325,8 +5325,8 @@ var TowerMine = (function () {
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 검기</span> ' + L + '/5';
       if (!b) { h += '<div class="mine-smith-row">' + head + '<small>이 속성의 보스는 아직 없어요 (추가 예정)</small></span><button type="button" data-lack="1" disabled>준비 중</button></div>'; continue; }
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; continue; }
-      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), hs = oreHave(b[2]), ok = hb >= c && moon >= c && hs >= 5;
-      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + ' + ' + ORE_NAME[b[2]] + ' 5 (보유 ' + hs + ') · ' + b[1] + '</small></span>'
+      var c = Math.max(1, 2 * (L + 1) - 2), hb = oreHave(b[0]), hs = oreHave(b[2]), ok = hb >= c && moon >= c && hs >= 4; // [2026-11-17] 비용 낮춤(서버 mineAuraCost)
+      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + ' + ' + ORE_NAME[b[2]] + ' 4 (보유 ' + hs + ') · ' + b[1] + '</small></span>'
           + '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.auraLearn(' + e + ')">배우기</button></div>';
     }
     return h + '<div class="mine-smith-say">배운 단계는 인벤토리 🌀 스킬 탭에서 골라 켜고 끌 수 있어요.</div>';
@@ -5555,13 +5555,13 @@ var TowerMine = (function () {
     var wl = st && st.whirl, moon = oreHave(MOON_G);
     var h = npcHead('🌪️ ' + (n ? n.name : '돌개 사범'), false) + talkBlock(n, n ? n.line : '');
     if (!wl || !st.ult) return h + SK3_LOCK;
-    h += '<div class="mine-smith-say">공격하면 내 둘레 8칸을 한꺼번에 베어요. 단계마다 공격력의 5% 속성 피해(최대 25%). 8속성 모두 배울 수 있어요. n단계 = 보스 드랍템 (2n-1) + 달빛석 (2n-1) + 세공된 바다 보석 5개(보스가 없는 속성은 별빛석 (2n-1) + 달빛석 (2n-1)) · 달빛석 보유 ' + moon + '</div>';
+    h += '<div class="mine-smith-say">공격하면 내 둘레 8칸을 한꺼번에 베어요. 단계마다 공격력의 5% 속성 피해(최대 25%). 8속성 모두 배울 수 있어요. n단계 = 보스 드랍템 (2n-2, 1단계는 1) + 달빛석 (2n-2, 1단계는 1) + 세공된 바다 보석 4개(보스가 없는 속성은 별빛석 (2n-1) + 달빛석 (2n-1)) · 달빛석 보유 ' + moon + '</div>';
     for (var e = 1; e <= 8; e++) {
       var L = (wl.l && wl.l[e]) || 0, b = AURA_BOSS[e] || [6, '보스가 없는 속성 -- 별빛석으로', 0]; // [2026-11-08] "돌개는 모든 속성" -- 보스가 없는 속성은 별빛석 + 달빛석
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 돌개베기</span> ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; continue; }
-      var c = 2 * (L + 1) - 1, hb = oreHave(b[0]), hs = b[2] ? oreHave(b[2]) : 99, ok = hb >= c && moon >= c && hs >= 5;
-      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + (b[2] ? ' + ' + ORE_NAME[b[2]] + ' 5 (보유 ' + hs + ')' : '') + ' · ' + b[1] + '</small></span>'
+      var c = Math.max(1, 2 * (L + 1) - 2), hb = oreHave(b[0]), hs = b[2] ? oreHave(b[2]) : 99, ok = hb >= c && moon >= c && hs >= 4; // [2026-11-17] 비용 낮춤
+      h += '<div class="mine-smith-row"><img src="' + oreIcon(b[0]) + '" alt="">' + head + '<small>' + (L + 1) + '단계: ' + ORE_NAME[b[0]] + ' ' + c + ' (보유 ' + hb + ') + 달빛석 ' + c + (b[2] ? ' + ' + ORE_NAME[b[2]] + ' 4 (보유 ' + hs + ')' : '') + ' · ' + b[1] + '</small></span>'
           + '<button type="button" ' + (ok ? '' : 'data-lack="1" ') + 'onclick="TowerMine.whirlLearn(' + e + ')">배우기</button></div>';
     }
     return h + '<div class="mine-smith-say">배운 단계는 인벤토리 🌀 스킬 탭에서 골라 켜고 끌 수 있어요.</div>';

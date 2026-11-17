@@ -443,6 +443,7 @@ public final class S5MineMobs {
     //  방 몬스터: 1층 = 체력 130만 / 공격 2.4만(예전 1구역 값), 30층까지 층마다 체력 x1.04 / 공격 x1.03, 31층부터 층마다 체력 x1.08 / 공격 x1.06.
     //  수문장(9/19/29/39/49층) = 그 층 방 몬스터의 체력 x9 / 공격 x1.25. 경험치는 체력에 비례(1층 방 몬스터 약 15.5만). 레벨 = 84 + 층.
     static final int TW_GEN_FLOORS = 50, TW_BASE_HP = 1_300_000, TW_BASE_ATK = 24_000;
+    static final double TW_EASE_30 = 0.92; // [2026-11-17]
     static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
     static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
     static int[] TW_BOSS_IDX;
@@ -474,11 +475,11 @@ public final class S5MineMobs {
         java.util.Arrays.fill(bi, -1);
         for (int f = 1; f <= TW_GEN_FLOORS; f++) {
             int blk = Math.min(TW_BLOCK_MOBS.length - 1, (f - 1) / 10);
-            double hp = twHpAt(f), atk = twAtkAt(f);
+            double hp = twHpAt(f), atk = twAtkAt(f), ease = f <= 30 ? TW_EASE_30 : 1.0, hpE = hp * ease, atkE = atk * ease; // [2026-11-17] "탑 30층 이하는 난이도 좀 낮춰줘(아주 조금만)" -- 체력/공격 x0.92(경험치는 그대로)
             if (f % 10 == 9) {
                 String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
-                int bh = (int) Math.min(Integer.MAX_VALUE, Math.round(hp * TW_BOSS_HP));
-                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atk * TW_BOSS_ATK)).expx(bh / (double) TW_BASE_HP).showLv(84 + f).respawn(60_000L);
+                int bh = (int) Math.min(Integer.MAX_VALUE, Math.round(hpE * TW_BOSS_HP));
+                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * TW_BOSS_ATK)).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
                 if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
                 bi[f] = l.size(); l.add(t);
             } else if (f % 10 != 0) {
@@ -486,7 +487,7 @@ public final class S5MineMobs {
                 for (int k = 0; k < 3; k++) {
                     String[] d = TW_BLOCK_MOBS[blk][k];
                     double hk = hp * (k == 2 ? 1.1 : 1.0);
-                    Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk), (int) Math.round(atk)).expx(15 * hk / TW_BASE_HP).showLv(84 + f + (k == 2 ? 1 : 0));
+                    Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk * ease), (int) Math.round(atkE)).expx(15 * hk / TW_BASE_HP).showLv(84 + f + (k == 2 ? 1 : 0));
                     mi[f][k] = l.size(); l.add(t);
                 }
             }
