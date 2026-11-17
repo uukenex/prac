@@ -1638,15 +1638,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MINE_TK_SEA = { 5, 5, 8, 8, 15 }, MINE_TK_SEA_CUT = { 15, 15, 24, 24, 45 }; // [2026-11-16] 세공된 바다 보석(세공 보석 탭) // [2026-11-16] 바다 보석 -- 진주 / 산호석 / 자수정 / 오팔 / 흑진주
     /** 증표로 사는 보석 {코드, 이름, 가격} -- 땅 보석, 다이아몬드, 세공 보석 순. */
     // [2026-11-17] "탑 증표 상점의 보석류(바다 보석, 세공류 포함), 심장도 한정된 개수만 구매 -- 이미 산 건 어쩔 수 없고" -- 물건마다 하루(KST) 한도.
-    //  땅 보석 10 / 다이아몬드 3 / 세공 보석 5 / 바다 보석 5 / 세공 바다 보석 3 / 보스 심장 1. 기록: TKB_<코드> = 날짜(1970년부터 날 수) x 1000 + 오늘 산 개수.
+    //  같은 날 "하루 한도 말고 전체 한도로, 수량도 넉넉히" -- 물건마다 계정 전체 한도(이번 변경부터 센다):
+    //  땅 보석 100 / 다이아몬드 30 / 세공 보석 50 / 바다 보석 50 / 세공 바다 보석 30 / 보스 심장 10. 기록: TKT_<코드> = 지금까지 산 개수.
     static int mineTkLimit(String code) {
-        if (code.endsWith("_HEART")) return 1;
-        if (code.startsWith("CUT_")) { for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.seaCutCode(i).equals(code)) return 3; return 5; }
-        for (String sg : S5MineMap.SEA_GEM_CODES) if (sg.equals(code)) return 5;
-        return S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND].equals(code) ? 3 : 10;
+        if (code.endsWith("_HEART")) return 10;
+        if (code.startsWith("CUT_")) { for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.seaCutCode(i).equals(code)) return 30; return 50; }
+        for (String sg : S5MineMap.SEA_GEM_CODES) if (sg.equals(code)) return 50;
+        return S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND].equals(code) ? 30 : 100;
     }
-    static int mineTkDay(long now) { return (int) ((now + 9 * 3_600_000L) / 86_400_000L); }
-    static int mineTkBought(Map<String, Integer> items, String code, long now) { int v = items.getOrDefault("TKB_" + code, 0); return v / 1000 == mineTkDay(now) ? v % 1000 : 0; }
+    static int mineTkBought(Map<String, Integer> items, String code, long now) { return items.getOrDefault("TKT_" + code, 0); }
     static List<Object[]> mineTokenGems() {
         List<Object[]> l = new ArrayList<>();
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.GEM_CODES[i], S5MineMap.GEM_NAMES[i], MINE_TK_GEM });
@@ -1799,14 +1799,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             for (Object[] q : mineTokenGems()) if (q[0].equals(code)) gm = q;
             if (gm == null) { out.put("message", "그런 보석은 팔지 않아요."); return out; }
             int n = Math.max(1, Math.min(100, grade)), bought = mineTkBought(items, code, System.currentTimeMillis()), lim = mineTkLimit(code);
-            if (bought + n > lim) { out.put("message", "🛒 " + gm[1] + "은(는) 하루 " + lim + "개까지만 살 수 있어요. (오늘 " + bought + "/" + lim + (bought < lim ? " -- " + (lim - bought) + "개 더" : "") + ")"); return out; }
+            if (bought + n > lim) { out.put("message", "🛒 " + gm[1] + "은(는) 모두 " + lim + "개까지만 살 수 있어요. (지금까지 " + bought + "/" + lim + (bought < lim ? " -- " + (lim - bought) + "개 더" : "") + ")"); return out; }
             int price = (Integer) gm[2] * n;
             if (have < price || dao.takeUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, price) == 0) { out.put("message", "🗼 " + S5MineMap.TOWER_TOKEN_NAME + "이(가) " + price + "개 있어야 해요. (보유 " + have + ")"); return out; }
             have -= price;
             dao.addUserOre(userName, code, n);
-            dao.upsertMineItem(userName, "TKB_" + code, mineTkDay(System.currentTimeMillis()) * 1000 + bought + n); items.put("TKB_" + code, mineTkDay(System.currentTimeMillis()) * 1000 + bought + n);
+            dao.upsertMineItem(userName, "TKT_" + code, bought + n); items.put("TKT_" + code, bought + n);
             out.put("ok", true);
-            out.put("message", "💎 " + gm[1] + " " + n + "개를 샀어요. (증표 -" + price + " · 오늘 " + (bought + n) + "/" + lim + ")");
+            out.put("message", "💎 " + gm[1] + " " + n + "개를 샀어요. (증표 -" + price + " · 구매 " + (bought + n) + "/" + lim + ")");
         }
         List<HashMap<String, Object>> inv = new ArrayList<>(); // 가진 동료 장비(★ 높은 것부터) -- [2026-11-17] 무기/투구/갑옷은 직업 구분 없이 합쳐서 지금 용병 직업 이름으로
         int curC = Math.max(0, Math.min(2, items.getOrDefault(MINE_ITEM_MERC_ON, 1) - 1));
