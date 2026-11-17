@@ -2504,9 +2504,10 @@ var TowerMine = (function () {
       h += '<div class="mine-smith-say" style="border:1px solid #7ad8a0"><b>' + (isHeart ? '❤️ 보스 심장' : isCut ? '✨ 세공 보석 사기' : '💎 보석 사기') + '</b> <small>원하는 ' + (isHeart ? '보스의 심장' : isCut ? '세공된 보석' : '보석') + '을 골라 증표로 바꿔요.</small>';
       (d.gems || []).filter(function (g) { return isHeart ? heartCode(g.code) : !heartCode(g.code) && (g.code.indexOf('CUT_') === 0) === isCut; }).forEach(function (g) {
         var o = (st.ores || []).filter(function (q) { return q.code === g.code; })[0];
-        h += '<div class="mine-smith-row"><span class="nm">' + (o ? '<img src="' + oreIcon(o.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' : '') + escAttr(g.name) + ' · 증표 ' + g.price + '<small>보유 ' + (o ? o.qty : 0) + '개</small></span>'
-            + '<button type="button"' + (d.have < g.price ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',1)">1개</button>'
-            + '<button type="button"' + (d.have < g.price * 10 ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',10)">10개</button></div>';
+        var left = g.lim ? Math.max(0, g.lim - (g.bought | 0)) : 99, n10 = Math.min(10, left); // [2026-11-17] 하루 한도
+        h += '<div class="mine-smith-row"><span class="nm">' + (o ? '<img src="' + oreIcon(o.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' : '') + escAttr(g.name) + ' · 증표 ' + g.price + '<small>보유 ' + (o ? o.qty : 0) + '개' + (g.lim ? ' · 오늘 ' + (g.bought | 0) + '/' + g.lim : '') + '</small></span>'
+            + '<button type="button"' + (left < 1 ? ' disabled' : d.have < g.price ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',1)">1개</button>'
+            + (n10 > 1 ? '<button type="button"' + (d.have < g.price * n10 ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',' + n10 + ')">' + n10 + '개</button>' : '') + '</div>';
       });
       return h + '</div>';
     }

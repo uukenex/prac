@@ -1562,6 +1562,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 오늘 쓰러뜨린 수문장 수(날짜가 바뀌면 0). */
     static int mineTwBossToday(Map<String, Integer> items, long now) { return items.getOrDefault(MINE_ITEM_TWB_DAY, 0) == mineToday(now) ? items.getOrDefault(MINE_ITEM_TWB_CNT, 0) : 0; }
     /** 탑의 증표 n개 -- 안내 글자. */
+    /** [2026-11-17] "증표 보상 구간을 고층엔 더 많이" -- 1~10층 x1, 11~20층 x2, 21~30층 x3, 31~40층 x4, 41~50층 x5. */
+    static int mineTwTokenMul(int f) { return 1 + Math.max(0, f - 1) / 10; }
     String mineTowerToken(String userName, int n) {
         dao.addUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, n);
         return "🗼 " + S5MineMap.TOWER_TOKEN_NAME + " +" + n;
@@ -1590,7 +1592,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!t.boss) {
                 TwRun run = MINE_TW_RUN.get(userName); // [2026-11-16] 방을 지키던 몬스터 -- 이제 오른쪽 문이 열린다
                 if (run != null && run.mobId == mob.id) run.mobId = -1;
-                return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL) + " 🚪 오른쪽 문이 열렸어요.";
+                return " · " + mineTowerToken(userName, MINE_TW_TOKEN_KILL * mineTwTokenMul(f)) + " 🚪 오른쪽 문이 열렸어요.";
             }
             long now = System.currentTimeMillis();
             int day = mineToday(now);
@@ -1612,7 +1614,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
                     StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
                     for (int q = 0; q < MINE_TW_SEA_BOSS; q++) { int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length); dao.addUserOre(u, S5MineMap.SEA_GEM_CODES[sg], 1); sea.append(" · 🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]); }
-                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS) + sea + (first ? " (첫 처치!)" : " (오늘 반복 보상 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")")
+                    txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS * mineTwTokenMul(f)) + sea + (first ? " (첫 처치!)" : " (오늘 반복 보상 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")")
                             + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요." : "");
                 }
                 if (u.equals(userName)) m.append(txt);
@@ -1635,6 +1637,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_TK_GEM = 3, MINE_TK_DIAMOND = 12, MINE_TK_CUT = 10;
     static final int[] MINE_TK_SEA = { 5, 5, 8, 8, 15 }, MINE_TK_SEA_CUT = { 15, 15, 24, 24, 45 }; // [2026-11-16] 세공된 바다 보석(세공 보석 탭) // [2026-11-16] 바다 보석 -- 진주 / 산호석 / 자수정 / 오팔 / 흑진주
     /** 증표로 사는 보석 {코드, 이름, 가격} -- 땅 보석, 다이아몬드, 세공 보석 순. */
+    // [2026-11-17] "탑 증표 상점의 보석류(바다 보석, 세공류 포함), 심장도 한정된 개수만 구매 -- 이미 산 건 어쩔 수 없고" -- 물건마다 하루(KST) 한도.
+    //  땅 보석 10 / 다이아몬드 3 / 세공 보석 5 / 바다 보석 5 / 세공 바다 보석 3 / 보스 심장 1. 기록: TKB_<코드> = 날짜(1970년부터 날 수) x 1000 + 오늘 산 개수.
+    static int mineTkLimit(String code) {
+        if (code.endsWith("_HEART")) return 1;
+        if (code.startsWith("CUT_")) { for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) if (S5MineMap.seaCutCode(i).equals(code)) return 3; return 5; }
+        for (String sg : S5MineMap.SEA_GEM_CODES) if (sg.equals(code)) return 5;
+        return S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND].equals(code) ? 3 : 10;
+    }
+    static int mineTkDay(long now) { return (int) ((now + 9 * 3_600_000L) / 86_400_000L); }
+    static int mineTkBought(Map<String, Integer> items, String code, long now) { int v = items.getOrDefault("TKB_" + code, 0); return v / 1000 == mineTkDay(now) ? v % 1000 : 0; }
     static List<Object[]> mineTokenGems() {
         List<Object[]> l = new ArrayList<>();
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.GEM_CODES[i], S5MineMap.GEM_NAMES[i], MINE_TK_GEM });
@@ -1786,12 +1798,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             Object[] gm = null;
             for (Object[] q : mineTokenGems()) if (q[0].equals(code)) gm = q;
             if (gm == null) { out.put("message", "그런 보석은 팔지 않아요."); return out; }
-            int n = Math.max(1, Math.min(100, grade)), price = (Integer) gm[2] * n;
+            int n = Math.max(1, Math.min(100, grade)), bought = mineTkBought(items, code, System.currentTimeMillis()), lim = mineTkLimit(code);
+            if (bought + n > lim) { out.put("message", "🛒 " + gm[1] + "은(는) 하루 " + lim + "개까지만 살 수 있어요. (오늘 " + bought + "/" + lim + (bought < lim ? " -- " + (lim - bought) + "개 더" : "") + ")"); return out; }
+            int price = (Integer) gm[2] * n;
             if (have < price || dao.takeUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, price) == 0) { out.put("message", "🗼 " + S5MineMap.TOWER_TOKEN_NAME + "이(가) " + price + "개 있어야 해요. (보유 " + have + ")"); return out; }
             have -= price;
             dao.addUserOre(userName, code, n);
+            dao.upsertMineItem(userName, "TKB_" + code, mineTkDay(System.currentTimeMillis()) * 1000 + bought + n); items.put("TKB_" + code, mineTkDay(System.currentTimeMillis()) * 1000 + bought + n);
             out.put("ok", true);
-            out.put("message", "💎 " + gm[1] + " " + n + "개를 샀어요. (증표 -" + price + ")");
+            out.put("message", "💎 " + gm[1] + " " + n + "개를 샀어요. (증표 -" + price + " · 오늘 " + (bought + n) + "/" + lim + ")");
         }
         List<HashMap<String, Object>> inv = new ArrayList<>(); // 가진 동료 장비(★ 높은 것부터) -- [2026-11-17] 무기/투구/갑옷은 직업 구분 없이 합쳐서 지금 용병 직업 이름으로
         int curC = Math.max(0, Math.min(2, items.getOrDefault(MINE_ITEM_MERC_ON, 1) - 1));
@@ -1819,7 +1834,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("tiers", tiers);
         List<HashMap<String, Object>> gems = new ArrayList<>(); // [2026-11-15] 증표로 사는 보석
-        for (Object[] q : mineTokenGems()) { HashMap<String, Object> m = new HashMap<>(); m.put("code", q[0]); m.put("name", q[1]); m.put("price", q[2]); gems.add(m); }
+        for (Object[] q : mineTokenGems()) { HashMap<String, Object> m = new HashMap<>(); m.put("code", q[0]); m.put("name", q[1]); m.put("price", q[2]); m.put("lim", mineTkLimit((String) q[0])); m.put("bought", mineTkBought(items, (String) q[0], System.currentTimeMillis())); gems.add(m); } // [2026-11-17] 하루 한도
         out.put("gems", gems);
         out.put("have", have);
         out.put("mercs", mineMercCards(items));
@@ -2015,11 +2030,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 fxDrops.add(mineDrop(S5MineMap.GEM_GRADE_BASE + g2, S5MineMap.GEM_NAMES[g2], 1));
                 msg.append("📦 보물 상자! 💎 ").append(S5MineMap.GEM_NAMES[g1]).append(" · 💎 ").append(S5MineMap.GEM_NAMES[g2]);
                 if (RND.nextInt(100) < 25) { dao.addUserOre(userName, S5MineMap.MOON_STONE_CODE, 1); msg.append(" · 🌙 달빛석"); fxDrops.add(mineDrop(S5MineMap.MOON_STONE_GRADE, S5MineMap.MOON_STONE_NAME, 1)); }
-                msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST));
-                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_CHEST));
+                msg.append(" · ").append(mineTowerToken(userName, MINE_TW_TOKEN_CHEST * mineTwTokenMul(f)));
+                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_CHEST * mineTwTokenMul(f)));
             } else if (ty == 'P') {
-                msg.append("🗼 증표가 놓인 방! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE));
-                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_TILE));
+                msg.append("🗼 증표가 놓인 방! ").append(mineTowerToken(userName, MINE_TW_TOKEN_TILE * mineTwTokenMul(f)));
+                fxDrops.add(mineDrop(S5MineMap.TOWER_TOKEN_GRADE, S5MineMap.TOWER_TOKEN_NAME, MINE_TW_TOKEN_TILE * mineTwTokenMul(f)));
             } else if (ty == 'X') { // [2026-11-16] 들어설 때 한 번에 깎지 않고 가시를 밟을 때마다(mineTwSpikeHit)
                 msg.append("⚠️ 함정방! 바닥에 가시가 솟아 있어요. 밟을 때마다 체력이 깎여요.");
             } else if (ty == 'L') {
