@@ -991,6 +991,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_HP_LOCK = "HP_LOCK";
     static final int MINE_HP_LOCK_MAX = 5;
 
+    /** [2026-11-17] 갑옷 체력까지 더한 최대 체력(잠금 전) -- 체력바 100%, 거룡의 최대 체력 % 공격("늘어난 체력만큼 거룡 상향"). */
+    static int mineHpFull(int lv, int rb) { String hu = MINE_CTX.get(); return mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0)); }
     static int mineHpCap(int lv, int lock, int rb) { String hu = MINE_CTX.get(); return Math.max(1, (mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0))) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
 
     /** 쓰러진 뒤 붙이는 안내(잠금이 늘었을 때만). */
@@ -1088,7 +1090,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         c.put("regenFight", MINE_REGEN_FIGHT_MUL);
         c.put("regenSafe", MINE_REGEN_SAFE_MUL);
         c.put("hpMax", mineHpCap(lv, lock, rb)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
-        c.put("hpBase", mineHpMax(lv, rb));
+        c.put("hpBase", mineHpFull(lv, rb)); // [2026-11-17] 갑옷 체력까지(넘치던 체력바)
         c.put("hpLock", Math.min(MINE_HP_LOCK_MAX, lock) * 10);
         return c;
     }
@@ -2856,7 +2858,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap.Mob bm = mineBossOf(a);
         for (int k = 0; k < 4; k++) {
             if (!hit[k]) continue;
-            int d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * MINE_WB_PAT_PCT[k]));
+            int d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_PAT_PCT[k])); // [2026-11-17] 갑옷 체력까지
             sum += d;
             HashMap<String, Object> h = new HashMap<>();
             h.put("mobId", bm == null ? -1 : bm.id);
@@ -3446,7 +3448,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         MINE_RANGED_NEXT.put(userName, now + (wbBoss ? MINE_WB_SHOT_MS[mineWbStage()] : harpyBoss ? (harpyMoving && mineHarpyNow(map, now)[2] != 1 ? MINE_HARPY_SHOT_MS : MINE_HARPY_HIDE_SHOT_MS)
                                 : pharaoh ? MINE_PHARAOH_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
-                        if (wbBoss) d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (0.9 + RND.nextDouble() * 0.2)));
+                        if (wbBoss) d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (0.9 + RND.nextDouble() * 0.2)));
                         dmgSum += d;
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
                         HashMap<String, Object> h = new HashMap<>();
@@ -3485,7 +3487,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 boolean shatterNow = iceHeld && id == boss.id; // [2026-10-30] 언 사람에게 닿는 순간(공격 간격 대기 없이) 즉사
                 if (dist <= 1 && !splitting && !type.venom && (shatterNow || last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) {
                     int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * mineNightAtk(map, type, now) * mineBoroMul(map.mobs().get(id).type, now) * (0.8 + RND.nextDouble() * 0.4)))); // [2026-11-05] 마물의 숲 밤 2배 // [2026-10-29] 개체 단계, [2026-10-26] 방한 외투 = 2배([2026-10-28] 갑옷 1.5배)
-                    if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * MINE_WB_MELEE_PCT)); // [2026-11-15] 월드보스 근접 = 최대 체력 %
+                    if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_MELEE_PCT)); // [2026-11-15] 월드보스 근접 = 최대 체력 %
                     boolean twHeavy = false, twStun = false;
                     int twF = type.boss ? S5MineMap.towerFloor(map.id) : 0;
                     if (twF > 0) { // [2026-11-15] 탑 수문장 = 시즌5 보스 패턴 -- 강타(시즌5 보스 반격 x1.6: 네 번째마다, 29층부터 세 번째마다), 29층부터 기절(시즌5 구역 3+ 보스의 기절 20%)
@@ -4188,7 +4190,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     s.fy = hitCell / map.w;
                     s.frozenUntil = now + MINE_MOB_FREEZE_MS;
                     counter = type.venom ? 0 : Math.max(1, (int) Math.round(S5MineMobs.atk(type, mob.rank) * mineNightAtk(map, type, now) * mineBoroMul(mob.type, now) * (0.8 + RND.nextDouble() * 0.4))); // [2026-10-30] "여왕개미는 원거리만" -- 근접 반격 없음(독산만)
-                    if (mob.type == S5MineMobs.WB_BOSS_TYPE) counter = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * MINE_WB_COUNTER_PCT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-15] 거룡의 반격 = 최대 체력 %(공격 수치 3만을 그대로 쓰면 누구든 두 대에 쓰러진다)
+                    if (mob.type == S5MineMobs.WB_BOSS_TYPE) counter = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_COUNTER_PCT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-15] 거룡의 반격 = 최대 체력 %(공격 수치 3만을 그대로 쓰면 누구든 두 대에 쓰러진다)
                     if (s.stealth) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
                     if (type.boss && S5MineMap.towerFloor(map.id) > 0) { // [2026-11-15] 탑 수문장 -- 반격에도 시즌5 패턴(강타 / 29층부터 기절)
                         int[] ts = mineTwStrike(userName, S5MineMap.towerFloor(map.id), s, counter, now);
