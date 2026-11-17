@@ -1691,7 +1691,7 @@ var TowerMine = (function () {
     updEnch();
     st.combat = c; combatT0 = Date.now(); renderHp();
     // [2026-10-28] 환생 가능(99레벨 경험치 가득) -- 화면을 연 뒤 처음 한 번만 안내(잡는 순간엔 서버 처치 메시지에도 같은 안내가 붙는다)
-    if (c.rebirthReady && !rbHintShown) { rbHintShown = true; msg('✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.', 4200); }
+    // [2026-11-17] "진환생은 선택 -- 강제하는 버튼이나 안내는 없게": 환생 가능 안내(알림/띠/체력바 꼬리표)를 없앴다. 환생은 성당 신부 창에서만.
   }
   var rbHintShown = false;
   /** [2026-10-28] "Lv.1(환생1)" -- 칸이 좁으면(체력 숫자가 길면) "Lv.1✦1"로 줄인다(마우스를 올리면 전체). */
@@ -1727,14 +1727,14 @@ var TowerMine = (function () {
     if (el.hp._k === key) return;
     el.hp._k = key;
     el.hp.title = (rb ? 'Lv.' + c.lv + '(' + rbName(rb) + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
-        + (ready ? ' -- 환생 가능! 왕도 12시 방향 성당 신부님께' : '');
+        ;
     // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
     // [2026-11-05] "체력바 옆 숫자가 UI를 넘어온다" -- 환생 안 한 사람도 넘치면 줄이고(예전엔 환생한 사람만), 1.2만 -> "12.3k", 그래도 넘치면 "1.4M"
     for (var fit = 0; fit < 4; fit++) {
       var hs = fit === 3 && h >= 1000000 ? (h / 1000000).toFixed(h < 10000000 ? 1 : 0) + 'M' : fit >= 2 && h >= 10000 ? (h / 1000).toFixed(h < 100000 ? 1 : 0) + 'k' : String(h);
       el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
-          + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex' + (ready ? ' ready' : '') + '"><i style="width:' + ep + '%"></i></span>'
-          + (ready ? '<span class="hp-rb">✨ 환생 가능!</span>' : '');
+          + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>'
+          ;
       var hl = el.hp.firstChild;
       if (!hl || hl.scrollWidth <= hl.clientWidth + 1) break;
     }
@@ -3400,7 +3400,7 @@ var TowerMine = (function () {
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
     var line = ready ? '때가 되었군요. 수많은 고비를 넘은 영혼이여, 원한다면 여신의 이름으로 새 날개를 달아 다시 태어나게 해 드리지요.' : (n ? n.line : '');
-    var rbSub = rb >= RB_MAX ? rbStage(RB_MAX) + ' 완료' : ready ? (rb >= RB_BASE ? '지금 진환생할 수 있어요!' : '지금 환생할 수 있어요!') : 'Lv.99 + 경험치 가득일 때';
+    var rbSub = rb >= RB_MAX ? rbStage(RB_MAX) + ' 완료' : ready ? (rb >= RB_BASE ? '지금 진환생할 수 있어요!' : '지금 환생할 수 있어요!') : 'Lv.100 이상일 때(원할 때만)';
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
         + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
@@ -5264,7 +5264,6 @@ var TowerMine = (function () {
       auraShow(d, P.x, P.y, t);
       if (d.combat) setCombat(d.combat);
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
-      if (d.rebirthReadyNow) { rbHintShown = true; flashT0 = t; banner = { text: '✨ 환생 가능! 왕도 성당 신부님께', t0: t }; }
       if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
     }).catch(function () { atkBusy = false; });
   }
@@ -5675,7 +5674,6 @@ var TowerMine = (function () {
         if (d.bossKilled || d.shrineKey || (d.ninjaKills && d.ninjaKills % 10 === 0)) msg(d.message || '', 3600); // [2026-11-05] 처치 문구는 왼쪽 경험치 줄로(auraShow) -- 보스 처치/신궁 열쇠/수색 진행만 가운데에
       }
       if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
-      if (d.rebirthReadyNow) { rbHintShown = true; flashT0 = t; banner = { text: '✨ 환생 가능! 왕도 성당 신부님께', t0: t }; } // [2026-10-28] 99레벨 경험치가 방금 가득
       // [2026-10-25] 최대 체력 잠금 -- 새 전투마다 10%(최대 50%), 레벨업하면 풀림
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: t + 300 });
       if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);

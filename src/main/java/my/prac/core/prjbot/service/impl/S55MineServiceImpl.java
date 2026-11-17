@@ -867,7 +867,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
     /** [2026-10-30] "체력이 과하다 -- 환생당 +50%로" -- x (1 + rb)(5환생 x6)에서 x (1 + 0.5 rb)(5환생 x3.5). */
     static final double MINE_RB_HP_BONUS = 0.5;
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    // [2026-11-17] "99레벨 이후도 조금씩 더 강해지게, 진환생 전에도 99레벨 이후 레벨업 가능, 진환생은 선택(강제하는 버튼/안내 없게)" --
+    //  99레벨을 넘으면 레벨마다 99레벨 체력/공격력의 MINE_LV_OVER_PCT%씩 더(환생 횟수와 상관없이). 5환생까지도 99에서 멈추지 않고 계속 오른다(mineExpAdd).
+    static final double MINE_LV_OVER_PCT = 1.0;
+    static double mineLvOver(int lv) { return 1 + MINE_LV_OVER_PCT / 100.0 * Math.max(0, lv - MINE_LV_MAX); }
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb) * mineLvOver(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
     // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -> 같은 날 "99레벨은 16만, 그 아래는 그에 맞게 더 올리고, 80레벨부터 1만 정도씩"
     //  -- 80레벨 50,000 -> 99레벨 160,000 직선(레벨마다 약 +5,789 -- 99레벨 16만에서 1만씩이면 80레벨이 음수라 가능한 만큼 크게).
     //  79 -> 80에서 갑자기 뛰지 않게 71~79레벨은 70레벨 값(15,293)에서 80레벨 값까지 같은 배율(레벨마다 약 x1.126)로 잇는다. 70레벨까지는 그대로(레벨마다 9%).
@@ -889,7 +893,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-07] "플레이어 공격력도 용병과 비슷한 곡선(노환생 기준)" -- 80레벨까지는 그대로(레벨마다 9% + 계단식 너프), 80 -> 99는 직선으로 완만하게(80레벨 값 -> 99레벨 10,000).
     static final double MINE_ATK_LV99 = 10_000;
     static double mineAtkExp(int lv) { return 6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv); }
-    static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round(a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0); }
+    static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round((a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0) * mineLvOver(lv)); } // [2026-11-17] 99 넘으면 레벨마다 +1%
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
@@ -912,8 +916,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long exp0 = exp;
         if (rb <= MINE_REBIRTH_BASE) {
             exp += gain;
-            while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; }
-            if (lv >= MINE_LV_MAX) exp = Math.min(exp, mineExpNeed(MINE_LV_MAX, rb)); // [2026-10-28] 99레벨에선 다음 레벨 필요치(= 환생 조건)에서 멈춘다
+            while (lv < MINE_LV_TRUE_MAX && exp >= mineExpNeed(lv, rb)) { exp -= mineExpNeed(lv, rb); lv++; up++; } // [2026-11-17] 99에서 멈추지 않는다(환생은 선택) -- 99 넘어서도 필요 경험치는 레벨마다 1.12배
+            if (lv >= MINE_LV_TRUE_MAX) exp = Math.min(exp, mineExpNeed(lv, rb) - 1);
             return new long[] { lv, exp, up, mineExpReal(lv0, exp0, lv, exp, rb) };
         }
         double raw = gain; // 진환생 -- 나누기 전 경험치로 다음 레벨까지 남은 만큼씩 쓴다
@@ -4067,7 +4071,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.merge("expReal", expReal, (p, q) -> (Long) p + (Long) q);
             msg.append("⚔️ ").append(type.name).append("을(를) 쓰러뜨렸어요!").append(expReal > 0 ? " 경험치 +" + expReal + (mindPct > 0 ? " (📿+" + mindPct + "%)" : "") : "");
             if (levelUp > 0) msg.append(" 🎉 레벨 업! Lv.").append(lv);
-            if (out.containsKey("rebirthReadyNow")) msg.append(" ✨ 경험치가 가득 찼어요! 왕도 12시 방향 성당의 신부님께 가면 환생할 수 있어요.");
             out.put("expGain", expReal);
             if (mob.type == S5MineMobs.RAID_BOSS_TYPE) { // [2026-10-28] 타락한 대주교 처치 -- 이번 주기엔 다시 안 나온다(DB 기록), 마법/소환 멈춤
                 mineRaidAwakeUntil = 0;
@@ -9377,7 +9380,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!S5MineMap.CITY.equals(mineMapOf(row).id)) { out.put("message", "🙏 성당 신부: 환생 의식은 왕도 성당에서만 올릴 수 있어요."); return out; }
         if (rb >= MINE_REBIRTH_MAX) { out.put("message", "🙏 성당 신부: 이미 " + mineRbName(MINE_REBIRTH_MAX) + "까지 마쳤어요. 더 오를 곳이 없답니다."); return out; }
         if (!mineRebirthReady(lv, exp, rb)) {
-            out.put("message", "🙏 성당 신부: 아직 때가 아니에요. Lv." + MINE_LV_MAX + "에서 경험치를 가득 채우면 다시 오세요. (지금 Lv." + lv
+            out.put("message", "🙏 성당 신부: 아직 때가 아니에요. Lv." + (MINE_LV_MAX + 1) + " 이상이 되면 원할 때 다시 오세요. (지금 Lv." + lv
                     + (lv >= MINE_LV_MAX ? ", 경험치 " + exp + " / " + mineExpNeed(MINE_LV_MAX, rb) : "") + ")");
             return out;
         }
