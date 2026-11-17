@@ -2524,6 +2524,31 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-16] 악마(악마의 들판) 기술 -- 나와 싸우는 동안(전투 턴마다): 2칸 넘게 떨어지면 MINE_DEMON_BLINK_MS마다 내 곁으로 순간이동,
     //  MINE_DEMON_FIRE_MS마다 내 발밑에 지옥불(예고 1.8초, 3x3 -- 마도사는 둘레 세 곳 더, 발록은 5x5), 발록은 지면 강타(둘레 3칸 + 기절)도.
     static final int MINE_DEMON_NEED_FLOOR = 29;
+    // ---- [2026-11-17] "보스전이 있는 장소에서 보스전이 시작되면, 그 맵에 몇 명 있는지에 따라 '우리는 하나' 버프를 보여 주고 얼마나 강해졌는지 띄우기,
+    //  체력도 배수로(초보일 때는 더 많이)" -- 보스 맵(보스가 깨어 싸우는 중: 누군가를 노리거나 30초 안에 맞음)에 2명 이상 있으면 모두에게:
+    //  공격력 +20 / 50 / 100 / 150%(2 / 3 / 4 / 5명 이상 -- 월드보스 인원 버프와 같은 표, 월드보스 싸움터는 그쪽 것만), 체력 x(1 + 0.2 x (인원 - 1), 최대 +80%),
+    //  체력 몫은 Lv.50 이하 x2, Lv.51~80 x1.5. 체력은 받는 피해를 그만큼 나눠서(mineCoatHit / 장판) -- 최대 체력 숫자는 그대로. 위치 알림(1초)이 다시 잰다(MINE_UNITY_MS 동안 유효).
+    static final long MINE_UNITY_MS = 3_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, double[]> MINE_UNITY = new java.util.concurrent.ConcurrentHashMap<>(); // {공격 배수, 체력 배수, 끝나는 시각, 인원}
+    static double mineUnityAtk(String u) { double[] v = u == null ? null : MINE_UNITY.get(u); return v != null && v[2] > System.currentTimeMillis() ? v[0] : 1.0; }
+    static double mineUnityHp(String u) { double[] v = u == null ? null : MINE_UNITY.get(u); return v != null && v[2] > System.currentTimeMillis() ? v[1] : 1.0; }
+    HashMap<String, Object> mineUnityCalc(String userName, String mapId, long now) {
+        S5MineMap map = S5MineMap.get(mapId);
+        if (map == null || map.solo() || S5MineMap.CASTLE.equals(mapId)) { MINE_UNITY.remove(userName); return null; }
+        S5MineMap.Mob bm = mineBossOf(map);
+        MobState bs = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
+        boolean fight = bs != null && bs.deadUntil <= now && (bs.target != null || now - bs.lastHitAt < 30_000L);
+        int n = 0;
+        if (fight) for (MinePresence p : MINE_PRESENCE.values()) if (mapId.equals(p.mapId) && now - p.at <= MINE_PRESENCE_TTL_MS) n++;
+        if (!fight || n < 2) { MINE_UNITY.remove(userName); return null; }
+        int lv = 99;
+        try { HashMap<String, Object> r = dao.selectMineUser(userName); if (r != null) lv = mineLv(r); } catch (Exception ignore) { }
+        double atk = mineWbPartyMul(n), hpB = Math.min(0.8, 0.2 * (n - 1)) * (lv <= 50 ? 2.0 : lv <= 80 ? 1.5 : 1.0), hp = 1 + hpB;
+        MINE_UNITY.put(userName, new double[] { atk, hp, now + MINE_UNITY_MS, n });
+        HashMap<String, Object> u = new HashMap<>();
+        u.put("n", n); u.put("atk", (int) Math.round((atk - 1) * 100)); u.put("hp", Math.round(hp * 10) / 10.0); u.put("boss", S5MineMobs.TYPES.get(bm.type).name);
+        return u;
+    }
     // ---- [2026-11-17] 심판자 보로네오 -- 검과 망치를 MINE_BORO_SWAP_MS마다 번갈아 든다(서버 시각으로 정해져 화면과 같다).
     //  검: 성광 베기(내 쪽으로 이어지는 빛의 칼날 세 칸, 1.3초 예고, 16%), 망치: 대지 분쇄(보스 둘레 2칸, 1.6초 예고, 22% + 기절 1.2초) + 반격·근접 x1.4.
     //  언제나: 심판의 빛(내 발밑과 둘레 곳곳 3x3 빛기둥, 1.8초 예고, 15%), 천사 강림(천사 셋~다섯이 내 둘레에 내려와 창을 내리꽂고 사라진다, 2초 예고, 12%).
@@ -2755,7 +2780,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap.Mob bm = mineBossOf(map);
         for (int k = 0; k < best.length; k++) {
             if (best[k] <= 0) continue;
-            int d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * best[k] / 1000.0));
+            int d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * best[k] / 1000.0 / mineUnityHp(userName))); // [2026-11-17] 우리는 하나
             sum += d;
             HashMap<String, Object> h = new HashMap<>();
             h.put("mobId", bm == null ? -1 : bm.id);
@@ -4025,7 +4050,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         final boolean[] twStunHit = { false }; // [2026-11-15] 탑 수문장 반격의 기절(회피 판정 뒤에 건다)
         int[] aura = mineAuraActive(items); // [2026-11-04] 검기 -- 바로 앞(때린) 적에게도 속성 피해
         int auraRange = mineAuraRange(aura);
-        double atkBase = mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items);
+        double atkBase = mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items);
         List<int[]> auraMain = null;
         boolean assassin = MINE_ITEM_ASSASSIN_NECKLACE.equals(mineNeckCode(items)), assassinHit = false; // [2026-10-30] 자객의 목걸이
         // [2026-10-28] 닌자 -- evade = 은신으로 피함(피해 0, 반격 없음, 다음 한 방 2배), stealthHit = 은신했던 닌자의 2배 반격,
@@ -4050,9 +4075,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round((mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
+            dmg = Math.max(1, (int) Math.round((mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
             if (MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(items))) { // [2026-10-30] 쌍격의 장갑 -- 55%씩 두 번(타격마다 치명 15%), 화면엔 숫자 두 개
-                double base = (mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items)) * mineElemMul(items, type) * mineTwinPct(items);
+                double base = (mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items)) * mineElemMul(items, type) * mineTwinPct(items);
                 int[] hs = new int[2]; boolean[] cs = new boolean[2];
                 for (int hi = 0; hi < 2; hi++) { cs[hi] = RND.nextInt(100) < 10 + mineTwinCrit(items); hs[hi] = Math.max(1, (int) Math.round(base * (0.85 + RND.nextDouble() * 0.3) * (cs[hi] ? 1.6 : 1.0))); }
                 dmg = hs[0] + hs[1];
@@ -5926,6 +5951,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 외투를 입었을 때 받는 피해(2배, 3단계 갑옷은 1.5배). */
     static int mineCoatHit(Map<String, Integer> items, int v) {
+        v = (int) Math.max(1, Math.round(v / mineUnityHp(MINE_CTX.get()))); // [2026-11-17] 우리는 하나 -- 체력 배수만큼 덜 아프다
         int d = mineCoatDef(items);
         int r = d <= 0 ? v : (int) Math.round(v * (d >= 3 ? 1.5 : 2.0));
         int ad = r > 0 ? mineArmorDef(items) : 0; // [2026-11-06] 갑옷 -- 받는 피해 고정 감소(최소 1)
@@ -6901,7 +6927,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         int hp = mineHpNow(row, now, lock, rb);
-        final double atkBase = mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), pct = mineUltPct(k, ulv);
+        final double atkBase = mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), pct = mineUltPct(k, ulv);
         java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
         int maxT;
         if (k == 0) {
@@ -7035,8 +7061,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int hp = mineHpNow(row, now, lock, rb);
         mineBerserkLow(items, hp, mineHpMax(lv, rb)); // [2026-11-04] 광전사의 장갑 2단계
         StringBuilder msg = new StringBuilder();
-        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
-        long[] wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
+        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
+        long[] wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
         r = new long[] { r[0] + wr[0], r[1] + wr[1] };
         mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
@@ -9725,6 +9751,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         MinePresence me = minePresenceOf(userName);
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
+        { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
         if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         int soloF = S5MineMap.towerFloor(mapId);

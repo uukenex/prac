@@ -2554,6 +2554,19 @@ var TowerMine = (function () {
   function twFerry() { closeSmith(); travel('/api/tower-mine-tw?action=ferry', '배를 타지 못했어요.'); }
   // [2026-11-15] 월드보스 -- 위치 알림 wb {at, end, on, name, map, hp(천분율), n, act(지금 싸우는 사람), share(보상 조건 %), down(일어나는 시각), zones[[x, y, 터지는 시각]], zr, zw}:
   //  예고 10분 전부터 화면 위 띠 + [참여](어디서든 동쪽 성곽 내성 앞으로). 쓰러지면 그 자리에서 10초(화면 회색 + 작은 카운트), 화염 장판은 예고 칸이 차오르다 터진다.
+  // [2026-11-17] "우리는 하나" -- 보스 맵에서 보스전이 시작되면 함께 있는 인원만큼 강해진다(서버 mineUnityCalc). 화면 위 띠 + 켜질 때/인원이 바뀔 때 큰 안내 + 모두의 발밑 금빛 고리.
+  var unity = null, unityBar = null;
+  function unityShow(u) {
+    if (!el.ov) return;
+    var was = unity;
+    unity = u || null;
+    if (!unityBar) { unityBar = document.createElement('div'); unityBar.className = 'mine-wb-bar'; unityBar.style.top = 'calc(var(--patch-h, 0px) + 46px)'; unityBar.style.background = 'rgba(40,30,10,.88)'; unityBar.style.borderColor = '#ffd27a'; el.ov.appendChild(unityBar); }
+    if (!unity) { unityBar.style.display = 'none'; return; }
+    unityBar.innerHTML = '🤝 <b style="color:#ffd27a">우리는 하나</b> · ' + unity.n + '명 함께 · ⚔️ 공격력 <b>+' + unity.atk + '%</b> · ❤️ 체력 <b>x' + unity.hp + '</b>';
+    unityBar.style.display = '';
+    if (!was || was.n !== unity.n) { flashT0 = performance.now(); banner = { text: '🤝 우리는 하나! ' + unity.n + '명이 함께 -- 공격력 +' + unity.atk + '% · 체력 x' + unity.hp, t0: performance.now() }; }
+  }
+  function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
   var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0;
   // [2026-11-16] "월드보스 등장/퇴장 이펙트 -- 날아서 오고 날아서 간다" -- 정각에 오른쪽 위 하늘에서 날아와 내려앉고(WB_FLY_MS), 시간이 다 되면 왼쪽 위 하늘로 날아간다(wbLeave).
   var WB_FLY_MS = 2800, wbLandAt = 0, wbGoneSeen = 0, wbLeave = null;
@@ -4935,6 +4948,7 @@ var TowerMine = (function () {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
+      unityShow(d && d.unity); // [2026-11-17] 우리는 하나
       if (d && d.villageOut) { // [2026-11-17] 마계 마을 -- 3초 뒤 안내 없이 요새 도시로, 그다음 한 줄
         var vmsg = d.villageOut; busy = true;
         api('/api/tower-mine').then(enterState).then(function () { fadeIn(null); flashT0 = performance.now(); msg(vmsg, 4500); }).catch(function () { busy = false; fadeIn(null); });
@@ -6213,6 +6227,7 @@ var TowerMine = (function () {
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
       var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
       if (auraFx.length) { var oA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, ox, oy - 3 * scale, now, oid); ctx.globalAlpha = oA; } // [2026-11-07] 관리자 돌개바람(뒤)
+      if (unity) unityRing(ox, oy, now); // [2026-11-17] 함께 싸우는 사람도
       ctx.drawImage(otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw), ox, oy - 3 * scale, TS, TS);
       ctx.globalAlpha = 1;
       if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
@@ -6290,6 +6305,7 @@ var TowerMine = (function () {
     if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0, st && st.look && st.look.wing); } catch (e) { } }
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     if (auraFx.length) { var hidA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, cx, cy - 3 * scale, now); ctx.globalAlpha = hidA; } // [2026-11-07] 관리자 돌개바람(뒤쪽 반)
+    if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
