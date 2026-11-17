@@ -202,8 +202,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> out = new HashMap<>();
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
         if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
+        try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap)
         return out;
     }
+    // [2026-11-17] "갑옷류에 최대 체력 추가 -- 닌자의 갑주 5,000~10,000, 백화 갑주 10만~20만(등급별 상이)" -- 일반(0)에서 신화(7)까지 고르게.
+    //  사슬 갑옷 500~1,000 / 무사의 흉갑 1,500~3,000 / 닌자의 갑주 5,000~10,000 / 백화 갑주 10만~20만 / 심판의 갑옷 25만~50만.
+    //  사람마다 낀 갑옷의 체력을 아이템을 읽을 때마다 적어 두고(MINE_ARMOR_HP_OF), 최대 체력(mineHpCap)에 더한다(체력 잠금은 더한 값 기준).
+    static final java.util.Map<String, int[]> MINE_ARMOR_HP = new java.util.HashMap<>();
+    static {
+        MINE_ARMOR_HP.put("ARMOR_CHAIN", new int[] { 500, 1_000 }); MINE_ARMOR_HP.put("ARMOR_SAMURAI", new int[] { 1_500, 3_000 }); MINE_ARMOR_HP.put("ARMOR_NINJA", new int[] { 5_000, 10_000 });
+        MINE_ARMOR_HP.put("ARMOR_BAEKHWA", new int[] { 100_000, 200_000 }); MINE_ARMOR_HP.put("ARMOR_IMMORTAL", new int[] { 250_000, 500_000 });
+    }
+    static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_ARMOR_HP_OF = new java.util.concurrent.ConcurrentHashMap<>();
+    static int mineArmorHpAt(String code, int g) { int[] r = MINE_ARMOR_HP.get(code); return r == null || g < 0 ? 0 : r[0] + (r[1] - r[0]) * Math.min(7, g) / 7; }
 
     static int mineHelmetNeed(S5MineMap m) {
         return Math.max(0, m.level() - 1);
@@ -980,7 +991,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_HP_LOCK = "HP_LOCK";
     static final int MINE_HP_LOCK_MAX = 5;
 
-    static int mineHpCap(int lv, int lock, int rb) { return Math.max(1, mineHpMax(lv, rb) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
+    static int mineHpCap(int lv, int lock, int rb) { String hu = MINE_CTX.get(); return Math.max(1, (mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0))) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
 
     /** 쓰러진 뒤 붙이는 안내(잠금이 늘었을 때만). */
     static String mineLockText(HashMap<String, Object> out) {
@@ -6030,6 +6041,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 double r = regenAt(g), re = regenEnh(g, e);
                 if (r > 0) s += " · 초당 체력 회복 " + mineFmtPct(r + re) + "%" + (re > 0 ? " (등급 " + mineFmtPct(r) + "% + 강화 " + mineFmtPct(re) + "%)" : "");
                 if (resAt(g) > 0) s += " · 한기·햇빛 방어 +" + resAt(g);
+                if (mineArmorHpAt(code, g) > 0) s += " · 최대 체력 +" + String.format("%,d", mineArmorHpAt(code, g)); // [2026-11-17]
             } else {
                 int p = pctAt(g), pe = pctEnh(g, e);
                 if (p > 0) s += " · 공격력 +" + (p + pe) + "%" + (pe > 0 ? " (등급 " + p + "% + 강화 " + pe + "%)" : "");
