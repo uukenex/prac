@@ -337,10 +337,12 @@ public final class S5MineMobs {
         new Type("지옥불 임프", 26, "demon", "#d8502a").asDemon().fix(2_400_000, 39_000).expx(27).showLv(100).asRanged().el(6).respawn(180_000L),
         new Type("악마 검사", 26, "demon", "#8a1a2a").asDemon().fix(3_900_000, 45_000).expx(45).showLv(104).el(7).respawn(180_000L),
         new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(3_000_000, 40_000).expx(36).showLv(107).asRanged().el(7).respawn(180_000L),
-        new Type("발록", 26, "demon", "#4a1010").asDemon().fix(7_800_000, 54_000).expx(90).showLv(115).el(6).respawn(600_000L)
+        new Type("발록", 26, "demon", "#4a1010").asDemon().fix(7_800_000, 54_000).expx(90).showLv(115).el(6).respawn(600_000L),
+        // [2026-11-17] "하피 왕도에 허수아비 세워줘" -- 왕도 훈련장 여덟째 보스 허수아비(목록 맨 끝 -- 앞 번호가 바뀌지 않게)
+        new Type("하피 여왕 허수아비", 1, "human", "#c8a050").asSim("하피 여왕")
     )));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
-    public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비") };
+    public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비"), indexOf("하피 여왕 허수아비") }; // [2026-11-17] + 하피 여왕
     public static final int DUMMY_TYPE = indexOf("허수아비");
     /** 왕도 훈련장 자리 순서: 무/불/물 · 얼음/바람/땅 · 번개/어둠/빛. */
     public static final int[] DUMMY_TYPES = { DUMMY_TYPE, indexOf("불 허수아비"), indexOf("물 허수아비"), indexOf("얼음 허수아비"), indexOf("바람 허수아비"), indexOf("땅 허수아비"), indexOf("번개 허수아비"), indexOf("어둠 허수아비"), indexOf("빛 허수아비") };
