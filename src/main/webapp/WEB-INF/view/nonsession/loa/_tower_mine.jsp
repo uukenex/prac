@@ -2172,13 +2172,13 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">...</div>';
     h += '<div class="mine-smith-say"><img src="' + oreIcon(72) + '" alt="" style="width:16px;vertical-align:middle"> 탑의 증표 <b>' + d.have + '</b>개 -- 탑 몬스터 1개 · 수문장 20개 · 보물 칸 2개 · 증표 칸 3개'
         + '<br><small>뽑은 장비는 🛡️ 용병 관리 → ⚔️ 장비 탭에서 끼워요. 무기·투구·갑옷은 직업 전용, 악세는 공용.</small></div>';
-    h += '<div style="display:flex;gap:4px;margin:6px 0">' + [['gear', '🎁 동료 장비 뽑기'], ['gem', '💎 보석 사기'], ['cut', '✨ 세공 보석 사기']].map(function (t) {
+    h += '<div style="display:flex;gap:4px;margin:6px 0">' + [['gear', '🎁 동료 장비 뽑기'], ['gem', '💎 보석 사기'], ['cut', '✨ 세공 보석 사기'], ['heart', '❤️ 보스 심장']].map(function (t) {
       return '<button type="button" class="mine-mini-btn"' + (tokenTab === t[0] ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.tkTab(\'' + t[0] + '\')">' + t[1] + '</button>';
     }).join('') + '</div>';
-    if (tokenTab === 'gem' || tokenTab === 'cut') { // [2026-11-15] "탑 증표로 원하는 보석을 구매", [2026-11-16] 보석 사기 / 세공 보석 사기로 나눔(바다 보석도)
-      var isCut = tokenTab === 'cut';
-      h += '<div class="mine-smith-say" style="border:1px solid #7ad8a0"><b>' + (isCut ? '✨ 세공 보석 사기' : '💎 보석 사기') + '</b> <small>원하는 ' + (isCut ? '세공된 보석' : '보석') + '을 골라 증표로 바꿔요.</small>';
-      (d.gems || []).filter(function (g) { return (g.code.indexOf('CUT_') === 0) === isCut; }).forEach(function (g) {
+    if (tokenTab === 'gem' || tokenTab === 'cut' || tokenTab === 'heart') { // [2026-11-15] "탑 증표로 원하는 보석을 구매", [2026-11-16] 보석 사기 / 세공 보석 사기로 나눔(바다 보석도)
+      var isCut = tokenTab === 'cut', isHeart = tokenTab === 'heart', heartCode = function (c) { return /_HEART$/.test(c); }; // [2026-11-17] 보스 심장 탭
+      h += '<div class="mine-smith-say" style="border:1px solid #7ad8a0"><b>' + (isHeart ? '❤️ 보스 심장' : isCut ? '✨ 세공 보석 사기' : '💎 보석 사기') + '</b> <small>원하는 ' + (isHeart ? '보스의 심장' : isCut ? '세공된 보석' : '보석') + '을 골라 증표로 바꿔요.</small>';
+      (d.gems || []).filter(function (g) { return isHeart ? heartCode(g.code) : !heartCode(g.code) && (g.code.indexOf('CUT_') === 0) === isCut; }).forEach(function (g) {
         var o = (st.ores || []).filter(function (q) { return q.code === g.code; })[0];
         h += '<div class="mine-smith-row"><span class="nm">' + (o ? '<img src="' + oreIcon(o.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' : '') + escAttr(g.name) + ' · 증표 ' + g.price + '<small>보유 ' + (o ? o.qty : 0) + '개</small></span>'
             + '<button type="button"' + (d.have < g.price ? ' data-lack="1"' : '') + ' onclick="TowerMine.tkGem(\'' + g.code + '\',1)">1개</button>'

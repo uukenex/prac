@@ -1599,7 +1599,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         l.add(new Object[] { S5MineMap.GEM_CODES[S5MineMap.GEM_DIAMOND], S5MineMap.GEM_NAMES[S5MineMap.GEM_DIAMOND], MINE_TK_DIAMOND });
         for (int i = 0; i < S5MineMap.GEM_DIAMOND; i++) l.add(new Object[] { S5MineMap.cutCode(i), S5MineMap.cutName(i), MINE_TK_CUT });
         for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.SEA_GEM_CODES[i], S5MineMap.SEA_GEM_NAMES[i], MINE_TK_SEA[i] });
-        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.seaCutCode(i), S5MineMap.seaCutName(i), MINE_TK_SEA_CUT[i] }); // [2026-11-16] "탑의 증표로 바다 보석도 교환"
+        for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new Object[] { S5MineMap.seaCutCode(i), S5MineMap.seaCutName(i), MINE_TK_SEA_CUT[i] });
+        // [2026-11-17] "탑 보상 교환에 보스 리워드인 심장도 -- 아직 획득 못 하는 건 빼고": 지금 보스에게서 실제로 나오는(라이브에서 얻은 사람이 있는) 심장 다섯(심장 탭)
+        l.add(new Object[] { S5MineMap.THUNDER_HEART_CODE, S5MineMap.THUNDER_HEART_NAME, 30 });
+        l.add(new Object[] { S5MineMap.DESERT_HEART_CODE, S5MineMap.DESERT_HEART_NAME, 40 });
+        l.add(new Object[] { S5MineMap.ICE_HEART_CODE, S5MineMap.ICE_HEART_NAME, 60 });
+        l.add(new Object[] { S5MineMap.VOLCANO_HEART_CODE, S5MineMap.VOLCANO_HEART_NAME, 60 });
+        l.add(new Object[] { S5MineMap.WIND_HEART_CODE, S5MineMap.WIND_HEART_NAME, 80 }); // [2026-11-16] "탑의 증표로 바다 보석도 교환"
         return l;
     }
     static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
