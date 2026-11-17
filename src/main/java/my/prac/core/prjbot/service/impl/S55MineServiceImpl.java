@@ -1719,7 +1719,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<String> got = new ArrayList<>();
             int best = 0;
             for (int i = 0; i < n; i++) {
-                int g = mgRoll(tier), cls = acc ? 9 : RND.nextInt(3);
+                int g = mgRoll(tier), cls = acc ? 9 : items.getOrDefault(MINE_ITEM_MERC_ON, 0) > 0 ? Math.min(2, items.get(MINE_ITEM_MERC_ON) - 1) : RND.nextInt(3); // [2026-11-17] 지금 용병 직업의 것으로
                 String part = acc ? MG_PARTS[3 + RND.nextInt(3)] : MG_PARTS[RND.nextInt(3)], ic = mgCode(part, cls, g);
                 int q = items.getOrDefault(ic, 0) + 1;
                 dao.upsertMineItem(userName, ic, q);
@@ -1740,8 +1740,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             String part = p[1].substring(0, 1);
             int cls = p[1].charAt(1) - '0', g;
             try { g = Integer.parseInt(p[2]); } catch (NumberFormatException e) { out.put("message", "그런 장비는 없어요."); return out; }
+            // [2026-11-17] "용병 장비가 직업별로 나뉘어 있는 걸 무기/갑옷/투구/악세로 -- 지금 장착 직업군에 따라 자동 변환(6성 검 + 5성 활 -> 검사면 전부 검)" --
+            //  무기/투구/갑옷은 직업과 상관없이 같은 부위·같은 ★이면 같은 장비로 친다. 끼우면 그 용병 직업의 것으로(가진 것 중 아무 직업 것이나 하나 쓴다).
+            if (java.util.Arrays.asList(MG_PARTS).contains(part) && !mgAcc(part) && items.getOrDefault(code, 0) < 1) for (int oc = 0; oc < 3; oc++) if (items.getOrDefault(mgCode(part, oc, g), 0) > 0) { code = mgCode(part, oc, g); cls = oc; break; }
             if (!java.util.Arrays.asList(MG_PARTS).contains(part) || g < 1 || g > 7 || items.getOrDefault(code, 0) < 1) { out.put("message", "가진 장비가 아니에요."); return out; }
-            if (!mgAcc(part) && cls != c) { out.put("message", "이 장비는 " + MINE_MERC_NAMES[Math.max(0, Math.min(2, cls))] + " 전용이에요."); return out; }
+            if (!mgAcc(part)) cls = c;
             String slot = mineMercKey(c, "G" + part);
             int old = items.getOrDefault(slot, 0);
             dao.upsertMineItem(userName, code, items.get(code) - 1);
@@ -1777,10 +1780,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("ok", true);
             out.put("message", "💎 " + gm[1] + " " + n + "개를 샀어요. (증표 -" + price + ")");
         }
-        List<HashMap<String, Object>> inv = new ArrayList<>(); // 가진 동료 장비(★ 높은 것부터)
-        for (int g = 7; g >= 1; g--) for (String part : MG_PARTS) for (int cls : mgAcc(part) ? new int[] { 9 } : new int[] { 0, 1, 2 }) {
-            int q = items.getOrDefault(mgCode(part, cls, g), 0);
+        List<HashMap<String, Object>> inv = new ArrayList<>(); // 가진 동료 장비(★ 높은 것부터) -- [2026-11-17] 무기/투구/갑옷은 직업 구분 없이 합쳐서 지금 용병 직업 이름으로
+        int curC = Math.max(0, Math.min(2, items.getOrDefault(MINE_ITEM_MERC_ON, 1) - 1));
+        for (int g = 7; g >= 1; g--) for (String part : MG_PARTS) {
+            int q = 0;
+            if (mgAcc(part)) q = items.getOrDefault(mgCode(part, 9, g), 0);
+            else for (int oc = 0; oc < 3; oc++) q += items.getOrDefault(mgCode(part, oc, g), 0);
             if (q <= 0) continue;
+            int cls = mgAcc(part) ? 9 : curC;
             HashMap<String, Object> m = new HashMap<>();
             m.put("code", mgCode(part, cls, g)); m.put("part", part); m.put("cls", cls); m.put("g", g); m.put("q", q);
             m.put("name", mgName(part, cls, g)); m.put("eff", mgEffText(part, g));
@@ -7836,6 +7843,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 dao.upsertMineItem(userName, MINE_ITEM_MERC_HIRED, 1); items.put(MINE_ITEM_MERC_HIRED, 1);
                 int keepExp = 0; // [2026-11-17] 교체 -- 지금 용병의 경험치도 이어받는다(레벨은 mineOfLv가 같게)
                 for (int oc = 0; oc < MINE_MERC_NAMES.length; oc++) if (mineMercLv(items, oc) == ofLv) keepExp = Math.max(keepExp, items.getOrDefault(mineMercKey(oc, "EXP"), 0));
+                for (int oc = 0; oc < MINE_MERC_NAMES.length; oc++) if (oc != c) for (String gp : MG_PARTS) { // [2026-11-17] 끼운 동료 장비는 새 용병에게 그대로(직업에 맞게 바뀐다), 새 용병 칸에 이미 있으면 가방으로
+                    String os = mineMercKey(oc, "G" + gp), ns = mineMercKey(c, "G" + gp);
+                    int og = items.getOrDefault(os, 0);
+                    if (og <= 0) continue;
+                    if (items.getOrDefault(ns, 0) <= 0) { dao.upsertMineItem(userName, ns, og); items.put(ns, og); }
+                    else { String bc = mgCode(gp, mgAcc(gp) ? 9 : c, og); int bq = items.getOrDefault(bc, 0) + 1; dao.upsertMineItem(userName, bc, bq); items.put(bc, bq); }
+                    dao.upsertMineItem(userName, os, 0); items.put(os, 0);
+                }
                 StringBuilder gone = new StringBuilder(); // [2026-11-06] "현재 용병은 사라지고 대체" -- 지금 용병(들)과의 계약을 끝낸다(레벨/경험치/급여 기록도)
                 for (int oc = 0; oc < MINE_MERC_NAMES.length; oc++) if (mineMercLv(items, oc) > 0) {
                     gone.append(gone.length() > 0 ? ", " : "").append(mineMercNm(items, oc, "NM"));

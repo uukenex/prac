@@ -2533,7 +2533,7 @@ var TowerMine = (function () {
     if (!s) return '';
     if (mgInv == null && !mgLoading) { mgLoading = true; tokenGo('list'); }
     var g = (m.mg || {})[s[0]] | 0, inf = (m.mgi || {})[s[0]], acc = 'NRB'.indexOf(s[0]) >= 0;
-    var rows = (mgInv || []).filter(function (it) { return it.part === s[0] && (it.cls === 9 || it.cls === m.t); });
+    var rows = (mgInv || []).filter(function (it) { return it.part === s[0]; }); // [2026-11-17] 직업 구분 없이(서버가 지금 용병 직업 이름으로 합쳐 준다)
     var h = '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mgPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">' + s[1] + ' <small>' + (acc ? '용병 공용' : (m.name || '용병') + ' 전용') + '</small>'
         + '<button type="button" onclick="TowerMine.mgPop(null)">✖</button></div>';
     if (g) h += '<div class="mine-smith-row worn"><span class="nm">✔ ' + escAttr(inf ? inf[0] : '★' + g) + '<small>' + escAttr(inf ? inf[1] : '') + '</small></span><button type="button" onclick="TowerMine.mgOff(\'' + s[0] + '\',' + m.t + ')">해제</button></div>';
