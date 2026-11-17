@@ -54,6 +54,7 @@ var TowerMine = (function () {
   ORE_NAME[39] = '사막의 심장'; ORE_COL[39] = ['#e8a23a', '#fff0c0']; RARE_GEM[39] = 1; // [2026-10-28] 피라미드 보상 상자
   ORE_NAME[65] = '번개의 심장'; ORE_COL[65] = ['#2a6ad8', '#ffe94a']; RARE_GEM[65] = 1; // [2026-11-05] 천둥 황소
   ORE_NAME[72] = '탑의 증표'; ORE_COL[72] = ['#3a5aa8', '#ffe9a8']; RARE_GEM[72] = 1; // [2026-11-15] 탑의 증표(그림은 시안 전까지 기본 광석 모양)
+  ORE_NAME[77] = '빛의 심장'; ORE_COL[77] = ['#f0c040', '#fffbe0']; RARE_GEM[77] = 1; // [2026-11-17] 심판자 보로네오
   ORE_NAME[73] = '황혼의 인장'; ORE_COL[73] = ['#c8501a', '#ffd08a']; RARE_GEM[73] = 1; // [2026-11-17] 서쪽 악마의 들판
   ORE_NAME[74] = '여명의 인장'; ORE_COL[74] = ['#4a8ad8', '#fff0b0']; RARE_GEM[74] = 1; // 동쪽 악마의 들판
   ORE_NAME[75] = '악마의 광석 조각'; ORE_COL[75] = ['#7a1a2a', '#ff6a5a']; // 악마의 땅 채광(정제 10% 미스릴)
@@ -1133,6 +1134,12 @@ var TowerMine = (function () {
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
+    if (grade === 77) { // [2026-11-17] 빛의 심장 -- 금빛 심장에서 뻗는 빛살
+      [[1, 7, 2, 1], [13, 7, 2, 1], [7, 0, 2, 2], [3, 2, 1, 1], [12, 2, 1, 1], [3, 13, 1, 1], [12, 13, 1, 1]].forEach(function (r) { px(g, '#fff6c0', r[0], r[1], r[2], r[3]); });
+      px(g, '#e8b030', 4, 4, 3, 2); px(g, '#e8b030', 9, 4, 3, 2); px(g, '#e8b030', 3, 5, 10, 4); px(g, '#e8b030', 4, 9, 8, 2); px(g, '#e8b030', 5, 11, 6, 1); px(g, '#e8b030', 6, 12, 4, 1); px(g, '#e8b030', 7, 13, 2, 1);
+      px(g, '#fff0a0', 5, 5, 3, 3); px(g, '#ffffff', 5, 5, 1, 1); px(g, '#ffe060', 8, 7, 3, 3); px(g, '#c08020', 10, 10, 2, 1);
+      outline(c, '#5a3a08'); oreIcons[grade] = c.toDataURL(); return oreIcons[grade];
+    }
     if (grade === 73 || grade === 74) { // [2026-11-17] 황혼의 인장(지는 해 -- 주황/보라) / 여명의 인장(뜨는 해 -- 금/하늘) -- 둥근 밀랍 인장에 반쪽 해
       var dusk = grade === 73, rim = dusk ? '#7a2a3a' : '#2a5a9a', wax = dusk ? '#b8402a' : '#d8a83a', sun = dusk ? '#ffb04a' : '#fff0a0', sky = dusk ? '#6a2a7a' : '#7ac8ff';
       [[5, 1, 6, 1], [3, 2, 10, 2], [2, 4, 12, 8], [3, 12, 10, 2], [5, 14, 6, 1]].forEach(function (r) { px(g, rim, r[0], r[1], r[2], r[3]); });
@@ -1249,7 +1256,7 @@ var TowerMine = (function () {
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
   // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
   //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
-  var BOSS_ART = { '심연의 거룡': 'dragon', '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull', '하피 여왕': 'harpy' };
+  var BOSS_ART = { '심판자 보로네오': 'boroneo', '심연의 거룡': 'dragon', '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull', '하피 여왕': 'harpy' };
   var bossArt = (function () {
     function painter(g) {
       var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
@@ -1301,6 +1308,37 @@ var TowerMine = (function () {
         var ws = f ? [[8, 41], [40, 28], [11, 31], [37, 45]] : [[6, 37], [42, 31], [9, 28], [39, 44]];
         ws.forEach(function (c, i) { pf.P(c[0], c[1], '#c88aff'); pf.P(c[0], c[1] - 1, i % 2 ? '#8a4ad8' : '#e8c8ff'); });
         if (f) { pf.P(24, 19, '#f0c0ff'); pf.P(23, 20, '#b06aff'); pf.P(25, 20, '#b06aff'); pf.P(24, 21, '#8a4ad8'); pf.P(24, 22, '#6a2ab8'); } // 입가에 맺히는 어둠 숨결
+      },
+      boroneo: function (pt, pf, f, pose) { // [2026-11-17] 심판자 보로네오 -- 빛 속성 타락천사. 은빛 중갑옷 + 금 장식, 흰 날개(끝이 검게 물든), 왕관 투구와 금 간 후광, 검/망치를 번갈아(pose = 망치)
+        var ar = '#c8ccd8', ar2 = '#8a90a4', ar3 = '#eef2f8', ad = '#5a6074', gd = '#e8c050', gd2 = '#a8802a', wg = '#f4f0e4', wg2 = '#c0b8a8', wgd = '#2e2240', k = '#140d0a';
+        var up = f ? 1 : 0;
+        [-1, 1].forEach(function (dir) { // 날개 -- 어깨에서 위·바깥으로 펼친 깃털 부채(끝이 검게 물든 타락천사), 위 가장자리는 금빛 뼈대
+          var sx0 = 24 + dir * 6, sy0 = 19;
+          for (var i = 0; i < 9; i++) {
+            var ang = (-95 + i * 13) * Math.PI / 180 + (up ? -0.1 : 0.05), len = 20 - Math.abs(i - 2) * 1.3;
+            var ex = sx0 + dir * Math.cos(ang) * len, ey = sy0 + Math.sin(ang) * len;
+            pt.L(sx0, sy0, ex, ey, i % 2 ? wg : wg2, 2);
+            pt.L(sx0 + (ex - sx0) * 0.75, sy0 + (ey - sy0) * 0.75, ex, ey, wgd, 2);
+          }
+          var tx = sx0 + dir * Math.cos(-95 * Math.PI / 180 + (up ? -0.1 : 0.05)) * 18, ty2 = sy0 + Math.sin(-95 * Math.PI / 180 + (up ? -0.1 : 0.05)) * 18;
+          pt.L(sx0, sy0 - 1, tx, ty2, gd, 1); pf.P(tx, ty2 - 1, '#fff6c0');
+        });
+        pt.R(18, 36, 5, 8, ar2); pt.R(25, 36, 5, 8, ar2); pt.R(18, 36, 5, 2, ar); pt.R(25, 36, 5, 2, ar); pt.R(17, 43, 7, 2, ad); pt.R(24, 43, 7, 2, ad); // 다리 갑주
+        pt.E(24, 28, 9, 10, ar2); pt.E(24, 27, 7, 8, ar); pt.R(18, 21, 12, 2, gd); pt.R(23, 23, 2, 11, gd2); pt.E(24, 27, 3, 3, ar3); pf.P(24, 27, '#fff6c0'); // 흉갑
+        for (var sx = 16; sx < 32; sx += 3) { pt.R(sx, 34, 2, 4, ar2); pt.P(sx, 34, ar3); } // 허리 갑판
+        pt.E(14, 22, 5, 4, ar); pt.E(34, 22, 5, 4, ar); pt.R(10, 20, 9, 1, gd); pt.R(30, 20, 9, 1, gd); pt.P(12, 21, ar3); pt.P(32, 21, ar3); // 어깨
+        pt.R(11, 24, 4, 8, ar2); pt.R(33, 24, 4, 8, ar2); pt.R(11, 31, 4, 3, ar); // 팔
+        pt.E(24, 13, 5, 6, ar); pt.R(19, 13, 11, 1, k); pt.R(23, 9, 2, 9, ar3); pf.R(20, 13, 2, 1, '#ffe060'); pf.R(27, 13, 2, 1, '#ffe060'); // 투구(눈은 금빛)
+        pt.R(19, 6, 11, 2, gd); for (var c = 0; c < 4; c++) pt.R(19 + c * 3, 4, 2, 2, gd); pt.P(24, 3, '#ff5a5a'); // 왕관
+        for (var a = 0; a < 22; a++) { if (a === 5 || a === 6) continue; var ang = a / 22 * Math.PI * 2; pf.P(24 + Math.cos(ang) * 8, 1.6 + Math.sin(ang) * 1.4, f ? '#fff6c0' : '#ffd860'); } // 금 간 후광
+        if (!pose) { // 빛나는 대검(오른손을 들어)
+          pt.R(34, 29, 4, 3, ar); pt.R(32, 28, 8, 2, gd);
+          pt.L(37, 28, 45, 3, '#e8eeff', 3); pf.L(38, 27, 46, 2, '#ffffff'); pf.L(36, 29, 47, 0, 'rgba(255,248,200,.55)');
+        } else { // 큰 망치
+          pt.R(34, 29, 4, 3, ar);
+          pt.L(36, 30, 41, 9, '#6a4a2a', 2); pt.L(37, 30, 42, 9, '#4a3018', 1);
+          pt.R(36, 2, 12, 9, ar2); pt.R(36, 2, 12, 2, ar3); pt.R(36, 10, 12, 1, ad); pt.R(40, 4, 4, 5, gd); pf.P(42, 6, '#fff6c0');
+        }
       },
       harpy: function (pt, pf, f, pose) { // [2026-11-08] 하피 -- 바람 보스. 연두·청록 깃털 날개(프레임마다 위/아래 날갯짓), 사람 얼굴과 긴 은발, 노란 새 다리와 발톱, 바람 줄기
         var w0 = '#5ab89a', w1 = '#2f7a68', w2 = '#a8ecd0', sk = '#f0c8a8', sk2 = '#c89878', hr = '#d8e4ec', hr2 = '#9aa8b8', ft = '#e8b830', ft2 = '#a87a18', k = '#140d0a';
@@ -2105,6 +2143,35 @@ var TowerMine = (function () {
       var ph = ((t * 0.45 + i / 14) % 1), ang2 = i * 2.4 + t * 0.8, rr2 = R * (2.1 - ph * 1.9);
       fxDot(cx + Math.cos(ang2) * rr2, cy + Math.sin(ang2) * rr2 * 1.1, Math.max(1, TS * 0.07 * (1 - ph * 0.5)), i % 3 ? '#ff7ad8' : '#ffb04a', Math.min(1, ph * 2) * (1 - ph * 0.3));
     }
+  }
+  /** [2026-11-17] 보로네오 장판 위 그림 -- 9 심판의 빛: 하늘에서 내리꽂히는 금빛 기둥(예고 땐 가는 줄, 터질 때 굵게), 10 천사의 일격: 천사가 내려와 창을 꽂고 위로 사라진다. */
+  var angelImgs = null;
+  function angelImg(f) {
+    if (!angelImgs) angelImgs = [0, 1].map(function (q) {
+      var c = mk(T, T), g = c.getContext('2d');
+      px(g, '#ffe680', 4, 0, 8, 1); px(g, '#fff6c0', 5, 0, 6, 1); // 후광
+      px(g, '#f4f0e4', 0, q ? 3 : 5, 4, 5); px(g, '#f4f0e4', 12, q ? 3 : 5, 4, 5); px(g, '#c0b8a8', 1, q ? 7 : 9, 3, 2); px(g, '#c0b8a8', 12, q ? 7 : 9, 3, 2); // 날개
+      px(g, '#f0d0b0', 6, 2, 4, 3); px(g, '#e8c050', 6, 2, 4, 1); px(g, '#3a6ad8', 7, 3, 1, 1); px(g, '#3a6ad8', 9, 3, 1, 1); // 얼굴
+      px(g, '#ffffff', 5, 5, 6, 7); px(g, '#d8dce8', 5, 10, 6, 3); px(g, '#e8c050', 5, 7, 6, 1); // 흰 옷 + 금띠
+      px(g, '#a8802a', 12, 1, 1, 13); px(g, '#eef2ff', 11, 12, 3, 3); px(g, '#ffffff', 12, 14, 1, 2); // 창
+      return outline(c, '#5a5040');
+    });
+    return angelImgs[f];
+  }
+  function zoneHolyDraw(k, zx, zy, zs, left, warn, TS, now) {
+    var cx = zx + zs / 2, base = zy + zs * 0.75;
+    if (k === 9) {
+      var a = left > 0 ? 0.25 + 0.35 * (1 - left / warn) : Math.max(0, 1 + left / 600), wdt = left > 0 ? zs * 0.12 : zs * 0.7;
+      var gr = ctx.createLinearGradient(0, base - TS * 6, 0, base); gr.addColorStop(0, 'rgba(255,250,210,0)'); gr.addColorStop(1, 'rgba(255,240,160,' + a + ')');
+      ctx.fillStyle = gr; ctx.fillRect(cx - wdt / 2, base - TS * 6, wdt, TS * 6);
+      if (left <= 0) { ctx.fillStyle = 'rgba(255,255,240,' + a * 0.8 + ')'; ctx.beginPath(); ctx.ellipse(cx, base, zs * 0.55, zs * 0.22, 0, 0, Math.PI * 2); ctx.fill(); }
+      return;
+    }
+    var sz = TS * 1.3, im = angelImg(Math.floor(now / 160) % 2), y, al;
+    if (left > 0) { var q = 1 - left / warn; y = base - sz - (1 - q) * TS * 3; al = 0.35 + 0.65 * q; }
+    else if (left > -600) { var q2 = -left / 600; y = base - sz - q2 * TS * 2.5; al = 1 - q2; if (q2 < 0.3) { ctx.fillStyle = 'rgba(220,235,255,' + (0.7 - q2 * 2) + ')'; ctx.beginPath(); ctx.arc(cx, base, zs * 0.5, 0, Math.PI * 2); ctx.fill(); } }
+    else return;
+    ctx.globalAlpha = Math.max(0, al); ctx.drawImage(im, Math.round(cx - sz / 2), Math.round(y), sz, sz); ctx.globalAlpha = 1;
   }
   function lootTarget(tg, now) {
     if (!tg || tg.none) return null;
@@ -3336,7 +3403,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71; }],
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77; }], // [2026-11-17] + 빛의 심장
     ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }], // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
     ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }] // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
   ];
@@ -3835,7 +3902,7 @@ var TowerMine = (function () {
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
-      mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병(Lv.' + ms2.curLv + ')보다 2~15레벨 낮은 동료들이에요 · 계약하면 지금 용병은 떠나요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
+      mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병과 같은 Lv.' + ms2.curLv + ' 동료들이에요 · 계약하면 지금 용병은 떠나고 레벨·경험치는 그대로 이어받아요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
         + '<br>' + (ms2.offers && ms2.offers.some(function (o) { return o.free; }) ? '교체는 무료예요 · 급여는 처음 계약할 때 한 번만 냈어요' : '급여는 처음 계약할 때 한 번만 내요(동괴 / 은괴 / 금괴 / 미스릴괴 중 하나, 가끔 세공된 보석) · 그 뒤로는 교체도 무료') + '</small></div>'; // [2026-11-11] 날마다 내던 급여 없앰
       if (ms2.offers) {
         // [2026-11-06] "직업별로 5명씩, 3줄로" -- 전사 / 궁수 / 마법사 줄(모바일은 줄마다 옆으로 넘기기, PC는 넓은 창에 5명이 한 줄로)
@@ -4018,6 +4085,7 @@ var TowerMine = (function () {
       if (!d || !d.ok) return;
       // [2026-10-28] "몬스터가 인식했을 때 나오는 문구 없애줘, 벗어났을 때도 필요 없어" -- 보스 선공/레벨 차이 선공/인식 풀림 안내는 띄우지 않는다
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: performance.now() + 300 });
+      if (d.bossSay && map && map.mobs && map.mobs.length) { var bsm = map.mobs[map.mobs.length - 1], bsp = bsm._p || bsm; talkBubble = { x: Math.round(bsp.x) + 1, y: Math.round(bsp.y) - 1, text: (d.bossSayName || '') + ': ' + d.bossSay, t0: performance.now() }; } // [2026-11-17] 보로네오 대사
       if (d.summoned) flashT0 = performance.now(); // [2026-10-28] "보스 스킬 쓸 때 가운데 멘트 없애줘, 특히 성당 보스" -- 번쩍임만
       (d.mobs || []).forEach(function (a) { mobSt[a[0]] = mobStOf(a, mobSt[a[0]]); });
       if (d.lava) lavaSet(d.lava);
@@ -4063,7 +4131,7 @@ var TowerMine = (function () {
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -5353,7 +5421,7 @@ var TowerMine = (function () {
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
-  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [31, '성당(타락한 대주교)', 59], 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55] }, /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [31, '성당(타락한 대주교)', 59], 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55], 8: [77, '최후의 방어선(심판자 보로네오)', 55] }, /* [2026-11-17] 빛 = 빛의 심장 + 세공 진주 */ /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
   function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
@@ -6009,7 +6077,7 @@ var TowerMine = (function () {
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20]];
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255]];
       for (var wzi = 0; wzi < wzAll.length; wzi++) {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
@@ -6021,6 +6089,7 @@ var TowerMine = (function () {
           ctx.strokeStyle = 'rgba(255,220,120,' + (0.55 + 0.4 * Math.sin(now / (big3 ? 50 : 80))) + ')'; ctx.lineWidth = (big3 ? 4 : 2) * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
           if (big3) drawTextImg(textImg((wzk === 7 ? '☠️ 맹독 숨결 ' : '💥 멸망의 숨결 ') + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
         } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((wzk === 3 || wzk === 7 ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
+        if (wzk === 9 || wzk === 10) zoneHolyDraw(wzk, wzx, wzy, wzs, wleft, wzw, TS, now); // [2026-11-17] 보로네오 -- 빛기둥 / 천사
       }
     }
     // [2026-10-24] 탐지 곡괭이 -- 주변의 안 캔 광석. [2026-10-28] "범위를 보여주고 물풍선으로" -- 탐지 범위 점선 테두리 + 광석 아이콘을 담은 물풍선이 둥실둥실
@@ -6056,7 +6125,7 @@ var TowerMine = (function () {
         if (!mp) continue;
         var mx = mp.x * TS - camX, my = mp.y * TS - camY;
         if (mx < -TS || my < -TS || mx > W || my > H) continue;
-        var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = false;
+        var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = ty.name === '심판자 보로네오' && Math.floor(nowSrv() / 12000) % 2 === 1; // [2026-11-17] 보로네오 -- 망치를 든 차례
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
         var hq = mobHitAt[mb.id] ? now - mobHitAt[mb.id] : 999;
         if (hq < 200) mx += Math.round(Math.sin(hq / 16) * 2.5 * scale * (1 - hq / 200)); // [2026-11-03] 맞은 몬스터 흔들림

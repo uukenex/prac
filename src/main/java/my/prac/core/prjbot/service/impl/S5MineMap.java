@@ -130,6 +130,9 @@ public final class S5MineMap {
     public static final String DEMON_ORE_CODE = "DEMON_ORE_SHARD", DEMON_ORE_NAME = "악마의 광석 조각";
     public static final String DOOM_SHARD_CODE = "DOOM_SHARD", DOOM_SHARD_NAME = "종말의 파편";
     public static final int DUSK_SEAL_GRADE = 73, DAWN_SEAL_GRADE = 74, DEMON_ORE_GRADE = 75, DOOM_SHARD_GRADE = 76;
+    /** [2026-11-17] 빛의 심장(77) -- 심판자 보로네오 처치 보상(반드시). */
+    public static final String LIGHT_HEART_CODE = "LIGHT_HEART", LIGHT_HEART_NAME = "빛의 심장";
+    public static final int LIGHT_HEART_GRADE = 77;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
@@ -742,7 +745,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 24; // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 25; // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -2917,6 +2920,7 @@ public final class S5MineMap {
         for (int y = cy + 2; y <= ky - kr + 1; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = y >= ky - kr - 3 ? 'H' : ',';
         for (int y = ky - kr; y <= ky - kr + 1; y++) t[y][cx] = 's';
         t[ky + 2][cx - 3] = 'i'; t[ky + 2][cx + 3] = 'i'; // 횃불(수정 가로등 칸 -- 화면이 불꽃으로)
+        for (int y = 4; y <= 11; y++) for (int x = cx - 6; x <= cx + 6; x++) if (Math.hypot((x - cx) * 0.8, y - 7.5) < 5.2) t[y][x] = Math.abs(x - cx) <= 1 ? ',' : '.'; // [2026-11-17] 보로네오의 빈터(마계 입구로 가는 길 위)
         t[cy][0] = 'G'; t[cy][w - 1] = 'G'; t[0][cx] = 'G';
         int sx = cx, sy = ky + 1;
         boolean[][] reach = reachable(t, sx, sy);
@@ -2926,7 +2930,8 @@ public final class S5MineMap {
         ps.add(new Portal(w - 1, cy, 'G', DEMON_EAST3, 2, DEMON_H / 2, "동쪽 악마의 들판 3"));
         ps.add(new Portal(cx, 0, 'G', ABYSS_GATE, ABYSS_W / 2, ABYSS_H - 3, "마계 입구"));
         S5MineMap m = new S5MineMap(LAST_LINE, "최후의 방어선", false, w, h, sx, sy, t, demonOre(t, r, sx, sy), ps);
-        m.fixedMobs = demonSpots(t, r, 18, 3, 14, new int[][] { { 2, cy, 18 }, { w - 3, cy, 18 }, { cx, ky, kr + 14 }, { cx, 2, 12 } });
+        m.fixedMobs = demonSpots(t, r, 18, 3, 14, new int[][] { { 2, cy, 18 }, { w - 3, cy, 18 }, { cx, ky, kr + 14 }, { cx, 2, 12 }, { cx, 7, 14 } });
+        m.bossX = cx - 1; m.bossY = 7; // [2026-11-17] 심판자 보로네오(2x2 왼쪽 위)
         List<Npc> npcs = new ArrayList<>();
         npcs.add(npcAtCell(t, cx - 3, ky - 2, "refiner", "악마 광석 정제사", "악마의 광석 조각을 가져오게. 불순물을 태워 내면 열에 하나쯤은 미스릴이 남지. ...마계의 문 얘기? 대개는 엉뚱한 땅에 내동댕이쳐지지만, 아주 가끔 별 하나 없는 어둠 속 '혼돈스러운 마계'로 떨어진다더군. 악마가 된 괴물을 쓰러뜨려야만 돌아올 수 있고, 차원이 뒤틀린 곳이라 반지 따위의 힘은 닿지 않는다지."));
         npcs.add(npcAtCell(t, cx + 3, ky - 2, "priest", "종군 사제", "보급이 끊긴 지 오래지만, 상처를 돌봐 드릴 힘은 남아 있습니다."));

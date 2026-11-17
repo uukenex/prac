@@ -78,9 +78,12 @@ public final class S5MineMobs {
         Type asQueen() { hpCut = 12; atkCut = 1.4; firstStrike = true; noReward = true; respawnOverride = 600_000L; return this; }
         Type asClone() { minion = true; clone = true; ninja = true; return this; }
         Type asBoss() { boss = true; return this; }
+        Type weakLightDark() { weakLD = true; return this; }
+        Type minionOnly() { minion = true; firstStrike = true; return this; } // [2026-11-17] 보로네오의 소환 악마
         Type asMinion() { minion = true; fast = true; return this; }
         Type asStay() { stay = true; return this; }
         public boolean demon; // [2026-11-16] 악마(악마의 들판) -- 순간이동/지옥불, 늘 선공
+        public boolean weakLD; // [2026-11-17] 심판자 보로네오 -- 빛·어둠 둘 다에 상성 피해(x1.5)를 받는다
         public int demonTier; // [2026-11-17] 들판 1/2/3/방어선 = 0/1/2/3(기술 피해가 단계마다 세진다)
         /** [2026-11-17] 혼돈스러운 마계의 악마화된 몬스터(평소엔 없음 -- 들어올 때 하나가 깨어난다), src = 원래 몬스터 이름(화면 그림), chaosBoss = 원래 보스였음(보상). */
         public boolean chaos, chaosBoss;
@@ -339,7 +342,13 @@ public final class S5MineMobs {
         new Type("심연의 마도사", 26, "demon", "#6a2aa8").asDemon().fix(3_000_000, 40_000).expx(36).showLv(107).asRanged().el(7).respawn(180_000L),
         new Type("발록", 26, "demon", "#4a1010").asDemon().fix(7_800_000, 54_000).expx(90).showLv(115).el(6).respawn(600_000L),
         // [2026-11-17] "하피 왕도에 허수아비 세워줘" -- 왕도 훈련장 여덟째 보스 허수아비(목록 맨 끝 -- 앞 번호가 바뀌지 않게)
-        new Type("하피 여왕 허수아비", 1, "human", "#c8a050").asSim("하피 여왕")
+        new Type("하피 여왕 허수아비", 1, "human", "#c8a050").asSim("하피 여왕"),
+        // [2026-11-17] "최후의 방어선 마계 입구 방향에 보스 -- 심판자 보로네오, 중갑옷을 입고 날개가 달린 빛 속성 타락천사, 빛과 어둠에 추가 피해, 2x2, Lv.125,
+        //  패턴은 골고루, 천사들이 나와 공격하고 사라지는 패턴, 검과 망치를 번갈아 들고, 빛의 심장 + 심판의 검·심판의 갑옷 확률 드랍" --
+        //  체력 3억 / 공격 38만(방어선 마왕군 악마 사이), 경험치 약 3천만. 쓰러지면 1시간 뒤 다시. 패턴 = S55MineServiceImpl.mineBoroPattern.
+        // [2026-11-17] 같은 날 "보로네오는 악마도 소환(2마리씩 일정 주기마다)" -- 보로네오 둘레 잠든 자리 둘(minion, 쓰러지면 다시 부를 때까지 없음). 기술 없는 악마 병사.
+        new Type("심판의 악마 병사", 26, "demon", "#7a1a2a").fix(15_000_000, 200_000).expx(4).showLv(125).minionOnly(),
+        new Type("심판자 보로네오", 26, "human", "#e8d8a0").asBoss().fix(300_000_000, 380_000).expx(75).showLv(125).el(8).respawn(60 * 60_000L).weakLightDark()
     )));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비"), indexOf("하피 여왕 허수아비") }; // [2026-11-17] + 하피 여왕
@@ -427,6 +436,10 @@ public final class S5MineMobs {
     public static final int THUNDER_BOSS_TYPE = indexOf("천둥 황소"); // [2026-11-05] 마물의 숲 입구
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
     public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
+    public static final int BORO_BOSS_TYPE = indexOf("심판자 보로네오"); // [2026-11-17] 최후의 방어선
+    public static final int BORO_MINION_TYPE = indexOf("심판의 악마 병사");
+    /** [2026-11-17] 속성 e로 때리면 상성(x1.5)인지 -- 보통 상성 + 빛·어둠 둘 다에 약한 몬스터(보로네오). */
+    public static boolean weakTo(int e, Type t) { return elemBeats(e, t.elem()) || (t.weakLD && (e == EL_LIGHT || e == EL_DARK)); }
     public static final int WB_BOSS_TYPE = indexOf("심연의 거룡"); // [2026-11-15] 월드보스
     /** [2026-11-15] 탑 -- 구역(0 = 1~10층, 1 = 11~20층, 2 = 21~30층)별 몬스터 셋, 수문장. */
     static final String[][] TOWER_MOBS = { { "탑 수호병", "돌 가고일", "마력 인형" }, { "탑 기사", "그림자 마법사", "강철 늑대" }, { "타락 천사", "심연 마도사", "흑요석 골렘" } };
@@ -673,6 +686,18 @@ public final class S5MineMobs {
                 int[] ca = new int[cells.size()];
                 for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
                 fm.add(new S5MineMap.Mob(fm.size(), DEMON_IDX[q[2]], q[0], q[1], ca)); // [2026-11-17] 단계*4 + 종류
+            }
+            if (m.bossX() >= 0) for (int k = 0; k < 2; k++) { int mx = m.bossX() + (k == 0 ? -3 : 4), my = m.bossY() + 1; fm.add(new S5MineMap.Mob(fm.size(), BORO_MINION_TYPE, mx, my, new int[] { my * m.w + mx })); } // [2026-11-17] 소환 악마 자리 둘(평소엔 없음)
+            if (m.bossX() >= 0) { // [2026-11-17] 최후의 방어선 -- 심판자 보로네오(목록 맨 끝, 집 둘레 BOSS_ROAM칸 안을 거닌다)
+                List<Integer> bc = new ArrayList<>();
+                bc.add(m.bossY() * m.w + m.bossX());
+                for (int dy = -BOSS_ROAM; dy <= BOSS_ROAM; dy++) for (int dx = -BOSS_ROAM; dx <= BOSS_ROAM; dx++) {
+                    int nx = m.bossX() + dx, ny = m.bossY() + dy;
+                    if ((dx != 0 || dy != 0) && Math.abs(dx) + Math.abs(dy) <= BOSS_ROAM && nx > 1 && ny > 1 && nx < m.w - 2 && ny < m.h - 2 && mobCell(ft[ny][nx]) && mobCell(ft[ny][nx + 1]) && mobCell(ft[ny + 1][nx]) && mobCell(ft[ny + 1][nx + 1])) bc.add(ny * m.w + nx);
+                }
+                int[] ba = new int[bc.size()];
+                for (int i = 0; i < ba.length; i++) ba[i] = bc.get(i);
+                fm.add(new S5MineMap.Mob(fm.size(), BORO_BOSS_TYPE, m.bossX(), m.bossY(), ba));
             }
             return fm;
         }

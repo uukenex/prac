@@ -41,6 +41,7 @@ window.MineChar = (function () {
     katana:  { bl: '#e8eef4', hi: '#ffffff', dk: '#9aa8b8', hg: '#1c1c22', hgd: '#d8b040', hd: '#b01c2c', hdd: '#141418', bw: 2, n: 15, curve: 1, tassel: '#e8303a', trail: '#dff0ff' },
     ninja:   { bl: '#5a6070', hi: '#d8e4f0', dk: '#2a2e38', hg: '#3a3f4a', hgd: '#1a1c22', hd: '#141418', hdd: '#3a4a7a', bw: 2, n: 14, bolt: 1, trail: '#a8dcff' },
     baekhwa: { bl: '#ffe060', hi: '#ffffff', dk: '#ff8a1a', hg: '#5a1a10', hgd: '#2a0a06', hd: '#2a1a14', hdd: '#7a2a10', bw: 3, n: 13, fire: 1, trail: '#ffb030' },
+    immortal: { bl: '#fff4cc', hi: '#ffffff', dk: '#d8b04a', hg: '#f0d060', hgd: '#8a6a20', hd: '#3a2a4a', hdd: '#1a1024', bw: 3, n: 16, trail: '#fff0a0' }, // [2026-11-17] 심판의 검 -- 희게 빛나는 넓은 날, 금빛 코등이, 검보라 손잡이
     harpy:   { bl: '#7ae8c8', hi: '#f0fff8', dk: '#2a9a78', hg: '#e8fff4', hgd: '#5ab89a', hd: '#1e4a3a', hdd: '#3a7a5a', bw: 3, n: 15, wind: 1, trail: '#bfeee0' }, // [2026-11-11] 하피의 검 -- 비취색 날, 깃털 날개 코등이, 칼날을 감는 바람, 손잡이 깃털 장식
     parasol: { bl: '#ff8ab8', hi: '#ffd0e4', dk: '#e05a90', hg: '#8a5a2b', hgd: '#5a3a1a', hd: '#8a5a2b', hdd: '#5a3a1a', bw: 2, n: 11, trail: '#ffc8dc' }
   };
