@@ -1712,6 +1712,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUser(userName);
         if (row == null) return out;
         Map<String, Integer> items = mineItems(userName);
+        if ("mail".equals(action) || "mailGet".equals(action)) { // [2026-11-17] 우편함
+            if ("mailGet".equals(action)) {
+                if (!mineAtNpc(row, "mailbox")) { out.put("message", "마을 우체부에게서만 받을 수 있어요."); return out; }
+                Object[] ml = null;
+                for (Object[] q : MINE_MAILS) if (q[0].equals(code)) ml = q;
+                if (ml == null) { out.put("message", "그런 우편은 없어요."); return out; }
+                if (items.getOrDefault("MAIL_" + ml[0], 0) > 0) { out.put("message", "이미 받은 우편이에요."); return out; }
+                dao.upsertMineItem(userName, "MAIL_" + ml[0], 1); items.put("MAIL_" + ml[0], 1);
+                StringBuilder got = new StringBuilder();
+                for (String[] it : (String[][]) ml[3]) { int q = Integer.parseInt(it[1]); dao.addUserOre(userName, it[0], q); got.append(got.length() > 0 ? " · " : "").append(mineCodeName(it[0])).append(' ').append(q); }
+                out.put("ok", true);
+                out.put("message", "📮 " + ml[1] + " -- " + got + " 받았어요!");
+                out.put("ores", mineOreList(userName));
+            }
+            out.put("mails", mineMailList(items));
+            return out;
+        }
         if ("refine".equals(action) || "refineInfo".equals(action)) { // [2026-11-17] 최후의 방어선 정제사 -- 악마의 광석 조각 하나마다 MINE_REFINE_PCT%로 미스릴 원석
             int shard = mineOreHave(userName).getOrDefault(S5MineMap.DEMON_ORE_CODE, 0);
             if ("refine".equals(action)) {
@@ -2559,6 +2576,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-16] 악마(악마의 들판) 기술 -- 나와 싸우는 동안(전투 턴마다): 2칸 넘게 떨어지면 MINE_DEMON_BLINK_MS마다 내 곁으로 순간이동,
     //  MINE_DEMON_FIRE_MS마다 내 발밑에 지옥불(예고 1.8초, 3x3 -- 마도사는 둘레 세 곳 더, 발록은 5x5), 발록은 지면 강타(둘레 3칸 + 기절)도.
     static final int MINE_DEMON_NEED_FLOOR = 29;
+    // ---- [2026-11-17] "우편함 NPC를 만들어서 각 유저들에게 바다 보석 주자 -- 사과 보상" -- 마을 우체부(중앙 평원 마을·왕도 광장·요새 도시).
+    //  우편은 여기 적어 둔다: {번호, 제목, 내용, {{재료 코드, 개수}...}}. 사람마다 한 번씩 받는다(MAIL_<번호> = 1). 안 받은 우편이 있으면 들어올 때 알린다(mineState mailN).
+    static final Object[][] MINE_MAILS = {
+        { "SORRY1117", "🙇 사과 보상", "그동안 사막의 목걸이 효과가 바다 보석에는 적용되지 않았어요. 불편을 드려 죄송합니다 -- 바다 보석 꾸러미를 보내 드려요.",
+            new String[][] { { "PEARL", "5" }, { "CORAL_GEM", "5" }, { "AMETHYST", "5" }, { "OPAL", "5" }, { "BLACK_PEARL", "5" } } } };
+    static List<HashMap<String, Object>> mineMailList(Map<String, Integer> items) {
+        List<HashMap<String, Object>> l = new ArrayList<>();
+        for (Object[] q : MINE_MAILS) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", q[0]); m.put("title", q[1]); m.put("body", q[2]); m.put("got", items.getOrDefault("MAIL_" + q[0], 0) > 0);
+            List<HashMap<String, Object>> its = new ArrayList<>();
+            for (String[] it : (String[][]) q[3]) { HashMap<String, Object> x = new HashMap<>(); x.put("grade", mineCodeGrade(it[0])); x.put("name", mineCodeName(it[0])); x.put("qty", Integer.parseInt(it[1])); its.add(x); }
+            m.put("items", its);
+            l.add(m);
+        }
+        return l;
+    }
+    static int mineMailUnread(Map<String, Integer> items) { int n = 0; for (Object[] q : MINE_MAILS) if (items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
     // ---- [2026-11-17] "보스전이 있는 장소에서 보스전이 시작되면, 그 맵에 몇 명 있는지에 따라 '우리는 하나' 버프를 보여 주고 얼마나 강해졌는지 띄우기,
     //  체력도 배수로(초보일 때는 더 많이)" -- 보스 맵(보스가 깨어 싸우는 중: 누군가를 노리거나 30초 안에 맞음)에 2명 이상 있으면 모두에게:
     //  공격력 +20 / 50 / 100 / 150%(2 / 3 / 4 / 5명 이상 -- 월드보스 인원 버프와 같은 표, 월드보스 싸움터는 그쪽 것만), 체력 x(1 + 0.2 x (인원 - 1), 최대 +80%),
@@ -4651,6 +4686,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         { String ca = mineChaosAlive(userName, System.currentTimeMillis()); if (ca != null) out.put("chaosLock", ca); } // [2026-11-17] 혼돈스러운 마계 -- 귀환의 문이 닫혀 있다
         out.put("llPass", items.getOrDefault(MINE_ITEM_LL_PASS, 0) > 0); // [2026-11-17] 최후의 방어선 통행
+        out.put("mailN", mineMailUnread(items)); // [2026-11-17] 안 받은 우편
         out.put("visitedTcity", mineTowerOk(userName) && (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) > 0 || isMineAdmin(userName)));
         out.put("visitedArchi", items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0 || isMineAdmin(userName)); // [2026-10-28] 다도해 마을
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
@@ -4997,11 +5033,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             r.put("cutName", S5MineMap.cutName(cg));
         }
         // [2026-10-28] 다도해 바다 보석(진주/산호석/자수정/오팔/흑진주) -- 지역 보석이 안 나왔을 때 본섬/일곱 섬에서 4%
-        if (gi < 0 && S5MineMap.isArchiLand(map.id) && RND.nextInt(1000) < S5MineMap.SEA_GEM_PERMILLE) {
+        // [2026-11-17] "목걸이 효과 바다 보석에도 적용" -- 사막의 목걸이 배수를 바다 보석 확률에도 곱하고, 땅 보석이 나와도 따로 굴린다(둘 다 나오면 seaGrade로)
+        if (S5MineMap.isArchiLand(map.id) && RND.nextInt(1000) < S5MineMap.SEA_GEM_PERMILLE * MINE_SAND_GEM_MULT[Math.min(mineNeckTier(items), MINE_SAND_GEM_MULT.length - 1)]) {
             int sg = S5MineMap.seaGemFor(RND.nextInt(100));
             dao.addUserOre(userName, S5MineMap.SEA_GEM_CODES[sg], 1);
-            r.put("gemGrade", S5MineMap.SEA_GEM_GRADE_BASE + sg);
-            r.put("gemName", S5MineMap.SEA_GEM_NAMES[sg]);
+            r.put(gi < 0 ? "gemGrade" : "seaGrade", S5MineMap.SEA_GEM_GRADE_BASE + sg);
+            r.put(gi < 0 ? "gemName" : "seaName", S5MineMap.SEA_GEM_NAMES[sg]);
         }
         if (S5MineMap.isDemonLand(map.id)) { // [2026-11-17] "악마 들판·최후의 방어선에서 곡괭이로 땅을 파면 악마의 광석 조각" -- 캘 때마다 하나
             dao.addUserOre(userName, S5MineMap.DEMON_ORE_CODE, 1);
