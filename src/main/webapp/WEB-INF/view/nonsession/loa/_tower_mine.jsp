@@ -1954,8 +1954,11 @@ var TowerMine = (function () {
     if (f.me) tgs.push({ me: 1 });
     (f.us || []).forEach(function (id) { tgs.push({ id: id }); });
     if (!tgs.length) tgs.push({ none: 1 });
-    var fo = f.f || 2, n = Math.min(130, 16 + 14 * Math.max(1, f.n | 0));
-    lootBurst(f.x + (fo - 1) / 2, f.y + (fo - 1) / 2, LOOT_GRADES, n, tgs, 1.5 + fo * 0.75, 0);
+    var fo = f.f || 2, gs = f.g && f.g.length ? f.g : null, per = gs ? gs.length : 6; // [2026-11-17] 실제로 떨어진 개수(한 사람 몫) x 받는 사람 수
+    if (!per) return;
+    var all = []; tgs.forEach(function (tg) { for (var i = 0; i < per; i++) all.push({ g: gs ? gs[i] : LOOT_GRADES[i % LOOT_GRADES.length], tg: tg }); });
+    if (all.length > 130) all.length = 130;
+    lootBurst(f.x + (fo - 1) / 2, f.y + (fo - 1) / 2, all.map(function (o) { return o.g; }), all.length, all.map(function (o) { return o.tg; }), 1.5 + fo * 0.75, 0);
     flashT0 = performance.now();
   }
   // 탑 방 -- 한가운데 놓이는 것(보물방 T 상자 / 증표방 P 제단 / 행운의 샘 L)과 함정방(X) 가시
@@ -2040,11 +2043,11 @@ var TowerMine = (function () {
     if (twFx && !twFx.done && now >= twFx.t0) { // 열리는 순간 -- 받은 것들이 쏟아져 나와 나에게
       twFx.done = true;
       var gs = [];
-      twFx.drops.forEach(function (w) { for (var k = 0; k < Math.max(1, Math.min(4, w.qty | 0)); k++) gs.push(w.grade); });
+      twFx.drops.forEach(function (w) { for (var k = 0; k < Math.max(1, Math.min(40, w.qty | 0)); k++) gs.push(w.grade); }); // [2026-11-17] 받은 개수 그대로
       if (ty === 'L') { lootBurst(dc[0], dc[1], ['heal'].concat(gs), 10, [{ me: 1 }], 1.5, 0); floats.push({ x: dc[0], y: dc[1] - 1, text: '🍀 체력이 가득 찼어요', color: '#7dffb0', big: true, t0: now }); }
       else if (gs.length) {
         flashT0 = now;
-        lootBurst(dc[0], dc[1], gs, ty === 'T' ? Math.max(14, gs.length * 3) : Math.max(6, gs.length * 2), [{ me: 1 }], ty === 'T' ? 2.2 : 1.5, 0);
+        lootBurst(dc[0], dc[1], gs, Math.min(60, gs.length), [{ me: 1 }], ty === 'T' ? 2.2 : 1.5, 0);
         twFx.drops.forEach(function (w, i) { var gi = lootImg(w.grade); floats.push({ x: dc[0], y: dc[1] - 1 - i * 0.55, text: '+' + w.qty + ' ' + w.name, color: (ORE_COL[w.grade] || ORE_COL[1])[1], icon: gi, t0: now + LOOT_FLY + 1100 + i * 160 }); });
       }
     }

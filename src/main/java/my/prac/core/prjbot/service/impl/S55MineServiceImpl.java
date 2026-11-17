@@ -800,6 +800,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long splitUntil;  // [2026-10-28] 닌자 두목 분신술이 끝나는 시각(그 전엔 제자리, 안 때림)
         int splitStage;   // 지금까지 쓴 분신술 횟수(체력 75/50/25% 아래로 내려갈 때마다 한 번)
         java.util.Set<String> hitters; // [2026-10-28] 닌자 두목을 때린 유저(처치 때 첫 보상)
+        List<Integer> fxG; // [2026-11-17] 보스가 실제로 떨어뜨린 것(한 사람 몫, 등급 x 개수) -- 쓰러진 연출(bossFx)이 이만큼만 쏟아진다
         long regenAt;     // [2026-10-29] 보스 체력 회복을 마지막으로 반영한 시각
         long stunUntil;   // [2026-11-07] 일섬참에 맞아 기절(이때까지 움직이지도 때리지도 기술을 쓰지도 않는다)
         long vulnUntil; int vulnPct; // [2026-11-08] 만검진 -- 받는 피해 +vulnPct%(이때까지)
@@ -809,7 +810,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] pat;       // [2026-11-16] 탑 수문장 패턴마다 다음에 쓸 시각
         MobState(int hp) { this.hp = hp; }
         /** 다시 나타날 때(체력 가득) 닌자 상태도 처음으로. */
-        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; fxAt = 0; pat = null; }
+        void respawn(int max) { deadUntil = 0; hp = max; stealth = false; stealthHits = 0; splitUntil = 0; splitStage = 0; hitters = null; fxAt = 0; fxG = null; pat = null; }
     }
 
     static final java.util.concurrent.ConcurrentHashMap<String, MobState> MINE_MOB_STATE = new java.util.concurrent.ConcurrentHashMap<>();
@@ -3979,6 +3980,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (type.boss && !type.noReward && mob.type != S5MineMobs.WB_BOSS_TYPE) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
             if (type.boss) { int sh = mineBossShare(userName, map, mob, bossHitters); if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!"); } // [2026-11-13]
             if (type.boss) out.put("bossName", type.name); // [2026-11-07] 관리자 알림(보스 전용 아이템이 나왔는지만)
+            if (type.boss) { // [2026-11-17] "보스/상자 이펙트가 실제 드랍보다 너무 크다 -- 실제 개수만큼" -- 한 사람 몫(함께 싸운 사람도 같은 보상)을 적어 둔다
+                List<Integer> fg = new ArrayList<>();
+                for (HashMap<String, Object> w : killDrops) { Object g = w.get("grade"); if (g == null) continue; int q = Math.max(1, intVal(w.get("qty"), 1)); for (int k = 0; k < q && fg.size() < 40; k++) fg.add(intVal(g, 1)); }
+                MobState ks2 = MINE_MOB_STATE.get(mineMobKey(map, mob.id));
+                if (ks2 != null) synchronized (ks2) { ks2.fxG = fg.isEmpty() ? null : fg; } // 따로 주는 보상(월드보스 등)은 비워 두면 화면이 사람당 6개로
+            }
             out.put("drops", killDrops);
             out.put("ores", mineOreList(userName));
             if (type.boss) { // [2026-11-05] 왕도 소문 -- 혼자서 / 일행이
@@ -9351,7 +9358,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         java.util.Set<String> hs = ps.hitters == null ? new java.util.HashSet<>() : ps.hitters;
                         for (String u : hs) { if (u.equals(userName)) { mine = true; continue; } MinePresence hp2 = MINE_PRESENCE.get(u); if (hp2 != null && mapId.equals(hp2.mapId) && now - hp2.at <= MINE_PRESENCE_TTL_MS && ids.size() < 16) ids.add(hp2.id); }
                         fx.put("at", ps.fxAt); fx.put("x", ps.fx); fx.put("y", ps.fy); fx.put("f", S5MineMobs.TYPES.get(pb.type).foot());
-                        fx.put("n", Math.max(1, hs.size())); fx.put("me", mine || hs.isEmpty()); fx.put("us", ids);
+                        fx.put("n", Math.max(1, hs.size())); fx.put("me", mine || hs.isEmpty()); fx.put("us", ids); if (ps.fxG != null) fx.put("g", ps.fxG);
                         out.put("bossFx", fx);
                     }
                 } else ps.fxAt = 0;
