@@ -875,7 +875,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_OVER_ATK0 = 300, MINE_OVER_ATK_UP = 10, MINE_OVER_HP0 = 5_800, MINE_OVER_HP_DOWN = 150, MINE_OVER_HP_MIN = 500; // 99레벨 직전 한 레벨치(공격 +298, 체력 +5,789 -- 환생 전 기준)에서 이어진다
     static long mineOverAtk(int lv) { long n = Math.max(0, lv - MINE_LV_MAX); return n * MINE_OVER_ATK0 + MINE_OVER_ATK_UP * n * (n - 1) / 2; }
     static long mineOverHp(int lv) { long n = Math.max(0, lv - MINE_LV_MAX), s = 0; for (long k = 1; k <= n; k++) s += Math.max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN * (k - 1)); return s; }
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, lv)) * (1 + MINE_RB_HP_BONUS * rb) + mineOverHp(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    // [2026-11-17] "환생 시 능력치 보존 -- 0환생 99에서 1환생하면 0환생 5레벨 기준 스탯으로 시작, 2환생 10, 3환생 20, 4환생 30, 5환생 40, 진환생 50.
+    //  4환생이면 1~30레벨 기준 스탯은 같다. 환생 보너스는 별도" -- 기본 체력/공격력을 정할 때 레벨을 환생 바닥(MINE_RB_FLOOR_LV[환생 횟수]) 아래로 내리지 않는다.
+    //  환생 보너스(체력 +50%, 공격력 +50% / 회)는 그 위에 그대로 곱한다. 용병(환생 0)은 그대로.
+    static final int[] MINE_RB_FLOOR_LV = { 1, 5, 10, 20, 30, 40, 50 };
+    static int mineStatLv(int lv, int rb) { return Math.max(lv, MINE_RB_FLOOR_LV[Math.max(0, Math.min(rb, MINE_RB_FLOOR_LV.length - 1))]); }
+    static int mineAtkP(int lv, Map<String, Integer> items) { return mineAtk(mineStatLv(lv, mineRebirth(items))); }
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, mineStatLv(lv, rb))) * (1 + MINE_RB_HP_BONUS * rb) + mineOverHp(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
     // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -> 같은 날 "99레벨은 16만, 그 아래는 그에 맞게 더 올리고, 80레벨부터 1만 정도씩"
     //  -- 80레벨 50,000 -> 99레벨 160,000 직선(레벨마다 약 +5,789 -- 99레벨 16만에서 1만씩이면 80레벨이 음수라 가능한 만큼 크게).
     //  79 -> 80에서 갑자기 뛰지 않게 71~79레벨은 70레벨 값(15,293)에서 80레벨 값까지 같은 배율(레벨마다 약 x1.126)로 잇는다. 70레벨까지는 그대로(레벨마다 9%).
@@ -899,7 +905,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static double mineAtkExp(int lv) { return 6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv); }
     static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round(a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0 + mineOverAtk(lv)); } // [2026-11-17] 99 넘으면 레벨마다 같은 양(오를수록 더)
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
-    static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(lv) * (1 + MINE_RB_ATK_BONUS * rb)); }
+    static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(mineStatLv(lv, rb)) * (1 + MINE_RB_ATK_BONUS * rb)); } // [2026-11-17] 환생 바닥 레벨
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
     static double mineAtkMul(Map<String, Integer> items) {
         return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? (items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) >= 2 ? 0.65 : MINE_BERSERK_MULT - 1) + (items.getOrDefault(MINE_LOWHP_FLAG, 0) > 0 ? 0.2 : 0) : 0) // [2026-11-04] 2단계
@@ -3835,7 +3841,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         final boolean[] twStunHit = { false }; // [2026-11-15] 탑 수문장 반격의 기절(회피 판정 뒤에 건다)
         int[] aura = mineAuraActive(items); // [2026-11-04] 검기 -- 바로 앞(때린) 적에게도 속성 피해
         int auraRange = mineAuraRange(aura);
-        double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items);
+        double atkBase = mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items);
         List<int[]> auraMain = null;
         boolean assassin = MINE_ITEM_ASSASSIN_NECKLACE.equals(mineNeckCode(items)), assassinHit = false; // [2026-10-30] 자객의 목걸이
         // [2026-10-28] 닌자 -- evade = 은신으로 피함(피해 0, 반격 없음, 다음 한 방 2배), stealthHit = 은신했던 닌자의 2배 반격,
@@ -3860,9 +3866,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
             crit = RND.nextInt(100) < 10;
-            dmg = Math.max(1, (int) Math.round((mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
+            dmg = Math.max(1, (int) Math.round((mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
             if (MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(items))) { // [2026-10-30] 쌍격의 장갑 -- 55%씩 두 번(타격마다 치명 15%), 화면엔 숫자 두 개
-                double base = (mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)) * mineElemMul(items, type) * mineTwinPct(items);
+                double base = (mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items)) * mineElemMul(items, type) * mineTwinPct(items);
                 int[] hs = new int[2]; boolean[] cs = new boolean[2];
                 for (int hi = 0; hi < 2; hi++) { cs[hi] = RND.nextInt(100) < 10 + mineTwinCrit(items); hs[hi] = Math.max(1, (int) Math.round(base * (0.85 + RND.nextDouble() * 0.3) * (cs[hi] ? 1.6 : 1.0))); }
                 dmg = hs[0] + hs[1];
@@ -6703,7 +6709,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
         int hp = mineHpNow(row, now, lock, rb);
-        final double atkBase = mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), pct = mineUltPct(k, ulv);
+        final double atkBase = mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), pct = mineUltPct(k, ulv);
         java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
         int maxT;
         if (k == 0) {
@@ -6837,8 +6843,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int hp = mineHpNow(row, now, lock, rb);
         mineBerserkLow(items, hp, mineHpMax(lv, rb)); // [2026-11-04] 광전사의 장갑 2단계
         StringBuilder msg = new StringBuilder();
-        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
-        long[] wr = mineWhirlSweep(userName, map, items, mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
+        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
+        long[] wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
         r = new long[] { r[0] + wr[0], r[1] + wr[1] };
         mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
@@ -9734,7 +9740,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
         m.put("hpMax", mineHpCap(lv, lock, rb));
         m.put("hp", mineHpNow(row, now, lock, rb));
-        m.put("atk", (int) Math.round(mineAtk(lv) * mineAtkMul(items) + mineWeaponFlat(items)));
+        m.put("atk", (int) Math.round(mineAtkP(lv, items) * mineAtkMul(items) + mineWeaponFlat(items)));
         m.put("coldDef", mineColdDef(items));
         m.put("pickName", pickSlot == 1 ? "광역 곡괭이" : pickSlot == 2 ? "탐지 곡괭이" : pickSlot == 3 ? "쌍날 곡괭이" : "기본 곡괭이");
         m.put("dragonQuest", items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0));
