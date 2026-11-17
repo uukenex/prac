@@ -3046,12 +3046,30 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_STUN.remove(userName); // [2026-11-04] 붕대 스턴도 끝
         MINE_HEAL.remove(userName); // [2026-10-28] 재생의 장갑 회복도 끝
         MINE_ICE_THAWED.remove(userName);
+        MINE_CHAOS_RUN.remove(userName); // [2026-11-17] 혼돈스러운 마계도 끝(몬스터는 위 mineSoloReset으로 사라진다 -- 귀환의 문이 열린다)
         if (mineWbZone(userName, now)) { // [2026-11-15] "체력이 다한 플레이어는 회색 화면으로 두다가 10초 뒤 부활" -- 월드보스 싸움터에선 그 자리에 쓰러져 있다가 일어난다
             MINE_WB_DOWN.put(userName, now + MINE_WB_DOWN_MS);
             return "10초 뒤 그 자리에서 다시";
         }
+        // [2026-11-17] "죽으면 10초 뒤 부활을 전체 필드맵에서, 탑에선 각 10층마다 있는 거점 부활(혼돈스러운 마계에서는 부활하며 몬스터가 사라짐)" --
+        //  탑 층에서 쓰러지면 아래쪽 10층 거점(10/20/30/40층 마을, 1~9층은 탑 입구)에서, 그 밖 모든 맵은 그 자리에 쓰러져 있다가 MINE_WB_DOWN_MS(10초) 뒤 일어난다.
+        HashMap<String, Object> drow = dao.selectMineUser(userName);
+        String dmap = drow == null ? "" : strVal(drow.get("MAP_ID"), "");
+        int df = S5MineMap.towerFloor(dmap);
+        if (df > 0 || S5MineMap.TOWER_GATE.equals(dmap)) {
+            MINE_DIED_AT.put(userName, System.currentTimeMillis());
+            int base = df > 0 ? (df - 1) / 10 * 10 : 0;
+            S5MineMap bm = S5MineMap.get(base > 0 ? S5MineMap.towerId(base) : S5MineMap.TOWER_GATE);
+            dao.updateMinePos(userName, bm.id, bm.spawnX, bm.spawnY, now);
+            return base > 0 ? "탑 " + base + "층 거점에서" : "거대한 탑 입구에서";
+        }
+        if (drow != null) { MINE_WB_DOWN.put(userName, now + MINE_WB_DOWN_MS); return "10초 뒤 그 자리에서 다시"; }
+        return mineGoHome(userName, items, now);
+    }
+    /** [2026-11-17] 마을(부활 거점)로 옮기기만 -- "마을로 가기" 버튼(언제나), 쓰러짐 처리가 위치를 못 읽었을 때. */
+    String mineGoHome(String userName, Map<String, Integer> items, long now) {
         MINE_DIED_AT.put(userName, System.currentTimeMillis()); // [2026-11-17] 늦게 끝난 요청이 원래 자리로 되돌리지 않게
-        MINE_CHAOS_RUN.remove(userName); // [2026-11-17] 혼돈스러운 마계도 끝
+        MINE_WB_DOWN.remove(userName);
         boolean church = items.getOrDefault(MINE_ITEM_RESPAWN, 0) == 1;
         S5MineMap home = S5MineMap.get(church ? S5MineMap.CITY : S5MineMap.FIELD);
         int[] hp0 = church ? mineCityPlaza(home) : new int[] { home.spawnX, home.spawnY };
@@ -5696,12 +5714,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineRow(userName, false);
         long now = System.currentTimeMillis();
         HashMap<String, Object> out = new HashMap<>();
-        if (mineFrozen(userName, now) != null) { out.put("ok", false); out.put("message", MINE_FROZEN_BLOCK); return out; } // [2026-10-28] 얼음 여왕 빙결
-        if (mineEngaged(userName, now)) { out.put("ok", false); out.put("message", MINE_FIGHT_BLOCK); return out; } // [2026-10-25]
+        // [2026-11-17] "마을로 가기 기능을 언제나 사용할 수 있게" -- 빙결/전투 중/쓰러져 있어도 막지 않는다(싸움·상태이상은 mineRespawn과 같이 정리)
         HashMap<String, Object> vr = dao.selectMineUser(userName);
         // [2026-10-28] "개미굴에선 마을 이동 안 됨"(나가는 굴을 찾아야) -> [2026-11-16] "개미굴에서 마을로 이동 버튼 가능하게" -- 막지 않는다.
         // [2026-10-25] "부활 거점을 골랐는데 마을 이동을 누르면 거점으로 안 간다" -- 성당에서 기도했으면 왕도 성당으로(mineRespawn과 같은 곳)
-        String where = mineRespawn(userName, mineItems(userName), now);
+        mineDisengageAll(userName); mineSoloReset(userName); MINE_TW_RUN.remove(userName); MINE_CHAOS_RUN.remove(userName);
+        MINE_ICE_FROZEN.remove(userName); MINE_DEBUFF.remove(userName); MINE_STUN.remove(userName); MINE_ICE_THAWED.remove(userName);
+        String where = mineGoHome(userName, mineItems(userName), now);
         out.put("ok", true);
         out.put("message", "🏠 " + where + " 다시 시작해요.");
         out.put("state", mineState(userName));
@@ -8040,6 +8059,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if ((mapId != null && !mapId.isEmpty() && !map.id.equals(mapId)) || mineStaleVersion(map, ver)) return out;
         Map<String, Integer> items = mineItems(userName);
         if (!mineMoveOk(minePos(row, map, mineWalkMode(items)), longOf(row.get("POS_AT_MS"), 0L), x, y, now, mineStepMs(items))) return out;
+        if (mineWbDownUntil(userName, now) > 0) { out.put("wbDown", mineWbDownUntil(userName, now)); return out; } // [2026-11-17] 쓰러져 있는 10초 -- 환경 피해 없음
         double rbCut = 1; // [2026-10-29] 환생은 % 경감 대신 방한/햇빛 단계 +1(mineColdDef / mineSunPct) -- 피해량 배수는 1
         int def = mineColdDef(items), eff = Math.max(0, map.cold() + (map.cold() > 0 && map.outdoor() && S5MineMap.night(now) ? MINE_NIGHT_COLD : 0) - def); // [2026-10-28] 외투 + 방한 장갑, [2026-11-05] 밤엔 한기 +1단계
         boolean safe = map.safeAt(x, y), raid = S5MineMap.RUINS.equals(map.id), hot = mineHotMap(map);
@@ -8170,6 +8190,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     : heatDmg > 0 && coldDmg + bzDmg == 0 ? (map.sun() > 0 ? "☀️ 뜨거운 햇볕에 쓰러졌어요... " : "🥵 더위를 견디지 못하고 쓰러졌어요... ") + mineRespawnMsg(userName, items, now)
                     : "🥶 " + (bzDmg > 0 ? "눈바람에 휩쓸려" : "추위를 견디지 못하고") + " 쓰러졌어요... " + mineRespawnMsg(userName, items, now));
         }
+        if (out.containsKey("died") && mineWbDownUntil(userName, now) > 0) out.put("wbDown", mineWbDownUntil(userName, now)); // [2026-11-17] 그 자리에서 10초
         if (save || out.containsKey("died")) { dao.updateMineCombat(userName, lv, exp, hp, now, 0); MINE_HP_VIRT.remove(userName); }
         else mineHpKeep(userName, row, hp, now);
         out.put("combat", mineCombatInfo(lv, exp, hp, now, mineEngaged(userName, now), lock, rb));

@@ -7007,8 +7007,9 @@ var TowerMine = (function () {
     if (!opened || busy || !map) return;
     var city = !!(st && st.respawnCity); // [2026-10-25] 부활 지점(성당에서 기도했으면 왕도 성당)으로
     if (!city && map.id === 'field' && Math.abs(P.x - map.spawnX) + Math.abs(P.y - map.spawnY) <= 6) { msg('이미 마을이에요.'); return; }
-    if (st && st.combat && st.combat.fight) { msg('⚔️ 몬스터가 쫓아오고 있어요! 5칸 넘게 떨어진 뒤에 이동할 수 있어요.', 2800); return; }
+    // [2026-11-17] "마을로 가기 기능을 언제나" -- 싸우는 중/쓰러져 있어도 이동
     ask('🏠 마을로', (city ? '부활 지점인 <b>왕도 아스테리아 광장</b>' : '<b>중앙 평원 마을</b>') + '(으)로 이동할까요?', '이동', function () {
+      wbDownUntil = 0; wbDownShow(); // [2026-11-17] 쓰러져 있던 회색 화면도 끝
       travel('/api/tower-mine-village', '이동하지 못했어요.');
     });
   }
