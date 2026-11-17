@@ -3711,7 +3711,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-10-30] "보스 드랍템 다회 획득, 대신 확률 30%" -- 처치마다 굴려서 나오면 주고 true. */
     static final int MINE_TOKEN_PCT = 30;
     // [2026-11-17] "보스 심장 확률 5퍼센트 올려줘" -- 얼음/화산(여기)과 바람(하피 여왕)의 심장은 30% -> 35%(번개/사막은 원래 반드시). 대주교의 인장·하피의 검은 그대로 30%.
-    static final int MINE_HEART_PCT = 35;
+    static final int MINE_HEART_PCT = 100; // [2026-11-17] 같은 날 "다른 보스 심장도 100%로" -- 35 -> 100(화산의 심장도 낮/밤 상관없이)
     boolean mineTokenRoll(String userName, String code) {
         if (RND.nextInt(100) >= (code != null && code.endsWith("_HEART") ? MINE_HEART_PCT : MINE_TOKEN_PCT)) return false;
         dao.addUserOre(userName, code, 1);
@@ -3807,7 +3807,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     List<HashMap<String, Object>> mineLavaDrops(String userName, StringBuilder msg) {
         List<HashMap<String, Object>> drops = new ArrayList<>();
-        if (S5MineMap.archiDay(System.currentTimeMillis()) && mineTokenRoll(userName, S5MineMap.VOLCANO_HEART_CODE)) { // [2026-10-30] "낮에 죽이면 화산의 심장(확률)"
+        if (mineTokenRoll(userName, S5MineMap.VOLCANO_HEART_CODE)) { // [2026-10-30] "낮에 죽이면 화산의 심장(확률)" -> [2026-11-17] 언제든 반드시
             drops.add(mineDrop(S5MineMap.VOLCANO_HEART_GRADE, S5MineMap.VOLCANO_HEART_NAME, 1));
             msg.append(" · ❤️‍🔥 ").append(S5MineMap.VOLCANO_HEART_NAME).append(" 1개!!");
         }

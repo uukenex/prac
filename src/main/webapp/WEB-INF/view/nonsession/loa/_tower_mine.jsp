@@ -2363,6 +2363,13 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">게시판을 읽는 중...</div>';
     var lv = d.live || {}, now = nowSrv();
     h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>🐉 심연의 거룡</b> · ' + (lv.closed ? '아직 나타나지 않아요' : lv.on ? '<b style="color:#ff6a5a">지금 동쪽 성곽에 출현 중!</b> (' + Math.max(1, Math.ceil((lv.end - now) / 60000)) + '분 남음)' : '다음 출현 <b>' + wbWhen(lv.next) + '</b>' + (lv.nextCycle ? ' <small>(이번 맵 주기엔 이미 쓰러짐 -- 맵 초기화 뒤)</small>' : '')) + '</div>';
+    function rwList(r) { // [2026-11-17] "보상 설명 말고 사람별로" -- 그 사람이 실제로 받은 것
+      if (!r) return '';
+      var a = ['⭐ 별빛석 ' + d.star, '🔮 칠요석 ' + d.seven];
+      if (r < 0) return a.join(' · ') + ' (은하수 조각·용의 반지는 기록 전)';
+      var g = Math.floor(r / 10) % 10; if (g) a.push('🌌 은하수 조각 ' + g); if (r >= 100) a.push('💍 용의 반지');
+      return a.join(' · ');
+    }
     function rwTxt(r) { if (!r) return ''; if (r < 0) return '보상 받음'; var s = '⭐' + d.star + ' 🔮' + d.seven, g = Math.floor(r / 10) % 10; if (g) s += ' 🌌' + g; if (r >= 100) s += ' 💍용의 반지'; return s; }
     [['cur', '현재 보스'], ['prev', '이전 보스']].forEach(function (k) {
       var b = d[k[0]];
@@ -2374,11 +2381,12 @@ var TowerMine = (function () {
       var ps = b.players || [];
       if (!ps.length) h += '<small>함께 싸운 사람이 아직 없어요.</small>';
       ps.forEach(function (p, i) {
-        h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (p.ok ? '' : ' · 보상 기준(' + b.minShare + ' 몫) 미달') + (p.rw ? ' · 🎁 ' + rwTxt(p.rw) : b.killed && p.ok ? ' · 🎁 보상 받음' : '') + '</small></span></div>';
+        var rwl = p.rw ? '🎁 ' + rwList(p.rw) : !b.killed ? '' : p.ok ? '🎁 ⭐ 별빛석 ' + d.star + ' · 🔮 칠요석 ' + d.seven : '보상 없음 (' + b.minShare + ' 몫 미달)';
+        h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (!b.killed && !p.ok ? ' · 아직 보상 기준(' + b.minShare + ' 몫) 전' : '') + '</small>' + (rwl ? '<small style="color:#ffe9a8">' + rwl + '</small>' : '') + '</span></div>';
       });
       h += '</div>';
     });
-    return h + '<div class="mine-smith-say"><small>보상은 쓰러뜨렸을 때 기준 이상 싸운 모두에게 같게(별빛석 ' + d.star + ' · 칠요석 ' + d.seven + ', 확률로 은하수 조각 · 용의 반지). 맵 주기마다 한 번.</small></div>';
+    return h;
   }
   /** [2026-11-17] 최후의 방어선 -- 악마 광석 정제사: 조각 하나마다 10%로 미스릴 원석. */
   var refineInfo = null, refineBusy = false;
