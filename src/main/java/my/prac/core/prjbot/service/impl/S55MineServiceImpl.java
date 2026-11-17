@@ -1101,7 +1101,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         c.put("exp", exp);
         c.put("expNeed", mineExpNeed(lv, rb));
         c.put("hp", hp);
-        c.put("hpMax", mineHpMax(lv, rb));
+        c.put("hpMax", mineHpFull(lv, rb)); // [2026-11-17] 갑옷 체력까지
         c.put("atk", mineAtk(lv, rb));
         c.put("rebirth", rb); // [2026-10-28] 환생 횟수(화면 "Lv.1(환생1)" + 날개)
         c.put("rebirthReady", mineRebirthReady(lv, exp, rb));
