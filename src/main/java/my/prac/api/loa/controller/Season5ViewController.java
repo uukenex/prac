@@ -713,7 +713,7 @@ public class Season5ViewController {
             String wh = s5Dao.selectConfigValue("S55_WS_HOST");
             if (wh != null && wh.trim().matches("[A-Za-z0-9.:-]{1,100}")) st.put("wsHost", wh.trim()); }
         if ("1".equals(enter) && st.get("error") == null && !s5Service.s55IsAdmin(userName)) // [2026-11-04] 관리자 알림 -- 다른 유저 접속(같은 유저는 30분에 한 번)
-            my.prac.core.util.S55AdminPush.notifyOnce("enter|" + userName, 30 * 60_000L, "⛏️ 광산 접속", userName + " 님이 광산에 들어왔어요 (" + st.get("mapName") + ")");
+            my.prac.core.util.S55AdminPush.digestEnter(userName); // [2026-11-18] 1시간 정리로
         if ("1".equals(enter) && st.get("error") == null) {
             mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 곡괭이 내구도 "
                     + st.get("durability") + "/" + st.get("durabilityMax"));
@@ -870,30 +870,22 @@ public class Season5ViewController {
 
     /** [2026-11-04] 관리자 폰 알림 -- 보스 처치, 신화(7) 무기(드랍/은둔한 대장장이 등급업). 관리자 본인 것은 보내지 않는다.
      *  [2026-11-07] "전설 이상 알림 -> 신화로", "보스 처치 알림은 보스 전용 아이템 드랍 유무만(경험치나 다른 아이템은 빼고)". */
-    static final int MINE_ALERT_GRADE = 7;
+    static final int MINE_ALERT_GRADE = 6; // [2026-11-18] "고대 이상급 획득 정보"(1시간 정리)
     private void mineAdminAlerts(String userName, java.util.Map<String, Object> out, String mapId) {
         if (out == null || !Boolean.TRUE.equals(out.get("ok")) || s5Service.s55IsAdmin(userName)) return;
         if (Boolean.TRUE.equals(out.get("bossKilled"))) mineBossAlert(userName, out, "");
         Object g = out.get("dropGrade");
         Object nm = out.get("dropName");
         if (g instanceof Number && ((Number) g).intValue() >= MINE_ALERT_GRADE && ((Number) g).intValue() < GRADE_NAMES.length && nm != null)
-            my.prac.core.util.S55AdminPush.notify("🗡️ " + GRADE_NAMES[((Number) g).intValue()] + " 장비", userName + " 님이 " + nm + " (" + GRADE_NAMES[((Number) g).intValue()] + ")");
+            my.prac.core.util.S55AdminPush.digestGear(userName, nm + " (" + GRADE_NAMES[((Number) g).intValue()] + (out.get("dropShard") != null ? ", 이미 있어 분해" : "") + ")"); // [2026-11-18] 1시간 정리로
     }
 
     /** [2026-11-07] 보스 처치 알림 -- "닉네임 -- 보스 이름 처치(용병과 함께)" + 전용 아이템이 나왔으면 그 이름, 아니면 "전용 아이템 없음". */
     @SuppressWarnings("unchecked")
     private void mineBossAlert(String userName, java.util.Map<String, Object> o, String how) {
-        StringBuilder got = new StringBuilder();
-        Object dl = o.get("drops");
-        if (dl instanceof List) for (Object d : (List<Object>) dl) {
-            if (!(d instanceof java.util.Map)) continue;
-            Object dg = ((java.util.Map<String, Object>) d).get("grade");
-            if (dg instanceof Number && my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineBossItemGrade(((Number) dg).intValue()))
-                got.append(got.length() > 0 ? ", " : "").append(((java.util.Map<String, Object>) d).get("name"));
-        }
-        if ("하피의 검".equals(o.get("dropName")) && o.get("dropGrade") instanceof Number) got.append(got.length() > 0 ? ", " : "").append(my.prac.core.prjbot.service.impl.S55MineServiceImpl.MINE_GRADE_KO[((Number) o.get("dropGrade")).intValue()]).append(" 하피의 검"); // [2026-11-11] 하피 여왕 전용 무기
+        // [2026-11-18] "1시간에 한 번 정리 -- 보스 몇 회 처치(심장 획득은 안 알려도 됨)" -- 처치 수만 모은다(전용 아이템 목록은 뺐다, 고대 이상 장비는 mineAdminAlerts가 따로)
         Object bn = o.get("bossName");
-        my.prac.core.util.S55AdminPush.notify("👑 보스 처치", userName + " -- " + (bn == null ? "보스" : bn) + " 처치" + how + " · " + (got.length() > 0 ? "🎁 전용 아이템: " + got : "전용 아이템 없음"));
+        my.prac.core.util.S55AdminPush.digestBoss(userName, bn == null ? null : String.valueOf(bn));
     }
 
     /** [2026-11-03] 시즌 5.5 경량화 -- "1초마다 따로 보내던 요청(위치 알림 / 전투 턴 / 환경 턴 / 몬스터 상태)을 하나로".

@@ -65,7 +65,58 @@ public class S55AdminPush {
     private volatile PrivateKey priv;
 
     @PostConstruct
-    void init() { inst = this; }
+    void init() {
+        inst = this;
+        long now = System.currentTimeMillis(), next = (now / 3_600_000L + 1) * 3_600_000L; // 매시 정각(KST도 정시가 같다)
+        DIGEST_POOL.scheduleAtFixedRate(S55AdminPush::digestFlush, next - now + 2_000L, 3_600_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+    }
+
+    // ---- [2026-11-18] "관리자 알림 1시간에 한 번만 정리해서 -- 누가 접속, 보스 몇 회 처치(심장 획득은 안 알려도 됨), 고대 이상급 획득 정보" --
+    //  광산 접속/보스 처치/고대 이상 장비는 바로 보내지 않고 모아 두었다가 매시 정각에 한 건으로(그 시간에 아무 일도 없으면 안 보낸다).
+    //  모아 둔 것은 메모리에만(서버를 다시 켜면 그 시간 몫은 사라진다). 게시판 새 글/카카오 연결/시험 알림은 예전처럼 바로.
+    private static final java.util.concurrent.ScheduledExecutorService DIGEST_POOL = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "s55digest"); t.setDaemon(true); return t; });
+    private static final Object DG_LOCK = new Object();
+    private static java.util.LinkedHashMap<String, Integer> dgEnter = new java.util.LinkedHashMap<>(); // 유저 -> 들어온 횟수
+    private static java.util.LinkedHashMap<String, Integer> dgBoss = new java.util.LinkedHashMap<>(); // "유저|보스" -> 처치 수
+    private static List<String> dgGear = new ArrayList<>(); // "유저 -- 이름 (등급)"
+    private static long dgFrom = System.currentTimeMillis();
+
+    public static void digestEnter(String user) { synchronized (DG_LOCK) { if (dgEnter.size() < 500) dgEnter.merge(user, 1, Integer::sum); } }
+    public static void digestBoss(String user, String boss) { synchronized (DG_LOCK) { if (dgBoss.size() < 500) dgBoss.merge(user + "|" + (boss == null ? "보스" : boss), 1, Integer::sum); } }
+    public static void digestGear(String user, String text) { synchronized (DG_LOCK) { if (dgGear.size() < 200) dgGear.add(user + " -- " + text); } }
+
+    static void digestFlush() {
+        try {
+            java.util.LinkedHashMap<String, Integer> en, bo; List<String> ge; long from, to = System.currentTimeMillis();
+            synchronized (DG_LOCK) {
+                en = dgEnter; bo = dgBoss; ge = dgGear; from = dgFrom;
+                dgEnter = new java.util.LinkedHashMap<>(); dgBoss = new java.util.LinkedHashMap<>(); dgGear = new ArrayList<>(); dgFrom = to;
+            }
+            if (en.isEmpty() && bo.isEmpty() && ge.isEmpty()) return;
+            StringBuilder b = new StringBuilder();
+            if (!en.isEmpty()) {
+                b.append("👤 접속 ").append(en.size()).append("명: ");
+                int i = 0;
+                for (java.util.Map.Entry<String, Integer> e : en.entrySet()) b.append(i++ > 0 ? ", " : "").append(e.getKey()).append(e.getValue() > 1 ? "(" + e.getValue() + ")" : "");
+            }
+            if (!bo.isEmpty()) {
+                int total = 0;
+                for (int v : bo.values()) total += v;
+                b.append(b.length() > 0 ? "\n" : "").append("👑 보스 ").append(total).append("회: ");
+                int i = 0;
+                for (java.util.Map.Entry<String, Integer> e : bo.entrySet()) {
+                    String[] k = e.getKey().split("\\|", 2);
+                    b.append(i++ > 0 ? " · " : "").append(k[0]).append(" ").append(k.length > 1 ? k[1] : "").append(" ").append(e.getValue()).append("회");
+                }
+            }
+            if (!ge.isEmpty()) b.append(b.length() > 0 ? "\n" : "").append("🗡️ 고대 이상 ").append(ge.size()).append("건: ").append(String.join(" · ", ge));
+            java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("HH:mm");
+            f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Seoul"));
+            notify("⛏️ 광산 정리 " + f.format(new java.util.Date(from)) + "~" + f.format(new java.util.Date(to)), b.toString());
+        } catch (Exception e) {
+            logger.warn("[푸시] 시간별 정리 실패: {}", e.getMessage());
+        }
+    }
 
     /** 화면(구독 버튼)이 쓰는 공개키(base64url). */
     public static String publicKey() {

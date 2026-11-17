@@ -123,9 +123,9 @@
     function st(t, ok) { $('s55AdmSt').textContent = t; $('s55AdmSt').className = ok ? 'ok' : 'no'; }
     function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function hhmm(t) { var d = new Date(t), p = function (v) { return (v < 10 ? '0' : '') + v; }; return p(d.getHours()) + ':' + p(d.getMinutes()); }
-    function render() { $('s55AdmList').innerHTML = items.length ? items.slice(0, 6).map(function (n) { return '<div><span>' + hhmm(n.t) + '</span> <b>' + esc(n.title) + '</b> ' + esc(n.body) + '</div>'; }).join('') : '<div class="e">아직 알림이 없어요.</div>'; }
+    function render() { $('s55AdmList').innerHTML = items.length ? items.slice(0, 6).map(function (n) { return '<div><span>' + hhmm(n.t) + '</span> <b>' + esc(n.title) + '</b> ' + esc(n.body).replace(/\n/g, '<br>') + '</div>'; }).join('') : '<div class="e">아직 알림이 없어요.</div>'; }
     var toastT = 0;
-    function toast(n) { var e = $('s55Toast'); e.innerHTML = '<b>' + esc(n.title) + '</b><br>' + esc(n.body); e.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 5000); }
+    function toast(n) { var e = $('s55Toast'); e.innerHTML = '<b>' + esc(n.title) + '</b><br>' + esc(n.body).replace(/\n/g, '<br>'); e.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, 5000); }
     // 화면 안 알림 -- 10초마다(앱을 띄워 둔 동안은 폰 알림 권한과 상관없이)
     function poll() {
       fetch(base + 'admin-alerts?since=' + since, { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (l) {
