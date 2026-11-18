@@ -6832,6 +6832,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_ENH_SHARDS = 10;
     /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11~15강 달빛석 n-10,
      *  [2026-11-06] "16강부터는 달빛석 + 칠요석을 합친 은하수 조각" -- 16강부터 달빛석 대신 은하수 조각 n-10(달빛석 개수를 이어서, 칠요석은 따로 안 듦). */
+    /** [2026-11-19] "방어구 강화 비용은 악마의 광석 조각 + 미스릴 괴로" -- n강: 미스릴 괴 n + 악마의 광석 조각 MINE_AENH_DEMON x n(갑옷 조각/금괴/별빛석/달빛석/은하수 조각은 안 든다). */
+    static final int MINE_AENH_DEMON = 5;
+    static String[][] mineArmorEnhCost(int n) {
+        return new String[][] { mineBar(4, n), { S5MineMap.DEMON_ORE_CODE, String.valueOf(MINE_AENH_DEMON * n) } };
+    }
     static String[][] mineEnhCost(MineWeapon w, int n) {
         List<String[]> l = new ArrayList<>();
         l.add(mineBar(4, n));
@@ -6877,7 +6882,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cur = mineArmorEnh(items), g = mineWeaponGrade(items, a);
         if (cur >= MINE_ENH_MAX) return mineGearResult(userName, false, "갑옷 칸은 이미 +" + MINE_ENH_MAX + "강이에요.");
         int n = cur + 1, pct = mineEnhPct(n);
-        String[][] cost = mineEnhCost(a, n);
+        String[][] cost = mineArmorEnhCost(n); // [2026-11-19] 미스릴 괴 + 악마의 광석 조각
         if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "재료가 모자라요. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")");
         mineTakeCost(userName, cost, 1);
         boolean ok = RND.nextInt(100) < pct;
@@ -10190,7 +10195,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             aenh.put("grade", g);
             aenh.put("effect", ao.effect(g, al));
             if (al < MINE_ENH_MAX) {
-                String[][] ec = mineEnhCost(ao, al + 1);
+                String[][] ec = mineArmorEnhCost(al + 1); // [2026-11-19]
                 aenh.put("pct", mineEnhPct(al + 1));
                 aenh.put("nextEffect", ao.effect(g, al + 1));
                 aenh.put("costs", mineCostList(ec, have));

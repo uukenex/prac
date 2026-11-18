@@ -3915,7 +3915,7 @@ var TowerMine = (function () {
   function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
   function aenhHtml(atNpc) { // [2026-11-18] 갑옷 칸 강화 -- atNpc = 방어구 강화사 창(버튼), 아니면 인벤토리 갑옷 칸 팝업(보기만)
     var w = st.aenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🛡️ <b>갑옷 칸 강화 +' + (w.lv || 0) + '</b> · 어떤 갑옷을 입어도 적용<br>'
-        + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +8% · 5강마다 초당 회복 더 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
+        + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +8% · 5강마다 초당 회복 더 (전설 이상)<br>재료: 미스릴괴 + 악마의 광석 조각 · 실패하면 재료만 사라져요</small></div>';
     if (!w.name) return h + '<div class="mine-eq-empty">갑옷을 입어야 강화할 수 있어요.</div>';
     h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + effLines(w.effect) + '</small>';
     if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>왕도 방어구 강화사(무기 강화사 옆)에게서</small></span></div>';
