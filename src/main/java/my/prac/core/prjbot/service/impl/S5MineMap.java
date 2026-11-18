@@ -868,7 +868,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 37; // [2026-11-18] 37: 남쪽 섬/북쪽 끝 설원/다도해 본섬 배로(sail) + 맵 끝 길, 36: // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 38; // [2026-11-18] 38: 다도해 본섬/일곱 섬 내 배로, 37: // [2026-11-18] 37: 남쪽 섬/북쪽 끝 설원/다도해 본섬 배로(sail) + 맵 끝 길, 36: // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1360,6 +1360,30 @@ public final class S5MineMap {
                     S5MineMap il2 = relink(il, rIp, il.npcs), no2 = relink(no, rNp, no.npcs), ar2 = relink(rA, rAp, rA.npcs);
                     il2.sail = true; no2.sail = true; ar2.sail = true;
                     out.put(BEACH, relink(bc, rBp, bc.npcs)); out.put(ISLAND, il2); out.put(NORTH, no2); out.put(ARCHI, ar2);
+                }
+                { // [2026-11-18] 다도해도 내 배로(시안 승인) -- 본섬 위쪽 끝 <-> 다도해 뱃길 아래쪽 끝(뱃사공 없이도), 일곱 섬은 뱃길을 바라보는 섬 끝 <-> 그 섬 부두 옆 뱃길 가장자리(부두 위아래 7칸).
+                    //  일곱 섬도 물 위를 배로(sail). 부두 판자(B)/뱃사공은 그대로, 섬끼리 바로 잇는 길은 없다(뱃길을 따라).
+                    S5MineMap sV = out.get(ARCHISEA), aN = out.get(ARCHI);
+                    List<Portal> sVp = new ArrayList<>(sV.portals), aNp = new ArrayList<>(aN.portals);
+                    int[] inVB = waterNear(sV, 22, sV.h - 6), inAT = waterNear(aN, aN.w / 2, 3);
+                    edgeGate(aN, aNp, false, 0, 1, aN.w - 2, ARCHISEA, inVB, "다도해 뱃길로");
+                    edgeGate(sV, sVp, false, sV.h - 1, 1, sV.w - 2, ARCHI, inAT, "다도해 본섬으로");
+                    for (String iid : ISLE_IDS) {
+                        Portal dK = null;
+                        for (Portal p : sV.portals) if (p.kind == 'B' && iid.equals(p.target)) dK = p;
+                        if (dK == null) continue;
+                        S5MineMap iM = out.get(iid);
+                        boolean wS = dK.x < sV.w / 2; // 뱃길 서쪽 부두 = 섬이 서쪽(섬의 오른쪽 끝이 뱃길 쪽)
+                        List<Portal> iSp = new ArrayList<>(iM.portals);
+                        int[] inV = waterNear(sV, wS ? 3 : sV.w - 4, dK.y), inI = waterNear(iM, wS ? iM.w - 4 : 3, iM.h / 2);
+                        edgeGate(iM, iSp, true, wS ? iM.w - 1 : 0, 1, iM.h - 2, ARCHISEA, inV, "다도해 뱃길로");
+                        edgeGate(sV, sVp, true, wS ? 0 : sV.w - 1, Math.max(1, dK.y - 7), Math.min(sV.h - 2, dK.y + 7), iid, inI, iM.name + "(으)로");
+                        S5MineMap iM2 = relink(iM, iSp, iM.npcs);
+                        iM2.sail = true;
+                        out.put(iid, iM2);
+                    }
+                    out.put(ARCHISEA, relink(sV, sVp, sV.npcs));
+                    out.put(ARCHI, relink(aN, aNp, aN.npcs));
                 }
                 placeNpc(sc, 55, 20, "seamayor", "윤슬항 시장", "바다 위 윤슬항에 온 걸 환영하오! 윤슬은 햇살에 반짝이는 잔물결이라오. 배 없이는 못 오는 곳이라 손님이 귀하다오.");
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
