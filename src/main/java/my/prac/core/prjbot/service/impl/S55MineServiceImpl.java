@@ -1737,8 +1737,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("mails", mineMailList(items));
             return out;
         }
+        if ("mana".equals(action)) { // [2026-11-18] "정제된 마석은 미스릴 원석으로 1:1 교환 -- 최후의 방어선 NPC(정제사)"
+            int mana = mineOreHave(userName).getOrDefault(S5MineMap.MANA_STONE_CODE, 0);
+            if (!mineAtNpc(row, "refiner")) { out.put("message", "정제사에게서만 바꿀 수 있어요."); return out; }
+            int n = grade <= 0 ? mana : Math.min(mana, grade);
+            if (n < 1 || dao.takeUserOre(userName, S5MineMap.MANA_STONE_CODE, n) == 0) { out.put("message", "💠 " + S5MineMap.MANA_STONE_NAME + "이(가) 없어요. 마계 마을 땅을 캐면 나온대요."); return out; }
+            dao.addUserOre(userName, S5MineMap.ORE_CODES[4], n);
+            out.put("ok", true);
+            out.put("got", n);
+            out.put("message", "💠 " + S5MineMap.MANA_STONE_NAME + " " + n + "개를 " + S5MineMap.ORE_NAMES[4] + " " + n + "개로 바꿨어요!");
+            out.put("ores", mineOreList(userName));
+            action = "refineInfo";
+        }
         if ("refine".equals(action) || "refineInfo".equals(action)) { // [2026-11-17] 최후의 방어선 정제사 -- 악마의 광석 조각 하나마다 MINE_REFINE_PCT%로 미스릴 원석
             int shard = mineOreHave(userName).getOrDefault(S5MineMap.DEMON_ORE_CODE, 0);
+            out.put("mana", mineOreHave(userName).getOrDefault(S5MineMap.MANA_STONE_CODE, 0)); // [2026-11-18] 정제된 마석
             if ("refine".equals(action)) {
                 if (!mineAtNpc(row, "refiner")) { out.put("message", "정제사에게서만 정제할 수 있어요."); return out; }
                 int n = grade <= 0 ? shard : Math.min(shard, grade);
