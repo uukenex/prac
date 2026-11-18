@@ -902,6 +902,14 @@
     .mine-wb-bar .wb-hp i{ display:block; height:100%; background:linear-gradient(90deg,#ff4a6a,#b06aff); }
     .mine-wb-alert{ position:absolute; left:50%; top:20%; transform:translateX(-50%); z-index:32; width:min(340px, 88%); padding:10px 14px 12px; border-radius:10px; background:linear-gradient(180deg, rgba(52,16,80,.96), rgba(22,6,36,.96)); border:2px solid #c98aff; box-shadow:0 0 18px rgba(176,106,255,.55); color:#f6e8ff; text-align:center; font:700 13px sans-serif; pointer-events:auto; display:flex; flex-direction:column; gap:6px; align-items:center; cursor:pointer; } /* [2026-11-16] 월드보스 등장 알림 */
     .mine-wb-alert b{ font-size:17px; color:#ffd27a; }
+    /* [2026-11-18] 알림 버튼(필살 버튼 위) -- 반짝이는 금빛 동그라미, 누르면 알림 창 */
+    .mine-note-btn{ position:absolute; right:35px; bottom:calc(326px + env(safe-area-inset-bottom)); z-index:6; width:52px; height:52px; border-radius:50%; border:3px solid #ffe14d; background:radial-gradient(circle at 35% 30%, #fff6c0 0 12%, #ffb830 45%, #a85a10 100%); font-size:24px; line-height:1; cursor:pointer; box-shadow:0 0 0 0 rgba(255,225,77,.7), 0 4px 10px rgba(0,0,0,.45); animation:mineNoteGlow 1.2s ease-in-out infinite; }
+    .mine-note-btn::after{ content:''; position:absolute; inset:-6px; border-radius:50%; background:conic-gradient(from 0deg, transparent 0 70%, rgba(255,255,255,.85) 78%, transparent 86%); animation:mineNoteSpin 1.6s linear infinite; pointer-events:none; mix-blend-mode:screen; }
+    .mine-note-btn.ring{ animation:mineNoteGlow 1.2s ease-in-out infinite, mineNoteRing .6s ease-in-out 2; }
+    @keyframes mineNoteGlow{ 50%{ box-shadow:0 0 18px 6px rgba(255,225,77,.75), 0 4px 10px rgba(0,0,0,.45); filter:brightness(1.18); } }
+    @keyframes mineNoteSpin{ to{ transform:rotate(360deg); } }
+    @keyframes mineNoteRing{ 20%{ transform:rotate(-14deg); } 40%{ transform:rotate(12deg); } 60%{ transform:rotate(-8deg); } 80%{ transform:rotate(5deg); } }
+    @media (prefers-reduced-motion: reduce){ .mine-note-btn, .mine-note-btn::after{ animation:none; } }
     .mine-wb-alert span{ font-weight:600; line-height:1.4; word-break:keep-all; }
     .mine-wb-alert.go{ animation:mineWbAlert .5s ease-out; }
     @keyframes mineWbAlert{ from{ opacity:0; transform:translateX(-50%) translateY(-14px) scale(.92); } to{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }

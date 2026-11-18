@@ -2378,7 +2378,7 @@ var TowerMine = (function () {
   function bossNpcOn() { return !!(bossNpc && map && bossNpc.m === map.id && !(bossNpc.at && bossNpc.at <= nowSrv())); }
   function bossNpcObj() { return { x: bossNpc.x, y: bossNpc.y, kind: 'bosscall', name: '보스 소환사', line: '이곳의 주인을 불러내 드리지요. 한 번 부르면 두 시간 뒤에 다시 부를 수 있소.' }; }
   function callLeftTxt(ms) { var m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + m % 60 + '분' : '') : m + '분'; }
-  function callHhmm(ms) { var d = new Date(ms - srvOff), p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  function callHhmm(ms) { var d = new Date(ms), /* [2026-11-18] "월드보스 59분에 나온다는 거 정각으로" -- 예전 ms - srvOff(내 시계 기준)는 1초만 늦어도 :59로 잘렸다. 서버 시각 그대로 */ p = function (v) { return (v < 10 ? '0' : '') + v; }; return (d.toDateString() === new Date().toDateString() ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()); }
   function bossCallHtml(n) {
     var d = bossCallInfo, h = npcHead('🔮 ' + n.name, false) + talkBlock(n, n.line);
     if (!d) return h + '<div class="mine-smith-say">...</div>';
@@ -2805,7 +2805,7 @@ var TowerMine = (function () {
     var h = npcHead('🔥 ' + n.name, false) + talkBlock(n, n.line);
     h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>⚒️ 정제</b> <small>' + ic + '악마의 광석 조각 하나마다 ' + (d.pct || 10) + '% 확률로 미스릴 원석이 남아요. 실패하면 재가 돼요.</small>';
     h += '<div class="mine-smith-row"><span class="nm">' + ic + '악마의 광석 조각<small>보유 ' + sh + '개 · 악마의 들판과 최후의 방어선에서 곡괭이로 캐면 나와요</small></span></div>';
-    [[1, '1개'], [10, '10개'], [0, '전부']].forEach(function (b) { h += '<button type="button" class="mine-mini-btn"' + (sh < Math.max(1, b[0]) ? ' data-lack="1"' : '') + ' onclick="TowerMine.refine(' + b[0] + ')">' + b[1] + ' 정제</button> '; });
+    [[1, '1개'], [10, '10개'], [0, '전부']].forEach(function (b) { h += '<button type="button" class="mine-mini-btn"' + (sh < Math.max(1, b[0]) ? ' data-lack="1"' : '') + ' onclick="TowerMine.demonRefine(' + b[0] + ')">' + b[1] + ' 정제</button> '; });
     h += '</div>';
     var mn = d.mana | 0, mic = '<img src="' + oreIcon(80) + '" alt="" style="width:16px;vertical-align:middle"> '; // [2026-11-18] 정제된 마석 -> 미스릴 원석 1:1
     h += '<div class="mine-smith-say" style="border:1px solid #ff8ae8"><b>💠 마석 교환</b> <small>' + mic + '정제된 마석 하나를 미스릴 원석 하나로 바꿔 줘요.</small>';
@@ -2925,17 +2925,34 @@ var TowerMine = (function () {
   }
   // [2026-11-16] "월드보스 생성 시 인게임 알림" -- 어느 맵에 있든 화면 가운데 위에 큰 알림(예고 때 한 번, 나타난 순간 한 번 + [참여하기]). 7초 뒤 사라지고 누르면 닫힌다.
   var wbAlertEl = null, wbAlertT = 0, wbPreSeen = 0, wbOnSeen = 0, mapZones = [];
+  // [2026-11-18] "보스 알림과 이동 알림 문구를 필살 버튼 위쪽에 반짝이는 버튼 하나로, 누르면 멘트가 나오게" -- 알림이 오면 창을 띄우지 않고 🔔 버튼만 반짝인다.
+  //  누르면 그때 마지막 알림을 창(참여하기 버튼 포함)으로 보여 주고 버튼은 사라진다. 10분이 지난 알림은 버튼도 저절로 사라진다.
+  var noteQ = null, noteBtn = null;
   function wbAlert(title, sub, join) {
+    if (!el.ov) return;
+    noteQ = { title: title, sub: sub, join: join, at: Date.now() };
+    if (!noteBtn) { noteBtn = document.createElement('button'); noteBtn.type = 'button'; noteBtn.className = 'mine-note-btn'; noteBtn.setAttribute('aria-label', '알림'); noteBtn.textContent = '🔔'; noteBtn.onclick = noteOpen; el.ov.appendChild(noteBtn); }
+    noteBtn.style.display = '';
+    noteBtn.classList.remove('ring'); void noteBtn.offsetWidth; noteBtn.classList.add('ring');
+    killFeed(title + ' -- ' + sub, '#d8a8ff');
+  }
+  function noteOpen() {
+    if (noteBtn) noteBtn.style.display = 'none';
+    var q = noteQ; noteQ = null;
+    if (q && Date.now() - q.at < 600000) wbAlertShow(q.title, q.sub, q.join);
+  }
+  function noteExpire() { if (noteQ && Date.now() - noteQ.at >= 600000) { noteQ = null; if (noteBtn) noteBtn.style.display = 'none'; } }
+  function wbAlertShow(title, sub, join) {
     if (!el.ov) return;
     if (!wbAlertEl) { wbAlertEl = document.createElement('div'); wbAlertEl.className = 'mine-wb-alert'; wbAlertEl.onclick = function (e) { if (!e.target || e.target.tagName !== 'BUTTON') wbAlertEl.style.display = 'none'; }; el.ov.appendChild(wbAlertEl); }
     wbAlertEl.innerHTML = '<b>' + title + '</b><span>' + sub + '</span>' + (join ? '<button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">⚔️ 참여하기</button>' : '');
     wbAlertEl.style.display = '';
     wbAlertEl.classList.remove('go'); void wbAlertEl.offsetWidth; wbAlertEl.classList.add('go');
     clearTimeout(wbAlertT);
-    wbAlertT = setTimeout(function () { if (wbAlertEl) wbAlertEl.style.display = 'none'; }, 7000);
-    killFeed(title + ' -- ' + sub, '#d8a8ff');
+    wbAlertT = setTimeout(function () { if (wbAlertEl) wbAlertEl.style.display = 'none'; }, 9000);
   }
   function wbNotice() {
+    noteExpire();
     var w = wbInfo, tn = nowSrv();
     if (!w || !map) return;
     if (!w.on && wbPreSeen !== w.at) { wbPreSeen = w.at; wbAlert('🐉 월드보스 예고', '「' + escAttr(w.name) + '」이(가) ' + callHhmm(w.at) + '에 동쪽 성곽에 나타나요', false); }
@@ -7709,7 +7726,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
