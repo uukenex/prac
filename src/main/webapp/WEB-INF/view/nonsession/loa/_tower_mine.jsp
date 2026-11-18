@@ -3395,9 +3395,7 @@ var TowerMine = (function () {
     { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', sub: true, w: 72 },
     // [2026-11-18] "전체 지도에도 반영" -- 먼 바다(윤슬항/바다 위/망망대해)와 연안 뱃길(내 배로 항구 사이)
     { id: 'seacity', name: '윤슬항 ⚓', x: 0, y: 0, fill: '#c8a46a', ink: '#2a1d10', town: true },
-    { id: 'opensea', name: '바다 위 🐙', x: 0, y: 0, fill: '#2f6a9a', ink: '#fff', w: 76 },
-    { id: 'vastsea', name: '망망대해 🌊', x: 0, y: 0, fill: '#1a3a6a', ink: '#dff0ff', w: 76 },
-    { id: 'coastsea', name: '연안 뱃길 ⛵', x: 0, y: 0, fill: '#3a7ab0', ink: '#fff', w: 76 }
+    { id: 'opensea', name: '바다 위 🐙', x: 0, y: 0, fill: '#2f6a9a', ink: '#fff', w: 76 }
   ];
   // [2026-10-28] "전체 지도 보기가 어렵다, 지역 구간별로 나눠 놓으면" -- 네 구간(탭)으로 나눠 그린다. 처음엔 지금 있는 구간.
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
@@ -3422,8 +3420,8 @@ var TowerMine = (function () {
     // [2026-10-30] "다도해 뱃길에서 일곱 섬 가는 길도 실제 뱃길처럼" -- 실제 맵처럼 본섬에서 북쪽으로 물길, 왼쪽/오른쪽 번갈아 부두(동백 > 갈매기 > ... > 용암)
     // [2026-11-18] 먼 바다 -- 윤슬항 -> (오른쪽) 바다 위 -> (오른쪽 끝) 남쪽 바닷가 7시, 바닷가 7시 끝 = 망망대해, 5시 끝 = 다도해 뱃길. 연안 뱃길 = 항구 넷을 내 배로.
     { id: 'ocean', name: '🌊 먼 바다', vh: 300,
-      nodes: [['seacity', 50, 70], ['opensea', 190, 70], ['vastsea', 120, 190], ['coastsea', 300, 190]],
-      links: [['seacity', 'opensea', 'sea', '⛵'], ['vastsea', 'seacity', 'fall', '🌀']] },
+      nodes: [['seacity', 50, 70], ['opensea', 190, 70]], // [2026-11-18] 망망대해는 지도에 없다(사용자)
+      links: [['seacity', 'opensea', 'sea', '⛵']] },
     { id: 'sea', name: '🏝️ 남쪽 바다', vh: 760, channel: { x: 250, top: 128, isles: ['isle1', 'isle2', 'isle3', 'isle4', 'isle5', 'isle6', 'isle7'] },
       nodes: [['@beach', 60, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 560], ['archi', 250, 560], ['shrine', 140, 630], ['shrine2', 250, 630], ['shrine3', 360, 630],
         ['shrineboss', 250, 700], ['archisea', 250, 500], ['isle1', 170, 440], ['isle2', 330, 388], ['isle3', 170, 336], ['isle4', 330, 284],
@@ -3439,10 +3437,8 @@ var TowerMine = (function () {
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
   var WORLD_PLACE = { ocean: [-300, 830], fort: [-400, -380], /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
-  var WORLD_CROSS = [ // [2026-11-18] 먼 바다/연안 뱃길 -- 바다 위 -> 바닷가, 바닷가 7시 -> 망망대해, 5시 -> 다도해 뱃길, 연안 뱃길 <-> 바닷가/남쪽 섬/다도해 본섬/북쪽 끝 설원
-    ['ocean', 'opensea', 'plain', 'beach', 'sea', '⛵'], ['plain', 'beach', 'ocean', 'vastsea', 'sea', '7시'], ['plain', 'beach', 'sea', 'archisea', 'sea', '5시 ⛵', [[700, 760], [700, 1300]]],
-    ['ocean', 'coastsea', 'plain', 'beach', 'sea', '⛵'], ['ocean', 'coastsea', 'sea', 'island', 'sea', '⛵'], ['ocean', 'coastsea', 'sea', 'archi', 'sea', '⛵', [[0, 1330], [445, 1330]]],
-    ['ocean', 'coastsea', 'snow', 'north', 'sea', '⛵', [[0, 960], [-200, 960], [-200, 415], [520, 415]]],['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
+  var WORLD_CROSS = [ // [2026-11-18] 먼 바다 -- 바다 위 -> 바닷가, 바닷가 5시 -> 다도해 뱃길(망망대해는 지도에 없다)
+    ['ocean', 'opensea', 'plain', 'beach', 'sea', '⛵'], ['plain', 'beach', 'sea', 'archisea', 'sea', '5시 ⛵', [[700, 760], [700, 1300]]],['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
   var worldVB = null, wMoved = false;

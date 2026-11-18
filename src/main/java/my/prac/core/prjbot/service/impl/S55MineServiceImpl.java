@@ -704,7 +704,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 m.put("name", S5MineMap.nameOf(port));
                 ship.add(m);
             }
-            { HashMap<String, Object> m = new HashMap<>(); m.put("id", S5MineMap.COAST_SEA); m.put("name", "내 배로 (연안 뱃길)"); ship.add(m); } // [2026-11-18] 1인용 배로 직접(연안 뱃길)
             if (S5MineMap.ISLAND.equals(map.id)) { // [2026-10-28] 남쪽 섬 -> 다도해 본섬(운영자만 -- 화면은 운영자에게만 보여 주고 서버도 막는다)
                 HashMap<String, Object> m = new HashMap<>();
                 m.put("id", S5MineMap.ARCHI);
@@ -4379,20 +4378,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (now - v[0] >= MINE_VAST_MS) {
             MINE_VAST.remove(userName);
-            // [2026-11-18] 같은 날 "망망대해는 해양도시 워프가 있다면 (해양도시로) 나오지 않고 물보스 장소와 이어지게" -- 윤슬항 워프 포인트를 켠 사람은 윤슬항 대신 바다 위(크라켄 둘레 12칸)로
-            boolean seaWp = mineWpOn(userName, items, S5MineMap.waypoint(S5MineMap.SEA_CITY));
-            String[] dests = { S5MineMap.BEACH, S5MineMap.ARCHI, seaWp ? S5MineMap.OPEN_SEA : S5MineMap.SEA_CITY };
+            String[] dests = { S5MineMap.BEACH, S5MineMap.ARCHI, S5MineMap.SEA_CITY };
             S5MineMap t = S5MineMap.get(dests[RND.nextInt(dests.length)]);
             int tx = t.dockX() >= 0 ? t.dockX() : t.spawnX, ty = t.dockX() >= 0 ? t.dockY() : t.spawnY;
-            if (S5MineMap.OPEN_SEA.equals(t.id)) {
-                int kx = MINE_KRK_POS[0] >= 0 ? MINE_KRK_POS[0] + 2 : t.bossX() + 2, ky = MINE_KRK_POS[1] >= 0 ? MINE_KRK_POS[1] + 2 : t.bossY() + 2;
-                tx = t.spawnX; ty = t.spawnY;
-                for (int k = 0; k < 40; k++) {
-                    double a = RND.nextDouble() * Math.PI * 2;
-                    int cx = kx + (int) Math.round(Math.cos(a) * 12), cy = ky + (int) Math.round(Math.sin(a) * 12);
-                    if (t.inside(cx, cy) && t.terrainAt(cx, cy) == '~') { tx = cx; ty = cy; break; }
-                }
-            } else if (!t.walkable(tx, ty)) { tx = t.spawnX; ty = t.spawnY; }
+            if (!t.walkable(tx, ty)) { tx = t.spawnX; ty = t.spawnY; }
             dao.updateMinePos(userName, t.id, tx, ty, now);
             mineDisengageAll(userName);
             out.put("villageOut", "🌊 거센 파도에 떠밀려 한참을 표류하다... " + t.name + "에 닿았어요!");
@@ -5201,7 +5190,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 e.put("sy", m.spawnY);
                 maps.add(e);
             }
-            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.OPEN_SEA, S5MineMap.SEA_CITY, S5MineMap.VAST_SEA, S5MineMap.COAST_SEA }) { // [2026-11-18] 바다 위, 해상도시, 망망대해(관리자만)
+            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.OPEN_SEA, S5MineMap.SEA_CITY, S5MineMap.VAST_SEA }) { // [2026-11-18] 바다 위, 해상도시, 망망대해(관리자만)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id); e.put("name", m.name); e.put("w", m.w); e.put("h", m.h); e.put("sx", m.spawnX); e.put("sy", m.spawnY);
@@ -5690,8 +5679,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-10-28] 다도해 -- 남쪽 섬 배에서만 본섬으로(운영자만), 본섬 배는 남쪽 섬으로만
         boolean archiShip = ship && ((S5MineMap.ISLAND.equals(map.id) && S5MineMap.ARCHI.equals(dest) && mineArchiMapOpen(userName, S5MineMap.ARCHI))
                 || (S5MineMap.ARCHI.equals(map.id) && S5MineMap.ISLAND.equals(dest)));
-        boolean coastShip = ship && S5MineMap.COAST_SEA.equals(dest) && (S5MineMap.SHIP_PORTS.contains(map.id) || S5MineMap.ARCHI.equals(map.id)); // [2026-11-18] 내 배로 연안 뱃길
-        if (ship && !archiShip && !coastShip && (S5MineMap.ARCHI.equals(map.id) || dest == null || dest.equals(map.id) || !S5MineMap.SHIP_PORTS.contains(dest))) {
+        if (ship && !archiShip && (S5MineMap.ARCHI.equals(map.id) || dest == null || dest.equals(map.id) || !S5MineMap.SHIP_PORTS.contains(dest))) {
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("message", "⛵ 어디로 갈지 골라 주세요.");
             return out;
@@ -5718,7 +5706,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (wpMsg == null) wpMsg = mineWpDurBlock(S5MineMap.waypointAt(map.id, px, py), wpTo); // [2026-11-18] 내구도
             if (wpMsg != null) { dao.updateMinePos(userName, map.id, x, y, now); out.put("message", wpMsg); return out; }
         }
-        S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(ship ? dest : wpTo != null ? wpTo.map : p.target);
+        // [2026-11-18] "윤슬항 워프가 있다면 망망대해 없이 바다 위 맵 오른쪽에서 나오면 돼" -- 남쪽 바닷가 7시 끝(망망대해로) -> 윤슬항 워프 포인트를 켠 사람은 바다 위로
+        boolean vastSkip = S5MineMap.BEACH.equals(map.id) && S5MineMap.VAST_SEA.equals(p.target) && mineWpOn(userName, items, S5MineMap.waypoint(S5MineMap.SEA_CITY));
+        S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(vastSkip ? S5MineMap.OPEN_SEA : ship ? dest : wpTo != null ? wpTo.map : p.target);
         if (S5MineMap.SEAROAD.equals(target.id) && water < 1) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("silent", true);
@@ -5752,8 +5742,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             llMsg += "⚖️ " + S5MineMap.JUDGE_TOKEN_NAME + "를 내밀자 마계로 가는 길이 열렸어요. (증표 1개 사용) ";
         }
         if (wpTo != null) mineWpDurUse(S5MineMap.waypointAt(map.id, px, py), wpTo); // [2026-11-18] 워프 포인트 내구도 -- 출발지/도착지 -1
-        int[] coastIn = coastShip ? S5MineMap.sailLanding(map.id, S5MineMap.COAST_SEA) : null; // [2026-11-18] 연안 뱃길 -- 이 항구 부두 옆 물 위
-        int ax = abyssTo != null ? (Integer) abyssTo[1] : coastIn != null ? coastIn[0] : ship ? target.dockX() : tele ? wpTo.x : p.tx, ay = abyssTo != null ? (Integer) abyssTo[2] : coastIn != null ? coastIn[1] : ship ? target.dockY() : tele ? wpTo.y + 2 : p.ty; // [2026-11-18] 워프 포인트 바로 아래
+        int ax = abyssTo != null ? (Integer) abyssTo[1] : ship ? target.dockX() : tele ? wpTo.x : p.tx, ay = abyssTo != null ? (Integer) abyssTo[2] : ship ? target.dockY() : tele ? wpTo.y + 2 : p.ty;
+        if (vastSkip) { ax = target.w - 4; ay = Math.max(2, Math.min(target.h - 3, target.h / 2)); } // [2026-11-18] 바다 위 오른쪽(남쪽 바닷가 쪽 끝 조금 안) // [2026-11-18] 워프 포인트 바로 아래
         boolean landOk = mineWalk(target, ax, ay, water); // [2026-10-28] "섬에서 뱃길로 나오면 그 섬 입구 쪽에" -- 뱃길(배로 물 위)은 물 칸도 내리는 칸(예전엔 걸을 칸이 아니라고 시작점으로 보냈다)
         int tx = landOk ? ax : target.spawnX, ty = landOk ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);

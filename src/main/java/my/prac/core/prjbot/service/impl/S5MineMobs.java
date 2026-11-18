@@ -722,7 +722,6 @@ public final class S5MineMobs {
             return fm;
         }
         if (S5MineMap.OPEN_SEA.equals(m.id)) return spawnSea(m, seed); // [2026-11-18] 바다 위
-        if (S5MineMap.COAST_SEA.equals(m.id)) return new ArrayList<>(); // [2026-11-18] 연안 뱃길 -- 몬스터 없음
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();
         Random r = new Random(seed);
