@@ -1260,6 +1260,7 @@ public final class S5MineMap {
             for (Npc n : fr.npcs) frn.add("forestguard".equals(n.kind) ? withKind(n, "riverferry", "나루터 뱃사공", "하피 여왕을 쓰러뜨렸다고? 그렇다면 바람도 잦아들었겠군. 강 건너 요새 도시까지 태워 주지!") : n);
             fr.npcs = Collections.unmodifiableList(frn);
             out.put(TOWER_CITY, generateTowerCity());
+            { S5MineMap tcm = out.get(TOWER_CITY); for (Npc sn : tcm.npcs) if ("smith".equals(sn.kind)) { placeNpc(tcm, sn.x + 4, sn.y, "armorer", "방어구 강화사", "갑옷 칸을 맡기게. 두들길수록 단단해지고 몸도 버텨 내지. 다만 망치가 빗나가면 재료는 돌려주지 않네."); break; } } // [2026-11-18] 방어구 강화
             for (int f = 1; f <= TOWER_FLOORS_V1; f++) out.put(towerId(f), generateTowerFloor(f));
             out.put(TOWER_GATE, generateTowerGate()); // [2026-11-15] 탑 입구(맨 뒤)
             for (int f = 1; f <= TOWER_FLOORS_V1; f++) if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); // 계단방(맨 뒤)

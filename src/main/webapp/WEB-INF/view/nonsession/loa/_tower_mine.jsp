@@ -719,7 +719,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1955,7 +1955,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -2832,6 +2832,7 @@ var TowerMine = (function () {
     else if (n.kind === 'smelter' || n.kind === 'gemcutter' || n.kind === 'artisan') { setAuto(false); openSmith(n, n.kind); } // [2026-10-28] 광석 전문가 / 보석 세공사 / 왕도 장인
     else if (n.kind === 'citymerchant') { setAuto(false); openSmith(n, 'citymerchant'); api('/api/tower-mine-cityshop?action=list').then(function (d) { cityShop = d; if (d && d.luckUntil != null) st.luckUntil = d.luckUntil; if (smithOpen && smithView === 'citymerchant') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 상인
     else if (n.kind === 'enhancer') { setAuto(false); openSmith(n, 'enh'); } // [2026-11-06] 무기 강화사
+    else if (n.kind === 'armorer') { setAuto(false); openSmith(n, 'aenh'); } // [2026-11-18] 방어구 강화사(요새 도시)
     else if (n.kind === 'mercenary') { setAuto(false); openSmith(n, 'merc'); api('/api/tower-mine-merc?action=list').then(function (d) { mercShop = d; if (d && d.list) st.mercs = d.list; if (d && d.merc) st.merc = d.merc; if (d) st.merc2 = d.merc2 || null; if (smithOpen && smithView === 'merc') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 용병소
     else if (n.kind === 'archishop') { setAuto(false); openSmith(n, 'archishop'); api('/api/tower-mine-archishop?action=list').then(function (d) { applyGear(d); if (smithOpen && smithView === 'archishop') renderSmith(smithNpc); }).catch(function () {}); } // [2026-10-28] 다도해 상인
   }
@@ -3354,7 +3355,7 @@ var TowerMine = (function () {
   function dollHtml() {
     var slot = function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
-      var en = sl.id === 'weapon' && st.wenh && st.wenh.lv ? ' <b style="color:#ffd27a">+' + st.wenh.lv + '</b>' : ''; // [2026-11-06] 무기 칸 강화
+      var en = sl.id === 'weapon' && st.wenh && st.wenh.lv ? ' <b style="color:#ffd27a">+' + st.wenh.lv + '</b>' : sl.id === 'armor' && st.aenh && st.aenh.lv ? ' <b style="color:#ffd27a">+' + st.aenh.lv + '</b>' : ''; // [2026-11-06] 무기 칸 강화, [2026-11-18] 갑옷 칸 강화
       return '<button type="button" class="doll-slot' + (w ? ' on' : '') + '" onclick="TowerMine.eqPop(\'' + sl.id + '\')"><b>' + sl.name + en + '</b><span>' + (w ? gradeName(w.name, w.grade) : '없음') + '</span></button>';
     };
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
@@ -3378,6 +3379,7 @@ var TowerMine = (function () {
                 : '<button type="button" onclick="TowerMine.equipRing(\'' + e.code + '\')">' + verb[0] + '</button>') + '</div>';
       });
       if (sl.id === 'weapon') h += wenhHtml(); // [2026-11-06] "강화는 슬롯에" -- 무기 칸 팝업 아래
+      if (sl.id === 'armor') h += aenhHtml(); // [2026-11-18] 갑옷 칸 강화
       h += '</div></div>';
     }
     return h;
@@ -3402,6 +3404,18 @@ var TowerMine = (function () {
     return h;
   }
   function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
+  function aenhHtml(atNpc) { // [2026-11-18] 갑옷 칸 강화 -- atNpc = 방어구 강화사 창(버튼), 아니면 인벤토리 갑옷 칸 팝업(보기만)
+    var w = st.aenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🛡️ <b>갑옷 칸 강화 +' + (w.lv || 0) + '</b> · 어떤 갑옷을 입어도 적용<br>'
+        + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +10% · 5강마다 초당 회복 더 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
+    if (!w.name) return h + '<div class="mine-eq-empty">갑옷을 입어야 강화할 수 있어요.</div>';
+    h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + effLines(w.effect) + '</small>';
+    if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>요새 도시 방어구 강화사에게서</small></span></div>';
+    else if (w.pct != null) h += '<small style="color:#9fe0ff;margin-top:6px">▶ 다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>' + effLines(w.nextEffect) + '</small>' + costHtml(w.costs) + '</span>'
+        + '<button type="button" ' + (w.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhanceArmor()">강화</button></div>';
+    else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
+    return h;
+  }
+  function enhanceArmor() { gearAct('/api/tower-mine-enhance?code=armor'); }
   // [2026-11-06] "메뉴에 용병 관리(최대 3칸, 직업별)" + "용병 관리 창은 인벤토리의 장비/치장/스킬 탭을 그대로" -- 위에 직업 3칸(계약한 용병 고르기), 아래 탭.
   //  장비 = 기본 칼/활/지팡이 + 기본 갑옷(바꿀 수 없음), 스킬 = 특화 속성 + 20레벨마다 단계.
   var mercSel = null, mercTabV = 'gear'; // [2026-11-06] 치장 탭은 없앰(이름마다 모습)
@@ -3877,6 +3891,7 @@ var TowerMine = (function () {
     citymerchant: { skin: '#e8b48a', hair: '#5a3a1a', cloth: '#2a7a4a', clothD: '#1a5030' }, // [2026-11-05] 왕도 상인
     mercenary: { skin: '#d8a070', hair: '#2a1a10', cloth: '#6a4a2a', clothD: '#4a3018' }, // [2026-11-05] 용병소 대장
     enhancer: { skin: '#c8885a', hair: '#3a3a3a', cloth: '#5a3a2a', clothD: '#2a1a12' }, // [2026-11-06] 무기 강화사(가죽 앞치마)
+    armorer: { skin: '#d8a070', hair: '#8a8a8a', cloth: '#4a5a6a', clothD: '#2a3440' }, // [2026-11-18] 방어구 강화사(쇠사슬 앞치마)
     whirlmaster: { skin: '#e8b48a', hair: '#d8d8e0', cloth: '#2a6a8a', clothD: '#1a4a62' }, // [2026-11-07] 돌개 사범
     ultmaster: { skin: '#e0a878', hair: '#1a1a22', cloth: '#3a2a5a', clothD: '#24183a' } // [2026-11-07] 필살 사범
   };
@@ -4045,6 +4060,7 @@ var TowerMine = (function () {
     }
     if (smithView === 'mercmgr') { el.smith.innerHTML = mercMgrHtml(); return; } // [2026-11-06] 용병 관리
     if (smithView === 'enh') { el.smith.innerHTML = npcHead('🔨 ' + n.name, false) + talkBlock(n, n.line) + wenhHtml(true); return; } // [2026-11-06] 무기 강화사
+    if (smithView === 'aenh') { el.smith.innerHTML = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line) + aenhHtml(true); return; } // [2026-11-18] 방어구 강화사
     if (smithView === 'merc') { // [2026-11-05] 왕도 용병소
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
@@ -4187,7 +4203,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'wenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -7292,7 +7308,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

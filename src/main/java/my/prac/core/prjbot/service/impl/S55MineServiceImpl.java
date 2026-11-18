@@ -203,7 +203,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
         for (int k = 0; k <= MINE_MERC_K2; k++) { MercXp mx = MINE_MERC_XP.get(mineMercXpKey(userName, k)); if (mx != null && mx.p > 0) out.put(mineMercKey(k, "XPP"), (int) mx.p); } // [2026-11-18] 아직 DB에 안 쓴 용병 경험치(화면용)
         if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
-        try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap)
+        try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar)) + mineArmorHpEnh(ar.code, mineWeaponGrade(out, ar), mineArmorEnh(out))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap), [2026-11-18] + 갑옷 칸 강화
         return out;
     }
     // [2026-11-17] "갑옷류에 최대 체력 추가 -- 닌자의 갑주 5,000~10,000, 백화 갑주 10만~20만(등급별 상이)" -- 일반(0)에서 신화(7)까지 고르게.
@@ -6176,7 +6176,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 double r = regenAt(g), re = regenEnh(g, e);
                 if (r > 0) s += " · 초당 체력 회복 " + mineFmtPct(r + re) + "%" + (re > 0 ? " (등급 " + mineFmtPct(r) + "% + 강화 " + mineFmtPct(re) + "%)" : "");
                 if (resAt(g) > 0) s += " · 한기·햇빛 방어 +" + resAt(g);
-                if (mineArmorHpAt(code, g) > 0) s += " · 최대 체력 +" + String.format("%,d", mineArmorHpAt(code, g)); // [2026-11-17]
+                int hb = mineArmorHpAt(code, g), he = mineArmorHpEnh(code, g, e); // [2026-11-18] 강화 몫
+                if (hb > 0) s += " · 최대 체력 +" + String.format("%,d", hb + he) + (he > 0 ? " (등급 " + String.format("%,d", hb) + " + 강화 " + String.format("%,d", he) + ")" : ""); // [2026-11-17]
             } else {
                 int p = pctAt(g), pe = pctEnh(g, e);
                 if (p > 0) s += " · 공격력 +" + (p + pe) + "%" + (pe > 0 ? " (등급 " + p + "% + 강화 " + pe + "%)" : "");
@@ -6216,8 +6217,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!t.ninja) for (MineWeapon w : MINE_ARMORS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w) && !mineNoRandomDrop(w.code)) out.add(w); // [2026-11-15] 탑의 갑주는 상인만
         return out;
     }
-    static int mineArmorDef(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); if (a == null) return 0; int g = mineWeaponGrade(items, a), e = mineEnh(items, a.code); return a.atkAt(g) + a.atkEnh(g, e); }
-    static double mineArmorRegen(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); if (a == null) return 0; int g = mineWeaponGrade(items, a); return a.regenAt(g) + a.regenEnh(g, mineEnh(items, a.code)); }
+    static int mineArmorDef(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); if (a == null) return 0; int g = mineWeaponGrade(items, a), e = mineArmorEnh(items); return a.atkAt(g) + a.atkEnh(g, e); }
+    static double mineArmorRegen(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); if (a == null) return 0; int g = mineWeaponGrade(items, a); return a.regenAt(g) + a.regenEnh(g, mineArmorEnh(items)); }
     static int mineArmorRes(Map<String, Integer> items) { MineWeapon a = mineArmorOn(items); return a == null ? 0 : a.resAt(mineWeaponGrade(items, a)); }
     // ---- [2026-11-06] 강화 -- "미스릴 괴를 포함한 여러 재료 소비, 1강부터 이론상 20강, 2강부터 확률 5%씩 감소, 실패해도 올려 주는 확률은 없음".
     //  무기/갑옷마다(등급과 상관없이 그 장비에) ENH_코드 = 단계. n강 확률 = 100 - 5(n-1)% (1강 100% ~ 20강 5%), 실패하면 재료만 사라지고 단계는 그대로.
@@ -6227,6 +6228,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-06] "강화는 슬롯에 강화되는 형태로" -- 무기 칸(ENH_WEAPON)에 단계가 쌓이고, 칸에 든 드랍 무기에 그대로 적용(무기를 바꿔 들어도 유지). 갑옷 칸은 추후.
     static final String MINE_ITEM_WEAPON_ENH = MINE_ENH_PREFIX + "WEAPON";
     static int mineWeaponEnh(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_ENH_MAX, items.getOrDefault(MINE_ITEM_WEAPON_ENH, 0))); }
+    // [2026-11-18] "방어구 강화 신설 -- 체력, 받는 피해 강화 형태로" -- 갑옷 칸(ENH_ARMOR)에 단계가 쌓이고 어떤 갑옷을 입어도 그대로. 1강마다 받는 피해 감소 +10%,
+    //  갑옷 최대 체력 +10%(그 갑옷 등급 값 기준), 5강마다 전설 이상의 초당 회복만큼 더. 재료/확률은 무기 칸과 같고 조각은 입은 갑옷의 조각. 요새 도시 방어구 강화사.
+    static final String MINE_ITEM_ARMOR_ENH = MINE_ENH_PREFIX + "ARMOR";
+    static int mineArmorEnh(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_ENH_MAX, items.getOrDefault(MINE_ITEM_ARMOR_ENH, 0))); }
+    static int mineArmorHpEnh(String code, int g, int e) { return (int) Math.round(mineArmorHpAt(code, g) * MINE_ENH_BASE_PCT / 100.0 * e); }
     static int mineEnhPct(int n) { return Math.max(5, 100 - 5 * (n - 1)); }
     static final int MINE_ENH_SHARDS = 10;
     /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11~15강 달빛석 n-10,
@@ -6248,7 +6254,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineRow(userName, false);
         dao.selectMineUserForUpdate(userName); // 같은 유저의 동시 요청은 여기서 줄 선다
         Map<String, Integer> items = mineItems(userName);
-        if (!"weapon".equals(code)) return mineGearResult(userName, false, "갑옷 칸 강화는 아직 할 수 없어요."); // [2026-11-06] "강화는 무기만, 방어구는 추후 다른 대륙에서" -- 무기 칸만
+        if ("armor".equals(code)) return mineArmorEnhance(userName, items); // [2026-11-18] 방어구 강화(요새 도시)
+        if (!"weapon".equals(code)) return mineGearResult(userName, false, "그런 칸은 강화할 수 없어요."); // [2026-11-06] "강화는 무기만, 방어구는 추후 다른 대륙에서" -- 무기 칸만
         HashMap<String, Object> erow = dao.selectMineUser(userName); // [2026-11-06] "무기 강화 전용 NPC" -- 왕도 5시 방향 무기 강화사 앞에서만
         if (erow == null || !S5MineMap.CITY.equals(strVal(erow.get("MAP_ID"), "")) || !mineAtNpc(erow, "enhancer")) return mineGearResult(userName, false, "왕도 5시 방향 무기 강화사 앞에서만 강화할 수 있어요.");
         MineWeapon w = mineWeaponOn(items); // [2026-11-06] 칸 강화 -- 칸에 든 무기의 조각을 쓴다
@@ -6262,6 +6269,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         boolean ok = RND.nextInt(100) < pct;
         if (ok) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_ENH, n); }
         HashMap<String, Object> res = mineGearResult(userName, true, ok ? "🔨 강화 성공! 무기 칸 +" + n + " -- " + w.name + ": " + w.effect(g, n) : "💥 강화 실패... (" + pct + "%) 무기 칸은 +" + cur + " 그대로예요.");
+        res.put("enhOk", ok);
+        res.put("ores", mineOreList(userName));
+        return res;
+    }
+    /** [2026-11-18] 갑옷 칸 강화 -- 요새 도시 방어구 강화사 앞에서만(부르는 쪽이 유저 행을 잠갔다). */
+    HashMap<String, Object> mineArmorEnhance(String userName, Map<String, Integer> items) {
+        HashMap<String, Object> erow = dao.selectMineUser(userName);
+        if (erow == null || !S5MineMap.TOWER_CITY.equals(strVal(erow.get("MAP_ID"), "")) || !mineAtNpc(erow, "armorer")) return mineGearResult(userName, false, "요새 도시 방어구 강화사 앞에서만 강화할 수 있어요.");
+        MineWeapon a = mineArmorOn(items);
+        if (a == null) return mineGearResult(userName, false, "갑옷을 입어야 강화할 수 있어요.");
+        int cur = mineArmorEnh(items), g = mineWeaponGrade(items, a);
+        if (cur >= MINE_ENH_MAX) return mineGearResult(userName, false, "갑옷 칸은 이미 +" + MINE_ENH_MAX + "강이에요.");
+        int n = cur + 1, pct = mineEnhPct(n);
+        String[][] cost = mineEnhCost(a, n);
+        if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "재료가 모자라요. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")");
+        mineTakeCost(userName, cost, 1);
+        boolean ok = RND.nextInt(100) < pct;
+        if (ok) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_ENH, n); items.put(MINE_ITEM_ARMOR_ENH, n); mineItems(userName); } // 갑옷 최대 체력(MINE_ARMOR_HP_OF)도 새로
+        HashMap<String, Object> res = mineGearResult(userName, true, ok ? "🛡️ 강화 성공! 갑옷 칸 +" + n + " -- " + a.name + ": " + a.effect(g, n) : "💥 강화 실패... (" + pct + "%) 갑옷 칸은 +" + cur + " 그대로예요.");
         res.put("enhOk", ok);
         res.put("ores", mineOreList(userName));
         return res;
@@ -9313,8 +9339,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (MineWeapon a : MINE_ARMORS) {
             int ag = mineWeaponGrade(items, a);
             if (ag < 0) continue;
-            int ae = mineEnh(items, a.code);
-            HashMap<String, Object> ar = mineEquipRow("armor", a.code, a.name + (ae > 0 ? " +" + ae : ""), a.effect(ag, ae) + " · Lv." + a.lv + "부터", a == aon);
+            int ae = mineArmorEnh(items); // [2026-11-18] 갑옷 칸 강화 -- 어느 갑옷을 입어도 그대로
+            HashMap<String, Object> ar = mineEquipRow("armor", a.code, a.name, a.effect(ag, ae) + " · Lv." + a.lv + "부터", a == aon);
             ar.put("grade", ag);
             List<Integer> agl = new ArrayList<>();
             int am = mineWeaponMask(items, a);
@@ -9401,6 +9427,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         out.put("wenh", wenh);
+        HashMap<String, Object> aenh = new HashMap<>(); // [2026-11-18] 갑옷 칸 강화(요새 도시 방어구 강화사 / 장비 칸 팝업)
+        int al = mineArmorEnh(items);
+        aenh.put("lv", al);
+        MineWeapon ao = mineArmorOn(items);
+        if (ao != null) {
+            int g = mineWeaponGrade(items, ao);
+            aenh.put("name", ao.name);
+            aenh.put("grade", g);
+            aenh.put("effect", ao.effect(g, al));
+            if (al < MINE_ENH_MAX) {
+                String[][] ec = mineEnhCost(ao, al + 1);
+                aenh.put("pct", mineEnhPct(al + 1));
+                aenh.put("nextEffect", ao.effect(g, al + 1));
+                aenh.put("costs", mineCostList(ec, have));
+                aenh.put("can", mineCostOk(ec, have));
+            }
+        }
+        out.put("aenh", aenh);
         out.put("gloveCode", mineGloveCode(items)); // [2026-10-28] 광전사의 장갑이면 화면도 체력을 안 올린다
         out.put("look", mineLookOf(items)); // [2026-10-28] 무기를 바꿔 들면 그림도
         List<HashMap<String, Object>> shop = new ArrayList<>(); // [2026-10-28] 다도해 상인
@@ -9570,7 +9614,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, on ? ea.slot : 0);
             if (on) { dao.upsertMineItem(userName, MINE_ITEM_COAT_SLOT, 0); } // [2026-11-06] "갑옷과 옷은 한 칸" -- 외투는 벗는다, 용병이 입던 같은 갑옷은 내가
             int ag = pickGrade >= 0 ? pickGrade : mineWeaponGrade(it, ea);
-            return mineGearResult(userName, true, on ? "🛡️ " + ea.name + "을(를) 장착했어요. " + ea.effect(ag, mineEnh(it, ea.code)) : "🛡️ " + ea.name + "을(를) 해제했어요.");
+            return mineGearResult(userName, true, on ? "🛡️ " + ea.name + "을(를) 장착했어요. " + ea.effect(ag, mineArmorEnh(it)) : "🛡️ " + ea.name + "을(를) 해제했어요.");
         }
         MineWeapon ew = mineWeaponOf(code);
         if (ew != null && pickGrade != -1) {
