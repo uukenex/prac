@@ -260,6 +260,8 @@ public interface BotS5Service {
     HashMap<String, Object> mineAuraGift(String userName, int el);
     /** [2026-11-05] 왕도 용병소 -- action list(보기) / hire(tier). */
     HashMap<String, Object> mineMercShop(String userName, String action, int tier, String code);
+    /** [2026-11-18] 워프 포인트 -- 켜기 + 액트별 목록. */
+    HashMap<String, Object> mineWaypoint(String userName, int x, int y, int px, int py);
     /** [2026-11-04] 빙결 몸부림 -- n번 채우면 얼음이 깨진다. */
     HashMap<String, Object> mineIceStruggle(String userName, int n);
     HashMap<String, Object> mineGoVillage(String userName);

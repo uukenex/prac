@@ -953,6 +953,17 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    /** [2026-11-18] 워프 포인트 -- 바로 앞에서 만지면 켜지고 액트별 목록. */
+    @GetMapping("/api/tower-mine-wp")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineWp(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam("x") int x, @RequestParam("y") int y, @RequestParam("px") int px, @RequestParam("py") int py) {
+        if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
+        HashMap<String, Object> out = s5Service.mineWaypoint(userName, x, y, px, py);
+        if (out.get("newly") != null) mineLog(userName, "[웹] 광산 워프 포인트 켬", String.valueOf(out.get("newly")));
+        return ResponseEntity.ok(out);
+    }
+
     /** [2026-11-05] 왕도 용병소. */
     @GetMapping("/api/tower-mine-merc")
     @ResponseBody

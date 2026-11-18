@@ -980,6 +980,28 @@
     .mine-atk .ench{ position:absolute; left:50%; bottom:-6px; transform:translateX(-50%); font-size:11px; line-height:1; padding:2px 5px; background:#140d0a; color:#ffe9a8; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-msg, #mineNpcLine{ white-space:pre-line; }
     .merc-job-h{ font-weight:800; font-size:13px; color:#ffe9a8; margin:8px 2px 4px; } /* [2026-11-06] 용병소 직업 줄 */
+    /* [2026-11-18] 워프 포인트 창 -- 어두운 돌판 + 청동 테두리, 숫자 탭, 문양 아이콘(켜짐 푸른 소용돌이 / 꺼짐 새긴 X) */
+    .wp-box{ background:radial-gradient(120% 80% at 30% 0%, #3a3833 0%, #24221f 55%, #171614 100%); border:3px solid #7a6438; box-shadow:inset 0 0 0 2px #1a150c, inset 0 0 0 4px #a8894a, 0 10px 28px rgba(0,0,0,.6); border-radius:8px; padding:10px 10px 8px; color:#e8e2d0; }
+    .wp-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:15px; color:#ffe9a8; letter-spacing:.5px; }
+    .wp-tabs{ display:flex; gap:4px; }
+    .wp-tab{ flex:1; min-width:0; background:linear-gradient(#55524a, #2c2a26); border:2px solid #7a6438; border-bottom:0; border-radius:7px 7px 0 0; color:#b8ad8c; font:800 18px/1.1 Georgia, 'Times New Roman', serif; padding:5px 2px 4px; cursor:pointer; }
+    .wp-tab small{ display:block; font:600 10px/1.3 sans-serif; color:#9a9078; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .wp-tab.on{ background:linear-gradient(#7a7566, #3e3b34); color:#ffe9a8; box-shadow:inset 0 2px 0 #a8a08a; }
+    .wp-tab.on small{ color:#e8d9a8; }
+    .wp-head{ text-align:center; padding:7px 4px; font-weight:700; font-size:13px; color:#d8cfb2; background:#141311; border:2px solid #7a6438; border-bottom:0; letter-spacing:1px; }
+    .wp-list{ background:#0d0c0b; border:2px solid #7a6438; padding:8px 6px; display:flex; flex-direction:column; gap:6px; max-height:52vh; overflow:auto; }
+    .wp-row{ display:flex; align-items:center; gap:12px; background:none; border:0; color:#ece6d4; font:700 14px sans-serif; text-align:left; padding:2px 4px; cursor:pointer; }
+    .wp-row:not(:disabled):hover .wp-nm{ color:#ffe14d; }
+    .wp-row:disabled{ cursor:default; }
+    .wp-row.off .wp-nm{ color:#5c574c; }
+    .wp-row.here .wp-nm{ color:#8f8a7e; }
+    .wp-row .wp-nm small{ font-size:11px; font-weight:600; }
+    .wp-ic{ width:30px; height:30px; flex:0 0 30px; border:2px solid #9a7e44; box-shadow:inset 0 0 0 2px #1a150c; border-radius:3px; }
+    .wp-ic.on{ background:radial-gradient(circle, #f0fbff 0 10%, #7ad8ff 22%, #2a6ab8 44%, #0e1e3a 70%); animation:wpPulse 1.8s ease-in-out infinite; }
+    .wp-ic.off{ background:linear-gradient(45deg, transparent 44%, #6a6050 44% 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #6a6050 44% 56%, transparent 56%), #26231e; }
+    @keyframes wpPulse{ 50%{ filter:brightness(1.35) saturate(1.2); } }
+    .wp-foot{ font-size:11px; color:#9a917a; text-align:right; margin-top:6px; }
+    .wp-list::-webkit-scrollbar{ width:8px; } .wp-list::-webkit-scrollbar-thumb{ background:#5a4e36; border-radius:4px; } .wp-list::-webkit-scrollbar-track{ background:#151310; }
     .merc-job-h small{ color:#c9c3d6; font-weight:600; }
     @media (min-width:900px){ /* [2026-11-06] PC -- 상점/NPC 창(대장장이, 명품상점, 강화사, 세공사, 용병소, 인벤토리 등)을 옆으로 넓게. 용병소는 줄마다 5명이 한눈에 */
       .mine-smith{ width:min(1180px,94vw); max-height:88vh; }

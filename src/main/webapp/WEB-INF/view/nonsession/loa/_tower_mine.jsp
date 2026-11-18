@@ -3609,7 +3609,7 @@ var TowerMine = (function () {
     gearAct('/api/tower-mine-archi?action=' + action);
   }
   /** 다도해 낮/밤 -- 서버와 같은 식(리셋 기준 시각부터 dayCycleMs마다 앞 dayMs가 낮). */
-  function archiDay(t) { return !map || !map.dayCycleMs || ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs < map.dayMs; }
+  function archiDay(t) { if (map && map.alwaysNight) return false; /* [2026-11-18] 요새 도시는 늘 밤 */ return !map || !map.dayCycleMs || ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs < map.dayMs; }
   function archiLeftMin(t) { var p = ((t - map.dayAnchor) % map.dayCycleMs + map.dayCycleMs) % map.dayCycleMs; return Math.max(1, Math.ceil(((p < map.dayMs ? map.dayMs : map.dayCycleMs) - p) / 60000)); }
   function openWorld() {
     if (!opened || !map) return;
@@ -3689,13 +3689,35 @@ var TowerMine = (function () {
       if (smithOpen) renderSmith(smithNpc);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
+  // [2026-11-18] 워프 포인트 창 -- "디아블로 웨이포인트 창 느낌, 지역(액트)별 1 2 3 4 탭, 못 간 곳은 꺼져 있고 직접 가서 만진 곳만 켜진다".
+  //  돌판 테두리 + 숫자 탭 + 칸마다 문양 아이콘(켜짐 = 푸른 소용돌이, 꺼짐 = 새긴 X), 지금 서 있는 곳은 흐리게(여기).
+  var wpData = null, wpTab = 1;
+  function wpOpen(px2, py2) {
+    wpData = null;
+    openSmith({ name: '워프 포인트', line: '', kind: 'tele', px: px2, py: py2 }, 'tele');
+    api('/api/tower-mine-wp?x=' + P.x + '&y=' + P.y + '&px=' + px2 + '&py=' + py2).then(function (d) {
+      if (!d) return;
+      if (!d.ok) { closeSmith(); if (d.message) msg(d.message, 2600); return; }
+      wpData = d; wpTab = d.act || 1;
+      if (d.newly) { msg('✨ 워프 포인트가 켜졌어요 -- ' + d.newly, 3600); killFeed('✨ 워프 포인트 켜짐: ' + d.newly, '#9fe0ff'); flashT0 = performance.now(); }
+      if (smithOpen && smithView === 'tele') renderSmith(smithNpc);
+    }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function wpTabGo(n) { wpTab = n; if (smithOpen && smithView === 'tele') renderSmith(smithNpc); }
   function teleHtml() {
-    var gold = 0;
-    (st.ores || []).forEach(function (o) { if (o.grade === 4) gold = o.qty; });
-    var need = map.teleGold != null ? map.teleGold : 5, can = gold >= need ? '' : 'data-lack="1" ';
-    return npcHead('🌀 텔레포트 게이트', false)
-        + '<div class="mine-smith-say">' + (need > 0 ? '금광석 ' + need + '개를 바치면 마법진이 빛나며 먼 곳으로 데려다줘요. (보유 ' + gold + '개)' : '마법진에 올라서면 먼 곳으로 데려다줘요. (무료)') + '</div><div class="mine-smith-menu" style="flex-wrap:wrap">'
-        + (map.teleTo || []).map(function (d) { return '<button type="button" ' + can + 'onclick="TowerMine.teleport(\'' + d.id + '\')">🌀 ' + d.name + '</button>'; }).join('') + '</div>';
+    var d = wpData, h = '<div class="wp-box"><div class="wp-top"><b>🌀 워프 포인트</b><button type="button" class="mine-close" onclick="TowerMine.closeSmith()">✖ 닫기</button></div>';
+    if (!d) return h + '<div class="wp-head">문양이 깨어나는 중...</div></div>';
+    h += '<div class="wp-tabs">' + d.acts.map(function (a) {
+      return '<button type="button" class="wp-tab' + (a.n === wpTab ? ' on' : '') + '" onclick="TowerMine.wpTab(' + a.n + ')">' + a.n + '<small>' + escAttr(a.name) + '</small></button>';
+    }).join('') + '</div>';
+    var act = d.acts.filter(function (a) { return a.n === wpTab; })[0] || d.acts[0];
+    h += '<div class="wp-head">목적지를 고르세요</div><div class="wp-list">';
+    act.list.forEach(function (w) {
+      var cls = w.here ? 'here' : w.on ? '' : 'off';
+      h += '<button type="button" class="wp-row ' + cls + '"' + (w.on && !w.here ? ' onclick="TowerMine.teleport(\'wp:' + w.id + '\')"' : ' disabled') + '>'
+          + '<span class="wp-ic ' + (w.on ? 'on' : 'off') + '"></span><span class="wp-nm">' + escAttr(w.name) + (w.here ? ' <small>(여기)</small>' : '') + '</span></button>';
+    });
+    return h + '</div><div class="wp-foot">' + act.on + ' / ' + act.list.length + ' 켜짐 · 꺼진 곳은 직접 가서 워프 포인트를 만지면 켜져요</div></div>';
   }
   // [2026-10-25] 이동 안내원 -- 안내원이 있는 마을끼리 무료로(왕도는 관리자만 보임)
   function guideHtml(n) {
@@ -6136,12 +6158,12 @@ var TowerMine = (function () {
     var p = portalAt[px2 + ',' + py2];
     if (!p) return;
     if (p.kind === 'Z' && !(st && st.waterWalk)) return; // [2026-10-24] 숨은 입구 -- 용왕의 반지가 없으면 그냥 물(아무 반응 없음)
-    if (p.kind === 'X' && map.teleTo) { // [2026-10-24] 왕도 텔레포트 게이트 -- 목적지 고르기
+    if (p.kind === 'X') { // [2026-10-24] 왕도 텔레포트 게이트 -- 목적지 고르기, [2026-11-18] 워프 포인트(만지면 켜진다)
       var tk = 'tele' + px2 + ',' + py2;
       if (lastBump === tk && now - lastBumpT < 1200) return;
       lastBump = tk; lastBumpT = now;
       setAuto(false);
-      openSmith({ name: '텔레포트 게이트', line: '', kind: 'tele', px: px2, py: py2 }, 'tele');
+      wpOpen(px2, py2);
       return;
     }
     if (p.kind === 'B' && !p.locked && map.shipTo) { // [2026-10-24] 배 -- 갈 항구 고르기
@@ -7270,7 +7292,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

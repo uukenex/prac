@@ -754,6 +754,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("dayAnchor", S5MineMap.RESET_ANCHOR_MS);
             out.put("dayMs", S5MineMap.ARCHI_DAY_MS);
             out.put("dayCycleMs", S5MineMap.ARCHI_CYCLE_MS);
+            if (S5MineMap.TOWER_CITY.equals(map.id)) out.put("alwaysNight", true); // [2026-11-18] "요새 도시는 항상 밤"
         }
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
@@ -4377,7 +4378,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineMercShare(userName, items, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
             if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
             if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
-                hp = mineHpMax(lv, rb);
+                hp = mineHpFull(lv, rb); // [2026-11-18] 갑옷 체력까지
                 if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
             }
             long expReal = xa[3]; // [2026-11-07] "경험치가 실제로 안 오르는 양이 표기" -- 가득 찬 99레벨은 처치해도 경험치가 안 오른다. 오른 만큼만 알린다
@@ -5170,12 +5171,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         // [2026-10-24] 왕도 텔레포트 게이트(X) -- "대도시에서 다른 지역으로는 어렵게": 금광석 MINE_TELE_GOLD개를 내고 고른 지역의 시작점으로
         boolean tele = S5MineMap.TELE.equals(p.target);
-        if (tele) {
-            if (dest == null || !S5MineMap.TELE_DESTS.contains(dest)) {
-                dao.updateMinePos(userName, map.id, x, y, now);
-                out.put("message", "🌀 어디로 갈지 골라 주세요.");
-                return out;
-            }
+        if (tele) { // [2026-11-18] 목적지 확인은 위(워프 포인트)에서
             if (MINE_TELE_GOLD > 0 && dao.takeUserOre(userName, S5MineMap.ORE_CODES[3], MINE_TELE_GOLD) == 0) {
                 dao.updateMinePos(userName, map.id, x, y, now);
                 out.put("message", "🌀 텔레포트 게이트를 움직이려면 금광석 " + MINE_TELE_GOLD + "개가 필요해요.");
@@ -5187,7 +5183,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int abyssRoll = abyss ? RND.nextInt(100) : -1;
         S5MineMap villageMap = abyssRoll >= MINE_CHAOS_PCT && abyssRoll < MINE_CHAOS_PCT + MINE_VILLAGE_PCT ? S5MineMap.get(S5MineMap.DEMON_VILLAGE) : null; // [2026-11-17] 마계 마을
         Object[] abyssTo = villageMap != null ? new Object[] { villageMap, villageMap.spawnX, villageMap.spawnY } : abyss && abyssRoll >= MINE_CHAOS_PCT ? mineAbyssPick(items, mineLv(row), water) : null;
-        S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(ship || tele ? dest : p.target);
+        // [2026-11-18] 워프 포인트 -- 목적지 wp:아이디(켜 둔 곳만)
+        S5MineMap.Waypoint wpTo = S5MineMap.TELE.equals(p.target) && dest != null && dest.startsWith("wp:") ? S5MineMap.waypoint(dest.substring(3)) : null;
+        if (S5MineMap.TELE.equals(p.target)) {
+            String wpMsg = wpTo == null ? "🌀 어디로 갈지 골라 주세요." : !mineWpOn(userName, items, wpTo) ? "🌀 아직 켜지 않은 워프 포인트예요. 직접 가서 만지면 켜져요."
+                    : wpTo == S5MineMap.waypointAt(map.id, px, py) ? "🌀 지금 서 있는 워프 포인트예요." : null;
+            if (wpMsg != null) { dao.updateMinePos(userName, map.id, x, y, now); out.put("message", wpMsg); return out; }
+        }
+        S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(ship ? dest : wpTo != null ? wpTo.map : p.target);
         if (S5MineMap.SEAROAD.equals(target.id) && water < 1) { // [2026-10-24] 바닷길은 용왕의 반지가 있어야 -- 없으면 그냥 물(아무 말 없이)
             dao.updateMinePos(userName, map.id, x, y, now);
             out.put("silent", true);
@@ -5211,7 +5214,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             llMsg = "🔥 " + S5MineMap.DUSK_SEAL_NAME + "과 " + S5MineMap.DAWN_SEAL_NAME + "을 맞대자 하나의 문장이 되어 빛났어요! 이제 언제든 최후의 방어선을 드나들 수 있어요. ";
             mineGossipAdd(mineNick(userName) + " 님이 두 인장을 맞대 최후의 방어선에 들어섰대요!");
         }
-        int ax = abyssTo != null ? (Integer) abyssTo[1] : ship ? target.dockX() : tele ? target.spawnX : p.tx, ay = abyssTo != null ? (Integer) abyssTo[2] : ship ? target.dockY() : tele ? target.spawnY : p.ty;
+        int ax = abyssTo != null ? (Integer) abyssTo[1] : ship ? target.dockX() : tele ? wpTo.x : p.tx, ay = abyssTo != null ? (Integer) abyssTo[2] : ship ? target.dockY() : tele ? wpTo.y + 2 : p.ty; // [2026-11-18] 워프 포인트 바로 아래
         boolean landOk = mineWalk(target, ax, ay, water); // [2026-10-28] "섬에서 뱃길로 나오면 그 섬 입구 쪽에" -- 뱃길(배로 물 위)은 물 칸도 내리는 칸(예전엔 걸을 칸이 아니라고 시작점으로 보냈다)
         int tx = landOk ? ax : target.spawnX, ty = landOk ? ay : target.spawnY;
         dao.updateMinePos(userName, target.id, tx, ty, now);
@@ -5985,6 +5988,64 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_SNOW_PATH = "SNOW_PATH"; // [2026-10-28] 설산을 아래층부터 순서대로 올라온 층(1~3)
     static final String MINE_ITEM_VISIT_ARCHI = "VISIT_ARCHI"; // [2026-10-28] 다도해 마을(본섬)에 한 번 도착(이동 안내원 목적지)
     static final String MINE_ITEM_VISIT_TCITY = "VISIT_TCITY"; // [2026-11-16] 탑의 도시에 한 번 도착(이동 안내원 목적지) -- "한 번 이상 왕래가 있었다면 마을 간 이동(NPC)이 가능하게"
+    // [2026-11-18] 워프 포인트 -- 켜짐 = WP{액트} 비트. 이동 안내원으로 이미 갈 수 있던 마을(평원 마을, 한 번 가 본 왕도/설산 마을/다도해/요새 도시)은 처음부터 켜진 것으로.
+    static String mineWpKey(int act) { return "WP" + act; }
+    boolean mineWpOn(String userName, Map<String, Integer> items, S5MineMap.Waypoint w) {
+        if (w == null) return false;
+        if (isMineAdmin(userName) || ((items.getOrDefault(mineWpKey(w.act), 0) >> w.bit) & 1) == 1) return true;
+        switch (w.id) {
+            case "field": return true;
+            case "city": return items.getOrDefault(MINE_ITEM_VISIT_CITY, 0) > 0;
+            case "snowtown": case "snowroad": return items.getOrDefault(MINE_ITEM_VISIT_SNOWTOWN, 0) > 0;
+            case "archi": return items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0;
+            case "tcity": return items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) > 0;
+            default: return false;
+        }
+    }
+    /** [2026-11-18] 워프 포인트 창 -- 바로 앞(x, y)의 워프 포인트(px, py)를 켜고(처음이면 newly), 액트별 목록 {n, name, list:[{id, name, on, here}]}. */
+    @Override
+    public HashMap<String, Object> mineWaypoint(String userName, int x, int y, int px, int py) {
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", false);
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        mineRow(userName, false);
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null) return out;
+        S5MineMap map = mineMapOf(row);
+        Map<String, Integer> items = mineItems(userName);
+        int[] pos = minePos(row, map, mineWalkMode(items));
+        S5MineMap.Waypoint here = S5MineMap.waypointAt(map.id, px, py);
+        if (here == null || Math.abs(x - px) + Math.abs(y - py) != 1 || Math.abs(pos[0] - x) + Math.abs(pos[1] - y) > 10) { out.put("message", "워프 포인트 바로 앞에서 만져 주세요."); return out; }
+        if (!mineWpOn(userName, items, here)) {
+            int v = items.getOrDefault(mineWpKey(here.act), 0) | (1 << here.bit);
+            dao.upsertMineItem(userName, mineWpKey(here.act), v);
+            items.put(mineWpKey(here.act), v);
+            out.put("newly", here.name);
+        }
+        List<HashMap<String, Object>> acts = new ArrayList<>();
+        for (int a = 1; a < S5MineMap.WP_ACT_NAMES.length; a++) {
+            HashMap<String, Object> am = new HashMap<>();
+            List<HashMap<String, Object>> l = new ArrayList<>();
+            int on = 0;
+            for (S5MineMap.Waypoint w : S5MineMap.waypoints()) {
+                if (w.act != a) continue;
+                HashMap<String, Object> wm = new HashMap<>();
+                boolean o = mineWpOn(userName, items, w);
+                wm.put("id", w.id); wm.put("name", w.name); wm.put("on", o); wm.put("here", w == here);
+                if (o) on++;
+                l.add(wm);
+            }
+            am.put("n", a); am.put("name", S5MineMap.WP_ACT_NAMES[a]); am.put("list", l); am.put("on", on);
+            acts.add(am);
+        }
+        out.put("ok", true);
+        out.put("acts", acts);
+        out.put("here", here.id);
+        out.put("act", here.act);
+        return out;
+    }
     static final String MINE_ITEM_VISIT_CITY = "VISIT_CITY"; // [2026-10-27] 왕도에 한 번 걸어서 도착(이동 안내원 목적지)
     static final String MINE_ITEM_COAT1 = "COAT1";
     static final String MINE_ITEM_COAT2 = "COAT2";
@@ -6571,7 +6632,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int up = (int) xa[2];
         if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
         if (up > 0 && !died) {
-            hp = mineHpMax(lv, rb);
+            hp = mineHpFull(lv, rb); // [2026-11-18] 갑옷 체력까지
             if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.remove("hpLockUp"); out.put("hpLockFree", true); }
         }
         long real = xa[3]; // [2026-11-07] 실제로 오른 경험치
@@ -9825,8 +9886,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         boolean locked = items.getOrDefault(MINE_ITEM_HP_LOCK, 0) > 0;
         if ("rebirth".equals(action)) return minePriestRebirth(userName, row, items, lv, exp, rb, locked, now, out);
         if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); // [2026-10-25] 잠긴 최대 체력도 정상으로
-        dao.updateMineCombat(userName, lv, exp, mineHpMax(lv, rb), now, 0);
-        out.put("combat", mineCombatInfo(lv, exp, mineHpMax(lv, rb), now, rb));
+        // [2026-11-18] "사제에게 회복 시 장비로 늘어난 최대 체력은 회복이 안 된다" -- 기본 최대 체력(mineHpMax)까지만 채우던 것을 갑옷 체력까지(mineHpFull)
+        dao.updateMineCombat(userName, lv, exp, mineHpFull(lv, rb), now, 0);
+        out.put("combat", mineCombatInfo(lv, exp, mineHpFull(lv, rb), now, rb));
         out.put("message", "✨ 성당 신부: 여신의 축복을! 체력이 모두 회복됐어요." + (locked ? " 🔓 잠겼던 최대 체력도 풀렸어요." : ""));
         return out;
     }
@@ -9846,7 +9908,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int nrb = rb + 1;
         dao.upsertMineItem(userName, MINE_ITEM_REBIRTH, nrb);
         if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0);
-        int hp = mineHpMax(1, nrb);
+        int hp = mineHpFull(1, nrb); // [2026-11-18] 갑옷 체력까지
         dao.updateMineCombat(userName, 1, 0L, hp, now, 0);
         if (mineWeaponOn(items) != null) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); items.put(MINE_ITEM_WEAPON_SLOT, 0); } // [2026-10-29] 무기 장착 레벨 -- 환생하면 칼로
         if (mineArmorOn(items) != null) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); items.put(MINE_ITEM_ARMOR_SLOT, 0); } // [2026-11-06] 갑옷도 벗는다

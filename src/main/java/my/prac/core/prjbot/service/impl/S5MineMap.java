@@ -626,6 +626,96 @@ public final class S5MineMap {
         return false;
     }
 
+    // ---- [2026-11-18] 워프 포인트 -- "공간이동 NPC를 디아블로식 워프 포인트로, 고르는 창은 지역(액트)별 1 2 3 4 탭, 못 간 곳은 꺼져 있고 직접 가서 누른 곳만 켜진다,
+    //  각 지역에 워프 포인트(설산 보스방 입구 같은 느낌, 한 맵에 여러 개도)". 3x3(아홉 칸 모두 X, 대상 TELE). 이동 안내원(guide)은 없애고 그 자리 근처에 놓는다.
+    //  켜짐 = 아이템 WP{액트}의 비트(WP_DEFS 안 그 액트 순서 = 비트 -- 순서를 바꾸거나 지우지 말고 끝에 붙인다). S55MineServiceImpl.mineWaypoint / mineWarp.
+    public static final class Waypoint {
+        public final String id, map, name;
+        public final int act, bit, x, y; // x, y = 3x3 가운데
+        Waypoint(String id, String map, String name, int act, int bit, int x, int y) { this.id = id; this.map = map; this.name = name; this.act = act; this.bit = bit; this.x = x; this.y = y; }
+    }
+    public static final String[] WP_ACT_NAMES = { "", "시작의 땅", "설산", "사막과 다도해", "요새 도시" };
+    /** {id, 액트, 맵, 자리(g 이동 안내원 자리 / v 마을(없으면 시작점) / s 시작점 / p:맵 그 맵으로 가는 문 근처 / x 이미 있는 3x3), 이름}. */
+    private static final String[][] WP_DEFS = {
+        { "field", "1", FIELD, "g", "중앙 평원 마을" }, { "cave1", "1", FIELD, "p:" + CAVE1, "광산 동굴 입구" },
+        { "cave3", "1", CAVE3, "s", "광산 동굴 3층" }, { "dungeon", "1", FIELD, "p:" + DUNGEON, "서쪽 동굴 입구" },
+        { "beach", "1", BEACH, "s", "남쪽 바닷가" }, { "castle", "1", CASTLE, "s", "동쪽 성곽" }, { "steppe", "1", STEPPE, "s", "왕도 남쪽 초원" },
+        { "city", "1", CITY, "x", "왕도 아스테리아" }, { "westroad", "1", WESTROAD, "s", "마물의 숲 입구" },
+        { "north", "2", NORTH, "v", "북쪽 끝 설원" }, { "snow1", "2", SNOW1, "s", "설산 1층" }, { "snow2", "2", SNOW2, "s", "설산 2층" }, { "snow3", "2", SNOW3, "s", "설산 3층" },
+        { "snowtown", "2", SNOWTOWN, "g", "설산 마을" }, { "snowcave", "2", SNOWCAVE, "s", "설산 동굴" }, { "snowroad", "2", SNOWROAD, "g", "설산 봉우리 가는 길" },
+        { "peak", "2", SNOWROAD, "p:" + PEAK, "설산 봉우리 입구" }, { "ruins", "2", ROYALROAD, "p:" + RUINS, "성당 옛터 입구" },
+        { "desert", "3", DESERT, "s", "북쪽 사막" }, { "archi", "3", ARCHI, "g", "다도해 본섬" },
+        { "shrine", "3", ARCHI, "p:" + SHRINE, "신궁 입구" }, { "ninja", "3", ARCHI, "p:" + SHRINE_BOSS, "닌자 두목의 방 입구" },
+        { "tcity", "4", TOWER_CITY, "g", "요새 도시 엘리시온" }, { "tgate", "4", TOWER_GATE, "s", "거대한 탑 입구" }, { "deast", "4", DEMON_EAST, "s", "동쪽 악마의 들판" },
+        { "dwest", "4", DEMON_WEST, "s", "서쪽 악마의 들판" }, { "lastline", "4", LAST_LINE, "s", "최후의 방어선" } };
+    private static volatile List<Waypoint> waypoints = Collections.emptyList();
+    public static List<Waypoint> waypoints() { if (world == null) get(FIELD); return waypoints; } // 맵을 아직 안 만들었으면 만든다
+    public static Waypoint waypoint(String id) { for (Waypoint w : waypoints) if (w.id.equals(id)) return w; return null; }
+    /** (x, y)가 그 맵 워프 포인트 3x3 안이면 그 워프 포인트. */
+    public static Waypoint waypointAt(String mapId, int x, int y) { for (Waypoint w : waypoints) if (w.map.equals(mapId) && Math.abs(w.x - x) <= 1 && Math.abs(w.y - y) <= 1) return w; return null; }
+    private static void placeWaypoints(Map<String, S5MineMap> out) {
+        List<Waypoint> l = new ArrayList<>();
+        int[] bits = new int[WP_ACT_NAMES.length];
+        for (String[] d : WP_DEFS) {
+            int act = Integer.parseInt(d[1]), bit = bits[act]++; // 놓지 못해도 비트는 그 자리를 지킨다
+            S5MineMap m = out.get(d[2]);
+            if (m == null) continue;
+            int[] at = null;
+            if ("x".equals(d[3])) {
+                Npc g0 = m.guide(); // 이동 안내원은 없앤다(왕도는 이미 있는 3x3 게이트)
+                if (g0 != null) { m.terrain[g0.y][g0.x] = g0.ground != 0 ? g0.ground : '.'; List<Npc> nl0 = new ArrayList<>(m.npcs); nl0.remove(g0); m.npcs = Collections.unmodifiableList(nl0); }
+                for (Portal p : m.portals) if (p.kind == 'X' && m.portalAt(p.x - 1, p.y) == null && m.portalAt(p.x, p.y - 1) == null) { at = new int[] { p.x + 1, p.y + 1 }; break; }
+            } else {
+                int cx = m.spawnX, cy = m.spawnY;
+                if ("g".equals(d[3]) || "v".equals(d[3])) {
+                    if (m.villageX >= 0) { cx = m.villageX; cy = m.villageY; }
+                    Npc g = "g".equals(d[3]) ? m.guide() : null;
+                    if (g != null) { // 이동 안내원은 없애고 그 자리에
+                        cx = g.x; cy = g.y;
+                        m.terrain[g.y][g.x] = g.ground != 0 ? g.ground : '.';
+                        List<Npc> nl = new ArrayList<>(m.npcs);
+                        nl.remove(g);
+                        m.npcs = Collections.unmodifiableList(nl);
+                    }
+                } else if (d[3].startsWith("p:")) {
+                    for (Portal p : m.portals) if (d[3].substring(2).equals(p.target)) { cx = p.x; cy = p.y; break; }
+                }
+                at = wpSpot(m, cx, cy, true);
+                if (at == null) at = wpSpot(m, cx, cy, false);
+                if (at != null) {
+                    List<Portal> pl = new ArrayList<>(m.portals);
+                    for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+                        m.terrain[at[1] + dy][at[0] + dx] = 'X';
+                        m.ore[at[1] + dy][at[0] + dx] = 0;
+                        pl.add(new Portal(at[0] + dx, at[1] + dy, 'X', TELE, 0, 0, "워프 포인트 · " + d[4]));
+                    }
+                    m.portals = Collections.unmodifiableList(pl);
+                }
+            }
+            if (at != null) l.add(new Waypoint(d[0], d[2], d[4], act, bit, at[0], at[1]));
+        }
+        waypoints = Collections.unmodifiableList(l);
+    }
+    /** (cx, cy)에서 가까운 3x3 자리(가운데). strict = 둘레 한 칸까지(5x5) 걸을 수 있는 땅, 문/NPC에서 떨어지게. 아니면 3x3만 땅이고 바로 아래 칸이 걸을 수 있으면. */
+    private static int[] wpSpot(S5MineMap m, int cx, int cy, boolean strict) {
+        int r0 = strict ? 2 : 1;
+        for (int d = 0; d <= 40; d++) {
+            for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) != d) continue;
+                int x = cx + dx, y = cy + dy;
+                if (x - 2 < 1 || y - 2 < 1 || x + 2 >= m.w - 1 || y + 3 >= m.h - 1) continue;
+                boolean ok = true;
+                for (int yy = y - r0; yy <= y + r0 && ok; yy++) for (int xx = x - r0; xx <= x + r0; xx++) { char c = m.terrain[yy][xx]; if (!walkable(c) || c == 'P') { ok = false; break; } }
+                if (ok && !walkable(m.terrain[y + 2][x])) ok = false;
+                if (ok && Math.max(Math.abs(m.spawnX - x), Math.abs(m.spawnY - y)) < 4) ok = false; // 들어오는 칸(시작점)은 막지 않게
+                if (ok) for (Portal pt : m.portals) if (Math.abs(pt.x - x) <= 3 && Math.abs(pt.y - y) <= 3) { ok = false; break; }
+                if (ok) for (Npc n : m.npcs) if (Math.abs(n.x - x) <= 2 && Math.abs(n.y - y) <= 2) { ok = false; break; }
+                if (ok) return new int[] { x, y };
+            }
+        }
+        return null;
+    }
+
     /** 이동 안내원(없으면 null). */
     public Npc guide() {
         for (Npc n : npcs) if ("guide".equals(n.kind)) return n;
@@ -686,7 +776,7 @@ public final class S5MineMap {
     public final int w, h, spawnX, spawnY;
     private final char[][] terrain;
     private final byte[][] ore;
-    public final List<Portal> portals;
+    public List<Portal> portals; // [2026-11-18] 워프 포인트를 맵을 만든 뒤에 얹는다(placeWaypoints) -- 그래서 final이 아니다
 
     private S5MineMap(String id, String name, boolean dark, int w, int h, int spawnX, int spawnY, char[][] terrain, byte[][] ore, List<Portal> portals) {
         this.id = id; this.name = name; this.dark = dark; this.w = w; this.h = h; this.spawnX = spawnX; this.spawnY = spawnY;
@@ -745,7 +835,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 25; // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 26; // [2026-11-18] 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1185,6 +1275,7 @@ public final class S5MineMap {
             out.put(CHAOS, generateChaos());
             out.put(DEMON_VILLAGE, generateDemonVillage()); // [2026-11-17] 마계 마을(맨 뒤)
         }
+        placeWaypoints(out); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
@@ -3451,7 +3542,7 @@ public final class S5MineMap {
         portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 왕도 남쪽 초원으로"));
         portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
         portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽 마물의 숲 입구")); // [2026-11-05] 열림(좌표는 buildWorld)
-        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) portals.add(new Portal(gx + dx, gy + dy, 'X', TELE, 0, 0, "텔레포트 게이트")); // [2026-11-18] 3x3
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) portals.add(new Portal(gx + dx, gy + dy, 'X', TELE, 0, 0, "워프 포인트 · 왕도 아스테리아")); // [2026-11-18] 3x3
         int sx = c, sy = h - wt - 2;
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'K';
