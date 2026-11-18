@@ -817,7 +817,7 @@ public final class S5MineMap {
     }
 
     public static boolean portalChar(char c) {
-        return "GMUSBXZ".indexOf(c) >= 0; // X = 텔레포트 게이트(왕도), Z = 숨은 입구(물처럼 보임)
+        return "GMUSBXZo".indexOf(c) >= 0; // X = 텔레포트 게이트(왕도), Z = 숨은 입구(물처럼 보임), [2026-11-18] o = 바다로 나가는 물가(물처럼 보임, 닿으면 배를 타고 다음 맵)
     }
 
     public boolean inside(int x, int y) {
@@ -863,7 +863,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 30; // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 31; // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1307,17 +1307,24 @@ public final class S5MineMap {
                 //  남쪽 바닷가: 왼쪽 물가 판자 = 바다 위, 오른쪽 물가 판자 = 다도해 뱃길, 아래로 뻗은 부두 끝 = 망망대해.
                 //  해상도시 동쪽 부두 -> 바다 위 서쪽 부두, 바다 위 동쪽 부두 -> 남쪽 바닷가(왼쪽 물가). 바다 위/해상도시/망망대해는 지금 관리자만(mineMapBlock).
                 S5MineMap sc = generateSeaCity(), os = generateOpenSea(), vs = generateVastSea(), sv0 = out.get(ARCHISEA), bch = out.get(BEACH);
-                int[] shL = shoreWater(bch, 1), shR = shoreWater(bch, bch.w - 2);
-                int pxb = bch.w / 4;
-                int[] shB = shoreWater(bch, pxb);
-                bch.terrain[shL[1]][shL[0]] = 'B';
-                bch.terrain[shR[1]][shR[0]] = 'B';
-                for (int y = shB[1]; y < bch.h - 2; y++) for (int x = pxb; x <= pxb + 1; x++) bch.terrain[y][x] = 'P';
-                bch.terrain[bch.h - 2][pxb] = 'B';
+                // [2026-11-18] 같은 날 "배를 띄워 망망대해로 이런 거 없애고, 닿으면 다음 맵으로 이동하는 공간, 6시 방향 다리 같은 구조물도 없애고, 바다로 나가면 자동으로 배를" --
+                //  판자(B)와 아래 부두를 없애고, 물가 첫 물 칸(모래 바로 아래)을 모두 바다로 나가는 칸(o)으로: 왼쪽 1/3 = 바다 위, 오른쪽 1/3 = 다도해 뱃길, 가운데 = 망망대해.
+                //  원래 있던 큰 배 부두(배/숨은 바닷길 입구) 둘레 세 칸은 그대로 둔다.
                 List<Portal> bps = new ArrayList<>(bch.portals);
-                bps.add(new Portal(shL[0], shL[1], 'B', OPEN_SEA, 0, 0, "배를 띄워 바다 위로"));
-                bps.add(new Portal(shR[0], shR[1], 'B', ARCHISEA, 0, 0, "배를 띄워 다도해 뱃길로"));
-                bps.add(new Portal(pxb, bch.h - 2, 'B', VAST_SEA, vs.spawnX, vs.spawnY, "배를 띄워 망망대해로"));
+                int third = bch.w / 3, shLx = -1, shLy = 0, shRx = -1, shRy = 0;
+                for (int x = 1; x < bch.w - 1; x++) {
+                    int[] sw = shoreWater(bch, x);
+                    if (sw[1] >= bch.h - 3 || bch.terrain[sw[1]][x] != '~') continue;
+                    boolean nearPier = false;
+                    for (int xx = Math.max(0, x - 3); xx <= Math.min(bch.w - 1, x + 3) && !nearPier; xx++) for (int y = 0; y < bch.h; y++) { char pc = bch.terrain[y][xx]; if (pc == 'P' || pc == 'q' || pc == 'B' || pc == 'Z') { nearPier = true; break; } }
+                    if (nearPier) continue;
+                    String tg = x < third ? OPEN_SEA : x >= bch.w - third ? ARCHISEA : VAST_SEA;
+                    bch.terrain[sw[1]][x] = 'o';
+                    bps.add(new Portal(x, sw[1], 'o', tg, 0, 0, OPEN_SEA.equals(tg) ? "바다 위로" : ARCHISEA.equals(tg) ? "다도해 뱃길로" : "망망대해로"));
+                    if (OPEN_SEA.equals(tg) && shLx < 0) { shLx = x; shLy = sw[1]; }
+                    if (ARCHISEA.equals(tg)) { shRx = x; shRy = sw[1]; }
+                }
+                int[] shL = { Math.max(1, shLx), shLy }, shR = { Math.max(1, shRx), shRy };
                 S5MineMap b3 = relink(bch, bps, bch.npcs);
                 b3 = relink(b3, retarget(b3, OPEN_SEA, landBeside(os, BEACH)), b3.npcs);
                 b3 = relink(b3, retarget(b3, ARCHISEA, landBeside(sv0, BEACH)), b3.npcs);

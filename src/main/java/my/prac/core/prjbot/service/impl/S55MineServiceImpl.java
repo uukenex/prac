@@ -2623,7 +2623,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             new String[][] { { "PEARL", "5" }, { "CORAL_GEM", "5" }, { "AMETHYST", "5" }, { "OPAL", "5" }, { "BLACK_PEARL", "5" } } },
         // [2026-11-18] 받는 사람을 정한 우편(5번째 = 받는 사람들) -- 보로네오를 함께 쓰러뜨렸는데 필살기/용병/함께 싸운 보상 경로에 보로네오 보상이 빠져 있었다
         { "BORO1118", "⚖️ 보로네오 미지급 보상", "심판자 보로네오를 함께 쓰러뜨렸을 때 빠졌던 보상을 보내 드려요. 불편을 드려 죄송합니다.",
-            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "일어난다람쥐/카단" } } };
+            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "일어난다람쥐/카단" } },
+        // [2026-11-18] 같은 날 17시쯤 한 번 더(로스터리·도륙이냥이 함께 -- 액션 로그 16:49~17:04 보로네오 전투) -- 보상 고침 배포 전이라 또 빠졌다
+        { "BORO1118B", "⚖️ 보로네오 미지급 보상 (17시)", "17시쯤 심판자 보로네오를 다시 쓰러뜨렸을 때 빠졌던 보상을 보내 드려요.",
+            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리" } } };
     static boolean mineMailFor(String userName, Object[] q) { return q.length < 5 || q[4] == null || java.util.Arrays.asList((String[]) q[4]).contains(userName); }
     static List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();
@@ -5637,7 +5640,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.ARCHI.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) < 1) // [2026-10-28] 다도해 마을도 한 번 배로 와 봐야 이동 안내원 목적지
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_ARCHI, 1);
         out.put("ok", true);
-        out.put("message", llMsg + (chaosMob != null ? "🌌 마계의 문이 당신을 집어삼켰어요... 혼돈스러운 마계! " + chaosMob + "이(가) 깨어났어요 -- 쓰러뜨려야 귀환의 문이 열려요. " : abyss ? "🌀 마계의 문이 당신을 집어삼켰다가... " + target.name + "에 내던졌어요! " : "") + (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요." + (MINE_TELE_GOLD > 0 ? " (금광석 " + MINE_TELE_GOLD + "개 사용)" : "") : "🚪 " + target.name + "(으)로 이동했어요.")
+        out.put("message", llMsg + (chaosMob != null ? "🌌 마계의 문이 당신을 집어삼켰어요... 혼돈스러운 마계! " + chaosMob + "이(가) 깨어났어요 -- 쓰러뜨려야 귀환의 문이 열려요. " : abyss ? "🌀 마계의 문이 당신을 집어삼켰다가... " + target.name + "에 내던졌어요! " : "") + (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요." + (MINE_TELE_GOLD > 0 ? " (금광석 " + MINE_TELE_GOLD + "개 사용)" : "") : p.kind == 'o' ? "⛵ 배를 띄워 " + target.name + "(으)로 나왔어요." /* [2026-11-18] 물가에 닿으면 */ : "🚪 " + target.name + "(으)로 이동했어요.")
                 + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ") -- 몬스터가 강하니 조심하세요!" : ""));
         out.put("state", mineState(userName));
         return out;
@@ -10016,6 +10019,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ok", ok);
         out.put("message", message);
         mineGearPayload(userName, mineItems(userName), out);
+        out.put("ores", mineOreList(userName)); // [2026-11-18] "아쿠아마린 34개인데 반지 NPC는 29개" -- 세공/제련/장인/제작 결과에 광석 수가 없어 인벤토리가 옛 숫자로 남았다
         return out;
     }
 
