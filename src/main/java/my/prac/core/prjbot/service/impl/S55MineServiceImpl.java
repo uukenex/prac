@@ -3575,6 +3575,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int zd = mineZoneHit(userName, map, x, y, lv, rb, now, hits, out);
             if (zd > 0) { dmgSum += zd; if (killerName == null) killerName = "장판"; }
         }
+        if (mineMercActive(items).length > 0) {
+            // [2026-11-18] DB 점검 -- 용병이 있으면 용병 차례(처치 드랍/장비/경험치를 쓴다) 전에 유저 행을 먼저 잠근다. 공격 요청과 잠금 순서를 맞추고(교착 방지),
+            //  잠근 뒤 용병 기록만 다시 읽어(턴 처음에 읽은 값은 그 사이 공격이 올린 용병 경험치보다 옛 값일 수 있다) 덮어쓰기를 막는다.
+            dao.selectMineUserForUpdate(userName);
+            for (HashMap<String, Object> mr : dao.selectMineMercRows(userName)) items.put(strVal(mr.get("ITEM_CODE"), ""), intVal(mr.get("ITEM_LEVEL"), 0));
+        }
         long[] mercR = mineMercTurn(userName, map, items, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
         long mercExp = mercR[1];
         Debuff pdb = MINE_DEBUFF.get(userName); // [2026-10-28] 여왕개미 독 -- 전투 턴마다 지난 시간만큼
@@ -7615,6 +7621,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             r[0] += a[0];
             r[1] += a[1];
         }
+        if (out.get("merc") instanceof Map && out.get("merc2") instanceof Map && ((Map<?, ?>) out.get("merc2")).containsKey("ores")) ((Map<?, ?>) out.get("merc")).remove("ores"); // [2026-11-18] 광석 목록은 한 번만(뒤의 것이 최신)
         return r;
     }
     /** 용병 한 명(기록 번호 k)의 차례 -- 결과는 out.merc(첫 칸) / out.merc2(두 번째 칸). */

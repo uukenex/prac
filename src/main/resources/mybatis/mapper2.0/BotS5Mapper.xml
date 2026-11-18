@@ -835,6 +835,11 @@
     <select id="selectMineItems" resultType="hashmap">
         SELECT ITEM_CODE, ITEM_LEVEL FROM TBOT_S5_MINE_ITEM WHERE USER_NAME = #{userName}
     </select>
+    <!-- [2026-11-18] 전투 턴: 유저 행을 잠근 뒤 용병 기록만 다시 읽는다(요청 캐시/세션 캐시 없이) -->
+    <select id="selectMineMercRows" resultType="hashmap" flushCache="true" useCache="false">
+        SELECT ITEM_CODE, ITEM_LEVEL FROM TBOT_S5_MINE_ITEM
+         WHERE USER_NAME = #{userName} AND ITEM_CODE LIKE 'MERC%' AND ITEM_CODE NOT LIKE 'MERCOF%'
+    </select>
 
     <!-- [2026-11-17] world boss board: rows of the given item codes for all users -->
     <select id="selectMineItemsByCodes" resultType="hashmap">

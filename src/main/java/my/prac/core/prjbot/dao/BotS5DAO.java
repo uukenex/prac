@@ -183,6 +183,8 @@ public interface BotS5DAO {
     String selectConfigValue(@Param("key") String key);
     int upsertConfigValue(@Param("key") String key, @Param("value") String value, @Param("memo") String memo);
     List<HashMap<String, Object>> selectMineItems(@Param("userName") String userName);
+    /** [2026-11-18] 전투 턴 -- 유저 행을 잠근 뒤 용병 기록(MERC*, 후보 MERCOF 제외)만 캐시 없이 다시 읽는다. */
+    List<HashMap<String, Object>> selectMineMercRows(@Param("userName") String userName);
     /** [2026-11-17] 월드보스 게시판 -- 여러 유저의 특정 아이템 줄(USER_NAME, ITEM_CODE, ITEM_LEVEL). */
     List<HashMap<String, Object>> selectMineItemsByCodes(@Param("codes") List<String> codes);
     int upsertMineItem(@Param("userName") String userName, @Param("itemCode") String itemCode, @Param("level") int level);
