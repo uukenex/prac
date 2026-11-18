@@ -820,7 +820,9 @@ public final class S5MineMobs {
         List<S5MineMap.Mob> out = new ArrayList<>();
         boolean[][] taken = new boolean[m.h][m.w];
         int bx = m.bossX(), by = m.bossY();
-        for (int gy = 10; gy < m.h - 10; gy += 14) for (int gx = 4; gx < m.w - 8; gx += 16) {
+        boolean dense = m.seaRoute() != null; // [2026-11-18] "물보스 나오는 맵(바다 위)에 몬스터 많이" -- 무리 자리를 촘촘히(약 3배), 무리도 조금 크게
+        int gy0 = dense ? 5 : 10, gys = dense ? 10 : 14, gxs = dense ? 13 : 16;
+        for (int gy = gy0; gy < m.h - gy0; gy += gys) for (int gx = 4; gx < m.w - 8; gx += gxs) {
             int x = gx + r.nextInt(10), y = gy + r.nextInt(8);
             if (!seaCell(t, x, y) || Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 14) continue;
             int ex = m.seaRoute() != null ? 6 : 17; // [2026-11-18] 크라켄이 길을 따라 돌면 집 둘레만 조금
@@ -829,7 +831,7 @@ public final class S5MineMobs {
             for (S5MineMap.Portal p : m.portals) if (Math.abs(x - p.x) + Math.abs(y - p.y) < 12) nearDock = true;
             if (nearDock) continue;
             int roll = r.nextInt(100), type = roll < 34 ? SEA_OCTO : roll < 60 ? SEA_RAY : roll < 88 ? SEA_SHARK : SEA_WHALE;
-            int n = type == SEA_RAY ? 3 + r.nextInt(3) : type == SEA_SHARK ? 3 + r.nextInt(2) : 1;
+            int n = type == SEA_RAY ? 3 + r.nextInt(dense ? 4 : 3) : type == SEA_SHARK ? 3 + r.nextInt(dense ? 3 : 2) : type == SEA_OCTO && dense ? 1 + r.nextInt(2) : 1;
             for (int k = 0; k < n; k++) {
                 int mx = x + (k == 0 ? 0 : r.nextInt(5) - 2), my = y + (k == 0 ? 0 : r.nextInt(5) - 2);
                 if (!seaCell(t, mx, my) || taken[my][mx]) continue;

@@ -668,7 +668,7 @@ public final class S5MineMap {
         { "shrine", "3", ARCHI, "p:" + SHRINE, "신궁 입구" }, { "ninja", "3", ARCHI, "p:" + SHRINE_BOSS, "닌자 두목의 방 입구" },
         { "tcity", "4", TOWER_CITY, "g", "요새 도시 엘리시온" }, { "tgate", "4", TOWER_GATE, "s", "거대한 탑 입구" }, { "deast", "4", DEMON_EAST, "s", "동쪽 악마의 들판" },
         { "dwest", "4", DEMON_WEST, "s", "서쪽 악마의 들판" }, { "lastline", "4", LAST_LINE, "s", "최후의 방어선" },
-        { "seacity", "5", SEA_CITY, "v", "해상도시" } };
+        { "seacity", "5", SEA_CITY, "v", "윤슬항" } };
     private static volatile List<Waypoint> waypoints = Collections.emptyList();
     public static List<Waypoint> waypoints() { if (world == null) get(FIELD); return waypoints; } // 맵을 아직 안 만들었으면 만든다
     public static Waypoint waypoint(String id) { for (Waypoint w : waypoints) if (w.id.equals(id)) return w; return null; }
@@ -868,7 +868,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 33; // [2026-11-18] 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 34; // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1343,14 +1343,14 @@ public final class S5MineMap {
                 os = relink(os, retarget(os, SEA_CITY, new int[] { 109, 34 }), null);
                 sc = relink(sc, retarget(sc, OPEN_SEA, landBeside(os, SEA_CITY)), null);
                 out.put(VAST_SEA, vs);
-                placeNpc(sc, 55, 20, "seamayor", "해상도시 시장", "바다 위 해상도시에 온 걸 환영하오! 배 없이는 못 오는 곳이라 손님이 귀하다오.");
+                placeNpc(sc, 55, 20, "seamayor", "윤슬항 시장", "바다 위 윤슬항에 온 걸 환영하오! 윤슬은 햇살에 반짝이는 잔물결이라오. 배 없이는 못 오는 곳이라 손님이 귀하다오.");
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
                 placeNpc(sc, 66, 40, "gemcutter", "보석 세공사", "파도 소리를 들으며 깎으면 손이 덜 떨려요.");
                 out.put(SEA_CITY, sc);
                 { // [2026-11-18] 등대 여섯(크라켄이 도는 길 옆 바위섬 -- 배를 대면 내리고, 종을 치면 해상도시 구조선이 온다). 탑 칸은 NPC(N), 섬 둘레는 자갈(r)
                     List<Npc> bn = new ArrayList<>();
                     for (int[] l : os.lighthouses) {
-                        Npc g = new Npc(l[0], l[1], "lighthouse", "등대", "종을 치면 해상도시 구조선이 달려와 크라켄과 싸워 준다네.");
+                        Npc g = new Npc(l[0], l[1], "lighthouse", "등대", "종을 치면 윤슬항 구조선이 달려와 크라켄과 싸워 준다네.");
                         g.ground = 'r';
                         os.terrain[l[1]][l[0]] = 'N';
                         bn.add(g);
@@ -3229,7 +3229,7 @@ public final class S5MineMap {
         for (int y = dkY - 4; y <= dkY + 4; y++) for (int x = 0; x < 7; x++) t[y][x] = '~';
         for (int y = dkY - 2; y <= dkY + 2; y++) t[y][0] = 'b';
         t[dkY][1] = 'B';
-        ps.add(new Portal(1, dkY, 'B', SEA_CITY, 0, 0, "해상도시에 내리기"));
+        ps.add(new Portal(1, dkY, 'B', SEA_CITY, 0, 0, "윤슬항에 내리기"));
         for (int y = 1; y < h - 1; y++) { t[y][w - 1] = 'o'; ps.add(new Portal(w - 1, y, 'o', BEACH, 0, 0, "남쪽 바닷가로")); } // 오른쪽 끝(닿으면) = 남쪽 바닷가 7시 끝
         S5MineMap m = new S5MineMap(OPEN_SEA, "바다 위", false, w, h, 4, dkY, t, new byte[h][w], ps);
         m.boat = true;
@@ -3302,7 +3302,7 @@ public final class S5MineMap {
         List<Portal> ps = new ArrayList<>();
         ps.add(new Portal(plank[0], plank[1], 'B', OPEN_SEA, 0, 0, "배를 띄워 바다 위로"));
         ps.add(new Portal(110, 34, 'B', OPEN_SEA, 0, 0, "배를 띄워 바다 위로"));
-        S5MineMap m = new S5MineMap(SEA_CITY, "해상도시", false, w, h, sx, sy, t, new byte[h][w], ps);
+        S5MineMap m = new S5MineMap(SEA_CITY, "윤슬항", false, w, h, sx, sy, t, new byte[h][w], ps);
         m.dockX = plank[0] - 1;
         m.dockY = plank[1];
         m.villageX = 55; m.villageY = 44;

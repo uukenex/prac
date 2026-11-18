@@ -3939,7 +3939,7 @@ var TowerMine = (function () {
     var h = npcHead('⛵ ' + n.name, false) + talkBlock(n, n.line);
     h += '<div class="mine-smith-say">' + (a.boat ? '⛵ 1인용 배 · 체력 ' + fmtN(hp) + ' / ' + fmtN(mx) + '<span class="mine-bar hp" style="margin-top:4px"><i style="width:' + Math.round(hp * 100 / mx) + '%;background:#4fc3f7"></i></span>'
         : '⛵ 1인용 배가 없어요 -- 다도해 본섬 배 목수가 만들어 줘요(본섬은 남쪽 섬에서 큰 배로).') + '</div>';
-    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 해상도시', adm]]
+    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 윤슬항', adm]]
         : [['opensea', '🌊 바다 위', '북쪽 끝은 남쪽 바닷가', true]];
     if (a.boat && a.boatFix > 0) h += '<div class="mine-smith-row"><span class="nm">🔨 배 수리<small>' + (hp > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + ' · 진주 ' + a.boatFix + '개</small></span><button type="button" onclick="TowerMine.boatFix()">고치기</button></div>';
     return h + '<div class="mine-smith-menu">' + dests.map(function (d) {
@@ -7257,13 +7257,18 @@ var TowerMine = (function () {
     }
     if ((map.boat || (map.sail && boatAt(P.x, P.y))) && st && st.archi && st.archi.boatHpMax) { // [2026-11-18] "배 체력 항상 잘 보이게" -- 화면 위 가운데 큰 막대(30% 아래면 빨갛게 깜빡)
       var bhp = Math.max(0, st.archi.boatHp || 0), bmx2 = st.archi.boatHpMax, bf = Math.max(0, Math.min(1, bhp / bmx2)), bw2 = Math.min(W * 0.6, 340 * dpr), bh2 = 16 * dpr, bx2 = (W - bw2) / 2, by2 = 52 * dpr;
+      // [2026-11-18] "배 체력을 플레이어 체력바 위로" -- 화면 아래 체력바(#mineHp)와 같은 폭으로 바로 위에(체력바가 숨으면 예전처럼 위 가운데)
+      var hr = el.hp && el.hp.offsetWidth ? el.hp.getBoundingClientRect() : null, cr = hr ? el.cv.getBoundingClientRect() : null;
+      if (hr && cr && cr.width) { var ks = W / cr.width; bh2 = 14 * dpr; bw2 = Math.max(120 * dpr, hr.width * ks); bx2 = (hr.left - cr.left) * ks; by2 = (hr.top - cr.top) * ks - bh2 - 7 * dpr; }
       var low = bf < 0.3, blink = low && Math.floor(now / 300) % 2 === 0;
       ctx.fillStyle = 'rgba(8,16,30,.78)'; ctx.fillRect(bx2 - 3 * dpr, by2 - 3 * dpr, bw2 + 6 * dpr, bh2 + 6 * dpr);
       ctx.fillStyle = low ? (blink ? '#ff8a6a' : '#e8432a') : '#4fc3f7'; ctx.fillRect(bx2, by2, bw2 * bf, bh2);
       ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(bx2, by2, bw2 * bf, bh2 / 3);
       ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000';
-      var btx = '⛵ 배 체력 ' + bhp.toLocaleString() + ' / ' + bmx2.toLocaleString() + ' (' + Math.round(bf * 100) + '%)' + (map.id === 'vastsea' ? ' · 망망대해: 초당 -5%' : '');
-      ctx.strokeText(btx, W / 2, by2 + bh2 / 2); ctx.fillStyle = '#ffffff'; ctx.fillText(btx, W / 2, by2 + bh2 / 2); ctx.textBaseline = 'alphabetic';
+      var btx = bw2 < 260 * dpr ? '⛵ 배 ' + Math.round(bf * 100) + '%' + (map.id === 'vastsea' ? ' · 초당 -5%' : '') // [2026-11-18] 좁으면(폰) 줄여서
+        : '⛵ 배 체력 ' + bhp.toLocaleString() + ' / ' + bmx2.toLocaleString() + ' (' + Math.round(bf * 100) + '%)' + (map.id === 'vastsea' ? ' · 망망대해: 초당 -5%' : '');
+      ctx.font = 'bold ' + Math.round((bw2 < 260 * dpr ? 10 : 12) * dpr) + 'px sans-serif';
+      ctx.strokeText(btx, bx2 + bw2 / 2, by2 + bh2 / 2); ctx.fillStyle = '#ffffff'; ctx.fillText(btx, bx2 + bw2 / 2, by2 + bh2 / 2); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
     }
     if (banner) { // 새 맵 이름(가운데, 잠깐 보였다 사라짐)
       var be = now - banner.t0;
