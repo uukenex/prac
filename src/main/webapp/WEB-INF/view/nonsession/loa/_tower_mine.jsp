@@ -1695,6 +1695,60 @@ var TowerMine = (function () {
     for (var x = 2; x < 15; x += 3) p.P(x, 14, '#e8f4ff');
     return c;
   }
+  // [2026-11-18] "남쪽 바닷가 바다로 나가면 자동으로 배" -- 배가 있으면(지금은 관리자만) 바닷가 물 위를 배로. 배 맵(boat)은 등대 섬(r) 위만 배에서 내린다.
+  function seaBoatOk() { return !!(st && st.adminMaps && st.archi && st.archi.boat && (st.archi.boatHp | 0) > 0); }
+  function boatAt(x, y) {
+    if (!map || !(map.boat || map.sail)) return false;
+    var row = map.rows && map.rows[Math.round(y)], c = row ? row.charAt(Math.round(x)) : '~';
+    if (map.boat) return c !== 'r' && c !== 'N';
+    return c === '~' || c === 'o';
+  }
+  var boatWas = null, moored = null;
+  function boatLandCheck(pos) { // 물 <-> 섬/모래를 오갈 때 "배에서 내렸어요"(배는 그 자리에 매어 둔다) / "배에 올랐어요"
+    if (!map || !(map.boat || map.sail)) { boatWas = null; moored = null; return; }
+    var ob = boatAt(pos.x, pos.y), t = performance.now();
+    if (boatWas && boatWas.m === map.id && boatWas.on !== ob) {
+      if (!ob) { moored = { m: map.id, x: boatWas.x, y: boatWas.y, left: P.dir === 'left' }; floats.push({ x: P.x, y: P.y - 1, text: '⚓ 배에서 내렸어요 💦', color: '#e8f6ff', t0: t }); }
+      else { moored = null; floats.push({ x: P.x, y: P.y - 1, text: '⛵ 배에 올랐어요', color: '#9fe0ff', t0: t }); }
+    }
+    if (!boatWas || boatWas.m !== map.id) moored = null;
+    boatWas = { m: map.id, on: ob, x: Math.round(pos.x), y: Math.round(pos.y) };
+  }
+  // [2026-11-18] 등대(시안 승인) -- (x, y) = 섬 왼쪽 위(3칸 x 2칸, 탑 칸 = NPC 칸 가운데), 탑은 위로 4칸 반. ring = 종이 울리는 중.
+  function lhDraw(x, y, now, ring) {
+    var u = T * scale / 16, R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u, w * u, h * u); };
+    R('#cfe8ff', -2, 24, 52, 2); R('#4a4640', 0, 8, 48, 18); R('#6a645a', 2, 6, 44, 16); R('#8a8478', 6, 6, 36, 6); R('#5a554c', 4, 18, 12, 4); R('#5a554c', 30, 16, 14, 5);
+    R('#a09a8a', 10, 7, 6, 2); R('#a09a8a', 30, 8, 8, 2);
+    R('#7a4a22', 40, 14, 14, 4); R('#b07a3c', 40, 14, 14, 1); R('#4a2c14', 42, 18, 2, 6); R('#4a2c14', 51, 18, 2, 6);
+    R('#d8d4cc', 14, -40, 20, 48); R('#f4f2ee', 16, -40, 14, 48); R('#b8b4ac', 30, -40, 4, 48);
+    R('#c8382a', 14, -30, 20, 6); R('#e85040', 16, -30, 12, 6); R('#c8382a', 14, -14, 20, 6); R('#e85040', 16, -14, 12, 6);
+    R('#3a2a1a', 21, -2, 6, 10); R('#5a4028', 22, -1, 4, 9); R('#e0b050', 25, 3, 1, 1);
+    R('#2a3a5a', 22, -24, 4, 4); R('#8ac8ff', 23, -23, 2, 2);
+    R('#2a2a2a', 10, -44, 28, 4); R('#4a4a4a', 10, -44, 28, 1); for (var k = 11; k < 38; k += 4) R('#2a2a2a', k, -48, 1, 4); R('#2a2a2a', 10, -49, 28, 1);
+    R('#2a2a2a', 15, -58, 18, 14);
+    ctx.fillStyle = 'rgba(255,230,120,' + (0.75 + 0.25 * Math.sin(now / 200)).toFixed(2) + ')'; ctx.fillRect(x + 17 * u, y - 56 * u, 14 * u, 10 * u); R('#fffbe0', 21, -54, 6, 6);
+    R('#b8302a', 13, -64, 22, 6); R('#d84a3a', 16, -68, 16, 4); R('#e0b050', 23, -72, 2, 4);
+    ctx.save(); ctx.translate(x + 24 * u, y - 51 * u); ctx.rotate(now / 900);
+    var g = ctx.createLinearGradient(0, 0, 150 * u / 2, 0); g.addColorStop(0, 'rgba(255,240,160,.5)'); g.addColorStop(1, 'rgba(255,240,160,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(75 * u, -11 * u); ctx.lineTo(75 * u, 11 * u); ctx.closePath(); ctx.fill(); ctx.restore();
+    var sw = ring ? Math.sin(now / 60) * 3 : 0;
+    ctx.save(); ctx.translate(x + 40 * u, y - 46 * u); ctx.rotate(sw * 0.12);
+    ctx.fillStyle = '#4a3a1a'; ctx.fillRect(-u, -2 * u, 2 * u, 3 * u); ctx.fillStyle = '#e0b030'; ctx.beginPath(); ctx.moveTo(-4 * u, 7 * u); ctx.quadraticCurveTo(-4 * u, 0, 0, 0); ctx.quadraticCurveTo(4 * u, 0, 4 * u, 7 * u); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffe680'; ctx.fillRect(-3 * u, 2 * u, u, 3 * u); ctx.fillStyle = '#8a6010'; ctx.fillRect(-5 * u, 7 * u, 10 * u, u); ctx.restore();
+    R('#2a2a2a', 34, -46, 6, 1);
+    if (ring) { ctx.strokeStyle = 'rgba(255,230,120,.9)'; ctx.lineWidth = 2 * dpr; for (var r = 0; r < 3; r++) { var rr = (8 + r * 7) * u * 0.6; ctx.beginPath(); ctx.arc(x + 40 * u, y - 42 * u, rr, -0.9, 0.9); ctx.stroke(); ctx.beginPath(); ctx.arc(x + 40 * u, y - 42 * u, rr, Math.PI - 0.9, Math.PI + 0.9); ctx.stroke(); } }
+  }
+  function lhList() { return (map && map.npcs || []).filter(function (q) { return q.kind === 'lighthouse'; }); }
+  function lhNear() { // 등대 섬 위(물 아님)에서 2칸 안 등대
+    if (!map || map.id !== 'opensea' || boatAt(P.x, P.y)) return null;
+    var L = lhList();
+    for (var i = 0; i < L.length; i++) if (Math.max(Math.abs(L[i].x - P.x), Math.abs(L[i].y - P.y)) <= 2) return L[i];
+    return null;
+  }
+  function lhBell(n) {
+    var li = lhList().indexOf(n);
+    api('/api/tower-mine-archi?action=bell:' + li).then(function (d) { if (d && d.sea) seaSt = d.sea; if (d && d.message) { if (d.ok) flashT0 = performance.now(); msg(d.message, 3000); } }).catch(function () { });
+  }
   var allySailors = null;
   function allyShipDraw(x, y, left, now) { // (x, y) = 배 왼쪽 위(화면), 오른쪽을 보고 그린 배를 left면 뒤집는다
     var u = T * scale / 16, bob = Math.floor(now / 500) % 2;
@@ -1713,9 +1767,16 @@ var TowerMine = (function () {
     ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x - 8 * u, y + 17 * u, 66 * u, u);
     ctx.restore();
   }
-  function seaDrawBack(now, camX, camY) { // 화약통(몬스터보다 먼저)
-    if (!map || !map.barrels) return;
-    var TS = T * scale, t = nowSrv(), bs = (seaSt && seaSt.barrel) || [];
+  function seaDrawBack(now, camX, camY) { // 등대 + 화약통(몬스터보다 먼저)
+    if (!map) return;
+    var TS = T * scale, t = nowSrv(), bs = (seaSt && seaSt.barrel) || [], bl = (seaSt && seaSt.bell) || [];
+    lhList().forEach(function (n, i) { // [2026-11-18] 등대 -- 종을 치고 3.5초 동안 흔들리며 울린다
+      var lx = (n.x - 1) * TS - camX, ly = n.y * TS - camY;
+      if (lx < -4 * TS || ly < -2 * TS || lx > el.cv.width + 2 * TS || ly > el.cv.height + 6 * TS) return;
+      lhDraw(lx, ly, now, bl[i] && t - bl[i] < 3500);
+    });
+    if (moored && moored.m === map.id && !boatAt(P.x, P.y)) { var mx = Math.round(moored.x * TS - camX), my = Math.round(moored.y * TS - camY); drawBoat(mx, my - 3 * scale, now, moored.left); drawBoatFront(mx, my - 3 * scale, now, moored.left); } // 매어 둔 빈 배
+    if (!map.barrels) return;
     map.barrels.forEach(function (b, i) {
       var ex = bs[i] || 0, x = b[0] * TS - camX, y = b[1] * TS - camY;
       if (ex && t - ex < 60000) {
@@ -1725,43 +1786,46 @@ var TowerMine = (function () {
       ctx.drawImage(seaBarrelSprite(Math.floor(now / 400 + i) % 2), x, y + Math.round(Math.sin(now / 500 + i) * scale), TS, TS);
     });
   }
-  function seaDrawFront(now, camX, camY) { // 부표 불꽃 + 지원 함선(몬스터 다음)
+  // [2026-11-18] 등대 구조선(시안 승인) -- 서버가 준 res = {x, y, 체력, 가라앉은 시각, 부른 시각, 붙는 시각, 작살 수, 다음 작살, 다음 내려찍기, 마지막 작살 시각, 오는 쪽}.
+  //  자리가 바뀌면 1초 동안 미끄러지듯, 작살은 크라켄 가운데(sea.kx/ky)로. 가라앉으면 두 동강 나며 잠기고 수병의 넋이 떠오른다.
+  var resV = null, resSeen = { shots: 0, hp: 100 };
+  function seaDrawFront(now, camX, camY) {
     if (!map || map.id !== 'opensea' || !seaSt) return;
-    var TS = T * scale, t = nowSrv(), bi = 0;
-    (map.npcs || []).forEach(function (n) {
-      if (n.kind !== 'seabuoy') return;
-      var lit = (seaSt.buoy || [])[bi++] || 0;
-      if (!lit || t - lit > 30000) return;
-      var fx = n.x * TS - camX + TS / 2, fy = n.y * TS - camY - 3 * scale, fl = Math.sin(now / 90) * scale;
-      ctx.fillStyle = '#ff6a3a'; ctx.fillRect(fx - scale, fy - 6 * scale + fl, 2 * scale, 5 * scale);
-      ctx.fillStyle = '#ffd84a'; ctx.fillRect(fx - scale, fy - 7 * scale + fl, 2 * scale, 2 * scale);
-      ctx.fillStyle = 'rgba(255,120,60,.25)'; ctx.beginPath(); ctx.arc(fx, fy - 4 * scale, TS * 0.6, 0, Math.PI * 2); ctx.fill();
-    });
-    // [2026-11-18] "수병 소환이 안 보인다" -- 몬스터 목록엔 x/y가 없어(칸 묶음 c만) 함선 자리가 NaN이었다. 이제 서버가 준 함선 자리(sea.ships)에서 그린다.
-    //  불을 붙인 뒤 MINE_KRK_ALLY_DELAY(10초) 동안 해역 밖 13칸에서 저어 오고, 싸우다 촉수에 두 번 맞으면 기울며 가라앉는다. 시간이 다 되면 돌아간다.
-    var ships = seaSt.ships || [], ALLY_IN = 10000;
-    if (!ships.length || t < seaSt.allyAt - ALLY_IN || t > seaSt.allyUntil + 3000) return;
-    var bm = map.mobs && map.mobs[map.mobs.length - 1], kc = bm && bm.c && bm.c.length ? bm.c[0] : 0, kx = kc % map.w + 2.5, ky = Math.floor(kc / map.w) + 2.5;
-    ships.forEach(function (sh, i) {
-      var side = sh[0] < kx ? -1 : 1, sunk = sh[3] > 0, come = t < seaSt.allyAt ? (seaSt.allyAt - t) / ALLY_IN : 0, leave = !sunk && t > seaSt.allyUntil ? Math.min(1, (t - seaSt.allyUntil) / 3000) : 0;
-      if (sunk && t - sh[3] > 2600) return;
-      var off = Math.max(come, leave) * 13, cxs = sh[0] + side * off, sxp = (cxs + (side < 0 ? -3.2 : 0)) * TS - camX, syp = sh[1] * TS - camY;
-      if (sunk) { // 가라앉는다 -- 기울어지며 내려가고 흐려진다, 거품
-        var sq = Math.min(1, (t - sh[3]) / 2600);
-        ctx.save(); ctx.globalAlpha = 1 - sq; ctx.translate(sxp + 1.6 * TS, syp + TS * 0.5 + sq * TS * 1.2); ctx.rotate(side * sq * 0.5); ctx.translate(-(sxp + 1.6 * TS), -(syp + TS * 0.5));
-        allyShipDraw(sxp, syp, side > 0, now); ctx.restore();
-        for (var bb = 0; bb < 5; bb++) { var bq = ((now / 500) + bb * 0.2) % 1; fxDot(sxp + 1.6 * TS + (bb - 2) * 6 * scale, syp + TS - bq * TS * 1.5, 2 * scale, '#e8f6ff', 0.7 * (1 - bq) * (1 - sq)); }
-        return;
-      }
-      allyShipDraw(sxp, syp, side > 0, now);
-      var hpw = 3 * TS, hpx = sxp + 0.1 * TS, hpy = syp - TS * 1.8; // 함선 체력
-      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(hpx, hpy, hpw, 3 * scale); ctx.fillStyle = sh[2] > 50 ? '#7ad8ff' : '#ff8a5a'; ctx.fillRect(hpx, hpy, hpw * sh[2] / 100, 3 * scale);
-      if (t >= seaSt.allyAt && t < seaSt.allyUntil && (now + i * 450) % 900 < 320) { // 작살(원거리)
-        var ax = sxp + (side < 0 ? 3.2 * TS : 0), ay = syp, q = ((now + i * 450) % 900) / 320, tx = kx * TS - camX, ty2 = ky * TS - camY;
-        ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + (tx - ax) * q, ay + (ty2 - ay) * q); ctx.stroke();
-        ctx.fillStyle = '#e8e8f0'; ctx.fillRect(ax + (tx - ax) * q - 3, ay + (ty2 - ay) * q - 3, 6, 6);
-      }
-    });
+    var r = seaSt.res, TS = T * scale, u = TS / 16, t = nowSrv();
+    if (!r || !r[4]) { resV = null; return; }
+    if (!resV || resV.k !== r[4]) { resV = { k: r[4], fx: r[0], fy: r[1], tx: r[0], ty: r[1], t0: now }; resSeen = { shots: 0, hp: 100 }; }
+    if (resV.tx !== r[0] || resV.ty !== r[1]) { var q0 = Math.min(1, (now - resV.t0) / 1000); resV.fx += (resV.tx - resV.fx) * q0; resV.fy += (resV.ty - resV.fy) * q0; resV.tx = r[0]; resV.ty = r[1]; resV.t0 = now; }
+    var q = Math.min(1, (now - resV.t0) / 1000), sx = resV.fx + (resV.tx - resV.fx) * q, sy = resV.fy + (resV.ty - resV.fy) * q;
+    var side = r[10] || 1, left = side > 0, kx = seaSt.kx != null ? seaSt.kx + 0.5 : sx - side * 7, ky = seaSt.ky != null ? seaSt.ky + 0.5 : sy;
+    var X = Math.round((sx + 0.5) * TS - camX - 25 * u), Y = Math.round(sy * TS - camY - 2 * u);
+    if (r[3] > 0) { // 가라앉는다
+      var sq = (t - r[3]) / 3200;
+      if (sq >= 1 || sq < 0) return;
+      ctx.save(); ctx.globalAlpha = 1 - sq * 0.6;
+      ctx.save(); ctx.translate(X + 20 * u, Y + 10 * u + sq * TS); ctx.rotate(-0.45 * Math.min(1, sq * 3)); ctx.beginPath(); ctx.rect(-60 * u, -60 * u, 46 * u, 90 * u); ctx.clip(); allyShipDraw(-20 * u, -10 * u, left, 0); ctx.restore();
+      ctx.save(); ctx.translate(X + 34 * u, Y + 12 * u + sq * TS * 1.2); ctx.rotate(0.5 * Math.min(1, sq * 3)); ctx.beginPath(); ctx.rect(-14 * u, -60 * u, 60 * u, 90 * u); ctx.clip(); allyShipDraw(-34 * u, -12 * u, left, 0); ctx.restore();
+      ctx.restore();
+      ctx.fillStyle = '#3a78d4'; ctx.globalAlpha = Math.min(1, sq * 2); ctx.fillRect(X - 10 * u, Y + 17 * u, 72 * u, TS * 1.6); ctx.globalAlpha = 1; // 물에 잠김
+      for (var bb = 0; bb < 9; bb++) { var bq = ((now / 450) + bb * 0.13) % 1; fxDot(X + (bb * 7 - 4) * u, Y + 17 * u - bq * TS * 0.9, 2 * scale, '#e8f6ff', 0.75 * (1 - bq) * (1 - sq)); }
+      ctx.fillStyle = '#7a4a22'; ctx.fillRect(X + 52 * u, Y + 14 * u + Math.sin(now / 300) * u, 10 * u, 2 * u); ctx.fillRect(X - 8 * u, Y + 20 * u, 7 * u, 2 * u); // 나무 조각
+      try { // 쓰러진 수병 -- 넋이 떠오른다
+        if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, {}), MineChar.sprite('right', 0, 3, {})];
+        ctx.save(); ctx.globalAlpha = 0.4 * (1 - sq); ctx.filter = 'grayscale(1) brightness(1.6)';
+        ctx.drawImage(allySailors[0], X + 6 * u, Y - (10 + sq * 40) * u, TS, TS); ctx.drawImage(allySailors[1], X + 26 * u, Y - (4 + sq * 44) * u, TS, TS); ctx.restore();
+      } catch (e) { }
+      ctx.filter = 'none'; ctx.globalAlpha = 1;
+      return;
+    }
+    if (r[6] > resSeen.shots) { floats.push({ x: kx - 0.5, y: ky - 2.5, text: '🎯 작살 ' + r[6] + '/5', color: '#ffd24a', big: true, t0: performance.now() }); resSeen.shots = r[6]; }
+    if (r[2] < resSeen.hp) { floats.push({ x: sx, y: sy - 2.2, text: r[2] > 0 ? '🛡️ 구조선이 대신 맞았다!' : '⚓ 구조선이 부서졌어요...', color: '#9fe0ff', big: true, t0: performance.now() }); resSeen.hp = r[2]; }
+    allyShipDraw(X, Y, left, now);
+    var hpw = 3 * TS, hpx = X + 1 * u, hpy = Y - 28 * u; // 구조선 체력
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(hpx, hpy, hpw, 3 * scale); ctx.fillStyle = r[2] > 50 ? '#7ad8ff' : '#ff8a5a'; ctx.fillRect(hpx, hpy, hpw * r[2] / 100, 3 * scale);
+    if (r[9] && t - r[9] < 450) { // 작살
+      var aq = (t - r[9]) / 450, ax = X + (left ? 0 : 50 * u), ay = Y, tx = kx * TS - camX, ty2 = ky * TS - camY, hx = ax + (tx - ax) * aq, hy = ay + (ty2 - ay) * aq;
+      ctx.strokeStyle = '#e8e0c8'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(hx - (tx - ax) * 0.12, hy - (ty2 - ay) * 0.12); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.fillStyle = '#c0c8d0'; ctx.fillRect(hx - 3, hy - 3, 6, 6);
+    }
   }
   function mobSprite(k, pose, f) {
     var tyS = map.mobTypes[k] || {}; // [2026-11-18] 바다 위
@@ -1999,7 +2063,7 @@ var TowerMine = (function () {
     var twd = twDecorCell(); // [2026-11-16] 탑 방 한가운데 상자/제단/샘은 돌아서 간다
     if (twd && twd[0] === x && twd[1] === y) return false;
     if (antGate(x)) return false; // [2026-11-04] 사막 서쪽 방벽 문 -- Lv.41 미만은 서쪽으로 못 지나간다(바람에도)
-    return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배
+    return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat) || !!(map && map.sail && seaBoatOk()))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배, [2026-11-18] 남쪽 바닷가 = 배가 있으면
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 강화 = 최대/현재 함께 증가)
@@ -3056,11 +3120,7 @@ var TowerMine = (function () {
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
     if (n.kind === 'seaferry') { setAuto(false); openSmith(n, 'sail'); return; } // [2026-11-18] 배 띄우기
     if (n.kind === 'wpkeeper') { setAuto(false); wpKeep = null; openSmith(n, 'wpkeep'); wpKeepGo('wpdur'); return; } // [2026-11-18] 워프 포인트 관리인
-    if (n.kind === 'seabuoy') { // [2026-11-18] 신호 부표 -- 불을 붙이면 지원 함선
-      var bix = (map.npcs || []).filter(function (q) { return q.kind === 'seabuoy'; }).indexOf(n);
-      api('/api/tower-mine-archi?action=buoy:' + bix).then(function (d) { if (d && d.sea) seaSt = d.sea; if (d && d.message) { if (d.ok) flashT0 = performance.now(); msg(d.message, 3000); } }).catch(function () { });
-      return;
-    }
+    if (n.kind === 'lighthouse') { lhBell(n); return; } // [2026-11-18] 등대 종 -- 구조선
     if (n.kind === 'mailbox') { setAuto(false); mailData = null; openSmith(n, 'mail'); mailGo('mail', null); return; } // [2026-11-17] 우체부
     if (n.kind === 'wbboard') { setAuto(false); wbBoard = null; openSmith(n, 'wbboard'); api('/api/tower-mine-wb?action=board').then(function (d) { wbBoard = d; if (smithOpen && smithView === 'wbboard') renderSmith(smithNpc); }).catch(function () { }); return; } // [2026-11-17] 월드보스 게시판
     if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
@@ -6282,6 +6342,7 @@ var TowerMine = (function () {
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     var a = !P.moving && adjMob();
     if (!a && !P.moving && wpHere() && wpOpenHere()) { if (wpStand) wpStand.done = true; return; } // [2026-11-18] 워프 포인트 위에서 공격 버튼 = 창
+    if (!a && !P.moving && lhNear()) { lhBell(lhNear()); return; } // [2026-11-18] 등대 섬 위에서 공격 버튼 = 종
     if (a) { attack(a); return; }
     if (!P.moving && (auraRange() > 0 || whirlEls().length)) { auraAttack(); return; } // [2026-11-07] 돌개베기 // [2026-11-04] 옆에 몬스터가 없어도 검기는 날아간다
     // [2026-10-28] "아무것도 없을 때도 무기 휘두르는 액션" -- 서버에 묻지 않고 그 자리에서 휘두르기만
@@ -6606,7 +6667,7 @@ var TowerMine = (function () {
           var np = npcAt[x + ',' + y];
           var nk = np && np.kind === 'blackmarket' && !blackOpen() ? 'stall' : np && np.kind; // [2026-10-26] 암상인이 없을 땐 빈 노점
           if (np && !tiles.npc[nk]) tiles.npc[nk] = npcSprite(nk); // [2026-11-18] "새 NPC를 만들 때마다 안 보이는 문제" -- 그림이 따로 없는 종류는 기본 NPC 그림으로
-          if (np && tiles.npc[nk]) ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS);
+          if (np && tiles.npc[nk] && nk !== 'lighthouse') ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS); // [2026-11-18] 등대는 seaDrawBack이 크게
         }
       }
     }
@@ -6793,7 +6854,8 @@ var TowerMine = (function () {
       if (ou.m2 && !map.boat) mercDrawOther(ou, op, now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true); // [2026-11-18] 두 번째 용병
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
-      if (map.boat) drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+      var oBoat = boatAt(op.x, op.y); // [2026-11-18] 물 위에서만(등대 섬/바닷가 모래에선 내린다)
+      if (oBoat) drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
       var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
@@ -6801,7 +6863,7 @@ var TowerMine = (function () {
       if (unity) unityRing(ox, oy, now); // [2026-11-17] 함께 싸우는 사람도
       ctx.drawImage(otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw), ox, oy - 3 * scale, TS, TS);
       ctx.globalAlpha = 1;
-      if (map.boat) drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-11-18]
+      if (oBoat) drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-11-18]
       if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
@@ -6870,7 +6932,9 @@ var TowerMine = (function () {
     var digging = now - P.digT0 < 380, dk = digging ? ((now - P.digT0) < 190 ? 1 : 2) + (P.swing ? 2 : 0) : 0; // [2026-10-28] 공격 = 무기를 휘두른다(곡괭이 대신)
     var meGm = !!(st && st.look && st.look.gm); // [2026-10-28] 운영자 장비 -- 반짝이 + "운영자" 표시
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
-    if (map.boat) drawBoat(cx, cy - 3 * scale, now, P.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+    boatLandCheck(pos); // [2026-11-18] 배에서 내림/오름
+    var meBoat = boatAt(pos.x, pos.y);
+    if (meBoat) drawBoat(cx, cy - 3 * scale, now, P.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
     var hid = pStealthOn(); // [2026-10-30] 자객의 목걸이 은신 -- 반투명하게(살짝 일렁임)
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
@@ -6880,7 +6944,7 @@ var TowerMine = (function () {
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
-    if (map.boat) { drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
+    if (meBoat) { drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); if (map.boat) try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
@@ -7191,7 +7255,7 @@ var TowerMine = (function () {
       else { fa = 1 - fe / FADE_IN_MS; if (fa <= 0) { fade = null; fa = 0; } }
       if (fa > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fa + ')'; ctx.fillRect(0, 0, W, H); }
     }
-    if (map.boat && st && st.archi && st.archi.boatHpMax) { // [2026-11-18] "배 체력 항상 잘 보이게" -- 화면 위 가운데 큰 막대(30% 아래면 빨갛게 깜빡)
+    if ((map.boat || (map.sail && boatAt(P.x, P.y))) && st && st.archi && st.archi.boatHpMax) { // [2026-11-18] "배 체력 항상 잘 보이게" -- 화면 위 가운데 큰 막대(30% 아래면 빨갛게 깜빡)
       var bhp = Math.max(0, st.archi.boatHp || 0), bmx2 = st.archi.boatHpMax, bf = Math.max(0, Math.min(1, bhp / bmx2)), bw2 = Math.min(W * 0.6, 340 * dpr), bh2 = 16 * dpr, bx2 = (W - bw2) / 2, by2 = 52 * dpr;
       var low = bf < 0.3, blink = low && Math.floor(now / 300) % 2 === 0;
       ctx.fillStyle = 'rgba(8,16,30,.78)'; ctx.fillRect(bx2 - 3 * dpr, by2 - 3 * dpr, bw2 + 6 * dpr, bh2 + 6 * dpr);

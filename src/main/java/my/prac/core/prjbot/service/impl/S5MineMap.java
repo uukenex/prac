@@ -794,6 +794,11 @@ public final class S5MineMap {
     public int bossX() { return bossX; }
     private int[][] seaBarrels; // [2026-11-18] 바다 위 화약통 자리 {x, y}
     public int[][] seaBarrels() { return seaBarrels; }
+    private int[][] seaRoute, lighthouses; // [2026-11-18] 바다 위 크라켄이 도는 길(가운데 칸) / 등대 탑 칸
+    public int[][] seaRoute() { return seaRoute; }
+    public int[][] lighthouses() { return lighthouses; }
+    private boolean sail; // [2026-11-18] 남쪽 바닷가 -- 맵은 걸어 다니고, 1인용 배가 있으면 물 위로도(배 맵 boat와 달리 들어올 때 배가 필요 없다)
+    public boolean sail() { return sail; }
     /** [2026-11-15] "탑은 1인 인스턴스 던전 형태" -- 탑의 보드 층과 수문장 층은 사람마다 따로(몬스터 상태가 유저별, 다른 사람이 안 보인다). 마을 층(10층마다)은 함께. */
     private int soloFlag = -1;
     public boolean solo() {
@@ -863,7 +868,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 32; // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 33; // [2026-11-18] 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1307,26 +1312,25 @@ public final class S5MineMap {
                 //  남쪽 바닷가: 왼쪽 물가 판자 = 바다 위, 오른쪽 물가 판자 = 다도해 뱃길, 아래로 뻗은 부두 끝 = 망망대해.
                 //  해상도시 동쪽 부두 -> 바다 위 서쪽 부두, 바다 위 동쪽 부두 -> 남쪽 바닷가(왼쪽 물가). 바다 위/해상도시/망망대해는 지금 관리자만(mineMapBlock).
                 S5MineMap sc = generateSeaCity(), os = generateOpenSea(), vs = generateVastSea(), sv0 = out.get(ARCHISEA), bch = out.get(BEACH);
-                // [2026-11-18] 같은 날 "배를 띄워 망망대해로 이런 거 없애고, 닿으면 다음 맵으로 이동하는 공간, 6시 방향 다리 같은 구조물도 없애고, 바다로 나가면 자동으로 배를" --
-                //  판자(B)와 아래 부두를 없애고, 물가 첫 물 칸(모래 바로 아래)을 모두 바다로 나가는 칸(o)으로: 왼쪽 1/3 = 바다 위, 오른쪽 1/3 = 다도해 뱃길, 가운데 = 망망대해.
-                //  원래 있던 큰 배 부두(배/숨은 바닷길 입구) 둘레 세 칸은 그대로 둔다.
+                // [2026-11-18] 같은 날 다시 -- "해변가 바다 접점이 다른 맵으로 이동되고 있어. 7시 방향 끝부분만 이동되어야 하고 망망대해로"(시안 승인), "5시 방향이 다도해" --
+                //  물가 이동 칸(o)을 모두 없애고 바닷가 바다를 배로 다니는 바다(sail -- 1인용 배가 있으면 물 위로, 지금은 관리자만 -- 화면)로.
+                //  7시 끝(왼쪽 끝 아래 BEACH_GATE칸 + 맨 아래 끝 왼쪽) = 망망대해, 5시 끝(오른쪽 끝 아래 + 맨 아래 끝 오른쪽) = 다도해 뱃길.
+                //  바다 위 오른쪽 끝 -> 7시 끝 조금 안(beachIn7, 배를 타고 나온다), 다도해 뱃길 -> 5시 끝 조금 안(beachIn5).
                 List<Portal> bps = new ArrayList<>(bch.portals);
-                int third = bch.w / 3, shLx = -1, shLy = 0, shRx = -1, shRy = 0;
-                for (int x = 1; x < bch.w - 1; x++) {
-                    int[] sw = shoreWater(bch, x);
-                    if (sw[1] >= bch.h - 3 || bch.terrain[sw[1]][x] != '~') continue;
-                    boolean nearPier = false;
-                    for (int xx = Math.max(0, x - 3); xx <= Math.min(bch.w - 1, x + 3) && !nearPier; xx++) for (int y = 0; y < bch.h; y++) { char pc = bch.terrain[y][xx]; if (pc == 'P' || pc == 'q' || pc == 'B' || pc == 'Z') { nearPier = true; break; } }
-                    if (nearPier) continue;
-                    String tg = x >= bch.w - third ? ARCHISEA : OPEN_SEA; // [2026-11-18] 같은 날 "망망대해로 빠지는 곳은 바다 위 맨 아래 끝" -- 가운데 물가도 바다 위로
-                    bch.terrain[sw[1]][x] = 'o';
-                    bps.add(new Portal(x, sw[1], 'o', tg, 0, 0, OPEN_SEA.equals(tg) ? "바다 위로" : "다도해 뱃길로"));
-                    if (OPEN_SEA.equals(tg) && shLx < 0) { shLx = x; shLy = sw[1]; }
-                    if (ARCHISEA.equals(tg)) { shRx = x; shRy = sw[1]; }
+                for (int k = 0; k < BEACH_GATE; k++) {
+                    int[][] cs = { { 0, bch.h - 2 - k }, { 1 + k, bch.h - 1 }, { bch.w - 1, bch.h - 2 - k }, { bch.w - 2 - k, bch.h - 1 } };
+                    for (int q = 0; q < cs.length; q++) {
+                        int gx = cs[q][0], gy = cs[q][1];
+                        if (bch.terrain[gy][gx] != '~') continue;
+                        bch.terrain[gy][gx] = 'o';
+                        bps.add(q < 2 ? new Portal(gx, gy, 'o', VAST_SEA, 40, 40, "망망대해로") : new Portal(gx, gy, 'o', ARCHISEA, 0, 0, "다도해 뱃길로"));
+                    }
                 }
-                int[] shL = { Math.max(1, shLx), shLy }, shR = { Math.max(1, shRx), shRy };
+                { int gx = 0, gy = bch.h - 1; if (bch.terrain[gy][gx] == '~') { bch.terrain[gy][gx] = 'o'; bps.add(new Portal(gx, gy, 'o', VAST_SEA, 40, 40, "망망대해로")); } } // 맨 왼쪽 아래 모서리
+                { int gx = bch.w - 1, gy = bch.h - 1; if (bch.terrain[gy][gx] == '~') { bch.terrain[gy][gx] = 'o'; bps.add(new Portal(gx, gy, 'o', ARCHISEA, 0, 0, "다도해 뱃길로")); } }
+                int[] beachIn7 = { 9, bch.h - 9 }, beachIn5 = { bch.w - 10, bch.h - 9 };
                 S5MineMap b3 = relink(bch, bps, bch.npcs);
-                b3 = relink(b3, retarget(b3, OPEN_SEA, landBeside(os, BEACH)), b3.npcs);
+                b3.sail = true;
                 b3 = relink(b3, retarget(b3, ARCHISEA, landBeside(sv0, BEACH)), b3.npcs);
                 placeNpc(b3, b3.dockX - 5, b3.dockY - 3, "boatwright", "배 목수", "달빛석 하나에 보석 아홉 가지면 혼자 타는 배를 뚝딱 만들어 주지. 부서진 배도 고쳐 준다네."); // [2026-11-18] "남쪽 바닷가 목수 추가"
                 out.put(BEACH, b3);
@@ -1334,8 +1338,8 @@ public final class S5MineMap {
                     S5MineMap cty2 = out.get(CITY);
                     for (Portal p : cty2.portals) if (p.kind == 'X') { placeNpc(cty2, p.x + 4, p.y + 1, "wpkeeper", "워프 포인트 관리인", "워프 포인트는 월드보스 거룡의 심장으로 만들었다네. 드래곤의 심장은 무한에 가깝지만 충전이 필요하지. 거룡을 쓰러뜨려 얻은 회복 키트를 가져오게."); break; }
                 }
-                out.put(ARCHISEA, relink(sv0, retarget(sv0, BEACH, new int[] { shR[0], shR[1] - 1 }), null));
-                os = relink(os, retarget(os, BEACH, new int[] { shL[0], shL[1] - 1 }), null);
+                out.put(ARCHISEA, relink(sv0, retarget(sv0, BEACH, beachIn5), null));
+                os = relink(os, retarget(os, BEACH, beachIn7), null);
                 os = relink(os, retarget(os, SEA_CITY, new int[] { 109, 34 }), null);
                 sc = relink(sc, retarget(sc, OPEN_SEA, landBeside(os, SEA_CITY)), null);
                 out.put(VAST_SEA, vs);
@@ -1343,16 +1347,12 @@ public final class S5MineMap {
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
                 placeNpc(sc, 66, 40, "gemcutter", "보석 세공사", "파도 소리를 들으며 깎으면 손이 덜 떨려요.");
                 out.put(SEA_CITY, sc);
-                { // [2026-11-18] 신호 부표 넷(해역 둘레 반지름 15, 물 위 NPC -- 배를 대면 불을 붙인다)
-                    int bc = os.bossX + 2, br = os.bossY + 2;
+                { // [2026-11-18] 등대 여섯(크라켄이 도는 길 옆 바위섬 -- 배를 대면 내리고, 종을 치면 해상도시 구조선이 온다). 탑 칸은 NPC(N), 섬 둘레는 자갈(r)
                     List<Npc> bn = new ArrayList<>();
-                    for (int k = 0; k < 4; k++) {
-                        double a = Math.PI / 4 + Math.PI / 2 * k;
-                        int nx = bc + (int) Math.round(Math.cos(a) * 15), ny = br + (int) Math.round(Math.sin(a) * 15);
-                        if (os.terrain[ny][nx] != '~') continue;
-                        Npc g = new Npc(nx, ny, "seabuoy", "신호 부표", "불을 붙이면 해상도시 수병들이 배를 몰고 달려온다.");
-                        g.ground = '~';
-                        os.terrain[ny][nx] = 'N';
+                    for (int[] l : os.lighthouses) {
+                        Npc g = new Npc(l[0], l[1], "lighthouse", "등대", "종을 치면 해상도시 구조선이 달려와 크라켄과 싸워 준다네.");
+                        g.ground = 'r';
+                        os.terrain[l[1]][l[0]] = 'N';
                         bn.add(g);
                     }
                     os.npcs = Collections.unmodifiableList(bn);
@@ -1378,6 +1378,7 @@ public final class S5MineMap {
         n.bossX = m.bossX;
         n.bossY = m.bossY;
         n.seaBarrels = m.seaBarrels; // [2026-11-18]
+        n.seaRoute = m.seaRoute; n.lighthouses = m.lighthouses; n.sail = m.sail; // [2026-11-18]
         n.villageX = m.villageX;
         n.villageY = m.villageY;
         n.cold = m.cold;
@@ -3176,44 +3177,81 @@ public final class S5MineMap {
      *  나가는 문은 없다 -- 마계 입구 포털로 가끔 떨어지고, 3초 뒤 요새 도시로 되돌아간다(S55MineServiceImpl.MINE_VILLAGE_MS). 몬스터 없음, 마계 주민만. */
     /** [2026-11-18] 바다 위(96x200, 이름 미정): 온통 바다(배로만 -- boat, 1인용 배 필요), 군데군데 바위섬(^)과 모래톱(b). 맨 위 가운데 = 남쪽 바닷가 부두, 맨 아래 가운데 = 해상도시 부두.
      *  가운데 뱃길(좌우 4칸)은 바위 없이 비워 둔다. 해상전투(바다 몬스터, 배 체력)와 바다 보스는 다음에. */
+    // [2026-11-18] 같은 날 다시 -- "바다도시에서 우측 가면 좌우로 긴 맵, 물보스는 가운데 고정형인데 전 맵을 움직이도록, 맵에 전체적으로 등대, 등대 기믹"(시안 승인) --
+    //  200x60. 서쪽 부두 = 해상도시, 오른쪽 끝(닿으면) = 남쪽 바닷가 7시 끝. 크라켄은 seaRoute(가운데 칸들을 잇는 고리)를 따라 돈다(서버 mineKrakenMove).
+    //  길 둘레 KRK_LANE칸은 탁 트인 바다(바위 없음), 등대 여섯은 길에서 LH_OFF칸 떨어진 바위섬(3x2, 탑 + 자갈), 화약통 열은 길 바로 옆.
+    static final int KRK_LANE = 4, LH_OFF = 8;
+    static final int[][] OPEN_SEA_ROUTE = { { 24, 30 }, { 46, 13 }, { 78, 27 }, { 100, 46 }, { 120, 26 }, { 148, 13 }, { 176, 30 }, { 150, 48 }, { 110, 36 }, { 70, 48 }, { 38, 44 } };
     static S5MineMap generateOpenSea() {
-        int w = 96, h = 200, c = w / 2;
+        int w = 200, h = 60;
         Noise isle = new Noise(918_190L);
         Random r = new Random(9_181_900L);
         char[][] t = new char[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            double v = isle.fbm(x / 9.0, y / 9.0);
-            t[y][x] = Math.abs(x - c) <= 4 || y < 6 || y > h - 7 ? '~' : v > 0.74 ? '^' : v > 0.70 ? 'b' : r.nextDouble() < 0.0015 ? '^' : '~';
+            double v = isle.fbm(x / 7.0, y / 7.0);
+            t[y][x] = y < 3 || y > h - 4 || x > w - 8 ? '~' : v > 0.76 ? '^' : r.nextDouble() < 0.002 ? '^' : '~';
+        }
+        int[][] route = OPEN_SEA_ROUTE;
+        int n = route.length;
+        for (int i = 0; i < n; i++) { // 크라켄 길 -- 둘레를 바다로
+            int[] a = route[i], b = route[(i + 1) % n];
+            int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+            for (int s = 0; s <= steps; s++) {
+                int px = a[0] + (b[0] - a[0]) * s / steps, py = a[1] + (b[1] - a[1]) * s / steps;
+                for (int dy = -KRK_LANE; dy <= KRK_LANE; dy++) for (int dx = -KRK_LANE; dx <= KRK_LANE; dx++) { int xx = px + dx, yy = py + dy; if (xx > 0 && yy > 0 && xx < w - 1 && yy < h - 1) t[yy][xx] = '~'; }
+            }
+        }
+        List<int[]> lh = new ArrayList<>(); // 등대 -- 길 마디 하나 걸러 그 마디 가운데에서 바깥쪽으로 LH_OFF칸
+        for (int i = 0; i < n && lh.size() < 6; i += 2) {
+            int[] a = route[i], b = route[(i + 1) % n];
+            double mx = (a[0] + b[0]) / 2.0, my = (a[1] + b[1]) / 2.0, dx = b[0] - a[0], dy = b[1] - a[1], len = Math.max(1, Math.hypot(dx, dy));
+            for (int side : new int[] { (i / 2) % 2 == 0 ? 1 : -1, (i / 2) % 2 == 0 ? -1 : 1 }) {
+                int lx = (int) Math.round(mx - dy / len * LH_OFF * side), ly = (int) Math.round(my + dx / len * LH_OFF * side);
+                if (lx < 6 || ly < 5 || lx > w - 12 || ly > h - 6 || routeDist(route, lx, ly) < KRK_LANE + 3) continue;
+                lh.add(new int[] { lx, ly });
+                break;
+            }
+        }
+        for (int[] l : lh) {
+            for (int dy = -3; dy <= 4; dy++) for (int dx = -3; dx <= 4; dx++) t[l[1] + dy][l[0] + dx] = '~';
+            for (int dy = 0; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) t[l[1] + dy][l[0] + dx] = 'r'; // 섬(탑 칸은 NPC가 N으로)
+        }
+        int[][] barrels = new int[10][]; // 화약통 -- 길 마디마다 길 바로 옆(몸 밖) 물 위
+        for (int k = 0; k < barrels.length; k++) {
+            int[] a = route[k % n], b = route[(k + 1) % n];
+            double q = k % 2 == 0 ? 0.35 : 0.7, dx = b[0] - a[0], dy = b[1] - a[1], len = Math.max(1, Math.hypot(dx, dy));
+            int side = k % 3 == 0 ? -1 : 1;
+            barrels[k] = new int[] { (int) Math.round(a[0] + dx * q - dy / len * 4 * side), (int) Math.round(a[1] + dy * q + dx / len * 4 * side) };
+            t[barrels[k][1]][barrels[k][0]] = '~';
         }
         List<Portal> ps = new ArrayList<>();
-        int dkY = OPEN_SEA_DOCK_Y; // [2026-11-18] "해상도시에서 오른쪽 맵 = 바다 위, 바다 위에서 오른쪽 맵 = 남쪽 바닷가" -- 서쪽 부두 = 해상도시, 동쪽 부두 = 남쪽 바닷가
-        for (int y = dkY - 4; y <= dkY + 4; y++) for (int x = 0; x < w; x++) if (x < 7 || x >= w - 7) t[y][x] = '~';
-        for (int y = dkY - 2; y <= dkY + 2; y++) { t[y][0] = 'b'; t[y][w - 1] = 'b'; }
-        t[dkY][1] = 'B'; t[dkY][w - 2] = 'B';
+        int dkY = OPEN_SEA_DOCK_Y;
+        for (int y = dkY - 4; y <= dkY + 4; y++) for (int x = 0; x < 7; x++) t[y][x] = '~';
+        for (int y = dkY - 2; y <= dkY + 2; y++) t[y][0] = 'b';
+        t[dkY][1] = 'B';
         ps.add(new Portal(1, dkY, 'B', SEA_CITY, 0, 0, "해상도시에 내리기"));
-        ps.add(new Portal(w - 2, dkY, 'B', BEACH, 0, 0, "남쪽 바닷가에 내리기"));
-        for (int x = 1; x < w - 1; x++) { t[h - 1][x] = 'o'; ps.add(new Portal(x, h - 1, 'o', VAST_SEA, 40, 40, "망망대해로")); } // [2026-11-18] 맨 아래 끝 = 망망대해(닿으면)
-        // [2026-11-18] 크라켄 해역(가운데) -- 둘레 17칸은 탁 트인 바다, 반지름 10에 바위섬 여섯(2x2 -- 촉수가 치면 기절), 화약통 여덟(반지름 7/13)
-        int acy = h / 2;
-        for (int y = acy - 18; y <= acy + 18; y++) for (int x = 1; x < w - 1; x++) if (Math.hypot(x - c, y - acy) <= 17) t[y][x] = '~';
-        for (int k = 0; k < 6; k++) {
-            double a = Math.PI * 2 * k / 6 + Math.PI / 6;
-            int rx = c + (int) Math.round(Math.cos(a) * 10), ry = acy + (int) Math.round(Math.sin(a) * 10);
-            for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) t[ry + dy][rx + dx] = '^';
-        }
-        int[][] barrels = new int[8][];
-        for (int k = 0; k < 8; k++) {
-            double a = Math.PI / 2 * (k % 4) + (k < 4 ? 0 : Math.PI / 4), rr = k < 4 ? 7 : 13;
-            barrels[k] = new int[] { c + (int) Math.round(Math.cos(a) * rr), acy + (int) Math.round(Math.sin(a) * rr) };
-        }
-        S5MineMap m = new S5MineMap(OPEN_SEA, "바다 위", false, w, h, 4, OPEN_SEA_DOCK_Y, t, new byte[h][w], ps);
+        for (int y = 1; y < h - 1; y++) { t[y][w - 1] = 'o'; ps.add(new Portal(w - 1, y, 'o', BEACH, 0, 0, "남쪽 바닷가로")); } // 오른쪽 끝(닿으면) = 남쪽 바닷가 7시 끝
+        S5MineMap m = new S5MineMap(OPEN_SEA, "바다 위", false, w, h, 4, dkY, t, new byte[h][w], ps);
         m.boat = true;
         m.requireItem = BOAT_ITEM;
-        m.bossX = c - 2; m.bossY = acy - 2; // 크라켄 5x5 왼쪽 위
+        m.bossX = route[0][0] - 2; m.bossY = route[0][1] - 2; // 크라켄 5x5 왼쪽 위(집 = 길 첫 마디)
         m.seaBarrels = barrels;
+        m.seaRoute = route;
+        m.lighthouses = lh.toArray(new int[0][]);
         return m;
     }
-    static final int OPEN_SEA_DOCK_Y = 66; // [2026-11-18] 바다 위 서/동 부두 줄(크라켄 해역 위쪽)
+    /** 칸 (x, y)에서 크라켄 길(고리)까지 가장 가까운 거리. */
+    static double routeDist(int[][] route, double x, double y) {
+        double best = Double.MAX_VALUE;
+        for (int i = 0; i < route.length; i++) {
+            int[] a = route[i], b = route[(i + 1) % route.length];
+            double dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, q = l2 == 0 ? 0 : Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l2));
+            best = Math.min(best, Math.hypot(x - a[0] - dx * q, y - a[1] - dy * q));
+        }
+        return best;
+    }
+    static final int BEACH_GATE = 14; // [2026-11-18] 남쪽 바닷가 7시/5시 끝 -- 옆 끝 아래 14칸 + 맨 아래 끝 14칸
+    static final int OPEN_SEA_DOCK_Y = 30; // [2026-11-18] 바다 위 서쪽 부두 줄(해상도시), 66 -> 30(좌우로 긴 맵)
     /** [2026-11-18] 망망대해(80x80) -- 끝없는 바다, 나가는 문 없음, 몬스터 없음. 배로만(1인용 배). */
     static S5MineMap generateVastSea() {
         int w = 80, h = 80;

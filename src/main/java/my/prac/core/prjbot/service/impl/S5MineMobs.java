@@ -823,7 +823,8 @@ public final class S5MineMobs {
         for (int gy = 10; gy < m.h - 10; gy += 14) for (int gx = 4; gx < m.w - 8; gx += 16) {
             int x = gx + r.nextInt(10), y = gy + r.nextInt(8);
             if (!seaCell(t, x, y) || Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 14) continue;
-            if (bx >= 0 && Math.abs(x - bx - 2) <= 17 && Math.abs(y - by - 2) <= 17) continue;
+            int ex = m.seaRoute() != null ? 6 : 17; // [2026-11-18] 크라켄이 길을 따라 돌면 집 둘레만 조금
+            if (bx >= 0 && Math.abs(x - bx - 2) <= ex && Math.abs(y - by - 2) <= ex) continue;
             boolean nearDock = false;
             for (S5MineMap.Portal p : m.portals) if (Math.abs(x - p.x) + Math.abs(y - p.y) < 12) nearDock = true;
             if (nearDock) continue;

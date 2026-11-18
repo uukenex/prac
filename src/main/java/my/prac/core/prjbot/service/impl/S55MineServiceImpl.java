@@ -472,7 +472,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     static boolean mineWalk(S5MineMap map, int x, int y, int water) {
         if (water >= 2) return map.inside(x, y); // 바람의 신 -- 맵 안이면 어디든
-        return map.walkable(x, y) || ((water >= 1 || map.boat()) && map.inside(x, y) && map.terrainAt(x, y) == '~'); // [2026-10-28] 다도해 뱃길(boat)은 배로 물 위를 다닌다
+        return map.walkable(x, y) || ((water >= 1 || map.boat() || map.sail()) && map.inside(x, y) && map.terrainAt(x, y) == '~'); // [2026-10-28] 다도해 뱃길(boat)은 배로 물 위를 다닌다, [2026-11-18] 남쪽 바닷가(sail)는 배가 있으면(화면이 막는다)
     }
 
     /** stepMs = 화면 한 칸 이동 시간(신속의 장화로 빨라지면 허용 거리도 그만큼 늘린다). */
@@ -758,6 +758,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("dayCycleMs", S5MineMap.ARCHI_CYCLE_MS);
             if (S5MineMap.TOWER_CITY.equals(map.id)) out.put("alwaysNight", true); // [2026-11-18] "요새 도시는 항상 밤"
         }
+        if (map.sail()) out.put("sail", true); // [2026-11-18] 남쪽 바닷가 -- 1인용 배가 있으면 물 위로(지금은 관리자만, 화면)
         if (map.boat()) out.put("boat", true); // [2026-11-18] "배 이미지가 없다" -- 다도해 맵에만 실려서 바다 위/망망대해는 화면이 배 맵인 줄 몰랐다(배 그림/낚시 버튼/물 위 이동)
         if (map.seaBarrels() != null) out.put("barrels", map.seaBarrels()); // [2026-11-18] 크라켄 해역 화약통(같은 이유로 밖으로)
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
@@ -1158,6 +1159,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 몬스터가 지금 있을 수 있는 칸들(멈춰 있으면 그 칸, 아니면 앞/지금/다음 시간 칸 -- 화면과 서버 시계 차이 허용). */
     static int[] mineMobCells(S5MineMap.Mob mob, MobState s, long now, S5MineMap map) {
         if (mob.type == S5MineMobs.WB_BOSS_TYPE && MINE_WB.px >= 0) return new int[] { MINE_WB.py * map.w + MINE_WB.px }; // [2026-11-16] 거룡은 옮겨 다닌다
+        if (mob.type == S5MineMobs.KRAKEN_TYPE && MINE_KRK_POS[0] >= 0) return new int[] { MINE_KRK_POS[1] * map.w + MINE_KRK_POS[0] }; // [2026-11-18] 크라켄은 길을 따라 돈다
         if (s != null && s.frozenUntil > now) return new int[] { s.fy * map.w + s.fx };
         return new int[] { S5MineMobs.cellAt(mob, now - S5MineMobs.SLOT_MS), S5MineMobs.cellAt(mob, now), S5MineMobs.cellAt(mob, now + S5MineMobs.SLOT_MS) };
     }
@@ -3499,6 +3501,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 boolean harpyMoving = false, harpyBoss = map.mobs().get(id).type == S5MineMobs.HARPY_BOSS_TYPE; // [2026-11-11] 체력 절반부터 나무 패턴(숨음/옮김) -- 깃털을 더 자주
                 if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) { int[] wp = mineWbPos(); s.fx = wp[0]; s.fy = wp[1]; } // [2026-11-16] 거룡 -- 옮겨 다니는 자리
+                if (map.mobs().get(id).type == S5MineMobs.KRAKEN_TYPE) mineKrakenMove(map, s, id, now); // [2026-11-18] 크라켄 -- 길을 따라 돌고, 싸우는 중엔 잠수할 때 옮긴다
                 if (harpyBoss) { int[] hz = mineHarpyNow(map, now); s.fx = hz[0]; s.fy = hz[1]; harpyMoving = hz[2] == 1 || hz[4] == 1; } // [2026-11-08] 하피 -- 나무 사이를 옮겨 다닌다
                 int dist = Math.abs(s.fx - x) + Math.abs(s.fy - y);
                 if (type.boss) dist = mineFootDist(type, s, x, y); // [2026-10-29] 보스 2x2칸까지의 거리
@@ -3632,7 +3635,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int zd = mineZoneHit(userName, map, x, y, lv, rb, now, hits, out);
             if (zd > 0) { dmgSum += zd; if (killerName == null) killerName = "장판"; }
         }
-        if (map.boat()) { // [2026-11-18] 바다 위 -- 몬스터 한 대 1%(고래 2%, 크라켄 3%), 촉수 내려찍기 25%, 물보라 5%. 0이 되면 배가 부서져 마을로(mineBoatHit)
+        if (map.boat() && map.terrainAt(x, y) == '~') { // [2026-11-18] 바다 위 -- 몬스터 한 대 1%(고래 2%, 크라켄 3%), 촉수 내려찍기 25%, 물보라 5%. 0이 되면 배가 부서져 마을로(mineBoatHit). 등대 섬 위(배에서 내림)는 배가 안 맞는다
             for (HashMap<String, Object> h : hits) if (Boolean.TRUE.equals(h.get("zone"))) { int zk = intVal(h.get("zk"), -1); if (zk == 11) boatPct += MINE_BOAT_SMASH_PCT; else if (zk == 12) boatPct += MINE_BOAT_SPLASH_PCT; }
             if (boatPct > 0 && items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0) {
                 long left = mineBoatHit(userName, items, mineBoatHpMax(items) * boatPct / 100, out);
@@ -4115,114 +4118,214 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  지원군은 배를 탄 NPC들이 온다, 보상은 물의 심장 + 바다 보석(세공된 것도 가끔)" --
     //   - 두꺼운 몸: 받는 피해 x MINE_KRK_ARMOR(30%), 기절 중엔 x MINE_KRK_STUN_MUL(2배) -- mineVulnMul.
     //   - 촉수 내려찍기: MINE_KRK_SMASH_GAP마다(체력 30% 아래 MINE_KRK_SMASH_GAP_RAGE) 싸우는 사람 발밑 3x3에 3초 예고 -> 최대 체력 20% + 배 25%.
-    //     그 3x3에 바위(^)가 있으면 촉수가 박혀 MINE_KRK_STUN_MS 기절, 화약통이 있으면 터져 크라켄 최대 체력 MINE_KRK_BARREL_PCT(화약통은 1분 뒤 다시 떠오름).
-    //   - 신호 부표(해역 둘레 넷): 배를 대면 불이 붙어 MINE_KRK_ALLY_DELAY 뒤 해상도시 수병 함선 둘이 MINE_KRK_ALLY_MS 동안 작살(초당 최대 체력 0.4%). 부표마다 1분 30초에 한 번.
+    //     그 3x3에 바위(^)나 등대 섬이 있으면 촉수가 박혀 MINE_KRK_STUN_MS 기절, 화약통이 있으면 터져 크라켄 최대 체력 MINE_KRK_BARREL_PCT(화약통은 1분 뒤 다시 떠오름).
     //   - 45초마다 5초 잠수(S5MineMobs.diving -- 못 때리고 안 때림), 떠오를 때 둘레 반지름 4 물보라(최대 체력 10% + 배 5%).
-    //  화약통/부표/함선 상태는 위치 알림(sea)으로 모두에게. 바다 위는 하나뿐이라 상태도 하나(서버 메모리).
-    static final long MINE_KRK_SMASH_WARN = 3_000L, MINE_KRK_SMASH_GAP = 8_000L, MINE_KRK_SMASH_GAP_RAGE = 5_000L, MINE_KRK_STUN_MS = 8_000L;
-    static final long MINE_KRK_ALLY_DELAY = 10_000L, MINE_KRK_ALLY_MS = 60_000L, MINE_KRK_BUOY_CD = 90_000L, MINE_KRK_BARREL_BACK = 60_000L;
-    // [2026-11-18] "수병 소환이 안 된다 -- 멀리서 배를 타고 와 원거리로 공격하다가 크라켄 공격에 죽게" -- 함선 둘이 해역 밖(13칸)에서 MINE_KRK_ALLY_DELAY 동안 저어 와
-    //  크라켄 양옆 7칸(위로 3칸)에서 작살(함선마다 초당 최대 체력 MINE_KRK_ALLY_PCT_S/2). 함선이 떠 있는 동안 촉수 내려찍기의 MINE_KRK_SHIP_AIM_PCT%는 함선을 노리고,
-    //  맞은 함선은 체력 -MINE_KRK_SHIP_HIT(두 번이면 가라앉는다). 길어야 MINE_KRK_ALLY_MS 싸우고 돌아간다. 함선 = {x, y, 체력(0~100), 가라앉은 시각}.
-    static final int MINE_KRK_SHIP_AIM_PCT = 60, MINE_KRK_SHIP_HIT = 50, MINE_KRK_SHIP_DX = 7, MINE_KRK_SHIP_DY = -3;
-    static final long[][] MINE_KRK_SHIPS = new long[2][4];
-    static final double MINE_KRK_BARREL_PCT = 0.05, MINE_KRK_ALLY_PCT_S = 0.004, MINE_KRK_ARMOR = 0.3, MINE_KRK_STUN_MUL = 2.0;
+    //  같은 날 다시 -- "물보스는 가운데 고정형인데 전 맵을 움직이도록, 맵에 전체적으로 등대, 등대 기믹(시안 승인), 싸우는 중에도 숨었다가 이동" --
+    //   - 이동(mineKrakenMove): 아무도 안 싸우면 길(S5MineMap.seaRoute)을 따라 MINE_KRK_STEP_MS마다 한 칸, 싸우는 동안(MINE_KRK_FIGHT_MS 안에 맞음/구조선)은
+    //     그 자리에서 버티다가 잠수할 때마다 길 앞쪽 MINE_KRK_JUMP_MIN~MAX칸으로 옮겨 떠오른다. 기절 중엔 안 움직인다.
+    //   - 등대(바다 위 여섯): 배를 대면 섬에 내리고(배는 안 맞음), 등대 곁(2칸)에서 종을 치면(mineBell, 등대마다 MINE_KRK_BELL_CD) MINE_KRK_RES_IN 뒤
+    //     해상도시 구조선이 크라켄 옆에 붙어 작살 MINE_KRK_SHOTS발(발마다 최대 체력 MINE_KRK_SHOT_PCT, 기절 중 2배). 붙어 있는 동안 크라켄은 구조선만 내려치고
+    //     (사람은 안 노린다 -- 대신 맞는다) 두 번 맞으면 부서져 가라앉는다(수병이 쓰러진다 -- 화면).
+    //  화약통/등대/구조선/크라켄 자리는 위치 알림(sea)으로 모두에게. 바다 위는 하나뿐이라 상태도 하나(서버 메모리).
+    static final long MINE_KRK_SMASH_WARN = 3_000L, MINE_KRK_SMASH_GAP = 8_000L, MINE_KRK_SMASH_GAP_RAGE = 5_000L, MINE_KRK_STUN_MS = 8_000L, MINE_KRK_BARREL_BACK = 60_000L;
+    static final double MINE_KRK_BARREL_PCT = 0.05, MINE_KRK_ARMOR = 0.3, MINE_KRK_STUN_MUL = 2.0;
     static final int MINE_KRK_SMASH_PERMIL = 200, MINE_KRK_SPLASH_PERMIL = 100;
     static final int MINE_BOAT_HIT_PCT = 1, MINE_BOAT_WHALE_PCT = 2, MINE_BOAT_KRK_PCT = 3, MINE_BOAT_SMASH_PCT = 25, MINE_BOAT_SPLASH_PCT = 5;
+    static final long MINE_KRK_STEP_MS = 1_200L, MINE_KRK_FIGHT_MS = 10_000L;
+    static final int MINE_KRK_JUMP_MIN = 14, MINE_KRK_JUMP_MAX = 24;
+    static final long MINE_KRK_BELL_CD = 90_000L, MINE_KRK_RES_IN = 7_000L, MINE_KRK_SHOT_GAP = 1_300L, MINE_KRK_RES_MAX = 40_000L, MINE_KRK_RES_SMASH1 = 2_600L, MINE_KRK_RES_SMASH_GAP = 4_000L, MINE_KRK_RES_WARN = 2_500L;
+    static final int MINE_KRK_SHOTS = 5, MINE_KRK_RES_DX = 7, MINE_KRK_RES_DY = -1, MINE_KRK_RES_HIT = 50;
+    static final double MINE_KRK_SHOT_PCT = 0.012;
     static final Object MINE_KRK_LOCK = new Object();
-    static final List<long[]> MINE_KRK_SMASH = new ArrayList<>(); // {x, y, 터지는 시각}
-    static final long[] MINE_KRK_BARREL = new long[8], MINE_KRK_BUOY = new long[4]; // 화약통이 터진 시각 / 부표에 불을 붙인 시각
-    static volatile long mineKrkNextSmash = 0, mineKrkAllyAt = 0, mineKrkAllyUntil = 0, mineKrkAllyLast = 0, mineKrkSplashCyc = -1, mineKrkMsgAt = 0;
+    static final List<long[]> MINE_KRK_SMASH = new ArrayList<>(); // {x, y, 터지는 시각, 구조선을 노렸으면 1}
+    static final long[] MINE_KRK_BARREL = new long[10], MINE_KRK_BELL = new long[8]; // 화약통이 터진 시각 / 등대 종을 친 시각
+    // 구조선 {0 x, 1 y, 2 체력(0~100), 3 가라앉은 시각, 4 부른 시각(0 = 없음), 5 붙는 시각, 6 쏜 작살 수, 7 다음 작살 시각, 8 다음 내려찍기 예고 시각, 9 마지막 작살 시각, 10 오는 쪽(-1/1)}
+    static final long[] MINE_KRK_RES = new long[11];
+    static final int[] MINE_KRK_POS = { -1, -1 }; // 크라켄 지금 자리(5x5 왼쪽 위)
+    static double mineKrkProg = 0;
+    static long mineKrkMoveAt = 0, mineKrkJumpCyc = Long.MIN_VALUE;
+    static volatile long mineKrkNextSmash = 0, mineKrkSplashCyc = -1, mineKrkMsgAt = 0;
     static volatile String mineKrkMsg = null;
     static void mineKrkSay(String m, long now) { mineKrkMsg = m; mineKrkMsgAt = now; }
-    /** 전투 턴(크라켄과 싸우는 사람마다, MobState 잠금 안) -- 내려찍기 예고/결과, 지원 함선 작살, 떠오를 때 물보라. */
+    /** 길(고리) 한 바퀴 칸 수. */
+    static double mineKrkLoop(int[][] r) { double l = 0; for (int i = 0; i < r.length; i++) l += Math.hypot(r[(i + 1) % r.length][0] - r[i][0], r[(i + 1) % r.length][1] - r[i][1]); return l; }
+    /** 길 위 prog칸 자리(가운데 칸). */
+    static int[] mineKrkAt(int[][] r, double prog) {
+        for (int i = 0; i < r.length; i++) {
+            int[] a = r[i], b = r[(i + 1) % r.length];
+            double l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (prog <= l || i == r.length - 1) { double q = l <= 0 ? 0 : Math.min(1, prog / l); return new int[] { (int) Math.round(a[0] + (b[0] - a[0]) * q), (int) Math.round(a[1] + (b[1] - a[1]) * q) }; }
+            prog -= l;
+        }
+        return new int[] { r[0][0], r[0][1] };
+    }
+    static boolean mineKrkResOn(long now) { return MINE_KRK_RES[4] > 0 && MINE_KRK_RES[3] == 0 && MINE_KRK_RES[2] > 0; }
+    static boolean mineKrkResArrived(long now) { return mineKrkResOn(now) && now >= MINE_KRK_RES[5]; }
+    /** 크라켄 자리 옮기기(MobState 잠금 안) -- 지금 자리를 s.fx/fy(5x5 왼쪽 위)와 MINE_KRK_POS에. */
+    void mineKrakenMove(S5MineMap map, MobState s, int id, long now) {
+        int[][] route = map.seaRoute();
+        if (route == null) return;
+        if (s.deadUntil > now) return;
+        S5MineMobs.Type t = S5MineMobs.TYPES.get(S5MineMobs.KRAKEN_TYPE);
+        synchronized (MINE_KRK_LOCK) {
+            double loop = mineKrkLoop(route);
+            if (mineKrkMoveAt == 0) mineKrkMoveAt = now;
+            long el = Math.max(0, Math.min(now - mineKrkMoveAt, 10 * 60_000L));
+            mineKrkMoveAt = now;
+            boolean stun = s.stunUntil > now, under = S5MineMobs.diving(t, id, now);
+            boolean fight = now - s.lastHitAt < MINE_KRK_FIGHT_MS || !MINE_KRK_SMASH.isEmpty() || mineKrkResOn(now);
+            long cyc = Math.floorDiv(now + id * 7919L, S5MineMobs.KRAKEN_DIVE_MS);
+            if (fight) {
+                if (under && !stun && cyc != mineKrkJumpCyc) { mineKrkJumpCyc = cyc; mineKrkProg += MINE_KRK_JUMP_MIN + RND.nextInt(MINE_KRK_JUMP_MAX - MINE_KRK_JUMP_MIN + 1); } // 잠수 -- 물속으로 옮긴다
+            } else if (!stun) mineKrkProg += el / (double) MINE_KRK_STEP_MS;
+            mineKrkProg = ((mineKrkProg % loop) + loop) % loop;
+            int[] c = mineKrkAt(route, mineKrkProg);
+            MINE_KRK_POS[0] = c[0] - 2; MINE_KRK_POS[1] = c[1] - 2;
+        }
+        s.fx = MINE_KRK_POS[0]; s.fy = MINE_KRK_POS[1];
+        s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS);
+    }
+    /** 위치 알림(바다 위 사람마다 1초마다) -- 아무도 안 싸워도 크라켄이 돌고, 구조선이 오고 쏘고 맞는다. */
+    void mineKrakenTick(long now) {
+        S5MineMap sm = S5MineMap.get(S5MineMap.OPEN_SEA);
+        S5MineMap.Mob km = sm == null ? null : mineBossOf(sm);
+        if (km == null || km.type != S5MineMobs.KRAKEN_TYPE) return;
+        int kmax = S5MineMobs.hp(S5MineMobs.TYPES.get(km.type), km.rank);
+        MobState ks = MINE_MOB_STATE.computeIfAbsent(mineMobKey(sm, km.id), k -> new MobState(kmax));
+        synchronized (ks) {
+            ks.kraken = true;
+            if (ks.deadUntil > now) { synchronized (MINE_KRK_LOCK) { if (MINE_KRK_RES[4] > 0 && MINE_KRK_RES[3] == 0) MINE_KRK_RES[4] = 0; MINE_KRK_SMASH.clear(); } return; }
+            mineKrakenMove(sm, ks, km.id, now);
+            synchronized (MINE_KRK_LOCK) {
+                mineKrkResolve(sm, ks, kmax, now);
+                mineKrkRescue(sm, ks, km.id, kmax, now);
+            }
+        }
+    }
+    /** 예고가 끝난 내려찍기 -- 구조선/바위·등대(기절)/화약통. MINE_KRK_LOCK 안. */
+    void mineKrkResolve(S5MineMap map, MobState s, int bmax, long now) {
+        int[][] barrels = map.seaBarrels();
+        for (java.util.Iterator<long[]> it = MINE_KRK_SMASH.iterator(); it.hasNext();) {
+            long[] z = it.next();
+            if (z[2] > now) continue;
+            it.remove();
+            boolean rock = false;
+            for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+                int zx = (int) z[0] + dx, zy = (int) z[1] + dy;
+                if (!map.inside(zx, zy)) continue;
+                char zc = map.terrainAt(zx, zy);
+                if (zc == '^' || zc == 'r' || zc == 'N') rock = true; // 등대 섬도 바위섬
+            }
+            long[] r = MINE_KRK_RES;
+            if (mineKrkResOn(now) && Math.max(Math.abs(r[0] - z[0]), Math.abs(r[1] - z[1])) <= 1) { // 구조선이 대신 맞았다
+                r[2] = Math.max(0, r[2] - MINE_KRK_RES_HIT);
+                if (r[2] == 0) { r[3] = now; mineKrkSay("⚓ 크라켄의 촉수에 구조선이 부서져 가라앉았어요... 수병들이 끝까지 싸웠어요.", now); }
+                else mineKrkSay("🛡️ 구조선이 크라켄의 촉수를 대신 맞았어요! 한 번 더 맞으면 가라앉아요.", now);
+            }
+            if (rock) { s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 지금이 기회!", now); }
+            if (barrels != null) for (int i = 0; i < barrels.length && i < MINE_KRK_BARREL.length; i++) {
+                if (MINE_KRK_BARREL[i] > 0 && now - MINE_KRK_BARREL[i] < MINE_KRK_BARREL_BACK) continue;
+                if (Math.max(Math.abs(barrels[i][0] - z[0]), Math.abs(barrels[i][1] - z[1])) > 1) continue;
+                MINE_KRK_BARREL[i] = now;
+                int bd = (int) Math.round(bmax * MINE_KRK_BARREL_PCT);
+                s.hp = Math.max(1, s.hp - bd);
+                mineKrkSay("💥 촉수가 화약통을 내려쳤어요! 크라켄 -" + String.format("%,d", bd), now);
+            }
+        }
+    }
+    /** 구조선 -- 붙으러 오고(크라켄 옆으로), 작살을 쏘고, 크라켄이 구조선을 내려친다. MINE_KRK_LOCK 안. */
+    void mineKrkRescue(S5MineMap map, MobState s, int id, int bmax, long now) {
+        long[] r = MINE_KRK_RES;
+        if (r[4] <= 0) return;
+        if (r[3] > 0) { if (now - r[3] > 6_000L) r[4] = 0; return; } // 가라앉고 조금 뒤 정리
+        if (now > r[5] + MINE_KRK_RES_MAX) { r[4] = 0; mineKrkSay("⛵ 구조선이 크라켄을 피해 해상도시로 돌아갔어요.", now); return; }
+        int kcx = MINE_KRK_POS[0] + 2, kcy = MINE_KRK_POS[1] + 2, side = (int) r[10];
+        boolean aimed = false;
+        for (long[] z : MINE_KRK_SMASH) if (z.length > 3 && z[3] == 1) aimed = true;
+        if (!aimed) { // 크라켄 옆으로(오는 동안은 멀리서 저어 온다), 노림을 받는 동안은 그 자리
+            long left = Math.max(0, r[5] - now);
+            int tx = kcx + side * (MINE_KRK_RES_DX + (int) (14 * left / MINE_KRK_RES_IN)), ty = kcy + MINE_KRK_RES_DY;
+            r[0] = Math.max(2, Math.min(map.w - 4, tx)); r[1] = Math.max(2, Math.min(map.h - 3, ty));
+        }
+        if (now < r[5]) return;
+        boolean under = S5MineMobs.diving(S5MineMobs.TYPES.get(S5MineMobs.KRAKEN_TYPE), id, now), stun = s.stunUntil > now;
+        if (r[6] < MINE_KRK_SHOTS && now >= r[7]) { // 작살
+            if (under) r[7] = now + 500L;
+            else {
+                int sd = (int) Math.round(bmax * MINE_KRK_SHOT_PCT * (stun ? MINE_KRK_STUN_MUL : 1.0));
+                s.hp = Math.max(1, s.hp - sd);
+                s.lastHitAt = now;
+                r[6]++; r[7] = now + MINE_KRK_SHOT_GAP; r[9] = now;
+            }
+        }
+        if (!aimed && !under && !stun && now >= r[8]) { // 크라켄이 구조선만 노린다(대신 맞는다)
+            mineZoneAdd(map, (int) r[0], (int) r[1], now + MINE_KRK_RES_WARN, 1, 11, MINE_KRK_RES_WARN, MINE_KRK_SMASH_PERMIL, 0);
+            MINE_KRK_SMASH.add(new long[] { r[0], r[1], now + MINE_KRK_RES_WARN, 1 });
+            r[8] = now + MINE_KRK_RES_SMASH_GAP;
+        }
+    }
+    /** 전투 턴(크라켄과 싸우는 사람마다, MobState 잠금 안) -- 내려찍기 예고/결과, 떠오를 때 물보라. 구조선이 붙어 있으면 사람은 안 노린다. */
     void mineKrakenPattern(S5MineMap map, MobState s, S5MineMobs.Type t, int id, int x, int y, int bmax, long now) {
         s.kraken = true;
         if (s.deadUntil > now) return;
-        int[][] barrels = map.seaBarrels();
         synchronized (MINE_KRK_LOCK) {
-            for (java.util.Iterator<long[]> it = MINE_KRK_SMASH.iterator(); it.hasNext();) {
-                long[] z = it.next();
-                if (z[2] > now) continue;
-                it.remove();
-                boolean rock = false;
-                for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) if (map.inside((int) z[0] + dx, (int) z[1] + dy) && map.terrainAt((int) z[0] + dx, (int) z[1] + dy) == '^') rock = true;
-                if (mineKrkAllyUntil > now) for (long[] sh : MINE_KRK_SHIPS) { // 함선이 맞았다
-                    if (sh[2] <= 0 || Math.max(Math.abs(sh[0] - z[0]), Math.abs(sh[1] - z[1])) > 1) continue;
-                    sh[2] = Math.max(0, sh[2] - MINE_KRK_SHIP_HIT);
-                    if (sh[2] == 0) { sh[3] = now; mineKrkSay("⚓ 크라켄의 촉수에 해상도시 수병 함선이 부서져 가라앉았어요...", now); }
-                    else mineKrkSay("🐙 크라켄이 수병 함선을 내려쳤어요! 한 번 더 맞으면 가라앉아요.", now);
-                }
-                if (rock) { s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 지금이 기회!", now); }
-                if (barrels != null) for (int i = 0; i < barrels.length && i < MINE_KRK_BARREL.length; i++) {
-                    if (MINE_KRK_BARREL[i] > 0 && now - MINE_KRK_BARREL[i] < MINE_KRK_BARREL_BACK) continue;
-                    if (Math.max(Math.abs(barrels[i][0] - z[0]), Math.abs(barrels[i][1] - z[1])) > 1) continue;
-                    MINE_KRK_BARREL[i] = now;
-                    int bd = (int) Math.round(bmax * MINE_KRK_BARREL_PCT);
-                    s.hp = Math.max(1, s.hp - bd);
-                    mineKrkSay("💥 촉수가 화약통을 내려쳤어요! 크라켄 -" + String.format("%,d", bd), now);
-                }
-            }
-            int alive = 0; // 지원 함선 작살 -- 떠 있는 함선마다
-            for (long[] sh : MINE_KRK_SHIPS) if (sh[2] > 0) alive++;
-            if (mineKrkAllyUntil > now && now >= mineKrkAllyAt && alive > 0) {
-                long from = Math.max(mineKrkAllyLast, mineKrkAllyAt), el = now - from;
-                if (el >= 1_000L) { s.hp = Math.max(1, s.hp - (int) Math.round(bmax * MINE_KRK_ALLY_PCT_S / 2 * alive * el / 1000.0)); mineKrkAllyLast = now; }
-            }
+            mineKrkResolve(map, s, bmax, now);
             boolean under = S5MineMobs.diving(t, id, now);
             long cyc = Math.floorDiv(now + id * 7919L, S5MineMobs.KRAKEN_DIVE_MS);
             if (!under && mineKrkSplashCyc != cyc && Math.floorMod(now + id * 7919L, S5MineMobs.KRAKEN_DIVE_MS) < 2_000L) { // 막 솟아올랐다 -- 둘레 물보라
                 mineKrkSplashCyc = cyc;
                 if (mineKrkSplashCyc >= 0) mineZoneAdd(map, s.fx + 2, s.fy + 2, now + 900L, 4, 12, 900L, MINE_KRK_SPLASH_PERMIL, 0);
             }
-            if (s.stunUntil <= now && !under && now >= mineKrkNextSmash) {
+            if (s.stunUntil <= now && !under && now >= mineKrkNextSmash && !mineKrkResArrived(now)) {
                 mineKrkNextSmash = now + (s.hp * 10L < bmax * 3L ? MINE_KRK_SMASH_GAP_RAGE : MINE_KRK_SMASH_GAP);
                 long at = now + MINE_KRK_SMASH_WARN;
-                int tx = x, ty = y;
-                if (alive > 0 && now >= mineKrkAllyAt && mineKrkAllyUntil > now && RND.nextInt(100) < MINE_KRK_SHIP_AIM_PCT) { // 함선을 노린다
-                    int pick = RND.nextInt(alive);
-                    for (long[] sh : MINE_KRK_SHIPS) if (sh[2] > 0 && pick-- == 0) { tx = (int) sh[0]; ty = (int) sh[1]; break; }
-                }
-                mineZoneAdd(map, tx, ty, at, 1, 11, MINE_KRK_SMASH_WARN, MINE_KRK_SMASH_PERMIL, 0);
-                MINE_KRK_SMASH.add(new long[] { tx, ty, at });
+                mineZoneAdd(map, x, y, at, 1, 11, MINE_KRK_SMASH_WARN, MINE_KRK_SMASH_PERMIL, 0);
+                MINE_KRK_SMASH.add(new long[] { x, y, at, 0 });
             }
         }
     }
-    /** 위치 알림의 sea -- 화약통 터진 시각, 부표 불 붙인 시각, 지원 함선 오는/떠나는 시각, 해역 소식. */
+    /** 위치 알림의 sea -- 화약통 터진 시각, 등대 종 친 시각, 구조선, 크라켄 가운데 칸, 해역 소식. */
     static HashMap<String, Object> mineSeaState(long now) {
         HashMap<String, Object> o = new HashMap<>();
-        synchronized (MINE_KRK_LOCK) { o.put("barrel", MINE_KRK_BARREL.clone()); o.put("buoy", MINE_KRK_BUOY.clone()); }
-        o.put("allyAt", mineKrkAllyAt);
-        o.put("allyUntil", mineKrkAllyUntil);
-        if (mineKrkAllyUntil > now - 5_000L) { long[][] sc = new long[MINE_KRK_SHIPS.length][]; synchronized (MINE_KRK_LOCK) { for (int i = 0; i < sc.length; i++) sc[i] = MINE_KRK_SHIPS[i].clone(); } o.put("ships", sc); } // {x, y, 체력, 가라앉은 시각}
+        synchronized (MINE_KRK_LOCK) {
+            o.put("barrel", MINE_KRK_BARREL.clone());
+            o.put("bell", MINE_KRK_BELL.clone());
+            o.put("bellCd", MINE_KRK_BELL_CD);
+            if (MINE_KRK_RES[4] > 0) o.put("res", MINE_KRK_RES.clone());
+            if (MINE_KRK_POS[0] >= 0) { o.put("kx", MINE_KRK_POS[0] + 2); o.put("ky", MINE_KRK_POS[1] + 2); }
+        }
         if (mineKrkMsg != null && now - mineKrkMsgAt < 6_000L) { o.put("msg", mineKrkMsg); o.put("msgAt", mineKrkMsgAt); }
         return o;
     }
-    /** 신호 부표에 불 붙이기 -- idx = 바다 위 NPC 가운데 신호 부표 순서. */
-    HashMap<String, Object> mineBuoy(String userName, int idx) {
+    /** 등대 종 치기 -- idx = 바다 위 등대 순서. 등대 곁(2칸, 섬 위)에서만. */
+    HashMap<String, Object> mineBell(String userName, int idx) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         HashMap<String, Object> row = dao.selectMineUser(userName);
-        if (row == null || !S5MineMap.OPEN_SEA.equals(strVal(row.get("MAP_ID"), ""))) { out.put("message", "바다 위에서만 쓸 수 있어요."); return out; }
+        S5MineMap sm = S5MineMap.get(S5MineMap.OPEN_SEA);
+        if (row == null || sm == null || !S5MineMap.OPEN_SEA.equals(strVal(row.get("MAP_ID"), ""))) { out.put("message", "바다 위에서만 쓸 수 있어요."); return out; }
+        int[][] lh = sm.lighthouses();
+        if (lh == null || idx < 0 || idx >= lh.length || idx >= MINE_KRK_BELL.length) { out.put("message", "그런 등대는 없어요."); return out; }
+        int[] pos = minePos(row, sm, 1);
+        if (Math.max(Math.abs(pos[0] - lh[idx][0]), Math.abs(pos[1] - lh[idx][1])) > 2) { out.put("message", "🗼 등대 섬에 배를 대고 내려야 종을 칠 수 있어요."); return out; }
+        S5MineMap.Mob km = mineBossOf(sm);
+        MobState ks = km == null ? null : MINE_MOB_STATE.get(mineMobKey(sm, km.id));
         long now = System.currentTimeMillis();
+        if (ks != null && ks.deadUntil > now) { out.put("message", "🌊 지금은 바다가 잠잠해요. 크라켄이 없어요."); return out; }
         synchronized (MINE_KRK_LOCK) {
-            if (idx < 0 || idx >= MINE_KRK_BUOY.length) { out.put("message", "그런 부표는 없어요."); return out; }
-            boolean anyShip = false;
-            for (long[] sh : MINE_KRK_SHIPS) if (sh[2] > 0) anyShip = true;
-            if (mineKrkAllyUntil > now && anyShip) { out.put("message", "⛵ 해상도시 수병들이 이미 " + (mineKrkAllyAt > now ? "오고 있어요!" : "싸우고 있어요!")); return out; } // [2026-11-18] 다 가라앉았으면 다시 부를 수 있다
-            long left = MINE_KRK_BUOY_CD - (now - MINE_KRK_BUOY[idx]);
-            if (left > 0) { out.put("message", "🔥 이 부표는 아직 식는 중이에요. (" + (left + 999) / 1000 + "초)"); return out; }
-            MINE_KRK_BUOY[idx] = now;
-            mineKrkAllyAt = now + MINE_KRK_ALLY_DELAY;
-            mineKrkAllyUntil = mineKrkAllyAt + MINE_KRK_ALLY_MS;
-            mineKrkAllyLast = mineKrkAllyAt;
-            S5MineMap sm = S5MineMap.get(S5MineMap.OPEN_SEA);
-            int kx = sm.bossX() + 2, ky = sm.bossY() + 2;
-            for (int i = 0; i < MINE_KRK_SHIPS.length; i++) MINE_KRK_SHIPS[i] = new long[] { kx + (i == 0 ? -MINE_KRK_SHIP_DX : MINE_KRK_SHIP_DX), ky + MINE_KRK_SHIP_DY, 100, 0 };
+            if (mineKrkResOn(now)) { out.put("message", "⛵ 구조선이 이미 " + (now < MINE_KRK_RES[5] ? "오고 있어요!" : "싸우고 있어요!")); return out; }
+            long left = MINE_KRK_BELL_CD - (now - MINE_KRK_BELL[idx]);
+            if (left > 0) { out.put("message", "🔔 이 등대 종은 아직 울림이 남아 있어요. (" + (left + 999) / 1000 + "초)"); return out; }
+            MINE_KRK_BELL[idx] = now;
+            int kcx = MINE_KRK_POS[0] >= 0 ? MINE_KRK_POS[0] + 2 : sm.bossX() + 2;
+            long[] r = MINE_KRK_RES;
+            r[2] = 100; r[3] = 0; r[4] = now; r[5] = now + MINE_KRK_RES_IN; r[6] = 0; r[7] = r[5] + MINE_KRK_SHOT_GAP; r[8] = r[5] + MINE_KRK_RES_SMASH1; r[9] = 0;
+            r[10] = lh[idx][0] < kcx ? -1 : 1; // 등대 쪽에서 온다
+            r[0] = Math.max(2, Math.min(sm.w - 4, kcx + r[10] * (MINE_KRK_RES_DX + 14))); r[1] = MINE_KRK_POS[1] >= 0 ? MINE_KRK_POS[1] + 2 + MINE_KRK_RES_DY : sm.bossY() + 1;
         }
-        mineKrkSay("🔥 " + mineNick(userName) + " 님이 신호 부표에 불을 붙였어요! " + MINE_KRK_ALLY_DELAY / 1000 + "초 뒤 해상도시 수병들이 달려와요.", now);
+        mineKrkSay("🔔 " + mineNick(userName) + " 님이 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 해상도시 구조선이 달려와요.", now);
         out.put("ok", true);
-        out.put("message", "🔥 신호 부표에 불을 붙였어요! " + MINE_KRK_ALLY_DELAY / 1000 + "초 뒤 해상도시 수병들이 작살을 들고 달려와요.");
+        out.put("message", "🔔 땡- 땡- 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 해상도시 구조선이 작살을 들고 달려와요.");
         out.put("sea", mineSeaState(now));
         return out;
     }
@@ -9835,7 +9938,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if ("boatfix".equals(action)) return mineBoatFix(userName); // [2026-11-18] 배 수리
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
         if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
-        if (action != null && action.startsWith("buoy:")) { int bix; try { bix = Integer.parseInt(action.substring(5)); } catch (NumberFormatException ex) { bix = -1; } return mineBuoy(userName, bix); } // [2026-11-18] 신호 부표
+        if (action != null && (action.startsWith("bell:") || action.startsWith("buoy:"))) { int bix; try { bix = Integer.parseInt(action.substring(5)); } catch (NumberFormatException ex) { bix = -1; } return mineBell(userName, bix); } // [2026-11-18] 신호 부표
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!S5MineMap.ARCHI.equals(strVal(row.get("MAP_ID"), "")) && !("boat".equals(action) && S5MineMap.BEACH.equals(strVal(row.get("MAP_ID"), "")))) return mineGearResult(userName, false, "다도해 본섬에서만 할 수 있어요."); // [2026-11-18] 배 만들기는 남쪽 바닷가 배 목수도
         Map<String, Integer> items = mineItems(userName);
@@ -10725,7 +10828,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("online", online);
         out.put("mapN", mapN);
-        if (S5MineMap.OPEN_SEA.equals(mapId)) out.put("sea", mineSeaState(now)); /* [2026-11-18] 화약통/부표/지원 함선 */ if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
+        if (S5MineMap.OPEN_SEA.equals(mapId)) { mineKrakenTick(now); out.put("sea", mineSeaState(now)); } /* [2026-11-18] 화약통/등대/구조선 + 크라켄 이동 */ if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
         HashMap<String, Object> wbi = mineWbInfo(userName, now); // [2026-11-15] 월드보스 예고/진행
         if (wbi != null) out.put("wb", wbi);
         else if (now - mineWbGoneAt < 6_000L && mineWbOk(userName)) out.put("wbGone", mineWbGoneAt); // [2026-11-16] 거룡이 날아감(퇴장 연출)
