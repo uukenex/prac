@@ -282,7 +282,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
-        if (S5MineMap.SEA_CITY.equals(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "⛵ 해상도시는 아직 짓는 중이래요. (준비 중)"; } // [2026-11-18] 해상도시 -- 지금은 관리자만
+        if (S5MineMap.SEA_CITY.equals(m.id) || S5MineMap.OPEN_SEA.equals(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "⛵ 남쪽 바다는 아직 파도가 거세대요. (준비 중)"; } // [2026-11-18] 바다 위/해상도시 -- 지금은 관리자만
         if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
         if (S5MineMap.demonTier(m.id) >= 0 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id) || S5MineMap.DEMON_VILLAGE.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로 // [2026-11-17] 들판 2·3, 방어선, 마계도
             String cu = MINE_CTX.get();
@@ -4758,8 +4758,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 e.put("sy", m.spawnY);
                 maps.add(e);
             }
-            if (isMineAdmin(userName)) { // [2026-11-18] 해상도시(관리자만)
-                S5MineMap m = S5MineMap.get(S5MineMap.SEA_CITY);
+            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.OPEN_SEA, S5MineMap.SEA_CITY }) { // [2026-11-18] 바다 위, 해상도시(관리자만)
+                S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id); e.put("name", m.name); e.put("w", m.w); e.put("h", m.h); e.put("sx", m.spawnX); e.put("sy", m.spawnY);
                 maps.add(e);
@@ -6033,6 +6033,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         List<HashMap<String, Object>> acts = new ArrayList<>();
         for (int a = 1; a < S5MineMap.WP_ACT_NAMES.length; a++) {
+            if (a == 5 && !isMineAdmin(userName)) continue; // [2026-11-18] 5장 바다(해상도시)는 지금 관리자만
             HashMap<String, Object> am = new HashMap<>();
             List<HashMap<String, Object>> l = new ArrayList<>();
             int on = 0;
@@ -8141,6 +8142,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             cOk = c >= 0 && c < MINE_MERC_NAMES.length;
             int had = mineMercLv(items, k2), lv2 = mineMerc2HireLv(row, items);
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
+            else if (!isMineAdmin(userName)) { ok = false; msg = "두 번째 용병 칸은 아직 준비 중이에요."; } // [2026-11-18] 지금은 관리자만
             else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
             else {
@@ -8231,7 +8233,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("offers", offers);
             out.put("full", mineMercCount(items) >= MINE_MERC_MAX); // [2026-11-06] 지금은 한 명만
             out.put("curLv", mineMercCurLv(items)); // [2026-11-06] 교체 후보는 지금보다 2~15레벨 낮게
-            out.put("slot2Open", mineRebirth(items) >= MINE_REBIRTH_BASE); // [2026-11-18] 두 번째 용병(5환생부터)
+            out.put("slot2Open", isMineAdmin(userName) && mineRebirth(items) >= MINE_REBIRTH_BASE); // [2026-11-18] 두 번째 용병(5환생부터, 지금은 관리자만)
+            out.put("slot2Hide", !isMineAdmin(userName));
             out.put("slot2Rb", MINE_REBIRTH_BASE);
             out.put("slot2Lv", mineMerc2HireLv(row, items));
         }
@@ -9247,7 +9250,46 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return true; // [2026-10-28] "다도해 전부 오픈" -- 신궁/뱃길/섬/본섬 NPC 일(수색 임무, 배)까지 모두에게(예전: 운영자만)
     }
 
-    /** action: quest(수색 임무 받기) / claim(닌자 100명 -> 비급서 + 달빛석) / boat(달빛석 1개 -> 1인용 배) / board(배 타고 뱃길로). 본섬에서만. */
+    // [2026-11-18] 배 체력(해상전투 준비) -- 1인용 배 최대 체력 = MINE_BOAT_HP(+ 배 강화 BOAT_LV 1단계마다 +10%, 최대 +10 -- 강화는 다음에).
+    //  받은 피해는 BOAT_DMG에 쌓는다(0 = 멀쩡, 새 아이템 없이 기존 사용자도 가득 찬 배). 바다 몬스터에게 맞으면 캐릭터 대신 배가 깎이고(mineBoatHit),
+    //  0이 되면 배가 부서져 남쪽 바닷가로 떠밀려 오며, 고치기 전에는 배를 띄울 수 없다(mineSail). 수리는 바닷가 뱃사람/해상도시 부두지기(해상전투와 함께).
+    static final String MINE_ITEM_BOAT_DMG = "BOAT_DMG", MINE_ITEM_BOAT_LV = "BOAT_LV";
+    static final long MINE_BOAT_HP = 200_000L;
+    static long mineBoatHpMax(Map<String, Integer> items) { return MINE_BOAT_HP + MINE_BOAT_HP * Math.max(0, Math.min(10, items.getOrDefault(MINE_ITEM_BOAT_LV, 0))) / 10; }
+    /** {지금 체력, 최대 체력} */
+    static long[] mineBoatHp(Map<String, Integer> items) { long mx = mineBoatHpMax(items); return new long[] { Math.max(0, mx - Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0))), mx }; }
+    /** 배가 dmg만큼 맞는다 -- 남은 체력. */
+    long mineBoatHit(String userName, Map<String, Integer> items, long dmg) {
+        long mx = mineBoatHpMax(items), d = Math.min(mx, Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0)) + Math.max(0, dmg));
+        dao.upsertMineItem(userName, MINE_ITEM_BOAT_DMG, (int) d);
+        items.put(MINE_ITEM_BOAT_DMG, (int) d);
+        return mx - d;
+    }
+    /** [2026-11-18] "남쪽 바닷가에서 NPC를 누르면 배를 타고 바다 위로" -- 남쪽 바닷가 뱃사람: 다도해 뱃길 / 바다 위, 해상도시 부두지기: 바다 위. 1인용 배가 있어야 하고 배 체력이 남아야 한다. */
+    HashMap<String, Object> mineSail(String userName, String to) {
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        String from = strVal(row.get("MAP_ID"), "");
+        boolean route = (S5MineMap.BEACH.equals(from) && (S5MineMap.ARCHISEA.equals(to) || S5MineMap.OPEN_SEA.equals(to))) || (S5MineMap.SEA_CITY.equals(from) && S5MineMap.OPEN_SEA.equals(to));
+        if (!route) return mineGearResult(userName, false, "⛵ 여기서는 그쪽으로 배를 띄울 수 없어요.");
+        Map<String, Integer> items = mineItems(userName);
+        if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 뱃사람: 자네 배가 없구먼. 다도해 본섬 배 목수에게 1인용 배부터 만들어 오게. 본섬은 남쪽 섬에서 큰 배로 갈 수 있다네.");
+        if (mineBoatHp(items)[0] <= 0) return mineGearResult(userName, false, "⛵ 배가 부서져 있어요. 먼저 고쳐야 바다로 나갈 수 있어요.");
+        S5MineMap sea = S5MineMap.get(to);
+        String block = mineMapBlock(sea, items, mineLv(row));
+        if (block != null) return mineGearResult(userName, false, block);
+        long now = System.currentTimeMillis();
+        if (mineEngaged(userName, now)) return mineGearResult(userName, false, MINE_FIGHT_BLOCK);
+        int[] at = S5MineMap.sailLanding(from, to);
+        dao.updateMinePos(userName, sea.id, at[0], at[1], now);
+        mineDisengageAll(userName);
+        HashMap<String, Object> out = new HashMap<>();
+        out.put("ok", true);
+        out.put("message", "⛵ 1인용 배를 띄워 " + sea.name + "(으)로 나왔어요! " + (S5MineMap.ARCHISEA.equals(to) ? "위로 저어 가며 섬 부두(판자)에 닿으면 내릴 수 있어요." : S5MineMap.BEACH.equals(from) ? "남쪽 끝 해상도시 부두(판자)에 닿으면 내릴 수 있어요." : "북쪽 끝 부두로 가면 남쪽 바닷가예요."));
+        out.put("state", mineState(userName));
+        return out;
+    }
+
+    /** action: quest(수색 임무 받기) / claim(닌자 100명 -> 비급서 + 달빛석) / boat(달빛석 1개 -> 1인용 배) / board(배 타고 뱃길로) / sail:맵(바닷가·해상도시에서 배 띄우기). 본섬에서만(sail 빼고). */
     @Override
     @Transactional
     public HashMap<String, Object> mineArchi(String userName, String action) {
@@ -9256,6 +9298,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (gate != null) return gate;
         if (!mineArchiOpen(userName)) return mineGearResult(userName, false, "🚧 아직 준비 중이에요. 곧 열려요!"); // 본섬 NPC 일(신궁 임무/배/뱃길)은 아직 운영자만
         mineRow(userName, false);
+        if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (!S5MineMap.ARCHI.equals(strVal(row.get("MAP_ID"), ""))) return mineGearResult(userName, false, "다도해 본섬에서만 할 수 있어요.");
         Map<String, Integer> items = mineItems(userName);
@@ -9473,6 +9516,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ar.put("key", items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) > 0); // [2026-10-28] 신궁 열쇠(수색 임무 보상)
             ar.put("bossReward", items.getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0); // 닌자 두목 첫 처치 보상을 받았는지
             ar.put("boat", items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0);
+            long[] bhp = mineBoatHp(items); // [2026-11-18] 배 체력
+            ar.put("boatHp", bhp[0]);
+            ar.put("boatHpMax", bhp[1]);
             ar.put("moon", have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0));
             ar.put("books", have.getOrDefault(S5MineMap.NINJA_BOOK_CODE, 0));
             ar.put("boatCosts", mineCostList(MINE_BOAT_COST, have));
