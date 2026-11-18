@@ -935,7 +935,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, (rb > MINE_REBIRTH_BASE ? Math.min(MINE_LV_MAX, lv) : lv) - 1) * Math.pow(MINE_RB_EXP_MUL, rb)); }
     static double mineTrueRbDiv(int lv, int rb) { return rb <= MINE_REBIRTH_BASE ? 1 : (lv >= 80 ? MINE_TRUE_RB_EXP80 : 1) * Math.pow(1.12, Math.max(0, lv - MINE_LV_MAX)); }
     /** 경험치 더하기 + 레벨 업 -- {레벨, 레벨 안 경험치, 오른 레벨 수, 화면에 알릴 오른 경험치}. 5환생까지는 99레벨에서 가득 찬 채로 멈춘다(넘친 건 안 오름). */
+    // [2026-11-18] "플레이어 레벨 80부터 너무 안 오른다 -- 지금 대비 경험치 3배쯤" -- 80레벨부터 얻는 경험치 x MINE_EXP80_MUL(처치/검기/필살기/용병 처치 모두 여기로 들어온다).
+    //  용병 경험치(mineMercShare)는 곱하기 전 값으로 그대로.
+    static final int MINE_EXP80_LV = 80, MINE_EXP80_MUL = 3;
     static long[] mineExpAdd(int lv, long exp, long gain, int rb) {
+        if (lv >= MINE_EXP80_LV && gain > 0) gain *= MINE_EXP80_MUL;
         int lv0 = lv, up = 0;
         long exp0 = exp;
         if (rb <= MINE_REBIRTH_BASE) {
