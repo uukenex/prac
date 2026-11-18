@@ -8419,7 +8419,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(u, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(u, msg)
                 : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(u, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(u, msg)
                 : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(u, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(u, msg)
-                : t == S5MineMobs.SHRINE_BOSS_TYPE ? mineMobDrops(u, map, S5MineMobs.TYPES.get(t), msg, om.rank) : mineBossDrops(u, msg);
+                : t == S5MineMobs.SHRINE_BOSS_TYPE ? mineMobDrops(u, map, S5MineMobs.TYPES.get(t), msg, om.rank)
+                : t == S5MineMobs.BORO_BOSS_TYPE ? mineBoroDrops(u, msg) : t == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(u, msg) /* [2026-11-18] "보로네오 클리어한 사람들 빛의 심장이 안 나왔다" -- 함께 싸운 보상도 그 보스 보상으로 */ : mineBossDrops(u, msg);
     }
     /** [2026-11-13] "같이 싸운 사람 전부가 보상받게" -- 보스를 때린 사람(용병 포함) 중 쓰러뜨린 사람 말고 모두에게 같은 보상(보스 보상 + 달빛석/별빛석 확률 + 장비 드랍).
      *  경험치는 쓰러뜨린 사람만. 소식은 1초 위치 알림(rewardMsg)으로. 돌려주는 값 = 받은 사람 수. */
@@ -8459,7 +8460,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!ot.noReward && t != S5MineMobs.WB_BOSS_TYPE) { // [2026-11-15] 월드보스는 순위 보상(mineWbFinish)
             List<HashMap<String, Object>> kd = t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg)
                     : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg)
-                    : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : t == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(userName, msg) : mineBossDrops(userName, msg);
+                    : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : t == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(userName, msg) : t == S5MineMobs.BORO_BOSS_TYPE ? mineBoroDrops(userName, msg) /* [2026-11-18] 필살기/용병으로 쓰러뜨려도 빛의 심장 */ : mineBossDrops(userName, msg);
             mineBossShine(userName, kd, msg);
             drops.addAll(kd);
             MobState ks = MINE_MOB_STATE.get(mineMobKey(map, om.id)); // [2026-11-13] 함께 싸운 사람
