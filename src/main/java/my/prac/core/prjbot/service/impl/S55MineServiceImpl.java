@@ -3604,6 +3604,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (dist <= 1 && !splitting && !type.venom && !S5MineMobs.diving(type, id, now) && (shatterNow || last == null || now - last >= MINE_MOB_STRIKE_GAP_MS) && hp - dmgSum > 0) { // [2026-11-18] 물속에선 안 때린다
                     int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * mineNightAtk(map, type, now) * mineBoroMul(map.mobs().get(id).type, now) * (0.8 + RND.nextDouble() * 0.4)))); // [2026-11-05] 마물의 숲 밤 2배 // [2026-10-29] 개체 단계, [2026-10-26] 방한 외투 = 2배([2026-10-28] 갑옷 1.5배)
                     if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_MELEE_PCT)); // [2026-11-15] 월드보스 근접 = 최대 체력 %
+                    boolean krkSwing = map.mobs().get(id).type == S5MineMobs.KRAKEN_TYPE; // [2026-11-19] 크라켄 다리 휘두르기 -- 반격이 없어진 몫까지 x MINE_KRK_SWING_MULT(사용자: 3배), 화면이 촉수를 그린다
+                    if (krkSwing) d *= MINE_KRK_SWING_MULT;
                     boolean twHeavy = false, twStun = false;
                     int twF = type.boss ? S5MineMap.towerFloor(map.id) : 0;
                     if (twF > 0) { // [2026-11-15] 탑 수문장 = 시즌5 보스 패턴 -- 강타(시즌5 보스 반격 x1.6: 네 번째마다, 29층부터 세 번째마다), 29층부터 기절(시즌5 구역 3+ 보스의 기절 20%)
@@ -3625,6 +3627,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (x2) h.put("x2", true);
                     if (twHeavy && !dodged) h.put("heavy", true);
                     if (twStun && !dodged) { mineTwStun(userName, now, out); h.put("stun", true); }
+                    if (krkSwing) { h.put("krk", true); h.put("kx", s.fx + 2); h.put("ky", s.fy + 2); }
                     hits.add(h);
                     killerName = type.name;
                 }
@@ -4153,6 +4156,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-19] "크라켄이 전투 시에만 맵에 보이게(그냥 지나갈 땐 모르게)" -- 누군가와 싸우는 동안(전투 턴 mineKrakenPattern, MINE_KRK_SHOW_MS 안)·내려찍기 예고·구조선이 붙어 있는 동안만 화면에 보인다(sea.kf).
     //  같은 날 "수병 소환 등대는 특정 기믹 때만" -- 촉수가 바위/등대 섬에 박혀 크라켄이 기절하면 등대에 불이 켜지고(기절 + MINE_KRK_LIGHT_MS), 불이 켜진 동안만 종을 칠 수 있다(sea.lit).
     static final long MINE_KRK_SHOW_MS = 8_000L, MINE_KRK_LIGHT_MS = 12_000L;
+    static final int MINE_KRK_SWING_MULT = 3; // [2026-11-19] 크라켄 근접 = 다리 휘두르기(반격 없음) 한 번에 공격 x3
     static volatile long mineKrkFightAt = 0, mineKrkLightUntil = 0;
     static void mineKrkSay(String m, long now) { mineKrkMsg = m; mineKrkMsgAt = now; }
     /** 길(고리) 한 바퀴 칸 수. */
@@ -4708,7 +4712,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         if (ts[1] > 0) out.put("heavy", true);
                         twStunHit[0] = ts[2] > 0;
                     }
-                    if (s.stunUntil > now) { counter = 0; twStunHit[0] = false; } // [2026-11-16] "일섬참으로 기절한 몬스터가 반격하지 않게" -- 기절해 있는 동안은 때려도 반격(강타/기절 포함) 없음
+                    if (s.stunUntil > now) { counter = 0; twStunHit[0] = false; }
+                    if (mob.type == S5MineMobs.KRAKEN_TYPE) counter = 0; // [2026-11-19] "모션이 나올 때만 공격받게" -- 크라켄은 반격 없이 휘두르기(전투 턴)로만 // [2026-11-16] "일섬참으로 기절한 몬스터가 반격하지 않게" -- 기절해 있는 동안은 때려도 반격(강타/기절 포함) 없음
                     if (s.target == null || !mineEngaged(s.target, now)) s.target = userName; // [2026-10-25] 이 유저를 쫓는다
                     mineEngage(userName, map, mobId, now, now); // 반격도 한 턴
                     if (mob.type == S5MineMobs.RAID_BOSS_TYPE) mineRaidAwakeUntil = now + MINE_RAID_AWAKE_MS; // [2026-10-28] 대주교가 깨어난다(마법)

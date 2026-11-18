@@ -1360,7 +1360,8 @@ var TowerMine = (function () {
   /** 몬스터 그림(종류별 16x16) -- kind: small 작은 짐승, quad 네발짐승, human 사람형, flyer 날짐승/유령, crab 게/전갈, blob 물컹이, snake 뱀. */
   // [2026-10-29] 보스 전용 그림(48x48) -- 예전엔 사람형 16x16을 색만 바꿔 키웠다. 보스마다 고유 디자인, f = 숨쉬기/흔들림 2프레임,
   //  빛(눈·용암·불꽃·얼음 결정·기운)은 테두리 없이 위에 겹친다. 여왕개미(보스는 아니지만 보스급)도 같은 그림판에.
-  var BOSS_ART = { '심판자 보로네오': 'boroneo', '심연의 거룡': 'dragon', '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull', '하피 여왕': 'harpy' };
+  var BOSS_ART = { '심판자 보로네오': 'boroneo', '심연의 거룡': 'dragon', '파라오 미라': 'pharaoh', '고대 광석 골렘': 'golem', '타락한 대주교': 'archbishop', '얼음 여왕': 'icequeen', '닌자 두목': 'ninjaboss', '닌자 두목의 분신': 'ninjaboss', '용암 거신': 'lavagiant', '여왕개미': 'antqueen', '천둥 황소': 'thunderbull', '하피 여왕': 'harpy',
+    '하수구의 지배자 라텔': 'ratel', '폐광의 검은 갱도왕': 'minelord', '늪지 여왕 히드라': 'hydra', '화산의 심장 이프리트': 'ifrit', '빙하의 폭군 프로스트자이언트': 'frostgiant' }; // [2026-11-19] "탑 수문장들 이름에 맞게 이미지"(시안 승인)
   var bossArt = (function () {
     function painter(g) {
       var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= 48 || y >= 48) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
@@ -1570,6 +1571,98 @@ var TowerMine = (function () {
         pt.L(36, 14, 32 - (f ? 1 : 0), 4, d); pt.L(40, 14, 44 + (f ? 1 : 0), 4, d); pt.D(32 - (f ? 1 : 0), 4, 1, '#ffd23f', '#fff6b0'); pt.D(44 + (f ? 1 : 0), 4, 1, '#ffd23f', '#fff6b0'); pt.R(33, 13, 10, 2, '#ffd23f');
         [[24, 32, 20 - (f ? 1 : 0), 42], [28, 33, 27, 44], [32, 32, 36 + (f ? 1 : 0), 43], [25, 29, 19, 37], [31, 29, 37, 37]].forEach(function (q) { pt.L(q[0], q[1], q[2], q[3], d, 2); });
         pt.L(2, 34, 0, 38, d, 2); pf.P(0, 40 + (f ? 1 : 0), '#7fff60'); pf.P(1, 41 + (f ? 1 : 0), '#4fd040');
+      },
+      ratel: function (pt, pf, f) { // [2026-11-19] 하수구의 지배자 라텔 -- 탑 9층 수문장. 검은 몸에 머리부터 어깨로 흐르는 은회색 망토 털(벌꿀오소리), 녹슨 쇠 왕관, 긴 갈고리 발톱, 발밑 하수구 오물(초록 거품)
+        var k0 = '#2a2a30', k1 = '#16161a', k2 = '#3c3c46', s0 = '#d8dce4', s1 = '#a8aeb8', cl = '#ece2bc', cl2 = '#b0a47a', rs = '#b8743a', rs2 = '#7a4a22', rs3 = '#e0a060', u = f ? 1 : 0;
+        pt.E(24, 44, 21, 3, '#2e4a22'); pt.E(24, 43, 17, 2, '#4a7a30'); pt.E(10, 44, 3, 1, '#6a9a3a'); pt.E(38, 45, 4, 1, '#6a9a3a'); // 오물 웅덩이
+        pt.E(24, 32, 15, 11, k0); pt.E(24, 34, 9, 7, k2); // 몸 + 배
+        pt.E(24, 23, 16, 5, s1); pt.E(24, 22, 14, 4, s0); // 어깨를 덮은 은회색 털
+        pt.R(10, 22, 3, 12, s1); pt.R(36, 22, 3, 12, s1); pt.R(11, 22, 1, 10, s0); pt.R(37, 22, 1, 10, s0); // 옆구리로 흐르는 털
+        pt.R(12, 35, 7, 9, k0); pt.R(13, 35, 2, 7, k2); // 왼 앞발(바닥)
+        if (u) { pt.R(30, 27, 7, 8, k0); pt.R(31, 27, 2, 6, k2); [31, 33, 35].forEach(function (x) { pt.L(x, 27, x + 1, 22, cl, 1); pt.P(x + 1, 21, cl2); }); } // 오른 앞발을 쳐든다
+        else { pt.R(29, 35, 7, 9, k0); pt.R(30, 35, 2, 7, k2); [30, 32, 34].forEach(function (x) { pt.L(x, 44, x - 1, 47, cl, 1); }); }
+        [13, 15, 17].forEach(function (x) { pt.L(x, 44, x - 1, 47, cl, 1); }); // 갈고리 발톱
+        pt.E(24, 15, 9, 7, k0); pt.E(24, 11, 8, 4, s0); pt.R(17, 11, 15, 2, s1); // 머리(정수리부터 은회색)
+        pt.E(16, 10, 2, 2, k1); pt.E(32, 10, 2, 2, k1); // 귀
+        pt.E(24, 19, 4, 3, k1); pt.R(22, 17, 5, 2, '#0a0a0c'); pt.P(23, 17, '#5a5a66'); // 주둥이 + 코
+        pt.P(22, 21, '#f4f0e0'); pt.P(26, 21, '#f4f0e0'); pt.P(22, 22, '#d8d0b8'); pt.P(26, 22, '#d8d0b8'); // 송곳니
+        pt.R(17, 6, 15, 3, rs); pt.R(17, 8, 15, 1, rs2); [17, 23, 29].forEach(function (x, i) { pt.R(x, i === 1 ? 2 : 3, i === 1 ? 3 : 3, i === 1 ? 4 : 3, rs); pt.P(x, i === 1 ? 2 : 3, rs3); }); pt.P(19, 7, rs3); pt.P(27, 7, rs2); // 녹슨 쇠 왕관
+        pf.P(24, 7, '#7aff6a'); pf.P(24, 3, '#7aff6a'); // 왕관의 초록 보석(오물빛)
+        pf.R(19, 14, 2, 2, '#ff4a3a'); pf.R(28, 14, 2, 2, '#ff4a3a'); pf.P(19, 14, '#ffd0c0'); pf.P(28, 14, '#ffd0c0'); // 붉은 눈
+        var dr = u ? [[12, 30], [35, 26], [20, 39]] : [[12, 27], [36, 30], [27, 40]]; // 몸에서 떨어지는 오물
+        dr.forEach(function (q) { pf.P(q[0], q[1], '#9aff5a'); pf.P(q[0], q[1] + 1, '#5ac83a'); });
+        var bb = u ? [[6, 42], [30, 43], [42, 42]] : [[9, 43], [19, 42], [40, 43]]; bb.forEach(function (q) { pf.P(q[0], q[1], '#c8ff8a'); pf.P(q[0] + 1, q[1] - 1, '#8ae05a'); }); // 거품
+      },
+      minelord: function (pt, pf, f) { // [2026-11-19] 폐광의 검은 갱도왕 -- 탑 19층 수문장. 석탄빛 갑옷(틈마다 불씨), 헤드램프 달린 광부 투구 위 금관, 잿빛 수염, 큰 곡괭이와 등불
+        var a0 = '#2a2a30', a1 = '#18181c', a2 = '#4a4a58', a3 = '#6a6a7a', gd = '#e8c050', gd2 = '#a8802a', u = f ? 1 : 0;
+        pt.R(14, 21, 20, 22, '#1a1a20'); for (var cx = 14; cx < 34; cx += 3) pt.R(cx, 43, 2, 1 + (cx % 2), '#1a1a20'); // 해진 망토
+        pt.R(18, 35, 5, 9, a0); pt.R(26, 35, 5, 9, a0); pt.R(18, 35, 5, 1, a2); pt.R(26, 35, 5, 1, a2); pt.R(17, 43, 7, 3, a1); pt.R(25, 43, 7, 3, a1); // 다리 + 장화
+        pt.E(24, 28, 10, 9, a0); pt.E(24, 27, 7, 7, a2); pt.E(24, 26, 4, 4, a3); pt.R(16, 34, 17, 2, '#5a3a1e'); pt.R(23, 34, 3, 2, gd); // 흉갑 + 허리띠
+        pt.D(13, 21, 5, a0, a3); pt.D(35, 21, 5, a0, a3); pt.P(11, 19, a2); pt.P(36, 18, a2); // 석탄 덩이 어깨
+        pt.R(9, 23, 5, 10, a0); pt.R(34, 23, 5, 10, a0); pt.R(9, 23, 1, 9, a2); // 팔
+        pt.R(8, 33, 7, 2, '#5a3a1e'); pt.R(9, 35, 5, 6, '#c8a040'); pt.R(10, 36, 3, 4, '#3a2a10'); pf.R(10, 36, 3, 4, '#ffd27a'); pf.P(11, 37, '#ffffff'); // 왼손 등불
+        pt.E(24, 19, 5, 3, '#6a6a72'); pt.R(20, 19, 9, 5, '#6a6a72'); pt.P(21, 23, '#8a8a92'); pt.P(25, 24, '#8a8a92'); pt.P(27, 23, '#8a8a92'); // 잿빛 수염
+        pt.E(24, 12, 7, 6, a2); pt.R(16, 15, 17, 2, a0); pt.R(19, 16, 11, 3, '#141418'); // 광부 투구 + 챙 + 그늘진 얼굴
+        pf.R(20, 17, 2, 1, '#ffb03a'); pf.R(27, 17, 2, 1, '#ffb03a'); // 불씨 눈
+        pt.R(21, 9, 7, 4, gd2); pt.R(22, 10, 5, 2, '#fff2b0'); pf.R(22, 10, 5, 2, '#fffbe0'); // 헤드램프
+        pt.R(18, 5, 13, 2, gd); [18, 23, 28].forEach(function (x) { pt.R(x, 2, 2, 3, gd); pt.P(x, 2, '#fff2b0'); }); pt.P(24, 5, '#1a1a1e'); pf.P(24, 3, '#ff8a2a'); // 금관 + 석탄 보석
+        [[20, 27, 23, 31], [27, 25, 25, 30], [17, 30, 19, 33], [30, 29, 32, 33]].forEach(function (q) { pf.L(q[0], q[1], q[2], q[3], '#ff7a1a'); pf.P(q[2], q[3], '#ffd060'); }); // 갑옷 틈의 불씨
+        var py = u ? -2 : 0; // 곡괭이(오른손, 프레임마다 들썩)
+        pt.L(36, 34, 43, 9 + py, '#6a4a2a', 2); pt.L(37, 34, 44, 9 + py, '#4a3018', 1);
+        pt.L(36, 6 + py, 47, 13 + py, '#8a8a98', 3); pt.L(37, 5 + py, 41, 6 + py, '#c8c8d8', 1); pt.P(47, 14 + py, '#e8e8f0'); pt.P(36, 8 + py, '#e8e8f0');
+        pt.R(34, 32, 5, 4, a0);
+        var sp = u ? [[6, 12], [44, 30], [30, 42]] : [[4, 16], [42, 26], [16, 44]]; sp.forEach(function (q) { pf.P(q[0], q[1], '#ffb03a'); pf.P(q[0], q[1] - 1, '#ff5a1a'); }); // 날리는 불똥
+      },
+      hydra: function (pt, pf, f) { // [2026-11-19] 늪지 여왕 히드라 -- 탑 29층 수문장. 늪에서 솟은 다섯 머리(가운데 여왕 머리에 금관), 초록 비늘과 연두 배, 독침 침, 연잎
+        var b0 = '#3a8a5a', b1 = '#22603a', b2 = '#5ab87a', bl = '#c8d890', bl2 = '#9ab060', gd = '#e8c050', u = f ? 1 : 0;
+        pt.E(24, 43, 23, 4, '#24402e'); pt.E(24, 42, 19, 3, '#3a6a4a'); pt.E(5, 44, 3, 1, '#5aa04a'); pt.E(43, 45, 3, 1, '#5aa04a'); pt.P(5, 43, '#2e6a2a'); // 늪 + 연잎
+        var neck = function (x0, y0, cx1, cy1, x1, y1, r) { for (var i = 0; i <= 18; i++) { var q = i / 18, a = (1 - q) * (1 - q), b = 2 * (1 - q) * q, c = q * q, x = a * x0 + b * cx1 + c * x1, y = a * y0 + b * cy1 + c * y1; pt.E(x, y, r, r, b0); pt.P(x - r + 1, y, b2); } };
+        var head = function (x, y, dir, big) { var r = big ? 3 : 2; pt.E(x, y, r + 1, r + 1, b0); pt.E(x + dir * (r + 2), y + 1, r, r - 1, b0); pt.P(x - dir * 1, y - r, b2); pt.P(x, y - r - 1, b2); pt.R(x + dir * (r + 1) - (dir < 0 ? r + 1 : 0), y + r - 1, r + 2, 1, '#7a1a2a'); pt.P(x + dir * (r + 4), y, b1); pt.P(x + dir * (r + 1), y + r, '#f4f0e0'); pt.P(x + dir * (r + 3), y + r, '#f4f0e0'); pf.P(x, y - 1, '#ffe94a'); pf.P(x + dir, y - 1, '#ffe94a'); pt.L(x + dir * (r + 5), y + r - 1, x + dir * (r + 7), y + r - 2 + u, '#e85a6a'); pf.P(x + dir * (r + 2), y + r + 1, '#b8ff5a'); pf.P(x + dir * (r + 2), y + r + 2 + u, '#7ae03a'); };
+        neck(16, 32, 6, 26, 8 + u, 12, 2); neck(32, 32, 42, 26, 40 - u, 12, 2); // 뒤쪽 두 머리
+        head(8 + u, 10, -1, false); head(40 - u, 10, 1, false);
+        pt.E(24, 35, 14, 8, b0); pt.E(24, 37, 7, 5, bl); for (var by = 33; by < 42; by += 2) pt.R(18, by, 13, 1, bl2); // 몸 + 배
+        neck(19, 31, 11, 26, 13 - u, 19, 2); neck(29, 31, 37, 26, 35 + u, 19, 2); // 앞쪽 두 머리
+        head(13 - u, 17, -1, false); head(35 + u, 17, 1, false);
+        neck(24, 30, 24 + (u ? 2 : -2), 18, 24, 8, 3); // 가운데 여왕 머리
+        pt.E(24, 7, 5, 4, b0); pt.E(24, 11, 3, 2, b0); pt.R(20, 6, 9, 1, b2); pt.P(22, 13, '#f4f0e0'); pt.P(26, 13, '#f4f0e0');
+        pf.R(21, 6, 2, 1, '#ffe94a'); pf.R(26, 6, 2, 1, '#ffe94a'); pf.P(24, 14, '#b8ff5a'); pf.P(24, 15 + u, '#7ae03a');
+        pt.R(20, 1, 9, 2, gd); [20, 23, 26].forEach(function (x) { pt.R(x, 0, 2, 1, gd); }); pt.P(24, 2, '#fff2b0'); pf.P(24, 1, '#7affb0'); // 금관
+        var bp = u ? [[10, 41], [36, 42], [22, 44]] : [[13, 42], [33, 41], [27, 44]]; bp.forEach(function (q) { pf.P(q[0], q[1], '#9ad8a0'); }); // 늪 거품
+      },
+      ifrit: function (pt, pf, f) { // [2026-11-19] 화산의 심장 이프리트 -- 탑 39층 수문장. 붉은 근육질 상반신, 아래는 불꽃 꼬리, 가슴에 녹은 심장, 검은 뿔, 타오르는 머리칼, 용암 바위 어깨, 금 팔찌
+        var s0 = '#d8401a', s1 = '#9a2a10', s2 = '#ff7a3a', rk = '#3a2a24', rk2 = '#5a4038', gd = '#e8c050', u = f ? 1 : 0;
+        pt.E(24, 36, 9, 5, '#e8501a'); pt.E(25 + u, 40, 6, 3, '#ff8a2a'); pt.E(26 - u, 44, 3, 2, '#ffb03a'); // 불꽃 꼬리(아래로 가늘게)
+        pf.E(24, 37, 5, 2, '#ffb03a'); pf.E(25 + u, 41, 3, 1, '#ffe07a'); pf.P(27 - u, 46, '#fff6c0');
+        pt.E(24, 26, 11, 9, s0); pt.E(20, 23, 4, 3, s2); pt.E(28, 23, 4, 3, s2); pt.R(23, 22, 2, 10, s1); for (var ay = 28; ay < 34; ay += 2) pt.R(20, ay, 9, 1, s1); // 몸통(가슴/배 근육)
+        pt.D(12, 19, 5, rk, rk2); pt.D(36, 19, 5, rk, rk2); pf.L(10, 18, 13, 21, '#ff7a1a'); pf.L(35, 17, 38, 21, '#ff7a1a'); // 용암 바위 어깨
+        pt.R(8, 22, 5, 9, s0); pt.R(35, 22, 5, 9, s0); pt.R(8, 22, 1, 8, s2); pt.R(7, 29, 7, 2, gd); pt.R(34, 29, 7, 2, gd); // 팔 + 금 팔찌
+        pt.E(10, 33, 3, 3, s0); pt.E(37, 33, 3, 3, s0); pf.E(10, 34 - u, 2, 2, '#ffb03a'); pf.E(37, 34 - u, 2, 2, '#ffb03a'); pf.P(10, 31 - u, '#ffe07a'); pf.P(37, 31 - u, '#ffe07a'); // 불타는 주먹
+        pt.D(24, 25, 3, '#5a1a0a'); pf.D(24, 25, 2, '#ffb03a'); pf.P(24, 25, '#fff6c0'); pf.P(23, 24, '#ffe07a'); pf.L(21, 23, 19, 21, '#ff8a2a'); pf.L(27, 23, 29, 21, '#ff8a2a'); pf.L(24, 28, 24, 31, '#ff8a2a'); // 녹은 심장 + 갈라짐
+        pt.E(24, 12, 6, 6, s0); pt.R(19, 15, 11, 2, s1); pt.E(24, 17, 3, 2, s1); // 머리
+        pt.L(19, 9, 15, 4, '#2a1a14', 2); pt.L(15, 4, 15, 1, '#4a3a30'); pt.L(29, 9, 33, 4, '#2a1a14', 2); pt.L(33, 4, 33, 1, '#4a3a30'); // 검은 뿔
+        pf.R(20, 11, 3, 1, '#fff6c0'); pf.R(26, 11, 3, 1, '#fff6c0'); pf.P(21, 12, '#ffb03a'); pf.P(27, 12, '#ffb03a'); // 타오르는 눈
+        var fl = u ? [[19, 6, 4], [22, 3, 6], [25, 2, 7], [28, 4, 5]] : [[19, 5, 5], [22, 2, 7], [26, 3, 6], [29, 6, 3]]; // 불꽃 머리칼
+        fl.forEach(function (q) { for (var i = 0; i < q[2]; i++) pf.P(q[0] + (i % 2 ? 1 : 0) * (u ? 1 : -1), q[1] - i + 3, i < 2 ? '#fff6c0' : i < 4 ? '#ffb03a' : '#ff5a1a'); });
+        pf.L(22, 18, 21, 21 + u, '#ffb03a'); pf.L(24, 19, 24, 22 + u, '#ff8a2a'); pf.L(26, 18, 27, 21 + u, '#ffb03a'); // 불꽃 수염
+        var em = u ? [[4, 10], [43, 14], [6, 40], [41, 38], [16, 2]] : [[3, 14], [44, 9], [8, 37], [43, 42], [34, 3]]; em.forEach(function (q, i) { pf.P(q[0], q[1], i % 2 ? '#ffb03a' : '#ff6a1a'); }); // 불똥
+      },
+      frostgiant: function (pt, pf, f) { // [2026-11-19] 빙하의 폭군 프로스트자이언트 -- 탑 49층 수문장. 얼음빛 푸른 거인, 고드름 맺힌 흰 수염, 얼음 가시 왕관, 흰 털 망토와 가죽 허리, 얼음 몽둥이
+        var s0 = '#8ad8ff', s1 = '#4a98c8', s2 = '#c8f0ff', fr = '#f0f2f8', fr2 = '#b8c0d0', le = '#8a6a4a', le2 = '#5a4030', ic = '#bfefff', ic2 = '#7ac8e8', u = f ? 1 : 0;
+        pt.R(15, 36, 7, 8, s0); pt.R(27, 36, 7, 8, s0); pt.R(15, 36, 2, 7, s2); pt.R(14, 42, 9, 4, fr); pt.R(26, 42, 9, 4, fr); pt.R(14, 45, 9, 1, fr2); pt.R(26, 45, 9, 1, fr2); // 다리 + 털 장화
+        pt.R(14, 31, 21, 7, le); pt.R(14, 31, 21, 2, fr); for (var lx = 15; lx < 35; lx += 4) pt.R(lx, 37, 2, 2, le2); // 가죽 허리 + 털
+        pt.E(24, 24, 13, 9, s0); pt.E(19, 22, 5, 4, s2); pt.E(29, 22, 5, 4, s2); pt.R(23, 21, 2, 9, s1); pt.L(12, 18, 34, 31, le2, 2); // 몸통 + 어깨띠
+        pt.E(24, 16, 16, 4, fr); pt.E(24, 17, 14, 2, fr2); pt.E(10, 18, 4, 3, fr); pt.E(38, 18, 4, 3, fr); // 흰 털 망토
+        pt.R(6, 19, 6, 13, s0); pt.R(36, 19, 6, 13, s0); pt.R(6, 19, 2, 12, s2); pt.E(9, 33, 3, 3, s0); pt.E(39, 32, 3, 3, s0); // 팔 + 주먹
+        var cy = u ? -2 : 0; // 얼음 몽둥이(오른손, 프레임마다 들썩)
+        pt.L(39, 32, 44, 12 + cy, ic2, 3); pt.L(44, 12 + cy, 46, 3 + cy, ic, 3); pt.D(45, 7 + cy, 3, ic, '#ffffff'); pt.P(42, 8 + cy, ic); pt.P(47, 10 + cy, ic);
+        pf.P(44, 5 + cy, '#ffffff'); pf.P(46, 9 + cy, '#e8ffff'); pf.L(41, 22 + cy / 2, 43, 15 + cy, 'rgba(232,255,255,.7)');
+        pt.E(24, 10, 6, 6, s0); pt.R(19, 8, 11, 1, s1); pt.E(22, 7, 2, 2, s2); // 머리
+        pt.E(24, 16, 6, 4, '#f4f8ff'); pt.R(19, 15, 11, 2, '#f4f8ff'); pt.R(21, 19, 7, 2, '#dfe8f8'); [20, 23, 26, 28].forEach(function (x, i) { pt.L(x, 19, x, 21 + (i % 2) + u, ic, 1); }); pt.R(22, 14, 5, 1, s1); // 고드름 맺힌 수염 + 입
+        pf.R(20, 9, 2, 1, '#e8ffff'); pf.R(27, 9, 2, 1, '#e8ffff'); pf.P(20, 9, '#ffffff'); // 창백하게 빛나는 눈
+        pt.R(18, 3, 13, 2, ic2); [[18, 0], [21, 1], [24, -1], [27, 1], [30, 0]].forEach(function (q) { pt.L(q[0], 3, q[0], q[1] + 1, ic, 1); pf.P(q[0], q[1] + 1, '#ffffff'); }); // 얼음 가시 왕관
+        pf.L(24, 22, 24 + (u ? 3 : 2), 25, 'rgba(232,255,255,.6)'); // 서리 숨결
+        var sn = u ? [[3, 8], [44, 40], [8, 44], [33, 1], [2, 30]] : [[4, 5], [45, 36], [11, 42], [36, 3], [1, 26]]; // 눈송이
+        sn.forEach(function (q) { pf.P(q[0], q[1], '#ffffff'); pf.P(q[0] - 1, q[1], '#cfefff'); pf.P(q[0] + 1, q[1], '#cfefff'); pf.P(q[0], q[1] - 1, '#cfefff'); pf.P(q[0], q[1] + 1, '#cfefff'); });
       }
     };
     return function (name, f, pose) {
@@ -1755,6 +1848,7 @@ var TowerMine = (function () {
     api('/api/tower-mine-archi?action=bell:' + li).then(function (d) { if (d && d.sea) seaSt = d.sea; if (d && d.message) { if (d.ok) flashT0 = performance.now(); msg(d.message, 3000); } }).catch(function () { });
   }
   var allySailors = null;
+  var ALLY_LOOK = [{ hat: '#8a909c|helmet', top: '#8a6a3a|armor', hair: '#3a2a1a' }, { hat: '#8a909c|helmet', top: '#6a7a4a|armor', hair: '#5a3a1a' }]; // [2026-11-19] "수병을 마을 자치병사 느낌으로"(시안 승인) -- 쇠 투구 + 가죽 갑옷
   function allyShipDraw(x, y, left, now) { // (x, y) = 배 왼쪽 위(화면), 오른쪽을 보고 그린 배를 left면 뒤집는다
     var u = T * scale / 16, bob = Math.floor(now / 500) % 2;
     var R = function (cc, a, b, w, h) { ctx.fillStyle = cc; ctx.fillRect(x + a * u, y + (b + bob) * u, w * u, h * u); };
@@ -1765,7 +1859,7 @@ var TowerMine = (function () {
     R('#2a6ab8', 33, -9, 15, 3); R('#2a6ab8', 33, -1, 17, 3); R('#ffffff', 37, -5, 6, 1); R('#ffffff', 36, -4, 2, 1); R('#ffffff', 42, -4, 2, 1);
     R('#2a6ab8', 26, -25, 4, 3); R('#ffffff', 27, -24, 1, 1);
     R('#5a3418', -2, 9, 52, 2); R('#b07a3c', -2, 9, 52, 1);
-    try { if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, {}), MineChar.sprite('right', 0, 3, {})]; ctx.drawImage(allySailors[0], x + 2 * u, y + (-4 + bob) * u, 16 * u, 16 * u); ctx.drawImage(allySailors[1], x + 15 * u, y + (-4 + bob) * u, 16 * u, 16 * u); } catch (e) { } // [2026-11-18] "수병 소환 때 렉" -- 프레임마다 캐릭터 그림을 새로 만들던 것을 한 번만
+    try { if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, ALLY_LOOK[0]), MineChar.sprite('right', 0, 3, ALLY_LOOK[1])]; ctx.drawImage(allySailors[0], x + 2 * u, y + (-4 + bob) * u, 16 * u, 16 * u); ctx.drawImage(allySailors[1], x + 15 * u, y + (-4 + bob) * u, 16 * u, 16 * u); } catch (e) { } // [2026-11-18] "수병 소환 때 렉" -- 프레임마다 캐릭터 그림을 새로 만들던 것을 한 번만
     R('#3a2210', -4, 10, 2, 6); R('#1f4f8f', -3, 12, 55, 2); R('#3a7ac8', -3, 12, 55, 1); R('#5a3418', -2, 14, 53, 1); R('#3a2210', 0, 15, 48, 1);
     R('#e0b050', -4, 11, 56, 1); R('#e0b050', 51, 9, 2, 2); R('#e0b050', 52, 7, 2, 2); R('#e0b050', 53, 6, 1, 1);
     for (var k = 2; k < 50; k += 8) R('#ffd76a', k, 12, 1, 2);
@@ -1791,6 +1885,41 @@ var TowerMine = (function () {
       ctx.drawImage(seaBarrelSprite(Math.floor(now / 400 + i) % 2), x, y + Math.round(Math.sin(now / 500 + i) * scale), TS, TS);
     });
   }
+  // [2026-11-19] "크라켄 공격 시 다리 휘두르는 모션, 모션이 나올 때만 공격받게" -- 크라켄 근접 공격(서버 hit.krk)마다 촉수 하나가
+  //  들어 올렸다가(0 ~ 0.4) 내 자리로 내려치고(0.4 ~ 0.6) 누른 채 물보라(0.6 ~ 0.74) 거둬들인다(~ 1). 피해 숫자는 내려친 순간(KRK_SWING_HIT)에.
+  var KRK_SWING_MS = 760, KRK_SWING_HIT = 0.6, krkSwings = [];
+  function krkSwingAdd(kx, ky, tx, ty) { krkSwings.push({ kx: kx, ky: ky, tx: tx, ty: ty, t0: performance.now() }); if (krkSwings.length > 4) krkSwings.shift(); }
+  /** (kx, ky) = 크라켄 가운데 칸, (tx, ty) = 맞는 칸(맵 좌표). 화면 좌표로 바꿔 그린다. */
+  function krkSwingDraw(now, camX, camY) {
+    if (!krkSwings.length) return;
+    var TS = T * scale, u = scale;
+    krkSwings = krkSwings.filter(function (s) { return now - s.t0 < KRK_SWING_MS; });
+    krkSwings.forEach(function (s) {
+      var q = (now - s.t0) / KRK_SWING_MS, kx = (s.kx + 0.5) * TS - camX, ky = (s.ky + 0.5) * TS - camY, px2 = (s.tx + 0.5) * TS - camX, py2 = (s.ty + 0.5) * TS - camY;
+      var dir = px2 >= kx ? 1 : -1, rx = kx + dir * 1.2 * TS, ry = ky + 1.1 * TS; // 뿌리 -- 크라켄 몸 아래 맞는 쪽
+      var hx = rx + dir * 0.6 * TS, hy = ky - 3.6 * TS, tx, ty, cx, cy, fade = 1;
+      if (q < 0.4) { var a = q / 0.4, e = 1 - (1 - a) * (1 - a); tx = rx + dir * 0.4 * TS + (hx - rx - dir * 0.4 * TS) * e; ty = ry - 0.3 * TS + (hy - ry + 0.3 * TS) * e; cx = rx + dir * 1.6 * TS; cy = (ry + ty) / 2; } // 들어 올린다
+      else if (q < KRK_SWING_HIT) { var b = (q - 0.4) / (KRK_SWING_HIT - 0.4), e2 = b * b; tx = hx + (px2 - hx) * e2; ty = hy + (py2 - hy) * e2; cx = (rx + tx) / 2 + dir * 0.4 * TS; cy = Math.min(ry, ty) - 0.6 * TS - 1.6 * TS * (1 - b); } // 내려친다(꼭대기에서 내 자리로)
+      else if (q < 0.74) { tx = px2; ty = py2; cx = (rx + px2) / 2 + dir * 0.4 * TS; cy = Math.min(ry, py2) - 0.6 * TS; } // 내 자리를 누르고
+      else { var c = (q - 0.74) / 0.26; tx = px2 + (rx - px2) * c * 0.6; ty = py2 + (ry - py2) * c * 0.6; cx = (rx + tx) / 2; cy = Math.min(ry, ty) - 0.4 * TS; fade = 1 - c; } // 거둬들인다
+      ctx.save(); ctx.globalAlpha = Math.max(0, fade);
+      var n = 30, pts = [];
+      for (var i = 0; i <= n; i++) { var t = i / n, w = 1 - t; pts.push([w * w * rx + 2 * w * t * cx + t * t * tx, w * w * ry + 2 * w * t * cy + t * t * ty, 5 - 4 * t]); }
+      var dot = function (x, y, r, col) { ctx.fillStyle = col; for (var yy = -r; yy <= r; yy++) for (var xx = -r; xx <= r; xx++) if (xx * xx + yy * yy <= r * r + 0.3) ctx.fillRect(Math.round(x / u + xx) * u, Math.round(y / u + yy) * u, u, u); };
+      pts.forEach(function (p) { dot(p[0], p[1], Math.round(p[2]) + 1, '#5a1028'); });
+      pts.forEach(function (p) { dot(p[0], p[1], Math.round(p[2]), '#7a1e3a'); });
+      pts.forEach(function (p, i) { if (i % 2 === 0) { ctx.fillStyle = '#a8405e'; ctx.fillRect(Math.round(p[0] / u - p[2] * 0.4) * u, Math.round(p[1] / u - p[2] * 0.5) * u, u, u); } });
+      pts.forEach(function (p, i) { if (i % 3 === 1 && p[2] >= 1.5) { ctx.fillStyle = '#f4b8c4'; ctx.fillRect(Math.round(p[0] / u + dir * p[2] * 0.4) * u, Math.round(p[1] / u + p[2] * 0.5) * u, 2 * u, u); } });
+      if (q >= 0.4 && q < KRK_SWING_HIT) { ctx.strokeStyle = 'rgba(232,246,255,.7)'; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(cx + dir * TS, cy, tx, ty); ctx.stroke(); } // 휘두르는 바람
+      if (q >= KRK_SWING_HIT) { // 물보라
+        var sq = Math.min(1, (q - KRK_SWING_HIT) / (1 - KRK_SWING_HIT));
+        ctx.globalAlpha = 1 - sq; ctx.strokeStyle = '#e8f6ff'; ctx.lineWidth = 2 * u;
+        ctx.beginPath(); ctx.ellipse(px2, py2 + 0.3 * TS, TS * (0.4 + 1.1 * sq), TS * (0.15 + 0.4 * sq), 0, 0, Math.PI * 2); ctx.stroke();
+        for (var k = 0; k < 7; k++) { var an = Math.PI + k / 6 * Math.PI; ctx.fillStyle = k % 2 ? '#cfe8ff' : '#ffffff'; ctx.fillRect(px2 + Math.cos(an) * TS * (0.4 + sq), py2 + Math.sin(an) * TS * (0.3 + 1.2 * sq) - sq * 0.4 * TS, 2 * u, 2 * u); }
+      }
+      ctx.restore();
+    });
+  }
   // [2026-11-18] 등대 구조선(시안 승인) -- 서버가 준 res = {x, y, 체력, 가라앉은 시각, 부른 시각, 붙는 시각, 작살 수, 다음 작살, 다음 내려찍기, 마지막 작살 시각, 오는 쪽}.
   //  자리가 바뀌면 1초 동안 미끄러지듯, 작살은 크라켄 가운데(sea.kx/ky)로. 가라앉으면 두 동강 나며 잠기고 수병의 넋이 떠오른다.
   var resV = null, resSeen = { shots: 0, hp: 100 };
@@ -1814,7 +1943,7 @@ var TowerMine = (function () {
       for (var bb = 0; bb < 9; bb++) { var bq = ((now / 450) + bb * 0.13) % 1; fxDot(X + (bb * 7 - 4) * u, Y + 17 * u - bq * TS * 0.9, 2 * scale, '#e8f6ff', 0.75 * (1 - bq) * (1 - sq)); }
       ctx.fillStyle = '#7a4a22'; ctx.fillRect(X + 52 * u, Y + 14 * u + Math.sin(now / 300) * u, 10 * u, 2 * u); ctx.fillRect(X - 8 * u, Y + 20 * u, 7 * u, 2 * u); // 나무 조각
       try { // 쓰러진 수병 -- 넋이 떠오른다
-        if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, {}), MineChar.sprite('right', 0, 3, {})];
+        if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, ALLY_LOOK[0]), MineChar.sprite('right', 0, 3, ALLY_LOOK[1])];
         ctx.save(); ctx.globalAlpha = 0.4 * (1 - sq); ctx.filter = 'grayscale(1) brightness(1.6)';
         ctx.drawImage(allySailors[0], X + 6 * u, Y - (10 + sq * 40) * u, TS, TS); ctx.drawImage(allySailors[1], X + 26 * u, Y - (4 + sq * 44) * u, TS, TS); ctx.restore();
       } catch (e) { }
@@ -4771,6 +4900,7 @@ var TowerMine = (function () {
           else { for (var zi = 0; zi < 6; zi++) { var za = zi * Math.PI / 3; zapAdd(bcx, bcy, bcx + Math.cos(za) * 3.5, bcy + Math.sin(za) * 3.5); } flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3, text: '💥 -' + h.dmg, color: '#ffe94a', big: true, t0: t }); }
           return;
         }
+        if (h.krk) { krkSwingAdd(h.kx, h.ky, P.x, P.y); floats.push({ x: P.x, y: P.y - 0.3, text: h.dodge ? '💨 회피' : '🐙 -' + h.dmg, color: h.dodge ? '#c8c8ff' : '#ff4a6a', big: true, t0: t + KRK_SWING_MS * KRK_SWING_HIT }); return; } // [2026-11-19] 크라켄 -- 촉수가 내려친 순간에 피해 숫자
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
         if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
@@ -6929,6 +7059,7 @@ var TowerMine = (function () {
       }
     }
     try { seaDrawFront(now, camX, camY); } catch (e) { } // [2026-11-18] 부표 불꽃 / 지원 함선
+    try { krkSwingDraw(now, camX, camY); } catch (e) { } // [2026-11-19] 크라켄 다리 휘두르기
     // [2026-10-27] 왕도 주민(길을 왕복, 가끔 말풍선)
     if (map.citizens && map.citizens.length) {
       var tc = nowSrv(), cwin = Math.floor(tc / 7000);
