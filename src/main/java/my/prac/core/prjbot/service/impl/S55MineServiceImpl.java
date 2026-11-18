@@ -282,7 +282,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
-        if (S5MineMap.isSeaDeep(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "🌊 용궁 문이 굳게 닫혀 있어요. (준비 중)"; } // [2026-11-18] 용궁/해저도시 -- 지금은 관리자만
+        if (S5MineMap.SEA_CITY.equals(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "⛵ 해상도시는 아직 짓는 중이래요. (준비 중)"; } // [2026-11-18] 해상도시 -- 지금은 관리자만
         if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
         if (S5MineMap.demonTier(m.id) >= 0 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id) || S5MineMap.DEMON_VILLAGE.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로 // [2026-11-17] 들판 2·3, 방어선, 마계도
             String cu = MINE_CTX.get();
@@ -4758,8 +4758,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 e.put("sy", m.spawnY);
                 maps.add(e);
             }
-            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.DRAGON_PALACE, S5MineMap.SEA_CITY }) { // [2026-11-18] 용궁/해저도시(관리자만)
-                S5MineMap m = S5MineMap.get(id);
+            if (isMineAdmin(userName)) { // [2026-11-18] 해상도시(관리자만)
+                S5MineMap m = S5MineMap.get(S5MineMap.SEA_CITY);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id); e.put("name", m.name); e.put("w", m.w); e.put("h", m.h); e.put("sx", m.spawnX); e.put("sy", m.spawnY);
                 maps.add(e);
