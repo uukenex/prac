@@ -8061,6 +8061,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 30초 정리(BotS5ServiceImpl.flushStatBuffers) -- 모은 지 1분 넘은 것. all = 서버 종료 때 전부. */
     public void mineMercXpSweep(boolean all) {
+        try { mineBoatSweep(all); } catch (Exception e) { /* 배 피해는 다음에 */ } // [2026-11-18]
         long now = System.currentTimeMillis();
         for (java.util.Map.Entry<String, MercXp> en : MINE_MERC_XP.entrySet()) {
             MercXp mx = en.getValue();
@@ -9696,10 +9697,37 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** {지금 체력, 최대 체력} */
     static long[] mineBoatHp(Map<String, Integer> items) { long mx = mineBoatHpMax(items); return new long[] { Math.max(0, mx - Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0))), mx }; }
     /** 배가 dmg만큼 맞는다 -- 남은 체력. [2026-11-18] "배가 부서지면 마을로 보내 버리자" -- 0이 되면 마을(부활 거점)로 떠밀려 가고 out에 안내/상태를 담는다. */
+    // [2026-11-18] DB 점검 + "수병 소환 때 렉" -- 맞을 때마다(망망대해는 매초) BOAT_DMG를 쓰고 그때마다 아이템 캐시가 깨졌다.
+    //  피해는 MINE_BOAT_BUF(유저 -> {아직 안 쓴 피해, 마지막 저장 시각})에 모으고, MINE_BOAT_FLUSH_MS마다·부서질 때·맵을 옮길 때·정리 스레드(mineMercXpSweep)에서 증분으로 쓴다.
+    static final long MINE_BOAT_FLUSH_MS = 15_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_BOAT_BUF = new java.util.concurrent.ConcurrentHashMap<>();
+    static long mineBoatPending(String userName) { long[] b = userName == null ? null : MINE_BOAT_BUF.get(userName); if (b == null) return 0; synchronized (b) { return b[0]; } }
+    /** 아직 안 쓴 피해까지 친 {지금 체력, 최대 체력}. */
+    static long[] mineBoatHpU(String userName, Map<String, Integer> items) { long[] h = mineBoatHp(items); h[0] = Math.max(0, h[0] - mineBoatPending(userName)); return h; }
+    void mineBoatFlush(String userName) {
+        long[] b = userName == null ? null : MINE_BOAT_BUF.get(userName);
+        if (b == null) return;
+        long p;
+        synchronized (b) { p = b[0]; b[0] = 0; b[1] = System.currentTimeMillis(); }
+        if (p <= 0) { MINE_BOAT_BUF.remove(userName, b); return; }
+        try { dao.addMineItemLevel(userName, MINE_ITEM_BOAT_DMG, (int) Math.min(Integer.MAX_VALUE, p)); }
+        catch (Exception e) { synchronized (b) { b[0] += p; } } // 다음에 다시
+    }
+    void mineBoatSweep(boolean all) {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<String, long[]> en : MINE_BOAT_BUF.entrySet()) { long last; synchronized (en.getValue()) { last = en.getValue()[1]; } if (all || now - last >= MINE_BOAT_FLUSH_MS) mineBoatFlush(en.getKey()); }
+    }
     long mineBoatHit(String userName, Map<String, Integer> items, long dmg, HashMap<String, Object> out) {
-        long mx = mineBoatHpMax(items), d = Math.min(mx, Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0)) + Math.max(0, dmg));
-        dao.upsertMineItem(userName, MINE_ITEM_BOAT_DMG, (int) d);
-        items.put(MINE_ITEM_BOAT_DMG, (int) d);
+        long mx = mineBoatHpMax(items), base = Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0)), d;
+        long now = System.currentTimeMillis();
+        long[] b = MINE_BOAT_BUF.computeIfAbsent(userName, k -> new long[] { 0, now });
+        boolean flush;
+        synchronized (b) {
+            d = Math.min(mx, base + b[0] + Math.max(0, dmg));
+            b[0] = d - base;
+            flush = d >= mx || now - b[1] >= MINE_BOAT_FLUSH_MS;
+        }
+        if (flush) { mineBoatFlush(userName); items.put(MINE_ITEM_BOAT_DMG, (int) d); }
         if (d >= mx) {
             mineDisengageAll(userName);
             String where = mineGoHome(userName, items, System.currentTimeMillis());
@@ -9719,12 +9747,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!S5MineMap.ARCHI.equals(at) && !S5MineMap.BEACH.equals(at)) return mineGearResult(userName, false, "⛵ 배는 배 목수(다도해 본섬·남쪽 바닷가)가 고쳐 줘요."); // [2026-11-18] 뱃사람/부두지기를 없애서 배 목수로
         Map<String, Integer> items = mineItems(userName);
         if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 고칠 배가 없어요.");
-        long[] bh = mineBoatHp(items);
+        long[] bh = mineBoatHpU(userName, items);
         if (bh[0] >= bh[1]) return mineGearResult(userName, false, "⛵ 배는 멀쩡해요.");
         int pearls = mineBoatFixPearls(bh);
         String[][] cost = { { S5MineMap.SEA_GEM_CODES[0], String.valueOf(pearls) } };
         if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 수리에 " + S5MineMap.SEA_GEM_NAMES[0] + " " + pearls + "개가 필요해요." + mineLackText(cost, userName));
         mineTakeCost(userName, cost, 1);
+        MINE_BOAT_BUF.remove(userName); // [2026-11-18] 모아 둔 피해도 함께 없앤다
         dao.upsertMineItem(userName, MINE_ITEM_BOAT_DMG, 0);
         HashMap<String, Object> out = mineGearResult(userName, true, "🔨 배를 말끔히 고쳤어요! (" + S5MineMap.SEA_GEM_NAMES[0] + " " + pearls + "개)");
         out.put("ores", mineOreList(userName));
@@ -9739,7 +9768,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!route) return mineGearResult(userName, false, "⛵ 여기서는 그쪽으로 배를 띄울 수 없어요.");
         Map<String, Integer> items = mineItems(userName);
         if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 뱃사람: 자네 배가 없구먼. 다도해 본섬 배 목수에게 1인용 배부터 만들어 오게. 본섬은 남쪽 섬에서 큰 배로 갈 수 있다네.");
-        if (mineBoatHp(items)[0] <= 0) return mineGearResult(userName, false, "⛵ 배가 부서져 있어요. 먼저 고쳐야 바다로 나갈 수 있어요.");
+        if (mineBoatHpU(userName, items)[0] <= 0) return mineGearResult(userName, false, "⛵ 배가 부서져 있어요. 먼저 고쳐야 바다로 나갈 수 있어요.");
         S5MineMap sea = S5MineMap.get(to);
         String block = mineMapBlock(sea, items, mineLv(row));
         if (block != null) return mineGearResult(userName, false, block);
@@ -9986,7 +10015,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ar.put("key", items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) > 0); // [2026-10-28] 신궁 열쇠(수색 임무 보상)
             ar.put("bossReward", items.getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0); // 닌자 두목 첫 처치 보상을 받았는지
             ar.put("boat", items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0);
-            long[] bhp = mineBoatHp(items); // [2026-11-18] 배 체력
+            long[] bhp = mineBoatHpU(userName, items); // [2026-11-18] 배 체력(아직 안 쓴 피해까지)
             ar.put("boatHp", bhp[0]);
             ar.put("boatHpMax", bhp[1]);
             ar.put("boatFix", bhp[0] < bhp[1] ? mineBoatFixPearls(bhp) : 0); // 수리에 드는 진주
@@ -10602,7 +10631,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (S5MineMap.VAST_SEA.equals(mapId)) { HashMap<String, Object> vo = mineVastTick(userName, now, out); if (vo != null) return vo; } // [2026-11-18] 망망대해
         MinePresence me = minePresenceOf(userName);
-        if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) mineMercXpFlushUser(userName); // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치를 DB에
+        if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) { mineMercXpFlushUser(userName); mineBoatFlush(userName); } // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치/배 피해를 DB에
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;

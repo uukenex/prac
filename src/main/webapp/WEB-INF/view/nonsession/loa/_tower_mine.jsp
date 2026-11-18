@@ -1695,6 +1695,7 @@ var TowerMine = (function () {
     for (var x = 2; x < 15; x += 3) p.P(x, 14, '#e8f4ff');
     return c;
   }
+  var allySailors = null;
   function allyShipDraw(x, y, left, now) { // (x, y) = 배 왼쪽 위(화면), 오른쪽을 보고 그린 배를 left면 뒤집는다
     var u = T * scale / 16, bob = Math.floor(now / 500) % 2;
     var R = function (cc, a, b, w, h) { ctx.fillStyle = cc; ctx.fillRect(x + a * u, y + (b + bob) * u, w * u, h * u); };
@@ -1705,7 +1706,7 @@ var TowerMine = (function () {
     R('#2a6ab8', 33, -9, 15, 3); R('#2a6ab8', 33, -1, 17, 3); R('#ffffff', 37, -5, 6, 1); R('#ffffff', 36, -4, 2, 1); R('#ffffff', 42, -4, 2, 1);
     R('#2a6ab8', 26, -25, 4, 3); R('#ffffff', 27, -24, 1, 1);
     R('#5a3418', -2, 9, 52, 2); R('#b07a3c', -2, 9, 52, 1);
-    try { ctx.drawImage(MineChar.sprite('right', 0, 0, {}), x + 2 * u, y + (-4 + bob) * u, 16 * u, 16 * u); ctx.drawImage(MineChar.sprite('right', 0, 3, {}), x + 15 * u, y + (-4 + bob) * u, 16 * u, 16 * u); } catch (e) { }
+    try { if (!allySailors) allySailors = [MineChar.sprite('right', 0, 0, {}), MineChar.sprite('right', 0, 3, {})]; ctx.drawImage(allySailors[0], x + 2 * u, y + (-4 + bob) * u, 16 * u, 16 * u); ctx.drawImage(allySailors[1], x + 15 * u, y + (-4 + bob) * u, 16 * u, 16 * u); } catch (e) { } // [2026-11-18] "수병 소환 때 렉" -- 프레임마다 캐릭터 그림을 새로 만들던 것을 한 번만
     R('#3a2210', -4, 10, 2, 6); R('#1f4f8f', -3, 12, 55, 2); R('#3a7ac8', -3, 12, 55, 1); R('#5a3418', -2, 14, 53, 1); R('#3a2210', 0, 15, 48, 1);
     R('#e0b050', -4, 11, 56, 1); R('#e0b050', 51, 9, 2, 2); R('#e0b050', 52, 7, 2, 2); R('#e0b050', 53, 6, 1, 1);
     for (var k = 2; k < 50; k += 8) R('#ffd76a', k, 12, 1, 2);
