@@ -201,6 +201,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     Map<String, Integer> mineItems(String userName) {
         Map<String, Integer> out = new HashMap<>();
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
+        for (int k = 0; k <= MINE_MERC_K2; k++) { MercXp mx = MINE_MERC_XP.get(mineMercXpKey(userName, k)); if (mx != null && mx.p > 0) out.put(mineMercKey(k, "XPP"), (int) mx.p); } // [2026-11-18] 아직 DB에 안 쓴 용병 경험치(화면용)
         if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
         try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap)
         return out;
@@ -7475,7 +7476,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (lv <= 0) return m;
         int el = mineMercEl(items, k), s = mineMercStage(lv);
         m.put("lv", lv);
-        m.put("exp", items.getOrDefault(mineMercKey(k, "EXP"), 0));
+        m.put("exp", items.getOrDefault(mineMercKey(k, "EXP"), 0) + items.getOrDefault(mineMercKey(k, "XPP"), 0)); // [2026-11-18] + 아직 DB에 안 쓴 것
         m.put("need", lv >= MINE_MERC_LV_TOP ? 0 : mineMercNeed(lv));
         m.put("atk", mineMercAtk(items, k));
         m.put("max", mineMercHp(items, k));
@@ -7534,9 +7535,42 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineMercShare(String userName, long gain, int mobLv, long kills, HashMap<String, Object> out) { mineMercShare(userName, null, gain, mobLv, kills, out); }
     // [2026-11-18] 두 번째 용병도 첫 용병과 같은 경험치(저마다 1%). 아이템은 부르는 쪽이 이미 읽은 것을 쓴다(처치마다 아이템 전체를 다시 읽지 않게 -- null이면 읽는다).
     //  99 이후도 계속 오른다(필요 경험치는 99레벨 값 그대로). 결과: out.mercXp(첫 칸) / out.mercXp2(두 번째 칸).
+    // [2026-11-18] "용병 경험치 저장은 세션에 물고 있다가" -- 경험치는 메모리(MINE_MERC_XP)에 모으고, 레벨이 오를 때 / 처음 모은 지 1분 / 맵 이동 / 용병소 /
+    //  30초 정리(1분 넘게 쌓인 것 -- 게임을 끈 사람 몫) / 서버 종료 때 DB에 "더한다"(addMineItemLevel -- 정리 스레드와 겹쳐도 덮어쓰지 않게).
+    //  레벨은 오를 때 바로 쓴다(공격력/스킬/화면이 DB 레벨을 읽는다). 화면 경험치 = DB + 메모리(mineItems가 MERC{k}_XPP로 얹는다).
+    static final class MercXp { volatile long p, at; }
+    static final java.util.concurrent.ConcurrentHashMap<String, MercXp> MINE_MERC_XP = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_MERC_XP_FLUSH_MS = 60_000L;
+    static String mineMercXpKey(String userName, int k) { return userName + "|" + k; }
+    /** 한 사람 용병들의 모아 둔 경험치를 DB에 더한다(맵 이동, 용병소). */
+    void mineMercXpFlushUser(String userName) {
+        if (userName == null) return;
+        for (int k = 0; k <= MINE_MERC_K2; k++) mineMercXpFlushOne(userName, k, MINE_MERC_XP.get(mineMercXpKey(userName, k)));
+    }
+    void mineMercXpFlushOne(String userName, int k, MercXp mx) {
+        if (mx == null) return;
+        long p;
+        synchronized (mx) { p = mx.p; mx.p = 0; mx.at = 0; }
+        if (p <= 0) return;
+        try { dao.addMineItemLevel(userName, mineMercKey(k, "EXP"), (int) p); }
+        catch (Exception ex) { synchronized (mx) { mx.p += p; if (mx.at == 0) mx.at = System.currentTimeMillis(); } } // 못 쓰면 다음에
+    }
+    /** 30초 정리(BotS5ServiceImpl.flushStatBuffers) -- 모은 지 1분 넘은 것. all = 서버 종료 때 전부. */
+    public void mineMercXpSweep(boolean all) {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<String, MercXp> en : MINE_MERC_XP.entrySet()) {
+            MercXp mx = en.getValue();
+            if (mx.p <= 0 || (!all && now - mx.at < MINE_MERC_XP_FLUSH_MS)) continue;
+            String key = en.getKey();
+            int bar = key.lastIndexOf('|');
+            if (bar <= 0) continue;
+            try { mineMercXpFlushOne(key.substring(0, bar), Integer.parseInt(key.substring(bar + 1)), mx); } catch (Exception ignore) { }
+        }
+    }
     void mineMercShare(String userName, Map<String, Integer> items, long gain, int mobLv, long kills, HashMap<String, Object> out) {
         if (gain <= 0 && kills <= 0) return;
         if (items == null) items = mineItems(userName);
+        long now = System.currentTimeMillis();
         for (int k : mineMercActive(items)) {
             int lv = mineMercLv(items, k);
             if (lv >= MINE_MERC_LV_TOP) continue;
@@ -7544,13 +7578,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int d = mobLv - lv;
             if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
             long need = mineMercNeed(lv), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT / 100)));
-            long exp = items.getOrDefault(mineMercKey(k, "EXP"), 0) + g;
-            int up = 0;
-            while (lv < MINE_MERC_LV_TOP && exp >= mineMercNeed(lv)) { exp -= mineMercNeed(lv); lv++; up++; }
-            if (lv >= MINE_MERC_LV_TOP) exp = 0;
-            dao.upsertMineItem(userName, mineMercKey(k, "EXP"), (int) exp);
-            items.put(mineMercKey(k, "EXP"), (int) exp);
-            if (up > 0) { dao.upsertMineItem(userName, mineMercKey(k, "LV"), lv); items.put(mineMercKey(k, "LV"), lv); }
+            long e0 = items.getOrDefault(mineMercKey(k, "EXP"), 0); // DB 값
+            MercXp mx = MINE_MERC_XP.computeIfAbsent(mineMercXpKey(userName, k), q -> new MercXp());
+            int up = 0, nl = lv;
+            long write = 0, left;
+            synchronized (mx) {
+                long exp = e0 + mx.p + g, used = 0;
+                while (nl < MINE_MERC_LV_TOP && exp >= mineMercNeed(nl)) { used += mineMercNeed(nl); exp -= mineMercNeed(nl); nl++; up++; }
+                if (up > 0 || (mx.at > 0 && now - mx.at >= MINE_MERC_XP_FLUSH_MS)) { write = mx.p + g - used; mx.p = 0; mx.at = 0; } // 레벨이 오르면 / 모은 지 1분이면 DB에(더하기)
+                else { mx.p += g; if (mx.at == 0) mx.at = now; }
+                left = mx.p;
+            }
+            if (nl >= MINE_MERC_LV_TOP) { dao.upsertMineItem(userName, mineMercKey(k, "EXP"), 0); items.put(mineMercKey(k, "EXP"), 0); }
+            else if (write != 0) { dao.addMineItemLevel(userName, mineMercKey(k, "EXP"), (int) write); items.put(mineMercKey(k, "EXP"), (int) (e0 + write)); }
+            if (up > 0) { dao.upsertMineItem(userName, mineMercKey(k, "LV"), nl); items.put(mineMercKey(k, "LV"), nl); }
+            items.put(mineMercKey(k, "XPP"), (int) left);
             HashMap<String, Object> x = mineMercCard(items, k);
             x.put("gain", g);
             if (up > 0) x.put("up", up);
@@ -7948,6 +7990,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         mineRow(userName, false);
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        mineMercXpFlushUser(userName); // [2026-11-18] 메모리에 모아 둔 용병 경험치부터 DB에
         Map<String, Integer> items = mineItems(userName);
         boolean ok = true;
         String msg = "";
@@ -9927,6 +9970,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         MinePresence me = minePresenceOf(userName);
+        if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) mineMercXpFlushUser(userName); // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치를 DB에
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;

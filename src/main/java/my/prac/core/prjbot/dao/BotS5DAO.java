@@ -188,6 +188,8 @@ public interface BotS5DAO {
     /** [2026-11-17] 월드보스 게시판 -- 여러 유저의 특정 아이템 줄(USER_NAME, ITEM_CODE, ITEM_LEVEL). */
     List<HashMap<String, Object>> selectMineItemsByCodes(@Param("codes") List<String> codes);
     int upsertMineItem(@Param("userName") String userName, @Param("itemCode") String itemCode, @Param("level") int level);
+    /** [2026-11-18] 아이템 값에 더하기(용병 경험치 -- 메모리에 모은 만큼, 겹쳐 써도 덮어쓰지 않게). */
+    int addMineItemLevel(@Param("userName") String userName, @Param("itemCode") String itemCode, @Param("delta") int delta);
     List<HashMap<String, Object>> selectUserOres(@Param("userName") String userName);
     int addUserOre(@Param("userName") String userName, @Param("oreCode") String oreCode, @Param("qty") int qty);
     /** [2026-10-08] 전설장비 강화 수치/연속 실패 횟수 저장. */

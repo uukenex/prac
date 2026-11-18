@@ -6616,12 +6616,14 @@ public class BotS5ServiceImpl extends S55MineServiceImpl implements BotS5Service
             String[] p = key.split("\u0001");
             try { dao.bumpActivityHourlyBy(p[0], p[1], n); } catch (Exception e) { PENDING_HOURLY.merge(key, n, Integer::sum); }
         }
+        try { mineMercXpSweep(false); } catch (Exception ignore) { } // [2026-11-18] 용병 경험치 -- 모은 지 1분 넘은 것(게임을 끈 사람 몫)
     }
 
     /** 서버 종료/재배포 때 아직 반영 안 된 통계를 남기지 않도록 마지막으로 한 번 반영. */
     @javax.annotation.PreDestroy
     public void flushStatBuffersOnShutdown() {
         try { flushStatBuffers(); } catch (Throwable ignore) { }
+        try { mineMercXpSweep(true); } catch (Throwable ignore) { } // [2026-11-18] 용병 경험치 전부
     }
 
     // ================================================================
