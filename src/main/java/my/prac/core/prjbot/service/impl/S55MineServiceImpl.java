@@ -1729,7 +1729,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if ("mailGet".equals(action)) {
                 if (!mineAtNpc(row, "mailbox")) { out.put("message", "마을 우체부에게서만 받을 수 있어요."); return out; }
                 Object[] ml = null;
-                for (Object[] q : MINE_MAILS) if (q[0].equals(code)) ml = q;
+                for (Object[] q : MINE_MAILS) if (q[0].equals(code) && mineMailFor(userName, q)) ml = q;
                 if (ml == null) { out.put("message", "그런 우편은 없어요."); return out; }
                 if (items.getOrDefault("MAIL_" + ml[0], 0) > 0) { out.put("message", "이미 받은 우편이에요."); return out; }
                 dao.upsertMineItem(userName, "MAIL_" + ml[0], 1); items.put("MAIL_" + ml[0], 1);
@@ -1739,7 +1739,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("message", "📮 " + ml[1] + " -- " + got + " 받았어요!");
                 out.put("ores", mineOreList(userName));
             }
-            out.put("mails", mineMailList(items));
+            out.put("mails", mineMailList(userName, items));
             return out;
         }
         if ("mana".equals(action)) { // [2026-11-18] "정제된 마석은 미스릴 원석으로 1:1 교환 -- 최후의 방어선 NPC(정제사)"
@@ -2620,10 +2620,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  우편은 여기 적어 둔다: {번호, 제목, 내용, {{재료 코드, 개수}...}}. 사람마다 한 번씩 받는다(MAIL_<번호> = 1). 안 받은 우편이 있으면 들어올 때 알린다(mineState mailN).
     static final Object[][] MINE_MAILS = {
         { "SORRY1117", "🙇 사과 보상", "그동안 사막의 목걸이 효과가 바다 보석에는 적용되지 않았어요. 불편을 드려 죄송합니다 -- 바다 보석 꾸러미를 보내 드려요.",
-            new String[][] { { "PEARL", "5" }, { "CORAL_GEM", "5" }, { "AMETHYST", "5" }, { "OPAL", "5" }, { "BLACK_PEARL", "5" } } } };
-    static List<HashMap<String, Object>> mineMailList(Map<String, Integer> items) {
+            new String[][] { { "PEARL", "5" }, { "CORAL_GEM", "5" }, { "AMETHYST", "5" }, { "OPAL", "5" }, { "BLACK_PEARL", "5" } } },
+        // [2026-11-18] 받는 사람을 정한 우편(5번째 = 받는 사람들) -- 보로네오를 함께 쓰러뜨렸는데 필살기/용병/함께 싸운 보상 경로에 보로네오 보상이 빠져 있었다
+        { "BORO1118", "⚖️ 보로네오 미지급 보상", "심판자 보로네오를 함께 쓰러뜨렸을 때 빠졌던 보상을 보내 드려요. 불편을 드려 죄송합니다.",
+            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "일어난다람쥐/카단" } } };
+    static boolean mineMailFor(String userName, Object[] q) { return q.length < 5 || q[4] == null || java.util.Arrays.asList((String[]) q[4]).contains(userName); }
+    static List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();
         for (Object[] q : MINE_MAILS) {
+            if (!mineMailFor(userName, q)) continue;
             HashMap<String, Object> m = new HashMap<>();
             m.put("id", q[0]); m.put("title", q[1]); m.put("body", q[2]); m.put("got", items.getOrDefault("MAIL_" + q[0], 0) > 0);
             List<HashMap<String, Object>> its = new ArrayList<>();
@@ -2633,7 +2638,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         return l;
     }
-    static int mineMailUnread(Map<String, Integer> items) { int n = 0; for (Object[] q : MINE_MAILS) if (items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
+    static int mineMailUnread(String userName, Map<String, Integer> items) { int n = 0; for (Object[] q : MINE_MAILS) if (mineMailFor(userName, q) && items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
     // ---- [2026-11-17] "보스전이 있는 장소에서 보스전이 시작되면, 그 맵에 몇 명 있는지에 따라 '우리는 하나' 버프를 보여 주고 얼마나 강해졌는지 띄우기,
     //  체력도 배수로(초보일 때는 더 많이)" -- 보스 맵(보스가 깨어 싸우는 중: 누군가를 노리거나 30초 안에 맞음)에 2명 이상 있으면 모두에게:
     //  공격력 +20 / 50 / 100 / 150%(2 / 3 / 4 / 5명 이상 -- 월드보스 인원 버프와 같은 표, 월드보스 싸움터는 그쪽 것만), 체력 x(1 + 0.2 x (인원 - 1), 최대 +80%),
@@ -5003,7 +5008,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         { String ca = mineChaosAlive(userName, System.currentTimeMillis()); if (ca != null) out.put("chaosLock", ca); } // [2026-11-17] 혼돈스러운 마계 -- 귀환의 문이 닫혀 있다
         out.put("llPass", items.getOrDefault(MINE_ITEM_LL_PASS, 0) > 0); // [2026-11-17] 최후의 방어선 통행
-        out.put("mailN", mineMailUnread(items)); // [2026-11-17] 안 받은 우편
+        out.put("mailN", mineMailUnread(userName, items)); // [2026-11-17] 안 받은 우편
         out.put("visitedTcity", mineTowerOk(userName) && (items.getOrDefault(MINE_ITEM_VISIT_TCITY, 0) > 0 || isMineAdmin(userName)));
         out.put("visitedArchi", items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0 || isMineAdmin(userName)); // [2026-10-28] 다도해 마을
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
@@ -8428,6 +8433,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (hitters == null || hitters.isEmpty()) return 0;
         S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
         if (!ot.boss || ot.noReward || ot.sim || ot.dummy || om.type == S5MineMobs.WB_BOSS_TYPE) return 0; // [2026-11-15] 월드보스는 순위 보상
+        { // [2026-11-18] "킬로그도 같이 처치했으면(용병이어도 누구 플레이어인지) 공동 처치로" -- 함께 싸운 사람(용병 주인 포함) 모두의 기록에 한 줄
+            java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
+            all.add(killer);
+            if (hitters != null) all.addAll(hitters);
+            all.remove(null);
+            StringBuilder nm = new StringBuilder();
+            for (String u : all) { if (u.equals(killer)) continue; nm.append(nm.length() > 0 ? ", " : "").append(mineNick(u)); }
+            String line = "👑 " + ot.name + (all.size() > 1 ? " 공동 처치" : " 처치") + " -- 마지막 한 방: " + mineNick(killer) + (nm.length() > 0 ? " · 함께: " + nm : "");
+            for (String u : all) { try { S5MineSessionLog.action(u, "[웹] 광산 전투 보스 처치", line, null); } catch (Exception ignore) { } }
+        }
         int n = 0;
         for (String u : hitters) {
             if (u == null || u.equals(killer)) continue;
