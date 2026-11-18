@@ -6517,7 +6517,7 @@ var TowerMine = (function () {
   function antGate(x) {
     if (!map || map.id !== 'desert') return false;
     var wx = Math.floor(map.w * ANT_FALL_X);
-    return x < wx && P.x >= wx && myLv() < ANT_GATE_LV;
+    return x < wx && P.x >= wx && myLv() < ANT_GATE_LV && !(st && st.combat && (st.combat.rebirth | 0) > 0); // [2026-11-18] "사막 입장 레벨 -- 환생자는 제한 없이"
   }
   function antFallCheck() {
     if (!map || map.id !== 'desert' || busy || fade || smithOpen || P.x >= map.w * ANT_FALL_X || Math.random() >= ANT_FALL_P) return;
