@@ -1762,7 +1762,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<String> got = new ArrayList<>();
             int best = 0;
             for (int i = 0; i < n; i++) {
-                int g = mgRoll(tier), cls = acc ? 9 : items.getOrDefault(MINE_ITEM_MERC_ON, 0) > 0 ? Math.min(2, items.get(MINE_ITEM_MERC_ON) - 1) : RND.nextInt(3); // [2026-11-17] 지금 용병 직업의 것으로
+                int[] mact = mineMercActive(items); // [2026-11-18] 데리고 다니는 용병(둘이면 둘 중 하나) 직업의 것으로
+                int g = mgRoll(tier), cls = acc ? 9 : mact.length > 0 ? mineMercCls(items, mact[RND.nextInt(mact.length)]) : items.getOrDefault(MINE_ITEM_MERC_ON, 0) > 0 ? Math.min(2, items.get(MINE_ITEM_MERC_ON) - 1) : RND.nextInt(3); // [2026-11-17] 지금 용병 직업의 것으로
                 String part = acc ? MG_PARTS[3 + RND.nextInt(3)] : MG_PARTS[RND.nextInt(3)], ic = mgCode(part, cls, g);
                 int q = items.getOrDefault(ic, 0) + 1;
                 dao.upsertMineItem(userName, ic, q);
@@ -1777,7 +1778,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", "🎁 " + MG_TIER_NAMES[tier] + " " + (acc ? "악세" : "장비") + " 상자 " + n + "번 -- " + String.join(", ", got));
         } else if ("equip".equals(action)) {
             int c = grade;
-            if (c < 0 || c > 2 || mineMercLv(items, c) <= 0) { out.put("message", "계약한 용병에게만 끼울 수 있어요."); return out; }
+            if (c < 0 || c > MINE_MERC_K2 || mineMercLv(items, c) <= 0) { out.put("message", "계약한 용병에게만 끼울 수 있어요."); return out; } // [2026-11-18] c = 기록 번호(3 = 두 번째 용병)
+            int mcl = mineMercCls(items, c);
             String[] p = code == null ? new String[0] : code.split("_");
             if (p.length != 3 || !"MG".equals(p[0]) || p[1].length() != 2) { out.put("message", "그런 장비는 없어요."); return out; }
             String part = p[1].substring(0, 1);
@@ -1787,30 +1789,30 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             //  무기/투구/갑옷은 직업과 상관없이 같은 부위·같은 ★이면 같은 장비로 친다. 끼우면 그 용병 직업의 것으로(가진 것 중 아무 직업 것이나 하나 쓴다).
             if (java.util.Arrays.asList(MG_PARTS).contains(part) && !mgAcc(part) && items.getOrDefault(code, 0) < 1) for (int oc = 0; oc < 3; oc++) if (items.getOrDefault(mgCode(part, oc, g), 0) > 0) { code = mgCode(part, oc, g); cls = oc; break; }
             if (!java.util.Arrays.asList(MG_PARTS).contains(part) || g < 1 || g > 7 || items.getOrDefault(code, 0) < 1) { out.put("message", "가진 장비가 아니에요."); return out; }
-            if (!mgAcc(part)) cls = c;
+            if (!mgAcc(part)) cls = mcl;
             String slot = mineMercKey(c, "G" + part);
             int old = items.getOrDefault(slot, 0);
             dao.upsertMineItem(userName, code, items.get(code) - 1);
             items.put(code, items.get(code) - 1);
-            if (old > 0) { String oc = mgCode(part, mgAcc(part) ? 9 : c, old); int oq = items.getOrDefault(oc, 0) + 1; dao.upsertMineItem(userName, oc, oq); items.put(oc, oq); }
+            if (old > 0) { String oc = mgCode(part, mgAcc(part) ? 9 : mcl, old); int oq = items.getOrDefault(oc, 0) + 1; dao.upsertMineItem(userName, oc, oq); items.put(oc, oq); }
             dao.upsertMineItem(userName, slot, g);
             items.put(slot, g);
             out.put("ok", true);
-            out.put("message", "🛡️ " + MINE_MERC_NAMES[c] + "에게 " + mgName(part, cls, g) + "을(를) 끼웠어요. (" + mgEffText(part, g) + ")");
+            out.put("message", "🛡️ " + mineMercNm(items, c, "NM") + "에게 " + mgName(part, cls, g) + "을(를) 끼웠어요. (" + mgEffText(part, g) + ")");
         } else if ("unequip".equals(action)) {
             int c = grade;
-            if (c < 0 || c > 2 || !java.util.Arrays.asList(MG_PARTS).contains(code)) { out.put("message", "그런 칸은 없어요."); return out; }
+            if (c < 0 || c > MINE_MERC_K2 || !java.util.Arrays.asList(MG_PARTS).contains(code)) { out.put("message", "그런 칸은 없어요."); return out; }
             String slot = mineMercKey(c, "G" + code);
             int old = items.getOrDefault(slot, 0);
             if (old <= 0) { out.put("message", "끼운 장비가 없어요."); return out; }
-            String oc = mgCode(code, mgAcc(code) ? 9 : c, old);
+            String oc = mgCode(code, mgAcc(code) ? 9 : mineMercCls(items, c), old);
             int oq = items.getOrDefault(oc, 0) + 1;
             dao.upsertMineItem(userName, oc, oq);
             items.put(oc, oq);
             dao.upsertMineItem(userName, slot, 0);
             items.put(slot, 0);
             out.put("ok", true);
-            out.put("message", MINE_MERC_NAMES[c] + "의 " + MG_PART_NAMES[java.util.Arrays.asList(MG_PARTS).indexOf(code)] + "을(를) 뺐어요.");
+            out.put("message", mineMercNm(items, c, "NM") + "의 " + MG_PART_NAMES[java.util.Arrays.asList(MG_PARTS).indexOf(code)] + "을(를) 뺐어요.");
         } else if ("gem".equals(action)) { // [2026-11-15] 보석 사기 -- code = 보석 코드, grade = 개수
             if (!mineAtNpc(row, "tokenshop")) { out.put("message", "증표 상인에게서만 살 수 있어요."); return out; }
             Object[] gm = null;
@@ -3617,10 +3619,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             hp = mineHpNow(lrow, now, lock, rb);
         }
         if (mercExp > 0) { // [2026-11-05] 용병이 쓰러뜨린 몬스터 경험치 -- 내 것으로
-            mineMercShare(userName, mercExp, lv, mercR[0], out); // [2026-11-06] 용병 경험치(용병 처치 -- 몬스터 레벨 대신 내 레벨로, 처치마다 최소 1)
+            mineMercShare(userName, items, mercExp, lv, mercR[0], out); // [2026-11-06] 용병 경험치(용병 처치 -- 몬스터 레벨 대신 내 레벨로, 처치마다 최소 1)
             long[] mg = mineAuraExp(userName, lv, exp, hp, lock, rb, mercExp, false, out);
             lv = (int) mg[0]; exp = mg[1]; hp = (int) mg[2]; lock = (int) mg[3];
-            Object mo2 = out.get("merc");
+            String mkx = out.get("merc") instanceof Map ? "merc" : "merc2"; // [2026-11-18] 두 용병이 같이 잡아도 "내 경험치 +"는 한 번(첫 칸에)
+            if (!"merc2".equals(mkx) && out.get("merc2") instanceof Map) ((Map<?, ?>) out.get("merc2")).remove("kexp");
+            Object mo2 = out.get(mkx);
             if (mo2 instanceof Map) { @SuppressWarnings("unchecked") Map<String, Object> mm = (Map<String, Object>) mo2; mm.put("kexp", mg[5]); } // [2026-11-07] 화면의 "내 경험치 +"는 실제로 오른 만큼(가득 차 있으면 0 -- 안 띄움)
             if (mg[4] > 0) out.put("levelUp", (int) mg[4]);
         }
@@ -4363,7 +4367,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long baseExp = mineLuckExp(items, mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
             long[] xa = mineExpAdd(lv, exp, expGain, rb); // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다), [2026-11-08] 진환생은 99를 넘어
             lv = (int) xa[0]; exp = xa[1]; levelUp += (int) xa[2];
-            mineMercShare(userName, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
+            mineMercShare(userName, items, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
             if (!wasReady && mineRebirthReady(lv, exp, rb)) out.put("rebirthReadyNow", true);
             if (levelUp > 0) { // 레벨이 오르면 체력이 다 차고 [2026-10-25] 잠긴 최대 체력도 풀린다
                 hp = mineHpMax(lv, rb);
@@ -4477,7 +4481,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long[] wr = mineWhirlSweep(userName, map, items, atkBase, x, y, now, am, out);
             ar[0] += wr[0]; ar[1] += wr[1];
             if (ar[0] > 0) {
-                mineMercShare(userName, ar[1], lv, ar[0], out); // [2026-11-06] 용병 경험치(검기 처치)
+                mineMercShare(userName, items, ar[1], lv, ar[0], out); // [2026-11-06] 용병 경험치(검기 처치)
                 long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, ar[1], died, out);
                 lv = (int) g[0]; exp = g[1]; hp = (int) g[2]; lock = (int) g[3]; levelUp += (int) g[4];
                 kills += (int) ar[0];
@@ -4679,7 +4683,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("helmet", helmetTier);
         out.put("helmetInfo", mineHelmetInfo(userName, helmetTier));
         out.put("aura", mineAuraInfo(items)); // [2026-11-04] 검기(배운 단계/켠 단계)
-        { List<String> pay = new ArrayList<>(); mineMercPayroll(userName, items, System.currentTimeMillis(), pay); if (!pay.isEmpty()) out.put("mercPay", pay); out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis())); out.put("mercs", mineMercCards(items)); } // [2026-11-06] 미접속 동안 밀린 급여도 // [2026-11-06] 용병 관리(직업별 3칸) // [2026-11-05] 용병(시험 중 -- 관리자만)
+        { List<String> pay = new ArrayList<>(); mineMercPayroll(userName, items, System.currentTimeMillis(), pay); if (!pay.isEmpty()) out.put("mercPay", pay); out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis())); out.put("merc2", mineMercInfo2(userName, items, System.currentTimeMillis())); out.put("mercs", mineMercCards(items)); } // [2026-11-06] 미접속 동안 밀린 급여도 // [2026-11-06] 용병 관리(직업별 3칸) // [2026-11-05] 용병(시험 중 -- 관리자만)
         out.put("ench", mineEnchInfo(items)); // [2026-10-29] 무기 속성 부여 // [2026-10-24] 대장장이 창의 투구 업그레이드
         out.put("helmetNeed", mineHelmetNeed(map));
         mineGearPayload(userName, items, out); // [2026-10-24] 장신구/장화/용왕의 반지/선장 퀘스트
@@ -7047,7 +7051,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("ult", mineUltInfo(userName, items));
             return out;
         }
-        mineMercShare(userName, r[1], lv, r[0], out);
+        mineMercShare(userName, items, r[1], lv, r[0], out);
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         int px = x, py = y;
         if (k == 1) { // [2026-11-08] "일섬 사용 시 맞춘 대상에게 바싹 붙게" -- 대상(보스는 2x2) 둘레 8칸 중 걸을 수 있고 지금 자리에서 가장 가까운 칸으로
@@ -7147,7 +7151,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
         long[] wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
         r = new long[] { r[0] + wr[0], r[1] + wr[1] };
-        mineMercShare(userName, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
+        mineMercShare(userName, items, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         int kh = mineRegenKillHeal(items, (int) r[0], mineHpMax((int) g[0], rb)); // [2026-11-04] 재생의 장갑 2단계
         if (kh > 0) { g[2] = Math.min(mineHpCap((int) g[0], (int) g[3], rb), g[2] + kh); out.put("killHeal", kh); }
@@ -7251,8 +7255,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         { "렌지", "아츠시", "츠요시", "고우키", "타이가", "유이토", "카게로우", "나기", "야토", "시노" },
         { "세리나", "츠키미", "스즈네", "아마츠", "히카리" },
         { "리오", "카나", "미코토", "세라", "아리스", "코하루", "미레이", "스이렌", "아마네", "미코" } };
-    static int mineMercNi(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_NAMEPOOL[c].length); }
-    static String mineMercNm(Map<String, Integer> items, int c, String f) { String[] p = MINE_MERC_NAMEPOOL[c]; return p[Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), p.length)]; }
+    static int mineMercNi(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_NAMEPOOL[mineMercCls(items, c)].length); }
+    static String mineMercNm(Map<String, Integer> items, int c, String f) { String[] p = MINE_MERC_NAMEPOOL[mineMercCls(items, c)]; return p[Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), p.length)]; }
     // [2026-11-11] "용병 급여는 최초 1번만, 교체 때도 안 받게" -- 날마다 내던 급여(자동 차감/선금/밀리면 쉼)를 없앴다. 계정에서 처음 계약할 때 한 번만 낸다(MERC_HIRED).
     //  이미 용병이 있는 사람(예전에 계약)은 처음 계약을 마친 것으로 본다. MERC{c}_PAID/SAL/MANUAL/WARN 기록은 남아 있어도 쓰지 않는다.
     static final String MINE_ITEM_MERC_HIRED = "MERC_HIRED";
@@ -7363,7 +7367,31 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_MERC_REST_MS = 20_000L;
     static final double MINE_MERC_REGEN = 0.05;
     static String mineMercKey(int c, String f) { return "MERC" + c + "_" + f; }
-    static int mineMercLv(Map<String, Integer> items, int c) { return Math.max(0, Math.min(MINE_LV_MAX, items.getOrDefault(mineMercKey(c, "LV"), 0))); }
+    // [2026-11-18] "두 번째 용병 -- 같은 직업 허용, 5환생 이상, 경험치는 첫 용병과 같게, 선공 모드는 저마다, 계약 Lv.70(진환생 99레벨 이상은 Lv.90), 용병 99 이후도 계속 레벨업" --
+    //  용병 기록 번호 k: 0~2 = 첫 칸(직업마다 한 칸, 예전 그대로), 3 = 두 번째 칸(MERC3_*, 직업은 MERC3_C). 데리고 다니기 MERC_ON2(1/0), 선공 MERC_MODE2(1/0).
+    //  싸움 상태(체력/쉬기/대상)는 칸마다 따로(MINE_MERC / MINE_MERC2). 동료 장비는 칸(k)마다 끼운다.
+    static final int MINE_MERC_K2 = 3;
+    static final String MINE_ITEM_MERC_ON2 = "MERC_ON2", MINE_ITEM_MERC_MODE2 = "MERC_MODE2";
+    static final int MINE_MERC2_LV = 70, MINE_MERC2_LV_TRUE = 90;
+    static final int MINE_MERC_LV_TOP = 9999; // [2026-11-18] 99 이후도 계속(필요 경험치는 99레벨 값 그대로, 공격력은 플레이어 99 이후와 같은 양씩 -- mineOverAtk)
+    static int mineMercCls(Map<String, Integer> items, int k) { return k < MINE_MERC_K2 ? Math.max(0, Math.min(2, k)) : Math.max(0, Math.min(2, items.getOrDefault(mineMercKey(MINE_MERC_K2, "C"), 0))); }
+    static boolean mineMercOn2(Map<String, Integer> items) { return mineMercLv(items, MINE_MERC_K2) > 0 && items.getOrDefault(MINE_ITEM_MERC_ON2, 0) > 0; }
+    /** 데리고 다니는 용병 기록 번호들(첫 칸 먼저). */
+    static int[] mineMercActive(Map<String, Integer> items) {
+        int a = mineMercOn(items);
+        boolean b = mineMercOn2(items);
+        return a >= 0 && b ? new int[] { a, MINE_MERC_K2 } : a >= 0 ? new int[] { a } : b ? new int[] { MINE_MERC_K2 } : new int[0];
+    }
+    static boolean mineMercPreModeK(Map<String, Integer> items, int k) { return items.getOrDefault(k == MINE_MERC_K2 ? MINE_ITEM_MERC_MODE2 : MINE_ITEM_MERC_MODE, 0) == 1; }
+    static long mineMercNeed(int lv) { return mineExpNeed(Math.min(MINE_LV_MAX, Math.max(1, lv)), 0); }
+    static final java.util.concurrent.ConcurrentHashMap<String, MercSt> MINE_MERC2 = new java.util.concurrent.ConcurrentHashMap<>();
+    static java.util.concurrent.ConcurrentHashMap<String, MercSt> mineMercMap(int k) { return k == MINE_MERC_K2 ? MINE_MERC2 : MINE_MERC; }
+    /** 두 번째 칸 계약 레벨 -- 이미 있으면 그 레벨 그대로(교체), 처음이면 Lv.70, 진환생이고 99레벨 이상이면 Lv.90. */
+    int mineMerc2HireLv(HashMap<String, Object> row, Map<String, Integer> items) {
+        int had = mineMercLv(items, MINE_MERC_K2);
+        return had > 0 ? had : mineTrueRebirth(items) && row != null && mineLv(row) >= MINE_LV_MAX ? MINE_MERC2_LV_TRUE : MINE_MERC2_LV;
+    }
+    static int mineMercLv(Map<String, Integer> items, int c) { return Math.max(0, Math.min(MINE_MERC_LV_TOP, items.getOrDefault(mineMercKey(c, "LV"), 0))); }
     static int mineMercEl(Map<String, Integer> items, int c) { int e = items.getOrDefault(mineMercKey(c, "EL"), 0); for (int x : MINE_MERC_ELS) if (x == e) return e; return S5MineMobs.EL_FIRE; }
     static int mineMercStage(int lv) { return Math.min(5, 1 + Math.max(0, lv) / 20); }
     static int mineMercStage2(int lv) { return lv >= MINE_MERC_SKILL_LV ? Math.min(3, 1 + (lv - MINE_MERC_SKILL_LV) / 20) : 0; }
@@ -7380,10 +7408,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  Lv.80 3,000 -> Lv.99 10,000(레벨마다 약 368씩). (같은 날의 2배~1.8배 / 1.1배는 이것으로 바뀜)
     static final double MINE_MERC_ATK_LV1 = 40, MINE_MERC_ATK_LV80 = 3_000, MINE_MERC_ATK_LV99 = 10_000;
     static double mineMercBaseAtk(int lv) {
-        lv = Math.max(1, Math.min(MINE_LV_MAX, lv));
-        return lv <= 80 ? MINE_MERC_ATK_LV1 + (MINE_MERC_ATK_LV80 - MINE_MERC_ATK_LV1) * (lv - 1) / 79.0 : MINE_MERC_ATK_LV80 + (MINE_MERC_ATK_LV99 - MINE_MERC_ATK_LV80) * (lv - 80) / 19.0;
+        int l = Math.max(1, Math.min(MINE_LV_MAX, lv));
+        return (l <= 80 ? MINE_MERC_ATK_LV1 + (MINE_MERC_ATK_LV80 - MINE_MERC_ATK_LV1) * (l - 1) / 79.0 : MINE_MERC_ATK_LV80 + (MINE_MERC_ATK_LV99 - MINE_MERC_ATK_LV80) * (l - 80) / 19.0)
+                + mineOverAtk(lv); // [2026-11-18] 99 이후 -- 플레이어와 같은 양(100레벨 +300, 그 뒤 +10씩 더)
     }
-    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[c] * (1 + mineMgBonus(items, c)[0] / 100.0)); } // [2026-11-15] 동료 장비 공격력 %
+    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[mineMercCls(items, c)] * (1 + mineMgBonus(items, c)[0] / 100.0)); } // [2026-11-15] 동료 장비 공격력 %
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
     /** 평타 설명(단계 s = 1 + 레벨/20). */
@@ -7416,10 +7445,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (ms.restUntil == 0 && ms.hp < max && now - ms.fightAt > 3_000L && ms.at > 0) ms.hp = (int) Math.min(max, ms.hp + max * MINE_MERC_REGEN * (now - ms.at) / 1000.0);
         ms.at = now;
     }
-    /** 용병 c 한 칸(용병 관리 창) -- 계약 안 했으면 {t, name, owned:false}. */
-    static HashMap<String, Object> mineMercCard(Map<String, Integer> items, int c) {
+    /** 용병 한 칸(용병 관리 창) -- 계약 안 했으면 {k, t, name, owned:false}. [2026-11-18] k = 기록 번호(0~2 첫 칸 직업별, 3 두 번째 칸), t = 직업. */
+    static HashMap<String, Object> mineMercCard(Map<String, Integer> items, int k) {
         HashMap<String, Object> m = new HashMap<>();
-        int lv = mineMercLv(items, c);
+        int lv = mineMercLv(items, k), c = mineMercCls(items, k);
+        boolean two = k == MINE_MERC_K2;
+        m.put("k", k);
+        m.put("slot", two ? 2 : 1);
         m.put("t", c);
         m.put("name", MINE_MERC_NAMES[c]);
         m.put("reach", MINE_MERC_REACH[c]);
@@ -7427,64 +7459,65 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("owned", lv > 0);
         { // [2026-11-15] 동료 장비(칸마다 ★등급, 0 = 없음) + 합친 효과
             HashMap<String, Integer> gs = new HashMap<>();
-            for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(6, items.getOrDefault(mineMercKey(c, "G" + p), 0))));
+            for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(6, items.getOrDefault(mineMercKey(k, "G" + p), 0))));
             m.put("mg", gs);
-            m.put("mgb", mineMgBonus(items, c));
+            m.put("mgb", mineMgBonus(items, k));
             HashMap<String, Object> gi = new HashMap<>(); // [2026-11-16] 칸마다 끼운 장비 이름/효과
             for (String p : MG_PARTS) { int g = gs.get(p); if (g > 0) gi.put(p, new String[] { mgName(p, mgAcc(p) ? 9 : c, g), mgEffText(p, g) }); }
             m.put("mgi", gi);
         }
         if (lv <= 0) return m;
-        int el = mineMercEl(items, c), s = mineMercStage(lv);
+        int el = mineMercEl(items, k), s = mineMercStage(lv);
         m.put("lv", lv);
-        m.put("exp", items.getOrDefault(mineMercKey(c, "EXP"), 0));
-        m.put("need", lv >= MINE_LV_MAX ? 0 : mineExpNeed(lv, 0));
-        m.put("atk", mineMercAtk(items, c));
-        m.put("max", mineMercHp(items, c));
-        m.put("on", mineMercOn(items) == c);
+        m.put("exp", items.getOrDefault(mineMercKey(k, "EXP"), 0));
+        m.put("need", lv >= MINE_MERC_LV_TOP ? 0 : mineMercNeed(lv));
+        m.put("atk", mineMercAtk(items, k));
+        m.put("max", mineMercHp(items, k));
+        m.put("on", two ? mineMercOn2(items) : mineMercOn(items) == k);
         m.put("el", el);
         m.put("elName", S5MineMobs.ELEM_NAMES[el]);
         int sMax = s, s2Max = mineMercStage2(lv); // [2026-11-06] 열린 단계 / 고른 단계(0 = 끔) -- 화면 스킬 탭
-        s = mineMercSel(items, c, "S1", sMax);
-        int s2 = mineMercSel(items, c, "S2", s2Max);
+        s = mineMercSel(items, k, "S1", sMax);
+        int s2 = mineMercSel(items, k, "S2", s2Max);
         m.put("st", s);
         m.put("stMax", sMax);
-        m.put("stSel", items.getOrDefault(mineMercKey(c, "S1"), 0));
+        m.put("stSel", items.getOrDefault(mineMercKey(k, "S1"), 0));
         m.put("skill", mineMercSkill(c, el, Math.max(1, s)));
         if (sMax < 5) { m.put("nextLv", sMax * 20); m.put("skillNext", mineMercSkill(c, el, sMax + 1)); }
         m.put("s2", s2);
         m.put("s2Max", s2Max);
-        m.put("s2Sel", items.getOrDefault(mineMercKey(c, "S2"), 0));
+        m.put("s2Sel", items.getOrDefault(mineMercKey(k, "S2"), 0));
         m.put("skill2", mineMercSkill2(c, el, Math.max(1, s2 > 0 ? s2 : s2Max)));
         if (s2Max < 3) { m.put("next2Lv", MINE_MERC_SKILL_LV + s2Max * 20); if (s2Max > 0) m.put("skill2Next", mineMercSkill2(c, el, s2Max + 1)); }
         List<String> d1 = new ArrayList<>(), d2 = new ArrayList<>();
-        for (int k = 1; k <= 5; k++) d1.add(mineMercSkill(c, el, k));
-        for (int k = 1; k <= 3; k++) d2.add(mineMercSkill2(c, el, k));
+        for (int q = 1; q <= 5; q++) d1.add(mineMercSkill(c, el, q));
+        for (int q = 1; q <= 3; q++) d2.add(mineMercSkill2(c, el, q));
         m.put("skills1", d1);
         m.put("skills2", d2);
-        m.put("ni", mineMercNi(items, c, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
-        m.put("nm", mineMercNm(items, c, "NM")); // [2026-11-06] 이름 / 급여
-        m.put("paidUntil", items.getOrDefault(mineMercKey(c, "PAID"), 0) * 60_000L);
-        m.put("unpaid", !mineMercPaid(items, c, System.currentTimeMillis()));
-        m.put("sal", mineCostText(mineMercCost(items, c)));
-        m.put("auto", items.getOrDefault(mineMercKey(c, "MANUAL"), 0) <= 0);
-        m.put("want", items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1 == c);
-        m.put("mode", items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1 ? 1 : 0); // [2026-11-06] 선공/협공
+        m.put("ni", mineMercNi(items, k, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
+        m.put("nm", mineMercNm(items, k, "NM")); // [2026-11-06] 이름 / 급여
+        m.put("paidUntil", items.getOrDefault(mineMercKey(k, "PAID"), 0) * 60_000L);
+        m.put("unpaid", !mineMercPaid(items, k, System.currentTimeMillis()));
+        m.put("sal", mineCostText(mineMercCost(items, k)));
+        m.put("auto", items.getOrDefault(mineMercKey(k, "MANUAL"), 0) <= 0);
+        m.put("want", two ? items.getOrDefault(MINE_ITEM_MERC_ON2, 0) > 0 : items.getOrDefault(MINE_ITEM_MERC_ON, 0) - 1 == k);
+        m.put("mode", mineMercPreModeK(items, k) ? 1 : 0); // [2026-11-06] 선공/협공, [2026-11-18] 용병마다
         return m;
     }
     static List<HashMap<String, Object>> mineMercCards(Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();
-        for (int c = 0; c < MINE_MERC_NAMES.length; c++) l.add(mineMercCard(items, c));
+        for (int k = 0; k <= MINE_MERC_K2; k++) l.add(mineMercCard(items, k)); // [2026-11-18] 목록 번호 = 기록 번호(3 = 두 번째 칸)
         return l;
     }
-    /** 데리고 다니는 용병(없으면 null) -- 칸 정보 + 지금 체력/쉬기. */
-    static HashMap<String, Object> mineMercInfo(String userName, Map<String, Integer> items, long now) {
-        int c = mineMercOn(items);
-        if (c < 0) return null;
-        HashMap<String, Object> m = mineMercCard(items, c);
-        MercSt ms = MINE_MERC.computeIfAbsent(userName, u -> new MercSt());
+    /** 데리고 다니는 첫 칸 용병(없으면 null) -- 칸 정보 + 지금 체력/쉬기. */
+    static HashMap<String, Object> mineMercInfo(String userName, Map<String, Integer> items, long now) { int c = mineMercOn(items); return c < 0 ? null : mineMercInfoK(userName, items, now, c); }
+    /** [2026-11-18] 데리고 다니는 두 번째 칸 용병(없으면 null). */
+    static HashMap<String, Object> mineMercInfo2(String userName, Map<String, Integer> items, long now) { return mineMercOn2(items) ? mineMercInfoK(userName, items, now, MINE_MERC_K2) : null; }
+    static HashMap<String, Object> mineMercInfoK(String userName, Map<String, Integer> items, long now, int k) {
+        HashMap<String, Object> m = mineMercCard(items, k);
+        MercSt ms = mineMercMap(k).computeIfAbsent(userName, u -> new MercSt());
         synchronized (ms) {
-            mineMercRefresh(ms, c, mineMercHp(items, c), now);
+            mineMercRefresh(ms, mineMercCls(items, k), mineMercHp(items, k), now);
             m.put("hp", ms.hp);
             m.put("rest", ms.restUntil);
         }
@@ -7492,28 +7525,31 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** [2026-11-06] "용병 경험치는 플레이어가 얻는 경험치의 1%, 1레벨 용병이 99레벨 몬스터를 같이 잡아도 렙업이 과하지 않게" -- 데리고 다니는 용병에게. out.mercXp. */
     // [2026-11-06] "용병 소환 후 같이 처치하면 최소 경험치 1씩은" -- 처치 수(kills)만큼은 꼭 받는다(1% 보정/상한보다 우선).
-    void mineMercShare(String userName, long gain, int mobLv, long kills, HashMap<String, Object> out) {
+    void mineMercShare(String userName, long gain, int mobLv, long kills, HashMap<String, Object> out) { mineMercShare(userName, null, gain, mobLv, kills, out); }
+    // [2026-11-18] 두 번째 용병도 첫 용병과 같은 경험치(저마다 1%). 아이템은 부르는 쪽이 이미 읽은 것을 쓴다(처치마다 아이템 전체를 다시 읽지 않게 -- null이면 읽는다).
+    //  99 이후도 계속 오른다(필요 경험치는 99레벨 값 그대로). 결과: out.mercXp(첫 칸) / out.mercXp2(두 번째 칸).
+    void mineMercShare(String userName, Map<String, Integer> items, long gain, int mobLv, long kills, HashMap<String, Object> out) {
         if (gain <= 0 && kills <= 0) return;
-        Map<String, Integer> items = mineItems(userName);
-        int c = mineMercOn(items);
-        if (c < 0) return;
-        int lv = mineMercLv(items, c);
-        if (lv >= MINE_LV_MAX) return;
-        double f = MINE_MERC_EXP_PCT / 100.0;
-        int d = mobLv - lv;
-        if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
-        long need = mineExpNeed(lv, 0), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT / 100)));
-        long exp = items.getOrDefault(mineMercKey(c, "EXP"), 0) + g;
-        int up = 0;
-        while (lv < MINE_LV_MAX && exp >= mineExpNeed(lv, 0)) { exp -= mineExpNeed(lv, 0); lv++; up++; }
-        if (lv >= MINE_LV_MAX) exp = 0;
-        dao.upsertMineItem(userName, mineMercKey(c, "EXP"), (int) exp);
-        items.put(mineMercKey(c, "EXP"), (int) exp);
-        if (up > 0) { dao.upsertMineItem(userName, mineMercKey(c, "LV"), lv); items.put(mineMercKey(c, "LV"), lv); }
-        HashMap<String, Object> x = mineMercCard(items, c);
-        x.put("gain", g);
-        if (up > 0) x.put("up", up);
-        out.put("mercXp", x);
+        if (items == null) items = mineItems(userName);
+        for (int k : mineMercActive(items)) {
+            int lv = mineMercLv(items, k);
+            if (lv >= MINE_MERC_LV_TOP) continue;
+            double f = MINE_MERC_EXP_PCT / 100.0;
+            int d = mobLv - lv;
+            if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
+            long need = mineMercNeed(lv), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT / 100)));
+            long exp = items.getOrDefault(mineMercKey(k, "EXP"), 0) + g;
+            int up = 0;
+            while (lv < MINE_MERC_LV_TOP && exp >= mineMercNeed(lv)) { exp -= mineMercNeed(lv); lv++; up++; }
+            if (lv >= MINE_MERC_LV_TOP) exp = 0;
+            dao.upsertMineItem(userName, mineMercKey(k, "EXP"), (int) exp);
+            items.put(mineMercKey(k, "EXP"), (int) exp);
+            if (up > 0) { dao.upsertMineItem(userName, mineMercKey(k, "LV"), lv); items.put(mineMercKey(k, "LV"), lv); }
+            HashMap<String, Object> x = mineMercCard(items, k);
+            x.put("gain", g);
+            if (up > 0) x.put("up", up);
+            out.put(k == MINE_MERC_K2 ? "mercXp2" : "mercXp", x);
+        }
     }
     // [2026-11-07] 용병 선공 -- 화면이 1초 턴마다 보내는 보이는 칸 수(가로/세로 절반, vw/vh). 이 안에 보이는 몬스터를 선공 모드 용병이 먼저 친다.
     static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_MERC_VIEW = new java.util.concurrent.ConcurrentHashMap<>();
@@ -7531,7 +7567,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return Math.abs(dx) <= w && Math.abs(dy) <= h;
     }
     /** 선공 모드로 데리고 다니는 용병이 있나. */
-    static boolean mineMercPreMode(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_MERC_MODE, 0) == 1 && mineMercOn(items) >= 0; }
+    static boolean mineMercPreMode(Map<String, Integer> items) { return (mineMercPreModeK(items, 0) && mineMercOn(items) >= 0) || (mineMercPreModeK(items, MINE_MERC_K2) && mineMercOn2(items)); } // [2026-11-18] 둘 중 하나라도
     /** [2026-11-07] 선공 -- 화면에 보이는 가장 가까운 몬스터(보스/수하/허수아비/분신/숨은 마물 빼고)를 싸움에 끌어들인다(그 몬스터는 나를 쫓아온다). 끌어들였으면 true. */
     boolean mineMercPreempt(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, HashMap<String, Object> out) {
         if (map.boat() || !mineMercPreMode(items)) return false;
@@ -7573,14 +7609,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<String> pay = new ArrayList<>(); // [2026-11-06] 급여 날이 지났으면 자동 차감(안내)
         mineMercPayroll(userName, items, now, pay);
         if (!pay.isEmpty()) { out.put("mercPay", pay); out.put("mercs", mineMercCards(items)); }
-        int cls = mineMercOn(items);
-        if (cls < 0) return new long[] { 0, 0 };
-        HashMap<String, Object> mo = mineMercInfo(userName, items, now);
-        out.put("merc", mo);
+        long[] r = { 0, 0 };
+        for (int k : mineMercActive(items)) { // [2026-11-18] 두 번째 용병 -- 첫 칸, 두 번째 칸 차례로(같은 싸움, 선공 모드는 저마다)
+            long[] a = mineMercTurnK(userName, map, items, x, y, now, k == MINE_MERC_K2 ? MINE_ENGAGE.getOrDefault(userName, e) : e, out, k);
+            r[0] += a[0];
+            r[1] += a[1];
+        }
+        return r;
+    }
+    /** 용병 한 명(기록 번호 k)의 차례 -- 결과는 out.merc(첫 칸) / out.merc2(두 번째 칸). */
+    long[] mineMercTurnK(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, MineEngage e, HashMap<String, Object> out, int k) {
+        int cls = mineMercCls(items, k);
+        HashMap<String, Object> mo = mineMercInfoK(userName, items, now, k);
+        out.put(k == MINE_MERC_K2 ? "merc2" : "merc", mo);
         if (map.boat()) return new long[] { 0, 0 };
         // [2026-11-06] "용병을 선공 모드 / 협공 모드로 고르기" -- 협공(기본) = 나와 싸우는 몬스터만, 선공 = 싸우는 몬스터가 칠 수 있는 데 없으면
         //  [2026-11-07] "선공 모드인데 공격을 안 해 -- 플레이어 기준 맵에 보이면 선공" -- 화면에 보이는(MINE_MERC_VIEW) 가장 가까운 몬스터를 골라 싸움에 끌어들인다(mineMercPreempt).
-        if (mineMercPreMode(items)) {
+        if (mineMercPreModeK(items, k)) {
             boolean any = false;
             if (e != null) for (Integer id : e.mobs.keySet()) {
                 if (id < 0 || id >= map.mobs().size()) continue;
@@ -7590,9 +7635,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!any && mineMercPreempt(userName, map, items, x, y, now, out)) e = MINE_ENGAGE.get(userName);
         }
         if (e == null || e.mobs.isEmpty()) return new long[] { 0, 0 };
-        MercSt ms = MINE_MERC.get(userName);
+        MercSt ms = mineMercMap(k).get(userName);
         int pick = -1, best = 99, reach = MINE_MERC_REACH[cls];
-        boolean preMode = mineMercPreMode(items); // [2026-11-07] 선공 모드 -- 화면에 보이면 친다(전사는 그 옆으로 달려간다)
+        boolean preMode = mineMercPreModeK(items, k); // [2026-11-07] 선공 모드 -- 화면에 보이면 친다(전사는 그 옆으로 달려간다)
         synchronized (ms) {
             ms.fightAt = now;
             if (ms.restUntil > now) return new long[] { 0, 0 };
@@ -7609,7 +7654,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ms.target = pick;
         }
         if (pick < 0) return new long[] { 0, 0 };
-        int mlv = mineMercLv(items, cls), el = mineMercEl(items, cls), st = mineMercSel(items, cls, "S1", mineMercStage(mlv)), atk = mineMercAtk(items, cls); // [2026-11-06] 고른 평타 단계(0 = 끔)
+        int mlv = mineMercLv(items, k), el = mineMercEl(items, k), st = mineMercSel(items, k, "S1", mineMercStage(mlv)), atk = mineMercAtk(items, k); // [2026-11-06] 고른 평타 단계(0 = 끔)
         MobState ps = MINE_MOB_STATE.get(mineMobKey(map, pick));
         // [2026-11-06] "40레벨에 2차 스킬, 쿨타임(20초)마다" -- 평타(1~99): 전사 속성 검기(대상 + 둘레 s칸) / 궁수 속성 화살(한 명 +20% x s) / 마법사 파이어볼(한 명).
         //  2차(40레벨부터, 40/60/80에 1~3단계): 전사 이기어검(가까운 3+2단계마리에 날아가는 검), 마법사 불 메테오(대상 둘레 2+단계칸) / 번개 체인 라이트닝(2+2x단계번 튕김) /
@@ -7617,7 +7662,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<Integer> hitIds = new ArrayList<>();
         List<Double> hitMul = new ArrayList<>();
         List<int[]> hitAt = new ArrayList<>(); // [2026-11-15] 칸마다 따로 맞는 타격의 칸(없으면 null = 몬스터 자리)
-        java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int k = hitIds.indexOf(hid); if (k >= 0) hitMul.set(k, hitMul.get(k) + hm); else { hitIds.add(hid); hitMul.add(hm); hitAt.add(null); } };
+        java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int hk = hitIds.indexOf(hid); if (hk >= 0) hitMul.set(hk, hitMul.get(hk) + hm); else { hitIds.add(hid); hitMul.add(hm); hitAt.add(null); } };
         // [2026-11-15] "여러 칸 때리는 스킬은 한 칸당 데미지, 숫자도 맞은 만큼(합치지 않게)" -- 보스가 걸친 칸마다 따로 한 번: {몬스터 번호, 칸 x, 칸 y}
         java.util.function.BiConsumer<int[], Double> addCell = (c, hm) -> { hitIds.add(c[0]); hitMul.add(hm); hitAt.add(new int[] { c[1], c[2] }); };
         addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : 1.0);
@@ -7658,7 +7703,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             mo.put("adir", new int[] { dvx, dvy });
         }
-        int s2 = mineMercSel(items, cls, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
+        int s2 = mineMercSel(items, k, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
         HashMap<String, Object> sk = null;
         boolean cast = false;
         if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= MINE_MERC_SKILL_MS) { ms.skillAt = now; cast = true; } }
@@ -7672,7 +7717,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 nb.sort((p, q) -> Math.abs(p[1] - x) + Math.abs(p[2] - y) - Math.abs(q[1] - x) - Math.abs(q[2] - y));
                 // [2026-11-06] "한 마리에게 다 꽂히도록, 여러 마리면 나누어서" -- 검 3+2x단계 자루를 가까운 순으로 돌아가며(한 마리면 전부 그 몬스터에게)
                 if (nb.isEmpty()) nb.add(new int[] { pick, ps.fx, ps.fy });
-                for (int k = 0; k < 3 + 2 * s2; k++) { int[] tq = nb.get(k % nb.size()); addHit.accept(tq[0], 1.5 + 0.5 * s2); pts.add(new int[] { tq[1], tq[2], tq[0] }); }
+                for (int sw = 0; sw < 3 + 2 * s2; sw++) { int[] tq = nb.get(sw % nb.size()); addHit.accept(tq[0], 1.5 + 0.5 * s2); pts.add(new int[] { tq[1], tq[2], tq[0] }); }
                 sk.put("k", "sword"); sk.put("nm", "이기어검");
             } else if (cls == 1) { // 화살비
                 synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = 1 + s2; ms.rainUntil = now + MINE_MERC_RAIN_MS; ms.rainMul = 0.6 + 0.2 * s2; }
@@ -7744,7 +7789,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s == null) continue;
             if (om.type == S5MineMobs.HARPY_BOSS_TYPE && mineHarpyNow(map, now)[2] == 1) continue; // [2026-11-11] 나무 뒤에 숨은 하피만 용병도 못 때린다
             boolean beat = S5MineMobs.weakTo(el, ot);
-            int[] mgb = mineMgBonus(items, cls); // [2026-11-15] 동료 장비 -- 치명타(2배), 상성 피해 +%
+            int[] mgb = mineMgBonus(items, k); // [2026-11-15] 동료 장비 -- 치명타(2배), 상성 피해 +%
             boolean mcrit = mgb[1] > 0 && RND.nextInt(100) < mgb[1];
             int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * hitMul.get(hi) * (beat ? 1.5 + mgb[2] / 100.0 : 1) * (mcrit ? 2 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
             boolean dead = false;
@@ -7900,10 +7945,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         boolean ok = true;
         String msg = "";
         int c = tier;
-        boolean cOk = c >= 0 && c < MINE_MERC_NAMES.length;
+        boolean cOk = c >= 0 && c <= MINE_MERC_K2; // [2026-11-18] 3 = 두 번째 용병
         long now = System.currentTimeMillis();
         List<String> pay = new ArrayList<>();
-        if (!"hire".equals(action)) mineMercPayroll(userName, items, now, pay);
+        if (!"hire".equals(action) && !"hire2".equals(action)) mineMercPayroll(userName, items, now, pay);
         if ("hire".equals(action)) { // 계약 -- tier = 후보 칸(0~4), 보여 준 후보(이름/Lv.5~30/속성) 그대로, 첫날 급여를 낸다
             int oi = tier;
             c = oi >= 0 && oi < MINE_MERC_OFFERS ? items.getOrDefault(mineOfKey(oi, "T"), 0) - 1 : -1;
@@ -7945,6 +7990,28 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, c + 1); items.put(MINE_ITEM_MERC_ON, c + 1); // 새 용병이 바로 함께
                 msg = (gone.length() > 0 ? "👋 " + gone + "은(는) 떠났어요. " : "") + "🛡️ Lv." + lv + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, c, "NM") + "와(과) 계약했어요!" + (cost != null ? " 첫 계약 급여 " + mineCostText(cost) + "를 줬어요. 앞으로 급여는 없어요." : "");
             }
+        } else if ("hire2".equals(action)) { // [2026-11-18] 두 번째 용병 -- tier = 후보 칸. 5환생부터, 같은 직업도 된다, 급여 없음.
+            //  처음이면 Lv.70(진환생 99레벨 이상이면 Lv.90), 이미 있으면 그 레벨·경험치를 이어받아 바뀐다(끼운 동료 장비도 그대로). 첫 칸 용병은 그대로.
+            int oi = tier, k2 = MINE_MERC_K2;
+            c = oi >= 0 && oi < MINE_MERC_OFFERS ? items.getOrDefault(mineOfKey(oi, "T"), 0) - 1 : -1;
+            cOk = c >= 0 && c < MINE_MERC_NAMES.length;
+            int had = mineMercLv(items, k2), lv2 = mineMerc2HireLv(row, items);
+            if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
+            else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
+            else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
+            else {
+                String gone = had > 0 ? mineMercNm(items, k2, "NM") : null;
+                int keepExp = had > 0 ? items.getOrDefault(mineMercKey(k2, "EXP"), 0) : 0, el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE);
+                mineMercSet(userName, items, k2, "C", c);
+                mineMercSet(userName, items, k2, "LV", lv2);
+                mineMercSet(userName, items, k2, "EXP", keepExp);
+                mineMercSet(userName, items, k2, "EL", el);
+                mineMercSet(userName, items, k2, "NM", items.getOrDefault(mineOfKey(oi, "NM"), 0));
+                mineOfSet(userName, items, oi, "T", 0); // 이 칸은 새로 뽑는다
+                dao.upsertMineItem(userName, MINE_ITEM_MERC_ON2, 1); items.put(MINE_ITEM_MERC_ON2, 1); // 바로 함께
+                MINE_MERC2.remove(userName); // 체력/대상은 새로
+                msg = (gone != null ? "👋 " + gone + "은(는) 떠났어요. " : "") + "🛡️ 두 번째 용병 -- Lv." + lv2 + " " + S5MineMobs.ELEM_NAMES[el] + " 속성 " + MINE_MERC_NAMES[c] + " " + mineMercNm(items, k2, "NM") + "와(과) 계약했어요!";
+            }
         } else if ("pay".equals(action) || "auto".equals(action)) { // [2026-11-11] 날마다 내던 급여 없앰
             ok = false; msg = "이제 용병 급여는 처음 계약할 때 한 번만 내요. 따로 줄 급여가 없어요.";
         } else if ("pay-old".equals(action)) { // (예전) 급여(선금) 하루치
@@ -7972,10 +8039,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineMercSet(userName, items, c, which == 2 ? "S2" : "S1", n == 0 ? MINE_MERC_SEL_OFF : n);
                 msg = (which == 2 ? "✨ 2차 스킬을 " : "🗡️ 평타를 ") + (n == 0 ? "껐어요." : n + "단계로 맞췄어요.");
             }
-        } else if ("mode".equals(action)) { // [2026-11-06] 선공 / 협공 -- tier = 0 협공, 1 선공
+        } else if ("mode".equals(action)) { // [2026-11-06] 선공 / 협공 -- tier = 0 협공, 1 선공, [2026-11-18] code = 3이면 두 번째 용병(용병마다 따로)
             int md = tier == 1 ? 1 : 0;
-            dao.upsertMineItem(userName, MINE_ITEM_MERC_MODE, md);
-            items.put(MINE_ITEM_MERC_MODE, md);
+            String mk = String.valueOf(MINE_MERC_K2).equals(code) ? MINE_ITEM_MERC_MODE2 : MINE_ITEM_MERC_MODE;
+            dao.upsertMineItem(userName, mk, md);
+            items.put(mk, md);
             msg = md == 1 ? "⚔️ 선공 모드 -- 용병이 사거리 안의 몬스터를 먼저 공격해요." : "🤝 협공 모드 -- 용병이 나와 싸우는 몬스터만 함께 공격해요.";
         } else if ("lv99".equals(action)) { // [2026-11-06] "관리자는 레벨을 99로 올리는 기능"
             if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
@@ -7991,6 +8059,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         } else if ("use".equals(action)) { // 데리고 다니기 / 쉬게 하기
             if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else if (c == MINE_MERC_K2) { // [2026-11-18] 두 번째 용병
+                boolean on = !mineMercOn2(items);
+                dao.upsertMineItem(userName, MINE_ITEM_MERC_ON2, on ? 1 : 0);
+                items.put(MINE_ITEM_MERC_ON2, on ? 1 : 0);
+                msg = on ? "🛡️ " + mineMercNm(items, c, "NM") + "와(과) 함께 다녀요." : "🛡️ " + mineMercNm(items, c, "NM") + "은(는) 용병소에서 쉬어요.";
+            }
             else {
                 boolean on = mineMercOn(items) != c;
                 dao.upsertMineItem(userName, MINE_ITEM_MERC_ON, on ? c + 1 : 0);
@@ -8013,8 +8087,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("offers", offers);
             out.put("full", mineMercCount(items) >= MINE_MERC_MAX); // [2026-11-06] 지금은 한 명만
             out.put("curLv", mineMercCurLv(items)); // [2026-11-06] 교체 후보는 지금보다 2~15레벨 낮게
+            out.put("slot2Open", mineRebirth(items) >= MINE_REBIRTH_BASE); // [2026-11-18] 두 번째 용병(5환생부터)
+            out.put("slot2Rb", MINE_REBIRTH_BASE);
+            out.put("slot2Lv", mineMerc2HireLv(row, items));
         }
         out.put("merc", mineMercInfo(userName, items, System.currentTimeMillis()));
+        out.put("merc2", mineMercInfo2(userName, items, System.currentTimeMillis()));
         out.put("ores", mineOreList(userName));
         return out;
     }
@@ -9754,6 +9832,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile HashMap<String, Object> look;
         volatile int merc = -1; // [2026-11-05] 데리고 다니는 용병([2026-11-06] 직업 0 전사 / 1 궁수 / 2 마법사, -1 = 없음 -- 지금은 관리자만)
         volatile int mercEl, mercSt, mercNi; // [2026-11-06] 용병 속성/단계/이름 번호(화면 이펙트·그림)
+        volatile int merc2 = -1, mercEl2, mercSt2, mercNi2; // [2026-11-18] 두 번째 용병(직업, -1 = 없음)
         final java.util.ArrayDeque<HashMap<String, Object>> atks = new java.util.ArrayDeque<>(); // [2026-11-07] 최근 공격(다른 사람 화면용)
         MinePresence(String id) { this.id = id; }
     }
@@ -9844,7 +9923,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.merc2 = mineMercOn2(lit) ? mineMercCls(lit, MINE_MERC_K2) : -1; if (me.merc2 >= 0) { me.mercEl2 = mineMercEl(lit, MINE_MERC_K2); me.mercSt2 = mineMercStage(mineMercLv(lit, MINE_MERC_K2)); me.mercNi2 = mineMercNi(lit, MINE_MERC_K2, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         int soloF = S5MineMap.towerFloor(mapId);
         boolean soloMap = soloF > 0 && !S5MineMap.towerTownFloor(soloF); // [2026-11-15] 탑 1인 층 -- 다른 사람은 안 보인다
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
@@ -9866,6 +9945,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 MercSt ms = MINE_MERC.get(e.getKey());
                 if (ms != null && ms.restUntil > now) m.put("mr", 1);
                 else if (ms != null && now - ms.atkAt < 2_500L) m.put("mt", new int[] { ms.tx, ms.ty });
+            }
+            if (o.merc2 >= 0 && minePStealthOf(e.getKey(), now) == null) { // [2026-11-18] 두 번째 용병 -- m2 = {mc, me, ms, ml, mr, mt}
+                HashMap<String, Object> m2 = new HashMap<>();
+                m2.put("mc", o.merc2);
+                m2.put("me", o.mercEl2);
+                m2.put("ms", o.mercSt2);
+                m2.put("ml", o.mercNi2);
+                MercSt ms2 = MINE_MERC2.get(e.getKey());
+                if (ms2 != null && ms2.restUntil > now) m2.put("mr", 1);
+                else if (ms2 != null && now - ms2.atkAt < 2_500L) m2.put("mt", new int[] { ms2.tx, ms2.ty });
+                m.put("m2", m2);
             }
             synchronized (o.atks) { // [2026-11-07] 최근 공격(휘두르기/검기/피해 숫자)
                 List<HashMap<String, Object>> al = new ArrayList<>();
@@ -10025,6 +10115,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mm.put("on", mineMercOn(items) == mc);
             mm.put("unpaid", !mineMercPaid(items, mc, System.currentTimeMillis()));
             m.put("merc", mm);
+        }
+        if (mineMercLv(items, MINE_MERC_K2) > 0) { // [2026-11-18] 두 번째 용병
+            HashMap<String, Object> mm = new HashMap<>();
+            mm.put("job", MINE_MERC_NAMES[mineMercCls(items, MINE_MERC_K2)]);
+            mm.put("nm", mineMercNm(items, MINE_MERC_K2, "NM"));
+            mm.put("lv", mineMercLv(items, MINE_MERC_K2));
+            mm.put("el", mineMercEl(items, MINE_MERC_K2));
+            mm.put("on", mineMercOn2(items));
+            m.put("merc2", mm);
         }
         m.put("exp", Math.max(0, longOf(row.get("M_EXP"), 0L)));
         m.put("expNeed", mineExpNeed(lv, rb));

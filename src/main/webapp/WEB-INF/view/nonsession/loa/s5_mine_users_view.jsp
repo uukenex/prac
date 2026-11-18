@@ -229,14 +229,15 @@
       +       '<div><small>채광</small><b class="num">' + n(u.totalDig) + '</b></div>'
       +       '<div><small>처치</small><b class="num">' + n(u.kills) + '</b></div>'
       +       '<div><small>치장</small><b class="num">' + n(u.cosOwned) + '</b></div>'
-      +       '<div><small>🐱 용병</small><b class="num">' + (u.merc ? 'Lv.' + u.merc.lv : '-') + '</b></div>' // [2026-11-07] 용병 레벨
+      +       '<div><small>🐱 용병</small><b class="num">' + (u.merc ? 'Lv.' + u.merc.lv : '-') + (u.merc2 ? ' / Lv.' + u.merc2.lv : '') + '</b></div>' // [2026-11-07] 용병 레벨, [2026-11-18] 두 번째 용병
       +       '<div><small>⚔️ 필살</small><b class="num">' + ((u.ultL || [])[0] | 0) + ' / ' + ((u.ultL || [])[1] | 0) + '</b></div>' // [2026-11-08] 만검진 / 일섬참 레벨
       +     '</div>'
       +     '<div class="look">🌀 검기 ' + auraTxt(u) + (u.luckUntil > Date.now() ? ' · 🍀 행운 ' + Math.ceil((u.luckUntil - Date.now()) / 60000) + '분' : '') + '</div>' // [2026-11-05] 검기 단계
       +     '<div class="look">🌪️ 돌개베기 ' + whirlTxt(u) + '</div>' // [2026-11-08] 주변 공격
       +     '<div class="look">⚔️ 필살 ' + ultTxt(u) + '</div>'
       +     (u.dragonQuest === 1 ? '<div class="look">🌊 선장 퀘스트 진행 중</div>' : '')
-      +     (u.merc ? '<div class="look">🐱 용병 ' + esc(u.merc.job) + ' ' + esc(u.merc.nm) + ' Lv.' + u.merc.lv + ' · ' + ({ 6: '🔥 불', 2: '⚡ 번개', 3: '💧 물' }[u.merc.el] || '') + (u.merc.unpaid ? ' · ⚠️ 급여 밀림' : u.merc.on ? ' · 함께 다니는 중' : ' · 쉬는 중') + '</div>' : '') // [2026-11-07] 용병
+      +     (u.merc ? '<div class="look">🐱 용병 ' + esc(u.merc.job) + ' ' + esc(u.merc.nm) + ' Lv.' + u.merc.lv + ' · ' + ({ 6: '🔥 불', 2: '⚡ 번개', 3: '💧 물' }[u.merc.el] || '') + (u.merc.unpaid ? ' · ⚠️ 급여 밀림' : u.merc.on ? ' · 함께 다니는 중' : ' · 쉬는 중') + '</div>' : '')
+      +     (u.merc2 ? '<div class="look">🐱 두 번째 용병 ' + esc(u.merc2.job) + ' ' + esc(u.merc2.nm) + ' Lv.' + u.merc2.lv + ' · ' + ({ 6: '🔥 불', 2: '⚡ 번개', 3: '💧 물' }[u.merc2.el] || '') + (u.merc2.on ? ' · 함께 다니는 중' : ' · 쉬는 중') + '</div>' : '') // [2026-11-18] 두 번째 용병 // [2026-11-07] 용병
       +     '<div class="look" title="' + esc(look.replace(/<[^>]+>/g, '')) + '">👗 ' + (look || '기본 외형') + '</div>'
       +   '</div>'
       + '</div>'

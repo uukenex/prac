@@ -913,10 +913,12 @@ public class Season5ViewController {
         if ("1".equals(c)) {
             HashMap<String, Object> co = s5Service.mineCombatTick(userName, mapId, ver, x, y);
             if (Boolean.TRUE.equals(co.get("died"))) mineLog(userName, "[웹] 광산 몬스터에게 쓰러짐", String.valueOf(co.get("message")));
-            Object cm = co.get("merc"); // [2026-11-07] 용병이 쓰러뜨린 보스도 관리자 알림
-            if (cm instanceof java.util.Map && Boolean.TRUE.equals(((java.util.Map<?, ?>) cm).get("bossKilled")) && !s5Service.s55IsAdmin(userName)) {
-                @SuppressWarnings("unchecked") java.util.Map<String, Object> cmm = (java.util.Map<String, Object>) cm;
-                mineBossAlert(userName, cmm, "(용병과 함께)");
+            for (String mk : new String[] { "merc", "merc2" }) { // [2026-11-07] 용병이 쓰러뜨린 보스도 관리자 알림, [2026-11-18] 두 번째 용병도
+                Object cm = co.get(mk);
+                if (cm instanceof java.util.Map && Boolean.TRUE.equals(((java.util.Map<?, ?>) cm).get("bossKilled")) && !s5Service.s55IsAdmin(userName)) {
+                    @SuppressWarnings("unchecked") java.util.Map<String, Object> cmm = (java.util.Map<String, Object>) cm;
+                    mineBossAlert(userName, cmm, "(용병과 함께)");
+                }
             }
             out.put("c", co);
         }
