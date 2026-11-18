@@ -868,7 +868,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 36; // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 37; // [2026-11-18] 37: 남쪽 섬/북쪽 끝 설원/다도해 본섬 배로(sail) + 맵 끝 길, 36: // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1343,6 +1343,24 @@ public final class S5MineMap {
                 os = relink(os, retarget(os, SEA_CITY, new int[] { 109, 34 }), null);
                 sc = relink(sc, retarget(sc, OPEN_SEA, landBeside(os, SEA_CITY)), null);
                 out.put(VAST_SEA, vs);
+                { // [2026-11-18] "기존에 있던 길을 내 배로도 갈 수 있게"(시안 승인) -- 큰 배(판자 B)로 오가던 세 길을 내 배로 저어 맵 끝에 닿으면 넘어간다:
+                    //  남쪽 바닷가 왼쪽 끝 <-> 남쪽 섬 위쪽 끝, 바닷가 오른쪽 끝 <-> 북쪽 끝 설원 아래쪽 끝, 남쪽 섬 오른쪽 끝 <-> 다도해 본섬 왼쪽 끝.
+                    //  세 맵도 바닷가처럼 물 위를 배로(sail). 넘어가면 그 맵 끝 조금 안쪽 물 위에서 배를 탄 채 나온다. 큰 배는 그대로.
+                    S5MineMap bc = out.get(BEACH), il = out.get(ISLAND), no = out.get(NORTH), rA = out.get(ARCHI);
+                    int bL = firstWater(bc, 0), bR = firstWater(bc, bc.w - 1);
+                    int[] inBL = waterNear(bc, 3, bL + 8), inBR = waterNear(bc, bc.w - 4, bR + 8), inIT = waterNear(il, il.w / 2, 3), inIR = waterNear(il, il.w - 4, il.h / 2),
+                            inNB = waterNear(no, no.w / 3, no.h - 4), inAL = waterNear(rA, 4, rA.h / 2);
+                    List<Portal> rBp = new ArrayList<>(bc.portals), rIp = new ArrayList<>(il.portals), rNp = new ArrayList<>(no.portals), rAp = new ArrayList<>(rA.portals);
+                    edgeGate(bc, rBp, true, 0, bL, bc.h - BEACH_GATE - 2, ISLAND, inIT, "남쪽 섬으로");
+                    edgeGate(bc, rBp, true, bc.w - 1, bR, bc.h - BEACH_GATE - 2, NORTH, inNB, "북쪽 끝 설원으로");
+                    edgeGate(il, rIp, false, 0, 1, il.w - 2, BEACH, inBL, "남쪽 바닷가로");
+                    edgeGate(il, rIp, true, il.w - 1, 1, il.h - 2, ARCHI, inAL, "다도해 본섬으로");
+                    edgeGate(no, rNp, false, no.h - 1, 1, no.w - 2, BEACH, inBR, "남쪽 바닷가로");
+                    edgeGate(rA, rAp, true, 0, 1, rA.h - 2, ISLAND, inIR, "남쪽 섬으로");
+                    S5MineMap il2 = relink(il, rIp, il.npcs), no2 = relink(no, rNp, no.npcs), ar2 = relink(rA, rAp, rA.npcs);
+                    il2.sail = true; no2.sail = true; ar2.sail = true;
+                    out.put(BEACH, relink(bc, rBp, bc.npcs)); out.put(ISLAND, il2); out.put(NORTH, no2); out.put(ARCHI, ar2);
+                }
                 placeNpc(sc, 55, 20, "seamayor", "윤슬항 시장", "바다 위 윤슬항에 온 걸 환영하오! 윤슬은 햇살에 반짝이는 잔물결이라오. 배 없이는 못 오는 곳이라 손님이 귀하다오.");
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
                 placeNpc(sc, 66, 40, "gemcutter", "보석 세공사", "파도 소리를 들으며 깎으면 손이 덜 떨려요.");
@@ -3249,6 +3267,26 @@ public final class S5MineMap {
             best = Math.min(best, Math.hypot(x - a[0] - dx * q, y - a[1] - dy * q));
         }
         return best;
+    }
+    /** [2026-11-18] 그 열(x)에서 위에서부터 처음 나오는 물(~) 줄. */
+    private static int firstWater(S5MineMap m, int x) { for (int y = 1; y < m.h - 1; y++) if (m.terrain[y][x] == '~') return y; return m.h - 2; }
+    /** [2026-11-18] (x, y)에서 가장 가까운 물(~) 칸(배를 탄 채 나오는 자리). */
+    private static int[] waterNear(S5MineMap m, int x, int y) {
+        for (int r = 0; r < 20; r++) for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) != r) continue;
+            int xx = x + dx, yy = y + dy;
+            if (xx > 0 && yy > 0 && xx < m.w - 1 && yy < m.h - 1 && m.terrain[yy][xx] == '~') return new int[] { xx, yy };
+        }
+        return new int[] { m.spawnX, m.spawnY };
+    }
+    /** [2026-11-18] 맵 끝 한 줄(vertical이면 x = fixed인 열, 아니면 y = fixed인 줄)의 물 칸을 넘어가는 칸(o)으로 -- 대상 맵의 to 자리로. */
+    private static void edgeGate(S5MineMap m, List<Portal> ps, boolean vertical, int fixed, int from, int to, String target, int[] at, String label) {
+        for (int i = from; i <= to; i++) {
+            int x = vertical ? fixed : i, y = vertical ? i : fixed;
+            if (m.terrain[y][x] != '~') continue;
+            m.terrain[y][x] = 'o';
+            ps.add(new Portal(x, y, 'o', target, at[0], at[1], label));
+        }
     }
     static final int BEACH_GATE = 14; // [2026-11-18] 남쪽 바닷가 7시/5시 끝 -- 옆 끝 아래 14칸 + 맨 아래 끝 14칸
     static final int OPEN_SEA_DOCK_Y = 30; // [2026-11-18] 바다 위 서쪽 부두 줄(해상도시), 66 -> 30(좌우로 긴 맵)
