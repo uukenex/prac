@@ -282,7 +282,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** 그 맵에 들어가거나 움직일 수 없는 이유(없으면 null). lv = 광산 전투 레벨(권장 레벨은 막지 않아 지금은 안 쓴다). */
     String mineMapBlock(S5MineMap m, Map<String, Integer> items, int lv) {
-        if (S5MineMap.SEA_CITY.equals(m.id) || S5MineMap.OPEN_SEA.equals(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "⛵ 남쪽 바다는 아직 파도가 거세대요. (준비 중)"; } // [2026-11-18] 바다 위/해상도시 -- 지금은 관리자만
+        if (S5MineMap.SEA_CITY.equals(m.id) || S5MineMap.OPEN_SEA.equals(m.id) || S5MineMap.VAST_SEA.equals(m.id)) { String cu0 = MINE_CTX.get(); if (cu0 == null || !isMineAdmin(cu0)) return "⛵ 남쪽 바다는 아직 파도가 거세대요. (준비 중)"; } // [2026-11-18] 바다 위/해상도시/망망대해 -- 지금은 관리자만
+        if (m.boat() && items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0 && mineBoatHp(items)[0] <= 0) return "⛵ 배가 부서져 있어요. 다도해 본섬 배 목수에게 고쳐 달라고 하세요."; // [2026-11-18]
         if (S5MineMap.CASTLE.equals(m.id) && mineWbOn(System.currentTimeMillis()) && mineWbOk(MINE_CTX.get())) return null; // [2026-11-15] 월드보스 시간엔 누구나 동쪽 성곽에서 싸울 수 있다
         if (S5MineMap.demonTier(m.id) >= 0 || S5MineMap.ABYSS_GATE.equals(m.id) || S5MineMap.CHAOS.equals(m.id) || S5MineMap.DEMON_VILLAGE.equals(m.id)) { // [2026-11-16] "탑 29층 클리어 증표를 가져오라고" -- 29층 수문장을 쓰러뜨린 사람만 성문 밖으로 // [2026-11-17] 들판 2·3, 방어선, 마계도
             String cu = MINE_CTX.get();
@@ -4198,6 +4199,41 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // ---- [2026-11-18] 망망대해 -- "출구가 없고, 계속 돌아다니면 초당 5%씩 배가 부서진다, 10초 이상 버티면 남쪽 바닷가/다도해/바다 도시 셋 중 하나로 떨어진다" --
+    //  위치 알림(1초마다)에서 배를 깎고(0이 되면 mineBoatHit이 마을로), MINE_VAST_MS가 지나면 셋 중 하나로 옮긴다(villageOut -- 화면이 다시 불러온다).
+    //  MINE_VAST = {들어온 시각, 배를 마지막으로 깎은 시각, 마지막 위치 알림} -- 5초 넘게 소식이 없었으면 새로 들어온 것으로 본다.
+    static final int MINE_VAST_PCT = 5;
+    static final long MINE_VAST_MS = 10_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_VAST = new java.util.concurrent.ConcurrentHashMap<>();
+    HashMap<String, Object> mineVastTick(String userName, long now, HashMap<String, Object> out) {
+        HashMap<String, Object> row = dao.selectMineUser(userName);
+        if (row == null || !S5MineMap.VAST_SEA.equals(strVal(row.get("MAP_ID"), ""))) { MINE_VAST.remove(userName); return null; }
+        long[] v = MINE_VAST.computeIfAbsent(userName, k -> new long[] { now, now, now });
+        if (now - v[2] > 5_000L) { v[0] = now; v[1] = now; }
+        v[2] = now;
+        Map<String, Integer> items = mineItems(userName);
+        long secs = (now - v[1]) / 1_000L;
+        if (secs > 0) {
+            v[1] += secs * 1_000L;
+            HashMap<String, Object> bo = new HashMap<>();
+            long left = mineBoatHit(userName, items, mineBoatHpMax(items) * MINE_VAST_PCT * secs / 100, bo);
+            if (bo.containsKey("boatWreck")) { MINE_VAST.remove(userName); out.put("villageOut", bo.get("message")); return out; }
+            out.put("boatHp", Math.max(0, left));
+        }
+        if (now - v[0] >= MINE_VAST_MS) {
+            MINE_VAST.remove(userName);
+            String[] dests = { S5MineMap.BEACH, S5MineMap.ARCHI, S5MineMap.SEA_CITY };
+            S5MineMap t = S5MineMap.get(dests[RND.nextInt(dests.length)]);
+            int tx = t.dockX() >= 0 ? t.dockX() : t.spawnX, ty = t.dockX() >= 0 ? t.dockY() : t.spawnY;
+            if (!t.walkable(tx, ty)) { tx = t.spawnX; ty = t.spawnY; }
+            dao.updateMinePos(userName, t.id, tx, ty, now);
+            mineDisengageAll(userName);
+            out.put("villageOut", "🌊 거센 파도에 떠밀려 한참을 표류하다... " + t.name + "에 닿았어요!");
+            return out;
+        }
+        return null;
+    }
+
     static final int MINE_JUDGE_TOKEN_PCT = 50; // [2026-11-18] "보로네오 뒤쪽은 50% 확률로 나오는 증표가 있어야"
     List<HashMap<String, Object>> mineBoroDrops(String userName, StringBuilder msg) {
         msg.insert(0, "👑 심판자 보로네오를 쓰러뜨렸어요! ");
@@ -4916,7 +4952,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 e.put("sy", m.spawnY);
                 maps.add(e);
             }
-            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.OPEN_SEA, S5MineMap.SEA_CITY }) { // [2026-11-18] 바다 위, 해상도시(관리자만)
+            if (isMineAdmin(userName)) for (String id : new String[] { S5MineMap.OPEN_SEA, S5MineMap.SEA_CITY, S5MineMap.VAST_SEA }) { // [2026-11-18] 바다 위, 해상도시, 망망대해(관리자만)
                 S5MineMap m = S5MineMap.get(id);
                 HashMap<String, Object> e = new HashMap<>();
                 e.put("id", m.id); e.put("name", m.name); e.put("w", m.w); e.put("h", m.h); e.put("sx", m.spawnX); e.put("sy", m.spawnY);
@@ -7710,6 +7746,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double[] MINE_MERC_DMG = { 1.2, 1.0, 1.0 }; // [2026-11-06] 마법사 평타가 한 명(파이어볼)이라 0.8 -> 1.0
     static final int MINE_MERC_SKILL_LV = 40;
     static final long MINE_MERC_SKILL_MS = 20_000L, MINE_MERC_RAIN_MS = 5_000L;
+    // [2026-11-18] 마법사 용병 -- "물 토네이도 4초 지속·12초 쿨타임, 불 메테오는 땅이 타는 피해가 오래 남게, 번개는 쿨타임 5초, 기본 공격이 여러 명을" --
+    //  토네이도/메테오는 처음 한 방 뒤 그 자리에 남아(화살비와 같은 칸 -- rain*) 매 턴 둘레를 친다. 평타(파이어볼)는 대상 둘레 2칸 안 1+단계마리에도 60%.
+    static final long MINE_MERC_TORNADO_MS = 4_000L, MINE_MERC_BURN_MS = 6_000L;
+    static long mineMercSkillCd(int cls, int el) { return cls == 2 && el == S5MineMobs.EL_WATER ? 12_000L : cls == 2 && el == S5MineMobs.EL_THUNDER ? 5_000L : MINE_MERC_SKILL_MS; }
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
     static final double MINE_MERC_EXP_PCT = 1.0;
@@ -8064,6 +8104,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
             if (mineMercCan(map, S5MineMobs.TYPES.get(map.mobs().get(id).type), s, now)) cands.add(new int[] { id, s.fx, s.fy });
         }
+        if (cls == 2 && ps != null) { // [2026-11-18] 마법사 평타가 여러 명 -- 대상 둘레 2칸 안 1+단계마리에 60%
+            int extra = 0;
+            for (int[] cd : cands) { if (cd[0] == pick || extra >= 1 + Math.max(0, st)) continue; if (Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= 2) { addHit.accept(cd[0], 0.6); extra++; } }
+        }
         // [2026-11-06] "용병 검기를 플레이어 평타 검기(강화)와 같은 것으로" -- 대상 옆(나 쪽)에 선 용병이 대상 쪽으로 st칸 줄을 벤다: 그 줄(대상 뒤까지)의 싸우는 몬스터에게
         //  공격력의 st x 5% 속성 피해(플레이어 검기 mineAuraHits와 같은 비율, 무리는 auraTaken 배). 대상은 평타 그대로. 방향은 나 -> 대상의 큰 축.
         if (ps != null && cls == 0 && st > 0) {
@@ -8098,7 +8142,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int s2 = mineMercSel(items, k, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
         HashMap<String, Object> sk = null;
         boolean cast = false;
-        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= MINE_MERC_SKILL_MS) { ms.skillAt = now; cast = true; } }
+        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= mineMercSkillCd(cls, el)) { ms.skillAt = now; cast = true; } } // [2026-11-18] 마법사 물 12초 / 번개 5초
         if (cast) {
             sk = new HashMap<>();
             sk.put("x", ps.fx); sk.put("y", ps.fy); sk.put("s", s2);
@@ -8142,7 +8186,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         else addHit.accept(cd[0], 1.5 + 0.5 * s2);
                     }
                 }
-                sk.put("k", "tornado"); sk.put("r", rad); sk.put("nm", "토네이도");
+                synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = rad; ms.rainUntil = now + MINE_MERC_TORNADO_MS; ms.rainMul = 0.5 + 0.25 * s2; } // [2026-11-18] 4초 동안 남는다
+                sk.put("k", "tornado"); sk.put("r", rad); sk.put("nm", "토네이도"); sk.put("until", now + MINE_MERC_TORNADO_MS);
             } else { // 메테오
                 int rad = 2 + s2;
                 for (int[] cd : cands) { // [2026-11-15] 걸친 칸마다 따로
@@ -8153,7 +8198,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         else addHit.accept(cd[0], 2.0 + 0.5 * s2);
                     }
                 }
-                sk.put("k", "meteor"); sk.put("r", rad); sk.put("nm", "메테오");
+                synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = rad; ms.rainUntil = now + MINE_MERC_BURN_MS; ms.rainMul = 0.4 + 0.2 * s2; } // [2026-11-18] 타는 땅이 6초 남는다
+                sk.put("k", "meteor"); sk.put("r", rad); sk.put("nm", "메테오"); sk.put("until", now + MINE_MERC_BURN_MS);
             }
             sk.put("pts", pts);
             mo.put("sk", sk);
@@ -9531,12 +9577,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         return mx - d;
     }
-    /** 배 수리(남쪽 바닷가 뱃사람 / 해상도시 부두지기) -- 깎인 만큼 진주(20%마다 1개, 최대 5개). */
+    /** 배 수리(다도해 본섬 배 목수) -- 깎인 만큼 진주(20%마다 1개, 최대 5개). */
     static final int MINE_BOAT_FIX_STEP_PCT = 20;
     HashMap<String, Object> mineBoatFix(String userName) {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         String at = strVal(row.get("MAP_ID"), "");
-        if (!S5MineMap.BEACH.equals(at) && !S5MineMap.SEA_CITY.equals(at)) return mineGearResult(userName, false, "⛵ 배는 남쪽 바닷가 뱃사람이나 해상도시 부두지기가 고쳐 줘요.");
+        if (!S5MineMap.ARCHI.equals(at)) return mineGearResult(userName, false, "⛵ 배는 다도해 본섬 배 목수가 고쳐 줘요."); // [2026-11-18] 뱃사람/부두지기를 없애서 배 목수로
         Map<String, Integer> items = mineItems(userName);
         if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 고칠 배가 없어요.");
         long[] bh = mineBoatHp(items);
@@ -10417,6 +10463,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 return out;
             }
         }
+        if (S5MineMap.VAST_SEA.equals(mapId)) { HashMap<String, Object> vo = mineVastTick(userName, now, out); if (vo != null) return vo; } // [2026-11-18] 망망대해
         MinePresence me = minePresenceOf(userName);
         if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) mineMercXpFlushUser(userName); // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치를 DB에
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;

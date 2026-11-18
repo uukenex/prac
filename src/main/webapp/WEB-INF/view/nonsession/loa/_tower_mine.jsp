@@ -13,7 +13,7 @@
 var TowerMine = (function () {
   var T = 16, STEP_MS = 140, SAVE_MS = 2500; // [2026-10-24] 위치 저장 4초 -> 2.5초(걷는 중에도 저장)
   // [2026-10-23] 사막(d 모래, R 사암, C 선인장, 모래바람), 바닷가(b 모래사장, P 부두, q 배, B 배에 오르는 판자), NPC(N: 대장장이/선장)
-  var WALK = '.,:VHcrdbPTsnYupe', PORTALS = 'GMUSBXZ'; // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음), s 성 바닥 / n 눈밭 / Y 눈 덮인 소나무
+  var WALK = '.,:VHcrdbPTsnYupeX', PORTALS = 'GMUSBXZ'; // [2026-11-18] X 워프 포인트 -- 위를 걸어 다닌다(멈춰 서서 1.5초 / 공격 버튼이면 창) // [2026-10-24] 나무(T)도 지나갈 수 있다(광석은 없음), s 성 바닥 / n 눈밭 / Y 눈 덮인 소나무
   var WIND_MS = 900; // 모래바람에 한 칸 밀리는 간격(가만히 있을 때)
   var ORE_NAME = ['', '구리 광석', '철광석', '은광석', '금광석', '미스릴 원석', '별빛석'];
   var ORE_COL = [null, ['#b8652e', '#f0a066'], ['#7d8790', '#c9d1d8'], ['#cfd9e3', '#ffffff'], ['#f2b705', '#fff1a1'], ['#20c9b8', '#b9fff6'], ['#f23fd0', '#ffffff']];
@@ -2226,7 +2226,24 @@ var TowerMine = (function () {
     if (dx * dx + dy * dy < 16 * 16) return null;
     return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
   }
+  // [2026-11-18] 워프 포인트 -- "위에서 공격하거나 오래 있으면 창이 뜨게, 너무 자주 멈춘다" -- 3x3 위는 그냥 걷고, 멈춰 서서 WP_STAND_MS가 지나거나 공격 버튼을 누르면 연다.
+  //  서버는 플레이어 바로 옆(1칸) 워프 포인트 칸을 보라 -- 같은 3x3의 이웃 칸을 넘긴다.
+  var WP_STAND_MS = 1500, wpStand = null;
+  function wpHere() { return !!(map && cellAt(P.x, P.y) === 'X'); }
+  function wpOpenHere() {
+    var dv = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var i = 0; i < dv.length; i++) if (cellAt(P.x + dv[i][0], P.y + dv[i][1]) === 'X') { setAuto(false); wpOpen(P.x + dv[i][0], P.y + dv[i][1]); return true; }
+    return false;
+  }
+  function wpStandCheck(now) {
+    if (!wpHere()) { wpStand = null; return; }
+    if (P.moving || busy || smithOpen) { if (P.moving) wpStand = null; return; }
+    var key = map.id + ':' + P.x + ',' + P.y;
+    if (!wpStand || wpStand.k !== key) { wpStand = { k: key, t0: now, done: false }; return; }
+    if (!wpStand.done && now - wpStand.t0 >= WP_STAND_MS) { wpStand.done = true; wpOpenHere(); }
+  }
   function update(now) {
+    try { wpStandCheck(now); } catch (e) { }
     gossipTick(now); // [2026-11-05] 왕도 주민 소문
     // [2026-10-24] 몬스터가 서 있는 칸(지나갈 수 없음, 공격 대상) + ⛏️/⚔️ 버튼 모양 + 체력 표시
     mobOcc = {};
@@ -3816,7 +3833,8 @@ var TowerMine = (function () {
           + '<button type="button" ' + (done ? '' : 'disabled ') + 'onclick="TowerMine.archiAct(\'claim\')">열쇠 받기</button></div>';
     }
     if (n.kind === 'boatwright') {
-      if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>';
+      if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>'
+          + (a.boatFix > 0 ? '<div class="mine-smith-row"><span class="nm">🔨 배 수리<small>' + ((a.boatHp || 0) > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + ' · 진주 ' + a.boatFix + '개 (체력 ' + fmtN(a.boatHp || 0) + ' / ' + fmtN(a.boatHpMax || 0) + ')</small></span><button type="button" onclick="TowerMine.boatFix()">고치기</button></div>' : ''); // [2026-11-18] 배 수리는 배 목수가
       return h + have + '<div class="mine-smith-row"><span class="nm">⛵ 1인용 배<small>뱃길로 나가 일곱 섬에 내릴 수 있어요</small>' + costHtml(a.boatCosts) + '</span>'
           + '<button type="button" ' + (a.boatCan ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
     }
@@ -4239,6 +4257,7 @@ var TowerMine = (function () {
   }
   function renderSmithView(n) {
     if (el.smith) el.smith.classList.toggle('merc-wide', smithView === 'merc'); // [2026-11-06] "PC는 옆 화면이 넓으니 용병소는 옆으로 넓게"
+    if (el.smith) el.smith.setAttribute('data-sv', smithView || ''); // [2026-11-18] PC -- 창 종류마다 알맞은 폭(tower_view.jsp .mine-smith[data-sv])
     if (smithView === 'priest') {
       el.smith.innerHTML = priestHtml(n);
       return;
@@ -4858,6 +4877,18 @@ var TowerMine = (function () {
     mercRains = mercRains.filter(function (r) { return r.until > tn; });
     mercRains.forEach(function (r) {
       var C = elc(r.el), s = TS / 16, cx = r.x * TS - camX + TS / 2, cy = r.y * TS - camY + TS / 2, R2 = (r.r + 0.5) * TS, left = Math.min(1, (r.until - tn) / 600);
+      if (r.kind) { // [2026-11-18] 남는 토네이도(도는 물살) / 타는 땅(일렁이는 불꽃)
+        if (now < r.t0) return;
+        var tor = r.kind === 'tornado';
+        ctx.save();
+        ctx.globalAlpha = 0.18 * left; ctx.fillStyle = tor ? '#5ab4ff' : '#ff6a2a'; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+        for (var ti = 0; ti < 8 + r.r * 5; ti++) {
+          if (tor) { var ta = now / 170 + ti * 0.8, tr = R2 * (0.2 + 0.75 * ((ti * 0.371) % 1)); fxDot(cx + Math.cos(ta) * tr, cy + Math.sin(ta) * tr * 0.75 - (ti % 3) * 2 * s, 1.8 * s, ti % 2 ? '#e8f6ff' : '#7ac8ff', 0.85 * left); }
+          else { var bx = Math.sin(ti * 12.9898) * 43758.5453, by = Math.sin(ti * 78.233) * 12345.678; bx = (bx - Math.floor(bx)) * 2 - 1; by = (by - Math.floor(by)) * 2 - 1; var fl = Math.abs(Math.sin(now / 120 + ti)) * 3 * s; fxDot(cx + bx * R2 * 0.85, cy + by * R2 * 0.6 - fl, 2 * s, '#ffb030', left); fxDot(cx + bx * R2 * 0.85, cy + by * R2 * 0.6 - fl - 2.5 * s, 1.3 * s, '#ff4a1a', 0.8 * left); }
+        }
+        ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.globalAlpha = 0.16 * left; ctx.fillStyle = C[2]; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 0.5 * left; ctx.strokeStyle = C[1]; ctx.lineWidth = 1.2 * s; ctx.setLineDash([4 * s, 3 * s]); ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
@@ -5149,9 +5180,9 @@ var TowerMine = (function () {
       var sk = m.sk, mx0 = mp.x == null ? P.x : mp.x, my0 = mp.y == null ? P.y : mp.y;
       if (sk.k === 'rain') mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: m.el, t0: t });
       else if (sk.k === 'sword') mercShot(0, m.el, sk.s, mx0, my0, sk.x, sk.y, sk.pts, t + 120, 'sword');
-      else if (sk.k === 'meteor') mercShot(2, 6, Math.max(3, sk.r), mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg);
+      else if (sk.k === 'meteor') { mercShot(2, 6, Math.max(3, sk.r), mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg); if (sk.until) mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: 6, t0: t + 600, kind: 'burn' }); } // [2026-11-18] 타는 땅
       else if (sk.k === 'chain') mercShot(2, 2, sk.s, mx0, my0, sk.x, sk.y, sk.pts, t + 120, 'skill', m.tg);
-      else if (sk.k === 'tornado') mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg);
+      else if (sk.k === 'tornado') { mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg); if (sk.until) mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: 3, t0: t + 580, kind: 'tornado' }); } // [2026-11-18] 4초 남는 토네이도
       floats.push({ x: mx0, y: my0 - 1, text: '✨ ' + sk.nm, color: '#ffe9a8', big: true, t0: t });
     }
     if (m.bossMsg) { msg(m.bossMsg, 5000); killFeed(m.bossMsg, '#ffe14d'); } // [2026-11-07] 용병이 쓰러뜨린 보스
@@ -5397,6 +5428,7 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      if (d.boatHp != null && st && st.archi) st.archi.boatHp = d.boatHp; // [2026-11-18] 망망대해 -- 초당 5%
       seaSt = d.sea || null; if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
       mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
@@ -6164,6 +6196,7 @@ var TowerMine = (function () {
     if (stunnedMe()) { msg(stunMsg(), 1500); return; } // [2026-11-04]
     if (frozenMe()) { iceStruggle(performance.now()); msg('🧊 얼어붙었어요! ⬅️➡️ 움직이거나 ⚔️ 공격해서 얼음을 깨 보세요. 동료가 곁(2칸)에 와도 풀려요.'); return; }
     var a = !P.moving && adjMob();
+    if (!a && !P.moving && wpHere() && wpOpenHere()) { if (wpStand) wpStand.done = true; return; } // [2026-11-18] 워프 포인트 위에서 공격 버튼 = 창
     if (a) { attack(a); return; }
     if (!P.moving && (auraRange() > 0 || whirlEls().length)) { auraAttack(); return; } // [2026-11-07] 돌개베기 // [2026-11-04] 옆에 몬스터가 없어도 검기는 날아간다
     // [2026-10-28] "아무것도 없을 때도 무기 휘두르는 액션" -- 서버에 묻지 않고 그 자리에서 휘두르기만
@@ -6487,6 +6520,7 @@ var TowerMine = (function () {
         else if (ch === 'N') {
           var np = npcAt[x + ',' + y];
           var nk = np && np.kind === 'blackmarket' && !blackOpen() ? 'stall' : np && np.kind; // [2026-10-26] 암상인이 없을 땐 빈 노점
+          if (np && !tiles.npc[nk]) tiles.npc[nk] = npcSprite(nk); // [2026-11-18] "새 NPC를 만들 때마다 안 보이는 문제" -- 그림이 따로 없는 종류는 기본 NPC 그림으로
           if (np && tiles.npc[nk]) ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS);
         }
       }

@@ -1004,7 +1004,10 @@
     .wp-list::-webkit-scrollbar{ width:8px; } .wp-list::-webkit-scrollbar-thumb{ background:#5a4e36; border-radius:4px; } .wp-list::-webkit-scrollbar-track{ background:#151310; }
     .merc-job-h small{ color:#c9c3d6; font-weight:600; }
     @media (min-width:900px){ /* [2026-11-06] PC -- 상점/NPC 창(대장장이, 명품상점, 강화사, 세공사, 용병소, 인벤토리 등)을 옆으로 넓게. 용병소는 줄마다 5명이 한눈에 */
-      .mine-smith{ width:min(1180px,94vw); max-height:88vh; }
+      .mine-smith{ position:fixed; width:min(720px,92vw); max-height:84vh; } /* [2026-11-18] "PC로 켜면 창이 너무 크다 -- 적당히 줄여 가운데" (예전 1180px) -- 창 종류(data-sv)마다 폭 */
+      .mine-smith[data-sv="tele"]{ width:min(460px,92vw); }
+      .mine-smith[data-sv="equip"]{ width:min(780px,92vw); }
+      .mine-smith.merc-wide{ width:min(980px,92vw); }
       .mine-smith .cos-car{ flex-wrap:wrap; overflow-x:visible; }
       .mine-smith.merc-wide .merc-offers{ overflow-x:visible; }
       .mine-smith.merc-wide .merc-offers .merc-offer{ flex:1 1 0; min-width:0; }

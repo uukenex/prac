@@ -661,7 +661,7 @@ public final class S5MineMobs {
 
     /** 몬스터가 설 수 있는 칸 -- 이동 가능 칸 중 마을/부두/다리 제외. */
     private static boolean mobCell(char c) {
-        return S5MineMap.walkable(c) && c != 'V' && c != 'P' && c != 'H';
+        return S5MineMap.walkable(c) && c != 'V' && c != 'P' && c != 'H' && c != 'X'; // [2026-11-18] 워프 포인트 위엔 몬스터 없음
     }
 
     /** [2026-11-11] 미궁 방(10x10) -- 그 방 몬스터 한 종류를 네 귀퉁이에 한 마리씩(집 칸 + 둘레 한 칸). */
