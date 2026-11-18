@@ -137,6 +137,14 @@ public final class S5MineMap {
     /** [2026-11-17] 빛의 심장(77) -- 심판자 보로네오 처치 보상(반드시). */
     public static final String LIGHT_HEART_CODE = "LIGHT_HEART", LIGHT_HEART_NAME = "빛의 심장";
     public static final int LIGHT_HEART_GRADE = 77;
+    /** [2026-11-18] 어둠의 심장(78) -- 타락한 대주교 처치 보상(반드시, 예전 인장 = 어둠의 증표 자리). 심판의 증표(79) -- 심판자 보로네오 50%, 있어야 마계 입구로. */
+    public static final String DARK_HEART_CODE = "DARK_HEART", DARK_HEART_NAME = "어둠의 심장";
+    public static final int DARK_HEART_GRADE = 78;
+    public static final String JUDGE_TOKEN_CODE = "JUDGE_TOKEN", JUDGE_TOKEN_NAME = "심판의 증표";
+    public static final int JUDGE_TOKEN_GRADE = 79;
+    /** [2026-11-18] 정제된 마석(80) -- 마계 마을(10초 머무는 동안)에서 캘 때마다 하나. */
+    public static final String MANA_STONE_CODE = "MANA_STONE", MANA_STONE_NAME = "정제된 마석";
+    public static final int MANA_STONE_GRADE = 80;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
@@ -273,7 +281,7 @@ public final class S5MineMap {
     public static final String ICE_STONE_NAME = "빙석";
     public static final int ICE_STONE_GRADE = 19;
     public static final String SEAL_CODE = "ARCH_SEAL";
-    public static final String SEAL_NAME = "타락한 대주교의 인장";
+    public static final String SEAL_NAME = "어둠의 증표"; // [2026-11-18] "기존 증표 아이템은 어둠의 증표로" (예전 이름: 타락한 대주교의 인장) -- 대주교는 이제 어둠의 심장을 준다
     public static final int SEAL_GRADE = 31;
     /** [2026-10-23] 요일 던전의 돌 -- 인덱스 0 = 월요일 ... 6 = 일요일(KST). 캔 칸 기록의 등급은 11 + 인덱스로 저장한다(일반 광석 1~6과 구분). */
     public static final String[] DAY_STONE_CODES = { "MON_STONE", "TUE_STONE", "WED_STONE", "THU_STONE", "FRI_STONE", "SAT_STONE", "SUN_STONE" };
@@ -3189,7 +3197,9 @@ public final class S5MineMap {
         }
         for (int y = py + 5; y < h - 1; y++) for (int x = 3; x < w - 3; x++) if (t[y][x] == '.' && (x * 7 + y * 13) % 29 == 0) t[y][x] = ':';
         List<Portal> ps = new ArrayList<>();
-        S5MineMap m = new S5MineMap(DEMON_VILLAGE, "마계 마을", false, w, h, cx, py + 3, t, new byte[h][w], ps);
+        byte[][] vo = new byte[h][w]; // [2026-11-18] "마계 마을에서 채광하면 정제된 마석" -- 풀/돌 바닥(. :)은 캘 수 있다(칸은 구리 광석 -- 덤으로 구리, 진짜 보상은 S55MineServiceImpl.mineDigCell)
+        for (int y = py + 5; y < h - 1; y++) for (int x = 2; x < w - 2; x++) if (t[y][x] == '.' || t[y][x] == ':') vo[y][x] = 1;
+        S5MineMap m = new S5MineMap(DEMON_VILLAGE, "마계 마을", false, w, h, cx, py + 3, t, vo, ps);
         List<Npc> npcs = new ArrayList<>();
         String[] lines = { "...인간? 이런 곳까지 어떻게 흘러들어 왔지?", "마왕 폐하의 성을 올려다보는 건 자유다. 들어갈 생각은 하지 마라.", "곧 문이 너를 뱉어 낼 거다. 운 좋은 줄 알아라.",
             "인간의 냄새... 오랜만이군.", "이 수로의 불은 천 년째 꺼진 적이 없지.", "여긴 네가 올 곳이 아니야." };
