@@ -1274,6 +1274,17 @@
         WHEN MATCHED THEN UPDATE SET QTY = QTY + 1
         WHEN NOT MATCHED THEN INSERT (USER_NAME, FISH_ID, QTY, FIRST_CATCH_DATE) VALUES (S.U, S.F, 1, SYSDATE)
     </insert>
+    <!-- [2026-11-18] 워프 포인트 내구도: 모든 유저가 함께 쓰는 값, 줄이 없으면 가득(200) -->
+    <select id="selectS55WpDur" resultType="hashmap">
+        SELECT WP_ID, DUR FROM TBOT_S55_WP_DUR
+    </select>
+    <insert id="mergeS55WpDur">
+        MERGE INTO TBOT_S55_WP_DUR T
+        USING (SELECT #{wpId} AS WP_ID FROM DUAL) S
+           ON (T.WP_ID = S.WP_ID)
+        WHEN MATCHED THEN UPDATE SET T.DUR = #{dur}, T.UPD_DATE = SYSDATE
+        WHEN NOT MATCHED THEN INSERT (WP_ID, DUR, UPD_DATE) VALUES (S.WP_ID, #{dur}, SYSDATE)
+    </insert>
     <insert id="insertS55FishLog">
         INSERT INTO TBOT_S55_FISH_LOG (USER_NAME, FISHING_DATE, FISH_ID, INSERT_DATE, MAP_ID)
         VALUES (#{userName}, TRUNC(SYSDATE), #{fishId}, SYSDATE, #{mapId})

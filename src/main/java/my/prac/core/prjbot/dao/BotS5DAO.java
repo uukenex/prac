@@ -288,5 +288,8 @@ public interface BotS5DAO {
     HashMap<String, Object> selectS55FishEquip(@Param("userName") String userName);
     List<HashMap<String, Object>> selectS55FishByGrade(@Param("grade") int grade);
     int upsertS55FishInv(@Param("userName") String userName, @Param("fishId") int fishId);
+    // [2026-11-18] 워프 포인트 내구도(TBOT_S55_WP_DUR, ddl/S55_WP_DUR.sql)
+    List<HashMap<String, Object>> selectS55WpDur();
+    int mergeS55WpDur(@Param("wpId") String wpId, @Param("dur") int dur);
     int insertS55FishLog(@Param("userName") String userName, @Param("fishId") int fishId, @Param("mapId") String mapId);
 }

@@ -150,6 +150,9 @@ public final class S5MineMap {
     /** [2026-11-18] 물의 심장(81) -- 심해의 크라켄 처치 보상(반드시). 검기 물 속성 재료. */
     public static final String WATER_HEART_CODE = "WATER_HEART", WATER_HEART_NAME = "물의 심장";
     public static final int WATER_HEART_GRADE = 81;
+    /** [2026-11-18] 내구도 회복 키트(82) -- 거룡 토벌 1·2위 보상, 왕도 워프 포인트 관리인에게 내면 워프 포인트 하나의 내구도 +20. */
+    public static final String WP_KIT_CODE = "WP_KIT", WP_KIT_NAME = "내구도 회복 키트";
+    public static final int WP_KIT_GRADE = 82;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
@@ -1318,7 +1321,12 @@ public final class S5MineMap {
                 S5MineMap b3 = relink(bch, bps, bch.npcs);
                 b3 = relink(b3, retarget(b3, OPEN_SEA, landBeside(os, BEACH)), b3.npcs);
                 b3 = relink(b3, retarget(b3, ARCHISEA, landBeside(sv0, BEACH)), b3.npcs);
+                placeNpc(b3, b3.dockX - 5, b3.dockY - 3, "boatwright", "배 목수", "달빛석 하나에 보석 아홉 가지면 혼자 타는 배를 뚝딱 만들어 주지. 부서진 배도 고쳐 준다네."); // [2026-11-18] "남쪽 바닷가 목수 추가"
                 out.put(BEACH, b3);
+                { // [2026-11-18] 왕도 워프 포인트 관리인 -- 내구도 회복 키트로 워프 포인트 내구도를 채운다
+                    S5MineMap cty2 = out.get(CITY);
+                    for (Portal p : cty2.portals) if (p.kind == 'X') { placeNpc(cty2, p.x + 4, p.y + 1, "wpkeeper", "워프 포인트 관리인", "워프 포인트는 월드보스 거룡의 심장으로 만들었다네. 드래곤의 심장은 무한에 가깝지만 충전이 필요하지. 거룡을 쓰러뜨려 얻은 회복 키트를 가져오게."); break; }
+                }
                 out.put(ARCHISEA, relink(sv0, retarget(sv0, BEACH, new int[] { shR[0], shR[1] - 1 }), null));
                 os = relink(os, retarget(os, BEACH, new int[] { shL[0], shL[1] - 1 }), null);
                 os = relink(os, retarget(os, SEA_CITY, new int[] { 109, 34 }), null);

@@ -31,6 +31,7 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '어둠의 증표'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff']; // [2026-11-18] 예전 타락한 대주교의 인장
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
+  ORE_NAME[82] = '내구도 회복 키트'; ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
   ORE_NAME[81] = '물의 심장'; ORE_COL[81] = ['#2a7ad8', '#bfe8ff']; RARE_GEM[81] = 1; // [2026-11-18] 심해의 크라켄
   ORE_NAME[80] = '정제된 마석'; ORE_COL[80] = ['#5a1a6a', '#ff8ae8']; RARE_GEM[80] = 1; // [2026-11-18] 마계 마을 채광
   ORE_NAME[79] = '심판의 증표'; ORE_COL[79] = ['#c8a040', '#fff4c0']; RARE_GEM[79] = 1; // [2026-11-18] 심판자 보로네오 50% -- 마계 입구 통행
@@ -723,7 +724,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -3025,6 +3026,7 @@ var TowerMine = (function () {
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
     if (n.kind === 'seaferry') { setAuto(false); openSmith(n, 'sail'); return; } // [2026-11-18] 배 띄우기
+    if (n.kind === 'wpkeeper') { setAuto(false); wpKeep = null; openSmith(n, 'wpkeep'); wpKeepGo('wpdur'); return; } // [2026-11-18] 워프 포인트 관리인
     if (n.kind === 'seabuoy') { // [2026-11-18] 신호 부표 -- 불을 붙이면 지원 함선
       var bix = (map.npcs || []).filter(function (q) { return q.kind === 'seabuoy'; }).indexOf(n);
       api('/api/tower-mine-archi?action=buoy:' + bix).then(function (d) { if (d && d.sea) seaSt = d.sea; if (d && d.message) { if (d.ok) flashT0 = performance.now(); msg(d.message, 3000); } }).catch(function () { });
@@ -3855,6 +3857,37 @@ var TowerMine = (function () {
       return '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.sail(\'' + d[0] + '\')">' + d[1] + '<small>' + (d[3] ? d[2] : '🔒 준비 중') + '</small></button>';
     }).join('') + '</div>';
   }
+  // [2026-11-18] 워프 포인트 관리인 -- 워프 포인트 내구도(모두 함께) + 내구도 회복 키트(하나에 +20)
+  var wpKeep = null, wpKeepBusy = false;
+  function wpKeepGo(act) {
+    if (wpKeepBusy) return;
+    wpKeepBusy = true;
+    api('/api/tower-mine-archi?action=' + encodeURIComponent(act)).then(function (d) {
+      wpKeepBusy = false;
+      if (!d) return;
+      if (d.ores) st.ores = d.ores;
+      if (d.wps) wpKeep = d;
+      if (d.message) { if (d.fixed) flashT0 = performance.now(); msg(d.message, 3200); }
+      if (smithOpen && smithView === 'wpkeep') renderSmith(smithNpc);
+    }).catch(function () { wpKeepBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function wpKeepHtml(n) {
+    var h = npcHead('🌀 ' + n.name, false) + talkBlock(n, n.line), d = wpKeep;
+    if (!d) return h + '<div class="mine-smith-say">워프 포인트를 살펴보는 중...</div>';
+    var ic = '<img src="' + oreIcon(82) + '" alt="" style="width:16px;vertical-align:middle"> ';
+    h += '<div class="mine-smith-say">' + ic + '내구도 회복 키트 <b>' + (d.kits | 0) + '</b>개 · 키트 하나에 내구도 +' + d.fix + ' · 마을 워프 포인트는 닳지 않아요<br><small>워프 포인트는 모두가 함께 써요. 한 번 이동할 때마다 출발지와 도착지가 1씩 닳고, 0이 되면 그곳으로 오가지 못해요. 키트는 월드보스 거룡 토벌 1·2위 보상이에요.</small></div>';
+    var acts = {};
+    d.wps.forEach(function (w) { (acts[w.act] = acts[w.act] || []).push(w); });
+    Object.keys(acts).forEach(function (a) {
+      h += '<div class="merc-job-h">' + a + '장</div>';
+      acts[a].forEach(function (w) {
+        var pct = Math.round(w.dur * 100 / d.max), low = w.dur <= 0, need = Math.ceil((d.max - w.dur) / d.fix);
+        h += '<div class="mine-smith-row"><span class="nm">' + escAttr(w.name) + '<small>' + (low ? '⛔ 힘이 다함' : '⚡') + ' ' + w.dur + ' / ' + d.max + '</small><span class="mine-bar hp" style="margin-top:3px"><i style="width:' + pct + '%;background:' + (low ? '#ff5a4a' : pct < 30 ? '#ffb347' : '#7ad8ff') + '"></i></span></span>'
+            + (need > 0 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', 1)">+' + d.fix + '</button>' + (need > 1 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', ' + need + ')">가득(' + need + ')</button>' : '') : '<button type="button" data-lack="1" disabled>가득</button>') + '</div>';
+      });
+    });
+    return h;
+  }
   function sailGo(to) { closeSmith(); travel('/api/tower-mine-archi?action=sail:' + to, '배를 띄우지 못했어요.'); }
   function archiAct(action) {
     if (action === 'board') { closeSmith(); travel('/api/tower-mine-archi?action=board', '배를 타지 못했어요.'); return; }
@@ -3964,11 +3997,15 @@ var TowerMine = (function () {
     }).join('') + '</div>';
     var act = d.acts.filter(function (a) { return a.n === wpTab; })[0] || d.acts[0];
     h += '<div class="wp-head">목적지를 고르세요</div><div class="wp-list">';
+    var hereDead = d.hereDur != null && d.hereDur <= 0; // [2026-11-18] 내구도 -- 여기가 다했으면 어디로도 못 간다
     act.list.forEach(function (w) {
-      var cls = w.here ? 'here' : w.on ? '' : 'off';
-      h += '<button type="button" class="wp-row ' + cls + '"' + (w.on && !w.here ? ' onclick="TowerMine.teleport(\'wp:' + w.id + '\')"' : ' disabled') + '>'
-          + '<span class="wp-ic ' + (w.on ? 'on' : 'off') + '"></span><span class="wp-nm">' + escAttr(w.name) + (w.here ? ' <small>(여기)</small>' : '') + '</span></button>';
+      var dead = !w.inf && w.dur != null && w.dur <= 0, can = w.on && !w.here && !dead && !hereDead;
+      var cls = w.here ? 'here' : w.on && !dead ? '' : 'off';
+      h += '<button type="button" class="wp-row ' + cls + '"' + (can ? ' onclick="TowerMine.teleport(\'wp:' + w.id + '\')"' : ' disabled') + '>'
+          + '<span class="wp-ic ' + (w.on && !dead ? 'on' : 'off') + '"></span><span class="wp-nm">' + escAttr(w.name) + (w.here ? ' <small>(여기)</small>' : '')
+          + (w.on ? ' <small style="color:' + (w.inf ? '#9fe0ff' : dead ? '#ff6a5a' : w.dur < 60 ? '#ffb347' : '#c8c0a8') + '">' + (w.inf ? '∞' : '⚡' + w.dur + '/' + (d.wpMax || 200)) + '</small>' : '') + '</span></button>';
     });
+    if (hereDead) h += '<div class="wp-foot" style="color:#ff8a7a">⛔ 이 워프 포인트의 힘이 다했어요 -- 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.</div>';
     return h + '</div><div class="wp-foot">' + act.on + ' / ' + act.list.length + ' 켜짐 · 꺼진 곳은 직접 가서 워프 포인트를 만지면 켜져요</div></div>';
   }
   // [2026-10-25] 이동 안내원 -- 안내원이 있는 마을끼리 무료로(왕도는 관리자만 보임)
@@ -4365,6 +4402,7 @@ var TowerMine = (function () {
       worldBind(); // [2026-10-28] 끌기/확대
       return;
     }
+    if (smithView === 'wpkeep') { el.smith.innerHTML = wpKeepHtml(n); return; } // [2026-11-18] 워프 포인트 관리인
     if (smithView === 'sail') { el.smith.innerHTML = sailHtml(n); return; } // [2026-11-18] 바닷가 뱃사람/해상도시 부두지기
     if (smithView === 'archi') { // [2026-10-28] 다도해 NPC
       el.smith.innerHTML = archiHtml(n);
@@ -7660,7 +7698,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, refine: function (n) { refineGo('refine', n); }, manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

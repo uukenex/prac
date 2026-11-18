@@ -524,7 +524,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.THUNDER_HEART_CODE, S5MineMap.WIND_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.ARMOR_SHARD_CODES)).toArray(String[]::new); // [2026-11-06] 갑옷 조각
-        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE, S5MineMap.TOWER_TOKEN_CODE, S5MineMap.DUSK_SEAL_CODE, S5MineMap.DAWN_SEAL_CODE, S5MineMap.DEMON_ORE_CODE, S5MineMap.DOOM_SHARD_CODE, S5MineMap.LIGHT_HEART_CODE, S5MineMap.DARK_HEART_CODE, S5MineMap.JUDGE_TOKEN_CODE, S5MineMap.MANA_STONE_CODE, S5MineMap.WATER_HEART_CODE)).toArray(String[]::new); // [2026-11-18] 어둠의 심장, 심판의 증표 // [2026-11-06] 은하수 조각, [2026-11-15] 탑의 증표, [2026-11-17] 인장 둘 / 악마의 광석 조각 / 종말의 파편
+        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE, S5MineMap.TOWER_TOKEN_CODE, S5MineMap.DUSK_SEAL_CODE, S5MineMap.DAWN_SEAL_CODE, S5MineMap.DEMON_ORE_CODE, S5MineMap.DOOM_SHARD_CODE, S5MineMap.LIGHT_HEART_CODE, S5MineMap.DARK_HEART_CODE, S5MineMap.JUDGE_TOKEN_CODE, S5MineMap.MANA_STONE_CODE, S5MineMap.WATER_HEART_CODE, S5MineMap.WP_KIT_CODE)).toArray(String[]::new); // [2026-11-18] 어둠의 심장, 심판의 증표 // [2026-11-06] 은하수 조각, [2026-11-15] 탑의 증표, [2026-11-17] 인장 둘 / 악마의 광석 조각 / 종말의 파편
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
             scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
@@ -2531,6 +2531,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineWbShareSave(en.getKey(), en.getValue(), now);
             mineWbReward(en.getKey(), en.getValue(), now);
         }
+        { // [2026-11-18] 토벌 1·2위(쌓은 몫 순) -- 내구도 회복 키트
+            List<java.util.Map.Entry<String, Double>> rk = new ArrayList<>(MINE_WB_SHARE.entrySet());
+            rk.removeIf(en -> en.getValue() < mineWbMinShare());
+            rk.sort((p1, q1) -> Double.compare(q1.getValue(), p1.getValue()));
+            for (int i = 0; i < Math.min(MINE_WP_KIT_RANK.length, rk.size()); i++) {
+                try {
+                    String ru = rk.get(i).getKey();
+                    dao.addUserOre(ru, S5MineMap.WP_KIT_CODE, MINE_WP_KIT_RANK[i]);
+                    MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! 🔧 " + S5MineMap.WP_KIT_NAME + " " + MINE_WP_KIT_RANK[i] + "개 (왕도 워프 포인트 관리인에게)", (p, q) -> p + " / " + q);
+                } catch (Exception ignore) { }
+            }
+        }
         MINE_WB_DOWN.clear();
         if (n > 0) mineGossipAdd("용사 " + n + "명이 동쪽 성곽에서 " + MINE_WB_NAME + "을(를) 쓰러뜨렸대요!");
     }
@@ -4234,6 +4246,71 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return null;
     }
 
+    // ---- [2026-11-18] 워프 포인트 내구도 -- "모든 유저가 함께 쓰는 내구도, 출발지와 도착지가 닳는다, 다 되면 그 지역 이동 불가, 마을은 무한, 처음 200,
+    //  거룡 토벌 1·2위에게 회복 키트 20개를 나누어 주고, 회복 NPC에게 키트 하나당 내구도 20" --
+    //  TBOT_S55_WP_DUR(줄이 없으면 가득)을 처음 쓸 때 메모리로 읽고, 바뀔 때마다 그 줄만 MERGE. 워프 한 번 = 출발지 -1, 도착지 -1(마을 제외).
+    static final int MINE_WP_DUR_MAX = 200, MINE_WP_KIT_FIX = 20;
+    static final int[] MINE_WP_KIT_RANK = { 10, 10 }; // 거룡 토벌 1위 / 2위 -- 합쳐서 20개
+    static final java.util.Set<String> MINE_WP_TOWNS = new java.util.HashSet<>(java.util.Arrays.asList("field", "city", "snowtown", "archi", "tcity", "seacity"));
+    static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_WP_DUR = new java.util.concurrent.ConcurrentHashMap<>();
+    static volatile boolean mineWpDurLoaded = false;
+    static boolean mineWpTown(S5MineMap.Waypoint w) { return w == null || MINE_WP_TOWNS.contains(w.id); }
+    int mineWpDur(S5MineMap.Waypoint w) {
+        if (mineWpTown(w)) return MINE_WP_DUR_MAX;
+        if (!mineWpDurLoaded) synchronized (MINE_WP_DUR) { if (!mineWpDurLoaded) { for (HashMap<String, Object> r : dao.selectS55WpDur()) MINE_WP_DUR.put(strVal(r.get("WP_ID"), ""), intVal(r.get("DUR"), MINE_WP_DUR_MAX)); mineWpDurLoaded = true; } }
+        return Math.max(0, MINE_WP_DUR.getOrDefault(w.id, MINE_WP_DUR_MAX));
+    }
+    void mineWpDurSet(S5MineMap.Waypoint w, int v) { MINE_WP_DUR.put(w.id, v); dao.mergeS55WpDur(w.id, v); }
+    /** 워프 전 -- 출발지/도착지 내구도가 다했으면 안내(아니면 null). */
+    String mineWpDurBlock(S5MineMap.Waypoint from, S5MineMap.Waypoint to) {
+        if (to != null && mineWpDur(to) <= 0) return "🌀 " + to.name + " 워프 포인트의 힘이 다했어요(내구도 0). 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.";
+        if (from != null && mineWpDur(from) <= 0) return "🌀 이 워프 포인트의 힘이 다했어요(내구도 0). 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.";
+        return null;
+    }
+    /** 워프 하는 순간 -- 출발지/도착지 하나씩(마을은 무한). */
+    void mineWpDurUse(S5MineMap.Waypoint from, S5MineMap.Waypoint to) {
+        synchronized (MINE_WP_DUR) {
+            for (S5MineMap.Waypoint w : new S5MineMap.Waypoint[] { from, to }) if (!mineWpTown(w)) mineWpDurSet(w, Math.max(0, mineWpDur(w) - 1));
+        }
+    }
+    /** 워프 포인트 관리인 창 -- 마을이 아닌 워프 포인트의 내구도 + 내 키트 수. */
+    HashMap<String, Object> mineWpDurInfo(String userName, HashMap<String, Object> out) {
+        List<HashMap<String, Object>> l = new ArrayList<>();
+        for (S5MineMap.Waypoint w : S5MineMap.waypoints()) {
+            if (mineWpTown(w) || (w.act == 5 && !isMineAdmin(userName))) continue;
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", w.id); m.put("name", w.name); m.put("act", w.act); m.put("dur", mineWpDur(w));
+            l.add(m);
+        }
+        out.put("ok", true);
+        out.put("wps", l);
+        out.put("max", MINE_WP_DUR_MAX);
+        out.put("fix", MINE_WP_KIT_FIX);
+        out.put("kits", mineOreHave(userName).getOrDefault(S5MineMap.WP_KIT_CODE, 0));
+        return out;
+    }
+    /** 키트 n개로 워프 포인트 하나 채우기(가득 차면 남는 키트는 안 쓴다). */
+    HashMap<String, Object> mineWpFix(String userName, String wpId, int n) {
+        HashMap<String, Object> out = new HashMap<>();
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        S5MineMap.Waypoint w = S5MineMap.waypoint(wpId);
+        if (row == null || !mineAtNpc(row, "wpkeeper")) out.put("message", "왕도 워프 포인트 관리인에게서만 채울 수 있어요.");
+        else if (w == null || mineWpTown(w)) out.put("message", "마을 워프 포인트는 힘이 다하지 않아요.");
+        else {
+            int dur = mineWpDur(w), need = (MINE_WP_DUR_MAX - dur + MINE_WP_KIT_FIX - 1) / MINE_WP_KIT_FIX, use = Math.min(Math.max(1, n), need);
+            if (need <= 0) out.put("message", "🌀 " + w.name + " 워프 포인트는 이미 가득 차 있어요.");
+            else if (dao.takeUserOre(userName, S5MineMap.WP_KIT_CODE, use) == 0) out.put("message", "🔧 " + S5MineMap.WP_KIT_NAME + "이(가) 모자라요. (" + use + "개 필요) 월드보스 거룡 토벌 1·2위 보상이에요.");
+            else {
+                int nd;
+                synchronized (MINE_WP_DUR) { nd = Math.min(MINE_WP_DUR_MAX, mineWpDur(w) + use * MINE_WP_KIT_FIX); mineWpDurSet(w, nd); }
+                out.put("message", "✨ " + w.name + " 워프 포인트에 거룡의 기운을 채웠어요! (키트 " + use + "개 · 내구도 " + nd + " / " + MINE_WP_DUR_MAX + ")");
+                out.put("fixed", true);
+                out.put("ores", mineOreList(userName));
+            }
+        }
+        return mineWpDurInfo(userName, out);
+    }
+
     static final int MINE_JUDGE_TOKEN_PCT = 50; // [2026-11-18] "보로네오 뒤쪽은 50% 확률로 나오는 증표가 있어야"
     List<HashMap<String, Object>> mineBoroDrops(String userName, StringBuilder msg) {
         msg.insert(0, "👑 심판자 보로네오를 쓰러뜨렸어요! ");
@@ -5465,6 +5542,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.TELE.equals(p.target)) {
             String wpMsg = wpTo == null ? "🌀 어디로 갈지 골라 주세요." : !mineWpOn(userName, items, wpTo) ? "🌀 아직 켜지 않은 워프 포인트예요. 직접 가서 만지면 켜져요."
                     : wpTo == S5MineMap.waypointAt(map.id, px, py) ? "🌀 지금 서 있는 워프 포인트예요." : null;
+            if (wpMsg == null) wpMsg = mineWpDurBlock(S5MineMap.waypointAt(map.id, px, py), wpTo); // [2026-11-18] 내구도
             if (wpMsg != null) { dao.updateMinePos(userName, map.id, x, y, now); out.put("message", wpMsg); return out; }
         }
         S5MineMap target = abyssTo != null ? (S5MineMap) abyssTo[0] : S5MineMap.get(ship ? dest : wpTo != null ? wpTo.map : p.target);
@@ -5500,6 +5578,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             llMsg += "⚖️ " + S5MineMap.JUDGE_TOKEN_NAME + "를 내밀자 마계로 가는 길이 열렸어요. (증표 1개 사용) ";
         }
+        if (wpTo != null) mineWpDurUse(S5MineMap.waypointAt(map.id, px, py), wpTo); // [2026-11-18] 워프 포인트 내구도 -- 출발지/도착지 -1
         int ax = abyssTo != null ? (Integer) abyssTo[1] : ship ? target.dockX() : tele ? wpTo.x : p.tx, ay = abyssTo != null ? (Integer) abyssTo[2] : ship ? target.dockY() : tele ? wpTo.y + 2 : p.ty; // [2026-11-18] 워프 포인트 바로 아래
         boolean landOk = mineWalk(target, ax, ay, water); // [2026-10-28] "섬에서 뱃길로 나오면 그 섬 입구 쪽에" -- 뱃길(배로 물 위)은 물 칸도 내리는 칸(예전엔 걸을 칸이 아니라고 시작점으로 보냈다)
         int tx = landOk ? ax : target.spawnX, ty = landOk ? ay : target.spawnY;
@@ -6321,6 +6400,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 HashMap<String, Object> wm = new HashMap<>();
                 boolean o = mineWpOn(userName, items, w);
                 wm.put("id", w.id); wm.put("name", w.name); wm.put("on", o); wm.put("here", w == here);
+                if (mineWpTown(w)) wm.put("inf", true); else wm.put("dur", mineWpDur(w)); // [2026-11-18] 내구도
                 if (o) on++;
                 l.add(wm);
             }
@@ -6328,6 +6408,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             acts.add(am);
         }
         out.put("ok", true);
+        out.put("wpMax", MINE_WP_DUR_MAX); // [2026-11-18]
+        if (here != null && !mineWpTown(here)) out.put("hereDur", mineWpDur(here));
         out.put("acts", acts);
         out.put("here", here.id);
         out.put("act", here.act);
@@ -9443,6 +9525,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.JUDGE_TOKEN_CODE.equals(code)) return S5MineMap.JUDGE_TOKEN_GRADE;
         if (S5MineMap.MANA_STONE_CODE.equals(code)) return S5MineMap.MANA_STONE_GRADE;
         if (S5MineMap.WATER_HEART_CODE.equals(code)) return S5MineMap.WATER_HEART_GRADE;
+        if (S5MineMap.WP_KIT_CODE.equals(code)) return S5MineMap.WP_KIT_GRADE;
         for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         if (S5MineMap.CUT_ICE_CODE.equals(code)) return S5MineMap.CUT_ICE_GRADE; // [2026-10-28] 세공된 빙석
@@ -9475,6 +9558,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (g == S5MineMap.JUDGE_TOKEN_GRADE) return S5MineMap.JUDGE_TOKEN_NAME;
         if (g == S5MineMap.MANA_STONE_GRADE) return S5MineMap.MANA_STONE_NAME;
         if (g == S5MineMap.WATER_HEART_GRADE) return S5MineMap.WATER_HEART_NAME;
+        if (g == S5MineMap.WP_KIT_GRADE) return S5MineMap.WP_KIT_NAME;
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g == S5MineMap.CUT_ICE_GRADE) return S5MineMap.CUT_ICE_NAME;
@@ -9582,7 +9666,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     HashMap<String, Object> mineBoatFix(String userName) {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         String at = strVal(row.get("MAP_ID"), "");
-        if (!S5MineMap.ARCHI.equals(at)) return mineGearResult(userName, false, "⛵ 배는 다도해 본섬 배 목수가 고쳐 줘요."); // [2026-11-18] 뱃사람/부두지기를 없애서 배 목수로
+        if (!S5MineMap.ARCHI.equals(at) && !S5MineMap.BEACH.equals(at)) return mineGearResult(userName, false, "⛵ 배는 배 목수(다도해 본섬·남쪽 바닷가)가 고쳐 줘요."); // [2026-11-18] 뱃사람/부두지기를 없애서 배 목수로
         Map<String, Integer> items = mineItems(userName);
         if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 고칠 배가 없어요.");
         long[] bh = mineBoatHp(items);
@@ -9632,9 +9716,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineRow(userName, false);
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         if ("boatfix".equals(action)) return mineBoatFix(userName); // [2026-11-18] 배 수리
+        if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
+        if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
         if (action != null && action.startsWith("buoy:")) { int bix; try { bix = Integer.parseInt(action.substring(5)); } catch (NumberFormatException ex) { bix = -1; } return mineBuoy(userName, bix); } // [2026-11-18] 신호 부표
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
-        if (!S5MineMap.ARCHI.equals(strVal(row.get("MAP_ID"), ""))) return mineGearResult(userName, false, "다도해 본섬에서만 할 수 있어요.");
+        if (!S5MineMap.ARCHI.equals(strVal(row.get("MAP_ID"), "")) && !("boat".equals(action) && S5MineMap.BEACH.equals(strVal(row.get("MAP_ID"), "")))) return mineGearResult(userName, false, "다도해 본섬에서만 할 수 있어요."); // [2026-11-18] 배 만들기는 남쪽 바닷가 배 목수도
         Map<String, Integer> items = mineItems(userName);
         int q = items.getOrDefault(MINE_ITEM_NINJA_QUEST, 0), kills = items.getOrDefault(MINE_ITEM_NINJA_KILLS, 0);
         long now = System.currentTimeMillis();
