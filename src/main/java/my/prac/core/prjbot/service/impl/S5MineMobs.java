@@ -722,6 +722,7 @@ public final class S5MineMobs {
             return fm;
         }
         if (S5MineMap.OPEN_SEA.equals(m.id)) return spawnSea(m, seed); // [2026-11-18] 바다 위
+        if (S5MineMap.COAST_SEA.equals(m.id)) return new ArrayList<>(); // [2026-11-18] 연안 뱃길 -- 몬스터 없음
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();
         Random r = new Random(seed);
@@ -821,7 +822,7 @@ public final class S5MineMobs {
         boolean[][] taken = new boolean[m.h][m.w];
         int bx = m.bossX(), by = m.bossY();
         boolean dense = m.seaRoute() != null; // [2026-11-18] "물보스 나오는 맵(바다 위)에 몬스터 많이" -- 무리 자리를 촘촘히(약 3배), 무리도 조금 크게
-        int gy0 = dense ? 5 : 10, gys = dense ? 10 : 14, gxs = dense ? 13 : 16;
+        int gy0 = dense ? 5 : 10, gys = dense ? 9 : 14, gxs = dense ? 10 : 16; // [2026-11-18] 같은 날 "더 늘려줘" -- 약 280마리
         for (int gy = gy0; gy < m.h - gy0; gy += gys) for (int gx = 4; gx < m.w - 8; gx += gxs) {
             int x = gx + r.nextInt(10), y = gy + r.nextInt(8);
             if (!seaCell(t, x, y) || Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 14) continue;
