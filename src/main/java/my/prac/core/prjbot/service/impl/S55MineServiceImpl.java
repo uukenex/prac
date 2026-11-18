@@ -6607,7 +6607,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("ARMOR_SAMURAI", "무사의 흉갑", 2, 40, 300, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[1], true),
         new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 800, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
         new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 2500, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
-        new MineWeapon("ARMOR_IMMORTAL", "심판의 갑옷", 5, 125, 5000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-17] 보로네오 전용(받는 피해 고정 감소 -- 백화 갑주의 2배)
+        new MineWeapon("ARMOR_IMMORTAL", "심판의 갑옷", 5, 125, 5000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
+        new MineWeapon("ARMOR_SEA", "바다의 갑옷", 6, 110, 3600, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-18] 바다 위 몬스터/크라켄 전용(신화 받는 피해 -3600) // [2026-11-17] 보로네오 전용(받는 피해 고정 감소 -- 백화 갑주의 2배)
     };
     static MineWeapon mineArmorOf(String code) { for (MineWeapon w : MINE_ARMORS) if (w.code.equals(code)) return w; return null; }
     static MineWeapon mineArmorOn(Map<String, Integer> items) {
@@ -6621,6 +6622,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (t.dummy || t.clone || t.noReward) return out;
         java.util.List<String> ms = java.util.Arrays.asList(t.maps);
         if (t.ninja || ms.contains(S5MineMap.ARCHI)) out.add(mineArmorOf("ARMOR_NINJA"));
+        if (t.sea) { out.add(mineArmorOf(MINE_ITEM_SEA_ARMOR)); return out; } // [2026-11-18] 바다 몬스터 = 바다의 갑옷만
         if (ms.contains(S5MineMap.ISLE1) || ms.contains(S5MineMap.ISLE2) || ms.contains(S5MineMap.ISLE3) || ms.contains(S5MineMap.ISLE4) || ms.contains(S5MineMap.ISLE5) || ms.contains(S5MineMap.ISLE6) || ms.contains(S5MineMap.ISLE7)) out.add(mineArmorOf("ARMOR_BAEKHWA"));
         if (!t.ninja) for (MineWeapon w : MINE_ARMORS) if (Math.abs(t.lv() - w.lv) <= MINE_WEAPON_DROP_LV_GAP && !out.contains(w) && !mineNoRandomDrop(w.code)) out.add(w); // [2026-11-15] 탑의 갑주는 상인만
         return out;
@@ -6705,7 +6707,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 무작위 드랍에서 빠지는 장비(하피의 검 = 하피 여왕 전용). */
     static final String MINE_ITEM_IMMORTAL_SWORD = "IMMORTAL_SWORD", MINE_ITEM_IMMORTAL_ARMOR = "ARMOR_IMMORTAL"; // [2026-11-17] 보로네오 전용
     static final int MINE_BORO_GEAR_PCT = 25;
-    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_IMMORTAL_SWORD.equals(code) || MINE_ITEM_IMMORTAL_ARMOR.equals(code); }
+    // [2026-11-18] "바다에서 사냥 시 바다의 검/바다의 갑옷 110레벨제(사실상 진환생하면 그냥 장착)" -- 바다 위 몬스터(Type.sea)만 떨어뜨린다(같은 레벨대 악마의 들판은 아님),
+    //  크라켄은 MINE_KRK_GEAR_PCT%로 둘 중 하나(일반~신화). 바다의 검 = 하피의 검(99)과 심판의 검(125) 사이, 바다의 갑옷 = 백화 갑주(80)와 심판의 갑옷(125) 사이.
+    static final String MINE_ITEM_SEA_SWORD = "SEA_SWORD", MINE_ITEM_SEA_ARMOR = "ARMOR_SEA";
+    static final int MINE_KRK_GEAR_PCT = 30;
+    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_IMMORTAL_SWORD.equals(code) || MINE_ITEM_IMMORTAL_ARMOR.equals(code) || MINE_ITEM_SEA_SWORD.equals(code) || MINE_ITEM_SEA_ARMOR.equals(code); }
     static final MineWeapon[] MINE_WEAPONS = {
         new MineWeapon("BICHUL_SWORD", "비철도", 3, 20, 50, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[1]),
         new MineWeapon("KATANA", "카타나", 4, 40, 250, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[2]),
@@ -6715,6 +6721,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon(MINE_ITEM_HARPY_SWORD, "하피의 검", 6, 99, 2250, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]),
         // [2026-11-17] 심판의 검 -- 심판자 보로네오만 떨어뜨린다(처치마다 MINE_BORO_GEAR_PCT%로 검이나 갑옷 하나, 일반~신화). 125레벨부터. 하피의 검의 약 1.5배(공 3400 + 공격력 3%).
         new MineWeapon(MINE_ITEM_IMMORTAL_SWORD, "심판의 검", 7, 125, 3400, 0.2, 7, 0, 3, S5MineMap.WEAPON_SHARD_CODES[3]),
+        new MineWeapon(MINE_ITEM_SEA_SWORD, "바다의 검", 8, 110, 2800, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]), // [2026-11-18] 바다 위 몬스터/크라켄 전용(공 2800 + 공격력 2%)
     };
     static final int MINE_WEAPON_DROP_LV_GAP = 4;
     /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 41.22% / 30% / 16% / 8% / 3.5% / 1% / 0.25% / 0.03%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로).
@@ -6763,6 +6770,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         List<MineWeapon> out = new ArrayList<>();
         if (t.dummy || t.clone || t.noReward) return out;
         if (t.ninja || java.util.Arrays.asList(t.maps).contains(S5MineMap.ARCHI)) out.add(mineWeaponOf(MINE_ITEM_NINJA_SWORD));
+        if (t.sea) { out.add(mineWeaponOf(MINE_ITEM_SEA_SWORD)); return out; } // [2026-11-18] 바다 몬스터 = 바다의 검만
         if (java.util.Arrays.asList(t.maps).stream()
                 .anyMatch(m -> m.equals(S5MineMap.ISLE1)
                             || m.equals(S5MineMap.ISLE2)
@@ -6784,6 +6792,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             case MINE_ITEM_NINJA_SWORD: return "ninja";
             case "BAEKHWA_SWORD": return "baekhwa";
             case MINE_ITEM_HARPY_SWORD: return "harpy";
+            case MINE_ITEM_SEA_SWORD: return "sea"; // [2026-11-18] 바다의 검(_mine_char.jsp W32.sea)
             case MINE_ITEM_IMMORTAL_SWORD: return "immortal"; // [2026-11-17] 심판의 검(_mine_char.jsp W32.immortal) // [2026-11-11] 하피의 검(시안 승인 -- _mine_char.jsp W32.harpy)
             default: return "sword";
         }
@@ -6808,11 +6817,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (admin) wp = Math.min(10000, wp * 10); // [2026-11-05] "관리자 드랍률 자체도 올려줘"(이펙트 시험용) -- 10배
         int bossG = -1;
         if (type.boss) { // [2026-11-06] "보스들도 장비를 -- 최소 영웅부터(신화는 엄청 낮게)": MINE_BOSS_GEAR_PCT%로 보스 레벨에 가장 가까운 무기/갑옷 하나(닌자 두목 = 닌자 장비)
-            boolean harpy = type == S5MineMobs.TYPES.get(S5MineMobs.HARPY_BOSS_TYPE), boro = type == S5MineMobs.TYPES.get(S5MineMobs.BORO_BOSS_TYPE); // [2026-11-17] 보로네오 = 심판의 검/갑옷 // [2026-11-11] 하피 여왕 = 하피의 검(반드시, 일반~신화)
-            if (type.noReward || type.clone || type.dummy || (!admin && RND.nextInt(100) >= (harpy ? MINE_HARPY_DROP_PCT : boro ? MINE_BORO_GEAR_PCT : MINE_BOSS_GEAR_PCT))) return; // [2026-11-11] 하피의 검 30%
+            boolean harpy = type == S5MineMobs.TYPES.get(S5MineMobs.HARPY_BOSS_TYPE), boro = type == S5MineMobs.TYPES.get(S5MineMobs.BORO_BOSS_TYPE), krk = type == S5MineMobs.TYPES.get(S5MineMobs.KRAKEN_TYPE); // [2026-11-18] 크라켄 = 바다의 검/갑옷 // [2026-11-17] 보로네오 = 심판의 검/갑옷 // [2026-11-11] 하피 여왕 = 하피의 검(반드시, 일반~신화)
+            if (type.noReward || type.clone || type.dummy || (!admin && RND.nextInt(100) >= (harpy ? MINE_HARPY_DROP_PCT : boro ? MINE_BORO_GEAR_PCT : krk ? MINE_KRK_GEAR_PCT : MINE_BOSS_GEAR_PCT))) return; // [2026-11-11] 하피의 검 30%
             List<MineWeapon> cand = new ArrayList<>();
             if (harpy) cand.add(mineWeaponOf(MINE_ITEM_HARPY_SWORD));
             else if (boro) { cand.add(mineWeaponOf(MINE_ITEM_IMMORTAL_SWORD)); cand.add(mineArmorOf(MINE_ITEM_IMMORTAL_ARMOR)); }
+            else if (krk) { cand.add(mineWeaponOf(MINE_ITEM_SEA_SWORD)); cand.add(mineArmorOf(MINE_ITEM_SEA_ARMOR)); }
             else if (type.ninja) { cand.add(mineWeaponOf(MINE_ITEM_NINJA_SWORD)); cand.add(mineArmorOf("ARMOR_NINJA")); }
             else {
                 int best = -1;
@@ -6821,7 +6831,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 for (MineWeapon[] arr : new MineWeapon[][] { MINE_WEAPONS, MINE_ARMORS }) for (MineWeapon w : arr) if (w.lv == best && !mineNoRandomDrop(w.code)) cand.add(w);
             }
             dw = cand.get(RND.nextInt(cand.size()));
-            bossG = harpy || boro ? mineGradeRoll(dw.maxGrade, rank) : mineBossGradeRoll(dw.maxGrade); // [2026-11-17] 심판 장비도 일반~신화 // [2026-11-11] 하피의 검은 일반 몬스터에게 무기가 떴을 때와 같은 등급 비율(일반~신화)
+            bossG = harpy || boro || krk ? mineGradeRoll(dw.maxGrade, rank) : mineBossGradeRoll(dw.maxGrade); // [2026-11-17] 심판 장비도 일반~신화 // [2026-11-11] 하피의 검은 일반 몬스터에게 무기가 떴을 때와 같은 등급 비율(일반~신화)
         } else {
             for (MineWeapon w : mineWeaponDrops(type)) if (RND.nextInt(10000) < wp) { dw = w; break; }
             if (dw == null) for (MineWeapon a : mineArmorDrops(type)) if (RND.nextInt(10000) < wp) { dw = a; break; } // [2026-11-06] 갑옷 -- 무기와 같은 확률로 따로
