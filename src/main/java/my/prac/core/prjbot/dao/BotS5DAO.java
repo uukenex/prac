@@ -287,6 +287,9 @@ public interface BotS5DAO {
     // [2026-11-18] 광산 바다 낚시(TBOT_S55_FISH_* -- 시즌4 낚시 테이블을 CTAS로 복사해 따로 쓴다, ddl/S55_FISH.sql)
     HashMap<String, Object> selectS55FishEquip(@Param("userName") String userName);
     List<HashMap<String, Object>> selectS55FishByGrade(@Param("grade") int grade);
+    /** [2026-11-19] 인벤토리 낚시 탭 -- 물고기 도감 전부 / 내가 낚은 물고기(수) */
+    List<HashMap<String, Object>> selectS55FishAll();
+    List<HashMap<String, Object>> selectS55FishInvOf(@Param("userName") String userName);
     int upsertS55FishInv(@Param("userName") String userName, @Param("fishId") int fishId);
     // [2026-11-18] 워프 포인트 내구도(TBOT_S55_WP_DUR, ddl/S55_WP_DUR.sql)
     List<HashMap<String, Object>> selectS55WpDur();

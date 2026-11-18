@@ -5256,6 +5256,44 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_FISH_GAP_MS = 2_500L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_FISH_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final String[] MINE_ROD_NAMES = { "", "일반", "고급", "희귀", "영웅", "전설" };
+    /** [2026-11-19] "인벤토리 카테고리에 낚시(성급별)" -- 성급(8 -> 1)마다 도감 물고기 + 내가 낚은 수(안 낚은 건 0 -- 화면이 ???로), 낚싯대/찌 등급. */
+    HashMap<String, Object> mineFishInv(String userName) {
+        HashMap<String, Object> out = new HashMap<>();
+        Map<Integer, Integer> have = new HashMap<>();
+        for (HashMap<String, Object> r : dao.selectS55FishInvOf(userName)) have.put(intVal(r.get("FISH_ID"), 0), intVal(r.get("QTY"), 0));
+        java.util.TreeMap<Integer, List<HashMap<String, Object>>> byG = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
+        int kinds = 0, total = 0, all = 0;
+        for (HashMap<String, Object> f : dao.selectS55FishAll()) {
+            int id = intVal(f.get("FISH_ID"), 0), g = intVal(f.get("FISH_GRADE"), 1), q = have.getOrDefault(id, 0);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("id", id);
+            m.put("name", strVal(f.get("FISH_NAME"), "물고기"));
+            m.put("emoji", strVal(f.get("FISH_EMOJI"), g >= 7 ? "🐋" : g >= 5 ? "🐠" : "🐟"));
+            m.put("desc", strVal(f.get("FISH_DESC"), ""));
+            m.put("qty", q);
+            byG.computeIfAbsent(g, k -> new ArrayList<>()).add(m);
+            all++;
+            if (q > 0) { kinds++; total += q; }
+        }
+        List<HashMap<String, Object>> grades = new ArrayList<>();
+        for (Map.Entry<Integer, List<HashMap<String, Object>>> e : byG.entrySet()) {
+            HashMap<String, Object> gm = new HashMap<>();
+            gm.put("grade", e.getKey());
+            gm.put("star", mineFishStar(e.getKey()));
+            gm.put("fish", e.getValue());
+            grades.add(gm);
+        }
+        HashMap<String, Object> eq = dao.selectS55FishEquip(userName);
+        int rod = eq == null ? 1 : Math.max(1, intVal(eq.get("ROD_GRADE"), 1)), bob = eq == null ? 1 : Math.max(1, intVal(eq.get("BOBBER_GRADE"), 1));
+        out.put("ok", true);
+        out.put("fishInv", grades);
+        out.put("rod", MINE_ROD_NAMES[Math.min(rod, MINE_ROD_NAMES.length - 1)] + " 낚싯대");
+        out.put("bobber", MINE_ROD_NAMES[Math.min(bob, MINE_ROD_NAMES.length - 1)] + " 찌");
+        out.put("kinds", kinds);
+        out.put("allKinds", all);
+        out.put("total", total);
+        return out;
+    }
     HashMap<String, Object> mineFish(String userName, String mapId, int x, int y, int st, int stMax, long now, HashMap<String, Object> out) {
         Long last = MINE_FISH_AT.get(userName);
         if (last != null && now - last < MINE_FISH_GAP_MS) { out.put("fishWait", true); out.put("message", "🎣 찌가 아직 물 위에 떠 있어요."); return out; }
@@ -5336,7 +5374,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        if (map.boat()) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만"
+        if (map.boat() || (map.sail() && map.terrainAt(x, y) == '~')) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
             if (!isMineAdmin(userName)) { out.put("message", "🎣 바다 낚시는 아직 준비 중이에요."); return out; }
             return mineFish(userName, map.id, x, y, st, stMax, now, out);
         }
@@ -9938,6 +9976,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineRow(userName, false);
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         if ("boatfix".equals(action)) return mineBoatFix(userName); // [2026-11-18] 배 수리
+        if ("fishinv".equals(action)) return mineFishInv(userName); // [2026-11-19] 인벤토리 낚시 탭
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
         if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
         if (action != null && (action.startsWith("bell:") || action.startsWith("buoy:"))) { int bix; try { bix = Integer.parseInt(action.substring(5)); } catch (NumberFormatException ex) { bix = -1; } return mineBell(userName, bix); } // [2026-11-18] 신호 부표

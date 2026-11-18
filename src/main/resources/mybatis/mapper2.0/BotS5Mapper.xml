@@ -1262,6 +1262,13 @@
     <select id="selectS55FishEquip" resultType="hashmap">
         SELECT ROD_GRADE, BOBBER_GRADE FROM TBOT_S55_FISH_EQUIP WHERE USER_NAME = #{userName}
     </select>
+    <!-- [2026-11-19] 인벤토리 낚시 탭: 물고기 도감(48종) / 내 어망 -->
+    <select id="selectS55FishAll" resultType="hashmap">
+        SELECT FISH_ID, FISH_NAME, FISH_GRADE, FISH_EMOJI, FISH_DESC FROM TBOT_S55_FISH_INFO WHERE ACTIVE_YN = '1' ORDER BY FISH_GRADE DESC, FISH_ID
+    </select>
+    <select id="selectS55FishInvOf" resultType="hashmap">
+        SELECT FISH_ID, QTY FROM TBOT_S55_FISH_INV WHERE USER_NAME = #{userName}
+    </select>
     <select id="selectS55FishByGrade" resultType="hashmap">
         SELECT FISH_ID, FISH_NAME, FISH_GRADE, WEIGHT, FISH_DESC
           FROM TBOT_S55_FISH_INFO
