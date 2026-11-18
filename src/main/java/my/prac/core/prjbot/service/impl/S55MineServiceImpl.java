@@ -3057,6 +3057,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
         if ("board".equals(action)) { HashMap<String, Object> bo = mineWbBoard(now); bo.put("ok", true); return bo; } // [2026-11-17] 월드보스 게시판
+        if ("bosses".equals(action)) { HashMap<String, Object> bo = new HashMap<>(); bo.put("ok", true); bo.put("bosses", mineBossList(userName, now)); return bo; } // [2026-11-18] 보스 목록(천둥 황소 처치 수 등)을 열 때 새로
         if (("start".equals(action) || "stop".equals(action)) && isMineAdmin(userName)) {
             if ("start".equals(action)) {
                 mineWbPool(now);
@@ -4894,29 +4895,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         d.put("qty", qty);
         return d;
     }
-
-    @Override
-    public HashMap<String, Object> mineState(String userName) {
-        if (!mineAccess(userName)) return mineClosed();
-        HashMap<String, Object> gate = mineGate();
-        if (gate != null) return gate;
-        long now = System.currentTimeMillis();
-        HashMap<String, Object> row = mineRow(userName, false);
-        S5MineMap map = mineMapOf(row);
-        HashMap<String, Object> out = new HashMap<>();
-        { // [2026-10-29] 무기 장착 레벨 -- 들고 있는 무기보다 레벨이 낮으면(환생 직후 등) 칼로 바꿔 든다
-            Map<String, Integer> gi = mineItems(userName);
-            MineWeapon hw = mineWeaponOn(gi);
-            if (hw != null && !mineGearLvOk(mineLv(row), gi, hw.lv)) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); out.put("weaponOffMsg", "🗡️ " + hw.name + "은(는) Lv." + hw.lv + "부터라 칼로 바꿔 들었어요."); }
-            MineWeapon ha = mineArmorOn(mineItems(userName)); // [2026-11-06] 갑옷도
-            if (ha != null && !mineGearLvOk(mineLv(row), gi, ha.lv)) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); out.put("weaponOffMsg", "🛡️ " + ha.name + "은(는) Lv." + ha.lv + "부터라 벗었어요."); }
-        }
-        putMinePick(out, minePickDur(row), minePickMax(row));
-        out.put("pickUpgrades", minePickUpgradeList());
-        out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
-        out.put("nextResetAt", S5MineMap.nextResetAt(now));
-        // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
-        //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
+    // [2026-11-18] "천둥 보스 소환 처치 수가 볼 때 안 바뀐다" -- 목록이 mineState 때만 실려서 처치 수가 들어올 때 값 그대로였다.
+    //  전체 지도의 보스 목록을 열 때 /api/tower-mine-wb?action=bosses로 이것만 새로 받는다.
+    List<HashMap<String, Object>> mineBossList(String userName, long now) {
         List<HashMap<String, Object>> bosses = new ArrayList<>();
         // [2026-11-13] 보스 소환 -- 전체 지도 칸 위 젠타임 대신 지도 창 "👑 보스" 버튼 목록에 보스마다 내가 다시 소환할 수 있는 시각(callAt, 0 = 지금)
         Map<String, Integer> callItems = mineItems(userName);
@@ -4960,7 +4941,33 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 bosses.add(b);
             }
         }
-        out.put("bosses", bosses);
+        return bosses;
+    }
+
+
+    @Override
+    public HashMap<String, Object> mineState(String userName) {
+        if (!mineAccess(userName)) return mineClosed();
+        HashMap<String, Object> gate = mineGate();
+        if (gate != null) return gate;
+        long now = System.currentTimeMillis();
+        HashMap<String, Object> row = mineRow(userName, false);
+        S5MineMap map = mineMapOf(row);
+        HashMap<String, Object> out = new HashMap<>();
+        { // [2026-10-29] 무기 장착 레벨 -- 들고 있는 무기보다 레벨이 낮으면(환생 직후 등) 칼로 바꿔 든다
+            Map<String, Integer> gi = mineItems(userName);
+            MineWeapon hw = mineWeaponOn(gi);
+            if (hw != null && !mineGearLvOk(mineLv(row), gi, hw.lv)) { dao.upsertMineItem(userName, MINE_ITEM_WEAPON_SLOT, 0); out.put("weaponOffMsg", "🗡️ " + hw.name + "은(는) Lv." + hw.lv + "부터라 칼로 바꿔 들었어요."); }
+            MineWeapon ha = mineArmorOn(mineItems(userName)); // [2026-11-06] 갑옷도
+            if (ha != null && !mineGearLvOk(mineLv(row), gi, ha.lv)) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); out.put("weaponOffMsg", "🛡️ " + ha.name + "은(는) Lv." + ha.lv + "부터라 벗었어요."); }
+        }
+        putMinePick(out, minePickDur(row), minePickMax(row));
+        out.put("pickUpgrades", minePickUpgradeList());
+        out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
+        out.put("nextResetAt", S5MineMap.nextResetAt(now));
+        // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
+        //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
+        out.put("bosses", mineBossList(userName, now)); // [2026-11-18] 목록 만들기는 mineBossList로(보스 창을 열 때 따로 다시 받는다)
         HashMap<String, int[]> dims = new HashMap<>(); // [2026-11-11] 전체 지도 -- 맵 크기만큼 칸 크기를 다르게
         for (String mid : S5MineMap.ids()) { S5MineMap dm = S5MineMap.get(mid); dims.put(mid, new int[] { dm.w, dm.h }); }
         out.put("mapDims", dims);
