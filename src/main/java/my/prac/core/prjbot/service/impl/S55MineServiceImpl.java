@@ -3639,10 +3639,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("boatHit", boatPct);
             }
         }
+        HashMap<String, Object> mercLockRow = null; // [2026-11-18] DB 점검 4번 -- 여기서 잠근 행을 아래 저장 때 그대로 쓴다(같은 행 FOR UPDATE 두 번)
         if (mineMercActive(items).length > 0) {
             // [2026-11-18] DB 점검 -- 용병이 있으면 용병 차례(처치 드랍/장비/경험치를 쓴다) 전에 유저 행을 먼저 잠근다. 공격 요청과 잠금 순서를 맞추고(교착 방지),
             //  잠근 뒤 용병 기록만 다시 읽어(턴 처음에 읽은 값은 그 사이 공격이 올린 용병 경험치보다 옛 값일 수 있다) 덮어쓰기를 막는다.
-            dao.selectMineUserForUpdate(userName);
+            mercLockRow = dao.selectMineUserForUpdate(userName);
             for (HashMap<String, Object> mr : dao.selectMineMercRows(userName)) items.put(strVal(mr.get("ITEM_CODE"), ""), intVal(mr.get("ITEM_LEVEL"), 0));
         }
         long[] mercR = mineMercTurn(userName, map, items, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
@@ -3683,7 +3684,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (MINE_ICE_FROZEN.remove(userName) != null) MINE_ICE_THAWED.remove(userName);
         }
         boolean save = mineHpFlushDue(row, now) || hp + healed - dmgSum <= 0 || mercExp > 0; // [2026-11-05] 용병이 잡은 경험치는 바로 저장 // [2026-11-03] 체력만 바뀌면 메모리에(MINE_HP_VIRT), 쓰러지거나 15초마다 DB
-        HashMap<String, Object> lrow = save ? dao.selectMineUserForUpdate(userName) : null; // 쓰기 전에 같은 유저 요청 직렬화
+        HashMap<String, Object> lrow = save ? (mercLockRow != null ? mercLockRow : dao.selectMineUserForUpdate(userName)) : null; // 쓰기 전에 같은 유저 요청 직렬화(용병 턴에서 이미 잠갔으면 그 행)
         if (lrow != null) { // [2026-10-28] 잠근 뒤 다시 읽는다 -- 그 사이 들어온 공격(처치/레벨업/반격)이 바꾼 레벨/경험치/체력을 옛 값으로 덮어쓰지 않게
             lv = mineLv(lrow);
             exp = Math.max(0, longOf(lrow.get("M_EXP"), 0L));
@@ -4299,7 +4300,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineWpDurLoaded) synchronized (MINE_WP_DUR) { if (!mineWpDurLoaded) { for (HashMap<String, Object> r : dao.selectS55WpDur()) MINE_WP_DUR.put(strVal(r.get("WP_ID"), ""), intVal(r.get("DUR"), MINE_WP_DUR_MAX)); mineWpDurLoaded = true; } }
         return Math.max(0, MINE_WP_DUR.getOrDefault(w.id, MINE_WP_DUR_MAX));
     }
-    void mineWpDurSet(S5MineMap.Waypoint w, int v) { MINE_WP_DUR.put(w.id, v); dao.mergeS55WpDur(w.id, v); }
+    // [2026-11-18] DB 점검 3번 -- 예전엔 synchronized 안에서 워프 트랜잭션에 MERGE를 넣어 모두가 함께 쓰는 줄 잠금을 커밋까지 쥐었다(다른 워프가 줄을 섰다).
+    //  이제 메모리만 바꾸고(MINE_WP_DIRTY) 정리 스레드(mineMercXpSweep -- 30초마다, 서버 끌 때)가 요청 밖에서 쓴다.
+    static final java.util.Set<String> MINE_WP_DIRTY = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    void mineWpDurSet(S5MineMap.Waypoint w, int v) { MINE_WP_DUR.put(w.id, v); MINE_WP_DIRTY.add(w.id); }
+    void mineWpDurFlush() {
+        for (String id : new ArrayList<>(MINE_WP_DIRTY)) {
+            MINE_WP_DIRTY.remove(id);
+            Integer v = MINE_WP_DUR.get(id);
+            if (v == null) continue;
+            try { dao.mergeS55WpDur(id, v); } catch (Exception e) { MINE_WP_DIRTY.add(id); }
+        }
+    }
     /** 워프 전 -- 출발지/도착지 내구도가 다했으면 안내(아니면 null). */
     String mineWpDurBlock(S5MineMap.Waypoint from, S5MineMap.Waypoint to) {
         if (to != null && mineWpDur(to) <= 0) return "🌀 " + to.name + " 워프 포인트의 힘이 다했어요(내구도 0). 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.";
@@ -8072,6 +8084,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 30초 정리(BotS5ServiceImpl.flushStatBuffers) -- 모은 지 1분 넘은 것. all = 서버 종료 때 전부. */
     public void mineMercXpSweep(boolean all) {
         try { mineBoatSweep(all); } catch (Exception e) { /* 배 피해는 다음에 */ } // [2026-11-18]
+        try { mineWpDurFlush(); } catch (Exception e) { /* 워프 내구도는 다음에 */ } // [2026-11-18] DB 점검 3번
         long now = System.currentTimeMillis();
         for (java.util.Map.Entry<String, MercXp> en : MINE_MERC_XP.entrySet()) {
             MercXp mx = en.getValue();
@@ -8450,24 +8463,36 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** [2026-11-13] "같이 싸운 사람 전부가 보상받게" -- 보스를 때린 사람(용병 포함) 중 쓰러뜨린 사람 말고 모두에게 같은 보상(보스 보상 + 달빛석/별빛석 확률 + 장비 드랍).
      *  경험치는 쓰러뜨린 사람만. 소식은 1초 위치 알림(rewardMsg)으로. 돌려주는 값 = 받은 사람 수. */
+    @javax.annotation.Resource(name = "transactionManager")
+    org.springframework.transaction.PlatformTransactionManager mineTxm;
+    // [2026-11-18] DB 점검 2번 -- 예전엔 쓰러뜨린 사람의 트랜잭션(그 사람 행을 잠근 채) 안에서 함께 싸운 사람들의 광석/아이템을 썼다 -- 그 사람들의 공격 요청과
+    //  잠금 순서가 엇갈려 교착 위험. 이제 처치가 커밋된 뒤(afterCommit) 유저 이름 순으로, 사람마다 새 트랜잭션에서 그 사람 행부터 잠그고 준다. 공동 처치 기록도 커밋 뒤에.
     int mineBossShare(String killer, S5MineMap map, S5MineMap.Mob om, java.util.Set<String> hitters) {
-        if (hitters == null || hitters.isEmpty()) return 0;
         S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
         if (!ot.boss || ot.noReward || ot.sim || ot.dummy || om.type == S5MineMobs.WB_BOSS_TYPE) return 0; // [2026-11-15] 월드보스는 순위 보상
-        { // [2026-11-18] "킬로그도 같이 처치했으면(용병이어도 누구 플레이어인지) 공동 처치로" -- 함께 싸운 사람(용병 주인 포함) 모두의 기록에 한 줄
-            java.util.LinkedHashSet<String> all = new java.util.LinkedHashSet<>();
-            all.add(killer);
-            if (hitters != null) all.addAll(hitters);
-            all.remove(null);
-            StringBuilder nm = new StringBuilder();
-            for (String u : all) { if (u.equals(killer)) continue; nm.append(nm.length() > 0 ? ", " : "").append(mineNick(u)); }
-            String line = "👑 " + ot.name + (all.size() > 1 ? " 공동 처치" : " 처치") + " -- 마지막 한 방: " + mineNick(killer) + (nm.length() > 0 ? " · 함께: " + nm : "");
-            for (String u : all) { try { S5MineSessionLog.action(u, "[웹] 광산 전투 보스 처치", line, null); } catch (Exception ignore) { } }
-        }
-        int n = 0;
-        for (String u : hitters) {
-            if (u == null || u.equals(killer)) continue;
-            try {
+        java.util.TreeSet<String> mates = new java.util.TreeSet<>();
+        if (hitters != null) for (String u : hitters) if (u != null && !u.equals(killer)) mates.add(u);
+        StringBuilder nm = new StringBuilder();
+        for (String u : mates) nm.append(nm.length() > 0 ? ", " : "").append(mineNick(u));
+        final String line = "👑 " + ot.name + (mates.isEmpty() ? " 처치" : " 공동 처치") + " -- 마지막 한 방: " + mineNick(killer) + (nm.length() > 0 ? " · 함께: " + nm : ""); // [2026-11-18] "킬로그도 공동 처치로(용병이어도 그 주인)"
+        final List<String> who = new ArrayList<>(mates);
+        Runnable after = () -> {
+            try { S5MineSessionLog.action(killer, "[웹] 광산 전투 보스 처치", line, null); } catch (Exception ignore) { }
+            for (String u : who) {
+                try { S5MineSessionLog.action(u, "[웹] 광산 전투 보스 처치", line, null); } catch (Exception ignore) { }
+                org.springframework.transaction.support.TransactionTemplate tt = new org.springframework.transaction.support.TransactionTemplate(mineTxm);
+                tt.setPropagationBehavior(org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                try { tt.execute(stx -> { dao.selectMineUserForUpdate(u); mineBossShareOne(u, killer, map, om, ot); return null; }); } catch (Exception e) { /* 한 사람 실패해도 나머지는 */ }
+            }
+        };
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive())
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronizationAdapter() { @Override public void afterCommit() { after.run(); } });
+        else after.run();
+        return who.size();
+    }
+    void mineBossShareOne(String u, String killer, S5MineMap map, S5MineMap.Mob om, S5MineMobs.Type ot) {
+        {
+            {
                 StringBuilder m = new StringBuilder();
                 List<HashMap<String, Object>> kd = mineBossKillDrops(u, map, om, m);
                 mineBossShine(u, kd, m);
@@ -8475,12 +8500,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 String got = m.toString().replace("👑 " + ot.name + "를 쓰러뜨렸어요!", "").replace("👑 " + ot.name + "을(를) 쓰러뜨렸어요!", "").trim(); // 천둥 황소 보상 문구의 처치 안내는 빼고
                 String line = "👑 " + ot.name + "이(가) 쓰러졌어요! 🤝 함께 싸운 보상" + (got.isEmpty() ? "을 받았어요!" : ": " + got);
                 MINE_SHRINE_REWARD_MSG.merge(u, line, (p, q) -> p + " / " + q);
-                n++;
-            } catch (Exception e) {
-                // 한 사람 보상이 실패해도 쓰러뜨린 사람 처리는 그대로
             }
         }
-        return n;
     }
 
     void mineMercBossKilled(String userName, S5MineMap map, S5MineMap.Mob om, S5MineMobs.Type ot, long now, HashMap<String, Object> mo, List<HashMap<String, Object>> drops, String how) {
@@ -10064,8 +10085,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", ok);
         out.put("message", message);
-        mineGearPayload(userName, mineItems(userName), out);
-        out.put("ores", mineOreList(userName)); // [2026-11-18] "아쿠아마린 34개인데 반지 NPC는 29개" -- 세공/제련/장인/제작 결과에 광석 수가 없어 인벤토리가 옛 숫자로 남았다
+        mineGearPayload(userName, mineItems(userName), out); // ores도 여기서(mineGearPayload)
         return out;
     }
 

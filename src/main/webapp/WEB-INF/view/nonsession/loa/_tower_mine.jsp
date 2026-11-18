@@ -3106,7 +3106,8 @@ var TowerMine = (function () {
   /** 재료 목록(아이콘 + 이름 보유/필요, 모자라면 붉게). */
   function costHtml(costs) {
     return '<span class="mine-cost">' + (costs || []).map(function (c) {
-      return '<span class="' + (c.have >= c.need ? 'ok' : 'no') + '"><img src="' + oreIcon(c.grade) + '" alt="">' + c.name + ' ' + c.have + '/' + c.need + '</span>';
+      var hv = c.have; (st && st.ores || []).forEach(function (o) { if (o.grade === c.grade && o.qty != null) hv = o.qty; }); // [2026-11-18] "아쿠아마린 34개인데 반지 NPC는 29개" -- 창을 열 때 받아 둔 옛 수 대신 지금 수
+      return '<span class="' + (hv >= c.need ? 'ok' : 'no') + '"><img src="' + oreIcon(c.grade) + '" alt="">' + c.name + ' ' + hv + '/' + c.need + '</span>';
     }).join('') + '</span>';
   }
   // [2026-10-28] "마을 장비 상점(대장장이)도 캐러셀 형태로(부위별)" -- 반지/목걸이/장화/곡괭이 줄마다 가로로 넘기는 카드
@@ -7633,7 +7634,7 @@ var TowerMine = (function () {
           floats.push({ x: x, y: y - 1.2, text: '+1 ' + d.seaName, color: (ORE_COL[d.seaGrade] || ORE_COL[1])[1], big: !!RARE_GEM[d.seaGrade], icon: simg, t0: performance.now() + 450 });
         }
         if (d.gemGrade) { // [2026-10-24] 보석이 함께 나옴
-          (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty; });
+          (st.ores || []).forEach(function (o) { if (o.grade === d.gemGrade) o.qty = d.gemQty != null ? d.gemQty : (o.qty | 0) + 1; }); // [2026-11-18] 서버가 gemQty를 안 보내 개수가 비던 것
           var gimg = new Image(); gimg.src = oreIcon(d.gemGrade);
           killFeed('+1 ' + d.gemName, (ORE_COL[d.gemGrade] || ORE_COL[1])[1], gimg.src); // [2026-11-05] 왼쪽 획득 기록
           floats.push({ x: x, y: y - 0.6, text: '+1 ' + d.gemName, color: (ORE_COL[d.gemGrade] || ORE_COL[1])[1], big: !!RARE_GEM[d.gemGrade], icon: gimg, t0: performance.now() + 250 });

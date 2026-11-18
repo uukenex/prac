@@ -291,5 +291,6 @@ public interface BotS5DAO {
     // [2026-11-18] 워프 포인트 내구도(TBOT_S55_WP_DUR, ddl/S55_WP_DUR.sql)
     List<HashMap<String, Object>> selectS55WpDur();
     int mergeS55WpDur(@Param("wpId") String wpId, @Param("dur") int dur);
+    int deleteOldS55FishLog(@Param("keepDays") int keepDays, @Param("batch") int batch); // [2026-11-18] DB 점검 5번
     int insertS55FishLog(@Param("userName") String userName, @Param("fishId") int fishId, @Param("mapId") String mapId);
 }

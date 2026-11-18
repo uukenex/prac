@@ -840,6 +840,9 @@ public class BotS5ServiceImpl extends S55MineServiceImpl implements BotS5Service
             if (total > 0) {
                 System.out.println("[S5 정리] 시즌5 로그 " + S5_WORD_HIS_KEEP_DAYS + "일 초과 " + total + "건 삭제");
             }
+            int fish = 0; // [2026-11-18] DB 점검 5번 -- 광산 낚시 기록도 같은 보관기간으로
+            for (int i = 0; i < 100; i++) { int n = dao.deleteOldS55FishLog(S5_WORD_HIS_KEEP_DAYS, 5000); fish += n; if (n < 5000) break; }
+            if (fish > 0) System.out.println("[S5 정리] 광산 낚시 기록 " + S5_WORD_HIS_KEEP_DAYS + "일 초과 " + fish + "건 삭제");
         } catch (Exception e) {
             System.out.println("[S5 정리] 시즌5 로그 정리 실패: " + e.getMessage());
         }
