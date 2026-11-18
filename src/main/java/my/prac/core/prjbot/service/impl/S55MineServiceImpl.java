@@ -6871,7 +6871,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-18] 갑옷 칸 강화 -- 요새 도시 방어구 강화사 앞에서만(부르는 쪽이 유저 행을 잠갔다). */
     HashMap<String, Object> mineArmorEnhance(String userName, Map<String, Integer> items) {
         HashMap<String, Object> erow = dao.selectMineUser(userName);
-        if (erow == null || !S5MineMap.TOWER_CITY.equals(strVal(erow.get("MAP_ID"), "")) || !mineAtNpc(erow, "armorer")) return mineGearResult(userName, false, "요새 도시 방어구 강화사 앞에서만 강화할 수 있어요.");
+        if (erow == null || !S5MineMap.CITY.equals(strVal(erow.get("MAP_ID"), "")) || !mineAtNpc(erow, "armorer")) return mineGearResult(userName, false, "왕도 무기 강화사 옆 방어구 강화사 앞에서만 강화할 수 있어요."); // [2026-11-19] 왕도로 옮김
         MineWeapon a = mineArmorOn(items);
         if (a == null) return mineGearResult(userName, false, "갑옷을 입어야 강화할 수 있어요.");
         int cur = mineArmorEnh(items), g = mineWeaponGrade(items, a);

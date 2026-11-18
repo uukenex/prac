@@ -3282,7 +3282,7 @@ var TowerMine = (function () {
     else if (n.kind === 'smelter' || n.kind === 'gemcutter' || n.kind === 'artisan') { setAuto(false); openSmith(n, n.kind); } // [2026-10-28] 광석 전문가 / 보석 세공사 / 왕도 장인
     else if (n.kind === 'citymerchant') { setAuto(false); openSmith(n, 'citymerchant'); api('/api/tower-mine-cityshop?action=list').then(function (d) { cityShop = d; if (d && d.luckUntil != null) st.luckUntil = d.luckUntil; if (smithOpen && smithView === 'citymerchant') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 상인
     else if (n.kind === 'enhancer') { setAuto(false); openSmith(n, 'enh'); } // [2026-11-06] 무기 강화사
-    else if (n.kind === 'armorer') { setAuto(false); openSmith(n, 'aenh'); } // [2026-11-18] 방어구 강화사(요새 도시)
+    else if (n.kind === 'armorer') { setAuto(false); openSmith(n, 'aenh'); } // [2026-11-18] 방어구 강화사, [2026-11-19] 왕도 무기 강화사 옆으로
     else if (n.kind === 'mercenary') { setAuto(false); openSmith(n, 'merc'); api('/api/tower-mine-merc?action=list').then(function (d) { mercShop = d; if (d && d.list) st.mercs = d.list; if (d && d.merc) st.merc = d.merc; if (d) st.merc2 = d.merc2 || null; if (smithOpen && smithView === 'merc') renderSmith(smithNpc); }).catch(function () {}); } // [2026-11-05] 왕도 용병소
     else if (n.kind === 'archishop') { setAuto(false); openSmith(n, 'archishop'); api('/api/tower-mine-archishop?action=list').then(function (d) { applyGear(d); if (smithOpen && smithView === 'archishop') renderSmith(smithNpc); }).catch(function () {}); } // [2026-10-28] 다도해 상인
   }
@@ -3918,7 +3918,7 @@ var TowerMine = (function () {
         + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +8% · 5강마다 초당 회복 더 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
     if (!w.name) return h + '<div class="mine-eq-empty">갑옷을 입어야 강화할 수 있어요.</div>';
     h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + effLines(w.effect) + '</small>';
-    if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>요새 도시 방어구 강화사에게서</small></span></div>';
+    if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>왕도 방어구 강화사(무기 강화사 옆)에게서</small></span></div>';
     else if (w.pct != null) h += '<small style="color:#9fe0ff;margin-top:6px">▶ 다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>' + effLines(w.nextEffect) + '</small>' + costHtml(w.costs) + '</span>'
         + '<button type="button" ' + (w.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.enhanceArmor()">강화</button></div>';
     else h += '<small>최고 강화예요</small></span><button type="button" data-lack="1" disabled>완료</button></div>';
