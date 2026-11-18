@@ -1735,16 +1735,27 @@ var TowerMine = (function () {
       ctx.fillStyle = '#ffd84a'; ctx.fillRect(fx - scale, fy - 7 * scale + fl, 2 * scale, 2 * scale);
       ctx.fillStyle = 'rgba(255,120,60,.25)'; ctx.beginPath(); ctx.arc(fx, fy - 4 * scale, TS * 0.6, 0, Math.PI * 2); ctx.fill();
     });
-    if (!(seaSt.allyUntil > t) || seaSt.allyAt - t > 4000) return;
-    var bm = map.mobs && map.mobs[map.mobs.length - 1];
-    if (!bm) return;
-    var kx = bm.x + 2.5, ky = bm.y + 2.5;
-    var come = t < seaSt.allyAt ? (seaSt.allyAt - t) / 4000 : 0, leave = t > seaSt.allyUntil - 2000 ? (t - (seaSt.allyUntil - 2000)) / 2000 : 0, off = Math.max(come, leave) * 14;
-    [-1, 1].forEach(function (side) {
-      var sx = (kx + side * (6.5 + off)) * TS - camX - (side < 0 ? 3.2 * TS : 0), sy = (ky + side * 1.5) * TS - camY;
-      allyShipDraw(sx, sy, side > 0, now);
-      if (t >= seaSt.allyAt && t < seaSt.allyUntil && (now + side * 300) % 900 < 320) { // 작살
-        var ax = sx + (side < 0 ? 3.2 * TS : 0), ay = sy, q = ((now + side * 300) % 900) / 320, tx = kx * TS - camX, ty2 = ky * TS - camY;
+    // [2026-11-18] "수병 소환이 안 보인다" -- 몬스터 목록엔 x/y가 없어(칸 묶음 c만) 함선 자리가 NaN이었다. 이제 서버가 준 함선 자리(sea.ships)에서 그린다.
+    //  불을 붙인 뒤 MINE_KRK_ALLY_DELAY(10초) 동안 해역 밖 13칸에서 저어 오고, 싸우다 촉수에 두 번 맞으면 기울며 가라앉는다. 시간이 다 되면 돌아간다.
+    var ships = seaSt.ships || [], ALLY_IN = 10000;
+    if (!ships.length || t < seaSt.allyAt - ALLY_IN || t > seaSt.allyUntil + 3000) return;
+    var bm = map.mobs && map.mobs[map.mobs.length - 1], kc = bm && bm.c && bm.c.length ? bm.c[0] : 0, kx = kc % map.w + 2.5, ky = Math.floor(kc / map.w) + 2.5;
+    ships.forEach(function (sh, i) {
+      var side = sh[0] < kx ? -1 : 1, sunk = sh[3] > 0, come = t < seaSt.allyAt ? (seaSt.allyAt - t) / ALLY_IN : 0, leave = !sunk && t > seaSt.allyUntil ? Math.min(1, (t - seaSt.allyUntil) / 3000) : 0;
+      if (sunk && t - sh[3] > 2600) return;
+      var off = Math.max(come, leave) * 13, cxs = sh[0] + side * off, sxp = (cxs + (side < 0 ? -3.2 : 0)) * TS - camX, syp = sh[1] * TS - camY;
+      if (sunk) { // 가라앉는다 -- 기울어지며 내려가고 흐려진다, 거품
+        var sq = Math.min(1, (t - sh[3]) / 2600);
+        ctx.save(); ctx.globalAlpha = 1 - sq; ctx.translate(sxp + 1.6 * TS, syp + TS * 0.5 + sq * TS * 1.2); ctx.rotate(side * sq * 0.5); ctx.translate(-(sxp + 1.6 * TS), -(syp + TS * 0.5));
+        allyShipDraw(sxp, syp, side > 0, now); ctx.restore();
+        for (var bb = 0; bb < 5; bb++) { var bq = ((now / 500) + bb * 0.2) % 1; fxDot(sxp + 1.6 * TS + (bb - 2) * 6 * scale, syp + TS - bq * TS * 1.5, 2 * scale, '#e8f6ff', 0.7 * (1 - bq) * (1 - sq)); }
+        return;
+      }
+      allyShipDraw(sxp, syp, side > 0, now);
+      var hpw = 3 * TS, hpx = sxp + 0.1 * TS, hpy = syp - TS * 1.8; // 함선 체력
+      ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(hpx, hpy, hpw, 3 * scale); ctx.fillStyle = sh[2] > 50 ? '#7ad8ff' : '#ff8a5a'; ctx.fillRect(hpx, hpy, hpw * sh[2] / 100, 3 * scale);
+      if (t >= seaSt.allyAt && t < seaSt.allyUntil && (now + i * 450) % 900 < 320) { // 작살(원거리)
+        var ax = sxp + (side < 0 ? 3.2 * TS : 0), ay = syp, q = ((now + i * 450) % 900) / 320, tx = kx * TS - camX, ty2 = ky * TS - camY;
         ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + (tx - ax) * q, ay + (ty2 - ay) * q); ctx.stroke();
         ctx.fillStyle = '#e8e8f0'; ctx.fillRect(ax + (tx - ax) * q - 3, ay + (ty2 - ay) * q - 3, 6, 6);
       }
