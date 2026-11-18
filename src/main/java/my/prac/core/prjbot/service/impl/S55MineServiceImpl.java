@@ -758,11 +758,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("dayCycleMs", S5MineMap.ARCHI_CYCLE_MS);
             if (S5MineMap.TOWER_CITY.equals(map.id)) out.put("alwaysNight", true); // [2026-11-18] "요새 도시는 항상 밤"
         }
+        if (map.boat()) out.put("boat", true); // [2026-11-18] "배 이미지가 없다" -- 다도해 맵에만 실려서 바다 위/망망대해는 화면이 배 맵인 줄 몰랐다(배 그림/낚시 버튼/물 위 이동)
+        if (map.seaBarrels() != null) out.put("barrels", map.seaBarrels()); // [2026-11-18] 크라켄 해역 화약통(같은 이유로 밖으로)
         if (S5MineMap.isArchi(map.id)) { // [2026-10-28] 다도해 -- 낮 햇빛(초당 %), 배로 다니는 뱃길, 낮밤 계산(화면이 같은 시각으로)
             out.put("archi", true);
             out.put("sun", map.sun());
-            out.put("boat", map.boat());
-            if (map.seaBarrels() != null) out.put("barrels", map.seaBarrels()); // [2026-11-18] 크라켄 해역 화약통
             out.put("dayAnchor", S5MineMap.RESET_ANCHOR_MS);
             out.put("dayMs", S5MineMap.ARCHI_DAY_MS);
             out.put("dayCycleMs", S5MineMap.ARCHI_CYCLE_MS);
@@ -2439,6 +2439,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (st.start > 0 && !st.done && !st.killed && now >= st.start + MINE_WB_LEN_MS) mineWbTimeout(st, now);
         long s = mineWbStart(now);
         if (st.start == s && !st.done && !st.killed) mineWbMove(st, now); // [2026-11-16] 거룡 자리 옮기기
+        if (st.start == s && !MINE_WB_POOL.test) { // [2026-11-18] "거룡 피가 왜 100%야" -- 몬스터 상태가 가득 찬 체력으로 새로 생기면(풀 94%인데) 띠/체력이 100%로 보였다 -- 풀보다 높으면 풀로
+            S5MineMap ca = S5MineMap.get(S5MineMap.CASTLE);
+            S5MineMap.Mob cbm = ca == null ? null : mineBossOf(ca);
+            MobState cbs = cbm == null ? null : MINE_MOB_STATE.get(mineMobKey(ca, cbm.id));
+            if (cbs != null) synchronized (cbs) { if (cbs.deadUntil <= now && cbs.hp > MINE_WB_POOL.hp) cbs.hp = Math.max(1, MINE_WB_POOL.hp); }
+        }
         if (st.start == s || now < s || MINE_WB_POOL.killed) return;
         synchronized (MINE_WB_ATK) {
             if (MINE_WB.start == s) return;
@@ -2474,6 +2480,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             try { HashMap<String, Object> r = dao.selectMineUser(u); return Math.max(1, mineAtk(mineLv(r), mineRebirth(mineItems(u)))); } catch (Exception e) { return 10_000; }
         }));
         st.lastHit.put(userName, now);
+        if (!p.test) hpBefore = Math.min(hpBefore, Math.max(1, p.hp)); // [2026-11-18] 몬스터 상태가 풀보다 높아도 풀에서 깎는다(가득 찬 상태로 새로 생겨 풀이 되돌아가지 않게)
         double units = dealt / (double) atk * mineWbPartyMul(mineWbActive(st, now)); // [2026-11-17] 인원 버프
         if (!p.test && !MINE_WB_SHARE.containsKey(userName)) { // 이번 주기에 앞서 싸운 몫(서버를 다시 켠 뒤 처음) -- 저장된 값에서 이어서
             try { Map<String, Integer> it = mineItems(userName); if (it.getOrDefault(MINE_ITEM_WB_SHARE_CYC, 0) == p.cycle + 1) MINE_WB_SHARE.putIfAbsent(userName, (double) it.getOrDefault(MINE_ITEM_WB_SHARE, 0)); } catch (Exception e) { /* 0부터 */ }
@@ -2998,7 +3005,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             S5MineMap a = S5MineMap.get(S5MineMap.CASTLE);
             S5MineMap.Mob bm = mineBossOf(a);
             MobState bs = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(a, bm.id));
-            w.put("hp", bs == null ? 1000 : (int) (Math.max(0, bs.hp) * 1000L / mineWbMax()));
+            w.put("hp", (int) (Math.max(0, Math.min(bs == null ? MINE_WB_POOL.hp : bs.hp, MINE_WB_POOL.test ? Integer.MAX_VALUE : MINE_WB_POOL.hp)) * 1000L / mineWbMax())); // [2026-11-18] 풀(주기 동안 이어지는 체력)을 넘지 않게
             Double my = MINE_WB_SHARE.get(userName);
             if (my != null) w.put("share", (int) Math.min(100, Math.round(my * 100 / mineWbMinShare()))); // 보상 조건을 채운 정도(%)
             int act = mineWbActive(st, now);

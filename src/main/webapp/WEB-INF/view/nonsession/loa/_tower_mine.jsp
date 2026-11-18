@@ -2920,7 +2920,6 @@ var TowerMine = (function () {
     else h = '🐉 ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
         + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '') + (w.buff ? ' · <b style="color:#ffb04a">💪 공격력 +' + w.buff + '%</b>' : '') /* [2026-11-17] 인원 버프 */
         + (w.share != null ? (w.share >= 100 ? ' · ✅ 보상 조건 달성' : ' · 내 참여 ' + w.share + '%') : '') + ' · ' + mins(w.end - tn) + ' 남음';
-    if (!inWb) h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.wbJoin()">참여</button>';
     wbBar.innerHTML = h;
     wbBar.style.display = '';
   }
@@ -5495,7 +5494,11 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
-      if (d.boatHp != null && st && st.archi) st.archi.boatHp = d.boatHp; // [2026-11-18] 망망대해 -- 초당 5%
+      if (d.boatHp != null && st && st.archi) { // [2026-11-18] 망망대해 -- 초당 5%, 줄어든 만큼 배 위에 띄운다
+        var bh0 = st.archi.boatHp, bmx = st.archi.boatHpMax || 1;
+        if (bh0 != null && d.boatHp < bh0) floats.push({ x: P.x, y: P.y - 1.4, text: '⛵ -' + Math.max(1, Math.round((bh0 - d.boatHp) * 100 / bmx)) + '%', color: d.boatHp * 10 < bmx * 3 ? '#ff6a5a' : '#9fe0ff', big: true, t0: performance.now() });
+        st.archi.boatHp = d.boatHp;
+      }
       seaSt = d.sea || null; if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
       mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
@@ -7172,6 +7175,16 @@ var TowerMine = (function () {
       if (fade.mode === 'out') fa = Math.min(1, fe / FADE_OUT_MS);
       else { fa = 1 - fe / FADE_IN_MS; if (fa <= 0) { fade = null; fa = 0; } }
       if (fa > 0) { ctx.fillStyle = 'rgba(0,0,0,' + fa + ')'; ctx.fillRect(0, 0, W, H); }
+    }
+    if (map.boat && st && st.archi && st.archi.boatHpMax) { // [2026-11-18] "배 체력 항상 잘 보이게" -- 화면 위 가운데 큰 막대(30% 아래면 빨갛게 깜빡)
+      var bhp = Math.max(0, st.archi.boatHp || 0), bmx2 = st.archi.boatHpMax, bf = Math.max(0, Math.min(1, bhp / bmx2)), bw2 = Math.min(W * 0.6, 340 * dpr), bh2 = 16 * dpr, bx2 = (W - bw2) / 2, by2 = 52 * dpr;
+      var low = bf < 0.3, blink = low && Math.floor(now / 300) % 2 === 0;
+      ctx.fillStyle = 'rgba(8,16,30,.78)'; ctx.fillRect(bx2 - 3 * dpr, by2 - 3 * dpr, bw2 + 6 * dpr, bh2 + 6 * dpr);
+      ctx.fillStyle = low ? (blink ? '#ff8a6a' : '#e8432a') : '#4fc3f7'; ctx.fillRect(bx2, by2, bw2 * bf, bh2);
+      ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(bx2, by2, bw2 * bf, bh2 / 3);
+      ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#000';
+      var btx = '⛵ 배 체력 ' + bhp.toLocaleString() + ' / ' + bmx2.toLocaleString() + ' (' + Math.round(bf * 100) + '%)' + (map.id === 'vastsea' ? ' · 망망대해: 초당 -5%' : '');
+      ctx.strokeText(btx, W / 2, by2 + bh2 / 2); ctx.fillStyle = '#ffffff'; ctx.fillText(btx, W / 2, by2 + bh2 / 2); ctx.textBaseline = 'alphabetic';
     }
     if (banner) { // 새 맵 이름(가운데, 잠깐 보였다 사라짐)
       var be = now - banner.t0;
