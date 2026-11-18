@@ -212,7 +212,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.Map<String, int[]> MINE_ARMOR_HP = new java.util.HashMap<>();
     static {
         MINE_ARMOR_HP.put("ARMOR_CHAIN", new int[] { 500, 1_000 }); MINE_ARMOR_HP.put("ARMOR_SAMURAI", new int[] { 1_500, 3_000 }); MINE_ARMOR_HP.put("ARMOR_NINJA", new int[] { 5_000, 10_000 });
-        MINE_ARMOR_HP.put("ARMOR_BAEKHWA", new int[] { 100_000, 200_000 }); MINE_ARMOR_HP.put("ARMOR_IMMORTAL", new int[] { 250_000, 500_000 });
+        // [2026-11-19] "백화 갑주 이후 갑옷들 최대 체력 증가량 소폭 낮춰 줘, 너무 차이 나" -- 백화 10만~20만 -> 8만~16만, 심판 25만~50만 -> 20만~40만(모두 -20%)
+        MINE_ARMOR_HP.put("ARMOR_BAEKHWA", new int[] { 80_000, 160_000 }); MINE_ARMOR_HP.put("ARMOR_IMMORTAL", new int[] { 200_000, 400_000 });
     }
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_ARMOR_HP_OF = new java.util.concurrent.ConcurrentHashMap<>();
     static int mineArmorHpAt(String code, int g) { int[] r = MINE_ARMOR_HP.get(code); return r == null || g < 0 ? 0 : r[0] + (r[1] - r[0]) * Math.min(7, g) / 7; }
@@ -1576,6 +1577,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 오늘 쓰러뜨린 수문장 수(날짜가 바뀌면 0). */
     static int mineTwBossToday(Map<String, Integer> items, long now) { return items.getOrDefault(MINE_ITEM_TWB_DAY, 0) == mineToday(now) ? items.getOrDefault(MINE_ITEM_TWB_CNT, 0) : 0; }
+    /** [2026-11-19] "탑 안에선 수문장 반복 처치 보상 3번 중 몇 번 남았는지 항상" -- 사람마다 {날짜, 그날 횟수}를 메모리에(상태를 읽을 때 / 수문장 보상 때) 두고 위치 알림(1초)에 남은 수를 싣는다(DB 조회 없이). */
+    static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_TW_LEFT = new java.util.concurrent.ConcurrentHashMap<>();
+    static int mineTwLeftOf(String userName, long now) { int[] v = MINE_TW_LEFT.get(userName); return v == null ? -1 : v[0] == mineToday(now) ? Math.max(0, MINE_TW_BOSS_DAILY - v[1]) : MINE_TW_BOSS_DAILY; }
     /** 탑의 증표 n개 -- 안내 글자. */
     /** [2026-11-17] "증표 보상 구간을 고층엔 더 많이" -- 1~10층 x1, 11~20층 x2, 21~30층 x3, 31~40층 x4, 41~50층 x5. */
     static int mineTwTokenMul(int f) { return 1 + Math.max(0, f - 1) / 10; }
@@ -1624,7 +1628,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 String txt;
                 if (!first && cnt >= MINE_TW_BOSS_DAILY && !isMineAdmin(u)) txt = " ⏳ 이미 쓰러뜨린 수문장 보상은 하루 " + MINE_TW_BOSS_DAILY + "번까지예요(오늘 " + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + "). 내일 다시 받을 수 있어요.";
                 else {
-                    if (!first) { dao.upsertMineItem(u, MINE_ITEM_TWB_DAY, day); dao.upsertMineItem(u, MINE_ITEM_TWB_CNT, cnt + 1); }
+                    if (!first) { dao.upsertMineItem(u, MINE_ITEM_TWB_DAY, day); dao.upsertMineItem(u, MINE_ITEM_TWB_CNT, cnt + 1); MINE_TW_LEFT.put(u, new int[] { day, cnt + 1 }); }
                     if (first) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
                     StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
@@ -4146,6 +4150,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static long mineKrkMoveAt = 0, mineKrkJumpCyc = Long.MIN_VALUE;
     static volatile long mineKrkNextSmash = 0, mineKrkSplashCyc = -1, mineKrkMsgAt = 0;
     static volatile String mineKrkMsg = null;
+    // [2026-11-19] "크라켄이 전투 시에만 맵에 보이게(그냥 지나갈 땐 모르게)" -- 누군가와 싸우는 동안(전투 턴 mineKrakenPattern, MINE_KRK_SHOW_MS 안)·내려찍기 예고·구조선이 붙어 있는 동안만 화면에 보인다(sea.kf).
+    //  같은 날 "수병 소환 등대는 특정 기믹 때만" -- 촉수가 바위/등대 섬에 박혀 크라켄이 기절하면 등대에 불이 켜지고(기절 + MINE_KRK_LIGHT_MS), 불이 켜진 동안만 종을 칠 수 있다(sea.lit).
+    static final long MINE_KRK_SHOW_MS = 8_000L, MINE_KRK_LIGHT_MS = 12_000L;
+    static volatile long mineKrkFightAt = 0, mineKrkLightUntil = 0;
     static void mineKrkSay(String m, long now) { mineKrkMsg = m; mineKrkMsgAt = now; }
     /** 길(고리) 한 바퀴 칸 수. */
     static double mineKrkLoop(int[][] r) { double l = 0; for (int i = 0; i < r.length; i++) l += Math.hypot(r[(i + 1) % r.length][0] - r[i][0], r[(i + 1) % r.length][1] - r[i][1]); return l; }
@@ -4222,7 +4230,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (r[2] == 0) { r[3] = now; mineKrkSay("⚓ 크라켄의 촉수에 구조선이 부서져 가라앉았어요... 수병들이 끝까지 싸웠어요.", now); }
                 else mineKrkSay("🛡️ 구조선이 크라켄의 촉수를 대신 맞았어요! 한 번 더 맞으면 가라앉아요.", now);
             }
-            if (rock) { s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 지금이 기회!", now); }
+            if (rock) { s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkLightUntil = now + MINE_KRK_STUN_MS + MINE_KRK_LIGHT_MS; mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 🗼 등대에 불이 켜졌어요!", now); } // [2026-11-19] 등대 불
             if (barrels != null) for (int i = 0; i < barrels.length && i < MINE_KRK_BARREL.length; i++) {
                 if (MINE_KRK_BARREL[i] > 0 && now - MINE_KRK_BARREL[i] < MINE_KRK_BARREL_BACK) continue;
                 if (Math.max(Math.abs(barrels[i][0] - z[0]), Math.abs(barrels[i][1] - z[1])) > 1) continue;
@@ -4268,6 +4276,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineKrakenPattern(S5MineMap map, MobState s, S5MineMobs.Type t, int id, int x, int y, int bmax, long now) {
         s.kraken = true;
         if (s.deadUntil > now) return;
+        mineKrkFightAt = now; // [2026-11-19] 싸우는 중 -- 화면에 보인다
         synchronized (MINE_KRK_LOCK) {
             mineKrkResolve(map, s, bmax, now);
             boolean under = S5MineMobs.diving(t, id, now);
@@ -4293,6 +4302,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             o.put("bellCd", MINE_KRK_BELL_CD);
             if (MINE_KRK_RES[4] > 0) o.put("res", MINE_KRK_RES.clone());
             if (MINE_KRK_POS[0] >= 0) { o.put("kx", MINE_KRK_POS[0] + 2); o.put("ky", MINE_KRK_POS[1] + 2); }
+            o.put("kf", now - mineKrkFightAt < MINE_KRK_SHOW_MS || !MINE_KRK_SMASH.isEmpty() || mineKrkResOn(now)); // [2026-11-19] 싸우는 중에만 보인다
+            o.put("lit", mineKrkLightUntil); // [2026-11-19] 등대 불(이 시각까지)
         }
         if (mineKrkMsg != null && now - mineKrkMsgAt < 6_000L) { o.put("msg", mineKrkMsg); o.put("msgAt", mineKrkMsgAt); }
         return o;
@@ -4314,6 +4325,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (ks != null && ks.deadUntil > now) { out.put("message", "🌊 지금은 바다가 잠잠해요. 크라켄이 없어요."); return out; }
         synchronized (MINE_KRK_LOCK) {
             if (mineKrkResOn(now)) { out.put("message", "⛵ 구조선이 이미 " + (now < MINE_KRK_RES[5] ? "오고 있어요!" : "싸우고 있어요!")); return out; }
+            if (now > mineKrkLightUntil && !isMineAdmin(userName)) { out.put("message", "🗼 등대 불이 꺼져 있어 종이 울리지 않아요. 불이 켜졌을 때 쳐 보세요."); return out; } // [2026-11-19] 특정 기믹(등대 불) 때만
             long left = MINE_KRK_BELL_CD - (now - MINE_KRK_BELL[idx]);
             if (left > 0) { out.put("message", "🔔 이 등대 종은 아직 울림이 남아 있어요. (" + (left + 999) / 1000 + "초)"); return out; }
             MINE_KRK_BELL[idx] = now;
@@ -4581,7 +4593,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (s.deadUntil > 0) s.respawn(mobMax); // 다시 나타남
             int[] harpyAt = mob.type == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyNow(map, now) : null; // [2026-11-08] 하피 -- 지금 자리로
             if (harpyAt != null) { s.fx = harpyAt[0]; s.fy = harpyAt[1]; s.frozenUntil = Math.max(s.frozenUntil, now + MINE_MOB_FREEZE_MS); }
-            if (S5MineMobs.diving(type, mob.id, now)) { out.put("dived", true); out.put("message", "🌊 " + type.name + "이(가) 물속으로 숨었어요 -- 떠오를 때 때려 보세요."); return out; } // [2026-11-18]
+            if (S5MineMobs.diving(type, mob.id, now)) { out.put("dived", true); return out; } // [2026-11-18], [2026-11-19] "바다 몬스터와 전투 시 숨는다는 메시지 안 나오게" -- 안내 없이 안 맞기만
             if (harpyAt != null && harpyAt[2] == 1) { out.put("harpyHidden", true); out.put("message", "🌳 하피 여왕이 나무 뒤에 숨었어요 -- 공격이 닿지 않아요."); return out; } // [2026-11-08] 나무 뒤 = 필살기까지 모두 무효
             if (type.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = mobMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
             if (type.boss) mineBossRegen(s, mobMax, now, map, mob); // [2026-10-29] 인식이 풀려 있던 동안 회복한 만큼
@@ -5157,6 +5169,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             TwRun run = MINE_TW_RUN.get(userName);
             boolean mine = run != null && run.floor == twF, stairRoom = S5MineMap.towerStairRoom(map.id);
             tr.put("floor", twF);
+            MINE_TW_LEFT.put(userName, new int[] { items.getOrDefault(MINE_ITEM_TWB_DAY, 0), items.getOrDefault(MINE_ITEM_TWB_CNT, 0) }); // [2026-11-19] 수문장 반복 보상 남은 수
+            tr.put("bossLeft", mineTwLeftOf(userName, now));
+            tr.put("bossMax", MINE_TW_BOSS_DAILY);
             tr.put("total", S5MineMap.towerRoomFloor(twF) ? S5MineMap.towerRooms(twF) : 0);
             tr.put("step", stairRoom ? S5MineMap.towerRooms(twF) : mine ? run.step : 0);
             tr.put("type", stairRoom ? "U" : mine ? String.valueOf(run.type) : "E");
@@ -5375,7 +5390,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         if (map.boat() || (map.sail() && map.terrainAt(x, y) == '~')) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
-            if (!isMineAdmin(userName)) { out.put("message", "🎣 바다 낚시는 아직 준비 중이에요."); return out; }
+            // [2026-11-19] "바다 낚시도 일반 플레이어 오픈" -- 관리자만 막던 것 없앰
             return mineFish(userName, map.id, x, y, st, stMax, now, out);
         }
         int g = map.oreAt(x, y);
@@ -6805,7 +6820,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  갑옷 최대 체력 +10%(그 갑옷 등급 값 기준), 5강마다 전설 이상의 초당 회복만큼 더. 재료/확률은 무기 칸과 같고 조각은 입은 갑옷의 조각. 요새 도시 방어구 강화사.
     static final String MINE_ITEM_ARMOR_ENH = MINE_ENH_PREFIX + "ARMOR";
     static int mineArmorEnh(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_ENH_MAX, items.getOrDefault(MINE_ITEM_ARMOR_ENH, 0))); }
-    static int mineArmorHpEnh(String code, int g, int e) { return (int) Math.round(mineArmorHpAt(code, g) * MINE_ENH_BASE_PCT / 100.0 * e); }
+    // [2026-11-19] "갑옷 강화 시 체력 %를 기존 대비 20% 낮춰 줘" -- 1강마다 갑옷 최대 체력 +10% -> +8%(받는 피해 감소 +10%는 그대로)
+    static final int MINE_ENH_ARMOR_HP_PCT = 8;
+    static int mineArmorHpEnh(String code, int g, int e) { return (int) Math.round(mineArmorHpAt(code, g) * MINE_ENH_ARMOR_HP_PCT / 100.0 * e); }
     static int mineEnhPct(int n) { return Math.max(5, 100 - 5 * (n - 1)); }
     static final int MINE_ENH_SHARDS = 10;
     /** n강 재료: 미스릴 괴 n + 금괴 n + 그 장비 조각 ceil(n/2), 6강부터 별빛석 n-5, 11~15강 달빛석 n-10,
@@ -10869,6 +10886,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("online", online);
         out.put("mapN", mapN);
+        if (S5MineMap.towerFloor(mapId) > 0) { int twl = mineTwLeftOf(userName, now); if (twl >= 0) out.put("twLeft", twl); } // [2026-11-19] 수문장 반복 보상 남은 수
         if (S5MineMap.OPEN_SEA.equals(mapId)) { mineKrakenTick(now); out.put("sea", mineSeaState(now)); } /* [2026-11-18] 화약통/등대/구조선 + 크라켄 이동 */ if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
         HashMap<String, Object> wbi = mineWbInfo(userName, now); // [2026-11-15] 월드보스 예고/진행
         if (wbi != null) out.put("wb", wbi);

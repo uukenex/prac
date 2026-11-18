@@ -1678,7 +1678,9 @@ var TowerMine = (function () {
     return c;
   }
   // [2026-11-18] 크라켄 해역 -- 화약통 / 신호 부표 / 해상도시 지원 함선(시안 승인). 상태는 위치 알림 sea(seaSt).
-  var seaSt = null, seaMsgSeen = 0;
+  var seaSt = null, seaMsgSeen = 0, krkShownWas = false;
+  function krkShown() { return !!(seaSt && seaSt.kf); } // [2026-11-19] 크라켄은 싸우는 중에만 보인다
+  function lhLit() { return !!(seaSt && seaSt.lit && seaSt.lit > nowSrv()); } // [2026-11-19] 등대 불(종을 칠 수 있을 때)
   function seaBarrelSprite(f) {
     var key = 'brl' + f; if (seaSprites[key]) return seaSprites[key];
     var c = mk(16, 16), p = seaPainter(c.getContext('2d'), 16, 16);
@@ -1715,7 +1717,7 @@ var TowerMine = (function () {
     boatWas = { m: map.id, on: ob, x: Math.round(pos.x), y: Math.round(pos.y) };
   }
   // [2026-11-18] 등대(시안 승인) -- (x, y) = 섬 왼쪽 위(3칸 x 2칸, 탑 칸 = NPC 칸 가운데), 탑은 위로 4칸 반. ring = 종이 울리는 중.
-  function lhDraw(x, y, now, ring) {
+  function lhDraw(x, y, now, ring, lit) { // [2026-11-19] lit = 불이 켜짐(그때만 등불과 빛줄기)
     var u = T * scale / 16, R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u, w * u, h * u); };
     R('#cfe8ff', -2, 24, 52, 2); R('#4a4640', 0, 8, 48, 18); R('#6a645a', 2, 6, 44, 16); R('#8a8478', 6, 6, 36, 6); R('#5a554c', 4, 18, 12, 4); R('#5a554c', 30, 16, 14, 5);
     R('#a09a8a', 10, 7, 6, 2); R('#a09a8a', 30, 8, 8, 2);
@@ -1726,11 +1728,14 @@ var TowerMine = (function () {
     R('#2a3a5a', 22, -24, 4, 4); R('#8ac8ff', 23, -23, 2, 2);
     R('#2a2a2a', 10, -44, 28, 4); R('#4a4a4a', 10, -44, 28, 1); for (var k = 11; k < 38; k += 4) R('#2a2a2a', k, -48, 1, 4); R('#2a2a2a', 10, -49, 28, 1);
     R('#2a2a2a', 15, -58, 18, 14);
-    ctx.fillStyle = 'rgba(255,230,120,' + (0.75 + 0.25 * Math.sin(now / 200)).toFixed(2) + ')'; ctx.fillRect(x + 17 * u, y - 56 * u, 14 * u, 10 * u); R('#fffbe0', 21, -54, 6, 6);
+    if (lit) { ctx.fillStyle = 'rgba(255,230,120,' + (0.75 + 0.25 * Math.sin(now / 200)).toFixed(2) + ')'; ctx.fillRect(x + 17 * u, y - 56 * u, 14 * u, 10 * u); R('#fffbe0', 21, -54, 6, 6); }
+    else { R('#3a4250', 17, -56, 14, 10); R('#5a6474', 18, -55, 4, 3); } // 불 꺼진 등실(어두운 유리)
     R('#b8302a', 13, -64, 22, 6); R('#d84a3a', 16, -68, 16, 4); R('#e0b050', 23, -72, 2, 4);
-    ctx.save(); ctx.translate(x + 24 * u, y - 51 * u); ctx.rotate(now / 900);
-    var g = ctx.createLinearGradient(0, 0, 150 * u / 2, 0); g.addColorStop(0, 'rgba(255,240,160,.5)'); g.addColorStop(1, 'rgba(255,240,160,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(75 * u, -11 * u); ctx.lineTo(75 * u, 11 * u); ctx.closePath(); ctx.fill(); ctx.restore();
+    if (lit) {
+      ctx.save(); ctx.translate(x + 24 * u, y - 51 * u); ctx.rotate(now / 900);
+      var g = ctx.createLinearGradient(0, 0, 150 * u / 2, 0); g.addColorStop(0, 'rgba(255,240,160,.5)'); g.addColorStop(1, 'rgba(255,240,160,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(75 * u, -11 * u); ctx.lineTo(75 * u, 11 * u); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
     var sw = ring ? Math.sin(now / 60) * 3 : 0;
     ctx.save(); ctx.translate(x + 40 * u, y - 46 * u); ctx.rotate(sw * 0.12);
     ctx.fillStyle = '#4a3a1a'; ctx.fillRect(-u, -2 * u, 2 * u, 3 * u); ctx.fillStyle = '#e0b030'; ctx.beginPath(); ctx.moveTo(-4 * u, 7 * u); ctx.quadraticCurveTo(-4 * u, 0, 0, 0); ctx.quadraticCurveTo(4 * u, 0, 4 * u, 7 * u); ctx.closePath(); ctx.fill();
@@ -1773,7 +1778,7 @@ var TowerMine = (function () {
     lhList().forEach(function (n, i) { // [2026-11-18] 등대 -- 종을 치고 3.5초 동안 흔들리며 울린다
       var lx = (n.x - 1) * TS - camX, ly = n.y * TS - camY;
       if (lx < -4 * TS || ly < -2 * TS || lx > el.cv.width + 2 * TS || ly > el.cv.height + 6 * TS) return;
-      lhDraw(lx, ly, now, bl[i] && t - bl[i] < 3500);
+      lhDraw(lx, ly, now, bl[i] && t - bl[i] < 3500, lhLit() || (bl[i] && t - bl[i] < 3500));
     });
     if (moored && moored.m === map.id && !boatAt(P.x, P.y)) { var mx = Math.round(moored.x * TS - camX), my = Math.round(moored.y * TS - camY); drawBoat(mx, my - 3 * scale, now, moored.left); drawBoatFront(mx, my - 3 * scale, now, moored.left); } // 매어 둔 빈 배
     if (!map.barrels) return;
@@ -2078,7 +2083,7 @@ var TowerMine = (function () {
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
-    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && (map.boat || (map.sail && boatAt(P.x, P.y))) && st && st.adminMaps ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시(지금은 관리자만)
+    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && (map.boat || (map.sail && boatAt(P.x, P.y))) ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시, [2026-11-19] 모두에게
     if (el.atk) el.atk.disabled = busy;
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
@@ -2260,7 +2265,7 @@ var TowerMine = (function () {
     }
     // [2026-10-28] "미니맵에서 보스 위치도" -- 맵 맨 끝 몬스터가 보스면(살아 있을 때) 붉은 점(흰 테두리, 크게)
     var bm = map.mobs && map.mobs[map.mobs.length - 1], bty = bm && map.mobTypes[bm.k];
-    if (bty && bty.boss && bm._p) {
+    if (bty && bty.boss && bm._p && !(bty.name === '심해의 크라켄' && !krkShown())) { // [2026-11-19] 크라켄은 싸우는 중에만
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(bm._p.cx - ox - 3 * k - 1, bm._p.cy - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3);
       miniCtx.fillStyle = '#e8202a'; miniCtx.fillRect(bm._p.cx - ox - 3 * k, bm._p.cy - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     }
@@ -2728,6 +2733,8 @@ var TowerMine = (function () {
     if (!map || !map.tower) { twBar.style.display = 'none'; return; }
     var r = (st && st.twRun) || null, h = '🗼 ' + map.tower + '층';
     if (r && r.total) h += ' · 방 ' + Math.min(r.step | 0, r.total) + '/' + r.total + (TW_ROOM[r.type] ? ' · ' + TW_ROOM[r.type] : '') + (r.type === 'U' ? ' · 🔼 위 / 🔽 아래' : ' · 오른쪽 문 ▶');
+    var twl = st && st.twLeft != null ? st.twLeft : r && r.bossLeft != null ? r.bossLeft : null; // [2026-11-19] "수문장 반복 처치 보상 3번 중 몇 번 남았는지 항상"
+    if (twl != null) h += ' · 👑 수문장 반복 보상 <b style="color:' + (twl > 0 ? '#ffe14d' : '#ff8a8a') + '">' + twl + '/' + ((r && r.bossMax) || 3) + '</b> 남음';
     h += ' <button type="button" class="mine-mini-btn" onclick="TowerMine.twFloors()">🪜 층 이동</button>';
     if (twBar._h !== h) { twBar.innerHTML = h; twBar._h = h; }
     twBar.style.display = '';
@@ -3779,7 +3786,7 @@ var TowerMine = (function () {
   function enhance() { gearAct('/api/tower-mine-enhance?code=weapon'); }
   function aenhHtml(atNpc) { // [2026-11-18] 갑옷 칸 강화 -- atNpc = 방어구 강화사 창(버튼), 아니면 인벤토리 갑옷 칸 팝업(보기만)
     var w = st.aenh || { lv: 0 }, h = '<div class="mine-smith-say" style="margin-top:8px">🛡️ <b>갑옷 칸 강화 +' + (w.lv || 0) + '</b> · 어떤 갑옷을 입어도 적용<br>'
-        + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +10% · 5강마다 초당 회복 더 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
+        + '<small>1강마다 받는 피해 감소 +10% · 갑옷 최대 체력 +8% · 5강마다 초당 회복 더 (전설 이상)<br>실패하면 재료만 사라져요</small></div>';
     if (!w.name) return h + '<div class="mine-eq-empty">갑옷을 입어야 강화할 수 있어요.</div>';
     h += '<div class="mine-smith-row"><span class="nm"><span>' + gradeName(w.name, w.grade) + ' <b style="color:#ffd27a">+' + w.lv + '</b></span><small>' + effLines(w.effect) + '</small>';
     if (w.pct != null && !atNpc) h += '<small style="color:#9fe0ff">다음 +' + (w.lv + 1) + ' · 성공 ' + w.pct + '%<br>요새 도시 방어구 강화사에게서</small></span></div>';
@@ -5652,6 +5659,7 @@ var TowerMine = (function () {
         return;
       }
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
+      if (d && d.twLeft != null && st && st.twLeft !== d.twLeft) { st.twLeft = d.twLeft; twRender(); } // [2026-11-19] 수문장 반복 보상 남은 수
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
       if (d.boatHp != null && st && st.archi) { // [2026-11-18] 망망대해 -- 초당 5%, 줄어든 만큼 배 위에 띄운다
@@ -5659,7 +5667,7 @@ var TowerMine = (function () {
         if (bh0 != null && d.boatHp < bh0) floats.push({ x: P.x, y: P.y - 1.4, text: '⛵ -' + Math.max(1, Math.round((bh0 - d.boatHp) * 100 / bmx)) + '%', color: d.boatHp * 10 < bmx * 3 ? '#ff6a5a' : '#9fe0ff', big: true, t0: performance.now() });
         st.archi.boatHp = d.boatHp;
       }
-      seaSt = d.sea || null; if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
+      seaSt = d.sea || null; if (krkShown() !== krkShownWas) { krkShownWas = krkShown(); if (krkShownWas) { flashT0 = performance.now(); msg('🐙 바닷속에서 크라켄이 솟아올랐어요!', 2600); } } if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
       mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
@@ -6851,6 +6859,7 @@ var TowerMine = (function () {
         if (mx < -TS || my < -TS || mx > W || my > H) continue;
         var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = ty.name === '심판자 보로네오' && Math.floor(nowSrv() / 12000) % 2 === 1; // [2026-11-17] 보로네오 -- 망치를 든 차례
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
+        if (ty.name === '심해의 크라켄' && !krkShown()) continue; // [2026-11-19] 그냥 지나갈 땐 안 보인다
         if (ty.dive && seaDiving(ty, mb.id, nowSrv())) { seaRipple(mx, my, ty, now); continue; } // [2026-11-18] 물속(물결만)
         if (ty.name === '심해의 크라켄') pose = !!(mobSt[mb.id] && mobSt[mb.id].su > nowSrv()); // [2026-11-18] 바위에 박혀 기절
         var seaA = ty.dive ? seaAlpha(ty, mb.id, nowSrv()) : 1;
@@ -7728,7 +7737,7 @@ var TowerMine = (function () {
   }
   function dig() {
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
-    if (map && (map.boat || (map.sail && boatAt(P.x, P.y))) && st && st.adminMaps) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시(지금은 관리자만)
+    if (map && (map.boat || (map.sail && boatAt(P.x, P.y)))) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
