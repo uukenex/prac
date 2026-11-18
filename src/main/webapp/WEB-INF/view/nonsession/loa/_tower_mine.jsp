@@ -110,6 +110,88 @@ var TowerMine = (function () {
   }
   function px(g, col, x, y, w, h) { g.fillStyle = col; g.fillRect(x, y, w || 1, h || 1); }
   function over(base, fn) { var c = mk(T, T), g = c.getContext('2d'); g.drawImage(base, 0, 0); fn(g); return c; }
+  // [2026-11-18] 텔레포트 게이트 -> 3x3 워프 포인트("디아블로 웨이포인트 / 로스트아크 트라이포트 느낌" -- 모티브만):
+  //  둥근 돌 단(계단 테두리 + 매끈한 원판), 가운데 금빛 룬 원(사방 별 문양 -- 숨 쉬듯 밝아졌다 어두워지고 바깥 룬 고리가 돈다),
+  //  네 귀퉁이에 위로 솟은 돌 오벨리스크(앞면 푸른 룬, 꼭대기 푸른 불꽃). 단은 칸 그림(9칸), 오벨리스크/빛은 사람 위에 따로(wpDraw).
+  function wpTiles(stone, T, mk, px) { // 단(3x3) -- [프레임 0/1] 48x48
+    return [0, 1].map(function (f) {
+      var S = T * 3, c = mk(S, S), g = c.getContext('2d'), C = S / 2 - 0.5;
+      for (var q = 0; q < 9; q++) g.drawImage(stone, (q % 3) * T, Math.floor(q / 3) * T);
+      for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
+        var dx = x - C, dy = y - C, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), lit = dy < 0 || dx < -4; // 빛은 왼위에서
+        if (r > 23.6) { if (r < 25 && dy > 0) px(g, 'rgba(0,0,0,.25)', x, y); continue; }
+        var col;
+        if (r > 22.6) col = '#3c3a36';
+        else if (r > 18) { // 바깥 계단 -- 돌 블록(22.5도마다 이음매)
+          var seg = Math.floor((a + Math.PI) / (Math.PI / 8)), edge = Math.abs(((a + Math.PI) / (Math.PI / 8)) % 1) < 0.08;
+          col = edge || r < 18.7 ? '#4e4a43' : r > 21.8 ? (lit ? '#c9c1ae' : '#7e776a') : (seg % 2 ? '#a69f8e' : '#9a9382');
+        }
+        else if (r > 16.8) col = '#5a554c'; // 단 사이 그림자
+        else if (r > 15.6) col = lit ? '#d6cfbc' : '#8a8374'; // 원판 테두리
+        else if (r > 13.4) col = '#b8b09c';
+        else if (r > 12.4) col = '#6e6858'; // 새긴 원
+        else if (r > 10.6) { var rs = Math.floor((a + Math.PI) / (Math.PI / 12)); col = rs % 3 === 0 ? '#6e6858' : (rs + f) % 2 ? '#ffe9a0' : '#e8b84a'; } // 룬 고리
+        else if (r > 9.8) col = '#6e6858';
+        else {
+          var ax = Math.abs(dx), ay = Math.abs(dy), star = Math.min(ax, ay) < 1.4 + (9 - Math.max(ax, ay)) * 0.28 && Math.max(ax, ay) < 9.2, diag = Math.abs(ax - ay) < 1.1 && r < 6.5;
+          col = r < 2.2 ? '#fffbe8' : star ? (f ? '#fff1b8' : '#f2c860') : diag ? '#d8a840' : r < 4.5 ? '#c9a24a' : '#a89e88';
+        }
+        px(g, col, x, y);
+      }
+      return c;
+    });
+  }
+  function wpSplit(frames, T, mk) { // [프레임][0~8 왼위부터]
+    return frames.map(function (c) {
+      return [0, 1, 2, 3, 4, 5, 6, 7, 8].map(function (q) { var o = mk(T, T); o.getContext('2d').drawImage(c, (q % 3) * T, Math.floor(q / 3) * T, T, T, 0, 0, T, T); return o; });
+    });
+  }
+  /** 솟은 부분/빛(사람 위에): cx, cy = 3x3 단 가운데(화면 좌표), s = 한 칸 크기. */
+  function wpDraw(ctx, cx, cy, s, now) {
+    var u = s / 16, k = 0.5 + 0.5 * Math.sin(now / 650);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'lighter';
+    // 룬 원 빛(숨 쉬듯) + 위로 오르는 금빛 알갱이
+    var gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, s * 0.75);
+    gr.addColorStop(0, 'rgba(255,210,120,' + (0.12 + 0.14 * k) + ')'); gr.addColorStop(1, 'rgba(255,170,60,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(cx, cy, s * 0.75, 0, Math.PI * 2); ctx.fill();
+    for (var i = 0; i < 10; i++) {
+      var t = ((now / 1900) + i / 10) % 1, ang = i * 2.39, r = s * 0.62 * (0.3 + 0.7 * ((i * 7) % 10) / 10), z = Math.max(1, Math.round(u * (i % 3 ? 1 : 2)));
+      ctx.fillStyle = 'rgba(255,230,150,' + (0.9 * (1 - t)) + ')';
+      ctx.fillRect(Math.round(cx + Math.cos(ang) * r), Math.round(cy + Math.sin(ang) * r * 0.6 - t * s * 1.6), z, z);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    // [2026-11-18] "기둥 없애고 불꽃" -- 네 귀퉁이 낮은 돌 화로 + 푸른 불꽃(뒤 두 개 먼저)
+    var off = 1.25 * s;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (p, i) {
+      var bx = cx + p[0] * off, by = cy + p[1] * off + 0.2 * s; // 화로 아래 끝
+      ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(Math.round(bx - 5 * u), Math.round(by - 1 * u), Math.round(11 * u), Math.round(3 * u));
+      // 돌 화로(사발): 받침 + 넓은 그릇, 테두리 위 밝게
+      ctx.fillStyle = '#3a3732'; ctx.fillRect(Math.round(bx - 2.5 * u), Math.round(by - 3 * u), Math.round(5 * u), Math.round(3 * u));
+      ctx.fillStyle = '#8a8374'; ctx.fillRect(Math.round(bx - 1.5 * u), Math.round(by - 3 * u), Math.round(3 * u), Math.round(2 * u));
+      ctx.fillStyle = '#3a3732'; ctx.fillRect(Math.round(bx - 5 * u), Math.round(by - 7 * u), Math.round(10 * u), Math.round(4 * u));
+      ctx.fillStyle = '#a69f8e'; ctx.fillRect(Math.round(bx - 4 * u), Math.round(by - 6 * u), Math.round(8 * u), Math.round(2 * u));
+      ctx.fillStyle = '#d6cfbc'; ctx.fillRect(Math.round(bx - 4 * u), Math.round(by - 7 * u), Math.round(8 * u), Math.round(1 * u));
+      ctx.fillStyle = '#1c2a3a'; ctx.fillRect(Math.round(bx - 3 * u), Math.round(by - 7 * u), Math.round(6 * u), Math.round(1 * u));
+      var fx = bx, fy = by - 7 * u, fl = 0.75 + 0.25 * Math.sin(now / 90 + i * 1.7) * Math.sin(now / 37 + i);
+      ctx.globalCompositeOperation = 'lighter';
+      var fg = ctx.createRadialGradient(fx, fy - 4 * u, 0, fx, fy - 4 * u, 12 * u);
+      fg.addColorStop(0, 'rgba(120,200,255,' + (0.5 * fl) + ')'); fg.addColorStop(1, 'rgba(40,110,255,0)');
+      ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy - 4 * u, 12 * u, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      var fh = (11 + 3 * fl) * u; // 불꽃: 아래 넓고 위로 뾰족, 흔들림, 가운데 하얀 속불
+      for (var y = 0; y < fh; y += u) {
+        var q = y / fh, w = (1 - q * q) * 7 * u * (0.85 + 0.15 * fl), sway = Math.sin(now / 120 + i + q * 3) * q * 1.6 * u;
+        ctx.fillStyle = q < 0.7 ? '#3a86d8' : '#2a5aa8';
+        ctx.fillRect(Math.round(fx - w / 2 + sway), Math.round(fy - y), Math.max(1, Math.round(w)), Math.max(1, Math.round(u)));
+        var w2 = w * 0.62; if (q < 0.85) { ctx.fillStyle = '#7ad8ff'; ctx.fillRect(Math.round(fx - w2 / 2 + sway), Math.round(fy - y), Math.max(1, Math.round(w2)), Math.max(1, Math.round(u))); }
+        var w3 = w * 0.28; if (q < 0.55) { ctx.fillStyle = '#e8f8ff'; ctx.fillRect(Math.round(fx - w3 / 2 + sway * 0.6), Math.round(fy - y), Math.max(1, Math.round(w3)), Math.max(1, Math.round(u))); }
+      }
+      for (var e = 0; e < 2; e++) { var t = ((now / 700) + e * 0.5 + i * 0.13) % 1; ctx.fillStyle = 'rgba(160,225,255,' + (1 - t) + ')'; ctx.fillRect(Math.round(fx + Math.sin(now / 200 + e * 3 + i) * 3 * u), Math.round(fy - fh - t * 8 * u), Math.max(1, Math.round(u)), Math.max(1, Math.round(u))); }
+    });
+    ctx.restore();
+  }
   function grassTile(seed) { return tile('#5fae45', [['#4c9638', 16], ['#79c95a', 10], ['#3f8a2f', 5, 1, 2]], seed); }
   function cliffTile(seed) {
     return tile('#6d635a', [['#5a5149', 10]], 20 + seed, function (g, r) {
@@ -534,6 +616,7 @@ var TowerMine = (function () {
       ['#555b76', '#454a62', '#353a4e', '#1c2034'].forEach(function (c, i) { px(g, c, 1, i * 4, 14, 4); px(g, '#12162a', 1, 3 + i * 4, 14, 1); });
       px(g, '#b8943a', 0, 0, 1, T); px(g, '#b8943a', 15, 0, 1, T); px(g, '#7ad8ff', 6, 13, 4, 1); px(g, '#7ad8ff', 7, 14, 2, 1);
     });
+    tiles.wp = wpSplit(wpTiles(tiles.stone[0], T, mk, px), T, mk); // [2026-11-18] 3x3 워프 포인트(단) -- 불꽃/빛은 wpDraw
     tiles.tele = [0, 1].map(function (f) {
       return over(tiles.stone[0], function (g) {
         for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1056,7 +1139,7 @@ var TowerMine = (function () {
         var qu = 0; while (qu < 3 && cellAt(x, y - qu - 1) === 'Q') qu++;
         return qu < 3 && cellAt(x, y + 1) === 'Q' ? tiles.church[qu === 0 && (x - (map.w >> 1)) % 6 === 0 ? 1 : 0] : tiles.churchWall[v % 2];
       }
-      case 'X': return tiles.tele[wf];
+      case 'X': { var wqx = cellAt(x - 1, y) === 'X' ? (cellAt(x - 2, y) === 'X' ? 2 : 1) : 0, wqy = cellAt(x, y - 1) === 'X' ? (cellAt(x, y - 2) === 'X' ? 2 : 1) : 0; return tiles.wp[wf][wqy * 3 + wqx]; } // [2026-11-18] 3x3 워프 포인트
       case 'u': return tiles.seaSand[v % 2];
       case 'p': return tiles.palace[v % 2];
       case 'e': return tiles.seaweed[v % 2];
@@ -6493,11 +6576,20 @@ var TowerMine = (function () {
       ctx.fillStyle = '#2a1d10'; ctx.textAlign = 'left';
       lines.forEach(function (l, i) { ctx.fillText(l, bx0 + 8 * dpr, by0 + 5 * dpr + (i + 0.8) * lh); });
     } else if (talkBubble) talkBubble = null;
+    // [2026-11-18] 워프 포인트(3x3) -- 네 귀퉁이 푸른 불꽃, 룬 빛(사람 위에 그려 뒤에 선 사람은 가려진다)
+    (map.portals || []).forEach(function (p) {
+      if (p.kind !== 'X' || cellAt(p.x - 1, p.y) === 'X' || cellAt(p.x, p.y - 1) === 'X') return;
+      var wcx = (p.x + 1.5) * TS - camX, wcy = (p.y + 1.5) * TS - camY;
+      if (wcx < -TS * 3 || wcy < -TS * 3 || wcx > W + TS * 3 || wcy > H + TS * 3) return;
+      try { wpDraw(ctx, wcx, wcy, TS, now); } catch (e) { }
+    });
     // 가까운 포탈 이름
     (map.portals || []).forEach(function (p) {
+      if (p.kind === 'X' && (cellAt(p.x - 1, p.y) === 'X' || cellAt(p.x, p.y - 1) === 'X')) return; // [2026-11-18] 3x3 워프 포인트는 이름 하나(왼위 칸 것)
       var zSeen = p.kind === 'Z' && st && st.dragon && st.dragon.has; // [2026-10-28] 용왕의 반지를 얻으면 바닷길 입구 이름도
       if ((p.kind === 'Z' && !zSeen) || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
       var tx = p.x * TS - camX + TS / 2, ty = p.y * TS - camY - 4 * dpr;
+      if (p.kind === 'X' && cellAt(p.x + 1, p.y) === 'X') { tx += TS; ty -= TS * 0.8; } // [2026-11-18] 워프 포인트 가운데 위
       var label = zSeen ? '🌀 바닷길 입구' + (st.waterWalk ? '' : ' (용왕의 반지를 끼면)') : (p.locked ? (p.label.indexOf('눈바람') >= 0 ? '🌨️ ' : '🔒 ') : '🚪 ') + p.label;
       ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif';
       ctx.textAlign = 'center';

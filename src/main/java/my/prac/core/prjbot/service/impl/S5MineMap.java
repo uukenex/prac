@@ -1073,7 +1073,7 @@ public final class S5MineMap {
         placeNpc(ct, cc - 10, cc + 6, "smelter", "광석 전문가", smLine);
         placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
         placeNpc(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
-        placeNpc(ct, cc, cc + 10, "artisan", "왕도 장인", "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
+        placeNpc(ct, cc, cc + 12, "artisan", "왕도 장인", /* [2026-11-18] 워프 포인트(3x3) 바로 앞이라 두 칸 아래로 */ "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
         placeNpc(ct, cc + ENH_NPC_DX, cc + ENH_NPC_DY, "enhancer", "무기 강화사", "무기 칸을 맡기게. 빗나가도 원망은 말고."); // [2026-11-06] "말이 너무 많다" -- 짧게 // [2026-11-06] 왕도 5시 방향
         placeNpc(ct, cc + MERC_NPC_DX, cc + MERC_NPC_DY, "mercenary", "용병소 대장", "혼자 다니기엔 광산이 험하지. 쓸 만한 놈을 붙여 주겠네. 지치면 뒤에서 숨 좀 돌리게 해 주게나."); // [2026-11-05] 왕도 용병소
         S5MineMap av = out.get(ARCHI);
@@ -3437,9 +3437,9 @@ public final class S5MineMap {
         int px = c, py = qy1 + 1;
         t[py][px] = 'N';
         t[py][px + 3] = 'N'; // [2026-10-29] 원소술사(신부 옆)
-        // 텔레포트 게이트: 광장 남쪽
-        int gx = c, gy = c + 9;
-        t[gy][gx] = 'X';
+        // 텔레포트 게이트: 광장 남쪽 -- [2026-11-18] 3x3 워프 포인트(가운데 gx, gy, 아홉 칸 모두 게이트)
+        int gx = c, gy = c + 8;
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) t[gy + dy][gx + dx] = 'X';
         // 성문: 남문(열림), 동문/서문(잠김) -- 북쪽은 성당이 막고 있다
         for (int y = h - wt; y < h; y++) for (int dx = -1; dx <= 1; dx++) t[y][c + dx] = 's';
         t[h - 1][c] = 'G';
@@ -3451,7 +3451,7 @@ public final class S5MineMap {
         portals.add(new Portal(c, h - 1, 'G', STEPPE, 0, 0, "남문 -- 왕도 남쪽 초원으로"));
         portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
         portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽 마물의 숲 입구")); // [2026-11-05] 열림(좌표는 buildWorld)
-        portals.add(new Portal(gx, gy, 'X', TELE, 0, 0, "텔레포트 게이트"));
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) portals.add(new Portal(gx + dx, gy + dy, 'X', TELE, 0, 0, "텔레포트 게이트")); // [2026-11-18] 3x3
         int sx = c, sy = h - wt - 2;
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'K';
