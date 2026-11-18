@@ -1258,4 +1258,25 @@
         GROUP BY STAT_TYPE, CHANNEL
     </select>
 
+    <!-- [2026-11-18] 광산 바다 낚시: TBOT_S55_FISH_* (시즌4 낚시 테이블을 CTAS로 복사, ddl/S55_FISH.sql). 기록은 던질 때마다 한 줄 -->
+    <select id="selectS55FishEquip" resultType="hashmap">
+        SELECT ROD_GRADE, BOBBER_GRADE FROM TBOT_S55_FISH_EQUIP WHERE USER_NAME = #{userName}
+    </select>
+    <select id="selectS55FishByGrade" resultType="hashmap">
+        SELECT FISH_ID, FISH_NAME, FISH_GRADE, WEIGHT, FISH_DESC
+          FROM TBOT_S55_FISH_INFO
+         WHERE FISH_GRADE = #{grade} AND ACTIVE_YN = '1'
+    </select>
+    <insert id="upsertS55FishInv">
+        MERGE INTO TBOT_S55_FISH_INV T
+        USING (SELECT #{userName} AS U, #{fishId} AS F FROM DUAL) S
+           ON (T.USER_NAME = S.U AND T.FISH_ID = S.F)
+        WHEN MATCHED THEN UPDATE SET QTY = QTY + 1
+        WHEN NOT MATCHED THEN INSERT (USER_NAME, FISH_ID, QTY, FIRST_CATCH_DATE) VALUES (S.U, S.F, 1, SYSDATE)
+    </insert>
+    <insert id="insertS55FishLog">
+        INSERT INTO TBOT_S55_FISH_LOG (USER_NAME, FISHING_DATE, FISH_ID, INSERT_DATE, MAP_ID)
+        VALUES (#{userName}, TRUNC(SYSDATE), #{fishId}, SYSDATE, #{mapId})
+    </insert>
+
 </mapper>

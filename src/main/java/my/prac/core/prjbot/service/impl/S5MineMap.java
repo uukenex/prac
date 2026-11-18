@@ -145,6 +145,9 @@ public final class S5MineMap {
     /** [2026-11-18] 정제된 마석(80) -- 마계 마을(10초 머무는 동안)에서 캘 때마다 하나. */
     public static final String MANA_STONE_CODE = "MANA_STONE", MANA_STONE_NAME = "정제된 마석";
     public static final int MANA_STONE_GRADE = 80;
+    /** [2026-11-18] 물의 심장(81) -- 심해의 크라켄 처치 보상(반드시). 검기 물 속성 재료. */
+    public static final String WATER_HEART_CODE = "WATER_HEART", WATER_HEART_NAME = "물의 심장";
+    public static final int WATER_HEART_GRADE = 81;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
@@ -779,6 +782,8 @@ public final class S5MineMap {
     public int dockX() { return dockX; }
     public int dockY() { return dockY; }
     public int bossX() { return bossX; }
+    private int[][] seaBarrels; // [2026-11-18] 바다 위 화약통 자리 {x, y}
+    public int[][] seaBarrels() { return seaBarrels; }
     /** [2026-11-15] "탑은 1인 인스턴스 던전 형태" -- 탑의 보드 층과 수문장 층은 사람마다 따로(몬스터 상태가 유저별, 다른 사람이 안 보인다). 마을 층(10층마다)은 함께. */
     private int soloFlag = -1;
     public boolean solo() {
@@ -848,7 +853,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 28; // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 29; // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1301,6 +1306,20 @@ public final class S5MineMap {
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
                 placeNpc(sc, 66, 40, "gemcutter", "보석 세공사", "파도 소리를 들으며 깎으면 손이 덜 떨려요.");
                 out.put(SEA_CITY, sc);
+                { // [2026-11-18] 신호 부표 넷(해역 둘레 반지름 15, 물 위 NPC -- 배를 대면 불을 붙인다)
+                    int bc = os.bossX + 2, br = os.bossY + 2;
+                    List<Npc> bn = new ArrayList<>();
+                    for (int k = 0; k < 4; k++) {
+                        double a = Math.PI / 4 + Math.PI / 2 * k;
+                        int nx = bc + (int) Math.round(Math.cos(a) * 15), ny = br + (int) Math.round(Math.sin(a) * 15);
+                        if (os.terrain[ny][nx] != '~') continue;
+                        Npc g = new Npc(nx, ny, "seabuoy", "신호 부표", "불을 붙이면 해상도시 수병들이 배를 몰고 달려온다.");
+                        g.ground = '~';
+                        os.terrain[ny][nx] = 'N';
+                        bn.add(g);
+                    }
+                    os.npcs = Collections.unmodifiableList(bn);
+                }
                 out.put(OPEN_SEA, os);
             }
         }
@@ -1321,6 +1340,7 @@ public final class S5MineMap {
         n.dockY = m.dockY;
         n.bossX = m.bossX;
         n.bossY = m.bossY;
+        n.seaBarrels = m.seaBarrels; // [2026-11-18]
         n.villageX = m.villageX;
         n.villageY = m.villageY;
         n.cold = m.cold;
@@ -3135,9 +3155,24 @@ public final class S5MineMap {
             t[dy][c] = 'B';
             ps.add(k == 0 ? new Portal(c, dy, 'B', BEACH, 0, 0, "남쪽 바닷가에 내리기") : new Portal(c, dy, 'B', SEA_CITY, 0, 0, "해상도시에 내리기"));
         }
+        // [2026-11-18] 크라켄 해역(가운데) -- 둘레 17칸은 탁 트인 바다, 반지름 10에 바위섬 여섯(2x2 -- 촉수가 치면 기절), 화약통 여덟(반지름 7/13)
+        int acy = h / 2;
+        for (int y = acy - 18; y <= acy + 18; y++) for (int x = 1; x < w - 1; x++) if (Math.hypot(x - c, y - acy) <= 17) t[y][x] = '~';
+        for (int k = 0; k < 6; k++) {
+            double a = Math.PI * 2 * k / 6 + Math.PI / 6;
+            int rx = c + (int) Math.round(Math.cos(a) * 10), ry = acy + (int) Math.round(Math.sin(a) * 10);
+            for (int dy = 0; dy < 2; dy++) for (int dx = 0; dx < 2; dx++) t[ry + dy][rx + dx] = '^';
+        }
+        int[][] barrels = new int[8][];
+        for (int k = 0; k < 8; k++) {
+            double a = Math.PI / 2 * (k % 4) + (k < 4 ? 0 : Math.PI / 4), rr = k < 4 ? 7 : 13;
+            barrels[k] = new int[] { c + (int) Math.round(Math.cos(a) * rr), acy + (int) Math.round(Math.sin(a) * rr) };
+        }
         S5MineMap m = new S5MineMap(OPEN_SEA, "바다 위", false, w, h, c, 3, t, new byte[h][w], ps);
         m.boat = true;
         m.requireItem = BOAT_ITEM;
+        m.bossX = c - 2; m.bossY = acy - 2; // 크라켄 5x5 왼쪽 위
+        m.seaBarrels = barrels;
         return m;
     }
     /** 배 맵 to에서 from으로 가는 부두 판자 바로 옆 물 칸(from에서 배를 띄우면 여기로). */

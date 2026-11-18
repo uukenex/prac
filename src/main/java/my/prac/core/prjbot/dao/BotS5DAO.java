@@ -283,4 +283,10 @@ public interface BotS5DAO {
 
     /** [{FACE_VALUE, ROLL_COUNT}, ...] FACE_VALUE 오름차순. */
     List<HashMap<String, Object>> selectDiceFaceStats();
+
+    // [2026-11-18] 광산 바다 낚시(TBOT_S55_FISH_* -- 시즌4 낚시 테이블을 CTAS로 복사해 따로 쓴다, ddl/S55_FISH.sql)
+    HashMap<String, Object> selectS55FishEquip(@Param("userName") String userName);
+    List<HashMap<String, Object>> selectS55FishByGrade(@Param("grade") int grade);
+    int upsertS55FishInv(@Param("userName") String userName, @Param("fishId") int fishId);
+    int insertS55FishLog(@Param("userName") String userName, @Param("fishId") int fishId, @Param("mapId") String mapId);
 }

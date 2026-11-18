@@ -73,6 +73,9 @@ public final class S5MineMobs {
         Type asNinja() { ninja = true; return this; }
         Type asRanged() { ranged = true; return this; }
         Type asFirstStrike() { firstStrike = true; return this; }
+        /** [2026-11-18] 바다 몬스터 -- sea = 바다 위 몬스터(배를 깎는다, 선인식이면 눈/이름이 빨갛게), dive = 바다 속으로 숨었다 나왔다(diving). */
+        public boolean sea, dive;
+        Type asSea() { sea = true; dive = true; return this; }
         Type asVenom() { ranged = true; venom = true; return this; }
         /** [2026-10-28] "여왕개미 세 군데, 처치 보상은 따로 없음" -- 보스가 아니라 보스만큼 센 몬스터(체력 x12 / 공격 x1.4, 경험치는 단계 그대로), 늘 선공, 보상 없음, 10분 뒤 다시. */
         Type asQueen() { hpCut = 12; atkCut = 1.4; firstStrike = true; noReward = true; respawnOverride = 600_000L; return this; }
@@ -348,7 +351,16 @@ public final class S5MineMobs {
         //  체력 3억 / 공격 38만(방어선 마왕군 악마 사이), 경험치 약 3천만. 쓰러지면 1시간 뒤 다시. 패턴 = S55MineServiceImpl.mineBoroPattern.
         // [2026-11-17] 같은 날 "보로네오는 악마도 소환(2마리씩 일정 주기마다)" -- 보로네오 둘레 잠든 자리 둘(minion, 쓰러지면 다시 부를 때까지 없음). 기술 없는 악마 병사.
         new Type("심판의 악마 병사", 26, "demon", "#7a1a2a").fix(15_000_000, 200_000).expx(4).showLv(125).minionOnly(),
-        new Type("심판자 보로네오", 26, "human", "#e8d8a0").asBoss().fix(300_000_000, 380_000).expx(75).showLv(125).el(8).respawn(60 * 60_000L).weakLightDark()
+        new Type("심판자 보로네오", 26, "human", "#e8d8a0").asBoss().fix(300_000_000, 380_000).expx(75).showLv(125).el(8).respawn(60 * 60_000L).weakLightDark(),
+        // [2026-11-18] 바다 위(Lv.110 사냥터) -- "바다 몬스터는 바다 속으로 숨었다 나왔다, 선인식 몬스터와 인식 몬스터를 따로(선인식은 이름/눈이 빨갛게), 떼로 다니는 몬스터도 일부".
+        //  문어/고래 = 인식(맞아야 덤빈다), 가오리/상어 = 선인식 + 떼(spawnSea). 물속에 있는 동안(diving)은 못 때리고 안 때린다. 맞으면 캐릭터와 함께 배도 깎인다.
+        new Type("바다 문어", 26, "octo", "#d8603a").fix(3_400_000, 42_000).expx(38).showLv(110).el(3).respawn(120_000L).asSea(),
+        new Type("가오리", 26, "ray", "#3a5a7a").fix(2_600_000, 40_000).expx(30).showLv(109).el(3).respawn(120_000L).asSea().asFirstStrike(),
+        new Type("상어", 26, "shark", "#5a6a7a").fix(3_000_000, 48_000).expx(36).showLv(111).el(3).respawn(120_000L).asSea().asFirstStrike(),
+        new Type("고래", 26, "whale", "#3a5070").fix(9_000_000, 50_000).expx(100).showLv(112).el(3).respawn(300_000L).asSea(),
+        // [2026-11-18] 심해의 크라켄 -- Lv.115 바다 보스("보로네오보다 약하게" -- 보로네오 Lv.125 체력 3억/공격 38만), 5x5칸, 제자리, 45초마다 잠수.
+        //  기믹(바위 기절 / 신호 부표 지원 함선 / 화약통) = S55MineServiceImpl.mineKrakenPattern. 맨 끝(앞 번호가 바뀌지 않게).
+        new Type("심해의 크라켄", 26, "human", "#7a1e3a").asBoss().fix(150_000_000, 250_000).expx(37).showLv(115).el(3).respawn(60 * 60_000L).foot(5).asStay().asSea()
     )));
     /** [2026-11-07] 왕도 훈련장 보스 허수아비 순서(S5MineMap.dummySpots 자리 순서). */
     public static final int[] SIM_TYPES = { indexOf("고대 광석 골렘 허수아비"), indexOf("타락한 대주교 허수아비"), indexOf("얼음 여왕 허수아비"), indexOf("닌자 두목 허수아비"), indexOf("용암 거신 허수아비"), indexOf("파라오 미라 허수아비"), indexOf("천둥 황소 허수아비"), indexOf("하피 여왕 허수아비") }; // [2026-11-17] + 하피 여왕
@@ -438,6 +450,14 @@ public final class S5MineMobs {
     public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
     public static final int BORO_BOSS_TYPE = indexOf("심판자 보로네오"); // [2026-11-17] 최후의 방어선
     public static final int BORO_MINION_TYPE = indexOf("심판의 악마 병사");
+    public static final int SEA_OCTO = indexOf("바다 문어"), SEA_RAY = indexOf("가오리"), SEA_SHARK = indexOf("상어"), SEA_WHALE = indexOf("고래"), KRAKEN_TYPE = indexOf("심해의 크라켄"); // [2026-11-18] 바다 위
+    /** [2026-11-18] 바다 몬스터 잠수 -- 지금 물속에 있는지(시각으로, 화면 seaDiving과 같은 식). 보통 DIVE_MS마다 DIVE_UNDER_MS, 크라켄 KRAKEN_DIVE_MS마다 KRAKEN_UNDER_MS. */
+    public static final long DIVE_MS = 14_000L, DIVE_UNDER_MS = 4_000L, KRAKEN_DIVE_MS = 45_000L, KRAKEN_UNDER_MS = 5_000L;
+    public static boolean diving(Type t, int id, long ms) {
+        if (t == null || !t.dive) return false;
+        long p = t.boss ? KRAKEN_DIVE_MS : DIVE_MS, u = t.boss ? KRAKEN_UNDER_MS : DIVE_UNDER_MS;
+        return Math.floorMod(ms + id * 7919L, p) >= p - u;
+    }
     /** [2026-11-17] 속성 e로 때리면 상성(x1.5)인지 -- 보통 상성 + 빛·어둠 둘 다에 약한 몬스터(보로네오). */
     public static boolean weakTo(int e, Type t) { return elemBeats(e, t.elem()) || (t.weakLD && (e == EL_LIGHT || e == EL_DARK)); }
     public static final int WB_BOSS_TYPE = indexOf("심연의 거룡"); // [2026-11-15] 월드보스
@@ -701,6 +721,7 @@ public final class S5MineMobs {
             }
             return fm;
         }
+        if (S5MineMap.OPEN_SEA.equals(m.id)) return spawnSea(m, seed); // [2026-11-18] 바다 위
         if (S5MineMap.SEAROAD.equals(m.id)) return new ArrayList<>(); // [2026-10-28] "바닷길에 몬스터 없게" (바닷길 몬스터 종류는 순번 때문에 목록에 남겨 둔다)
         char[][] t = m.terrainGrid();
         Random r = new Random(seed);
@@ -790,6 +811,40 @@ public final class S5MineMobs {
         }
         return out;
     }
+
+    /** [2026-11-18] 바다 위 -- 물 칸(~)에 칸 묶음(가로 16 x 세로 14)마다 한 무리: 문어/고래는 한 마리, 가오리 3~5·상어 3~4 떼.
+     *  부두/시작 칸 둘레와 크라켄 해역(가운데 둘레 17칸)은 비운다. 크라켄은 늘 맨 끝(보스). */
+    static List<S5MineMap.Mob> spawnSea(S5MineMap m, long seed) {
+        char[][] t = m.terrainGrid();
+        Random r = new Random(seed);
+        List<S5MineMap.Mob> out = new ArrayList<>();
+        boolean[][] taken = new boolean[m.h][m.w];
+        int bx = m.bossX(), by = m.bossY();
+        for (int gy = 10; gy < m.h - 10; gy += 14) for (int gx = 4; gx < m.w - 8; gx += 16) {
+            int x = gx + r.nextInt(10), y = gy + r.nextInt(8);
+            if (!seaCell(t, x, y) || Math.abs(x - m.spawnX) + Math.abs(y - m.spawnY) < 14) continue;
+            if (bx >= 0 && Math.abs(x - bx - 2) <= 17 && Math.abs(y - by - 2) <= 17) continue;
+            boolean nearDock = false;
+            for (S5MineMap.Portal p : m.portals) if (Math.abs(x - p.x) + Math.abs(y - p.y) < 12) nearDock = true;
+            if (nearDock) continue;
+            int roll = r.nextInt(100), type = roll < 34 ? SEA_OCTO : roll < 60 ? SEA_RAY : roll < 88 ? SEA_SHARK : SEA_WHALE;
+            int n = type == SEA_RAY ? 3 + r.nextInt(3) : type == SEA_SHARK ? 3 + r.nextInt(2) : 1;
+            for (int k = 0; k < n; k++) {
+                int mx = x + (k == 0 ? 0 : r.nextInt(5) - 2), my = y + (k == 0 ? 0 : r.nextInt(5) - 2);
+                if (!seaCell(t, mx, my) || taken[my][mx]) continue;
+                taken[my][mx] = true;
+                List<Integer> cells = new ArrayList<>();
+                cells.add(my * m.w + mx);
+                for (int[] dv : new int[][] { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } }) if (seaCell(t, mx + dv[0], my + dv[1])) cells.add((my + dv[1]) * m.w + mx + dv[0]);
+                int[] ca = new int[cells.size()];
+                for (int i = 0; i < ca.length; i++) ca[i] = cells.get(i);
+                out.add(new S5MineMap.Mob(out.size(), type, mx, my, ca, rankOf(seed, out.size(), TYPES.get(type))));
+            }
+        }
+        if (bx >= 0) out.add(new S5MineMap.Mob(out.size(), KRAKEN_TYPE, bx, by, new int[] { by * m.w + bx }));
+        return out;
+    }
+    private static boolean seaCell(char[][] t, int x, int y) { return y > 0 && x > 0 && y < t.length - 1 && x < t[0].length - 1 && t[y][x] == '~'; }
 
     /** [2026-11-05] 왕도 서쪽길 -- "디아블로2 소 레벨처럼 다중으로 몰려오게, 무조건 두 마리 이상 상대하게": 무리 가운데끼리 HERD_GAP칸(체비셰프) 넘게 떨어뜨리고
      *  가운데 둘레 2칸 안에 4~6마리. 한 무리는 같은 단계(가운데 칸 기준)에서 종류를 섞는다. */

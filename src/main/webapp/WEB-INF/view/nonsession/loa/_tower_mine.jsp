@@ -31,6 +31,7 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '어둠의 증표'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff']; // [2026-11-18] 예전 타락한 대주교의 인장
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
+  ORE_NAME[81] = '물의 심장'; ORE_COL[81] = ['#2a7ad8', '#bfe8ff']; RARE_GEM[81] = 1; // [2026-11-18] 심해의 크라켄
   ORE_NAME[80] = '정제된 마석'; ORE_COL[80] = ['#5a1a6a', '#ff8ae8']; RARE_GEM[80] = 1; // [2026-11-18] 마계 마을 채광
   ORE_NAME[79] = '심판의 증표'; ORE_COL[79] = ['#c8a040', '#fff4c0']; RARE_GEM[79] = 1; // [2026-11-18] 심판자 보로네오 50% -- 마계 입구 통행
   ORE_NAME[20] = '달빛석'; ORE_COL[20] = ['#8fa8e8', '#f4f8ff']; // [2026-10-28] 다도해 -- 1인용 배 재료
@@ -722,7 +723,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -1220,6 +1221,21 @@ var TowerMine = (function () {
       oreIcons[grade] = c.toDataURL();
       return oreIcons[grade];
     }
+    if (grade >= 78 && grade <= 81) { // [2026-11-18] 어둠의 심장 / 심판의 증표 / 정제된 마석 / 물의 심장(시안 승인)
+      var R8 = function (x, y, w, h, cc) { px(g, cc, x, y, w || 1, h || 1); };
+      var heart8 = function (a, b) { R8(4, 4, 3, 2, a); R8(9, 4, 3, 2, a); R8(3, 5, 10, 4, a); R8(4, 9, 8, 2, a); R8(5, 11, 6, 1, a); R8(6, 12, 4, 1, a); R8(7, 13, 2, 1, a); R8(5, 5, 2, 1, b); };
+      if (grade === 81) { heart8('#2a7ad8', '#9ad8ff'); R8(7, 6, 2, 1, '#e8f8ff'); R8(6, 7, 4, 3, '#bfe8ff'); R8(7, 10, 2, 1, '#bfe8ff'); R8(7, 7, 1, 1, '#ffffff'); R8(1, 3, 1, 1, '#9ad8ff'); R8(14, 2, 1, 1, '#9ad8ff'); R8(13, 12, 1, 1, '#9ad8ff'); }
+      else if (grade === 78) { heart8('#3a1a5a', '#7a4aa8'); R8(8, 5, 1, 2, '#c88aff'); R8(7, 7, 1, 2, '#c88aff'); R8(8, 9, 1, 2, '#c88aff'); R8(3, 1, 1, 2, '#6a3a9a'); R8(12, 0, 1, 2, '#6a3a9a'); R8(7, 1, 1, 1, '#9a6ad8'); }
+      else if (grade === 79) {
+        R8(5, 1, 6, 1, '#a8802a'); R8(3, 2, 10, 2, '#a8802a'); R8(2, 4, 12, 8, '#a8802a'); R8(3, 12, 10, 2, '#a8802a'); R8(5, 14, 6, 1, '#a8802a');
+        R8(5, 2, 6, 1, '#e8c050'); R8(4, 3, 8, 1, '#e8c050'); R8(3, 4, 10, 8, '#e8c050'); R8(4, 12, 8, 1, '#e8c050'); R8(5, 13, 6, 1, '#e8c050');
+        R8(7, 4, 2, 7, '#7a5a1a'); R8(4, 5, 8, 1, '#7a5a1a'); R8(6, 11, 4, 1, '#7a5a1a'); R8(3, 6, 1, 2, '#7a5a1a'); R8(5, 6, 1, 2, '#7a5a1a'); R8(3, 8, 3, 1, '#7a5a1a'); R8(10, 6, 1, 2, '#7a5a1a'); R8(12, 6, 1, 2, '#7a5a1a'); R8(10, 8, 3, 1, '#7a5a1a'); R8(4, 4, 1, 1, '#fff4c0');
+      } else {
+        R8(7, 1, 2, 1, '#ff8ae8'); R8(5, 2, 6, 2, '#c83ab8'); R8(4, 4, 8, 6, '#8a1a8a'); R8(5, 10, 6, 2, '#6a1270'); R8(7, 12, 2, 2, '#5a1060');
+        R8(5, 4, 3, 6, '#c83ab8'); R8(6, 3, 1, 1, '#ffd0f8'); R8(7, 6, 2, 2, '#ffd0f8'); R8(8, 7, 1, 1, '#ffffff'); R8(2, 6, 1, 1, '#ff8ae8'); R8(13, 4, 1, 1, '#ff8ae8'); R8(12, 12, 1, 1, '#ff8ae8');
+      }
+      outline(c, '#0a0a14'); oreIcons[grade] = c.toDataURL(); return oreIcons[grade];
+    }
     if (grade === 77) { // [2026-11-17] 빛의 심장 -- 금빛 심장에서 뻗는 빛살
       [[1, 7, 2, 1], [13, 7, 2, 1], [7, 0, 2, 2], [3, 2, 1, 1], [12, 2, 1, 1], [3, 13, 1, 1], [12, 13, 1, 1]].forEach(function (r) { px(g, '#fff6c0', r[0], r[1], r[2], r[3]); });
       px(g, '#e8b030', 4, 4, 3, 2); px(g, '#e8b030', 9, 4, 3, 2); px(g, '#e8b030', 3, 5, 10, 4); px(g, '#e8b030', 4, 9, 8, 2); px(g, '#e8b030', 5, 11, 6, 1); px(g, '#e8b030', 6, 12, 4, 1); px(g, '#e8b030', 7, 13, 2, 1);
@@ -1563,7 +1579,180 @@ var TowerMine = (function () {
     };
   })();
   var EYE_PX = { mammoth: [[12, 5]], quad: [[13, 6]], human: [[6, 4], [9, 4]], small: [[12, 7]], flyer: [[7, 7], [8, 7]], crab: [[6, 7], [9, 7]], blob: [[6, 10], [9, 10]] }; // [2026-11-05] 몬스터 그림(16칸)의 눈 자리 -- 밤 붉은 눈
+  // [2026-11-18] 바다 위 -- 잠수(서버 S5MineMobs.diving과 같은 식: 보통 14초마다 4초, 크라켄 45초마다 5초), 잠수 앞뒤 0.6초는 흐리게
+  function seaDiving(ty, id, ms) {
+    if (!ty || !ty.dive) return false;
+    var p = ty.boss ? 45000 : 14000, u = ty.boss ? 5000 : 4000;
+    return (ms + id * 7919) % p >= p - u;
+  }
+  function seaAlpha(ty, id, ms) {
+    var p = ty.boss ? 45000 : 14000, u = ty.boss ? 5000 : 4000, v = (ms + id * 7919) % p, toDive = p - u - v;
+    if (toDive >= 0 && toDive < 600) return Math.max(0.15, toDive / 600);
+    if (v < 600) return Math.max(0.15, v / 600);
+    return 1;
+  }
+  /** 물속 -- 물결 고리 + 거품(보스는 큰 그림자). (mx, my) = 몬스터 칸 왼쪽 위(화면). */
+  function seaRipple(mx, my, ty, now) {
+    var TS = T * scale, bf = ty.boss ? (ty.foot || 2) : 1, cx = mx + TS * bf / 2, cy = my + TS * bf / 2 + TS * 0.2, r0 = TS * 0.4 * bf;
+    if (ty.boss) { ctx.fillStyle = 'rgba(20,20,50,.32)'; ctx.beginPath(); ctx.ellipse(cx, cy, r0 * 1.2, r0 * 0.7, 0, 0, Math.PI * 2); ctx.fill(); }
+    for (var i = 0; i < 2; i++) { var q = ((now / 900) + i * 0.5) % 1; ctx.strokeStyle = 'rgba(220,240,255,' + (0.55 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.ellipse(cx, cy, r0 * (0.5 + q), r0 * 0.35 * (0.5 + q), 0, 0, Math.PI * 2); ctx.stroke(); }
+    for (var b = 0; b < 3; b++) { var bq = ((now / 700) + b * 0.33) % 1; ctx.fillStyle = 'rgba(230,245,255,' + (0.7 * (1 - bq)).toFixed(2) + ')'; ctx.fillRect(cx + (b - 1) * 4 * scale, cy - bq * 8 * scale, 2 * scale, 2 * scale); }
+  }
+  function seaPainter(g, W, H) {
+    var P = function (x, y, c) { x = Math.round(x); y = Math.round(y); if (x < 0 || y < 0 || x >= W || y >= H) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+    return { P: P, R: function (x, y, w, h, c) { g.fillStyle = c; g.fillRect(x, y, w, h); },
+      E: function (cx, cy, rx, ry, c) { for (var y = -ry; y <= ry; y++) for (var x = -rx; x <= rx; x++) if ((x * x) / (rx * rx + 0.5) + (y * y) / (ry * ry + 0.5) <= 1) P(cx + x, cy + y, c); },
+      C: function (cx, cy, r, c) { for (var y = -r; y <= r; y++) for (var x = -r; x <= r; x++) if (x * x + y * y <= r * r + 0.3) P(cx + x, cy + y, c); } };
+  }
+  /** 바다 몬스터(시안 승인) -- 문어/가오리/상어 16x16, 고래 32x32. 선인식(first)이면 눈이 빨갛다. */
+  var seaSprites = {};
+  function seaSprite(k, f) {
+    var ty = map.mobTypes[k] || {}, key = k + ':' + f;
+    if (seaSprites[key]) return seaSprites[key];
+    var red = !!ty.first, c, p, x, y;
+    if (ty.kind === 'whale') {
+      c = mk(32, 32); p = seaPainter(c.getContext('2d'), 32, 32);
+      p.E(16, 23, 15, 5, 'rgba(20,50,100,.5)'); p.E(14, 20, 11, 6, '#2a3a5a'); p.E(14, 18, 10, 5, '#3a5070'); p.E(11, 16, 4, 2, '#5a7090');
+      for (x = 6; x < 22; x += 3) p.P(x, 22, '#c8d8e8');
+      p.R(25, 18, 3, 3, '#2a3a5a'); p.R(27, 15 - f, 2, 4, '#2a3a5a'); p.R(28, 13 - f, 4, 2, '#3a5070'); p.R(24, 14 - f, 4, 2, '#3a5070');
+      p.P(7, 18, red ? '#ff3a2a' : '#ffffff'); p.P(7, 19, '#0a0a14');
+      var sp = f ? 0 : 2; p.R(10, 6 + sp, 1, 7 - sp, '#d8f0ff'); p.R(8, 5 + sp, 2, 1, '#d8f0ff'); p.R(11, 5 + sp, 2, 1, '#d8f0ff'); p.P(7, 6 + sp, '#d8f0ff'); p.P(13, 6 + sp, '#d8f0ff');
+      for (x = 2; x < 30; x += 4) p.P(x + f, 25, '#e8f4ff');
+    } else {
+      c = mk(16, 16); p = seaPainter(c.getContext('2d'), 16, 16);
+      if (ty.kind === 'octo') {
+        p.E(8, 13, 7, 2, 'rgba(20,50,100,.5)');
+        [[2, 12], [5, 13], [10, 13], [13, 12]].forEach(function (q, i) { var sw = (i + f) % 2; p.R(q[0], q[1] - sw, 2, 2, '#c8502a'); p.P(q[0] + (i < 2 ? -1 : 2), q[1] - 1 - sw, '#c8502a'); p.P(q[0], q[1] + 1 - sw, '#ffc0a0'); });
+        p.E(8, 7, 5, 5, '#a83a1e'); p.E(8, 6, 5, 5, '#d8603a'); p.E(6, 4, 2, 2, '#f09068'); p.P(10, 3, '#a83a1e'); p.P(11, 6, '#a83a1e');
+        p.R(5, 8, 2, 2, red ? '#ff3a2a' : '#ffe86a'); p.R(10, 8, 2, 2, red ? '#ff3a2a' : '#ffe86a'); p.R(5, 9, 2, 1, '#1a0a0a'); p.R(10, 9, 2, 1, '#1a0a0a');
+        for (x = 1; x < 15; x += 3) p.P(x + f, 14, '#e8f4ff');
+      } else if (ty.kind === 'ray') {
+        var b = '#1e2e4a', b2 = '#4a6a92', fw = f ? 1 : 0;
+        for (y = 0; y < 7; y++) { var w = y < 3 ? 2 + y * 2 : 12 - (y - 3) * 2; p.R(8 - Math.round(w / 2) - (y === 3 ? 1 : 0), 4 + y + (y === 3 && fw ? -1 : 0), w + (y === 3 ? 2 : 0), 1, b); }
+        p.R(1, 6 - fw, 2, 1, b); p.R(13, 6 - fw, 2, 1, b); p.R(6, 5, 4, 2, b2);
+        p.P(6, 6, red ? '#ff3a2a' : '#e8f0ff'); p.P(9, 6, red ? '#ff3a2a' : '#e8f0ff');
+        p.R(8, 11, 1, 4, b); p.P(8 + (f ? 1 : -1), 15, b);
+        p.P(2, 6, '#7a9ac8'); p.P(13, 6, '#7a9ac8'); for (x = 3; x < 13; x += 4) p.P(x, 7, '#6a8ab8');
+      } else { // 상어
+        p.E(8, 11, 7, 2, 'rgba(20,40,80,.55)'); p.R(1 + f, 10, 2, 1, 'rgba(20,40,80,.55)');
+        for (y = 0; y < 8; y++) { var w2 = Math.round(y * 0.7) + 1; p.R(9 - w2 + (y < 3 ? 1 : 0), 3 + y, w2 + 1, 1, '#5a6a7a'); p.P(9 - w2 + (y < 3 ? 1 : 0), 3 + y, '#8a9aaa'); }
+        p.R(5, 10, 8, 1, '#3a4a5a'); if (red) { p.P(11, 11, '#ff3a2a'); p.P(12, 11, '#ff6a4a'); }
+        for (x = 2; x < 15; x++) if ((x + f) % 3 === 0) p.P(x, 11, '#e8f4ff');
+      }
+    }
+    seaSprites[key] = c;
+    return c;
+  }
+  /** 심해의 크라켄(80x80 = 5x5칸, 시안 승인) -- f = 촉수 흔들림, stun = 기절(눈이 빙글, 촉수 축). */
+  function krakenSprite(f, stun) {
+    var key = 'krk' + f + (stun ? 's' : '');
+    if (seaSprites[key]) return seaSprites[key];
+    var c = mk(80, 80), p = seaPainter(c.getContext('2d'), 80, 80);
+    var sk = '#7a1e3a', sk2 = '#a8405e', sk3 = '#5a1028', sk4 = '#c8607a', su = '#f4b8c4', su2 = '#d88898';
+    p.E(40, 66, 36, 10, '#1d4a86'); p.E(40, 66, 30, 7, '#16396a');
+    for (var a = 0; a < 40; a++) { var an = a / 40 * Math.PI * 2; if ((a + f) % 3) p.P(40 + Math.cos(an) * 35, 66 + Math.sin(an) * 9.5, '#cfe8ff'); }
+    function tent(x0, y0, x1, y1, x2, y2, r0, r1) {
+      var n = 34, pts = [];
+      for (var i = 0; i <= n; i++) { var t = i / n, u = 1 - t; pts.push([u * u * x0 + 2 * u * t * x1 + t * t * x2, u * u * y0 + 2 * u * t * y1 + t * t * y2, r0 + (r1 - r0) * t]); }
+      pts.forEach(function (q) { p.C(q[0], q[1], Math.round(q[2]) + 1, sk3); });
+      pts.forEach(function (q) { p.C(q[0], q[1], Math.round(q[2]), sk); });
+      pts.forEach(function (q, i) { if (i % 2 === 0) p.P(q[0] - q[2] * 0.4, q[1] - q[2] * 0.5, sk2); });
+      pts.forEach(function (q, i) { if (i % 4 === 1 && q[2] >= 1.5) { p.P(q[0] + q[2] * 0.3, q[1] + q[2] * 0.4, su); p.P(q[0] + q[2] * 0.3 + 1, q[1] + q[2] * 0.4, su2); } });
+    }
+    var s = stun ? 0 : (f ? 2 : -2), d = stun ? 8 : 0;
+    tent(30, 60, 8, 54 + d, 4, 40 - s + d * 2, 4.5, 1); tent(50, 60, 72, 54 + d, 76, 40 + s + d * 2, 4.5, 1);
+    tent(26, 56, 10, 30 - s + d * 2, 18, 14 + s + d * 3, 4, 0.8); tent(54, 56, 70, 30 + s + d * 2, 62, 14 - s + d * 3, 4, 0.8);
+    tent(34, 62, 22, 72, 8, 70 + s * 0.5, 3.5, 1); tent(46, 62, 58, 72, 72, 70 - s * 0.5, 3.5, 1);
+    p.E(40, 30, 16, 20, sk3); p.E(40, 30, 15, 19, sk); p.E(40, 44, 13, 8, sk); p.E(34, 20, 6, 8, sk2); p.E(32, 16, 2, 3, sk4);
+    [[46, 18], [49, 27], [44, 34], [31, 32], [37, 12], [50, 38], [29, 41]].forEach(function (q) { p.E(q[0], q[1], 1, 1, sk3); });
+    p.R(26, 40, 10, 2, sk3); p.R(44, 40, 10, 2, sk3);
+    [[31, 44], [49, 44]].forEach(function (e) {
+      if (stun) { p.E(e[0], e[1], 4, 3, '#f0e8d0'); [[-2, -1], [-1, 0], [0, 1], [1, 0], [2, -1], [-2, 1], [2, 1]].forEach(function (o) { p.P(e[0] + o[0], e[1] + o[1], '#3a1a1a'); }); }
+      else { p.E(e[0], e[1], 4, 3, '#ffd84a'); p.E(e[0], e[1], 3, 2, '#ffb820'); p.R(e[0] - 3, e[1], 7, 1, '#140a0a'); p.P(e[0] - 2, e[1] - 2, '#ffffff'); }
+    });
+    p.E(40, 52, 4, 3, sk3); p.P(39, 52, '#e8dcc0'); p.P(40, 53, '#e8dcc0'); p.P(41, 52, '#e8dcc0');
+    if (stun) [[30, 4], [40, 2], [50, 4]].forEach(function (q, i) { var cc = i === 1 ? '#fff6a0' : '#ffd84a'; p.P(q[0], q[1], cc); p.P(q[0] - 1, q[1], cc); p.P(q[0] + 1, q[1], cc); p.P(q[0], q[1] - 1, cc); p.P(q[0], q[1] + 1, cc); });
+    seaSprites[key] = c;
+    return c;
+  }
+  // [2026-11-18] 크라켄 해역 -- 화약통 / 신호 부표 / 해상도시 지원 함선(시안 승인). 상태는 위치 알림 sea(seaSt).
+  var seaSt = null, seaMsgSeen = 0;
+  function seaBarrelSprite(f) {
+    var key = 'brl' + f; if (seaSprites[key]) return seaSprites[key];
+    var c = mk(16, 16), p = seaPainter(c.getContext('2d'), 16, 16);
+    p.E(8, 13, 6, 2, 'rgba(20,50,100,.5)'); p.E(8, 9, 5, 5, '#7a4a22'); p.R(3, 6, 10, 1, '#3a2a1a'); p.R(3, 11, 10, 1, '#3a2a1a'); p.R(4, 5, 2, 8, '#9a6232');
+    p.R(7, 7, 3, 3, '#1a1a1a'); p.P(7, 8, '#e8e0c8'); p.P(9, 8, '#e8e0c8'); p.P(8, 10, '#1a1a1a');
+    p.R(8, 2, 1, 3, '#5a4a3a'); p.P(9, 1 + f, '#ffb83a'); p.P(8, 1, f ? '#ff6a2a' : '#ffd84a');
+    for (var x = 2; x < 15; x += 3) p.P(x + f, 13, '#e8f4ff');
+    return (seaSprites[key] = c);
+  }
+  function seaBuoySprite() {
+    var c = mk(16, 16), p = seaPainter(c.getContext('2d'), 16, 16);
+    p.E(8, 14, 6, 1, 'rgba(20,50,100,.5)'); p.R(4, 8, 8, 6, '#d83a2a'); p.R(4, 10, 8, 2, '#f0f0e8'); p.R(4, 8, 2, 6, '#f06a5a');
+    p.R(7, 3, 2, 5, '#3a3a40'); p.R(6, 1, 4, 3, '#5a5a60'); p.P(7, 1, '#7a7a80');
+    for (var x = 2; x < 15; x += 3) p.P(x, 14, '#e8f4ff');
+    return c;
+  }
+  function allyShipDraw(x, y, left, now) { // (x, y) = 배 왼쪽 위(화면), 오른쪽을 보고 그린 배를 left면 뒤집는다
+    var u = T * scale / 16, bob = Math.floor(now / 500) % 2;
+    var R = function (cc, a, b, w, h) { ctx.fillStyle = cc; ctx.fillRect(x + a * u, y + (b + bob) * u, w * u, h * u); };
+    ctx.save();
+    if (left) { ctx.translate(2 * x + 50 * u, 0); ctx.scale(-1, 1); }
+    R('#4a2c14', 30, -22, 2, 36); R('#7a4a22', 30, -22, 1, 36);
+    ctx.fillStyle = '#eef4fa'; ctx.beginPath(); ctx.moveTo(x + 33 * u, y + (-21 + bob) * u); ctx.quadraticCurveTo(x + 46 * u, y + (-8 + bob) * u, x + 50 * u, y + (8 + bob) * u); ctx.lineTo(x + 33 * u, y + (9 + bob) * u); ctx.closePath(); ctx.fill();
+    R('#2a6ab8', 33, -9, 15, 3); R('#2a6ab8', 33, -1, 17, 3); R('#ffffff', 37, -5, 6, 1); R('#ffffff', 36, -4, 2, 1); R('#ffffff', 42, -4, 2, 1);
+    R('#2a6ab8', 26, -25, 4, 3); R('#ffffff', 27, -24, 1, 1);
+    R('#5a3418', -2, 9, 52, 2); R('#b07a3c', -2, 9, 52, 1);
+    try { ctx.drawImage(MineChar.sprite('right', 0, 0, {}), x + 2 * u, y + (-4 + bob) * u, 16 * u, 16 * u); ctx.drawImage(MineChar.sprite('right', 0, 3, {}), x + 15 * u, y + (-4 + bob) * u, 16 * u, 16 * u); } catch (e) { }
+    R('#3a2210', -4, 10, 2, 6); R('#1f4f8f', -3, 12, 55, 2); R('#3a7ac8', -3, 12, 55, 1); R('#5a3418', -2, 14, 53, 1); R('#3a2210', 0, 15, 48, 1);
+    R('#e0b050', -4, 11, 56, 1); R('#e0b050', 51, 9, 2, 2); R('#e0b050', 52, 7, 2, 2); R('#e0b050', 53, 6, 1, 1);
+    for (var k = 2; k < 50; k += 8) R('#ffd76a', k, 12, 1, 2);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.fillRect(x - 8 * u, y + 17 * u, 66 * u, u);
+    ctx.restore();
+  }
+  function seaDrawBack(now, camX, camY) { // 화약통(몬스터보다 먼저)
+    if (!map || !map.barrels) return;
+    var TS = T * scale, t = nowSrv(), bs = (seaSt && seaSt.barrel) || [];
+    map.barrels.forEach(function (b, i) {
+      var ex = bs[i] || 0, x = b[0] * TS - camX, y = b[1] * TS - camY;
+      if (ex && t - ex < 60000) {
+        if (t - ex < 1200) { var q = (t - ex) / 1200; ctx.fillStyle = 'rgba(255,' + Math.round(200 - 120 * q) + ',60,' + (0.85 * (1 - q)).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(x + TS / 2, y + TS / 2, TS * (0.5 + 2 * q), 0, Math.PI * 2); ctx.fill(); }
+        return;
+      }
+      ctx.drawImage(seaBarrelSprite(Math.floor(now / 400 + i) % 2), x, y + Math.round(Math.sin(now / 500 + i) * scale), TS, TS);
+    });
+  }
+  function seaDrawFront(now, camX, camY) { // 부표 불꽃 + 지원 함선(몬스터 다음)
+    if (!map || map.id !== 'opensea' || !seaSt) return;
+    var TS = T * scale, t = nowSrv(), bi = 0;
+    (map.npcs || []).forEach(function (n) {
+      if (n.kind !== 'seabuoy') return;
+      var lit = (seaSt.buoy || [])[bi++] || 0;
+      if (!lit || t - lit > 30000) return;
+      var fx = n.x * TS - camX + TS / 2, fy = n.y * TS - camY - 3 * scale, fl = Math.sin(now / 90) * scale;
+      ctx.fillStyle = '#ff6a3a'; ctx.fillRect(fx - scale, fy - 6 * scale + fl, 2 * scale, 5 * scale);
+      ctx.fillStyle = '#ffd84a'; ctx.fillRect(fx - scale, fy - 7 * scale + fl, 2 * scale, 2 * scale);
+      ctx.fillStyle = 'rgba(255,120,60,.25)'; ctx.beginPath(); ctx.arc(fx, fy - 4 * scale, TS * 0.6, 0, Math.PI * 2); ctx.fill();
+    });
+    if (!(seaSt.allyUntil > t) || seaSt.allyAt - t > 4000) return;
+    var bm = map.mobs && map.mobs[map.mobs.length - 1];
+    if (!bm) return;
+    var kx = bm.x + 2.5, ky = bm.y + 2.5;
+    var come = t < seaSt.allyAt ? (seaSt.allyAt - t) / 4000 : 0, leave = t > seaSt.allyUntil - 2000 ? (t - (seaSt.allyUntil - 2000)) / 2000 : 0, off = Math.max(come, leave) * 14;
+    [-1, 1].forEach(function (side) {
+      var sx = (kx + side * (6.5 + off)) * TS - camX - (side < 0 ? 3.2 * TS : 0), sy = (ky + side * 1.5) * TS - camY;
+      allyShipDraw(sx, sy, side > 0, now);
+      if (t >= seaSt.allyAt && t < seaSt.allyUntil && (now + side * 300) % 900 < 320) { // 작살
+        var ax = sx + (side < 0 ? 3.2 * TS : 0), ay = sy, q = ((now + side * 300) % 900) / 320, tx = kx * TS - camX, ty2 = ky * TS - camY;
+        ctx.strokeStyle = '#d8d0c0'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + (tx - ax) * q, ay + (ty2 - ay) * q); ctx.stroke();
+        ctx.fillStyle = '#e8e8f0'; ctx.fillRect(ax + (tx - ax) * q - 3, ay + (ty2 - ay) * q - 3, 6, 6);
+      }
+    });
+  }
   function mobSprite(k, pose, f) {
+    var tyS = map.mobTypes[k] || {}; // [2026-11-18] 바다 위
+    if (tyS.name === '심해의 크라켄') return krakenSprite((f | 0) % 2, !!pose);
+    if (tyS.sea) return seaSprite(k, (f | 0) % 2);
     var art = BOSS_ART[(map.mobTypes[k] || {}).src || (map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임) // [2026-11-17] 악마화된 몬스터는 원래 그림
     if (art) { var bk = 'b' + k + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
@@ -1811,6 +2000,7 @@ var TowerMine = (function () {
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
+    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && map.boat && st && st.adminMaps ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시(지금은 관리자만)
     if (el.atk) el.atk.disabled = busy;
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
@@ -2818,6 +3008,11 @@ var TowerMine = (function () {
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
     if (n.kind === 'seaferry') { setAuto(false); openSmith(n, 'sail'); return; } // [2026-11-18] 배 띄우기
+    if (n.kind === 'seabuoy') { // [2026-11-18] 신호 부표 -- 불을 붙이면 지원 함선
+      var bix = (map.npcs || []).filter(function (q) { return q.kind === 'seabuoy'; }).indexOf(n);
+      api('/api/tower-mine-archi?action=buoy:' + bix).then(function (d) { if (d && d.sea) seaSt = d.sea; if (d && d.message) { if (d.ok) flashT0 = performance.now(); msg(d.message, 3000); } }).catch(function () { });
+      return;
+    }
     if (n.kind === 'mailbox') { setAuto(false); mailData = null; openSmith(n, 'mail'); mailGo('mail', null); return; } // [2026-11-17] 우체부
     if (n.kind === 'wbboard') { setAuto(false); wbBoard = null; openSmith(n, 'wbboard'); api('/api/tower-mine-wb?action=board').then(function (d) { wbBoard = d; if (smithOpen && smithView === 'wbboard') renderSmith(smithNpc); }).catch(function () { }); return; } // [2026-11-17] 월드보스 게시판
     if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
@@ -3551,7 +3746,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79; }], // [2026-11-17] + 빛의 심장, [2026-11-18] + 어둠의 심장, 심판의 증표
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79 || g === 81; }], // [2026-11-17] + 빛의 심장, [2026-11-18] + 어둠의 심장, 심판의 증표, 물의 심장
     ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }], // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
     ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }] // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
   ];
@@ -4325,7 +4520,7 @@ var TowerMine = (function () {
           return;
         }
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -4343,6 +4538,9 @@ var TowerMine = (function () {
       // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
       if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
       else if (d.died && d.state) fallDown(d);
+      else if (d.boatWreck && d.state) fallDown(d); // [2026-11-18] 배가 부서져 마을로
+      if (d.boatHp != null && st.archi) st.archi.boatHp = d.boatHp; // [2026-11-18] 배 체력
+      if (d.boatHit && !d.boatWreck) floats.push({ x: P.x, y: P.y - 1.3, text: '⛵ 배 -' + d.boatHit + '%', color: '#9fe0ff', t0: performance.now() + 150 });
     };
   }
   // [2026-10-26] 한기 -- 한기 맵(설원/설산)에서 1초마다 서버에 묻는다(한기/눈바람 피해, 안전지대, 다음 눈바람 시각).
@@ -5199,6 +5397,7 @@ var TowerMine = (function () {
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      seaSt = d.sea || null; if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
       mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
       if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
@@ -5678,7 +5877,7 @@ var TowerMine = (function () {
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
-  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [78, '성당(타락한 대주교)', 59] /* [2026-11-18] 어둠의 심장 */, 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55], 8: [77, '최후의 방어선(심판자 보로네오)', 55] }, /* [2026-11-17] 빛 = 빛의 심장 + 세공 진주 */ /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [78, '성당(타락한 대주교)', 59] /* [2026-11-18] 어둠의 심장 */, 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55], 8: [77, '최후의 방어선(심판자 보로네오)', 55] /* [2026-11-18] 바다 위를 모두에게 열 때 3: [81, '바다 위(심해의 크라켄)', 55] -- 물 = 물의 심장 + 세공 진주 */ }, /* [2026-11-17] 빛 = 빛의 심장 + 세공 진주 */ /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
   function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
@@ -6336,7 +6535,7 @@ var TowerMine = (function () {
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255]];
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255]]; // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
       for (var wzi = 0; wzi < wzAll.length; wzi++) {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
@@ -6369,6 +6568,7 @@ var TowerMine = (function () {
         ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.ellipse(cx - br * 0.4, cy - br * 0.45, br * 0.18, br * 0.1, -0.6, 0, Math.PI * 2); ctx.fill(); // 풍선 반짝임
       });
     }
+    try { seaDrawBack(now, camX, camY); } catch (e) { } // [2026-11-18] 화약통
     try { twRoomDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-16] 탑 방 -- 가시 띠 / 상자 / 제단 / 샘
     if (ultFx.length) ultFloorDraw(now, TS, camX, camY); // [2026-11-07] 만검진 바닥 장판(몬스터보다 먼저)
     // [2026-10-24] 몬스터(그림 + 맞은 몬스터 체력 막대 + 가까우면 이름)
@@ -6386,13 +6586,17 @@ var TowerMine = (function () {
         if (mx < -TS || my < -TS || mx > W || my > H) continue;
         var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = ty.name === '심판자 보로네오' && Math.floor(nowSrv() / 12000) % 2 === 1; // [2026-11-17] 보로네오 -- 망치를 든 차례
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
+        if (ty.dive && seaDiving(ty, mb.id, nowSrv())) { seaRipple(mx, my, ty, now); continue; } // [2026-11-18] 물속(물결만)
+        if (ty.name === '심해의 크라켄') pose = !!(mobSt[mb.id] && mobSt[mb.id].su > nowSrv()); // [2026-11-18] 바위에 박혀 기절
+        var seaA = ty.dive ? seaAlpha(ty, mb.id, nowSrv()) : 1;
         var hq = mobHitAt[mb.id] ? now - mobHitAt[mb.id] : 999;
         if (hq < 200) mx += Math.round(Math.sin(hq / 16) * 2.5 * scale * (1 - hq / 200)); // [2026-11-03] 맞은 몬스터 흔들림
         var bob = ty.kind === 'flyer' ? Math.sin(now / 260 + bid) * 2 * scale : Math.abs(Math.sin(now / 420 + bid)) * scale;
         var ms = mobSt[mb.id];
         if (ms && ms.fu > nowSrv() && !ty.boss) { mx += ((mb.id % 5) - 2) * scale; my += (((mb.id / 5) | 0) % 3 - 1) * scale; } // [2026-11-05] 쫓아오며 겹친 몬스터 -- 조금씩 비껴 그려 여러 마리인 게 보이게
         if (ms && ms.sl) ctx.globalAlpha = 0.3 + 0.15 * Math.sin(now / 90); // [2026-10-28] 은신한 닌자 -- 반투명하게 깜빡
-        ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale);
+        if (seaA < 1) ctx.globalAlpha = seaA; // [2026-11-18] 잠수 앞뒤
+        if (!ty.sea) { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(mx + 3 * scale, my + 13 * scale, 10 * scale, 2 * scale); }
         if (ty.sim != null) { var sw2 = TS * 2; ctx.drawImage(mobSprite(ty.sim, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - sw2 / 2), Math.round(my + TS - sw2 - bob), sw2, sw2); } // [2026-11-07] 보스 허수아비 -- 그 보스 그림(2칸 크기)
         else if (ty.boss) { // [2026-10-24] 보스 -- 1.8배 크기, 붉은 기운
           var bf = ty.foot || 2; // [2026-11-15] 거룡은 3x3칸
@@ -6404,11 +6608,12 @@ var TowerMine = (function () {
           }
           var hopL = 0; // [2026-11-16] 자리를 옮기는 중(날아올랐다 내려앉는다) 0 -> 1 -> 0
           if (!fo && ms && ms.hop && ms.ox != null) { var hq3 = (nowSrv() - ms.mt) / (ms.md || 950); if (hq3 >= 0 && hq3 < 1) hopL = Math.sin(hq3 * Math.PI); }
-          if (!fo && !hopL) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
+          if (!fo && !hopL && !ty.sea) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
           else { var shq = fo || hopL * 0.55; ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - shq)) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS * bf / 2, my + TS * bf - TS * 0.2, TS * bf * 0.5 * (1 - 0.6 * shq), TS * 0.36 * (1 - 0.6 * shq), 0, 0, Math.PI * 2); ctx.fill(); } // 내려앉을 자리의 그림자가 점점 커진다
           var bw = TS * 1.2 * bf; // [2026-10-29] 보스 2x2칸 -- 그림은 칸들 가운데, 발은 맨 아래 칸
           ctx.drawImage(mobSprite(sk, pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6), bw, bw);
-        } else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
+        } else if (ty.sea) { var sw3 = ty.kind === 'whale' ? TS * 2 : TS; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 420 + bid)), Math.round(mx + TS / 2 - sw3 / 2), Math.round(my + TS - sw3 - bob * 0.5), sw3, sw3); if (ty.kind === 'whale') my -= Math.round(TS * 0.7); } // [2026-11-18] 바다 몬스터
+        else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
         else if (ty.chaos) { // [2026-11-17] 악마화된 몬스터 -- 원래 그림을 크게(보스였으면 2.2배, 아니면 1.8배), 발밑 검붉은 기운 + 보랏빛 일렁임
           var chw = Math.round(TS * (ty.cboss ? (ty.src === '심연의 거룡' ? 3.6 : 3.0) : 2.0)), chp = 0.5 + 0.5 * Math.sin(now / 240 + mb.id);
           ctx.fillStyle = 'rgba(120,0,40,' + (0.28 + 0.12 * chp) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS / 2, my + TS * 0.85, chw * 0.48, TS * 0.32, 0, 0, Math.PI * 2); ctx.fill();
@@ -6445,10 +6650,11 @@ var TowerMine = (function () {
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
           tagCells[mp.cx + ',' + mp.cy] = 1;
           var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : ty.demon ? '😈 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
-          drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS * (ty.foot || 2) / 2 : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
+          drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : ty.sea && ty.first ? '#ff5a5a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS * (ty.foot || 2) / 2 : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }
     }
+    try { seaDrawFront(now, camX, camY); } catch (e) { } // [2026-11-18] 부표 불꽃 / 지원 함선
     // [2026-10-27] 왕도 주민(길을 왕복, 가끔 말풍선)
     if (map.citizens && map.citizens.length) {
       var tc = nowSrv(), cwin = Math.floor(tc / 7000);
@@ -6555,7 +6761,7 @@ var TowerMine = (function () {
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
-    if (map.boat) { drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
+    if (map.boat) { drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
@@ -7201,8 +7407,44 @@ var TowerMine = (function () {
       if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeFallAt[d.tree] = performance.now(); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
     }).catch(function () { chopBusy = false; });
   }
+  // [2026-11-18] 바다 낚시 -- 배를 탄 맵에서 채광 버튼 = 낚시(곡괭이 내구도 10, 시즌4 낚싯대/찌). 던지기 -> 찌 -> 입질(결과) -> 물고기
+  var fishFx = null, FISH_COL = ['#ffffff', '#ffffff', '#8ee08e', '#6ab8ff', '#c08aff', '#ffb347', '#ff6a8a', '#ff5a3a', '#ffd84a'];
+  function fishCast() {
+    if (!opened || busy || !map || P.moving) return;
+    busy = true; el.dig.disabled = true;
+    var ff = fishFx = { t0: performance.now(), dir: P.dir };
+    apiFast('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&dir=' + P.dir + verQ()).then(function (d) {
+      if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
+      if (!d.ok) { busy = false; if (fishFx === ff) fishFx = null; showStamina(); if (d.message) msg(d.message, 2200); return; }
+      setTimeout(function () {
+        busy = false;
+        ff.bite = performance.now();
+        var f = d.fish || {}, col = FISH_COL[f.grade] || '#ffffff', big = f.grade >= 5;
+        floats.push({ x: P.x, y: P.y - 1.0, text: (f.emoji || '🐟') + ' ' + (f.star || '') + ' ' + (f.name || ''), color: col, big: big, t0: performance.now() });
+        try { killFeed('🎣 ' + (f.star || '') + ' ' + (f.name || ''), col); } catch (e) { }
+        if (big) { flashT0 = performance.now(); banner = { text: '🎣 ' + f.star + ' ' + f.name + '!', t0: performance.now() }; }
+        if (d.ach) msg(d.ach, 4200);
+        showStamina();
+      }, Math.max(0, 1300 - (performance.now() - ff.t0)));
+    }).catch(function () { busy = false; if (fishFx === ff) fishFx = null; showStamina(); msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function drawFishing(cx, cy, now) { // (cx, cy) = 캐릭터 그림 왼쪽 위
+    if (!fishFx) return;
+    var pn = performance.now(), tt = pn - fishFx.t0;
+    if (tt > 6000 || (fishFx.bite && pn - fishFx.bite > 1400)) { fishFx = null; return; }
+    var TS = T * scale, u = TS / 16, dv = fishFx.dir === 'left' ? [-1, 0] : fishFx.dir === 'up' ? [0, -1] : fishFx.dir === 'down' ? [0, 1] : [1, 0];
+    var hx = cx + TS / 2 + dv[0] * 3 * u, hy = cy + 9 * u, rx = cx + TS / 2 + dv[0] * 9 * u, ry = cy - 2 * u + dv[1] * 4 * u;
+    var fly = Math.min(1, tt / 450), bx = cx + TS / 2 + dv[0] * TS * 2.2 * fly, by = cy + TS * 0.95 + dv[1] * TS * 2.2 * fly - Math.sin(fly * Math.PI) * TS * 0.8;
+    var bit = fishFx.bite ? Math.min(1, (pn - fishFx.bite) / 180) : 0;
+    if (fly >= 1) by += bit ? bit * 4 * u : Math.sin(now / 250) * u;
+    ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(rx, ry); ctx.stroke(); // 낚싯대
+    ctx.strokeStyle = 'rgba(240,240,240,.85)'; ctx.lineWidth = Math.max(1, 0.6 * u); ctx.beginPath(); ctx.moveTo(rx, ry); ctx.quadraticCurveTo((rx + bx) / 2, Math.max(ry, by) + (bit ? 0 : TS * 0.3), bx, by); ctx.stroke(); // 낚싯줄
+    ctx.fillStyle = '#e8463a'; ctx.fillRect(bx - 1.5 * u, by - 2 * u, 3 * u, 2 * u); ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 1.5 * u, by, 3 * u, 1.5 * u); // 찌
+    if (bit) { ctx.strokeStyle = 'rgba(230,245,255,' + (0.8 * (1 - (pn - fishFx.bite) / 1400)).toFixed(2) + ')'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.ellipse(bx, by + u, TS * 0.2 + (pn - fishFx.bite) / 1400 * TS * 0.6, TS * 0.1 + (pn - fishFx.bite) / 1400 * TS * 0.25, 0, 0, Math.PI * 2); ctx.stroke(); }
+  }
   function dig() {
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
+    if (map && map.boat && st && st.adminMaps) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시(지금은 관리자만)
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;

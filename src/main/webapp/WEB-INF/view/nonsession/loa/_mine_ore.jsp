@@ -13,7 +13,7 @@ window.MineOre = (function () {
   ['재스퍼', '루비', '스타 사파이어', '아쿠아마린', '토파즈', '가넷', '스피넬', '에메랄드', '다이아몬드'].forEach(function (n, i) { name[21 + i] = n; });
   [['#a8452f', '#e8907a'], ['#d4104f', '#ff9ab8'], ['#2448b8', '#bcd0ff'], ['#4fc8d8', '#d4fbff'], ['#f0a530', '#ffe2a8'],
    ['#7d1426', '#e0697c'], ['#e0508e', '#ffc4dc'], ['#159a4c', '#a8f0c4'], ['#cfefff', '#ffffff']].forEach(function (c, i) { col[21 + i] = c; });
-  name[31] = '어둠의 증표'; name[78] = '어둠의 심장'; col[78] = ['#3a1a5a', '#c88aff']; name[79] = '심판의 증표'; col[79] = ['#c8a040', '#fff4c0']; name[80] = '정제된 마석'; col[80] = ['#5a1a6a', '#ff8ae8']; /* [2026-11-18] */ col[31] = ['#7a2a8a', '#f0c8ff']; name[32] = '닌자의 비급서'; col[32] = ['#3a2a1a', '#e8d8a8'];
+  name[31] = '어둠의 증표'; name[78] = '어둠의 심장'; col[78] = ['#3a1a5a', '#c88aff']; name[79] = '심판의 증표'; col[79] = ['#c8a040', '#fff4c0']; name[80] = '정제된 마석'; col[80] = ['#5a1a6a', '#ff8ae8']; name[81] = '물의 심장'; col[81] = ['#2a7ad8', '#bfe8ff']; /* [2026-11-18] */ col[31] = ['#7a2a8a', '#f0c8ff']; name[32] = '닌자의 비급서'; col[32] = ['#3a2a1a', '#e8d8a8'];
   name[33] = '얼음의 심장'; col[33] = ['#4fc8f0', '#f0fcff'];
   ['진주', '산호석', '자수정', '오팔', '흑진주'].forEach(function (n, i) { name[34 + i] = n; });
   [['#f4eee4', '#ffffff'], ['#ff7a8a', '#ffd0d8'], ['#9a5ad8', '#e0c8ff'], ['#8ad8d0', '#fff0f8'], ['#3a3a4a', '#b8b8d0']].forEach(function (c, i) { col[34 + i] = c; });
@@ -33,7 +33,7 @@ window.MineOre = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79; }],
+    ['👑 고유 증표', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79 || g === 81; }],
     ['🧩 조각', function (g) { return g >= 60 && g <= 63; }]
   ];
   var byNameMap = {};
