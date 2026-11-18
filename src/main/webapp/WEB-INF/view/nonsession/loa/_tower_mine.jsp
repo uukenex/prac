@@ -2058,7 +2058,7 @@ var TowerMine = (function () {
   function cellAt(x, y) { return map && x >= 0 && y >= 0 && x < map.w && y < map.h ? map.rows[y].charAt(x) : '^'; }
   function walk(x, y) {
     var c = cellAt(x, y);
-    if (st && st.look && st.look.shoesCode === 'SHOE_GM') return !!map && x >= 0 && y >= 0 && x < map.w && y < map.h && PORTALS.indexOf(c) < 0 && c !== 'N'; // [2026-10-28] 바람의 신(운영자) -- 장애물/몬스터 통과, NPC/포탈 칸에선 멈춘다(말 걸기/들어가기)
+    if (st && st.look && st.look.shoesCode === 'SHOE_GM') return !!map && x >= 0 && y >= 0 && x < map.w && y < map.h && (PORTALS.indexOf(c) < 0 || c === 'X') && c !== 'N'; /* [2026-11-18] "워프 포인트 근처를 밟는 순간 창이 뜬다" -- 바람의 신은 X(문 칸)를 못 지나가 부딪힐 때마다 창이 열렸다 -> X는 지나간다(멈춰 서서/공격 버튼으로 연다) */ // [2026-10-28] 바람의 신(운영자) -- 장애물/몬스터 통과, NPC/포탈 칸에선 멈춘다(말 걸기/들어가기)
     if (mobOcc[x + ',' + y]) return false; // [2026-10-24] 몬스터가 있는 칸은 못 지나간다
     var twd = twDecorCell(); // [2026-11-16] 탑 방 한가운데 상자/제단/샘은 돌아서 간다
     if (twd && twd[0] === x && twd[1] === y) return false;
