@@ -11212,7 +11212,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineCos("HAT_SUNHAT", "hat", "하얀 챙모자", "#f8f8fb|sunhat", new String[][] { mineCost(3, 5), mineOre(3, 30) }),
         new MineCos("HAT_KANZASHI", "hat", "꽃 비녀", "#e04050|kanzashi", new String[][] { mineCost(5, 4) }),
         new MineCos("BOT_HAKAMA", "bottom", "붉은 하카마", "#c8303c", new String[][] { mineCost(1, 3) }),
-        new MineCos("BOT_PLEATED", "bottom", "검은 주름치마", "#2a2428", new String[][] { mineOre(2, 80), mineCost(0, 2) })
+        new MineCos("BOT_PLEATED", "bottom", "검은 주름치마", "#2a2428", new String[][] { mineOre(2, 80), mineCost(0, 2) }),
+        // [2026-11-19] "NPC 룩템 -- 기사단장 코스튬, 기사단원 코스튬"(시안 승인) -- 탑 가는 길 기사단 차림(판금 + 투구, 단장은 붉은 망토). 입으면 모자 대신 투구(_mine_char.jsp). 맨 뒤에만 붙인다.
+        new MineCos("TOP_KNIGHT", "top", "기사단원 코스튬", "#9aa3b6|knight", new String[][] { mineOre(4, 30), mineCost(1, 3) }),
+        new MineCos("TOP_KNIGHT_LORD", "top", "기사단장 코스튬", "#d9b44a|knightlord", new String[][] { mineOre(4, 50), mineCost(8, 2), mineBar(3, 1) })
     );
     /** [2026-10-28] 바람의 신 -- 화면 한 칸 이동 시간을 기본(140ms)의 1/5로. */
     static final String MINE_COS_SPEED = "SHOE_GM";

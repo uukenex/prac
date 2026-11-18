@@ -187,6 +187,10 @@ window.MineChar = (function () {
     var belt = '#7a4a1f', pants = lk.bottom || '#3a2b22', boot = shoe.c || '#5b3a1e';
     var side = dir === 'right';
     var lx = side ? 6 : 5, rx = 9;
+    // [2026-11-19] "NPC 룩템 -- 기사단장 코스튬, 기사단원 코스튬" -- 탑 가는 길 기사단(_tower_mine.jsp npcSprite guard/knight)처럼: 판금 갑옷 + 정강이 받이 + 투구(깃),
+    //  단원 = 강철 + 푸른 깃 + 방패, 단장 = 금빛 + 붉은 깃 + 붉은 망토. 입으면 모자 대신 투구를 쓴다.
+    var KN = top.s === 'knight' || top.s === 'knightlord' ? (top.s === 'knightlord' ? { a1: '#d9b44a', a2: '#a8842a', a3: '#f6e3a0', acc: '#c8202a', accD: '#8a1018', lord: true } : { a1: '#9aa3b6', a2: '#666f82', a3: '#dfe4ee', acc: '#3557a8', accD: '#22386e', lord: false }) : null;
+    if (KN && KN.lord && dir !== 'up') { px(g, KN.acc, side ? 3 : 2, 7, 1, 8); if (!side) px(g, KN.acc, 13, 7, 1, 8); px(g, KN.accD, side ? 3 : 2, 13, 1, 2); if (!side) px(g, KN.accD, 13, 13, 1, 2); } // 망토(몸 뒤)
     var lh = step === 1 ? 2 : 3, rh = step === 2 ? 2 : 3;
     if (top.s === 'cape' && dir === 'up') px(g, robeD, 3, 7, 10, 7); // 기사 망토는 뒤에서 보면 등을 덮는다
     var tailC = lk.tail, tailD = tailC ? shade(tailC, -0.25) : ''; // [2026-11-06] 용병(고양이 소녀) 꼬리 -- 앞/옆은 몸 뒤로, 뒷모습은 등 위에
@@ -221,22 +225,38 @@ window.MineChar = (function () {
     else if (top.s === 'blazer') { if (dir !== 'up') { px(g, '#f8f8fa', 7, 7, 2, 1); px(g, '#c03040', 7, 8, 2, 3); px(g, '#e2b040', 5, 10); } px(g, robeD, 4, 11, 8, 1); }
     else if (top.s === 'gothic') { if (dir !== 'up') px(g, '#c0202a', 7, 7, 2, 2); px(g, '#c0202a', 4, 10, 8, 1); }
     else if (top.s === 'rainbow') { ['#e8433a', '#f08a30', '#ffcf30', '#4fbf6a', '#3a8ae8'].forEach(function (rc, i) { px(g, rc, 4, 7 + i, 8, 1); }); }
+    else if (KN) { // [2026-11-19] 기사단 판금 -- 가슴판 빛, 어깨받이, 허리띠, 정강이 받이 + 쇠장화
+      px(g, KN.a2, 4, 7, 8, 5); px(g, KN.a1, 5, 7, 6, 4); px(g, KN.a2, 3, 7, 2, 2); px(g, KN.a2, 11, 7, 2, 2); px(g, KN.a3, 3, 7, 1, 1); px(g, KN.a3, 11, 7, 1, 1);
+      if (dir !== 'up') { px(g, KN.a3, 6, 8, 1, 2); px(g, KN.acc, 7, 9, 2, 1); } else px(g, KN.a3, 7, 8, 2, 2);
+      px(g, KN.a2, 4, 11, 8, 1); px(g, KN.a3, 7, 11, 2, 1);
+      px(g, KN.a2, lx, 12, 2, lh); px(g, KN.a1, lx, 12, 1, lh); px(g, '#2a2e3c', lx, 12 + lh, 2, 1);
+      px(g, KN.a2, rx, 12, 2, rh); px(g, KN.a1, rx, 12, 1, rh); px(g, '#2a2e3c', rx, 12 + rh, 2, 1);
+    }
     else px(g, belt, 4, 10, 8, 1);
     if (fem) { px(g, robe, 3, 11, 10, 2); px(g, robeD, 3, 12, 10, 1); } // 치마처럼 퍼지는 아랫단
     if (top.s === 'maid' || top.s === 'gothic') px(g, top.s === 'maid' ? '#f8f8fa' : '#c0202a', fem ? 3 : 4, fem ? 12 : 11, fem ? 10 : 8, 1); // [2026-11-06] 프릴 단
     if (fem && (top.s === 'miko' || top.s === 'kimono')) { px(g, top.s === 'miko' ? '#c8303c' : robe, 3, 11, 10, 2); px(g, top.s === 'miko' ? '#a82030' : robeD, 3, 12, 10, 1); }
-    if (side) { px(g, robeD, 7, 8, 2, 3); px(g, skin, 8, 11); }
-    else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, skin, 3, 11); px(g, skin, 12, 11); }
+    if (side) { px(g, robeD, 7, 8, 2, 3); px(g, KN ? KN.a2 : skin, 8, 11); }
+    else { px(g, robe, 3, 8, 1, 3); px(g, robe, 12, 8, 1, 3); px(g, KN ? KN.a2 : skin, 3, 11); px(g, KN ? KN.a2 : skin, 12, 11); } // [2026-11-19] 기사단은 쇠장갑
+    if (KN && KN.lord && dir === 'up') { px(g, KN.acc, 3, 7, 10, 8); px(g, KN.accD, 3, 14, 10, 1); px(g, KN.accD, 3, 7, 1, 7); px(g, KN.accD, 12, 7, 1, 7); px(g, '#e0b040', 7, 7, 2, 1); } // 뒤에서 보면 망토가 등을 덮는다
+    if (KN && !KN.lord && dir === 'down') { px(g, KN.a2, 0, 8, 3, 6); px(g, KN.acc, 1, 9, 1, 4); px(g, KN.a3, 1, 10, 1, 1); } // 단원 방패(왼팔)
+    if (KN && !KN.lord && dir === 'up') { px(g, KN.a2, 5, 8, 6, 5); px(g, KN.acc, 7, 9, 2, 3); px(g, KN.a3, 6, 8, 1, 1); } // 뒤에서 보면 등에 멘 방패
     px(g, skin, 4, 1, 8, 6);
-    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, shade(hair, 0.15), 6, 1, 4, 1); if (fem) px(g, hair, 4, 6, 8, 3); }
-    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, fem ? 6 : 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
+    var longHair = fem && !KN; // [2026-11-19] 투구를 쓰면 긴 머리는 투구 안으로
+    if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, shade(hair, 0.15), 6, 1, 4, 1); if (longHair) px(g, hair, 4, 6, 8, 3); }
+    else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, longHair ? 6 : 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
     else {
-      px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, fem ? 6 : 2); px(g, hair, 11, 3, 1, fem ? 6 : 2);
+      px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 1, longHair ? 6 : 2); px(g, hair, 11, 3, 1, longHair ? 6 : 2);
       px(g, '#1a1a1a', 6, 4); px(g, '#1a1a1a', 9, 4); px(g, '#f29b8a', 5, 5); px(g, '#f29b8a', 10, 5);
       if (fem) { px(g, '#1a1a1a', 5, 3); px(g, '#1a1a1a', 10, 3); px(g, '#d9536f', 7, 6, 2, 1); } // 속눈썹 + 입술
     }
     if (tailC && dir === 'up') [[8, 11], [9, 12], [10, 12], [11, 11], [12, 10], [12, 9]].forEach(function (q, i) { px(g, i >= 4 ? tailD : tailC, q[0], q[1]); });
-    if (hat.s) { // 모자는 머리 위에 덮어 그린다
+    if (KN) { // [2026-11-19] 기사단 투구 -- 앞: 눈구멍 + 콧대, 옆: 눈구멍(얼굴 쪽), 뒤: 통 투구. 꼭대기 깃
+      px(g, KN.a2, 4, 0, 8, 1); // 정수리(머리카락이 투구 위로 안 비치게)
+      if (dir === 'up') { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, KN.acc, 7, 0, 2, 1); px(g, KN.acc, 7, 1, 2, 3); px(g, KN.accD, 7, 4, 2, 1); }
+      else if (side) { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, '#12141c', 9, 3, 3, 1); px(g, KN.a2, 11, 4, 1, 2); px(g, KN.acc, 5, 0, 4, 1); px(g, KN.acc, 4, 1, 1, 2); }
+      else { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, '#12141c', 5, 3, 6, 1); px(g, KN.a2, 7, 4, 2, 3); px(g, KN.acc, 7, 0, 2, 1); px(g, KN.acc, 8, 0, 3, 1); }
+    } else if (hat.s) { // 모자는 머리 위에 덮어 그린다
       var hc = hat.c, hd = shade(hc, -0.3);
       if (hat.s === 'straw') { px(g, hc, 2, 2, 12, 1); px(g, hc, 5, 0, 6, 2); px(g, '#b5251f', 5, 1, 6, 1); }
       else if (hat.s === 'helmet') { px(g, hc, 4, 0, 8, 2); px(g, hd, 3, 2, 10, 1); px(g, '#ffe14d', 7, 0, 2, 1); }
