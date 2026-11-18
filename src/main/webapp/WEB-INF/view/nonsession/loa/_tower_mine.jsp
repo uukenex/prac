@@ -3258,6 +3258,29 @@ var TowerMine = (function () {
     if (!lookImgCache[key]) lookImgCache[key] = (lk && lk.rebirth > 0 ? MineChar.withWings(dir, 0, 0, lk) : charSprite(dir, 0, 0, lk)).toDataURL(); // [2026-10-29] 환생했으면 날개까지
     return lookImgCache[key];
   }
+  // [2026-11-19] "치장상점 열 때나 인벤토리 치장 탭이 너무 렉" -- 카드마다(100개 넘게) 입은 모습을 그리고 PNG로 바꾸는 일을 창을 그릴 때 한꺼번에 했다.
+  //  카드 그림은 빈 그림으로 먼저 내고(data-lq), 다음 프레임부터 한 프레임에 LOOK_Q_MS 안에서 몇 장씩 그려 채운다(같은 모습은 캐시 -- 다시 열면 바로).
+  var LOOK_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', LOOK_Q_MS = 8;
+  var lookQ = [], lookQWait = {}, lookQSeq = 0, lookQOn = false;
+  function lookImgLazy(lk, dir) { // src="..." 안에 넣는다 -- 캐시에 없으면 빈 그림 + data-lq 번호
+    var key = JSON.stringify(lk) + dir;
+    if (lookImgCache[key]) return lookImgCache[key];
+    var id = 'lq' + (++lookQSeq);
+    if (!lookQWait[key]) { lookQWait[key] = []; lookQ.push({ key: key, lk: lk, dir: dir }); }
+    lookQWait[key].push(id);
+    if (!lookQOn) { lookQOn = true; requestAnimationFrame(lookQRun); }
+    return LOOK_BLANK + '" data-lq="' + id;
+  }
+  function lookQRun() {
+    var t0 = performance.now();
+    while (lookQ.length && performance.now() - t0 < LOOK_Q_MS) {
+      var q = lookQ.shift(), src;
+      try { src = lookImg(q.lk, q.dir); } catch (e) { src = LOOK_BLANK; }
+      (lookQWait[q.key] || []).forEach(function (id) { var im = document.querySelector('img[data-lq="' + id + '"]'); if (im) { im.src = src; im.removeAttribute('data-lq'); } });
+      delete lookQWait[q.key];
+    }
+    if (lookQ.length) requestAnimationFrame(lookQRun); else lookQOn = false;
+  }
   function lookWith(slot, look) {
     var lk = {}, cur = st.look || {};
     for (var k in cur) lk[k] = cur[k];
@@ -3279,7 +3302,7 @@ var TowerMine = (function () {
         + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(show, d) + '" alt="">'; }).join('') + '</div>'
         + '<div class="mine-smith-say">' + (tryLook ? '👀 입어보기: <b>' + tryName + '</b> <button type="button" class="mine-mini-btn" onclick="TowerMine.tryOn(\'me\')">내 모습</button>' : '지금 내 모습')
         + '<br><small>아이템 그림을 누르면 입어 볼 수 있어요.</small></div></div>'
-        + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImg(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
+        + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImgLazy(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
         + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
     // [2026-10-28] "치장상점 UI -- 부위별 캐러셀" -- 부위마다 가로로 넘기는 카드 줄(그림을 누르면 입어 보기). 다시 그려도 넘긴 자리는 그대로(renderSmithView).
@@ -3295,7 +3318,7 @@ var TowerMine = (function () {
         else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
         else btn = '<button type="button" ' + (c.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
         h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '">'
-            + '<img src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
+            + '<img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
             + '<div class="cos-nm">' + c.name + '</div>'
             + (c.note ? '<small class="cos-note">✨ ' + c.note + '</small>' : '') // [2026-10-28] 운영자 전용 설명
             + (c.owned ? '<small class="cos-own">가지고 있어요</small>' : costHtml(c.costs)) + btn + '</div>';
@@ -3648,10 +3671,10 @@ var TowerMine = (function () {
       ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (slot) {
         var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot && c.owned; });
         h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + list.length + '개</small></div><div class="cos-car" data-slot="l-' + slot + '">'
-            + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImg(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
+            + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImgLazy(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
             + (cur ? '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">입기</button>' : '<span class="mine-worn">착용 중</span>') + '</div>';
         list.forEach(function (c) {
-          h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '"><img src="' + lookImg(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + '"><div class="cos-nm">' + c.name + '</div>'
+          h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '"><img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + '"><div class="cos-nm">' + c.name + '</div>'
               + (c.code === cur ? '<span class="mine-worn">착용 중</span>' : '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>') + '</div>';
         });
         h += '</div></div>';
