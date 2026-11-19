@@ -2640,7 +2640,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "일어난다람쥐/카단" } },
         // [2026-11-18] 같은 날 17시쯤 한 번 더(로스터리·도륙이냥이 함께 -- 액션 로그 16:49~17:04 보로네오 전투) -- 보상 고침 배포 전이라 또 빠졌다
         { "BORO1118B", "⚖️ 보로네오 미지급 보상 (17시)", "17시쯤 심판자 보로네오를 다시 쓰러뜨렸을 때 빠졌던 보상을 보내 드려요.",
-            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리" } } };
+            new String[][] { { "LIGHT_HEART", "1" }, { "JUDGE_TOKEN", "1" } }, new String[] { "도륙이냥/달소", "로스터리" } },
+        // [2026-11-19] "망망대해 체력 감소율에 따라(10초 50% -> 24%) 지금까지 배 수리 이력을 찾아 수리비 50%를 각자의 우편으로" --
+        //  액션 로그(TBOT_S5_WORD_HIS 세션 묶음의 boatfix, 11-18 ~ 11-19 14:54)에서 사람마다 낸 재료를 더해 절반(올림). 관리자(테스트 계정)는 뺐다.
+        { "BOAT1119A", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
+            new String[][] { { "PEARL", "3" } }, new String[] { "도륙이냥/달소" } },
+        { "BOAT1119B", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
+            new String[][] { { "PEARL", "4" }, { "CORAL_GEM", "1" }, { "AMETHYST", "4" }, { "WOOD", "9" } }, new String[] { "은용" } },
+        { "BOAT1119C", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
+            new String[][] { { "PEARL", "1" }, { "CORAL_GEM", "2" } }, new String[] { "로스터리" } },
+        { "BOAT1119D", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
+            new String[][] { { "PEARL", "1" }, { "CORAL_GEM", "1" } }, new String[] { "내일도승리/창술사" } } };
     static boolean mineMailFor(String userName, Object[] q) { return q.length < 5 || q[4] == null || java.util.Arrays.asList((String[]) q[4]).contains(userName); }
     static List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();
