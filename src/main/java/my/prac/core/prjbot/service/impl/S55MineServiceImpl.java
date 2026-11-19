@@ -5358,7 +5358,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (isMineAdmin(userName)) out.put("adminMaps", maps);
             else {
                 final Map<String, Integer> rit = items;
-                maps.removeIf(mm -> mineMapBlock(S5MineMap.get((String) mm.get("id")), rit, 0) != null);
+                maps.removeIf(mm -> { String mid = (String) mm.get("id"); return S5MineMap.ABYSS_GATE.equals(mid) || !mineWarpListed(mid) || mineMapBlock(S5MineMap.get(mid), rit, 0) != null; }); // [2026-11-20] 마계 입구 / 혼돈·마계 마을은 반지로 못 간다
                 out.put("ringMaps", maps);
                 out.put("ringReadyAt", items.getOrDefault(MINE_ITEM_WYRM_WARP, 0) * 60_000L + MINE_WYRM_CD_MS);
             }
@@ -6150,6 +6150,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return PP.of(perKill * kills, "");
     }
 
+    static final String MINE_RING_ABYSS_MSG = "💍 마계 입구는 마계의 기운이 너무 거세 용의 반지의 힘이 닿지 않아요. 최후의 방어선을 지나 걸어서 가 주세요.";
     /** [2026-11-15] 전체 지도 이동 목록(관리자 화면 목록과 같다) -- 용의 반지가 갈 수 있는 곳을 가린다. */
     static boolean mineWarpListed(String mapId) {
         if (S5MineMap.CHAOS.equals(mapId) || S5MineMap.DEMON_VILLAGE.equals(mapId)) return false; // [2026-11-17] 혼돈스러운 마계 / 마계 마을은 마계 입구 포털로만(관리자 이동은 따로)
@@ -6171,6 +6172,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!mineWyrmOn(rit)) { out.put("message", "권한이 없습니다."); return out; }
             long nowR = System.currentTimeMillis(), ready = rit.getOrDefault(MINE_ITEM_WYRM_WARP, 0) * 60_000L + MINE_WYRM_CD_MS;
             if (nowR < ready) { out.put("message", "💍 용의 반지의 힘이 아직 돌아오지 않았어요. (" + mineCallLeft(ready - nowR) + " 뒤)"); return out; }
+            if (S5MineMap.ABYSS_GATE.equals(mapId)) { out.put("message", MINE_RING_ABYSS_MSG); return out; } // [2026-11-20] "마계 입구는 안 된다고 띄우든지"
             if (!mineWarpListed(mapId)) { out.put("message", "💍 용의 반지로는 갈 수 없는 곳이에요."); return out; }
             { HashMap<String, Object> rr = dao.selectMineUser(userName); if (rr != null && S5MineMap.CHAOS.equals(strVal(rr.get("MAP_ID"), ""))) { out.put("message", "💍 차원이 뒤틀린 곳이라 용의 반지의 힘이 닿지 않아요."); return out; } } // [2026-11-17] "혼돈스러운 마계는 차원 이동이라 장비 텔레포트를 못 써"
             S5MineMap dm = S5MineMap.get(mapId);

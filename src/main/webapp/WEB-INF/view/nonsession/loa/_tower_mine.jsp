@@ -3864,7 +3864,7 @@ var TowerMine = (function () {
     var wl = st && (st.adminMaps || st.ringMaps);
     if (!wl || busy || wMoved) return; // [2026-10-28] 끌다가 놓은 건 누른 게 아니다
     var e = wl.filter(function (m) { return m.id === id; })[0];
-    if (!e) { msg(st.adminMaps ? '이동할 수 없는 곳이에요.' : '💍 용의 반지로는 갈 수 없는 곳이에요.'); return; }
+    if (!e) { msg(st.adminMaps ? '이동할 수 없는 곳이에요.' : id === 'abyssgate' ? '💍 마계 입구는 마계의 기운이 너무 거세 용의 반지의 힘이 닿지 않아요. 최후의 방어선을 지나 걸어서 가 주세요.' : '💍 용의 반지로는 갈 수 없는 곳이에요.', 3500); return; } // [2026-11-20] 마계 입구는 따로 안내
     if (!st.adminMaps) { // [2026-11-15] 용의 반지 -- 한 시간에 한 번이라 한 번 더 묻는다
       var rleft = (st.ringReadyAt || 0) - nowSrv();
       if (rleft > 0) { msg('💍 용의 반지의 힘이 아직 돌아오지 않았어요. (' + callLeftTxt(rleft) + ' 뒤)'); return; }
