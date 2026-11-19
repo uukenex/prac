@@ -1773,6 +1773,7 @@ var TowerMine = (function () {
   // [2026-11-18] 크라켄 해역 -- 화약통 / 신호 부표 / 해상도시 지원 함선(시안 승인). 상태는 위치 알림 sea(seaSt).
   var seaSt = null, seaMsgSeen = 0, krkShownWas = false;
   function krkShown() { return !!(seaSt && seaSt.kf); } // [2026-11-19] 크라켄은 싸우는 중에만 보인다
+  function krkAdminSee() { return !!(st && st.adminMaps); } // [2026-11-19] "관리자는 크라켄 위치가 보이도록" -- 숨어 있을 땐 반투명
   function lhLit() { return !!(seaSt && seaSt.lit && seaSt.lit > nowSrv()); } // [2026-11-19] 등대 불(종을 칠 수 있을 때)
   function seaBarrelSprite(f) {
     var key = 'brl' + f; if (seaSprites[key]) return seaSprites[key];
@@ -2429,7 +2430,7 @@ var TowerMine = (function () {
     }
     // [2026-10-28] "미니맵에서 보스 위치도" -- 맵 맨 끝 몬스터가 보스면(살아 있을 때) 붉은 점(흰 테두리, 크게)
     var bm = map.mobs && map.mobs[map.mobs.length - 1], bty = bm && map.mobTypes[bm.k];
-    if (bty && bty.boss && bm._p && !(bty.name === '심해의 크라켄' && !krkShown())) { // [2026-11-19] 크라켄은 싸우는 중에만
+    if (bty && bty.boss && bm._p && !(bty.name === '심해의 크라켄' && !krkShown() && !krkAdminSee())) { // [2026-11-19] 크라켄은 싸우는 중에만
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(bm._p.cx - ox - 3 * k - 1, bm._p.cy - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3);
       miniCtx.fillStyle = '#e8202a'; miniCtx.fillRect(bm._p.cx - ox - 3 * k, bm._p.cy - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     }
@@ -2505,7 +2506,9 @@ var TowerMine = (function () {
         if (mi !== lastI && !(mst && mst.fu > tS) && (Math.abs(mm.x - P.x) > cvw || Math.abs(mm.y - P.y) > cvh)) { mm._p = null; continue; }
         var mp = mobPos(mm, tS);
         if (mp) {
-          mm._p = mp; mobOcc[mp.cx + ',' + mp.cy] = mm;
+          mm._p = mp;
+          if ((map.mobTypes[mm.k] || {}).name === '심해의 크라켄' && !krkShown() && !krkAdminSee()) continue; // [2026-11-19] 숨은 크라켄은 길을 막지 않는다(보이지도 않으니)
+          mobOcc[mp.cx + ',' + mp.cy] = mm;
           if ((map.mobTypes[mm.k] || {}).boss) { var bfo = (map.mobTypes[mm.k] || {}).foot || 2; for (var boy = 0; boy < bfo; boy++) for (var box = 0; box < bfo; box++) mobOcc[(mp.cx + box) + ',' + (mp.cy + boy)] = mm; } // [2026-10-29] 보스 = 2x2칸, [2026-11-15] 거룡 3x3(foot)
         } else mm._p = null;
       }
@@ -7025,7 +7028,7 @@ var TowerMine = (function () {
         if (mx < -mgC * TS || my < -mgC * TS || mx > W + TS || my > H + mgC * TS) continue;
         var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = ty.name === '심판자 보로네오' && Math.floor(nowSrv() / 12000) % 2 === 1; // [2026-11-17] 보로네오 -- 망치를 든 차례
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
-        if (ty.name === '심해의 크라켄' && !krkShown()) continue; // [2026-11-19] 그냥 지나갈 땐 안 보인다
+        if (ty.name === '심해의 크라켄' && !krkShown()) { if (!krkAdminSee()) continue; ctx.globalAlpha = 0.45; } // [2026-11-19] 그냥 지나갈 땐 안 보인다(관리자는 반투명으로)
         if (ty.dive && seaDiving(ty, mb.id, nowSrv())) { seaRipple(mx, my, ty, now); continue; } // [2026-11-18] 물속(물결만)
         if (ty.name === '심해의 크라켄') pose = !!(mobSt[mb.id] && mobSt[mb.id].su > nowSrv()); // [2026-11-18] 바위에 박혀 기절
         var seaA = ty.dive ? seaAlpha(ty, mb.id, nowSrv()) : 1;
