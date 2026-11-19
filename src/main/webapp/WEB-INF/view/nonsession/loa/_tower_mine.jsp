@@ -7869,7 +7869,7 @@ var TowerMine = (function () {
       }
     } catch (e) { }
   }
-  // [2026-10-28] 설산 동굴 -- 땅은 못 파고, 바라보는(없으면 상하좌우) 얼음 광맥(I)을 연속 채광. 20번이면 빙석, 몬스터에게 맞으면 처음부터.
+  // [2026-10-28] 설산 동굴 -- 땅은 못 파고, 바라보는(없으면 상하좌우) 얼음 광맥(I)을 연속 채광. [2026-11-19] 5번이면(예전 20) 빙석, 몬스터에게 맞으면 처음부터.
   var veinBusy = false, veinCount = 0;
   function veinDig() {
     if (!map || busy || veinBusy || fade || P.moving) return;
@@ -7909,7 +7909,7 @@ var TowerMine = (function () {
     if (!map || !map.vein || !veinCount) return;
     veinCount = 0;
     floats.push({ x: P.x, y: P.y - 1.0, text: '💥 연속 채광 끊김!', color: '#ff8a8a', big: true, t0: performance.now() + 120 });
-    msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 다시 20번을 캐야 해요.', 2400);
+    msg('💥 박쥐에게 맞아 연속 채광이 끊겼어요! 처음부터 다시 캐야 해요.', 2400); // [2026-11-19] 횟수는 서버(MINE_VEIN_NEED, 지금 5번)
   }
   // [2026-11-11] 하피의 둥지 -- "곡괭이로 채광할 수도, 10회 정도면 쓰러져 밑동만" -- 바라보는 칸(없으면 둘레 8칸)의 나무를 찍는다
   var chopBusy = false;
