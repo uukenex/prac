@@ -4141,7 +4141,7 @@ var TowerMine = (function () {
     var h = '<div class="mine-smith-say">🔨 배 수리 -- ' + (hp > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + '<br><small>배 체력 ' + fmtN(hp) + ' / ' + fmtN(mx) + ' (' + pc + '%) · 재료를 골라 내세요: 🪵 나무 1개당 5%, 바다 보석 1개당 20%</small><span class="mine-bar hp" style="margin-top:4px"><i style="width:' + pc + '%"></i></span></div>';
     (a.boatMats || []).forEach(function (m) {
       var full = Math.min(m.need, m.have), dis = m.have > 0 ? '' : 'disabled ';
-      h += '<div class="mine-smith-row"><span class="nm"><img src="' + oreIcon(m.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' + m.name + ' <small>보유 ' + fmtN(m.have) + '개 · 1개당 ' + m.pct + '%' + (m.have > 0 || m.code !== 'WOOD' ? '' : ' -- 하피의 둥지 나무를 곡괭이로 찍어 얻어요') + '</small></span>'
+      h += '<div class="mine-smith-row"><span class="nm"><img src="' + oreIcon(m.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' + m.name + ' <small>보유 ' + fmtN(m.have) + '개 · 1개당 ' + m.pct + '%' + (m.have > 0 || m.code !== 'WOOD' ? '' : ' -- 하피의 둥지 나무를 곡괭이로 쓰러뜨리면 얻어요') + '</small></span>'
         + '<button type="button" ' + dis + 'onclick="TowerMine.boatFix(\'' + m.code + '\', 1)">1개</button>'
         + (full > 1 ? '<button type="button" onclick="TowerMine.boatFix(\'' + m.code + '\', ' + full + ')">' + full + '개' + (full >= m.need ? ' (가득)' : '') + '</button>' : '') + '</div>';
     });

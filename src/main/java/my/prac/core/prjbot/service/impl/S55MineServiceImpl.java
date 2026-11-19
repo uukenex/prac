@@ -7476,13 +7476,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             n = (int) Math.min(MINE_TREE_CHOP_NEED, t[4]);
             if (t[4] >= MINE_TREE_CHOP_NEED && t[5] == 0 && t[1] == 0) { t[5] = now; felled = true; }
         }
-        dao.addUserOre(userName, S5MineMap.WOOD_CODE, 1); // [2026-11-19] "나무(하피 보스 곡괭이로 공격 시 취득)" -- 찍을 때마다 하나
-        out.put("wood", 1);
         out.put("ok", true);
         out.put("tree", ti);
         out.put("chop", n);
         out.put("need", MINE_TREE_CHOP_NEED);
-        if (felled) { out.put("felled", true); out.put("message", "🪓 나무가 쓰러졌어요!"); }
+        if (felled) { // [2026-11-19] "나무(하피 보스 곡괭이로)" -- 같은 날 "찍을 때마다 말고 쓰러뜨리면 1~2개" -- 마지막으로 찍어 쓰러뜨린 사람에게
+            int wood = 1 + RND.nextInt(2);
+            dao.addUserOre(userName, S5MineMap.WOOD_CODE, wood);
+            out.put("wood", wood);
+            out.put("felled", true); out.put("message", "🪓 나무가 쓰러졌어요! 🪵 나무 +" + wood + "개");
+        }
         return out;
     }
     static int[] mineHarpyPerch(S5MineMap map, int i) { int[] t = map.trees().get(i); return new int[] { t[0] + 1, t[1] - 2 }; } // 나무 위쪽(뒤) -- 화면은 수관에 가려 그린다
@@ -10088,7 +10091,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (pct <= 0) return mineGearResult(userName, false, "⛵ 그 재료로는 배를 고칠 수 없어요. (바다 보석 또는 나무)");
         int need = mineBoatMatNeed(bh, pct), use = Math.max(1, Math.min(n, need)), haveN = mineOreHave(userName).getOrDefault(code, 0);
         String nm = mineCodeName(code);
-        if (haveN <= 0) return mineGearResult(userName, false, "⛵ " + nm + "이(가) 없어요." + (S5MineMap.WOOD_CODE.equals(code) ? " 하피의 둥지 나무를 곡괭이로 찍으면 얻을 수 있어요." : ""));
+        if (haveN <= 0) return mineGearResult(userName, false, "⛵ " + nm + "이(가) 없어요." + (S5MineMap.WOOD_CODE.equals(code) ? " 하피의 둥지 나무를 곡괭이로 쓰러뜨리면 얻을 수 있어요." : ""));
         use = Math.min(use, haveN);
         if (dao.takeUserOre(userName, code, use) == 0) return mineGearResult(userName, false, "⛵ " + nm + "이(가) 모자라요.");
         long fix = bh[1] * pct / 100 * use, left = Math.max(0, (bh[1] - bh[0]) - fix);
