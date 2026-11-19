@@ -5733,6 +5733,34 @@ var TowerMine = (function () {
       R('#5a3418', -3, 9, 23, 2); R('#b07a3c', -3, 9, 23, 1); // 뒷전
     });
   }
+  // [2026-11-19] "용병이 바다 위에서 원거리 공격, 배 뒤에 타 있는 것처럼" -- 배 맵(boat)에선 용병이 걸어 따라오지 않고 내 배 고물(뒤로 늘인 칸)에 탄다.
+  //  늘인 고물 = 용병 하나당 12px(16px 칸 기준). 뒤(난간)는 캐릭터보다 먼저, 앞(뱃전 띠)은 캐릭터 뒤에 그려 다리를 가린다. 좌우는 배와 같이 뒤집는다.
+  var CREW_GAP = 12;
+  function boatStern(x, y, now, left, n, front) {
+    if (!n) return;
+    var TS = T * scale, u = TS / 16, bob = Math.round(Math.sin(now / 300) * u), L = CREW_GAP * n + 2, R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u + bob, w * u, h * u); };
+    boatFlip(x, TS, left, function () {
+      if (!front) { R('#5a3418', -4 - L, 9, L + 1, 2); R('#b07a3c', -4 - L, 9, L + 1, 1); R('#3a2210', -6 - L, 5, 2, 10); R('#ffd76a', -7 - L, 4, 2, 2); return; } // 난간 + 고물 기둥 + 등
+      R('#2f7f9a', -5 - L, 12, L + 2, 2); R('#4fa8c4', -5 - L, 12, L + 2, 1);
+      R('#6b3f1e', -4 - L, 14, L + 1, 1); R('#4a2a12', -3 - L, 15, L, 1);
+      R('#e0b050', -6 - L, 11, L + 2, 1);
+      for (var i = 0; i < n; i++) R('#ffd76a', -4 - CREW_GAP * (i + 1) + 5, 12, 1, 2); // 둥근 창
+      var ph = (now / 600) % 1; ctx.fillStyle = 'rgba(255,255,255,' + (0.45 * (1 - ph)).toFixed(2) + ')'; ctx.fillRect(x + (-8 - L - ph * 4) * u, y + 16 * u, (L + 4) * u, Math.max(1, u * 0.8)); // 물결
+    });
+  }
+  /** 배에 탄 용병 {정보, 화면 자리} -- 내 것(st.merc/st.merc2) 또는 다른 사람(ou.mc/ou.m2). */
+  function boatCrewMine() { var l = []; if (st && st.merc) l.push([st.merc, merc]); if (st && st.merc2) l.push([st.merc2, merc2]); return l; }
+  function boatCrewDraw(crew, px, py, left, now, V, other) {
+    crew.forEach(function (q, i) {
+      var mi = q[0], mp = q[1], off = (CREW_GAP * (i + 1) + 1) / 16;
+      mp.x = px + (left ? off : -off); mp.y = py; mp.mv = false;
+      var rest = other ? !!mi.mr : mi.rest > nowSrv(), tgt = other ? (mi.mt && !mi.mr ? { x: mi.mt[0], y: mi.mt[1] } : null) : (mp.tg && now - mp.tg.t < 1800 ? mp.tg : null);
+      if (tgt && !rest) mercFace(mp, tgt.x, tgt.y); else mp.dir = left ? 'left' : 'right';
+      var t = other ? mi.mc | 0 : mi.t | 0, atkT = mp.atkT;
+      if (other) { atkT = tgt && !rest ? now - now % 1000 : -1e9; if (atkT > 0 && mp.fxT !== atkT) { mp.fxT = atkT; mercShot(t, mi.me, mi.ms, mp.x, mp.y, tgt.x, tgt.y, null, now); } }
+      mercDraw(mp, t, rest, other || !mi.max ? null : mi.hp / mi.max, atkT, now, V, other ? mi.ml : mi.ni);
+    });
+  }
   function drawBoatFront(x, y, now, left) {
     var TS = T * scale, u = TS / 16, bob = Math.round(Math.sin(now / 300) * u), R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u + bob, w * u, h * u); };
     var ph = (now / 600) % 1;
@@ -7149,6 +7177,9 @@ var TowerMine = (function () {
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       var oBoat = boatAt(op.x, op.y); // [2026-11-18] 물 위에서만(등대 섬/바닷가 모래에선 내린다)
       if (oBoat) drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+      var oCrew = []; // [2026-11-19] 배 맵 -- 그 사람 용병도 그 배 고물에
+      if (oBoat && map.boat) { if (ou.mc != null) oCrew.push([ou, ou.mp || (ou.mp = { x: null, y: null, dir: 'down' })]); if (ou.m2) oCrew.push([ou.m2, ou.mp2 || (ou.mp2 = { x: null, y: null, dir: 'down' })]); }
+      if (oCrew.length) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, false); boatCrewDraw(oCrew, op.x, op.y, ou.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true); }
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
       var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
@@ -7156,7 +7187,7 @@ var TowerMine = (function () {
       if (unity) unityRing(ox, oy, now); // [2026-11-17] 함께 싸우는 사람도
       ctx.drawImage(otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw), ox, oy - 3 * scale, TS, TS);
       ctx.globalAlpha = 1;
-      if (oBoat) drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-11-18]
+      if (oBoat) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, true); drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); } // [2026-11-18]
       if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
@@ -7228,6 +7259,8 @@ var TowerMine = (function () {
     boatLandCheck(pos); // [2026-11-18] 배에서 내림/오름
     var meBoat = boatAt(pos.x, pos.y);
     if (meBoat) drawBoat(cx, cy - 3 * scale, now, P.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+    var myCrew = meBoat && map.boat ? boatCrewMine() : []; // [2026-11-19] 배 맵 -- 용병이 내 배 고물에
+    if (myCrew.length) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, false); boatCrewDraw(myCrew, pos.x, pos.y, P.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, false); }
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
     var hid = pStealthOn(); // [2026-10-30] 자객의 목걸이 은신 -- 반투명하게(살짝 일렁임)
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
@@ -7237,7 +7270,7 @@ var TowerMine = (function () {
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
-    if (meBoat) { drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
+    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결

@@ -8511,7 +8511,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cls = mineMercCls(items, k);
         HashMap<String, Object> mo = mineMercInfoK(userName, items, now, k);
         out.put(k == MINE_MERC_K2 ? "merc2" : "merc", mo);
-        if (map.boat()) return new long[] { 0, 0 };
+        // [2026-11-19] "용병이 바다 위 맵에선 공격 안 하니? 원거리 공격 계열은 했으면(배 뒤에 타 있는 것처럼)" + "전사도 레벨 높은 전사는 이기어검이 원거리" --
+        //  배 맵(boat)에서 궁수/마법사는 평소대로, 전사는 근접 평타/검기 없이 이기어검(2차 스킬, 쿨타임마다)만. 이기어검을 못 쓰면(40레벨 전/끔) 타고만 있다.
+        boolean boatSw = map.boat() && cls == 0;
+        if (map.boat() && map.terrainAt(x, y) != '~') return new long[] { 0, 0 }; // 배에서 내려 등대 섬 위에 있으면 용병은 배에 남아(화면에도 안 보인다) 쉬고 있다
+        if (boatSw && mineMercSel(items, k, "S2", mineMercStage2(mineMercLv(items, k))) <= 0) return new long[] { 0, 0 };
         // [2026-11-06] "용병을 선공 모드 / 협공 모드로 고르기" -- 협공(기본) = 나와 싸우는 몬스터만, 선공 = 싸우는 몬스터가 칠 수 있는 데 없으면
         //  [2026-11-07] "선공 모드인데 공격을 안 해 -- 플레이어 기준 맵에 보이면 선공" -- 화면에 보이는(MINE_MERC_VIEW) 가장 가까운 몬스터를 골라 싸움에 끌어들인다(mineMercPreempt).
         if (mineMercPreModeK(items, k)) {
@@ -8567,7 +8571,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         // [2026-11-06] "용병 검기를 플레이어 평타 검기(강화)와 같은 것으로" -- 대상 옆(나 쪽)에 선 용병이 대상 쪽으로 st칸 줄을 벤다: 그 줄(대상 뒤까지)의 싸우는 몬스터에게
         //  공격력의 st x 5% 속성 피해(플레이어 검기 mineAuraHits와 같은 비율, 무리는 auraTaken 배). 대상은 평타 그대로. 방향은 나 -> 대상의 큰 축.
-        if (ps != null && cls == 0 && st > 0) {
+        if (ps != null && cls == 0 && st > 0 && !boatSw) {
             int ddx = ps.fx - x, ddy = ps.fy - y, dvx = Math.abs(ddx) >= Math.abs(ddy) ? Integer.signum(ddx) : 0, dvy = dvx == 0 ? Integer.signum(ddy) : 0;
             if (dvx == 0 && dvy == 0) dvy = 1;
             int mx0 = ps.fx - dvx, my0 = ps.fy - dvy; // 용병 자리(대상 바로 앞)
@@ -8660,6 +8664,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             sk.put("pts", pts);
             mo.put("sk", sk);
+        }
+        if (boatSw) { // [2026-11-19] 배 위 전사 -- 이기어검 차례가 아니면 쉬고, 이기어검 때는 평타(대상 1.0) 몫을 뺀다
+            if (!cast) return new long[] { 0, 0 };
+            int b0 = hitIds.indexOf(pick);
+            if (b0 >= 0) { double r0 = hitMul.get(b0) - 1.0; if (r0 <= 0.001) { hitIds.remove(b0); hitMul.remove(b0); hitAt.remove(b0); } else hitMul.set(b0, r0); }
+            mo.remove("tx"); mo.remove("ty");
         }
         long rainUntil; int rx, ry, rr; double rm;
         synchronized (ms) { rainUntil = ms.rainUntil; rx = ms.rainX; ry = ms.rainY; rr = ms.rainR; rm = ms.rainMul; }
