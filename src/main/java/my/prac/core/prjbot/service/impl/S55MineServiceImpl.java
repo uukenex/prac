@@ -5435,6 +5435,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (q > 0) { kinds++; total += q; }
         }
         List<HashMap<String, Object>> grades = new ArrayList<>();
+        { // [2026-11-19] 지역 특산 보석물고기(맨 위)
+            List<HashMap<String, Object>> gl = new ArrayList<>();
+            for (int r = 0; r < MINE_GEM_FISH.length; r++) {
+                int gid = MINE_GEM_FISH_ID0 + r, q = have.getOrDefault(gid, 0);
+                HashMap<String, Object> m = new HashMap<>();
+                m.put("id", gid); m.put("name", MINE_GEM_FISH[r][0]); m.put("emoji", "💠"); m.put("desc", MINE_GEM_FISH[r][1]); m.put("qty", q); m.put("region", MINE_FISH_REGION_NAMES[r]);
+                gl.add(m);
+                all++;
+                if (q > 0) { kinds++; total += q; }
+            }
+            HashMap<String, Object> gm = new HashMap<>();
+            gm.put("grade", 99);
+            gm.put("star", "💠 지역 특산 보석물고기");
+            gm.put("fish", gl);
+            grades.add(gm);
+        }
         for (Map.Entry<Integer, List<HashMap<String, Object>>> e : byG.entrySet()) {
             HashMap<String, Object> gm = new HashMap<>();
             gm.put("grade", e.getKey());
@@ -5453,13 +5469,61 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("total", total);
         return out;
     }
-    HashMap<String, Object> mineFish(String userName, String mapId, int x, int y, int st, int stMax, long now, HashMap<String, Object> out) {
+    // [2026-11-19] "물 필드라면 전체 바다낚시 가능하도록. 다만 지역별 보석물고기를 만들어서 특산품이면(맵마다가 아니고 지역 영역별)" --
+    //  낚시 자리 = 배를 탄 물 위(지금처럼), 또는 물가 땅에서 바라보는 칸이 물(~)일 때. 물이 있는 맵을 지역으로 묶어(용암인 마계, 얼음인 설산/설원 위쪽, 분수뿐인 왕도/탑 마을은 빼고)
+    //  지역마다 그곳에서만 낚이는 보석물고기 한 종(FISH_ID 9001~, 도감은 이 표 -- DB 물고기 표와 따로). 던질 때마다 MINE_GEM_FISH_PERMIL 확률로 보통 물고기 대신.
+    static final String[] MINE_FISH_REGION_NAMES = { "중앙 평원 호수", "사막 오아시스", "남쪽 바다", "다도해", "북쪽 바다", "엘리시온 강" };
+    static final String[][] MINE_GEM_FISH = {
+        { "에메랄드 송어", "중앙 평원 호수 특산 -- 비늘이 에메랄드처럼 초록빛으로 반짝이는 송어." },
+        { "황옥 메기", "사막 오아시스 특산 -- 수염 끝이 황옥처럼 빛나는, 깊은 샘에 사는 메기." },
+        { "진주 복어", "남쪽 바다 특산 -- 배를 부풀리면 커다란 진주알처럼 동그래지는 복어." },
+        { "산호 비늘돔", "다도해 특산 -- 산호초 사이를 헤엄치는 붉은 산호빛 비늘돔." },
+        { "사파이어 대구", "북쪽 바다 특산 -- 차가운 물에서 푸른 보석빛을 내는 대구." },
+        { "자수정 잉어", "엘리시온 강 특산 -- 보랏빛 비늘이 자수정처럼 겹겹이 빛나는 잉어." } };
+    static final int MINE_GEM_FISH_ID0 = 9001, MINE_GEM_FISH_PERMIL = 30;
+    static int mineFishRegion(S5MineMap map, int x, int y) {
+        String id = map.id;
+        if (S5MineMap.FIELD.equals(id)) return 0;
+        if (S5MineMap.DESERT.equals(id)) return 1;
+        if (S5MineMap.BEACH.equals(id) || S5MineMap.ISLAND.equals(id) || S5MineMap.OPEN_SEA.equals(id) || S5MineMap.VAST_SEA.equals(id) || S5MineMap.SEA_CITY.equals(id)) return 2;
+        if (S5MineMap.ARCHI.equals(id) || S5MineMap.ARCHISEA.equals(id) || java.util.Arrays.asList(S5MineMap.ISLE_IDS).contains(id)) return 3;
+        if (S5MineMap.NORTH.equals(id)) return y >= map.h - 20 ? 4 : -1; // 위쪽은 얼음(화면도 얼음으로 그린다)
+        if (S5MineMap.TOWER_CITY.equals(id) || S5MineMap.TOWER_GATE.equals(id) || S5MineMap.HARPY_FERRY.equals(id)) return 5;
+        return -1;
+    }
+    /** 낚시할 물 칸 -- 배를 탄 물 위면 그 칸, 아니면 바라보는 칸이 물(~)이고 낚시 지역이면 그 칸. 없으면 null. */
+    static int[] mineFishSpot(S5MineMap map, int x, int y, String dir) {
+        if (map.inside(x, y) && map.terrainAt(x, y) == '~' && (map.boat() || map.sail()) && mineFishRegion(map, x, y) >= 0) return new int[] { x, y };
+        int dx = "left".equals(dir) ? -1 : "right".equals(dir) ? 1 : 0, dy = "up".equals(dir) ? -1 : "down".equals(dir) ? 1 : 0;
+        if (dx == 0 && dy == 0) return null;
+        int fx = x + dx, fy = y + dy;
+        if (!map.inside(fx, fy) || map.terrainAt(fx, fy) != '~' || mineFishRegion(map, fx, fy) < 0) return null;
+        return new int[] { fx, fy };
+    }
+    HashMap<String, Object> mineFish(String userName, String mapId, int x, int y, int st, int stMax, long now, HashMap<String, Object> out, int region) {
         Long last = MINE_FISH_AT.get(userName);
         if (last != null && now - last < MINE_FISH_GAP_MS) { out.put("fishWait", true); out.put("message", "🎣 찌가 아직 물 위에 떠 있어요."); return out; }
         if (st < MINE_FISH_DUR) { out.put("message", "🎣 곡괭이 내구도가 " + MINE_FISH_DUR + " 이상 있어야 낚싯줄을 던질 수 있어요. (지금 " + st + ")"); return out; }
         MINE_FISH_AT.put(userName, now);
         HashMap<String, Object> eq = dao.selectS55FishEquip(userName);
         int rod = eq == null ? 1 : Math.max(1, intVal(eq.get("ROD_GRADE"), 1)), bob = eq == null ? 1 : Math.max(1, intVal(eq.get("BOBBER_GRADE"), 1));
+        if (region >= 0 && region < MINE_GEM_FISH.length && RND.nextInt(1000) < MINE_GEM_FISH_PERMIL) { // [2026-11-19] 지역 특산 보석물고기
+            int gid = MINE_GEM_FISH_ID0 + region;
+            dao.upsertS55FishInv(userName, gid);
+            dao.insertS55FishLog(userName, gid, mapId);
+            HashMap<String, Object> gup = new HashMap<>();
+            gup.put("userName", userName); gup.put("pickDur", st - MINE_FISH_DUR); gup.put("atMs", now); gup.put("x", x); gup.put("y", y);
+            dao.updateMineUser(gup);
+            HashMap<String, Object> gf = new HashMap<>();
+            gf.put("id", gid); gf.put("name", MINE_GEM_FISH[region][0]); gf.put("grade", 8); gf.put("star", "💠 " + MINE_FISH_REGION_NAMES[region] + " 특산"); gf.put("emoji", "💠"); gf.put("desc", MINE_GEM_FISH[region][1]); gf.put("gem", true);
+            out.put("ok", true);
+            out.put("fish", gf);
+            out.put("rod", MINE_ROD_NAMES[Math.min(rod, MINE_ROD_NAMES.length - 1)] + " 낚싯대");
+            putMinePick(out, st - MINE_FISH_DUR, stMax);
+            out.put("message", "🎣 💠 " + MINE_FISH_REGION_NAMES[region] + " 특산 보석물고기 " + MINE_GEM_FISH[region][0] + "을(를) 낚았어요!!");
+            mineGossipAdd(mineNick(userName) + " 님이 " + MINE_FISH_REGION_NAMES[region] + "에서 " + MINE_GEM_FISH[region][0] + "을(를) 낚았대요!");
+            return out;
+        }
         int star = mineFishRollStar(rod, bob);
         List<HashMap<String, Object>> fl = dao.selectS55FishByGrade(star);
         if (fl == null || fl.isEmpty()) { star = 1; fl = dao.selectS55FishByGrade(1); }
@@ -5533,9 +5597,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        if (map.boat() || (map.sail() && map.terrainAt(x, y) == '~')) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
+        int[] fsp = mineFishSpot(map, x, y, dir); // [2026-11-19] "물 필드라면 전체 바다낚시" -- 배 위, 또는 물가에서 물(~)을 바라보면
+        if (map.boat() || fsp != null) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
             // [2026-11-19] "바다 낚시도 일반 플레이어 오픈" -- 관리자만 막던 것 없앰
-            return mineFish(userName, map.id, x, y, st, stMax, now, out);
+            return mineFish(userName, map.id, x, y, st, stMax, now, out, fsp == null ? mineFishRegion(map, x, y) : mineFishRegion(map, fsp[0], fsp[1]));
         }
         int g = map.oreAt(x, y);
         if (g == 0) {

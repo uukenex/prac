@@ -2278,7 +2278,7 @@ var TowerMine = (function () {
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
-    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && (map.boat || (map.sail && boatAt(P.x, P.y))) ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시, [2026-11-19] 모두에게
+    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && fishHere() ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시, [2026-11-19] 모두에게
     if (el.atk) el.atk.disabled = busy;
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
@@ -4135,13 +4135,13 @@ var TowerMine = (function () {
       }).catch(function () { fishInvBusy = false; });
     }
     if (!fishInvD) return '<div class="mine-smith-say">🎣 어망을 여는 중...</div>';
-    var d = fishInvD, h = '<div class="mine-smith-say">🎣 ' + d.rod + ' · ' + d.bobber + '<br><small>낚은 물고기 ' + d.kinds + '/' + d.allKinds + '종 · 모두 ' + d.total + '마리 -- 배를 타고 물 위에서 🎣 버튼으로 낚아요. 물고기를 누르면 설명.</small></div>';
+    var d = fishInvD, h = '<div class="mine-smith-say">🎣 ' + d.rod + ' · ' + d.bobber + '<br><small>낚은 물고기 ' + d.kinds + '/' + d.allKinds + '종 · 모두 ' + d.total + '마리 -- 물가에서 물을 바라보거나 배를 타고 🎣 버튼으로 낚아요. 지역마다 그곳에서만 낚이는 보석물고기가 있어요. 물고기를 누르면 설명.</small></div>';
     (d.fishInv || []).forEach(function (g) {
       var got = g.fish.filter(function (f) { return f.qty > 0; }).length;
       h += '<div class="minv-cat"><div class="cos-slot-h">' + g.star + ' <small>' + got + '/' + g.fish.length + '종</small></div><div class="minv-grid">'
           + g.fish.map(function (f) {
             return f.qty > 0 ? '<div class="minv-item" style="cursor:pointer" onclick="TowerMine.fishInfo(' + f.id + ')"><span style="font-size:22px;line-height:28px">' + f.emoji + '</span><span>' + f.name + '</span><b>' + f.qty + '</b></div>'
-              : '<div class="minv-item" style="opacity:.4"><span style="font-size:22px;line-height:28px">❔</span><span>???</span><b></b></div>';
+              : '<div class="minv-item" style="opacity:.4"><span style="font-size:22px;line-height:28px">❔</span><span>' + (f.region ? f.region : '???') + '</span><b></b></div>'; // [2026-11-19] 특산 보석물고기는 지역 이름(어디서 낚는지)
           }).join('') + '</div></div>';
     });
     return h;
@@ -7285,7 +7285,7 @@ var TowerMine = (function () {
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
-    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
+    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
@@ -7983,9 +7983,18 @@ var TowerMine = (function () {
     ctx.fillStyle = '#e8463a'; ctx.fillRect(bx - 1.5 * u, by - 2 * u, 3 * u, 2 * u); ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 1.5 * u, by, 3 * u, 1.5 * u); // 찌
     if (bit) { ctx.strokeStyle = 'rgba(230,245,255,' + (0.8 * (1 - (pn - fishFx.bite) / 1400)).toFixed(2) + ')'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.ellipse(bx, by + u, TS * 0.2 + (pn - fishFx.bite) / 1400 * TS * 0.6, TS * 0.1 + (pn - fishFx.bite) / 1400 * TS * 0.25, 0, 0, Math.PI * 2); ctx.stroke(); }
   }
+  // [2026-11-19] "물 필드라면 전체 바다낚시" -- 서버 mineFishSpot/mineFishRegion과 같은 규칙: 배를 탄 물 위, 또는 낚시 지역 맵에서 바라보는 칸이 물(~)(북쪽 끝 설원은 아래쪽 바다만).
+  var FISH_MAPS = { field: 1, desert: 1, beach: 1, island: 1, opensea: 1, vastsea: 1, seacity: 1, archi: 1, archisea: 1, isle1: 1, isle2: 1, isle3: 1, isle4: 1, isle5: 1, isle6: 1, isle7: 1, north: 1, towercity: 1, towergate: 1, harpyferry: 1 };
+  function fishWater(x, y) { return !!(map && FISH_MAPS[map.id] && cellAt(x, y) === '~' && !(map.id === 'north' && y < map.h - 20)); }
+  function fishHere() {
+    if (!map) return false;
+    if (map.boat || (map.sail && boatAt(P.x, P.y))) return true;
+    var dv = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[P.dir];
+    return !!(dv && fishWater(P.x + dv[0], P.y + dv[1]));
+  }
   function dig() {
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
-    if (map && (map.boat || (map.sail && boatAt(P.x, P.y)))) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게
+    if (map && fishHere()) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게, 같은 날 물가에서 물을 바라보면 어디서나
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
