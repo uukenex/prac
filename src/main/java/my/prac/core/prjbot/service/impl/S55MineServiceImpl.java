@@ -5597,8 +5597,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("message", block);
             return out;
         }
-        int[] fsp = mineFishSpot(map, x, y, dir); // [2026-11-19] "물 필드라면 전체 바다낚시" -- 배 위, 또는 물가에서 물(~)을 바라보면
-        if (map.boat() || fsp != null) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
+        boolean noFish = dir != null && dir.endsWith("!"); // [2026-11-20] 자동채광 -- 물을 바라봐도 낚시하지 않고 발밑을 캔다(배 맵은 원래 채광이 없다)
+        if (noFish) dir = dir.substring(0, dir.length() - 1);
+        int[] fsp = noFish ? null : mineFishSpot(map, x, y, dir); // [2026-11-19] "물 필드라면 전체 바다낚시" -- 배 위, 또는 물가에서 물(~)을 바라보면
+        if ((map.boat() && !noFish) || fsp != null) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
             // [2026-11-19] "바다 낚시도 일반 플레이어 오픈" -- 관리자만 막던 것 없앰
             return mineFish(userName, map.id, x, y, st, stMax, now, out, fsp == null ? mineFishRegion(map, x, y) : mineFishRegion(map, fsp[0], fsp[1]));
         }

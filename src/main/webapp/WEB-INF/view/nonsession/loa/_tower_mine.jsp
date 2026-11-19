@@ -2588,10 +2588,10 @@ var TowerMine = (function () {
       }
       if (!d && auto && !smithOpen && !fade && !helmetBlocked()) { // [2026-10-24] 자동채광
         if (st.durability < 1) setAuto(false, '⛏️ 곡괭이 내구도가 다 닳아 자동채광을 멈췄어요.');
-        else if (minable(P.x, P.y) && autoFar(P.x, P.y)) { dig(); return; }
+        else if (minable(P.x, P.y) && autoFar(P.x, P.y)) { dig(true); return; }
         else {
           d = autoStep(true);
-          if (!d && minable(P.x, P.y)) { dig(); return; } // 5칸 밖에 캘 곳이 없으면 가까운 곳이라도
+          if (!d && minable(P.x, P.y)) { dig(true); return; } // 5칸 밖에 캘 곳이 없으면 가까운 곳이라도
           if (!d) d = autoStep(false);
           if (!d) setAuto(false, '🤖 근처(30칸)에 캘 곳이 없어 자동채광을 멈췄어요. 다른 곳으로 옮겨서 다시 켜 주세요.');
         }
@@ -7992,9 +7992,9 @@ var TowerMine = (function () {
     var dv = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[P.dir];
     return !!(dv && fishWater(P.x + dv[0], P.y + dv[1]));
   }
-  function dig() {
+  function dig(auto) { // [2026-11-20] auto = 자동채광 -- "자동채광 시 채광만(갑자기 낚시를 한대)": 물을 바라봐도 낚시하지 않고, 서버에도 낚시 말라고(dir 끝 !)
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
-    if (map && fishHere()) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게, 같은 날 물가에서 물을 바라보면 어디서나
+    if (map && !auto && fishHere()) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게, 같은 날 물가에서 물을 바라보면 어디서나
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (!opened || busy || !map) return;
@@ -8007,7 +8007,7 @@ var TowerMine = (function () {
     busy = true;
     el.dig.disabled = true;
     P.digT0 = performance.now(); P.swing = false; // 곡괭이
-    apiFast('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
+    apiFast('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + x + '&y=' + y + '&dir=' + P.dir + (auto ? '!' : '') + verQ()).then(function (d) { // [2026-10-25] dir = 쌍날 곡괭이 앞뒤
       busy = false;
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
       if (d.ok) {
