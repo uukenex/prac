@@ -4160,7 +4160,7 @@ var TowerMine = (function () {
     var h = npcHead('⛵ ' + n.name, false) + talkBlock(n, n.line);
     h += '<div class="mine-smith-say">' + (a.boat ? '⛵ 1인용 배 · 체력 ' + fmtN(hp) + ' / ' + fmtN(mx) + '<span class="mine-bar hp" style="margin-top:4px"><i style="width:' + Math.round(hp * 100 / mx) + '%;background:#4fc3f7"></i></span>'
         : '⛵ 1인용 배가 없어요 -- 다도해 본섬 배 목수가 만들어 줘요(본섬은 남쪽 섬에서 큰 배로).') + '</div>';
-    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 윤슬항', adm]]
+    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 윤슬항', true]] // [2026-11-19] 모두에게(예전: 관리자만)
         : [['opensea', '🌊 바다 위', '북쪽 끝은 남쪽 바닷가', true]];
     if (a.boat && a.boatFix > 0) h += '<div class="mine-smith-row"><span class="nm">🔨 배 수리<small>' + (hp > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + ' · 진주 ' + a.boatFix + '개</small></span><button type="button" onclick="TowerMine.boatFix()">고치기</button></div>';
     return h + '<div class="mine-smith-menu">' + dests.map(function (d) {
@@ -6277,7 +6277,7 @@ var TowerMine = (function () {
     return h;
   }
   // [2026-11-04] 검기 사범 -- 속성별 보스 드랍템(등급 번호): 땅 = 사막의 심장, 얼음 = 얼음의 심장, 불 = 화산의 심장, 어둠 = 타락한 대주교의 인장. n단계 = 드랍템 2n-1 + 달빛석 2n-1
-  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [78, '성당(타락한 대주교)', 59] /* [2026-11-18] 어둠의 심장 */, 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55], 8: [77, '최후의 방어선(심판자 보로네오)', 55] /* [2026-11-18] 바다 위를 모두에게 열 때 3: [81, '바다 위(심해의 크라켄)', 55] -- 물 = 물의 심장 + 세공 진주 */ }, /* [2026-11-17] 빛 = 빛의 심장 + 세공 진주 */ /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
+  var AURA_BOSS = { 1: [39, '피라미드(파라오 미라)', 57], 4: [33, '설산(얼음 여왕)', 55], 6: [64, '화산(용암 거신)', 56], 7: [78, '성당(타락한 대주교)', 59] /* [2026-11-18] 어둠의 심장 */, 2: [65, '마물의 숲(천둥 황소)', 58], 5: [71, '하피의 둥지(하피 여왕)', 55], 8: [77, '최후의 방어선(심판자 보로네오)', 55], 3: [81, '바다 위(심해의 크라켄)', 55] /* [2026-11-19] 물 = 물의 심장 + 세공 진주(바다 위를 모두에게 열어 넣음) */ }, /* [2026-11-17] 빛 = 빛의 심장 + 세공 진주 */ /* [2026-11-11] 바람 = 바람의 심장 + 세공 진주 */ MOON_G = 20; // [2026-11-04] 세 번째 = 세공 바다 보석 등급
   function oreHave(g) { var q = 0; (st.ores || []).forEach(function (o) { if (o.grade === g) q = o.qty; }); return q; }
   function auraNpcHtml(n) {
     var au = (st && st.aura) || { l: [], a: [] }, moon = oreHave(MOON_G);
