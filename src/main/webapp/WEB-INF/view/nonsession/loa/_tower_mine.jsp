@@ -2131,6 +2131,21 @@ var TowerMine = (function () {
     });
     el.cv.addEventListener('pointermove', function (e) { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; } });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { el.cv.addEventListener(t, function () { drag = null; }); });
+    // [2026-11-19] "핸드폰에서 공격 누르고 있으면 자동 공격 -- PC 스페이스 누르고 있는 것과 똑같이" -- 누르는 동안 atkBtn을 되풀이(공격 간격 420ms는 atkBtn/attack이 지킨다).
+    //  손가락/마우스는 pointerdown부터, 키보드(Enter -- click의 detail 0)는 한 번. 창이 열리면(워프/대장간 등) 멈춘다.
+    if (el.atk) {
+      var atkHoldT = null, atkHoldStop = function () { if (atkHoldT) { clearInterval(atkHoldT); atkHoldT = null; } };
+      el.atk.onclick = function (e) { if (!e || e.detail === 0) atkBtn(); };
+      el.atk.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); atkHoldStop(); atkBtn();
+        atkHoldT = setInterval(function () { if (!opened || smithOpen) { atkHoldStop(); return; } atkBtn(); }, 120);
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { el.atk.addEventListener(t, atkHoldStop); });
+      window.addEventListener('blur', atkHoldStop);
+      el.atk.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // 길게 누르면 뜨는 메뉴 막기
+      el.atk.style.touchAction = 'none'; el.atk.style.webkitUserSelect = 'none'; el.atk.style.userSelect = 'none'; el.atk.style.webkitTouchCallout = 'none';
+    }
     window.addEventListener('resize', function () { if (opened) fit(); });
     zoomHud(); // [2026-11-19] 메뉴의 화면 크기 표시
     window.addEventListener('pagehide', function () { if (opened) saveBeacon(true); });
