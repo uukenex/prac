@@ -8042,11 +8042,11 @@ var TowerMine = (function () {
         if (d.ores) st.ores = d.ores;
         if (d.manaStone) { // [2026-11-18] 마계 마을 -- 캘 때마다 정제된 마석
           var mimg = new Image(); mimg.src = oreIcon(80);
-          floats.push({ x: x, y: y - 1.0, text: '+1 정제된 마석', color: '#ff9ae8', icon: mimg, t0: performance.now() + 350 });
+          floats.push({ x: x, y: y - 1.0, text: '+' + (d.manaStone | 0 || 1) + ' 정제된 마석', color: '#ff9ae8', icon: mimg, t0: performance.now() + 350 });
         }
         if (d.demonOre) { // [2026-11-17] 악마의 땅 -- 캘 때마다 악마의 광석 조각
           var dimg = new Image(); dimg.src = oreIcon(75);
-          floats.push({ x: x, y: y - 1.0, text: '+1 악마의 광석 조각', color: '#ff8a7a', icon: dimg, t0: performance.now() + 350 });
+          floats.push({ x: x, y: y - 1.0, text: '+' + (d.demonOre | 0 || 1) + ' 악마의 광석 조각', color: '#ff8a7a', icon: dimg, t0: performance.now() + 350 });
         }
         if (d.iceGain) { // [2026-10-28] 설산 빙석
           var iimg = new Image(); iimg.src = oreIcon(19);

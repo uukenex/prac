@@ -5702,6 +5702,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("detectDim", true);
             msg += " 🌑 탐지 곡괭이가 별빛에 눌려 빛을 잃었어요... 12시간 뒤 다시 빛나요.";
         }
+        // [2026-11-19] "마계 입구를 통해 마계 마을에 가면 정제된 마석이 나와야 하는데 안 나와" -- 칸마다 넣어 주긴 했지만(mineDigCell) 결과(manaStone/demonOre)를
+        //  응답에 옮기지 않아 화면에 "+1 정제된 마석"도, 보유 수도 안 바뀌었다(다시 들어와야 보였다). 광역 칸까지 더해 알리고 보유 목록도 새로.
+        int manaN = one.get("manaStone") != null ? 1 : 0, demonN = one.get("demonOre") != null ? 1 : 0;
+        for (HashMap<String, Object> wc : wide) { if (wc.get("manaStone") != null) manaN++; if (wc.get("demonOre") != null) demonN++; }
+        if (manaN > 0) { out.put("manaStone", manaN); msg += " 💠 " + S5MineMap.MANA_STONE_NAME + " +" + manaN; }
+        if (demonN > 0) { out.put("demonOre", demonN); msg += " 😈 " + S5MineMap.DEMON_ORE_NAME + " +" + demonN; }
+        if (manaN > 0 || demonN > 0) out.put("ores", mineOreList(userName));
         boolean ice = one.get("iceGain") != null;
         for (HashMap<String, Object> wc : wide) ice |= wc.get("iceGain") != null;
         if (ice) { // [2026-10-28] 설산 빙석
