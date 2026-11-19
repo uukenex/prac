@@ -4167,6 +4167,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_KRK_SURFACE_MS = 8_000L, MINE_KRK_MEET_WAIT_MIN = 20_000L, MINE_KRK_MEET_WAIT_MAX = 60_000L;
     static final int MINE_KRK_MEET_MIN = 5, MINE_KRK_MEET_MAX = 8, MINE_KRK_HOP_MIN = 5, MINE_KRK_HOP_MAX = 9;
     static volatile long mineKrkMeetDue = 0; // 숨은 크라켄이 솟아오를 때(0 = 아직 안 정함)
+    // [2026-11-19] "기믹 중 한 개라도 이용하지 않으면 50% 이하로 체력이 안 내려가도록" -- 바위에 박힘(기절) / 화약통 / 구조선 작살 중 하나라도 일어나면 풀린다.
+    //  크라켄이 쓰러지면(mineKrakenDrops) 다시 잠긴다. 막힌 첫 순간 해역 소식 한 줄(규칙은 말하지 않는다).
+    static volatile boolean mineKrkGimmick = false, mineKrkFloorSaid = false;
+    static volatile int mineKrkMax = 0;
+    static void mineKrkGimmickUsed() { mineKrkGimmick = true; }
+    /** 크라켄 체력 바닥(기믹 전 = 최대 체력 50%). 모든 피해 뒤 쓰러짐 판정 전에. */
+    static void mineKrkFloor(MobState s, long now) {
+        if (!s.kraken || mineKrkGimmick || mineKrkMax <= 0) return;
+        int fl = mineKrkMax / 2;
+        if (s.hp < fl) { s.hp = fl; if (!mineKrkFloorSaid) { mineKrkFloorSaid = true; mineKrkSay("🐙 크라켄의 몸이 단단히 굳어 꿈쩍도 하지 않아요...", now); } }
+    }
     static final int[] MINE_KRK_FIX = { -1, -1 }; // 떠올라 싸우는 자리(5x5 왼쪽 위)
     static volatile long mineKrkSurfaceUntil = 0;
     static volatile int mineKrkFocX = -1, mineKrkFocY = -1; // 마지막으로 싸운 배
@@ -4188,6 +4199,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ok) return new int[] { cx, cy };
         }
         return null;
+    }
+    /** [2026-11-19] 관리자 -- 쓰러진 크라켄을 1시간 기다리지 않고 바로 다시 살린다(숨은 채, 곧 바다 위 배 둘레에서 솟아오른다). */
+    HashMap<String, Object> mineKrkRespawnNow() {
+        HashMap<String, Object> out = new HashMap<>();
+        S5MineMap sm = S5MineMap.get(S5MineMap.OPEN_SEA);
+        S5MineMap.Mob km = sm == null ? null : mineBossOf(sm);
+        if (km == null || km.type != S5MineMobs.KRAKEN_TYPE) { out.put("ok", false); out.put("message", "크라켄이 없어요."); return out; }
+        int kmax = S5MineMobs.hp(S5MineMobs.TYPES.get(km.type), km.rank);
+        MobState ks = MINE_MOB_STATE.computeIfAbsent(mineMobKey(sm, km.id), k -> new MobState(kmax));
+        synchronized (ks) { ks.respawn(kmax); ks.kraken = true; ks.lastHitAt = 0; ks.stunUntil = 0; }
+        synchronized (MINE_KRK_LOCK) { MINE_KRK_SMASH.clear(); MINE_KRK_RES[4] = 0; MINE_KRK_FIX[0] = -1; }
+        mineKrkFightAt = 0; mineKrkSurfaceUntil = 0; mineKrkMeetDue = 0; mineKrkGimmick = false; mineKrkFloorSaid = false;
+        out.put("ok", true);
+        out.put("message", "🐙 크라켄을 다시 살렸어요. (체력 " + String.format("%,d", kmax) + ", 20~60초 뒤 바다 위 배 둘레에서 솟아올라요)");
+        return out;
     }
     /** 위치 알림(바다 위) -- 크라켄이 살아 숨어 있고 솟아오를 때가 됐으면 이 배 둘레에서 솟아오른다. */
     void mineKrkMeet(S5MineMap map, String userName, int x, int y, long now) {
@@ -4262,6 +4288,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (km == null || km.type != S5MineMobs.KRAKEN_TYPE) return;
         int kmax = S5MineMobs.hp(S5MineMobs.TYPES.get(km.type), km.rank);
         MobState ks = MINE_MOB_STATE.computeIfAbsent(mineMobKey(sm, km.id), k -> new MobState(kmax));
+        mineKrkMax = kmax; // [2026-11-19] 체력 바닥(50%) 계산용
         synchronized (ks) {
             ks.kraken = true;
             if (ks.deadUntil > now) { synchronized (MINE_KRK_LOCK) { if (MINE_KRK_RES[4] > 0 && MINE_KRK_RES[3] == 0) MINE_KRK_RES[4] = 0; MINE_KRK_SMASH.clear(); } return; }
@@ -4292,11 +4319,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (r[2] == 0) { r[3] = now; mineKrkSay("⚓ 크라켄의 촉수에 구조선이 부서져 가라앉았어요... 수병들이 끝까지 싸웠어요.", now); }
                 else mineKrkSay("🛡️ 구조선이 크라켄의 촉수를 대신 맞았어요! 한 번 더 맞으면 가라앉아요.", now);
             }
-            if (rock) { s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkLightUntil = now + MINE_KRK_STUN_MS + MINE_KRK_LIGHT_MS; mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 🗼 등대에 불이 켜졌어요!", now); } // [2026-11-19] 등대 불
+            if (rock) { mineKrkGimmickUsed(); s.stunUntil = Math.max(s.stunUntil, now + MINE_KRK_STUN_MS); mineKrkLightUntil = now + MINE_KRK_STUN_MS + MINE_KRK_LIGHT_MS; mineKrkSay("🪨 촉수가 바위에 박혔어요! 크라켄이 " + MINE_KRK_STUN_MS / 1000 + "초 동안 꼼짝 못 해요 -- 🗼 등대에 불이 켜졌어요!", now); } // [2026-11-19] 등대 불
             if (barrels != null) for (int i = 0; i < barrels.length && i < MINE_KRK_BARREL.length; i++) {
                 if (MINE_KRK_BARREL[i] > 0 && now - MINE_KRK_BARREL[i] < MINE_KRK_BARREL_BACK) continue;
                 if (Math.max(Math.abs(barrels[i][0] - z[0]), Math.abs(barrels[i][1] - z[1])) > 1) continue;
                 MINE_KRK_BARREL[i] = now;
+                mineKrkGimmickUsed(); // [2026-11-19]
                 int bd = (int) Math.round(bmax * MINE_KRK_BARREL_PCT);
                 s.hp = Math.max(1, s.hp - bd);
                 mineKrkSay("💥 촉수가 화약통을 내려쳤어요! 크라켄 -" + String.format("%,d", bd), now);
@@ -4322,6 +4350,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (r[6] < MINE_KRK_SHOTS && now >= r[7]) { // 작살
             if (under) r[7] = now + 500L;
             else {
+                mineKrkGimmickUsed(); // [2026-11-19] 구조선 작살
                 int sd = (int) Math.round(bmax * MINE_KRK_SHOT_PCT * (stun ? MINE_KRK_STUN_MUL : 1.0));
                 s.hp = Math.max(1, s.hp - sd);
                 s.lastHitAt = now;
@@ -4428,6 +4457,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             msg.append(" · ✨ ").append(S5MineMap.seaCutName(cg)).append(" 1개!");
         }
         mineGossipAdd(mineNick(userName) + " 님이 바다 위에서 심해의 크라켄을 쓰러뜨렸대요!");
+        mineKrkGimmick = false; mineKrkFloorSaid = false; // [2026-11-19] 다음 크라켄은 다시 기믹이 있어야 반 아래로
         return drops;
     }
 
@@ -4784,6 +4814,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 s.hp -= dmg;
                 if (auraRange > 0) { auraMain = mineAuraMainHits(userName, map, type, hitCell, x, y, dir, auraRange, aura, atkBase, vul); for (int[] h : auraMain) s.hp -= h[1]; } // [2026-11-04] 검기 속성 피해
                 if (mob.type == S5MineMobs.WB_BOSS_TYPE) s.hp = mineWbApply(userName, wbB, wbB - Math.max(0, s.hp), now, true); // [2026-11-15] 몫으로 바꿔 깎는다
+                mineKrkFloor(s, now); // [2026-11-19] 기믹 전엔 크라켄 50% 아래로 안 내려간다
                 s.lastHitAt = now;
                 mineHitBy(s, type, userName); // [2026-11-13] 보스를 때린 사람(함께 싸운 보상) -- 예전엔 닌자 두목만
                 if (s.hp <= 0) {
@@ -7306,6 +7337,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     s.hp -= sum;
                     if (ot.boss && (!ult || om.type == S5MineMobs.SHRINE_BOSS_TYPE)) s.hp = Math.max(1, s.hp); // [2026-11-07] 필살기는 보스도 쓰러뜨린다
                     if (om.type == S5MineMobs.WB_BOSS_TYPE) s.hp = mineWbApply(userName, wbB, wbB - Math.max(0, s.hp), now, ult); // [2026-11-15] 월드보스 -- 몫으로(검기는 1에서 멈춤)
+                    mineKrkFloor(s, now); // [2026-11-19]
                     if (s.hp <= 0) {
                         dead = true;
                         s.hp = 0;
@@ -8670,6 +8702,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 // [2026-11-07] "용병으로 적 타격 시 안 죽는 문제" -- 보스는 용병 공격으로 체력 1에서 멈췄다(내가 얼어 있거나 못 때리면 영영). 이제 용병도 쓰러뜨린다
                 //  (보상/기록은 mineMercBossKilled -- 내가 쓰러뜨린 것과 같게). 분신술·은신이 있는 닌자 두목만 예전처럼 마지막 한 방은 내가.
                 if (om.type == S5MineMobs.SHRINE_BOSS_TYPE) s.hp = Math.max(1, s.hp);
+                mineKrkFloor(s, now); // [2026-11-19]
                 if (s.hp <= 0) {
                     dead = true;
                     s.hp = 0;
@@ -10138,6 +10171,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         if (action != null && (action.equals("boatfix") || action.startsWith("boatfix:"))) { String[] ba = action.split(":"); int bn; try { bn = ba.length > 2 ? Integer.parseInt(ba[2]) : 999; } catch (NumberFormatException ex) { bn = 1; } return mineBoatFix(userName, ba.length > 1 ? ba[1] : S5MineMap.SEA_GEM_CODES[0], bn); } // [2026-11-18] 배 수리, [2026-11-19] boatfix:재료:개수
         if ("fishinv".equals(action)) return mineFishInv(userName); // [2026-11-19] 인벤토리 낚시 탭
+        if ("krkrespawn".equals(action) && isMineAdmin(userName)) return mineKrkRespawnNow(); // [2026-11-19] 관리자 -- 크라켄 다시 살리기
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
         if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
         if (action != null && (action.startsWith("bell:") || action.startsWith("buoy:"))) { int bix; try { bix = Integer.parseInt(action.substring(5)); } catch (NumberFormatException ex) { bix = -1; } return mineBell(userName, bix); } // [2026-11-18] 신호 부표
