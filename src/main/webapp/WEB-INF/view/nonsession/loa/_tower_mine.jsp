@@ -2147,6 +2147,21 @@ var TowerMine = (function () {
       el.atk.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // 길게 누르면 뜨는 메뉴 막기
       el.atk.style.touchAction = 'none'; el.atk.style.webkitUserSelect = 'none'; el.atk.style.userSelect = 'none'; el.atk.style.webkitTouchCallout = 'none';
     }
+    // [2026-11-19] "광물 캐기 버튼도 연속으로 누르고 있을 수 있게(나무 캐기나 빙석)" -- 하피의 둥지 나무(chopTree)와 설산 동굴 얼음 광맥(veinDig)은 누르는 동안 되풀이.
+    //  서버가 0.4초(나무)/0.3초(광맥)보다 빨리 찍으면 거절하니 0.45초마다. 그 밖의 채광(한 칸 한 번)과 바다 낚시는 한 번만.
+    if (el.dig) {
+      var digHoldT = null, digHoldStop = function () { if (digHoldT) { clearInterval(digHoldT); digHoldT = null; } };
+      el.dig.onclick = function (e) { if (!e || e.detail === 0) digBtn(); };
+      el.dig.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); digHoldStop(); digBtn();
+        if (map && (map.trees || map.vein)) digHoldT = setInterval(function () { if (!opened || smithOpen || !map || !(map.trees || map.vein)) { digHoldStop(); return; } digBtn(); }, 450);
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { el.dig.addEventListener(t, digHoldStop); });
+      window.addEventListener('blur', digHoldStop);
+      el.dig.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      el.dig.style.touchAction = 'none'; el.dig.style.webkitUserSelect = 'none'; el.dig.style.userSelect = 'none'; el.dig.style.webkitTouchCallout = 'none';
+    }
     window.addEventListener('resize', function () { if (opened) fit(); });
     zoomHud(); // [2026-11-19] 메뉴의 화면 크기 표시
     window.addEventListener('pagehide', function () { if (opened) saveBeacon(true); });
