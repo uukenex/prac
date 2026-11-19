@@ -11143,10 +11143,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         minePatchText = body.length() > 300 ? body.substring(0, 300) : body;
         minePatchId = System.currentTimeMillis();
         long now = minePatchId;
-        int inMine = 0;
-        for (MinePresence p : MINE_PRESENCE.values()) if (now - p.at <= MINE_PRESENCE_TTL_MS) inMine++;
-        return "📢 패치 공지를 띄웠어요. 지금 광산에 있는 " + inMine + "명 화면 맨 위에 바로 보이고, 새로 들어오는 사람에게도 보여요."
-                + "\n배포(서버 재시작)하면 저절로 사라져요. 미리 내리려면 /패치 끄기 (다른 문구: /패치 [내용], \" / \"로 줄바꿈)\n" + minePatchText;
+        // [2026-11-19] "리턴 메시지가 너무 길어 -- 누구 접속자가 있는지만 말해 주고 패치공지완료로" -- 지금 광산에 있는 사람 닉네임만
+        List<String> on = new ArrayList<>();
+        for (Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) if (now - pe.getValue().at <= MINE_PRESENCE_TTL_MS) on.add(mineNick(pe.getKey()));
+        return (on.isEmpty() ? "접속자 없음" : "접속자 " + on.size() + "명: " + String.join(", ", on)) + "\n패치공지완료";
     }
 
     /** 광산을 나갈 때 -- 다른 유저 화면에서 바로 사라지게. */
