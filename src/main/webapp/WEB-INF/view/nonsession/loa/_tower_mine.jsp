@@ -5837,7 +5837,7 @@ var TowerMine = (function () {
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
       unityShow(d && d.unity); // [2026-11-17] 우리는 하나
       if (d && d.villageOut) { // [2026-11-17] 마계 마을 -- 3초 뒤 안내 없이 요새 도시로, 그다음 한 줄
-        var vmsg = d.villageOut; busy = true;
+        var vmsg = d.villageOut; busy = true; if (wbDownUntil) { wbDownUntil = 0; wbDownShow(); } // [2026-11-19] 바다 위에 쓰러져 있다 배가 부서져 마을로 -- 회색 화면도 끝
         api('/api/tower-mine').then(enterState).then(function () { fadeIn(null); flashT0 = performance.now(); msg(vmsg, 4500); }).catch(function () { busy = false; fadeIn(null); });
         return;
       }

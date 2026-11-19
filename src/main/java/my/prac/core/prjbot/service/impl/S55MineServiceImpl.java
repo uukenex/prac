@@ -4431,6 +4431,43 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // ---- [2026-11-19] "바다 위 맵에서 체력이 다하면 흑백 화면 상태에서도 배가 공격받도록" -- 쓰러져 있는 10초(MINE_WB_DOWN) 동안은 전투 턴이 없어(인식도 끝)
+    //  아무도 배를 안 때렸다. 위치 알림(1초마다)에서 MINE_SEA_DOWN_HIT_MS마다 배 바로 옆(1칸) 바다 몬스터 한 마리당 평소처럼 1%(고래 2%),
+    //  떠올라 있는 크라켄이 2칸 안이면 3%씩 배를 깎는다(물속에 잠긴 몬스터는 못 때린다). 등대 섬 위(배에서 내림)는 안 맞는다. 0이 되면 배가 부서져 마을로(mineBoatHit).
+    static final long MINE_SEA_DOWN_HIT_MS = 1_500L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_SEA_DOWN_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    HashMap<String, Object> mineSeaDownTick(S5MineMap map, String userName, int x, int y, long now, HashMap<String, Object> out) {
+        if (mineWbDownUntil(userName, now) <= 0) { MINE_SEA_DOWN_AT.remove(userName); return null; }
+        if (!map.boat() || map.terrainAt(x, y) != '~') return null;
+        Long last = MINE_SEA_DOWN_AT.get(userName);
+        if (last != null && now - last < MINE_SEA_DOWN_HIT_MS) return null;
+        MINE_SEA_DOWN_AT.put(userName, now);
+        int pct = 0;
+        for (S5MineMap.Mob mb : map.mobs()) {
+            S5MineMobs.Type t = S5MineMobs.TYPES.get(mb.type);
+            if (!t.sea) continue;
+            MobState s = MINE_MOB_STATE.get(mineMobKey(map, mb.id));
+            if (s != null && s.deadUntil > now) continue;
+            if (S5MineMobs.diving(t, mb.id, now)) continue;
+            if (mb.type == S5MineMobs.KRAKEN_TYPE) {
+                if (s == null || mineKrkLurking(s, now) || mineFootDist(t, s, x, y) > 2) continue;
+                pct += MINE_BOAT_KRK_PCT;
+                continue;
+            }
+            int mx = s != null && s.frozenUntil > now ? s.fx : mb.x, my = s != null && s.frozenUntil > now ? s.fy : mb.y;
+            if (Math.abs(mx - x) + Math.abs(my - y) > 1) continue;
+            pct += mb.type == S5MineMobs.SEA_WHALE ? MINE_BOAT_WHALE_PCT : MINE_BOAT_HIT_PCT;
+        }
+        if (pct <= 0) return null;
+        Map<String, Integer> items = mineItems(userName);
+        if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) <= 0) return null;
+        HashMap<String, Object> bo = new HashMap<>();
+        long left = mineBoatHit(userName, items, mineBoatHpMax(items) * pct / 100, bo);
+        if (bo.containsKey("boatWreck")) { MINE_SEA_DOWN_AT.remove(userName); out.put("villageOut", bo.get("message")); return out; }
+        out.put("boatHp", Math.max(0, left));
+        return null;
+    }
+
     // ---- [2026-11-18] 망망대해 -- "출구가 없고, 계속 돌아다니면 초당 5%씩 배가 부서진다, 10초 이상 버티면 남쪽 바닷가/다도해/바다 도시 셋 중 하나로 떨어진다" --
     //  위치 알림(1초마다)에서 배를 깎고(0이 되면 mineBoatHit이 마을로), MINE_VAST_MS가 지나면 셋 중 하나로 옮긴다(villageOut -- 화면이 다시 불러온다).
     //  MINE_VAST = {들어온 시각, 배를 마지막으로 깎은 시각, 마지막 위치 알림} -- 5초 넘게 소식이 없었으면 새로 들어온 것으로 본다.
@@ -10957,7 +10994,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("online", online);
         out.put("mapN", mapN);
         if (S5MineMap.towerFloor(mapId) > 0) { int twl = mineTwLeftOf(userName, now); if (twl >= 0) out.put("twLeft", twl); } // [2026-11-19] 수문장 반복 보상 남은 수
-        if (S5MineMap.OPEN_SEA.equals(mapId)) { S5MineMap osm = S5MineMap.get(mapId); if (osm != null) mineKrkMeet(osm, userName, x, y, now); mineKrakenTick(now); out.put("sea", mineSeaState(now)); } /* [2026-11-18] 화약통/등대/구조선 + 크라켄 이동 */ if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
+        if (S5MineMap.OPEN_SEA.equals(mapId)) { S5MineMap osm = S5MineMap.get(mapId); if (osm != null) { mineKrkMeet(osm, userName, x, y, now); HashMap<String, Object> sdo = mineSeaDownTick(osm, userName, x, y, now, out); if (sdo != null) return sdo; } /* [2026-11-19] 쓰러져 있는 동안에도 배가 맞는다 */ mineKrakenTick(now); out.put("sea", mineSeaState(now)); } /* [2026-11-18] 화약통/등대/구조선 + 크라켄 이동 */ if (!MINE_ZONES.isEmpty()) { S5MineMap zm = S5MineMap.get(mapId); List<long[]> zl = zm == null ? null : mineZoneList(zm, now); if (zl != null) out.put("zones", zl); } // [2026-11-16] 탑 수문장 / 악마의 장판
         HashMap<String, Object> wbi = mineWbInfo(userName, now); // [2026-11-15] 월드보스 예고/진행
         if (wbi != null) out.put("wb", wbi);
         else if (now - mineWbGoneAt < 6_000L && mineWbOk(userName)) out.put("wbGone", mineWbGoneAt); // [2026-11-16] 거룡이 날아감(퇴장 연출)
