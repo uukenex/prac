@@ -2170,8 +2170,29 @@ var TowerMine = (function () {
     el.cv.width = Math.floor(el.cv.clientWidth * dpr);
     el.cv.height = Math.floor(el.cv.clientHeight * dpr);
     // 화면 짧은 변 기준 약 9칸이 보이도록 정수배(도트가 뭉개지지 않게)
-    scale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
+    scale = baseScale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
     ctx.imageSmoothingEnabled = false;
+  }
+  // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 나와 크라켄(5x5칸 + 휘두르는 다리)이 함께 들어오게
+  //  화면을 정수배로 줄이고(도트가 뭉개지지 않게, 평소 배율보다 커지지는 않는다), 카메라를 둘 사이로 부드럽게 옮긴다. 아래쪽은 버튼이 덮으니 위 80%에 맞춘다.
+  var baseScale = 3, krkCam = { ox: 0, oy: 0, t: 0 };
+  function krkView(now, W, H, pos) {
+    scale = baseScale;
+    var tx = 0, ty = 0, kx = null, ky = null;
+    if (map && map.id === 'opensea' && krkShown()) {
+      if (seaSt && seaSt.kx != null) { kx = seaSt.kx + 0.5; ky = seaSt.ky + 0.5; }
+      else (map.mobs || []).forEach(function (m) { var t2 = map.mobTypes[m.k]; if (t2 && t2.name === '심해의 크라켄' && m._p) { kx = m._p.x + 2.5; ky = m._p.y + 2.5; } });
+    }
+    if (kx != null) {
+      var px0 = pos.x + 0.5, py0 = pos.y + 0.5;
+      var x0 = Math.min(px0 - 1.2, kx - 3.8), x1 = Math.max(px0 + 1.2, kx + 3.8), y0 = Math.min(py0 - 1.8, ky - 4.4), y1 = Math.max(py0 + 1.2, ky + 3.4);
+      scale = Math.max(2, Math.min(baseScale, Math.floor(Math.min(W / ((x1 - x0) * T), H * 0.8 / ((y1 - y0) * T)))));
+      tx = (x0 + x1) / 2 - px0; ty = (y0 + y1) / 2 - py0 + H * 0.1 / (T * scale);
+    }
+    var k = krkCam.t ? 1 - Math.exp(-Math.min(500, now - krkCam.t) / 220) : 1;
+    krkCam.t = now; krkCam.ox += (tx - krkCam.ox) * k; krkCam.oy += (ty - krkCam.oy) * k;
+    if (Math.abs(krkCam.ox) < 0.01 && Math.abs(krkCam.oy) < 0.01) return pos;
+    return { x: pos.x + krkCam.ox, y: pos.y + krkCam.oy };
   }
   /** [2026-10-30] "접속 시 1회만 공지" -- 이 기기에서 한 번만(새 공지는 키를 바꾼다). */
   function noticeOnce() {
@@ -6870,8 +6891,8 @@ var TowerMine = (function () {
     travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + px2 + '&py=' + py2 + verQ(), '들어갈 수 없어요.');
   }
   function draw(now) {
-    var W = el.cv.width, H = el.cv.height, TS = T * scale, pos = curPos(now);
-    var camX = Math.round(pos.x * TS + TS / 2 - W / 2), camY = Math.round(pos.y * TS + TS / 2 - H / 2);
+    var W = el.cv.width, H = el.cv.height, pos = curPos(now), cam = krkView(now, W, H, pos), TS = T * scale;
+    var camX = Math.round(cam.x * TS + TS / 2 - W / 2), camY = Math.round(cam.y * TS + TS / 2 - H / 2);
     ctx.fillStyle = '#0b0b10';
     ctx.fillRect(0, 0, W, H);
     var x0 = Math.floor(camX / TS), y0 = Math.floor(camY / TS), x1 = Math.ceil((camX + W) / TS), y1 = Math.ceil((camY + H) / TS);
