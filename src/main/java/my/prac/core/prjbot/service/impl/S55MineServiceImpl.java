@@ -4502,7 +4502,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-18] 망망대해 -- "출구가 없고, 계속 돌아다니면 초당 5%씩 배가 부서진다, 10초 이상 버티면 남쪽 바닷가/다도해/바다 도시 셋 중 하나로 떨어진다" --
     //  위치 알림(1초마다)에서 배를 깎고(0이 되면 mineBoatHit이 마을로), MINE_VAST_MS가 지나면 셋 중 하나로 옮긴다(villageOut -- 화면이 다시 불러온다).
     //  MINE_VAST = {들어온 시각, 배를 마지막으로 깎은 시각, 마지막 위치 알림} -- 5초 넘게 소식이 없었으면 새로 들어온 것으로 본다.
-    static final int MINE_VAST_PCT = 5;
+    static final int MINE_VAST_PERMIL = 24; // [2026-11-19] "망망대해 체력 24% 닳게(지금 50%)" -- 초당 5% -> 2.4%(천분율), 10초에 24%
     static final long MINE_VAST_MS = 10_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_VAST = new java.util.concurrent.ConcurrentHashMap<>();
     HashMap<String, Object> mineVastTick(String userName, long now, HashMap<String, Object> out) {
@@ -4516,7 +4516,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (secs > 0) {
             v[1] += secs * 1_000L;
             HashMap<String, Object> bo = new HashMap<>();
-            long left = mineBoatHit(userName, items, mineBoatHpMax(items) * MINE_VAST_PCT * secs / 100, bo);
+            long left = mineBoatHit(userName, items, mineBoatHpMax(items) * MINE_VAST_PERMIL * secs / 1000, bo);
             if (bo.containsKey("boatWreck")) { MINE_VAST.remove(userName); out.put("villageOut", bo.get("message")); return out; }
             out.put("boatHp", Math.max(0, left));
         }

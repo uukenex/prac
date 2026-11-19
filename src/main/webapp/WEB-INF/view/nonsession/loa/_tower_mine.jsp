@@ -5887,7 +5887,7 @@ var TowerMine = (function () {
       if (d && d.twLeft != null && st && st.twLeft !== d.twLeft) { st.twLeft = d.twLeft; twRender(); } // [2026-11-19] 수문장 반복 보상 남은 수
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
-      if (d.boatHp != null && st && st.archi) { // [2026-11-18] 망망대해 -- 초당 5%, 줄어든 만큼 배 위에 띄운다
+      if (d.boatHp != null && st && st.archi) { // [2026-11-18] 망망대해 -- 초당 2.4%([2026-11-19] 예전 5%), 줄어든 만큼 배 위에 띄운다
         var bh0 = st.archi.boatHp, bmx = st.archi.boatHpMax || 1;
         if (bh0 != null && d.boatHp < bh0) floats.push({ x: P.x, y: P.y - 1.4, text: '⛵ -' + Math.max(1, Math.round((bh0 - d.boatHp) * 100 / bmx)) + '%', color: d.boatHp * 10 < bmx * 3 ? '#ff6a5a' : '#9fe0ff', big: true, t0: performance.now() });
         st.archi.boatHp = d.boatHp;

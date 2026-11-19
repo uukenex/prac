@@ -116,7 +116,7 @@ public final class S5MineMap {
     public static final String SEA_CITY = "seacity";
     /** [2026-11-18] 바다 위(이름 미정) -- 남쪽 바닷가 북쪽 부두 <-> 남쪽 끝 해상도시 부두, 1인용 배로만(boat). 해상전투/바다 보스 자리. 지금은 관리자만. */
     public static final String OPEN_SEA = "opensea";
-    /** [2026-11-18] 망망대해 -- 남쪽 바닷가 아래 부두 끝에서 배로. 나가는 문이 없고 머무는 동안 배가 초당 5%씩 부서지며, 10초를 버티면 남쪽 바닷가/다도해 본섬/해상도시 중 하나로 떠밀려 간다(S55MineServiceImpl.mineVastTick). 지금은 관리자만. */
+    /** [2026-11-18] 망망대해 -- 남쪽 바닷가 아래 부두 끝에서 배로. 나가는 문이 없고 머무는 동안 배가 초당 2.4%씩(10초에 24%, [2026-11-19] 예전 5%) 부서지며, 10초를 버티면 남쪽 바닷가/다도해 본섬/해상도시 중 하나로 떠밀려 간다(S55MineServiceImpl.mineVastTick). 지금은 관리자만. */
     public static final String VAST_SEA = "vastsea";
     public static final String DEMON_VILLAGE = "demonvillage"; // [2026-11-17] 마계 마을 -- 마계 입구 포털로 가끔, 3초만 머문다
     /** 악마의 들판(동/서, 1~3) 단계 0~2, 최후의 방어선 3, 그 밖 -1. */
