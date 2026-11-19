@@ -2131,6 +2131,7 @@ var TowerMine = (function () {
     el.cv.addEventListener('pointermove', function (e) { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; } });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { el.cv.addEventListener(t, function () { drag = null; }); });
     window.addEventListener('resize', function () { if (opened) fit(); });
+    zoomHud(); // [2026-11-19] 메뉴의 화면 크기 표시
     window.addEventListener('pagehide', function () { if (opened) saveBeacon(true); });
     document.addEventListener('visibilitychange', function () {
       if (!opened) return;
@@ -2170,14 +2171,27 @@ var TowerMine = (function () {
     el.cv.width = Math.floor(el.cv.clientWidth * dpr);
     el.cv.height = Math.floor(el.cv.clientHeight * dpr);
     // 화면 짧은 변 기준 약 9칸이 보이도록 정수배(도트가 뭉개지지 않게)
-    scale = baseScale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
+    baseScale = Math.max(2, Math.round(Math.min(el.cv.width, el.cv.height) / (T * 9)));
+    scale = zoomScale();
     ctx.imageSmoothingEnabled = false;
   }
-  // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 나와 크라켄(5x5칸 + 휘두르는 다리)이 함께 들어오게
-  //  화면을 정수배로 줄이고(도트가 뭉개지지 않게, 평소 배율보다 커지지는 않는다), 카메라를 둘 사이로 부드럽게 옮긴다. 아래쪽은 버튼이 덮으니 위 80%에 맞춘다.
+  // [2026-11-19] "화면 크기는 옵션으로 확대/축소 1~2단계씩만" -- ☰ 메뉴의 🔍 -/+ (이 기기에 저장, -2 ~ +2). 한 단계 = 도트 배율 1(정수배라 뭉개지지 않는다), 최소 2배.
+  var zoomLv = (function () { try { var v = parseInt(localStorage.getItem('tw-mine-zoom'), 10); return v >= -2 && v <= 2 ? v : 0; } catch (e) { return 0; } })();
+  function zoomScale() { return Math.max(2, baseScale + zoomLv); }
+  function zoomLabel() { return zoomLv === 0 ? '보통' : (zoomLv > 0 ? '+' : '') + zoomLv; }
+  function zoomGo(d) {
+    var v = Math.max(-2, Math.min(2, zoomLv + d));
+    if (v === zoomLv) { msg(d > 0 ? '🔍 더 크게는 안 돼요. (최대 +2)' : '🔍 더 작게는 안 돼요. (최소 -2)', 1500); return; }
+    zoomLv = v; try { localStorage.setItem('tw-mine-zoom', String(v)); } catch (e) { }
+    if (Math.max(2, baseScale + v) === scale && d < 0) msg('🔍 이 화면에선 더 작게 할 수 없어요.', 1500);
+    scale = zoomScale(); zoomHud();
+  }
+  function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); }
+  // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 카메라를 나와 크라켄(5x5칸 + 휘두르는 다리) 사이로 부드럽게 옮긴다
+  //  (같은 날 "화면 크기는 옵션으로" -- 자동 축소는 뺐다). 나는 늘 화면 안(가장자리 1.5칸 안쪽), 아래쪽은 버튼이 덮으니 위 80%에 맞춘다.
   var baseScale = 3, krkCam = { ox: 0, oy: 0, t: 0 };
   function krkView(now, W, H, pos) {
-    scale = baseScale;
+    scale = zoomScale();
     var tx = 0, ty = 0, kx = null, ky = null;
     if (map && map.id === 'opensea' && krkShown()) {
       if (seaSt && seaSt.kx != null) { kx = seaSt.kx + 0.5; ky = seaSt.ky + 0.5; }
@@ -2186,8 +2200,8 @@ var TowerMine = (function () {
     if (kx != null) {
       var px0 = pos.x + 0.5, py0 = pos.y + 0.5;
       var x0 = Math.min(px0 - 1.2, kx - 3.8), x1 = Math.max(px0 + 1.2, kx + 3.8), y0 = Math.min(py0 - 1.8, ky - 4.4), y1 = Math.max(py0 + 1.2, ky + 3.4);
-      scale = Math.max(2, Math.min(baseScale, Math.floor(Math.min(W / ((x1 - x0) * T), H * 0.8 / ((y1 - y0) * T)))));
-      tx = (x0 + x1) / 2 - px0; ty = (y0 + y1) / 2 - py0 + H * 0.1 / (T * scale);
+      var vw = W / (T * scale), vh = H / (T * scale), lx = Math.max(0, vw / 2 - 1.5), ly = Math.max(0, vh * 0.4 - 1.5);
+      tx = Math.max(-lx, Math.min(lx, (x0 + x1) / 2 - px0)); ty = Math.max(-ly, Math.min(ly, (y0 + y1) / 2 - py0 + vh * 0.1));
     }
     var k = krkCam.t ? 1 - Math.exp(-Math.min(500, now - krkCam.t) / 220) : 1;
     krkCam.t = now; krkCam.ox += (tx - krkCam.ox) * k; krkCam.oy += (ty - krkCam.oy) * k;
@@ -7007,7 +7021,8 @@ var TowerMine = (function () {
         var mb = map.mobs[mi], mp = mb._p;
         if (!mp) continue;
         var mx = mp.x * TS - camX, my = mp.y * TS - camY;
-        if (mx < -TS || my < -TS || mx > W || my > H) continue;
+        var tyC = map.mobTypes[mb.k] || {}, mgC = tyC.boss || tyC.clone ? ((bossT && tyC.clone ? bossT.foot : tyC.foot) || 2) + 2 : tyC.chaos ? 4 : 2; // [2026-11-19] "보스가 화면에 일부 가려지면 통째로 안 보인다" -- 왼쪽 위 칸만 보고 잘랐다. 그림 크기만큼 여유
+        if (mx < -mgC * TS || my < -mgC * TS || mx > W + TS || my > H + mgC * TS) continue;
         var ty = map.mobTypes[mb.k] || {}, sk = mb.k, bid = mb.id, pose = ty.name === '심판자 보로네오' && Math.floor(nowSrv() / 12000) % 2 === 1; // [2026-11-17] 보로네오 -- 망치를 든 차례
         if (ty.clone && bossT && bossT.boss) { ty = bossT; sk = bossM.k; bid = bossM.id; } else if (splitOn && mb === bossM) pose = true;
         if (ty.name === '심해의 크라켄' && !krkShown()) continue; // [2026-11-19] 그냥 지나갈 땐 안 보인다
@@ -8071,7 +8086,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
