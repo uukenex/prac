@@ -153,6 +153,9 @@ public final class S5MineMap {
     /** [2026-11-18] 내구도 회복 키트(82) -- 거룡 토벌 1·2위 보상, 왕도 워프 포인트 관리인에게 내면 워프 포인트 하나의 내구도 +20. */
     public static final String WP_KIT_CODE = "WP_KIT", WP_KIT_NAME = "내구도 회복 키트";
     public static final int WP_KIT_GRADE = 82;
+    /** [2026-11-19] 나무(83) -- 하피의 둥지 나무를 곡괭이로 찍을 때마다 하나(mineChopTree). 배 수리 재료(1개당 배 체력 5%). */
+    public static final String WOOD_CODE = "WOOD", WOOD_NAME = "나무";
+    public static final int WOOD_GRADE = 83;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */

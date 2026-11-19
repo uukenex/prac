@@ -525,7 +525,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String[] sc = { S5MineMap.ICE_STONE_CODE, S5MineMap.MOON_STONE_CODE, S5MineMap.SEAL_CODE, S5MineMap.NINJA_BOOK_CODE, S5MineMap.ICE_HEART_CODE, S5MineMap.DESERT_HEART_CODE, S5MineMap.VOLCANO_HEART_CODE, S5MineMap.THUNDER_HEART_CODE, S5MineMap.WIND_HEART_CODE };
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.WEAPON_SHARD_CODES)).toArray(String[]::new); // [2026-10-29] 무기 조각
         sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.Arrays.stream(S5MineMap.ARMOR_SHARD_CODES)).toArray(String[]::new); // [2026-11-06] 갑옷 조각
-        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE, S5MineMap.TOWER_TOKEN_CODE, S5MineMap.DUSK_SEAL_CODE, S5MineMap.DAWN_SEAL_CODE, S5MineMap.DEMON_ORE_CODE, S5MineMap.DOOM_SHARD_CODE, S5MineMap.LIGHT_HEART_CODE, S5MineMap.DARK_HEART_CODE, S5MineMap.JUDGE_TOKEN_CODE, S5MineMap.MANA_STONE_CODE, S5MineMap.WATER_HEART_CODE, S5MineMap.WP_KIT_CODE)).toArray(String[]::new); // [2026-11-18] 어둠의 심장, 심판의 증표 // [2026-11-06] 은하수 조각, [2026-11-15] 탑의 증표, [2026-11-17] 인장 둘 / 악마의 광석 조각 / 종말의 파편
+        sc = java.util.stream.Stream.concat(java.util.Arrays.stream(sc), java.util.stream.Stream.of(S5MineMap.GALAXY_CODE, S5MineMap.TOWER_TOKEN_CODE, S5MineMap.DUSK_SEAL_CODE, S5MineMap.DAWN_SEAL_CODE, S5MineMap.DEMON_ORE_CODE, S5MineMap.DOOM_SHARD_CODE, S5MineMap.LIGHT_HEART_CODE, S5MineMap.DARK_HEART_CODE, S5MineMap.JUDGE_TOKEN_CODE, S5MineMap.MANA_STONE_CODE, S5MineMap.WATER_HEART_CODE, S5MineMap.WP_KIT_CODE, S5MineMap.WOOD_CODE)).toArray(String[]::new); // [2026-11-18] 어둠의 심장, 심판의 증표 // [2026-11-06] 은하수 조각, [2026-11-15] 탑의 증표, [2026-11-17] 인장 둘 / 악마의 광석 조각 / 종말의 파편
         { // [2026-10-28] 괴 / 세공된 보석
             List<String> scl = new ArrayList<>(java.util.Arrays.asList(sc));
             scl.addAll(java.util.Arrays.asList(S5MineMap.BAR_CODES));
@@ -7476,6 +7476,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             n = (int) Math.min(MINE_TREE_CHOP_NEED, t[4]);
             if (t[4] >= MINE_TREE_CHOP_NEED && t[5] == 0 && t[1] == 0) { t[5] = now; felled = true; }
         }
+        dao.addUserOre(userName, S5MineMap.WOOD_CODE, 1); // [2026-11-19] "나무(하피 보스 곡괭이로 공격 시 취득)" -- 찍을 때마다 하나
+        out.put("wood", 1);
         out.put("ok", true);
         out.put("tree", ti);
         out.put("chop", n);
@@ -9882,6 +9884,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.MANA_STONE_CODE.equals(code)) return S5MineMap.MANA_STONE_GRADE;
         if (S5MineMap.WATER_HEART_CODE.equals(code)) return S5MineMap.WATER_HEART_GRADE;
         if (S5MineMap.WP_KIT_CODE.equals(code)) return S5MineMap.WP_KIT_GRADE;
+        if (S5MineMap.WOOD_CODE.equals(code)) return S5MineMap.WOOD_GRADE; // [2026-11-19]
         for (int i = 0; i < S5MineMap.BAR_CODES.length; i++) if (S5MineMap.BAR_CODES[i].equals(code)) return S5MineMap.BAR_GRADE_BASE + i; // [2026-10-28] 괴
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) if (S5MineMap.cutCode(i).equals(code)) return S5MineMap.CUT_GRADE_BASE + i; // [2026-10-28] 세공된 보석
         if (S5MineMap.CUT_ICE_CODE.equals(code)) return S5MineMap.CUT_ICE_GRADE; // [2026-10-28] 세공된 빙석
@@ -9915,6 +9918,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (g == S5MineMap.MANA_STONE_GRADE) return S5MineMap.MANA_STONE_NAME;
         if (g == S5MineMap.WATER_HEART_GRADE) return S5MineMap.WATER_HEART_NAME;
         if (g == S5MineMap.WP_KIT_GRADE) return S5MineMap.WP_KIT_NAME;
+        if (g == S5MineMap.WOOD_GRADE) return S5MineMap.WOOD_NAME;
         if (g >= S5MineMap.BAR_GRADE_BASE && g < S5MineMap.BAR_GRADE_BASE + S5MineMap.BAR_CODES.length) return S5MineMap.BAR_NAMES[g - S5MineMap.BAR_GRADE_BASE]; // [2026-10-28] 괴(보석 줄보다 먼저)
         if (g >= S5MineMap.CUT_GRADE_BASE && g < S5MineMap.CUT_GRADE_BASE + S5MineMap.GEM_CODES.length) return S5MineMap.cutName(g - S5MineMap.CUT_GRADE_BASE); // 세공된 보석
         if (g == S5MineMap.CUT_ICE_GRADE) return S5MineMap.CUT_ICE_NAME;
@@ -10046,7 +10050,33 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 배 수리(다도해 본섬 배 목수) -- 깎인 만큼 진주(20%마다 1개, 최대 5개). */
     static final int MINE_BOAT_FIX_STEP_PCT = 20;
-    HashMap<String, Object> mineBoatFix(String userName) {
+    // [2026-11-19] "배 수리할 때 재료를 선택해서 납부 -- 바다 보석이나 나무, 나무 1개당 내구 5, 보석은 20" -- 배 체력(최대)의 %. 바다 보석 다섯 가지 아무거나 1개당 20%, 나무 1개당 5%.
+    //  고를 때 개수를 함께(가득 채우는 데 필요한 만큼까지만 받는다 -- 넘치게 내지 않게).
+    static int mineBoatMatPct(String code) {
+        if (S5MineMap.WOOD_CODE.equals(code)) return 5;
+        for (String c : S5MineMap.SEA_GEM_CODES) if (c.equals(code)) return 20;
+        return 0;
+    }
+    List<HashMap<String, Object>> mineBoatMats(Map<String, Integer> have, long[] bh) {
+        List<HashMap<String, Object>> l = new ArrayList<>();
+        List<String> codes = new ArrayList<>();
+        codes.add(S5MineMap.WOOD_CODE);
+        codes.addAll(java.util.Arrays.asList(S5MineMap.SEA_GEM_CODES));
+        for (String c : codes) {
+            int pct = mineBoatMatPct(c);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("code", c);
+            m.put("name", mineCodeName(c));
+            m.put("grade", mineCodeGrade(c));
+            m.put("have", have.getOrDefault(c, 0));
+            m.put("pct", pct);
+            m.put("need", bh[0] >= bh[1] ? 0 : mineBoatMatNeed(bh, pct));
+            l.add(m);
+        }
+        return l;
+    }
+    static int mineBoatMatNeed(long[] bh, int pct) { long miss = bh[1] - bh[0], per = Math.max(1, bh[1] * pct / 100); return (int) Math.max(1, (miss + per - 1) / per); }
+    HashMap<String, Object> mineBoatFix(String userName, String code, int n) {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         String at = strVal(row.get("MAP_ID"), "");
         if (!S5MineMap.ARCHI.equals(at) && !S5MineMap.BEACH.equals(at)) return mineGearResult(userName, false, "⛵ 배는 배 목수(다도해 본섬·남쪽 바닷가)가 고쳐 줘요."); // [2026-11-18] 뱃사람/부두지기를 없애서 배 목수로
@@ -10054,13 +10084,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) < 1) return mineGearResult(userName, false, "⛵ 고칠 배가 없어요.");
         long[] bh = mineBoatHpU(userName, items);
         if (bh[0] >= bh[1]) return mineGearResult(userName, false, "⛵ 배는 멀쩡해요.");
-        int pearls = mineBoatFixPearls(bh);
-        String[][] cost = { { S5MineMap.SEA_GEM_CODES[0], String.valueOf(pearls) } };
-        if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "⛵ 수리에 " + S5MineMap.SEA_GEM_NAMES[0] + " " + pearls + "개가 필요해요." + mineLackText(cost, userName));
-        mineTakeCost(userName, cost, 1);
-        MINE_BOAT_BUF.remove(userName); // [2026-11-18] 모아 둔 피해도 함께 없앤다
-        dao.upsertMineItem(userName, MINE_ITEM_BOAT_DMG, 0);
-        HashMap<String, Object> out = mineGearResult(userName, true, "🔨 배를 말끔히 고쳤어요! (" + S5MineMap.SEA_GEM_NAMES[0] + " " + pearls + "개)");
+        int pct = mineBoatMatPct(code);
+        if (pct <= 0) return mineGearResult(userName, false, "⛵ 그 재료로는 배를 고칠 수 없어요. (바다 보석 또는 나무)");
+        int need = mineBoatMatNeed(bh, pct), use = Math.max(1, Math.min(n, need)), haveN = mineOreHave(userName).getOrDefault(code, 0);
+        String nm = mineCodeName(code);
+        if (haveN <= 0) return mineGearResult(userName, false, "⛵ " + nm + "이(가) 없어요." + (S5MineMap.WOOD_CODE.equals(code) ? " 하피의 둥지 나무를 곡괭이로 찍으면 얻을 수 있어요." : ""));
+        use = Math.min(use, haveN);
+        if (dao.takeUserOre(userName, code, use) == 0) return mineGearResult(userName, false, "⛵ " + nm + "이(가) 모자라요.");
+        long fix = bh[1] * pct / 100 * use, left = Math.max(0, (bh[1] - bh[0]) - fix);
+        MINE_BOAT_BUF.remove(userName); // [2026-11-18] 모아 둔 피해도 함께(지금 체력 bh는 그것까지 넣어 셌다)
+        dao.upsertMineItem(userName, MINE_ITEM_BOAT_DMG, (int) left);
+        HashMap<String, Object> out = mineGearResult(userName, true, left == 0 ? "🔨 배를 말끔히 고쳤어요! (" + nm + " " + use + "개)" : "🔨 배를 고쳤어요! (" + nm + " " + use + "개 · +" + (pct * use) + "%) 배 체력 " + String.format("%,d", bh[1] - left) + " / " + String.format("%,d", bh[1]));
         out.put("ores", mineOreList(userName));
         return out;
     }
@@ -10099,7 +10133,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineArchiOpen(userName)) return mineGearResult(userName, false, "🚧 아직 준비 중이에요. 곧 열려요!"); // 본섬 NPC 일(신궁 임무/배/뱃길)은 아직 운영자만
         mineRow(userName, false);
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
-        if ("boatfix".equals(action)) return mineBoatFix(userName); // [2026-11-18] 배 수리
+        if (action != null && (action.equals("boatfix") || action.startsWith("boatfix:"))) { String[] ba = action.split(":"); int bn; try { bn = ba.length > 2 ? Integer.parseInt(ba[2]) : 999; } catch (NumberFormatException ex) { bn = 1; } return mineBoatFix(userName, ba.length > 1 ? ba[1] : S5MineMap.SEA_GEM_CODES[0], bn); } // [2026-11-18] 배 수리, [2026-11-19] boatfix:재료:개수
         if ("fishinv".equals(action)) return mineFishInv(userName); // [2026-11-19] 인벤토리 낚시 탭
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
         if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
@@ -10324,7 +10358,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long[] bhp = mineBoatHpU(userName, items); // [2026-11-18] 배 체력(아직 안 쓴 피해까지)
             ar.put("boatHp", bhp[0]);
             ar.put("boatHpMax", bhp[1]);
-            ar.put("boatFix", bhp[0] < bhp[1] ? mineBoatFixPearls(bhp) : 0); // 수리에 드는 진주
+            ar.put("boatFix", bhp[0] < bhp[1] ? mineBoatFixPearls(bhp) : 0); // 수리에 드는 진주(예전 화면 -- 지금은 고칠 게 있는지만)
+            ar.put("boatMats", mineBoatMats(have, bhp)); // [2026-11-19] 재료 골라 수리(나무 5% / 바다 보석 20%)
             ar.put("moon", have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0));
             ar.put("books", have.getOrDefault(S5MineMap.NINJA_BOOK_CODE, 0));
             ar.put("boatCosts", mineCostList(MINE_BOAT_COST, have));

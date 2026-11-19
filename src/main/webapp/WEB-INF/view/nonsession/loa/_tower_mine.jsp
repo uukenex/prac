@@ -31,6 +31,7 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '어둠의 증표'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff']; // [2026-11-18] 예전 타락한 대주교의 인장
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
+  ORE_NAME[83] = '나무'; ORE_COL[83] = ['#7a4a22', '#c8945a']; // [2026-11-19] 하피의 둥지 나무를 곡괭이로 -- 배 수리 재료
   ORE_NAME[82] = '내구도 회복 키트'; ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
   ORE_NAME[81] = '물의 심장'; ORE_COL[81] = ['#2a7ad8', '#bfe8ff']; RARE_GEM[81] = 1; // [2026-11-18] 심해의 크라켄
   ORE_NAME[80] = '정제된 마석'; ORE_COL[80] = ['#5a1a6a', '#ff8ae8']; RARE_GEM[80] = 1; // [2026-11-18] 마계 마을 채광
@@ -4105,7 +4106,8 @@ var TowerMine = (function () {
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
     ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79 || g === 81; }], // [2026-11-17] + 빛의 심장, [2026-11-18] + 어둠의 심장, 심판의 증표, 물의 심장
     ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }], // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
-    ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }] // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
+    ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }], // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
+    ['🪵 목재', function (g) { return g === 83; }] // [2026-11-19] 나무(배 수리)
   ];
   // [2026-11-19] "인벤토리 카테고리에 낚시(성급별)" -- 성급(★8 -> ★1)마다 도감 물고기, 낚은 건 수, 안 낚은 건 ???. 서버 어망(action=fishinv)은 30초 동안 다시 쓰고, 낚으면 새로.
   var fishInvD = null, fishInvAt = 0, fishInvBusy = false;
@@ -4132,6 +4134,18 @@ var TowerMine = (function () {
   }
   function fishInfo(id) {
     ((fishInvD && fishInvD.fishInv) || []).forEach(function (g) { g.fish.forEach(function (f) { if (f.id === id) msg(f.emoji + ' ' + g.star + ' ' + f.name + ' (' + f.qty + '마리)' + (f.desc ? ' -- ' + f.desc : ''), 4200); }); });
+  }
+  // [2026-11-19] "배 수리할 때 재료를 선택해서 납부 -- 바다 보석이나 나무(하피의 둥지 나무를 곡괭이로), 나무 1개당 5, 보석 20" -- 재료마다 1개 / 가득(필요한 만큼, 가진 만큼까지)
+  function boatFixHtml(a) {
+    var hp = a.boatHp || 0, mx = a.boatHpMax || 1, pc = Math.floor(hp * 100 / mx);
+    var h = '<div class="mine-smith-say">🔨 배 수리 -- ' + (hp > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + '<br><small>배 체력 ' + fmtN(hp) + ' / ' + fmtN(mx) + ' (' + pc + '%) · 재료를 골라 내세요: 🪵 나무 1개당 5%, 바다 보석 1개당 20%</small><span class="mine-bar hp" style="margin-top:4px"><i style="width:' + pc + '%"></i></span></div>';
+    (a.boatMats || []).forEach(function (m) {
+      var full = Math.min(m.need, m.have), dis = m.have > 0 ? '' : 'disabled ';
+      h += '<div class="mine-smith-row"><span class="nm"><img src="' + oreIcon(m.grade) + '" alt="" style="width:16px;vertical-align:middle"> ' + m.name + ' <small>보유 ' + fmtN(m.have) + '개 · 1개당 ' + m.pct + '%' + (m.have > 0 || m.code !== 'WOOD' ? '' : ' -- 하피의 둥지 나무를 곡괭이로 찍어 얻어요') + '</small></span>'
+        + '<button type="button" ' + dis + 'onclick="TowerMine.boatFix(\'' + m.code + '\', 1)">1개</button>'
+        + (full > 1 ? '<button type="button" onclick="TowerMine.boatFix(\'' + m.code + '\', ' + full + ')">' + full + '개' + (full >= m.need ? ' (가득)' : '') + '</button>' : '') + '</div>';
+    });
+    return h;
   }
   function invEtcHtml() {
     var ores = (st.ores || []).filter(function (o) { return o.qty > 0; }), used = {}, h = '';
@@ -4200,7 +4214,7 @@ var TowerMine = (function () {
     }
     if (n.kind === 'boatwright') {
       if (a.boat) return h + have + '<div class="mine-smith-say">⛵ 이미 1인용 배가 있어요. 뱃사공에게 배 타기를 부탁하세요.</div>'
-          + (a.boatFix > 0 ? '<div class="mine-smith-row"><span class="nm">🔨 배 수리<small>' + ((a.boatHp || 0) > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + ' · 진주 ' + a.boatFix + '개 (체력 ' + fmtN(a.boatHp || 0) + ' / ' + fmtN(a.boatHpMax || 0) + ')</small></span><button type="button" onclick="TowerMine.boatFix()">고치기</button></div>' : ''); // [2026-11-18] 배 수리는 배 목수가
+          + (a.boatFix > 0 ? boatFixHtml(a) : ''); // [2026-11-18] 배 수리는 배 목수가
       return h + have + '<div class="mine-smith-row"><span class="nm">⛵ 1인용 배<small>뱃길로 나가 일곱 섬에 내릴 수 있어요</small>' + costHtml(a.boatCosts) + '</span>'
           + '<button type="button" ' + (a.boatCan ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiAct(\'boat\')">만들기</button></div>';
     }
@@ -4215,7 +4229,7 @@ var TowerMine = (function () {
         : '⛵ 1인용 배가 없어요 -- 다도해 본섬 배 목수가 만들어 줘요(본섬은 남쪽 섬에서 큰 배로).') + '</div>';
     var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 윤슬항', true]] // [2026-11-19] 모두에게(예전: 관리자만)
         : [['opensea', '🌊 바다 위', '북쪽 끝은 남쪽 바닷가', true]];
-    if (a.boat && a.boatFix > 0) h += '<div class="mine-smith-row"><span class="nm">🔨 배 수리<small>' + (hp > 0 ? '깎인 만큼 고쳐요' : '부서진 배 -- 고쳐야 바다로 나갈 수 있어요') + ' · 진주 ' + a.boatFix + '개</small></span><button type="button" onclick="TowerMine.boatFix()">고치기</button></div>';
+    if (a.boat && a.boatFix > 0) h += boatFixHtml(a); // [2026-11-19] 재료 골라 수리
     return h + '<div class="mine-smith-menu">' + dests.map(function (d) {
       var can = a.boat && hp > 0 && d[3];
       return '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.sail(\'' + d[0] + '\')">' + d[1] + '<small>' + (d[3] ? d[2] : '🔒 준비 중') + '</small></button>';
@@ -7881,6 +7895,7 @@ var TowerMine = (function () {
       if (d.reload) { reload(); return; }
       if (!d.ok) { if (d.message) msg(d.message, 2200); return; }
       floats.push({ x: tx, y: ty - 0.3, text: '🪓 ' + d.chop + '/' + d.need, color: '#ffe0a0', t0: performance.now() });
+      if (d.wood) floats.push({ x: P.x, y: P.y - 0.9, text: '+' + d.wood + ' 🪵 나무', color: '#c8945a', t0: performance.now() + 200 }); // [2026-11-19] 배 수리 재료
       if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeFallAt[d.tree] = performance.now(); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
     }).catch(function () { chopBusy = false; });
   }
@@ -8104,7 +8119,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function () { gearAct('/api/tower-mine-archi?action=boatfix'); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
