@@ -31,6 +31,7 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '어둠의 증표'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff']; // [2026-11-18] 예전 타락한 대주교의 인장
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
+  ORE_NAME[84] = '태초의 보석'; ORE_COL[84] = ['#fff4b0', '#ffffff']; RARE_GEM[84] = 1; // [2026-11-20] 최후의 방어선 세공사 -- 검기 폭 3칸
   ORE_NAME[83] = '나무'; ORE_COL[83] = ['#7a4a22', '#c8945a']; // [2026-11-19] 하피의 둥지 나무를 곡괭이로 -- 배 수리 재료
   ORE_NAME[82] = '내구도 회복 키트'; ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
   ORE_NAME[81] = '물의 심장'; ORE_COL[81] = ['#2a7ad8', '#bfe8ff']; RARE_GEM[81] = 1; // [2026-11-18] 심해의 크라켄
@@ -725,7 +726,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -2029,6 +2030,9 @@ var TowerMine = (function () {
     // [2026-10-28] "공격 버튼은 내 캐릭터 주변 동서남북을 포함한 8방향을 타겟으로" -- 상하좌우에 없으면 대각선(바라보는 쪽은 좌우)
     var diag = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
     for (var di = 0; di < diag.length; di++) { var dm = mobOcc[(P.x + diag[di][0]) + ',' + (P.y + diag[di][1])]; if (dm) return { m: dm, dir: diag[di][0] < 0 ? 'left' : 'right' }; }
+    // [2026-11-20] "검기를 배우면 기본 공격 사거리도 같이(무속성), 검기 사거리 중 가장 높은 것만큼" -- 바라보는 쪽으로 2 ~ 사거리 칸(서버 mineMeleeReach)
+    var reach = (st && st.aura && st.aura.reach) | 0;
+    for (var rk = 2; f && rk <= reach; rk++) { var rm = mobOcc[(P.x + f[0] * rk) + ',' + (P.y + f[1] * rk)]; if (rm) return { m: rm, dir: P.dir }; }
     return null;
   }
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
@@ -2426,7 +2430,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', primalsmith: '#fff4b0', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -3057,6 +3061,33 @@ var TowerMine = (function () {
     return h;
   }
   /** [2026-11-17] 최후의 방어선 -- 악마 광석 정제사: 조각 하나마다 10%로 미스릴 원석. */
+  // [2026-11-20] 최후의 방어선 태초의 보석 세공사 -- 재료(마계의 정수·거룡의 심장 조각·악마의 광석 조각·광석·세공 보석)로 태초의 보석(한 사람에 하나), 쓰면 검기 폭 3칸(한 번만)
+  var primalInfo = null, primalBusy = false;
+  function primalGo(act) {
+    if (primalBusy) return;
+    primalBusy = true;
+    api('/api/tower-mine-token?action=' + act + '&code=x&g=0').then(function (d) {
+      primalBusy = false;
+      if (!d) return;
+      if (d.ores) st.ores = d.ores;
+      if (d.aura) st.aura = d.aura;
+      primalInfo = d;
+      if (act !== 'primalInfo' && d.message) { msg(d.message, 3600); if (d.ok) { flashT0 = performance.now(); if (act === 'primalUse') banner = { text: '✨ 검기 폭 3칸!', t0: performance.now(), rainbow: true }; } }
+      if (smithOpen && smithView === 'primal') renderSmith(smithNpc);
+    }).catch(function () { primalBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
+  }
+  function primalHtml(n) {
+    var d = primalInfo || {}, ic = '<img src="' + oreIcon(84) + '" alt="" style="width:16px;vertical-align:middle"> ';
+    var h = npcHead('💎 ' + n.name, false) + talkBlock(n, n.line);
+    if (!primalInfo) return h + '<div class="mine-smith-say">💎 재료를 살펴보는 중...</div>';
+    if (d.wide) return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">✨ 태초의 빛이 이미 그대의 검에 깃들어 있네. 검기가 3칸 폭으로 뻗어 나가지.<br><small>태초의 보석은 한 사람에게 한 번뿐이에요.</small></div>';
+    if ((d.gem | 0) > 0) return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">' + ic + '<b>태초의 보석</b>을 가지고 있군. 검에 깃들이면 검기가 <b>3칸 폭</b>으로 뻗어 나가네. <small>(한 번만 -- 보석은 사라져요)</small>'
+      + '<div style="margin-top:6px"><button type="button" class="mine-mini-btn" onclick="TowerMine.primal(\'primalUse\')">✨ 검에 깃들이기</button></div></div>';
+    var ok = (d.cost || []).every(function (c) { var hv = c.have; (st && st.ores || []).forEach(function (o) { if (o.grade === c.grade && o.qty != null) hv = o.qty; }); return hv >= c.need; });
+    return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">' + ic + '<b>태초의 보석</b> <small>마계의 정수(정제된 마석) · 거룡의 심장 조각(내구도 회복 키트) · 악마의 광석 조각 · 구리~미스릴 · 세공된 보석(땅·바다)을 모두 녹여 하나로. 검에 깃들이면 검기 폭 3칸(한 사람에 한 번).</small>'
+      + '<div style="margin-top:6px">' + costHtml(d.cost) + '</div>'
+      + '<div style="margin-top:6px"><button type="button" class="mine-mini-btn"' + (ok ? '' : ' data-lack="1"') + ' onclick="TowerMine.primal(\'primalMake\')">💎 만들기</button></div></div>';
+  }
   var refineInfo = null, refineBusy = false;
   function refineGo(act, n) {
     if (refineBusy) return;
@@ -3080,7 +3111,7 @@ var TowerMine = (function () {
     h += '</div>';
     var mn = d.mana | 0, mic = '<img src="' + oreIcon(80) + '" alt="" style="width:16px;vertical-align:middle"> '; // [2026-11-18] 정제된 마석 -> 미스릴 원석 1:1
     h += '<div class="mine-smith-say" style="border:1px solid #ff8ae8"><b>💠 마석 교환</b> <small>' + mic + '정제된 마석 하나를 미스릴 원석 하나로 바꿔 줘요.</small>';
-    h += '<div class="mine-smith-row"><span class="nm">' + mic + '정제된 마석<small>보유 ' + mn + '개 · 마계 마을 땅을 캐면 나와요</small></span></div>';
+    h += '<div class="mine-smith-row"><span class="nm">' + mic + '정제된 마석<small>보유 ' + mn + '개 · 마계 마을에 가면 하나씩 받아요</small></span></div>';
     [[1, '1개'], [10, '10개'], [0, '전부']].forEach(function (b) { h += '<button type="button" class="mine-mini-btn"' + (mn < Math.max(1, b[0]) ? ' data-lack="1"' : '') + ' onclick="TowerMine.manaSwap(' + b[0] + ')">' + b[1] + ' 교환</button> '; });
     return h + '</div>';
   }
@@ -3337,6 +3368,7 @@ var TowerMine = (function () {
     if (n.kind === 'mailbox') { setAuto(false); mailData = null; openSmith(n, 'mail'); mailGo('mail', null); return; } // [2026-11-17] 우체부
     if (n.kind === 'wbboard') { setAuto(false); wbBoard = null; openSmith(n, 'wbboard'); api('/api/tower-mine-wb?action=board').then(function (d) { wbBoard = d; if (smithOpen && smithView === 'wbboard') renderSmith(smithNpc); }).catch(function () { }); return; } // [2026-11-17] 월드보스 게시판
     if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
+    if (n.kind === 'primalsmith') { setAuto(false); primalInfo = null; openSmith(n, 'primal'); primalGo('primalInfo'); return; } // [2026-11-20] 태초의 보석 세공사
     if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
       setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
       api('/api/tower-mine-bosscall?action=info').then(function (d) { bossCallInfo = d; if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc); }).catch(function () {});
@@ -4126,7 +4158,7 @@ var TowerMine = (function () {
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
     ['📅 요일석', function (g) { return g >= 11 && g <= 18; }],
-    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79 || g === 81; }], // [2026-11-17] + 빛의 심장, [2026-11-18] + 어둠의 심장, 심판의 증표, 물의 심장
+    ['👑 고유 증표 (보스·피라미드)', function (g) { return g === 31 || g === 32 || g === 33 || g === 39 || g === 64 || g === 65 || g === 71 || g === 77 || g === 78 || g === 79 || g === 81 || g === 84; }], // [2026-11-17] + 빛의 심장, [2026-11-18] + 어둠의 심장, 심판의 증표, 물의 심장
     ['🧩 조각', function (g) { return (g >= 60 && g <= 63) || (g >= 66 && g <= 69); }], // [2026-10-29] 무기 조각, [2026-11-06] 갑옷 조각
     ['😈 악마의 땅 · 마계', function (g) { return g >= 73 && g <= 76; }], // [2026-11-17] 인장 둘, 악마의 광석 조각, 종말의 파편
     ['🪵 목재', function (g) { return g === 83; }] // [2026-11-19] 나무(배 수리)
@@ -4720,6 +4752,7 @@ var TowerMine = (function () {
     if (smithView === 'token') { el.smith.innerHTML = tokenHtml(n); return; } // [2026-11-15]
     if (smithView === 'river') { el.smith.innerHTML = riverHtml(n); return; } // [2026-11-15]
     if (smithView === 'refine') { el.smith.innerHTML = refineHtml(n); return; } // [2026-11-17]
+    if (smithView === 'primal') { el.smith.innerHTML = primalHtml(n); return; } // [2026-11-20]
     if (smithView === 'wbboard') { el.smith.innerHTML = wbBoardHtml(n); return; } // [2026-11-17] 월드보스 게시판
     if (smithView === 'mail') { el.smith.innerHTML = mailHtml(n); return; } // [2026-11-17] 우편함
     if (smithView === 'elem') { el.smith.innerHTML = elemHtml(n); return; } // [2026-10-29] 원소술사
@@ -7497,7 +7530,7 @@ var TowerMine = (function () {
     // [2026-11-04] 검기 -- 속성마다 그 색의 초승달 칼날이 바라보는 방향으로 사거리만큼 날아간다(속성이 많으면 겹겹이 조금씩 늦게)
     // [2026-11-05] "검기 더 진하고 두껍게" -- 굵기 약 2배, 바깥 번짐 + 밝은 심, 끝까지 진하게. 관리자는 폭 3칸이라 칼날도 3칸 너비.
     auraFx = auraFx.filter(function (f) { return now - f.t0 < AURA_FX_MS + 180; });
-    var auraWide = !!(st && st.adminMaps);
+    var auraWide = !!(st && (st.adminMaps || (st.aura && st.aura.wide))); // [2026-11-20] 태초의 보석을 쓴 사람도 3칸 폭
     auraFx.forEach(function (f) {
       var el0 = now - f.t0, k = Math.min(1, el0 / AURA_FX_MS), fo = el0 > AURA_FX_MS ? 1 - (el0 - AURA_FX_MS) / 180 : 1;
       if (el0 < 0) return; // [2026-11-07] 다른 사람 공격 -- 서버 시각 간격만큼 늦게 시작
@@ -8189,7 +8222,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, primal: primalGo, /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
