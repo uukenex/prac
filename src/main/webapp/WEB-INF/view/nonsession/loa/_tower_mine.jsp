@@ -3347,6 +3347,13 @@ var TowerMine = (function () {
     wbDownEl.style.display = 'none';
     if (wbDownUntil) { wbDownUntil = 0; floats.push({ x: P.x, y: P.y - 0.6, text: '✨ 다시 일어났어요!', color: '#ffe14d', big: true, t0: performance.now() }); }
   }
+  /** [2026-11-20] 보스 이름 옆 "🎁 3/5" -- 오늘 남은 보상 횟수. */
+  function bossRwTag(name) {
+    var r = ((st && st.bossRw) || []).filter(function (x) { return x.name === name; })[0];
+    if (!r) return '';
+    var left = Math.max(0, r.max - r.used);
+    return ' · <b style="color:' + (left ? '#7cf08a' : '#ff8a8a') + '">🎁 보상 ' + left + '/' + r.max + '</b>';
+  }
   function worldBossHtml() {
     var L = (st && st.bosses) || [], tn = nowSrv();
     var rows = L.map(function (b) {
@@ -3354,8 +3361,11 @@ var TowerMine = (function () {
           : b.need ? '⚔️ 마물 처치 ' + (b.kills | 0) + '/' + b.need + ' -- 다 차면 나타나요'
           : (b.callAt > tn ? '🔒 ' + callHhmm(b.callAt) + '부터 소환 가능 (' + callLeftTxt(b.callAt - tn) + ' 뒤)' : '✅ 지금 소환할 수 있어요');
       return '<div class="mine-smith-row" style="display:block"><b>' + escAttr(b.name) + '</b> <small>' + escAttr(b.mapName || '') + '</small> · '
-          + (b.alive ? '<b style="color:#ff6a6a">👑 나와 있어요</b>' : '<span style="color:#a89ec8">💤 없음</span>') + '<br><small>' + sub + '</small></div>';
+          + (b.alive ? '<b style="color:#ff6a6a">👑 나와 있어요</b>' : '<span style="color:#a89ec8">💤 없음</span>') + bossRwTag(b.name) + '<br><small>' + sub + '</small></div>';
     }).join('');
+    // [2026-11-20] "동일 보스는 하루 5회까지만 보상 -- 지도에서 보스를 볼 때 몇 중 몇 남았는지 보스별로" -- 목록에 없는 보스(크라켄, 보로네오 등)도 아래 표에
+    var rwAll = ((st && st.bossRw) || []).map(function (r) { var left = Math.max(0, r.max - r.used); return '<span style="display:inline-block;margin:2px 8px 2px 0;' + (left ? '' : 'opacity:.55') + '">' + escAttr(r.name) + ' <b style="color:' + (left ? '#7cf08a' : '#ff8a8a') + '">' + left + '/' + r.max + '</b></span>'; }).join('');
+    if (rwAll) rows += '<div class="mine-smith-say" style="font-size:12px">🎁 <b>오늘 남은 보스 보상</b> (보스마다 하루 ' + (((st.bossRw || [])[0] || {}).max || 5) + '번, 0시에 다시)<br>' + rwAll + '</div>';
     var adm = st && st.adminMaps ? '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.wbTest(\'start\')">🛠️ 월드보스 시험 회차 시작 (10분, 동쪽 성곽 내성)</button><button type="button" onclick="TowerMine.wbTest(\'stop\')">🛠️ 월드보스 회차 끝내기</button></div>' : ''; // [2026-11-15] 관리자 시험
     return '<div class="mine-smith-say" style="border:1px solid #ffd27a">👑 <b>보스</b> -- 보스룸 소환사에게 말을 걸어 불러내요. 소환은 보스마다, 사람마다 2시간에 한 번이에요.</div>'
         + (rows || '<div class="mine-smith-say">아직 갈 수 있는 보스룸이 없어요.</div>') + adm;
@@ -4397,6 +4407,7 @@ var TowerMine = (function () {
     api('/api/tower-mine-wb?action=bosses').then(function (d) {
       if (!d || !d.bosses || !st) return;
       st.bosses = d.bosses;
+      if (d.bossRw) st.bossRw = d.bossRw; // [2026-11-20] 보스별 오늘 보상 횟수
       if (smithOpen && smithView === 'world') renderSmith(smithNpc);
     }).catch(function () { });
   }
@@ -7928,6 +7939,7 @@ var TowerMine = (function () {
     if (s.wsHost && s.wsHost !== wsHostMem) { wsHostMem = s.wsHost; try { localStorage.setItem('tw-mine-wshost', s.wsHost); } catch (e) { } } // [2026-11-06] 다음 입장 때 소켓을 먼저
     mapZones = []; twDoorWas = false; twFx = null; spikePend = 0; spikeTotal = 0; spikeHitAt = {}; loot = []; lootPops = []; buildSprites(s.look); setCombat(s.combat); mobSt = {}; mobDeathReady = false; mobDeaths = []; noOre = {}; lavaCells = {}; scan = null; scanKey = ""; bossWarned = false; cold = null; lastBz = 0; raid = null; heatWarned = false; iceSt = null; /* [2026-10-26] 한기, [2026-10-28] 대주교, 더위, 얼음 여왕 */
     if (s.mailN > 0 && !mailNoticeShown) { mailNoticeShown = true; setTimeout(function () { msg('📮 받지 않은 우편이 ' + s.mailN + '통 있어요! 마을 우체부에게 가 보세요.', 4200); }, 1800); } // [2026-11-17] 우편함
+    if (s.bossRwHere) setTimeout(function () { var h = s.bossRwHere; msg('👑 ' + h.name + ' -- 오늘 보상 ' + h.left + '/' + h.max + '번 남았어요' + (h.left ? '' : ' (내일 0시에 다시)'), 3600); }, 1400); // [2026-11-20] 보스룸 -- 보스 보상 하루 5번
     if (s.notice && !noticeShown) { noticeShown = true; noticeData = { id: s.noticeId, text: s.notice }; setTimeout(function () { openSmith({ name: '광산 소식', line: '', kind: 'notice' }, 'notice'); }, 700); } // [2026-10-28] 광산 소식(한 번)
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동

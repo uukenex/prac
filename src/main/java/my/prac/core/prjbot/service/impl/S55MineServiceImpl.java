@@ -3126,7 +3126,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (gate != null) return gate;
         long now = System.currentTimeMillis();
         if ("board".equals(action)) { HashMap<String, Object> bo = mineWbBoard(now); bo.put("ok", true); return bo; } // [2026-11-17] 월드보스 게시판
-        if ("bosses".equals(action)) { HashMap<String, Object> bo = new HashMap<>(); bo.put("ok", true); bo.put("bosses", mineBossList(userName, now)); return bo; } // [2026-11-18] 보스 목록(천둥 황소 처치 수 등)을 열 때 새로
+        if ("bosses".equals(action)) { HashMap<String, Object> bo = new HashMap<>(); bo.put("ok", true); bo.put("bosses", mineBossList(userName, now)); bo.put("bossRw", mineBossRwList(userName)); return bo; } // [2026-11-18] 보스 목록(천둥 황소 처치 수 등)을 열 때 새로
         if (("start".equals(action) || "stop".equals(action)) && isMineAdmin(userName)) {
             if ("start".equals(action)) {
                 mineWbPool(now);
@@ -4107,6 +4107,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         all.add(userName);
         if (hitters != null) all.addAll(hitters);
         for (String u : all) {
+            if (!u.equals(userName) && mineBossRwLeft(u, S5MineMobs.SHRINE_BOSS_TYPE) == 0 && !isMineAdmin(u)) continue; // [2026-11-20] 보상 하루 5번(쓰러뜨린 사람은 이미 확인)
             if (RND.nextInt(100) >= MINE_TOKEN_PCT) continue; // [2026-10-30] 처치마다 함께 싸운 사람별로 30%(예전: 첫 처치 1번)
             dao.addUserOre(u, S5MineMap.NINJA_BOOK_CODE, 1);
             dao.addUserOre(u, S5MineMap.MOON_STONE_CODE, 1);
@@ -5004,6 +5005,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int levelUp = 0;
         if (killed) {
             kills = 1;
+            boolean bossRw = !type.boss || S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, mob.type); // [2026-11-20] 보스 보상 하루 5번
             mineThunderKill(map, type, now); // [2026-11-05] 밤 마물 처치 수
             msg.append(mineTowerKill(userName, map, mob, type)); // [2026-11-15] 탑 -- 시즌5 PP, 수문장
             if (mob.type == S5MineMobs.THUNDER_BOSS_TYPE) { // [2026-11-05] 천둥 황소 처치 -- 마물이 돌아온다
@@ -5043,7 +5045,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
-            mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
+            if (bossRw) mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
+            else msg.append(mineBossRwNoMsg(type.name)); // [2026-11-20]
             if (mob.type == S5MineMobs.HARPY_BOSS_TYPE) { // [2026-11-08] 하피 처치 -- 2시간 뒤 다시
                 mineBossKilledNow(MINE_HARPY_KEY, userName, now);
                 mineHarpyReset();
@@ -5089,9 +5092,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 else if (nk == MINE_NINJA_NEED) msg.append(" 🥷 닌자 ").append(MINE_NINJA_NEED).append("명 처치! 신궁 수문장에게 돌아가 열쇠를 받으세요.");
                 else if (nk < MINE_NINJA_NEED && nk % 10 == 0) msg.append(" 🥷 수색 ").append(nk).append("/").append(MINE_NINJA_NEED);
             }
-            List<HashMap<String, Object>> killDrops = type.noReward || mob.type == S5MineMobs.WB_BOSS_TYPE ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
+            List<HashMap<String, Object>> killDrops = !bossRw || type.noReward || mob.type == S5MineMobs.WB_BOSS_TYPE ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : mob.type == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : mob.type == S5MineMobs.BORO_BOSS_TYPE ? mineBoroDrops(userName, msg) : mob.type == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank);
-            if (type.boss && !type.noReward && mob.type != S5MineMobs.WB_BOSS_TYPE) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
+            if (bossRw && type.boss && !type.noReward && mob.type != S5MineMobs.WB_BOSS_TYPE) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
+            if (type.boss && mineBossRwCounted(mob.type) && S5MineMap.towerFloor(map.id) <= 0) { int rl = mineBossRwLeft(userName, mob.type); out.put("bossRwLeft", rl); if (bossRw) msg.append(" 🎁 오늘 보상 ").append(rl).append("/").append(MINE_BOSS_RW_MAX).append("번 남음"); } // [2026-11-20]
             if (type.boss) { int sh = mineBossShare(userName, map, mob, bossHitters); if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!"); } // [2026-11-13]
             if (type.boss) out.put("bossName", type.name); // [2026-11-07] 관리자 알림(보스 전용 아이템이 나왔는지만)
             if (type.boss) { // [2026-11-17] "보스/상자 이펙트가 실제 드랍보다 너무 크다 -- 실제 개수만큼" -- 한 사람 몫(함께 싸운 사람도 같은 보상)을 적어 둔다
@@ -5288,6 +5292,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-10-28] "보스가 안 나온다, 맵 초기화 때 다시 나와야, 전체 지도에도 표기" -- 보스는 주기마다 한 번(잡히면 다음 리셋 때 다시).
         //  전체 지도가 보스 맵에 지금 있는지 / 다음에 나오는 시각을 보여 준다.
         out.put("bosses", mineBossList(userName, now)); // [2026-11-18] 목록 만들기는 mineBossList로(보스 창을 열 때 따로 다시 받는다)
+        out.put("bossRw", mineBossRwList(userName)); // [2026-11-20] 보스별 오늘 받은 보상 횟수
+        { S5MineMap.Mob hb = map == null || S5MineMap.towerFloor(map.id) > 0 ? null : mineBossOf(map); // [2026-11-20] 보스룸에 들어오면 이 보스 오늘 남은 보상
+          if (hb != null && mineBossRwCounted(hb.type)) { HashMap<String, Object> h = new HashMap<>(); h.put("name", S5MineMobs.TYPES.get(hb.type).name); h.put("left", mineBossRwLeft(userName, hb.type)); h.put("max", MINE_BOSS_RW_MAX); out.put("bossRwHere", h); } }
         HashMap<String, int[]> dims = new HashMap<>(); // [2026-11-11] 전체 지도 -- 맵 크기만큼 칸 크기를 다르게
         for (String mid : S5MineMap.ids()) { S5MineMap dm = S5MineMap.get(mid); dims.put(mid, new int[] { dm.w, dm.h }); }
         out.put("mapDims", dims);
@@ -7599,7 +7606,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (ult && ot.boss) mineMercBossKilled(userName, map, om, ot, now, out, drops, "필살기로 "); // [2026-11-07] 필살기로 쓰러뜨린 보스 -- 기록/효과/보상은 직접 잡은 것과 같게
                 if (!ot.noReward) {
                     if (!(ult && ot.boss)) drops.addAll(mineMobDrops(userName, map, ot, msg, om.rank));
-                    mineWeaponDrop(userName, items, ot, om.rank, msg, out);
+                    if (!(ot.boss && Boolean.TRUE.equals(out.get("bossRwNo")))) mineWeaponDrop(userName, items, ot, om.rank, msg, out); // [2026-11-20] 보스 보상 하루 5번
                 }
                 MineEngage me = MINE_ENGAGE.get(userName);
                 if (me != null) me.mobs.remove(om.id);
@@ -8962,7 +8969,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!ot.noReward) {
                 StringBuilder dm = new StringBuilder();
                 if (!ot.boss) allDrops.addAll(mineMobDrops(userName, map, ot, dm, om.rank));
-                mineWeaponDrop(userName, items, ot, om.rank, dm, mo);
+                if (!(ot.boss && Boolean.TRUE.equals(mo.get("bossRwNo")))) mineWeaponDrop(userName, items, ot, om.rank, dm, mo); // [2026-11-20] 보스 보상 하루 5번
             }
         }
         if (rows.isEmpty()) return new long[] { 0, 0 };
@@ -8999,6 +9006,45 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!t.boss || t.sim || t.dummy || t.noReward || userName == null) return;
         if (s.hitters == null) s.hitters = new java.util.HashSet<>();
         s.hitters.add(userName);
+    }
+    // [2026-11-20] "동일 보스는 하루 5회까지만 보상, 보스룸 진입 때나 지도에서 보스를 볼 때 몇 중 몇 남았는지 보스별/유저별로" --
+    //  보스 종류마다 사람마다 하루(0시 기준) MINE_BOSS_RW_MAX번까지 처치 보상(보스 보상 + 달빛석/별빛석 확률 + 장비 드랍)을 받는다. 직접 처치/함께 싸운 몫/필살기·용병 처치 모두 같은 횟수.
+    //  다 받은 뒤에도 잡을 수는 있다(경험치와 처치 기록은 그대로). 월드보스(순위 보상), 여왕개미(보상 없음), 탑 수문장, 허수아비는 세지 않는다.
+    //  아이템 칸 BRW<보스 종류> = yyyyMMdd * 10 + 받은 횟수(날짜가 바뀌면 0부터). 관리자는 세기만 하고 막지 않는다(시험용).
+    static final int MINE_BOSS_RW_MAX = 5;
+    static final int[] MINE_BOSS_RW_TYPES = { S5MineMobs.BOSS_TYPE, S5MineMobs.RAID_BOSS_TYPE, S5MineMobs.ICE_BOSS_TYPE, S5MineMobs.SHRINE_BOSS_TYPE, S5MineMobs.LAVA_BOSS_TYPE,
+            S5MineMobs.PHARAOH_BOSS_TYPE, S5MineMobs.THUNDER_BOSS_TYPE, S5MineMobs.HARPY_BOSS_TYPE, S5MineMobs.BORO_BOSS_TYPE, S5MineMobs.KRAKEN_TYPE };
+    static boolean mineBossRwCounted(int t) { for (int x : MINE_BOSS_RW_TYPES) if (x == t) return true; return false; }
+    static String mineBossRwKey(int t) { return "BRW" + t; }
+    static int mineBossRwUsed(Map<String, Integer> items, int t) {
+        int v = items.getOrDefault(mineBossRwKey(t), 0);
+        return v / 10 == mineTodayNum() ? v % 10 : 0;
+    }
+    /** 오늘 남은 보상 횟수(세지 않는 보스면 -1). */
+    int mineBossRwLeft(String u, int t) { return mineBossRwCounted(t) ? Math.max(0, MINE_BOSS_RW_MAX - mineBossRwUsed(mineItems(u), t)) : -1; }
+    /** 이번 처치 보상을 받을 수 있으면 한 번 쓰고 true. 세지 않는 보스면 늘 true. */
+    boolean mineBossRwTake(String u, int t) {
+        if (!mineBossRwCounted(t) || u == null) return true;
+        int used = mineBossRwUsed(mineItems(u), t);
+        boolean admin = isMineAdmin(u);
+        if (used >= MINE_BOSS_RW_MAX && !admin) return false;
+        dao.upsertMineItem(u, mineBossRwKey(t), mineTodayNum() * 10 + Math.min(9, used + 1));
+        return true;
+    }
+    static String mineBossRwNoMsg(String name) { return " 🎁 오늘 " + name + " 보상 " + MINE_BOSS_RW_MAX + "번을 다 받았어요. 내일 0시에 다시 받을 수 있어요."; }
+    /** 화면용 -- 보스마다 오늘 받은 횟수. */
+    List<HashMap<String, Object>> mineBossRwList(String u) {
+        Map<String, Integer> it = mineItems(u);
+        List<HashMap<String, Object>> l = new ArrayList<>();
+        for (int t : MINE_BOSS_RW_TYPES) {
+            if (t < 0) continue;
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("name", S5MineMobs.TYPES.get(t).name);
+            m.put("used", Math.min(MINE_BOSS_RW_MAX, mineBossRwUsed(it, t)));
+            m.put("max", MINE_BOSS_RW_MAX);
+            l.add(m);
+        }
+        return l;
     }
     /** [2026-11-13] 보스 종류별 처치 보상(쓰러뜨린 사람과 같은 것). */
     List<HashMap<String, Object>> mineBossKillDrops(String u, S5MineMap map, S5MineMap.Mob om, StringBuilder msg) {
@@ -9039,6 +9085,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return who.size();
     }
     void mineBossShareOne(String u, String killer, S5MineMap map, S5MineMap.Mob om, S5MineMobs.Type ot) {
+        if (S5MineMap.towerFloor(map.id) <= 0 && !mineBossRwTake(u, om.type)) { // [2026-11-20] 보스 보상 하루 5번
+            MINE_SHRINE_REWARD_MSG.merge(u, "👑 " + ot.name + "이(가) 쓰러졌어요!" + mineBossRwNoMsg(ot.name), (p, q) -> p + " / " + q);
+            return;
+        }
         {
             {
                 StringBuilder m = new StringBuilder();
@@ -9062,7 +9112,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (t == S5MineMobs.HARPY_BOSS_TYPE) { mineBossKilledNow(MINE_HARPY_KEY, userName, now); mineHarpyReset(); } // [2026-11-08]
         if (t == S5MineMobs.LAVA_BOSS_TYPE) { mineBossKilledNow(MINE_LAVA_KEY, userName, now); MINE_RANGED_NEXT.clear(); MINE_LAVA.clear(); mo.put("lava", Collections.emptyList()); }
         if (t == S5MineMobs.BOSS_TYPE) mineBossKilledNow(MINE_BOSS_KEY, userName, now);
-        if (!ot.noReward && t != S5MineMobs.WB_BOSS_TYPE) { // [2026-11-15] 월드보스는 순위 보상(mineWbFinish)
+        boolean rw = S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, t); // [2026-11-20] 보스 보상 하루 5번
+        if (!rw) { mo.put("bossRwNo", true); msg.append(mineBossRwNoMsg(ot.name)); }
+        if (rw && !ot.noReward && t != S5MineMobs.WB_BOSS_TYPE) { // [2026-11-15] 월드보스는 순위 보상(mineWbFinish)
             List<HashMap<String, Object>> kd = t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg)
                     : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg)
                     : t == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : t == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : t == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(userName, msg) : t == S5MineMobs.BORO_BOSS_TYPE ? mineBoroDrops(userName, msg) /* [2026-11-18] 필살기/용병으로 쓰러뜨려도 빛의 심장 */ : mineBossDrops(userName, msg);
@@ -9074,6 +9126,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int sh = mineBossShare(userName, map, om, hs);
             if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!");
         }
+        if (!rw && !ot.noReward && t != S5MineMobs.WB_BOSS_TYPE) { // [2026-11-20] 내가 다 받았어도 함께 싸운 사람은 각자 횟수대로
+            MobState ks = MINE_MOB_STATE.get(mineMobKey(map, om.id));
+            java.util.Set<String> hs;
+            if (ks == null) hs = null; else synchronized (ks) { hs = ks.hitters == null ? null : new java.util.HashSet<>(ks.hitters); }
+            mineBossShare(userName, map, om, hs);
+        }
+        if (mineBossRwCounted(t) && S5MineMap.towerFloor(map.id) <= 0) { int rl = mineBossRwLeft(userName, t); mo.put("bossRwLeft", rl); if (rw) msg.append(" 🎁 오늘 보상 ").append(rl).append("/").append(MINE_BOSS_RW_MAX).append("번 남음"); }
         mo.put("bossKilled", true);
         mo.put("bossName", ot.name); // [2026-11-07] 관리자 알림
         mo.put("bossMsg", "👑 " + how + ot.name + "을(를) 쓰러뜨렸어요!" + msg);
