@@ -5359,6 +5359,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         putMinePick(out, minePickDur(row), minePickMax(row));
         putMineFishDur(out, mineFishDurLeft(mineItems(userName))); // [2026-11-20] 낚시 내구도(따로)
+        out.put("fishGear", mineFishGear(userName)); // [2026-11-20] 장비창 낚시용품
         out.put("pickUpgrades", minePickUpgradeList());
         out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
         out.put("nextResetAt", S5MineMap.nextResetAt(now));
@@ -5604,6 +5605,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_FISH_GAP_MS = 2_500L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_FISH_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final String[] MINE_ROD_NAMES = { "", "일반", "고급", "희귀", "영웅", "전설" };
+    /** [2026-11-20] "장비창/접속 전 화면에 낚싯대/찌(있으면) 등 낚시용품도" -- 낚시 장비 줄이 있으면 {rod, bob, rodG, bobG}, 없으면 null. */
+    HashMap<String, Object> mineFishGear(String userName) {
+        HashMap<String, Object> eq;
+        try { eq = dao.selectS55FishEquip(userName); } catch (Exception e) { return null; }
+        if (eq == null) return null;
+        int rod = Math.max(1, Math.min(MINE_ROD_NAMES.length - 1, intVal(eq.get("ROD_GRADE"), 1))), bob = Math.max(1, Math.min(MINE_ROD_NAMES.length - 1, intVal(eq.get("BOBBER_GRADE"), 1)));
+        HashMap<String, Object> g = new HashMap<>();
+        g.put("rod", MINE_ROD_NAMES[rod] + " 낚싯대"); g.put("bob", MINE_ROD_NAMES[bob] + " 찌"); g.put("rodG", rod); g.put("bobG", bob);
+        return g;
+    }
     /** [2026-11-19] "인벤토리 카테고리에 낚시(성급별)" -- 성급(8 -> 1)마다 도감 물고기 + 내가 낚은 수(안 낚은 건 0 -- 화면이 ???로), 낚싯대/찌 등급. */
     HashMap<String, Object> mineFishInv(String userName) {
         HashMap<String, Object> out = new HashMap<>();
@@ -11585,6 +11596,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(u);
         HashMap<String, Object> m = new HashMap<>();
         m.put("userName", u);
+        m.put("fishGear", mineFishGear(u)); // [2026-11-20] 접속 전 화면 낚시용품
         MinePresence p = MINE_PRESENCE.get(u);
         boolean online = p != null && p.mapId != null && now - p.at <= MINE_PRESENCE_TTL_MS;
         S5MineMap map = online ? S5MineMap.get(p.mapId) : mineMapOf(row);

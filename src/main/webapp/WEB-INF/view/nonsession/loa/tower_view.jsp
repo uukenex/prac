@@ -868,6 +868,8 @@
     .minv-item img{ width:20px; height:20px; image-rendering:pixelated; flex:none; }
     .minv-item span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .minv-item b{ color:#ffe14d; font-variant-numeric:tabular-nums; }
+    .minv-fish .fnm{ white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; font-size:10.5px; line-height:1.15; word-break:keep-all; } /* [2026-11-20] 물고기 이름 두 줄(칸 크기 그대로) */
+    .mine-note-btn.quiet, .mine-note-btn.quiet::after{ animation:none; } /* [2026-11-20] 새 알림 없으면 반짝이지 않게(거룡 띠 열기 버튼으로 남을 때) */
     .eq-tabs button{ flex:1; min-width:0; white-space:nowrap; letter-spacing:-.5px; padding:7px 0; font-size:12px; font-weight:800; /* [2026-11-06] 탭 5개(강화) -- 한 줄로 */ background:#2a2340; color:#fff; border:2px solid rgba(244,240,230,.4); cursor:pointer; }
     .eq-tabs button.on{ background:#ffcf4a; color:#2a1d10; border-color:#ffcf4a; }
     .cos-card.worn{ border-color:#ffe14d; background:rgba(255,225,77,.12); }

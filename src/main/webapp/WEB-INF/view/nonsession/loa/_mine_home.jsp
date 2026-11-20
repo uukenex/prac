@@ -120,7 +120,8 @@ window.MineHome = (function () {
       +   '<span class="where">📍 <b>' + esc(u.mapName) + '</b> <span class="num">' + u.x + ',' + u.y + '</span>' + (u.online ? ' · <span style="color:var(--on)">접속 중</span>' : '') + '</span></div>'
       + '<div class="body"><div class="doll"><div class="doll-col">' + slot(u, 'weapon') + slot(u, 'ring') + slot(u, 'gloves') + '</div>'
       +   '<div class="doll-char">' + img + '<small>' + (u.gender === 1 ? '♀' : '♂') + ' Lv.' + u.lv + '</small></div>'
-      +   '<div class="doll-col">' + slot(u, 'armor') /* [2026-11-20] 옷 -> 갑옷(갑옷/외투는 armor 칸) */ + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool') + '</div>'
+      +   '<div class="doll-col">' + slot(u, 'armor') /* [2026-11-20] 옷 -> 갑옷(갑옷/외투는 armor 칸) */ + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool')
+      +   (u.fishGear ? '<div class="slot tool on"><b>🎣 낚시</b><span>' + esc(u.fishGear.rod) + ' · ' + esc(u.fishGear.bob) + '</span></div>' : '') /* [2026-11-20] 낚시용품 */ + '</div>'
       + '<div class="stats">' + meter('❤️ 체력', u.hp, u.hpMax, 'var(--hp)') + meter('✨ 경험치', u.exp, u.expNeed, 'var(--exp)') + meter('⛏️ 곡괭이', u.pickDur, u.pickMax, 'var(--dur)')
       +   '<div class="kv"><div><small>공격력</small><b class="num">' + n(u.atk) + '</b></div><div><small>한기 방어</small><b class="num">' + n(u.coldDef) + '</b></div>'
       +   '<div><small>⛑️ 투구</small><b class="num">' + (u.helmet || 0) + '/' + (u.helmetMax || 0) + '</b></div><div><small>채광</small><b class="num">' + n(u.totalDig) + '</b></div>'

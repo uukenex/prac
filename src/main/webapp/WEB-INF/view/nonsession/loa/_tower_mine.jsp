@@ -2223,7 +2223,10 @@ var TowerMine = (function () {
     if (Math.max(2, baseScale + v) === scale && d < 0) msg('🔍 이 화면에선 더 작게 할 수 없어요.', 1500);
     scale = zoomScale(); zoomHud();
   }
-  function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); }
+  function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); var ds = document.getElementById('mineDmgSum'); if (ds) ds.textContent = dmgSum ? '합산' : '속성별'; }
+  // [2026-11-20] 데미지 숫자 -- 속성별(기본) / 합산 한 번. 이 기기에 저장(tw-mine-dmgsum).
+  var dmgSum = (function () { try { return localStorage.getItem('tw-mine-dmgsum') === '1'; } catch (e) { return false; } })();
+  function dmgSumGo(on) { dmgSum = !!on; try { localStorage.setItem('tw-mine-dmgsum', dmgSum ? '1' : '0'); } catch (e) { } zoomHud(); msg(dmgSum ? '💥 데미지를 합쳐 한 번에 보여 줘요.' : '💥 데미지를 속성별로 보여 줘요.', 1600); }
   // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 카메라를 나와 크라켄(5x5칸 + 휘두르는 다리) 사이로 부드럽게 옮긴다
   //  (같은 날 "화면 크기는 옵션으로" -- 자동 축소는 뺐다). 나는 늘 화면 안(가장자리 1.5칸 안쪽), 아래쪽은 버튼이 덮으니 위 80%에 맞춘다.
   var baseScale = 3, krkCam = { ox: 0, oy: 0, t: 0 };
@@ -3252,7 +3255,12 @@ var TowerMine = (function () {
     if (!wbBar) { wbBar = document.createElement('div'); wbBar.className = 'mine-wb-bar'; el.ov.appendChild(wbBar); }
     var w = wbInfo, tn = nowSrv();
     if (w && w.down && w.down > wbDownUntil) { wbDownUntil = w.down; wbDownShow(); }
-    if (!w || !map || tn >= w.end) { wbBar.style.display = 'none'; return; } // [2026-11-16] "테스트 버튼은 없애도" -- 띠의 관리자 시험 버튼 없앰(보스 창의 관리자 버튼은 남김)
+    if (!w || !map || tn >= w.end) { wbBar.style.display = 'none'; wbBarOpen = false; if (!noteQ && noteBtn) noteBtn.style.display = 'none'; return; }
+    // [2026-11-20] "심연의 거룡이 나와 있을 때도 오른쪽 알림 버튼을 눌러야만 나오게, 너무 불편해" -- 띠는 🔔를 눌렀을 때만(누를 때마다 열고 닫기), 그동안 🔔는 늘 보인다(새 알림 없으면 반짝이지 않게)
+    noteBtnMake();
+    noteBtn.style.display = '';
+    noteBtn.classList.toggle('quiet', !noteQ);
+    if (!wbBarOpen) { wbBar.style.display = 'none'; return; } // [2026-11-16] "테스트 버튼은 없애도" -- 띠의 관리자 시험 버튼 없앰(보스 창의 관리자 버튼은 남김)
     var inWb = map.id === (w.map || 'castle'), mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
     var h;
     if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)' + (w.hp != null && w.hp < 1000 ? ' · 남은 체력 ' + Math.max(1, Math.round(w.hp / 10)) + '%' : '');
@@ -3266,21 +3274,26 @@ var TowerMine = (function () {
   var wbAlertEl = null, wbAlertT = 0, wbPreSeen = 0, wbOnSeen = 0, mapZones = [];
   // [2026-11-18] "보스 알림과 이동 알림 문구를 필살 버튼 위쪽에 반짝이는 버튼 하나로, 누르면 멘트가 나오게" -- 알림이 오면 창을 띄우지 않고 🔔 버튼만 반짝인다.
   //  누르면 그때 마지막 알림을 창(참여하기 버튼 포함)으로 보여 주고 버튼은 사라진다. 10분이 지난 알림은 버튼도 저절로 사라진다.
-  var noteQ = null, noteBtn = null;
+  var noteQ = null, noteBtn = null, wbBarOpen = false;
+  function noteBtnMake() { if (!noteBtn && el.ov) { noteBtn = document.createElement('button'); noteBtn.type = 'button'; noteBtn.className = 'mine-note-btn'; noteBtn.setAttribute('aria-label', '알림'); noteBtn.textContent = '🔔'; noteBtn.onclick = noteOpen; el.ov.appendChild(noteBtn); } }
   function wbAlert(title, sub, join) {
     if (!el.ov) return;
     noteQ = { title: title, sub: sub, join: join, at: Date.now() };
-    if (!noteBtn) { noteBtn = document.createElement('button'); noteBtn.type = 'button'; noteBtn.className = 'mine-note-btn'; noteBtn.setAttribute('aria-label', '알림'); noteBtn.textContent = '🔔'; noteBtn.onclick = noteOpen; el.ov.appendChild(noteBtn); }
+    noteBtnMake();
     noteBtn.style.display = '';
+    noteBtn.classList.remove('quiet');
     noteBtn.classList.remove('ring'); void noteBtn.offsetWidth; noteBtn.classList.add('ring');
     killFeed(title + ' -- ' + sub, '#d8a8ff');
   }
+  function wbActive() { return !!(wbInfo && map && nowSrv() < wbInfo.end); }
   function noteOpen() {
-    if (noteBtn) noteBtn.style.display = 'none';
     var q = noteQ; noteQ = null;
-    if (q && Date.now() - q.at < 600000) wbAlertShow(q.title, q.sub, q.join);
+    if (q && Date.now() - q.at < 600000) { wbAlertShow(q.title, q.sub, q.join); wbBarOpen = true; }
+    else wbBarOpen = !wbBarOpen; // [2026-11-20] 거룡 띠 열고 닫기
+    if (noteBtn) { noteBtn.style.display = wbActive() ? '' : 'none'; noteBtn.classList.add('quiet'); }
+    wbRender();
   }
-  function noteExpire() { if (noteQ && Date.now() - noteQ.at >= 600000) { noteQ = null; if (noteBtn) noteBtn.style.display = 'none'; } }
+  function noteExpire() { if (noteQ && Date.now() - noteQ.at >= 600000) { noteQ = null; if (noteBtn && !wbActive()) noteBtn.style.display = 'none'; } }
   function wbAlertShow(title, sub, join) {
     if (!el.ov) return;
     if (!wbAlertEl) { wbAlertEl = document.createElement('div'); wbAlertEl.className = 'mine-wb-alert'; wbAlertEl.onclick = function (e) { if (!e.target || e.target.tagName !== 'BUTTON') wbAlertEl.style.display = 'none'; }; el.ov.appendChild(wbAlertEl); }
@@ -4550,6 +4563,14 @@ var TowerMine = (function () {
   // [2026-10-28] "인벤토리에 캐릭터 이미지 + 부위별 장착 장비, 누르면 그 부위에 장착 가능한 것이 팝(장착 해제 포함)" -- 가운데 캐릭터, 둘레에 부위 칸
   var eqPop = null;
   function eqPopGo(id) { eqPop = id; if (smithOpen) renderSmith(smithNpc); }
+  /** [2026-11-20] "장비창에 낚싯대/찌(있으면) 등 낚시용품도" -- 누르지 않는 칸: 낚싯대 · 찌 · 낚시 내구도. */
+  function fishSlotHtml() {
+    var g = st && st.fishGear;
+    if (!g) return '';
+    var fc = ['', '#c8c8c8', '#6ad86a', '#6ab8ff', '#c08aff', '#ffb347'];
+    return '<div class="doll-slot on" style="cursor:default"><b>🎣 낚시</b><span><span style="color:' + (fc[g.rodG] || '#fff') + '">' + escAttr(g.rod) + '</span> · <span style="color:' + (fc[g.bobG] || '#fff') + '">' + escAttr(g.bob) + '</span>'
+        + (st.fishDur != null ? '<br><small>내구도 ' + st.fishDur + ' / ' + (st.fishDurMax || 100) + '</small>' : '') + '</span></div>';
+  }
   function dollHtml() {
     var slot = function (sl) {
       var rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; }), w = rows.filter(function (e) { return e.worn; })[0];
@@ -4559,7 +4580,7 @@ var TowerMine = (function () {
     var by = {}; EQ_SLOTS.forEach(function (sl) { by[sl.id] = sl; });
     var h = '<div class="doll"><div class="doll-col">' + ['weapon', 'armor', 'ring', 'gloves'].map(function (k) { return slot(by[k]); }).join('') + '</div>' // [2026-11-06] 갑옷 칸 -- 좌우 4칸씩
         + '<div class="doll-char"><img src="' + lookImg(st.look || {}, 'down') + '" alt="내 캐릭터"><small>Lv.' + myLv() + '</small></div>'
-        + '<div class="doll-col">' + ['necklace', 'boots', 'tool'].map(function (k) { return slot(by[k]); }).join('') + '</div></div>'
+        + '<div class="doll-col">' + ['necklace', 'boots', 'tool'].map(function (k) { return slot(by[k]); }).join('') + fishSlotHtml() + '</div></div>'
         + '<div class="mine-smith-say">칸을 누르면 그 부위에 장착할 수 있는 장비가 나와요.</div>';
     if (eqPop && by[eqPop]) {
       var sl = by[eqPop], rows = (st.equip || []).filter(function (e) { return e.slot === sl.id; });
@@ -4761,8 +4782,8 @@ var TowerMine = (function () {
       var got = g.fish.filter(function (f) { return f.qty > 0; }).length;
       h += '<div class="minv-cat"><div class="cos-slot-h">' + g.star + ' <small>' + got + '/' + g.fish.length + '종</small></div><div class="minv-grid">'
           + g.fish.map(function (f) {
-            return f.qty > 0 ? '<div class="minv-item" style="cursor:pointer" onclick="TowerMine.fishInfo(' + f.id + ')"><span style="font-size:22px;line-height:28px">' + f.emoji + '</span><span>' + f.name + '</span><b>' + f.qty + '</b></div>'
-              : '<div class="minv-item" style="opacity:.4"><span style="font-size:22px;line-height:28px">❔</span><span>' + (f.region ? f.region : '???') + '</span><b></b></div>'; // [2026-11-19] 특산 보석물고기는 지역 이름(어디서 낚는지)
+            return f.qty > 0 ? '<div class="minv-item minv-fish" style="cursor:pointer" onclick="TowerMine.fishInfo(' + f.id + ')"><span style="font-size:22px;line-height:28px">' + f.emoji + '</span><span class="fnm">' + f.name + '</span><b>' + f.qty + '</b></div>'
+              : '<div class="minv-item minv-fish" style="opacity:.4"><span style="font-size:22px;line-height:28px">❔</span><span class="fnm">' + (f.region ? f.region : '???') + '</span><b></b></div>'; // [2026-11-19] 특산 보석물고기는 지역 이름(어디서 낚는지)
           }).join('') + '</div></div>';
     });
     return h;
@@ -6920,8 +6941,8 @@ var TowerMine = (function () {
   }
   function auraShow(d, fxp, fyp, t) {
     if (d.treeFire != null) { msg(d.treeCombo ? '🔥⚡ 불과 번개에 나무가 무너져요!' : '🔥 나무가 무너지기 시작했어요!', 2600); treeSt.forEach(function (q) { if (q[0] === d.treeFire) { q[1] = 1; q[2] = treeNeed; } }); } // [2026-11-08] 하피의 둥지
-    var anc = 0; (d.aura || []).forEach(function (h) { if (h.length > 3 && h[3] + 1 > anc) anc = h[3] + 1; }); // [2026-11-15] 보스가 검기에 걸친 칸 수 -- 칸마다 숫자를 옆으로 벌려 따로
-    (d.aura || []).forEach(function (h, i) {
+    var anc = 0; (dmgSum ? [] : d.aura || []).forEach(function (h) { if (h.length > 3 && h[3] + 1 > anc) anc = h[3] + 1; }); // [2026-11-15] 보스가 검기에 걸친 칸 수 -- 칸마다 숫자를 옆으로 벌려 따로
+    (dmgSum ? [] : d.aura || []).forEach(function (h, i) { // [2026-11-20] 합산이면 맞은 몬스터 숫자는 공격 쪽에서 하나로
       var q = h.length > 3 ? h[4] : i, ox = h.length > 3 ? (h[3] - (anc - 1) / 2) * 0.9 : 0;
       floats.push({ x: fxp + ox + (q % 2 ? 0.3 : -0.3) * (anc > 1 ? 0.5 : 1), y: fyp - 0.32 * (q + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (q + 1) + (h.length > 3 ? 45 * h[3] : 0) });
     });
@@ -6931,7 +6952,8 @@ var TowerMine = (function () {
       mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
       mobHitAt[am.id] = performance.now();
       var dl = 60 + j * 40;
-      (am.hits || []).forEach(function (h, i) {
+      if (dmgSum && (am.hits || []).length) { var st2 = 0, x15 = false; am.hits.forEach(function (h) { st2 += h[1] | 0; if (h[2]) x15 = true; }); floats.push({ x: p.x, y: p.y - 0.2, text: '⚔️' + st2.toLocaleString() + (x15 ? ' x1.5' : ''), color: x15 ? '#ff8a3a' : '#ffe9a8', big: x15, t0: t + dl }); } // [2026-11-20] 합산
+      else (am.hits || []).forEach(function (h, i) {
         var cc = am.cells && h.length > 3 ? am.cells[h[3]] : null, q = cc ? h[4] : i, bx = cc ? am.row[3] + cc[0] : p.x, by = cc ? am.row[4] + cc[1] : p.y; // [2026-11-15] 보스가 걸친 칸마다 그 칸 위에 따로
         floats.push({ x: bx + (q % 2 ? 0.3 : -0.3) * (cc ? 0.5 : 1), y: by - 0.32 * q, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * q + (cc ? 40 * h[3] : 0) });
       });
@@ -7381,6 +7403,11 @@ var TowerMine = (function () {
       if (d.twinStun) floats.push({ x: fxp, y: fyp - 1.0, text: '💫 기절!', color: '#ffe14d', t0: t + 200 }); // [2026-11-20] 쌍격의 장갑
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
+      else if (dmgSum) { // [2026-11-20] "합산 데미지를 한 번으로 보여 주는 옵션" -- 일반 공격(쌍격 두 번 포함) + 검기 속성 피해를 더해 숫자 하나
+        var tot = d.hits ? d.hits.reduce(function (a2, b2) { return a2 + b2; }, 0) : d.dmg | 0, el15 = !!d.elHit;
+        (d.aura || []).forEach(function (h) { tot += h[1] | 0; if (h[2]) el15 = true; });
+        floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + tot.toLocaleString() + (el15 ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.crit ? '#ffd23f' : el15 ? '#ff8a3a' : '#ffffff', big: !!(d.crit || d.assassinHit), t0: t });
+      }
       else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv + (d.elHit ? ' x1.5' : ''), color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
       else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + d.dmg + (d.elHit ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
       auraShow(d, fxp, fyp, t); // [2026-11-04] 검기 -- 속성 숫자 + 너머 몬스터
@@ -8839,7 +8866,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
