@@ -1761,7 +1761,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("ores", mineOreList(userName));
             action = "refineInfo";
         }
-        if ("alchemyInfo".equals(action) || "alchemy".equals(action)) { // [2026-11-20] "큰 마을 연금술사 -- 구리 -> 철 10:1(상위로도)" -- 왕도/요새 도시, 구리->철, 철->은, 은->금(금 위로는 없음 -- 미스릴은 병목이라)
+        if ("alchemyInfo".equals(action) || "alchemy".equals(action) || "alchemyBack".equals(action)) { // [2026-11-20] "큰 마을 연금술사 -- 구리 -> 철 10:1(상위로도)" -- 왕도/요새 도시, 구리->철, 철->은, 은->금(금 위로는 없음 -- 미스릴은 병목이라)
             if ("alchemy".equals(action)) {
                 if (!mineAtNpc(row, "alchemist")) { out.put("message", "연금술사에게서만 바꿀 수 있어요."); return out; }
                 int from = -1;
@@ -1780,12 +1780,33 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + " " + String.format("%,d", n * MINE_ALCHEMY_RATE) + "개를 녹여 " + toName + " " + String.format("%,d", n) + "개로 바꿨어요!");
                 }
             }
+            if ("alchemyBack".equals(action)) { // [2026-11-20] "연금술사 복원 -- 악마의 광석 조각 1개 -> 금광석 3~8개 ... 철광석까지 다시 원복"
+                if (!mineAtNpc(row, "alchemist")) { out.put("message", "연금술사에게서만 되돌릴 수 있어요."); return out; }
+                int from = -1;
+                try { from = Integer.parseInt(code); } catch (NumberFormatException ex) { }
+                if (from < 2 || from > 4) { out.put("message", "그건 되돌릴 수 없어요."); return out; }
+                String fCode = from == 4 ? S5MineMap.DEMON_ORE_CODE : S5MineMap.ORE_CODES[from - 1], fName = from == 4 ? S5MineMap.DEMON_ORE_NAME : S5MineMap.ORE_NAMES[from - 1];
+                String tCode = S5MineMap.ORE_CODES[from - 2], tName = S5MineMap.ORE_NAMES[from - 2];
+                int haveF = mineOreHave(userName).getOrDefault(fCode, 0), n = grade <= 0 ? haveF : Math.min(haveF, grade);
+                if (n < 1) out.put("message", "⚗️ " + fName + "이(가) 없어요.");
+                else if (dao.takeUserOre(userName, fCode, n) == 0) out.put("message", "⚗️ " + fName + "이(가) 모자라요.");
+                else {
+                    long got = 0;
+                    for (int k = 0; k < n; k++) got += MINE_ALCHEMY_BACK_MIN + RND.nextInt(MINE_ALCHEMY_BACK_MAX - MINE_ALCHEMY_BACK_MIN + 1);
+                    int gi = (int) Math.min(Integer.MAX_VALUE, got);
+                    dao.addUserOre(userName, tCode, gi);
+                    out.put("ok", true);
+                    out.put("got", gi);
+                    out.put("message", "⚗️ " + fName + " " + String.format("%,d", n) + "개를 풀어 " + tName + " " + String.format("%,d", gi) + "개로 되돌렸어요!");
+                }
+            }
             Map<String, Integer> hv = mineOreHave(userName);
             int[] q = new int[5];
             for (int i = 0; i < 4; i++) q[i] = hv.getOrDefault(S5MineMap.ORE_CODES[i], 0);
             q[4] = hv.getOrDefault(S5MineMap.DEMON_ORE_CODE, 0); // [2026-11-20] 악마의 광석 조각
             out.put("have", q);
             out.put("rate", MINE_ALCHEMY_RATE);
+            out.put("backMin", MINE_ALCHEMY_BACK_MIN); out.put("backMax", MINE_ALCHEMY_BACK_MAX);
             out.put("ores", mineOreList(userName));
             return out;
         }
@@ -7447,6 +7468,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-20] 태초의 보석을 쓴 사람 -- 검기 폭 3칸(관리자처럼). AURA_WIDE = 1(한 번만). 검기 칸 계산(mineAuraLine)이 자주 불리니 메모리에 둔다.
     static final String MINE_ITEM_AURA_WIDE = "AURA_WIDE";
     static final int MINE_ALCHEMY_RATE = 10; // [2026-11-20] 연금술사 -- 아래 광석 10개 = 위 광석 1개
+    static final int MINE_ALCHEMY_BACK_MIN = 3, MINE_ALCHEMY_BACK_MAX = 8; // [2026-11-20] 복원 -- 위 광석 1개 = 아래 광석 3~8개(하나마다 굴림)
     /** [2026-11-20] 태초의 보석 재료 -- 마계의 정수(정제된 마석) 10, 거룡의 심장 조각(내구도 회복 키트) 50, 악마의 광석 조각 1000, 세공된 보석(땅·바다) 각 10,
      *  같은 날 "남아도는 것 + @를 소모하도록, 구리 만 개 기준" -- 유저 전체 보유 비율(구리 33.8 : 철 23.9 : 은 16.6 : 금 25.5)대로 구리 10000 · 철 7000 · 은 5000 · 금 7500,
      *  + 병목 재료는 조금(미스릴 300, 별빛석 30 -- 예전 미스릴 10000은 유저 전체 보유량의 2.6배라 아무도 못 만들었다). */
