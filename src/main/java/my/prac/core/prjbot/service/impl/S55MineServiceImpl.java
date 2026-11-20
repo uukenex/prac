@@ -6833,7 +6833,112 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return t;
     }
 
-    /** action=list: 가진 무기와 재료 / action=do: 등급업. */
+    // ---- [2026-11-20] 떠돌이 갑옷장이 -- "무기 등급업 떠돌이 상인과 비슷하게, 악마의 사냥터 동·서 1~3 맵과 방어선 맵까지, 방어구 등급업, 재료는 비슷하지만 더 고급".
+    //  은둔한 대장장이와 같은 방식: 늘 일곱 맵 중 한 곳(세대 번호로 자리)에 있고, 누가 올리면 즉시 6시간 사라진다(MINE_ARMORER = "돌아오는 시각|세대").
+    //  재료: 빛·번개·바람·물의 심장 1개씩 + 갑옷 조각(무기의 2배) + 악마의 광석 조각 100 x (등급 + 1). 오르는 폭은 같다(1단계 60% / 2단계 30% / 3단계 10%).
+    static final String MINE_ARMORER_KEY = "MINE_ARMORER";
+    static final Object MINE_ARMORER_LOCK = new Object();
+    static volatile long mineArmorerBackAt = -1, mineArmorerGen = 0;
+    static volatile String mineArmorerSpotKey = "";
+    static volatile int[] mineArmorerSpot;
+    static String[] mineArmorerMaps() { return new String[] { S5MineMap.DEMON_WEST, S5MineMap.DEMON_EAST, S5MineMap.DEMON_WEST2, S5MineMap.DEMON_EAST2, S5MineMap.DEMON_WEST3, S5MineMap.DEMON_EAST3, S5MineMap.LAST_LINE }; }
+    long[] mineArmorerNow(long now) {
+        if (mineArmorerBackAt < 0) {
+            synchronized (MINE_ARMORER_LOCK) {
+                if (mineArmorerBackAt < 0) {
+                    long back = 0, gen = 0;
+                    try { String c = dao.selectConfigValue(MINE_ARMORER_KEY); if (c != null) { String[] p = c.split("\\|"); back = Long.parseLong(p[0].trim()); gen = Long.parseLong(p[1].trim()); } } catch (Exception e) { back = 0; }
+                    mineArmorerGen = gen; mineArmorerBackAt = back;
+                }
+            }
+        }
+        if (now < mineArmorerBackAt) return null;
+        long gen = mineArmorerGen;
+        java.util.Random r = new java.util.Random(gen * 6007L + 20261120L);
+        int mi = r.nextInt(mineArmorerMaps().length);
+        S5MineMap map = S5MineMap.get(mineArmorerMaps()[mi]);
+        if (map == null) return null;
+        String key = gen + ":" + map.version();
+        int[] spot = mineArmorerSpot;
+        if (spot == null || !key.equals(mineArmorerSpotKey)) {
+            List<S5MineMap.Mob> mobs = new ArrayList<>();
+            for (S5MineMap.Mob mb : map.mobs()) if (!S5MineMobs.TYPES.get(mb.type).boss) mobs.add(mb);
+            int x = map.spawnX, y = map.spawnY;
+            for (int t = 0; t < 40 && !mobs.isEmpty(); t++) {
+                S5MineMap.Mob mb = mobs.get(r.nextInt(mobs.size()));
+                int nx = mb.x + r.nextInt(5) - 2, ny = mb.y + r.nextInt(5) - 2;
+                if (map.walkable(nx, ny) && !map.safeAt(nx, ny)) { x = nx; y = ny; break; }
+            }
+            spot = new int[] { x, y };
+            mineArmorerSpot = spot; mineArmorerSpotKey = key;
+        }
+        return new long[] { mi, spot[0], spot[1], now + 60_000L };
+    }
+    static String[][] mineArmorerCost(MineWeapon w, int g) {
+        int shard = (g >= 3 ? 25 * (g - 2) : 5 * (g + 1)) * 2;
+        return new String[][] { { S5MineMap.LIGHT_HEART_CODE, "1" }, { S5MineMap.THUNDER_HEART_CODE, "1" }, { S5MineMap.WIND_HEART_CODE, "1" }, { S5MineMap.WATER_HEART_CODE, "1" },
+                { w.shard, String.valueOf(shard) }, { S5MineMap.DEMON_ORE_CODE, String.valueOf(100 * (g + 1)) } };
+    }
+    /** 떠돌이 갑옷장이 -- action=alist: 가진 갑옷과 재료 / ado: 등급업(mineHermit에서 넘어온다). */
+    HashMap<String, Object> mineArmorer(String userName, String action, String code, HashMap<String, Object> row, HashMap<String, Object> out) {
+        long now = System.currentTimeMillis();
+        S5MineMap map = mineMapOf(row);
+        long[] hm = mineArmorerNow(now);
+        int[] pos = minePos(row, map, 0);
+        if (hm == null || !map.id.equals(mineArmorerMaps()[(int) hm[0]]) || Math.abs(pos[0] - hm[1]) + Math.abs(pos[1] - hm[2]) > MINE_HERMIT_RANGE) { out.put("message", "...(아무도 없다)"); return out; }
+        Map<String, Integer> items = mineItems(userName);
+        Map<String, Integer> have = mineOreHave(userName);
+        if ("ado".equals(action)) {
+            MineWeapon w = mineArmorOf(code);
+            int g = w == null ? -1 : mineWeaponTop(items, w);
+            if (g < 0) { out.put("message", "...그 갑옷은 없군."); return out; }
+            List<Integer> t = mineHermitTargets(w, g);
+            if (t.isEmpty()) { out.put("message", "...더 두드릴 데가 없군."); return out; }
+            String[][] cost = mineArmorerCost(w, g);
+            if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
+            long backAt;
+            synchronized (MINE_ARMORER_LOCK) {
+                if (now < mineArmorerBackAt) { out.put("message", "...(아무도 없다)"); return out; }
+                backAt = now + MINE_HERMIT_GONE_MS;
+                mineArmorerBackAt = backAt;
+                mineArmorerGen++;
+            }
+            dao.upsertConfigValue(MINE_ARMORER_KEY, backAt + "|" + mineArmorerGen, "web mine armorer -- back at (epoch ms)|generation");
+            mineTakeCost(userName, cost, 1);
+            int r = RND.nextInt(100), step = r < 60 ? 0 : r < 90 ? 1 : 2;
+            int ng = t.get(Math.min(step, t.size() - 1));
+            int mask = (mineWeaponMask(items, w) & ~(1 << g)) | (1 << ng);
+            dao.upsertMineItem(userName, w.code + "_M", mask);
+            dao.upsertMineItem(userName, w.code, ng + 1);
+            HashMap<String, Object> res = mineGearResult(userName, true, "🛡️ ...쾅. 쾅. " + w.name + "이(가) " + MINE_GRADE_NAMES[ng] + " 등급이 되었다.");
+            res.put("ores", mineOreList(userName));
+            res.put("grade", ng);
+            mineGossipAdd("악마의 들판 어딘가에서 쇠 두드리는 소리가 그쳤대요. 누군가 갑옷을 새로 받아 갔다나요?");
+            return res;
+        }
+        List<HashMap<String, Object>> list = new ArrayList<>();
+        for (MineWeapon w : MINE_ARMORS) {
+            int g = mineWeaponTop(items, w);
+            if (g < 0) continue;
+            List<Integer> t = mineHermitTargets(w, g);
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("code", w.code); m.put("name", w.name); m.put("grade", g); m.put("gradeName", MINE_GRADE_NAMES[g]);
+            if (!t.isEmpty()) {
+                int mx = t.get(t.size() - 1);
+                m.put("maxGrade", mx >= 6 ? 0 : mx);
+                m.put("maxName", mx >= 6 ? "???" : MINE_GRADE_NAMES[mx]);
+                List<HashMap<String, Object>> cl = new ArrayList<>();
+                for (String[] c : mineArmorerCost(w, g)) { HashMap<String, Object> cm = new HashMap<>(); cm.put("name", mineCodeName(c[0])); cm.put("need", Integer.parseInt(c[1])); cm.put("have", have.getOrDefault(c[0], 0)); cl.add(cm); }
+                m.put("cost", cl);
+            }
+            list.add(m);
+        }
+        out.put("ok", true);
+        out.put("weapons", list);
+        return out;
+    }
+
+    /** action=list: 가진 무기와 재료 / action=do: 등급업. [2026-11-20] alist/ado = 떠돌이 갑옷장이. */
     @Override
     @Transactional
     public HashMap<String, Object> mineHermit(String userName, String action, String code) {
@@ -6842,6 +6947,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
         if (row == null) return out;
+        if ("alist".equals(action) || "ado".equals(action)) return mineArmorer(userName, action, code, row, out); // [2026-11-20] 떠돌이 갑옷장이
         long now = System.currentTimeMillis();
         S5MineMap map = mineMapOf(row);
         long[] hm = mineHermitNow(now);
@@ -11532,6 +11638,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] hm = mineHermitNow(now); // [2026-10-30] 은둔한 대장장이
         if (hm != null && mapId.equals(mineHermitMaps()[(int) hm[0]])) { HashMap<String, Object> hr = new HashMap<>(); hr.put("x", hm[1]); hr.put("y", hm[2]); hr.put("until", hm[3]); out.put("hermit", hr); }
         if (hm != null && isMineAdmin(userName)) out.put("hermitAdmin", mineHermitMaps()[(int) hm[0]] + " (" + hm[1] + ", " + hm[2] + ")");
+        long[] am = mineArmorerNow(now); // [2026-11-20] 떠돌이 갑옷장이
+        if (am != null && mapId.equals(mineArmorerMaps()[(int) am[0]])) { HashMap<String, Object> ar = new HashMap<>(); ar.put("x", am[1]); ar.put("y", am[2]); ar.put("until", am[3]); out.put("armorer", ar); }
+        if (am != null && isMineAdmin(userName)) out.put("armorerAdmin", mineArmorerMaps()[(int) am[0]] + " (" + am[1] + ", " + am[2] + ")");
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
         String rw = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 닌자 두목을 함께 쓰러뜨린 보상 소식 -- 전투 중이 아니어도 1초 위치 알림으로 받는다
         if (rw != null) out.put("rewardMsg", rw);

@@ -804,6 +804,12 @@ var TowerMine = (function () {
   }
   // [2026-10-23] NPC 그림 -- 대장장이(가죽 앞치마 + 망치), 선장(흰 제복 + 모자 + 수염). 칸 위에 서 있는 모습(바닥은 칸 타일).
   /** [2026-10-30] 은둔한 대장장이 -- 후드를 눌러쓴 검은 옷. */
+  /** [2026-11-20] 떠돌이 갑옷장이 -- 은둔한 대장장이처럼 두건을 썼지만 붉게 달군 쇠빛 망토 + 등에 멘 방패. */
+  function armorerSprite() {
+    var c = npcSprite('priest'), g = c.getContext('2d');
+    px(g, '#3a1a14', 4, 1, 8, 4); px(g, '#1a0c0a', 5, 3, 6, 2); px(g, '#6a6f7a', 4, 7, 8, 5); px(g, '#9aa3b6', 5, 7, 6, 1); px(g, '#ff5a2a', 6, 4); px(g, '#ff5a2a', 9, 4); px(g, '#c8402a', 7, 9, 2, 2);
+    return c;
+  }
   function hermitSprite() {
     var c = npcSprite('priest'), g = c.getContext('2d');
     px(g, '#1a1626', 4, 1, 8, 4); px(g, '#0c0a12', 5, 3, 6, 2); px(g, '#24212b', 4, 7, 8, 5); px(g, '#ffb03a', 6, 4); px(g, '#ffb03a', 9, 4);
@@ -2480,6 +2486,7 @@ var TowerMine = (function () {
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(n.x - ox - 2 * k - 1, n.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
       miniCtx.fillStyle = col; miniCtx.fillRect(n.x - ox - 2 * k, n.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     });
+    if (armorerOn()) { miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(armorer.x - ox - 3 * k - 1, armorer.y - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3); miniCtx.fillStyle = '#ff6a2a'; miniCtx.fillRect(armorer.x - ox - 3 * k, armorer.y - oy - 3 * k, 6 * k + 1, 6 * k + 1); } // [2026-11-20] 떠돌이 갑옷장이 -- 주황 점
     if (hermitOn()) { // [2026-10-30] "그 NPC 지도에 위치 표시" -- 은둔한 대장장이(같은 맵에 나와 있을 때) 금색 점
       miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(hermit.x - ox - 3 * k - 1, hermit.y - oy - 3 * k - 1, 6 * k + 3, 6 * k + 3);
       miniCtx.fillStyle = '#ffc61a'; miniCtx.fillRect(hermit.x - ox - 3 * k, hermit.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
@@ -2637,6 +2644,8 @@ var TowerMine = (function () {
         var nx = P.x + (d === 'left' ? -1 : d === 'right' ? 1 : 0), ny = P.y + (d === 'up' ? -1 : d === 'down' ? 1 : 0);
         if (hermitOn() && nx === hermit.x && ny === hermit.y) {
           talk(hermitNpc(), now); // [2026-10-30] 은둔한 대장장이
+        } else if (armorerOn() && nx === armorer.x && ny === armorer.y) {
+          talk(armorerNpc(), now); // [2026-11-20] 떠돌이 갑옷장이
         } else if (bossNpcOn() && nx === bossNpc.x && ny === bossNpc.y) {
           talk(bossNpcObj(), now); // [2026-11-13] 보스 소환사
         } else if (walk(nx, ny)) {
@@ -2668,6 +2677,8 @@ var TowerMine = (function () {
   // [2026-10-30] 은둔한 대장장이 -- 위치 알림(presTick)으로 받는다. 맵 정보에 없고 지도에도 안 나온다.
   var hermit = null, hermitAdminSaid = '', hermitStep = 'talk', hermitList = null, hermitPick = null, hermitBusy = false;
   function hermitOn() { return !!(hermit && map && hermit.m === map.id && hermit.until > nowSrv()); }
+  var armorer = null, armorerAdminSaid = '', hermitArmor = false; // [2026-11-20] 떠돌이 갑옷장이(창은 은둔한 대장장이 것을 함께 -- hermitArmor면 갑옷)
+  function armorerOn() { return !!(armorer && map && armorer.m === map.id && armorer.until > nowSrv()); }
   // [2026-11-13] 보스 소환사 -- 보스룸에 보스가 없을 때 보스 집 칸에 선다(위치 알림 bossCall). 소환하면 3초 카운트(at) 뒤 사라지고 보스가 나온다.
   var bossNpc = null, bossCallInfo = null, bossCallBusy = false, worldBossOpen = false;
   function bossNpcOn() { return !!(bossNpc && map && bossNpc.m === map.id && !(bossNpc.at && bossNpc.at <= nowSrv())); }
@@ -3411,14 +3422,15 @@ var TowerMine = (function () {
         + (rows || '<div class="mine-smith-say">아직 갈 수 있는 보스룸이 없어요.</div>') + adm;
   }
   function hermitNpc() { return { x: hermit.x, y: hermit.y, kind: 'hermit', name: '???', line: '...' }; }
+  function armorerNpc() { return { x: armorer.x, y: armorer.y, kind: 'armorer', name: '떠돌이 갑옷장이', line: '...쇠는 달궜을 때 두드려야지. 갑옷을 보여 보게.' }; }
   function hermitHtml(n) {
-    var h = npcHead('❔ ???', false) + talkBlock(n, '...');
-    if (hermitStep === 'talk') return h + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.hermitGo(\'list\')">보스를 모두 처치했다</button></div>';
+    var h = hermitArmor ? npcHead('🛡️ 떠돌이 갑옷장이', false) + talkBlock(n, n.line) : npcHead('❔ ???', false) + talkBlock(n, '...');
+    if (hermitStep === 'talk') return h + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.hermitGo(\'list\')">' + (hermitArmor ? '갑옷을 보여 준다' : '보스를 모두 처치했다') + '</button></div>';
     if (hermitStep === 'list') {
       if (!hermitList) return h + '<div class="mine-smith-say">...</div>';
-      if (!hermitList.length) return h + '<div class="mine-smith-say">...무기가 없군.</div>';
-      return h + '<div class="mine-smith-say">...무기를 보여라.</div>' + hermitList.map(function (w) {
-        return '<div class="mine-smith-row"><span class="nm" style="color:' + GRADE_COL[w.grade] + '">🗡️ ' + w.name + '<small>' + w.gradeName + (w.maxName ? '' : ' · 더 올릴 수 없음') + '</small></span>'
+      if (!hermitList.length) return h + '<div class="mine-smith-say">' + (hermitArmor ? '...갑옷이 없군.' : '...무기가 없군.') + '</div>';
+      return h + '<div class="mine-smith-say">' + (hermitArmor ? '...어느 갑옷을 두드려 줄까.' : '...무기를 보여라.') + '</div>' + hermitList.map(function (w) {
+        return '<div class="mine-smith-row"><span class="nm" style="color:' + GRADE_COL[w.grade] + '">' + (hermitArmor ? '🛡️ ' : '🗡️ ') + w.name + '<small>' + w.gradeName + (w.maxName ? '' : ' · 더 올릴 수 없음') + '</small></span>'
           + (w.maxName ? '<button type="button" onclick="TowerMine.hermitGo(\'pick\',\'' + w.code + '\')">선택</button>' : '') + '</div>';
       }).join('');
     }
@@ -3432,7 +3444,7 @@ var TowerMine = (function () {
     if (step === 'talk') { hermitStep = 'talk'; renderSmith(smithNpc); return; }
     if (step === 'pick') { (hermitList || []).forEach(function (w) { if (w.code === code) hermitPick = w; }); hermitStep = 'confirm'; renderSmith(smithNpc); return; }
     hermitBusy = true;
-    var q = step === 'do' ? 'action=do&code=' + encodeURIComponent(hermitPick.code) : 'action=list';
+    var q = step === 'do' ? 'action=' + (hermitArmor ? 'ado' : 'do') + '&code=' + encodeURIComponent(hermitPick.code) : 'action=' + (hermitArmor ? 'alist' : 'list');
     if (step === 'list') { hermitStep = 'list'; hermitList = null; renderSmith(smithNpc); }
     api('/api/tower-mine-hermit?' + q).then(function (d) {
       hermitBusy = false;
@@ -3457,7 +3469,8 @@ var TowerMine = (function () {
     if (n.kind === 'captain' && dg.has) line = '물 위를 걷는 기분은 어떤가?';
     else if (n.kind === 'captain' && dg.quest >= 1) line = '재료는 다 모았나?';
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
-    if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; openSmith(n, 'hermit'); return; } // [2026-10-30]
+    if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; hermitArmor = false; openSmith(n, 'hermit'); return; } // [2026-10-30]
+    if (n.kind === 'armorer') { setAuto(false); hermitStep = 'talk'; hermitArmor = true; openSmith(n, 'hermit'); return; } // [2026-11-20] 떠돌이 갑옷장이(같은 창)
     if (n.kind === 'towergate') { twFloors(); return; } // [2026-11-15] 탑 관리인
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
@@ -6579,6 +6592,8 @@ var TowerMine = (function () {
       if (d && d.twLeft != null && st && st.twLeft !== d.twLeft) { st.twLeft = d.twLeft; twRender(); } // [2026-11-19] 수문장 반복 보상 남은 수
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
+      armorer = d.armorer ? { m: mid, x: d.armorer.x, y: d.armorer.y, until: d.armorer.until } : null; // [2026-11-20] 떠돌이 갑옷장이
+      if (d.armorerAdmin && d.armorerAdmin !== armorerAdminSaid) { armorerAdminSaid = d.armorerAdmin; msg('🕵️ 관리자 안내: 떠돌이 갑옷장이 ' + d.armorerAdmin, 5000); }
       if (d.boatHp != null && st && st.archi) { // [2026-11-18] 망망대해 -- 초당 2.4%([2026-11-19] 예전 5%), 줄어든 만큼 배 위에 띄운다
         var bh0 = st.archi.boatHp, bmx = st.archi.boatHpMax || 1;
         if (bh0 != null && d.boatHp < bh0) floats.push({ x: P.x, y: P.y - 1.4, text: '⛵ -' + Math.max(1, Math.round((bh0 - d.boatHp) * 100 / bmx)) + '%', color: d.boatHp * 10 < bmx * 3 ? '#ff6a5a' : '#9fe0ff', big: true, t0: performance.now() });
@@ -7908,6 +7923,16 @@ var TowerMine = (function () {
         if (nxp < -TS || nyp < -TS * 2 || nxp > W || nyp > H) return;
         drawBubble(updLines[mix(ni + 5, uw) % updLines.length], nxp + TS / 2, nyp - 6 * scale, tu % 9000 < 2250 ? 0 : 1);
       });
+    }
+    if (armorerOn()) { // [2026-11-20] 떠돌이 갑옷장이
+      var axp = Math.round(armorer.x * TS - camX), ayp = Math.round(armorer.y * TS - camY);
+      if (!tiles.npc.armorer) tiles.npc.armorer = armorerSprite();
+      ctx.drawImage(tiles.npc.armorer, axp, ayp - 3 * scale, TS, TS);
+      if (Math.abs(armorer.x - P.x) + Math.abs(armorer.y - P.y) <= 8) {
+        ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
+        ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('🛡️ 떠돌이 갑옷장이', axp + TS / 2, ayp - 6 * dpr);
+        ctx.fillStyle = '#ffb07a'; ctx.fillText('🛡️ 떠돌이 갑옷장이', axp + TS / 2, ayp - 6 * dpr);
+      }
     }
     if (hermitOn()) { // [2026-10-30] 은둔한 대장장이
       var hxp = Math.round(hermit.x * TS - camX), hyp = Math.round(hermit.y * TS - camY);
