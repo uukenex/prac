@@ -33,7 +33,7 @@ var TowerMine = (function () {
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
   ORE_NAME[84] = '태초의 보석'; ORE_COL[84] = ['#fff4b0', '#ffffff']; RARE_GEM[84] = 1; // [2026-11-20] 최후의 방어선 세공사 -- 검기 폭 3칸
   ORE_NAME[83] = '나무'; ORE_COL[83] = ['#7a4a22', '#c8945a']; // [2026-11-19] 하피의 둥지 나무를 곡괭이로 -- 배 수리 재료
-  ORE_NAME[82] = '내구도 회복 키트'; ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
+  ORE_NAME[82] = '거룡의 심장 조각'; /* [2026-11-20] 예전 이름 내구도 회복 키트 */ ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
   ORE_NAME[81] = '물의 심장'; ORE_COL[81] = ['#2a7ad8', '#bfe8ff']; RARE_GEM[81] = 1; // [2026-11-18] 심해의 크라켄
   ORE_NAME[80] = '정제된 마석'; ORE_COL[80] = ['#5a1a6a', '#ff8ae8']; RARE_GEM[80] = 1; // [2026-11-18] 마계 마을 채광
   ORE_NAME[79] = '심판의 증표'; ORE_COL[79] = ['#c8a040', '#fff4c0']; RARE_GEM[79] = 1; // [2026-11-18] 심판자 보로네오 50% -- 마계 입구 통행
@@ -3112,7 +3112,7 @@ var TowerMine = (function () {
     if ((d.gem | 0) > 0) return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">' + ic + '<b>태초의 보석</b>을 가지고 있군. 검에 깃들이면 검기가 <b>3칸 폭</b>으로 뻗어 나가네. <small>(한 번만 -- 보석은 사라져요)</small>'
       + '<div style="margin-top:6px"><button type="button" class="mine-mini-btn" onclick="TowerMine.primal(\'primalUse\')">✨ 검에 깃들이기</button></div></div>';
     var ok = (d.cost || []).every(function (c) { var hv = c.have; (st && st.ores || []).forEach(function (o) { if (o.grade === c.grade && o.qty != null) hv = o.qty; }); return hv >= c.need; });
-    return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">' + ic + '<b>태초의 보석</b> <small>마계의 정수(정제된 마석) · 거룡의 심장 조각(내구도 회복 키트) · 악마의 광석 조각 · 구리~미스릴 · 세공된 보석(땅·바다)을 모두 녹여 하나로. 검에 깃들이면 검기 폭 3칸(한 사람에 한 번).</small>'
+    return h + '<div class="mine-smith-say" style="border:1px solid #fff4b0">' + ic + '<b>태초의 보석</b> <small>마계의 정수(정제된 마석) · 거룡의 심장 조각 · 악마의 광석 조각 · 구리~미스릴 · 세공된 보석(땅·바다)을 모두 녹여 하나로. 검에 깃들이면 검기 폭 3칸(한 사람에 한 번).</small>'
       + '<div style="margin-top:6px">' + costHtml(d.cost) + '</div>'
       + '<div style="margin-top:6px"><button type="button" class="mine-mini-btn"' + (ok ? '' : ' data-lack="1"') + ' onclick="TowerMine.primal(\'primalMake\')">💎 만들기</button></div></div>';
   }
@@ -4853,7 +4853,7 @@ var TowerMine = (function () {
       return '<button type="button" ' + (can ? '' : 'disabled ') + 'onclick="TowerMine.sail(\'' + d[0] + '\')">' + d[1] + '<small>' + (d[3] ? d[2] : '🔒 준비 중') + '</small></button>';
     }).join('') + '</div>';
   }
-  // [2026-11-18] 워프 포인트 관리인 -- 워프 포인트 내구도(모두 함께) + 내구도 회복 키트(하나에 +20)
+  // [2026-11-18] 워프 포인트 관리인 -- 워프 포인트 내구도(모두 함께) + 거룡의 심장 조각. [2026-11-20] 남은 횟수는 숨기고 %만
   var wpKeep = null, wpKeepBusy = false;
   function wpKeepGo(act) {
     if (wpKeepBusy) return;
@@ -4871,15 +4871,15 @@ var TowerMine = (function () {
     var h = npcHead('🌀 ' + n.name, false) + talkBlock(n, n.line), d = wpKeep;
     if (!d) return h + '<div class="mine-smith-say">워프 포인트를 살펴보는 중...</div>';
     var ic = '<img src="' + oreIcon(82) + '" alt="" style="width:16px;vertical-align:middle"> ';
-    h += '<div class="mine-smith-say">' + ic + '내구도 회복 키트 <b>' + (d.kits | 0) + '</b>개 · 키트 하나에 내구도 +' + d.fix + ' · 마을 워프 포인트는 닳지 않아요<br><small>워프 포인트는 모두가 함께 써요. 한 번 이동할 때마다 출발지와 도착지가 1씩 닳고, 0이 되면 그곳으로 오가지 못해요. 키트는 월드보스 거룡 토벌 1·2위 보상이에요.</small></div>';
+    h += '<div class="mine-smith-say">' + ic + '거룡의 심장 조각 <b>' + (d.kits | 0) + '</b>개 · 조각 하나에 힘 +' + d.fixPct + '% · 마을 워프 포인트는 닳지 않아요<br><small>워프 포인트는 모두가 함께 써요. 오갈 때마다 출발지와 도착지의 힘이 조금씩 줄고, 0%가 되면 그곳으로 오가지 못해요. 조각은 월드보스 거룡 토벌 1~10위 보상이에요.</small></div>';
     var acts = {};
     d.wps.forEach(function (w) { (acts[w.act] = acts[w.act] || []).push(w); });
     Object.keys(acts).forEach(function (a) {
       h += '<div class="merc-job-h">' + a + '장</div>';
       acts[a].forEach(function (w) {
-        var pct = Math.round(w.dur * 100 / d.max), low = w.dur <= 0, need = Math.ceil((d.max - w.dur) / d.fix);
-        h += '<div class="mine-smith-row"><span class="nm">' + escAttr(w.name) + '<small>' + (low ? '⛔ 힘이 다함' : '⚡') + ' ' + w.dur + ' / ' + d.max + '</small><span class="mine-bar hp" style="margin-top:3px"><i style="width:' + pct + '%;background:' + (low ? '#ff5a4a' : pct < 30 ? '#ffb347' : '#7ad8ff') + '"></i></span></span>'
-            + (need > 0 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', 1)">+' + d.fix + '</button>' + (need > 1 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', ' + need + ')">가득(' + need + ')</button>' : '') : '<button type="button" data-lack="1" disabled>가득</button>') + '</div>';
+        var pct = w.pct | 0, low = pct <= 0, need = w.need | 0;
+        h += '<div class="mine-smith-row"><span class="nm">' + escAttr(w.name) + '<small>' + (low ? '⛔ 힘이 다함' : '⚡') + ' ' + pct + '%</small><span class="mine-bar hp" style="margin-top:3px"><i style="width:' + pct + '%;background:' + (low ? '#ff5a4a' : pct < 30 ? '#ffb347' : '#7ad8ff') + '"></i></span></span>'
+            + (need > 0 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', 1)">+' + d.fixPct + '%</button>' + (need > 1 ? '<button type="button" ' + ((d.kits | 0) < 1 ? 'data-lack="1" ' : '') + 'onclick="TowerMine.wpFix(\'' + w.id + '\', ' + need + ')">가득(' + need + ')</button>' : '') : '<button type="button" data-lack="1" disabled>가득</button>') + '</div>';
       });
     });
     return h;
@@ -5007,15 +5007,15 @@ var TowerMine = (function () {
     }).join('') + '</div>';
     var act = d.acts.filter(function (a) { return a.n === wpTab; })[0] || d.acts[0];
     h += '<div class="wp-head">목적지를 고르세요</div><div class="wp-list">';
-    var hereDead = d.hereDur != null && d.hereDur <= 0; // [2026-11-18] 내구도 -- 여기가 다했으면 어디로도 못 간다
+    var hereDead = d.herePct != null && d.herePct <= 0; // [2026-11-18] 내구도 -- 여기가 다했으면 어디로도 못 간다 // [2026-11-20] %만
     act.list.forEach(function (w) {
-      var dead = !w.inf && w.dur != null && w.dur <= 0, can = w.on && !w.here && !dead && !hereDead;
+      var dead = !w.inf && w.pct != null && w.pct <= 0, can = w.on && !w.here && !dead && !hereDead;
       var cls = w.here ? 'here' : w.on && !dead ? '' : 'off';
       h += '<button type="button" class="wp-row ' + cls + '"' + (can ? ' onclick="TowerMine.teleport(\'wp:' + w.id + '\')"' : ' disabled') + '>'
           + '<span class="wp-ic ' + (w.on && !dead ? 'on' : 'off') + '"></span><span class="wp-nm">' + escAttr(w.name) + (w.here ? ' <small>(여기)</small>' : '')
-          + (w.on ? ' <small style="color:' + (w.inf ? '#9fe0ff' : dead ? '#ff6a5a' : w.dur < 60 ? '#ffb347' : '#c8c0a8') + '">' + (w.inf ? '∞' : '⚡' + w.dur + '/' + (d.wpMax || 200)) + '</small>' : '') + '</span></button>';
+          + (w.on ? ' <small style="color:' + (w.inf ? '#9fe0ff' : dead ? '#ff6a5a' : w.pct < 30 ? '#ffb347' : '#c8c0a8') + '">' + (w.inf ? '∞' : '⚡' + (w.pct | 0) + '%') + '</small>' : '') + '</span></button>';
     });
-    if (hereDead) h += '<div class="wp-foot" style="color:#ff8a7a">⛔ 이 워프 포인트의 힘이 다했어요 -- 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.</div>';
+    if (hereDead) h += '<div class="wp-foot" style="color:#ff8a7a">⛔ 이 워프 포인트의 힘이 다했어요 -- 왕도 워프 포인트 관리인에게 거룡의 심장 조각으로 채워 달라고 하세요.</div>';
     return h + '</div><div class="wp-foot">' + act.on + ' / ' + act.list.length + ' 켜짐 · 꺼진 곳은 직접 가서 워프 포인트를 만지면 켜져요</div></div>';
   }
   // [2026-10-25] 이동 안내원 -- 안내원이 있는 마을끼리 무료로(왕도는 관리자만 보임)

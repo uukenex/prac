@@ -2593,15 +2593,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineWbShareSave(en.getKey(), en.getValue(), now);
             mineWbReward(en.getKey(), en.getValue(), now);
         }
-        { // [2026-11-18] 토벌 1·2위(쌓은 몫 순) -- 내구도 회복 키트
+        { // [2026-11-18] 토벌 순위(쌓은 몫 순) -- 거룡의 심장 조각([2026-11-20] 1~10위 0~5개 무작위)
             List<java.util.Map.Entry<String, Double>> rk = new ArrayList<>(MINE_WB_SHARE.entrySet());
             rk.removeIf(en -> en.getValue() < mineWbMinShare());
             rk.sort((p1, q1) -> Double.compare(q1.getValue(), p1.getValue()));
-            for (int i = 0; i < Math.min(MINE_WP_KIT_RANK.length, rk.size()); i++) {
+            for (int i = 0; i < Math.min(MINE_WP_KIT_RANKS, rk.size()); i++) {
                 try {
                     String ru = rk.get(i).getKey();
-                    dao.addUserOre(ru, S5MineMap.WP_KIT_CODE, MINE_WP_KIT_RANK[i]);
-                    MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! 🔧 " + S5MineMap.WP_KIT_NAME + " " + MINE_WP_KIT_RANK[i] + "개 (왕도 워프 포인트 관리인에게)", (p, q) -> p + " / " + q);
+                    int kq = RND.nextInt(MINE_WP_KIT_MAX + 1);
+                    if (kq > 0) dao.addUserOre(ru, S5MineMap.WP_KIT_CODE, kq);
+                    MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! " + (kq > 0 ? "🐉 " + S5MineMap.WP_KIT_NAME + " " + kq + "개 (왕도 워프 포인트 관리인에게 내면 워프 포인트의 힘을 채워요)" : "이번엔 " + S5MineMap.WP_KIT_NAME + "이 나오지 않았어요."), (p, q) -> p + " / " + q);
                 } catch (Exception ignore) { }
             }
         }
@@ -4603,11 +4604,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  거룡 토벌 1·2위에게 회복 키트 20개를 나누어 주고, 회복 NPC에게 키트 하나당 내구도 20" --
     //  TBOT_S55_WP_DUR(줄이 없으면 가득)을 처음 쓸 때 메모리로 읽고, 바뀔 때마다 그 줄만 MERGE. 워프 한 번 = 출발지 -1, 도착지 -1(마을 제외).
     static final int MINE_WP_DUR_MAX = 200, MINE_WP_KIT_FIX = 20;
-    static final int[] MINE_WP_KIT_RANK = { 10, 10 }; // 거룡 토벌 1위 / 2위 -- 합쳐서 20개
+    // [2026-11-20] "1~10위 거룡 보상으로 심장 조각을 무작위로, 개수도 0~5개" -- 토벌 몫 순 MINE_WP_KIT_RANKS위까지 사람마다 0~MINE_WP_KIT_MAX개(예전: 1·2위 10개씩)
+    static final int MINE_WP_KIT_RANKS = 10, MINE_WP_KIT_MAX = 5;
     static final java.util.Set<String> MINE_WP_TOWNS = new java.util.HashSet<>(java.util.Arrays.asList("field", "city", "snowtown", "archi", "tcity", "seacity"));
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_WP_DUR = new java.util.concurrent.ConcurrentHashMap<>();
     static volatile boolean mineWpDurLoaded = false;
     static boolean mineWpTown(S5MineMap.Waypoint w) { return w == null || MINE_WP_TOWNS.contains(w.id); }
+    /** [2026-11-20] "워프 포인트 횟수는 미공개, 퍼센트로만" -- 화면엔 남은 힘 %만(1번이라도 남으면 1% 이상, 0이면 0%). */
+    int mineWpPct(S5MineMap.Waypoint w) { int d = mineWpDur(w); return d <= 0 ? 0 : Math.max(1, (int) Math.ceil(d * 100.0 / MINE_WP_DUR_MAX)); }
     int mineWpDur(S5MineMap.Waypoint w) {
         if (mineWpTown(w)) return MINE_WP_DUR_MAX;
         if (!mineWpDurLoaded) synchronized (MINE_WP_DUR) { if (!mineWpDurLoaded) { for (HashMap<String, Object> r : dao.selectS55WpDur()) MINE_WP_DUR.put(strVal(r.get("WP_ID"), ""), intVal(r.get("DUR"), MINE_WP_DUR_MAX)); mineWpDurLoaded = true; } }
@@ -4627,8 +4631,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 워프 전 -- 출발지/도착지 내구도가 다했으면 안내(아니면 null). */
     String mineWpDurBlock(S5MineMap.Waypoint from, S5MineMap.Waypoint to) {
-        if (to != null && mineWpDur(to) <= 0) return "🌀 " + to.name + " 워프 포인트의 힘이 다했어요(내구도 0). 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.";
-        if (from != null && mineWpDur(from) <= 0) return "🌀 이 워프 포인트의 힘이 다했어요(내구도 0). 왕도 워프 포인트 관리인에게 회복 키트로 채워 달라고 하세요.";
+        if (to != null && mineWpDur(to) <= 0) return "🌀 " + to.name + " 워프 포인트의 힘이 다했어요. 왕도 워프 포인트 관리인에게 거룡의 심장 조각으로 채워 달라고 하세요.";
+        if (from != null && mineWpDur(from) <= 0) return "🌀 이 워프 포인트의 힘이 다했어요. 왕도 워프 포인트 관리인에게 거룡의 심장 조각으로 채워 달라고 하세요.";
         return null;
     }
     /** 워프 하는 순간 -- 출발지/도착지 하나씩(마을은 무한). */
@@ -4643,13 +4647,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (S5MineMap.Waypoint w : S5MineMap.waypoints()) {
             if (mineWpTown(w)) continue; // [2026-11-18] 5장 바다도 모두에게
             HashMap<String, Object> m = new HashMap<>();
-            m.put("id", w.id); m.put("name", w.name); m.put("act", w.act); m.put("dur", mineWpDur(w));
+            int dur = mineWpDur(w);
+            m.put("id", w.id); m.put("name", w.name); m.put("act", w.act); m.put("pct", mineWpPct(w)); m.put("need", (MINE_WP_DUR_MAX - dur + MINE_WP_KIT_FIX - 1) / MINE_WP_KIT_FIX); // [2026-11-20] 횟수 대신 %, 가득 채우는 데 드는 조각 수
             l.add(m);
         }
         out.put("ok", true);
         out.put("wps", l);
-        out.put("max", MINE_WP_DUR_MAX);
-        out.put("fix", MINE_WP_KIT_FIX);
+        out.put("fixPct", MINE_WP_KIT_FIX * 100 / MINE_WP_DUR_MAX); // [2026-11-20] 조각 하나에 +%
         out.put("kits", mineOreHave(userName).getOrDefault(S5MineMap.WP_KIT_CODE, 0));
         return out;
     }
@@ -4663,11 +4667,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         else {
             int dur = mineWpDur(w), need = (MINE_WP_DUR_MAX - dur + MINE_WP_KIT_FIX - 1) / MINE_WP_KIT_FIX, use = Math.min(Math.max(1, n), need);
             if (need <= 0) out.put("message", "🌀 " + w.name + " 워프 포인트는 이미 가득 차 있어요.");
-            else if (dao.takeUserOre(userName, S5MineMap.WP_KIT_CODE, use) == 0) out.put("message", "🔧 " + S5MineMap.WP_KIT_NAME + "이(가) 모자라요. (" + use + "개 필요) 월드보스 거룡 토벌 1·2위 보상이에요.");
+            else if (dao.takeUserOre(userName, S5MineMap.WP_KIT_CODE, use) == 0) out.put("message", "🔧 " + S5MineMap.WP_KIT_NAME + "이 모자라요. (" + use + "개 필요) 월드보스 거룡 토벌 1~10위 보상이에요.");
             else {
                 int nd;
                 synchronized (MINE_WP_DUR) { nd = Math.min(MINE_WP_DUR_MAX, mineWpDur(w) + use * MINE_WP_KIT_FIX); mineWpDurSet(w, nd); }
-                out.put("message", "✨ " + w.name + " 워프 포인트에 거룡의 기운을 채웠어요! (키트 " + use + "개 · 내구도 " + nd + " / " + MINE_WP_DUR_MAX + ")");
+                out.put("message", "✨ " + w.name + " 워프 포인트에 거룡의 기운을 채웠어요! (조각 " + use + "개 · 힘 " + mineWpPct(w) + "%)");
                 out.put("fixed", true);
                 out.put("ores", mineOreList(userName));
             }
@@ -6959,7 +6963,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 HashMap<String, Object> wm = new HashMap<>();
                 boolean o = mineWpOn(userName, items, w);
                 wm.put("id", w.id); wm.put("name", w.name); wm.put("on", o); wm.put("here", w == here);
-                if (mineWpTown(w)) wm.put("inf", true); else wm.put("dur", mineWpDur(w)); // [2026-11-18] 내구도
+                if (mineWpTown(w)) wm.put("inf", true); else wm.put("pct", mineWpPct(w)); // [2026-11-18] 내구도 -- [2026-11-20] %만
                 if (o) on++;
                 l.add(wm);
             }
@@ -6967,8 +6971,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             acts.add(am);
         }
         out.put("ok", true);
-        out.put("wpMax", MINE_WP_DUR_MAX); // [2026-11-18]
-        if (here != null && !mineWpTown(here)) out.put("hereDur", mineWpDur(here));
+        if (here != null && !mineWpTown(here)) out.put("herePct", mineWpPct(here)); // [2026-11-20] %만
         out.put("acts", acts);
         out.put("here", here.id);
         out.put("act", here.act);
