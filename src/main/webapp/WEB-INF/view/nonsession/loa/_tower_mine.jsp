@@ -3811,7 +3811,7 @@ var TowerMine = (function () {
   //  땅: 칸마다 원을 겹치고(+ 걸어서 잇는 길을 따라 둑, 요새 도시 북쪽 땅, 강둑, 미탐사 땅) 잡음을 더한 높이 표에서 등고선(마칭 스퀘어)을 뽑아 매끈한 선 그림(path)으로 --
   //  필터 없는 선 그림이라 확대해도 선명하고 끌 때 가볍다. 구름(미탐사)과 왕도/요새 도시 축소도(실제 맵 칸으로 그림)만 작은 그림. 모두 게임 시작 로딩(preloadExtra)에서 한 번 만든다.
   //  그림으로 그리는 곳(WORLD_GROUP)은 칸 대신 그림 위 띠(층 이름 + 인원) 또는 축소도 -- 같은 그림 안의 길은 안 그리고, 밖에서 오는 길은 그림의 입구(bg.entry)로.
-  var worldBg = null;
+  var worldBg = null, minePrevScheme = '';
   var WORLD_SEA_IDS = { opensea: 1, archisea: 1, seacity: 1 }; // 물 위 칸(땅을 깔지 않는다 -- 윤슬항은 물 위 항구)
   var WORLD_GROUP = { shrine: 'shrine', shrine2: 'shrine', shrine3: 'shrine', shrineboss: 'shrine', cave1: 'cave', cave2: 'cave', cave3: 'cave', cave4: 'cave',
     snowcave: 'icecave', snowcave2: 'icecave', towergate: 'tower', city: 'city', towercity: 'fort' };
@@ -3822,8 +3822,8 @@ var TowerMine = (function () {
   var WORLD_SHRINE_W = [124, 106, 90], WORLD_SHRINE_U = 46, WORLD_SHRINE_H = 38;
   var WORLD_RIVER = [[-112, -600], [-98, -545], [-118, -490], [-100, -430], [-118, -372], [-101, -330], [-118, -290], [-102, -250], [-120, -205], [-104, -160], [-121, -112], [-102, -66], [-118, -20], [-103, 28], [-124, 78], [-140, 122], [-152, 165]];
   var WORLD_TRIB = [[-40, -345], [-56, -300], [-76, -268], [-101, -252]];
-  var WORLD_LAKES = [[325, 556, 24, 10], [236, 371, 14, 7]];
-  var WORLD_WATERS = [['엘리시온 강', -84, -150, 82, 13], ['북쪽 바다', 735, 360, 0, 22], ['남쪽 바다', 40, 1110, 0, 30], ['다 도 해', 395, 1080, 0, 22], ['중앙 평원 호수', 330, 536, 0, 9], ['사막 오아시스', 236, 355, 0, 9]];
+  var WORLD_LAKES = [[325, 556, 24, 10], [256, 374, 14, 7]];
+  var WORLD_WATERS = [['엘리시온 강', -84, -150, 82, 13], ['북쪽 바다', 735, 360, 0, 22], ['남쪽 바다', 40, 1110, 0, 30], ['다 도 해', 395, 1080, 0, 22], ['중앙 평원 호수', 330, 536, 0, 9], ['사막 오아시스', 262, 357, 0, 9]]; // [2026-11-20] 오아시스 글씨가 북쪽 사막 칸과 겹쳐 오른쪽으로
   var WORLD_MOUNTS = [[-140, -628], [-112, -642], [-84, -626], [-160, -604], [-62, -604], [-122, -590], [-420, -470], [-446, -452], [-620, -390], [-300, -540], [-700, -610], [-520, -720], [300, -430], [330, -410], [130, -330], [160, -345]];
   var WORLD_UNEXP = [[-690, -640, 170, 12], [300, -420, 140, 10], [560, -380, 110, 8], [1040, 160, 130, 10], [1000, 520, 110, 8], [1300, 900, 110, 8], [-690, 330, 150, 10], [-640, 620, 90, 6],
     [-640, 1300, 140, 10], [-480, 1560, 90, 6], [1120, 1450, 140, 10], [240, 1750, 160, 11], [720, 1800, 110, 8]];
@@ -4372,7 +4372,7 @@ var TowerMine = (function () {
         + '<defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
         + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
         + (bg.cloud ? '<image href="' + bg.cloud + '" xlink:href="' + bg.cloud + '" x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" preserveAspectRatio="none"/>' : '') // 미탐사 구름
-        + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
+        + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
@@ -8735,6 +8735,9 @@ var TowerMine = (function () {
     el.load.style.display = 'flex';
     el.log.style.display = 'none';
     document.body.style.overflow = 'hidden';
+    // [2026-11-20] "전체 지도 글씨가 하얗게, 그림도 음영이 져서 잘 안 보여" -- 폰 다크 모드(카카오톡 등 앱 안 브라우저/크롬의 자동 어둡게)가 밝은 지도 색을 강제로 뒤집었다
+    //  (어두운 글씨 -> 흰 글씨, 양피지 땅 -> 어두운 회색). 광산은 원래 어두운 화면이라 광산이 열려 있는 동안 "이 화면은 다크 테마를 직접 지원"(root color-scheme: dark)으로 알려 강제 어둡게를 끈다. 닫으면 되돌린다.
+    try { minePrevScheme = document.documentElement.style.colorScheme || ''; document.documentElement.style.colorScheme = 'dark'; } catch (e) { }
     opened = true;
     map = null;
     busy = true;
@@ -8785,6 +8788,7 @@ var TowerMine = (function () {
     el.ov.classList.remove('open');
     el.load.textContent = '광산으로 가는 중...';
     document.body.style.overflow = '';
+    try { document.documentElement.style.colorScheme = minePrevScheme || ''; } catch (e) { } // [2026-11-20] 강제 어둡게 끈 것 되돌리기
     if (cfg && cfg.onClose) cfg.onClose();
   }
   // [2026-10-23] 마을로 이동 -- 어디에 있든 중앙 평원 마을(시작점)으로

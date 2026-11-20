@@ -918,7 +918,7 @@
     .mine-world .wlv{ fill:#9fe0ff; font-size:10px; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
     .mine-world.world-close .wc{ display:block; }
     /* [2026-11-20] 전체 지도 -- 옛 전도 풍(양피지 땅, 먹선 해안, 남색 물 이름) */
-    .world-wrap{ background:#dfe3e2; border-color:#5a3e22; } /* 그림 범위 밖은 구름색 */
+    .world-wrap{ background:#dfe3e2; border-color:#5a3e22; color-scheme:only light; forced-color-adjust:none; } /* 그림 범위 밖은 구름색 */ /* [2026-11-20] 다크 모드 강제 반전 막기(크롬 자동 어둡게) */
     .mine-world .wn{ font:800 11px 'Nanum Myeongjo','Noto Serif KR','Noto Serif CJK KR','Batang',serif; fill:#2a1a0c; stroke:#f1e8cc; stroke-width:3.5px; }
     .mine-world .wn-here{ fill:#c0281e; }
     .mine-world .wl{ fill:#1f4e6e; stroke:#e9dbb4; }
