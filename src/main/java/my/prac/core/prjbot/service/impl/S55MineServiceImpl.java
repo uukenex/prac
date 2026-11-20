@@ -4402,7 +4402,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] r = MINE_KRK_RES;
         if (r[4] <= 0) return;
         if (r[3] > 0) { if (now - r[3] > 6_000L) r[4] = 0; return; } // 가라앉고 조금 뒤 정리
-        if (now > r[5] + MINE_KRK_RES_MAX) { r[4] = 0; mineKrkSay("⛵ 구조선이 크라켄을 피해 윤슬항으로 돌아갔어요.", now); return; }
+        if (now > r[5] + MINE_KRK_RES_MAX) { r[4] = 0; mineKrkSay("⛵ 구조선이 크라켄을 피해 바다마을 윤슬항으로 돌아갔어요.", now); return; }
         int kcx = MINE_KRK_POS[0] + 2, kcy = MINE_KRK_POS[1] + 2, side = (int) r[10];
         boolean aimed = false;
         for (long[] z : MINE_KRK_SMASH) if (z.length > 3 && z[3] == 1) aimed = true;
@@ -4494,9 +4494,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             r[10] = lh[idx][0] < kcx ? -1 : 1; // 등대 쪽에서 온다
             r[0] = Math.max(2, Math.min(sm.w - 4, kcx + r[10] * (MINE_KRK_RES_DX + 14))); r[1] = MINE_KRK_POS[1] >= 0 ? MINE_KRK_POS[1] + 2 + MINE_KRK_RES_DY : sm.bossY() + 1;
         }
-        mineKrkSay("🔔 " + mineNick(userName) + " 님이 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 윤슬항 구조선이 달려와요.", now);
+        mineKrkSay("🔔 " + mineNick(userName) + " 님이 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 바다마을 윤슬항 구조선이 달려와요.", now);
         out.put("ok", true);
-        out.put("message", "🔔 땡- 땡- 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 윤슬항 구조선이 작살을 들고 달려와요.");
+        out.put("message", "🔔 땡- 땡- 등대 종을 쳤어요! " + MINE_KRK_RES_IN / 1000 + "초 뒤 바다마을 윤슬항 구조선이 작살을 들고 달려와요.");
         out.put("sea", mineSeaState(now));
         return out;
     }

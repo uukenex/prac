@@ -3748,27 +3748,28 @@ var TowerMine = (function () {
     { id: 'isle6', name: '달맞이섬', x: 160, y: 675, fill: '#8a9ac8', ink: '#fff', sub: true, w: 72 },
     { id: 'isle7', name: '용암섬', x: 238, y: 675, fill: '#a83a1a', ink: '#fff', sub: true, w: 72 },
     // [2026-11-18] "전체 지도에도 반영" -- 먼 바다(윤슬항/바다 위/망망대해)와 연안 뱃길(내 배로 항구 사이)
-    { id: 'seacity', name: '윤슬항 ⚓', x: 0, y: 0, fill: '#c8a46a', ink: '#2a1d10', town: true },
+    { id: 'seacity', name: '바다마을 윤슬항 ⚓', x: 0, y: 0, fill: '#c8a46a', ink: '#2a1d10', town: true },
     { id: 'opensea', name: '바다 위 🐙', x: 0, y: 0, fill: '#2f6a9a', ink: '#fff', w: 76 }
   ];
   // [2026-10-28] "전체 지도 보기가 어렵다, 지역 구간별로 나눠 놓으면" -- 네 구간(탭)으로 나눠 그린다. 처음엔 지금 있는 구간.
   //  구간마다 칸 자리(x, y)를 따로 두고(이름/색/폭은 WORLD_NODES), 다른 구간으로 이어지는 곳은 점선 칸(@ -- 누르면 그 구간 탭으로).
   var WORLD_REGIONS = [
-    { id: 'fort', name: '🏰 요새 도시', vh: 440, // [2026-11-17] 로드맵 -- 요새 도시(가운데 아래), 북문 = 탑, 동/서 들판 1 -> 2 -> 3 -> 가운데 최후의 방어선 -> 마계 입구 -> 혼돈스러운 마계
-      nodes: [['abyssgate', 135, 105], ['lastline', 135, 175], ['demonwest3', 30, 175], ['demoneast3', 240, 175], ['demonwest2', 30, 250], ['demoneast2', 240, 250], ['towergate', 135, 260],
-        ['towercity', 135, 330], ['demonwest', 30, 330], ['demoneast', 240, 330], ['@ferry', 135, 410, 'desert', '⛵ 마물의 숲 나루터']],
+    // [2026-11-20] 전체 지도 그림 -- 거대한 탑(탑 입구 위로 솟은 돌탑)과 요새 도시 축소도가 들어가게 위아래로 넓혔다
+    { id: 'fort', name: '🏰 요새 도시', vh: 470, // [2026-11-17] 로드맵 -- 요새 도시(가운데 아래), 북문 = 탑, 동/서 들판 1 -> 2 -> 3 -> 가운데 최후의 방어선 -> 마계 입구 -> 혼돈스러운 마계
+      nodes: [['abyssgate', 135, 30], ['lastline', 135, 100], ['demonwest3', 30, 100], ['demoneast3', 240, 100], ['demonwest2', 30, 190], ['demoneast2', 240, 190], ['towergate', 135, 250],
+        ['towercity', 135, 352], ['demonwest', 30, 352], ['demoneast', 240, 352], ['@ferry', 135, 440, 'desert', '⛵ 마물의 숲 나루터']],
       links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['demonwest', 'demonwest2'], ['demoneast', 'demoneast2'], ['demonwest2', 'demonwest3'], ['demoneast2', 'demoneast3'],
         ['demonwest3', 'lastline'], ['demoneast3', 'lastline'], ['lastline', 'abyssgate'], ['towercity', '@ferry', 'sea']] }, // [2026-11-17] 혼돈스러운 마계는 지도에 없다(정제사 소문으로만)
     { id: 'plain', name: '🌾 평원', vh: 390,
-      nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave4', -58, 40], ['cave3', -58, 100], ['cave2', -58, 160], ['cave1', 52, 160], ['field', 160, 180], ['castle', 268, 180],
+      nodes: [['@desert', 160, 30, 'desert', '🏜️ 사막·왕도 ▲'], ['cave1', -58, 115], ['cave2', -58, 165], ['cave3', -58, 215], ['cave4', -58, 265], ['field', 160, 180], ['castle', 268, 180], // [2026-11-20] 동굴 단면 그림(위에서부터 B1~B4)
         ['dungeon', 52, 240], ['beach', 160, 270], ['@sea', 92, 350, 'sea', '🏝️ 남쪽 바다 ⛵'], ['@snow', 240, 350, 'snow', '❄️ 설원 ⛵']],
       links: [['field', '@desert'], ['field', 'cave1'], ['cave1', 'cave2'], ['cave2', 'cave3'], ['cave3', 'cave4'], ['field', 'dungeon'], ['field', 'castle'], ['field', 'beach'], ['beach', '@sea', 'sea'], ['beach', '@snow', 'sea']] },
-    { id: 'desert', name: '🏜️ 사막·왕도', vh: 410, tx: 226,
-      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 170], ['westroad', 44, 170], ['forestmaze', 44, 100], ['harpynest', 44, 30], ['harpyferry', -64, 30], ['steppe', 160, 240], ['desert', 160, 310],
-        ['antnest', 44, 310], ['pyramid', 44, 380], ['@plain', 172, 380, 'plain', '🌾 평원 ▼']],
+    { id: 'desert', name: '🏜️ 사막·왕도', vh: 460, tx: 226, // [2026-11-20] 왕도 축소도(실제 맵 그림)가 들어가게 왕도 둘레를 넓혔다
+      nodes: [['ruins', 160, 30], ['royalroad', 160, 100], ['@snowtown', 268, 100, 'snow', '❄️ 설산 마을 ▶'], ['city', 160, 195], ['westroad', 44, 195], ['forestmaze', 44, 120], ['harpynest', 44, 50], ['harpyferry', -64, 50], ['steppe', 160, 295], ['desert', 160, 365],
+        ['antnest', 44, 365], ['pyramid', 44, 435], ['@plain', 172, 435, 'plain', '🌾 평원 ▼']],
       links: [['royalroad', 'ruins'], ['royalroad', '@snowtown'], ['royalroad', 'city'], ['city', 'westroad'], ['westroad', 'forestmaze'], ['forestmaze', 'harpynest'], ['harpynest', 'harpyferry'], ['city', 'steppe'], ['steppe', 'desert'], ['desert', 'antnest', 'fall', '🕳️'], ['antnest', 'pyramid'], ['desert', '@plain']] },
     { id: 'snow', name: '❄️ 설원·설산', vh: 420,
-      nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 150], ['snowcave2', 272, 230], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
+      nodes: [['snowpeak', 160, 30], ['snowroad', 160, 90], ['snowtown', 160, 150], ['@royal', 46, 150, 'desert', '🏰 왕도 ◀'], ['snowcave', 272, 160], ['snowcave2', 272, 220], ['snow3', 160, 210], ['snow2', 160, 270], ['snow1', 160, 330],
         ['north', 160, 390], ['@beach2', 276, 390, 'plain', '⛵ 바닷가']],
       links: [['snowroad', 'snowpeak'], ['snowtown', 'snowroad'], ['snowtown', '@royal'], ['snowtown', 'snowcave'], ['snowcave', 'snowcave2'], ['snow3', 'snowtown'], ['snow2', 'snow3'], ['snow1', 'snow2'], ['north', 'snow1'], ['north', '@beach2', 'sea']] },
     // [2026-10-30] "다도해 뱃길에서 일곱 섬 가는 길도 실제 뱃길처럼" -- 실제 맵처럼 본섬에서 북쪽으로 물길, 왼쪽/오른쪽 번갈아 부두(동백 > 갈매기 > ... > 용암)
@@ -3776,10 +3777,12 @@ var TowerMine = (function () {
     { id: 'ocean', name: '🌊 먼 바다', vh: 300,
       nodes: [['seacity', 50, 70], ['opensea', 190, 70]], // [2026-11-18] 망망대해는 지도에 없다(사용자)
       links: [['seacity', 'opensea', 'sea', '⛵']] },
-    { id: 'sea', name: '🏝️ 남쪽 바다', vh: 760, channel: { x: 250, top: 128, isles: ['isle1', 'isle2', 'isle3', 'isle4', 'isle5', 'isle6', 'isle7'] },
-      nodes: [['@beach', 60, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 60, 560], ['archi', 250, 560], ['shrine', 140, 630], ['shrine2', 250, 630], ['shrine3', 360, 630],
-        ['shrineboss', 250, 700], ['archisea', 250, 500], ['isle1', 170, 440], ['isle2', 330, 388], ['isle3', 170, 336], ['isle4', 330, 284],
-        ['isle5', 170, 232], ['isle6', 330, 180], ['isle7', 170, 128]],
+    // [2026-11-20] "일곱 섬은 본섬 오른쪽, 실제 맵(다도해 뱃길)처럼 세로 -- 아래부터 왼쪽/오른쪽 번갈아(동백 > 갈매기 > ... > 용암)", "신궁은 3층 건물, 보스방은 옆에(실제 맵도 신궁 동쪽 문)".
+    //  신궁 1~3층은 본섬 아래 탑의 층(간격 WORLD_SHRINE_U), 보스방은 그 오른쪽 단층 -- 그림은 worldShrineSvg, 층 이름/인원은 worldHtml.
+    { id: 'sea', name: '🏝️ 남쪽 바다', vh: 760, cx: 300, channel: { top: 150, isles: ['isle1', 'isle2', 'isle3', 'isle4', 'isle5', 'isle6', 'isle7'] },
+      nodes: [['@beach', 60, 28, 'plain', '⛵ 남쪽 바닷가'], ['island', 40, 520], ['archi', 230, 520], ['archisea', 440, 520],
+        ['shrine', 200, 711], ['shrine2', 200, 665], ['shrine3', 200, 619], ['shrineboss', 335, 711],
+        ['isle1', 360, 450], ['isle2', 520, 400], ['isle3', 360, 350], ['isle4', 520, 300], ['isle5', 360, 250], ['isle6', 520, 200], ['isle7', 360, 150]],
       links: [['@beach', 'island', 'sea'], ['island', 'archi', 'sea', '⛵'], ['archi', 'shrine'], ['shrine', 'shrine2'], ['shrine2', 'shrine3'], ['archi', 'shrineboss'], ['archi', 'archisea', 'sea', '⛵']] }
   ];
   var worldTab = null;
@@ -3790,9 +3793,9 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { ocean: [-300, 830], fort: [-400, -380], /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [290, 800] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
+  var WORLD_PLACE = { ocean: [-300, 830], fort: [-400, -380], /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [150, 700] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
   var WORLD_CROSS = [ // [2026-11-18] 먼 바다 -- 바다 위 -> 바닷가, 바닷가 5시 -> 다도해 뱃길(망망대해는 지도에 없다)
-    ['ocean', 'opensea', 'plain', 'beach', 'sea', '⛵'], ['plain', 'beach', 'sea', 'archisea', 'sea', '5시 ⛵', [[700, 760], [700, 1300]]],['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
+    ['ocean', 'opensea', 'plain', 'beach', 'sea', '⛵'], ['plain', 'beach', 'sea', 'archisea', 'sea', '5시 ⛵', [[760, 740], [760, 1220]]],['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
   var WORLD_FLOOR = { cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', shrine: '1F', shrine2: '2F', shrine3: '3F', snow1: '1F', snow2: '2F', snow3: '3F' };
   var worldVB = null, wMoved = false;
@@ -3801,10 +3804,482 @@ var TowerMine = (function () {
     var e = R && R.nodes.filter(function (n) { return n[0] === nid; })[0];
     return e ? { x: o[0] + e[1], y: o[1] + e[2] } : null;
   }
+  // ---- [2026-11-20] 전체 지도 -- 옛 전도 풍 ----
+  // 사용자: "옛 전도 풍, 강/바다 이름, 강은 붓으로 그린 듯 자연스럽게, 지도 밖은 미탐사 구역(땅/바다를 그려 두고 구름으로)", "왕도 북쪽 샛길 -> 설산 마을은 땅으로 이어지게",
+  //  "요새 도시 위쪽은 다 땅", "윤슬항은 땅이 아니다", "지도를 열 때 말고 게임 시작 때 미리 그려 두기",
+  //  "신궁은 3층 건물(보스방은 옆에 따로)", "일곱 섬은 본섬 오른쪽, 실제 맵처럼 세로", "동굴/설산/요새 도시의 탑도 그림으로", "왕도는 대도시처럼, 요새 도시는 요새처럼(실제 맵과 비슷하게)".
+  //  땅: 칸마다 원을 겹치고(+ 걸어서 잇는 길을 따라 둑, 요새 도시 북쪽 땅, 강둑, 미탐사 땅) 잡음을 더한 높이 표에서 등고선(마칭 스퀘어)을 뽑아 매끈한 선 그림(path)으로 --
+  //  필터 없는 선 그림이라 확대해도 선명하고 끌 때 가볍다. 구름(미탐사)과 왕도/요새 도시 축소도(실제 맵 칸으로 그림)만 작은 그림. 모두 게임 시작 로딩(preloadExtra)에서 한 번 만든다.
+  //  그림으로 그리는 곳(WORLD_GROUP)은 칸 대신 그림 위 띠(층 이름 + 인원) 또는 축소도 -- 같은 그림 안의 길은 안 그리고, 밖에서 오는 길은 그림의 입구(bg.entry)로.
+  var worldBg = null;
+  var WORLD_SEA_IDS = { opensea: 1, archisea: 1, seacity: 1 }; // 물 위 칸(땅을 깔지 않는다 -- 윤슬항은 물 위 항구)
+  var WORLD_GROUP = { shrine: 'shrine', shrine2: 'shrine', shrine3: 'shrine', shrineboss: 'shrine', cave1: 'cave', cave2: 'cave', cave3: 'cave', cave4: 'cave',
+    snowcave: 'icecave', snowcave2: 'icecave', towergate: 'tower', city: 'city', towercity: 'fort' };
+  var WORLD_BAND = { shrine: '1층', shrine2: '2층', shrine3: '3층', shrineboss: '🥷 보스방', cave1: 'B1', cave2: 'B2', cave3: 'B3', cave4: 'B4', snowcave: 'B1', snowcave2: 'B2', towergate: '🗼 거대한 탑' };
+  var WORLD_BAND_W = { shrine: 94, shrine2: 76, shrine3: 62, shrineboss: 70, cave1: 74, cave2: 74, cave3: 74, cave4: 74, snowcave: 66, snowcave2: 66, towergate: 92 };
+  var WORLD_BAND_STY = { shrine: ['rgba(255,248,230,.93)', '#3a1a0c'], boss: ['rgba(70,22,34,.93)', '#ffd8e0'], cave: ['rgba(40,28,20,.9)', '#f4e2c0'], icecave: ['rgba(232,244,252,.94)', '#1a3a50'], tower: ['rgba(255,248,230,.94)', '#3a1a0c'] };
+  var WORLD_LV_DX = { shrine: 70, shrine2: 61, shrine3: 53, shrineboss: 56, cave1: 62, cave2: 62, cave3: 62, cave4: 62, snowcave: 62, snowcave2: 62 }; // 권장 Lv 글씨는 그림 왼쪽 바깥에
+  var WORLD_SHRINE_W = [124, 106, 90], WORLD_SHRINE_U = 46, WORLD_SHRINE_H = 38;
+  var WORLD_RIVER = [[-112, -600], [-98, -545], [-118, -490], [-100, -430], [-118, -372], [-101, -330], [-118, -290], [-102, -250], [-120, -205], [-104, -160], [-121, -112], [-102, -66], [-118, -20], [-103, 28], [-124, 78], [-140, 122], [-152, 165]];
+  var WORLD_TRIB = [[-40, -345], [-56, -300], [-76, -268], [-101, -252]];
+  var WORLD_LAKES = [[325, 556, 24, 10], [236, 371, 14, 7]];
+  var WORLD_WATERS = [['엘리시온 강', -84, -150, 82, 13], ['북쪽 바다', 735, 360, 0, 22], ['남쪽 바다', 40, 1110, 0, 30], ['다 도 해', 395, 1080, 0, 22], ['중앙 평원 호수', 330, 536, 0, 9], ['사막 오아시스', 236, 355, 0, 9]];
+  var WORLD_MOUNTS = [[-140, -628], [-112, -642], [-84, -626], [-160, -604], [-62, -604], [-122, -590], [-420, -470], [-446, -452], [-620, -390], [-300, -540], [-700, -610], [-520, -720], [300, -430], [330, -410], [130, -330], [160, -345]];
+  var WORLD_UNEXP = [[-690, -640, 170, 12], [300, -420, 140, 10], [560, -380, 110, 8], [1040, 160, 130, 10], [1000, 520, 110, 8], [1300, 900, 110, 8], [-690, 330, 150, 10], [-640, 620, 90, 6],
+    [-640, 1300, 140, 10], [-480, 1560, 90, 6], [1120, 1450, 140, 10], [240, 1750, 160, 11], [720, 1800, 110, 8]];
+  var WG = { x0: -1300, y0: -1450, x1: 1900, y1: 2600, c: 8 }; // 높이 표 범위(지도 밖 구름까지)
+  function wHash(i, j) { var h = (Math.imul(i, 374761393) + Math.imul(j, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+  function wNoise(x, y) {
+    var i = Math.floor(x), j = Math.floor(y), fx = x - i, fy = y - j, u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+    var a = wHash(i, j), b = wHash(i + 1, j), c = wHash(i, j + 1), d = wHash(i + 1, j + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+  function wFbm(x, y, o) { var s = 0, amp = 0.5, f = 1, n = 0; for (var k = 0; k < o; k++) { s += wNoise(x * f + k * 17.3, y * f - k * 9.1) * amp; n += amp; amp *= 0.5; f *= 2; } return s / n; }
+  function wRnd(seed) { var sd = seed; return function () { sd = (sd * 16807) % 2147483647; return sd / 2147483647; }; }
+  function worldNodePos() {
+    var P = {};
+    WORLD_REGIONS.forEach(function (R) { var o = WORLD_PLACE[R.id]; R.nodes.forEach(function (e) { if (e[0].charAt(0) !== '@') P[e[0]] = { x: o[0] + e[1], y: o[1] + e[2], r: R.id }; }); });
+    return P;
+  }
+  /** 길(선분) -- 구간 안 길 + 구간 사이 길 + 일곱 섬 뱃길. walkOnly면 걸어서 잇는 길만(땅 둑). */
+  function worldSegs(P, walkOnly) {
+    var s = [], bad = function (id) { return WORLD_SEA_IDS[id] || WORLD_GROUP[id] === 'shrine'; };
+    WORLD_REGIONS.forEach(function (R) {
+      R.links.forEach(function (l) {
+        var p = P[l[0]], q = P[l[1]], ty = l[2] || 'walk';
+        if (!p || !q || (walkOnly && (ty === 'sea' || bad(l[0]) || bad(l[1])))) return;
+        s.push([p.x, p.y, q.x, q.y]);
+      });
+      if (R.channel && P.archisea && !walkOnly) {
+        var chx = P.archisea.x, ctop = WORLD_PLACE[R.id][1] + R.channel.top;
+        s.push([chx, P.archisea.y, chx, ctop]);
+        R.channel.isles.forEach(function (id) { var p = P[id]; if (p) s.push([chx, p.y, p.x, p.y]); });
+      }
+    });
+    WORLD_CROSS.forEach(function (c) {
+      var p = worldPos(c[0], c[1]), q = worldPos(c[2], c[3]);
+      if (!p || !q || (walkOnly && c[4] !== 'walk')) return;
+      var pts = [[p.x, p.y]].concat(c[6] || []).concat([[q.x, q.y]]);
+      for (var i = 0; i < pts.length - 1; i++) s.push([pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+    });
+    return s;
+  }
+  function worldCr(pts, step) { // Catmull-Rom 샘플
+    var out = [];
+    for (var i = 0; i < pts.length - 1; i++) {
+      var p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      for (var t = 0; t < 1 - 1e-6; t += step) {
+        var t2 = t * t, t3 = t2 * t, q = [];
+        for (var k = 0; k < 2; k++) q.push(0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3));
+        out.push(q);
+      }
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+  }
+  function worldLandPts(P) {
+    var pts = [], rnd = wRnd(11);
+    Object.keys(P).forEach(function (id) {
+      if (WORLD_SEA_IDS[id]) return;
+      var p = P[id], isle = /^isle/.test(id), r = isle ? 34 : p.r === 'fort' ? 56 : 70;
+      pts.push([p.x, p.y, r]);
+      if (!isle) for (var k = 0; k < 5; k++) { var a = ((id.charCodeAt(0) * 37 + id.length * 13 + k * 71) % 360) * Math.PI / 180; pts.push([p.x + Math.cos(a) * r * 0.75, p.y + Math.sin(a) * r * 0.75, r * 0.5]); }
+    });
+    if (P.city) pts.push([P.city.x, P.city.y, 95]); // 왕도/요새 도시 축소도 아래는 넉넉히 땅
+    if (P.towercity) pts.push([P.towercity.x, P.towercity.y, 85]);
+    if (P.shrine && P.shrineboss) pts.push([(P.shrine.x + P.shrineboss.x) / 2, P.shrine.y - 30, 100]); // 신궁 건물 아래
+    if (P.snowtown && P.snow1) for (var my = P.snowpeak.y; my <= P.snow1.y + 20; my += 40) pts.push([P.snowtown.x, my, 120 + (my - P.snowpeak.y) * 0.25]); // 설산 그림 아래
+    if (P.towergate && P.towercity) { pts.push([P.towergate.x, P.towergate.y - 60, 95]); pts.push([P.towergate.x, (P.towergate.y + P.towercity.y) / 2, 85]); } // 거대한 탑 둘레
+    worldSegs(P, true).forEach(function (s) { // 걸어서 잇는 길은 땅으로(왕도 북쪽 샛길 -> 설산 마을 등)
+      var dx = s[2] - s[0], dy = s[3] - s[1], n = Math.ceil(Math.sqrt(dx * dx + dy * dy) / 35);
+      for (var i = 1; i < n; i++) pts.push([s[0] + dx * i / n, s[1] + dy * i / n, 44]);
+    });
+    for (var y = -1060; y <= -300; y += 60) for (var x = -900; x <= 40; x += 60) pts.push([x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 30, 46 + rnd() * 14]); // 요새 도시 북쪽은 모두 땅
+    worldCr(WORLD_RIVER.slice(0, 14), 0.5).forEach(function (q) { pts.push([q[0] + 8, q[1], 46]); }); // 강둑(강이 땅 위로 흐르게)
+    var ur = wRnd(29);
+    WORLD_UNEXP.forEach(function (u) { // 미탐사 땅(구름 아래)
+      pts.push([u[0], u[1], u[2] * 0.6]);
+      for (var k = 0; k < u[3]; k++) { var a = ur() * Math.PI * 2, d = ur() * u[2]; pts.push([u[0] + Math.cos(a) * d, u[1] + Math.sin(a) * d, u[2] * (0.3 + ur() * 0.35)]); }
+    });
+    return pts;
+  }
+  function worldField(circles) {
+    var c = WG.c, W = Math.ceil((WG.x1 - WG.x0) / c) + 1, H = Math.ceil((WG.y1 - WG.y0) / c) + 1, f = new Float32Array(W * H), i, j;
+    for (i = 0; i < f.length; i++) f[i] = -30;
+    circles.forEach(function (q) {
+      var r = q[2], m = r + 30, i0 = Math.max(0, Math.floor((q[0] - m - WG.x0) / c)), i1 = Math.min(W - 1, Math.ceil((q[0] + m - WG.x0) / c));
+      var j0 = Math.max(0, Math.floor((q[1] - m - WG.y0) / c)), j1 = Math.min(H - 1, Math.ceil((q[1] + m - WG.y0) / c));
+      for (var jj = j0; jj <= j1; jj++) { var yy = WG.y0 + jj * c - q[1]; for (var ii = i0; ii <= i1; ii++) { var xx = WG.x0 + ii * c - q[0], v = r - Math.sqrt(xx * xx + yy * yy), k = jj * W + ii; if (v > f[k]) f[k] = v; } }
+    });
+    for (j = 0; j < H; j++) for (i = 0; i < W; i++) f[j * W + i] += (wFbm((WG.x0 + i * c) / 60, (WG.y0 + j * c) / 60, 3) - 0.5) * 26; // 울퉁불퉁한 해안
+    return { f: f, W: W, H: H };
+  }
+  /** 높이 표에서 L 높이 등고선 -> 닫힌 곡선들(path d). 칸 모서리 번호로 선분을 이어 붙인다. */
+  function worldContour(F, L) {
+    var f = F.f, W = F.W, H = F.H, c = WG.c, pt = {}, adj = {}, segs = [];
+    var ep = function (t, i, j) {
+      var k = t + i + ',' + j;
+      if (!pt[k]) { var a = f[j * W + i], b = t === 'h' ? f[j * W + i + 1] : f[(j + 1) * W + i], s = (L - a) / (b - a); pt[k] = t === 'h' ? [WG.x0 + (i + s) * c, WG.y0 + j * c] : [WG.x0 + i * c, WG.y0 + (j + s) * c]; }
+      return k;
+    };
+    var add = function (a, b) { var n = segs.length; segs.push([a, b]); (adj[a] = adj[a] || []).push(n); (adj[b] = adj[b] || []).push(n); };
+    for (var j = 0; j < H - 1; j++) for (var i = 0; i < W - 1; i++) {
+      var idx = (f[j * W + i] > L ? 8 : 0) | (f[j * W + i + 1] > L ? 4 : 0) | (f[(j + 1) * W + i + 1] > L ? 2 : 0) | (f[(j + 1) * W + i] > L ? 1 : 0);
+      if (idx === 0 || idx === 15) continue;
+      var T = function () { return ep('h', i, j); }, R = function () { return ep('v', i + 1, j); }, B = function () { return ep('h', i, j + 1); }, Lf = function () { return ep('v', i, j); };
+      switch (idx) {
+        case 1: case 14: add(Lf(), B()); break;
+        case 2: case 13: add(B(), R()); break;
+        case 3: case 12: add(Lf(), R()); break;
+        case 4: case 11: add(T(), R()); break;
+        case 6: case 9: add(T(), B()); break;
+        case 7: case 8: add(Lf(), T()); break;
+        case 5: add(Lf(), B()); add(T(), R()); break;
+        case 10: add(Lf(), T()); add(B(), R()); break;
+      }
+    }
+    var used = new Uint8Array(segs.length), d = '';
+    for (var s0 = 0; s0 < segs.length; s0++) {
+      if (used[s0]) continue;
+      used[s0] = 1;
+      var loop = [segs[s0][0]], cur = segs[s0][1], guard = 0;
+      while (cur !== loop[0] && guard++ < 200000) {
+        loop.push(cur);
+        var nx = (adj[cur] || []).filter(function (n) { return !used[n]; })[0];
+        if (nx == null) break;
+        used[nx] = 1;
+        cur = segs[nx][0] === cur ? segs[nx][1] : segs[nx][0];
+      }
+      if (loop.length < 5) continue;
+      var P2 = loop.map(function (k) { return pt[k]; }), n2 = P2.length;
+      var bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
+      P2.forEach(function (p) { bx0 = Math.min(bx0, p[0]); bx1 = Math.max(bx1, p[0]); by0 = Math.min(by0, p[1]); by1 = Math.max(by1, p[1]); });
+      if (bx1 - bx0 < 44 && by1 - by0 < 44) continue; // 잡음으로 생긴 작은 섬/웅덩이는 버린다
+      var mid = function (a, b) { return ((a[0] + b[0]) / 2).toFixed(1) + ',' + ((a[1] + b[1]) / 2).toFixed(1); };
+      d += 'M' + mid(P2[n2 - 1], P2[0]);
+      for (var q = 0; q < n2; q++) d += 'Q' + P2[q][0].toFixed(1) + ',' + P2[q][1].toFixed(1) + ' ' + mid(P2[q], P2[(q + 1) % n2]);
+      d += 'Z';
+    }
+    return d;
+  }
+  function worldRibbon(pts, w0, w1, flare, seed) { // 강 -- 가늘게 시작해 점점 넓어지고, 하구에서 벌어진다
+    var c = worldCr(pts, 0.1), Lp = [], Rp = [];
+    c.forEach(function (p, i) {
+      var q = c[Math.min(c.length - 1, i + 1)], o = c[Math.max(0, i - 1)], dx = q[0] - o[0], dy = q[1] - o[1], dd = Math.sqrt(dx * dx + dy * dy) || 1;
+      var t = i / (c.length - 1), w = (w0 + (w1 - w0) * Math.pow(t, 1.3)) * (0.82 + 0.36 * wNoise(i * 0.35, seed)) + (flare && t > 0.88 ? (t - 0.88) * 170 : 0);
+      Lp.push([p[0] - dy / dd * w / 2, p[1] + dx / dd * w / 2]); Rp.push([p[0] + dy / dd * w / 2, p[1] - dx / dd * w / 2]);
+    });
+    var all = Lp.concat(Rp.reverse());
+    return 'M' + all.map(function (v) { return v[0].toFixed(1) + ',' + v[1].toFixed(1); }).join('L') + 'Z';
+  }
+  function worldBlob(cx, cy, rx, ry, seed) { // 호수 -- 일그러진 타원
+    var d = '';
+    for (var a = 0, k = 0; a < Math.PI * 2 - 1e-6; a += Math.PI / 12, k++) { var m = 0.85 + 0.3 * wNoise(k * 0.7, seed); d += (k ? 'L' : 'M') + (cx + Math.cos(a) * rx * m).toFixed(1) + ',' + (cy + Math.sin(a) * ry * m).toFixed(1); }
+    return d + 'Z';
+  }
+  function worldMountSvg() { // 옛 지도식 산(먹선 봉우리 + 한쪽 빗금)
+    return WORLD_MOUNTS.map(function (m) {
+      var x = m[0], y = m[1], h = 14, w = 12;
+      return '<path d="M' + (x - w) + ',' + (y + 6) + ' Q' + (x - 4) + ',' + (y - h + 4) + ' ' + x + ',' + (y - h) + ' Q' + (x + 5) + ',' + (y - h + 5) + ' ' + (x + w) + ',' + (y + 6) + '" fill="#e2cfa0" stroke="#5a3e22" stroke-width="1.3"/>'
+          + '<path d="M' + (x + 2) + ',' + (y - h + 4) + 'L' + (x + 3) + ',' + (y + 4) + 'M' + (x + 5) + ',' + (y - h + 8) + 'L' + (x + 6) + ',' + (y + 5) + 'M' + (x + 8) + ',' + (y - 3) + 'L' + (x + 9) + ',' + (y + 5) + '" stroke="#7a5a36" stroke-width=".8"/>';
+    }).join('');
+  }
+  /** 기와지붕 하나(처마 끝이 들리고 오른쪽 옆면) -- 아래 너비 rw(처마), 위 너비 rw2, 아래 y, 위 y. */
+  function worldRoof(bx, rw, rw2, ryb, rtop) {
+    var ddx = 16, ddy = -9, s = '';
+    s += '<path d="M' + (bx + rw / 2) + ',' + (ryb - 6) + 'l' + ddx + ',' + ddy + 'L' + (bx + rw2 / 2 + ddx) + ',' + (rtop + ddy) + 'L' + (bx + rw2 / 2) + ',' + rtop + 'Z" fill="#26323e"/>';
+    s += '<path d="M' + (bx - rw / 2) + ',' + (ryb - 6) + 'Q' + bx + ',' + (ryb + 6) + ' ' + (bx + rw / 2) + ',' + (ryb - 6) + 'L' + (bx + rw2 / 2) + ',' + rtop + 'L' + (bx - rw2 / 2) + ',' + rtop + 'Z" fill="#3a4a5a" stroke="#1a222a" stroke-width="1"/>';
+    for (var tl = -2; tl <= 2; tl++) s += '<path d="M' + (bx + tl * rw / 6) + ',' + (ryb - 2 - Math.abs(tl) * 1.2) + 'L' + (bx + tl * rw2 / 6) + ',' + (rtop + 1) + '" stroke="#5a6a7a" stroke-width=".7"/>';
+    return s;
+  }
+  /** 다도해 본섬 신궁 -- 3층 탑(1·2·3층) + 오른쪽 옆 단층 보스방(닌자 두목의 방, 실제 맵에서도 신궁 동쪽 문). 층 띠/인원은 worldHtml. 들어가는 곳 = 탑 꼭대기. */
+  function worldShrineSvg(P, entry) {
+    if (!P.shrine) return '';
+    var bx = P.shrine.x, gy = P.shrine.y + WORLD_SHRINE_H / 2, U = WORLD_SHRINE_U, h = WORLD_SHRINE_H, ddx = 16, ddy = -9, s = '', ws = WORLD_SHRINE_W;
+    var hx = P.shrineboss ? P.shrineboss.x : bx + 130, hw = 96, xr0 = hx + hw / 2 + 14;
+    s += '<ellipse cx="' + ((bx + hx) / 2 + 8) + '" cy="' + (gy + 12) + '" rx="' + ((xr0 - bx) / 2 + 90) + '" ry="15" fill="#5a3e22" opacity=".18"/>'; // 그림자
+    s += '<path d="M' + (bx - 80) + ',' + gy + 'H' + xr0 + 'l' + ddx + ',' + ddy + 'v10l' + (-ddx) + ',' + (-ddy) + 'H' + (bx - 80) + 'z" fill="#8f8270"/><rect x="' + (bx - 80) + '" y="' + gy + '" width="' + (xr0 - bx + 80) + '" height="10" fill="#b0a48c" stroke="#5a4a36" stroke-width=".8"/>'; // 돌 기단(탑과 보스방 함께)
+    [bx, hx].forEach(function (sx) { s += '<rect x="' + (sx - 14) + '" y="' + (gy + 10) + '" width="28" height="4" fill="#a09478"/><rect x="' + (sx - 18) + '" y="' + (gy + 14) + '" width="36" height="4" fill="#968a70"/>'; }); // 계단
+    var hy = gy, hyt = hy - h; // 보스방(단층, 어두운 앞면, 큰 팔작지붕)
+    s += '<path d="M' + (hx + hw / 2) + ',' + hyt + 'l' + ddx + ',' + ddy + 'V' + (hy + ddy) + 'L' + (hx + hw / 2) + ',' + hy + 'Z" fill="#4a2a34" stroke="#2a1018" stroke-width=".8"/>';
+    s += '<rect x="' + (hx - hw / 2) + '" y="' + hyt + '" width="' + hw + '" height="' + h + '" fill="#3a2430" stroke="#2a1018" stroke-width="1"/>';
+    for (var pi = 0; pi < 4; pi++) s += '<rect x="' + (hx - hw / 2 + 2 + pi * (hw - 9) / 3) + '" y="' + hyt + '" width="5" height="' + h + '" fill="#8a1e1e"/>';
+    s += worldRoof(hx, hw + 34, 30, hyt + 4, hyt - 24);
+    s += '<path d="M' + (hx + hw / 2 + 10) + ',' + (hyt - 6) + 'v26" stroke="#2a1a14" stroke-width="1.4"/><path d="M' + (hx + hw / 2 + 10) + ',' + (hyt - 6) + 'h12v14h-12z" fill="#c0281e"/>'; // 붉은 깃발
+    for (var k = 0; k < 3; k++) { // 3층 탑
+      var w = ws[k], yb = gy - k * U, yt = yb - h, xl = bx - w / 2, xr = bx + w / 2;
+      s += '<path d="M' + xr + ',' + yt + 'l' + ddx + ',' + ddy + 'V' + (yb + ddy) + 'L' + xr + ',' + yb + 'Z" fill="#b89a70" stroke="#4a3020" stroke-width=".8"/>';
+      s += '<rect x="' + xl + '" y="' + yt + '" width="' + w + '" height="' + h + '" fill="#ead6b0" stroke="#4a3020" stroke-width="1"/>';
+      s += '<rect x="' + (xl + 2) + '" y="' + yt + '" width="5" height="' + h + '" fill="#b8322a"/><rect x="' + (xr - 7) + '" y="' + yt + '" width="5" height="' + h + '" fill="#b8322a"/>';
+      for (var wi = 0; wi < 2; wi++) { var wx = wi ? xr - 20 : xl + 10; s += '<rect x="' + wx + '" y="' + (yt + 8) + '" width="10" height="' + (h - 16) + '" fill="#5a2a1a"/><path d="M' + (wx + 5) + ',' + (yt + 8) + 'v' + (h - 16) + 'M' + wx + ',' + (yt + h / 2) + 'h10" stroke="#c8a060" stroke-width=".8"/>'; }
+      s += worldRoof(bx, w + 30, k === 2 ? 6 : ws[k + 1] - 6, yt + 4, yt - (k === 2 ? 26 : 10));
+    }
+    var topY = gy - 2 * U - h - 26;
+    s += '<path d="M' + bx + ',' + topY + 'v-22" stroke="#d8b04a" stroke-width="2.4"/>';
+    for (var ri = 0; ri < 4; ri++) s += '<ellipse cx="' + bx + '" cy="' + (topY - 4 - ri * 4.5) + '" rx="' + (5 - ri) + '" ry="1.4" fill="#d8b04a"/>'; // 상륜
+    s += '<circle cx="' + bx + '" cy="' + (topY - 24) + '" r="2.6" fill="#ffe08a"/>';
+    var tx = bx - 64, ty = gy + 4; // 기단 앞 붉은 문(도리이)
+    s += '<rect x="' + (tx - 12) + '" y="' + (ty - 2) + '" width="3" height="26" fill="#c8402a"/><rect x="' + (tx + 9) + '" y="' + (ty - 2) + '" width="3" height="26" fill="#c8402a"/>'
+        + '<path d="M' + (tx - 17) + ',' + (ty - 5) + 'Q' + tx + ',' + (ty - 1) + ' ' + (tx + 17) + ',' + (ty - 5) + 'v3Q' + tx + ',' + (ty + 2) + ' ' + (tx - 17) + ',' + (ty - 2) + 'Z" fill="#2a1a14"/><rect x="' + (tx - 13) + '" y="' + (ty + 3) + '" width="26" height="2.4" fill="#c8402a"/>';
+    s += '<text x="' + ((bx + hx) / 2) + '" y="' + (gy + 36) + '" text-anchor="middle" class="wn">⛩️ 신궁</text>';
+    entry.shrine = [bx, topY - 28];
+    return s;
+  }
+  /** 동굴 단면 -- 땅 위 바위 언덕의 굴 입구, 땅속으로 층(B1~)마다 방이 이어진다. ice = 설산 동굴(눈 덮인 얼음). 들어가는 곳 = 굴 입구. */
+  function worldCaveSvg(P, ids, ice, label, key, entry) {
+    var a = P[ids[0]], z = P[ids[ids.length - 1]];
+    if (!a || !z) return '';
+    var x = a.x, y0 = a.y - 30, y1 = z.y + 24, s = '', rock = ice ? '#dfeaf2' : '#b89a6a', ink = ice ? '#4a6a80' : '#5a3e22';
+    var soil = ice ? '#9ab8ca' : '#8a6e4e', strata = ice ? '#7f9fb4' : '#735a3e', room = ice ? '#22384a' : '#2a1e16', tun = ice ? '#2e4a5e' : '#3a2a1e';
+    s += '<path d="M' + (x - 64) + ',' + y0 + 'Q' + (x - 70) + ',' + ((y0 + y1) / 2) + ' ' + (x - 60) + ',' + y1 + 'Q' + x + ',' + (y1 + 14) + ' ' + (x + 60) + ',' + y1 + 'Q' + (x + 70) + ',' + ((y0 + y1) / 2) + ' ' + (x + 64) + ',' + y0 + 'Z" fill="' + soil + '" stroke="' + ink + '" stroke-width="1.2"/>'; // 땅속
+    for (var yy = y0 + 12; yy < y1 - 4; yy += 13) s += '<path d="M' + (x - 62) + ',' + yy + 'Q' + (x - 30) + ',' + (yy - 4) + ' ' + x + ',' + yy + 'T' + (x + 62) + ',' + yy + '" fill="none" stroke="' + strata + '" stroke-width=".9" opacity=".7"/>'; // 지층
+    var px = x - 4, py = y0; // 굴 입구
+    var prev = [px, py];
+    ids.forEach(function (id, i) {
+      var p = P[id], side = i % 2 ? 1 : -1, tx = x + side * 26;
+      s += '<path d="M' + prev[0] + ',' + prev[1] + 'Q' + tx + ',' + ((prev[1] + p.y) / 2) + ' ' + tx + ',' + p.y + '" fill="none" stroke="' + tun + '" stroke-width="7" stroke-linecap="round"/>'; // 굴
+      prev = [x - side * 26, p.y];
+    });
+    ids.forEach(function (id, i) { var p = P[id]; s += '<path d="' + worldBlob(x + (i % 2 ? 4 : -4), p.y, 50, 15, 30 + i) + '" fill="' + room + '" stroke="' + ink + '" stroke-width=".8"/>'; }); // 층마다 방
+    var gr = wRnd(ice ? 41 : 43);
+    for (var g = 0; g < 14; g++) { var gx = x - 56 + gr() * 112, gyy = y0 + 8 + gr() * (y1 - y0 - 16); s += '<path d="M' + gx + ',' + (gyy - 2.5) + 'l2,2.5l-2,2.5l-2,-2.5z" fill="' + (ice ? '#c8f4ff' : ['#ffd84a', '#8ad8ff', '#ff8aa8', '#c0c0c0'][g % 4]) + '" opacity=".9"/>'; } // 광석/얼음 결정
+    s += '<path d="M' + (x - 68) + ',' + (y0 + 1) + 'C' + (x - 52) + ',' + (y0 - 30) + ' ' + (x - 20) + ',' + (y0 - 42) + ' ' + x + ',' + (y0 - 42) + 'C' + (x + 26) + ',' + (y0 - 42) + ' ' + (x + 52) + ',' + (y0 - 24) + ' ' + (x + 68) + ',' + (y0 + 1) + 'Z" fill="' + rock + '" stroke="' + ink + '" stroke-width="1.3"/>'; // 바위 언덕
+    if (ice) s += '<path d="M' + (x - 30) + ',' + (y0 - 34) + 'Q' + x + ',' + (y0 - 48) + ' ' + (x + 30) + ',' + (y0 - 32) + 'l-6,7l-6,-4l-7,6l-6,-5l-7,6l-6,-6l-7,5z" fill="#ffffff" stroke="#9ab8ca" stroke-width=".7"/>'; // 눈
+    for (var hk = 0; hk < 5; hk++) s += '<path d="M' + (x + 22 + hk * 8) + ',' + (y0 - 30 + hk * 6) + 'l6,9" stroke="' + ink + '" stroke-width=".8" opacity=".7"/>'; // 빗금
+    s += '<path d="M' + (px - 13) + ',' + y0 + 'Q' + (px - 13) + ',' + (y0 - 20) + ' ' + px + ',' + (y0 - 20) + 'Q' + (px + 13) + ',' + (y0 - 20) + ' ' + (px + 13) + ',' + y0 + 'Z" fill="#14100c" stroke="' + ink + '" stroke-width="1"/>'; // 굴 입구
+    if (!ice) s += '<path d="M' + (px - 13) + ',' + (y0 - 1) + 'V' + (y0 - 14) + 'M' + (px + 13) + ',' + (y0 - 1) + 'V' + (y0 - 14) + 'M' + (px - 15) + ',' + (y0 - 15) + 'H' + (px + 15) + '" stroke="#8a5a30" stroke-width="2.2"/>'; // 갱도 나무틀
+    s += '<path d="M' + (x - 70) + ',' + y0 + 'H' + (x + 70) + '" stroke="' + (ice ? '#ffffff' : '#6a8a3a') + '" stroke-width="2.4" opacity=".8"/>'; // 땅 위
+    s += '<text x="' + x + '" y="' + (y1 + 26) + '" text-anchor="middle" class="wn">' + label + '</text>';
+    entry[key] = [px, y0 - 10];
+    return s;
+  }
+  /** 설산 -- 설원에서 봉우리까지 칸들이 오르는 큰 산(눈 덮인 위쪽, 오른쪽 그늘, 옆 봉우리). */
+  function worldSnowMtnSvg(P) {
+    if (!P.snowtown || !P.snowpeak || !P.snow1) return '';
+    var x = P.snowtown.x, pk = P.snowpeak.y - 48, base = P.snow1.y + 34, s = '';
+    var side = function (cx, top, hw, bot) {
+      return '<path d="M' + (cx - hw) + ',' + bot + 'L' + (cx - hw * 0.45) + ',' + (top + (bot - top) * 0.45) + 'L' + cx + ',' + top + 'L' + (cx + hw * 0.5) + ',' + (top + (bot - top) * 0.5) + 'L' + (cx + hw) + ',' + bot + 'Z" fill="#c4b8a6" stroke="#5a3e22" stroke-width="1.2"/>'
+          + '<path d="M' + cx + ',' + top + 'L' + (cx + hw) + ',' + bot + 'H' + (cx + hw * 0.15) + 'Z" fill="#5a4a3a" opacity=".2"/>'
+          + '<path d="M' + (cx - hw * 0.26) + ',' + (top + (bot - top) * 0.26) + 'L' + cx + ',' + top + 'L' + (cx + hw * 0.27) + ',' + (top + (bot - top) * 0.27) + 'l-7,6l-6,-5l-7,7l-6,-6l-7,5z" fill="#f6f9fb" stroke="#8aa0b0" stroke-width=".7"/>';
+    };
+    s += side(x - 118, base - 150, 70, base); // 옆 봉우리
+    s += side(x + 128, base - 120, 66, base);
+    s += '<path d="M' + (x - 158) + ',' + base + 'C' + (x - 128) + ',' + (base - 80) + ' ' + (x - 98) + ',' + (base - 120) + ' ' + (x - 66) + ',' + (base - 200) + 'L' + (x - 38) + ',' + (pk + 90) + 'L' + (x - 22) + ',' + (pk + 50) + 'L' + x + ',' + pk
+        + 'L' + (x + 26) + ',' + (pk + 46) + 'L' + (x + 48) + ',' + (pk + 96) + 'L' + (x + 76) + ',' + (base - 190) + 'C' + (x + 104) + ',' + (base - 120) + ' ' + (x + 132) + ',' + (base - 70) + ' ' + (x + 160) + ',' + base + 'Z" fill="#cfc4b2" stroke="#5a3e22" stroke-width="1.5"/>'; // 큰 산
+    s += '<path d="M' + x + ',' + pk + 'L' + (x + 26) + ',' + (pk + 46) + 'L' + (x + 48) + ',' + (pk + 96) + 'L' + (x + 76) + ',' + (base - 190) + 'C' + (x + 104) + ',' + (base - 120) + ' ' + (x + 132) + ',' + (base - 70) + ' ' + (x + 160) + ',' + base + 'H' + (x + 30) + 'Z" fill="#5a4a3a" opacity=".16"/>'; // 오른쪽 그늘
+    var sl = pk + 150, cap = 'M' + x + ',' + pk + 'L' + (x + 26) + ',' + (pk + 46) + 'L' + (x + 48) + ',' + (pk + 96) + 'L' + (x + 62) + ',' + sl;
+    for (var k = 0, sx = x + 62; sx > x - 50; sx -= 9, k++) cap += 'L' + (sx - 4.5) + ',' + (sl + (k % 2 ? -5 : 6));
+    s += '<path d="' + cap + 'L' + (x - 55) + ',' + sl + 'L' + (x - 38) + ',' + (pk + 90) + 'L' + (x - 22) + ',' + (pk + 50) + 'Z" fill="#f8fbfd" stroke="#8aa0b0" stroke-width=".8"/>'; // 눈 덮인 위쪽
+    for (var hk = 0; hk < 9; hk++) { var hy = base - 30 - hk * 22, hx = x + 40 + hk * 3; s += '<path d="M' + hx + ',' + hy + 'l9,12M' + (hx + 12) + ',' + (hy + 4) + 'l8,11" stroke="#5a3e22" stroke-width=".8" opacity=".5"/>'; } // 빗금
+    for (var t = 0; t < 7; t++) { var tx = x - 140 + t * 44 + (t % 2) * 8, ty = base - 6 - (t % 3) * 5; s += '<path d="M' + tx + ',' + (ty - 12) + 'l-5,10h10z" fill="#4a6a4a" stroke="#2a3a2a" stroke-width=".6"/><path d="M' + tx + ',' + (ty - 16) + 'l-3,6h6z" fill="#ffffff"/>'; } // 기슭 전나무
+    return s;
+  }
+  /** 요새 도시의 거대한 탑 -- 하늘로 솟은 돌탑(층 테두리, 창, 둘레 구름, 꼭대기 빛). 띠 = 탑 입구. */
+  function worldTowerSvg(P) {
+    if (!P.towergate) return '';
+    var x = P.towergate.x, yb = P.towergate.y - 10, s = '', ddx = 9, ddy = -5, n = 7, segH = 14;
+    s += '<ellipse cx="' + (x + 4) + '" cy="' + (yb + 12) + '" rx="40" ry="8" fill="#5a3e22" opacity=".2"/>';
+    for (var k = 0; k < n; k++) {
+      var w = 48 - k * 3.2, y2 = yb - k * segH, y1 = y2 - segH, xl = x - w / 2, xr = x + w / 2;
+      s += '<path d="M' + xr + ',' + y1 + 'l' + ddx + ',' + ddy + 'V' + (y2 + ddy) + 'L' + xr + ',' + y2 + 'Z" fill="#9a907e" stroke="#4a4036" stroke-width=".7"/>';
+      s += '<rect x="' + xl + '" y="' + y1 + '" width="' + w + '" height="' + segH + '" fill="' + (k % 2 ? '#d8d0c0' : '#cfc6b4') + '" stroke="#4a4036" stroke-width=".8"/>';
+      s += '<rect x="' + (xl - 1.5) + '" y="' + (y1 - 1.5) + '" width="' + (w + 3) + '" height="3" fill="#b8ae9a" stroke="#4a4036" stroke-width=".5"/>'; // 층 테두리
+      if (k > 0) for (var wi = -1; wi <= 1; wi += 2) s += '<rect x="' + (x + wi * w / 4 - 1.5) + '" y="' + (y1 + 4) + '" width="3" height="6" fill="#2a2430"/>'; // 창
+    }
+    var top = yb - n * segH;
+    s += '<path d="M' + (x - 13) + ',' + top + 'L' + x + ',' + (top - 22) + 'L' + (x + 13) + ',' + top + 'Z" fill="#6a5a8a" stroke="#3a2a4a" stroke-width=".8"/>';
+    s += '<circle cx="' + x + '" cy="' + (top - 26) + '" r="7" fill="#bfe8ff" opacity=".35"/><circle cx="' + x + '" cy="' + (top - 26) + '" r="3.2" fill="#e8f8ff"/>'; // 꼭대기 빛
+    s += '<path d="M' + (x - 34) + ',' + (yb - 50) + 'q8,-7 16,-2q6,-6 14,-1q8,-5 16,1q8,-3 12,3" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".85"/>'; // 둘레 구름
+    s += '<path d="M' + (x - 10) + ',' + yb + 'V' + (yb - 9) + 'Q' + x + ',' + (yb - 17) + ' ' + (x + 10) + ',' + (yb - 9) + 'V' + yb + 'Z" fill="#2a2018"/>'; // 문
+    return s;
+  }
+  /** [2026-11-20] "도시 미니맵이 아니라 도시 같은 건축물/상징성을" -- 왕도 아스테리아: 성벽(앞/옆/뒤, 총안) + 네 모서리 원탑 + 정문 문루, 안쪽 빼곡한 붉은 지붕 집들, 가운데 푸른 돔 궁전과 첨탑, 대성당 첨탑. */
+  function worldCitySvg(cx, cy) {
+    var s = '', rnd = wRnd(77), i;
+    var crenel = function (x0, x1, y, col) { var r = ''; for (var x = x0; x < x1 - 2; x += 5) r += '<rect x="' + x + '" y="' + (y - 3) + '" width="3" height="3" fill="' + col + '"/>'; return r; };
+    var house = function (x, y, w, roof) { // 작은 집: 벽 + 박공 지붕 + 옆면
+      return '<path d="M' + (x + w / 2) + ',' + (y - 6) + 'l3,-2v6l-3,2z" fill="#b8a888"/><rect x="' + (x - w / 2) + '" y="' + (y - 6) + '" width="' + w + '" height="6" fill="#efe4c8" stroke="#6a5038" stroke-width=".4"/>'
+          + '<path d="M' + (x - w / 2 - 1) + ',' + (y - 6) + 'L' + (x - w / 4) + ',' + (y - 11) + 'H' + (x + w / 4 + 2) + 'L' + (x + w / 2 + 3) + ',' + (y - 8) + 'L' + (x + w / 2 + 1) + ',' + (y - 6) + 'Z" fill="' + roof + '" stroke="#5a2a20" stroke-width=".4"/>';
+    };
+    var tower = function (x, y, r, h, roof) { // 원탑: 몸통 + 원뿔 지붕
+      return '<rect x="' + (x - r) + '" y="' + (y - h) + '" width="' + (2 * r) + '" height="' + h + '" fill="#cdbf9e" stroke="#5a4632" stroke-width=".7"/><ellipse cx="' + x + '" cy="' + y + '" rx="' + r + '" ry="' + (r * 0.4) + '" fill="#b8a888"/>'
+          + '<rect x="' + (x + r * 0.3) + '" y="' + (y - h) + '" width="' + (r * 0.7) + '" height="' + h + '" fill="#000" opacity=".12"/>'
+          + '<path d="M' + (x - r - 2) + ',' + (y - h) + 'L' + x + ',' + (y - h - r * 2.6) + 'L' + (x + r + 2) + ',' + (y - h) + 'Z" fill="' + roof + '" stroke="#5a2a20" stroke-width=".6"/><rect x="' + (x - 1) + '" y="' + (y - h + 5) + '" width="2" height="4" fill="#2a2018"/>';
+    };
+    var flag = function (x, y, col) { return '<path d="M' + x + ',' + y + 'v-10" stroke="#3a2a1a" stroke-width=".8"/><path d="M' + x + ',' + (y - 10) + 'h7l-2,2.5l2,2.5h-7z" fill="' + col + '"/>'; };
+    s += '<ellipse cx="' + (cx + 6) + '" cy="' + (cy + 40) + '" rx="72" ry="12" fill="#3a2614" opacity=".18"/>';
+    s += '<path d="M' + (cx - 60) + ',' + (cy + 34) + 'H' + (cx + 60) + 'L' + (cx + 52) + ',' + (cy - 32) + 'H' + (cx - 52) + 'Z" fill="#d8caa2"/>'; // 성안 바닥
+    s += '<rect x="' + (cx - 52) + '" y="' + (cy - 42) + '" width="104" height="10" fill="#b8a888" stroke="#5a4632" stroke-width=".7"/>' + crenel(cx - 52, cx + 52, cy - 42, '#b8a888'); // 뒤 성벽
+    s += '<path d="M' + (cx - 60) + ',' + (cy + 22) + 'L' + (cx - 52) + ',' + (cy - 42) + 'V' + (cy - 32) + 'L' + (cx - 60) + ',' + (cy + 34) + 'Z" fill="#a89878" stroke="#5a4632" stroke-width=".6"/>'; // 왼쪽 성벽
+    s += '<path d="M' + (cx + 60) + ',' + (cy + 22) + 'L' + (cx + 52) + ',' + (cy - 42) + 'V' + (cy - 32) + 'L' + (cx + 60) + ',' + (cy + 34) + 'Z" fill="#8f8064" stroke="#5a4632" stroke-width=".6"/>'; // 오른쪽 성벽
+    s += tower(cx - 52, cy - 32, 5, 16, '#a8483a') + tower(cx + 52, cy - 32, 5, 16, '#a8483a'); // 뒤 모서리 탑
+    var rows = [cy - 22, cy - 12, cy - 1, cy + 10, cy + 21, cy + 30];
+    rows.forEach(function (ry, ri) { // 집들(가운데 궁전 자리는 비운다)
+      var half = 46 + ri * 1.5;
+      for (var hx = cx - half; hx <= cx + half; hx += 10 + rnd() * 3) {
+        if (Math.abs(hx - cx) < 30 && ry < cy + 16) continue;
+        if (Math.abs(hx - cx) < 9 && ry >= cy + 16) continue; // 정문에서 궁전까지 큰길
+        s += house(hx + (rnd() - 0.5) * 2, ry + (rnd() - 0.5) * 2, 7 + rnd() * 3, rnd() < 0.7 ? '#a8483a' : rnd() < 0.5 ? '#8a3a2e' : '#6a5a4a');
+      }
+    });
+    s += '<rect x="' + (cx + 30) + '" y="' + (cy - 30) + '" width="9" height="16" fill="#e8ddc4" stroke="#5a4632" stroke-width=".6"/><path d="M' + (cx + 29) + ',' + (cy - 30) + 'L' + (cx + 34.5) + ',' + (cy - 52) + 'L' + (cx + 40) + ',' + (cy - 30) + 'Z" fill="#6a5a7a" stroke="#3a2a4a" stroke-width=".6"/><path d="M' + (cx + 34.5) + ',' + (cy - 52) + 'v-5M' + (cx + 32.5) + ',' + (cy - 55) + 'h4" stroke="#d8b04a" stroke-width="1"/>'; // 대성당 첨탑
+    // 궁전: 넓은 본관 + 양쪽 탑 + 가운데 큰 탑의 푸른 돔
+    var pyb = cy + 12;
+    s += '<path d="M' + (cx + 26) + ',' + (pyb - 18) + 'l5,-3v18l-5,3z" fill="#c8bca4" stroke="#5a4632" stroke-width=".5"/><rect x="' + (cx - 26) + '" y="' + (pyb - 18) + '" width="52" height="18" fill="#f2ead6" stroke="#5a4632" stroke-width=".8"/>';
+    for (i = 0; i < 6; i++) s += '<rect x="' + (cx - 22 + i * 8) + '" y="' + (pyb - 13) + '" width="3" height="6" rx="1.5" fill="#3a4a6a"/>';
+    s += '<path d="M' + (cx - 28) + ',' + (pyb - 18) + 'L' + (cx - 22) + ',' + (pyb - 25) + 'H' + (cx + 24) + 'L' + (cx + 31) + ',' + (pyb - 21) + 'L' + (cx + 28) + ',' + (pyb - 18) + 'Z" fill="#3a5a8a" stroke="#1a2a4a" stroke-width=".6"/>';
+    s += tower(cx - 22, pyb - 18, 5, 16, '#3a5a8a') + tower(cx + 22, pyb - 18, 5, 16, '#3a5a8a');
+    s += '<rect x="' + (cx - 8) + '" y="' + (pyb - 44) + '" width="16" height="26" fill="#f2ead6" stroke="#5a4632" stroke-width=".8"/><rect x="' + (cx + 2) + '" y="' + (pyb - 44) + '" width="6" height="26" fill="#000" opacity=".1"/>';
+    s += '<rect x="' + (cx - 2) + '" y="' + (pyb - 38) + '" width="4" height="7" rx="2" fill="#3a4a6a"/>';
+    s += '<path d="M' + (cx - 10) + ',' + (pyb - 44) + 'Q' + (cx - 11) + ',' + (pyb - 58) + ' ' + cx + ',' + (pyb - 62) + 'Q' + (cx + 11) + ',' + (pyb - 58) + ' ' + (cx + 10) + ',' + (pyb - 44) + 'Z" fill="#4a72a8" stroke="#1a2a4a" stroke-width=".7"/><path d="M' + (cx - 4) + ',' + (pyb - 50) + 'Q' + (cx - 3) + ',' + (pyb - 57) + ' ' + cx + ',' + (pyb - 59) + '" stroke="#bfe0ff" stroke-width="1.2" fill="none"/>'; // 푸른 돔
+    s += '<path d="M' + cx + ',' + (pyb - 62) + 'v-8" stroke="#d8b04a" stroke-width="1.6"/><circle cx="' + cx + '" cy="' + (pyb - 71) + '" r="2" fill="#ffd84a"/>';
+    s += flag(cx - 22, pyb - 47, '#c0281e') + flag(cx + 22, pyb - 47, '#c0281e');
+    // 앞 성벽 + 정문 문루 + 앞 모서리 탑
+    s += '<rect x="' + (cx - 60) + '" y="' + (cy + 22) + '" width="120" height="12" fill="#c8b898" stroke="#5a4632" stroke-width=".8"/>' + crenel(cx - 60, cx + 60, cy + 22, '#c8b898');
+    for (i = -50; i <= 50; i += 12) s += '<path d="M' + (cx + i) + ',' + (cy + 24) + 'v10" stroke="#a89878" stroke-width=".5"/>';
+    s += '<rect x="' + (cx - 13) + '" y="' + (cy + 12) + '" width="26" height="22" fill="#d8caa8" stroke="#5a4632" stroke-width=".8"/>' + crenel(cx - 13, cx + 13, cy + 12, '#d8caa8'); // 문루
+    s += '<path d="M' + (cx - 6) + ',' + (cy + 34) + 'V' + (cy + 24) + 'Q' + cx + ',' + (cy + 18) + ' ' + (cx + 6) + ',' + (cy + 24) + 'V' + (cy + 34) + 'Z" fill="#2a2018"/><path d="M' + (cx - 5) + ',' + (cy + 25) + 'h10M' + (cx - 5) + ',' + (cy + 29) + 'h10M' + (cx - 2) + ',' + (cy + 22) + 'v12M' + (cx + 2) + ',' + (cy + 22) + 'v12" stroke="#8a7a5a" stroke-width=".6"/>';
+    s += flag(cx - 10, cy + 9, '#3a5a8a') + flag(cx + 10, cy + 9, '#3a5a8a');
+    s += tower(cx - 60, cy + 34, 7, 24, '#a8483a') + tower(cx + 60, cy + 34, 7, 24, '#a8483a');
+    return s;
+  }
+  /** [2026-11-20] 요새 도시 엘리시온 -- 물 위의 둥근 요새: 해자, 둥근 성벽(뒤/앞), 여섯 보루 망루, 가운데 높은 아성(깃발), 정문과 해자 다리. */
+  function worldFortSvg(cx, cy) {
+    var s = '', rx = 44, ry = 26, oy = cy + 4, H = 11, i;
+    var arc = function (a0, a1, dy) { var p = []; for (var a = a0; a <= a1 + 1e-6; a += Math.PI / 24) p.push([cx + Math.cos(a) * rx, oy + Math.sin(a) * ry + (dy || 0)]); return p; };
+    var poly = function (pts) { return pts.map(function (v) { return v[0].toFixed(1) + ',' + v[1].toFixed(1); }).join(' '); };
+    var bastion = function (x, y) { // 네모 보루 망루(총안)
+      var r = '<rect x="' + (x - 7) + '" y="' + (y - 20) + '" width="14" height="20" fill="#a8a092" stroke="#4a4238" stroke-width=".7"/><rect x="' + (x + 2) + '" y="' + (y - 20) + '" width="5" height="20" fill="#000" opacity=".13"/>';
+      for (var k = 0; k < 3; k++) r += '<rect x="' + (x - 7 + k * 5) + '" y="' + (y - 23) + '" width="3" height="3" fill="#a8a092" stroke="#4a4238" stroke-width=".4"/>';
+      return r + '<rect x="' + (x - 1) + '" y="' + (y - 15) + '" width="2" height="5" fill="#2a2430"/>';
+    };
+    s += '<ellipse cx="' + (cx + 5) + '" cy="' + (oy + 8) + '" rx="66" ry="40" fill="#3a2614" opacity=".15"/>';
+    s += '<ellipse cx="' + cx + '" cy="' + oy + '" rx="62" ry="38" fill="#7fa8b8" stroke="#4a6a78" stroke-width="1"/>'; // 해자
+    for (i = 0; i < 5; i++) s += '<path d="M' + (cx - 48 + i * 22) + ',' + (oy + 30 - (i % 2) * 58) + 'q4,-3 8,0" fill="none" stroke="#c8e0e8" stroke-width=".8"/>';
+    s += '<ellipse cx="' + cx + '" cy="' + oy + '" rx="52" ry="31" fill="#c8bea0" stroke="#6a5a40" stroke-width=".8"/>'; // 둑
+    s += '<ellipse cx="' + cx + '" cy="' + (oy - H) + '" rx="' + (rx - 3) + '" ry="' + (ry - 2) + '" fill="#b4ab94"/>'; // 성안 마당(성벽 위 높이에서 보이는 안쪽)
+    var back = arc(Math.PI, 2 * Math.PI), backTop = arc(Math.PI, 2 * Math.PI, -H);
+    s += '<polygon points="' + poly(back.concat(backTop.slice().reverse())) + '" fill="#8a8276" stroke="#4a4238" stroke-width=".7"/>'; // 뒤 성벽(안쪽 면)
+    [Math.PI * 1.17, Math.PI * 1.5, Math.PI * 1.83].forEach(function (a) { s += bastion(cx + Math.cos(a) * rx, oy + Math.sin(a) * ry); });
+    // 아성(가운데 높은 성채) + 두 작은 탑 + 깃발
+    var kx = cx, kb = oy - 4;
+    s += '<path d="M' + (kx + 13) + ',' + (kb - 34) + 'l6,-4v34l-6,4z" fill="#7a7266" stroke="#3a342c" stroke-width=".6"/><rect x="' + (kx - 13) + '" y="' + (kb - 34) + '" width="26" height="34" fill="#b8b0a2" stroke="#3a342c" stroke-width=".8"/>';
+    for (i = 0; i < 5; i++) s += '<rect x="' + (kx - 13 + i * 5.5) + '" y="' + (kb - 38) + '" width="3.5" height="4" fill="#b8b0a2" stroke="#3a342c" stroke-width=".4"/>';
+    s += '<rect x="' + (kx - 7) + '" y="' + (kb - 27) + '" width="2" height="6" fill="#2a2430"/><rect x="' + (kx + 5) + '" y="' + (kb - 27) + '" width="2" height="6" fill="#2a2430"/><rect x="' + (kx - 1) + '" y="' + (kb - 16) + '" width="2" height="6" fill="#2a2430"/>';
+    [[-17, -26], [17, -26]].forEach(function (t) {
+      var tx = kx + t[0], ty = kb + t[1] + 26;
+      s += '<rect x="' + (tx - 4) + '" y="' + (ty - 40) + '" width="8" height="40" fill="#c4bcae" stroke="#3a342c" stroke-width=".6"/><path d="M' + (tx - 5) + ',' + (ty - 40) + 'L' + tx + ',' + (ty - 52) + 'L' + (tx + 5) + ',' + (ty - 40) + 'Z" fill="#4a5a7a" stroke="#2a3040" stroke-width=".6"/>';
+    });
+    s += '<path d="M' + kx + ',' + (kb - 38) + 'v-14" stroke="#3a2a1a" stroke-width="1"/><path d="M' + kx + ',' + (kb - 52) + 'h11l-3,3l3,3h-11z" fill="#3a5a9a" stroke="#1a2a4a" stroke-width=".4"/><circle cx="' + (kx + 4.5) + '" cy="' + (kb - 49) + '" r="1.4" fill="#ffd84a"/>';
+    var front = arc(0, Math.PI), frontTop = arc(0, Math.PI, -H);
+    s += '<polygon points="' + poly(front.concat(frontTop.slice().reverse())) + '" fill="#a8a092" stroke="#4a4238" stroke-width=".8"/>'; // 앞 성벽(바깥 면)
+    frontTop.forEach(function (p, k) { if (k % 2 === 0 && k > 0 && k < frontTop.length - 1) s += '<rect x="' + (p[0] - 1.5) + '" y="' + (p[1] - 3) + '" width="3" height="3" fill="#a8a092" stroke="#4a4238" stroke-width=".3"/>'; });
+    for (i = 1; i < front.length - 1; i += 3) s += '<path d="M' + front[i][0].toFixed(1) + ',' + front[i][1].toFixed(1) + 'v' + (-H) + '" stroke="#8a8276" stroke-width=".5"/>';
+    s += '<rect x="' + (cx - 6) + '" y="' + (oy + ry + 12) + '" width="12" height="16" fill="#8a6a44" stroke="#4a3020" stroke-width=".6"/>'; // 해자 다리
+    for (i = 0; i < 4; i++) s += '<path d="M' + (cx - 6) + ',' + (oy + ry + 15 + i * 4) + 'h12" stroke="#5a4028" stroke-width=".5"/>';
+    s += '<path d="M' + (cx - 7) + ',' + (oy + ry + 1) + 'V' + (oy + ry - 7) + 'Q' + cx + ',' + (oy + ry - 13) + ' ' + (cx + 7) + ',' + (oy + ry - 7) + 'V' + (oy + ry + 1) + 'Z" fill="#2a2018"/>'; // 정문
+    [Math.PI * 0.17, Math.PI * 0.5 - 0.42, Math.PI * 0.5 + 0.42, Math.PI * 0.83].forEach(function (a) { s += bastion(cx + Math.cos(a) * rx, oy + Math.sin(a) * ry + 2); });
+    return s;
+  }
+  /** 바다마을 윤슬항 -- 땅이 아니라 물 위에 기둥을 박은 나무 부두와 수상 가옥, 등대. */
+  function worldHarborSvg(P) {
+    if (!P.seacity) return '';
+    var x = P.seacity.x, y = P.seacity.y, s = '';
+    for (var pi = -3; pi <= 3; pi++) s += '<rect x="' + (x + pi * 18 - 1.5) + '" y="' + (y + 16) + '" width="3" height="9" fill="#4a3020"/>'; // 기둥
+    s += '<rect x="' + (x - 66) + '" y="' + (y - 18) + '" width="132" height="36" rx="2" fill="#a8784a" stroke="#4a3020" stroke-width="1.2"/>'; // 부두
+    for (var pl = -60; pl < 66; pl += 8) s += '<path d="M' + (x + pl) + ',' + (y - 18) + 'v36" stroke="#7a5432" stroke-width=".7"/>';
+    s += '<rect x="' + (x - 8) + '" y="' + (y + 18) + '" width="16" height="44" fill="#a8784a" stroke="#4a3020" stroke-width="1"/>'; // 잔교
+    [[-48, -30], [-26, -32], [34, -30]].forEach(function (h) { // 수상 가옥
+      var hx = x + h[0], hy = y + h[1];
+      s += '<rect x="' + (hx - 9) + '" y="' + (hy - 2) + '" width="18" height="12" fill="#e8d8b0" stroke="#4a3020" stroke-width=".8"/><path d="M' + (hx - 12) + ',' + (hy - 1) + 'L' + hx + ',' + (hy - 11) + 'L' + (hx + 12) + ',' + (hy - 1) + 'Z" fill="#9a3a2a" stroke="#4a2018" stroke-width=".8"/>';
+    });
+    var lx = x + 70, ly = y - 4; // 등대
+    s += '<path d="M' + (lx - 6) + ',' + (ly + 18) + 'L' + (lx - 4) + ',' + (ly - 22) + 'H' + (lx + 4) + 'L' + (lx + 6) + ',' + (ly + 18) + 'Z" fill="#f4efe2" stroke="#4a3020" stroke-width=".8"/>'
+        + '<path d="M' + (lx - 5.5) + ',' + (ly + 6) + 'H' + (lx + 5.5) + 'L' + (lx + 5) + ',' + (ly - 2) + 'H' + (lx - 5) + 'Z" fill="#c0281e"/><rect x="' + (lx - 5) + '" y="' + (ly - 30) + '" width="10" height="8" fill="#ffe08a" stroke="#4a3020" stroke-width=".8"/><path d="M' + (lx - 6) + ',' + (ly - 30) + 'L' + lx + ',' + (ly - 37) + 'L' + (lx + 6) + ',' + (ly - 30) + 'Z" fill="#c0281e"/>';
+    [[-40, 40], [24, 44]].forEach(function (b) { var bx2 = x + b[0], by2 = y + b[1]; s += '<path d="M' + (bx2 - 10) + ',' + by2 + 'Q' + bx2 + ',' + (by2 + 7) + ' ' + (bx2 + 10) + ',' + by2 + 'Z" fill="#6a4426"/><path d="M' + bx2 + ',' + by2 + 'v-12l7,9z" fill="#f4efe2"/>'; }); // 작은 배
+    return s;
+  }
+  /** 구름(미탐사) -- 탐사한 곳(칸 둘레/길/강/큰 물 이름) 밖을 덮는 작은 그림. 멀어질수록 짙어진다. */
+  function worldCloudCanvas(P, segs) {
+    var k = 5, W = Math.ceil((WG.x1 - WG.x0) / k), H = Math.ceil((WG.y1 - WG.y0) / k), m1 = new Float32Array(W * H), m2 = new Float32Array(W * H);
+    var disc = function (m, cx, cy, r) {
+      var i0 = Math.max(0, Math.floor((cx - r - WG.x0) / k)), i1 = Math.min(W - 1, Math.ceil((cx + r - WG.x0) / k)), j0 = Math.max(0, Math.floor((cy - r - WG.y0) / k)), j1 = Math.min(H - 1, Math.ceil((cy + r - WG.y0) / k));
+      for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) { var dx = WG.x0 + i * k - cx, dy = WG.y0 + j * k - cy; if (dx * dx + dy * dy <= r * r) m[j * W + i] = 1; }
+    };
+    var stamp = function (m, mul) {
+      Object.keys(P).forEach(function (id) { disc(m, P[id].x, P[id].y, (/^isle/.test(id) ? 70 : 110) * mul); });
+      segs.forEach(function (s) { var dx = s[2] - s[0], dy = s[3] - s[1], n = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / 20)); for (var i = 0; i <= n; i++) disc(m, s[0] + dx * i / n, s[1] + dy * i / n, 75 * mul); });
+      worldCr(WORLD_RIVER, 0.5).forEach(function (q) { if (q[1] > -420) disc(m, q[0], q[1], 65 * mul); });
+      WORLD_WATERS.forEach(function (w) { if (w[4] > 14) disc(m, w[1], w[2], w[4] * 3.2 * mul); });
+    };
+    var blur = function (m, r) { // 상자 흐림 3번(가로/세로)
+      var tmp = new Float32Array(W * H), pass, i, j, acc;
+      for (pass = 0; pass < 3; pass++) {
+        for (j = 0; j < H; j++) { acc = 0; for (i = -r; i <= r; i++) acc += m[j * W + Math.min(W - 1, Math.max(0, i))]; for (i = 0; i < W; i++) { tmp[j * W + i] = acc / (2 * r + 1); acc += m[j * W + Math.min(W - 1, i + r + 1)] - m[j * W + Math.max(0, i - r)]; } }
+        for (i = 0; i < W; i++) { acc = 0; for (j = -r; j <= r; j++) acc += tmp[Math.min(H - 1, Math.max(0, j)) * W + i]; for (j = 0; j < H; j++) { m[j * W + i] = acc / (2 * r + 1); acc += tmp[Math.min(H - 1, j + r + 1) * W + i] - tmp[Math.max(0, j - r) * W + i]; } }
+      }
+    };
+    stamp(m1, 1); stamp(m2, 2.6);
+    blur(m1, 6); blur(m2, 14);
+    var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    var g = cv.getContext('2d'), im = g.createImageData(W, H), d = im.data, cl = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+    for (var j = 0; j < H; j++) for (var i = 0; i < W; i++) {
+      var p = j * W + i, near = 1 - cl(m1[p]), far = 1 - cl(m2[p]);
+      if (near <= 0.003) continue;
+      var x = WG.x0 + i * k, y = WG.y0 + j * k, n1 = wFbm(x / 170, y / 170, 5), n2 = wFbm(x / 130 + 40, y / 130, 4);
+      var haze = 0.45 * near + 0.2 * far, puff = cl((n1 - 0.5) * 3.4) * near, dense = cl((n2 - 0.42) * 3.0) * far;
+      var a = 1 - (1 - haze) * (1 - puff) * (1 - dense), sh = cl((n1 - 0.35) * 2);
+      d[p * 4] = 222 + 30 * sh; d[p * 4 + 1] = 226 + 27 * sh; d[p * 4 + 2] = 230 + 24 * sh; d[p * 4 + 3] = Math.round(255 * cl(a));
+    }
+    g.putImageData(im, 0, 0);
+    return cv;
+  }
+  /** 전체 지도 바탕을 한 번 만든다(게임 시작 로딩에서 -- preloadExtra). 땅/강/산/그림은 선 그림 문자열, 구름/축소도는 그림 주소. */
+  function worldBgBuild() {
+    if (worldBg) return worldBg;
+    var P = worldNodePos(), segs = worldSegs(P, false), entry = {};
+    var F = worldField(worldLandPts(P)), land = worldContour(F, 0), inner = worldContour(F, 20), v = '';
+    v += '<path d="' + land + '" fill="none" stroke="#bcd3cc" stroke-width="34" stroke-linejoin="round"/>'; // 얕은 물
+    v += '<path d="' + land + '" fill="#e9dbb4" fill-rule="evenodd" stroke="#5a3e22" stroke-width="2.2" stroke-linejoin="round"/>'; // 땅 + 해안선(먹선)
+    v += '<path d="' + inner + '" fill="#f1e8cc" fill-rule="evenodd" opacity=".55"/>';
+    var ch = WORLD_REGIONS.filter(function (r) { return r.channel; })[0];
+    if (ch && P.archisea) v += '<path d="M' + P.archisea.x + ',' + P.archisea.y + 'V' + (WORLD_PLACE[ch.id][1] + ch.channel.top) + '" stroke="#93b8b2" stroke-width="14" stroke-linecap="round"/>'; // 다도해 뱃길 물길
+    var riv = worldRibbon(WORLD_RIVER, 1.5, 11, true, 3), trib = worldRibbon(WORLD_TRIB, 1, 3.5, false, 9);
+    v += '<path d="' + riv + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/><path d="' + trib + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width=".8"/>';
+    v += '<path d="M' + worldCr(WORLD_RIVER, 0.25).map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') + '" fill="none" stroke="#d4e4df" stroke-width=".9" stroke-dasharray="5 9"/>';
+    WORLD_LAKES.forEach(function (l, i) { v += '<path d="' + worldBlob(l[0], l[1], l[2], l[3], 5 + i) + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/>'; });
+    v += worldMountSvg() + worldSnowMtnSvg(P) + worldTowerSvg(P) + worldShrineSvg(P, entry) + worldHarborSvg(P)
+        + worldCaveSvg(P, ['cave1', 'cave2', 'cave3', 'cave4'], false, '⛏️ 광산 동굴', 'cave', entry) + worldCaveSvg(P, ['snowcave', 'snowcave2'], true, '🧊 설산 동굴', 'icecave', entry);
+    var ill = {}; // 왕도/요새 도시 그림 -- 길이 그림 밑으로 들어가게 칸 자리에서(worldHtml) 그린다
+    if (P.city) ill.city = worldCitySvg(P.city.x, P.city.y);
+    if (P.towercity) ill.towercity = worldFortSvg(P.towercity.x, P.towercity.y);
+    worldBg = { vec: v, cloud: null, entry: entry, ill: ill };
+    try {
+      var cv = worldCloudCanvas(P, segs), done = function (url) { worldBg.cloud = url; if (smithOpen && smithView === 'world') renderSmith(smithNpc); };
+      if (cv.toBlob) cv.toBlob(function (b) { if (b) done(URL.createObjectURL(b)); }, 'image/png'); else done(cv.toDataURL('image/png'));
+    } catch (e) { }
+    return worldBg;
+  }
+  /** [2026-11-20] "다른 리소스도 게임 시작 때 다 불러서 진행 중에 버벅임이 없게" -- 맵을 다 받은 뒤: 몬스터 그림 전부, 필살기/돌개바람 그림, 전체 지도 바탕. */
+  function preloadExtra() {
+    return new Promise(function (res) {
+      if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (그림)';
+      setTimeout(function () {
+        try { // 몬스터 그림 -- 종류 표(mobTypes)는 모든 맵이 같다
+          var ty = (map && map.mobTypes) || [];
+          for (var k = 0; k < ty.length; k++) { if (!ty[k]) continue; try { mobSprite(k, false, 0); mobSprite(k, false, 1); if (ty[k].boss || ty[k].kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } } catch (e1) { } }
+        } catch (e) { }
+        try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
+        try { worldBgBuild(); } catch (e) { }
+        res();
+      }, 0);
+    });
+  }
   function worldHtml() {
     var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && (st.adminMaps || st.ringMaps)); // [2026-11-15] 용의 반지를 끼면 지역을 눌러 이동
+    var bg = worldBgBuild(); // [2026-11-20] 게임 시작 로딩에서 만들어 둔 바탕(없으면 지금)
     WORLD_NODES.forEach(function (n) { info[n.id] = n; });
-    var STY = { walk: 'stroke="#f4f0e6" stroke-width="3"', sea: 'stroke="#6fc8f0" stroke-width="3" stroke-dasharray="7 5"', fall: 'stroke="#c8a070" stroke-width="3" stroke-dasharray="3 4"' };
+    var STY = { walk: 'stroke="#7a5532" stroke-width="2.4"', sea: 'stroke="#1f5f86" stroke-width="2.2" stroke-dasharray="7 5"', fall: 'stroke="#8a5a30" stroke-width="2.4" stroke-dasharray="3 4"' }; // [2026-11-20] 옛 전도 -- 먹색 길, 남색 뱃길
     var bossOf = {};
     ((st && st.bosses) || []).forEach(function (b) { bossOf[b.map === 'pyramidb' ? 'pyramid' : b.map] = b; }); // [2026-11-08] 파라오 미라(피라미드 지하) -- 피라미드 칸에
     var leftTxt = function (ms) { var m = Math.ceil(ms / 60000); return m >= 60 ? Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + m % 60 + '분' : '') : m + '분'; };
@@ -3818,17 +4293,20 @@ var TowerMine = (function () {
         if (!n || n.locked || n.dev) return;
         N[e[0]] = { id: n.id, x: o[0] + e[1], y: o[1] + e[2], name: n.name, fill: n.fill, ink: n.ink, w: n.w, town: n.town };
       });
-      labels += '<text x="' + (o[0] + (R.tx || 6)) + '" y="' + (o[1] + 14) + '" class="wr">' + R.name + '</text>'; // [2026-11-11] tx -- 맨 윗줄 칸(하피의 둥지 보스 글자)과 안 겹치게
+      // [2026-11-20] "지역 이름(사막·왕도, 설원·설산) 글씨는 없애도 될 것 같아" -- 구간 이름은 위 버튼에만
       R.links.forEach(function (l) {
         var p = N[l[0]], q = N[l[1]];
         if (!p || !q) return;
-        lines += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + (WORLD_FLOOR[p.id] && WORLD_FLOOR[q.id] ? 'stroke="#ffd27a" stroke-width="3" stroke-dasharray="2 5"' : STY[l[2] || 'walk']) + '/>'
+        var gp = WORLD_GROUP[l[0]], gq = WORLD_GROUP[l[1]]; // [2026-11-20] 그림으로 그린 곳 -- 같은 그림 안 길은 안 그리고, 밖에서 오는 길은 그림의 입구로
+        if (gp && gp === gq) return;
+        if (gq && bg.entry[gq]) q = { id: q.id, x: bg.entry[gq][0], y: bg.entry[gq][1] };
+        if (gp && bg.entry[gp]) p = { id: p.id, x: bg.entry[gp][0], y: bg.entry[gp][1] };
+        lines += '<line x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '" ' + (WORLD_FLOOR[p.id] && WORLD_FLOOR[q.id] ? 'stroke="#a8742a" stroke-width="2.4" stroke-dasharray="2 5"' : STY[l[2] || 'walk']) + '/>'
             + (l[3] ? '<text x="' + ((p.x + q.x) / 2 + 6) + '" y="' + ((p.y + q.y) / 2 + 4) + '" class="wl">' + l[3] + '</text>' : '');
       });
-      if (R.channel && N.archisea) { // 뱃길 물길 + 섬으로 가는 갈래
-        var chx = o[0] + R.channel.x;
-        lines += '<line x1="' + chx + '" y1="' + N.archisea.y + '" x2="' + chx + '" y2="' + (o[1] + R.channel.top) + '" stroke="#2f6a9a" stroke-width="10" stroke-linecap="round"/>'
-            + '<line x1="' + chx + '" y1="' + N.archisea.y + '" x2="' + chx + '" y2="' + (o[1] + R.channel.top) + '" stroke="#6fc8f0" stroke-width="2" stroke-dasharray="7 5"/>';
+      if (R.channel && N.archisea) { // 뱃길 + 섬으로 가는 갈래 -- [2026-11-20] 본섬 오른쪽에서 북쪽으로(실제 다도해 뱃길처럼), 물길 띠는 바탕 그림에
+        var chx = N.archisea.x, ctop = o[1] + R.channel.top;
+        lines += '<line x1="' + chx + '" y1="' + N.archisea.y + '" x2="' + chx + '" y2="' + ctop + '" ' + STY.sea + '/>';
         R.channel.isles.forEach(function (id) { var p = N[id]; if (p) lines += '<line x1="' + chx + '" y1="' + p.y + '" x2="' + p.x + '" y2="' + p.y + '" ' + STY.sea + '/>'; });
       }
       Object.keys(N).forEach(function (k) {
@@ -3836,18 +4314,37 @@ var TowerMine = (function () {
         var nw = Math.round(14 + 5.2 * Math.sqrt(dm[0])), nh = Math.round(8 + 1.9 * Math.sqrt(dm[1]));
         var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id)) || (n.id === 'towergate' && !!map.tower)); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
+        var grp = WORLD_GROUP[n.id], ill = bg.ill && bg.ill[n.id];
+        if (ill) { // [2026-11-20] "도시 같은 건축물/상징성" -- 왕도(성벽·궁전·집들), 요새 도시(해자·둥근 성벽·아성) 그림 + 이름/인원(지금 있으면 붉은 점선 테)
+          var ib = n.id === 'city' ? 46 : 52;
+          nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '') + ill
+              + (isHere ? '<ellipse cx="' + n.x + '" cy="' + (n.y - 2) + '" rx="74" ry="60" fill="none" stroke="#c0281e" stroke-width="2.6" stroke-dasharray="7 4"/>' : '')
+              + '<text x="' + n.x + '" y="' + (n.y + ib + 10) + '" text-anchor="middle" class="wn' + (isHere ? ' wn-here' : '') + '">' + (isHere ? '📍 ' : '') + n.name + ' <tspan class="wlv" data-cnt="' + n.id + '">👥' + (mapN[n.id] || 0) + '</tspan></text>'
+              + (adminW ? '</g>' : '');
+          return;
+        }
+        if (grp && WORLD_BAND[n.id]) { // [2026-11-20] 그림(신궁 층/동굴 층/탑 입구) 위 띠: "1층 👥n", 지금 있는 곳은 붉은 테
+          var bw = WORLD_BAND_W[n.id] || 80, sty = WORLD_BAND_STY[n.id === 'shrineboss' ? 'boss' : grp] || WORLD_BAND_STY.shrine, blv = minLvOf(n.id);
+          nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
+              + '<rect x="' + (n.x - bw / 2) + '" y="' + (n.y - 9) + '" width="' + bw + '" height="18" rx="3" fill="' + sty[0] + '" stroke="' + (isHere ? '#c0281e' : '#6a3a1a') + '" stroke-width="' + (isHere ? 2.6 : 0.8) + '"/>'
+              + '<text x="' + n.x + '" y="' + (n.y + 3.5) + '" text-anchor="middle" class="wb" style="fill:' + sty[1] + '">' + (isHere ? '📍' : '') + WORLD_BAND[n.id] + ' <tspan data-cnt="' + n.id + '">👥' + (mapN[n.id] || 0) + '</tspan></text>'
+              + (blv > 1 ? '<text x="' + (n.x - (WORLD_LV_DX[n.id] || bw / 2 + 4)) + '" y="' + (n.y + 3) + '" text-anchor="end" class="wlv"' + (blv > lv ? ' style="fill:#c0281e"' : '') + '>Lv' + blv + '</text>' : '')
+              + (adminW ? '</g>' : '');
+          if (bossOf[n.id] && bossOf[n.id].alive) labels += '<text x="' + (n.x + bw / 2 + 4) + '" y="' + (n.y + 3) + '" class="wl" style="fill:#c0281e;font-weight:800">👑 보스 출현 중</text>';
+          return;
+        }
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y - nh / 2 - 5, bx = n.x - nw / 2, bh = ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
-          if (bb.alive) labels += '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#ff6a6a;font-weight:800">' + bh + '👑 보스 출현 중</text>'; // [2026-11-13] 젠타임은 없애고(소환) "👑 보스" 버튼 목록에 내 소환 가능 시각
+          if (bb.alive) labels += '<text x="' + bx + '" y="' + by + '" class="wl" style="fill:#c0281e;font-weight:800">' + bh + '👑 보스 출현 중</text>'; // [2026-11-13] 젠타임은 없애고(소환) "👑 보스" 버튼 목록에 내 소환 가능 시각
         }
         nodes += (adminW ? '<g style="cursor:pointer" onclick="TowerMine.worldWarp(\'' + n.id + '\')">' : '')
             // [2026-11-11] "사각형 안에 이름 말고 배경 없는 글씨, 권장 레벨 대신 Lv30 피라미드, 인원은 언제든" -- 칸(맵 크기) 안엔 인원만, 이름은 칸 아래 떠 있는 글씨
             + (flr ? '<rect x="' + (n.x - nw / 2 + 4) + '" y="' + (n.y - nh / 2 - 4) + '" width="' + nw + '" height="' + nh + '" rx="3" fill="' + n.fill + '" opacity=".55" stroke="#140d0a" stroke-width="1.5"/>' : '')
             + '<rect x="' + (n.x - nw / 2) + '" y="' + (n.y - nh / 2) + '" width="' + nw + '" height="' + nh + '" rx="3" fill="' + n.fill + '"'
-            + ' stroke="' + (isHere ? '#ffe14d' : '#140d0a') + '" stroke-width="' + (isHere ? 3.5 : 1.5) + '"/>'
+            + ' stroke="' + (isHere ? '#c0281e' : '#3a2614') + '" stroke-width="' + (isHere ? 3.5 : 1.3) + '"/>'
             + '<text x="' + n.x + '" y="' + (n.y + 3.5) + '" text-anchor="middle" class="wc" fill="' + n.ink + '" data-cnt="' + n.id + '">👥' + (mapN[n.id] || 0) + '</text>'
             + '<text x="' + n.x + '" y="' + (n.y + nh / 2 + 11) + '" text-anchor="middle" class="wn' + (isHere ? ' wn-here' : '') + '">'
-            + (isHere ? '📍 ' : '') + (!n.town && minLvOf(n.id) > 1 ? '<tspan class="wlv"' + (minLvOf(n.id) > lv ? ' style="fill:#ff8a8a"' : '') + '>Lv' + minLvOf(n.id) + '</tspan> ' : '') + n.name + '</text>'
+            + (isHere ? '📍 ' : '') + (!n.town && minLvOf(n.id) > 1 ? '<tspan class="wlv"' + (minLvOf(n.id) > lv ? ' style="fill:#c0281e"' : '') + '>Lv' + minLvOf(n.id) + '</tspan> ' : '') + n.name + '</text>'
             + (adminW ? '</g>' : '');
       });
     });
@@ -3871,8 +4368,11 @@ var TowerMine = (function () {
         + '<button type="button"' + (worldBossOpen ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.worldBoss()">👑 보스</button>' // [2026-11-13]
         + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
         + (worldBossOpen ? worldBossHtml() : '')
-        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도">'
-        + '<rect x="-400" y="-400" width="' + (WORLD_SIZE[0] + 800) + '" height="' + (WORLD_SIZE[1] + 800) + '" fill="#1d1730"/>'
+        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        + '<defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
+        + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
+        + (bg.cloud ? '<image href="' + bg.cloud + '" xlink:href="' + bg.cloud + '" x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" preserveAspectRatio="none"/>' : '') // 미탐사 구름
+        + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
@@ -3907,7 +4407,7 @@ var TowerMine = (function () {
     if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_CNT_W); }
   }
   function worldZoomAt(f, cx, cy) { // f > 1 = 확대. (cx, cy) = 지도 좌표 기준점
-    var nw = Math.max(WORLD_MIN_W, Math.min(1400, worldVB.w / f)), k = nw / worldVB.w;
+    var nw = Math.max(WORLD_MIN_W, Math.min(2400, worldVB.w / f)), k = nw / worldVB.w; // [2026-11-20] 구름 덮인 바깥까지 보이게 1400 -> 2400
     worldVB = { x: cx - (cx - worldVB.x) * k, y: cy - (cy - worldVB.y) * k, w: nw, h: worldVB.h * k };
     worldApply();
   }
@@ -3915,7 +4415,7 @@ var TowerMine = (function () {
   function worldGo(id) {
     var c = null;
     if (id === 'me') c = worldHere;
-    else if (WORLD_PLACE[id]) { var R = WORLD_REGIONS.filter(function (r) { return r.id === id; })[0]; c = { x: WORLD_PLACE[id][0] + 160, y: WORLD_PLACE[id][1] + (R ? R.vh / 2 : 200) }; }
+    else if (WORLD_PLACE[id]) { var R = WORLD_REGIONS.filter(function (r) { return r.id === id; })[0]; c = { x: WORLD_PLACE[id][0] + ((R && R.cx) || 160), y: WORLD_PLACE[id][1] + (R ? R.vh / 2 : 200) }; }
     if (!c) return;
     worldVB = { x: c.x - worldVB.w / 2, y: c.y - worldVB.h / 2, w: worldVB.w, h: worldVB.h };
     worldApply();
@@ -4344,7 +4844,7 @@ var TowerMine = (function () {
     var h = npcHead('⛵ ' + n.name, false) + talkBlock(n, n.line);
     h += '<div class="mine-smith-say">' + (a.boat ? '⛵ 1인용 배 · 체력 ' + fmtN(hp) + ' / ' + fmtN(mx) + '<span class="mine-bar hp" style="margin-top:4px"><i style="width:' + Math.round(hp * 100 / mx) + '%;background:#4fc3f7"></i></span>'
         : '⛵ 1인용 배가 없어요 -- 다도해 본섬 배 목수가 만들어 줘요(본섬은 남쪽 섬에서 큰 배로).') + '</div>';
-    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 윤슬항', true]] // [2026-11-19] 모두에게(예전: 관리자만)
+    var dests = map.id === 'beach' ? [['archisea', '🏝️ 다도해 뱃길', '동쪽 바다 -- 일곱 섬과 본섬', true], ['opensea', '🌊 바다 위', '남쪽 먼 바다 -- 끝에 바다마을 윤슬항', true]] // [2026-11-19] 모두에게(예전: 관리자만)
         : [['opensea', '🌊 바다 위', '북쪽 끝은 남쪽 바닷가', true]];
     if (a.boat && a.boatFix > 0) h += boatFixHtml(a); // [2026-11-19] 재료 골라 수리
     if (adm) h += '<div class="mine-smith-row"><span class="nm">🐙 크라켄 다시 살리기<small>관리자 -- 쓰러진 뒤 1시간을 기다리지 않고(곧 바다 위 배 둘레에서 솟아올라요)</small></span><button type="button" onclick="TowerMine.krkRespawn()">살리기</button></div>'; // [2026-11-19]
@@ -7915,9 +8415,9 @@ var TowerMine = (function () {
   /** [2026-11-03] "게임 시작 때 모든 리소스 로딩을 먼저, 진행 중엔 매끄럽게" -- 모든 맵(버전이 바뀐 것만)을 6개씩 나눠 받고 광석 그림도 미리 만든다.
    *  처음 한 번은 몇 초 걸리고, 그 뒤엔 저장본(localStorage)으로 바로. 실패한 맵은 그냥 두고(들어갈 때 다시 받는다) 게임은 시작한다. */
   function preloadAll(vers) {
-    for (var g = 1; g <= 65; g++) { try { oreIcon(g); } catch (e) { } }
+    for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } } // [2026-11-20] 65까지만 -> 모든 아이템(나무/태초의 보석 등)
     var ids = Object.keys(vers || {}).filter(function (id) { return !(mapMem[id] && mapMem[id].version === vers[id]); });
-    if (!ids.length) return Promise.resolve();
+    if (!ids.length) return preloadExtra();
     var done = 0, total = ids.length, i = 0;
     var show = function () { if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (' + done + ' / ' + total + ')'; };
     show();
@@ -7928,7 +8428,7 @@ var TowerMine = (function () {
     };
     var ws6 = [];
     for (var k = 0; k < 6; k++) ws6.push(worker());
-    return Promise.all(ws6);
+    return Promise.all(ws6).then(preloadExtra); // [2026-11-20] 그림들까지
   }
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {

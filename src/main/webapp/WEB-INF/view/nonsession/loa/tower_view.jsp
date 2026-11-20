@@ -917,6 +917,15 @@
     .mine-world .wn-here{ fill:#ffe14d; }
     .mine-world .wlv{ fill:#9fe0ff; font-size:10px; } /* [2026-10-30] 맵별 접속 인원 -- 가장 크게 확대했을 때만 */
     .mine-world.world-close .wc{ display:block; }
+    /* [2026-11-20] 전체 지도 -- 옛 전도 풍(양피지 땅, 먹선 해안, 남색 물 이름) */
+    .world-wrap{ background:#dfe3e2; border-color:#5a3e22; } /* 그림 범위 밖은 구름색 */
+    .mine-world .wn{ font:800 11px 'Nanum Myeongjo','Noto Serif KR','Noto Serif CJK KR','Batang',serif; fill:#2a1a0c; stroke:#f1e8cc; stroke-width:3.5px; }
+    .mine-world .wn-here{ fill:#c0281e; }
+    .mine-world .wl{ fill:#1f4e6e; stroke:#e9dbb4; }
+    .mine-world .wlv{ fill:#2f5a7a; }
+    .mine-world .wt{ font-family:'Nanum Myeongjo','Noto Serif KR','Noto Serif CJK KR','Batang',serif; font-style:italic; font-weight:700; letter-spacing:4px; fill:#1f4e6e; paint-order:stroke; stroke:#c8dcd6; stroke-width:3px; stroke-linejoin:round; pointer-events:none; }
+    .mine-world .wb{ font:800 9.5px sans-serif; fill:#3a1a0c; }
+    .mine-world .wb-boss{ fill:#ffd8e0; }
     .mine-coord.admin{ pointer-events:auto; cursor:pointer; }
     .mine-warp{ display:flex; flex-direction:column; gap:8px; }
     .mine-warp label{ display:flex; align-items:center; gap:8px; font-weight:800; }
