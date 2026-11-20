@@ -10820,6 +10820,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 return mineGearResult(userName, false, "🌊 물 위에 서 있어서 용왕의 반지를 뺄 수 없어요. 땅으로 나간 뒤에 바꿔 끼세요.");
         }
         dao.upsertMineItem(userName, MINE_ITEM_RING_SLOT, next);
+        if (!isMineAdmin(userName) && (wyrm || cur == MINE_RING_WYRM)) { // [2026-11-20] "용의 반지 사용자가 안 된다" -- 끼는 순간엔 이동 목록(ringMaps)이 화면에 안 가서 다시 들어오기 전까지 지도를 눌러도 아무 일이 없었다
+            HashMap<String, Object> ro = mineGearResult(userName, true, next == 0 ? "💍 " + nm + "을(를) 해제했어요." : "💍 " + nm + "을(를) 장착했어요. 전체 지도에서 가고 싶은 지역을 누르면 그곳으로 가요(한 시간에 한 번).");
+            if (next == MINE_RING_WYRM) { HashMap<String, Object> s2 = mineState(userName); ro.put("ringMaps", s2.get("ringMaps")); ro.put("ringReadyAt", s2.get("ringReadyAt")); }
+            else ro.put("ringOff", true);
+            return ro;
+        }
         return mineGearResult(userName, true, next == 0 ? "💍 " + nm + "을(를) 해제했어요." : "💍 " + nm + "을(를) 장착했어요." + (dragon ? " 물 위를 걸을 수 있어요." : wyrm ? " 전체 지도(🗺️)에서 가고 싶은 곳을 누르면 그곳으로 가요. (한 시간에 한 번)" : "") + (cur != 0 && cur != next ? " (반지는 하나만 -- 끼던 반지는 뺐어요)" : ""));
     }
 

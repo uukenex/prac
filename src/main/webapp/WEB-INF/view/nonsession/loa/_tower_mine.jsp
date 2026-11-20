@@ -3936,7 +3936,9 @@ var TowerMine = (function () {
       var rleft = (st.ringReadyAt || 0) - nowSrv();
       if (rleft > 0) { msg('💍 용의 반지의 힘이 아직 돌아오지 않았어요. (' + callLeftTxt(rleft) + ' 뒤)'); return; }
       if (map && map.id === id) { msg('이미 그곳에 있어요.'); return; }
-      if (!confirm('💍 용의 반지로 「' + e.name + '」(으)로 갈까요? (한 시간에 한 번)')) return;
+      // [2026-11-20] "용의 반지 사용자가 안 된다" -- confirm()은 카카오톡 등 앱 안 브라우저에서 창 없이 '취소'가 되는 일이 있어 게임 확인 창(ask)으로
+      ask('💍 용의 반지', '「' + e.name + '」(으)로 갈까요? (한 시간에 한 번)', '이동', function () { setAuto(false); travel('/api/tower-mine-admin-warp?mapId=' + encodeURIComponent(id) + '&x=' + (e.sx != null ? e.sx : 0) + '&y=' + (e.sy != null ? e.sy : 0), '이동하지 못했어요.'); });
+      return;
     }
     closeSmith();
     setAuto(false);
@@ -4957,7 +4959,8 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax', 'ringMaps', 'ringReadyAt'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    if (d.ringOff) { st.ringMaps = null; st.ringReadyAt = 0; } // [2026-11-20] 용의 반지를 빼면 지도 이동도 끝
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
     buildSprites(st.look); // [2026-10-24] 외형이 바뀌었으면 캐릭터 그림을 다시
@@ -6492,7 +6495,9 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function auraGift(e) { // [2026-11-05] 2환생 특전
-    if (!confirm('🎁 2환생 특전(한 번만)으로 ' + ELEM_NAME[e] + ' 검기 1단계를 받을까요?')) return;
+    ask('🎁 2환생 특전', '한 번만 받을 수 있어요. ' + ELEM_NAME[e] + ' 검기 1단계를 받을까요?', '받기', function () { auraGiftGo(e); }); // [2026-11-20] confirm() 대신
+  }
+  function auraGiftGo(e) {
     api('/api/tower-mine-aura-gift?el=' + e).then(function (d) {
       if (d && d.ok) { st.aura = d.aura; flashT0 = performance.now(); }
       if (smithOpen) renderSmith(smithNpc);
@@ -6690,7 +6695,9 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function ultGift(k) { // [2026-11-08] 3환생 특전
-    if (!confirm('🎁 3환생 특전(한 번만)으로 ' + ULT_NAME[k] + ' 1레벨을 받을까요?')) return;
+    ask('🎁 3환생 특전', '한 번만 받을 수 있어요. ' + ULT_NAME[k] + ' 1레벨을 받을까요?', '받기', function () { ultGiftGo(k); }); // [2026-11-20] confirm() 대신
+  }
+  function ultGiftGo(k) {
     api('/api/tower-mine-ult-gift?k=' + k).then(function (d) {
       if (d && d.ok) { st.ult = d.ult; flashT0 = performance.now(); }
       if (smithOpen) renderSmith(smithNpc);
