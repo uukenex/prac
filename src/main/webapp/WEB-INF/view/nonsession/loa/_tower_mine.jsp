@@ -3079,13 +3079,13 @@ var TowerMine = (function () {
     }).catch(function () { alchemyBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function alchemyHtml(n) {
-    var d = alchemyInfo || {}, q = d.have || [0, 0, 0, 0], r = d.rate || 10, NM = ['구리 광석', '철광석', '은광석', '금광석'];
+    var d = alchemyInfo || {}, q = d.have || [0, 0, 0, 0, 0], r = d.rate || 10, NM = ['구리 광석', '철광석', '은광석', '금광석', '악마의 광석 조각'], GR = [1, 2, 3, 4, 75]; // [2026-11-20] 금광석 -> 악마의 광석 조각
     var h = npcHead('⚗️ ' + n.name, false) + talkBlock(n, n.line);
     if (!alchemyInfo) return h + '<div class="mine-smith-say">⚗️ 도가니를 데우는 중...</div>';
-    h += '<div class="mine-smith-say" style="border:1px solid #b8f06a"><b>⚗️ 광석 연금</b> <small>아래 광석 ' + r + '개를 녹여 한 단계 위 광석 1개로. 금광석 위로는 바꿀 수 없어요.</small>';
-    for (var i = 0; i < 3; i++) {
+    h += '<div class="mine-smith-say" style="border:1px solid #b8f06a"><b>⚗️ 광석 연금</b> <small>아래 광석 ' + r + '개를 녹여 한 단계 위 광석 1개로. 금광석 ' + r + '개는 악마의 광석 조각 1개로.</small>';
+    for (var i = 0; i < 4; i++) {
       var ic = function (g) { return '<img src="' + oreIcon(g) + '" alt="" style="width:16px;vertical-align:middle">'; }, can = Math.floor(q[i] / r);
-      h += '<div class="mine-smith-row"><span class="nm">' + ic(i + 1) + ' ' + NM[i] + ' ' + r + ' → ' + ic(i + 2) + ' ' + NM[i + 1] + ' 1<small>보유 ' + fmtN(q[i]) + '개 → 최대 ' + fmtN(can) + '개 · ' + NM[i + 1] + ' 보유 ' + fmtN(q[i + 1]) + '개</small></span></div>';
+      h += '<div class="mine-smith-row"><span class="nm">' + ic(i + 1) + ' ' + NM[i] + ' ' + r + ' → ' + ic(GR[i + 1]) + ' ' + NM[i + 1] + ' 1<small>보유 ' + fmtN(q[i]) + '개 → 최대 ' + fmtN(can) + '개 · ' + NM[i + 1] + ' 보유 ' + fmtN(q[i + 1]) + '개</small></span></div>';
       [[1, '1개'], [100, '100개'], [0, '전부']].forEach(function (b) { h += '<button type="button" class="mine-mini-btn"' + (can < Math.max(1, b[0]) ? ' data-lack="1"' : '') + ' onclick="TowerMine.alchemy(' + i + ',' + b[0] + ')">' + b[1] + '</button> '; });
     }
     return h + '</div>';

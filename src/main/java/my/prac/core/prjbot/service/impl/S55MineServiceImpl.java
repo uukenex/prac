@@ -1766,21 +1766,24 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (!mineAtNpc(row, "alchemist")) { out.put("message", "연금술사에게서만 바꿀 수 있어요."); return out; }
                 int from = -1;
                 try { from = Integer.parseInt(code); } catch (NumberFormatException ex) { }
-                if (from < 0 || from > 2) { out.put("message", "그건 바꿀 수 없어요."); return out; }
+                if (from < 0 || from > 3) { out.put("message", "그건 바꿀 수 없어요."); return out; }
+                // [2026-11-20] "연금술사가 금광석 10개 -> 악마의 광석 조각 1개로" -- from 3 = 금광석 -> 악마의 광석 조각
+                String toCode = from == 3 ? S5MineMap.DEMON_ORE_CODE : S5MineMap.ORE_CODES[from + 1], toName = from == 3 ? S5MineMap.DEMON_ORE_NAME : S5MineMap.ORE_NAMES[from + 1];
                 int haveF = mineOreHave(userName).getOrDefault(S5MineMap.ORE_CODES[from], 0), maxN = haveF / MINE_ALCHEMY_RATE;
                 int n = grade <= 0 ? maxN : Math.min(maxN, grade);
                 if (n < 1) { out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + "이(가) " + MINE_ALCHEMY_RATE + "개 이상 있어야 해요. (보유 " + haveF + ")"); }
                 else if (dao.takeUserOre(userName, S5MineMap.ORE_CODES[from], n * MINE_ALCHEMY_RATE) == 0) { out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + "이(가) 모자라요."); }
                 else {
-                    dao.addUserOre(userName, S5MineMap.ORE_CODES[from + 1], n);
+                    dao.addUserOre(userName, toCode, n);
                     out.put("ok", true);
                     out.put("got", n);
-                    out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + " " + String.format("%,d", n * MINE_ALCHEMY_RATE) + "개를 녹여 " + S5MineMap.ORE_NAMES[from + 1] + " " + String.format("%,d", n) + "개로 바꿨어요!");
+                    out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + " " + String.format("%,d", n * MINE_ALCHEMY_RATE) + "개를 녹여 " + toName + " " + String.format("%,d", n) + "개로 바꿨어요!");
                 }
             }
             Map<String, Integer> hv = mineOreHave(userName);
-            int[] q = new int[4];
+            int[] q = new int[5];
             for (int i = 0; i < 4; i++) q[i] = hv.getOrDefault(S5MineMap.ORE_CODES[i], 0);
+            q[4] = hv.getOrDefault(S5MineMap.DEMON_ORE_CODE, 0); // [2026-11-20] 악마의 광석 조각
             out.put("have", q);
             out.put("rate", MINE_ALCHEMY_RATE);
             out.put("ores", mineOreList(userName));
@@ -7447,7 +7450,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-20] 태초의 보석 재료 -- 마계의 정수(정제된 마석) 10, 거룡의 심장 조각(내구도 회복 키트) 50, 악마의 광석 조각 1000, 세공된 보석(땅·바다) 각 10,
      *  같은 날 "남아도는 것 + @를 소모하도록, 구리 만 개 기준" -- 유저 전체 보유 비율(구리 33.8 : 철 23.9 : 은 16.6 : 금 25.5)대로 구리 10000 · 철 7000 · 은 5000 · 금 7500,
      *  + 병목 재료는 조금(미스릴 300, 별빛석 30 -- 예전 미스릴 10000은 유저 전체 보유량의 2.6배라 아무도 못 만들었다). */
-    static final int[] MINE_PRIMAL_ORE = { 10000, 7000, 5000, 7500, 300, 30 }; // 구리, 철, 은, 금, 미스릴, 별빛석
+    static final int[] MINE_PRIMAL_ORE = { 100000, 100000, 100000, 100000, 10000, 30 }; // 구리, 철, 은, 금, 미스릴, 별빛석 -- [2026-11-20] "각 광석 10만 개, 미스릴 1만 개"(별빛석은 그대로)
     static String[][] minePrimalCost() {
         List<String[]> l = new ArrayList<>();
         l.add(new String[] { S5MineMap.MANA_STONE_CODE, "10" });
