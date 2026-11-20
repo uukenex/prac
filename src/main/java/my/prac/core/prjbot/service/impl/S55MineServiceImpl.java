@@ -5281,6 +5281,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ha != null && !mineGearLvOk(mineLv(row), gi, ha.lv)) { dao.upsertMineItem(userName, MINE_ITEM_ARMOR_SLOT, 0); out.put("weaponOffMsg", "🛡️ " + ha.name + "은(는) Lv." + ha.lv + "부터라 벗었어요."); }
         }
         putMinePick(out, minePickDur(row), minePickMax(row));
+        putMineFishDur(out, mineFishDurLeft(mineItems(userName))); // [2026-11-20] 낚시 내구도(따로)
         out.put("pickUpgrades", minePickUpgradeList());
         out.put("pickCap", MINE_PICK_CAP); // [2026-10-24] 최대 내구도 상한
         out.put("nextResetAt", S5MineMap.nextResetAt(now));
@@ -5471,7 +5472,55 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int g = 1; g <= max; g++) { cum += w[g]; if (r < cum) return g; }
         return 1;
     }
-    static final int MINE_FISH_DUR = 10;
+    // [2026-11-20] "낚시 내구도를 따로 -- 처음 모두 100, 1씩 닳게, 패치되는 순간 모두 100" -- 곡괭이 내구도는 더 안 쓴다.
+    //  쓴 양(FISH_USED)과 그 날짜(FISH_DAY, yyyyMMdd)를 아이템 칸에 둔다: 기록이 없거나 날짜가 오늘이 아니면 가득(곡괭이처럼 매일 0시에 다시 100).
+    //  그래서 배포 순간 모두 100이고 DB 작업이 필요 없다.
+    static final int MINE_FISH_DUR = 1, MINE_FISH_DUR_MAX = 100;
+    static final String MINE_ITEM_FISH_USED = "FISH_USED", MINE_ITEM_FISH_DAY = "FISH_DAY";
+    static int mineTodayNum() { return Integer.parseInt(java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE)); }
+    static int mineFishDurLeft(Map<String, Integer> items) {
+        if (items.getOrDefault(MINE_ITEM_FISH_DAY, 0) != mineTodayNum()) return MINE_FISH_DUR_MAX;
+        return Math.max(0, MINE_FISH_DUR_MAX - items.getOrDefault(MINE_ITEM_FISH_USED, 0));
+    }
+    static void putMineFishDur(HashMap<String, Object> out, int left) { out.put("fishDur", left); out.put("fishDurMax", MINE_FISH_DUR_MAX); }
+    /** 한 번 던졌다 -- 낚시 내구도 1. 남은 양. */
+    int mineFishDurUse(String userName, Map<String, Integer> items) {
+        int left = mineFishDurLeft(items), used = MINE_FISH_DUR_MAX - left + MINE_FISH_DUR, today = mineTodayNum();
+        dao.upsertMineItem(userName, MINE_ITEM_FISH_DAY, today);
+        dao.upsertMineItem(userName, MINE_ITEM_FISH_USED, used);
+        items.put(MINE_ITEM_FISH_DAY, today);
+        items.put(MINE_ITEM_FISH_USED, used);
+        return Math.max(0, MINE_FISH_DUR_MAX - used);
+    }
+    // [2026-11-20] "채광이나 낚시 때도 경험치를 소량, 특히 채광은 과하지 않게" -- 지금 레벨 필요 경험치의 1/n(최소 1).
+    //  채광은 캐기 한 번(광역 곡괭이로 여러 칸이어도 한 번)에 1/2000, 낚시는 한 마리에 1/500(보석물고기는 3배). 80레벨부터 처치 경험치 3배(MINE_EXP80_MUL)는 여기엔 안 붙게 미리 나눈다.
+    static final int MINE_DIG_EXP_DIV = 2000, MINE_FISH_EXP_DIV = 500, MINE_GEM_FISH_EXP_MUL = 3;
+    long mineSmallExp(String userName, HashMap<String, Object> row, Map<String, Integer> items, int div, int mul, long now, HashMap<String, Object> out) {
+        int lv = mineLv(row), rb = mineRebirth(items), lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0);
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        long gain = Math.max(1, mineExpNeed(lv, rb) * mul / div / (lv >= MINE_EXP80_LV ? MINE_EXP80_MUL : 1));
+        boolean wasReady = mineRebirthReady(lv, exp, rb);
+        long[] xa = mineExpAdd(lv, exp, gain, rb);
+        if (xa[3] <= 0) return 0; // 99레벨에서 가득 참
+        int nlv = (int) xa[0], hp;
+        long nexp = xa[1];
+        if (xa[2] > 0) { // 레벨 업 -- 처치 때처럼 체력 가득 + 잠긴 최대 체력 풀림
+            hp = mineHpFull(nlv, rb);
+            if (lock > 0) { lock = 0; dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0); out.put("hpLockFree", true); }
+            dao.updateMineCombat(userName, nlv, nexp, hp, now, 0);
+            MINE_HP_VIRT.remove(userName);
+            row.put("M_HP", hp); row.put("M_HP_AT_MS", now);
+            out.put("levelUp", (int) xa[2]);
+        } else {
+            dao.updateMineLvExp(userName, nlv, nexp);
+            hp = mineHpNow(row, now, lock, rb);
+        }
+        row.put("M_LV", nlv); row.put("M_EXP", nexp);
+        if (!wasReady && mineRebirthReady(nlv, nexp, rb)) out.put("rebirthReadyNow", true);
+        out.put("combat", mineCombatInfo(nlv, nexp, hp, now, mineEngaged(userName, now), lock, rb));
+        out.put("smallExp", xa[3]);
+        return xa[3];
+    }
     static final long MINE_FISH_GAP_MS = 2_500L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_FISH_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final String[] MINE_ROD_NAMES = { "", "일반", "고급", "희귀", "영웅", "전설" };
@@ -5560,10 +5609,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!map.inside(fx, fy) || map.terrainAt(fx, fy) != '~' || mineFishRegion(map, fx, fy) < 0) return null;
         return new int[] { fx, fy };
     }
-    HashMap<String, Object> mineFish(String userName, String mapId, int x, int y, int st, int stMax, long now, HashMap<String, Object> out, int region) {
+    HashMap<String, Object> mineFish(String userName, HashMap<String, Object> row, Map<String, Integer> items, String mapId, int x, int y, int st, long now, HashMap<String, Object> out, int region) {
         Long last = MINE_FISH_AT.get(userName);
+        int fd = mineFishDurLeft(items);
+        putMineFishDur(out, fd);
         if (last != null && now - last < MINE_FISH_GAP_MS) { out.put("fishWait", true); out.put("message", "🎣 찌가 아직 물 위에 떠 있어요."); return out; }
-        if (st < MINE_FISH_DUR) { out.put("message", "🎣 곡괭이 내구도가 " + MINE_FISH_DUR + " 이상 있어야 낚싯줄을 던질 수 있어요. (지금 " + st + ")"); return out; }
+        if (fd < MINE_FISH_DUR) { out.put("message", "🎣 낚시 내구도를 다 썼어요. 매일 0시에 다시 " + MINE_FISH_DUR_MAX + "으로 채워져요."); return out; } // [2026-11-20] 곡괭이 내구도 대신
         MINE_FISH_AT.put(userName, now);
         HashMap<String, Object> eq = dao.selectS55FishEquip(userName);
         int rod = eq == null ? 1 : Math.max(1, intVal(eq.get("ROD_GRADE"), 1)), bob = eq == null ? 1 : Math.max(1, intVal(eq.get("BOBBER_GRADE"), 1));
@@ -5572,15 +5623,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertS55FishInv(userName, gid);
             dao.insertS55FishLog(userName, gid, mapId);
             HashMap<String, Object> gup = new HashMap<>();
-            gup.put("userName", userName); gup.put("pickDur", st - MINE_FISH_DUR); gup.put("atMs", now); gup.put("x", x); gup.put("y", y);
+            gup.put("userName", userName); gup.put("pickDur", st); gup.put("atMs", now); gup.put("x", x); gup.put("y", y); // [2026-11-20] 곡괭이 내구도는 그대로
             dao.updateMineUser(gup);
+            putMineFishDur(out, mineFishDurUse(userName, items));
+            long gx = mineSmallExp(userName, row, items, MINE_FISH_EXP_DIV, MINE_GEM_FISH_EXP_MUL, now, out); // [2026-11-20] 낚시 경험치(보석물고기 3배)
             HashMap<String, Object> gf = new HashMap<>();
             gf.put("id", gid); gf.put("name", MINE_GEM_FISH[region][0]); gf.put("grade", 8); gf.put("star", "💠 " + MINE_FISH_REGION_NAMES[region] + " 특산"); gf.put("emoji", "💠"); gf.put("desc", MINE_GEM_FISH[region][1]); gf.put("gem", true);
             out.put("ok", true);
             out.put("fish", gf);
             out.put("rod", MINE_ROD_NAMES[Math.min(rod, MINE_ROD_NAMES.length - 1)] + " 낚싯대");
-            putMinePick(out, st - MINE_FISH_DUR, stMax);
-            out.put("message", "🎣 💠 " + MINE_FISH_REGION_NAMES[region] + " 특산 보석물고기 " + MINE_GEM_FISH[region][0] + "을(를) 낚았어요!!");
+            out.put("message", "🎣 💠 " + MINE_FISH_REGION_NAMES[region] + " 특산 보석물고기 " + MINE_GEM_FISH[region][0] + "을(를) 낚았어요!!" + (gx > 0 ? " 경험치 +" + gx : ""));
             mineGossipAdd(mineNick(userName) + " 님이 " + MINE_FISH_REGION_NAMES[region] + "에서 " + MINE_GEM_FISH[region][0] + "을(를) 낚았대요!");
             return out;
         }
@@ -5598,11 +5650,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.insertS55FishLog(userName, fishId, mapId);
         HashMap<String, Object> up = new HashMap<>();
         up.put("userName", userName);
-        up.put("pickDur", st - MINE_FISH_DUR);
+        up.put("pickDur", st); // [2026-11-20] 곡괭이 내구도는 그대로(낚시 내구도를 따로)
         up.put("atMs", now);
         up.put("x", x);
         up.put("y", y);
         dao.updateMineUser(up);
+        putMineFishDur(out, mineFishDurUse(userName, items));
+        long fx = mineSmallExp(userName, row, items, MINE_FISH_EXP_DIV, 1, now, out); // [2026-11-20] 낚시 경험치
         HashMap<String, Object> f = new HashMap<>();
         f.put("id", fishId);
         f.put("name", strVal(fish.get("FISH_NAME"), "물고기"));
@@ -5613,8 +5667,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ok", true);
         out.put("fish", f);
         out.put("rod", MINE_ROD_NAMES[Math.min(rod, MINE_ROD_NAMES.length - 1)] + " 낚싯대");
-        putMinePick(out, st - MINE_FISH_DUR, stMax);
-        out.put("message", "🎣 " + mineFishStar(grade) + " " + f.get("name") + "을(를) 낚았어요!");
+        out.put("message", "🎣 " + mineFishStar(grade) + " " + f.get("name") + "을(를) 낚았어요!" + (fx > 0 ? " 경험치 +" + fx : ""));
         return out;
     }
 
@@ -5663,7 +5716,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int[] fsp = noFish ? null : mineFishSpot(map, x, y, dir); // [2026-11-19] "물 필드라면 전체 바다낚시" -- 배 위, 또는 물가에서 물(~)을 바라보면
         if ((map.boat() && !noFish) || fsp != null) { // [2026-11-18] "바다에선 채광 대신 낚시" -- 같은 날 "아직은 관리자만", [2026-11-19] 배로 다니는 바닷가/섬 물 위에서도
             // [2026-11-19] "바다 낚시도 일반 플레이어 오픈" -- 관리자만 막던 것 없앰
-            return mineFish(userName, map.id, x, y, st, stMax, now, out, fsp == null ? mineFishRegion(map, x, y) : mineFishRegion(map, fsp[0], fsp[1]));
+            return mineFish(userName, row, items, map.id, x, y, st, now, out, fsp == null ? mineFishRegion(map, x, y) : mineFishRegion(map, fsp[0], fsp[1]));
         }
         int g = map.oreAt(x, y);
         if (g == 0) {
@@ -5752,6 +5805,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("qty", qty);
         out.put("gain", gain);
         out.put("upgraded", upgraded);
+        mineSmallExp(userName, row, items, MINE_DIG_EXP_DIV, 1, now, out); // [2026-11-20] 채광 경험치(소량, 캐기 한 번에 한 번)
         String msg = "⛏️ " + map.name + " " + name + " " + gain + "개! (보유 " + qty + "개)" // [2026-10-28] "보석 캘 때 좌표 나오는 거 지워줘" -- 좌표 빼기
                 + (upgraded ? " 💍 심연의 반지: 한 등급 위!" : "") + (gain > 1 ? " 💍 풍요의 반지: 2개!" : "");
         if (one.get("gemGrade") != null) {

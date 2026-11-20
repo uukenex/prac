@@ -160,6 +160,8 @@ public interface BotS5DAO {
     /** [2026-10-24] 광산 전투 레벨/경험치/체력 저장(kills = 이번에 더할 처치 수). */
     int updateMineCombat(@Param("userName") String userName, @Param("lv") int lv, @Param("exp") long exp, @Param("hp") int hp,
             @Param("hpAt") long hpAt, @Param("kills") int kills);
+    /** [2026-11-20] 채광/낚시 경험치 -- 레벨/경험치만(체력은 그대로). */
+    int updateMineLvExp(@Param("userName") String userName, @Param("lv") int lv, @Param("exp") long exp);
     int addMinePpBonus(@Param("userName") String userName, @Param("add") double add);
     int countMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell);
     int insertMineDug(@Param("userName") String userName, @Param("mapId") String mapId, @Param("cell") int cell, @Param("grade") int grade, @Param("atMs") long atMs);

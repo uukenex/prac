@@ -767,6 +767,11 @@
          WHERE USER_NAME = #{userName}
     </update>
 
+    <!-- [2026-11-20] 채광/낚시 경험치 - 레벨/경험치만 -->
+    <update id="updateMineLvExp">
+        UPDATE TBOT_S5_MINE_USER SET M_LV = #{lv}, M_EXP = #{exp} WHERE USER_NAME = #{userName}
+    </update>
+
     <update id="addMinePpBonus">
         UPDATE TBOT_S5_MINE_USER SET PP_BONUS = PP_BONUS + #{add} WHERE USER_NAME = #{userName}
     </update>

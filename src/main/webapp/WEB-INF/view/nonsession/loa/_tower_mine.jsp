@@ -2278,8 +2278,9 @@ var TowerMine = (function () {
     return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
   function showStamina() {
-    el.sta.textContent = st.durability + ' / ' + st.durabilityMax; // [2026-10-30] 채광 버튼 꼬리표
-    el.sta.classList.toggle('zero', st.durability < 1);
+    var fishOn = !!(map && fishHere()), fdur = st.fishDur != null ? st.fishDur : 100; // [2026-11-20] 낚시 자리면 낚시 내구도(따로 100)
+    el.sta.textContent = fishOn ? fdur + ' / ' + (st.fishDurMax || 100) : st.durability + ' / ' + st.durabilityMax; // [2026-10-30] 채광 버튼 꼬리표
+    el.sta.classList.toggle('zero', fishOn ? fdur < 1 : st.durability < 1);
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
@@ -8063,7 +8064,7 @@ var TowerMine = (function () {
       if (d.felled) { flashT0 = performance.now(); msg(d.message, 2600); treeFallAt[d.tree] = performance.now(); treeSt.forEach(function (q) { if (q[0] === d.tree) q[1] = 3; }); }
     }).catch(function () { chopBusy = false; });
   }
-  // [2026-11-18] 바다 낚시 -- 배를 탄 맵에서 채광 버튼 = 낚시(곡괭이 내구도 10, 시즌4 낚싯대/찌). 던지기 -> 찌 -> 입질(결과) -> 물고기
+  // [2026-11-18] 바다 낚시 -- 배를 탄 맵에서 채광 버튼 = 낚시(시즌4 낚싯대/찌). 던지기 -> 찌 -> 입질(결과) -> 물고기. [2026-11-20] 곡괭이 대신 낚시 내구도(하루 100, 한 번에 1)
   var fishFx = null, FISH_COL = ['#ffffff', '#ffffff', '#8ee08e', '#6ab8ff', '#c08aff', '#ffb347', '#ff6a8a', '#ff5a3a', '#ffd84a'];
   function fishCast() {
     if (!opened || busy || !map || P.moving) return;
@@ -8071,6 +8072,7 @@ var TowerMine = (function () {
     var ff = fishFx = { t0: performance.now(), dir: P.dir };
     apiFast('/api/tower-mine-dig?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&dir=' + P.dir + verQ()).then(function (d) {
       if (d.durability != null) { st.durability = d.durability; st.durabilityMax = d.durabilityMax; }
+      if (d.fishDur != null) { st.fishDur = d.fishDur; st.fishDurMax = d.fishDurMax; } // [2026-11-20] 낚시 내구도
       if (!d.ok) { busy = false; if (fishFx === ff) fishFx = null; showStamina(); if (d.message) msg(d.message, 2200); return; }
       setTimeout(function () {
         busy = false;
@@ -8081,6 +8083,7 @@ var TowerMine = (function () {
         try { killFeed('🎣 ' + (f.star || '') + ' ' + (f.name || ''), col); } catch (e) { }
         if (big) { flashT0 = performance.now(); banner = { text: '🎣 ' + f.star + ' ' + f.name + '!', t0: performance.now() }; }
         if (d.ach) msg(d.ach, 4200);
+        smallExpFx(d, 0.4);
         showStamina();
       }, Math.max(0, 1300 - (performance.now() - ff.t0)));
     }).catch(function () { busy = false; if (fishFx === ff) fishFx = null; showStamina(); msg('요청 실패 -- 다시 시도해주세요.'); });
@@ -8098,6 +8101,12 @@ var TowerMine = (function () {
     ctx.strokeStyle = 'rgba(240,240,240,.85)'; ctx.lineWidth = Math.max(1, 0.6 * u); ctx.beginPath(); ctx.moveTo(rx, ry); ctx.quadraticCurveTo((rx + bx) / 2, Math.max(ry, by) + (bit ? 0 : TS * 0.3), bx, by); ctx.stroke(); // 낚싯줄
     ctx.fillStyle = '#e8463a'; ctx.fillRect(bx - 1.5 * u, by - 2 * u, 3 * u, 2 * u); ctx.fillStyle = '#ffffff'; ctx.fillRect(bx - 1.5 * u, by, 3 * u, 1.5 * u); // 찌
     if (bit) { ctx.strokeStyle = 'rgba(230,245,255,' + (0.8 * (1 - (pn - fishFx.bite) / 1400)).toFixed(2) + ')'; ctx.lineWidth = 1.5 * dpr; ctx.beginPath(); ctx.ellipse(bx, by + u, TS * 0.2 + (pn - fishFx.bite) / 1400 * TS * 0.6, TS * 0.1 + (pn - fishFx.bite) / 1400 * TS * 0.25, 0, 0, Math.PI * 2); ctx.stroke(); }
+  }
+  /** [2026-11-20] 채광/낚시 경험치(소량) -- 머리 위 작은 글씨 + 레벨 업. */
+  function smallExpFx(d, dy) {
+    if (d.combat) setCombat(d.combat);
+    if (d.smallExp > 0) floats.push({ x: P.x, y: P.y - 1.2 - (dy || 0), text: '+' + d.smallExp + ' 경험치', color: '#b8f0a0', t0: performance.now() + 250 });
+    if (d.levelUp && d.combat) { flashT0 = performance.now(); banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: performance.now() }; }
   }
   // [2026-11-19] "물 필드라면 전체 바다낚시" -- 서버 mineFishSpot/mineFishRegion과 같은 규칙: 배를 탄 물 위, 또는 낚시 지역 맵에서 바라보는 칸이 물(~)(북쪽 끝 설원은 아래쪽 바다만).
   var FISH_MAPS = { field: 1, desert: 1, beach: 1, island: 1, opensea: 1, vastsea: 1, seacity: 1, archi: 1, archisea: 1, isle1: 1, isle2: 1, isle3: 1, isle4: 1, isle5: 1, isle6: 1, isle7: 1, north: 1, towercity: 1, towergate: 1, harpyferry: 1 };
@@ -8137,6 +8146,7 @@ var TowerMine = (function () {
         floats.push({ x: x, y: y, text: '+' + (d.gain || 1) + ' ' + d.oreName, color: (ORE_COL[d.grade] || ORE_COL[1])[1], big: rare, icon: img, t0: performance.now() });
         if (rare) { flashT0 = performance.now(); msg('✨ ' + d.oreName + '! ' + map.name, 3200); } // [2026-10-28] 좌표 빼기
         if (specialDrop(d.grade)) banner = { text: '✨ ' + d.oreName + '!', t0: performance.now() }; // [2026-10-29] 귀한 것은 가운데 이름까지
+        smallExpFx(d, 0); // [2026-11-20] 채광 경험치
         // [2026-10-24] 광역 곡괭이 -- 주변 칸도 함께 캔 결과
         (d.wide || []).forEach(function (w, i) {
           dug[w.x + ',' + w.y] = w.grade;
