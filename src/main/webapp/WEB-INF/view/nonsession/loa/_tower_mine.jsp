@@ -3236,6 +3236,14 @@ var TowerMine = (function () {
   }
   function downMe() { return wbDownUntil > nowSrv(); }
   /** 월드보스에 쓰러짐 -- 자리는 그대로, 화면만 회색으로 두고 작은 카운트(10초) 뒤 일어난다. */
+  // [2026-11-20] 장갑 효과 표시 -- 광전사 불굴(체력 1로 버티고 5초 무적), 쌍격의 장갑 기절
+  var berserkInvUntil = 0, gloveFxT = 0;
+  function gloveFx(d) {
+    if (!d) return;
+    var t = performance.now();
+    if (d.berserkSave) { berserkInvUntil = d.berserkSave; flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🔥 불굴! 5초 무적', color: '#ff6a3a', big: true, t0: t }); msg('🔥 광전사의 불굴 -- 쓰러질 일격을 버텼어요! 5초 동안 무적이에요.', 2600); }
+    else if (d.berserkInv && t - gloveFxT > 700) { gloveFxT = t; floats.push({ x: P.x, y: P.y - 0.8, text: '🛡️ 무적', color: '#ffb07a', t0: t }); }
+  }
   function wbFall(d) {
     wbDownUntil = d.wbDown;
     setAuto(false);
@@ -4194,8 +4202,9 @@ var TowerMine = (function () {
     GLOVES: '한기 방어 +단계(1~3). 사막·남쪽 섬·다도해에선 더워서 초당 1%씩 체력이 깎여요. 털옷 장인 의뢰로 다음 단계로.',
     DRAGON_RING: '끼고 있는 동안 물 위를 땅처럼 걸을 수 있어요.(물 위에서는 못 빼요).',
     REGEN_GLOVES: '몬스터에게 받은 피해의 50%를 5초에 걸쳐 회복 (2단계: 65% + 처치 시 최대 체력 3%)', // [2026-11-04] 80%/4초 -> 50%/5초, 2단계
-    TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 더블어택(합쳐서 110%). 타격마다 치명타 확률 +5%. 초당 최대 체력의 1% 소모',
-    BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요.' };
+    TWIN_GLOVES: '한 번 공격할 때 기본 공격력의 55%로 더블어택(합쳐서 110%). 타격마다 치명타 확률 +5%. 공격할 때 12% 확률로 2초 기절. 초당 최대 체력의 1% 소모', // [2026-11-20] 기절
+    BERSERK_GLOVES: '공격력이 50% 올라가는 대신 체력이 차오르는 속도가 20% 느려져요. 불굴: 쓰러질 일격을 체력 1로 버티고 5초 무적(1분에 한 번).', // [2026-11-20]
+    ULT_DMG_GLOVES: '필살기(만검진·일섬참) 피해 +30% (2단계 +45%)', ULT_CD_GLOVES: '필살기 쿨타임 -25% (2단계 -35%)' };
   /** [2026-11-04] "2단계 장비 옵션이 안 나온다" -- 고정 설명(EQ_TIPS)은 1단계 기준이라, 이름에 (n단계)가 붙은 장비는 서버가 준 그 단계 효과를 보여 준다. */
   function eqTip(e) { var t = EQ_TIPS[e.code]; return t && !/\(\d단계\)/.test(e.name) ? t : e.effect; }
   function eqInfo(elm, ev) {
@@ -5000,6 +5009,7 @@ var TowerMine = (function () {
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
       // (인식 풀림 안내는 띄우지 않는다 -- 위 [2026-10-28])
+      gloveFx(d); // [2026-11-20] 광전사 불굴 / 쌍격 기절
       if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
       else if (d.died && d.state) fallDown(d);
       else if (d.boatWreck && d.state) fallDown(d); // [2026-11-18] 배가 부서져 마을로
@@ -5054,6 +5064,7 @@ var TowerMine = (function () {
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
+      gloveFx(d); // [2026-11-20] 광전사 불굴 / 쌍격 기절
       if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
       else if (d.died && d.state) fallDown(d);
     };
@@ -6735,6 +6746,7 @@ var TowerMine = (function () {
       var t = performance.now(), fxp = mp ? mp.x : P.x, fyp = mp ? mp.y : P.y;
       var atkEl = st.ench && st.ench.left > 0 && st.ench.el ? ELEM_ICON[st.ench.el] : ''; // [2026-10-30] "속성 공격 시 표기" -- 부여한 속성 아이콘, 상성이면 x1.5
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
+      if (d.twinStun) floats.push({ x: fxp, y: fyp - 1.0, text: '💫 기절!', color: '#ffe14d', t0: t + 200 }); // [2026-11-20] 쌍격의 장갑
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
       else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv + (d.elHit ? ' x1.5' : ''), color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
@@ -6761,6 +6773,7 @@ var TowerMine = (function () {
       // [2026-10-25] 최대 체력 잠금 -- 새 전투마다 10%(최대 50%), 레벨업하면 풀림
       if (d.hpLockUp) floats.push({ x: P.x, y: P.y - 0.9, text: '🔒 최대 체력 -' + d.hpLockUp + '%', color: '#c9c3d6', t0: t + 300 });
       if (d.hpLockFree) msg('🔓 레벨 업! 잠겼던 최대 체력이 풀렸어요.', 2600);
+      gloveFx(d); // [2026-11-20] 광전사 불굴 / 쌍격 기절
       if (d.died && d.wbDown) wbFall(d); // [2026-11-15] 월드보스 -- 그 자리에서 10초
       else if (d.died && d.state) {
         setAuto(false);

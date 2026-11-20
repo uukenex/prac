@@ -92,7 +92,7 @@ window.MineHome = (function () {
   function hms(ms) { var d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
   function mdhm(ms) { var d = new Date(ms); return pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
   var GRADE_COL = ['#ffffff', '#4fd16a', '#4a9eff', '#b56cff', '#ff9a2e', '#ff4a4a', '#c8d0dc', '#ffd040'];
-  var SLOTS = { weapon: '⚔️ 무기', ring: '💍 반지', gloves: '🧤 장갑', coat: '🧥 옷', necklace: '📿 목걸이', boots: '👢 신발', tool: '⛏️ 채집 도구' };
+  var SLOTS = { weapon: '⚔️ 무기', ring: '💍 반지', gloves: '🧤 장갑', coat: '🧥 옷', armor: '🛡️ 갑옷', necklace: '📿 목걸이', boots: '👢 신발', tool: '⛏️ 채집 도구' };
   var LOOK = { hat: '모자', hair: '머리', top: '상의', bottom: '하의', shoes: '신발' };
   function wornOf(u, sl) { var rows = (u.equip || []).filter(function (e) { return e.slot === sl; }); return { w: rows.filter(function (e) { return e.worn; })[0], n: rows.length }; }
   function slot(u, sl, cls) {
@@ -120,7 +120,7 @@ window.MineHome = (function () {
       +   '<span class="where">📍 <b>' + esc(u.mapName) + '</b> <span class="num">' + u.x + ',' + u.y + '</span>' + (u.online ? ' · <span style="color:var(--on)">접속 중</span>' : '') + '</span></div>'
       + '<div class="body"><div class="doll"><div class="doll-col">' + slot(u, 'weapon') + slot(u, 'ring') + slot(u, 'gloves') + '</div>'
       +   '<div class="doll-char">' + img + '<small>' + (u.gender === 1 ? '♀' : '♂') + ' Lv.' + u.lv + '</small></div>'
-      +   '<div class="doll-col">' + slot(u, 'coat') + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool') + '</div>'
+      +   '<div class="doll-col">' + slot(u, 'armor') /* [2026-11-20] 옷 -> 갑옷(갑옷/외투는 armor 칸) */ + slot(u, 'necklace') + slot(u, 'boots') + '</div>' + slot(u, 'tool', 'tool') + '</div>'
       + '<div class="stats">' + meter('❤️ 체력', u.hp, u.hpMax, 'var(--hp)') + meter('✨ 경험치', u.exp, u.expNeed, 'var(--exp)') + meter('⛏️ 곡괭이', u.pickDur, u.pickMax, 'var(--dur)')
       +   '<div class="kv"><div><small>공격력</small><b class="num">' + n(u.atk) + '</b></div><div><small>한기 방어</small><b class="num">' + n(u.coldDef) + '</b></div>'
       +   '<div><small>⛑️ 투구</small><b class="num">' + (u.helmet || 0) + '/' + (u.helmetMax || 0) + '</b></div><div><small>채광</small><b class="num">' + n(u.totalDig) + '</b></div>'
