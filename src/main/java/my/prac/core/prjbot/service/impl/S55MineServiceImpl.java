@@ -1761,6 +1761,31 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("ores", mineOreList(userName));
             action = "refineInfo";
         }
+        if ("alchemyInfo".equals(action) || "alchemy".equals(action)) { // [2026-11-20] "큰 마을 연금술사 -- 구리 -> 철 10:1(상위로도)" -- 왕도/요새 도시, 구리->철, 철->은, 은->금(금 위로는 없음 -- 미스릴은 병목이라)
+            if ("alchemy".equals(action)) {
+                if (!mineAtNpc(row, "alchemist")) { out.put("message", "연금술사에게서만 바꿀 수 있어요."); return out; }
+                int from = -1;
+                try { from = Integer.parseInt(code); } catch (NumberFormatException ex) { }
+                if (from < 0 || from > 2) { out.put("message", "그건 바꿀 수 없어요."); return out; }
+                int haveF = mineOreHave(userName).getOrDefault(S5MineMap.ORE_CODES[from], 0), maxN = haveF / MINE_ALCHEMY_RATE;
+                int n = grade <= 0 ? maxN : Math.min(maxN, grade);
+                if (n < 1) { out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + "이(가) " + MINE_ALCHEMY_RATE + "개 이상 있어야 해요. (보유 " + haveF + ")"); }
+                else if (dao.takeUserOre(userName, S5MineMap.ORE_CODES[from], n * MINE_ALCHEMY_RATE) == 0) { out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + "이(가) 모자라요."); }
+                else {
+                    dao.addUserOre(userName, S5MineMap.ORE_CODES[from + 1], n);
+                    out.put("ok", true);
+                    out.put("got", n);
+                    out.put("message", "⚗️ " + S5MineMap.ORE_NAMES[from] + " " + String.format("%,d", n * MINE_ALCHEMY_RATE) + "개를 녹여 " + S5MineMap.ORE_NAMES[from + 1] + " " + String.format("%,d", n) + "개로 바꿨어요!");
+                }
+            }
+            Map<String, Integer> hv = mineOreHave(userName);
+            int[] q = new int[4];
+            for (int i = 0; i < 4; i++) q[i] = hv.getOrDefault(S5MineMap.ORE_CODES[i], 0);
+            out.put("have", q);
+            out.put("rate", MINE_ALCHEMY_RATE);
+            out.put("ores", mineOreList(userName));
+            return out;
+        }
         if ("primalInfo".equals(action) || "primalMake".equals(action) || "primalUse".equals(action)) { // [2026-11-20] 최후의 방어선 태초의 보석 세공사
             boolean wide = items.getOrDefault(MINE_ITEM_AURA_WIDE, 0) > 0;
             int gem = mineOreHave(userName).getOrDefault(S5MineMap.PRIMAL_GEM_CODE, 0);
@@ -7320,13 +7345,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineMeleeReach(Map<String, Integer> items) { int r = 1; for (int e = 1; e <= 8; e++) r = Math.max(r, Math.min(items.getOrDefault(mineAuraKey(false, e), 0), MINE_AURA_MAX)); return r; }
     // [2026-11-20] 태초의 보석을 쓴 사람 -- 검기 폭 3칸(관리자처럼). AURA_WIDE = 1(한 번만). 검기 칸 계산(mineAuraLine)이 자주 불리니 메모리에 둔다.
     static final String MINE_ITEM_AURA_WIDE = "AURA_WIDE";
-    /** [2026-11-20] 태초의 보석 재료 -- 마계의 정수(정제된 마석) 10, 거룡의 심장 조각(내구도 회복 키트) 50, 악마의 광석 조각 1000, 구리~미스릴 각 10000, 세공된 보석(땅·바다) 각 10. */
+    static final int MINE_ALCHEMY_RATE = 10; // [2026-11-20] 연금술사 -- 아래 광석 10개 = 위 광석 1개
+    /** [2026-11-20] 태초의 보석 재료 -- 마계의 정수(정제된 마석) 10, 거룡의 심장 조각(내구도 회복 키트) 50, 악마의 광석 조각 1000, 세공된 보석(땅·바다) 각 10,
+     *  같은 날 "남아도는 것 + @를 소모하도록, 구리 만 개 기준" -- 유저 전체 보유 비율(구리 33.8 : 철 23.9 : 은 16.6 : 금 25.5)대로 구리 10000 · 철 7000 · 은 5000 · 금 7500,
+     *  + 병목 재료는 조금(미스릴 300, 별빛석 30 -- 예전 미스릴 10000은 유저 전체 보유량의 2.6배라 아무도 못 만들었다). */
+    static final int[] MINE_PRIMAL_ORE = { 10000, 7000, 5000, 7500, 300, 30 }; // 구리, 철, 은, 금, 미스릴, 별빛석
     static String[][] minePrimalCost() {
         List<String[]> l = new ArrayList<>();
         l.add(new String[] { S5MineMap.MANA_STONE_CODE, "10" });
         l.add(new String[] { S5MineMap.WP_KIT_CODE, "50" });
         l.add(new String[] { S5MineMap.DEMON_ORE_CODE, "1000" });
-        for (int i = 0; i <= 4; i++) l.add(new String[] { S5MineMap.ORE_CODES[i], "10000" });
+        for (int i = 0; i < MINE_PRIMAL_ORE.length; i++) l.add(new String[] { S5MineMap.ORE_CODES[i], String.valueOf(MINE_PRIMAL_ORE[i]) });
         for (int i = 0; i < S5MineMap.GEM_CODES.length; i++) l.add(mineCut(i, 10));
         for (int i = 0; i < S5MineMap.SEA_GEM_CODES.length; i++) l.add(new String[] { S5MineMap.seaCutCode(i), "10" });
         return l.toArray(new String[0][]);
