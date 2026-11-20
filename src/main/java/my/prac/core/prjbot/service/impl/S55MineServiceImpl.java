@@ -4857,7 +4857,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 for (int oy = 0; oy < fw; oy++) for (int ox = 0; ox < fw; ox++)
                     if (Math.max(Math.abs(c % map.w + ox - x), Math.abs(c / map.w + oy - y)) <= mineMeleeReach(items) && (hitCell < 0 || c == mc)) hitCell = c; // [2026-11-20] 평타 사거리 = 배운 검기 사거리
             } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
-            if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
+            // [2026-11-20] "악마/순간이동 몬스터가 순간이동하며 거리를 벌리면 데미지가 안 들어간다" -- 서버는 순간이동한 자리인데 화면은 다음 1초 턴까지 예전 자리를 보여 줘
+            //  그 자리를 때리면 '닿지 않음'(안내도 없이) -- 화면은 때릴 때마다 몬스터를 제가 보던 칸에 다시 세워 계속 엇갈렸다.
+            //  (1) 막 순간이동한 악마(1.5초 안)는 화면이 보던 칸(mc)이 사거리 안이고 실제 자리와 4칸 안이면 실제 자리로 맞힌다. (2) 그래도 빗나가면 실제 자리를 돌려줘 화면을 바로 맞춘다.
+            if (hitCell < 0 && type.demon && mc >= 0 && now - s.lastMoveAt < 1_500L) {
+                int mcx = mc % map.w, mcy = mc / map.w;
+                if (Math.max(Math.abs(mcx - x), Math.abs(mcy - y)) <= mineMeleeReach(items) && Math.abs(mcx - s.fx) + Math.abs(mcy - s.fy) <= 4) hitCell = s.fy * map.w + s.fx;
+            }
+            if (hitCell < 0) {
+                out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true);
+                out.put("mobHp", s.hp); out.put("mobDeadUntil", s.deadUntil); out.put("mobFx", s.fx); out.put("mobFy", s.fy); out.put("mobFrozenUntil", s.frozenUntil); // [2026-11-20] 실제 자리로 화면을 맞춘다
+                return out;
+            }
             // [2026-11-20] "평타 사거리가 늘어서 멀리서 때려도 몬스터가 바로 반격한다 -- 반격은 1칸 앞까지 와서" -- 2칸 이상 떨어져서 때리면 반격 없음(쫓아와 붙은 뒤 전투 턴에 친다)
             int nearD = 99;
             for (int oy = 0; oy < type.foot(); oy++) for (int ox = 0; ox < type.foot(); ox++) nearD = Math.min(nearD, Math.max(Math.abs(hitCell % map.w + ox - x), Math.abs(hitCell / map.w + oy - y)));
