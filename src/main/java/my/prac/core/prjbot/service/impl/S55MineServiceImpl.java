@@ -9467,6 +9467,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (gustDmg > 0) out.put("gustDmg", gustDmg);
         if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg + gustDmg <= 0) return out;
         int envDmg = coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg + gustDmg;
+        if (mineBerserkInvul(userName, now)) { out.put("berserkInv", true); return out; } // [2026-11-20] "광전사 불굴을 모든 피해에" -- 무적 중엔 환경 피해(한기/눈보라/더위/용암/전기/불벼락/가스/돌풍)도 없음
         if (shockDmg > 0) out.put("shockDmg", shockDmg);
         if (stormDmg > 0) out.put("stormDmg", stormDmg);
         boolean save = mineHpFlushDue(row, now) || mineHpNow(row, now, lock, rb) - envDmg <= 0; // [2026-11-03] 체력만 바뀌면 메모리에, 쓰러지거나 15초마다 DB
@@ -9481,6 +9482,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (bzDmg > 0) out.put("blizzardDmg", bzDmg);
         if (fireDmg > 0) out.put("fireDmg", fireDmg);
         if (gasDmg > 0) out.put("gasDmg", gasDmg);
+        if (hp <= 0 && mineBerserkSave(userName, items, now, out)) hp = 1; // [2026-11-20] 광전사 불굴 -- 환경 피해로 쓰러질 참이어도
         if (hp <= 0) {
             boolean spell = fireDmg + gasDmg + gustDmg > 0, burnt = lavaDmg > 0 && !spell, shocked = shockDmg + stormDmg > 0 && !spell && !burnt; // [2026-11-05] 천둥 황소
             if (spell || burnt || shocked) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금), [2026-10-28] 용암도(보스전)
