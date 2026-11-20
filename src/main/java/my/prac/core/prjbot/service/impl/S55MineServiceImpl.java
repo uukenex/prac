@@ -5904,10 +5904,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             r.put(gi < 0 ? "gemGrade" : "seaGrade", S5MineMap.SEA_GEM_GRADE_BASE + sg);
             r.put(gi < 0 ? "gemName" : "seaName", S5MineMap.SEA_GEM_NAMES[sg]);
         }
-        if (S5MineMap.DEMON_VILLAGE.equals(map.id)) { // [2026-11-18] 마계 마을 -- 캘 때마다 정제된 마석
-            dao.addUserOre(userName, S5MineMap.MANA_STONE_CODE, 1);
-            r.put("manaStone", 1);
-        }
+        // [2026-11-20] 마계 마을은 캘 수 없다(mineDig에서 막음) -- 정제된 마석은 들어갈 때 1개 고정(mineWarp)
         if (S5MineMap.isDemonLand(map.id)) { // [2026-11-17] "악마 들판·최후의 방어선에서 곡괭이로 땅을 파면 악마의 광석 조각" -- 캘 때마다 하나
             dao.addUserOre(userName, S5MineMap.DEMON_ORE_CODE, 1);
             r.put("demonOre", 1);

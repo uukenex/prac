@@ -8100,6 +8100,7 @@ var TowerMine = (function () {
     if (map && !auto && fishHere()) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게, 같은 날 물가에서 물을 바라보면 어디서나
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
+    if (map && map.id === 'demonvillage') { msg('😈 마계 마을의 땅은 파낼 수 없어요. (정제된 마석은 들어올 때 1개)', 2200); return; } // [2026-11-20] 채광 금지
     if (!opened || busy || !map) return;
     if (P.moving) return;
     var x = P.x, y = P.y, c = cellAt(x, y);
