@@ -2136,6 +2136,7 @@ var TowerMine = (function () {
     });
     el.cv.addEventListener('pointermove', function (e) { if (drag) { drag.cx = e.clientX; drag.cy = e.clientY; } });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (t) { el.cv.addEventListener(t, function () { drag = null; }); });
+    if (el.smith) el.smith.addEventListener('scroll', smithPopFit); // [2026-11-20] 확인 창이 떠 있는 채로 스크롤해도 보이는 자리에
     // [2026-11-19] "핸드폰에서 공격 누르고 있으면 자동 공격 -- PC 스페이스 누르고 있는 것과 똑같이" -- 누르는 동안 atkBtn을 되풀이(공격 간격 420ms는 atkBtn/attack이 지킨다).
     //  손가락/마우스는 pointerdown부터, 키보드(Enter -- click의 detail 0)는 한 번. 창이 열리면(워프/대장간 등) 멈춘다.
     if (el.atk) {
@@ -4785,8 +4786,19 @@ var TowerMine = (function () {
     place();
     requestAnimationFrame(place);
   }
+  // [2026-11-20] "용병 고용 창에서 아래로 스크롤해 고르면 확인 창이 위쪽에 떠서 다시 올려야 한다" -- 확인 창(.eq-pop, position:fixed)은 NPC 창(.mine-smith)이
+  //  transform으로 가운데 정렬돼 있어 화면이 아니라 그 창의 맨 위(스크롤 0)에 붙었다. 다시 그린 뒤 지금 보이는 자리(scrollTop)로 옮기고, 같은 창을 다시 그릴 땐 스크롤도 그대로.
+  var smithRenderedView = null;
+  function smithPopFit() {
+    if (!el.smith) return;
+    Array.prototype.forEach.call(el.smith.querySelectorAll('.eq-pop'), function (p) { p.style.top = el.smith.scrollTop + 'px'; p.style.bottom = 'auto'; p.style.left = '0'; p.style.right = '0'; p.style.height = el.smith.clientHeight + 'px'; });
+  }
   function renderSmith(n) {
+    var sy = el.smith ? el.smith.scrollTop : 0, sv0 = smithRenderedView;
     renderSmithView(n);
+    if (el.smith && sv0 === smithView && el.smith.scrollTop !== sy) el.smith.scrollTop = sy;
+    smithRenderedView = smithView;
+    smithPopFit();
     startTalk(); // [2026-10-24] NPC 초상화/대사
   }
   function renderSmithView(n) {
@@ -6981,6 +6993,7 @@ var TowerMine = (function () {
   function smithGo(v) { smithView = v; renderSmith(smithNpc); }
   function closeSmith() {
     smithOpen = false;
+    smithRenderedView = null; // [2026-11-20] 다음에 열면 맨 위부터
     el.smith.style.display = 'none';
     if (el.ov) el.ov.classList.remove('npc-open');
   }
