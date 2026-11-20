@@ -23,6 +23,8 @@
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('log')">📜 최근 기록</button>
     <%-- [2026-11-19] 화면 크기(확대/축소 +-2단계, 눌러도 메뉴는 안 닫힌다) --%>
     <div class="mine-menu-item mpx" style="display:flex;align-items:center;gap:6px;cursor:default">🔍 화면 <button type="button" class="mpx" style="min-width:28px;padding:2px 0;cursor:pointer" onclick="TowerMine.zoom(-1)" aria-label="화면 축소">－</button><span id="mineZoomLv" style="min-width:30px;text-align:center">보통</span><button type="button" class="mpx" style="min-width:28px;padding:2px 0;cursor:pointer" onclick="TowerMine.zoom(1)" aria-label="화면 확대">＋</button></div>
+    <%-- [2026-11-20] 캐릭터 그림 16x16 / 64x64 --%>
+    <div class="mine-menu-item mpx" style="display:flex;align-items:center;gap:6px;cursor:default">🧍 캐릭터 <button type="button" class="mpx" style="padding:2px 6px;cursor:pointer" onclick="TowerMine.charRes(false)">16×16</button><button type="button" class="mpx" style="padding:2px 6px;cursor:pointer" onclick="TowerMine.charRes(true)">64×64</button><span id="mineCharRes" style="min-width:44px;text-align:center;opacity:.8">64×64</span></div>
     <%-- [2026-11-20] 데미지 숫자: 속성별 / 합산 --%>
     <div class="mine-menu-item mpx" style="display:flex;align-items:center;gap:6px;cursor:default">💥 데미지 <button type="button" class="mpx" style="padding:2px 6px;cursor:pointer" onclick="TowerMine.dmgSum(false)">속성별</button><button type="button" class="mpx" style="padding:2px 6px;cursor:pointer" onclick="TowerMine.dmgSum(true)">합산</button><span id="mineDmgSum" style="min-width:40px;text-align:center;opacity:.8">속성별</span></div>
     <button type="button" class="mine-menu-item mpx" onclick="TowerMine.menuGo('exit')">🚪 나가기</button>

@@ -175,6 +175,7 @@ window.MineChar = (function () {
   }
   function charSprite(dir, step, dig, lk) {
     lk = lk || {};
+    if (HD_ON && !lk.noHD) return heroSprite(dir, step, dig, lk); // [2026-11-20] 옵션 64x64
     if (dir === 'left') {
       var src = charSprite('right', step, dig, lk), c2 = mk(src.width, src.height), g2 = c2.getContext('2d');
       g2.translate(src.width, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
@@ -307,46 +308,48 @@ window.MineChar = (function () {
     if (!dye || dye === 'rainbow') return { hi: '#ffffff', base: '#f4f6fa', mid: '#d8e0ec', dk: '#a8b4c8', line: '#c8d2e0' };
     return { hi: shade(dye, 0.55), base: dye, mid: shade(dye, -0.12), dk: shade(dye, -0.38), line: shade(dye, -0.22) };
   }
-  function oneWing(g, p, z, ax, ay, s, flap, rain) {
-    var P = function (x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), 1, 1); };
+  function oneWing(g, p, z, ax, ay, s, flap, rain, R) {
+    R = R || 1; // [2026-11-20] 64x64 캐릭터용 -- 같은 날개를 R배 해상도로(점을 촘촘히)
+    var P = function (x, y, c) { g.fillStyle = c; g.fillRect(Math.round(x * R), Math.round(y * R), 1, 1); };
     var rot = function (x, y) { var dx = x - ax, dy = y - ay, a = -flap * s, cs = Math.cos(a), sn = Math.sin(a); return [ax + dx * cs - dy * sn, ay + dx * sn + dy * cs]; };
     var arm = function (t) { return [ax + s * z.span * t, ay - z.rise * Math.sin(Math.min(1, t * 1.25) * Math.PI / 2) + (t > 0.8 ? (t - 0.8) * z.rise * 1.2 : 0)]; };
     for (var i = z.n - 1; i >= 0; i--) { // 칼깃 -- 바깥부터(안쪽이 위에 겹친다)
       var t = (i + 0.5) / z.n, b = arm(t), len = z.drop * (0.7 + 0.45 * t), ang = Math.PI / 2 + s * (0.02 - 0.26 * t);
       var dx = Math.cos(ang), dy = Math.sin(ang), w0 = 1.6 + t * 0.9, fp = rain ? wingPal(WING_RAIN[i % WING_RAIN.length]) : p;
-      for (var k = 0; k <= len; k++) {
+      for (var k = 0; k <= len; k += 1 / R) {
         var ww = Math.max(0.6, w0 * (k < len - 2 ? 1 : (len - k + 0.5) / 2.5));
-        for (var j = -ww; j <= ww; j += 0.5) { var q = rot(b[0] + dx * k - dy * j, b[1] + dy * k + dx * j); P(q[0], q[1], j > ww - 0.8 ? fp.dk : j < -ww + 0.8 ? fp.hi : k > len - 2 ? fp.mid : fp.base); }
+        for (var j = -ww; j <= ww; j += 0.5 / R) { var q = rot(b[0] + dx * k - dy * j, b[1] + dy * k + dx * j); P(q[0], q[1], j > ww - 0.8 ? fp.dk : j < -ww + 0.8 ? fp.hi : k > len - 2 ? fp.mid : fp.base); }
         if (k > 1 && k < len - 1) { var sq = rot(b[0] + dx * k, b[1] + dy * k); P(sq[0], sq[1], fp.line); } // 깃대
       }
     }
     for (var i2 = 0; i2 < z.n + 2; i2++) { // 덮깃
       var t2 = (i2 + 0.3) / (z.n + 2), b2 = arm(t2), l2 = 2 + z.drop * 0.25;
-      for (var k2 = 0; k2 <= l2; k2++) for (var j2 = -1.2; j2 <= 1.2; j2 += 0.5) { var q2 = rot(b2[0] - s * 0.3 * k2 + j2, b2[1] + k2); P(q2[0], q2[1], k2 >= l2 - 0.5 ? p.mid : j2 > 0.6 ? p.dk : p.base); }
+      for (var k2 = 0; k2 <= l2; k2 += 1 / R) for (var j2 = -1.2; j2 <= 1.2; j2 += 0.5 / R) { var q2 = rot(b2[0] - s * 0.3 * k2 + j2, b2[1] + k2); P(q2[0], q2[1], k2 >= l2 - 0.5 ? p.mid : j2 > 0.6 ? p.dk : p.base); }
     }
-    for (var t3 = 0; t3 <= 1; t3 += 0.02) { var a3 = arm(t3), q3 = rot(a3[0], a3[1]); P(q3[0], q3[1], p.hi); var q4 = rot(a3[0], a3[1] + 1); P(q4[0], q4[1], p.base); var q5 = rot(a3[0], a3[1] - 1); P(q5[0], q5[1], p.mid); } // 날개뼈
+    for (var t3 = 0; t3 <= 1; t3 += 0.02 / R) { var a3 = arm(t3), q3 = rot(a3[0], a3[1]); P(q3[0], q3[1], p.hi); var q4 = rot(a3[0], a3[1] + 1); P(q4[0], q4[1], p.base); var q5 = rot(a3[0], a3[1] - 1); P(q5[0], q5[1], p.mid); } // 날개뼈
   }
-  function wingSprite(stage, side, f, dye) {
-    var z = WING_SIZE[stage], p = wingPal(dye), ext = z.span + 3, top = z.rise + 8, W = 32 + ext * 2, H = top + 16 + Math.ceil(z.drop * 1.15) + 6;
+  function wingSprite(stage, side, f, dye, R) {
+    R = R || 1;
+    var z = WING_SIZE[stage], p = wingPal(dye), ext = z.span + 3, top = z.rise + 8, W = (32 + ext * 2) * R, H = (top + 16 + Math.ceil(z.drop * 1.15) + 6) * R;
     if (side) z = { span: Math.round(z.span * 0.8), rise: Math.round(z.rise * 0.9), drop: Math.round(z.drop * 0.9), n: z.n };
     var c = mk(W, H), g = c.getContext('2d'), fl = WING_FLAP[f % 4], sy = top + 16, rain = dye === 'rainbow';
-    if (side) oneWing(g, p, z, ext + 13, sy, -1, fl, rain);
-    else { oneWing(g, p, z, ext + 10, sy, -1, fl, rain); oneWing(g, p, z, ext + 21, sy, 1, fl, rain); }
+    if (side) oneWing(g, p, z, ext + 13, sy, -1, fl, rain, R);
+    else { oneWing(g, p, z, ext + 10, sy, -1, fl, rain, R); oneWing(g, p, z, ext + 21, sy, 1, fl, rain, R); }
     outline(c, '#3a3050');
     if (stage >= 5) [[0.1, 0.2], [0.9, 0.25], [0.05, 0.6], [0.95, 0.55], [0.3, 0.05], [0.7, 0.08]].forEach(function (q, i) { // 5단계 빛 알갱이
-      g.fillStyle = i % 2 ? '#7ff0ff' : '#ffffff'; g.fillRect(Math.round(q[0] * W), Math.round(q[1] * H) - (f % 2), 1, 1);
-      g.fillStyle = p.hi; g.fillRect(Math.round(q[0] * W) + 1, Math.round(q[1] * H) - (f % 2), 1, 1);
+      g.fillStyle = i % 2 ? '#7ff0ff' : '#ffffff'; g.fillRect(Math.round(q[0] * W), Math.round(q[1] * H) - (f % 2) * R, R, R);
+      g.fillStyle = p.hi; g.fillRect(Math.round(q[0] * W) + R, Math.round(q[1] * H) - (f % 2) * R, R, R);
     });
-    return { c: c, ext: ext, top: top };
+    return { c: c, ext: ext, top: top, R: R }; // ext/top은 32 기준(그림은 R배)
   }
   var wingCache = {};
   /** 방향에 맞는 날개(캐시). dir = down/up(양쪽) / right(등 쪽 하나) / left(뒤집기). */
   function wings(stage, dir, f, dye) {
     stage = Math.max(1, Math.min(5, stage | 0)); f = (f | 0) % 4; dye = dye || '';
-    var side = dir === 'left' || dir === 'right', key = stage + (side ? dir : 'full') + f + dye;
+    var R = HD_ON ? 2 : 1, side = dir === 'left' || dir === 'right', key = stage + (side ? dir : 'full') + f + dye + 'R' + R;
     if (wingCache[key]) return wingCache[key];
-    var w = wingSprite(stage, side, f, dye);
-    if (dir === 'left') { var fc = mk(w.c.width, w.c.height), fg = fc.getContext('2d'); fg.translate(fc.width, 0); fg.scale(-1, 1); fg.drawImage(w.c, 0, 0); w = { c: fc, ext: w.ext, top: w.top }; }
+    var w = wingSprite(stage, side, f, dye, R);
+    if (dir === 'left') { var fc = mk(w.c.width, w.c.height), fg = fc.getContext('2d'); fg.translate(fc.width, 0); fg.scale(-1, 1); fg.drawImage(w.c, 0, 0); w = { c: fc, ext: w.ext, top: w.top, R: w.R }; }
     wingCache[key] = w;
     return w;
   }
@@ -354,15 +357,16 @@ window.MineChar = (function () {
   function withWings(dir, step, dig, lk) {
     var rb = lk ? lk.rebirth | 0 : 0, ch = charSprite(dir, step, dig, lk);
     if (rb < 1) return ch;
-    var w = wings(rb, dir, 0, lk.wing), c = mk(w.c.width, w.c.height), g = c.getContext('2d');
+    var w = wings(rb, dir, 0, lk.wing), c = mk(w.c.width, w.c.height), g = c.getContext('2d'), R = w.R || 1;
     g.drawImage(w.c, 0, 0);
-    g.drawImage(ch, w.ext, w.top);
+    g.drawImage(ch, w.ext * R, w.top * R, 32 * R, 32 * R); // [2026-11-20] 64x64면 날개도 2배
+
     return c;
   }
   /** 정면(서 있는 모습) 그림 data URL -- 외형이 같으면 한 번만 그린다.
    *  [2026-10-28] wings = true면 환생 날개까지 그린 그림(환생했으면 16x16보다 넓다 -- 쓰는 곳이 가로세로 비율을 지켜야 함, wide(lk)로 확인). */
   function dataUrl(lk, wingsOn) {
-    var key = (wingsOn ? 'w' : '') + JSON.stringify(lk || {});
+    var key = (wingsOn ? 'w' : '') + (HD_ON ? 'H' : '') + JSON.stringify(lk || {}); // [2026-11-20] 64x64면 따로
     if (!urlCache[key]) urlCache[key] = (wingsOn ? withWings('down', 0, 0, lk) : charSprite('down', 0, 0, lk)).toDataURL();
     return urlCache[key];
   }
@@ -496,6 +500,7 @@ window.MineChar = (function () {
     var side = dir === 'right', back = dir === 'up', front = !side && !back;
     var H = d.hair, S = '#fde3cf', T = d.top, K = d.skirt || T, A = d.acc || '#d03040', st = d.style, W = '#f8f8fa';
     var cx = side ? 32.5 : 32, head = hdEll(32, 21, 14.5, 13.8), job = d.job | 0;
+    var hk = function (n) { if (d.hook && d.hook[n]) d.hook[n](add, { side: side, back: back, front: front, cx: cx }); }; // [2026-11-20] 플레이어 코스튬 갈고리(back/body/head)
     var jag = function (bot, p, a) { return function (u, v) { return v < bot - hdSaw(p, a)(u); }; };
     // -- 머리 뒤쪽(정면/옆: 몸 뒤, 뒤: 몸 앞에 다시 그림)
     var backHair = function () {
@@ -504,9 +509,11 @@ window.MineChar = (function () {
         if (side) add('hair', H, hdAnd(hdEll(18.5, 37, 5.5, 15), jag(51, 4, 2)));
         else { add('hair', H, hdAnd(hdEll(13.5, 37, 5.5, 15), jag(51, 4, 2))); add('hair', H, hdAnd(hdEll(50.5, 37, 5.5, 15), jag(51, 4, 2))); }
       }
+      if (st === 'boy') add('hair', H, side ? hdEll(29.5, 22.5, 14.8, 12) : hdEll(32, 22, 16, 11.8)); // [2026-11-20] 플레이어 남자 -- 짧은 머리
       if (st === 'short' || st === 'bob' || st === 'twin' || st === 'bun') add('hair', H, side ? hdEll(29.5, 24, 15, 12.5) : hdEll(32, 24, 16.5, st === 'bob' ? 13.5 : 12.5));
       if (st === 'bun') add('hair', H, side ? hdEll(24.5, 8, 6, 5.2) : hdEll(32, 6.5, 6.5, 5.5));
     };
+    hk('back');
     if (!back) backHair();
     // -- 무기(뒤 모습은 몸 뒤)
     var hand = side ? [35.6, 48] : back ? [22.6, 48] : [41.4, 48], wx = hand[0] + (side ? 1.6 : back ? -1.6 : 3.2);
@@ -529,21 +536,22 @@ window.MineChar = (function () {
         add('orbHi', '#ffffff', hdEll(wx - 1.1, 14.3 + up, 1.1, 1.1));
       }
     };
-    if (back) weapon();
+    if (back && !d.noWeapon) weapon();
     // -- 다리/신발(걸음)
-    var LG = d.legs || S, SH = d.shoes || '#3a2a30';
+    var LG = d.pants || d.legs || S, SH = d.shoes || '#3a2a30', ly = d.pants ? 45 : 52; // [2026-11-20] 바지면 다리가 허리 아래부터
     if (side) {
       var fo = step === 1 ? 2.2 : step === 2 ? -2.2 : 0;
-      add('leg', LG, hdOr(hdRect(29.4 - fo, 52, 32.2 - fo, 60), hdRect(32.8 + fo, 52, 35.6 + fo, 60)));
+      add('leg', LG, hdOr(hdRect(29.4 - fo, ly, 32.2 - fo, 60), hdRect(32.8 + fo, ly, 35.6 + fo, 60)));
       add('shoe', SH, hdOr(hdEll(31.6 - fo, 61, 3.4, 2.1), hdEll(35 + fo, 61, 3.4, 2.1)));
     } else {
       var l1 = step === 1 ? 1.6 : 0, r1 = step === 2 ? 1.6 : 0;
-      add('leg', LG, hdOr(hdRect(27.3, 52, 30.2, 60 - l1), hdRect(33.8, 52, 36.7, 60 - r1)));
+      add('leg', LG, hdOr(hdRect(27.3, ly, 30.2, 60 - l1), hdRect(33.8, ly, 36.7, 60 - r1)));
       add('shoe', SH, hdOr(hdEll(28.6, 61 - l1, 3.2, 2.1), hdEll(35.4, 61 - r1, 3.2, 2.1)));
     }
     // -- 치마/기모노 아랫단, 프릴
     var sk = side ? [8.5, 11.5] : [9.5, 13.5];
     if (d.kimono) add('skirt', K, hdTrap(44, 59, side ? 8.5 : 9.5, side ? 10 : 11.5, cx));
+    else if (d.pants) add('skirt', K, hdTrap(44, 47.6, sk[0], sk[0] + 1.6, cx)); // [2026-11-20] 바지 -- 웃옷 아랫단만
     else add('skirt', K, hdTrap(44, 53.5, sk[0], sk[1], cx));
     if (d.frill) add('frill', d.frillCol || W, hdAnd(hdTrap(44, 54.5, sk[0], sk[1] + 1, cx), function (u, v) { return v > 52.2 - hdSaw(2.4, 1.2)(u); }));
     // -- 몸통/팔/손
@@ -561,28 +569,31 @@ window.MineChar = (function () {
     add('top', T, hdOr.apply(null, arm));
     if (d.sleeve) add('shirt', d.sleeve, side ? hdRect(31.8, 44.5, 37.4, 46.6) : hdOr(hdRect(20, 44.5, 25.2, 46.6), hdRect(38.8, 44.5, 44, 46.6)));
     add('skin', S, side ? hdEll(35.6, 48, 2.2, 2) : hdOr(hdEll(22.6, 48, 2.2, 2), hdEll(41.4, 48, 2.2, 2)));
-    if (front) {
+    if (front && !d.noAcc) {
       if (d.tie) add('acc', A, hdOr(hdRect(31.2, 36.5, 32.8, 43), hdTri(30.8, 42.5, 33.2, 42.5, 32, 44.5)));
       else add('acc', A, hdOr(hdTri(27.5, 35, 27.5, 39.5, 32, 37.2), hdTri(36.5, 35, 36.5, 39.5, 32, 37.2), hdEll(32, 37.2, 1.5, 1.4)));
-    } else if (side) add('acc', A, hdOr(hdTri(36, 35, 36, 39.5, 39.5, 37.2), hdEll(38.6, 37.2, 1.4, 1.4)));
-    if (!back) weapon();
+    } else if (side && !d.noAcc) add('acc', A, hdOr(hdTri(36, 35, 36, 39.5, 39.5, 37.2), hdEll(38.6, 37.2, 1.4, 1.4)));
+    if (!back && !d.noWeapon) weapon(); // [2026-11-20] 플레이어는 손에 든 것을 따로(gear32)
+    hk('body');
     // -- 머리
     add('skin', S, hdRect(29.3, 32, 34.7, 35.5));
     add('hair', H, head);
     if (back) backHair();
+    if (st === 'boy') add('hair', H, side ? hdOr(hdTri(20, 12, 24, 3.5, 29, 10), hdTri(27, 9, 31, 1.5, 36, 8.5), hdTri(34, 9, 40, 3, 42, 11)) : hdOr(hdTri(19, 13, 22, 4, 28, 9.5), hdTri(26, 9, 31, 1.2, 36, 8.5), hdTri(35, 9, 41, 3.5, 45, 13))); // 정수리 삐침
     if (front) {
       add('skin', S, hdAnd(hdEll(32, 25.5, 12.2, 10.3), function (u, v) { return v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
+      if (st === 'boy') add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 28.5), hdEll(19, 23, 3, 7)), hdAnd(hdRect(43.4, 19, 46.6, 28.5), hdEll(45, 23, 3, 7)))); else // 남자 옆머리는 짧게
       add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 34), hdEll(19, 25, 3, 10)), hdAnd(hdRect(43.4, 19, 46.6, 34), hdEll(45, 25, 3, 10))));
       if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9; }));
     } else if (side) {
       add('skin', S, hdAnd(hdEll(36.5, 25.5, 10, 10.3), function (u, v) { return u > 31.5 && v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
       add('skin', S, hdAnd(hdEll(40.5, 27, 6.6, 8.6), function (u, v) { return v > 21; })); // 볼/턱이 앞으로
-      add('hair', H, hdAnd(hdRect(28, 18, 32, 34), hdEll(30, 26, 3, 9.5))); // 귀 앞 옆머리
+      add('hair', H, st === 'boy' ? hdAnd(hdRect(28, 18, 32, 28), hdEll(30, 23, 3, 6)) : hdAnd(hdRect(28, 18, 32, 34), hdEll(30, 26, 3, 9.5))); // 귀 앞 옆머리
       if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9 && u < 44; }));
     }
     if (d.ears) {
       var E1 = side ? hdTri(17.5, 15, 21, 2.5, 28.5, 9.5) : hdTri(16.6, 15, 19.5, 2.5, 27.5, 9.5), E2 = side ? hdTri(31, 10, 36, 1.5, 42, 8.5) : hdTri(47.4, 15, 44.5, 2.5, 36.5, 9.5);
-      add('hair', H, hdOr(E1, E2));
+      add('hair', d.earC || H, hdOr(E1, E2)); // [2026-11-20] 플레이어 고양이 귀 모자는 모자 색
       if (!back) add('earIn', '#f6a8b8', side ? hdTri(34, 8.6, 36, 4.6, 39.4, 8) : hdOr(hdTri(19.6, 11.5, 20.6, 6, 24.4, 9.6), hdTri(44.4, 11.5, 43.4, 6, 39.6, 9.6)));
     }
     if (d.band) add('band', d.bandCol || W, hdAnd(hdEll(32, 21, 15.2, 14.5), hdAnd(function (u, v) { return !hdEll(32, 22.5, 14.2, 13)(u, v); }, function (u, v) { return v < 13 && v > 5; })));
@@ -595,12 +606,153 @@ window.MineChar = (function () {
       add('acc', A, hdAnd(hdEll(side ? 31 : 32, 9, 11.6, 8), function (u, v) { return v > 7.6 && v <= 10.2; }));
     }
     if (d.beret) add('hat', d.beret, hdOr(hdAnd(hdEll(side ? 30 : 32, 10, 15.5, 7.5), function (u, v) { return v <= 12.5; }), hdEll(side ? 30 : 32, 3.4, 1.4, 1.4)));
+    hk('head');
     return L;
   }
+  // ---- [2026-11-20] 플레이어 고해상도(64x64, 애니메이션풍) -- "캐릭터를 더 애니메이션 캐릭터처럼, 진짜 고해상도, 64x64, 옵션에서 고르게, 코스튬 전체(날개 포함)" ----
+  //  용병 64x64 그리기(hdBuild/nekoHD)에 플레이어 외형(성별/머리색/옷 색/모자·옷 모양/신발/꼬리/기사단)을 옮긴다. 코스튬은 hdBuild의 갈고리(d.hook: back/body/head)로 얹는다.
+  //  손에 든 것(무기/곡괭이/양산/활/지팡이)은 지금 32 격자 그림(gear32)을 Scale2x로 다듬어 손 자리에 겹친다. 날개는 2배 해상도로 다시 그린다(wings(..., R=2)).
+  //  MineChar.setHD(true)면 sprite()/withWings()/wings()가 이 그림을 돌려준다(쓰는 곳은 같은 칸 크기로 그리므로 배치는 그대로).
+  var HD_ON = false, heroC = {};
+  function scale2x(src) {
+    var w = src.width, h = src.height, d = src.getContext('2d').getImageData(0, 0, w, h).data;
+    var out = mk(w * 2, h * 2), g = out.getContext('2d'), od = g.createImageData(w * 2, h * 2), o = od.data;
+    var px2 = function (x, y) { x = Math.max(0, Math.min(w - 1, x)); y = Math.max(0, Math.min(h - 1, y)); var i = (y * w + x) * 4; return (d[i] << 24 | d[i + 1] << 16 | d[i + 2] << 8 | d[i + 3]) >>> 0; };
+    var put = function (x, y, v) { var i = (y * w * 2 + x) * 4; o[i] = v >>> 24 & 255; o[i + 1] = v >>> 16 & 255; o[i + 2] = v >>> 8 & 255; o[i + 3] = v & 255; };
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+      var P0 = px2(x, y), A = px2(x, y - 1), B = px2(x + 1, y), C = px2(x - 1, y), D = px2(x, y + 1), e0 = P0, e1 = P0, e2 = P0, e3 = P0;
+      if (A !== D && C !== B) { if (C === A) e0 = A; if (A === B) e1 = B; if (C === D) e2 = C; if (D === B) e3 = B; }
+      put(x * 2, y * 2, e0); put(x * 2 + 1, y * 2, e1); put(x * 2, y * 2 + 1, e2); put(x * 2 + 1, y * 2 + 1, e3);
+    }
+    g.putImageData(od, 0, 0);
+    return out;
+  }
+  var HSTAR = function (x, y, r) { return hdOr(hdRect(x - r, y - 0.55, x + r, y + 0.55), hdRect(x - 0.55, y - r, x + 0.55, y + r)); };
+  var HCLIP = function (f, y0, y1) { return hdAnd(f, function (u, v) { return v >= y0 && v <= y1; }); };
+  /** 플레이어 외형(lk) -> hdBuild 값(d). 코스튬은 갈고리로. */
+  function heroD(lk) {
+    lk = lk || {};
+    var top = lookPart(lk.top), hat = lookPart(lk.hat), shoe = lookPart(lk.shoes), fem = lk.gender === 1;
+    var robe = top.c || '#3f5fd1', robeD = shade(robe, -0.28), pants = lk.bottom || '#3a2b22', ts = top.s, hs = hat.s, hc = hat.c || '#c8402a', hdk = shade(hc, -0.3);
+    var KN = ts === 'knight' || ts === 'knightlord' ? (ts === 'knightlord' ? { a1: '#d9b44a', a2: '#a8842a', a3: '#f6e3a0', acc: '#c8202a', accD: '#8a1018', lord: true } : { a1: '#9aa3b6', a2: '#666f82', a3: '#dfe4ee', acc: '#3557a8', accD: '#22386e', lord: false }) : null;
+    var d = { _k: JSON.stringify(lk), hair: lk.hair || '#2b1d16', style: KN ? 'boy' : fem ? 'long' : 'boy', top: robe, skirt: robe, legs: pants, shoes: shoe.c || '#5b3a1e',
+      eye: fem ? '#7a4ac8' : '#3a4a6a', acc: '#e84a6a', job: 0, noWeapon: true, pants: !fem ? pants : null, noAcc: !fem };
+    if (!ts || ts === 'cape' || ts === 'armor') d.belt = '#7a4a1f';
+    if (ts === 'maid') { d.apron = true; d.frill = true; d.frillCol = '#f8f8fa'; d.noAcc = true; }
+    if (ts === 'gothic') { d.frill = true; d.frillCol = '#c0202a'; d.acc = '#c0202a'; d.noAcc = false; }
+    if (ts === 'kimono') { d.kimono = true; d.obi = '#e2b040'; d.collar = '#f8f8fa'; d.noAcc = true; d.pants = null; }
+    if (ts === 'miko') { d.skirt = '#c8303c'; if (d.pants) d.pants = '#c8303c'; d.collar = '#f8f8fa'; d.acc = '#c8303c'; d.noAcc = false; }
+    if (ts === 'blazer') { d.shirt = '#f8f8fa'; d.tie = true; d.acc = '#c03040'; d.noAcc = false; }
+    if (ts === 'hanbok' || ts === 'fur' || ts === 'gm' || ts === 'tux' || ts === 'hoodie' || ts === 'sailor' || ts === 'star' || ts === 'rainbow' || ts === 'wings' || ts === 'bat' || KN) d.noAcc = true;
+    if (KN) { d.pants = KN.a2; d.legs = KN.a2; d.shoes = '#2a2e3c'; d.top = KN.a1; d.skirt = KN.a2; d.noFace = true; }
+    if (hs === 'neko' || hs === 'cat') { d.ears = true; d.earC = hc; }
+    if (hs === 'beret') d.beret = hc;
+    if (hs === 'maidband') { d.band = true; d.bandCol = hc; }
+    var tail = lk.tail, tailD = tail ? shade(tail, -0.25) : '';
+    d.hook = {
+      back: function (add, c) { // 몸 뒤
+        if ((ts === 'cape' || (KN && KN.lord)) && !c.back) add('cape', KN ? KN.acc : robeD, c.side ? hdTrap(34, 58, 5.5, 9, c.cx - 3.5) : hdTrap(34, 58, 9.2, 13.5, c.cx));
+        if (ts === 'hoodie' && !c.back) add('cape', robeD, hdEll(32, 33.5, 11, 4.5));
+        if ((ts === 'wings' || ts === 'bat') && !c.back) {
+          var wc = ts === 'wings' ? '#ffffff' : '#2a0a1a', wd = ts === 'wings' ? '#d8e8ff' : '#5a1030';
+          var one = function (x, s) { return ts === 'bat' ? hdAnd(hdEll(x, 39, 7, 7.5), function (u, v) { return v < 44 - Math.abs(Math.sin((u - x) * 1.1)) * 3; }) : hdEll(x, 39, 6, 7.5); };
+          if (c.side) add('cape', wc, one(25, -1)); else { add('cape', wc, one(17.5, -1)); add('cape', wc, one(46.5, 1)); }
+          if (!c.side) { add('cape', wd, hdEll(16, 41, 3, 4.5)); add('cape', wd, hdEll(48, 41, 3, 4.5)); }
+        }
+        if (tail && !c.back) add('tail', tail, hdOr(hdEll(c.side ? 22 : 43, 47, 2.4, 2.4), hdEll(c.side ? 19 : 46, 43, 2.4, 2.6), hdEll(c.side ? 18 : 47.5, 38.5, 2.3, 2.8), hdEll(c.side ? 19 : 46.5, 34.5, 2.1, 2.2)));
+      },
+      body: function (add, c) { // 몸통 위(머리 아래)
+        var torso = hdTrap(34.5, 46, c.side ? 6.5 : 7.5, c.side ? 8 : 9.5, c.cx), F = c.front, B = c.back, S = c.side;
+        if (ts === 'armor') { add('top', shade(robe, 0.35), HCLIP(torso, 34.5, 37.5)); add('top', shade(robe, 0.2), HCLIP(torso, 39.5, 41)); add('obi', '#d9d0b8', hdRect(c.cx - 8.6, 43.4, c.cx + 8.6, 45.2));
+          add('top', shade(robe, 0.25), S ? hdEll(34.6, 37, 3.4, 2.5) : hdOr(hdEll(22.6, 37, 3.6, 2.6), hdEll(41.4, 37, 3.6, 2.6))); }
+        if (ts === 'hanbok') { if (F) add('acc', '#c0392b', hdOr(hdTri(29.5, 35, 35.5, 35, 32.5, 40.5), hdRect(32.5, 38, 34.2, 46))); add('obi', '#2e5aa8', hdRect(c.cx - 9, 43.5, c.cx + 9, 45.5)); }
+        if (ts === 'cape') { if (B) add('cape', robeD, hdTrap(34, 58, 9.6, 13, c.cx)); if (F) add('acc', '#ffd84a', hdEll(32, 35.6, 1.7, 1.5)); }
+        if (ts === 'fur') { add('fur', '#ece2c8', HCLIP(torso, 34.5, 37.4)); add('fur', '#ece2c8', hdRect(c.cx - 9.6, 44, c.cx + 9.6, 46.4));
+          add('fur', '#ece2c8', S ? hdRect(32.2, 44.4, 37, 46.6) : hdOr(hdRect(20, 44.4, 25.2, 46.6), hdRect(38.8, 44.4, 44, 46.6))); if (!B) add('acc', '#9fd8f0', hdEll(S ? 36 : 32, 40.5, 1.6, 1.6)); }
+        if (ts === 'star') { [[27, 38, '#ffe14d'], [36.5, 41.5, '#ffffff'], [29.5, 44.5, '#9fd8f0'], [37.5, 36.6, '#ffe14d'], [33, 50, '#ffe14d'], [26, 50, '#ffffff']].forEach(function (q) { add('acc', q[2], HSTAR(q[0] + (S ? 2 : 0), q[1], 1.4)); }); }
+        if (ts === 'gm') { add('acc', '#ffd84a', HCLIP(torso, 34.5, 36.3)); add('acc', '#ffd84a', hdRect(c.cx - 9.6, 44, c.cx + 9.6, 45.8)); if (F) { add('acc', '#ffd84a', hdRect(31, 36.3, 33, 44)); add('acc', '#ff3b6b', hdEll(36, 38.6, 1.5, 1.5)); } }
+        if (ts === 'tux') { if (F) { add('shirt', '#ffffff', hdTri(28, 34.5, 36, 34.5, 32, 45)); add('acc', '#d4104f', hdOr(hdTri(29.6, 35.2, 29.6, 38, 32, 36.6), hdTri(34.4, 35.2, 34.4, 38, 32, 36.6))); add('top', robeD, hdOr(hdTri(25, 35, 28.5, 35, 30.5, 44), hdTri(39, 35, 35.5, 35, 33.5, 44))); }
+          if (B) add('top', robeD, hdTrap(44, 55, 7, 4.5, c.cx)); }
+        if (ts === 'hoodie') { if (F) { add('shirt', '#ffffff', hdOr(hdRect(29.6, 36, 30.6, 41), hdRect(33.4, 36, 34.4, 41))); add('top', robeD, hdRect(27, 41, 37, 44)); } if (B) add('top', robeD, hdEll(32, 36.5, 9.5, 4.8)); }
+        if (ts === 'sailor') { var nv = '#2a3a8a'; if (F) { add('collar', nv, hdOr(hdTri(24.5, 34.5, 32, 34.5, 28.8, 40.5), hdTri(39.5, 34.5, 32, 34.5, 35.2, 40.5))); add('acc', '#d4104f', hdTri(29.6, 38.2, 34.4, 38.2, 32, 42.5)); }
+          if (B) add('collar', nv, hdRect(25, 34.5, 39, 40.5)); if (S) add('collar', nv, hdRect(27, 34.5, 32, 40)); add('obi', nv, hdRect(c.cx - 9.6, 44, c.cx + 9.6, 45.6)); }
+        if ((ts === 'wings' || ts === 'bat') && B) { var wc2 = ts === 'wings' ? '#ffffff' : '#2a0a1a'; add('cape', wc2, hdOr(hdEll(23, 39, 6, 7.5), hdEll(41, 39, 6, 7.5))); }
+        if (ts === 'wings' || ts === 'bat') add('obi', ts === 'wings' ? '#ffe97a' : '#c0283a', hdRect(c.cx - 8.6, 43.4, c.cx + 8.6, 45.2));
+        if (ts === 'rainbow') ['#e8433a', '#f08a30', '#ffcf30', '#4fbf6a', '#3a8ae8'].forEach(function (rc, i) { add('top', rc, HCLIP(hdOr(torso, hdTrap(44, 53.5, 9.5, 13.5, c.cx)), 34.5 + i * 3.8, 34.5 + (i + 1) * 3.8)); });
+        if (KN) { // 판금: 가슴판 빛, 어깨받이, 허리띠, 쇠장갑, 단원 방패 / 단장 망토(뒤)
+          add('top', KN.a2, torso); add('top', KN.a1, hdTrap(35.5, 45, S ? 5.2 : 6.2, S ? 6.6 : 8, c.cx)); add('top', KN.a3, hdRect(c.cx - (S ? 1 : 3.5), 36.5, c.cx - (S ? -0.5 : 2), 41.5));
+          add('top', KN.a2, S ? hdEll(34.6, 36.8, 3.8, 2.8) : hdOr(hdEll(22.6, 36.8, 4, 2.8), hdEll(41.4, 36.8, 4, 2.8))); add('top', KN.a3, S ? hdEll(33.6, 36, 1.4, 0.9) : hdOr(hdEll(21.6, 36, 1.4, 0.9), hdEll(40.4, 36, 1.4, 0.9)));
+          add('obi', KN.a2, hdRect(c.cx - 8.8, 43.4, c.cx + 8.8, 45.4)); add('acc', F ? KN.acc : KN.a3, hdRect(c.cx - 1.2, 43.4, c.cx + 1.2, 45.4));
+          add('glove', KN.a2, S ? hdEll(35.6, 48, 2.6, 2.4) : hdOr(hdEll(22.6, 48, 2.6, 2.4), hdEll(41.4, 48, 2.6, 2.4)));
+          if (KN.lord && B) { add('cape', KN.acc, hdTrap(34, 58, 9.6, 13, c.cx)); add('acc', '#e0b040', hdRect(30.5, 34.5, 33.5, 36)); }
+          if (!KN.lord && F) { add('shield', KN.a2, hdAnd(hdRect(14, 37, 23.5, 51), hdEll(18.75, 44, 6, 9.5))); add('shield', KN.acc, hdRect(17.6, 38.5, 19.9, 49.5)); add('shield', KN.a3, hdEll(18.75, 43, 1.6, 1.6)); }
+          if (!KN.lord && B) { add('shield', KN.a2, hdAnd(hdRect(25, 37, 39, 50), hdEll(32, 43.5, 8, 8.5))); add('shield', KN.acc, hdRect(30.8, 38.5, 33.2, 49)); }
+        }
+        if (tail && B) add('tail', tail, hdOr(hdEll(34, 47, 2.4, 2.4), hdEll(37.5, 44, 2.4, 2.6), hdEll(39.5, 40, 2.3, 2.6), hdEll(40, 36.5, 2.1, 2.1)));
+        if (shoe.s === 'wing') add('acc', '#ffffff', S ? hdOr(hdTri(28, 58, 24, 55, 25, 60), hdTri(31.5, 58, 27.5, 55, 28.5, 60)) : hdOr(hdTri(26.5, 58, 22, 55, 23.5, 60.5), hdTri(37.5, 58, 42, 55, 40.5, 60.5)));
+        if (shoe.s === 'flame') { var fl = S ? hdOr(hdTri(27, 61, 30, 61, 27.5, 55.5), hdTri(31, 61, 34, 61, 31.5, 56)) : hdOr(hdTri(24.5, 61.5, 27.5, 61.5, 25, 55.5), hdTri(36.5, 61.5, 39.5, 61.5, 39, 55.5));
+          add('acc', '#ff6a2a', fl); add('acc', '#ffcf30', S ? hdOr(hdTri(27.5, 61, 29.5, 61, 28, 58), hdTri(31.5, 61, 33.5, 61, 32, 58.5)) : hdOr(hdTri(25, 61.5, 27, 61.5, 25.5, 58), hdTri(37, 61.5, 39, 61.5, 38.5, 58))); }
+      },
+      head: function (add, c) { // 머리 위(모자/투구)
+        var S = c.side, B = c.back, F = c.front, x0 = S ? 31 : 32;
+        if (KN) { // 투구 -- 앞: 눈 틈 + 콧대, 옆: 눈 틈, 뒤: 통 투구. 꼭대기 깃
+          add('helm', KN.a2, hdEll(32, 20.5, 15.4, 14.8)); add('helm', KN.a1, hdEll(32, 20, 13.8, 13.2)); add('helm', KN.a3, hdEll(S ? 30 : 26, 12.5, 3.2, 2));
+          if (F) { add('visor', '#12141c', hdRect(20.5, 22.4, 43.5, 24.8)); add('helm', KN.a2, hdRect(30.8, 24.8, 33.2, 31)); for (var vi = 0; vi < 4; vi++) add('visor', '#12141c', hdRect(26 + vi * 3.6, 28, 27 + vi * 3.6, 31)); }
+          if (S) { add('visor', '#12141c', hdRect(33, 22.4, 46.8, 24.8)); add('helm', KN.a2, hdRect(44.5, 24.8, 46.5, 31)); }
+          add('plume', KN.acc, S ? hdOr(hdEll(28, 6.5, 7.5, 2.8), hdEll(23, 9, 3, 3.4)) : hdEll(32, 5.5, 2.6, 5.2)); add('plume', KN.accD, S ? hdEll(22.5, 10.5, 2.2, 2.4) : hdEll(32, 9.5, 2.4, 1.6));
+          return;
+        }
+        if (hs === 'straw') { add('hat', hc, hdEll(32, 11.5, S ? 18 : 22, 3.6)); add('hat', hc, HCLIP(hdEll(x0, 9, 11.5, 7.6), -9, 11.5)); add('acc', '#b5251f', HCLIP(hdEll(x0, 9, 11.6, 7.6), 8.2, 10.4)); }
+        if (hs === 'helmet') { add('hat', hc, HCLIP(hdEll(32, 16, 16.2, 12.6), -9, 15.5)); add('hat', hdk, hdRect(15.6, 14.6, 48.4, 16.8)); add('acc', '#ffe14d', hdRect(30.4, 2.6, 33.6, 14.6)); }
+        if (hs === 'pirate') { add('hat', hc, HCLIP(hdEll(32, 9.5, 19.5, 6.6), -9, 13)); add('hat', hc, hdTri(13, 12.5, 32, 1.5, 51, 12.5)); add('acc', '#ffffff', hdOr(hdEll(32, 7.6, 2.2, 1.9), hdRect(30.6, 9.2, 33.4, 10.2))); }
+        if (hs === 'wizard') { add('hat', hdk, hdEll(32, 12.2, S ? 18 : 21, 3.4)); add('hat', hc, hdTri(21.5, 12.2, 42.5, 12.2, S ? 35 : 33, -1)); add('acc', hdk, hdAnd(hdTri(21.5, 12.2, 42.5, 12.2, S ? 35 : 33, -1), function (u, v) { return v > 9.6; })); add('acc', '#ffe14d', HSTAR(S ? 34 : 33, 5, 1.6)); }
+        if (hs === 'crown') { add('hat', hc, hdOr(hdRect(21.5, 7.6, 42.5, 11.6), hdTri(21.5, 7.8, 25, 2, 28.5, 7.8), hdTri(28.5, 7.8, 32, 0.8, 35.5, 7.8), hdTri(35.5, 7.8, 39, 2, 42.5, 7.8))); add('acc', '#d4104f', hdEll(32, 9.6, 1.7, 1.4)); add('acc', '#ffffff', hdEll(25, 9.6, 0.9, 0.9)); add('acc', '#ffffff', hdEll(39, 9.6, 0.9, 0.9)); }
+        if (hs === 'flower') { add('hat', '#3a9a4a', hdAnd(hdEll(32, 21, 15.4, 14.6), function (u, v) { return v > 8.6 && v < 10.6; }));
+          [[21.5, 9.6], [32, 7.4], [42.5, 9.6]].forEach(function (q) { add('hat', hc, hdOr(hdEll(q[0] - 1.6, q[1], 1.6, 1.6), hdEll(q[0] + 1.6, q[1], 1.6, 1.6), hdEll(q[0], q[1] - 1.6, 1.6, 1.6), hdEll(q[0], q[1] + 1.6, 1.6, 1.6))); add('acc', '#ffe14d', hdEll(q[0], q[1], 1.1, 1.1)); }); }
+        if (hs === 'santa') { add('hat', hc, hdOr(HCLIP(hdEll(30, 10, 14, 8.4), -9, 12.5), hdTri(38, 3.5, 48.5, 13.5, 41, 12.5))); add('fur', '#ffffff', hdAnd(hdEll(32, 21, 15.6, 14.8), function (u, v) { return v > 10.4 && v < 13.6; })); add('fur', '#ffffff', hdEll(48.5, 15, 2.8, 2.8)); }
+        if (hs === 'horn') { add('hat', hc, hdOr(hdTri(18.5, 10.5, 24, 9, 17, 0.5), hdTri(45.5, 10.5, 40, 9, 47, 0.5))); add('acc', '#ffd84a', hdOr(hdTri(17.4, 4, 19.2, 3.6, 17, 0.5), hdTri(46.6, 4, 44.8, 3.6, 47, 0.5))); }
+        if (hs === 'rabbit') { add('hat', hc, hdOr(hdRect(19, 8.6, 45, 10.8), hdEll(25.5, 3, 2.8, 7.5), hdEll(38.5, 3, 2.8, 7.5))); add('acc', '#f29bb0', hdOr(hdEll(25.5, 3.5, 1.2, 5.2), hdEll(38.5, 3.5, 1.2, 5.2))); }
+        if (hs === 'halo') { add('hat', hc, hdAnd(hdEll(32, 3.2, 10.5, 2.6), function (u, v) { return !hdEll(32, 3.2, 8, 1.3)(u, v); })); add('acc', '#ffffff', hdEll(27, 2.2, 1.4, 0.7)); }
+        if (hs === 'ribbon') { add('hat', hc, hdOr(hdTri(44, 8, 37.5, 3, 37.5, 13), hdTri(44, 8, 50.5, 3, 50.5, 13))); add('acc', hdk, hdEll(44, 8, 2, 2)); add('acc', '#ffffff', hdEll(39.5, 6, 0.9, 0.9)); }
+        if (hs === 'sunhat') { add('hat', hc, hdEll(32, 12.2, S ? 21 : 25, 3.8)); add('hat', hc, HCLIP(hdEll(x0, 9.6, 12, 7.2), -9, 12.2)); add('acc', '#4a6ad0', HCLIP(hdEll(x0, 9.6, 12.1, 7.2), 9.2, 11.4)); add('acc', '#4a6ad0', hdTri(42, 10, 47, 14, 44.5, 9)); }
+        if (hs === 'kanzashi') { add('acc', '#e2b040', function (u, v) { return Math.abs((u - 40) * 9 + (v - 12) * 7) < 9 && u > 39.5 && u < 47.5; }); add('hat', hc, hdOr(hdEll(46.2, 4.8, 2.6, 2.6), hdEll(43.6, 2.8, 1.6, 1.6), hdEll(48.8, 2.8, 1.6, 1.6))); add('acc', '#f4f0f0', hdEll(46.2, 4.8, 1, 1)); }
+        if (hs === 'tiara') { add('hat', hc, hdOr(hdRect(25, 8.2, 39, 9.8), hdTri(29.2, 8.4, 32, 3.6, 34.8, 8.4))); add('acc', '#ff8ad8', hdEll(32, 7.6, 1.3, 1.3)); add('acc', '#ffffff', hdOr(hdEll(26.5, 7.6, 0.8, 0.8), hdEll(37.5, 7.6, 0.8, 0.8))); }
+        if (hs === 'gmcrown') { add('hat', hc, hdOr(hdRect(19, 7, 45, 12.4), hdTri(19, 7.2, 21.5, 0.5, 25, 7.2), hdTri(25.5, 7.2, 28.5, 0.8, 31.5, 7.2), hdTri(32.5, 7.2, 35.5, 0.8, 38.5, 7.2), hdTri(39, 7.2, 42.5, 0.5, 45, 7.2)));
+          add('acc', '#3ad1ff', hdOr(hdEll(23, 9.8, 1.5, 1.5), hdEll(41, 9.8, 1.5, 1.5))); add('acc', '#ff3b6b', hdEll(32, 9.4, 2, 1.8)); add('acc', '#ffffff', hdEll(31.3, 8.8, 0.7, 0.7)); }
+      }
+    };
+    return d;
+  }
+  // 손에 든 것(gear32)의 손잡이 자리 -> 고해상도 손 자리로 옮기는 양(64 도트). 방향마다.
+  var HERO_GEAR_OFF = { down: [4, 7], right: [-2, 7], up: [2, 10] }, HERO_GEAR_K = 0.78; // [2026-11-20] 64 몸(머리가 크다)에 맞게 손에 든 것은 0.78배
+  /** 플레이어 한 장(64x64, 캐시). */
+  function heroSprite(dir, step, dig, lk) {
+    lk = lk || {};
+    var key = (lk ? JSON.stringify(lk) : '') + dir + (step | 0) + (dig | 0);
+    if (heroC[key]) return heroC[key];
+    if (dir === 'left') {
+      var src = heroSprite('right', step, dig, lk), c2 = mk(64, 64), g2 = c2.getContext('2d');
+      g2.translate(64, 0); g2.scale(-1, 1); g2.drawImage(src, 0, 0);
+      return (heroC[key] = c2);
+    }
+    var body = nekoHD(dir, step | 0, (dig | 0) >= 3 ? dig | 0 : 0, heroD(lk), 64), c = mk(64, 64), g = c.getContext('2d');
+    var wl = mk(32, 32), fl = mk(32, 32);
+    FX = fl.getContext('2d');
+    var drew = gear32(wl.getContext('2d'), dir, step, dig, lk);
+    FX = null;
+    var o = HERO_GEAR_OFF[dir] || [0, 0], gs = 64 * HERO_GEAR_K, behind = dir === 'up' || (dir === 'right' && !(dig | 0)); // 뒷모습, 옆모습 가만히는 몸 뒤에(얼굴을 안 가리게)
+    var gw = drew ? scale2x(outline(wl, '#140d0a')) : null, gf = drew ? scale2x(fl) : null;
+    if (drew && behind) { g.drawImage(gw, o[0], o[1], gs, gs); g.drawImage(gf, o[0], o[1], gs, gs); }
+    g.drawImage(body, 0, 0);
+    if (drew && !behind) { g.drawImage(gw, o[0], o[1], gs, gs); g.drawImage(gf, o[0], o[1], gs, gs); }
+    return (heroC[key] = c);
+  }
+  function setHD(on) { HD_ON = !!on; }
+  function isHD() { return HD_ON; }
   /** 64x64 용병 한 장(캐시). */
   function nekoHD(dir, step, dig, d, N) {
     N = N || 64;
-    var key = JSON.stringify(d) + dir + (step | 0) + (dig | 0) + N;
+    var key = JSON.stringify(d) + dir + (step | 0) + (dig | 0) + N; // d._k = 플레이어 외형(갈고리는 JSON에 안 들어간다)
     if (hdC[key]) return hdC[key];
     if (dir === 'left') {
       var src = nekoHD('right', step, dig, d, N), c2 = mk(N, N), g2 = c2.getContext('2d');
@@ -627,17 +779,19 @@ window.MineChar = (function () {
       var gb = gat(x, y + 1);
       if (gb && gb !== g && ((g === 'hair' && gb === 'skin') || (g === 'top' && gb !== 'top') || (g === 'skirt' && gb === 'leg'))) out[i] = hdShade(out[i], -0.3);
     }
-    if (!back) { // 눈 / 입 / 볼
+    if (!back && !d.noFace) { // 눈 / 입 / 볼 -- [2026-11-20] 기사단 투구면 얼굴 없음
+      var boy = d.style === 'boy';
       var eye = function (u0, u1) {
-        var x0 = Math.round(u0 / k), x1 = Math.max(x0 + 1, Math.round(u1 / k) - 1), y0 = Math.round(23.5 / k), y1 = Math.max(y0 + 2, Math.round(30 / k) - 1), xx, yy;
+        var x0 = Math.round(u0 / k), x1 = Math.max(x0 + 1, Math.round(u1 / k) - 1), y0 = Math.round((boy ? 24.8 : 23.5) / k), y1 = Math.max(y0 + 2, Math.round((boy ? 29.3 : 30) / k) - 1), xx, yy;
+        if (boy) for (xx = x0; xx <= x1; xx++) out[Math.round(21.6 / k) * N + xx] = hdShade(H, -0.45); // 눈썹
         for (yy = y0; yy <= y1; yy++) for (xx = x0; xx <= x1; xx++) { var t = (yy - y0) / Math.max(1, y1 - y0); out[yy * N + xx] = yy === y0 ? '#2a1a26' : t < 0.5 ? hdShade(d.eye, -0.35) : t > 0.85 ? hdShade(d.eye, 0.35) : d.eye; }
         out[(y0 + 1) * N + x0] = '#ffffff';
         if (N >= 56) { out[(y0 + 1) * N + x0 + 1] = '#ffffff'; out[(y0 + 2) * N + x0] = '#ffffff'; }
         out[y0 * N + x0 - 1] = '#2a1a26'; out[y0 * N + x1 + 1] = '#2a1a26';
       };
       var dot = function (u0, v0, c2, w) { var bx = Math.round(u0 / k), by = Math.round(v0 / k); out[by * N + bx] = c2; if (w && N >= 56) out[by * N + bx + 1] = c2; };
-      if (side) { eye(37.8, 42); dot(42.5, 32.3, '#b8505e'); dot(38.5, 31, '#f7a8a8', 1); }
-      else { eye(23.6, 29.2); eye(34.8, 40.4); dot(31.5, 32.3, '#b8505e', 1); dot(24.5, 31, '#f7a8a8', 1); dot(39.5, 31, '#f7a8a8', 1); }
+      if (side) { eye(37.8, 42); dot(42.5, 32.3, '#b8505e'); if (!boy) dot(38.5, 31, '#f7a8a8', 1); }
+      else { eye(23.6, 29.2); eye(34.8, 40.4); dot(31.5, 32.3, '#b8505e', 1); if (!boy) { dot(24.5, 31, '#f7a8a8', 1); dot(39.5, 31, '#f7a8a8', 1); } }
     }
     var fin = out.slice(), at = function (xx, yy) { return xx < 0 || yy < 0 || xx >= N || yy >= N ? null : col[yy * N + xx]; };
     for (y = 0; y < N; y++) for (x = 0; x < N; x++) {
@@ -650,6 +804,6 @@ window.MineChar = (function () {
     gg.putImageData(im, 0, 0);
     return (hdC[key] = cv);
   }
-  return { sprite: charSprite, neko: nekoSprite, nekoHD: nekoHD, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide };
+  return { sprite: charSprite, neko: nekoSprite, nekoHD: nekoHD, dataUrl: dataUrl, wings: wings, withWings: withWings, wide: wide, setHD: setHD, isHD: isHD, hero: heroSprite };
 })();
 </script>

@@ -1197,6 +1197,7 @@ var TowerMine = (function () {
   function charSprite(dir, step, dig, lk) { return MineChar.sprite(dir, step, dig, lk); }
   var spriteKey = null;
   function buildSprites(lk) {
+    try { if (window.MineChar && MineChar.setHD) MineChar.setHD(charHD); } catch (e) { } // [2026-11-20] 캐릭터 그림 옵션
     var key = JSON.stringify(lk || {});
     if (sprites && key === spriteKey) return;
     spriteKey = key;
@@ -2223,10 +2224,26 @@ var TowerMine = (function () {
     if (Math.max(2, baseScale + v) === scale && d < 0) msg('🔍 이 화면에선 더 작게 할 수 없어요.', 1500);
     scale = zoomScale(); zoomHud();
   }
-  function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); var ds = document.getElementById('mineDmgSum'); if (ds) ds.textContent = dmgSum ? '합산' : '속성별'; }
+  function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); var ds = document.getElementById('mineDmgSum'); if (ds) ds.textContent = dmgSum ? '합산' : '속성별';  var cr = document.getElementById('mineCharRes'); if (cr) cr.textContent = charHD ? '64×64' : '16×16'; }
   // [2026-11-20] 데미지 숫자 -- 속성별(기본) / 합산 한 번. 이 기기에 저장(tw-mine-dmgsum).
   var dmgSum = (function () { try { return localStorage.getItem('tw-mine-dmgsum') === '1'; } catch (e) { return false; } })();
   function dmgSumGo(on) { dmgSum = !!on; try { localStorage.setItem('tw-mine-dmgsum', dmgSum ? '1' : '0'); } catch (e) { } zoomHud(); msg(dmgSum ? '💥 데미지를 합쳐 한 번에 보여 줘요.' : '💥 데미지를 속성별로 보여 줘요.', 1600); }
+
+  // [2026-11-20] "캐릭터를 16x16 / 64x64 중 고르기(옵션), 64x64는 애니메이션풍 고해상도, 코스튬 전체·날개 포함" -- 기본 64x64, 이 기기에 저장(tw-mine-hd).
+  //  바꾸면 그림 캐시(내 캐릭터/다른 유저/주민/외형 미리보기)를 비우고 다시 그린다. 그리는 곳은 같은 칸 크기라 배치는 그대로.
+  var charHD = (function () { try { return localStorage.getItem('tw-mine-hd') !== '0'; } catch (e) { return true; } })();
+  try { if (window.MineChar && MineChar.setHD) MineChar.setHD(charHD); } catch (e) { }
+  function charResGo(hd) {
+    hd = !!hd;
+    if (hd === charHD) return;
+    charHD = hd;
+    try { localStorage.setItem('tw-mine-hd', hd ? '1' : '0'); } catch (e) { }
+    try { MineChar.setHD(hd); } catch (e) { }
+    otherSprites = {}; lookImgCache = {}; citCache = {}; allySailors = null; spriteKey = null;
+    if (st) buildSprites(st.look);
+    zoomHud();
+    msg(hd ? '🧍 캐릭터를 64×64 고해상도로 그려요.' : '🧍 캐릭터를 16×16 도트로 그려요.', 1800);
+  }
   // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 카메라를 나와 크라켄(5x5칸 + 휘두르는 다리) 사이로 부드럽게 옮긴다
   //  (같은 날 "화면 크기는 옵션으로" -- 자동 축소는 뺐다). 나는 늘 화면 안(가장자리 1.5칸 안쪽), 아래쪽은 버튼이 덮으니 위 80%에 맞춘다.
   var baseScale = 3, krkCam = { ox: 0, oy: 0, t: 0 };
@@ -6665,7 +6682,7 @@ var TowerMine = (function () {
     if (!(rb > 0) || !window.MineChar || !MineChar.wings) return;
     // [2026-10-29] 날개 32x32급 + 쉬지 않고 펄럭임(4프레임), 염색(dye) -- 날개 캔버스 한 칸 = 캐릭터 32 도트 한 칸(scale / 2)
     var f = Math.floor((now + (seed || 0) * 397) / 170) % 4, w = MineChar.wings(rb, dir || 'down', f, dye), hs = scale / 2;
-    ctx.drawImage(w.c, x - w.ext * hs, y - w.top * hs, w.c.width * hs, w.c.height * hs);
+    ctx.drawImage(w.c, x - w.ext * hs, y - w.top * hs, w.c.width * hs / (w.R || 1), w.c.height * hs / (w.R || 1)); // [2026-11-20] 64x64면 날개 그림이 2배(R)
   }
 
   function drawBubble(text, px0, py0, ph) {
@@ -8866,7 +8883,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>
