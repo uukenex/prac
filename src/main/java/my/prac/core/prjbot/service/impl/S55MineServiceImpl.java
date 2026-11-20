@@ -4805,6 +4805,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (Math.max(Math.abs(c % map.w + ox - x), Math.abs(c / map.w + oy - y)) <= mineMeleeReach(items) && (hitCell < 0 || c == mc)) hitCell = c; // [2026-11-20] 평타 사거리 = 배운 검기 사거리
             } // 화면이 보던 칸 우선. [2026-10-28] 대각선 포함 8방향
             if (hitCell < 0) { out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true); return out; }
+            // [2026-11-20] "평타 사거리가 늘어서 멀리서 때려도 몬스터가 바로 반격한다 -- 반격은 1칸 앞까지 와서" -- 2칸 이상 떨어져서 때리면 반격 없음(쫓아와 붙은 뒤 전투 턴에 친다)
+            int nearD = 99;
+            for (int oy = 0; oy < type.foot(); oy++) for (int ox = 0; ox < type.foot(); ox++) nearD = Math.min(nearD, Math.max(Math.abs(hitCell % map.w + ox - x), Math.abs(hitCell / map.w + oy - y)));
+            boolean farHit = nearD > 1;
             crit = RND.nextInt(100) < 10;
             dmg = Math.max(1, (int) Math.round((mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items)) * (0.85 + RND.nextDouble() * 0.3) * (crit ? 1.6 : 1.0) * mineElemMul(items, type))); if (mineElemMul(items, type) > 1) out.put("elHit", true);
             if (MINE_ITEM_TWIN_GLOVES.equals(mineGloveCode(items))) { // [2026-10-30] 쌍격의 장갑 -- 55%씩 두 번(타격마다 치명 15%), 화면엔 숫자 두 개
@@ -4847,7 +4851,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 s.hp = 0;
                 s.deadUntil = Long.MAX_VALUE / 2;
                 s.frozenUntil = 0;
-                counter = Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4)));
+                counter = farHit ? 0 : Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-20] 멀리서 때리면 함정 반격 없음
             } else if (shrineBoss && s.stealth && ++s.stealthHits < MINE_BOSS_STEALTH_HITS) { // [2026-10-28] 닌자 두목 은신 -- 3번째 공격까지 계속 피한다
                 evade = true;
                 dmg = 0;
@@ -4907,8 +4911,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     s.frozenUntil = now + MINE_MOB_FREEZE_MS;
                     counter = type.venom ? 0 : Math.max(1, (int) Math.round(S5MineMobs.atk(type, mob.rank) * mineNightAtk(map, type, now) * mineBoroMul(mob.type, now) * (0.8 + RND.nextDouble() * 0.4))); // [2026-10-30] "여왕개미는 원거리만" -- 근접 반격 없음(독산만)
                     if (mob.type == S5MineMobs.WB_BOSS_TYPE) counter = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_COUNTER_PCT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-15] 거룡의 반격 = 최대 체력 %(공격 수치 3만을 그대로 쓰면 누구든 두 대에 쓰러진다)
-                    if (s.stealth) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
-                    if (type.boss && S5MineMap.towerFloor(map.id) > 0) { // [2026-11-15] 탑 수문장 -- 반격에도 시즌5 패턴(강타 / 29층부터 기절)
+                    if (farHit) counter = 0; // [2026-11-20] 2칸 이상 떨어져 때리면 반격 없음(은신 기습/수문장 강타도 붙은 뒤에)
+                    if (s.stealth && counter > 0) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
+                    if (type.boss && S5MineMap.towerFloor(map.id) > 0 && counter > 0) { // [2026-11-15] 탑 수문장 -- 반격에도 시즌5 패턴(강타 / 29층부터 기절)
                         int[] ts = mineTwStrike(userName, S5MineMap.towerFloor(map.id), s, counter, now);
                         counter = ts[0];
                         if (ts[1] > 0) out.put("heavy", true);
