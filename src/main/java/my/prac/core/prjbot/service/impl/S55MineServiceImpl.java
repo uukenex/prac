@@ -2588,6 +2588,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 처치 -- 이번 주기에 싸운 모두(지금 메모리에 있는 사람)에게 보상. 서버를 다시 켜기 전에 싸우고 지금 없는 사람은 다음에 들어올 때(mineWbClaim). */
     void mineWbFinish(long now) {
         int n = 0;
+        // [2026-11-20] "거룡의 심장 조각, 로스터리는 왜 없지?" -- 몫이 1위(41,650)였는데 순위 보상에서 빠졌다. 거룡은 여러 회차(매시 정각)에 걸쳐 잡는데, 그 사이 서버를 다시 켜면
+        //  메모리의 몫(MINE_WB_SHARE)이 비고 다시 때린 사람만 저장값에서 이어 붙었다 -- 마지막 회차에 안 때린 사람은 순위/보상에서 빠졌다(기본 보상은 나중에 들어올 때 받음).
+        //  이제 쓰러뜨리는 순간 이번 주기에 저장된 몫(WBS_주기)을 모두 읽어 메모리에 없는 사람도 넣는다(보상은 사람마다 주기당 한 번이라 겹치지 않는다).
+        if (!MINE_WB_POOL.test) try {
+            for (HashMap<String, Object> r : dao.selectMineItemsByCodes(java.util.Collections.singletonList(MINE_ITEM_WBS + MINE_WB_POOL.cycle))) {
+                String u = strVal(r.get("USER_NAME"), null);
+                if (u != null) MINE_WB_SHARE.merge(u, (double) intVal(r.get("ITEM_LEVEL"), 0), Math::max);
+            }
+        } catch (Exception e) { System.out.println("[광산] 월드보스 저장된 몫 읽기 실패: " + e.getMessage()); }
         for (java.util.Map.Entry<String, Double> en : MINE_WB_SHARE.entrySet()) {
             if (en.getValue() >= mineWbMinShare()) n++;
             mineWbShareSave(en.getKey(), en.getValue(), now);
