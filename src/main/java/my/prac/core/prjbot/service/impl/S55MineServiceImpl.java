@@ -2698,7 +2698,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         { "BOAT1119C", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
             new String[][] { { "PEARL", "1" }, { "CORAL_GEM", "2" } }, new String[] { "로스터리" } },
         { "BOAT1119D", "⛵ 배 수리비 절반 돌려드려요", "망망대해에서 배가 너무 빨리 부서졌어요(10초 50% -> 24%로 고침). 그동안 배를 고치느라 낸 재료의 절반을 돌려드려요.",
-            new String[][] { { "PEARL", "1" }, { "CORAL_GEM", "1" } }, new String[] { "내일도승리/창술사" } } };
+            new String[][] { { "PEARL", "1" }, { "CORAL_GEM", "1" } }, new String[] { "내일도승리/창술사" } },
+        // [2026-11-20] 마계 마을이 이제 들어갈 때 정제된 마석을 준다(캐기는 막음) -- 예전 방문은 기록이 없어(포탈 이동은 로그에 안 남음) 마계 입구에 갈 수 있는 사람(방어선 통행증)에게 1개씩(사용자)
+        { "MANA1120", "💠 정제된 마석 보충", "마계 마을에서 이제 땅을 캐는 대신, 들어가기만 하면 정제된 마석을 받아요. 그동안 다녀간 몫으로 1개를 보내 드려요.",
+            new String[][] { { "MANA_STONE", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "castle/냉동홀붕", "은용" } } };
     static boolean mineMailFor(String userName, Object[] q) { return q.length < 5 || q[4] == null || java.util.Arrays.asList((String[]) q[4]).contains(userName); }
     static List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();

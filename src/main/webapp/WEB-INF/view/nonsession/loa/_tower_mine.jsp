@@ -3301,6 +3301,27 @@ var TowerMine = (function () {
     if (d.berserkSave) { berserkInvUntil = d.berserkSave; flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🔥 불굴! 5초 무적', color: '#ff6a3a', big: true, t0: t }); msg('🔥 광전사의 불굴 -- 쓰러질 일격을 버텼어요! 5초 동안 무적이에요.', 2600); }
     else if (d.berserkInv && t - gloveFxT > 700) { gloveFxT = t; floats.push({ x: P.x, y: P.y - 0.8, text: '🛡️ 무적', color: '#ffb07a', t0: t }); }
   }
+  // [2026-11-20] "광전사 불굴 무적 이펙트 -- 캐릭터 주변 흰색 보호막 + 시간 초가 줄어드는 것" -- 무적이 끝나는 시각(서버 berserkSave)까지
+  //  흰 비눗방울 같은 보호막(가장자리가 숨 쉬듯 빛나고 반짝이가 돈다) + 바깥 고리가 남은 시간만큼 줄어든다 + 머리 위 남은 초. 마지막 1.5초는 깜빡인다.
+  function berserkShieldDraw(cx, cy, now) { // (cx, cy) = 캐릭터 그림 왼쪽 위
+    var left = berserkInvUntil - nowSrv();
+    if (left <= 0) return;
+    var TS = T * scale, u = TS / 16, mx = cx + TS / 2, my = cy + TS * 0.55, rx = TS * 0.8, ry = TS * 0.92, f = Math.max(0, Math.min(1, left / 5000));
+    ctx.save();
+    ctx.globalAlpha = left < 1500 && Math.floor(now / 120) % 2 ? 0.45 : 1;
+    var g = ctx.createRadialGradient(mx - rx * 0.3, my - ry * 0.35, u, mx, my, rx);
+    g.addColorStop(0, 'rgba(255,255,255,0.38)'); g.addColorStop(0.6, 'rgba(230,245,255,0.08)'); g.addColorStop(1, 'rgba(255,255,255,0.30)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(mx, my, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1.5 * u; ctx.strokeStyle = 'rgba(255,255,255,' + (0.6 + 0.25 * Math.sin(now / 150)).toFixed(2) + ')'; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.2 * u; ctx.beginPath(); ctx.ellipse(mx, my, rx * 0.78, ry * 0.8, 0, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke(); // 반사광
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 3 * u; ctx.beginPath(); ctx.ellipse(mx, my, rx + 3 * u, ry + 3 * u, 0, 0, Math.PI * 2); ctx.stroke(); // 남은 시간 고리(바탕)
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.ellipse(mx, my, rx + 3 * u, ry + 3 * u, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * f); ctx.stroke();
+    for (var i = 0; i < 6; i++) { var an = now / 700 + i * Math.PI / 3; ctx.fillStyle = i % 2 ? '#ffffff' : '#dff4ff'; ctx.fillRect(Math.round(mx + Math.cos(an) * rx - u), Math.round(my + Math.sin(an) * ry - u), Math.round(2 * u), Math.round(2 * u)); }
+    ctx.restore();
+    var txt = '🛡️ ' + (left / 1000).toFixed(1), fy = cy - 10 * u;
+    ctx.save(); ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3 * dpr; ctx.strokeStyle = '#1a1a2a'; ctx.strokeText(txt, mx, fy); ctx.fillStyle = '#ffffff'; ctx.fillText(txt, mx, fy); ctx.restore();
+  }
   function wbFall(d) {
     wbDownUntil = d.wbDown;
     setAuto(false);
@@ -7366,7 +7387,8 @@ var TowerMine = (function () {
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
     ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
-    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
+    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
+    if (berserkInvUntil) { try { berserkShieldDraw(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-20] 광전사 불굴 보호막 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }
     if (frozenMe()) drawIce(cx, cy - 3 * scale, now); // [2026-10-28] 얼음 여왕 빙결
