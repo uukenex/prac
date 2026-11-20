@@ -4211,7 +4211,7 @@ var TowerMine = (function () {
       for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) { var dx = WG.x0 + i * k - cx, dy = WG.y0 + j * k - cy; if (dx * dx + dy * dy <= r * r) m[j * W + i] = 1; }
     };
     var stamp = function (m, mul) {
-      Object.keys(P).forEach(function (id) { disc(m, P[id].x, P[id].y, (/^isle/.test(id) ? 70 : 110) * mul); });
+      Object.keys(P).forEach(function (id) { disc(m, P[id].x, P[id].y, (/^isle/.test(id) ? 90 : 140) * mul); }); // [2026-11-20] 칸 둘레는 확실히 맑게(110 -> 140)
       segs.forEach(function (s) { var dx = s[2] - s[0], dy = s[3] - s[1], n = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / 20)); for (var i = 0; i <= n; i++) disc(m, s[0] + dx * i / n, s[1] + dy * i / n, 75 * mul); });
       worldCr(WORLD_RIVER, 0.5).concat(worldCr(WORLD_FIRE, 0.5)).forEach(function (q) { if (q[1] > -420) disc(m, q[0], q[1], 65 * mul); });
       WORLD_WATERS.forEach(function (w) { if (w[4] > 14) disc(m, w[1], w[2], w[4] * 3.2 * mul); });
@@ -4255,12 +4255,13 @@ var TowerMine = (function () {
     v += '<path d="' + riv + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/><path d="' + trib + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width=".8"/>'; // 엘리시온 강
     v += '<path d="M' + worldCr(WORLD_RIVER, 0.25).map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') + '" fill="none" stroke="#d4e4df" stroke-width=".9" stroke-dasharray="5 9"/>';
     WORLD_LAKES.forEach(function (l, i) { v += '<path d="' + worldBlob(l[0], l[1], l[2], l[3], 5 + i) + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/>'; });
-    v += worldMountSvg() + worldSnowMtnSvg(P) + worldTowerSvg(P) + worldShrineSvg(P, entry) + worldHarborSvg(P)
+    v += worldMountSvg(); // [2026-11-20] '전체 지도 음영이 이상해' -- 그림(설산/탑/신궁/항구/동굴)은 구름 위에 그린다(top) -- 가장자리 그림에 구름 막이 덮이지 않게
+    var top = worldSnowMtnSvg(P) + worldTowerSvg(P) + worldShrineSvg(P, entry) + worldHarborSvg(P)
         + worldCaveSvg(P, ['cave1', 'cave2', 'cave3', 'cave4'], false, '⛏️ 광산 동굴', 'cave', entry) + worldCaveSvg(P, ['snowcave', 'snowcave2'], true, '🧊 설산 동굴', 'icecave', entry);
     var ill = {}; // 왕도/요새 도시 그림 -- 길이 그림 밑으로 들어가게 칸 자리에서(worldHtml) 그린다
     if (P.city) ill.city = worldCitySvg(P.city.x, P.city.y);
     if (P.towercity) ill.towercity = worldFortSvg(P.towercity.x, P.towercity.y);
-    worldBg = { vec: v, cloud: null, entry: entry, ill: ill };
+    worldBg = { vec: v, top: top, cloud: null, entry: entry, ill: ill };
     try {
       var cv = worldCloudCanvas(P, segs), done = function (url) { worldBg.cloud = url; if (smithOpen && smithView === 'world') renderSmith(smithNpc); };
       if (cv.toBlob) cv.toBlob(function (b) { if (b) done(URL.createObjectURL(b)); }, 'image/png'); else done(cv.toDataURL('image/png'));
@@ -4379,6 +4380,7 @@ var TowerMine = (function () {
         + '<defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
         + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
         + (bg.cloud ? '<image href="' + bg.cloud + '" xlink:href="' + bg.cloud + '" x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" preserveAspectRatio="none"/>' : '') // 미탐사 구름
+        + (bg.top || '') // [2026-11-20] 그림은 구름 위에
         + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + (w[5] ? ';fill:' + w[5] + ';stroke:#f1e0c0' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
