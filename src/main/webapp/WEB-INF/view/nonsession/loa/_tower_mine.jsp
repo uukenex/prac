@@ -2284,7 +2284,7 @@ var TowerMine = (function () {
     // [2026-10-24] 오른쪽 위 안내는 맵 리셋 시각만(대장장이 안내/보석 목록은 뺐다)
     regenText();
     el.dig.disabled = busy; // 내구도가 없어도 누를 수 있다(캐기는 dig()가 안내)
-    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && fishHere() ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시, [2026-11-19] 모두에게
+    if (el.dig.firstChild && el.dig.firstChild.nodeType === 3) el.dig.firstChild.nodeValue = map && (fishHere() || (map.noDig && !map.trees && FISH_MAPS[map.id])) ? '🎣' : '⛏️'; // [2026-11-18] 바다에선 낚시, [2026-11-19] 모두에게
     if (el.atk) el.atk.disabled = busy;
   }
   // [2026-10-24] 광산 레벨/체력/경험치(체력은 서버가 준 시각부터 60초에 다 차게 화면도 같이 올린다)
@@ -2559,7 +2559,7 @@ var TowerMine = (function () {
     var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
     if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;
     // [2026-10-28] "광석 캐기가 불가능한 지역에서는 캐기 버튼을 없애도" -- 캘 칸 없는 맵은 ⛏️와 자동채광 숨김(⚔️는 그대로)
-    var digShow = map.noDig && !map.trees ? 'none' : ''; // [2026-11-11] 하피의 둥지 -- 캐기 버튼 = 곡괭이로 나무 찍기
+    var digShow = map.noDig && !map.trees && !FISH_MAPS[map.id] ? 'none' : ''; // [2026-11-11] 하피의 둥지 -- 캐기 버튼 = 곡괭이로 나무 찍기 // [2026-11-20] "나루터는 낚시가 안 돼" -- 낚시 지역이면 버튼(낚시)
     if (el.dig.style.display !== digShow) el.dig.style.display = digShow;
     if (el.auto) { var autoShow = map.noDig || map.vein ? 'none' : ''; if (el.auto.style.display !== autoShow) { el.auto.style.display = autoShow; if ((map.noDig || map.vein) && auto) setAuto(false); } } // [2026-10-28] 설산 동굴은 자동채광 없음
     if (now - hpShownT > 500) { hpShownT = now; renderHp(); }
@@ -3756,7 +3756,7 @@ var TowerMine = (function () {
   var WORLD_REGIONS = [
     // [2026-11-20] 전체 지도 그림 -- 거대한 탑(탑 입구 위로 솟은 돌탑)과 요새 도시 축소도가 들어가게 위아래로 넓혔다
     { id: 'fort', name: '🏰 요새 도시', vh: 470, // [2026-11-17] 로드맵 -- 요새 도시(가운데 아래), 북문 = 탑, 동/서 들판 1 -> 2 -> 3 -> 가운데 최후의 방어선 -> 마계 입구 -> 혼돈스러운 마계
-      nodes: [['abyssgate', 135, 30], ['lastline', 135, 100], ['demonwest3', 30, 100], ['demoneast3', 240, 100], ['demonwest2', 30, 190], ['demoneast2', 240, 190], ['towergate', 135, 250],
+      nodes: [['abyssgate', 135, 10], ['lastline', 135, 80], ['demonwest3', 30, 80], ['demoneast3', 240, 80], ['demonwest2', 30, 190], ['demoneast2', 240, 190], ['towergate', 135, 250],
         ['towercity', 135, 352], ['demonwest', 30, 352], ['demoneast', 240, 352], ['@ferry', 135, 440, 'desert', '⛵ 마물의 숲 나루터']],
       links: [['towercity', 'towergate'], ['towercity', 'demonwest'], ['towercity', 'demoneast'], ['demonwest', 'demonwest2'], ['demoneast', 'demoneast2'], ['demonwest2', 'demonwest3'], ['demoneast2', 'demoneast3'],
         ['demonwest3', 'lastline'], ['demoneast3', 'lastline'], ['lastline', 'abyssgate'], ['towercity', '@ferry', 'sea']] }, // [2026-11-17] 혼돈스러운 마계는 지도에 없다(정제사 소문으로만)
@@ -3793,7 +3793,7 @@ var TowerMine = (function () {
   function worldTabGo(t) { worldTab = t; if (smithOpen) renderSmith(smithNpc); }
   // [2026-10-28] "전체 지도 보기 불편해, 확대 또는 드래그가 가능한 전체 맵" -- 네 구간 배치를 한 장에 이어 붙이고(WORLD_PLACE), 끌어서 이동 / 휠·두 손가락·+− 로 확대.
   //  구간 사이 길(사막-평원, 샛길-설산 마을, 바닷가-남쪽 섬/설원)은 구간 밖 점선 칸 대신 실제 칸끼리 잇는다. 처음엔 지금 있는 곳을 가운데로.
-  var WORLD_PLACE = { ocean: [-300, 830], fort: [-400, -380], /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [150, 700] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
+  var WORLD_PLACE = { ocean: [-300, 830], fort: [-400, -425], /* [2026-11-20] 엘리시온 강(요새 도시 남쪽 ~ 나루터 북쪽) 자리 -- 45 위로 */ /* [2026-11-17] "나루터 -> 요새 도시 점선이 다른 맵을 뚫는다, 요새 도시를 더 위로" -- 점선이 동쪽 들판 아래로 비스듬히 지나가게 */ desert: [0, 0], snow: [360, 0], plain: [110, 440], sea: [150, 700] } /* [2026-11-11] 남쪽 바다를 오른쪽으로 270 -- 바닷가 -> 남쪽 섬 뱃길이 용암섬/산호섬을 가로지르지 않게 */ /* [2026-11-08] 평원을 오른쪽으로 110 -- 광산 동굴을 왼쪽으로 펼쳐 피라미드 보스 글자와 안 겹치게 */, WORLD_SIZE = [960, 1560]; // [2026-10-30] 남쪽 바다는 동쪽 성곽 옆이 아니라 평원 한참 아래로
   var WORLD_CROSS = [ // [2026-11-18] 먼 바다 -- 바다 위 -> 바닷가, 바닷가 5시 -> 다도해 뱃길(망망대해는 지도에 없다)
     ['ocean', 'opensea', 'plain', 'beach', 'sea', '⛵'], ['plain', 'beach', 'sea', 'archisea', 'sea', '5시 ⛵', [[760, 740], [760, 1220]]],['fort', 'towercity', 'desert', 'harpyferry', 'sea', '⛵'], ['desert', 'desert', 'plain', 'field', 'walk'], ['desert', 'royalroad', 'snow', 'snowtown', 'walk'], ['plain', 'beach', 'sea', 'island', 'sea', '⛵'], ['plain', 'beach', 'snow', 'north', 'sea', '⛵', [[650, 710], [650, 390]]]]; // [2026-11-04] 바닷가 -> 설원 뱃길은 동쪽 바다로 돌아서(성곽/설원 칸을 가로지르지 않게)
   // [2026-10-30] "던전 층수는 다르게 표기" -- 층이 있는 곳은 겹친 카드 + 층 표시(B1/1F), 이름에서 "N층"을 빼고 층 사이 길은 노란 점선
@@ -3820,10 +3820,13 @@ var TowerMine = (function () {
   var WORLD_BAND_STY = { shrine: ['rgba(255,248,230,.93)', '#3a1a0c'], boss: ['rgba(70,22,34,.93)', '#ffd8e0'], cave: ['rgba(40,28,20,.9)', '#f4e2c0'], icecave: ['rgba(232,244,252,.94)', '#1a3a50'], tower: ['rgba(255,248,230,.94)', '#3a1a0c'] };
   var WORLD_LV_DX = { shrine: 70, shrine2: 61, shrine3: 53, shrineboss: 56, cave1: 62, cave2: 62, cave3: 62, cave4: 62, snowcave: 62, snowcave2: 62 }; // 권장 Lv 글씨는 그림 왼쪽 바깥에
   var WORLD_SHRINE_W = [124, 106, 90], WORLD_SHRINE_U = 46, WORLD_SHRINE_H = 38;
-  var WORLD_RIVER = [[-112, -600], [-98, -545], [-118, -490], [-100, -430], [-118, -372], [-101, -330], [-118, -290], [-102, -250], [-120, -205], [-104, -160], [-121, -112], [-102, -66], [-118, -20], [-103, 28], [-124, 78], [-140, 122], [-152, 165]];
-  var WORLD_TRIB = [[-40, -345], [-56, -300], [-76, -268], [-101, -252]];
+  // [2026-11-20] "엘리시온 강은 어디니? 악마 사냥터 동쪽은 불의 강, 나루터는 낚시가 안 돼(버튼이 없었다)" -- 실제 맵: 요새 도시 남쪽을 가로지르는 큰 강 + 해자, 나루터 북쪽 강, 탑 입구 연못이 엘리시온 강 낚시 지역.
+  //  지도도 그렇게: 엘리시온 강은 동쪽 샘에서 나루터 북쪽, 요새 도시 남쪽(해자 물이 흘러듦)을 지나 서쪽 바다로. 악마의 들판 동쪽 강은 불의 강(용암 -- 북쪽 산에서 흘러 용암 웅덩이로 끝남).
+  var WORLD_RIVER = [[-4, -20], [-28, 2], [-64, 15], [-110, 11], [-160, 6], [-210, 12], [-265, 20], [-320, 14], [-370, 22], [-420, 34], [-472, 50]];
+  var WORLD_TRIB = [[-246, -34], [-250, -10], [-256, 18]]; // 요새 도시 해자에서 강으로
+  var WORLD_FIRE = [[-112, -600], [-98, -545], [-118, -490], [-100, -430], [-118, -372], [-101, -330], [-118, -290], [-102, -250], [-120, -205], [-104, -160], [-121, -112], [-104, -72], [-108, -52]];
   var WORLD_LAKES = [[325, 556, 24, 10], [256, 374, 14, 7]];
-  var WORLD_WATERS = [['엘리시온 강', -84, -150, 82, 13], ['북쪽 바다', 735, 360, 0, 22], ['남쪽 바다', 40, 1110, 0, 30], ['다 도 해', 395, 1080, 0, 22], ['중앙 평원 호수', 330, 536, 0, 9], ['사막 오아시스', 262, 357, 0, 9]]; // [2026-11-20] 오아시스 글씨가 북쪽 사막 칸과 겹쳐 오른쪽으로
+  var WORLD_WATERS = [['엘리시온 강', -330, 38, -3, 13], ['불의 강', -84, -200, 82, 13, '#b8401a'], ['북쪽 바다', 735, 360, 0, 22], ['남쪽 바다', 40, 1110, 0, 30], ['다 도 해', 395, 1080, 0, 22], ['중앙 평원 호수', 330, 536, 0, 9], ['사막 오아시스', 262, 357, 0, 9]]; // [2026-11-20] 오아시스 글씨가 북쪽 사막 칸과 겹쳐 오른쪽으로
   var WORLD_MOUNTS = [[-140, -628], [-112, -642], [-84, -626], [-160, -604], [-62, -604], [-122, -590], [-420, -470], [-446, -452], [-620, -390], [-300, -540], [-700, -610], [-520, -720], [300, -430], [330, -410], [130, -330], [160, -345]];
   var WORLD_UNEXP = [[-690, -640, 170, 12], [300, -420, 140, 10], [560, -380, 110, 8], [1040, 160, 130, 10], [1000, 520, 110, 8], [1300, 900, 110, 8], [-690, 330, 150, 10], [-640, 620, 90, 6],
     [-640, 1300, 140, 10], [-480, 1560, 90, 6], [1120, 1450, 140, 10], [240, 1750, 160, 11], [720, 1800, 110, 8]];
@@ -3895,7 +3898,8 @@ var TowerMine = (function () {
       for (var i = 1; i < n; i++) pts.push([s[0] + dx * i / n, s[1] + dy * i / n, 44]);
     });
     for (var y = -1060; y <= -300; y += 60) for (var x = -900; x <= 40; x += 60) pts.push([x + (rnd() - 0.5) * 30, y + (rnd() - 0.5) * 30, 46 + rnd() * 14]); // 요새 도시 북쪽은 모두 땅
-    worldCr(WORLD_RIVER.slice(0, 14), 0.5).forEach(function (q) { pts.push([q[0] + 8, q[1], 46]); }); // 강둑(강이 땅 위로 흐르게)
+    worldCr(WORLD_FIRE, 0.5).forEach(function (q) { pts.push([q[0] + 8, q[1], 46]); }); // 강둑(강이 땅 위로 흐르게) -- 불의 강
+    worldCr(WORLD_RIVER.slice(0, 9), 0.5).forEach(function (q) { pts.push([q[0], q[1], 40]); }); // 엘리시온 강(하구 앞까지)
     var ur = wRnd(29);
     WORLD_UNEXP.forEach(function (u) { // 미탐사 땅(구름 아래)
       pts.push([u[0], u[1], u[2] * 0.6]);
@@ -4209,7 +4213,7 @@ var TowerMine = (function () {
     var stamp = function (m, mul) {
       Object.keys(P).forEach(function (id) { disc(m, P[id].x, P[id].y, (/^isle/.test(id) ? 70 : 110) * mul); });
       segs.forEach(function (s) { var dx = s[2] - s[0], dy = s[3] - s[1], n = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy) / 20)); for (var i = 0; i <= n; i++) disc(m, s[0] + dx * i / n, s[1] + dy * i / n, 75 * mul); });
-      worldCr(WORLD_RIVER, 0.5).forEach(function (q) { if (q[1] > -420) disc(m, q[0], q[1], 65 * mul); });
+      worldCr(WORLD_RIVER, 0.5).concat(worldCr(WORLD_FIRE, 0.5)).forEach(function (q) { if (q[1] > -420) disc(m, q[0], q[1], 65 * mul); });
       WORLD_WATERS.forEach(function (w) { if (w[4] > 14) disc(m, w[1], w[2], w[4] * 3.2 * mul); });
     };
     var blur = function (m, r) { // 상자 흐림 3번(가로/세로)
@@ -4244,8 +4248,11 @@ var TowerMine = (function () {
     v += '<path d="' + inner + '" fill="#f1e8cc" fill-rule="evenodd" opacity=".55"/>';
     var ch = WORLD_REGIONS.filter(function (r) { return r.channel; })[0];
     if (ch && P.archisea) v += '<path d="M' + P.archisea.x + ',' + P.archisea.y + 'V' + (WORLD_PLACE[ch.id][1] + ch.channel.top) + '" stroke="#93b8b2" stroke-width="14" stroke-linecap="round"/>'; // 다도해 뱃길 물길
-    var riv = worldRibbon(WORLD_RIVER, 1.5, 11, true, 3), trib = worldRibbon(WORLD_TRIB, 1, 3.5, false, 9);
-    v += '<path d="' + riv + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/><path d="' + trib + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width=".8"/>';
+    var fire = worldRibbon(WORLD_FIRE, 1.5, 9, false, 3), riv = worldRibbon(WORLD_RIVER, 4, 13, true, 7), trib = worldRibbon(WORLD_TRIB, 3, 4, false, 9);
+    v += '<path d="' + fire + '" fill="#e8642a" stroke="#7a2410" stroke-width="1.1"/><path d="' + worldBlob(-108, -50, 15, 9, 21) + '" fill="#e8642a" stroke="#7a2410" stroke-width="1.1"/>'; // 불의 강 + 용암 웅덩이
+    v += '<path d="M' + worldCr(WORLD_FIRE, 0.25).map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') + '" fill="none" stroke="#ffd27a" stroke-width="1.1" stroke-dasharray="3 7"/>';
+    for (var fk = 0; fk < 4; fk++) v += '<path d="M' + (-114 + fk * 6) + ',' + (-62 - fk * 3) + 'q-3,-6 0,-11q3,-5 0,-10" fill="none" stroke="#9a8a7a" stroke-width="1" opacity=".55"/>'; // 김
+    v += '<path d="' + riv + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/><path d="' + trib + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width=".8"/>'; // 엘리시온 강
     v += '<path d="M' + worldCr(WORLD_RIVER, 0.25).map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join('L') + '" fill="none" stroke="#d4e4df" stroke-width=".9" stroke-dasharray="5 9"/>';
     WORLD_LAKES.forEach(function (l, i) { v += '<path d="' + worldBlob(l[0], l[1], l[2], l[3], 5 + i) + '" fill="#a9c6c1" stroke="#6f8f8a" stroke-width="1"/>'; });
     v += worldMountSvg() + worldSnowMtnSvg(P) + worldTowerSvg(P) + worldShrineSvg(P, entry) + worldHarborSvg(P)
@@ -4372,7 +4379,7 @@ var TowerMine = (function () {
         + '<defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
         + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
         + (bg.cloud ? '<image href="' + bg.cloud + '" xlink:href="' + bg.cloud + '" x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" preserveAspectRatio="none"/>' : '') // 미탐사 구름
-        + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
+        + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + (w[5] ? ';fill:' + w[5] + ';stroke:#f1e0c0' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
         + lines + nodes + labels + '</svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
@@ -8633,6 +8640,7 @@ var TowerMine = (function () {
     if (el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05]
     if (map && !auto && fishHere()) { fishCast(); return; } // [2026-11-18] 바다에선 채광 대신 낚시, [2026-11-19] 모두에게, 같은 날 물가에서 물을 바라보면 어디서나
     if (map && map.trees) { chopTree(); return; } // [2026-11-11] 하피의 둥지
+    if (map && map.noDig && FISH_MAPS[map.id]) { msg('🎣 물을 바라보고 누르면 낚싯대를 던져요.', 2000); return; } // [2026-11-20] 캘 광석이 없는 낚시 지역(나루터/요새 도시/탑 입구)
     if (map && map.vein) { veinDig(); return; } // [2026-10-28] 설산 동굴
     if (map && map.id === 'demonvillage') { msg('😈 마계 마을의 땅은 파낼 수 없어요. (정제된 마석은 들어올 때 1개)', 2200); return; } // [2026-11-20] 채광 금지
     if (!opened || busy || !map) return;
