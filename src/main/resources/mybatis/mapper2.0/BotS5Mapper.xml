@@ -1287,6 +1287,10 @@
         WHEN NOT MATCHED THEN INSERT (USER_NAME, FISH_ID, QTY, FIRST_CATCH_DATE) VALUES (S.U, S.F, 1, SYSDATE)
     </insert>
     <!-- [2026-11-18] 워프 포인트 내구도: 모든 유저가 함께 쓰는 값, 줄이 없으면 가득(200) -->
+    <!-- [2026-11-20] DB 우편: 이 표에 한 줄 넣으면 배포 없이 우편함에(ddl/S55_MAIL.sql) -->
+    <select id="selectS55Mails" resultType="hashmap">
+        SELECT MAIL_ID, TITLE, BODY, ITEMS, RECIPIENTS FROM TBOT_S55_MAIL WHERE USE_YN = 'Y' ORDER BY CREATED_AT, MAIL_ID
+    </select>
     <select id="selectS55WpDur" resultType="hashmap">
         SELECT WP_ID, DUR FROM TBOT_S55_WP_DUR
     </select>

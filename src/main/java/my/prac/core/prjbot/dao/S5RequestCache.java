@@ -110,7 +110,7 @@ public final class S5RequestCache {
                 "selectAchievementList", "selectLegendaryMaster", "selectLegendaryMasterList", "selectStar7Portrait" }) {
             SHARED_TTL_MS.put(m, MASTER_TTL_MS);
         }
-        for (String m : new String[]{ "selectUserEquip", "selectEquipByCompanion", "selectUserTileMaster", "selectUserFloorBestRange" }) {
+        for (String m : new String[]{ "selectUserEquip", "selectEquipByCompanion", "selectUserTileMaster", "selectUserFloorBestRange", "selectS55Mails" /* [2026-11-20] DB 우편 -- 60초, /갱신으로 바로 */ }) {
             SHARED_TTL_MS.put(m, USER_TTL_MS);
         }
         for (String m : USER_READS) SHARED_TTL_MS.put(m, MINE_USER_TTL_MS); // [2026-10-28]

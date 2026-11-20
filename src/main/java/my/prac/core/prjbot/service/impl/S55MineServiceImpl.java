@@ -1736,7 +1736,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if ("mailGet".equals(action)) {
                 if (!mineAtNpc(row, "mailbox")) { out.put("message", "마을 우체부에게서만 받을 수 있어요."); return out; }
                 Object[] ml = null;
-                for (Object[] q : MINE_MAILS) if (q[0].equals(code) && mineMailFor(userName, q)) ml = q;
+                for (Object[] q : mineMails()) if (q[0].equals(code) && mineMailFor(userName, q)) ml = q; // [2026-11-20] DB 우편도
                 if (ml == null) { out.put("message", "그런 우편은 없어요."); return out; }
                 if (items.getOrDefault("MAIL_" + ml[0], 0) > 0) { out.put("message", "이미 받은 우편이에요."); return out; }
                 dao.upsertMineItem(userName, "MAIL_" + ml[0], 1); items.put("MAIL_" + ml[0], 1);
@@ -2713,9 +2713,29 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         { "MANA1120", "💠 정제된 마석 보충", "마계 마을에서 이제 땅을 캐는 대신, 들어가기만 하면 정제된 마석을 받아요. 그동안 다녀간 몫으로 1개를 보내 드려요.",
             new String[][] { { "MANA_STONE", "1" } }, new String[] { "도륙이냥/달소", "로스터리", "castle/냉동홀붕", "은용" } } };
     static boolean mineMailFor(String userName, Object[] q) { return q.length < 5 || q[4] == null || java.util.Arrays.asList((String[]) q[4]).contains(userName); }
-    static List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
+    /** [2026-11-20] "우편 보내는 게 배포가 필요하니? 앞으로 DB로도" -- 코드 우편(MINE_MAILS) + DB 우편(TBOT_S55_MAIL, 60초 공유 캐시 -- /갱신으로 바로).
+     *  DB 줄: ITEMS = "코드:개수,코드:개수", RECIPIENTS = "이름|이름"(비우면 모두). 같은 MAIL_ID가 코드에도 있으면 코드 것만. 읽기 실패해도 코드 우편은 그대로. */
+    List<Object[]> mineMails() {
+        List<Object[]> l = new ArrayList<>(java.util.Arrays.asList(MINE_MAILS));
+        java.util.Set<String> ids = new java.util.HashSet<>();
+        for (Object[] q : MINE_MAILS) ids.add((String) q[0]);
+        try {
+            for (HashMap<String, Object> r : dao.selectS55Mails()) {
+                String id = strVal(r.get("MAIL_ID"), "").trim(), items = strVal(r.get("ITEMS"), "").trim(), rc = strVal(r.get("RECIPIENTS"), "").trim();
+                if (id.isEmpty() || items.isEmpty() || !ids.add(id)) continue;
+                List<String[]> its = new ArrayList<>();
+                for (String p : items.split(",")) { String[] kv = p.trim().split(":"); if (kv.length == 2 && !kv[0].trim().isEmpty()) try { its.add(new String[] { kv[0].trim(), String.valueOf(Integer.parseInt(kv[1].trim())) }); } catch (NumberFormatException ignore) { } }
+                if (its.isEmpty()) continue;
+                String[] who = null;
+                if (!rc.isEmpty()) { List<String> w = new ArrayList<>(); for (String p : rc.split("\\|")) if (!p.trim().isEmpty()) w.add(p.trim()); who = w.toArray(new String[0]); }
+                l.add(new Object[] { id, strVal(r.get("TITLE"), "📮 우편"), strVal(r.get("BODY"), ""), its.toArray(new String[0][]), who });
+            }
+        } catch (Exception e) { System.out.println("[광산] DB 우편 읽기 실패: " + e.getMessage()); }
+        return l;
+    }
+    List<HashMap<String, Object>> mineMailList(String userName, Map<String, Integer> items) {
         List<HashMap<String, Object>> l = new ArrayList<>();
-        for (Object[] q : MINE_MAILS) {
+        for (Object[] q : mineMails()) {
             if (!mineMailFor(userName, q)) continue;
             HashMap<String, Object> m = new HashMap<>();
             m.put("id", q[0]); m.put("title", q[1]); m.put("body", q[2]); m.put("got", items.getOrDefault("MAIL_" + q[0], 0) > 0);
@@ -2726,7 +2746,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         return l;
     }
-    static int mineMailUnread(String userName, Map<String, Integer> items) { int n = 0; for (Object[] q : MINE_MAILS) if (mineMailFor(userName, q) && items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
+    int mineMailUnread(String userName, Map<String, Integer> items) { int n = 0; for (Object[] q : mineMails()) if (mineMailFor(userName, q) && items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
     // ---- [2026-11-17] "보스전이 있는 장소에서 보스전이 시작되면, 그 맵에 몇 명 있는지에 따라 '우리는 하나' 버프를 보여 주고 얼마나 강해졌는지 띄우기,
     //  체력도 배수로(초보일 때는 더 많이)" -- 보스 맵(보스가 깨어 싸우는 중: 누군가를 노리거나 30초 안에 맞음)에 2명 이상 있으면 모두에게:
     //  공격력 +20 / 50 / 100 / 150%(2 / 3 / 4 / 5명 이상 -- 월드보스 인원 버프와 같은 표, 월드보스 싸움터는 그쪽 것만), 체력 x(1 + 0.2 x (인원 - 1), 최대 +80%),

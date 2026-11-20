@@ -100,6 +100,12 @@ GET /loa/chat
   그 마이그레이션 검증 시 실제로 쓴 쿼리 -- `INSERT INTO t (REQ) VALUES
   (UNISTR('test\D83C\DFB2dice')); SELECT ASCIISTR(REQ) FROM t;`.
 
+## 광산 우편 -- DB로 보내기 (2026-11-20)
+- 우편은 코드(`S55MineServiceImpl.MINE_MAILS`) 말고 **DB 표 `TBOT_S55_MAIL`에 한 줄 넣으면 배포 없이** 우편함에 뜬다(60초 캐시 -- 바로 보이게 하려면 채팅 `/갱신`). 표 설명: `src/main/resources/ddl/S55_MAIL.sql`.
+  - `MAIL_ID`(20자, 받았는지는 유저 아이템 `MAIL_<ID>` -- 재사용 금지), `TITLE`/`BODY`(NVARCHAR2), `ITEMS`=`코드:개수,코드:개수`, `RECIPIENTS`=`이름|이름`(비우면 모두), `USE_YN`='N'이면 숨김.
+  - 한글/이모지는 sqlplus에 직접 쓰지 말고 `UNISTR('\XXXX')`로(ASCII만 있는 SQL), 확인은 `ASCIISTR(TITLE)`.
+  - 앞으로 우편 지급 요청은 이 표로 처리한다(코드 우편 추가 대신). 라이브 지급이라 대상/수량은 사용자 확인 후.
+
 ## 시즌 5.5(광산) 화면 파일 구조 (2026-11-03 경량화)
 - 광산 게임은 "시즌 5.5"로 부른다. 탑 화면(tower_view.jsp)의 큰 CSS/JS는 HTML에 싣지 않고 `/loa/s55/tower.css`, `/loa/s55/tower.js`, `/loa/s55/mine.js`(?v=빌드 번호, 1년 캐시)로 따로 내려간다(S55AssetController).
 - **수정은 예전 자리 그대로**: tower_view.jsp 안 `<%-- 원본 스타일 / 원본 스크립트 --%>` 주석 속 `<style>`/`<script>`, 그리고 _mine_ore.jsp / _mine_char.jsp / _tower_mine.jsp의 `<script>`. 컨트롤러가 이 파일들에서 블록을 뽑는다(서버 재시작 때 한 번 읽어 메모리에).

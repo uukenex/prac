@@ -295,6 +295,8 @@ public interface BotS5DAO {
     int upsertS55FishInv(@Param("userName") String userName, @Param("fishId") int fishId);
     // [2026-11-18] 워프 포인트 내구도(TBOT_S55_WP_DUR, ddl/S55_WP_DUR.sql)
     List<HashMap<String, Object>> selectS55WpDur();
+    /** [2026-11-20] DB 우편(TBOT_S55_MAIL) -- 배포 없이 우편을 보낸다. */
+    List<HashMap<String, Object>> selectS55Mails();
     int mergeS55WpDur(@Param("wpId") String wpId, @Param("dur") int dur);
     int deleteOldS55FishLog(@Param("keepDays") int keepDays, @Param("batch") int batch); // [2026-11-18] DB 점검 5번
     int insertS55FishLog(@Param("userName") String userName, @Param("fishId") int fishId, @Param("mapId") String mapId);
