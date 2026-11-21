@@ -507,7 +507,7 @@ window.MineChar = (function () {
     var side = dir === 'right', back = dir === 'up', front = !side && !back;
     var H = d.hair, S = '#fde3cf', T = d.top, K = d.skirt || T, A = d.acc || '#d03040', st = d.style, W = '#f8f8fa';
     var cx = side ? 32.5 : 32, head = hdEll(32, 21, 14.5, 13.8), job = d.job | 0;
-    var hk = function (n) { if (d.hook && d.hook[n]) d.hook[n](add, { side: side, back: back, front: front, cx: cx }); }; // [2026-11-20] 플레이어 코스튬 갈고리(back/body/head)
+    var hk = function (n) { if (d.hook && d.hook[n]) d.hook[n](add, { side: side, back: back, front: front, cx: cx, step: step | 0 }); }; // [2026-11-20] 플레이어 코스튬 갈고리(back/body/head)
     var jag = function (bot, p, a) { return function (u, v) { return v < bot - hdSaw(p, a)(u); }; };
     // -- 머리 뒤쪽(정면/옆: 몸 뒤, 뒤: 몸 앞에 다시 그림)
     // [2026-11-20] "머리 스타일 골고루 추가" -- 짧은 머리 / 삐죽 머리 / 단정한 단발 / 보브컷 / 긴 생머리 / 웨이브 / 트윈테일 / 포니테일 / 올림머리 / 옆으로 땋은 머리
@@ -652,6 +652,89 @@ window.MineChar = (function () {
   }
   var HSTAR = function (x, y, r) { return hdOr(hdRect(x - r, y - 0.55, x + r, y + 0.55), hdRect(x - 0.55, y - r, x + 0.55, y + r)); };
   var HCLIP = function (f, y0, y1) { return hdAnd(f, function (u, v) { return v >= y0 && v <= y1; }); };
+  // ---- [2026-11-21] 갑옷 치장(top 모양 armor) 64x64 -- "더 웅장하게": 색으로 셋을 나눈다.
+  //  검은 갑옷(흑철) = 층층 어깨받이 + 가시, 가슴 문장, 붉은 망토 / 황금 갑옷 = 흰금 테두리, 붉은 보석, 왕실 망토 / 무사 갑옷 = 미늘 띠 + 끈, 네모 어깨판(소데), 허리 비늘판.
+  //  모두 목 가리개, 허리띠 버클, 허리 판, 쇠장갑·팔 보호대, 정강이 받이·무릎(걸음에 맞춰).
+  function armorPal(robe) {
+    var r = String(robe || '').toLowerCase();
+    if (r === '#8a1a1a') return { kind: 'sam', m: '#9a2020', m2: '#5a0e10', hi: '#d04a3a', tr: '#e2b040', cord: '#f4ead0', dk: '#2a1010' };
+    if (r === '#e0b030') return { kind: 'gold', m: '#e8b830', m2: '#a8780a', hi: '#fff3b0', tr: '#fffbe0', gem: '#d4104f', cape: '#b01828', capeTr: '#f2c230', dk: '#6a4608' };
+    return { kind: 'dark', m: robe || '#3a3f4a', m2: shade(robe || '#3a3f4a', -0.4), hi: shade(robe || '#3a3f4a', 0.5), tr: '#c8303a', gem: '#ff5a4a', cape: '#6a1424', capeTr: '#c8303a', dk: '#14161c' };
+  }
+  function armorCapeHD(add, c, robe) {
+    var P = armorPal(robe);
+    if (!P.cape) return;
+    var cp = c.side ? hdTrap(34, 58.5, 5.5, 9.5, c.cx - 3.5) : hdTrap(34, 58.5, 9.6, 14.5, c.cx);
+    add('cape', P.cape, cp);
+    add('cape', P.capeTr, hdAnd(cp, function (u, v) { return v > 57.2; }));
+  }
+  function armorHD(add, c, robe) {
+    var P = armorPal(robe), cx = c.cx, F = c.front, B = c.back, S = c.side, st = c.step | 0;
+    var torso = hdTrap(34.5, 46, S ? 6.5 : 7.5, S ? 8 : 9.5, cx);
+    if (B && P.cape) { var cpB = hdTrap(34, 58.5, 9.8, 14.5, cx); add('cape', P.cape, cpB); add('cape', P.capeTr, hdAnd(cpB, function (u, v) { return v > 57.2; })); add('cape', shade(P.cape, -0.3), hdOr(hdRect(cx - 4.3, 40, cx - 3.6, 57), hdRect(cx + 3.6, 40, cx + 4.3, 57))); }
+    // 정강이 받이 + 무릎(다리 위에)
+    if (S) {
+      var fo = st === 1 ? 2.2 : st === 2 ? -2.2 : 0;
+      [30.8 - fo, 34.2 + fo].forEach(function (x) { add('leg', P.m2, hdRect(x - 1.8, 52, x + 1.8, 59.4)); add('leg', P.m, hdEll(x, 52.4, 2.3, 1.7)); add('leg', P.hi, hdRect(x + 0.4, 53.4, x + 1, 58.6)); });
+    } else {
+      [[28.75, st === 1 ? 1.6 : 0], [35.25, st === 2 ? 1.6 : 0]].forEach(function (q) { add('leg', P.m2, hdRect(q[0] - 1.9, 52, q[0] + 1.9, 59.4 - q[1])); add('leg', P.m, hdEll(q[0], 52.4, 2.4, 1.8)); add('leg', P.hi, hdRect(q[0] - 1.3, 53.4, q[0] - 0.7, 58.6 - q[1])); });
+    }
+    // 허리 판
+    if (P.kind === 'sam') {
+      (S ? [cx + 1] : [cx - 5.4, cx, cx + 5.4]).forEach(function (x) {
+        add('skirt', P.m2, hdRect(x - 2.5, 45.2, x + 2.5, 53.4));
+        [46.6, 49.1, 51.6].forEach(function (y) { add('skirt', P.m, hdRect(x - 2.5, y, x + 2.5, y + 1.3)); });
+        add('skirt', P.cord, hdRect(x - 0.3, 45.2, x + 0.3, 53.4));
+      });
+    } else {
+      (S ? [cx + 0.6] : [cx - 4.7, cx + 4.7]).forEach(function (x) {
+        var tp = hdTrap(45.2, 52.4, 3.3, 4.3, x);
+        add('skirt', P.m2, tp); add('skirt', P.m, hdTrap(45.6, 51.4, 2.5, 3.3, x));
+        add('skirt', P.tr, hdAnd(tp, function (u, v) { return v > 51.4; })); add('skirt', P.hi, hdRect(x - 2.1, 46.4, x - 1.5, 50.4));
+      });
+    }
+    // 몸통 판
+    add('top', P.m2, torso);
+    if (P.kind === 'sam') {
+      for (var i = 0; i < 4; i++) add('top', i % 2 ? P.m : P.hi, HCLIP(torso, 35.2 + i * 2.5, 36.5 + i * 2.5));
+      add('acc', P.cord, hdAnd(torso, function (u, v) { return v > 35 && v < 44.5 && Math.abs(((u - cx + 64) % 3.4) - 1.7) < 0.32; }));
+      if (F) add('acc', P.tr, hdEll(cx, 36.2, 1.2, 0.9));
+    } else {
+      add('top', P.m, hdTrap(35, 44.4, S ? 5.6 : 6.6, S ? 6.8 : 8, cx));
+      add('top', P.hi, S ? hdRect(cx + 3.4, 35.6, cx + 4.2, 43.8) : hdRect(cx - 0.45, 35.4, cx + 0.45, 44));
+      if (F) {
+        add('top', P.hi, hdOr(hdTrap(36.4, 41.6, 0.9, 0.5, cx - 4), hdTrap(36.4, 41.6, 0.9, 0.5, cx + 4)));
+        if (P.kind === 'gold') { add('acc', P.tr, hdEll(cx, 39.4, 2.7, 2.7)); add('acc', P.gem, hdEll(cx, 39.4, 1.8, 1.8)); add('acc', '#ffffff', hdEll(cx - 0.6, 38.8, 0.55, 0.55));
+          add('acc', P.tr, hdOr(hdTri(cx - 2.6, 36.2, cx - 1, 37.8, cx - 4.4, 37.4), hdTri(cx + 2.6, 36.2, cx + 1, 37.8, cx + 4.4, 37.4))); }
+        else { add('acc', P.tr, hdOr(hdTri(cx - 2.8, 37.4, cx + 2.8, 37.4, cx, 42.4), hdRect(cx - 0.55, 36, cx + 0.55, 37.6))); add('acc', P.gem, hdEll(cx, 38.9, 0.95, 0.95)); }
+      }
+      if (S && P.kind === 'gold') add('acc', P.gem, hdEll(cx + 4.8, 39.4, 1, 1));
+    }
+    // 목 가리개
+    add('top', P.m2, hdTrap(33.4, 35.9, S ? 3.8 : 4.8, S ? 5.2 : 6.4, cx)); add('top', P.hi, hdRect(cx - (S ? 3 : 4.2), 33.6, cx + (S ? 3 : 4.2), 34.2));
+    // 허리띠 + 버클
+    add('obi', P.dk, hdRect(cx - 8.9, 43.5, cx + 8.9, 45.7)); add('obi', P.tr, hdRect(cx - 8.9, 43.5, cx + 8.9, 44));
+    if (!B) { var bxx = S ? cx + 5 : cx; add('acc', P.tr, hdRect(bxx - 1.7, 43.3, bxx + 1.7, 45.9)); add('acc', P.gem || P.cord, hdEll(bxx, 44.6, 0.85, 0.85)); }
+    // 쇠장갑 + 팔 보호대
+    (S ? [35.6] : [22.6, 41.4]).forEach(function (x) { add('glove', P.m2, hdTrap(42.2, 47, 2.4, 2.9, x)); add('glove', P.m, hdEll(x, 48.3, 2.8, 2.5)); add('glove', P.tr, hdRect(x - 2.9, 42.2, x + 2.9, 42.9)); add('glove', P.hi, hdEll(x - 0.9, 47.6, 0.9, 0.7)); });
+    // 어깨
+    if (P.kind === 'sam') {
+      var sode = function (x) { add('top', P.m2, hdRect(x - 4.5, 34.8, x + 4.5, 43.8)); [36.2, 38.7, 41.2].forEach(function (y) { add('top', P.m, hdRect(x - 4.5, y, x + 4.5, y + 1.3)); }); add('top', P.cord, hdRect(x - 4.5, 34.8, x + 4.5, 35.5)); add('acc', P.tr, hdEll(x, 35.1, 1, 0.7)); };
+      if (S) sode(34.4); else { sode(21); sode(43); }
+    } else {
+      var pauld = function (x, ds) {
+        if (P.kind === 'dark') add('acc', P.hi, hdOr(hdTri(x - 1.4 + ds * 0.4, 35, x + 0.6 + ds * 0.4, 35, x + ds * 0.9, 29.6), hdTri(x + ds * 2.4 - 1, 35.4, x + ds * 2.4 + 1, 35.4, x + ds * 3.6, 31.4))); // 가시
+        [[41, 4.3, 2.6], [39, 5, 3], [36.9, 5.7, 3.5]].forEach(function (r, i) {
+          var e = hdEll(x, r[0], r[1], r[2]);
+          add('top', i === 2 ? P.m : P.m2, e); add('top', P.tr, hdAnd(e, function (u, v) { return v > r[0] + r[2] - 0.9; }));
+        });
+        add('top', P.hi, hdEll(x - ds * 1.7, 35.7, 2.1, 1));
+        add('acc', P.hi, hdOr(hdEll(x - 3.4, 37.6, 0.5, 0.5), hdEll(x + 3.4, 37.6, 0.5, 0.5)));
+        if (P.kind === 'gold') add('acc', P.gem, hdEll(x, 36.6, 1, 1));
+      };
+      if (S) pauld(34.4, 1); else { pauld(22.4, -1); pauld(41.6, 1); }
+    }
+  }
   /** 플레이어 외형(lk) -> hdBuild 값(d). 코스튬은 갈고리로. */
   function heroD(lk) {
     lk = lk || {};
@@ -674,6 +757,7 @@ window.MineChar = (function () {
     var tail = lk.tail, tailD = tail ? shade(tail, -0.25) : '';
     d.hook = {
       back: function (add, c) { // 몸 뒤
+        if (ts === 'armor' && !c.back) armorCapeHD(add, c, robe); // [2026-11-21] 갑옷 치장 망토(몸 뒤)
         if ((ts === 'cape' || (KN && KN.lord)) && !c.back) add('cape', KN ? KN.acc : robeD, c.side ? hdTrap(34, 58, 5.5, 9, c.cx - 3.5) : hdTrap(34, 58, 9.2, 13.5, c.cx));
         if (ts === 'hoodie' && !c.back) add('cape', robeD, hdEll(32, 33.5, 11, 4.5));
         if ((ts === 'wings' || ts === 'bat') && !c.back) {
@@ -686,8 +770,7 @@ window.MineChar = (function () {
       },
       body: function (add, c) { // 몸통 위(머리 아래)
         var torso = hdTrap(34.5, 46, c.side ? 6.5 : 7.5, c.side ? 8 : 9.5, c.cx), F = c.front, B = c.back, S = c.side;
-        if (ts === 'armor') { add('top', shade(robe, 0.35), HCLIP(torso, 34.5, 37.5)); add('top', shade(robe, 0.2), HCLIP(torso, 39.5, 41)); add('obi', '#d9d0b8', hdRect(c.cx - 8.6, 43.4, c.cx + 8.6, 45.2));
-          add('top', shade(robe, 0.25), S ? hdEll(34.6, 37, 3.4, 2.5) : hdOr(hdEll(22.6, 37, 3.6, 2.6), hdEll(41.4, 37, 3.6, 2.6))); }
+        if (ts === 'armor') armorHD(add, c, robe); // [2026-11-21] "갑옷 치장이 고해상도에서 멋이 없다 -- 더 웅장하게"
         if (ts === 'hanbok') { if (F) add('acc', '#c0392b', hdOr(hdTri(29.5, 35, 35.5, 35, 32.5, 40.5), hdRect(32.5, 38, 34.2, 46))); add('obi', '#2e5aa8', hdRect(c.cx - 9, 43.5, c.cx + 9, 45.5)); }
         if (ts === 'cape') { if (B) add('cape', robeD, hdTrap(34, 58, 9.6, 13, c.cx)); if (F) add('acc', '#ffd84a', hdEll(32, 35.6, 1.7, 1.5)); }
         if (ts === 'fur') { add('fur', '#ece2c8', HCLIP(torso, 34.5, 37.4)); add('fur', '#ece2c8', hdRect(c.cx - 9.6, 44, c.cx + 9.6, 46.4));
