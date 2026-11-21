@@ -7028,7 +7028,7 @@ var TowerMine = (function () {
     var anc = 0; (dmgSum ? [] : d.aura || []).forEach(function (h) { if (h.length > 3 && h[3] + 1 > anc) anc = h[3] + 1; }); // [2026-11-15] 보스가 검기에 걸친 칸 수 -- 칸마다 숫자를 옆으로 벌려 따로
     (dmgSum ? [] : d.aura || []).forEach(function (h, i) { // [2026-11-20] 합산이면 맞은 몬스터 숫자는 공격 쪽에서 하나로
       var q = h.length > 3 ? h[4] : i, ox = h.length > 3 ? (h[3] - (anc - 1) / 2) * 0.9 : 0;
-      floats.push({ x: fxp + ox + (q % 2 ? 0.3 : -0.3) * (anc > 1 ? 0.5 : 1), y: fyp - 0.32 * (q + 1), text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (q + 1) + (h.length > 3 ? 45 * h[3] : 0) });
+      floats.push({ x: fxp + ox + (q % 2 ? 0.3 : -0.3) * (anc > 1 ? 0.5 : 1), y: fyp - 0.32 * (q + 1), text: ELEM_ICON[h[0]] + h[1], /* [2026-11-21] x1.5 표기 뺌(이미 계산된 값) */ color: AURA_COL[h[0]], big: !!h[2], t0: t + 70 * (q + 1) + (h.length > 3 ? 45 * h[3] : 0) });
     });
     var anyKill = false;
     (d.auraMobs || []).forEach(function (am, j) {
@@ -7036,10 +7036,10 @@ var TowerMine = (function () {
       mobSt[am.id] = mobStOf(am.row, mobSt[am.id]);
       mobHitAt[am.id] = performance.now();
       var dl = 60 + j * 40;
-      if (dmgSum && (am.hits || []).length) { var st2 = 0, x15 = false; am.hits.forEach(function (h) { st2 += h[1] | 0; if (h[2]) x15 = true; }); floats.push({ x: p.x, y: p.y - 0.2, text: '⚔️' + st2.toLocaleString() + (x15 ? ' x1.5' : ''), color: x15 ? '#ff8a3a' : '#ffe9a8', big: x15, t0: t + dl }); } // [2026-11-20] 합산
+      if (dmgSum && (am.hits || []).length) { var st2 = 0, x15 = false; am.hits.forEach(function (h) { st2 += h[1] | 0; if (h[2]) x15 = true; }); floats.push({ x: p.x, y: p.y - 0.2, text: '⚔️' + st2.toLocaleString(), /* [2026-11-21] '합산 데미지에 x1.5는 표기만 없애줘 -- 이미 계산된 건데 헷갈려' */ color: x15 ? '#ff8a3a' : '#ffe9a8', big: x15, t0: t + dl }); } // [2026-11-20] 합산
       else (am.hits || []).forEach(function (h, i) {
         var cc = am.cells && h.length > 3 ? am.cells[h[3]] : null, q = cc ? h[4] : i, bx = cc ? am.row[3] + cc[0] : p.x, by = cc ? am.row[4] + cc[1] : p.y; // [2026-11-15] 보스가 걸친 칸마다 그 칸 위에 따로
-        floats.push({ x: bx + (q % 2 ? 0.3 : -0.3) * (cc ? 0.5 : 1), y: by - 0.32 * q, text: ELEM_ICON[h[0]] + h[1] + (h[2] ? ' x1.5' : ''), color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * q + (cc ? 40 * h[3] : 0) });
+        floats.push({ x: bx + (q % 2 ? 0.3 : -0.3) * (cc ? 0.5 : 1), y: by - 0.32 * q, text: ELEM_ICON[h[0]] + h[1], /* [2026-11-21] x1.5 표기 뺌(이미 계산된 값) */ color: AURA_COL[h[0]], big: !!h[2], t0: t + dl + 70 * q + (cc ? 40 * h[3] : 0) });
       });
       if (am.killed) { anyKill = true; if (!d.expFull) floats.push({ x: p.x, y: p.y + 0.4, text: '+' + am.exp + ' EXP', color: '#9fe0ff', t0: t + dl + 100 }); } // [2026-11-07] 경험치가 가득 찬(안 오르는) 처치는 EXP 숫자를 안 띄운다
     });
@@ -7490,10 +7490,10 @@ var TowerMine = (function () {
       else if (dmgSum) { // [2026-11-20] "합산 데미지를 한 번으로 보여 주는 옵션" -- 일반 공격(쌍격 두 번 포함) + 검기 속성 피해를 더해 숫자 하나
         var tot = d.hits ? d.hits.reduce(function (a2, b2) { return a2 + b2; }, 0) : d.dmg | 0, el15 = !!d.elHit;
         (d.aura || []).forEach(function (h) { tot += h[1] | 0; if (h[2]) el15 = true; });
-        floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + tot.toLocaleString() + (el15 ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.crit ? '#ffd23f' : el15 ? '#ff8a3a' : '#ffffff', big: !!(d.crit || d.assassinHit), t0: t });
+        floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + tot.toLocaleString(), color: d.assassinHit ? '#ff3a6a' : d.crit ? '#ffd23f' : el15 ? '#ff8a3a' : '#ffffff', big: !!(d.crit || d.assassinHit), t0: t });
       }
-      else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv + (d.elHit ? ' x1.5' : ''), color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
-      else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + d.dmg + (d.elHit ? ' x1.5' : ''), color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
+      else if (d.hits) d.hits.forEach(function (hv, hi) { var hc = d.hitCrits && d.hitCrits[hi]; floats.push({ x: fxp + (hi ? 0.35 : -0.25), y: fyp - hi * 0.35, text: (d.assassinHit ? '🗡️' : '') + (hc ? '💥' : '') + atkEl + hv, color: d.elHit ? '#7fe8ff' : hc ? '#ffdd33' : '#ff5a4a', big: !!hc, t0: t + hi * 140 }); }); // [2026-10-30] 쌍격의 장갑 -- 숫자 두 개
+      else floats.push({ x: fxp, y: fyp, text: (d.assassinHit ? '🗡️ 2배! ' : '') + (d.crit ? '💥' : '') + atkEl + d.dmg, /* [2026-11-21] x1.5 표기 뺌(이미 계산된 값, 색으로만) */ color: d.assassinHit ? '#ff3a6a' : d.elHit ? '#7fe8ff' : d.crit ? '#ffdd33' : '#ff5a4a', big: !!(d.crit || d.elHit || d.assassinHit), t0: t }); // [2026-10-29] 속성 상성 x1.5 / [2026-10-30] 자객의 목걸이 2배
       auraShow(d, fxp, fyp, t); // [2026-11-04] 검기 -- 속성 숫자 + 너머 몬스터
       if (d.simDown) msg('🎯 ' + ((map.mobTypes[m.k] || {}).name || '보스 허수아비') + '의 체력이 0이 됐어요! 3초 뒤 다 찬 채로 다시 일어나요.', 2400); // [2026-11-07] 보스 허수아비
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30] 자객의 목걸이
