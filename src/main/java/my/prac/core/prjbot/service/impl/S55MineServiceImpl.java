@@ -11872,6 +11872,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  모양/색(look 값)은 화면(TowerMine.charSprite)이 그린다.
     static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes", "wing" }; // [2026-10-29] wing = 환생 날개 염색(기본 흰색)
     static final String MINE_ITEM_GENDER = "LOOK_GENDER";
+    // [2026-11-20] "머리 스타일 골고루 추가, 머리 변경 및 염색 기능(상인)" -- 왕도 미용실(barber): 머리 모양(LOOK_HSTYLE = 순번, 0 = 성별 기본), 염색(LOOK_HDYE = 팔레트 순번 + 1, 0 = 안 함).
+    //  염색은 명품상점 머리 색보다 먼저 보인다(명품상점에서 머리 색을 입으면 염색은 지워진다). 비용은 금광석(남아도는 광석).
+    static final String MINE_ITEM_HSTYLE = "LOOK_HSTYLE", MINE_ITEM_HDYE = "LOOK_HDYE";
+    static final String[][] MINE_HAIR_STYLES = { { "", "기본(성별에 따라)" }, { "boy", "짧은 머리" }, { "spiky", "삐죽 머리" }, { "short", "단정한 단발" }, { "bob", "보브컷" }, { "long", "긴 생머리" },
+            { "wavy", "웨이브" }, { "twin", "트윈테일" }, { "ponytail", "포니테일" }, { "bun", "올림머리" }, { "side", "옆으로 땋은 머리" } };
+    static final String[][] MINE_HAIR_DYES = { { "칠흑", "#1a1418" }, { "흑갈색", "#2b1d16" }, { "밤색", "#5a3220" }, { "갈색", "#7a4a26" }, { "구릿빛", "#b0602a" }, { "주황", "#f08a30" }, { "금발", "#f0d060" },
+            { "백금", "#f4ecc8" }, { "은발", "#d8dde6" }, { "새하양", "#f8f8f8" }, { "잿빛", "#8a8a96" }, { "벚꽃", "#f8b8d0" }, { "분홍", "#f58fb8" }, { "다홍", "#e0405a" }, { "포도", "#7a3aa8" },
+            { "라벤더", "#b89ae8" }, { "남색", "#2a3a8a" }, { "하늘", "#6fc8f0" }, { "민트", "#7fe0c0" }, { "초록", "#3f9a5a" } };
+    static final String[][] MINE_HAIR_STYLE_COST = { { S5MineMap.ORE_CODES[3], "10" } }, MINE_HAIR_DYE_COST = { { S5MineMap.ORE_CODES[3], "5" } }; // 금광석 10 / 5
     /** 성별 전환 비용. */
     static final String[][] MINE_GENDER_COST = { { S5MineMap.ORE_CODES[2], "10" } };
 
@@ -12018,6 +12027,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (c != null && c.admin) gm = true;
         }
         if (gm) look.put("gm", true); // [2026-10-28] 운영자 장비를 입었으면 화면이 "운영자" 표시 + 반짝이
+        int hst = items.getOrDefault(MINE_ITEM_HSTYLE, 0), hdy = items.getOrDefault(MINE_ITEM_HDYE, 0); // [2026-11-20] 미용실
+        if (hst > 0 && hst < MINE_HAIR_STYLES.length) look.put("hairStyle", MINE_HAIR_STYLES[hst][0]);
+        if (hdy > 0 && hdy <= MINE_HAIR_DYES.length) look.put("hair", MINE_HAIR_DYES[hdy - 1][1]);
         MineWeapon lw = mineWeaponOn(items); // [2026-10-29] "무기별로 외형 조금씩 다르게" -- 드랍 무기는 무기마다 그림이 다르다(_mine_char.jsp WEAPON_LOOK)
         look.put("weapon", lw != null ? mineWeaponLook(lw) : mineParasolOn(items) ? "parasol" : "sword"); // [2026-10-28] 손에 든 무기(화면 그림)
         int rb = mineRebirth(items);
@@ -12047,6 +12059,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("cosShop", shop);
         out.put("genderCosts", mineCostList(MINE_GENDER_COST, have));
         out.put("genderCan", mineCostOk(MINE_GENDER_COST, have));
+        // [2026-11-20] 미용실 -- 머리 모양/염색 목록, 지금 고른 것, 비용
+        List<HashMap<String, Object>> hs = new ArrayList<>(), hd = new ArrayList<>();
+        for (int i = 0; i < MINE_HAIR_STYLES.length; i++) { HashMap<String, Object> m = new HashMap<>(); m.put("code", MINE_HAIR_STYLES[i][0]); m.put("name", MINE_HAIR_STYLES[i][1]); hs.add(m); }
+        for (String[] dy : MINE_HAIR_DYES) { HashMap<String, Object> m = new HashMap<>(); m.put("name", dy[0]); m.put("color", dy[1]); hd.add(m); }
+        out.put("hairStyles", hs); out.put("hairDyes", hd);
+        out.put("hairStyleCur", items.getOrDefault(MINE_ITEM_HSTYLE, 0)); out.put("hairDyeCur", items.getOrDefault(MINE_ITEM_HDYE, 0));
+        HashMap<String, Object> bc = new HashMap<>();
+        bc.put("style", mineCostList(MINE_HAIR_STYLE_COST, have)); bc.put("dye", mineCostList(MINE_HAIR_DYE_COST, have));
+        bc.put("styleCan", mineCostOk(MINE_HAIR_STYLE_COST, have)); bc.put("dyeCan", mineCostOk(MINE_HAIR_DYE_COST, have));
+        out.put("barber", bc);
     }
 
     /** 명품상점 -- action: buy(code, 사면 바로 입음) / wear(code, 빈 값 + slot = 그 부위 기본으로) / gender(성별 전환, 은광석 10개). */
@@ -12066,9 +12088,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_GENDER, g);
             return mineGearResult(userName, true, "✨ 명품상점: 짜잔~ " + (g == 1 ? "여성" : "남성") + " 캐릭터로 바뀌었어요! (" + mineCostText(MINE_GENDER_COST) + " 사용)");
         }
+        if ("hairStyle".equals(action) || "hairDye".equals(action)) { // [2026-11-20] 미용실 -- code = 순번(모양 0 = 기본, 염색 0 = 안 함)
+            if (!mineAtNpc(dao.selectMineUser(userName), "barber")) return mineGearResult(userName, false, "미용실에서만 바꿀 수 있어요.");
+            boolean style = "hairStyle".equals(action);
+            int idx = -1;
+            try { idx = Integer.parseInt(code); } catch (Exception e) { }
+            if (idx < 0 || idx > (style ? MINE_HAIR_STYLES.length - 1 : MINE_HAIR_DYES.length)) return mineGearResult(userName, false, "그런 머리는 없어요.");
+            String key = style ? MINE_ITEM_HSTYLE : MINE_ITEM_HDYE;
+            if (items.getOrDefault(key, 0) == idx) return mineGearResult(userName, false, "💇 지금 그 머리예요.");
+            String[][] cost = style ? MINE_HAIR_STYLE_COST : MINE_HAIR_DYE_COST;
+            if (idx > 0) { // 기본으로 되돌리기는 무료
+                if (!mineCostOk(cost, mineOreHave(userName))) return mineGearResult(userName, false, "💇 미용실: 재료가 모자라요. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")");
+                mineTakeCost(userName, cost, 1);
+            }
+            dao.upsertMineItem(userName, key, idx);
+            String nm = style ? MINE_HAIR_STYLES[idx][1] : idx == 0 ? "원래 색" : MINE_HAIR_DYES[idx - 1][0];
+            return mineGearResult(userName, true, "💇 짜잔~ " + (style ? "머리 모양을 「" + nm + "」(으)로 바꿨어요!" : idx == 0 ? "염색을 지웠어요." : "머리를 「" + nm + "」 색으로 물들였어요!") + (idx > 0 ? " (" + mineCostText(cost) + " 사용)" : ""));
+        }
         if ("wear".equals(action) && (code == null || code.isEmpty())) {
             if (slot == null || !java.util.Arrays.asList(MINE_LOOK_SLOTS).contains(slot)) return mineGearResult(userName, false, "잘못된 부위예요.");
             dao.upsertMineItem(userName, "LOOK_" + slot.toUpperCase(), 0);
+            if ("hair".equals(slot)) dao.upsertMineItem(userName, MINE_ITEM_HDYE, 0); // [2026-11-20] 머리 색을 바꾸면 염색은 지운다
             return mineGearResult(userName, true, "기본 모습으로 돌아갔어요.");
         }
         MineCos c = mineCos(code);
@@ -12083,6 +12123,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return mineGearResult(userName, false, c.name + "은(는) 아직 안 샀어요.");
         }
         dao.upsertMineItem(userName, "LOOK_" + c.slot.toUpperCase(), MINE_COS.indexOf(c) + 1);
+        if ("hair".equals(c.slot)) dao.upsertMineItem(userName, MINE_ITEM_HDYE, 0); // [2026-11-20] 명품상점 머리 색을 입으면 미용실 염색은 지운다
         return mineGearResult(userName, true, "✨ " + c.name + ("buy".equals(action) ? " 구매! 바로 입었어요. (" + mineCostText(c.cost) + " 사용)" : " 착용!"));
     }
 

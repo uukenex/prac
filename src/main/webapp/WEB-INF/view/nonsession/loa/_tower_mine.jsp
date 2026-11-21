@@ -724,7 +724,7 @@ var TowerMine = (function () {
     Vd.roof = [0, 1].map(function (s) { return tile('#2e1a2e', [['#261426', 10], ['#3a2238', 6]], 970 + s, function (g) { for (var i = 0; i < 4; i++) { px(g, '#1a0e1a', 0, i * 4 + 3, T, 1); px(g, '#4a2a46', (i * 5 + s * 3) % 13, i * 4, 3, 1); } }); });
     Vd.ridge = [0, 1].map(function (s) { return over(Vd.roof[s], function (g) { g.clearRect(0, 0, T, 6); g.drawImage(Vd.ground[0], 0, 0, T, 6, 0, 0, T, 6); px(g, '#1a0e1a', 0, 5, T, 2); px(g, '#2e1a2e', s ? 2 : 9, 0, 3, 6); px(g, '#2e1a2e', s ? 3 : 10, 0, 1, 1); px(g, '#c8381a', s ? 3 : 10, 1); }); });
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
-    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), priest: npcSprite('priest'), guide: npcSprite('guide'),
+    tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), barber: npcSprite('barber') /* [2026-11-20] 미용실 */, priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
       ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), alchemist: npcSprite('smelter'), /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
@@ -842,7 +842,7 @@ var TowerMine = (function () {
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
     var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry';
     var so = kind === 'smelter' || kind === 'refiner', gc = kind === 'gemcutter', ar = kind === 'artisan', ah = kind === 'archishop', rf = kind === 'refiner'; // [2026-11-17] 악마 광석 정제사 // [2026-10-28] 다도해 상인(푸른 옷) // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
-    var body = rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
+    var body = kind === 'barber' ? '#e86aa0' : rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
@@ -3490,6 +3490,7 @@ var TowerMine = (function () {
     if (n.kind === 'smith') openSmith(n, 'menu');
     else if (n.kind === 'captain') openSmith(n, 'captain'); // [2026-10-24] 선장 퀘스트 창
     else if (n.kind === 'boutique') openSmith(n, 'boutique'); // [2026-10-24] 명품상점
+    else if (n.kind === 'barber') { tryLook = null; openSmith(n, 'barber'); } // [2026-11-20] 미용실
     else if (n.kind === 'priest') { priestConfirm = false; openSmith(n, 'priest'); } // [2026-10-24] 왕도 성당 신부 ([2026-10-28] 환생 확인 창은 닫힌 채로)
     else if (n.kind === 'elementalist') openSmith(n, 'elem'); // [2026-10-29]
     else if (n.kind === 'swordmaster') { setAuto(false); openSmith(n, 'aura'); } // [2026-11-04] 검기 사범
@@ -3710,6 +3711,31 @@ var TowerMine = (function () {
       h += '</div></div>';
     });
     return h;
+  }
+  /** [2026-11-20] 미용실 -- 머리 모양(10종) / 염색(20색). 그림을 누르면 미리 보기, 버튼으로 바꾸기(기본으로 되돌리기는 무료). */
+  function barberHtml(n) {
+    var lk = st.look || {}, show = tryLook || lk, b = st.barber || {}, hs = st.hairStyles || [], hd = st.hairDyes || [], sc = st.hairStyleCur | 0, dc = st.hairDyeCur | 0;
+    var h = npcHead('💇 ' + (n ? n.name : '미용실'), false) + talkBlock(n, n ? n.line : '')
+        + '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(show, d) + '" alt="">'; }).join('') + '</div>'
+        + '<div class="mine-smith-say">' + (tryLook ? '👀 미리 보기: <b>' + tryName + '</b> <button type="button" class="mine-mini-btn" onclick="TowerMine.tryOn(\'me\')">내 모습</button>' : '지금 내 모습') + '<br><small>그림을 누르면 미리 볼 수 있어요.</small></div></div>';
+    h += '<div class="cos-slot"><div class="cos-slot-h">💇 머리 모양 <small>' + costHtml(b.style) + '</small></div><div class="cos-car" data-slot="hstyle">';
+    hs.forEach(function (s, i) {
+      var cur = i === sc, lkS = lookWith('hairStyle', s.code || undefined);
+      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lkS, 'right') + '" alt="' + s.name + '" onclick="TowerMine.barberTry(\'style\',' + i + ')"><div class="cos-nm">' + s.name + '</div>'
+          + (cur ? '<span class="mine-worn">지금 머리</span>' : '<button type="button" ' + (i > 0 && !b.styleCan ? 'data-lack="1" ' : '') + 'onclick="TowerMine.barber(\'hairStyle\',' + i + ')">' + (i ? '바꾸기' : '되돌리기') + '</button>') + '</div>';
+    });
+    h += '</div></div><div class="cos-slot"><div class="cos-slot-h">🎨 염색 <small>' + costHtml(b.dye) + '</small>' + (dc ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.barber(\'hairDye\',0)">원래 색으로</button>' : '') + '</div><div class="cos-car" data-slot="hdye">';
+    hd.forEach(function (c, i) {
+      var cur = i + 1 === dc;
+      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lookWith('hair', c.color), 'down') + '" alt="' + c.name + '" onclick="TowerMine.barberTry(\'dye\',' + i + ')"><div class="cos-nm"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.color + ';border:1px solid #0006;vertical-align:middle"></span> ' + c.name + '</div>'
+          + (cur ? '<span class="mine-worn">물들임</span>' : '<button type="button" ' + (!b.dyeCan ? 'data-lack="1" ' : '') + 'onclick="TowerMine.barber(\'hairDye\',' + (i + 1) + ')">물들이기</button>') + '</div>';
+    });
+    return h + '</div></div>';
+  }
+  function barberTry(kind, i) {
+    if (kind === 'style') { var s = (st.hairStyles || [])[i]; if (s) { tryLook = lookWith('hairStyle', s.code || undefined); tryName = s.name; } }
+    else { var c = (st.hairDyes || [])[i]; if (c) { tryLook = lookWith('hair', c.color); tryName = c.name + ' 염색'; } }
+    renderSmith(smithNpc);
   }
   function lookAct(action, code, slot) {
     tryLook = null; // 사거나 입으면 입어보기 대신 실제 모습
@@ -5233,6 +5259,7 @@ var TowerMine = (function () {
     boatwright: { skin: '#e0a878', hair: '#6a4a22', cloth: '#8a6a3a', clothD: '#6a4a22' },
     ferry: { skin: '#e8b48a', hair: '#2a2a2a', cloth: '#2a5aa8', clothD: '#1a3a78' },
     boutique: { skin: '#f2c194', hair: '#2a1d10', cloth: '#7b3fa0', clothD: '#5a2a78' },
+    barber: { skin: '#f6d0b0', hair: '#f58fb8', cloth: '#f4f0f0', clothD: '#e86aa0' }, // [2026-11-20] 미용사(분홍 머리, 흰 가운)
     priest: { skin: '#f0c8a0', hair: '#b8bec8', cloth: '#24212b', clothD: '#141218' },
     guide: { skin: '#f2c194', hair: '#7a4a26', cloth: '#2f8a5a', clothD: '#1f6342' },
     blackmarket: { skin: '#c8a080', hair: '#1a1322', cloth: '#2a1f33', clothD: '#1a1322' }, // [2026-10-26]
@@ -5515,6 +5542,7 @@ var TowerMine = (function () {
       return;
     }
     if (smithView === 'boutique') { carouselHtml(boutiqueHtml(n)); return; }
+    if (smithView === 'barber') { carouselHtml(barberHtml(n)); return; } // [2026-11-20] 미용실
     if (smithView === 'menu') {
       el.smith.innerHTML = npcHead(map && map.id === 'city' ? '🏰 왕도 대장간' : '🔨 대장간', false) // [2026-10-25] 왕도 대장장이(더 높은 단계)
           + talkBlock(n, n ? n.line : '')
@@ -5574,7 +5602,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax', 'ringMaps', 'ringReadyAt'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax', 'ringMaps', 'ringReadyAt', 'hairStyles', 'hairDyes', 'hairStyleCur', 'hairDyeCur', 'barber'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.ringOff) { st.ringMaps = null; st.ringReadyAt = 0; } // [2026-11-20] 용의 반지를 빼면 지도 이동도 끝
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
@@ -8908,7 +8936,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, barber: function (a, i) { tryLook = null; lookAct(a, String(i)); }, barberTry: barberTry, /* [2026-11-20] 미용실 */ dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

@@ -243,7 +243,8 @@ window.MineChar = (function () {
     if (KN && !KN.lord && dir === 'down') { px(g, KN.a2, 0, 8, 3, 6); px(g, KN.acc, 1, 9, 1, 4); px(g, KN.a3, 1, 10, 1, 1); } // 단원 방패(왼팔)
     if (KN && !KN.lord && dir === 'up') { px(g, KN.a2, 5, 8, 6, 5); px(g, KN.acc, 7, 9, 2, 3); px(g, KN.a3, 6, 8, 1, 1); } // 뒤에서 보면 등에 멘 방패
     px(g, skin, 4, 1, 8, 6);
-    var longHair = fem && !KN; // [2026-11-19] 투구를 쓰면 긴 머리는 투구 안으로
+    var hs16 = lk.hairStyle || (fem ? 'long' : 'boy'); // [2026-11-20] 머리 모양 -- 16x16은 길이만(+트윈/포니/땋은 머리 꼬리)
+    var longHair = !KN && (hs16 === 'long' || hs16 === 'wavy'); // [2026-11-19] 투구를 쓰면 긴 머리는 투구 안으로
     if (dir === 'up') { px(g, hair, 4, 0, 8, 6); px(g, shade(hair, 0.15), 6, 1, 4, 1); if (longHair) px(g, hair, 4, 6, 8, 3); }
     else if (side) { px(g, hair, 4, 0, 8, 3); px(g, hair, 4, 3, 3, longHair ? 6 : 3); px(g, '#1a1a1a', 10, 4); px(g, '#f29b8a', 10, 5); }
     else {
@@ -252,6 +253,12 @@ window.MineChar = (function () {
       if (fem) { px(g, '#1a1a1a', 5, 3); px(g, '#1a1a1a', 10, 3); px(g, '#d9536f', 7, 6, 2, 1); } // 속눈썹 + 입술
     }
     if (tailC && dir === 'up') [[8, 11], [9, 12], [10, 12], [11, 11], [12, 10], [12, 9]].forEach(function (q, i) { px(g, i >= 4 ? tailD : tailC, q[0], q[1]); });
+    if (!KN) { // [2026-11-20] 머리 모양 꼬리(16x16)
+      if (hs16 === 'twin') { if (dir === 'right') px(g, hair, 3, 2, 1, 5); else { px(g, hair, 3, 2, 1, 5); px(g, hair, 12, 2, 1, 5); } }
+      if (hs16 === 'ponytail') { if (dir === 'up') px(g, hair, 7, 5, 2, 3); else if (side) px(g, hair, 3, 2, 1, 4); }
+      if (hs16 === 'side' && dir !== 'right') px(g, hair, dir === 'up' ? 4 : 11, 5, 1, 4);
+      if (hs16 === 'bob' && dir !== 'up') { px(g, hair, 4, 3, 1, 3); px(g, hair, side ? 4 : 11, 3, 1, 3); }
+    }
     if (KN) { // [2026-11-19] 기사단 투구 -- 앞: 눈구멍 + 콧대, 옆: 눈구멍(얼굴 쪽), 뒤: 통 투구. 꼭대기 깃
       px(g, KN.a2, 4, 0, 8, 1); // 정수리(머리카락이 투구 위로 안 비치게)
       if (dir === 'up') { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, KN.acc, 7, 0, 2, 1); px(g, KN.acc, 7, 1, 2, 3); px(g, KN.accD, 7, 4, 2, 1); }
@@ -503,8 +510,18 @@ window.MineChar = (function () {
     var hk = function (n) { if (d.hook && d.hook[n]) d.hook[n](add, { side: side, back: back, front: front, cx: cx }); }; // [2026-11-20] 플레이어 코스튬 갈고리(back/body/head)
     var jag = function (bot, p, a) { return function (u, v) { return v < bot - hdSaw(p, a)(u); }; };
     // -- 머리 뒤쪽(정면/옆: 몸 뒤, 뒤: 몸 앞에 다시 그림)
+    // [2026-11-20] "머리 스타일 골고루 추가" -- 짧은 머리 / 삐죽 머리 / 단정한 단발 / 보브컷 / 긴 생머리 / 웨이브 / 트윈테일 / 포니테일 / 올림머리 / 옆으로 땋은 머리
+    var shortS = st === 'boy' || st === 'spiky' || st === 'ponytail', tieC = d.tieC || '#e84a6a';
     var backHair = function () {
       if (st === 'long') add('hair', H, hdAnd(side ? hdEll(27, 31, 13.5, 21.5) : hdEll(32, 31, 17, 22), jag(51, 5, 3)));
+      if (st === 'wavy') add('hair', H, hdAnd(side ? hdEll(26.5, 31, 14.5, 22.5) : hdEll(32, 31, 18.6, 22.5), function (u, v) { return v < 53 - Math.abs(Math.sin(u * 0.9)) * 4 && !(v > 34 && Math.abs(Math.sin(v * 0.55 + u * 0.2)) < 0.08); }));
+      if (st === 'spiky') add('hair', H, side ? hdEll(29.5, 22.5, 14.8, 12) : hdEll(32, 22, 16, 11.8));
+      if (st === 'ponytail') {
+        add('hair', H, side ? hdEll(29.5, 22.5, 14.8, 12) : hdEll(32, 22, 16, 11.8));
+        if (side) { add('hair', H, hdOr(hdEll(18.5, 17.5, 4, 3.6), hdEll(15.8, 25, 3.6, 6.4), hdAnd(hdEll(15.4, 34, 3, 6.4), jag(40, 2.5, 1.5)))); add('acc', tieC, hdEll(19.5, 17, 1.6, 2.2)); }
+        if (back) { add('hair', H, hdOr(hdEll(32, 14, 4.2, 3.6), hdEll(32, 23, 3.8, 7), hdAnd(hdEll(32, 33, 3.2, 6.6), jag(40, 2.5, 1.5)))); add('acc', tieC, hdEll(32, 16.4, 2.4, 1.4)); }
+      }
+      if (st === 'side') add('hair', H, side ? hdEll(29.5, 24, 15, 12.5) : hdEll(32, 24, 16.5, 12.8));
       if (st === 'twin') {
         if (side) add('hair', H, hdAnd(hdEll(18.5, 37, 5.5, 15), jag(51, 4, 2)));
         else { add('hair', H, hdAnd(hdEll(13.5, 37, 5.5, 15), jag(51, 4, 2))); add('hair', H, hdAnd(hdEll(50.5, 37, 5.5, 15), jag(51, 4, 2))); }
@@ -575,20 +592,26 @@ window.MineChar = (function () {
     } else if (side && !d.noAcc) add('acc', A, hdOr(hdTri(36, 35, 36, 39.5, 39.5, 37.2), hdEll(38.6, 37.2, 1.4, 1.4)));
     if (!back && !d.noWeapon) weapon(); // [2026-11-20] 플레이어는 손에 든 것을 따로(gear32)
     hk('body');
+    if (st === 'side' && !side) { // [2026-11-20] 옆으로 땋은 머리 -- 어깨 앞으로 늘어진 땋은 머리(앞: 오른쪽 어깨, 뒤: 왼쪽 등)
+      var bx0 = back ? 20 : 44, bs = back ? -1 : 1;
+      add('hair', H, hdOr(hdEll(bx0, 30, 2.8, 2.8), hdEll(bx0 + 0.6 * bs, 34.6, 2.6, 2.6), hdEll(bx0 + 1 * bs, 39.2, 2.4, 2.4), hdEll(bx0 + 1.2 * bs, 43.6, 2.2, 2.2)));
+      add('acc', tieC, hdEll(bx0 + 1.3 * bs, 46.6, 1.8, 1.3));
+    }
     // -- 머리
     add('skin', S, hdRect(29.3, 32, 34.7, 35.5));
     add('hair', H, head);
     if (back) backHair();
+    if (st === 'spiky') add('hair', H, side ? hdOr(hdTri(18, 14, 21, 3, 27, 10), hdTri(24, 9, 28, 0.6, 33, 8), hdTri(31, 8.5, 36, 0.4, 40, 9), hdTri(37, 10, 43, 3, 44, 13)) : hdOr(hdTri(16.5, 15, 19.5, 3.5, 26, 10), hdTri(23.5, 9.5, 27.5, 0.6, 32.5, 8.5), hdTri(31.5, 8.5, 36.5, 0.4, 40.5, 9.5), hdTri(38, 10, 44.5, 3.5, 47.5, 15))); // 삐죽 머리
     if (st === 'boy') add('hair', H, side ? hdOr(hdTri(20, 12, 24, 3.5, 29, 10), hdTri(27, 9, 31, 1.5, 36, 8.5), hdTri(34, 9, 40, 3, 42, 11)) : hdOr(hdTri(19, 13, 22, 4, 28, 9.5), hdTri(26, 9, 31, 1.2, 36, 8.5), hdTri(35, 9, 41, 3.5, 45, 13))); // 정수리 삐침
     if (front) {
       add('skin', S, hdAnd(hdEll(32, 25.5, 12.2, 10.3), function (u, v) { return v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
-      if (st === 'boy') add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 28.5), hdEll(19, 23, 3, 7)), hdAnd(hdRect(43.4, 19, 46.6, 28.5), hdEll(45, 23, 3, 7)))); else // 남자 옆머리는 짧게
+      if (shortS) add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 28.5), hdEll(19, 23, 3, 7)), hdAnd(hdRect(43.4, 19, 46.6, 28.5), hdEll(45, 23, 3, 7)))); else // 짧은 머리들은 옆머리도 짧게
       add('hair', H, hdOr(hdAnd(hdRect(17.4, 19, 20.6, 34), hdEll(19, 25, 3, 10)), hdAnd(hdRect(43.4, 19, 46.6, 34), hdEll(45, 25, 3, 10))));
       if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9; }));
     } else if (side) {
       add('skin', S, hdAnd(hdEll(36.5, 25.5, 10, 10.3), function (u, v) { return u > 31.5 && v > 19.2 + hdSaw(5.2, 3.6)(u + 1.3); }));
       add('skin', S, hdAnd(hdEll(40.5, 27, 6.6, 8.6), function (u, v) { return v > 21; })); // 볼/턱이 앞으로
-      add('hair', H, st === 'boy' ? hdAnd(hdRect(28, 18, 32, 28), hdEll(30, 23, 3, 6)) : hdAnd(hdRect(28, 18, 32, 34), hdEll(30, 26, 3, 9.5))); // 귀 앞 옆머리
+      add('hair', H, shortS ? hdAnd(hdRect(28, 18, 32, 28), hdEll(30, 23, 3, 6)) : hdAnd(hdRect(28, 18, 32, 34), hdEll(30, 26, 3, 9.5))); // 귀 앞 옆머리
       if (st === 'bob') add('hair', H, hdAnd(head, function (u, v) { return v < 21.5 && v > 9 && u < 44; }));
     }
     if (d.ears) {
@@ -635,7 +658,7 @@ window.MineChar = (function () {
     var top = lookPart(lk.top), hat = lookPart(lk.hat), shoe = lookPart(lk.shoes), fem = lk.gender === 1;
     var robe = top.c || '#3f5fd1', robeD = shade(robe, -0.28), pants = lk.bottom || '#3a2b22', ts = top.s, hs = hat.s, hc = hat.c || '#c8402a', hdk = shade(hc, -0.3);
     var KN = ts === 'knight' || ts === 'knightlord' ? (ts === 'knightlord' ? { a1: '#d9b44a', a2: '#a8842a', a3: '#f6e3a0', acc: '#c8202a', accD: '#8a1018', lord: true } : { a1: '#9aa3b6', a2: '#666f82', a3: '#dfe4ee', acc: '#3557a8', accD: '#22386e', lord: false }) : null;
-    var d = { _k: JSON.stringify(lk), hair: lk.hair || '#2b1d16', style: KN ? 'boy' : fem ? 'long' : 'boy', top: robe, skirt: robe, legs: pants, shoes: shoe.c || '#5b3a1e',
+    var d = { _k: JSON.stringify(lk), hair: lk.hair || '#2b1d16', style: KN ? 'boy' : lk.hairStyle || (fem ? 'long' : 'boy'), boyFace: !fem, top: robe, skirt: robe, legs: pants, shoes: shoe.c || '#5b3a1e',
       eye: fem ? '#7a4ac8' : '#3a4a6a', acc: '#e84a6a', job: 0, noWeapon: true, pants: !fem ? pants : null, noAcc: !fem };
     if (!ts || ts === 'cape' || ts === 'armor') d.belt = '#7a4a1f';
     if (ts === 'maid') { d.apron = true; d.frill = true; d.frillCol = '#f8f8fa'; d.noAcc = true; }
@@ -780,7 +803,7 @@ window.MineChar = (function () {
       if (gb && gb !== g && ((g === 'hair' && gb === 'skin') || (g === 'top' && gb !== 'top') || (g === 'skirt' && gb === 'leg'))) out[i] = hdShade(out[i], -0.3);
     }
     if (!back && !d.noFace) { // 눈 / 입 / 볼 -- [2026-11-20] 기사단 투구면 얼굴 없음
-      var boy = d.style === 'boy';
+      var boy = d.boyFace != null ? !!d.boyFace : d.style === 'boy'; // [2026-11-20] 머리 모양과 따로 -- 플레이어는 성별로
       var eye = function (u0, u1) {
         var x0 = Math.round(u0 / k), x1 = Math.max(x0 + 1, Math.round(u1 / k) - 1), y0 = Math.round((boy ? 24.8 : 23.5) / k), y1 = Math.max(y0 + 2, Math.round((boy ? 29.3 : 30) / k) - 1), xx, yy;
         if (boy) for (xx = x0; xx <= x1; xx++) out[Math.round(21.6 / k) * N + xx] = hdShade(H, -0.45); // 눈썹
