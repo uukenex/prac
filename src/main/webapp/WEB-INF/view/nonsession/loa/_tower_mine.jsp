@@ -2294,7 +2294,7 @@ var TowerMine = (function () {
     var twd = twDecorCell(); // [2026-11-16] 탑 방 한가운데 상자/제단/샘은 돌아서 간다
     if (twd && twd[0] === x && twd[1] === y) return false;
     if (antGate(x)) return false; // [2026-11-04] 사막 서쪽 방벽 문 -- Lv.41 미만은 서쪽으로 못 지나간다(바람에도)
-    return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat) || !!(map && map.sail && seaBoatOk()))); // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배, [2026-11-18] 남쪽 바닷가 = 배가 있으면
+    return WALK.indexOf(c) >= 0 || (c === '~' && (!!(st && st.waterWalk) || !!(map && map.boat) || !!(map && map.sail && (seaBoatOk() || cellAt(P.x, P.y) === '~')))); /* [2026-11-21] 고침: 배가 없거나 부서진 채 물 위에 있으면 물로도 움직여 뭍으로 나올 수 있게(갇히지 않게) */ // [2026-10-24] 용왕의 반지 = 물 위 걷기, [2026-10-28] 다도해 뱃길 = 배, [2026-11-18] 남쪽 바닷가 = 배가 있으면
   }
   function pad2(n) { return (n < 10 ? '0' : '') + n; }
   // [2026-10-23] 스태미너 -> 곡괭이 내구도(캘 때마다 1, 시간 회복 없음, 마을 대장장이에게 광석으로 강화 = 최대/현재 함께 증가)
@@ -2655,6 +2655,9 @@ var TowerMine = (function () {
             if (now - lastBumpT > 2200 || lastBump !== 'twdoor') msg('⚔️ 문이 쇠창살로 닫혀 있어요. 방을 지키는 몬스터를 쓰러뜨려야 열려요.', 2200);
             lastBump = 'twdoor'; lastBumpT = now;
           } else enterPortal(nx, ny, now);
+        } else if (map.sail && cellAt(nx, ny) === '~' && !seaBoatOk()) { // [2026-11-21] 배가 없거나 부서져 물로 못 나갈 때 -- 아무 말 없이 막히던 것
+          if (now - lastBumpT > 2500 || lastBump !== 'noboat') msg(st && st.archi && st.archi.boat ? '⛵ 배가 부서져 있어 물로 나갈 수 없어요. 다도해 본섬 배 목수에게 고쳐 달라고 하세요.' : '⛵ 1인용 배가 있어야 물 위로 나갈 수 있어요.', 2400);
+          lastBump = 'noboat'; lastBumpT = now;
         } else if (cellAt(nx, ny) === 'N') {
           talk(npcAt[nx + ',' + ny], now);
         } else if (antGate(nx) && (now - lastBumpT > 2500 || lastBump !== 'antgate')) { // [2026-11-04] 방벽 문 경비병

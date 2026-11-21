@@ -6222,6 +6222,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (vastSkip) { ax = target.w - 4; ay = Math.max(2, Math.min(target.h - 3, target.h / 2)); } // [2026-11-18] 바다 위 오른쪽(남쪽 바닷가 쪽 끝 조금 안) // [2026-11-18] 워프 포인트 바로 아래
         boolean landOk = mineWalk(target, ax, ay, water); // [2026-10-28] "섬에서 뱃길로 나오면 그 섬 입구 쪽에" -- 뱃길(배로 물 위)은 물 칸도 내리는 칸(예전엔 걸을 칸이 아니라고 시작점으로 보냈다)
         int tx = landOk ? ax : target.spawnX, ty = landOk ? ay : target.spawnY;
+        String sailMsg = "";
+        if (target.sail() && !target.boat() && water < 1 && !target.walkable(tx, ty) && !mineCanSail(userName, items)) {
+            // [2026-11-21] 고침: "다도해 뱃길에서 배 타고 본섬으로 오면 못 움직인다" -- 뱃길 끝을 넘으면 본섬/섬의 물 칸에 내리는데, 배가 부서졌거나(체력 0) 없으면
+            //  화면은 물 위로 못 가게 막아(seaBoatOk) 물 한가운데 갇혔다. 그럴 땐 가장 가까운 뭍에 내린다.
+            int[] ld = mineNearLand(target, tx, ty);
+            if (ld != null) { tx = ld[0]; ty = ld[1]; sailMsg = "⛵ 배가 부서져 있어 가까운 뭍에 내렸어요. (배 목수에게 고쳐 달라고 하세요) "; }
+        }
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
         String chaosMob = S5MineMap.CHAOS.equals(target.id) ? mineChaosStart(userName, target, now) : null; // [2026-11-17] 혼돈스러운 마계 -- 악마화된 몬스터 하나
@@ -6251,7 +6258,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (S5MineMap.ARCHI.equals(target.id) && items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) < 1) // [2026-10-28] 다도해 마을도 한 번 배로 와 봐야 이동 안내원 목적지
             dao.upsertMineItem(userName, MINE_ITEM_VISIT_ARCHI, 1);
         out.put("ok", true);
-        out.put("message", llMsg + (chaosMob != null ? "🌌 마계의 문이 당신을 집어삼켰어요... 혼돈스러운 마계! " + chaosMob + "이(가) 깨어났어요 -- 쓰러뜨려야 귀환의 문이 열려요. " : abyss ? "🌀 마계의 문이 당신을 집어삼켰다가... " + target.name + "에 내던졌어요! " : "") + (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요." + (MINE_TELE_GOLD > 0 ? " (금광석 " + MINE_TELE_GOLD + "개 사용)" : "") : p.kind == 'o' ? "⛵ 배를 띄워 " + target.name + "(으)로 나왔어요." /* [2026-11-18] 물가에 닿으면 */ : "🚪 " + target.name + "(으)로 이동했어요.")
+        out.put("message", sailMsg + llMsg + (chaosMob != null ? "🌌 마계의 문이 당신을 집어삼켰어요... 혼돈스러운 마계! " + chaosMob + "이(가) 깨어났어요 -- 쓰러뜨려야 귀환의 문이 열려요. " : abyss ? "🌀 마계의 문이 당신을 집어삼켰다가... " + target.name + "에 내던졌어요! " : "") + (ship ? "⛵ 배를 타고 " + target.name + "에 도착했어요." : tele ? "🌀 텔레포트! " + target.name + "(으)로 왔어요." + (MINE_TELE_GOLD > 0 ? " (금광석 " + MINE_TELE_GOLD + "개 사용)" : "") : p.kind == 'o' ? "⛵ 배를 띄워 " + target.name + "(으)로 나왔어요." /* [2026-11-18] 물가에 닿으면 */ : "🚪 " + target.name + "(으)로 이동했어요.")
                 + (mineLv(row) < mineMinLv(target) ? " ⚠️ 권장 광산 레벨 " + mineMinLv(target) + " (지금 Lv." + mineLv(row) + ") -- 몬스터가 강하니 조심하세요!" : ""));
         out.put("state", mineState(userName));
         return out;
@@ -6796,9 +6803,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
             }
         }
-        if (now < mineHermitBackAt) return null;
+        // [2026-11-21] "누군가 기능을 사용해도 남아 있도록" -- 이제 사라지지 않는다(돌아오는 시각은 안 본다). 자리는 맵 리셋(2일)마다 바뀐다(주기 번호를 시드에).
         long gen = mineHermitGen;
-        java.util.Random r = new java.util.Random(gen * 7919L + 20261031L);
+        java.util.Random r = new java.util.Random(gen * 7919L + 20261031L + S5MineMap.activeCycle() * 104729L);
         int mi = r.nextInt(mineHermitMaps().length);
         S5MineMap map = S5MineMap.get(mineHermitMaps()[mi]);
         String key = gen + ":" + map.version();
@@ -6854,9 +6861,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
             }
         }
-        if (now < mineArmorerBackAt) return null;
+        // [2026-11-21] 은둔한 대장장이와 같이 사라지지 않는다 -- 자리는 맵 리셋마다 바뀐다.
         long gen = mineArmorerGen;
-        java.util.Random r = new java.util.Random(gen * 6007L + 20261120L);
+        java.util.Random r = new java.util.Random(gen * 6007L + 20261120L + S5MineMap.activeCycle() * 104729L);
         int mi = r.nextInt(mineArmorerMaps().length);
         S5MineMap map = S5MineMap.get(mineArmorerMaps()[mi]);
         if (map == null) return null;
@@ -6898,14 +6905,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (t.isEmpty()) { out.put("message", "...더 두드릴 데가 없군."); return out; }
             String[][] cost = mineArmorerCost(w, g);
             if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
-            long backAt;
-            synchronized (MINE_ARMORER_LOCK) {
-                if (now < mineArmorerBackAt) { out.put("message", "...(아무도 없다)"); return out; }
-                backAt = now + MINE_HERMIT_GONE_MS;
-                mineArmorerBackAt = backAt;
-                mineArmorerGen++;
-            }
-            dao.upsertConfigValue(MINE_ARMORER_KEY, backAt + "|" + mineArmorerGen, "web mine armorer -- back at (epoch ms)|generation");
+            // [2026-11-21] 올려도 사라지지 않는다(예전: 6시간 사라지고 다른 자리로)
             mineTakeCost(userName, cost, 1);
             int r = RND.nextInt(100), step = r < 60 ? 0 : r < 90 ? 1 : 2;
             int ng = t.get(Math.min(step, t.size() - 1));
@@ -6966,14 +6966,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (t.isEmpty()) { out.put("message", "...더 올릴 수 없군."); return out; }
             String[][] cost = mineHermitCost(w, g);
             if (!mineCostOk(cost, have)) { out.put("message", "...재료가 모자라. (" + mineCostText(cost) + " 필요" + mineLackText(cost, userName) + ")"); return out; }
-            long backAt;
-            synchronized (MINE_HERMIT_LOCK) { // [2026-10-31] 먼저 올린 한 사람만 -- 그 즉시 6시간 사라진다(세대가 바뀌어 다음엔 다른 곳에)
-                if (now < mineHermitBackAt) { out.put("message", "...(아무도 없다)"); return out; }
-                backAt = now + MINE_HERMIT_GONE_MS;
-                mineHermitBackAt = backAt;
-                mineHermitGen++;
-            }
-            dao.upsertConfigValue(MINE_HERMIT_KEY, backAt + "|" + mineHermitGen, "web mine hermit -- back at (epoch ms)|generation");
+            // [2026-11-21] "누군가 기능을 사용해도 남아 있도록" -- 올려도 사라지지 않는다(예전: 먼저 올린 한 사람 뒤 6시간 사라지고 다른 자리로)
             mineTakeCost(userName, cost, 1);
             int r = RND.nextInt(100), step = r < 60 ? 0 : r < 90 ? 1 : 2; // 1단계 60%, 2단계 30%, 3단계 10%
             int ng = t.get(Math.min(step, t.size() - 1));
@@ -10574,6 +10567,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_BOAT_BUF = new java.util.concurrent.ConcurrentHashMap<>();
     static long mineBoatPending(String userName) { long[] b = userName == null ? null : MINE_BOAT_BUF.get(userName); if (b == null) return 0; synchronized (b) { return b[0]; } }
     /** 아직 안 쓴 피해까지 친 {지금 체력, 최대 체력}. */
+    /** [2026-11-21] 배를 띄울 수 있는지(1인용 배가 있고 체력이 남음) -- 화면 seaBoatOk와 같은 규칙. */
+    static boolean mineCanSail(String userName, Map<String, Integer> items) { return items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0 && mineBoatHpU(userName, items)[0] > 0; }
+    /** [2026-11-21] (x, y)에서 가장 가까운, 시작점에서 걸어서 닿는 뭍 칸(넘어가는 칸 제외), 없으면 null -- 떨어진 작은 섬에 내려 다시 갇히지 않게. */
+    static int[] mineNearLand(S5MineMap m, int x, int y) {
+        boolean[] ok = new boolean[m.w * m.h];
+        java.util.ArrayDeque<int[]> q = new java.util.ArrayDeque<>();
+        if (m.walkable(m.spawnX, m.spawnY)) { ok[m.spawnY * m.w + m.spawnX] = true; q.add(new int[] { m.spawnX, m.spawnY }); }
+        int[][] dv = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+        while (!q.isEmpty()) {
+            int[] c = q.poll();
+            for (int[] d : dv) { int nx = c[0] + d[0], ny = c[1] + d[1]; if (!m.inside(nx, ny) || ok[ny * m.w + nx] || !m.walkable(nx, ny)) continue; ok[ny * m.w + nx] = true; q.add(new int[] { nx, ny }); }
+        }
+        for (int r = 1; r <= Math.max(m.w, m.h); r++) for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) != r) continue;
+            int xx = x + dx, yy = y + dy;
+            if (m.inside(xx, yy) && ok[yy * m.w + xx] && m.portalAt(xx, yy) == null) return new int[] { xx, yy };
+        }
+        return null;
+    }
     static long[] mineBoatHpU(String userName, Map<String, Integer> items) { long[] h = mineBoatHp(items); h[0] = Math.max(0, h[0] - mineBoatPending(userName)); return h; }
     void mineBoatFlush(String userName) {
         long[] b = userName == null ? null : MINE_BOAT_BUF.get(userName);
