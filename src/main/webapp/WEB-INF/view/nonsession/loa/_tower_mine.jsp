@@ -3433,7 +3433,7 @@ var TowerMine = (function () {
         + (rows || '<div class="mine-smith-say">아직 갈 수 있는 보스룸이 없어요.</div>') + adm;
   }
   function hermitNpc() { return { x: hermit.x, y: hermit.y, kind: 'hermit', name: '???', line: '...' }; }
-  function armorerNpc() { return { x: armorer.x, y: armorer.y, kind: 'armorer', name: '떠돌이 갑옷장이', line: '...쇠는 달궜을 때 두드려야지. 갑옷을 보여 보게.' }; }
+  function armorerNpc() { return { x: armorer.x, y: armorer.y, kind: 'wanderarmor', name: '떠돌이 갑옷장이', line: '...쇠는 달궜을 때 두드려야지. 갑옷을 보여 보게.' }; }
   function hermitHtml(n) {
     var h = hermitArmor ? npcHead('🛡️ 떠돌이 갑옷장이', false) + talkBlock(n, n.line) : npcHead('❔ ???', false) + talkBlock(n, '...');
     if (hermitStep === 'talk') return h + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.hermitGo(\'list\')">' + (hermitArmor ? '갑옷을 보여 준다' : '보스를 모두 처치했다') + '</button></div>';
@@ -3481,7 +3481,7 @@ var TowerMine = (function () {
     else if (n.kind === 'captain' && dg.quest >= 1) line = '재료는 다 모았나?';
     talkBubble = { x: n.x, y: n.y, text: n.name + ': ' + line, t0: now };
     if (n.kind === 'hermit') { setAuto(false); hermitStep = 'talk'; hermitArmor = false; openSmith(n, 'hermit'); return; } // [2026-10-30]
-    if (n.kind === 'armorer') { setAuto(false); hermitStep = 'talk'; hermitArmor = true; openSmith(n, 'hermit'); return; } // [2026-11-20] 떠돌이 갑옷장이(같은 창)
+    if (n.kind === 'wanderarmor') { setAuto(false); hermitStep = 'talk'; hermitArmor = true; openSmith(n, 'hermit'); return; } /* [2026-11-21] 고침: 예전 kind 'armorer'가 왕도 방어구 강화사와 같아 강화사를 누르면 이 창이 열려 "...(아무도 없다)" */ // [2026-11-20] 떠돌이 갑옷장이(같은 창)
     if (n.kind === 'towergate') { twFloors(); return; } // [2026-11-15] 탑 관리인
     if (n.kind === 'tokenshop') { setAuto(false); tokenShop = null; openSmith(n, 'token'); tokenGo('list'); return; } // [2026-11-15] 증표 상인
     if (n.kind === 'riverferry') { setAuto(false); openSmith(n, 'river'); return; } // [2026-11-15] 강 뱃사공
@@ -8062,8 +8062,8 @@ var TowerMine = (function () {
     }
     if (armorerOn()) { // [2026-11-20] 떠돌이 갑옷장이
       var axp = Math.round(armorer.x * TS - camX), ayp = Math.round(armorer.y * TS - camY);
-      if (!tiles.npc.armorer) tiles.npc.armorer = armorerSprite();
-      ctx.drawImage(tiles.npc.armorer, axp, ayp - 3 * scale, TS, TS);
+      if (!tiles.npc.wanderarmor) tiles.npc.wanderarmor = armorerSprite();
+      ctx.drawImage(tiles.npc.wanderarmor, axp, ayp - 3 * scale, TS, TS);
       if (Math.abs(armorer.x - P.x) + Math.abs(armorer.y - P.y) <= 8) {
         ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
         ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('🛡️ 떠돌이 갑옷장이', axp + TS / 2, ayp - 6 * dpr);
