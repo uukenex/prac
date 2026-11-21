@@ -2135,6 +2135,7 @@ var TowerMine = (function () {
     el.hp = $('mineHp'); el.auto = $('mineAutoBtn'); // [2026-10-24] 광산 레벨/체력, 자동채광
     el.cold = $('mineCold'); // [2026-10-26] 한기/안전지대/눈바람 남은 시간
     el.greet = $('mineGreetBtn'); // [2026-10-24] 안녕하세요
+    el.greetPick = $('mineGreetPick'); // [2026-11-22] (...) 인사말 고르기
     el.patch = $('minePatch'); // [2026-10-28] 패치 전 공지 띠
     ctx = el.cv.getContext('2d'); miniCtx = el.mini.getContext('2d');
     el.cv.addEventListener('pointerdown', function (e) {
@@ -2617,7 +2618,7 @@ var TowerMine = (function () {
     bossTick(now); // [2026-10-24] 동굴 3층 보스 선공 + [2026-10-25] 몬스터 인식 중 전투 턴
     coldTick(now); coldWarn(); // [2026-10-26] 한기/눈바람
     scanTick(); // [2026-10-24] 탐지 곡괭이
-    var ng = nearOther(); if (el.greet && (el.greet.style.display === "block") !== ng) el.greet.style.display = ng ? "block" : "none"; // [2026-10-24] 근처에 다른 유저가 있으면 👋
+    var ng = nearOther(); if (el.greet && (el.greet.style.display === "block") !== ng) { el.greet.style.display = ng ? "block" : "none"; if (!ng && el.greetPick) el.greetPick.classList.remove('on'); } // [2026-10-24] 근처에 다른 유저가 있으면 👋
     if (P.moving && now - P.t0 >= stepMs()) {
       P.moving = false; P.x = P.tx; P.y = P.ty;
       showCoord(); drawMini();
@@ -6610,6 +6611,7 @@ var TowerMine = (function () {
   //  근처(4칸)에 다른 유저가 있으면 👋 안녕하세요 버튼(말풍선이 서로 보임, 하루 1회 오늘 요일석 5개).
   var tickC = null, tickE = null; // [2026-11-03] 다음 1초 턴에 실을 전투 턴/환경 턴 응답 처리
   var others = {}, presTimer = 0, presBusy = false, otherSprites = {}, myBubbleT0 = 0, greetBusy = false;
+  var GREET_LINES = ['안녕하세요!', '같이 공격해요!', '수고하셨습니다.', '감사합니다.'], myBubbleTxt = GREET_LINES[0]; // [2026-11-22] 인사말 고르기(서버 MINE_GREET_LINES와 같은 순서)
   // [2026-10-28] 패치 전 공지(/패치공지) -- 위치 알림 응답에 실려 오면 화면 맨 위 띠로 계속 띄우고, 새 공지면 한 번 크게 알린다.
   //  공지가 내려가면(끄기/배포) 띠도 내린다. 띠 높이만큼 좌표/미니맵을 아래로(--patch-h).
   var patchShownId = 0;
@@ -6783,12 +6785,15 @@ var TowerMine = (function () {
     ctx.strokeStyle = '#140d0a'; ctx.lineWidth = 2 * dpr; ctx.strokeRect(bx, by, w, h);
     ctx.fillStyle = '#2a1d10'; ctx.textAlign = 'center'; ctx.fillText(text, px0, by + 14 * dpr);
   }
-  function greet() {
+  function greetPick() { if (el.greetPick) el.greetPick.classList.toggle('on'); } // [2026-11-22] "(...) 누르면 다른 말풍선 고르기"
+  function greet(t) {
+    t = Math.max(0, Math.min(GREET_LINES.length - 1, t | 0));
+    if (el.greetPick) el.greetPick.classList.remove('on');
     if (!opened || greetBusy) return;
     greetBusy = true;
-    api('/api/tower-mine-greet').then(function (d) {
+    api('/api/tower-mine-greet?t=' + t).then(function (d) {
       greetBusy = false;
-      if (d && d.ok) myBubbleT0 = performance.now();
+      if (d && d.ok) { myBubbleT0 = performance.now(); myBubbleTxt = GREET_LINES[d.t | 0] || GREET_LINES[t]; }
       if (d && d.ores) st.ores = d.ores;
       if (d && d.reward) flashT0 = performance.now();
       if (d && d.ok && !d.reward) return; // [2026-10-29] "중복 인사 때 멘트 없애줘" -- 오늘 보상을 이미 받았으면 말풍선만
@@ -7502,7 +7507,7 @@ var TowerMine = (function () {
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
     } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
     h += '<div class="mine-smith-say">세 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 삼태극 버튼의 왼쪽 아래가 만검진(X), 오른쪽 아래가 일섬참(C), 위가 각성(V) -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
-    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, ''], ['🔥', '각성', '노란 불꽃을 두르고 ', function (lv) { return (6 + lv) + '초 동안 주는 피해 2배 · 지금 체력 2배(최대 체력을 잠시 넘음)'; }, '']].forEach(function (s, k) { // [2026-11-21] 각성
+    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, ''], ['🔥', '각성', '노란 불꽃을 두르고 ', function (lv) { return (6 + lv) + '초 동안 주는 피해 1.5배 · 지금 체력 1.5배(최대 체력을 잠시 넘음)'; }, '']].forEach(function (s, k) { // [2026-11-21] 각성
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(GALAXY_G) + '" alt="">' + head + '<small>' + s[2] + s[3](5) + s[4] + ' · 끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; return; }
       var c = ULT_COST[L + 1];
@@ -8164,7 +8169,7 @@ var TowerMine = (function () {
       else { ctx.font = (11 * dpr) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💫', cx + TS / 2 + Math.cos(now / 160) * TS * 0.25, cy - 4 * scale + Math.sin(now / 160) * TS * 0.08); }
     }
     nameTag(myNick(), cx + TS / 2, cy - 4 * scale, '#ffe14d'); // [2026-11-05] 내 닉네임(노란색)
-    if (performance.now() - myBubbleT0 < 4000) drawBubble("안녕하세요!", cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사
+    if (performance.now() - myBubbleT0 < 4000) drawBubble(myBubbleTxt, cx + TS / 2, cy - 9 * scale); // [2026-10-24] 내가 한 인사([2026-11-22] 고른 말)
     if (map.trees) { try { forestTreesDraw(now, TS, camX, camY, W, H); } catch (e) { } } // [2026-11-08] 하피의 둥지 대형 나무
     // 어두운 맵(동굴): 캐릭터 주변만 밝게
     var sv = sight();
@@ -9063,6 +9068,6 @@ var TowerMine = (function () {
   }
 
   return { fishInfo: fishInfo, primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, barber: function (a, i) { tryLook = null; lookAct(a, String(i)); }, barberTry: barberTry, /* [2026-11-20] 미용실 */ dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
-           act: act, toggleAuto: toggleAuto, greet: greet, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
+           act: act, toggleAuto: toggleAuto, greet: greet, greetPick: greetPick, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

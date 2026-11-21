@@ -317,7 +317,7 @@ public interface BotS5Service {
     /** [2026-10-24] 광산 함께 보기(내 위치 알리기 + 같은 맵 다른 유저), 나갈 때 지우기, "안녕하세요"(하루 1회 요일석 5개). */
     HashMap<String, Object> minePresence(String userName, String mapId, int x, int y, String dir);
     void mineLeave(String userName);
-    HashMap<String, Object> mineGreet(String userName);
+    HashMap<String, Object> mineGreet(String userName, int t); // [2026-11-22] t = 인사말 번호(0 안녕하세요 / 1 같이 공격해요 / 2 수고하셨습니다 / 3 감사합니다)
     /** [2026-10-25] 관리자 광산 캐릭터 현황(위치/장착/레벨/보유 수량, 읽기만). */
     List<HashMap<String, Object>> mineUserOverview();
     /** [2026-10-30] 광산 접속 화면 -- 내 캐릭터 현황(없으면 null). */

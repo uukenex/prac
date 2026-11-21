@@ -816,7 +816,12 @@
     #mineMini:not(.big) ~ .mine-world-btn{ display:none; } /* [2026-11-05] 전체 지도 버튼은 작은 지도를 눌러 크게 했을 때만 */
     .mine-hud-tr .mine-coord{ font-size:12px; padding:3px 7px; letter-spacing:0; } /* [2026-11-05] 좌표는 지도 아래 */
     .mine-luck{ display:none; width:fit-content; margin-top:4px; font:800 12px/1.1 ui-monospace, Consolas, monospace; padding:4px 7px; color:#7cf08a; } /* [2026-11-05] 행운의 주문서 남은 시간(핑과 따로) */
-    .mine-greet{ position:absolute; left:0; right:0; margin:0 auto; width:max-content; bottom:calc(72px + env(safe-area-inset-bottom)); padding:8px 12px; font-size:14px; cursor:pointer; display:none; background:#2f6b3f; animation:mineGreetPop .3s ease-out; }
+    .mine-greet{ position:absolute; left:0; right:0; margin:0 auto; width:max-content; bottom:calc(72px + env(safe-area-inset-bottom)); display:none; white-space:nowrap; animation:mineGreetPop .3s ease-out; }
+    .mine-greet .mpx{ padding:8px 12px; font-size:14px; cursor:pointer; background:#2f6b3f; -webkit-tap-highlight-color:transparent; }
+    .mine-greet > .gx{ padding:8px 9px; margin-left:4px; letter-spacing:1px; }
+    .mine-greet-pick{ position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); display:none; flex-direction:column; gap:5px; }
+    .mine-greet-pick.on{ display:flex; }
+    .mine-greet-pick .mpx{ text-align:left; }
     @keyframes mineGreetPop{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
     /* [2026-10-24] NPC 초상화(마비노기처럼): 미끄러져 들어오기 + 숨쉬기 */
     .mine-npc-talk{ display:flex; align-items:flex-end; gap:10px; margin:2px 0 10px; }

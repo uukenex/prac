@@ -845,9 +845,10 @@ public class Season5ViewController {
     /** [2026-10-24] 웹 광산 "안녕하세요" -- 근처 다른 유저에게 말풍선, 하루 1회 오늘 요일석 5개. 보상 받을 때만 로그. */
     @GetMapping("/api/tower-mine-greet")
     @ResponseBody
-    public ResponseEntity<?> apiTowerMineGreet(@RequestParam(value = "userName", defaultValue = "") String userName) {
+    public ResponseEntity<?> apiTowerMineGreet(@RequestParam(value = "userName", defaultValue = "") String userName,
+            @RequestParam(value = "t", defaultValue = "0") int t) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
-        HashMap<String, Object> out = s5Service.mineGreet(userName);
+        HashMap<String, Object> out = s5Service.mineGreet(userName, t);
         if (Boolean.TRUE.equals(out.get("reward"))) mineLog(userName, "[웹] 광산 인사 보상", String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }

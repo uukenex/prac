@@ -1012,7 +1012,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineHpFull(int lv, int rb) { String hu = MINE_CTX.get(); return mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0)); }
     static int mineHpCapN(int lv, int lock, int rb) { String hu = MINE_CTX.get(); return Math.max(1, (mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0))) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
     /** [2026-11-21] 각성(필살기) 중엔 2배 -- "현재 체력 2배(최대 체력을 잠시 넘는다)": 넘친 체력이 곳곳의 최대 체력 자르기에 잘리지 않게. 회복은 mineHpCapN(원래 최대)까지만. */
-    static int mineHpCap(int lv, int lock, int rb) { int c = mineHpCapN(lv, lock, rb); return mineKakOn(MINE_CTX.get()) ? c * 2 : c; }
+    static int mineHpCap(int lv, int lock, int rb) { int c = mineHpCapN(lv, lock, rb); return mineKakOn(MINE_CTX.get()) ? c + c / 2 : c; } // [2026-11-22] 각성 최대 체력 2배 -> 1.5배
     /** [2026-11-21] 회복 -- 원래 최대 체력까지만(각성으로 넘친 체력은 그대로 두고 더 채우지 않는다). */
     static int mineHealTo(int hp, long add, int lv, int lock, int rb) { int n = mineHpCapN(lv, lock, rb); return hp >= n ? hp : (int) Math.min(n, hp + add); }
 
@@ -8165,7 +8165,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  피해 2배 = mineUnityAtk에 곱한다. 체력 2배 = 쓸 때 지금 체력 x2, 그동안 최대 체력(mineHpCap)도 2배라 잘리지 않고, 회복은 원래 최대(mineHpCapN)까지만.
     //  끝나거나 쓰러지면 넘친 체력은 원래 최대로(읽을 때 잘린다). 상태는 메모리(MINE_KAK = 끝나는 시각) -- 배포하면 끝난다.
     static final long MINE_KAK_MS = 7_000L, MINE_KAK_LV_MS = 1_000L;
-    static final double MINE_KAK_DMG = 2.0;
+    static final double MINE_KAK_DMG = 1.5; // [2026-11-22] "체력/공격력 2배 -> 1.5배"
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_KAK = new java.util.concurrent.ConcurrentHashMap<>();
     static long mineKakUntil(String u) { Long v = u == null ? null : MINE_KAK.get(u); return v == null ? 0L : v; }
     static boolean mineKakOn(String u) { return mineKakUntil(u) > System.currentTimeMillis(); }
@@ -8176,14 +8176,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int hp0 = mineHpNow(row, now, lock, rb);
         long until = now + MINE_KAK_MS + MINE_KAK_LV_MS * (Math.max(1, ulv) - 1);
         MINE_KAK.put(userName, until);
-        int hp1 = (int) Math.min((long) mineHpCap(lv, lock, rb), (long) hp0 * 2);
+        int hp1 = (int) Math.min((long) mineHpCap(lv, lock, rb), (long) hp0 * 3 / 2); // [2026-11-22] 지금 체력 2배 -> 1.5배
         dao.updateMineCombat(userName, lv, exp, hp1, now, 0);
         out.put("ok", true);
         out.put("k", 2);
         out.put("kakUntil", until);
         out.put("combat", mineCombatInfo(lv, exp, hp1, now, mineEngaged(userName, now), lock, rb));
         out.put("ult", mineUltInfo(userName, items));
-        out.put("message", "🔥 각성! " + ((until - now) / 1000) + "초 동안 주는 피해 2배 · 체력 2배");
+        out.put("message", "🔥 각성! " + ((until - now) / 1000) + "초 동안 주는 피해 1.5배 · 체력 1.5배");
         minePresUlt(userName, 2, 0, out);
         return out;
     }
@@ -8250,7 +8250,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.upsertMineItem(userName, mineUltKey(k), nx);
         items.put(mineUltKey(k), nx);
         out.put("ok", true);
-        out.put("message", "⚔️ 필살 사범: " + MINE_ULT_NAME[k] + " " + nx + "레벨을 익혔네! (" + (k == 2 ? ((MINE_KAK_MS + MINE_KAK_LV_MS * (nx - 1)) / 1000) + "초 동안 주는 피해 2배 · 체력 2배" : k == 0 ? "5초 동안 1초마다 공격력의 " + Math.round(mineUltPct(0, nx) * 100) + "%" : "공격력의 " + Math.round(mineUltPct(1, nx) * 100) + "% 한 방") + ")");
+        out.put("message", "⚔️ 필살 사범: " + MINE_ULT_NAME[k] + " " + nx + "레벨을 익혔네! (" + (k == 2 ? ((MINE_KAK_MS + MINE_KAK_LV_MS * (nx - 1)) / 1000) + "초 동안 주는 피해 1.5배 · 체력 1.5배" : k == 0 ? "5초 동안 1초마다 공격력의 " + Math.round(mineUltPct(0, nx) * 100) + "%" : "공격력의 " + Math.round(mineUltPct(1, nx) * 100) + "% 한 방") + ")");
         out.put("ult", mineUltInfo(userName, items));
         out.put("ores", mineOreList(userName));
         return out;
@@ -11503,6 +11503,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile int x, y;
         volatile String dir = "down";
         volatile long at, lookAt, bubbleAt;
+        volatile int bubbleT; // [2026-11-22] 고른 인사말(MINE_GREET_LINES 번호)
         volatile HashMap<String, Object> look;
         volatile int merc = -1; // [2026-11-05] 데리고 다니는 용병([2026-11-06] 직업 0 전사 / 1 궁수 / 2 마법사, -1 = 없음 -- 지금은 관리자만)
         volatile int mercEl, mercSt, mercNi; // [2026-11-06] 용병 속성/단계/이름 번호(화면 이펙트·그림)
@@ -11565,6 +11566,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long MINE_BUBBLE_MS = 4_000L;
     static final int MINE_GREET_RANGE = 8; // [2026-11-11] "너무 가까워야 인사가 된다" 4 -> 8칸
     static final int MINE_GREET_STONES = 5;
+    // [2026-11-22] "안녕하세요 말고 다른 멘트도 -- (...) 누르면 고르게" -- 화면은 번호(t)만 보내고, 말은 서버가 이 목록에서 고른다(아무 글이나 띄우지 못하게)
+    static final String[] MINE_GREET_LINES = { "안녕하세요!", "같이 공격해요!", "수고하셨습니다.", "감사합니다." };
     static final String MINE_ITEM_GREET_DAY = "GREET_DAY";
     /** [2026-10-24] 바닷길 하루 보석 한도("바닷길 안에서는 하루 보석 50개까지") -- SEA_DAY = yyyyMMdd, SEA_CNT = 그날 캔 칸 수. */
     static final int MINE_SEA_DAILY = 50;
@@ -11612,7 +11615,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("d", o.dir);
             m.put("look", o.look);
             if (minePStealthOf(e.getKey(), now) == null) m.put("n", mineNick(e.getKey())); // [2026-11-05] "플레이어 위에 닉네임"(은신 중엔 숨김)
-            if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", "안녕하세요!");
+            if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", MINE_GREET_LINES[Math.max(0, Math.min(MINE_GREET_LINES.length - 1, o.bubbleT))]); // [2026-11-22] 고른 인사말
             if (o.merc >= 0 && minePStealthOf(e.getKey(), now) == null) { // [2026-11-05] 용병 -- 단계, 쉬는 중, 싸우는 몬스터 칸
                 m.put("mc", o.merc);
                 m.put("me", o.mercEl);
@@ -11890,7 +11893,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** "안녕하세요" -- 저장 위치 4칸 안에 같은 맵의 다른 유저가 있으면 말풍선, 하루 1회 오늘 요일석 5개. */
     @Override
     @Transactional
-    public HashMap<String, Object> mineGreet(String userName) {
+    public HashMap<String, Object> mineGreet(String userName, int t) {
+        t = Math.max(0, Math.min(MINE_GREET_LINES.length - 1, t)); // [2026-11-22] 인사말 번호
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
         if (!mineAccess(userName)) return mineClosed();
@@ -11914,8 +11918,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (!near) { out.put("message", "근처에 인사할 사람이 없어요."); return out; }
         if (now - me.bubbleAt < 3_000L) { out.put("message", "조금 있다가 다시 인사해요."); return out; }
+        me.bubbleT = t;
         me.bubbleAt = now;
         out.put("ok", true);
+        out.put("t", t);
         int today = Integer.parseInt(java.time.LocalDate.now(KST).format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE));
         if (items.getOrDefault(MINE_ITEM_GREET_DAY, 0) != today) {
             int di = S5MineMap.dayIndex(now);
@@ -11923,8 +11929,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.addUserOre(userName, S5MineMap.DAY_STONE_CODES[di], MINE_GREET_STONES);
             out.put("reward", true);
             out.put("ores", mineOreList(userName));
-            out.put("message", "👋 안녕하세요! 오늘의 첫 인사 -- " + S5MineMap.DAY_STONE_NAMES[di] + " " + MINE_GREET_STONES + "개를 받았어요.");
-        } else out.put("message", "👋 안녕하세요! (인사 보상은 하루 한 번 -- 오늘은 이미 받았어요)");
+            out.put("message", "👋 " + MINE_GREET_LINES[t] + " 오늘의 첫 인사 -- " + S5MineMap.DAY_STONE_NAMES[di] + " " + MINE_GREET_STONES + "개를 받았어요.");
+        } else out.put("message", "👋 " + MINE_GREET_LINES[t] + " (인사 보상은 하루 한 번 -- 오늘은 이미 받았어요)");
         return out;
     }
 
