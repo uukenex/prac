@@ -2336,6 +2336,16 @@ var TowerMine = (function () {
     var e = st && st.ench, on = e && e.left > 0 && e.el;
     el.atk.innerHTML = '⚔️' + (on ? '<small class="ench">' + ELEM_ICON[e.el] + e.left + '</small>' : '');
     el.atk.title = '무기로 공격 (스페이스)' + (on ? ' -- ' + ELEM_NAME[e.el] + ' 속성 ' + e.left + '번 남음' : '');
+    renderHp(); // [2026-11-22] 갑옷 속성 아이콘
+  }
+  // [2026-11-22] 갑옷 속성 -- 1초 위치 알림의 ael = [속성, 남은 횟수, 무효 횟수, 상성 횟수]
+  function aelApply(a) {
+    if (!st || !a) return;
+    st.ench = st.ench || {}; st.ench.ael = a[0]; st.ench.aleft = a[1];
+    var t = performance.now();
+    if (a[2]) floats.push({ x: P.x, y: P.y - 0.9, text: '🛡️ ' + ELEM_ICON[a[0]] + ' 속성 무효' + (a[2] > 1 ? ' x' + a[2] : ''), color: '#bfe8ff', big: true, t0: t });
+    if (a[3]) floats.push({ x: P.x, y: P.y - 1.2, text: '💢 상성 피해 x1.5', color: '#ff7a3a', big: true, t0: t + 120 });
+    renderHp();
   }
   function setCombat(c) {
     if (!c) return;
@@ -2378,18 +2388,19 @@ var TowerMine = (function () {
     var kk = c.kakUntil > nowSrv(), nm = kk && c.hpMaxN ? c.hpMaxN : c.hpMax, hb = Math.min(h, nm), ov = kk ? Math.max(0, h - nm) : 0; // [2026-11-21] 각성 -- 넘친 몫(ov)
     var pct = Math.min(100, Math.round(hb * 100 / base));
     var rb = c.rebirth | 0, ready = !!c.rebirthReady;
-    var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready + ':' + (kk ? 1 : 0);
+    var ae = st.ench && st.ench.aleft > 0 && st.ench.ael ? st.ench.ael : 0; // [2026-11-22] 갑옷 속성 -- ❤ 자리에 속성 아이콘
+    var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready + ':' + (kk ? 1 : 0) + ':' + ae + ':' + (ae ? st.ench.aleft : 0);
     el.hp.classList.toggle('kak', kk);
     if (el.hp._k === key) return;
     el.hp._k = key;
-    el.hp.title = (rb ? 'Lv.' + c.lv + '(' + rbName(rb) + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
+    el.hp.title = (rb ? 'Lv.' + c.lv + '(' + rbName(rb) + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '') + (ae ? ' · 갑옷 ' + ELEM_NAME[ae] + ' 속성 ' + st.ench.aleft + '번 남음' : '')
         ;
     // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
     // [2026-11-05] "체력바 옆 숫자가 UI를 넘어온다" -- 환생 안 한 사람도 넘치면 줄이고(예전엔 환생한 사람만), 1.2만 -> "12.3k", 그래도 넘치면 "1.4M"
     for (var fit = 0; fit < 4; fit++) {
       var hfm = function (v) { return fit === 3 && v >= 1000000 ? (v / 1000000).toFixed(v < 10000000 ? 1 : 0) + 'M' : fit >= 2 && v >= 10000 ? (v / 1000).toFixed(v < 100000 ? 1 : 0) + 'k' : String(v); };
       var hs = hfm(hb) + (ov > 0 ? '<span class="kk-n"> +' + hfm(ov) + '</span>' : '');
-      el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
+      el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : ae ? ELEM_ICON[ae] : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
           + (ov > 0 ? '<span class="mine-bar kk"><i style="width:' + Math.min(100, Math.round(ov * 100 / nm)) + '%"></i></span>' : '') // [2026-11-21] 각성 -- 넘친 체력(금색 줄)
           + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>'
           ;
@@ -5068,7 +5079,15 @@ var TowerMine = (function () {
             + '<button type="button" ' + (have(s[2]) ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_' + s[0] + '\')">부여</button></div>';
         }).join('')
       + '<div class="mine-smith-row"><span class="nm">⚪ 무속성으로 되돌리기<small>무기에 깃든 속성을 없애요 (무료)</small></span>' // [2026-10-29]
-      + '<button type="button" ' + (e.left > 0 && e.el ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_none\')">되돌리기</button></div>';
+      + '<button type="button" ' + (e.left > 0 && e.el ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_none\')">되돌리기</button></div>'
+      // [2026-11-22] 갑옷 속성 -- 같은 재료, 맞는 횟수만큼. 같은 속성 공격은 막고, 상성 속성 공격엔 1.5배(몬스터 특수기는 그 몬스터 속성, 일반 근접은 무속성)
+      + '<div class="mine-smith-say" style="margin-top:12px">🛡️ <b>갑옷 속성</b> -- 지금: ' + (e.aleft > 0 && e.ael ? ELEM_ICON[e.ael] + ' ' + ELEM_NAME[e.ael] + ' (' + e.aleft + '번 남음)' : '없음') + '. 갑옷을 입고 있어야 해요. 같은 속성 공격은 막고, 상성 속성 공격엔 1.5배로 아파요.</div>'
+      + ELEM_SHOP.map(function (s) {
+          return '<div class="mine-smith-row"><img src="' + oreIcon(s[2]) + '" alt=""><span class="nm">' + ELEM_ICON[s[1]] + ' ' + ELEM_NAME[s[1]] + ' 갑옷<small>' + ORE_NAME[s[2]] + ' 1개 (보유 ' + have(s[2]) + ') · ' + ENCH_HITS_ELEM + '번 맞는 동안 · ' + ELEM_NAME[s[1]] + ' 공격 무효 · ' + s[3] + ' 공격 x1.5</small></span>'
+            + '<button type="button" ' + (have(s[2]) ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'aench_' + s[0] + '\')">부여</button></div>';
+        }).join('')
+      + '<div class="mine-smith-row"><span class="nm">⚪ 갑옷 속성 없애기<small>갑옷에 깃든 속성을 없애요 (무료)</small></span>'
+      + '<button type="button" ' + (e.aleft > 0 && e.ael ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'aench_none\')">되돌리기</button></div>';
   }
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
@@ -5077,7 +5096,8 @@ var TowerMine = (function () {
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
         + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
-        + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1개 · ' + ENCH_HITS + '번 · 어둠 x1.5</small></button>' : '') // [2026-10-29]
+        + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1개 · ' + ENCH_HITS + '번 · 어둠 x1.5</small></button>'
+            + '<button type="button" onclick="TowerMine.priestAct(\'aench_light\')">🛡️ 갑옷 성속성<small>미스릴괴 1개 · ' + ENCH_HITS + '번 맞는 동안 · 빛 공격 무효 · 어둠 공격 x1.5</small></button>' : '') // [2026-10-29] // [2026-11-22] 갑옷
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ ' + (rb >= RB_BASE ? '진환생' : '환생') + (rb ? ' (지금 ' + rbStage(rb) + ')' : '') + '<small>' + rbSub + '</small></button></div>';
@@ -5712,6 +5732,7 @@ var TowerMine = (function () {
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
       var t = performance.now();
       (d.hits || []).forEach(function (h, k) {
+        if (h.dmg === 0 && !h.dodge) return; // [2026-11-22] 갑옷 속성으로 막은 공격(🛡️는 위치 알림 ael로)
         var hmb = map.mobs && map.mobs[h.mobId], hwind = !!(hmb && (map.mobTypes[hmb.k] || {}).name === '하피 여왕'); // [2026-11-11] 하피 공격은 바람 속성
         if (hwind && h.ranged) { var bw0 = boltFrom(h); bolts.push({ fx: bw0.fx, fy: bw0.fy, me: true, t0: t, wind: true }); floats.push({ x: P.x, y: P.y - 0.3, text: '🌪️🪶 -' + h.dmg, color: '#7ae8c8', big: true, t0: t + BOLT_MS }); return; }
         if (hwind) { floats.push({ x: P.x, y: P.y - 0.3, text: '🌪️ -' + h.dmg, color: '#7ae8c8', big: true, t0: t + k * 160 }); return; }
@@ -5810,9 +5831,9 @@ var TowerMine = (function () {
       if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
       if (d.stormNext) stormNext = d.stormNext;
       if (d.shockDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.shockDmg + '⚡', color: '#ffe94a', t0: t }); // [2026-11-06] 황소가 나와 있으면 초당 1% 감전도 여기
-      if (d.storm) { stormT0 = performance.now(); flashT0 = stormT0; if (d.stunUntil) { stunUntil = d.stunUntil; zapStunUntil = d.stunUntil; } floats.push({ x: P.x, y: P.y - 0.7, text: '⚡ 감전! -' + (d.stormDmg || 0), color: '#ffe94a', big: true, t0: t }); }
+      if (d.storm) { stormT0 = performance.now(); flashT0 = stormT0; if (d.stunUntil) { stunUntil = d.stunUntil; zapStunUntil = d.stunUntil; } floats.push({ x: P.x, y: P.y - 0.7, text: '⚡ 감전!' + (d.stormDmg ? ' -' + d.stormDmg : ''), color: '#ffe94a', big: true, t0: t }); }
       if (d.gustNext) harpyGustAt = d.gustNext; // [2026-11-11] 하피 돌풍(다음 시각 -- 2초 전부터 화면 위에 경고)
-      if (d.gust) { flashT0 = performance.now(); if (d.knockX != null) setPos(d.knockX, d.knockY); floats.push({ x: P.x, y: P.y - 0.7, text: '🌪️ 돌풍! -' + (d.gustDmg || 0), color: '#bfeee0', big: true, t0: t }); msg('🌪️ 하피 여왕의 돌풍에 날려 갔어요!', 2400); }
+      if (d.gust) { flashT0 = performance.now(); if (d.knockX != null) setPos(d.knockX, d.knockY); floats.push({ x: P.x, y: P.y - 0.7, text: '🌪️ 돌풍!' + (d.gustDmg ? ' -' + d.gustDmg : ''), color: '#bfeee0', big: true, t0: t }); msg('🌪️ 하피 여왕의 돌풍에 날려 갔어요!', 2400); }
       if (d.lavaDmg) floats.push({ x: P.x - 0.3, y: P.y - 0.2, text: '-' + d.lavaDmg + '🌋', color: '#ff5a1a', t0: t });
       if (d.combat) setCombat(d.combat);
       renderCold();
@@ -6657,6 +6678,7 @@ var TowerMine = (function () {
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
       if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
       unityShow(d && d.unity); // [2026-11-17] 우리는 하나
+      if (d && d.ael) aelApply(d.ael); // [2026-11-22] 갑옷 속성
       if (d && d.villageOut) { // [2026-11-17] 마계 마을 -- 3초 뒤 안내 없이 요새 도시로, 그다음 한 줄
         var vmsg = d.villageOut; busy = true; if (wbDownUntil) { wbDownUntil = 0; wbDownShow(); } // [2026-11-19] 바다 위에 쓰러져 있다 배가 부서져 마을로 -- 회색 화면도 끝
         api('/api/tower-mine').then(enterState).then(function () { fadeIn(null); flashT0 = performance.now(); msg(vmsg, 4500); }).catch(function () { busy = false; fadeIn(null); });

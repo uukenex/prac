@@ -203,6 +203,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
         for (int k = 0; k <= MINE_MERC_K2; k++) { MercXp mx = MINE_MERC_XP.get(mineMercXpKey(userName, k)); if (mx != null && mx.p > 0) out.put(mineMercKey(k, "XPP"), (int) mx.p); } // [2026-11-18] 아직 DB에 안 쓴 용병 경험치(화면용)
         if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
+        try { int[] ae = MINE_ARMOR_EL_OF.computeIfAbsent(userName, u -> new int[6]); synchronized (ae) { ae[0] = out.getOrDefault(MINE_ITEM_AEL, 0); ae[1] = out.getOrDefault(MINE_ITEM_AEL_LEFT, 0); ae[5] = mineArmorOn(out) != null ? 1 : 0; } } catch (Exception ignore) { } // [2026-11-22] 갑옷 속성(받는 피해 -- mineElHit)
         try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar)) + mineArmorHpEnh(ar.code, mineWeaponGrade(out, ar), mineArmorEnh(out))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap), [2026-11-18] + 갑옷 칸 강화
         return out;
     }
@@ -1501,7 +1502,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         h.put("fy", s.fy);
         if (now >= nx[0]) { // 전광석화
             nx[0] = now + 9_000L + RND.nextInt(4_000);
-            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_DASH_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_DASH_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem()); // [2026-11-22] 특수기 = 몬스터 속성
             h.put("thunder", "dash");
             if (dist >= 3) { // 멀면 번개처럼 달려와 딱 붙는다
                 int[] c = mineThunderBeside(map, x, y, s.fx, s.fy);
@@ -1520,7 +1521,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dmg += d;
         } else if (dist >= 2 && now >= nx[1]) { // 전기창 -- 맞은 자리 3x3이 잠깐 폭발 장판
             nx[1] = now + 6_000L + RND.nextInt(3_000);
-            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SPEAR_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SPEAR_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem());
             for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) if (map.inside(lx, ly)) MINE_SHOCK.merge(ly * map.w + lx, now + MINE_SPEAR_ZONE_MS, Math::max);
             h.put("thunder", "spear");
             h.put("dmg", d);
@@ -1528,7 +1529,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dmg += d;
         } else if (dist <= 1 && now >= nx[2]) { // 붙어 있으면 밀쳐내고 근접 장판(보스 둘레 반지름 3)
             nx[2] = now + 8_000L + RND.nextInt(3_000);
-            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SLAM_MULT * (0.8 + RND.nextDouble() * 0.4))));
+            int d = mineCoatHit(items, Math.max(1, (int) Math.round(atk * MINE_SLAM_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem());
             int[] k = mineThunderKnock(map, s.fx, s.fy, x, y, 3, mineWalkMode(items));
             out.put("knockX", k[0]);
             out.put("knockY", k[1]);
@@ -3040,6 +3041,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int k = 0; k < best.length; k++) {
             if (best[k] <= 0) continue;
             int d = Math.max(1, (int) Math.round(mineHpMax(lv, rb) * best[k] / 1000.0 / mineUnityHp(userName))); // [2026-11-17] 우리는 하나
+            d = mineElHit(userName, d, bm == null ? 0 : S5MineMobs.TYPES.get(bm.type).elem()); // [2026-11-22] 보스 패턴 = 보스 속성
             sum += d;
             HashMap<String, Object> h = new HashMap<>();
             h.put("mobId", bm == null ? -1 : bm.id);
@@ -3098,6 +3100,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int k = 0; k < 4; k++) {
             if (!hit[k]) continue;
             int d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_PAT_PCT[k])); // [2026-11-17] 갑옷 체력까지
+            d = mineElHit(userName, d, bm == null ? 0 : S5MineMobs.TYPES.get(bm.type).elem()); // [2026-11-22] 거룡 패턴 = 거룡 속성
             sum += d;
             HashMap<String, Object> h = new HashMap<>();
             h.put("mobId", bm == null ? -1 : bm.id);
@@ -3693,8 +3696,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         boolean wbBoss = map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE; // [2026-11-15] 월드보스 -- 최대 체력 %
                         MINE_RANGED_NEXT.put(userName, now + (wbBoss ? MINE_WB_SHOT_MS[mineWbStage()] : harpyBoss ? (harpyMoving && mineHarpyNow(map, now)[2] != 1 ? MINE_HARPY_SHOT_MS : MINE_HARPY_HIDE_SHOT_MS)
                                 : pharaoh ? MINE_PHARAOH_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
-                        int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))));
-                        if (wbBoss) d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (0.9 + RND.nextDouble() * 0.2)));
+                        int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem()); // [2026-11-22] 원거리 = 몬스터 속성
+                        if (wbBoss) d = d == 0 ? 0 : mineElHit(userName, Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (0.9 + RND.nextDouble() * 0.2))), type.elem(), false);
                         dmgSum += d;
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
                         HashMap<String, Object> h = new HashMap<>();
@@ -5217,8 +5220,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (auraMain != null) out.put("aura", auraMain);
         if ((auraRange > 0 || mineWhirlOn(mineWhirlActive(items))) && !evade && !cloneHit) { // [2026-11-04] 검기 -- 바라보는 방향 앞 사거리 칸의 다른 몬스터 // [2026-11-07] + 돌개베기(둘레 8칸)
             StringBuilder am = new StringBuilder();
-            long[] ar = auraRange > 0 ? mineAuraSweep(userName, map, items, aura, auraRange, atkBase, x, y, dir, mobId, now, am, out) : new long[] { 0, 0 };
-            long[] wr = mineWhirlSweep(userName, map, items, atkBase, x, y, now, am, out);
+            java.util.Set<Integer> skA = new java.util.HashSet<>(), skW = new java.util.HashSet<>(); // [2026-11-22] 검기/돌개 겹치면 센 쪽만
+            mineAuraWhirlPick(userName, map, items, aura, auraRange, x, y, dir, mobId, now, skA, skW);
+            long[] ar, wr;
+            try {
+                MINE_SWEEP_SKIP.set(skA);
+                ar = auraRange > 0 ? mineAuraSweep(userName, map, items, aura, auraRange, atkBase, x, y, dir, mobId, now, am, out) : new long[] { 0, 0 };
+                MINE_SWEEP_SKIP.set(skW);
+                wr = mineWhirlSweep(userName, map, items, atkBase, x, y, now, am, out);
+            } finally { MINE_SWEEP_SKIP.remove(); }
             ar[0] += wr[0]; ar[1] += wr[1];
             if (ar[0] > 0) {
                 mineMercShare(userName, items, ar[1], lv, ar[0], out); // [2026-11-06] 용병 경험치(검기 처치)
@@ -7224,6 +7234,35 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return items.getOrDefault(MINE_ITEM_COAT_SLOT, 0) > 0 && mineArmorOn(items) == null ? mineCoatTier(items) : 0;
     }
 
+    // [2026-11-22] "갑옷에 속성 부여 -- 같은 속성은 안 맞게, 반대 속성은 1.5배. 속성은 주는 데미지와 같은 표로. 몬스터는 속성 공격 / 무속성 공격 / 둘 다"(사용자 선택: 무기처럼 NPC 부여, 기술별로 나눔).
+    //  왕도 원소술사(물/번개/불/땅, 세공 보석 1개, 500번 맞는 동안) / 성당 신부(빛, 미스릴괴 1개, 1000번) -- 갑옷을 입고 있을 때만, 새로 부여하면 이전 속성은 사라진다.
+    //  몬스터 공격: 일반 근접(반격, 전투 턴 근접)은 무속성, 특수기(원거리/돌진/찌르기/내려찍기/장판/낙뢰/돌풍/보스 패턴)는 그 몬스터의 속성.
+    //  공격 속성 == 갑옷 속성 -> 0, elemBeats(공격 속성, 갑옷 속성) -> x1.5(무기 상성과 같은 표: 어둠<>빛, 물·얼음<>불, 땅·바람<>번개).
+    //  남은 횟수는 맞을 때마다 메모리에서 세고(MINE_ARMOR_EL_OF[2]) 1초 위치 알림(minePresence) 때 DB에 쓴다. 무효/상성 횟수도 그때 화면에(ael).
+    static final String MINE_ITEM_AEL = "AEL", MINE_ITEM_AEL_LEFT = "AEL_LEFT";
+    /** 유저 -> {갑옷 속성, DB 남은 횟수, 아직 안 쓴 횟수, 무효 횟수, 상성 횟수, 갑옷 입음 1/0}. */
+    static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_ARMOR_EL_OF = new java.util.concurrent.ConcurrentHashMap<>();
+    static int mineElHit(String u, int v, int el) { return mineElHit(u, v, el, true); }
+    static int mineElHit(String u, int v, int el, boolean count) {
+        int[] a = u == null ? null : MINE_ARMOR_EL_OF.get(u);
+        if (a == null || v <= 0) return v;
+        synchronized (a) {
+            if (a[0] <= 0 || a[5] == 0 || a[1] - a[2] <= 0) return v;
+            if (count) a[2]++;
+            if (el > 0 && el == a[0]) { if (count) a[3]++; return 0; }
+            if (el > 0 && S5MineMobs.elemBeats(el, a[0])) { if (count) a[4]++; return (int) Math.min(Integer.MAX_VALUE / 4, Math.round(v * 1.5)); }
+        }
+        return v;
+    }
+    static void mineArmorElSet(String u, int el, int left) { int[] a = MINE_ARMOR_EL_OF.computeIfAbsent(u, k -> new int[6]); synchronized (a) { a[0] = el; a[1] = left; a[2] = 0; } }
+    /** 갑옷 속성 e가 1.5배로 아픈 공격 속성 이름들(땅·바람 등). */
+    static String mineAelWeak(int e) { StringBuilder b = new StringBuilder(); for (int k = 1; k <= 8; k++) if (S5MineMobs.elemBeats(k, e)) b.append(b.length() > 0 ? "·" : "").append(S5MineMobs.ELEM_NAMES[k]); return b.toString(); }
+    /** el = 몬스터 공격 속성(0 = 무속성). */
+    static int mineCoatHit(Map<String, Integer> items, int v, int el) {
+        int v2 = mineElHit(MINE_CTX.get(), v, el);
+        if (v2 == 0 && v > 0) return 0; // 같은 속성 -- 막았다
+        return mineCoatHit(items, v2);
+    }
     /** 외투를 입었을 때 받는 피해(2배, 3단계 갑옷은 1.5배). */
     static int mineCoatHit(Map<String, Integer> items, int v) {
         v = (int) Math.max(1, Math.round(v / mineUnityHp(MINE_CTX.get()))); // [2026-11-17] 우리는 하나 -- 체력 배수만큼 덜 아프다
@@ -7680,6 +7719,51 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return mineSweepCells(userName, map, items, line, MINE_AURA_MAX_TARGETS, skipMob, now, msg, out, (ot, dist) -> mineAuraHits(aura, atkBase, ot, dist), "auraMobs", "auraDrops", "🌀 검기로 ");
     }
 
+    // [2026-11-22] "검기와 돌개베기가 겹치면 센 쪽만" -- 한 번 공격에서 두 범위에 모두 걸친 몬스터는 기대 피해(켠 단계 x 상성 x 걸친 칸 수)가 큰 쪽에서만 맞는다(같으면 검기).
+    //  mineSweepCells가 이 동안 MINE_SWEEP_SKIP에 든 몬스터를 건너뛴다.
+    static final ThreadLocal<java.util.Set<Integer>> MINE_SWEEP_SKIP = new ThreadLocal<>();
+    /** 몬스터 om이 칸 묶음 line에 걸치면 {가장 가까운 거리, 걸친 칸 수}, 아니면 null. */
+    static int[] mineSweepCover(S5MineMap map, S5MineMap.Mob om, MobState s0, long now, java.util.Map<Integer, Integer> line) {
+        int fw = S5MineMobs.TYPES.get(om.type).foot(), dist = 99, cnt = 0;
+        for (int c : mineMobCells(om, s0, now, map)) {
+            int n = 0, dmin = 99;
+            for (int oy = 0; oy < fw; oy++) for (int ox = 0; ox < fw; ox++) { Integer k = line.get(c + oy * map.w + ox); if (k != null) { n++; if (k < dmin) dmin = k; } }
+            if (n > 0 && (dmin < dist || (dmin == dist && n > cnt))) { dist = dmin; cnt = n; }
+        }
+        return cnt > 0 ? new int[] { dist, cnt } : null;
+    }
+    static java.util.Map<Integer, Integer> mineWhirlCells(S5MineMap map, int x, int y) {
+        java.util.Map<Integer, Integer> cells = new java.util.HashMap<>();
+        for (int oy = -1; oy <= 1; oy++) for (int ox = -1; ox <= 1; ox++) {
+            int lx = x + ox, ly = y + oy;
+            if ((ox != 0 || oy != 0) && lx >= 0 && ly >= 0 && lx < map.w && ly < map.h) cells.put(ly * map.w + lx, 1);
+        }
+        return cells;
+    }
+    /** 두 범위에 모두 걸친 몬스터를 나눈다 -- skipA = 검기에서 뺄 몬스터(돌개가 더 셈), skipW = 돌개에서 뺄 몬스터. */
+    void mineAuraWhirlPick(String userName, S5MineMap map, Map<String, Integer> items, int[] aura, int range, int x, int y, String dir, int skipMob, long now, java.util.Set<Integer> skipA, java.util.Set<Integer> skipW) {
+        int[] w = mineWhirlActive(items), dv = mineDirVec(dir);
+        if (!mineWhirlOn(w) || range <= 0 || dv == null) return;
+        java.util.Map<Integer, Integer> line = mineAuraLine(userName, map, x, y, dv, range), wc = mineWhirlCells(map, x, y);
+        for (S5MineMap.Mob om : map.mobs()) {
+            if (om.id == skipMob) continue; // 바로 때린 몬스터는 검기가 원래 건너뛴다
+            MobState s0 = MINE_MOB_STATE.get(mineMobKey(map, om.id));
+            if (s0 != null && s0.deadUntil > now) continue;
+            int[] ca = mineSweepCover(map, om, s0, now, line);
+            if (ca == null) continue;
+            int[] cw = mineSweepCover(map, om, s0, now, wc);
+            if (cw == null) continue;
+            S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
+            double sa = 0, sw = 0;
+            for (int e = 1; e <= 8; e++) {
+                double m = S5MineMobs.weakTo(e, ot) ? 1.5 : 1;
+                if (aura[e] > 0 && aura[e] >= ca[0]) sa += aura[e] * m;
+                if (w[e] > 0) sw += w[e] * m;
+            }
+            if (sw * cw[1] > sa * ca[1]) skipA.add(om.id); else skipW.add(om.id);
+        }
+    }
+
     /** 칸 묶음(line: 칸 -> 거리) 위의 몬스터를 가까운 순으로 maxT마리까지 hitsFn(종류, 거리) 피해 -- 검기/관리자 전체 공격이 같이 쓴다. 보스는 체력 1에서 멈춘다. */
     long[] mineSweepCells(String userName, S5MineMap map, Map<String, Integer> items, java.util.Map<Integer, Integer> line, int maxT, int skipMob, long now, StringBuilder msg, HashMap<String, Object> out,
             java.util.function.BiFunction<S5MineMobs.Type, Integer, List<int[]>> hitsFn, String mobsKey, String dropsKey, String verb) {
@@ -7698,8 +7782,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int mind = mineMindExpPct(items);
         long kills = 0, expSum = 0;
         List<int[]> tg = new ArrayList<>(); // {몬스터 번호, 맞은 칸, 몇 칸 앞}
+        java.util.Set<Integer> skipSet = MINE_SWEEP_SKIP.get(); // [2026-11-22] 검기/돌개 겹침 -- 다른 쪽이 더 센 몬스터
         for (S5MineMap.Mob om : map.mobs()) {
             if (om.id == skipMob) continue;
+            if (skipSet != null && skipSet.contains(om.id)) continue;
             S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
             if (ot.clone || mineBossDead(om.type) || mineHidden(map, ot, now)) continue; // [2026-11-05] 천둥 황소 동안 마물은 숨음
             if (om.type == S5MineMobs.HARPY_BOSS_TYPE && mineHarpyNow(map, now)[2] == 1) continue; // [2026-11-08] 나무 뒤 하피 -- 필살기도 안 맞는다
@@ -8015,7 +8101,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (kx != x || ky != y) { dao.updateMinePos(userName, map.id, kx, ky, now); out.put("knockX", kx); out.put("knockY", ky); }
         out.put("gust", true);
         S5MineMobs.Type ht = S5MineMobs.TYPES.get(bm.type);
-        return mineCoatHit(items, (int) Math.min(Integer.MAX_VALUE / 4, S5MineMobs.atk(ht, bm.rank) * MINE_HARPY_GUST_MULT));
+        return mineCoatHit(items, (int) Math.min(Integer.MAX_VALUE / 4, S5MineMobs.atk(ht, bm.rank) * MINE_HARPY_GUST_MULT), ht.elem()); // [2026-11-22] 돌풍 = 하피 속성
     }
     /** 몬스터 상태(화면 1초 턴) -- 하피 자리를 맞추고 {harpy: {hide, weak, move}, trees: [[번호, 상태, 불 쌓인 양]]}. */
     void mineHarpySync(S5MineMap map, long now, HashMap<String, Object> out) {
@@ -8446,8 +8532,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int hp = mineHpNow(row, now, lock, rb);
         mineBerserkLow(items, hp, mineHpMax(lv, rb)); // [2026-11-04] 광전사의 장갑 2단계
         StringBuilder msg = new StringBuilder();
-        long[] r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
-        long[] wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
+        java.util.Set<Integer> skA = new java.util.HashSet<>(), skW = new java.util.HashSet<>(); // [2026-11-22] 검기/돌개 겹치면 센 쪽만
+        mineAuraWhirlPick(userName, map, items, aura, range, x, y, dir, -1, now, skA, skW);
+        long[] r, wr;
+        try {
+            MINE_SWEEP_SKIP.set(skA);
+            r = mineAuraSweep(userName, map, items, aura, range, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, dir, -1, now, msg, out);
+            MINE_SWEEP_SKIP.set(skW);
+            wr = mineWhirlSweep(userName, map, items, mineAtkP(lv, items) * mineAtkMul(items) * mineUnityAtk(userName) + mineWeaponFlat(items), x, y, now, msg, out); // [2026-11-07] 돌개베기
+        } finally { MINE_SWEEP_SKIP.remove(); }
         r = new long[] { r[0] + wr[0], r[1] + wr[1] };
         mineMercShare(userName, items, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
@@ -9585,6 +9678,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int left = items.getOrDefault(MINE_ITEM_ENCH_LEFT, 0);
         m.put("el", left > 0 ? items.getOrDefault(MINE_ITEM_ENCH_EL, 0) : 0);
         m.put("left", left);
+        int aleft = items.getOrDefault(MINE_ITEM_AEL_LEFT, 0); // [2026-11-22] 갑옷 속성
+        m.put("ael", aleft > 0 ? items.getOrDefault(MINE_ITEM_AEL, 0) : 0);
+        m.put("aleft", aleft);
         return m;
     }
     static final int MINE_PARASOL_CUT = 2;
@@ -9824,7 +9920,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     out.put("airPct", MINE_THUNDER_AIR_PCT);
                 } else cs.frac = 0;
                 int tatk = S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).atk();
-                if (shock.contains(y * map.w + x)) shockDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_ZONE_MULT)));
+                if (shock.contains(y * map.w + x)) shockDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_ZONE_MULT)), S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).elem()); // [2026-11-22] 장판 = 황소 속성
                 synchronized (MINE_THUNDER_LOCK) {
                     if (mineThunderStormNext <= 0) mineThunderStormNext = now + 15_000L;
                     if (now >= mineThunderStormNext) { mineThunderStormAt = now; mineThunderStormNext = now + 18_000L + RND.nextInt(6_000); }
@@ -9834,7 +9930,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (mineThunderStormAt > 0 && now - mineThunderStormAt < 3_000L && (seen == null || seen < mineThunderStormAt)) {
                     MINE_THUNDER_STORM_SEEN.put(userName, mineThunderStormAt);
                     MINE_STUN.put(userName, now + MINE_STORM_STUN_MS);
-                    stormDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_STORM_MULT)));
+                    stormDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_STORM_MULT)), S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).elem());
                     out.put("storm", mineThunderStormAt);
                     out.put("stunUntil", now + MINE_STORM_STUN_MS);
                 }
@@ -9868,7 +9964,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 long nf = mineRaidNext(MINE_RAID_FIRE_MS, MINE_RAID_FIRE_OFF, from), ng = mineRaidNext(MINE_RAID_GAS_MS, MINE_RAID_GAS_OFF, from);
                 out.put("nextFireAt", mineRaidNext(MINE_RAID_FIRE_MS, MINE_RAID_FIRE_OFF, now));
                 out.put("nextGasAt", mineRaidNext(MINE_RAID_GAS_MS, MINE_RAID_GAS_OFF, now));
-                int atk = mineCoatHit(items, S5MineMobs.TYPES.get(S5MineMobs.RAID_BOSS_TYPE).atk());
+                int atk = mineCoatHit(items, S5MineMobs.TYPES.get(S5MineMobs.RAID_BOSS_TYPE).atk(), S5MineMobs.TYPES.get(S5MineMobs.RAID_BOSS_TYPE).elem()); // [2026-11-22] 패턴 = 대주교 속성
                 int bx = bs != null && bs.frozenUntil > now ? bs.fx : boss.x, by = bs != null && bs.frozenUntil > now ? bs.fy : boss.y;
                 if (nf <= now) {
                     out.put("fireAt", nf);
@@ -11388,6 +11484,44 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return new int[] { city.spawnX, city.spawnY };
     }
 
+    /** [2026-11-22] 갑옷 속성 부여 -- 무기와 같은 NPC/재료, 횟수는 맞는 횟수(원소술사 MINE_ENCH_HITS_ELEM번, 성당 신부 MINE_ENCH_HITS번). 갑옷을 입고 있어야 한다. */
+    HashMap<String, Object> mineArmorEnchant(String userName, HashMap<String, Object> row, String el, HashMap<String, Object> out) {
+        int e;
+        String cost, npc = "elementalist";
+        if ("none".equals(el)) {
+            if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, npc)) { out.put("ok", false); out.put("message", "왕도 원소술사 앞에서만 할 수 있어요."); return out; }
+            dao.upsertMineItem(userName, MINE_ITEM_AEL, 0);
+            dao.upsertMineItem(userName, MINE_ITEM_AEL_LEFT, 0);
+            mineArmorElSet(userName, 0, 0);
+            out.put("message", "🔮 원소술사: 갑옷에 깃든 속성을 거두었네.");
+            out.put("ench", mineEnchInfo(mineItems(userName)));
+            return out;
+        }
+        switch (el) {
+            case "light": e = S5MineMobs.EL_LIGHT; cost = S5MineMap.BAR_CODES[4]; npc = "priest"; break;
+            case "water": e = S5MineMobs.EL_WATER; cost = S5MineMap.cutCode(3); break;
+            case "thunder": e = S5MineMobs.EL_THUNDER; cost = S5MineMap.cutCode(4); break;
+            case "fire": e = S5MineMobs.EL_FIRE; cost = S5MineMap.cutCode(1); break;
+            case "earth": e = S5MineMobs.EL_EARTH; cost = S5MineMap.cutCode(0); break;
+            default: out.put("ok", false); out.put("message", "그런 속성은 없어요."); return out;
+        }
+        if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, npc)) {
+            out.put("ok", false);
+            out.put("message", ("priest".equals(npc) ? "왕도 성당 신부" : "왕도 원소술사") + " 앞에서만 할 수 있어요.");
+            return out;
+        }
+        if (mineArmorOn(mineItems(userName)) == null) { out.put("ok", false); out.put("message", "갑옷을 입고 와야 속성을 깃들일 수 있어요."); return out; }
+        if (dao.takeUserOre(userName, cost, 1) == 0) { out.put("ok", false); out.put("message", mineCodeName(cost) + " 1개가 있어야 해요."); return out; }
+        int hits = "priest".equals(npc) ? MINE_ENCH_HITS : MINE_ENCH_HITS_ELEM;
+        dao.upsertMineItem(userName, MINE_ITEM_AEL, e);
+        dao.upsertMineItem(userName, MINE_ITEM_AEL_LEFT, hits);
+        mineArmorElSet(userName, e, hits);
+        String nm = S5MineMobs.ELEM_NAMES[e];
+        out.put("message", "🛡️ 갑옷에 " + nm + " 속성을 깃들였어요! " + hits + "번 맞는 동안 " + nm + " 속성 공격은 막고, " + mineAelWeak(e) + " 속성 공격엔 1.5배로 아파요. (" + mineCodeName(cost) + " 1개 사용)");
+        out.put("ench", mineEnchInfo(mineItems(userName)));
+        return out;
+    }
+
     /** [2026-10-29] 무기 속성 부여(MINE_ENCH_HITS번 공격 동안) -- 왕도 성당 신부: 빛(미스릴괴 1, 어둠 x1.5), 원소술사: 물/번개/불/땅
      *  (세공된 아쿠아마린/토파즈/루비/재스퍼 1, 상성 x1.5). 새로 부여하면 이전 속성은 사라진다. */
     HashMap<String, Object> mineEnchant(String userName, HashMap<String, Object> row, String el, HashMap<String, Object> out) {
@@ -11441,6 +11575,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         if (action.startsWith("ench_")) return mineEnchant(userName, row, action.substring(5), out); // [2026-10-29]
+        if (action.startsWith("aench_")) return mineArmorEnchant(userName, row, action.substring(6), out); // [2026-11-22] 갑옷 속성
         int lv = mineLv(row);
         Map<String, Integer> items = mineItems(userName);
         int rb = mineRebirth(items);
@@ -11601,6 +11736,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) { mineMercXpFlushUser(userName); mineBoatFlush(userName); } // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치/배 피해를 DB에
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
+        { int[] ae = MINE_ARMOR_EL_OF.get(userName); // [2026-11-22] 갑옷 속성 -- 맞은 횟수를 DB에, 무효/상성 횟수를 화면에
+          if (ae != null) {
+              int pend, imm, weak, ael, left;
+              synchronized (ae) { pend = ae[2]; imm = ae[3]; weak = ae[4]; ae[3] = 0; ae[4] = 0; if (pend > 0) { ae[1] = Math.max(0, ae[1] - pend); ae[2] = 0; } ael = ae[0]; left = ae[1]; }
+              if (pend > 0) dao.upsertMineItem(userName, MINE_ITEM_AEL_LEFT, left);
+              if (ael > 0 || imm > 0 || weak > 0) out.put("ael", new int[] { left > 0 ? ael : 0, left, imm, weak });
+          } }
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
         if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.merc2 = mineMercOn2(lit) ? mineMercCls(lit, MINE_MERC_K2) : -1; if (me.merc2 >= 0) { me.mercEl2 = mineMercEl(lit, MINE_MERC_K2); me.mercSt2 = mineMercStage(mineMercLv(lit, MINE_MERC_K2)); me.mercNi2 = mineMercNi(lit, MINE_MERC_K2, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         int soloF = S5MineMap.towerFloor(mapId);
