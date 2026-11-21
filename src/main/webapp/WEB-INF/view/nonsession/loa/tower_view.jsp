@@ -792,6 +792,8 @@
     .mine-ult .ya{ fill:#2a62c8; cursor:pointer; } /* X 만검진 -- 음(파랑) */
     .mine-ult .yb{ fill:#c8323a; cursor:pointer; } /* C 일섬참 -- 양(빨강) */
     .mine-ult .ya:active, .mine-ult .yb:active{ filter:brightness(1.35); }
+    .mine-ult .yc{ fill:url(#ultGoldG); cursor:pointer; } .mine-ult .yc:active{ filter:brightness(1.25); } .mine-ult .ic{ pointer-events:none; } /* [2026-11-21] 각성(V) -- 삼태극 위 금색 조각 + 노란 불꽃 */
+    .mine-ult.lk2 .yc{ filter:grayscale(1) brightness(.55); } .mine-ult.lk2 .ic{ opacity:.25; } .mine-ult.lk2 .lkc{ display:inline; }
     .mine-ult .sc{ fill:none; stroke:#140d0a; stroke-width:2.5; pointer-events:none; }
     .mine-ult .rim{ fill:none; stroke:#140d0a; stroke-width:3; pointer-events:none; }
     .mine-ult image, .mine-ult text, .mine-ult .ultkey{ pointer-events:none; }
@@ -940,6 +942,8 @@
     .mine-hp .hp-l{ display:flex; justify-content:space-between; align-items:baseline; gap:4px; white-space:nowrap; overflow:hidden; } /* [2026-11-05] 숫자가 칸 밖으로 안 나가게 */
     .mine-hp .hp-n{ font-size:11px; color:#fff; }
     .mine-hp:empty{ display:none; }
+    .mine-hp.kak{ box-shadow:0 0 0 2px #ffb01a, 0 0 10px 3px rgba(255,190,40,.75); } .mine-hp .kk-n{ color:#ffd23a; text-shadow:0 0 4px #ff9a1a; } /* [2026-11-21] 각성 -- 금빛 테두리 + 넘친 체력 숫자 */
+    .mine-bar.kk{ height:3px; background:rgba(255,210,60,.18); border-color:#5a3a08; } .mine-bar.kk i{ background:linear-gradient(90deg,#ffe46a,#ffb01a); box-shadow:0 0 5px #ffcc33; } /* 넘친 체력(시안 C) */
     .mine-bar{ display:block; height:5px; margin-top:3px; background:#2a1d1d; border:1px solid #140d0a; }
     .mine-bar i{ display:block; height:100%; transition:width .25s ease-out; } /* [2026-11-03] 체력/경험치 막대가 부드럽게 */
     .mine-bar.hp i{ background:#e8433a; }

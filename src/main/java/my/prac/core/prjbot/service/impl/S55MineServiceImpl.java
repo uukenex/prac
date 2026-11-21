@@ -1010,7 +1010,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** [2026-11-17] 갑옷 체력까지 더한 최대 체력(잠금 전) -- 체력바 100%, 거룡의 최대 체력 % 공격("늘어난 체력만큼 거룡 상향"). */
     static int mineHpFull(int lv, int rb) { String hu = MINE_CTX.get(); return mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0)); }
-    static int mineHpCap(int lv, int lock, int rb) { String hu = MINE_CTX.get(); return Math.max(1, (mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0))) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
+    static int mineHpCapN(int lv, int lock, int rb) { String hu = MINE_CTX.get(); return Math.max(1, (mineHpMax(lv, rb) + (hu == null ? 0 : MINE_ARMOR_HP_OF.getOrDefault(hu, 0))) * (10 - Math.max(0, Math.min(MINE_HP_LOCK_MAX, lock))) / 10); }
+    /** [2026-11-21] 각성(필살기) 중엔 2배 -- "현재 체력 2배(최대 체력을 잠시 넘는다)": 넘친 체력이 곳곳의 최대 체력 자르기에 잘리지 않게. 회복은 mineHpCapN(원래 최대)까지만. */
+    static int mineHpCap(int lv, int lock, int rb) { int c = mineHpCapN(lv, lock, rb); return mineKakOn(MINE_CTX.get()) ? c * 2 : c; }
+    /** [2026-11-21] 회복 -- 원래 최대 체력까지만(각성으로 넘친 체력은 그대로 두고 더 채우지 않는다). */
+    static int mineHealTo(int hp, long add, int lv, int lock, int rb) { int n = mineHpCapN(lv, lock, rb); return hp >= n ? hp : (int) Math.min(n, hp + add); }
 
     /** 쓰러진 뒤 붙이는 안내(잠금이 늘었을 때만). */
     static String mineLockText(HashMap<String, Object> out) {
@@ -1068,9 +1072,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     int mineHpNow(HashMap<String, Object> row, long now, int lock, int rb) {
-        int max = mineHpCap(mineLv(row), lock, rb);
+        int max = mineHpCap(mineLv(row), lock, rb), nmax = mineHpCapN(mineLv(row), lock, rb); // [2026-11-21] 각성 -- max = 2배(넘친 체력 유지), 회복은 nmax까지
         HpVirt hv = mineHpVirt(row);
-        if (hv == null && row.get("M_HP") == null) return max;
+        if (hv == null && row.get("M_HP") == null) return nmax;
         int hp = Math.min(max, hv != null ? hv.hp : intVal(row.get("M_HP"), max)); // [2026-11-11] 고레벨 최대 체력이 줄어도(80레벨부터 새 곡선) 넘치지 않게
         long hpAt = hv != null ? hv.at : longOf(row.get("M_HP_AT_MS"), now);
         String un = strVal(row.get("USER_NAME"), null);
@@ -1086,16 +1090,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long el = Math.max(0, now - hpAt), fightSpan = fight ? Math.min(el, MINE_ENGAGE_TTL_MS) : 0, calm = el - fightSpan;
         double floor = Math.min(hp, 1), v = hp;
         double arg = gi == null ? 0 : mineArmorRegen(gi); // [2026-11-06] 전설 이상 갑옷 -- 초당 최대 체력 %(싸울 때도, 대기 없이)
-        if (arg > 0) { v = Math.min(max, v + el * (double) max * arg / 100 / 1000); }
+        if (arg > 0) { double p0 = v; v = Math.min(Math.max(nmax, p0), v + el * (double) nmax * arg / 100 / 1000); }
         if (calm > 0) {
-            v += Math.max(0, calm - MINE_REGEN_DELAY_MS) * (double) max * mul / MINE_HP_FULL_MS;
-            if (twin) v -= calm * (double) max * mineTwinDrain(gi) / 100 / 1000;
-            v = Math.min(max, v); if (twin) v = Math.max(floor, v);
+            double p0 = v;
+            v += Math.max(0, calm - MINE_REGEN_DELAY_MS) * (double) nmax * mul / MINE_HP_FULL_MS;
+            if (twin) v -= calm * (double) nmax * mineTwinDrain(gi) / 100 / 1000;
+            v = Math.min(Math.max(nmax, p0), v); if (twin) v = Math.max(floor, v);
         }
         if (fightSpan > 0) {
-            v += fightSpan * (double) max * mul * MINE_REGEN_FIGHT_MUL / MINE_HP_FULL_MS;
-            if (twin) v -= fightSpan * (double) max * mineTwinDrain(gi) / 100 / 1000;
-            v = Math.min(max, v); if (twin) v = Math.max(floor, v);
+            double p0 = v;
+            v += fightSpan * (double) nmax * mul * MINE_REGEN_FIGHT_MUL / MINE_HP_FULL_MS;
+            if (twin) v -= fightSpan * (double) nmax * mineTwinDrain(gi) / 100 / 1000;
+            v = Math.min(Math.max(nmax, p0), v); if (twin) v = Math.max(floor, v);
         }
         return (int) v;
     }
@@ -1109,6 +1115,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         c.put("hpMax", mineHpCap(lv, lock, rb)); // [2026-10-25] 잠긴 만큼 뺀 최대 체력
         c.put("hpBase", mineHpFull(lv, rb)); // [2026-11-17] 갑옷 체력까지(넘치던 체력바)
         c.put("hpLock", Math.min(MINE_HP_LOCK_MAX, lock) * 10);
+        long ku = mineKakUntil(MINE_CTX.get()); // [2026-11-21] 각성 -- 끝나는 시각과 원래 최대 체력(화면: 넘친 몫을 금색 줄로)
+        if (ku > now) c.put("hpMaxN", mineHpCapN(lv, lock, rb));
         return c;
     }
 
@@ -1124,6 +1132,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         c.put("rebirthReady", mineRebirthReady(lv, exp, rb));
         c.put("at", now);
         c.put("fullMs", MINE_HP_FULL_MS);
+        long kku = mineKakUntil(MINE_CTX.get()); if (kku > now) c.put("kakUntil", kku); // [2026-11-21] 각성 -- 어느 전투 정보에나(화면 불꽃/체력바)
         return c;
     }
 
@@ -2779,7 +2788,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  체력 몫은 Lv.50 이하 x2, Lv.51~80 x1.5. 체력은 받는 피해를 그만큼 나눠서(mineCoatHit / 장판) -- 최대 체력 숫자는 그대로. 위치 알림(1초)이 다시 잰다(MINE_UNITY_MS 동안 유효).
     static final long MINE_UNITY_MS = 3_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, double[]> MINE_UNITY = new java.util.concurrent.ConcurrentHashMap<>(); // {공격 배수, 체력 배수, 끝나는 시각, 인원}
-    static double mineUnityAtk(String u) { double[] v = u == null ? null : MINE_UNITY.get(u); return v != null && v[2] > System.currentTimeMillis() ? v[0] : 1.0; }
+    static double mineUnityAtk(String u) { double[] v = u == null ? null : MINE_UNITY.get(u); return (v != null && v[2] > System.currentTimeMillis() ? v[0] : 1.0) * (mineKakOn(u) ? MINE_KAK_DMG : 1.0); } // [2026-11-21] 각성 -- 주는 피해 2배(내 공격/검기/돌개베기/필살기, 용병 제외)
     static double mineUnityHp(String u) { double[] v = u == null ? null : MINE_UNITY.get(u); return v != null && v[2] > System.currentTimeMillis() ? v[1] : 1.0; }
     HashMap<String, Object> mineUnityCalc(String userName, String mapId, long now) {
         S5MineMap map = S5MineMap.get(mapId);
@@ -3384,6 +3393,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_PSTEALTH.remove(userName); // [2026-10-30] 자객의 목걸이 은신도 끝
         MINE_STUN.remove(userName); // [2026-11-04] 붕대 스턴도 끝
         MINE_HEAL.remove(userName); // [2026-10-28] 재생의 장갑 회복도 끝
+        MINE_KAK.remove(userName); // [2026-11-21] 각성도 끝
         MINE_ICE_THAWED.remove(userName);
         MINE_CHAOS_RUN.remove(userName); // [2026-11-17] 혼돈스러운 마계도 끝(몬스터는 위 mineSoloReset으로 사라진다 -- 귀환의 문이 열린다)
         if (mineWbZone(userName, now)) { // [2026-11-15] "체력이 다한 플레이어는 회색 화면으로 두다가 10초 뒤 부활" -- 월드보스 싸움터에선 그 자리에 쓰러져 있다가 일어난다
@@ -3585,7 +3595,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (healed > 0) { // 싸움이 끝난 뒤에도 4초 동안은 회복을 받아 저장
                 HashMap<String, Object> hrow = dao.selectMineUserForUpdate(userName);
                 if (hrow != null) {
-                    int hlv = mineLv(hrow), hhp = Math.min(mineHpCap(hlv, lock, rb), mineHpNow(hrow, now, lock, rb) + healed);
+                    int hlv = mineLv(hrow), hhp = mineHealTo(mineHpNow(hrow, now, lock, rb), healed, hlv, lock, rb);
                     long hexp = Math.max(0, longOf(hrow.get("M_EXP"), 0L));
                     dao.updateMineCombat(userName, hlv, hexp, hhp, now, 0);
                     out.put("combat", mineCombatInfo(hlv, hexp, hhp, now, false, lock, rb));
@@ -3784,7 +3794,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long until = Math.min(now, pdb.poisonUntil), el = Math.min(2_000L, until - pdb.poisonAt);
             pdb.poisonAt = until;
             if (el > 0) {
-                int pd = Math.max(1, (int) (mineHpCap(mineLv(row), lock, rb) * MINE_POISON_PCT / 100 * el / 1000.0));
+                int pd = Math.max(1, (int) (mineHpCapN(mineLv(row), lock, rb) * MINE_POISON_PCT / 100 * el / 1000.0));
                 dmgSum += pd;
                 HashMap<String, Object> h = new HashMap<>();
                 h.put("dmg", pd);
@@ -3809,7 +3819,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dmgSum == 0 && healed == 0 && mercExp == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
         int iceHit = 0; // [2026-11-18] 빙결 상태에서 맞으면(어떤 공격이든) 즉사 대신 최대 체력 50% + 얼음이 깨진다
         if (dmgSum > 0 && (shattered || mineFrozen(userName, now) != null)) {
-            iceHit = (int) Math.round(mineHpCap(lv, lock, rb) * MINE_ICE_HIT_PCT / 100.0);
+            iceHit = (int) Math.round(mineHpCapN(lv, lock, rb) * MINE_ICE_HIT_PCT / 100.0);
             dmgSum = Math.max(dmgSum, iceHit);
             shattered = true;
             if (MINE_ICE_FROZEN.remove(userName) != null) MINE_ICE_THAWED.remove(userName);
@@ -3831,7 +3841,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (mo2 instanceof Map) { @SuppressWarnings("unchecked") Map<String, Object> mm = (Map<String, Object>) mo2; mm.put("kexp", mg[5]); } // [2026-11-07] 화면의 "내 경험치 +"는 실제로 오른 만큼(가득 차 있으면 0 -- 안 띄움)
             if (mg[4] > 0) out.put("levelUp", (int) mg[4]);
         }
-        if (healed > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + healed); out.put("healed", healed); } // [2026-10-28] 재생의 장갑
+        if (healed > 0) { hp = mineHealTo(hp, healed, lv, lock, rb); out.put("healed", healed); } // [2026-10-28] 재생의 장갑
         if (dmgSum > 0 && mineBerserkInvul(userName, now)) { dmgSum = 0; out.put("berserkInv", true); } // [2026-11-20] 광전사 불굴 -- 무적 중
         if (dmgSum > 0) {
             if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
@@ -3841,7 +3851,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (shattered && hp > 0) { out.put("iceBroke", dmgSum); out.put("message", "🧊 얼어붙은 채로 " + (killerName == null ? "" : killerName + "의 ") + "일격을 맞아 얼음이 깨졌어요! (-" + String.format("%,d", dmgSum) + ")"); }
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
-                hp = mineHpCap(lv, lock, rb);
+                hp = mineHpCapN(lv, lock, rb);
                 mineDisengageAll(userName);
                 fight = false;
                 out.put("died", true);
@@ -5197,7 +5207,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (hp <= 0) {
                 died = true;
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
-                hp = mineHpCap(lv, lock, rb);
+                hp = mineHpCapN(lv, lock, rb);
                 msg.append("💫 ").append(type.name).append("에게 쓰러졌어요... ").append(mineRespawnMsg(userName, items, now)).append(mineLockText(out));
                 long wbd = mineWbDownUntil(userName, now); // [2026-11-15] 월드보스 -- 화면 회색 + 카운트
                 if (wbd > 0) out.put("wbDown", wbd);
@@ -5218,9 +5228,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             if (am.length() > 0) msg.append(msg.length() > 0 ? " " : "").append(am);
         }
-        if (!died) { int kh = mineRegenKillHeal(items, kills, mineHpMax(lv, rb)); if (kh > 0) { hp = Math.min(mineHpCap(lv, lock, rb), hp + kh); out.put("killHeal", kh); } } // [2026-11-04] 재생의 장갑 2단계
+        if (!died) { int kh = mineRegenKillHeal(items, kills, mineHpMax(lv, rb)); if (kh > 0) { hp = mineHealTo(hp, kh, lv, lock, rb); out.put("killHeal", kh); } } // [2026-11-04] 재생의 장갑 2단계
         if (!died && !mineJustDied(userName)) dao.updateMinePos(userName, map.id, x, y, now); // [2026-11-17] 다른 요청(전투 턴)에서 방금 쓰러졌으면 위치를 되돌리지 않는다
-        else if (!died) hp = mineHpCap(lv, lock, rb); // 체력도 부활 체력 그대로
+        else if (!died) hp = mineHpCapN(lv, lock, rb); // 체력도 부활 체력 그대로
         dao.updateMineCombat(userName, lv, exp, hp, now, kills);
         out.put("levelUp", levelUp);
         out.put("died", died);
@@ -8052,6 +8062,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         items.put(mineUltKey(0), MINE_ULT_MAX);
         items.put(mineUltKey(1), MINE_ULT_MAX);
+        items.put(mineUltKey(2), MINE_ULT_MAX); // [2026-11-21] 각성
     }
     static String mineWhirlKey(boolean active, int e) { return (active ? "WHIRL_A" : "WHIRL_L") + e; }
     static int[] mineWhirlActive(Map<String, Integer> items) {
@@ -8147,7 +8158,34 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     static List<int[]> mineVulnApply(List<int[]> hits, double vul) { if (hits != null && vul > 1) for (int[] h : hits) h[1] = (int) Math.round(h[1] * vul); return hits; }
     static void mineVulnAdd(MobState s, int pct, long now) { s.vulnPct = Math.min(MINE_VULN_MAX, (s.vulnUntil > now ? s.vulnPct : 0) + pct); s.vulnUntil = now + MINE_VULN_MS; }
-    static final String[] MINE_ULT_NAME = { "만검진", "일섬참" };
+    static final String[] MINE_ULT_NAME = { "만검진", "일섬참", "각성" };
+    // [2026-11-21] "필살기 1종 추가 -- 7초간 모든 데미지 2배(적에게 주는 피해), 현재 체력 2배(최대 체력을 잠시 넘는다), 레벨당 지속 시간 1초씩, 키는 V"(시안 승인: 삼태극 위 노란 불꽃).
+    //  ULT_L2. 지속 = MINE_KAK_MS + 레벨당 MINE_KAK_LV_MS(1레벨 7초 ~ 5레벨 11초). 쿨타임은 다른 필살기와 함께(2분), 배우는 비용도 같다(은하수 조각 2/5/8/11/14).
+    //  피해 2배 = mineUnityAtk에 곱한다. 체력 2배 = 쓸 때 지금 체력 x2, 그동안 최대 체력(mineHpCap)도 2배라 잘리지 않고, 회복은 원래 최대(mineHpCapN)까지만.
+    //  끝나거나 쓰러지면 넘친 체력은 원래 최대로(읽을 때 잘린다). 상태는 메모리(MINE_KAK = 끝나는 시각) -- 배포하면 끝난다.
+    static final long MINE_KAK_MS = 7_000L, MINE_KAK_LV_MS = 1_000L;
+    static final double MINE_KAK_DMG = 2.0;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_KAK = new java.util.concurrent.ConcurrentHashMap<>();
+    static long mineKakUntil(String u) { Long v = u == null ? null : MINE_KAK.get(u); return v == null ? 0L : v; }
+    static boolean mineKakOn(String u) { return mineKakUntil(u) > System.currentTimeMillis(); }
+    HashMap<String, Object> mineKakCast(String userName, HashMap<String, Object> row, Map<String, Integer> items, int lv, int ulv, long now, HashMap<String, Object> out) {
+        long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), rb = mineRebirth(items);
+        MINE_KAK.remove(userName);
+        int hp0 = mineHpNow(row, now, lock, rb);
+        long until = now + MINE_KAK_MS + MINE_KAK_LV_MS * (Math.max(1, ulv) - 1);
+        MINE_KAK.put(userName, until);
+        int hp1 = (int) Math.min((long) mineHpCap(lv, lock, rb), (long) hp0 * 2);
+        dao.updateMineCombat(userName, lv, exp, hp1, now, 0);
+        out.put("ok", true);
+        out.put("k", 2);
+        out.put("kakUntil", until);
+        out.put("combat", mineCombatInfo(lv, exp, hp1, now, mineEngaged(userName, now), lock, rb));
+        out.put("ult", mineUltInfo(userName, items));
+        out.put("message", "🔥 각성! " + ((until - now) / 1000) + "초 동안 주는 피해 2배 · 체력 2배");
+        minePresUlt(userName, 2, 0, out);
+        return out;
+    }
     static final int MINE_ULT_MAX = 5, MINE_ULT_ZONE_R = 6, MINE_ULT_TICKS = 5, MINE_ULT_ZONE_MAXT = 40, /* [2026-11-08] "X 스킬 범위 +3칸" -- 반경 3(7x7) -> 6(13x13) */ MINE_ULT_ZONE_SPLIT = 4;
     static final int[] MINE_ULT_COST = { 0, 2, 5, 8, 11, 14 }; // n레벨 배우기 = 은하수 조각
     // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 차고, 0이 되면 3초 동안 못 때린다(쓰러진 것처럼 사라졌다 다 찬 채로).
@@ -8161,7 +8199,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, UltZone> MINE_ULT_ZONE = new java.util.concurrent.ConcurrentHashMap<>();
     HashMap<String, Object> mineUltInfo(String userName, Map<String, Integer> items) {
         HashMap<String, Object> m = new HashMap<>();
-        m.put("l", new int[] { mineUltLv(items, 0), mineUltLv(items, 1) });
+        m.put("l", new int[] { mineUltLv(items, 0), mineUltLv(items, 1), mineUltLv(items, 2) }); // [2026-11-21] 각성
         Long at = MINE_ULT_AT.get(userName);
         m.put("cd", at == null ? 0 : Math.max(0, mineUltGap(items) - (System.currentTimeMillis() - at))); // [2026-11-20] 신속의 장갑
         m.put("gap", mineUltGap(items));
@@ -8181,7 +8219,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> items = mineItems(userName);
         if (!mineUltOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
         if (items.getOrDefault(MINE_ITEM_ULT_GIFT, 0) > 0) { out.put("message", "3환생 특전은 이미 받았어요."); return out; }
-        if (k < 0 || k > 1) return out;
+        if (k < 0 || k > 2) return out; // [2026-11-21] 각성도
         if (mineUltLv(items, k) > 0) { out.put("message", "이미 배운 필살기예요. 아직 안 배운 쪽을 골라 주세요."); return out; }
         dao.upsertMineItem(userName, mineUltKey(k), 1);
         dao.upsertMineItem(userName, MINE_ITEM_ULT_GIFT, 1);
@@ -8203,7 +8241,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "ultmaster")) { out.put("message", "왕도 필살 사범 앞에서만 배울 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
         if (!mineUltOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
-        if (k < 0 || k > 1) return out;
+        if (k < 0 || k > 2) return out; // [2026-11-21] 각성도
         int cur = mineUltLv(items, k);
         if (cur >= MINE_ULT_MAX) { out.put("message", "이미 " + MINE_ULT_NAME[k] + "을(를) 끝까지 익혔네."); return out; }
         int nx = cur + 1, n = MINE_ULT_COST[nx];
@@ -8211,7 +8249,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.upsertMineItem(userName, mineUltKey(k), nx);
         items.put(mineUltKey(k), nx);
         out.put("ok", true);
-        out.put("message", "⚔️ 필살 사범: " + MINE_ULT_NAME[k] + " " + nx + "레벨을 익혔네! (" + (k == 0 ? "5초 동안 1초마다 공격력의 " + Math.round(mineUltPct(0, nx) * 100) + "%" : "공격력의 " + Math.round(mineUltPct(1, nx) * 100) + "% 한 방") + ")");
+        out.put("message", "⚔️ 필살 사범: " + MINE_ULT_NAME[k] + " " + nx + "레벨을 익혔네! (" + (k == 2 ? ((MINE_KAK_MS + MINE_KAK_LV_MS * (nx - 1)) / 1000) + "초 동안 주는 피해 2배 · 체력 2배" : k == 0 ? "5초 동안 1초마다 공격력의 " + Math.round(mineUltPct(0, nx) * 100) + "%" : "공격력의 " + Math.round(mineUltPct(1, nx) * 100) + "% 한 방") + ")");
         out.put("ult", mineUltInfo(userName, items));
         out.put("ores", mineOreList(userName));
         return out;
@@ -8232,7 +8270,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     public HashMap<String, Object> mineUlt(String userName, String mapId, String ver, int x, int y, int k, int t) {
         HashMap<String, Object> out = new HashMap<>();
         out.put("ok", false);
-        if (k < 0 || k > 1) return out;
+        if (k < 0 || k > 2) return out; // [2026-11-21] 2 = 각성
         if (!mineAccess(userName)) return mineClosed();
         HashMap<String, Object> gate = mineGate();
         if (gate != null) return gate;
@@ -8267,6 +8305,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (ulv <= 0) { out.put("message", "아직 " + MINE_ULT_NAME[k] + "을(를) 배우지 않았어요. (왕도 필살 사범)"); return out; }
             if (prevAt != null && now - prevAt < mineUltGap(items)) { out.put("message", "⏳ 필살기는 " + ((mineUltGap(items) - (now - prevAt)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); /* [2026-11-20] 신속의 장갑 */ out.put("ult", mineUltInfo(userName, items)); return out; }
             MINE_ULT_AT.put(userName, now);
+            if (k == 2) return mineKakCast(userName, row, items, lv, ulv, now, out); // [2026-11-21] 각성
             if (k == 0) { z = new UltZone(); z.mapId = map.id; z.cx = x; z.cy = y; z.lv = ulv; MINE_ULT_ZONE.put(userName, z); }
         }
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
@@ -8412,8 +8451,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineMercShare(userName, items, r[1], lv, r[0], out); // [2026-11-06] 용병 경험치(검기만)
         long[] g = mineAuraExp(userName, lv, exp, hp, lock, rb, r[1], false, out);
         int kh = mineRegenKillHeal(items, (int) r[0], mineHpMax((int) g[0], rb)); // [2026-11-04] 재생의 장갑 2단계
-        if (kh > 0) { g[2] = Math.min(mineHpCap((int) g[0], (int) g[3], rb), g[2] + kh); out.put("killHeal", kh); }
-        if (mineJustDied(userName)) g[2] = mineHpCap((int) g[0], (int) g[3], rb); // [2026-11-17] 다른 요청에서 방금 쓰러졌으면 -- 위치는 그대로(부활한 곳), 체력은 부활 체력
+        if (kh > 0) { g[2] = mineHealTo((int) g[2], kh, (int) g[0], (int) g[3], rb); out.put("killHeal", kh); }
+        if (mineJustDied(userName)) g[2] = mineHpCapN((int) g[0], (int) g[3], rb); // [2026-11-17] 다른 요청에서 방금 쓰러졌으면 -- 위치는 그대로(부활한 곳), 체력은 부활 체력
         else dao.updateMinePos(userName, map.id, x, y, now);
         dao.updateMineCombat(userName, (int) g[0], g[1], (int) g[2], now, (int) r[0]);
         out.put("ok", true);
@@ -9761,7 +9800,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long from = map.version().equals(cs.mapVer) ? Math.max(cs.at, now - MINE_COLD_MAX_GAP_MS) : now;
         cs.mapVer = map.version();
         cs.at = now;
-        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), lv = mineLv(row), rb = mineRebirth(items), cap = mineHpCap(lv, lock, rb);
+        int lock = items.getOrDefault(MINE_ITEM_HP_LOCK, 0), lv = mineLv(row), rb = mineRebirth(items), cap = mineHpCapN(lv, lock, rb); // [2026-11-21] 최대 체력 % 피해는 원래 최대 기준(각성 2배 아님)
         int coldDmg = 0, bzDmg = 0, fireDmg = 0, gasDmg = 0, heatDmg = 0;
         if (heat > 0) { // [2026-10-28] 더위 -- 한기처럼 초당 깎는다(그늘/안전지대에선 없음)
             if (safe) cs.frac = 0;
@@ -9860,7 +9899,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (hp <= 0) {
             boolean spell = fireDmg + gasDmg + gustDmg > 0, burnt = lavaDmg > 0 && !spell, shocked = shockDmg + stormDmg > 0 && !spell && !burnt; // [2026-11-05] 천둥 황소
             if (spell || burnt || shocked) lock = mineLockUp(userName, lock, out); // 대주교 마법 = 전투 사망(최대 체력 잠금), [2026-10-28] 용암도(보스전)
-            hp = mineHpCap(lv, lock, rb);
+            hp = mineHpCapN(lv, lock, rb);
             mineDisengageAll(userName);
             MINE_COLD.remove(userName);
             out.put("died", true);
@@ -11598,6 +11637,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (!al.isEmpty()) m.put("a", al);
             }
             if (mineFrozen(e.getKey(), now) != null) m.put("frozen", true);
+            if (mineKakOn(e.getKey())) m.put("kk", 1); // [2026-11-21] 각성 중(금빛 불꽃)
             if (minePStealthOf(e.getKey(), now) != null) m.put("stealth", true); // [2026-10-30] 자객의 목걸이 은신 -- 반투명 // [2026-10-28] 얼음 여왕에게 얼어 있음(화면이 얼음을 그린다)
             others.add(m);
         }

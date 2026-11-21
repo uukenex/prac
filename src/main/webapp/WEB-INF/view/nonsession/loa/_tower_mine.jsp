@@ -2193,6 +2193,7 @@ var TowerMine = (function () {
       else if (e.code === 'KeyZ' || e.key === 'z' || e.key === 'Z') { e.preventDefault(); digBtn(); }
       else if ((e.code === 'KeyX' || e.key === 'x' || e.key === 'X') && st && st.ult) { e.preventDefault(); ultBtn(0); } // [2026-11-07] 필살기 단축키 -- X 만검진(왼쪽) / C 일섬참(오른쪽)
       else if ((e.code === 'KeyC' || e.key === 'c' || e.key === 'C') && st && st.ult) { e.preventDefault(); ultBtn(1); }
+      else if ((e.code === 'KeyV' || e.key === 'v' || e.key === 'V') && st && st.ult) { e.preventDefault(); ultBtn(2); } // [2026-11-21] V 각성
       else if (e.key === 'Enter') { e.preventDefault(); act(); } // [2026-10-24] 옆에 몬스터가 있으면 공격, 없으면 캐기
       else if (e.key === 'Escape') close();
     });
@@ -2347,19 +2348,24 @@ var TowerMine = (function () {
     var tSrv = c.at + (Date.now() - combatT0), from = c.fight ? c.at : Math.max(c.at, c.regenFrom || 0);
     var mul = (c.fight ? (c.regenFight != null ? c.regenFight : 0) : 1) * (inSafe() ? (c.regenSafe || 1) : 1);
     if (st && st.gloveCode === 'BERSERK_GLOVES') mul *= 0.8; // [2026-10-29] 광전사의 장갑 -- 회복 속도 -20%(서버 MINE_BERSERK_REGEN_MUL)
-    var h = c.hp + Math.max(0, tSrv - from) * c.hpMax * mul / (c.fullMs || 60000);
-    if (st && st.armorRegen > 0) h = Math.min(c.hpMax, h + Math.max(0, tSrv - c.at) * c.hpMax * st.armorRegen / 100 / 1000); // [2026-11-06] 전설 이상 갑옷(서버 mineHpNow와 같은 식)
-    if (st && st.gloveCode === 'TWIN_GLOVES') h = Math.max(Math.min(c.hp, 1), h - Math.max(0, tSrv - c.at) * c.hpMax * 0.01 / 1000); // [2026-10-30] 쌍격의 장갑 -- 초당 -1%(서버 mineHpNow와 같은 식)
-    return Math.min(c.hpMax, Math.floor(h));
+    var kk = c.kakUntil > nowSrv(), nm = c.hpMaxN && c.kakUntil ? c.hpMaxN : c.hpMax, rcap = Math.max(nm, c.hp); // [2026-11-21] 각성 -- 넘친 체력은 그대로, 회복은 원래 최대(nm)까지
+    var h = c.hp + Math.max(0, tSrv - from) * nm * mul / (c.fullMs || 60000);
+    if (st && st.armorRegen > 0) h = h + Math.max(0, tSrv - c.at) * nm * st.armorRegen / 100 / 1000; // [2026-11-06] 전설 이상 갑옷(서버 mineHpNow와 같은 식)
+    h = Math.min(c.hp > nm ? c.hp : nm, h);
+    if (st && st.gloveCode === 'TWIN_GLOVES') h = Math.max(Math.min(c.hp, 1), h - Math.max(0, tSrv - c.at) * nm * 0.01 / 1000); // [2026-10-30] 쌍격의 장갑 -- 초당 -1%(서버 mineHpNow와 같은 식)
+    return Math.min(kk ? rcap : nm, Math.floor(h));
   }
   function renderHp() {
     var c = st && st.combat;
     if (!c || !el.hp) return;
     // [2026-10-25] 최대 체력 잠금 -- 막대는 원래 최대 체력 기준, 잠긴 몫은 오른쪽 회색 빗금
     var base = c.hpBase || c.hpMax, lk = c.hpLock || 0;
-    var h = hpNow(), pct = Math.round(h * 100 / base), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
+    var h = hpNow(), ep = Math.min(100, Math.round(c.exp * 100 / Math.max(1, c.expNeed)));
+    var kk = c.kakUntil > nowSrv(), nm = kk && c.hpMaxN ? c.hpMaxN : c.hpMax, hb = Math.min(h, nm), ov = kk ? Math.max(0, h - nm) : 0; // [2026-11-21] 각성 -- 넘친 몫(ov)
+    var pct = Math.min(100, Math.round(hb * 100 / base));
     var rb = c.rebirth | 0, ready = !!c.rebirthReady;
-    var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready;
+    var key = c.lv + ':' + h + ':' + ep + ':' + lk + ':' + rb + ':' + ready + ':' + (kk ? 1 : 0);
+    el.hp.classList.toggle('kak', kk);
     if (el.hp._k === key) return;
     el.hp._k = key;
     el.hp.title = (rb ? 'Lv.' + c.lv + '(' + rbName(rb) + ') ' : '') + '체력 ' + h + ' / ' + c.hpMax + (lk ? ' (최대 체력 ' + lk + '% 잠김)' : '')
@@ -2367,8 +2373,10 @@ var TowerMine = (function () {
     // [2026-10-28] 환생 꼬리표 -- 폭 112px 안에 들어가면 "Lv.1(환생1)", 넘치면 "Lv.1✦1", 그래도 넘치면(환생 뒤 체력이 7자리) 체력을 "1415k"로
     // [2026-11-05] "체력바 옆 숫자가 UI를 넘어온다" -- 환생 안 한 사람도 넘치면 줄이고(예전엔 환생한 사람만), 1.2만 -> "12.3k", 그래도 넘치면 "1.4M"
     for (var fit = 0; fit < 4; fit++) {
-      var hs = fit === 3 && h >= 1000000 ? (h / 1000000).toFixed(h < 10000000 ? 1 : 0) + 'M' : fit >= 2 && h >= 10000 ? (h / 1000).toFixed(h < 100000 ? 1 : 0) + 'k' : String(h);
+      var hfm = function (v) { return fit === 3 && v >= 1000000 ? (v / 1000000).toFixed(v < 10000000 ? 1 : 0) + 'M' : fit >= 2 && v >= 10000 ? (v / 1000).toFixed(v < 100000 ? 1 : 0) + 'k' : String(v); };
+      var hs = hfm(hb) + (ov > 0 ? '<span class="kk-n"> +' + hfm(ov) + '</span>' : '');
       el.hp.innerHTML = '<span class="hp-l"><span>' + lvLabel(c, fit > 0) + '</span><span class="hp-n">' + (lk ? '🔒' : '❤') + hs + '</span></span>' // [2026-10-28] 짧게
+          + (ov > 0 ? '<span class="mine-bar kk"><i style="width:' + Math.min(100, Math.round(ov * 100 / nm)) + '%"></i></span>' : '') // [2026-11-21] 각성 -- 넘친 체력(금색 줄)
           + '<span class="mine-bar hp"><i style="width:' + pct + '%"></i>' + (lk ? '<b style="width:' + lk + '%"></b>' : '') + '</span><span class="mine-bar ex"><i style="width:' + ep + '%"></i></span>'
           ;
       var hl = el.hp.firstChild;
@@ -2579,9 +2587,9 @@ var TowerMine = (function () {
     // [2026-10-28] "무기로 공격 버튼과 채광 버튼 분리" -- ⛏️는 캐기만, ⚔️는 바로 옆 몬스터가 있을 때 또렷해진다
     var near = !P.moving && adjMob();
     if (el.atk && el.atk.classList.contains('near') !== !!near) el.atk.classList.toggle('near', !!near);
-    var ultShow = st && st.ult && (((st.ult.l || [])[0] | 0) + ((st.ult.l || [])[1] | 0) > 0 || st.adminMaps) ? '' : 'none', rstShow = ultShow === '' && st.adminMaps ? '' : 'none'; // [2026-11-07] 필살기 버튼(배웠거나 관리자), 관리자 쿨 초기화
+    var ultShow = st && st.ult && (((st.ult.l || [])[0] | 0) + ((st.ult.l || [])[1] | 0) + ((st.ult.l || [])[2] | 0) > 0 || st.adminMaps) ? '' : 'none', rstShow = ultShow === '' && st.adminMaps ? '' : 'none'; // [2026-11-07] 필살기 버튼(배웠거나 관리자), 관리자 쿨 초기화
     if (el.ult && el.ult.style.display !== ultShow) el.ult.style.display = ultShow;
-    if (el.ult && st && st.ult) { var ulq = st.ult.l || []; el.ult.classList.toggle('lk0', !(ulq[0] | 0)); el.ult.classList.toggle('lk1', !(ulq[1] | 0)); } // [2026-11-08] 하나만 배웠으면 안 배운 조각은 흐리게 + 자물쇠
+    if (el.ult && st && st.ult) { var ulq = st.ult.l || []; el.ult.classList.toggle('lk0', !(ulq[0] | 0)); el.ult.classList.toggle('lk1', !(ulq[1] | 0)); el.ult.classList.toggle('lk2', !(ulq[2] | 0)); } // [2026-11-08] 하나만 배웠으면 안 배운 조각은 흐리게 + 자물쇠
     if (el.ultRst && el.ultRst.style.display !== rstShow) el.ultRst.style.display = rstShow;
     var mmb = $('mineMercMenu'), mmShow = st && st.mercs ? '' : 'none'; // [2026-11-06] 용병 관리 메뉴(지금은 관리자만)
     if (mmb && mmb.style.display !== mmShow) mmb.style.display = mmShow;
@@ -6740,6 +6748,7 @@ var TowerMine = (function () {
         var cur = others[o.id];
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
+        if (o.kk && !cur.kk) cur.kkT0 = now; cur.kk = !!o.kk; // [2026-11-21] 각성(켜지는 순간 불기둥)
         cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; cur.mc = o.mc; cur.mr = !!o.mr; cur.mt = o.mt || null; cur.me = o.me; cur.ms = o.ms; cur.ml = o.ml; cur.m2 = o.m2 || null; /* [2026-11-18] 두 번째 용병, 속성/단계/모습 */ // [2026-11-05] 용병 // [2026-10-28] 얼음 여왕 빙결
         if (o.a && o.a.length) { // [2026-11-07] 다른 사람 공격 -- 처음 보는 번호만, 서버 시각 간격대로
           var fresh = o.a.filter(function (a) { return a.s > (cur.as || 0); }), base = fresh.length ? fresh[0].at : 0;
@@ -7261,7 +7270,7 @@ var TowerMine = (function () {
   //  일섬참: 화면에 보이는 가장 가까운 몬스터 위에 '斬'이 찍히고 대각선으로 크게 베어진다. 그림 img_loa/s55/fx/sword.png, zan.png.
   var novaFx = [], ultFx = [], ultBusy = false, ultReadyAt = 0, ultSeen = null, ultHudT = -1, ultImgs = {};
   var ULT_ANG = 0.44, ULT_SIN = Math.sin(0.44), ULT_COS = Math.cos(0.44); // [2026-11-07] 만검진 칼 기울기 25도
-  var ULT_NAME = ['만검진', '일섬참'], ULT_ZONE_MS = 5000, ULT_COST = [0, 2, 5, 8, 11, 14], GALAXY_G = 70;
+  var ULT_NAME = ['만검진', '일섬참', '각성'], ULT_ZONE_MS = 5000, ULT_COST = [0, 2, 5, 8, 11, 14], GALAXY_G = 70;
   function ultImg(n) {
     if (!ultImgs[n]) { var im = new Image(); im.src = cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/fx/' + n + '.png?v=1'; ultImgs[n] = im; }
     var i = ultImgs[n]; return i.complete && i.naturalWidth ? i : null;
@@ -7294,6 +7303,7 @@ var TowerMine = (function () {
         for (var i = 1; i < 5; i++) (function (n) { setTimeout(function () { ultTick(mid, n); }, n * 1000); })(i);
       }
       if (k === 1) { var m0 = (d.ultMobs || [])[0]; if (m0) { var p0 = ultMobPos(m0); ultFx.push({ k: 1, x: p0.x, y: p0.y, t0: t }); } }
+      if (k === 2) kakStart(d, t); // [2026-11-21] 각성
       if (k === 1 && d.dashX != null) { var ox0 = P.x, oy0 = P.y; setPos(d.dashX, d.dashY); ultFx.push({ k: 2, x0: ox0, y0: oy0, x: d.dashX, y: d.dashY, t0: t }); } // [2026-11-08] 일섬참 -- 대상 바로 옆으로 붙는다(지나온 길에 잔상)
       ultApply(d, t, k);
     }).catch(function () { ultBusy = false; });
@@ -7333,6 +7343,76 @@ var TowerMine = (function () {
   }
   function ultReset() {
     api('/api/tower-mine-ult-reset').then(function (d) { if (d && d.ult) st.ult = d.ult; msg((d && d.message) || '초기화하지 못했어요.', 1600); }).catch(function () { });
+  }
+  // ---- [2026-11-21] 필살기 각성(시안 승인) -- 쓰는 순간: 발밑 금빛 고리 두 겹 + 솟았다 가늘어지는 불기둥(0.6초), 지속 중: 캐릭터 실루엣을 따라 2~3칸 노란 불꽃
+  //  (위로는 열마다 일렁이는 혀) + 발밑 빛 + 오르는 불티, 끝나기 2초 전부터 깜빡이며 옅어진다. 체력바는 넘친 몫을 위에 금색 줄로 + 금빛 테두리(시안 C).
+  var kakFx = null;
+  function kakStart(d, t) {
+    kakFx = { t0: t };
+    flashT0 = t;
+    if (d.message) msg(d.message, 2600);
+  }
+  function kakAlpha(until) {
+    if (!until) return 0;
+    var left = until - nowSrv();
+    if (left <= 0) return 0;
+    return left > 2000 ? 1 : (Math.floor(left / 160) % 2 ? 0.35 : 0.9) * Math.max(0.2, left / 2000);
+  }
+  /** 실루엣 격자(32칸) -- 칸마다 열 오프셋(-4~4)별로 아래쪽/위쪽 가장 가까운 몸 칸까지 거리(한 번 만들어 그림에 붙여 둔다). */
+  function kakMask(spr) {
+    if (spr._kak) return spr._kak;
+    var N = 32, c = mk(N, N), g = c.getContext('2d'), d; g.drawImage(spr, 0, 0, N, N);
+    try { d = g.getImageData(0, 0, N, N).data; } catch (e) { return (spr._kak = { N: N, cells: [] }); } // 그림을 못 읽으면 불꽃 없이
+    var m = new Uint8Array(N * N), bot = 0;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (d[(y * N + x) * 4 + 3] > 90) { m[y * N + x] = 1; bot = Math.max(bot, y); }
+    var X0 = -4, X1 = N + 4, Y0 = -12, cells = [];
+    for (var yy = Y0; yy <= bot; yy++) for (var xx = X0; xx < X1; xx++) {
+      if (xx >= 0 && yy >= 0 && xx < N && yy < N && m[yy * N + xx]) continue;
+      var db = [], da = [], any = false;
+      for (var dx = -4; dx <= 4; dx++) {
+        var mx = xx + dx, b = 99, a = 99;
+        if (mx >= 0 && mx < N) {
+          for (var k = 1; k <= 12; k++) { var my = yy + k; if (my >= 0 && my < N && m[my * N + mx]) { b = k; break; } }
+          for (k = 0; k <= 4; k++) { my = yy - k; if (my >= 0 && my < N && m[my * N + mx]) { a = k; break; } }
+        }
+        db.push(b); da.push(a); if (b < 99 || a < 99) any = true;
+      }
+      if (any) cells.push({ x: xx, y: yy, db: db, da: da });
+    }
+    return (spr._kak = { N: N, cells: cells });
+  }
+  function kakAuraBack(g, ox, oy, t, a, spr, TS) {
+    if (!spr || a <= 0) return;
+    var M = kakMask(spr), u = TS / M.N, cs = M.cells;
+    g.save(); g.globalAlpha = a;
+    for (var i = 0; i < cs.length; i++) {
+      var q = cs[i], kx = 0.28 + 0.22 * (Math.sin(q.x * 0.9 + t * 0.014) * 0.5 + Math.sin(q.x * 2.3 - t * 0.023) * 0.5 + 1) / 2, best = 9;
+      for (var j = 0; j < 9; j++) { var up = Math.min(q.db[j] * kx, q.da[j] * 1.4), dd = Math.max(Math.abs(j - 4), up); if (dd < best) best = dd; }
+      var fl = best + 0.35 * Math.sin(q.x * 1.3 + q.y * 0.7 + t * 0.02);
+      var col = fl <= 1.3 ? '#fff6a0' : fl <= 2.3 ? '#ffd23a' : fl <= 3.3 ? '#ff9a1a' : null;
+      if (col) { g.fillStyle = col; g.fillRect(Math.round(ox + q.x * u), Math.round(oy + q.y * u), Math.ceil(u), Math.ceil(u)); }
+    }
+    g.restore();
+  }
+  function kakAuraFront(g, ox, oy, t, a, TS) { // 발밑 빛 + 오르는 불티
+    var U = TS / 16, p = function (c, x, y, w, h) { g.fillStyle = c; g.fillRect(Math.round(ox + x * U), Math.round(oy + y * U), Math.ceil((w || 1) * U), Math.ceil((h || 1) * U)); };
+    g.save();
+    g.globalAlpha = a * 0.55; p('#ffe46a', 2, 15, 12, 1); g.globalAlpha = a * 0.35; p('#ffd23a', 0, 16, 16, 1);
+    for (var i = 0; i < 6; i++) { var pr = (t / 22 + i * 41) % 22, sx = (i * 37 + 5) % 18 - 1 + Math.sin(t * 0.01 + i) * 0.8; g.globalAlpha = a * Math.max(0, 1 - pr / 22); p(i % 2 ? '#fff3a0' : '#ffb31a', sx, 14 - pr, 1, 1); }
+    g.restore();
+  }
+  function kakCast(g, ox, oy, t, TS) { // 쓰는 순간 0~600ms
+    if (t < 0 || t > 600) return;
+    var k = t / 600, cxp = ox + TS / 2, cyp = oy + TS * 0.95;
+    g.save();
+    g.globalAlpha = Math.max(0, 1 - k) * 0.9; g.strokeStyle = '#ffd23a'; g.lineWidth = Math.max(2, TS / 10);
+    g.beginPath(); g.ellipse(cxp, cyp, TS * (0.4 + 1.9 * k), TS * (0.2 + 0.95 * k), 0, 0, Math.PI * 2); g.stroke();
+    g.globalAlpha = Math.max(0, 1 - k) * 0.6; g.strokeStyle = '#fff6b0'; g.lineWidth = Math.max(1, TS / 22);
+    g.beginPath(); g.ellipse(cxp, cyp, TS * (0.3 + 1.3 * k), TS * (0.15 + 0.65 * k), 0, 0, Math.PI * 2); g.stroke();
+    var ph = Math.min(1, t / 160), pa = t < 160 ? 1 : Math.max(0, 1 - (t - 160) / 440), pw = TS * (0.9 - 0.5 * Math.max(0, (t - 160) / 440));
+    var gr = g.createLinearGradient(0, oy - TS * 3, 0, oy + TS); gr.addColorStop(0, 'rgba(255,230,90,0)'); gr.addColorStop(0.5, 'rgba(255,214,58,.75)'); gr.addColorStop(1, 'rgba(255,250,200,.95)');
+    g.globalAlpha = pa; g.fillStyle = gr; g.fillRect(cxp - pw / 2, oy + TS - (TS * 4) * ph, pw, TS * 4 * ph);
+    g.restore();
   }
   /** 버튼 쿨타임 -- 남은 시간 + 어둡게 덮은 부채꼴(초가 바뀔 때만 고친다). */
   function ultHud() {
@@ -7480,12 +7560,12 @@ var TowerMine = (function () {
     // [2026-11-08] 3환생 특전 -- 아직 안 배운 필살기 하나를 1레벨로 무료(한 번)
     if (u.gift === 1) {
       var gb = '';
-      [['🌧️', '만검진'], ['💥', '일섬참']].forEach(function (s, k) { if (!((u.l || [])[k] | 0)) gb += '<button type="button" class="mine-mini-btn" onclick="TowerMine.ultGift(' + k + ')">' + s[0] + ' ' + s[1] + '</button>'; });
+      [['🌧️', '만검진'], ['💥', '일섬참'], ['🔥', '각성']].forEach(function (s, k) { if (!((u.l || [])[k] | 0)) gb += '<button type="button" class="mine-mini-btn" onclick="TowerMine.ultGift(' + k + ')">' + s[0] + ' ' + s[1] + '</button>'; });
       h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>3환생 특전</b> -- 필살기 하나를 1레벨로 무료로 가르쳐 준대요. (한 번만)'
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
     } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
-    h += '<div class="mine-smith-say">두 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 둥근 버튼의 왼쪽 반이 만검진, 오른쪽 반이 일섬참 -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
-    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, '']].forEach(function (s, k) {
+    h += '<div class="mine-smith-say">세 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 삼태극 버튼의 왼쪽 아래가 만검진(X), 오른쪽 아래가 일섬참(C), 위가 각성(V) -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
+    [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, ''], ['🔥', '각성', '노란 불꽃을 두르고 ', function (lv) { return (6 + lv) + '초 동안 주는 피해 2배 · 지금 체력 2배(최대 체력을 잠시 넘음)'; }, '']].forEach(function (s, k) { // [2026-11-21] 각성
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';
       if (L >= 5) { h += '<div class="mine-smith-row"><img src="' + oreIcon(GALAXY_G) + '" alt="">' + head + '<small>' + s[2] + s[3](5) + s[4] + ' · 끝까지 익혔어요</small></span><button type="button" data-lack="1" disabled>완료</button></div>'; return; }
       var c = ULT_COST[L + 1];
@@ -8033,8 +8113,12 @@ var TowerMine = (function () {
       var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
       if (auraFx.length) { var oA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, ox, oy - 3 * scale, now, oid); ctx.globalAlpha = oA; } // [2026-11-07] 관리자 돌개바람(뒤)
       if (unity) unityRing(ox, oy, now); // [2026-11-17] 함께 싸우는 사람도
-      ctx.drawImage(otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw), ox, oy - 3 * scale, TS, TS);
+      var oSpr = otherSprite(ou.look, osw ? ou.swDir : ou.dir || "down", osw ? 0 : op.moving ? 1 + Math.floor(now / 160) % 2 : 0, osw);
+      if (ou.kk) { var oA0 = ctx.globalAlpha; ctx.globalAlpha = 1; kakAuraBack(ctx, ox, oy - 3 * scale, now, 1, oSpr, TS); ctx.globalAlpha = oA0; } // [2026-11-21] 다른 사람 각성
+      ctx.drawImage(oSpr, ox, oy - 3 * scale, TS, TS);
       ctx.globalAlpha = 1;
+      if (ou.kk) kakAuraFront(ctx, ox, oy - 3 * scale, now, 1, TS);
+      if (ou.kkT0 && now - ou.kkT0 < 600) kakCast(ctx, ox, oy - 3 * scale, now - ou.kkT0, TS);
       if (oBoat) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, true); drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); } // [2026-11-18]
       if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
@@ -8126,8 +8210,12 @@ var TowerMine = (function () {
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     if (auraFx.length) { var hidA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, cx, cy - 3 * scale, now); ctx.globalAlpha = hidA; } // [2026-11-07] 관리자 돌개바람(뒤쪽 반)
     if (unity) unityRing(cx, cy, now); // [2026-11-17] 우리는 하나 -- 발밑 금빛 고리
-    ctx.drawImage(sprites[P.dir + (P.moving ? P.step : 0) + dk], cx, cy - 3 * scale, TS, TS);
+    var mySpr = sprites[P.dir + (P.moving ? P.step : 0) + dk], myKa = kakAlpha(st && st.combat && st.combat.kakUntil); // [2026-11-21] 각성 -- 몸 둘레 노란 불꽃
+    if (myKa > 0) { var hidK = ctx.globalAlpha; ctx.globalAlpha = 1; kakAuraBack(ctx, cx, cy - 3 * scale, now, myKa, mySpr, TS); ctx.globalAlpha = hidK; }
+    ctx.drawImage(mySpr, cx, cy - 3 * scale, TS, TS);
     ctx.globalAlpha = 1;
+    if (myKa > 0) kakAuraFront(ctx, cx, cy - 3 * scale, now, myKa, TS);
+    if (kakFx && now - kakFx.t0 < 600) kakCast(ctx, cx, cy - 3 * scale, now - kakFx.t0, TS); // 쓰는 순간
     if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
     if (berserkInvUntil) { try { berserkShieldDraw(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-20] 광전사 불굴 보호막 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
