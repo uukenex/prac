@@ -1151,7 +1151,7 @@ public class Season5ViewController {
             @RequestParam(value = "slot", defaultValue = "") String slot) {
         if (userName.trim().isEmpty()) return ResponseEntity.ok(new HashMap<String, Object>());
         HashMap<String, Object> out = s5Service.mineLook(userName, action, code, slot);
-        if (Boolean.TRUE.equals(out.get("ok")) && !"wear".equals(action)) mineLog(userName, "[웹] 광산 명품상점 " + action + " " + code, String.valueOf(out.get("message")));
+        if (Boolean.TRUE.equals(out.get("ok")) && !"wear".equals(action) && !"opt".equals(action)) mineLog(userName, "[웹] 광산 명품상점 " + action + " " + code, String.valueOf(out.get("message")));
         return ResponseEntity.ok(out);
     }
 

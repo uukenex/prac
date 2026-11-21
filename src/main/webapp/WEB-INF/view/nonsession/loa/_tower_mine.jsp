@@ -2234,21 +2234,34 @@ var TowerMine = (function () {
   function zoomHud() { var z = document.getElementById('mineZoomLv'); if (z) z.textContent = zoomLabel(); var ds = document.getElementById('mineDmgSum'); if (ds) ds.textContent = dmgSum ? '합산' : '속성별';  var cr = document.getElementById('mineCharRes'); if (cr) cr.textContent = charHD ? '64×64' : '16×16'; }
   // [2026-11-20] 데미지 숫자 -- 속성별(기본) / 합산 한 번. 이 기기에 저장(tw-mine-dmgsum).
   var dmgSum = (function () { try { return localStorage.getItem('tw-mine-dmgsum') === '1'; } catch (e) { return false; } })();
-  function dmgSumGo(on) { dmgSum = !!on; try { localStorage.setItem('tw-mine-dmgsum', dmgSum ? '1' : '0'); } catch (e) { } zoomHud(); msg(dmgSum ? '💥 데미지를 합쳐 한 번에 보여 줘요.' : '💥 데미지를 속성별로 보여 줘요.', 1600); }
+  function dmgSumGo(on) { dmgSum = !!on; try { localStorage.setItem('tw-mine-dmgsum', dmgSum ? '1' : '0'); } catch (e) { } optSave('dmg', dmgSum); zoomHud(); msg(dmgSum ? '💥 데미지를 합쳐 한 번에 보여 줘요.' : '💥 데미지를 속성별로 보여 줘요.', 1600); }
 
   // [2026-11-20] "캐릭터를 16x16 / 64x64 중 고르기(옵션), 64x64는 애니메이션풍 고해상도, 코스튬 전체·날개 포함" -- 기본 64x64, 이 기기에 저장(tw-mine-hd).
   //  바꾸면 그림 캐시(내 캐릭터/다른 유저/주민/외형 미리보기)를 비우고 다시 그린다. 그리는 곳은 같은 칸 크기라 배치는 그대로.
   var charHD = (function () { try { return localStorage.getItem('tw-mine-hd') !== '0'; } catch (e) { return true; } })();
   try { if (window.MineChar && MineChar.setHD) MineChar.setHD(charHD); } catch (e) { }
-  function charResGo(hd) {
-    hd = !!hd;
-    if (hd === charHD) return;
-    charHD = hd;
-    try { localStorage.setItem('tw-mine-hd', hd ? '1' : '0'); } catch (e) { }
-    try { MineChar.setHD(hd); } catch (e) { }
+  // [2026-11-21] "저장되어야 해, 눌려 있는데 적용 안 될 때가 있다" -- 이 기기 저장소(localStorage)만 쓰던 것을 계정에도(OPT_HD/OPT_DMG). 들어올 때 계정 값을 먼저 따른다(optApply).
+  //  같은 값을 다시 눌러도 그림을 다시 만들고 계정에 다시 적는다(예전엔 같은 값이면 아무것도 안 해서, 표시와 실제가 어긋나면 고칠 길이 없었다).
+  function optSave(k, on) { try { api('/api/tower-mine-look?action=opt&code=' + k + '&slot=' + (on ? 1 : 0)).catch(function () { }); } catch (e) { } }
+  function charResApply(hd) {
+    charHD = !!hd;
+    try { localStorage.setItem('tw-mine-hd', charHD ? '1' : '0'); } catch (e) { }
+    try { MineChar.setHD(charHD); } catch (e) { }
     otherSprites = {}; lookImgCache = {}; citCache = {}; allySailors = null; spriteKey = null;
     if (st) buildSprites(st.look);
     zoomHud();
+  }
+  function optApply(o) {
+    if (!o) return;
+    var lsHd = null, lsDmg = null; try { lsHd = localStorage.getItem('tw-mine-hd'); lsDmg = localStorage.getItem('tw-mine-dmgsum'); } catch (e) { }
+    if (o[0]) { if ((o[0] === 1) !== charHD) charResApply(o[0] === 1); } else if (lsHd != null) optSave('hd', charHD); // 계정에 아직 없으면 이 기기 값을 올린다
+    if (o[1]) { dmgSum = o[1] === 1; try { localStorage.setItem('tw-mine-dmgsum', dmgSum ? '1' : '0'); } catch (e) { } } else if (lsDmg != null) optSave('dmg', dmgSum);
+    zoomHud();
+  }
+  function charResGo(hd) {
+    hd = !!hd;
+    charResApply(hd);
+    optSave('hd', hd);
     msg(hd ? '🧍 캐릭터를 64×64 고해상도로 그려요.' : '🧍 캐릭터를 16×16 도트로 그려요.', 1800);
   }
   // [2026-11-19] "크라켄이 커서 폰 화면에서 잘린다" -- 크라켄과 싸우는 동안(krkShown)은 카메라를 나와 크라켄(5x5칸 + 휘두르는 다리) 사이로 부드럽게 옮긴다
@@ -8661,6 +8674,7 @@ var TowerMine = (function () {
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {
     st = s;
+    if (s.opt) optApply(s.opt); // [2026-11-21] 계정에 저장한 화면 옵션
     STEP_MS = s.stepMs || 140; // [2026-10-24] 신속의 장화
     if (s.mercPay) setTimeout(function () { mercPayNote(s.mercPay); }, 1500); // [2026-11-06] 접속하지 않은 동안의 용병 급여
     if (s.weaponOffMsg) setTimeout(function () { msg(s.weaponOffMsg, 3600); }, 900); // [2026-10-29] 무기 장착 레벨이 모자라 칼로 바꿔 듦

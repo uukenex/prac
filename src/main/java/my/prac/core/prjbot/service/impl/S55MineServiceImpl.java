@@ -8049,6 +8049,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final boolean MINE_WHIRL_OPEN = true, MINE_ULT_OPEN = true; // [2026-11-08] "돌개도 열어 주고"
     static final int MINE_SKILL3_RB = 3;
     static final String MINE_ITEM_ULT_GIFT = "ULT_RB_GIFT";
+    static final String MINE_ITEM_OPT_HD = "OPT_HD", MINE_ITEM_OPT_DMG = "OPT_DMG"; // [2026-11-21] 화면 옵션(계정에 저장)
     boolean mineWhirlOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_WHIRL_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
     boolean mineUltOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_ULT_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
     static final String MINE_SKILL3_NO = "이 기술은 " + MINE_SKILL3_RB + "번째 환생을 마친 사람에게만 가르치네.";
@@ -10983,6 +10984,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("archi", ar);
         }
         out.put("stepMs", mineStepMs(items));
+        out.put("opt", new int[] { items.getOrDefault(MINE_ITEM_OPT_HD, 0), items.getOrDefault(MINE_ITEM_OPT_DMG, 0) }); // [2026-11-21] 화면 옵션(0 = 안 정함, 1 = 켬, 2 = 끔): 64x64 / 데미지 합산
         out.put("waterWalk", mineWaterWalk(items));
         HashMap<String, Object> dragon = new HashMap<>();
         int quest = items.getOrDefault(MINE_ITEM_DRAGON_QUEST, 0);
@@ -12136,6 +12138,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Transactional
     public HashMap<String, Object> mineLook(String userName, String action, String code, String slot) {
         if (!mineAccess(userName)) return mineClosed();
+        if ("opt".equals(action)) { // [2026-11-21] "32x32나 데미지 하나로 보는 옵션은 저장되어야 해" -- 화면 옵션을 계정에(기기 저장소가 비워져도 남게). code = hd / dmg, slot = 1 켬 / 0 끔
+            String key = "hd".equals(code) ? MINE_ITEM_OPT_HD : "dmg".equals(code) ? MINE_ITEM_OPT_DMG : null;
+            HashMap<String, Object> oo = new HashMap<>();
+            oo.put("ok", key != null);
+            if (key != null) dao.upsertMineItem(userName, key, "1".equals(slot) ? 1 : 2);
+            return oo;
+        }
         MinePresence pr = MINE_PRESENCE.get(userName);
         if (pr != null) pr.lookAt = 0; // 다른 유저에게 보이는 외형도 다음 위치 알림 때 다시 읽기
         mineRow(userName, false);
