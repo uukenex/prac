@@ -214,6 +214,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_ARMOR_HP.put("ARMOR_CHAIN", new int[] { 500, 1_000 }); MINE_ARMOR_HP.put("ARMOR_SAMURAI", new int[] { 1_500, 3_000 }); MINE_ARMOR_HP.put("ARMOR_NINJA", new int[] { 5_000, 10_000 });
         // [2026-11-19] "백화 갑주 이후 갑옷들 최대 체력 증가량 소폭 낮춰 줘, 너무 차이 나" -- 백화 10만~20만 -> 8만~16만, 심판 25만~50만 -> 20만~40만(모두 -20%)
         MINE_ARMOR_HP.put("ARMOR_BAEKHWA", new int[] { 80_000, 160_000 }); MINE_ARMOR_HP.put("ARMOR_IMMORTAL", new int[] { 200_000, 400_000 });
+        // [2026-11-21] 고침: "바다 갑옷 유물인데 최대 체력이 없다" -- 바다의 갑옷(110)이 이 표에서 빠져 모든 등급이 0이었다. 백화(80)와 심판(125) 사이, 받는 피해 감소(3,600)와 같은 비율로 14만~28만.
+        MINE_ARMOR_HP.put("ARMOR_SEA", new int[] { 140_000, 280_000 });
     }
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_ARMOR_HP_OF = new java.util.concurrent.ConcurrentHashMap<>();
     static int mineArmorHpAt(String code, int g) { int[] r = MINE_ARMOR_HP.get(code); return r == null || g < 0 ? 0 : r[0] + (r[1] - r[0]) * Math.min(7, g) / 7; }
