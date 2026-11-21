@@ -787,6 +787,7 @@
     /* [2026-11-07] 필살기 버튼 -- 왼쪽 반 만검진 / 오른쪽 반 일섬참, 쿨타임은 어둡게 덮은 부채꼴 + 남은 시간 */
     .mine-ult{ position:absolute; right:28px; bottom:calc(248px + env(safe-area-inset-bottom)); width:66px; height:66px; display:block; } /* [2026-11-08] 태극 모양(SVG) */
     .mine-ult svg{ display:block; width:66px; height:68px; overflow:visible; }
+    .mine-ult, .mine-ult *{ -webkit-tap-highlight-color:transparent; outline:none; } .mine-ult svg{ -webkit-user-select:none; user-select:none; } /* [2026-11-21] "필살 클릭 시 사각형 박스" -- 휴대폰 터치 강조(누른 조각의 네모 테두리)/포커스 테두리 없앰 */
     .mine-ult .sh{ fill:#1a1440; }
     .mine-ult .ya{ fill:#2a62c8; cursor:pointer; } /* X 만검진 -- 음(파랑) */
     .mine-ult .yb{ fill:#c8323a; cursor:pointer; } /* C 일섬참 -- 양(빨강) */
