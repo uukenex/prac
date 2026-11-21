@@ -4463,13 +4463,16 @@ var TowerMine = (function () {
         + '<button type="button"' + (worldBossOpen ? ' style="outline:2px solid #ffd27a"' : '') + ' onclick="TowerMine.worldBoss()">👑 보스</button>' // [2026-11-13]
         + WORLD_REGIONS.map(function (r) { return '<button type="button" onclick="TowerMine.worldGo(\'' + r.id + '\')">' + r.name + '</button>'; }).join('') + '</div>'
         + (worldBossOpen ? worldBossHtml() : '')
-        + '<div class="world-wrap"><svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도" xmlns:xlink="http://www.w3.org/1999/xlink">'
-        + '<defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
-        + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
-        + (bg.cloud ? '<image href="' + bg.cloud + '" xlink:href="' + bg.cloud + '" x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" preserveAspectRatio="none"/>' : '') // 미탐사 구름
+        // [2026-11-21] "지도가 흰 글씨로 나오고 확대하면 색이 깨진다" -- 휴대폰의 자동 어둡게(강제 다크 모드)가 SVG 글씨/칸 색만 뒤집었다(그림·캔버스는 그대로).
+        //  보이는 지도는 캔버스에 그림으로 그리고(worldPaint), SVG는 투명하게 두어 끌기/확대/누르기만 받는다.
+        + '<div class="world-wrap" style="position:relative"><canvas id="mineWorldCv" style="position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none"></canvas>'
+        + '<svg id="mineWorldSvg" class="mine-world world-pan' + (worldVB.w <= WORLD_CNT_W ? ' world-close' : '') + '" style="position:relative;opacity:0" viewBox="' + worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="광산 전체 지도" xmlns:xlink="http://www.w3.org/1999/xlink">'
+        + '<g id="wUnder"><defs><pattern id="wSeaPat" width="40" height="24" patternUnits="userSpaceOnUse"><rect width="40" height="24" fill="#a9c4bd"/><path d="M2,14 q5,-5 10,0 t10,0" fill="none" stroke="#8eb0aa" stroke-width="1.1"/><path d="M22,4 q5,-5 10,0" fill="none" stroke="#8eb0aa" stroke-width="1"/></pattern></defs>'
+        + '<rect x="' + WG.x0 + '" y="' + WG.y0 + '" width="' + (WG.x1 - WG.x0) + '" height="' + (WG.y1 - WG.y0) + '" fill="url(#wSeaPat)"/>' + bg.vec + '</g>' // [2026-11-20] 옛 전도 -- 바다 무늬, 땅/강/산/신궁/항구
+        + '<g id="wOver">' // 미탐사 구름은 그 사이에(캔버스에 그림으로 -- worldPaint)
         + (bg.top || '') // [2026-11-20] 그림은 구름 위에
         + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + (w[5] ? ';fill:' + w[5] + ';stroke:#f1e0c0' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
-        + lines + nodes + labels + '</svg></div>'
+        + lines + nodes + labels + '</g></svg></div>'
         + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>' + wanderNote();
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
         + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
@@ -4510,11 +4513,11 @@ var TowerMine = (function () {
   }
   function worldCounts() {
     var sv = document.getElementById('mineWorldSvg');
-    if (sv) sv.querySelectorAll('[data-cnt]').forEach(function (t) { t.textContent = '👥' + (mapN[t.getAttribute('data-cnt')] || 0); });
+    if (sv) { sv.querySelectorAll('[data-cnt]').forEach(function (t) { t.textContent = '👥' + (mapN[t.getAttribute('data-cnt')] || 0); }); worldPaintSoon(); }
   }
   function worldApply() {
     var el2 = document.getElementById('mineWorldSvg');
-    if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_CNT_W); }
+    if (el2 && worldVB) { el2.setAttribute('viewBox', worldVB.x + ' ' + worldVB.y + ' ' + worldVB.w + ' ' + worldVB.h); el2.classList.toggle('world-close', worldVB.w <= WORLD_CNT_W); worldPaintSoon(); }
   }
   function worldZoomAt(f, cx, cy) { // f > 1 = 확대. (cx, cy) = 지도 좌표 기준점
     var nw = Math.max(WORLD_MIN_W, Math.min(2400, worldVB.w / f)), k = nw / worldVB.w; // [2026-11-20] 구름 덮인 바깥까지 보이게 1400 -> 2400
@@ -4532,9 +4535,82 @@ var TowerMine = (function () {
     worldApply();
   }
   /** 지도 끌기/확대 -- 화면에 그린 뒤 붙인다(renderSmithView). */
+  // ---- [2026-11-21] 전체 지도를 캔버스에 그림으로 -- 휴대폰 자동 어둡게가 SVG 글씨/도형 색을 뒤집지 못하게(캔버스 그림은 건드리지 않는다).
+  //  투명 SVG의 두 묶음(wUnder = 바다·땅, wOver = 그림·길·칸·글씨)을 지금 보는 범위(viewBox) 그대로 SVG 이미지로 만들어 캔버스에 차례로(사이에 구름 PNG).
+  //  글씨 스타일은 페이지 CSS의 .mine-world 규칙을 그대로 옮겨 넣는다. 끌고 확대하는 동안은 마지막 그림을 늘려 보여 주고 멈추면(0.14초) 다시 그린다.
+  var wpTok = 0, wpTimer = 0, wpSnap = null, wpSnapVB = null, wpCss = {}, wpCloud = null;
+  function worldCss(close) {
+    if (wpCss[close ? 1 : 0] != null) return wpCss[close ? 1 : 0];
+    var out = '';
+    try {
+      for (var i = 0; i < document.styleSheets.length; i++) {
+        var rules; try { rules = document.styleSheets[i].cssRules; } catch (e) { continue; }
+        for (var j = 0; rules && j < rules.length; j++) {
+          var r = rules[j]; if (!r.selectorText || r.selectorText.indexOf('.mine-world') < 0) continue;
+          var sel = r.selectorText.split(',').map(function (x) { x = x.trim(); return x.indexOf('.mine-world.world-close ') === 0 ? (close ? x.slice(24) : '') : x.indexOf('.mine-world ') === 0 ? x.slice(12) : ''; }).filter(function (x) { return !!x; });
+          if (sel.length) out += sel.join(',') + '{' + r.style.cssText + '}';
+        }
+      }
+    } catch (e) { }
+    return (wpCss[close ? 1 : 0] = out);
+  }
+  function worldMapXf(vb, cw, ch) { var s = Math.min(cw / vb.w, ch / vb.h); return { s: s, ox: (cw - vb.w * s) / 2, oy: (ch - vb.h * s) / 2 }; }
+  function worldSvgImg(g, vb, cw, ch, css) {
+    return new Promise(function (ok) {
+      if (!g) { ok(null); return; }
+      var str = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + cw + '" height="' + ch + '" viewBox="' + vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h + '" preserveAspectRatio="xMidYMid meet"><style>' + css + '</style>'
+          + new XMLSerializer().serializeToString(g) + '</svg>';
+      var url = URL.createObjectURL(new Blob([str], { type: 'image/svg+xml' })), im = new Image();
+      im.onload = function () { URL.revokeObjectURL(url); ok(im); };
+      im.onerror = function () { URL.revokeObjectURL(url); ok(null); };
+      im.src = url;
+    });
+  }
+  function worldCloudImg() {
+    var src = worldBg && worldBg.cloud;
+    if (!src) return Promise.resolve(null);
+    if (wpCloud && wpCloud.src0 === src) return wpCloud.p;
+    var p = new Promise(function (ok) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = function () { ok(null); }; im.src = src; });
+    wpCloud = { src0: src, p: p };
+    return p;
+  }
+  function worldQuick() { // 마지막 그림을 지금 범위에 맞춰 늘려서(바로)
+    var cv = document.getElementById('mineWorldCv');
+    if (!cv || !worldVB) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1), cw = Math.round(cv.clientWidth * dpr), ch = Math.round(cv.clientHeight * dpr);
+    if (!cw || !ch) return;
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    var g = cv.getContext('2d');
+    g.fillStyle = '#dfe3e2'; g.fillRect(0, 0, cw, ch);
+    if (!wpSnap || !wpSnapVB) return;
+    var a = worldMapXf(wpSnapVB, wpSnap.width, wpSnap.height), b = worldMapXf(worldVB, cw, ch);
+    var X0 = wpSnapVB.x - a.ox / a.s, Y0 = wpSnapVB.y - a.oy / a.s;
+    g.drawImage(wpSnap, b.ox + (X0 - worldVB.x) * b.s, b.oy + (Y0 - worldVB.y) * b.s, wpSnap.width / a.s * b.s, wpSnap.height / a.s * b.s);
+  }
+  function worldPaintSoon() { worldQuick(); clearTimeout(wpTimer); wpTimer = setTimeout(worldPaint, 140); }
+  function worldPaint() {
+    var cv = document.getElementById('mineWorldCv'), sv = document.getElementById('mineWorldSvg');
+    if (!cv || !sv || !worldVB) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1), cw = Math.round(cv.clientWidth * dpr), ch = Math.round(cv.clientHeight * dpr);
+    if (!cw || !ch) return;
+    var tok = ++wpTok, vb = { x: worldVB.x, y: worldVB.y, w: worldVB.w, h: worldVB.h }, css = worldCss(sv.classList.contains('world-close'));
+    Promise.all([worldSvgImg(document.getElementById('wUnder'), vb, cw, ch, css), worldCloudImg(), worldSvgImg(document.getElementById('wOver'), vb, cw, ch, css)]).then(function (r) {
+      if (tok !== wpTok || !document.getElementById('mineWorldCv')) return;
+      var cv2 = document.getElementById('mineWorldCv');
+      if (cv2.width !== cw || cv2.height !== ch) { cv2.width = cw; cv2.height = ch; }
+      var g = cv2.getContext('2d'), m = worldMapXf(vb, cw, ch);
+      g.fillStyle = '#dfe3e2'; g.fillRect(0, 0, cw, ch);
+      if (r[0]) g.drawImage(r[0], 0, 0, cw, ch);
+      if (r[1]) g.drawImage(r[1], m.ox + (WG.x0 - vb.x) * m.s, m.oy + (WG.y0 - vb.y) * m.s, (WG.x1 - WG.x0) * m.s, (WG.y1 - WG.y0) * m.s);
+      if (r[2]) g.drawImage(r[2], 0, 0, cw, ch);
+      if (!wpSnap) wpSnap = document.createElement('canvas');
+      wpSnap.width = cw; wpSnap.height = ch; wpSnap.getContext('2d').drawImage(cv2, 0, 0); wpSnapVB = vb;
+    });
+  }
   function worldBind() {
     var sv = document.getElementById('mineWorldSvg');
     if (!sv) return;
+    worldQuick(); worldPaint(); // [2026-11-21] 보이는 지도는 캔버스에
     var pts = {}, start = null, pinch = null;
     var toMap = function (clientX, clientY) { var r = sv.getBoundingClientRect(), s2 = Math.max(worldVB.w / r.width, worldVB.h / r.height); return { x: worldVB.x + (clientX - r.left - (r.width - worldVB.w / s2) / 2) * s2, y: worldVB.y + (clientY - r.top - (r.height - worldVB.h / s2) / 2) * s2, s: s2 }; };
     sv.addEventListener('pointerdown', function (e) {
