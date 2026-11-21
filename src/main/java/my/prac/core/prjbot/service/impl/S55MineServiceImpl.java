@@ -11643,6 +11643,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long[] am = mineArmorerNow(now); // [2026-11-20] 떠돌이 갑옷장이
         if (am != null && mapId.equals(mineArmorerMaps()[(int) am[0]])) { HashMap<String, Object> ar = new HashMap<>(); ar.put("x", am[1]); ar.put("y", am[2]); ar.put("until", am[3]); out.put("armorer", ar); }
         if (am != null && isMineAdmin(userName)) out.put("armorerAdmin", mineArmorerMaps()[(int) am[0]] + " (" + am[1] + ", " + am[2] + ")");
+        { // [2026-11-21] "다도해 떠상을 전체 지도에 현재 어디 있는지 표시, 악마 들판도" -- 누구에게나 맵만(칸은 안 알림). 사라져 있으면 돌아오는 시각
+            HashMap<String, Object> wn = new HashMap<>();
+            if (hm != null) wn.put("h", mineHermitMaps()[(int) hm[0]]); else if (mineHermitBackAt > now) wn.put("hb", mineHermitBackAt);
+            if (am != null) wn.put("a", mineArmorerMaps()[(int) am[0]]); else if (mineArmorerBackAt > now) wn.put("ab", mineArmorerBackAt);
+            out.put("wn", wn);
+        }
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
         String rw = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 닌자 두목을 함께 쓰러뜨린 보상 소식 -- 전투 중이 아니어도 1초 위치 알림으로 받는다
         if (rw != null) out.put("rewardMsg", rw);

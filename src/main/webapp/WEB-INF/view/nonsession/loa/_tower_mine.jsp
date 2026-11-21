@@ -4401,6 +4401,7 @@ var TowerMine = (function () {
         var nw = Math.round(14 + 5.2 * Math.sqrt(dm[0])), nh = Math.round(8 + 1.9 * Math.sqrt(dm[1]));
         var isHere = map && (map.id === n.id || (n.id === 'archi' && map.archi && !info[map.id]) || (n.id === 'forestmaze' && /^forest/.test(map.id)) || (n.id === 'towergate' && !!map.tower)); // [2026-11-11] 미궁 방/끝방은 미궁 한 칸
         if (isHere) here = { x: n.x, y: n.y };
+        worldNodeXY[n.id] = { x: n.x, y: n.y };
         var grp = WORLD_GROUP[n.id], ill = bg.ill && bg.ill[n.id];
         if (ill) { // [2026-11-20] "도시 같은 건축물/상징성" -- 왕도(성벽·궁전·집들), 요새 도시(해자·둥근 성벽·아성) 그림 + 이름/인원(지금 있으면 붉은 점선 테)
           var ib = n.id === 'city' ? 46 : 52;
@@ -4419,6 +4420,10 @@ var TowerMine = (function () {
               + (adminW ? '</g>' : '');
           if (bossOf[n.id] && bossOf[n.id].alive) labels += '<text x="' + (n.x + bw / 2 + 4) + '" y="' + (n.y + 3) + '" class="wl" style="fill:#c0281e;font-weight:800">👑 보스 출현 중</text>';
           return;
+        }
+        if (wanderAt && (wanderAt.h === n.id || wanderAt.a === n.id)) { // [2026-11-21] "다도해 떠상/악마 들판 떠상 현재 위치" -- 칸 오른쪽에 깃발 글씨
+          var wtx = wanderAt.h === n.id ? '⚒️ 은둔한 대장장이' : '🛡️ 떠돌이 갑옷장이';
+          labels += '<text x="' + (n.x + nw / 2 + 5) + '" y="' + (n.y + 4) + '" class="wl" style="fill:' + (wanderAt.h === n.id ? '#1a5a8a' : '#a8401a') + ';font-weight:800">' + wtx + ' 여기</text>';
         }
         if (bossOf[n.id]) {
           var bb = bossOf[n.id], by = n.y - nh / 2 - 5, bx = n.x - nw / 2, bh = ''; // [2026-11-11] "보스 출현 중이 너무 아래" -- 권장 Lv 밑(아래 칸과 붙어 보임) -> 칸 바로 위(지금 있는 곳이면 📍를 앞에 붙이고 "📍 여기"는 뺀다)
@@ -4462,7 +4467,7 @@ var TowerMine = (function () {
         + (bg.top || '') // [2026-11-20] 그림은 구름 위에
         + WORLD_WATERS.map(function (w) { return '<g transform="translate(' + w[1] + ',' + w[2] + ') rotate(' + w[3] + ')"><text text-anchor="middle" class="wt" style="font-size:' + w[4] + 'px' + (w[4] < 12 ? ';letter-spacing:1px' : '') + (w[5] ? ';fill:' + w[5] + ';stroke:#f1e0c0' : '') + '">' + w[0] + '</text></g>'; }).join('') // 강·바다 이름
         + lines + nodes + labels + '</svg></div>'
-        + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>';
+        + '<div class="mine-smith-say">끌어서 움직이고, 휠·두 손가락·＋－로 확대해요.</div>' + wanderNote();
     if (adminW) svg += '<div class="mine-smith-say">🛠️ 관리자: 지역을 누르면 그 맵 시작점으로 바로 이동해요. '
         + '<button type="button" class="mine-mini-btn" onclick="TowerMine.openWarpForm()">좌표 입력</button></div>';
     if (adminW && st.mazeGraph) svg += mazeGraphHtml(st.mazeGraph); // [2026-11-11] 관리자 -- 미궁 안 전체 지도
@@ -4479,8 +4484,22 @@ var TowerMine = (function () {
     }).join('');
     return '<div class="mine-smith-say" style="margin-top:8px">🌲 <b>마물의 숲 미궁 지도</b> (관리자만) -- ✔ = 끝방에 가까워지는 통로</div>' + rows;
   }
-  var worldHere = null;
+  var worldHere = null, worldNodeXY = {}; // [2026-11-21] 칸 자리(떠돌이 NPC 버튼으로 그 칸에)
+  /** [2026-11-21] 지도 아래 -- 떠돌이 NPC 둘이 지금 어느 맵에 있는지(누르면 그 칸으로), 사라져 있으면 돌아오는 시각. */
+  function wanderNote() {
+    if (!wanderAt) return '';
+    var nm = function (id) { var i = WORLD_NODES.filter(function (n) { return n.id === id; })[0]; return (i && i.name) || id; };
+    var hh = function (t) { var d = new Date(t); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); };
+    var one = function (icon, who, at, back) {
+      if (at) return '<button type="button" class="mine-mini-btn" onclick="TowerMine.worldGo(\'' + at + '\')">' + icon + ' ' + who + ': ' + escAttr(nm(at)) + '</button> ';
+      if (back) return '<span style="margin-right:8px">' + icon + ' ' + who + ': 자리를 비움 (' + hh(back) + '쯤 돌아와요)</span>';
+      return '';
+    };
+    var s = one('⚒️', '은둔한 대장장이', wanderAt.h, wanderAt.hb) + one('🛡️', '떠돌이 갑옷장이', wanderAt.a, wanderAt.ab);
+    return s ? '<div class="mine-smith-say">' + s + '</div>' : '';
+  }
   // [2026-10-30] 접속 인원 -- 위치 알림으로 받는다(이름 없이 숫자만). 맵별 인원은 전체 지도를 가장 크게 확대했을 때만 보인다(.world-close)
+  var wanderAt = null, wanderKey = ''; // [2026-11-21] 은둔한 대장장이(h)/떠돌이 갑옷장이(a)가 있는 맵, 사라져 있으면 돌아오는 시각(hb/ab)
   var onlineN = null, mapN = {}, WORLD_MIN_W = 160, WORLD_CNT_W = 300; // [2026-11-04] "어느 정도 커지면 인원수" -- 한두 번 확대(처음 폭 380)
   function regenText() {
     if (!el.regen || !st) return;
@@ -4503,6 +4522,7 @@ var TowerMine = (function () {
   function worldGo(id) {
     var c = null;
     if (id === 'me') c = worldHere;
+    else if (worldNodeXY[id]) c = worldNodeXY[id]; // [2026-11-21] 떠돌이 NPC가 있는 칸
     else if (WORLD_PLACE[id]) { var R = WORLD_REGIONS.filter(function (r) { return r.id === id; })[0]; c = { x: WORLD_PLACE[id][0] + ((R && R.cx) || 160), y: WORLD_PLACE[id][1] + (R ? R.vh / 2 : 200) }; }
     if (!c) return;
     worldVB = { x: c.x - worldVB.w / 2, y: c.y - worldVB.h / 2, w: worldVB.w, h: worldVB.h };
@@ -6618,6 +6638,7 @@ var TowerMine = (function () {
       }
       if (d && d.online != null) { onlineN = d.online; mapN = d.mapN || {}; regenText(); worldCounts(); } // [2026-10-30] 접속 인원
       if (d && d.twLeft != null && st && st.twLeft !== d.twLeft) { st.twLeft = d.twLeft; twRender(); } // [2026-11-19] 수문장 반복 보상 남은 수
+      if (d && d.wn) { var wnk = JSON.stringify(d.wn); if (wnk !== wanderKey) { wanderKey = wnk; wanderAt = d.wn; if (smithOpen && smithView === 'world') renderSmith(smithNpc); } } // [2026-11-21] 떠돌이 NPC 자리(전체 지도)
       if (!map || map.id !== mid || !d) return;
       hermit = d.hermit ? { m: mid, x: d.hermit.x, y: d.hermit.y, until: d.hermit.until } : null; // [2026-10-30]
       armorer = d.armorer ? { m: mid, x: d.armorer.x, y: d.armorer.y, until: d.armorer.until } : null; // [2026-11-20] 떠돌이 갑옷장이
