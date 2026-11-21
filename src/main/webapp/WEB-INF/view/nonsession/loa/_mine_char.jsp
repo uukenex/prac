@@ -264,6 +264,7 @@ window.MineChar = (function () {
       if (dir === 'up') { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, KN.acc, 7, 0, 2, 1); px(g, KN.acc, 7, 1, 2, 3); px(g, KN.accD, 7, 4, 2, 1); }
       else if (side) { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, '#12141c', 9, 3, 3, 1); px(g, KN.a2, 11, 4, 1, 2); px(g, KN.acc, 5, 0, 4, 1); px(g, KN.acc, 4, 1, 1, 2); }
       else { px(g, KN.a2, 3, 1, 10, 6); px(g, KN.a1, 4, 1, 8, 5); px(g, KN.a3, 5, 1, 3, 1); px(g, '#12141c', 5, 3, 6, 1); px(g, KN.a2, 7, 4, 2, 3); px(g, KN.acc, 7, 0, 2, 1); px(g, KN.acc, 8, 0, 3, 1); }
+      if (hat.s === 'halo') { var hcK = hat.c || '#ffe97a'; [3, 4, 5, 6, 10, 11, 12].forEach(function (x) { px(g, hcK, x, 0); }); px(g, '#ffffff', 5, 0); } // [2026-11-21] 고침: 기사단 투구에도 천사의 고리(깃 자리는 비우고)
     } else if (hat.s) { // 모자는 머리 위에 덮어 그린다
       var hc = hat.c, hd = shade(hc, -0.3);
       if (hat.s === 'straw') { px(g, hc, 2, 2, 12, 1); px(g, hc, 5, 0, 6, 2); px(g, '#b5251f', 5, 1, 6, 1); }
@@ -805,6 +806,7 @@ window.MineChar = (function () {
           add('helm', KN.a2, hdEll(32, 20.5, 15.4, 14.8)); add('helm', KN.a1, hdEll(32, 20, 13.8, 13.2)); add('helm', KN.a3, hdEll(S ? 30 : 26, 12.5, 3.2, 2));
           if (F) { add('visor', '#12141c', hdRect(20.5, 22.4, 43.5, 24.8)); add('helm', KN.a2, hdRect(30.8, 24.8, 33.2, 31)); for (var vi = 0; vi < 4; vi++) add('visor', '#12141c', hdRect(26 + vi * 3.6, 28, 27 + vi * 3.6, 31)); }
           if (S) { add('visor', '#12141c', hdRect(33, 22.4, 46.8, 24.8)); add('helm', KN.a2, hdRect(44.5, 24.8, 46.5, 31)); }
+          if (hs === 'halo') { add('hat', hc, hdAnd(hdEll(32, 3.2, 10.5, 2.6), function (u, v) { return !hdEll(32, 3.2, 8, 1.3)(u, v); })); add('acc', '#ffffff', hdEll(27, 2.2, 1.4, 0.7)); } // [2026-11-21] 고침: 기사단 투구 위에도 천사의 고리(깃 뒤로)
           add('plume', KN.acc, S ? hdOr(hdEll(28, 6.5, 7.5, 2.8), hdEll(23, 9, 3, 3.4)) : hdEll(32, 5.5, 2.6, 5.2)); add('plume', KN.accD, S ? hdEll(22.5, 10.5, 2.2, 2.4) : hdEll(32, 9.5, 2.4, 1.6));
           return;
         }
