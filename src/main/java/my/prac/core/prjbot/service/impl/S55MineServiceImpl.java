@@ -10668,7 +10668,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  고를 때 개수를 함께(가득 채우는 데 필요한 만큼까지만 받는다 -- 넘치게 내지 않게).
     static int mineBoatMatPct(String code) {
         if (S5MineMap.WOOD_CODE.equals(code)) return 5;
-        for (String c : S5MineMap.SEA_GEM_CODES) if (c.equals(code)) return 20;
+        for (String c : S5MineMap.SEA_GEM_CODES) if (c.equals(code)) return 100; // [2026-11-21] "배 수리 시 보석 1개로 100% 수리" (예전 20%)
         return 0;
     }
     List<HashMap<String, Object>> mineBoatMats(Map<String, Integer> have, long[] bh) {
