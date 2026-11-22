@@ -628,8 +628,11 @@ public final class S5MineMap {
     }
 
     /** (cx, cy) 근처 탁 트인 칸에 NPC를 세운다(위 이동 안내원과 같은 규칙). */
-    private static boolean placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line) {
-        for (int d = 2; d <= 12; d++) {
+    private static boolean placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line) { return placeNpc(m, cx, cy, kind, name, line, 2); }
+    /** [2026-11-22] 왕도 구역 정리 -- 그 칸부터 찾는다(자리가 막혔을 때만 둘레로). */
+    private static boolean placeNpcAt(S5MineMap m, int cx, int cy, String kind, String name, String line) { return placeNpc(m, cx, cy, kind, name, line, 0); }
+    private static boolean placeNpc(S5MineMap m, int cx, int cy, String kind, String name, String line, int d0) {
+        for (int d = d0; d <= 12; d++) {
             for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
                 if (Math.abs(dx) + Math.abs(dy) != d) continue;
                 int x = cx + dx, y = cy + dy;
@@ -1179,11 +1182,13 @@ public final class S5MineMap {
         for (String gid : GUIDE_MAPS) if (!TOWER_CITY.equals(gid)) placeGuide(out.get(gid)); // [2026-10-25] 이동 안내원(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다)
         // [2026-10-25] 왕도 대장장이 -- "지금보다 더 높은 업그레이드는 대도시 대장장이에서, 더 큰 폭의 아이템"
         S5MineMap ct = out.get(CITY);
-        // [2026-10-28] "왕도 대장장이, 치장상점은 가운데로(너무 아래쪽)" -- 남문 앞에서 가운데 광장 분수 남쪽 양옆으로(부활 칸 (c, c+5) 둘레는 비워 둔다)
+        // [2026-11-22] "왕도에 NPC들이 너무 난잡하다" -- 광장에 몰려 있던 NPC를 하는 일별 구역으로 나눴다:
+        //  광장 = 게시판·우체부·워프 관리인·왕도 상인 / 성당 = 신부·원소술사 / 1시 수련장 = 사범 셋 / 11시 공방 = 광석 전문가·보석 세공사·연금술사
+        //  5시 장비 공방 = 대장장이·장인·무기·방어구 강화사 / 남쪽 대로 = 명품상점·미용실 / 7시 용병소. 모두 정한 칸에 바로 세운다(placeNpcAt).
         int cc = ct.w / 2;
-        placeNpc(ct, cc - 5, cc + 6, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
-        placeNpc(ct, cc + 5, cc + 6, "boutique", "왕도 명품상점", "어서 오세요~ 왕도에서만 파는 반짝반짝 새 옷도 있어요. 성별도 바꿔 드려요.");
-        placeNpc(ct, cc + 8, cc + 6, "barber", "왕도 미용실", "어서 와요~ 머리 모양도 바꾸고 원하는 색으로 물들여 드려요. 앉아 봐요!"); // [2026-11-20] 머리 모양/염색
+        placeNpcAt(ct, cc + ENH_ROW[0], cc + ENH_NPC_DY, "smith", "왕도 대장장이", "왕도의 화로는 꺼지지 않지. 마을 대장간에선 못 만드는 물건을 만들어 주겠네.");
+        placeNpcAt(ct, cc - 3, cc + 22, "boutique", "왕도 명품상점", "어서 오세요~ 왕도에서만 파는 반짝반짝 새 옷도 있어요. 성별도 바꿔 드려요.");
+        placeNpcAt(ct, cc + 3, cc + 22, "barber", "왕도 미용실", "어서 와요~ 머리 모양도 바꾸고 원하는 색으로 물들여 드려요. 앉아 봐요!"); // [2026-11-20] 머리 모양/염색
         // [2026-10-26] 방한 외투: 설산 마을 털옷 장인(제값), 설원 정박장 암상인(세 배, 매시 정각~15분에만 -- 화면/서버가 시각으로 판단, 칸은 늘 노점)
         S5MineMap tw = out.get(SNOWTOWN);
         placeNpc(tw, tw.villageX + 3, tw.villageY + 1, "furrier", "털옷 장인", "설산 바람은 뼈까지 파고들지. 내 외투면 버틸 만할 거요. 대신 몸이 둔해져서 몬스터한테는 더 아프게 맞을 거요.");
@@ -1200,24 +1205,23 @@ public final class S5MineMap {
         S5MineMap tw3 = out.get(SNOWTOWN);
         placeNpc(tw3, tw3.villageX - 3, tw3.villageY + 4, "smelter", "광석 전문가", smLine);
         placeNpc(tw3, tw3.villageX + 3, tw3.villageY + 5, "gemcutter", "보석 세공사", gcLine);
-        placeNpc(ct, cc - 10, cc + 6, "smelter", "광석 전문가", smLine);
-        placeNpc(ct, cc + 10, cc + 6, "gemcutter", "보석 세공사", gcLine);
-        placeNpc(ct, cc - 10, cc + 11, "alchemist", "연금술사", ALCHEMIST_LINE); // [2026-11-20] 광석 전문가 아래
-        placeNpc(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
-        placeNpc(ct, cc, cc + 12, "artisan", "왕도 장인", /* [2026-11-18] 워프 포인트(3x3) 바로 앞이라 두 칸 아래로 */ "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
-        placeNpc(ct, cc + ENH_NPC_DX, cc + ENH_NPC_DY, "enhancer", "무기 강화사", "무기 칸을 맡기게. 빗나가도 원망은 말고.");
-        placeNpc(ct, cc + ENH_NPC_DX + 3, cc + ENH_NPC_DY, "armorer", "방어구 강화사", "갑옷 칸을 맡기게. 두들길수록 단단해지고 몸도 버텨 내지. 다만 망치가 빗나가면 재료는 돌려주지 않네."); // [2026-11-19] "방어구 강화 NPC를 무기 강화 옆에 두고 일반 유저 오픈" -- 요새 도시(하피 처치 후에만 갈 수 있음)에서 옮김 // [2026-11-06] "말이 너무 많다" -- 짧게 // [2026-11-06] 왕도 5시 방향
-        placeNpc(ct, cc + MERC_NPC_DX, cc + MERC_NPC_DY, "mercenary", "용병소 대장", "혼자 다니기엔 광산이 험하지. 쓸 만한 놈을 붙여 주겠네. 지치면 뒤에서 숨 좀 돌리게 해 주게나."); // [2026-11-05] 왕도 용병소
+        placeNpcAt(ct, cc + CRAFT_ROW[0], cc + CRAFT_NPC_DY, "smelter", "광석 전문가", smLine); // [2026-11-22] 11시 공방
+        placeNpcAt(ct, cc + CRAFT_ROW[1], cc + CRAFT_NPC_DY, "gemcutter", "보석 세공사", gcLine);
+        placeNpcAt(ct, cc + CRAFT_ROW[2], cc + CRAFT_NPC_DY, "alchemist", "연금술사", ALCHEMIST_LINE); // [2026-11-20]
+        placeNpcAt(ct, cc + 5, cc + 10, "citymerchant", "왕도 상인", "금괴 한 덩이면 행운의 주문서를 써 드리지. 10분 동안은 뭘 잡아도 배로 남는 장사라네!"); // [2026-11-05] 금괴 반복 소모처
+        placeNpcAt(ct, cc + ENH_ROW[1], cc + ENH_NPC_DY, "artisan", "왕도 장인", /* [2026-11-22] 5시 장비 공방 */ "곡괭이가 천 번을 버틴다고? 거기에 세공한 보석을 박아 넣으면 서른 번은 더 버티게 해 주지.");
+        placeNpcAt(ct, cc + ENH_ROW[2], cc + ENH_NPC_DY, "enhancer", "무기 강화사", "무기 칸을 맡기게. 빗나가도 원망은 말고.");
+        placeNpcAt(ct, cc + ENH_ROW[3], cc + ENH_NPC_DY, "armorer", "방어구 강화사", "갑옷 칸을 맡기게. 두들길수록 단단해지고 몸도 버텨 내지. 다만 망치가 빗나가면 재료는 돌려주지 않네."); // [2026-11-19] "방어구 강화 NPC를 무기 강화 옆에 두고 일반 유저 오픈" -- 요새 도시(하피 처치 후에만 갈 수 있음)에서 옮김 // [2026-11-06] "말이 너무 많다" -- 짧게 // [2026-11-06] 왕도 5시 방향
+        placeNpcAt(ct, cc + MERC_NPC_DX, cc + MERC_NPC_DY, "mercenary", "용병소 대장", "혼자 다니기엔 광산이 험하지. 쓸 만한 놈을 붙여 주겠네. 지치면 뒤에서 숨 좀 돌리게 해 주게나."); // [2026-11-05] 왕도 용병소
         S5MineMap av = out.get(ARCHI);
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
         placeNpc(av, av.villageX + 10, av.villageY - 5, "gemcutter", "보석 세공사", gcLine);
         placeNpc(av, av.villageX, av.villageY - 8, "archishop", "다도해 상인", "햇볕이 뜨겁지? 이 양산만 있으면 한낮도 끄떡없다네. 바다 보석으로 값을 치르게."); // [2026-10-28]
-        for (Npc en : ct.npcs()) if ("elementalist".equals(en.kind)) { // [2026-11-04] 검기 사범(원소술사 옆) -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn)
-            placeNpc(ct, en.x + 3, en.y, "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수, 달빛석, 세공한 바다 보석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
+        { // [2026-11-04] 검기 사범 -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn). [2026-11-22] 성당 옆 -> 1시 수련장(허수아비 마당) 서쪽 끝 세로 한 줄
+            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[0], "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수, 달빛석, 세공한 바다 보석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
             // [2026-11-07] "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)" -- 돌개베기 / 만검진·일섬참(S55MineServiceImpl.mineWhirlLearn, mineUltLearn)
-            placeNpc(ct, en.x + 6, en.y, "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 세 번째 환생을 마친 자에게만, 검기와 같은 재료로.");
-            placeNpc(ct, en.x + 9, en.y, "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 세 번째 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
-            break;
+            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[1], "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 세 번째 환생을 마친 자에게만, 검기와 같은 재료로.");
+            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[2], "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 세 번째 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
         }
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽
@@ -1345,7 +1349,7 @@ public final class S5MineMap {
                 out.put(BEACH, b3);
                 { // [2026-11-18] 왕도 워프 포인트 관리인 -- 내구도 회복 키트로 워프 포인트 내구도를 채운다
                     S5MineMap cty2 = out.get(CITY);
-                    for (Portal p : cty2.portals) if (p.kind == 'X') { placeNpc(cty2, p.x + 4, p.y + 1, "wpkeeper", "워프 포인트 관리인", "워프 포인트는 월드보스 거룡의 심장으로 만들었다네. 드래곤의 심장은 무한에 가깝지만 충전이 필요하지. 거룡을 쓰러뜨려 얻은 심장 조각을 가져오게."); break; }
+                    for (Portal p : cty2.portals) if (p.kind == 'X') { placeNpcAt(cty2, cty2.w / 2 + 5, cty2.w / 2 + 6, /* [2026-11-22] 광장 워프 오른쪽 위 */ "wpkeeper", "워프 포인트 관리인", "워프 포인트는 월드보스 거룡의 심장으로 만들었다네. 드래곤의 심장은 무한에 가깝지만 충전이 필요하지. 거룡을 쓰러뜨려 얻은 심장 조각을 가져오게."); break; }
                 }
                 out.put(ARCHISEA, relink(sv0, retarget(sv0, BEACH, beachIn5), null));
                 os = relink(os, retarget(os, BEACH, beachIn7), null);
@@ -3781,6 +3785,15 @@ public final class S5MineMap {
     // [2026-11-06] "대도시 5시 방향 건물을 다 허물고 무기 강화 전용 NPC" -- 용병소와 좌우 대칭(남동쪽): 마당 + 건물 + 무기 강화사
     static final int[] ENH_YARD = { 16, 14, 44, 34 }, ENH_HALL = { 22, 18, 38, 27 };
     static final int ENH_NPC_DX = 30, ENH_NPC_DY = 29;
+    // [2026-11-22] "왕도에 NPC들이 너무 난잡 -- 11시 방향 집들 깔끔하게 정리해서" -- 5시 장비 공방 NPC 줄(대장장이, 장인, 무기 강화사, 방어구 강화사, 5칸 간격)
+    static final int[] ENH_ROW = { 22, 27, 32, 37 };
+    // 11시 재료 공방(용병소와 위아래 대칭): 마당, 건물, NPC 줄(광석 전문가, 보석 세공사, 연금술사). 북서쪽 집은 맨 윗줄 넷만 같은 크기로 반듯하게.
+    static final int[] CRAFT_YARD = { -44, -34, -16, -14 }, CRAFT_HALL = { -38, -28, -22, -19 };
+    static final int CRAFT_NPC_DY = -17;
+    static final int[] CRAFT_ROW = { -35, -30, -25 };
+    // 1시 수련장(허수아비 마당) 서쪽 끝 사범 줄(검기, 돌개, 필살 -- 세로 6칸 간격)
+    static final int TRAIN_NPC_DX = 15;
+    static final int[] TRAIN_ROW = { -49, -43, -37 };
     static S5MineMap generateCity(long seed) {
         int w = 120, h = 120, c = w / 2, wt = 3, road = 3;
         Random r = new Random(seed);
@@ -3799,12 +3812,14 @@ public final class S5MineMap {
         // [2026-10-27] "왕도 내 건물 높게, 대도시처럼" -- 블록을 세로로 길게(8~10칸): 화면이 위 두 줄은 지붕, 그 아래는 층마다 창이 난 벽, 맨 아래는 1층 앞면으로 그린다.
         for (int by = wt + 4; by < h - wt - 12; by += 14) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
             int bw = 6 + r.nextInt(3), bh = 8 + r.nextInt(3);
+            if (bx < c && by < c) { bw = 8; bh = 10; } // [2026-11-22] 11시 -- 북서쪽 집은 같은 크기로 반듯하게(난수는 이미 썼다)
             boolean clear = true;
             for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++) {
                 if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
                 if (x >= tx0 - 2 && x <= tx1 + 2 && y >= ty0 - 2 && y <= ty1 + 2) { clear = false; break; } // [2026-10-30] "1시 방향 집들이 어색" -- 마당에 잘려 조각난 건물이 남지 않게 아예 안 짓는다
                 if (x < c && y > c) { clear = false; break; } // [2026-11-05] "왕도 7시 방향 건물을 전부 없애고 용병소" -- 남서쪽엔 안 짓는다(난수 소비는 그대로)
                 if (x > c && y > c) { clear = false; break; } // [2026-11-06] "5시 방향 건물들 다 허물고" -- 남동쪽도(무기 강화사)
+                if (x < c && y < c && by > wt + 4) { clear = false; break; } // [2026-11-22] 11시 재료 공방 -- 북서쪽은 맨 윗줄 집만
             }
             if (!clear) continue;
             for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
@@ -3815,6 +3830,10 @@ public final class S5MineMap {
         for (int y = c + MERC_YARD[1]; y <= c + MERC_YARD[3]; y++) for (int x = c + MERC_YARD[0]; x <= c + MERC_YARD[2]; x++) t[y][x] = 's';
         for (int y = c + MERC_HALL[1]; y <= c + MERC_HALL[3]; y++) for (int x = c + MERC_HALL[0]; x <= c + MERC_HALL[2]; x++) t[y][x] = 'K';
         for (int x = c + MERC_YARD[2]; x < c - road; x++) for (int y = c + MERC_NPC_DY + 1; y <= c + MERC_NPC_DY + 2; y++) t[y][x] = 's';
+        // [2026-11-22] 11시 재료 공방(북서쪽) -- 용병소와 위아래 대칭: 마당 + 큰 건물, 마당 아래쪽에서 북쪽 대로까지 돌길
+        for (int y = c + CRAFT_YARD[1]; y <= c + CRAFT_YARD[3]; y++) for (int x = c + CRAFT_YARD[0]; x <= c + CRAFT_YARD[2]; x++) t[y][x] = 's';
+        for (int y = c + CRAFT_HALL[1]; y <= c + CRAFT_HALL[3]; y++) for (int x = c + CRAFT_HALL[0]; x <= c + CRAFT_HALL[2]; x++) t[y][x] = 'K';
+        for (int x = c + CRAFT_YARD[2]; x < c - road; x++) for (int y = c + CRAFT_NPC_DY + 1; y <= c + CRAFT_NPC_DY + 2; y++) t[y][x] = 's';
         // [2026-11-06] 무기 강화소(남동쪽) -- 용병소와 대칭
         for (int y = c + ENH_YARD[1]; y <= c + ENH_YARD[3]; y++) for (int x = c + ENH_YARD[0]; x <= c + ENH_YARD[2]; x++) t[y][x] = 's';
         for (int y = c + ENH_HALL[1]; y <= c + ENH_HALL[3]; y++) for (int x = c + ENH_HALL[0]; x <= c + ENH_HALL[2]; x++) t[y][x] = 'K';
@@ -3830,7 +3849,7 @@ public final class S5MineMap {
         for (int y = qy1 + 1; y <= qy1 + 2; y++) for (int x = qx0 - 1; x <= qx1 + 1; x++) t[y][x] = 's';
         int px = c, py = qy1 + 1;
         t[py][px] = 'N';
-        t[py][px + 3] = 'N'; // [2026-10-29] 원소술사(신부 옆)
+        t[py][px + 4] = 'N'; // [2026-10-29] 원소술사(신부 옆, [2026-11-22] 네 칸 옆)
         // 텔레포트 게이트: 광장 남쪽 -- [2026-11-18] 3x3 워프 포인트(가운데 gx, gy, 아홉 칸 모두 게이트)
         int gx = c, gy = c + 8;
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) t[gy + dy][gx + dx] = 'X';
@@ -3853,9 +3872,9 @@ public final class S5MineMap {
         S5MineMap m = new S5MineMap(CITY, "왕도 아스테리아", false, w, h, sx, sy, t, o, portals);
         List<Npc> npcs = new ArrayList<>();
         npcs.add(new Npc(px, py, "priest", "성당 신부", "여신의 가호가 함께하기를. 상처를 치료하고, 쓰러지면 이곳에서 깨어나도록 기도해 드리지요. 미스릴괴를 바치면 무기에 성스러운 빛을 깃들여 드립니다."));
-        npcs.add(new Npc(px + 3, py, "elementalist", "원소술사", "세공된 보석엔 원소가 깃들어 있지. 하나만 주면 자네 무기에 물·번개·불·땅의 힘을 불어넣어 주겠네."));
-        { Npc wb = wbBoardNear(t, c + 6, c + 6, "s"); if (wb != null) npcs.add(wb); } // [2026-11-17] 월드보스 게시판(광장 분수 옆)
-        { Npc mb = npcNear(t, c - 6, c + 6, "s", "mailbox", MAIL_NAME, MAIL_LINE); if (mb != null) npcs.add(mb); } // [2026-11-17] 우체부
+        npcs.add(new Npc(px + 4, py, "elementalist", "원소술사", "세공된 보석엔 원소가 깃들어 있지. 하나만 주면 자네 무기에 물·번개·불·땅의 힘을 불어넣어 주겠네."));
+        npcs.add(npcAtCell(t, c - 5, c + 6, "wbboard", "월드보스 게시판", WB_BOARD_LINE)); // [2026-11-17] 월드보스 게시판 -- [2026-11-22] 광장 워프 왼쪽 위
+        npcs.add(npcAtCell(t, c - 5, c + 10, "mailbox", MAIL_NAME, MAIL_LINE)); // [2026-11-17] 우체부 -- [2026-11-22] 워프 왼쪽 아래
         m.npcs = npcs;
         m.dummySpots = dummies;
         return m;
