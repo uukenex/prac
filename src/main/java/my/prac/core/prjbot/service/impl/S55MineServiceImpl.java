@@ -2290,6 +2290,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double MINE_WB_MELEE_PCT = 0.08, MINE_WB_COUNTER_PCT = 0.008; // 붙어 있는데 안 때릴 때의 한 방 8%, 내가 때릴 때마다 돌아오는 반격 0.8%(초당 두 번쯤)
     static final long MINE_WB_ACTIVE_MS = 20_000L, MINE_WB_DOWN_MS = 10_000L; // 체력/몫 규칙은 아래 WbPool 설명([2026-11-16] 주기 동안 이어지는 체력으로 바뀜 -- 3분 바닥선/8분 뒤 증폭/사람 수로 나누기는 없앴다)
     static final int MINE_WB_STAR = 3, MINE_WB_SEVEN = 3, MINE_WB_GALAXY_PCT = 30, MINE_WB_RING_PCT = 5;
+    // [2026-11-22] "월드보스 안 쳐도 접속만 하면 보상 -- 쳤을 때 보상, 그냥 처치되면 공통 보상으로 나눠" -- 거룡이 쓰러진 맵 주기 동안 광산에 들어온 모두에게
+    //  공통 보상(별빛석 MINE_WB_COM_STAR + 칠요석 MINE_WB_COM_SEVEN, 주기마다 한 번 -- 아이템 WB_COM = 받은 주기 + 1). 싸운 사람(MINE_WB_MIN_SHARE 몫 이상)은 여기에 더해
+    //  참여 보상(위 MINE_WB_STAR/SEVEN + 은하수 조각/용의 반지 확률)과 토벌 순위 보상을 그대로 받는다. 쓰러질 때 접속해 있던 사람은 그 자리에서, 아니면 다음에 들어올 때.
+    static final int MINE_WB_COM_STAR = 1, MINE_WB_COM_SEVEN = 1;
+    static final String MINE_ITEM_WB_COM = "WB_COM";
+    static final java.util.Set<String> MINE_WB_COM_GIVEN = java.util.concurrent.ConcurrentHashMap.newKeySet(); // "이름|주기" -- 같은 순간 두 번 주지 않게
     static final long[] MINE_WB_PAT_GAP_MS = { 10_000L, 13_000L, 17_000L, 50_000L }, MINE_WB_PAT_WARN_MS = { 3_000L, 2_500L, 1_800L, 5_000L }, MINE_WB_PAT_FIRST_MS = { 8_000L, 14_000L, 20_000L, 35_000L };
     static final int[] MINE_WB_PAT_R = { 2, 1, 3, 13 }; // 장판 반경(체비셰프) -- 꼬리 휩쓸기 3 = 거룡(3x3) 가운데에서 둘레 2칸
     static final double[] MINE_WB_PAT_PCT = { 0.30, 0.20, 0.25, 0.55 };
@@ -2604,7 +2610,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (share < mineWbMinShare()) { MINE_SHRINE_REWARD_MSG.merge(u, "🐉 " + MINE_WB_NAME + "이(가) 쓰러졌어요! (조금 더 오래 함께 싸워야 보상을 받아요)", (p, q) -> p + " / " + q); return; }
             if (it.getOrDefault(MINE_ITEM_WB_CYCLE, 0) >= cyc && !isMineAdmin(u)) { MINE_SHRINE_REWARD_MSG.merge(u, "🐉 " + MINE_WB_NAME + "을(를) 함께 쓰러뜨렸어요! (이번 맵 주기 보상은 이미 받았어요 -- 맵 초기화마다 한 번)", (p, q) -> p + " / " + q); return; }
             dao.upsertMineItem(u, MINE_ITEM_WB_CYCLE, cyc);
-            StringBuilder m = new StringBuilder("🐉 ").append(MINE_WB_NAME).append("을(를) 함께 쓰러뜨렸어요! ⭐ 별빛석 ").append(MINE_WB_STAR).append(" · 칠요석 ").append(MINE_WB_SEVEN);
+            StringBuilder m = new StringBuilder("⚔️ ").append(MINE_WB_NAME).append(" 토벌 참여 보상! ⭐ 별빛석 ").append(MINE_WB_STAR).append(" · 칠요석 ").append(MINE_WB_SEVEN); // [2026-11-22] 공통 보상과 나눔
             dao.addUserOre(u, S5MineMap.ORE_CODES[5], MINE_WB_STAR);
             dao.addUserOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_SEVEN);
             int gal = RND.nextInt(100) < MINE_WB_GALAXY_PCT ? 1 : 0;
@@ -2620,6 +2626,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             MINE_WB_BOARD_AT = 0;
             MINE_SHRINE_REWARD_MSG.merge(u, m.toString(), (p, q) -> p + " / " + q);
         } catch (Exception e) { /* 한 사람 실패해도 나머지는 */ }
+    }
+    /** [2026-11-22] 공통 보상 -- 거룡이 쓰러진 이번 맵 주기에 광산에 들어온 사람이면 싸우지 않았어도 한 번. */
+    void mineWbCommon(String u, long now) {
+        WbPool p = MINE_WB_POOL;
+        if (u == null || !p.killed || p.cycle != S5MineMap.cycleAt(now)) return;
+        if (p.test && !isMineAdmin(u)) return; // 관리자 시험 회차는 관리자만
+        int cyc = p.cycle + 1;
+        if (!MINE_WB_COM_GIVEN.add(u + "|" + cyc)) return;
+        try {
+            if (mineItems(u).getOrDefault(MINE_ITEM_WB_COM, 0) >= cyc && !p.test) return;
+            dao.upsertMineItem(u, MINE_ITEM_WB_COM, cyc);
+            dao.addUserOre(u, S5MineMap.ORE_CODES[5], MINE_WB_COM_STAR);
+            dao.addUserOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_COM_SEVEN);
+            MINE_SHRINE_REWARD_MSG.merge(u, "🎁 " + MINE_WB_NAME + "이(가) 쓰러졌어요! 공통 보상 -- ⭐ 별빛석 " + MINE_WB_COM_STAR + " · 칠요석 " + MINE_WB_COM_SEVEN, (a, b) -> b + " / " + a);
+        } catch (Exception e) { MINE_WB_COM_GIVEN.remove(u + "|" + cyc); }
     }
     /** 처치 -- 이번 주기에 싸운 모두(지금 메모리에 있는 사람)에게 보상. 서버를 다시 켜기 전에 싸우고 지금 없는 사람은 다음에 들어올 때(mineWbClaim). */
     void mineWbFinish(long now) {
@@ -2650,6 +2671,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! " + (kq > 0 ? "🐉 " + S5MineMap.WP_KIT_NAME + " " + kq + "개 (왕도 워프 포인트 관리인에게 내면 워프 포인트의 힘을 채워요)" : "이번엔 " + S5MineMap.WP_KIT_NAME + "이 나오지 않았어요."), (p, q) -> p + " / " + q);
                 } catch (Exception ignore) { }
             }
+        }
+        { // [2026-11-22] 공통 보상 -- 싸운 사람 + 지금 광산에 접속해 있는 모두(나머지는 다음에 들어올 때 mineWbCommon)
+            java.util.Set<String> who = new java.util.HashSet<>(MINE_WB_SHARE.keySet());
+            for (java.util.Map.Entry<String, MinePresence> en : MINE_PRESENCE.entrySet()) if (en.getValue() != null && now - en.getValue().at < MINE_PRESENCE_TTL_MS) who.add(en.getKey());
+            for (String u : who) mineWbCommon(u, now);
         }
         MINE_WB_DOWN.clear();
         if (n > 0) mineGossipAdd("용사 " + n + "명이 동쪽 성곽에서 " + MINE_WB_NAME + "을(를) 쓰러뜨렸대요!");
@@ -5471,6 +5497,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("notice", nt[1]);
         }
         mineWbClaim(userName, items, now); // [2026-11-16] 내가 없는 사이 거룡이 쓰러졌으면 이번 주기에 싸운 몫의 보상을 지금
+        if (items.getOrDefault(MINE_ITEM_WB_COM, 0) < MINE_WB_POOL.cycle + 1) mineWbCommon(userName, now); // [2026-11-22] 거룡이 쓰러진 주기에 들어오면 공통 보상(안 싸웠어도)
         int twF = S5MineMap.towerFloor(map.id); // [2026-11-15] 탑 -- 지금 층에서 몇 번째 방 / 계단방까지 몇 개 / 무슨 방(C 전투 T 보물 P 증표 X 함정 L 행운 E 빈 방 U 계단방)
         if (twF > 0) {
             HashMap<String, Object> tr = new HashMap<>();
