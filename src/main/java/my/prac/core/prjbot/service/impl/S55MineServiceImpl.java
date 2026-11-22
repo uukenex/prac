@@ -1579,8 +1579,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineToday(long now) { java.time.LocalDate d = java.time.Instant.ofEpochMilli(now).atZone(KST).toLocalDate(); return d.getYear() * 10000 + d.getMonthValue() * 100 + d.getDayOfMonth(); }
     /** 탑 수문장의 한 방(전투 턴의 공격 / 내 공격에 대한 반격)에 시즌5 패턴을 입힌다 -- {피해, 강타 1/0, 기절 1/0}. 기절은 부르는 쪽이 건다(피하면 안 걸림 -- mineTwStun). */
     int[] mineTwStrike(String userName, int floor, MobState s, int d, long now) {
-        boolean heavy = ++s.strikeN % (floor >= 29 ? 3 : 4) == 0;
-        boolean stun = floor >= 29 && RND.nextInt(100) < MINE_TW_STUN_PCT && now - MINE_TW_STUN_AT.getOrDefault(userName, 0L) >= MINE_TW_STUN_GAP_MS;
+        boolean heavy = ++s.strikeN % (floor >= 59 ? 2 : floor >= 29 ? 3 : 4) == 0; // [2026-11-23] 59층부터 두 번째마다 강타, 기절 30%
+        boolean stun = floor >= 29 && RND.nextInt(100) < (floor >= 59 ? 30 : MINE_TW_STUN_PCT) && now - MINE_TW_STUN_AT.getOrDefault(userName, 0L) >= MINE_TW_STUN_GAP_MS;
         return new int[] { heavy ? (int) Math.round(d * MINE_TW_HEAVY_MULT) : d, heavy ? 1 : 0, stun ? 1 : 0 };
     }
     void mineTwStun(String userName, long now, HashMap<String, Object> out) {
@@ -3083,15 +3083,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final long[][][] MINE_TW_PAT = {
         { { 4, 6_000, 8_000, 2_200, 1, 120, 0, 0 }, { 6, 13_000, 15_000, 2_000, 3, 170, 1_200, 2 } }, // 9층 라텔 -- 독 웅덩이, 지면 강타
         { { 5, 5_000, 10_000, 2_200, 1, 130, 0, 1 }, { 6, 12_000, 14_000, 2_000, 4, 180, 1_500, 2 }, { 4, 9_000, 9_000, 2_000, 1, 120, 0, 0 } }, // 19층 갱도왕 -- 낙석, 지면 강타, 발밑
-        { { 4, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 5, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 7, 25_000, 32_000, 4_500, 8, 350, 0, 2 } } // 29층 히드라 -- 독 웅덩이, 독비, 꼬리(지면 강타), 맹독 숨결
+        { { 4, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 5, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 7, 25_000, 32_000, 4_500, 8, 350, 0, 2 } }, // 29층 히드라 -- 독 웅덩이, 독비, 꼬리(지면 강타), 맹독 숨결
+        // [2026-11-23] "탑 100층, 난이도는 어렵게" -- 39/49층은 그대로(29층 묶음), 59~99층 수문장마다 전용 패턴(더 잦고, 더 아프고, 예고는 짧게)
+        null, null,
+        { { 12, 4_000, 6_000, 1_600, 1, 160, 0, 0 }, { 1, 7_000, 9_000, 1_800, 1, 170, 0, 1 }, { 11, 10_000, 11_000, 1_600, 4, 230, 1_500, 2 }, { 12, 18_000, 20_000, 2_000, 2, 260, 1_000, 0 } }, // 59층 모르드레드 -- 물보라, 심연의 비, 삼지창 내려찍기, 큰 물보라
+        { { 1, 4_000, 6_500, 1_700, 1, 170, 0, 1 }, { 11, 8_000, 10_000, 1_600, 4, 240, 1_800, 2 }, { 4, 6_000, 7_000, 1_600, 1, 170, 0, 0 }, { 3, 20_000, 28_000, 4_000, 9, 420, 0, 2 } }, // 69층 아자토스 -- 균열 비, 촉수, 공허 웅덩이, 멸망의 숨결
+        { { 9, 4_000, 5_500, 1_500, 1, 180, 0, 0 }, { 10, 7_000, 8_000, 1_600, 1, 180, 0, 1 }, { 6, 10_000, 11_000, 1_500, 4, 250, 1_800, 2 }, { 9, 16_000, 18_000, 1_800, 2, 300, 1_500, 0 } }, // 79층 세라핌 -- 심판의 빛, 천사의 일격, 날개 강타, 큰 빛기둥
+        { { 0, 4_000, 5_500, 1_500, 2, 200, 0, 0 }, { 8, 6_000, 7_500, 1_600, 1, 200, 0, 1 }, { 2, 9_000, 10_000, 1_500, 3, 260, 1_500, 2 }, { 3, 18_000, 24_000, 3_800, 9, 460, 0, 2 } }, // 89층 바하무트 -- 화염, 지옥불, 꼬리 휩쓸기, 멸망의 숨결
+        { { 4, 3_500, 5_000, 1_400, 1, 210, 0, 0 }, { 1, 6_000, 7_000, 1_500, 1, 210, 0, 1 }, { 11, 8_000, 9_000, 1_400, 4, 280, 2_000, 2 }, { 8, 12_000, 14_000, 1_600, 2, 280, 0, 1 }, { 7, 16_000, 22_000, 3_600, 9, 520, 0, 2 } } // 99층 니드호그 -- 독 웅덩이, 어둠의 비, 꼬리 내려찍기, 지옥불, 맹독 숨결
     };
     /** 수문장이 나와 싸우는 동안(전투 턴마다) -- 때가 된 패턴을 예고한다. */
     static volatile boolean MINE_TW_PAT_ON = true; // 시험용(패턴 없이 수치만 볼 때 끈다)
     void mineTwPattern(S5MineMap map, MobState s, int floor, int x, int y, int bmax, long now) {
         if (!MINE_TW_PAT_ON) return;
-        long[][] ps = MINE_TW_PAT[Math.max(0, Math.min(2, floor / 10))];
+        int pi = Math.max(0, Math.min(MINE_TW_PAT.length - 1, floor / 10)); // [2026-11-23] 59~99층 전용(39/49층은 29층 묶음)
+        long[][] ps = MINE_TW_PAT[pi] != null ? MINE_TW_PAT[pi] : MINE_TW_PAT[2];
         if (s.pat == null || s.pat.length != ps.length) { s.pat = new long[ps.length]; for (int i = 0; i < ps.length; i++) s.pat[i] = now + ps[i][1]; }
-        boolean rage = s.hp * 2 < bmax;
+        boolean rage = (long) s.hp * 2 < bmax; // [2026-11-23] 체력 10억이 넘는 수문장(89/99층)에서 넘치지 않게
         int cx = s.fx, cy = s.fy; // 수문장 2x2의 왼쪽 위 -- 둘레 장판은 여기서 반경 +1
         for (int i = 0; i < ps.length; i++) {
             if (now < s.pat[i]) continue;

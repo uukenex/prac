@@ -479,7 +479,8 @@ public final class S5MineMobs {
     // [2026-11-23] "탑 100층까지" -- 51~100층 몬스터는 TYPES 맨 끝(악마/혼돈 몬스터 뒤)에 붙인다(앞 번호가 바뀌지 않게). 51층부터 층마다 체력 x1.05 / 공격 x1.04
     //  (31~50층의 x1.08 / x1.06을 이어 가면 89·99층 수문장 체력이 int를 넘는다 -- 99층 니드호그 약 18.6억). 수문장 체력은 TW_BOSS_HP_CAP을 넘지 않게.
     static final int TW_GEN_TOP = 100;
-    static final double TW_HP_UP51 = 1.05, TW_ATK_UP51 = 1.04, TW_BOSS_HP_CAP = 2_000_000_000d;
+    static final double TW_HP_UP51 = 1.07, TW_ATK_UP51 = 1.06, TW_BOSS_HP_CAP = 2_000_000_000d; // [2026-11-23] 같은 날 "난이도는 어렵게" -- x1.05/x1.04 -> x1.07/x1.06, 수문장 공격 x1.25 -> TW_BOSS_ATK51
+    static final double TW_BOSS_ATK51 = 1.5;
     static final double TW_EASE_30 = 0.92; // [2026-11-17]
     static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
     static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
@@ -533,7 +534,7 @@ public final class S5MineMobs {
             if (f % 10 == 9) {
                 String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
                 int bh = (int) Math.min(TW_BOSS_HP_CAP, Math.round(hpE * TW_BOSS_HP));
-                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * TW_BOSS_ATK)).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
+                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * (f > TW_GEN_FLOORS ? TW_BOSS_ATK51 : TW_BOSS_ATK))).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
                 if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
                 bi[f] = l.size(); l.add(t);
             } else if (f % 10 != 0) {
