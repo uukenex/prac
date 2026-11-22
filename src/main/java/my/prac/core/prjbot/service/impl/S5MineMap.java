@@ -96,8 +96,8 @@ public final class S5MineMap {
     public static final String FOREST = "forestmaze"; // [2026-11-08] 마물의 숲 미궁(지금은 관리자만 -- S55MineServiceImpl.mineWarp)
     // [2026-11-15] 하피를 잡은 사람만 나루터에서 강을 건너 가는 탑의 도시 + 시즌5 규칙의 탑(tw1~tw30 -- 1~8 보드, 9 보스, 10 마을이 10층마다)
     public static final String TOWER_CITY = "towercity";
-    public static final int TOWER_FLOORS = 50; // [2026-11-17] 30 -> 50(31층부터는 buildWorld 맨 뒤에서 만든다)
-    static final int TOWER_FLOORS_V1 = 30;
+    public static final int TOWER_FLOORS = 100; // [2026-11-17] 30 -> 50(31층부터는 buildWorld 맨 뒤에서 만든다), [2026-11-23] "탑 100층까지" 50 -> 100(51층부터는 또 맨 뒤)
+    static final int TOWER_FLOORS_V1 = 30, TOWER_FLOORS_V2 = 50;
     /** [2026-11-15] "100층까지 만들고 ... 아직 작업은 30층 아래 보스까지만" -- 계획한 꼭대기(층 목록에 준비 중으로 보인다). 열린 층은 TOWER_FLOORS. */
     public static final int TOWER_TOP = 100;
     public static String towerId(int f) { return "tw" + f; }
@@ -1312,7 +1312,7 @@ public final class S5MineMap {
             for (int f = 1; f <= TOWER_FLOORS_V1; f++) if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); // 계단방(맨 뒤)
             out.put(DEMON_EAST, generateDemonField(true, 0)); // [2026-11-16] 악마의 들판(맨 뒤)
             out.put(DEMON_WEST, generateDemonField(false, 0));
-            for (int f = TOWER_FLOORS_V1 + 1; f <= TOWER_FLOORS; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-17] 31~50층(맨 뒤)
+            for (int f = TOWER_FLOORS_V1 + 1; f <= TOWER_FLOORS_V2; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-17] 31~50층(맨 뒤)
             out.put(DEMON_WEST2, generateDemonField(false, 1)); // [2026-11-17] 로드맵(맨 뒤)
             out.put(DEMON_WEST3, generateDemonField(false, 2));
             out.put(DEMON_EAST2, generateDemonField(true, 1));
@@ -1415,6 +1415,7 @@ public final class S5MineMap {
                 out.put(OPEN_SEA, os);
             }
         }
+        for (int f = TOWER_FLOORS_V2 + 1; f <= TOWER_FLOORS; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-23] 51~100층(맨 뒤 -- 앞 맵들의 몬스터 배치 시드가 안 바뀌게)
         placeWaypoints(out, seed); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -3521,17 +3522,20 @@ public final class S5MineMap {
         List<Portal> ps = new ArrayList<>();
         t[cy][0] = 'G';
         ps.add(new Portal(0, cy, 'G', TOWER_GATE, GATE_W / 2, GATE_DOOR_Y + 1, "탑 밖으로 나가는 문"));
-        t[0][cx] = 'U';
-        ps.add(new Portal(cx, 0, 'U', f + 1 <= TOWER_FLOORS ? towerId(f + 1) : null, 0, 0, (f + 1) + "층으로 올라가는 계단"));
+        boolean top = f >= TOWER_TOP; // [2026-11-23] 100층 = 꼭대기 -- 위 계단 없이 하늘이 트인 마을
+        if (!top) {
+            t[0][cx] = 'U';
+            ps.add(new Portal(cx, 0, 'U', f + 1 <= TOWER_FLOORS ? towerId(f + 1) : null, 0, 0, (f + 1) + "층으로 올라가는 계단"));
+        }
         t[h - 1][cx] = 'S'; // [2026-11-16] 지난 층 다시 가기 -- 아래 계단(수문장의 방으로)
         for (int y = cy + 2; y < h - 1; y++) t[y][cx] = ',';
         ps.add(new Portal(cx, h - 1, 'S', towerId(f - 1), 0, 0, (f - 1) + "층으로 내려가는 계단"));
         List<Npc> npcs = new ArrayList<>();
-        npcs.add(npcAtCell(t, cx + 2, 4, "towergate", "탑 관리인", f + "층 마을까지 왔구려! 쉬었다 가시오. 위쪽 계단으로 올라가면 다음 구역이오."));
+        npcs.add(npcAtCell(t, cx + 2, 4, "towergate", "탑 관리인", top ? "마침내 탑 꼭대기에 올랐구려! 여기까지 온 용사는 손에 꼽소. 마룡왕을 쓰러뜨린 그대에게 경의를!" : f + "층 마을까지 왔구려! 쉬었다 가시오. 위쪽 계단으로 올라가면 다음 구역이오."));
         npcs.add(npcAtCell(t, cx - 6, cy - 2, "priest", "탑 사제", "여기까지 오느라 고생했어요. 상처를 치료해 드리지요."));
         npcs.add(npcAtCell(t, cx + 6, cy, "smith", "탑 대장장이", "장비 손볼 게 있으면 말하게."));
         npcs.add(npcAtCell(t, cx + 5, 4, "tokenshop", "증표 상인", "증표를 모아 왔나? 동료 장비 상자를 열어 주지."));
-        S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층 마을", false, w, h, cx, h - 4, t, new byte[h][w], ps);
+        S5MineMap m = new S5MineMap(towerId(f), "탑 " + f + "층 " + (top ? "꼭대기 마을" : "마을"), false, w, h, cx, h - 4, t, new byte[h][w], ps);
         m.npcs = npcs;
         m.safe.add(new int[] { cx, cy, 12 });
         return m;

@@ -476,12 +476,16 @@ public final class S5MineMobs {
     //  방 몬스터: 1층 = 체력 130만 / 공격 2.4만(예전 1구역 값), 30층까지 층마다 체력 x1.04 / 공격 x1.03, 31층부터 층마다 체력 x1.08 / 공격 x1.06.
     //  수문장(9/19/29/39/49층) = 그 층 방 몬스터의 체력 x9 / 공격 x1.25. 경험치는 체력에 비례(1층 방 몬스터 약 15.5만). 레벨 = 84 + 층.
     static final int TW_GEN_FLOORS = 50, TW_BASE_HP = 1_300_000, TW_BASE_ATK = 24_000;
+    // [2026-11-23] "탑 100층까지" -- 51~100층 몬스터는 TYPES 맨 끝(악마/혼돈 몬스터 뒤)에 붙인다(앞 번호가 바뀌지 않게). 51층부터 층마다 체력 x1.05 / 공격 x1.04
+    //  (31~50층의 x1.08 / x1.06을 이어 가면 89·99층 수문장 체력이 int를 넘는다 -- 99층 니드호그 약 18.6억). 수문장 체력은 TW_BOSS_HP_CAP을 넘지 않게.
+    static final int TW_GEN_TOP = 100;
+    static final double TW_HP_UP51 = 1.05, TW_ATK_UP51 = 1.04, TW_BOSS_HP_CAP = 2_000_000_000d;
     static final double TW_EASE_30 = 0.92; // [2026-11-17]
     static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
     static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
     static int[] TW_BOSS_IDX;
-    public static double twHpAt(int f) { return TW_BASE_HP * Math.pow(TW_HP_UP, Math.min(f, 30) - 1) * Math.pow(TW_HP_UP31, Math.max(0, f - 30)); }
-    public static double twAtkAt(int f) { return TW_BASE_ATK * Math.pow(TW_ATK_UP, Math.min(f, 30) - 1) * Math.pow(TW_ATK_UP31, Math.max(0, f - 30)); }
+    public static double twHpAt(int f) { return TW_BASE_HP * Math.pow(TW_HP_UP, Math.min(f, 30) - 1) * Math.pow(TW_HP_UP31, Math.max(0, Math.min(f, 50) - 30)) * Math.pow(TW_HP_UP51, Math.max(0, f - 50)); }
+    public static double twAtkAt(int f) { return TW_BASE_ATK * Math.pow(TW_ATK_UP, Math.min(f, 30) - 1) * Math.pow(TW_ATK_UP31, Math.max(0, Math.min(f, 50) - 30)) * Math.pow(TW_ATK_UP51, Math.max(0, f - 50)); }
     // ---- [2026-11-17] 로드맵 -- 악마 단계(들판 2 = Lv.105, 들판 3 = Lv.115, 최후의 방어선 = Lv.125): "레벨 10 차이는 엄청나다 -- 공격력 2배 이상, 체력 2.5배 이상, 경험치 1.5배 이상".
     //  들판 1(기존 넷)에서 단계마다 체력 x2.5 / 공격 x2 / 경험치 x1.5, 레벨 +10. DEMON_IDX[단계*4 + 종류(임프/검사/마도사/발록)].
     static final double DEMON_HP_UP = 2.5, DEMON_ATK_UP = 2.0, DEMON_EXP_UP = 1.5;
@@ -499,19 +503,36 @@ public final class S5MineMobs {
             { { "탑 기사", "human", "#a8b8c8" }, { "그림자 마법사", "human", "#4a3a6a" }, { "강철 늑대", "quad", "#9aa8b8" } },
             { { "타락 천사", "flyer", "#f0e0a0" }, { "심연 마도사", "human", "#5a2a8a" }, { "흑요석 골렘", "human", "#2a2a3a" } },
             { { "화염 정령", "flyer", "#ff7a2a" }, { "용암 기사", "human", "#c8401a" }, { "불꽃 사냥개", "quad", "#e85a1a" } },
-            { { "서리 망령", "flyer", "#a8e0ff" }, { "빙결 기사", "human", "#6aa8d8" }, { "설원 늑대", "quad", "#d8f0ff" } } };
+            { { "서리 망령", "flyer", "#a8e0ff" }, { "빙결 기사", "human", "#6aa8d8" }, { "설원 늑대", "quad", "#d8f0ff" } },
+            // [2026-11-23] 51~100층
+            { { "심연 기사", "human", "#2a3a6a" }, { "심해 망령", "flyer", "#3a7a9a" }, { "심연 촉수", "blob", "#2a5a5a" } },
+            { { "차원 균열체", "blob", "#8a4ad8" }, { "공허 사냥꾼", "quad", "#4a2a6a" }, { "시간 술사", "human", "#b8a8ff" } },
+            { { "천공 수호자", "human", "#e8e0b0" }, { "하늘 그리폰", "flyer", "#d8b060" }, { "빛의 정령", "flyer", "#fff8c0" } },
+            { { "비룡", "flyer", "#7a9a5a" }, { "용인 전사", "human", "#5a8a3a" }, { "고룡의 권속", "snake", "#3a6a4a" } },
+            { { "종말의 기사", "human", "#4a0a1a" }, { "멸망의 사도", "human", "#6a0a4a" }, { "마룡의 그림자", "flyer", "#2a0a3a" } } };
         final String[][] TW_BLOCK_BOSS = { { "하수구의 지배자 라텔", "quad", "#4a4a52", "7" }, { "폐광의 검은 갱도왕", "human", "#2a2a30", "1" }, { "늪지 여왕 히드라", "snake", "#3a8a5a", "3" },
-            { "화산의 심장 이프리트", "human", "#ff6a1a", "-1" }, { "빙하의 폭군 프로스트자이언트", "human", "#8ad8ff", "-1" } };
+            { "화산의 심장 이프리트", "human", "#ff6a1a", "-1" }, { "빙하의 폭군 프로스트자이언트", "human", "#8ad8ff", "-1" },
+            // [2026-11-23] 59~99층 수문장(시즌5 구역 보스 이름 -- TOWER_BOSS_NAMES), 속성: 물 / 무 / 빛 / 불 / 어둠
+            { "심연의 대공 모르드레드", "human", "#2a1a5a", "3" }, { "차원의 파괴자 아자토스", "blob", "#5a1a8a", "-1" }, { "천공의 대천사 세라핌", "flyer", "#fff0b0", "8" },
+            { "고룡 바하무트", "demon", "#c0c8d8", "6" }, { "종말의 마룡왕 니드호그", "demon", "#1a0a1a", "7" } };
         List<Type> l = new java.util.ArrayList<>(base);
-        int[][] mi = new int[TW_GEN_FLOORS + 1][];
-        int[] bi = new int[TW_GEN_FLOORS + 1];
+        int[][] mi = new int[TW_GEN_TOP + 1][];
+        int[] bi = new int[TW_GEN_TOP + 1];
         java.util.Arrays.fill(bi, -1);
-        for (int f = 1; f <= TW_GEN_FLOORS; f++) {
+        for (int f = 1; f <= TW_GEN_FLOORS; f++) twGenFloor(l, f, mi, bi, TW_BLOCK_MOBS, TW_BLOCK_BOSS);
+        TW_MOB_IDX = mi; TW_BOSS_IDX = bi;
+        withDemonChaos(base, l);
+        for (int f = TW_GEN_FLOORS + 1; f <= TW_GEN_TOP; f++) twGenFloor(l, f, mi, bi, TW_BLOCK_MOBS, TW_BLOCK_BOSS); // [2026-11-23] 51~100층(맨 끝)
+        return l;
+    }
+    /** 탑 f층 몬스터(방 몬스터 셋 또는 수문장)를 l 끝에 붙이고 번호를 mi/bi에 적는다. */
+    private static void twGenFloor(List<Type> l, int f, int[][] mi, int[] bi, String[][][] TW_BLOCK_MOBS, String[][] TW_BLOCK_BOSS) {
+        {
             int blk = Math.min(TW_BLOCK_MOBS.length - 1, (f - 1) / 10);
             double hp = twHpAt(f), atk = twAtkAt(f), ease = f <= 30 ? TW_EASE_30 : 1.0, hpE = hp * ease, atkE = atk * ease; // [2026-11-17] "탑 30층 이하는 난이도 좀 낮춰줘(아주 조금만)" -- 체력/공격 x0.92(경험치는 그대로)
             if (f % 10 == 9) {
                 String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
-                int bh = (int) Math.min(Integer.MAX_VALUE, Math.round(hpE * TW_BOSS_HP));
+                int bh = (int) Math.min(TW_BOSS_HP_CAP, Math.round(hpE * TW_BOSS_HP));
                 Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * TW_BOSS_ATK)).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
                 if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
                 bi[f] = l.size(); l.add(t);
@@ -525,7 +546,9 @@ public final class S5MineMobs {
                 }
             }
         }
-        TW_MOB_IDX = mi; TW_BOSS_IDX = bi;
+    }
+    /** 악마 단계 + 악마화된 몬스터(혼돈스러운 마계)를 l 끝에 붙인다. */
+    private static void withDemonChaos(List<Type> base, List<Type> l) {
         // 악마 단계
         final String[] dn = { "지옥불 임프", "악마 검사", "심연의 마도사", "발록" };
         final String[][] tn = { null, { "상급 지옥불 임프", "상급 악마 검사", "상급 심연의 마도사", "상급 발록" }, { "최상급 지옥불 임프", "최상급 악마 검사", "최상급 심연의 마도사", "최상급 발록" },
@@ -554,7 +577,6 @@ public final class S5MineMobs {
         }
         CHAOS_IDX = new int[ci.size()];
         for (int i = 0; i < ci.size(); i++) CHAOS_IDX[i] = ci.get(i);
-        return l;
     }
 
     static final String[] DEMON_NAMES = { "지옥불 임프", "악마 검사", "심연의 마도사", "발록" }; // [2026-11-16] S5MineMap.fixedMobs의 종류 번호
