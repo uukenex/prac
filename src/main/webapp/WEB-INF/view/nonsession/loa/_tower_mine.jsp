@@ -1166,7 +1166,7 @@ var TowerMine = (function () {
       case 'r': return tiles.gravel;
       case '#': return tiles.wall[v % 2];
       case 'h': case 'j': case 'k': case 'l': return tiles.house[c];
-      case 'G': p = portalAt[x + ',' + y]; return tiles.gate[p && !p.locked ? 0 : 1];
+      case 'G': if (cellAt(x, y - 1) === 'K') return tiles.house2[0]; p = portalAt[x + ',' + y]; return tiles.gate[p && !p.locked ? 0 : 1]; // [2026-11-22] 왕도 수련관 문 = 건물 1층 문
       case 'M': return map && map.id === 'westroad' ? (tiles.forestGate || (tiles.forestGate = over(tiles.forest[0], function (g) { // [2026-11-05] 숲 던전 입구
         px(g, '#4e2f16', 1, 3, 3, 13); px(g, '#6b4220', 2, 3, 1, 13); px(g, '#4e2f16', 12, 3, 3, 13); px(g, '#6b4220', 13, 3, 1, 13);
         px(g, '#0a0806', 4, 6, 8, 10); px(g, '#0a0806', 5, 5, 6, 1); px(g, '#1a1410', 4, 15, 8, 1);

@@ -167,7 +167,7 @@ public final class S5MineMap {
     public static int towerRooms(int f) { return 5 + ((f - 1) % 10) / 2; }
     public static boolean towerBossFloor(int f) { return f % 10 == 9; }
     public static boolean towerTownFloor(int f) { return f % 10 == 0; }
-    public static final String WB_ARENA = "wbarena"; // [2026-11-15] 월드보스 전장(매일 21시, 어디서든 참여 버튼으로)
+    public static final String WB_ARENA = "wbarena"; // [2026-11-15] 월드보스 전장(매일 21시, 어디서든 참여 버튼으로) -- [2026-11-22] 비어 있던 자리를 왕도 수련장(보스 허수아비)으로
     public static final String HARPY_NEST = "harpynest"; // [2026-11-08] 하피의 둥지(보스룸, 지금은 관리자만)
     // [2026-11-11] 두고개식 미궁 -- 방 FOREST_ROOM_N개(0번 = FOREST = 입구 방), 미로의 끝방, 둥지 뒤 나루터. 모두 관리자만(isForestZone).
     public static final String FOREST_END = "forestend", HARPY_FERRY = "harpyferry";
@@ -1217,11 +1217,11 @@ public final class S5MineMap {
         placeNpc(av, av.villageX - 10, av.villageY - 5, "smelter", "광석 전문가", smLine);
         placeNpc(av, av.villageX + 10, av.villageY - 5, "gemcutter", "보석 세공사", gcLine);
         placeNpc(av, av.villageX, av.villageY - 8, "archishop", "다도해 상인", "햇볕이 뜨겁지? 이 양산만 있으면 한낮도 끄떡없다네. 바다 보석으로 값을 치르게."); // [2026-10-28]
-        { // [2026-11-04] 검기 사범 -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn). [2026-11-22] 성당 옆 -> 1시 수련장(허수아비 마당) 서쪽 끝 세로 한 줄
-            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[0], "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수, 달빛석, 세공한 바다 보석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
+        { // [2026-11-04] 검기 사범 -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn). [2026-11-22] 성당 옆 -> 1시 수련관 앞마당(문 왼쪽 한 줄)
+            placeNpcAt(ct, cc + TRAIN_ROW[0], cc + TRAIN_NPC_DY, "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수, 달빛석, 세공한 바다 보석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
             // [2026-11-07] "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)" -- 돌개베기 / 만검진·일섬참(S55MineServiceImpl.mineWhirlLearn, mineUltLearn)
-            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[1], "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 세 번째 환생을 마친 자에게만, 검기와 같은 재료로.");
-            placeNpcAt(ct, cc + TRAIN_NPC_DX, cc + TRAIN_ROW[2], "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 세 번째 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
+            placeNpcAt(ct, cc + TRAIN_ROW[1], cc + TRAIN_NPC_DY, "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 세 번째 환생을 마친 자에게만, 검기와 같은 재료로.");
+            placeNpcAt(ct, cc + TRAIN_ROW[2], cc + TRAIN_NPC_DY, "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 세 번째 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
         }
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽
@@ -1299,7 +1299,7 @@ public final class S5MineMap {
             out.put(WESTROAD, wr);
             for (S5MineMap fm : fws) out.put(fm.id, fm); // [2026-11-08] 맨 뒤(앞 맵들의 몬스터 배치 시드가 안 바뀌게) -- [2026-11-11] 미궁 방들, 끝방, 둥지, 나루터
         }
-        out.put(WB_ARENA, generateWbArena(out.get(CITY))); // [2026-11-15] 월드보스 전장(맨 뒤)
+        out.put(WB_ARENA, generateWbArena(out.get(CITY))); // [2026-11-15] 월드보스 전장(맨 뒤) -- [2026-11-22] 왕도 수련장(보스 허수아비)으로 바꿔 씀
         { // [2026-11-15] 나루터 뱃사공(강 건너 탑의 도시) + 탑의 도시 + 탑 층(맨 뒤)
             S5MineMap fr = out.get(HARPY_FERRY);
             List<Npc> frn = new ArrayList<>();
@@ -3539,22 +3539,28 @@ public final class S5MineMap {
 
     /** [2026-11-15] 월드보스 전장 -- 돌로 둘러싼 넓은 원형 광장(50x40), 가운데 거룡(2x2, 움직이지 않음), 아래 입구(참여하면 여기로), 아래 문 = 왕도 광장.
      *  입구는 거룡에게서 12칸(인식 범위)보다 멀다. 잡몹 없음. */
-    static final int WB_W = 50, WB_H = 40;
+    // [2026-11-22] 월드보스가 동쪽 성곽으로 옮겨 가 비어 있던 전장 자리(맵 ID/순서 그대로)를 왕도 수련장으로 -- "1시 허수아비들은 다른 맵으로"
+    static final int WB_W = 56, WB_H = 34;
+    /** [2026-11-22] 왕도 수련장(56x34) -- 성벽으로 두른 돌바닥 실내 마당, 보스 허수아비 여덟(S5MineMobs.SIM_TYPES 순서) 두 줄(가로 12칸, 세로 12칸 간격 -- 만검진 7x7이 겹치지 않게).
+     *  아래 문 = 왕도 1시 수련관 문 앞. 몬스터/광석 없음. */
     static S5MineMap generateWbArena(S5MineMap city) {
-        int w = WB_W, h = WB_H, cx = w / 2, cy = h / 2 - 2;
+        int w = WB_W, h = WB_H, cx = w / 2, c = 60;
         char[][] t = new char[h][w];
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
-            double dx = (x - cx) / (w / 2.0 - 1.5), dy = (y - cy) / (h / 2.0 - 1.5);
-            boolean in = dx * dx + dy * dy <= 1.0 || (Math.abs(x - cx) <= 3 && y > cy);
-            t[y][x] = !in || x < 1 || y < 1 || x >= w - 1 || y >= h - 1 ? '^' : ((x + y) % 7 == 0 ? ':' : 's');
+            boolean wall = x < 2 || y < 2 || x >= w - 2 || y >= h - 2;
+            boolean rim = x == 2 || y == 2 || x == w - 3 || y == h - 3;
+            t[y][x] = wall ? 'W' : rim ? 'r' : 's';
         }
-        for (int y = cy + 6; y < h - 1; y++) for (int x = cx - 3; x <= cx + 3; x++) t[y][x] = 's';
+        for (int y = h - 3; y < h; y++) for (int x = cx - 1; x <= cx + 1; x++) t[y][x] = 's';
         t[h - 1][cx] = 'G';
-        int[] plaza = S55MineServiceImpl.mineCityPlaza(city);
+        List<int[]> dummies = new ArrayList<>();
+        for (int j = 0; j < 2; j++) for (int i = 0; i < 4; i++) dummies.add(new int[] { cx - 18 + i * 12, 9 + j * 12 });
+        for (int[] d : dummies) for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) if (Math.abs(dx) + Math.abs(dy) == 2) t[d[1] + dy][d[0] + dx] = 'r'; // 허수아비 자리 표시(자갈 네 귀)
         List<Portal> portals = new ArrayList<>();
-        portals.add(new Portal(cx, h - 1, 'G', CITY, plaza[0], plaza[1], "왕도 광장으로"));
-        S5MineMap m = new S5MineMap(WB_ARENA, "월드보스 전장", false, w, h, cx, h - 3, t, new byte[h][w], portals);
-        m.safe.add(new int[] { cx, h - 4, 3 }); // [2026-11-15] 월드보스가 동쪽 성곽으로 옮겨 가 이 전장은 비어 있다(맵 순서 때문에 남겨 둔다)
+        portals.add(new Portal(cx, h - 1, 'G', CITY, c + TRAIN_DOOR_DX, c + TRAIN_HALL[3] + 2, "왕도 1시 수련관 앞으로"));
+        S5MineMap m = new S5MineMap(WB_ARENA, "왕도 수련장", false, w, h, cx, h - 4, t, new byte[h][w], portals);
+        m.safe.add(new int[] { cx, h - 4, 3 });
+        m.dummySpots = dummies;
         return m;
     }
 
@@ -3791,9 +3797,12 @@ public final class S5MineMap {
     static final int[] CRAFT_YARD = { -44, -34, -16, -14 }, CRAFT_HALL = { -38, -28, -22, -19 };
     static final int CRAFT_NPC_DY = -17;
     static final int[] CRAFT_ROW = { -35, -30, -25 };
-    // 1시 수련장(허수아비 마당) 서쪽 끝 사범 줄(검기, 돌개, 필살 -- 세로 6칸 간격)
-    static final int TRAIN_NPC_DX = 15;
-    static final int[] TRAIN_ROW = { -49, -43, -37 };
+    // [2026-11-22] 같은 날 "1시 허수아비들은 다른 맵으로 빼고, 큰 건물 하나와 작은 건물 여러 개로" -- 1시 = 수련관(큰 건물, 문 = 왕도 수련장 맵) + 작은 집들.
+    //  수련관 {x0, y0, x1, y1}(맨 아랫줄이 1층 앞면, 문은 TRAIN_DOOR_DX), 앞마당, 사범 줄(검기, 돌개, 필살 -- 문 왼쪽에 5칸 간격), 작은 집 {x0, y0}(6x7)
+    static final int[] TRAIN_HALL = { 18, -52, 42, -37 }, TRAIN_YARD = { 12, -36, 46, -29 };
+    static final int TRAIN_DOOR_DX = 36, TRAIN_NPC_DY = -34;
+    static final int[] TRAIN_ROW = { 21, 26, 31 };
+    static final int[][] TRAIN_HOUSES = { { 47, -52 }, { 47, -42 }, { 12, -24 }, { 21, -24 }, { 30, -24 }, { 39, -24 }, { 48, -24 } };
     static S5MineMap generateCity(long seed) {
         int w = 120, h = 120, c = w / 2, wt = 3, road = 3;
         Random r = new Random(seed);
@@ -3807,7 +3816,6 @@ public final class S5MineMap {
             t[y][x] = r.nextDouble() < 0.08 ? 'T' : '.';
         }
         // [2026-10-29] "대도시 1시 방향은 건물 없애고 허수아비 -- 죽지 않는 데미지 시험장" -- 성당 오른쪽 위 돌바닥 마당
-        int tx0 = c + 14, tx1 = c + 44, ty0 = wt + 3, ty1 = wt + 36; // [2026-11-07] 보스 허수아비 -- 아래로 넓혀 3줄(서로 11~12칸씩 떨어져 만검진 7x7이 겹치지 않게)
         // 붉은 지붕 건물 블록(대로/광장에서 떨어진 곳), 건물 앞은 돌길
         // [2026-10-27] "왕도 내 건물 높게, 대도시처럼" -- 블록을 세로로 길게(8~10칸): 화면이 위 두 줄은 지붕, 그 아래는 층마다 창이 난 벽, 맨 아래는 1층 앞면으로 그린다.
         for (int by = wt + 4; by < h - wt - 12; by += 14) for (int bx = wt + 4; bx < w - wt - 8; bx += 11) {
@@ -3816,7 +3824,7 @@ public final class S5MineMap {
             boolean clear = true;
             for (int y = by - 1; y <= by + bh && clear; y++) for (int x = bx - 1; x <= bx + bw; x++) {
                 if (Math.abs(x - c) <= road + 2 || Math.abs(y - c) <= road + 2 || Math.hypot(x - c, y - c) < 19) { clear = false; break; }
-                if (x >= tx0 - 2 && x <= tx1 + 2 && y >= ty0 - 2 && y <= ty1 + 2) { clear = false; break; } // [2026-10-30] "1시 방향 집들이 어색" -- 마당에 잘려 조각난 건물이 남지 않게 아예 안 짓는다
+                if (x > c && y < c) { clear = false; break; } // [2026-10-30] "1시 방향 집들이 어색" -- [2026-11-22] 북동쪽은 수련관 + 작은 집(아래에서 손으로 짓는다)
                 if (x < c && y > c) { clear = false; break; } // [2026-11-05] "왕도 7시 방향 건물을 전부 없애고 용병소" -- 남서쪽엔 안 짓는다(난수 소비는 그대로)
                 if (x > c && y > c) { clear = false; break; } // [2026-11-06] "5시 방향 건물들 다 허물고" -- 남동쪽도(무기 강화사)
                 if (x < c && y < c && by > wt + 4) { clear = false; break; } // [2026-11-22] 11시 재료 공방 -- 북서쪽은 맨 윗줄 집만
@@ -3825,7 +3833,15 @@ public final class S5MineMap {
             for (int y = by; y < by + bh; y++) for (int x = bx; x < bx + bw; x++) t[y][x] = 'K';
             for (int x = bx - 1; x <= bx + bw; x++) t[by + bh][x] = 's';
         }
-        for (int y = ty0; y <= ty1; y++) for (int x = tx0; x <= tx1; x++) t[y][x] = 's';
+        // [2026-11-22] 1시 수련관 -- 큰 건물(문 = 왕도 수련장) + 앞마당(사범 셋) + 북쪽 대로까지 돌길, 둘레에 작은 집들(앞은 돌길)
+        for (int y = c + TRAIN_YARD[1]; y <= c + TRAIN_YARD[3]; y++) for (int x = c + TRAIN_YARD[0]; x <= c + TRAIN_YARD[2]; x++) t[y][x] = 's';
+        for (int y = c + TRAIN_HALL[1]; y <= c + TRAIN_HALL[3]; y++) for (int x = c + TRAIN_HALL[0]; x <= c + TRAIN_HALL[2]; x++) t[y][x] = 'K';
+        for (int x = c + road + 1; x < c + TRAIN_YARD[0]; x++) for (int y = c + TRAIN_NPC_DY + 2; y <= c + TRAIN_NPC_DY + 3; y++) t[y][x] = 's';
+        for (int[] hs : TRAIN_HOUSES) {
+            for (int y = c + hs[1]; y < c + hs[1] + 7; y++) for (int x = c + hs[0]; x < c + hs[0] + 6; x++) t[y][x] = 'K';
+            for (int x = c + hs[0] - 1; x <= c + hs[0] + 6; x++) t[c + hs[1] + 7][x] = 's';
+        }
+        t[c + TRAIN_HALL[3]][c + TRAIN_DOOR_DX] = 'G';
         // [2026-11-05] 용병소(남서쪽) -- 돌바닥 마당 + 큰 건물 하나, 건물 앞에 용병소 대장(MERC_NPC_DX/DY, buildWorld), 마당에서 남쪽 대로까지 돌길
         for (int y = c + MERC_YARD[1]; y <= c + MERC_YARD[3]; y++) for (int x = c + MERC_YARD[0]; x <= c + MERC_YARD[2]; x++) t[y][x] = 's';
         for (int y = c + MERC_HALL[1]; y <= c + MERC_HALL[3]; y++) for (int x = c + MERC_HALL[0]; x <= c + MERC_HALL[2]; x++) t[y][x] = 'K';
@@ -3838,8 +3854,6 @@ public final class S5MineMap {
         for (int y = c + ENH_YARD[1]; y <= c + ENH_YARD[3]; y++) for (int x = c + ENH_YARD[0]; x <= c + ENH_YARD[2]; x++) t[y][x] = 's';
         for (int y = c + ENH_HALL[1]; y <= c + ENH_HALL[3]; y++) for (int x = c + ENH_HALL[0]; x <= c + ENH_HALL[2]; x++) t[y][x] = 'K';
         for (int x = c + road + 1; x <= c + ENH_YARD[0]; x++) for (int y = c + ENH_NPC_DY + 1; y <= c + ENH_NPC_DY + 2; y++) t[y][x] = 's';
-        List<int[]> dummies = new ArrayList<>();
-        for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++) dummies.add(new int[] { tx0 + 5 + i * 11, ty0 + 5 + j * 12 }); // [2026-11-07] 보스 허수아비 일곱(S5MineMobs.SIM_TYPES 순서, 남는 자리는 비움) -- 가로 11칸, 세로 12칸 간격
         // 가운데 광장(돌바닥 원) + 분수
         for (int y = c - 16; y <= c + 16; y++) for (int x = c - 16; x <= c + 16; x++) if (Math.hypot(x - c, y - c) < 16) t[y][x] = 's';
         for (int y = c - 3; y <= c + 3; y++) for (int x = c - 3; x <= c + 3; x++) if (Math.hypot(x - c, y - c) < 3.2) t[y][x] = '~';
@@ -3865,6 +3879,7 @@ public final class S5MineMap {
         portals.add(new Portal(w - 1, c, 'G', ROYALROAD, 0, 0, "동문 -- 왕도 북쪽 샛길(설산 방향)")); // [2026-10-27] 왕도 가는 길로 열림(좌표는 buildWorld)
         portals.add(new Portal(0, c, 'G', WESTROAD, 0, 0, "서문 -- 왕도 서쪽 마물의 숲 입구")); // [2026-11-05] 열림(좌표는 buildWorld)
         for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) portals.add(new Portal(gx + dx, gy + dy, 'X', TELE, 0, 0, "워프 포인트 · 왕도 아스테리아")); // [2026-11-18] 3x3
+        portals.add(new Portal(c + TRAIN_DOOR_DX, c + TRAIN_HALL[3], 'G', WB_ARENA, WB_W / 2, WB_H - 3, "수련관 -- 왕도 수련장(보스 허수아비)")); // [2026-11-22]
         int sx = c, sy = h - wt - 2;
         boolean[][] reach = reachable(t, sx, sy);
         for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) if (walkable(t[y][x]) && !reach[y][x]) t[y][x] = 'K';
@@ -3876,8 +3891,7 @@ public final class S5MineMap {
         npcs.add(npcAtCell(t, c - 5, c + 6, "wbboard", "월드보스 게시판", WB_BOARD_LINE)); // [2026-11-17] 월드보스 게시판 -- [2026-11-22] 광장 워프 왼쪽 위
         npcs.add(npcAtCell(t, c - 5, c + 10, "mailbox", MAIL_NAME, MAIL_LINE)); // [2026-11-17] 우체부 -- [2026-11-22] 워프 왼쪽 아래
         m.npcs = npcs;
-        m.dummySpots = dummies;
-        return m;
+        return m; // [2026-11-22] 허수아비는 왕도 수련장(WB_ARENA 자리)으로 옮김
     }
 
     /** [2026-10-24] 바닷길(90x120, 바람의나라 용궁 느낌의 바닷속): 푸른 바다 모래(u) 위에 해초(e, 지나갈 수 있음)와 산호 무더기(O),
