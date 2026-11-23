@@ -1596,6 +1596,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 탑의 증표 n개 -- 안내 글자. */
     /** [2026-11-17] "증표 보상 구간을 고층엔 더 많이" -- 1~10층 x1, 11~20층 x2, 21~30층 x3, 31~40층 x4, 41~50층 x5. */
     static int mineTwTokenMul(int f) { return 1 + Math.max(0, f - 1) / 10; }
+    // [2026-11-23] "7성은 50층 이상 보스 드랍, 하루 3회 제한에 경험치도 못 얻게(그것도 보상), 대신 경험치 획득량 3배" --
+    //  탑 수문장을 쓰러뜨린 사람이 이번에 보상을 받았는지(첫 처치 / 하루 MINE_TW_BOSS_DAILY번 안 / 관리자)를 남겨 두고, 바로 뒤 경험치(mineTwExp)와 장비 드랍이 그걸 본다.
+    //  받으면 경험치 x MINE_TW_BOSS_EXP_MUL, 못 받으면 경험치 0 + 장비 드랍 없음. 50층 위 수문장(59~99층)은 보상을 받을 때 ★7 동료 장비 MINE_TW_MG7_PCT(층) 확률.
+    static final int MINE_TW_BOSS_EXP_MUL = 3;
+    static final java.util.concurrent.ConcurrentHashMap<String, Boolean> MINE_TW_BOSS_RW = new java.util.concurrent.ConcurrentHashMap<>();
+    static int mineTwMg7Pct(int f) { return f < 50 ? 0 : 10 + (f - 59) / 10 * 5; } // 59층 10% · 69층 15% · 79층 20% · 89층 25% · 99층 30%
+    /** 탑 수문장 처치 경험치 -- 보상을 받았으면 x3, 하루 횟수를 다 써서 못 받았으면 0. 탑 수문장이 아니면 그대로. */
+    static long mineTwExp(String userName, S5MineMap map, S5MineMobs.Type t, long e) {
+        if (!t.boss || S5MineMap.towerFloor(map.id) <= 0) return e;
+        Boolean rw = MINE_TW_BOSS_RW.get(userName);
+        return rw == null ? e : rw ? e * MINE_TW_BOSS_EXP_MUL : 0;
+    }
+    /** 탑 수문장을 쓰러뜨렸는데 하루 횟수를 다 써서 보상(장비 드랍 포함)이 없다. */
+    static boolean mineTwNoRw(String userName, S5MineMap map, S5MineMobs.Type t) { return t.boss && S5MineMap.towerFloor(map.id) > 0 && Boolean.FALSE.equals(MINE_TW_BOSS_RW.get(userName)); }
     String mineTowerToken(String userName, int n) {
         dao.addUserOre(userName, S5MineMap.TOWER_TOKEN_CODE, n);
         return "🗼 " + S5MineMap.TOWER_TOKEN_NAME + " +" + n;
@@ -1639,13 +1653,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int cnt = mineTwBossToday(it, now);
                 boolean first = mineTwBlock(it) < f;
                 String txt;
-                if (!first && cnt >= MINE_TW_BOSS_DAILY && !isMineAdmin(u)) txt = " ⏳ 이미 쓰러뜨린 수문장 보상은 하루 " + MINE_TW_BOSS_DAILY + "번까지예요(오늘 " + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + "). 내일 다시 받을 수 있어요.";
+                boolean rwOk = first || cnt < MINE_TW_BOSS_DAILY || isMineAdmin(u);
+                MINE_TW_BOSS_RW.put(u, rwOk); // [2026-11-23] 바로 뒤 경험치/장비 드랍이 본다
+                if (!rwOk) txt = " ⏳ 이미 쓰러뜨린 수문장 보상(경험치·장비 포함)은 하루 " + MINE_TW_BOSS_DAILY + "번까지예요(오늘 " + MINE_TW_BOSS_DAILY + "/" + MINE_TW_BOSS_DAILY + "). 내일 다시 받을 수 있어요.";
                 else {
                     if (!first) { dao.upsertMineItem(u, MINE_ITEM_TWB_DAY, day); dao.upsertMineItem(u, MINE_ITEM_TWB_CNT, cnt + 1); MINE_TW_LEFT.put(u, new int[] { day, cnt + 1 }); }
                     if (first) dao.upsertMineItem(u, MINE_ITEM_TW_BLOCK, f);
                     if (mineTwMax(it) < f + 2) dao.upsertMineItem(u, MINE_ITEM_TW_MAX, Math.min(S5MineMap.TOWER_FLOORS, f + 2));
                     StringBuilder sea = new StringBuilder(); // [2026-11-16] 수문장 처치 -- 바다 보석 MINE_TW_SEA_BOSS개
                     for (int q = 0; q < MINE_TW_SEA_BOSS; q++) { int sg = RND.nextInt(S5MineMap.SEA_GEM_CODES.length); dao.addUserOre(u, S5MineMap.SEA_GEM_CODES[sg], 1); sea.append(" · 🌊 ").append(S5MineMap.SEA_GEM_NAMES[sg]); }
+                    if (RND.nextInt(100) < mineTwMg7Pct(f)) { // [2026-11-23] 50층 위 수문장 -- ★7 동료 장비
+                        String mp = MG_PARTS[RND.nextInt(MG_PARTS.length)], mc = mgCode(mp, mgAcc(mp) ? 9 : RND.nextInt(3), 7);
+                        dao.upsertMineItem(u, mc, it.getOrDefault(mc, 0) + 1);
+                        sea.append(" · 🎁 ").append(mgName(mp, 9, 7)).append("을(를) 얻었어요! (").append(mgEffText(mp, 7)).append(")");
+                        mineGossipAdd(mineNick(u) + " 님이 탑 " + f + "층 수문장에게서 7성 용병 장비를 얻었대요!");
+                    }
                     txt = " · " + mineTowerToken(u, MINE_TW_TOKEN_BOSS * mineTwTokenMul(f)) + sea + (first ? " (첫 처치!)" : " (오늘 반복 보상 " + Math.min(MINE_TW_BOSS_DAILY, cnt + 1) + "/" + MINE_TW_BOSS_DAILY + ")")
                             + (first ? " 🗼 " + (f + 1) + "층 마을이 열렸어요! 위쪽 계단으로 올라가요." : "");
                 }
@@ -1700,7 +1722,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static boolean mgAcc(String part) { return "N".equals(part) || "R".equals(part) || "B".equals(part); }
     static String mgName(String part, int cls, int g) {
         int pi = java.util.Arrays.asList(MG_PARTS).indexOf(part);
-        return "★" + g + " " + (mgAcc(part) ? MG_PART_NAMES[pi] : MG_ITEM_NAMES[Math.max(0, Math.min(2, cls))][pi] + "(" + MINE_MERC_NAMES[Math.max(0, Math.min(2, cls))] + ")");
+        // [2026-11-23] "용병의 검(6성) 말고 용병의 무기(6성)처럼 -- 직업·등급에 따라 이름이 바뀌지 않게": 부위 이름 하나로(직업 cls는 쓰지 않는다)
+        return "용병의 " + MG_PART_NAMES[Math.max(0, pi)] + "(" + g + "성)";
     }
     /** 부위 하나의 효과 {공격력 %, 치명 %, 상성 %}. */
     static int[] mgEff(String part, int g) {
@@ -5137,7 +5160,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
-            long baseExp = mineLuckExp(items, mineNightExp(map, type, S5MineMobs.exp(type, mob.rank), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
+            long baseExp = mineLuckExp(items, mineNightExp(map, type, mineTwExp(userName, map, type, S5MineMobs.exp(type, mob.rank)), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
             long[] xa = mineExpAdd(lv, exp, expGain, rb); // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다), [2026-11-08] 진환생은 99를 넘어
             lv = (int) xa[0]; exp = xa[1]; levelUp += (int) xa[2];
             mineMercShare(userName, items, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
@@ -5167,8 +5190,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 out.put("bossKilled", true);
             }
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
-            if (bossRw) mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
-            else msg.append(mineBossRwNoMsg(type.name)); // [2026-11-20]
+            boolean twNo = mineTwNoRw(userName, map, type); // [2026-11-23] 탑 수문장 하루 횟수를 다 썼으면 장비도 없다(안내는 mineTowerKill이)
+            if (bossRw && !twNo) mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
+            else if (!twNo) msg.append(mineBossRwNoMsg(type.name)); // [2026-11-20]
             if (mob.type == S5MineMobs.HARPY_BOSS_TYPE) { // [2026-11-08] 하피 처치 -- 2시간 뒤 다시
                 mineBossKilledNow(MINE_HARPY_KEY, userName, now);
                 mineHarpyReset();
@@ -7915,14 +7939,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 kills++;
                 mineThunderKill(map, ot, now); // [2026-11-05] 밤 마물 처치 수
                 msg.append(mineTowerKill(userName, map, om, ot)); // [2026-11-15] 탑
-                long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mind / 100; // [2026-11-05] 마물의 숲 밤 1.5배
+                long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, S5MineMobs.exp(ot, om.rank)), now), now), g = be + be * mind / 100; // [2026-11-23] 탑 수문장 x3 / 0 // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
                 msg.append(msg.length() > 0 ? " " : "").append(verb).append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
                 if (ult && ot.boss) mineMercBossKilled(userName, map, om, ot, now, out, drops, "필살기로 "); // [2026-11-07] 필살기로 쓰러뜨린 보스 -- 기록/효과/보상은 직접 잡은 것과 같게
                 if (!ot.noReward) {
                     if (!(ult && ot.boss)) drops.addAll(mineMobDrops(userName, map, ot, msg, om.rank));
-                    if (!(ot.boss && Boolean.TRUE.equals(out.get("bossRwNo")))) mineWeaponDrop(userName, items, ot, om.rank, msg, out); // [2026-11-20] 보스 보상 하루 5번
+                    if (!(ot.boss && Boolean.TRUE.equals(out.get("bossRwNo"))) && !mineTwNoRw(userName, map, ot)) mineWeaponDrop(userName, items, ot, om.rank, msg, out); // [2026-11-20] 보스 보상 하루 5번, [2026-11-23] 탑 수문장 하루 3번
                 }
                 MineEngage me = MINE_ENGAGE.get(userName);
                 if (me != null) me.mobs.remove(om.id);
@@ -8889,7 +8913,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("owned", lv > 0);
         { // [2026-11-15] 동료 장비(칸마다 ★등급, 0 = 없음) + 합친 효과
             HashMap<String, Integer> gs = new HashMap<>();
-            for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(6, items.getOrDefault(mineMercKey(k, "G" + p), 0))));
+            for (String p : MG_PARTS) gs.put(p, Math.max(0, Math.min(7, items.getOrDefault(mineMercKey(k, "G" + p), 0)))); // [2026-11-23] "7성을 끼우면 6성이 된다" -- 화면에 보내는 값만 6에서 잘렸다(효과는 7 그대로였다)
             m.put("mg", gs);
             m.put("mgb", mineMgBonus(items, k));
             HashMap<String, Object> gi = new HashMap<>(); // [2026-11-16] 칸마다 끼운 장비 이름/효과
@@ -9315,14 +9339,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineThunderKill(map, ot, now);
             String twm = mineTowerKill(userName, map, om, ot); // [2026-11-15] 탑 -- 용병이 쓰러뜨려도 PP/수문장
             if (!twm.isEmpty()) mo.put("twMsg", twm);
-            long be = mineLuckExp(items, mineNightExp(map, ot, S5MineMobs.exp(ot, om.rank), now), now), g = be + be * mineMindExpPct(items) / 100;
+            long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, S5MineMobs.exp(ot, om.rank)), now), now), g = be + be * mineMindExpPct(items) / 100; // [2026-11-23] 탑 수문장 x3 / 0
             kills++;
             expSum += g;
             if (ot.boss) mineMercBossKilled(userName, map, om, ot, now, mo, allDrops, "용병과 함께 "); // [2026-11-07] 용병이 쓰러뜨린 보스
             if (!ot.noReward) {
                 StringBuilder dm = new StringBuilder();
                 if (!ot.boss) allDrops.addAll(mineMobDrops(userName, map, ot, dm, om.rank));
-                if (!(ot.boss && Boolean.TRUE.equals(mo.get("bossRwNo")))) mineWeaponDrop(userName, items, ot, om.rank, dm, mo); // [2026-11-20] 보스 보상 하루 5번
+                if (!(ot.boss && Boolean.TRUE.equals(mo.get("bossRwNo"))) && !mineTwNoRw(userName, map, ot)) mineWeaponDrop(userName, items, ot, om.rank, dm, mo); // [2026-11-20] 보스 보상 하루 5번, [2026-11-23] 탑 수문장 하루 3번
             }
         }
         if (rows.isEmpty()) return new long[] { 0, 0 };
