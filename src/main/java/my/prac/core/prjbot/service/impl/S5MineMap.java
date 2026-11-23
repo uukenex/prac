@@ -159,6 +159,8 @@ public final class S5MineMap {
     /** [2026-11-20] 태초의 보석(84) -- 최후의 방어선 태초의 보석 세공사가 만든다. 한 번 쓰면 검기 폭이 3칸(관리자처럼, 사람마다 한 번). */
     public static final String PRIMAL_GEM_CODE = "PRIMAL_GEM", PRIMAL_GEM_NAME = "태초의 보석";
     public static final int PRIMAL_GEM_GRADE = 84;
+    public static final String SUN_STONE_CODE = "SUNLIGHT", SUN_STONE_NAME = "햇빛석"; // [2026-11-23] 두 번째 월드보스 하늘고래 베히모스 보상
+    public static final int SUN_STONE_GRADE = 85;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */

@@ -31,6 +31,7 @@ var TowerMine = (function () {
   ORE_NAME[19] = '빙석'; ORE_COL[19] = ['#7fd0f0', '#eafaff'];
   ORE_NAME[31] = '어둠의 증표'; ORE_COL[31] = ['#7a2a8a', '#f0c8ff']; // [2026-11-18] 예전 타락한 대주교의 인장
   ORE_NAME[78] = '어둠의 심장'; ORE_COL[78] = ['#3a1a5a', '#c88aff']; RARE_GEM[78] = 1; // [2026-11-18] 타락한 대주교(반드시)
+  ORE_NAME[85] = '햇빛석'; ORE_COL[85] = ['#ffb020', '#fff2a0']; RARE_GEM[85] = 1; // [2026-11-23] 두 번째 월드보스 하늘고래 베히모스 보상
   ORE_NAME[84] = '태초의 보석'; ORE_COL[84] = ['#fff4b0', '#ffffff']; RARE_GEM[84] = 1; // [2026-11-20] 최후의 방어선 세공사 -- 검기 폭 3칸
   ORE_NAME[83] = '나무'; ORE_COL[83] = ['#7a4a22', '#c8945a']; // [2026-11-19] 하피의 둥지 나무를 곡괭이로 -- 배 수리 재료
   ORE_NAME[82] = '거룡의 심장 조각'; /* [2026-11-20] 예전 이름 내구도 회복 키트 */ ORE_COL[82] = ['#c8a040', '#8ad8ff']; RARE_GEM[82] = 1; // [2026-11-18] 거룡 토벌 1·2위 -- 워프 포인트 내구도 +20
@@ -1424,6 +1425,40 @@ var TowerMine = (function () {
         ws.forEach(function (c, i) { pf.P(c[0], c[1], '#c88aff'); pf.P(c[0], c[1] - 1, i % 2 ? '#8a4ad8' : '#e8c8ff'); });
         if (f) { pf.P(24, 19, '#f0c0ff'); pf.P(23, 20, '#b06aff'); pf.P(25, 20, '#b06aff'); pf.P(24, 21, '#8a4ad8'); pf.P(24, 22, '#6a2ab8'); } // 입가에 맺히는 어둠 숨결
       },
+      behemoth: function (pt, pf, f, pose) { // [2026-11-23] 하늘고래 베히모스 -- 바람 속성 두 번째 월드보스. 구름 위를 헤엄치는 거대한 고래: 왼쪽을 보는 옆모습, 짙은 청람 등과 밝은 배(주름), 등에 박힌 하늘 수정, 날개 같은 가슴지느러미(프레임마다 위/아래), 꼬리지느러미가 위/아래, 발밑 구름과 바람 소용돌이
+        var b0 = '#2a4a7a', b1 = '#172c4e', b2 = '#4a78b0', b3 = '#7aa8d8', bl = '#dceaf4', bl2 = '#a8c4dc', cr = '#8af0ff', cr2 = '#3ab8e0', cl = '#f4f8ff', cl2 = '#c8d8ec', k = '#0c1424';
+        var up = f ? 0 : 1, by = f ? 1 : 0; // 프레임 0 = 지느러미/꼬리 위, 1 = 아래(몸이 1칸 내려앉음)
+        // 꼬리 자루(굵게) + 꼬리지느러미 두 갈래(부채꼴로 채움, 프레임마다 위/아래)
+        var ty = 19 + by - (up ? 3 : -2), tx = 41;
+        for (var t = 0; t <= 1; t += 0.1) { var sx = 32 + (tx - 32) * t, sy = 23 + by + (ty - 23 - by) * t, rr = Math.round(6 - t * 4); pt.E(sx, sy, 1, rr > 1 ? rr - 1 : 1, b0); }
+        var fan = function (ex, ey, c) { for (var q = 0; q <= 1; q += 0.12) pt.L(tx, ty, ex[0] + (ex[1] - ex[0]) * q, ey[0] + (ey[1] - ey[0]) * q, c, 2); };
+        if (up) { fan([44, 47], [ty - 12, ty - 6], b0); fan([46, 47], [ty - 1, ty + 3], b0); pt.L(tx + 1, ty - 1, 45, ty - 11, b2, 1); pt.L(tx + 1, ty, 46, ty + 2, b2, 1); }
+        else { fan([46, 47], [ty - 6, ty - 2], b0); fan([43, 46], [ty + 9, ty + 4], b0); pt.L(tx + 1, ty - 1, 46, ty - 5, b2, 1); pt.L(tx + 1, ty + 1, 44, ty + 8, b1, 1); }
+        // 몸통 -- 앞(머리)이 크고 뒤로 갈수록 가늘어진다
+        pt.E(20, 24 + by, 17, 11, b0); pt.E(31, 23 + by, 7, 6, b0);
+        pt.E(19, 20 + by, 14, 6, b2); pt.E(17, 17 + by, 9, 3, b3); // 등의 밝은 결
+        // 배 + 주름(턱 밑에서 배꼽까지)
+        pt.E(18, 30 + by, 14, 5, bl2); pt.E(16, 30 + by, 11, 4, bl);
+        for (var gx = 6; gx < 30; gx += 3) pt.L(gx, 28 + by, gx + 3, 34 + by - (gx > 24 ? 2 : 0), bl2, 1);
+        // 입선 + 턱
+        pt.L(3, 25 + by, 16, 27 + by, b1, 1); pt.L(16, 27 + by, 20, 26 + by, b1, 1);
+        pt.P(3, 24 + by, b1); pt.P(4, 23 + by, b0);
+        // 눈(바람 속성 -- 빛나는 하늘빛) + 눈 위 주름
+        pt.E(10, 22 + by, 2, 2, k); pf.R(10, 22 + by, 2, 2, cr); pf.P(10, 22 + by, '#ffffff'); pt.L(8, 20 + by, 13, 20 + by, b1, 1);
+        // 등의 하늘 수정 셋 + 따개비 점
+        [[16, 12, 3], [22, 12, 4], [28, 15, 2]].forEach(function (c) { var x = c[0], y = c[1] + by, h = c[2]; pt.L(x, y + 2, x, y - h, cr2, 2); pt.P(x, y - h - 1, cr); pf.P(x, y - h, '#ffffff'); pf.P(x + 1, y - h + 1, cr); });
+        [[8, 17], [12, 15], [25, 17], [31, 19], [6, 21]].forEach(function (c) { pt.P(c[0], c[1] + by, bl2); });
+        // 가슴지느러미 -- 날개처럼 넓게(부채꼴로 채움, 프레임마다 위/아래)
+        var fin = function (pts, edge) { for (var q = 0; q <= 1; q += 0.08) pt.L(17, 29 + by, pts[0][0] + (pts[1][0] - pts[0][0]) * q, pts[0][1] + (pts[1][1] - pts[0][1]) * q, b0, 2); pt.L(17, 29 + by, edge[0], edge[1], b2, 1); };
+        if (up) fin([[24, 38 + by], [33, 31 + by]], [31, 32 + by]); else fin([[19, 42 + by], [28, 40 + by]], [27, 40 + by]);
+        // 분수공 -- 바람이 뿜어져 나온다
+        pf.P(13, 12 + by, cl); pf.P(12, 10 + by - up, cl2); pf.P(14, 9 + by - up, cl); pf.P(11, 8 - up, cl2); pf.P(15, 7 - up, cl2);
+        // 발밑 구름(프레임마다 흘러간다) + 바람 소용돌이
+        var sh = f ? 2 : 0;
+        [[4 + sh, 44, 5, 2], [14 + sh, 45, 6, 2], [27 + sh, 44, 6, 2], [38 + sh, 45, 5, 2]].forEach(function (c) { pf.E(c[0], c[1], c[2], c[3], cl2); pf.E(c[0] - 1, c[1] - 1, c[2] - 2, 1, cl); });
+        var sw = f ? [[3, 8], [42, 33], [36, 6]] : [[5, 6], [44, 35], [38, 4]];
+        sw.forEach(function (c) { pf.P(c[0], c[1], cr); pf.P(c[0] + 1, c[1] - 1, cl); pf.P(c[0] + 2, c[1], cr2); pf.P(c[0] + 1, c[1] + 1, cl2); });
+      },
       boroneo: function (pt, pf, f, pose) { // [2026-11-17] 심판자 보로네오 -- 빛 속성 타락천사. 은빛 중갑옷 + 금 장식, 흰 날개(끝이 검게 물든), 왕관 투구와 금 간 후광, 검/망치를 번갈아(pose = 망치)
         var ar = '#c8ccd8', ar2 = '#8a90a4', ar3 = '#eef2f8', ad = '#5a6074', gd = '#e8c050', gd2 = '#a8802a', wg = '#f4f0e4', wg2 = '#c0b8a8', wgd = '#2e2240', k = '#140d0a';
         var up = f ? 1 : 0;
@@ -1861,7 +1896,7 @@ var TowerMine = (function () {
       px(g, 'rgba(60,20,80,.7)', 6, 11, 4, 1); px(g, 'rgba(60,20,80,.5)', 5, 12, 3, 1); px(g, 'rgba(60,20,80,.35)', 7, 13, 3, 1); px(g, 'rgba(60,20,80,.25)', 4, 14, 2, 1);
     } }
   };
-  var ZONE_BIG = { 3: '💥 멸망의 숨결 ', 7: '☠️ 맹독 숨결 ', 15: '🧊 빙하 숨결 ', 17: '🌊 해일 ', 18: '🔥 화염 숨결 ' }; // [2026-11-23] 큰 장판(테두리 밖으로) -- 글자
+  var ZONE_BIG = { 3: '💥 멸망의 숨결 ', 7: '☠️ 맹독 숨결 ', 15: '🧊 빙하 숨결 ', 17: '🌊 해일 ', 18: '🔥 화염 숨결 ', 23: '🐋 폭풍 숨결 ' }; // [2026-11-23] 큰 장판(테두리 밖으로) -- 글자
   var EYE_PX = { mammoth: [[12, 5]], quad: [[13, 6]], human: [[6, 4], [9, 4]], small: [[12, 7]], flyer: [[7, 7], [8, 7]], crab: [[6, 7], [9, 7]], blob: [[6, 10], [9, 10]] }; // [2026-11-05] 몬스터 그림(16칸)의 눈 자리 -- 밤 붉은 눈
   // [2026-11-18] 바다 위 -- 잠수(서버 S5MineMobs.diving과 같은 식: 보통 14초마다 4초, 크라켄 45초마다 5초), 잠수 앞뒤 0.6초는 흐리게
   function seaDiving(ty, id, ms) {
@@ -2156,7 +2191,8 @@ var TowerMine = (function () {
     if (tyS.name === '심해의 크라켄') return krakenSprite((f | 0) % 2, !!pose);
     if (tyS.sea) return seaSprite(k, (f | 0) % 2);
     var art = BOSS_ART[(map.mobTypes[k] || {}).src || (map.mobTypes[k] || {}).name]; // [2026-10-29] 보스 전용 그림(48x48, 2프레임) // [2026-11-17] 악마화된 몬스터는 원래 그림
-    if (art) { var bk = 'b' + k + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
+    if (art === 'dragon' && !tyS.chaos && (wbInfo ? wbInfo.bh : wbWasBh)) art = 'behemoth'; // [2026-11-23] 거룡 칸에 두 번째 월드보스
+    if (art) { var bk = 'b' + k + (art === 'behemoth' ? 'h' : '') + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
     if (mobSprites[ck]) return mobSprites[ck];
     var m16 = MOB16[(map.mobTypes[k] || {}).name]; // [2026-11-23] 탑 51~98층 방 몬스터 -- 이름별 그림
@@ -3285,7 +3321,7 @@ var TowerMine = (function () {
     var d = wbBoard, h = npcHead('📜 ' + n.name, false);
     if (!d) return h + '<div class="mine-smith-say">게시판을 읽는 중...</div>';
     var lv = d.live || {}, now = nowSrv();
-    h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>🐉 심연의 거룡</b> · ' + (lv.closed ? '아직 나타나지 않아요' : lv.on ? '<b style="color:#ff6a5a">지금 동쪽 성곽에 출현 중!</b> (' + Math.max(1, Math.ceil((lv.end - now) / 60000)) + '분 남음)' : '다음 출현 <b>' + wbWhen(lv.next) + '</b>' + (lv.nextCycle ? ' <small>(이번 맵 주기엔 이미 쓰러짐 -- 맵 초기화 뒤)</small>' : '')) + '</div>';
+    h += '<div class="mine-smith-say" style="border:1px solid #ff8a5a"><b>' + (lv.bh ? '🐋 ' : '🐉 ') + escAttr(lv.name || '심연의 거룡') + '</b> · ' + (lv.closed ? '아직 나타나지 않아요' : lv.on ? '<b style="color:#ff6a5a">지금 동쪽 성곽에 출현 중!</b> (' + Math.max(1, Math.ceil((lv.end - now) / 60000)) + '분 남음)' : '다음 출현 <b>' + wbWhen(lv.next) + '</b>' + (lv.nextCycle ? ' <small>(이번 맵 주기엔 이미 쓰러짐 -- 맵 초기화 뒤)</small>' : '')) + '</div>';
     function rwList(r) { // [2026-11-17] "보상 설명 말고 사람별로" -- 그 사람이 실제로 받은 것
       if (!r) return '';
       var a = ['⭐ 별빛석 ' + d.star, '🔮 칠요석 ' + d.seven];
@@ -3493,7 +3529,7 @@ var TowerMine = (function () {
     if (!was || was.n !== unity.n) { flashT0 = performance.now(); banner = { text: '🤝 우리는 하나! ' + unity.n + '명이 함께 -- 공격력 +' + unity.atk + '% · 체력 x' + unity.hp, t0: performance.now() }; }
   }
   function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
-  var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0;
+  var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0, wbWasBh = false; // [2026-11-23] wbWasBh = 마지막으로 본 월드보스가 베히모스였는지(퇴장 연출)
   // [2026-11-16] "월드보스 등장/퇴장 이펙트 -- 날아서 오고 날아서 간다" -- 정각에 오른쪽 위 하늘에서 날아와 내려앉고(WB_FLY_MS), 시간이 다 되면 왼쪽 위 하늘로 날아간다(wbLeave).
   var WB_FLY_MS = 2800, wbLandAt = 0, wbGoneSeen = 0, wbLeave = null;
   function wbRender() {
@@ -3510,7 +3546,7 @@ var TowerMine = (function () {
     var inWb = map.id === (w.map || 'castle'), mins = function (ms) { return Math.max(1, Math.ceil(ms / 60000)) + '분'; };
     var h;
     if (!w.on) h = '🐉 월드보스 「' + escAttr(w.name) + '」 ' + callHhmm(w.at) + ' 동쪽 성곽에 등장 (' + mins(w.at - tn) + ' 뒤)' + (w.hp != null && w.hp < 1000 ? ' · 남은 체력 ' + Math.max(1, Math.round(w.hp / 10)) + '%' : '');
-    else h = '🐉 ' + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
+    else h = (w.bh ? '🐋 ' : '🐉 ') + escAttr(w.name) + ' <span class="wb-hp"><i style="width:' + ((w.hp | 0) / 10) + '%"></i></span> ' + Math.round((w.hp | 0) / 10) + '%'
         + (w.act ? ' · ' + w.act + '명 싸우는 중' : w.n ? ' · ' + w.n + '명 참여' : '') + (w.buff ? ' · <b style="color:#ffb04a">💪 공격력 +' + w.buff + '%</b>' : '') /* [2026-11-17] 인원 버프 */
         + (w.share != null ? (w.share >= 100 ? ' · ✅ 보상 조건 달성' : ' · 내 참여 ' + w.share + '%') : '') + ' · ' + mins(w.end - tn) + ' 남음';
     wbBar.innerHTML = h;
@@ -5049,7 +5085,7 @@ var TowerMine = (function () {
   }
   // [2026-10-28] 인벤토리 기타 탭 -- "광석/보석/고유(보스 아이템) 등 카테고리로". 가진 것만(0개는 숨김).
   var INV_CATS = [
-    ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20 || g === 70; }], // [2026-11-06] 은하수 조각 // [2026-10-28] 빙석, 달빛석도 광석
+    ['⛏️ 광석', function (g) { return (g >= 1 && g <= 6) || g === 19 || g === 20 || g === 70 || g === 85; }], // [2026-11-23] 햇빛석 // [2026-11-06] 은하수 조각 // [2026-10-28] 빙석, 달빛석도 광석
     ['💎 보석', function (g) { return (g >= 21 && g <= 29) || (g >= 34 && g <= 38); }],
     ['🔥 괴', function (g) { return g >= 40 && g <= 44; }],
     ['✨ 세공된 보석', function (g) { return g >= 45 && g <= 59; }],
@@ -5900,7 +5936,8 @@ var TowerMine = (function () {
       if (d.knockX != null) setPos(d.knockX, d.knockY); // [2026-11-05] 밀쳐내기
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
-      if (d.roar) { flashT0 = performance.now(); msg('🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
+      if (d.roar) { flashT0 = performance.now(); msg(wbInfo && wbInfo.bh ? '🐋 베히모스의 울음! 잠깐 움직일 수 없어요.' : '🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
+      if (d.bhKnock) { flashT0 = performance.now(); msg('💦 물보라에 휩쓸렸어요!', 1500); } // [2026-11-23] 다음 위치 알림에서 중앙 평원으로
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       if (d.healed) floats.push({ x: P.x - 0.2, y: P.y - 0.5, text: '+' + d.healed + ' 💚', color: '#7cf08a', t0: performance.now() });
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
@@ -5940,7 +5977,7 @@ var TowerMine = (function () {
         }
         if (h.krk) { krkSwingAdd(h.kx, h.ky, P.x, P.y); floats.push({ x: P.x, y: P.y - 0.3, text: h.dodge ? '💨 회피' : '🐙 -' + h.dmg, color: h.dodge ? '#c8c8ff' : '#ff4a6a', big: true, t0: t + KRK_SWING_MS * KRK_SWING_HIT }); return; } // [2026-11-19] 크라켄 -- 촉수가 내려친 순간에 피해 숫자
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라', '❄️ 서리 폭발', '🌨️ 눈보라', '🧊 빙하 숨결', '🌑 어둠 웅덩이', '🌊 해일', '🔥 화염 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라', '❄️ 서리 폭발', '🌨️ 눈보라', '🧊 빙하 숨결', '🌑 어둠 웅덩이', '🌊 해일', '🔥 화염 숨결', '🌪️ 돌풍', '🌀 회오리', '💦 물보라 분출', '🌩️ 폭풍 낙하', '🐋 폭풍 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -6871,8 +6908,8 @@ var TowerMine = (function () {
         st.archi.boatHp = d.boatHp;
       }
       seaSt = d.sea || null; if (krkShown() !== krkShownWas) { krkShownWas = krkShown(); if (krkShownWas) { flashT0 = performance.now(); msg('🐙 바닷속에서 크라켄이 솟아올랐어요!', 2600); } } if (seaSt && seaSt.msg && seaSt.msgAt !== seaMsgSeen) { seaMsgSeen = seaSt.msgAt; flashT0 = performance.now(); msg(seaSt.msg, 3200); } // [2026-11-18] 크라켄 해역 소식
-      mapZones = d.zones || []; wbInfo = d.wb || null; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
-      if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg('🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
+      mapZones = d.zones || []; wbInfo = d.wb || null; if (wbInfo) wbWasBh = !!wbInfo.bh; wbRender(); wbNotice(); // [2026-11-15] 월드보스, [2026-11-16] 등장 알림
+      if (d.wbGone && d.wbGone !== wbGoneSeen) { wbGoneSeen = d.wbGone; if (map && map.id === 'castle' && nowSrv() - d.wbGone < 6000) { wbLeave = { t0: performance.now() }; msg(wbWasBh ? '🐋 하늘고래 베히모스가 구름 너머로 헤엄쳐 갔어요...' : '🐉 심연의 거룡이 날개를 펴고 하늘로 날아올랐어요...', 2800); } } // [2026-11-16] 퇴장 연출
       twRender(); // [2026-11-15] 탑
       if (d.bossFx && d.bossFx.at !== bossFxSeen) { bossFxSeen = d.bossFx.at; bossLoot(d.bossFx); } // [2026-11-16] 보스가 막 쓰러졌다 -- 전리품이 쏟아진다
       bossNpc = d.bossCall ? { m: mid, x: d.bossCall.x, y: d.bossCall.y, at: d.bossCall.at || (bossNpc && bossNpc.m === mid && bossNpc.at > nowSrv() ? bossNpc.at : 0) } : null; // [2026-11-13] 보스 소환사(at = 카운트가 끝나 보스가 나오는 시각)
@@ -8099,7 +8136,7 @@ var TowerMine = (function () {
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255], [150, 220, 255], [220, 240, 255], [120, 200, 255], [110, 50, 160], [60, 140, 255], [255, 110, 30]]; // [2026-11-23] 13~18 탑 수문장 속성 장판 // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255], [150, 220, 255], [220, 240, 255], [120, 200, 255], [110, 50, 160], [60, 140, 255], [255, 110, 30], [190, 245, 225], [140, 230, 200], [70, 170, 255], [255, 240, 140], [120, 215, 255]]; // [2026-11-23] 19~23 베히모스 // [2026-11-23] 13~18 탑 수문장 속성 장판 // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
       for (var wzi = 0; wzi < wzAll.length; wzi++) {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
@@ -8170,14 +8207,16 @@ var TowerMine = (function () {
           if (bf === 3 && wbInfo && wbInfo.on) {
             var fa = nowSrv() - wbInfo.at;
             if (fa >= 0 && fa < WB_FLY_MS) { fo = 1 - fa / WB_FLY_MS; fo = fo * fo; }
-            else if (wbLandAt !== wbInfo.at) { wbLandAt = wbInfo.at; if (fa >= WB_FLY_MS && fa < WB_FLY_MS + 1500) { flashT0 = performance.now(); msg('🐉 심연의 거룡이 내성에 내려앉았어요!', 2600); } }
+            else if (wbLandAt !== wbInfo.at) { wbLandAt = wbInfo.at; if (fa >= WB_FLY_MS && fa < WB_FLY_MS + 1500) { flashT0 = performance.now(); msg(wbInfo.bh ? '🐋 하늘이 갈라지며 하늘고래 베히모스가 내려왔어요!' : '🐉 심연의 거룡이 내성에 내려앉았어요!', 2600); } }
           }
+          var flyL = 0; // [2026-11-23] 베히모스가 하늘을 나는 중(0.7초 동안 떠올랐다가 내려온다)
+          if (bf === 3 && wbInfo && wbInfo.fly) { var fyt = nowSrv(); flyL = Math.max(0, Math.min(1, (fyt - wbInfo.fly[0]) / 700, (wbInfo.fly[1] - fyt) / 700)); }
           var hopL = 0; // [2026-11-16] 자리를 옮기는 중(날아올랐다 내려앉는다) 0 -> 1 -> 0
           if (!fo && ms && ms.hop && ms.ox != null) { var hq3 = (nowSrv() - ms.mt) / (ms.md || 950); if (hq3 >= 0 && hq3 < 1) hopL = Math.sin(hq3 * Math.PI); }
-          if (!fo && !hopL && !ty.sea) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
-          else { var shq = fo || hopL * 0.55; ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - shq)) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS * bf / 2, my + TS * bf - TS * 0.2, TS * bf * 0.5 * (1 - 0.6 * shq), TS * 0.36 * (1 - 0.6 * shq), 0, 0, Math.PI * 2); ctx.fill(); } // 내려앉을 자리의 그림자가 점점 커진다
+          if (!fo && !hopL && !flyL && !ty.sea) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
+          else { var shq = fo || Math.max(hopL * 0.55, flyL * 0.6); ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - shq)) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS * bf / 2, my + TS * bf - TS * 0.2, TS * bf * 0.5 * (1 - 0.6 * shq), TS * 0.36 * (1 - 0.6 * shq), 0, 0, Math.PI * 2); ctx.fill(); } // 내려앉을 자리의 그림자가 점점 커진다
           var bw = TS * 1.2 * bf; // [2026-10-29] 보스 2x2칸 -- 그림은 칸들 가운데, 발은 맨 아래 칸
-          ctx.drawImage(mobSprite(sk, pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6), bw, bw);
+          ctx.drawImage(mobSprite(sk, pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6 - flyL * TS * (2.6 + 0.3 * Math.sin(now / 260))), bw, bw);
         } else if (ty.sea) { var sw3 = ty.kind === 'whale' ? TS * 2 : TS; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 420 + bid)), Math.round(mx + TS / 2 - sw3 / 2), Math.round(my + TS - sw3 - bob * 0.5), sw3, sw3); if (ty.kind === 'whale') my -= Math.round(TS * 0.7); } // [2026-11-18] 바다 몬스터
         else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
         else if (ty.chaos) { // [2026-11-17] 악마화된 몬스터 -- 원래 그림을 크게(보스였으면 2.2배, 아니면 1.8배), 발밑 검붉은 기운 + 보랏빛 일렁임
