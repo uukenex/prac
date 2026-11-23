@@ -2770,7 +2770,8 @@ var TowerMine = (function () {
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
     miniCtx.clearRect(0, 0, v.w, v.h);
     if (v.x0 < 0 || v.y0 < 0) { miniCtx.fillStyle = '#0b0912'; miniCtx.fillRect(0, 0, v.w, v.h); } // 레터박스 띠
-    if (map.noMap && !(st && st.adminMaps)) { // [2026-11-06] 관리자는 개미굴에서도 지도가 보인다 // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
+    var antWin = map.noMap && !(st && st.adminMaps) && st && st.antMapUntil > nowSrv() ? { x0: Math.round(P.x - map.w / 4), y0: Math.round(P.y - map.h / 4), w: Math.round(map.w / 2), h: Math.round(map.h / 2) } : null; // [2026-11-23] 개미굴 지도 -- 내 둘레 가로·세로 절반
+    if (map.noMap && !(st && st.adminMaps) && !antWin) { // [2026-11-06] 관리자는 개미굴에서도 지도가 보인다 // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
       miniCtx.fillStyle = '#120c08'; miniCtx.fillRect(0, 0, v.w, v.h);
       miniCtx.fillStyle = '#6a4a30'; miniCtx.font = 'bold ' + Math.round(v.w / 5) + 'px sans-serif'; miniCtx.textAlign = 'center'; miniCtx.textBaseline = 'middle';
       miniCtx.fillText('?', v.w / 2, v.h / 2);
@@ -2808,6 +2809,13 @@ var TowerMine = (function () {
       var o = others[oid];
       miniCtx.fillStyle = '#10202a'; miniCtx.fillRect(o.x - ox - 2 * k - 1, o.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
       miniCtx.fillStyle = o.look && o.look.gm ? '#c06bff' : '#3fd4ff'; miniCtx.fillRect(o.x - ox - 2 * k, o.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
+    }
+    if (antWin) { // [2026-11-23] 개미굴 지도 -- 창 밖은 다시 가린다(남은 분은 창 아래에)
+      var aw0 = antWin.x0 - ox, ah0 = antWin.y0 - oy, aw1 = aw0 + antWin.w, ah1 = ah0 + antWin.h;
+      miniCtx.fillStyle = '#120c08';
+      miniCtx.fillRect(0, 0, v.w, Math.max(0, ah0)); miniCtx.fillRect(0, ah1, v.w, Math.max(0, v.h - ah1));
+      miniCtx.fillRect(0, ah0, Math.max(0, aw0), antWin.h); miniCtx.fillRect(aw1, ah0, Math.max(0, v.w - aw1), antWin.h);
+      miniCtx.strokeStyle = '#c8945a'; miniCtx.lineWidth = Math.max(1, k); miniCtx.strokeRect(aw0, ah0, antWin.w, antWin.h);
     }
     miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - ox - 3 * k, P.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - ox - k, P.y - oy - k, 2 * k + 1, 2 * k + 1);
@@ -5815,7 +5823,9 @@ var TowerMine = (function () {
       var lu = (st && st.luckUntil) || 0, left = lu - nowSrv(), cs = cityShop || {}, trb = ((st && st.combat && st.combat.rebirth) | 0) > RB_BASE; // [2026-11-08] 진환생은 못 씀
       el.smith.innerHTML = npcHead('🍀 ' + n.name, false) + talkBlock(n, n.line)
         + '<div class="mine-smith-row"><span class="nm">📜 행운의 주문서 (10분)<small>경험치 3배 · 드랍률 2배' + (left > 0 ? ' · 남은 시간 ' + Math.ceil(left / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (trb ? '진환생하면 쓸 수 없어요' : cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
-        + '<button type="button" ' + (trb ? 'disabled ' : cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>';
+        + '<button type="button" ' + (trb ? 'disabled ' : cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>'
+        + (function () { var am = ((st && st.antMapUntil) || 0) - nowSrv(); return '<div class="mine-smith-row"><span class="nm">🗺️ 개미굴 지도 (10분)<small>개미굴 미니맵에 내 주변(전체의 4분의 1쯤)이 보여요' + (am > 0 ? ' · 남은 시간 ' + Math.ceil(am / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
+          + '<button type="button" onclick="TowerMine.cityBuy(\'antmap\')">사기</button></div>'; })(); // [2026-11-23]
       return;
     }
     if (smithView === 'mercmgr') { el.smith.innerHTML = mercMgrHtml(); return; } // [2026-11-06] 용병 관리
@@ -7999,14 +8009,15 @@ var TowerMine = (function () {
       mercAfter(d);
     }).catch(function () { busy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
-  function cityBuy() { // [2026-11-05] 왕도 상인 -- 행운의 주문서
+  function cityBuy(what) { // [2026-11-05] 왕도 상인 -- 행운의 주문서, [2026-11-23] what = 'antmap'이면 개미굴 지도
     if (busy) return;
     busy = true;
-    api('/api/tower-mine-cityshop?action=buy').then(function (d) {
+    api('/api/tower-mine-cityshop?action=' + (what === 'antmap' ? 'antmap' : 'buy')).then(function (d) {
       busy = false;
       if (!d) return;
       cityShop = d;
       if (d.luckUntil != null) st.luckUntil = d.luckUntil;
+      if (d.antMapUntil != null) st.antMapUntil = d.antMapUntil; // [2026-11-23]
       if (d.ores) st.ores = d.ores;
       if (d.ok) flashT0 = performance.now();
       msg(d.message || '완료', 3200);

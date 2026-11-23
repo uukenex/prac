@@ -5822,6 +5822,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("visitedArchi", items.getOrDefault(MINE_ITEM_VISIT_ARCHI, 0) > 0 || isMineAdmin(userName)); // [2026-10-28] 다도해 마을
         out.put("coatDef", mineCoatDef(items)); // [2026-10-26] 입은 방한 외투의 한기 방어 단계(0 = 안 입음)
         out.put("luckUntil", mineLuckUntil(items)); // [2026-11-05] 행운의 주문서
+        out.put("antMapUntil", mineAntMapUntil(items)); // [2026-11-23] 개미굴 지도
         Object[] nt = mineNotice(); // [2026-10-28] 아직 안 본 광산 소식(확인을 누르면 mineNoticeAck, 글은 /광산공지로)
         if (!((String) nt[1]).isEmpty() && items.getOrDefault(MINE_ITEM_NOTICE, 0) < (Integer) nt[0]) {
             out.put("noticeId", nt[0]);
@@ -10247,6 +10248,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static long mineLuckUntil(Map<String, Integer> items) { return mineTrueRebirth(items) ? 0L : items.getOrDefault(MINE_ITEM_LUCK, 0) * 1000L; } // [2026-11-08] 진환생은 행운의 주문서가 듣지 않는다
     static boolean mineLuckOn(Map<String, Integer> items, long now) { return mineLuckUntil(items) > now; }
     static long mineLuckExp(Map<String, Integer> items, long exp, long now) { return mineLuckOn(items, now) ? exp * 3 : exp; }
+    // [2026-11-23] "금괴 NPC가 개미굴 지도를 팔게 -- 금괴 1개면 10분 동안 개미굴 전체 지도의 4분의 1쯤(내 캐릭터 주변)을 밝혀 주게" --
+    //  끝나는 시각은 ANTMAP_UNTIL(초), 사면 남은 시간에 10분을 더한다. 화면이 개미굴 미니맵에서 내 둘레 가로·세로 절반 창만 보여 준다(진환생도 살 수 있다).
+    static final String MINE_ITEM_ANTMAP = "ANTMAP_UNTIL";
+    static final long MINE_ANTMAP_MS = 10 * 60_000L;
+    static long mineAntMapUntil(Map<String, Integer> items) { return items.getOrDefault(MINE_ITEM_ANTMAP, 0) * 1000L; }
 
     @Override
     @Transactional
@@ -10258,6 +10264,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long now = System.currentTimeMillis();
         boolean ok = true;
         String msg = "";
+        if ("antmap".equals(action)) { // [2026-11-23] 개미굴 지도(금괴 1개, 10분)
+            if (!mineAtNpc(row, "citymerchant")) { ok = false; msg = "왕도의 왕도 상인에게서만 살 수 있어요."; }
+            else if (!mineCostOk(MINE_LUCK_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_LUCK_COST) + " 필요" + mineLackText(MINE_LUCK_COST, userName) + ")"; }
+            else {
+                mineTakeCost(userName, MINE_LUCK_COST, 1);
+                long until = Math.max(now, mineAntMapUntil(items)) + MINE_ANTMAP_MS;
+                dao.upsertMineItem(userName, MINE_ITEM_ANTMAP, (int) (until / 1000L));
+                items.put(MINE_ITEM_ANTMAP, (int) (until / 1000L));
+                msg = "🗺️ 개미굴 지도를 샀어요! 10분 동안 개미굴 미니맵에 내 주변(전체의 4분의 1쯤)이 보여요. (" + mineCostText(MINE_LUCK_COST) + " 사용)";
+            }
+        }
         if ("buy".equals(action)) {
             if (!mineAtNpc(row, "citymerchant")) { ok = false; msg = "왕도의 왕도 상인에게서만 살 수 있어요."; }
             else if (mineTrueRebirth(items)) { ok = false; msg = "🍀 왕도 상인: 진환생하신 분께는 행운의 주문서가 듣지 않아요. 스스로의 힘으로 오르셔야 해요."; } // [2026-11-08]
@@ -10274,6 +10291,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("ok", ok);
         out.put("message", msg);
         out.put("luckUntil", mineLuckUntil(items));
+        out.put("antMapUntil", mineAntMapUntil(items)); // [2026-11-23]
         out.put("cost", mineCostText(MINE_LUCK_COST));
         out.put("can", mineCostOk(MINE_LUCK_COST, mineOreHave(userName)) && !mineTrueRebirth(items));
         if (mineTrueRebirth(items)) out.put("trueRb", true); // [2026-11-08] 진환생 -- 주문서 못 씀
