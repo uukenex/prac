@@ -8797,11 +8797,21 @@ var TowerMine = (function () {
       if (wcx < -TS * 3 || wcy < -TS * 3 || wcx > W + TS * 3 || wcy > H + TS * 3) return;
       try { wpDraw(ctx, wcx, wcy, TS, now); } catch (e) { }
     });
+    (map.portals || []).forEach(function (p) { // [2026-11-23] "다람쥐 굴 가는 길이 어려워, 더 잘 보이게" -- 좁은 틈 나무 위에 깜빡이는 도토리 + 튀는 전기 불꽃
+      if (p.kind !== 'H') return;
+      var hx = (p.x + 0.5) * TS - camX, hy = (p.y + 0.5) * TS - camY, hb = 0.5 + 0.5 * Math.sin(now / 260);
+      if (hx < -TS || hy < -TS || hx > W + TS || hy > H + TS) return;
+      ctx.save(); ctx.globalAlpha = 0.55 + 0.45 * hb;
+      ctx.fillStyle = '#9a6a2a'; ctx.beginPath(); ctx.ellipse(hx, hy - TS * 0.55, TS * 0.14, TS * 0.17, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(Math.round(hx - TS * 0.17), Math.round(hy - TS * 0.75), Math.round(TS * 0.34), Math.round(TS * 0.1));
+      ctx.restore();
+      for (var hk = 0; hk < 4; hk++) { var ha = now / 180 + hk * 1.57, hr = TS * (0.45 + 0.1 * Math.sin(now / 120 + hk)); if ((Math.floor(now / 140) + hk) % 3 === 0) continue; ctx.fillStyle = hk % 2 ? '#fff8c0' : '#ffe84a'; ctx.fillRect(Math.round(hx + Math.cos(ha) * hr) - dpr, Math.round(hy - TS * 0.2 + Math.sin(ha) * hr * 0.7) - dpr, 2 * dpr + 1, 2 * dpr + 1); }
+    });
     // 가까운 포탈 이름
     (map.portals || []).forEach(function (p) {
       if (p.kind === 'X' && (cellAt(p.x - 1, p.y) === 'X' || cellAt(p.x, p.y - 1) === 'X')) return; // [2026-11-18] 3x3 워프 포인트는 이름 하나(왼위 칸 것)
       var zSeen = p.kind === 'Z' && st && st.dragon && st.dragon.has; // [2026-10-28] 용왕의 반지를 얻으면 바닷길 입구 이름도
-      if ((p.kind === 'H' && Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 2) || (p.kind === 'Z' && !zSeen) || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-11-23] H = 좁은 틈(2칸 안에서만 이름) // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
+      if ((p.kind === 'H' && Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 5) || (p.kind === 'Z' && !zSeen) || Math.abs(p.x - P.x) + Math.abs(p.y - P.y) > 4) return; // [2026-11-23] H = 좁은 틈(2칸 안에서만 이름) // [2026-10-24] 숨은 입구(Z)는 이름을 안 보인다
       var tx = p.x * TS - camX + TS / 2, ty = p.y * TS - camY - 4 * dpr;
       if (p.kind === 'X' && cellAt(p.x + 1, p.y) === 'X') { tx += TS; ty -= TS * 0.8; } // [2026-11-18] 워프 포인트 가운데 위
       var label = zSeen ? '🌀 바닷길 입구' + (st.waterWalk ? '' : ' (용왕의 반지를 끼면)') : (p.locked ? (p.label.indexOf('눈바람') >= 0 ? '🌨️ ' : '🔒 ') : '🚪 ') + p.label;
@@ -9193,6 +9203,7 @@ var TowerMine = (function () {
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
       if (m && m.tower && !twWasIn) setTimeout(function () { msg('🗼 탑에 들어서자 기운이 차오르네요... 용병들이 강해진 느낌이 들어요! (탑 안에서 용병 공격력 3배)', 3600); }, 1600); // [2026-11-23]
       twWasIn = !!(m && m.tower);
+      if (m && (m.portals || []).some(function (p) { return p.kind === 'H'; })) setTimeout(function () { msg('🐿️ 바스락… 왼쪽 위 나무 사이에서 번개 냄새가 나요!', 3200); }, 900); // [2026-11-23] 다람쥐 굴 가는 좁은 틈이 있는 방
       map = m;
       setTimeout(function () { try { var seen = {}; (m.mobs || []).forEach(function (mb) { if (seen[mb.k] || map !== m) return; seen[mb.k] = 1; mobSprite(mb.k); }); } catch (e) { } }, 0); // [2026-11-06] 몬스터 그림은 종류마다 한 번 그려 두고 다시 쓴다 -- 맵에 들어올 때 미리(처음 마주칠 때 멈칫하지 않게)
       portalAt = {};
