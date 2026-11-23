@@ -531,7 +531,7 @@ public final class S5MineMobs {
         withDemonChaos(base, l);
         for (int f = TW_GEN_FLOORS + 1; f <= TW_GEN_TOP; f++) twGenFloor(l, f, mi, bi, TW_BLOCK_MOBS, TW_BLOCK_BOSS); // [2026-11-23] 51~100층(맨 끝)
         // [2026-11-23] 최강다람쥐(다람쥐 굴 셋 -- 굴마다 한 마리, 맨 끝) -- 이벤트 보스: 체력 하피 여왕 x3, 번개 속성, 원거리, 제자리(번개처럼 순간 이동은 S55MineServiceImpl.mineSqTurn)
-        for (int i = 0; i < 1; i++) l.add(new Type("최강다람쥐", 26, "quad", "#c8782a").asBoss().strong(9.0, 1.1).showLv(115).asRanged().asStay().el(2));
+        for (int i = 0; i < 1; i++) l.add(new Type("최강다람쥐", 26, "quad", "#c8782a").asBoss().strong(9.0, 1.1).showLv(115) /* [2026-11-24] 원거리 기본 공격 없음, 제자리 대신 3배 빠르게 쫓아온다 */ .el(2));
         return l;
     }
     /** 탑 f층 몬스터(방 몬스터 셋 또는 수문장)를 l 끝에 붙이고 번호를 mi/bi에 적는다. */

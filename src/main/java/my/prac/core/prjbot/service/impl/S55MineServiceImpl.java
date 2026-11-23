@@ -3626,6 +3626,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 내가 다음에 소환할 수 있는 시각(ms, 지금 되면 0). */
     static long mineCallReadyAt(Map<String, Integer> items, String mapId) {
         int m = items == null ? 0 : items.getOrDefault(MINE_ITEM_CALL + mapId, 0);
+        if (S5MineMap.isSqDen(mapId)) return 0; // [2026-11-24] "최강다람쥐는 2시간마다 재도전 말고 계속" -- 쿨타임 없음(처치하면 맵 초기화까지 사라지는 건 그대로)
         return m <= 0 ? 0 : m * 60_000L + MINE_CALL_CD_MS;
     }
     /** 소환사 NPC 자리(보스 집 칸). */
@@ -3725,7 +3726,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         out.put("ok", true);
         out.put("at", now + MINE_CALL_DELAY_MS);
-        out.put("readyAt", now / 60_000L * 60_000L + MINE_CALL_CD_MS);
+        out.put("readyAt", mineCallReadyAt(mineItems(userName), map.id)); // [2026-11-24] 다람쥐 굴은 0(쿨타임 없음)
         out.put("message", "👑 " + bt.name + "을(를) 불러냈어요!");
         return out;
     }
@@ -3734,7 +3735,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  ⚡ 전기충격 MINE_SQ_SHOCK_MS마다 내 발밑 5x5(맞으면 기절). 근접은 MINE_MOB_STRIKE_GAP_MS / 7마다 한 번꼴(전투 턴 사이에 친 만큼 한꺼번에), 원거리 MINE_SQ_SHOT_MS.
     //  처치하면 다람쥐메달 MINE_SQ_MEDALS개. 선물(도토리 = 금괴 1개)은 메달 1개 + 30% 별빛석 1개. 싸우기와 선물은 같은 쿨타임(굴마다 2시간).
     static final long MINE_SQ_HIT_MS = 1_000L / 7; // [2026-11-23] "격투가 -- 공격 속도 1초에 7번" (예전 1.5초 / 7은 1초에 4.7번꼴이었다)
-    static final long MINE_SQ_DASH_MS = 2_500L, MINE_SQ_BOLT_MS = 9_000L /* [2026-11-23] "벼락 몰아치기는 3.5초 동안 초당 10줄기" -- 9초마다 35줄기를 0.1초 간격으로(내 둘레 4칸 안) */, MINE_SQ_SHOCK_MS = 10_000L, MINE_SQ_SHOT_MS = 1_000L, MINE_SQ_SHOCK_STUN_MS = 1_500L;
+    // [2026-11-24] "이동속도 빠르게(기본 이속 3배), 공격 간격 줄여, 위험지역 예고 0.5초, 원거리 기본 공격 없음, 번개 소환할 때 람쥐썬더!" --
+    //  전광석화 2.5 -> 1.5초, 벼락 몰아치기 9 -> 7초, 전기충격 10 -> 7초, 예고 0.7 -> MINE_SQ_WARN_MS(0.5초). 쫓는 칸 간격 = MINE_CHASE_STEP_MS / 3.
+    static final long MINE_SQ_WARN_MS = 500L;
+    static final long MINE_SQ_DASH_MS = 1_500L, MINE_SQ_BOLT_MS = 7_000L /* [2026-11-23] "벼락 몰아치기는 3.5초 동안 초당 10줄기" -- 9초마다 35줄기를 0.1초 간격으로(내 둘레 4칸 안) */, MINE_SQ_SHOCK_MS = 7_000L, MINE_SQ_SHOT_MS = 1_000L, MINE_SQ_SHOCK_STUN_MS = 1_500L;
     static final int MINE_SQ_MEDALS = 1 /* [2026-11-23] "다람쥐메달 보상은 1개만" */, MINE_ZK_SQ_BOLT = 25, MINE_ZK_SQ_SHOCK = 26, MINE_ZK_SQ_STORM = 27;
     // [2026-11-23] 같은 날 "맵 전체에 번개가 초당 10번, 3초 동안" -- ⛈️ 낙뢰 폭풍: MINE_SQ_STORM_MS마다 굴 전체 곳곳에 3x3 낙뢰 30줄기(0.1초 간격), 한 줄기 최대 체력 6%
     static final long MINE_SQ_STORM_MS = 15_000L, MINE_SQ_STORM_FIRST_MS = 10_000L;
@@ -3750,8 +3754,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (now - t[0] > 60_000L) { t[0] = now + 1_500L; t[1] = now + 4_000L; t[2] = now + 6_000L; t[3] = now + MINE_SQ_STORM_FIRST_MS; } // 오랜만의 싸움
             if (now >= t[3]) { // ⛈️ 낙뢰 폭풍 -- 굴 전체에 0.1초마다 한 줄기씩 3초
                 t[3] = now + MINE_SQ_STORM_MS;
-                for (int k = 0; k < 30; k++) mineZoneAdd(map, 1 + RND.nextInt(Math.max(1, map.w - 2)), 1 + RND.nextInt(Math.max(1, map.h - 2)), now + 700L + k * 100L, 1, MINE_ZK_SQ_STORM, 700L + k * 100L, 60, 0);
+                for (int k = 0; k < 30; k++) mineZoneAdd(map, 1 + RND.nextInt(Math.max(1, map.w - 2)), 1 + RND.nextInt(Math.max(1, map.h - 2)), now + MINE_SQ_WARN_MS + k * 100L, 1, MINE_ZK_SQ_STORM, MINE_SQ_WARN_MS, 60, 0);
                 out.put("sqStorm", true);
+                out.put("bossSay", "람쥐썬더!!"); out.put("bossSayName", "최강다람쥐");
             }
             int dist = Math.max(Math.max(s.fx - x, x - (s.fx + 1)), Math.max(s.fy - y, y - (s.fy + 1)));
             if (now >= t[0]) { // ⚡ 전광석화 -- 내 곁(2x2가 설 수 있는 칸)으로
@@ -3770,13 +3775,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             if (now >= t[1]) { // 🌩️ 벼락 몰아치기 -- 3.5초 동안 초당 10줄기(첫 줄기는 내 발밑, 나머지는 내 둘레 4칸 안 곳곳)
                 t[1] = now + MINE_SQ_BOLT_MS;
-                long at = now + 700L;
-                mineZoneAdd(map, x, y, at, 1, MINE_ZK_SQ_BOLT, 700L, 100, 0);
-                for (int k = 1; k < 35; k++) mineZoneAdd(map, Math.max(1, Math.min(map.w - 2, x - 4 + RND.nextInt(9))), Math.max(1, Math.min(map.h - 2, y - 4 + RND.nextInt(9))), at + k * 100L, 1, MINE_ZK_SQ_BOLT, 700L + k * 100L, 100, 0);
+                long at = now + MINE_SQ_WARN_MS;
+                mineZoneAdd(map, x, y, at, 1, MINE_ZK_SQ_BOLT, MINE_SQ_WARN_MS, 100, 0);
+                for (int k = 1; k < 35; k++) mineZoneAdd(map, Math.max(1, Math.min(map.w - 2, x - 4 + RND.nextInt(9))), Math.max(1, Math.min(map.h - 2, y - 4 + RND.nextInt(9))), at + k * 100L, 1, MINE_ZK_SQ_BOLT, MINE_SQ_WARN_MS, 100, 0);
+                if (!out.containsKey("bossSay")) { out.put("bossSay", "람쥐썬더!"); out.put("bossSayName", "최강다람쥐"); }
             }
             if (now >= t[2]) { // ⚡ 전기충격 -- 내 발밑 5x5, 맞으면 기절
                 t[2] = now + MINE_SQ_SHOCK_MS;
-                mineZoneAdd(map, x, y, now + 700L, 2, MINE_ZK_SQ_SHOCK, 700L, 90, MINE_SQ_SHOCK_STUN_MS);
+                mineZoneAdd(map, x, y, now + MINE_SQ_WARN_MS, 2, MINE_ZK_SQ_SHOCK, MINE_SQ_WARN_MS, 90, MINE_SQ_SHOCK_STUN_MS);
             }
             return;
         }
@@ -4093,7 +4099,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 // 쫓아온다(한 칸) -- [2026-10-28] 대주교는 제자리, 수하(fast)는 플레이어보다 3배쯤 빨리(초당 약 20칸) 여러 칸
                 // [2026-11-05] "마물의 숲 입구 몬스터 이속 3배" -- 그 맵(보스 제외)은 칸 간격 1/3. "다가올 때 끊겨 보인다" -- 1초 턴이 조금 늦거나 한 번 건너뛰면
                 //  예전엔 그동안 한 칸만 와서 멈칫했다. 이제 지난 시간만큼(최대 MINE_CHASE_CATCH_MS어치) 칸 수를 정한다.
-                long stepGap = type.fast ? MINE_FAST_STEP_MS : S5MineMap.WESTROAD.equals(map.id) && !type.boss ? MINE_CHASE_STEP_MS_FOREST : MINE_CHASE_STEP_MS;
+                long stepGap = S5MineMobs.sqIndex(map.mobs().get(id).type) >= 0 ? MINE_CHASE_STEP_MS / 3 /* [2026-11-24] 최강다람쥐 3배 */ : type.fast ? MINE_FAST_STEP_MS : S5MineMap.WESTROAD.equals(map.id) && !type.boss ? MINE_CHASE_STEP_MS_FOREST : MINE_CHASE_STEP_MS;
                 if (!type.stay && !splitting && userName.equals(s.target) && dist > 1 && now - s.lastMoveAt >= stepGap) {
                     int steps = type.fast ? (int) Math.min(dist - 1, Math.min(25, (now - s.lastMoveAt) / stepGap))
                             : now - s.lastMoveAt > MINE_CHASE_CATCH_MS ? 1 // [2026-11-05] "다가올 때 순간이동" -- 막 쫓기 시작(오래 안 움직임)이면 한 칸만
@@ -7797,9 +7803,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (v2 == 0 && v > 0) return 0; // 같은 속성 -- 막았다
         return mineCoatHit(items, v2);
     }
-    // [2026-11-24] "레벨이 비슷해지거나 상대보다 높으면 받는 피해 감소 최대 50%까지 자동 적용" -- (몬스터 레벨 - 내 레벨)이 MINE_LV_TAKE_FROM 이하부터
-    //  1레벨마다 MINE_LV_TAKE_STEP%씩 덜 아프다: 5레벨 위 0%, 같은 레벨 25%, 5레벨 아래부터 50%(끝). 몬스터 공격/반격/보스 기술·장판/보스 마법에 붙는다(한기·더위·눈보라는 그대로).
-    static final int MINE_LV_TAKE_FROM = 5, MINE_LV_TAKE_STEP = 5, MINE_LV_TAKE_MAX = 50;
+    // [2026-11-24] "레벨이 비슷해지거나 상대보다 높으면 받는 피해 감소 최대 50%까지 자동 적용" -> 같은 날 "같은 레벨 50%, 넘으면 1레벨당 5%씩 최대 90%" --
+    //  감소 = 50% + (내 레벨 - 몬스터 레벨) x 5%, 0~90%: 10레벨 위 몬스터 0%, 같은 레벨 50%, 8레벨 아래부터 90%(끝). 몬스터 공격/반격/보스 기술·장판/보스 마법에 붙는다(한기·더위·눈보라는 그대로).
+    static final int MINE_LV_TAKE_FROM = 10, MINE_LV_TAKE_STEP = 5, MINE_LV_TAKE_MAX = 90;
     static int mineLvTakePct(int myLv, int foeLv) {
         if (foeLv <= 0) return 0;
         return Math.max(0, Math.min(MINE_LV_TAKE_MAX, (MINE_LV_TAKE_FROM - (foeLv - myLv)) * MINE_LV_TAKE_STEP));

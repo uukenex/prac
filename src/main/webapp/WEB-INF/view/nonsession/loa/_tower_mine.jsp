@@ -3083,7 +3083,7 @@ var TowerMine = (function () {
       + '<button type="button" ' + (!d.up && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.sqGift()">🌰 도토리를 바친다 <small>(' + escAttr(d.giftCost || '금괴 1개') + ')</small></button>' // [2026-11-23] 보상·쿨타임 없이
       + '<button type="button" ' + (can && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.bossCall()">⚡ 한판 붙자!</button>'
       + '<button type="button" onclick="TowerMine.closeSmith()">👋 그냥 간다</button></div>'
-      + '<div class="mine-smith-say"><small>싸우기는 2시간에 한 번이에요.</small></div>'; // [2026-11-23] 보상 설명은 뺐다
+      + '<div class="mine-smith-say"><small>져도 바로 다시 붙을 수 있어요.</small></div>'; // [2026-11-24] 쿨타임 없음
     return h;
   }
   function sqGiftGo() {
@@ -3738,6 +3738,7 @@ var TowerMine = (function () {
     return (boltImgC[key] = c);
   }
   function zoneBoltDraw(k, zx, zy, zs, left, warn, TS, now) {
+    if (left > warn) return; // [2026-11-24] "위험지역 예고는 0.5초면 충분" -- 예고 길이만큼만 보인다
     var cx = zx + zs / 2, cy = zy + zs / 2, r = zs / 2 * 0.85;
     if (k === 26) { // 전기충격
       if (left > 0) {
@@ -3746,8 +3747,8 @@ var TowerMine = (function () {
         ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = 'rgba(160,120,255,' + (0.08 + 0.18 * p) + ')'; ctx.beginPath(); ctx.arc(cx, cy, r * p, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         for (var q = 0; q < 6; q++) { var a = now / 160 + q * 1.047; ctx.fillStyle = q % 2 ? '#ffffff' : '#c88aff'; ctx.fillRect(Math.round(cx + Math.cos(a) * r) - 2 * dpr, Math.round(cy + Math.sin(a) * r) - 2 * dpr, 4 * dpr, 4 * dpr); }
-      } else if (left > -500) {
-        var al = 1 + left / 500;
+      } else if (left > -300) { // [2026-11-24] 더 빨리 사라진다(0.5 -> 0.3초)
+        var al = 1 + left / 300;
         ctx.save(); ctx.strokeStyle = 'rgba(230,200,255,' + al + ')'; ctx.lineWidth = 3 * dpr; ctx.shadowColor = '#c88aff'; ctx.shadowBlur = 12 * dpr;
         for (var e = 0; e < 8; e++) { var ang = e * 0.785 + (left % 97) * 0.01, x0 = cx, y0 = cy; ctx.beginPath(); ctx.moveTo(x0, y0); for (var s = 1; s <= 4; s++) { var rr = r * s / 4; ctx.lineTo(cx + Math.cos(ang + (s % 2 ? 0.25 : -0.25)) * rr, cy + Math.sin(ang + (s % 2 ? 0.25 : -0.25)) * rr); } ctx.stroke(); }
         ctx.restore();
@@ -3759,8 +3760,8 @@ var TowerMine = (function () {
       var pp = Math.max(0, Math.min(1, 1 - left / warn));
       ctx.save(); ctx.fillStyle = 'rgba(255,232,74,' + (0.10 + 0.25 * pp) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, r * (0.4 + 0.6 * pp), r * 0.55 * (0.4 + 0.6 * pp), 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(255,240,150,' + (0.5 + 0.4 * Math.sin(now / 60)) + ')'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
-    } else if (left > -450) {
-      var a2 = 1 + left / 450, bi = boltImg(((zx / TS) | 0) * 7 + ((zy / TS) | 0) * 3 & 3, TS);
+    } else if (left > -250) { // [2026-11-24] 더 빨리 사라진다(0.45 -> 0.25초)
+      var a2 = 1 + left / 250, bi = boltImg(((zx / TS) | 0) * 7 + ((zy / TS) | 0) * 3 & 3, TS);
       ctx.save(); ctx.globalAlpha = a2; ctx.drawImage(bi, Math.round(cx - bi.width / 2), Math.round(cy - bi.height)); // 하늘에서 바닥 가운데로
       ctx.fillStyle = 'rgba(255,250,200,' + (0.7 * a2) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.1, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
     }
@@ -6233,7 +6234,7 @@ var TowerMine = (function () {
       if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.pullWarn) { pullFx = { bx: d.pullWarn[0], by: d.pullWarn[1], fo: d.pullWarn[2] || 2, at: d.pullWarn[3] }; msg('🪝 보스가 사슬을 던졌어요!', 1400); } // [2026-11-23] 끌어당기기 예고
       if (d.sqPunch) sqPunchUntil = performance.now() + 1300; // [2026-11-23] 최강다람쥐 주먹질 그림 -- 1.3초(전투 턴 1초 사이가 끊기지 않게, "다음 동작 대기 짧게")
-      if (d.sqStorm) { flashT0 = performance.now(); msg('⛈️ 최강다람쥐: 번개야, 쏟아져라!! (낙뢰 폭풍 3초)', 2600); } // [2026-11-23]
+      if (d.sqStorm) { flashT0 = performance.now(); msg('⛈️ 최강다람쥐: 람쥐썬더!! (낙뢰 폭풍 3초)', 2600); } // [2026-11-23]
       if (d.sqDash) { sqDashFx.push({ a: d.sqDash, t0: performance.now() }); floats.push({ x: d.sqDash[2] + 1, y: d.sqDash[3] - 0.5, text: '⚡ 전광석화!', color: '#ffe84a', big: true, t0: performance.now() }); } // [2026-11-23] 최강다람쥐
       if (d.push) { setPos(d.push[0], d.push[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('💦 물보라에 벽까지 밀려났어요!', 1600); } // [2026-11-23] 베히모스 물보라 분출(오른쪽/아래/위)
       if (d.pull) { pullFx = null; setPos(d.pull[0], d.pull[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('🪝 보스에게 끌려갔어요!', 1600); } // [2026-11-23]
