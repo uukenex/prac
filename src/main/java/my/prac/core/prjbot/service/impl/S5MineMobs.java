@@ -46,6 +46,7 @@ public final class S5MineMobs {
         public boolean ninja, clone;
         /** [2026-10-28] 용암섬 보스 -- "원거리 공격을 가끔씩": 인식 중 떨어져 있어도 6~10초마다 불덩이를 던진다(BotS5ServiceImpl.mineCombatTick). */
         public boolean ranged;
+        public double armor = 1.0; // [2026-11-23] 받는 피해 배율(탑 수문장이 체력 상한을 넘을 때 -- 상한 / 원래 체력)
         /** [2026-10-28] 설산 동굴 박쥐 -- 레벨 차이와 상관없이 선공(MINE_PREEMPT_RANGE칸 안). */
         public boolean firstStrike;
         /** [2026-10-28] 여왕개미 -- 원거리(ranged) 독산: 맞으면 슬로우 + 독(BotS5ServiceImpl.mineCombatTick). */
@@ -479,8 +480,10 @@ public final class S5MineMobs {
     // [2026-11-23] "탑 100층까지" -- 51~100층 몬스터는 TYPES 맨 끝(악마/혼돈 몬스터 뒤)에 붙인다(앞 번호가 바뀌지 않게). 51층부터 층마다 체력 x1.05 / 공격 x1.04
     //  (31~50층의 x1.08 / x1.06을 이어 가면 89·99층 수문장 체력이 int를 넘는다 -- 99층 니드호그 약 18.6억). 수문장 체력은 TW_BOSS_HP_CAP을 넘지 않게.
     static final int TW_GEN_TOP = 100;
-    static final double TW_HP_UP51 = 1.07, TW_ATK_UP51 = 1.06, TW_BOSS_HP_CAP = 2_000_000_000d; // [2026-11-23] 같은 날 "난이도는 어렵게" -- x1.05/x1.04 -> x1.07/x1.06, 수문장 공격 x1.25 -> TW_BOSS_ATK51
-    static final double TW_BOSS_ATK51 = 1.5;
+    static final double TW_HP_UP51 = 1.09, TW_ATK_UP51 = 1.08, TW_BOSS_HP_CAP = 2_000_000_000d; // [2026-11-23] 같은 날 "난이도는 어렵게" -- x1.05/x1.04 -> x1.07/x1.06, 수문장 공격 x1.25 -> TW_BOSS_ATK51
+    //  [2026-11-23] 다시 "50층 이상은 많이 어렵게" -- x1.07/x1.06 -> x1.09/x1.08, 수문장 공격 x1.5 -> x2. 수문장 체력이 int 상한(TW_BOSS_HP_CAP)을 넘는 층(79층~)은
+    //  넘는 만큼 받는 피해를 줄인다(Type.armor = 상한 / 원래 체력 -- 99층 니드호그 약 1/6). 같은 날 "50층 이상은 원거리 공격도 꼭" -- 51층부터 방 몬스터·수문장 모두 원거리.
+    static final double TW_BOSS_ATK51 = 2.0;
     static final double TW_EASE_30 = 0.92; // [2026-11-17]
     static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
     static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
@@ -535,6 +538,7 @@ public final class S5MineMobs {
                 String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
                 int bh = (int) Math.min(TW_BOSS_HP_CAP, Math.round(hpE * TW_BOSS_HP));
                 Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * (f > TW_GEN_FLOORS ? TW_BOSS_ATK51 : TW_BOSS_ATK))).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
+                if (f > TW_GEN_FLOORS) { t.asRanged(); if (hpE * TW_BOSS_HP > TW_BOSS_HP_CAP) t.armor = TW_BOSS_HP_CAP / (hpE * TW_BOSS_HP); } // [2026-11-23] 원거리 + 상한 넘는 체력은 갑피로
                 if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
                 bi[f] = l.size(); l.add(t);
             } else if (f % 10 != 0) {
@@ -543,6 +547,7 @@ public final class S5MineMobs {
                     String[] d = TW_BLOCK_MOBS[blk][k];
                     double hk = hp * (k == 2 ? 1.1 : 1.0);
                     Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk * ease), (int) Math.round(atkE)).expx(15 * hk / TW_BASE_HP).showLv(84 + f + (k == 2 ? 1 : 0));
+                    if (f > TW_GEN_FLOORS) t.asRanged(); // [2026-11-23] 51층부터 방 몬스터도 모두 원거리
                     mi[f][k] = l.size(); l.add(t);
                 }
             }

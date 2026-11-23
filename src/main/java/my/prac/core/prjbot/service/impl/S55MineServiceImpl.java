@@ -5134,7 +5134,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 assassinHit = true;
             }
             // [2026-11-11] 일반 공격도 하피에게 들어간다(나무 뒤에 숨었을 때만 모두 무효)
-            double vul = mineVulnMul(s, now); // [2026-11-08] 만검진 받는 피해 증가
+            double vul = mineVulnMul(s, now) * type.armor; // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
             if (vul != 1) { dmg = (int) Math.round(dmg * vul); Object hv2 = out.get("hits"); if (hv2 instanceof int[]) for (int hi = 0; hi < ((int[]) hv2).length; hi++) ((int[]) hv2)[hi] = (int) Math.round(((int[]) hv2)[hi] * vul); }
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
@@ -8069,7 +8069,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.deadUntil > 0) s.respawn(omMax);
                 if (ot.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = omMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
-                double vul = mineVulnMul(s, now); // [2026-11-08] 만검진 받는 피해 증가(이번 타격부터 쌓인 만큼)
+                double vul = mineVulnMul(s, now) * ot.armor; // [2026-11-08] 만검진 받는 피해 증가(이번 타격부터 쌓인 만큼), [2026-11-23] 탑 수문장 갑피
                 if (vul != 1) { mineVulnApply(hs, vul); sum = 0; for (int[] h : hs) sum += h[1]; }
                 if (vulnAdd > 0) mineVulnAdd(s, vulnAdd, now);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
@@ -8475,7 +8475,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (s != null && s.kraken) v *= s.stunUntil > now ? MINE_KRK_STUN_MUL : MINE_KRK_ARMOR; // [2026-11-18] 두꺼운 크라켄 -- 기절하면 2배
         return v;
     }
-    static List<int[]> mineVulnApply(List<int[]> hits, double vul) { if (hits != null && vul > 1) for (int[] h : hits) h[1] = (int) Math.round(h[1] * vul); return hits; }
+    static List<int[]> mineVulnApply(List<int[]> hits, double vul) { if (hits != null && vul != 1) for (int[] h : hits) h[1] = Math.max(h[1] > 0 ? 1 : 0, (int) Math.round(h[1] * vul)); return hits; } // [2026-11-23] 1보다 작은 배율(크라켄·탑 수문장 갑피)도 -- 예전엔 늘리는 것만
     static void mineVulnAdd(MobState s, int pct, long now) { s.vulnPct = Math.min(MINE_VULN_MAX, (s.vulnUntil > now ? s.vulnPct : 0) + pct); s.vulnUntil = now + MINE_VULN_MS; }
     static final String[] MINE_ULT_NAME = { "만검진", "일섬참", "각성" };
     // [2026-11-21] "필살기 1종 추가 -- 7초간 모든 데미지 2배(적에게 주는 피해), 현재 체력 2배(최대 체력을 잠시 넘는다), 레벨당 지속 시간 1초씩, 키는 V"(시안 승인: 삼태극 위 노란 불꽃).
@@ -9304,6 +9304,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (out.get("merc") instanceof Map && out.get("merc2") instanceof Map && ((Map<?, ?>) out.get("merc2")).containsKey("ores")) ((Map<?, ?>) out.get("merc")).remove("ores"); // [2026-11-18] 광석 목록은 한 번만(뒤의 것이 최신)
         return r;
     }
+    // [2026-11-23] "50층 이상 수문장이나 월드보스들은 용병이 스턴 걸리도록" -- 그런 보스(탑 51층~ 수문장, 월드보스 거룡/베히모스)와 싸우는 동안
+    //  전투 턴마다 MINE_MERC_STUN_PCT%로 용병이 MINE_MERC_STUN_MS 기절(그동안 공격 없음). 풀린 뒤 MINE_MERC_STUN_GAP_MS 동안은 다시 걸리지 않는다. 키 = "이름|기록 번호".
+    static final int MINE_MERC_STUN_PCT = 10;
+    static final long MINE_MERC_STUN_MS = 2_500L, MINE_MERC_STUN_GAP_MS = 6_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_MERC_STUN = new java.util.concurrent.ConcurrentHashMap<>();
     /** 용병 한 명(기록 번호 k)의 차례 -- 결과는 out.merc(첫 칸) / out.merc2(두 번째 칸). */
     long[] mineMercTurnK(String userName, S5MineMap map, Map<String, Integer> items, int x, int y, long now, MineEngage e, HashMap<String, Object> out, int k) {
         int cls = mineMercCls(items, k);
@@ -9326,6 +9331,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!any && mineMercPreempt(userName, map, items, x, y, now, out)) e = MINE_ENGAGE.get(userName);
         }
         if (e == null || e.mobs.isEmpty()) return new long[] { 0, 0 };
+        { // [2026-11-23] 큰 보스와 싸우면 용병이 가끔 기절
+            String sk = userName + "|" + k;
+            Long su = MINE_MERC_STUN.get(sk);
+            if (su != null && su > now) { mo.put("stun", su); return new long[] { 0, 0 }; }
+            if (su == null || now - su >= MINE_MERC_STUN_GAP_MS) {
+                boolean big = false;
+                for (Integer id : e.mobs.keySet()) {
+                    if (id < 0 || id >= map.mobs().size()) continue;
+                    int ti = map.mobs().get(id).type;
+                    MobState bs = MINE_MOB_STATE.get(mineMobKey(map, id));
+                    if (bs == null || bs.deadUntil > now) continue;
+                    if (ti == S5MineMobs.WB_BOSS_TYPE || (S5MineMobs.TYPES.get(ti).boss && S5MineMap.towerFloor(map.id) > S5MineMobs.TW_GEN_FLOORS)) { big = true; break; }
+                }
+                if (big && RND.nextInt(100) < MINE_MERC_STUN_PCT) { long until = now + MINE_MERC_STUN_MS; MINE_MERC_STUN.put(sk, until); mo.put("stun", until); mo.put("stunNew", true); return new long[] { 0, 0 }; }
+            }
+        }
         MercSt ms = mineMercMap(k).get(userName);
         int pick = -1, best = 99, reach = MINE_MERC_REACH[cls];
         boolean preMode = mineMercPreModeK(items, k); // [2026-11-07] 선공 모드 -- 화면에 보이면 친다(전사는 그 옆으로 달려간다)
@@ -9500,7 +9521,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (s.deadUntil > now) continue;
                 if (s.deadUntil > 0) s.respawn(omMax); // [2026-11-07] 다시 나타난 몬스터는 체력을 채우고(검기/공격과 같게)
-                dmg = (int) Math.round(dmg * mineVulnMul(s, now)); // [2026-11-08] 만검진 받는 피해 증가
+                dmg = (int) Math.round(dmg * mineVulnMul(s, now) * ot.armor); // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 s.lastHitAt = now;
                 mineHitBy(s, ot, userName); // [2026-11-13] 용병이 때려도 주인이 함께 싸운 것

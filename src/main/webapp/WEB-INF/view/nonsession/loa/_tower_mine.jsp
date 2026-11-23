@@ -6655,6 +6655,10 @@ var TowerMine = (function () {
     mercMove(mp, g[0], g[1], now);
     if (fight && !mp.mv) mercFace(mp, mp.tg.x, mp.tg.y);
     mercDraw(mp, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, mp.atkT, now, V, mi.ni);
+    if (mi.stun > nowSrv() && mp.x != null) { // [2026-11-23] 큰 보스에게 기절한 용병 -- 머리 위에 도는 별
+      var zx = Math.round(mp.x * V.TS - V.camX) + V.TS / 2, zy = Math.round(mp.y * V.TS - V.camY) - V.TS * 0.25;
+      for (var zi = 0; zi < 3; zi++) { var za = now / 200 + zi * 2.094; ctx.fillStyle = zi % 2 ? '#fff6a0' : '#ffd23a'; ctx.fillRect(Math.round(zx + Math.cos(za) * V.TS * 0.32) - V.scale, Math.round(zy + Math.sin(za) * V.TS * 0.1) - V.scale, 2 * V.scale, 2 * V.scale); }
+    }
   }
   function mercDrawOther(ou, op, now, V, two) { // [2026-11-18] two = 두 번째 용병(ou.m2 = {mc, me, ms, ml, mr, mt})
     var q = two ? ou.m2 : ou, mk = two ? 'mp2' : 'mp', home = two ? mercSide : mercBehind;
@@ -6678,6 +6682,7 @@ var TowerMine = (function () {
     if (!st) return;
     var mp = two ? merc2 : merc;
     if (two) st.merc2 = m; else st.merc = m;
+    if (m.stunNew && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.9, text: '💫 용병 기절!', color: '#ffe94a', t0: performance.now() }); // [2026-11-23]
     var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st, k: mt === 2 ? 'ball' : '' }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
     var rowsAll = (m.row ? [m.row] : []).concat(m.rows || []), applyRows = function () { rowsAll.forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); }; // 둘레/체인 몬스터
     if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
