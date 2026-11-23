@@ -4048,7 +4048,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         e.at = now;
         long exp = Math.max(0, longOf(row.get("M_EXP"), 0L));
-        int dmgSum = 0, released = 0;
+        int dmgSum = 0, released = 0, foeLv = 0; // [2026-11-24] foeLv = 이번 턴에 나를 때린 몬스터 중 가장 높은 레벨(레벨 차이 받는 피해 감소)
         // [2026-10-28] 얼음 여왕에게 얼어 있으면 -- 여왕의 인식이 거리와 상관없이 안 풀리고(쫓아온다), 여왕에게 맞으면 즉사
         boolean iceHeld = boss != null && boss.type == S5MineMobs.ICE_BOSS_TYPE && mineFrozen(userName, now) != null, shattered = false;
         if (iceHeld && !mineBossDead(boss.type)) { // [2026-10-30] "빙결 상태에서 닿으면 즉사가 안 된다" -- 언 사람은 거리와 상관없이 여왕이 노리고(인식 유지) 쫓아온다
@@ -4120,6 +4120,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (thunderBoss && !stunned && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
                     int tsd = mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
                     dmgSum += tsd;
+                    if (tsd > 0) foeLv = Math.max(foeLv, type.lv());
                     if (tsd > 0) killerName = type.name; // [2026-11-06] "null에게 쓰러졌어요" -- 천둥 황소 기술/원거리에 쓰러지면 이름이 비어 있었다
                     if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
                     dist = mineFootDist(type, s, x, y);
@@ -4137,6 +4138,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem()); // [2026-11-22] 원거리 = 몬스터 속성
                         if (wbBoss) d = d == 0 ? 0 : mineElHit(userName, Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (mineWbBh() ? MINE_BH_DMG_MUL : 1) * (0.9 + RND.nextDouble() * 0.2))), type.elem(), false);
                         dmgSum += d;
+                        if (d > 0) foeLv = Math.max(foeLv, type.lv());
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
                         HashMap<String, Object> h = new HashMap<>();
                         h.put("mobId", id);
@@ -4192,6 +4194,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (dodged) d = 0;
                     dmgSum += d;
                     e.mobs.put(id, now);
+                    if (d > 0) foeLv = Math.max(foeLv, type.lv()); // [2026-11-24]
                     if (map.boat() && type.sea && d > 0) boatPct += type.boss ? MINE_BOAT_KRK_PCT : map.mobs().get(id).type == S5MineMobs.SEA_WHALE ? MINE_BOAT_WHALE_PCT : MINE_BOAT_HIT_PCT; // [2026-11-18] 배도 깎인다
                     HashMap<String, Object> h = new HashMap<>();
                     h.put("mobId", id);
@@ -4222,11 +4225,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (hp - dmgSum > 0) mineSqTurn(userName, map, e, x, y, now, out); // [2026-11-23] 최강다람쥐 -- 전광석화 / 벼락 몰아치기 / 전기충격 // [2026-11-23] 물·빛 보스 체력 50% 이하 -- 끌어당기기 / 원거리 일격(베히모스는 원거리 일격 늘)
         if (S5MineMap.CASTLE.equals(map.id) && mineWbOn(now) && hp - dmgSum > 0) { // [2026-11-15] 거룡 화염 장판 / 포효
             int wbz = mineWbPattern(userName, x, y, lv, rb, now, hits, out);
-            if (wbz > 0) { dmgSum += wbz; killerName = mineWbName(); }
+            if (wbz > 0) { dmgSum += wbz; killerName = mineWbName(); foeLv = Math.max(foeLv, S5MineMobs.TYPES.get(S5MineMobs.WB_BOSS_TYPE).lv()); }
         }
         if (hp - dmgSum > 0 && !MINE_ZONES.isEmpty()) { // [2026-11-16] 탑 수문장 / 악마의 장판
             int zd = mineZoneHit(userName, map, x, y, lv, rb, now, hits, out);
-            if (zd > 0) { dmgSum += zd; if (killerName == null) killerName = "장판"; }
+            if (zd > 0) { dmgSum += zd; if (killerName == null) killerName = "장판"; S5MineMap.Mob zb = mineBossOf(map); if (zb != null) foeLv = Math.max(foeLv, S5MineMobs.TYPES.get(zb.type).lv()); }
         }
         if (map.boat() && map.terrainAt(x, y) == '~') { // [2026-11-18] 바다 위 -- 몬스터 한 대 1%(고래 2%, 크라켄 3%), 촉수 내려찍기 25%, 물보라 5%. 0이 되면 배가 부서져 마을로(mineBoatHit). 등대 섬 위(배에서 내림)는 배가 안 맞는다
             for (HashMap<String, Object> h : hits) if (Boolean.TRUE.equals(h.get("zone"))) { int zk = intVal(h.get("zk"), -1); if (zk == 11) boatPct += MINE_BOAT_SMASH_PCT; else if (zk == 12) boatPct += MINE_BOAT_SPLASH_PCT; }
@@ -4302,6 +4305,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (dmgSum > 0) {
             if (mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 맞으면 연속 채광이 끊긴다
             boolean wyrm = mineWyrmSkinOn(items); int hp0 = hp; // [2026-11-23] 거룡의 피부조각 -- 받는 피해 -20%, 즉사 방지
+            if (foeLv > 0) { dmgSum = mineLvTake(dmgSum, lv, foeLv); int lp = mineLvTakePct(lv, foeLv); if (lp > 0) out.put("lvCut", lp); } // [2026-11-24] 레벨 차이 받는 피해 감소
             if (wyrm) dmgSum = Math.max(1, (int) Math.round(dmgSum * MINE_WYRM_SKIN_TAKE));
             if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * mineRegenPct(items)), now); // [2026-10-28] 재생의 장갑
             hp -= dmgSum;
@@ -5661,6 +5665,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         } else {
             counter = mineCoatHit(items, counter); // [2026-10-26] 방한 외투 -- 받는 피해 2배([2026-10-28] 갑옷 1.5배)
+            counter = mineLvTake(counter, lv, type.lv()); // [2026-11-24] 레벨 차이 받는 피해 감소
             if (counter > 0 && mineWyrmSkinOn(items)) counter = Math.max(1, (int) Math.round(counter * MINE_WYRM_SKIN_TAKE)); // [2026-11-23] 거룡의 피부조각
             if (counter > 0 && mineBerserkInvul(userName, now)) { counter = 0; out.put("berserkInv", true); } // [2026-11-20] 광전사 불굴 -- 무적 중
             if (counter > 0 && mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 반격에 맞아도 끊긴다
@@ -7791,6 +7796,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int v2 = mineElHit(MINE_CTX.get(), v, el);
         if (v2 == 0 && v > 0) return 0; // 같은 속성 -- 막았다
         return mineCoatHit(items, v2);
+    }
+    // [2026-11-24] "레벨이 비슷해지거나 상대보다 높으면 받는 피해 감소 최대 50%까지 자동 적용" -- (몬스터 레벨 - 내 레벨)이 MINE_LV_TAKE_FROM 이하부터
+    //  1레벨마다 MINE_LV_TAKE_STEP%씩 덜 아프다: 5레벨 위 0%, 같은 레벨 25%, 5레벨 아래부터 50%(끝). 몬스터 공격/반격/보스 기술·장판/보스 마법에 붙는다(한기·더위·눈보라는 그대로).
+    static final int MINE_LV_TAKE_FROM = 5, MINE_LV_TAKE_STEP = 5, MINE_LV_TAKE_MAX = 50;
+    static int mineLvTakePct(int myLv, int foeLv) {
+        if (foeLv <= 0) return 0;
+        return Math.max(0, Math.min(MINE_LV_TAKE_MAX, (MINE_LV_TAKE_FROM - (foeLv - myLv)) * MINE_LV_TAKE_STEP));
+    }
+    static int mineLvTake(int dmg, int myLv, int foeLv) {
+        int p = mineLvTakePct(myLv, foeLv);
+        return dmg <= 0 || p <= 0 ? dmg : Math.max(1, (int) Math.round(dmg * (100 - p) / 100.0));
     }
     /** 외투를 입었을 때 받는 피해(2배, 3단계 갑옷은 1.5배). */
     static int mineCoatHit(Map<String, Integer> items, int v) {
@@ -10638,6 +10654,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         int gustDmg = harpyMap ? mineHarpyGust(userName, map, items, x, y, now, out) : 0; // [2026-11-11]
+        { // [2026-11-24] 레벨 차이 받는 피해 감소 -- 보스가 내는 마법/장판/용암/돌풍만(한기·더위·눈보라는 그대로)
+            int rl = S5MineMobs.TYPES.get(S5MineMobs.RAID_BOSS_TYPE).lv(), tl = S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).lv();
+            fireDmg = mineLvTake(fireDmg, lv, rl); gasDmg = mineLvTake(gasDmg, lv, rl);
+            shockDmg = mineLvTake(shockDmg, lv, tl); stormDmg = mineLvTake(stormDmg, lv, tl);
+            lavaDmg = mineLvTake(lavaDmg, lv, S5MineMobs.TYPES.get(S5MineMobs.LAVA_BOSS_TYPE).lv());
+            S5MineMap.Mob hb = harpyMap ? mineBossOf(map) : null;
+            if (hb != null) gustDmg = mineLvTake(gustDmg, lv, S5MineMobs.TYPES.get(hb.type).lv());
+        }
         if (gustDmg > 0) out.put("gustDmg", gustDmg);
         if (coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg + gustDmg <= 0) return out;
         int envDmg = coldDmg + bzDmg + fireDmg + gasDmg + heatDmg + lavaDmg + shockDmg + stormDmg + gustDmg;
