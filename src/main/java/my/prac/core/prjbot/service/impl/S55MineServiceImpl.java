@@ -4200,7 +4200,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (wyrm) dmgSum = Math.max(1, (int) Math.round(dmgSum * MINE_WYRM_SKIN_TAKE));
             if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * mineRegenPct(items)), now); // [2026-10-28] 재생의 장갑
             hp -= dmgSum;
-            if (hp <= 0 && wyrm && hp0 > 1) { hp = 1; out.put("wyrmSave", true); }
+            if (hp <= 0 && wyrm && hp0 > 1 && mineWyrmSave(userName, now, out)) hp = 1; // 광전사 불굴보다 먼저
             if (hp <= 0 && mineBerserkSave(userName, items, now, out)) hp = 1; // [2026-11-20] 광전사 불굴
             if (MINE_WB_NAME.equals(killerName) && mineWbBh()) killerName = MINE_BH_NAME; // [2026-11-23] "베히모스 이름이 심연의 거룡으로 나와" -- 몬스터 칸은 거룡 것을 같이 쓴다
             if (shattered && hp > 0) { out.put("iceBroke", dmgSum); out.put("message", "🧊 얼어붙은 채로 " + (killerName == null ? "" : killerName + "의 ") + "일격을 맞아 얼음이 깨졌어요! (-" + String.format("%,d", dmgSum) + ")"); }
@@ -5562,7 +5562,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int hpc0 = hp;
             hp -= counter;
             out.put("counter", counter);
-            if (hp <= 0 && hpc0 > 1 && mineWyrmSkinOn(items)) { hp = 1; out.put("wyrmSave", true); } // [2026-11-23] 거룡의 피부조각 -- 즉사 방지
+            if (hp <= 0 && hpc0 > 1 && mineWyrmSkinOn(items) && mineWyrmSave(userName, now, out)) hp = 1; // [2026-11-23] 거룡의 피부조각 -- 즉사 방지(광전사 불굴보다 먼저)
             if (hp <= 0 && mineBerserkSave(userName, items, now, out)) hp = 1; // [2026-11-20] 광전사 불굴
             if (hp <= 0) {
                 died = true;
@@ -7706,7 +7706,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             if (MINE_ITEM_WYRM_TOOTH.equals(code)) s += " · 용병 공격력 +5%"; // [2026-11-23] 월드보스 장비 옵션
             if (MINE_ITEM_BH_TREMOR.equals(code)) s += " · 용병 공격력 +10%";
-            if (MINE_ITEM_WYRM_SKIN.equals(code)) s += " · 받는 피해 -20% · 즉사 방지(체력이 남았는데 한 번에 쓰러질 피해면 체력 1로 버팀)";
+            if (MINE_ITEM_WYRM_SKIN.equals(code)) s += " · 받는 피해 -20% · 즉사 방지(체력이 남았는데 한 번에 쓰러질 피해면 체력 1로 버팀, 1분에 한 번)";
             return s;
         }
     }
@@ -7859,6 +7859,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final double MINE_WYRM_SKIN_TAKE = 0.8; // 거룡의 피부조각 -- 받는 피해 20% 감소
     /** 든 무기의 용병 공격력 %(거룡의 이빨 5 / 베히모스의 전율 10). */
     static int mineWeaponMercPct(Map<String, Integer> items) { MineWeapon w = items == null ? null : mineWeaponOn(items); return w == null ? 0 : MINE_ITEM_BH_TREMOR.equals(w.code) ? 10 : MINE_ITEM_WYRM_TOOTH.equals(w.code) ? 5 : 0; }
+    // [2026-11-23] 같은 날 "즉사 방지는 쿨타임 1분, 광전사 장갑보다 먼저" -- 마지막으로 버틴 시각(유저별 메모리)
+    static final long MINE_WYRM_SAVE_CD_MS = 60_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_WYRM_SAVE_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static boolean mineWyrmSave(String userName, long now, HashMap<String, Object> out) {
+        Long last = MINE_WYRM_SAVE_AT.get(userName);
+        if (last != null && now - last < MINE_WYRM_SAVE_CD_MS) return false;
+        MINE_WYRM_SAVE_AT.put(userName, now);
+        if (out != null) { out.put("wyrmSave", true); out.put("wyrmCd", MINE_WYRM_SAVE_CD_MS); }
+        return true;
+    }
     static boolean mineWyrmSkinOn(Map<String, Integer> items) { MineWeapon a = items == null ? null : mineArmorOn(items); return a != null && MINE_ITEM_WYRM_SKIN.equals(a.code); }
     static final int MINE_WEAPON_DROP_LV_GAP = 4;
     /** 등급 뽑기 가중치(1만분율, 일반 -> 신화): 41.22% / 30% / 16% / 8% / 3.5% / 1% / 0.25% / 0.03%. maxGrade까지만(영웅까지인 무기는 그 안에서 비율대로).

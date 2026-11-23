@@ -3685,7 +3685,7 @@ var TowerMine = (function () {
   function gloveFx(d) {
     if (!d) return;
     var t = performance.now();
-    if (d.wyrmSave) { flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🐉 즉사 방지! 체력 1', color: '#c88aff', big: true, t0: t }); msg('🐉 거룡의 피부조각이 쓰러질 일격을 버텨 냈어요!', 2000); } // [2026-11-23]
+    if (d.wyrmSave) { flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🐉 즉사 방지! 체력 1', color: '#c88aff', big: true, t0: t }); msg('🐉 거룡의 피부조각이 쓰러질 일격을 버텨 냈어요! (1분 뒤 다시)', 2000); } // [2026-11-23]
     if (d.berserkSave) { berserkInvUntil = d.berserkSave; flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🔥 불굴! 5초 무적', color: '#ff6a3a', big: true, t0: t }); msg('🔥 광전사의 불굴 -- 쓰러질 일격을 버텼어요! 5초 동안 무적이에요.', 2600); }
     else if (d.berserkInv && t - gloveFxT > 700) { gloveFxT = t; floats.push({ x: P.x, y: P.y - 0.8, text: '🛡️ 무적', color: '#ffb07a', t0: t }); }
   }
