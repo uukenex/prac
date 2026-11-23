@@ -727,7 +727,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), barber: npcSprite('barber') /* [2026-11-20] 미용실 */, priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), alchemist: npcSprite('smelter'), /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), mgsmith: npcSprite('mgsmith'), artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), alchemist: npcSprite('smelter'), /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -843,10 +843,11 @@ var TowerMine = (function () {
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
     var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry';
     var so = kind === 'smelter' || kind === 'refiner', gc = kind === 'gemcutter', ar = kind === 'artisan', ah = kind === 'archishop', rf = kind === 'refiner'; // [2026-11-17] 악마 광석 정제사 // [2026-10-28] 다도해 상인(푸른 옷) // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
-    var body = kind === 'barber' ? '#e86aa0' : rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
+    var body = kind === 'mgsmith' ? '#c8801a' : kind === 'barber' ? '#e86aa0' : rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
+    else if (kind === 'mgsmith') { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#ffd24a', 7, 9, 2, 2); px(g, '#fff6c0', 7, 9); px(g, '#ffb020', 6, 10); px(g, '#ffb020', 9, 10); } // [2026-11-23] 햇빛 대장장이 -- 앞치마에 햇빛 문장
     else if (bq) { px(g, '#f4f0e6', 7, 7, 2, 4); px(g, '#d4104f', 7, 7, 2, 1); px(g, '#d9b44a', 6, 9); px(g, '#d9b44a', 9, 9); }
     else if (gd) { px(g, '#e8c84a', 4, 9, 8, 1); px(g, '#6b4220', 9, 10, 2, 2); } // 노란 띠 + 가죽 주머니
     else if (pr) { px(g, '#24212b', 4, 12, 8, 3); px(g, '#f4f0e6', 6, 7, 4, 1); px(g, '#d9b44a', 7, 8, 2, 4); px(g, '#d9b44a', 6, 9, 4, 1); } // 긴 사제복 + 흰 깃 + 십자가
@@ -2709,7 +2710,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', primalsmith: '#fff4b0', alchemist: '#b8f06a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', primalsmith: '#fff4b0', mgsmith: '#ffd24a', alchemist: '#b8f06a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -3399,6 +3400,27 @@ var TowerMine = (function () {
       if (smithOpen && smithView === 'primal') renderSmith(smithNpc);
     }).catch(function () { primalBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
+  /** [2026-11-23] 햇빛 대장장이(왕도 용병소) -- 가진 ★6 용병 장비와 용병이 끼운 ★6을 햇빛석으로 ★7로. */
+  function mgsmithHtml(n) {
+    var d = tokenShop, h = npcHead('☀️ ' + n.name, false) + talkBlock(n, n.line);
+    if (!d || mgInv == null) return h + '<div class="mine-smith-say">...</div>';
+    var sunC = d.sunCost || 5, sunH = d.sun | 0, any = false;
+    var btn = function (a) { return '<button type="button"' + (sunH < sunC ? ' data-lack="1"' : '') + ' onclick="' + a + '">☀️ 7성으로 (' + sunC + ')</button>'; };
+    h += '<div class="mine-smith-say" style="border:1px solid #ffd24a"><img src="' + oreIcon(85) + '" alt="" style="width:16px;vertical-align:middle"> 햇빛석 <b>' + sunH + '</b>개 -- ★6 용병 장비 하나를 햇빛석 <b>' + sunC + '</b>개로 ★7로 올려요.</div>';
+    (st.mercs || []).forEach(function (m) {
+      MG_SLOTS.forEach(function (s) {
+        if (((m.mg || {})[s[0]] | 0) !== 6) return;
+        var inf = (m.mgi || {})[s[0]]; any = true;
+        h += '<div class="mine-smith-row worn"><span class="nm">✔ ' + escAttr(inf ? inf[0] : '★6') + '<small>' + escAttr(m.name || '용병') + '이(가) 끼운 ' + s[1] + '</small></span>' + btn('TowerMine.mg7(\'' + s[0] + '\',' + m.k + ')') + '</div>';
+      });
+    });
+    mgInv.filter(function (it) { return it.g === 6; }).forEach(function (it) {
+      any = true;
+      h += '<div class="mine-smith-row"><span class="nm">' + escAttr(it.name) + (it.q > 1 ? ' x' + it.q : '') + '<small>가진 장비 · ' + escAttr(it.eff) + '</small></span>' + btn('TowerMine.mg7(\'' + it.code + '\',0)') + '</div>';
+    });
+    if (!any) h += '<div class="mine-eq-empty">★6 용병 장비가 없구먼. 증표 상인에게서 뽑아 오게.</div>';
+    return h;
+  }
   function primalHtml(n) {
     var d = primalInfo || {}, ic = '<img src="' + oreIcon(84) + '" alt="" style="width:16px;vertical-align:middle"> ';
     var h = npcHead('💎 ' + n.name, false) + talkBlock(n, n.line);
@@ -3449,7 +3471,7 @@ var TowerMine = (function () {
       if (d.inv) mgInv = d.inv;
       if (d.mercs) st.mercs = d.mercs;
       if (act !== 'list') { if (d.ok && d.best >= 5) flashT0 = performance.now(); if (d.message) msg(d.message, act.indexOf('pull') === 0 ? 4200 : 2600); }
-      if (smithOpen && (smithView === 'token' || smithView === 'mercmgr')) renderSmith(smithNpc);
+      if (smithOpen && (smithView === 'token' || smithView === 'mercmgr' || smithView === 'mgsmith')) renderSmith(smithNpc);
     }).catch(function () { tokenBusy = false; mgLoading = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function tokenHtml(n) {
@@ -3498,14 +3520,12 @@ var TowerMine = (function () {
     var rows = (mgInv || []).filter(function (it) { return it.part === s[0]; }); // [2026-11-17] 직업 구분 없이(서버가 지금 용병 직업 이름으로 합쳐 준다)
     var h = '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mgPop(null)"><div class="eq-pop-box"><div class="eq-pop-h">' + s[1] + ' <small>' + (acc ? '용병 공용' : (m.name || '용병') + ' 전용') + '</small>'
         + '<button type="button" onclick="TowerMine.mgPop(null)">✖</button></div>';
-    var sunC = tokenShop && tokenShop.sunCost ? tokenShop.sunCost : 5, sunH = tokenShop ? tokenShop.sun | 0 : 0; // [2026-11-23] 햇빛석으로 ★6 -> ★7
-    var up7 = function (a) { return '<button type="button"' + (sunH < sunC ? ' data-lack="1"' : '') + ' onclick="' + a + '">☀️ 7성으로 (' + sunC + ')</button>'; };
-    if (g) h += '<div class="mine-smith-row worn"><span class="nm">✔ ' + escAttr(inf ? inf[0] : '★' + g) + '<small>' + escAttr(inf ? inf[1] : '') + '</small></span>' + (g === 6 ? up7('TowerMine.mg7(\'' + s[0] + '\',' + m.k + ')') : '') + '<button type="button" onclick="TowerMine.mgOff(\'' + s[0] + '\',' + m.k + ')">해제</button></div>';
-    if (rows.some(function (it) { return it.g === 6; }) || g === 6) h += '<div class="mine-eq-empty">☀️ 햇빛석 ' + sunH + '개 -- ★6 장비 하나를 햇빛석 ' + sunC + '개로 ★7로 올려요.</div>';
+    if (g) h += '<div class="mine-smith-row worn"><span class="nm">✔ ' + escAttr(inf ? inf[0] : '★' + g) + '<small>' + escAttr(inf ? inf[1] : '') + '</small></span><button type="button" onclick="TowerMine.mgOff(\'' + s[0] + '\',' + m.k + ')">해제</button></div>';
+    if (rows.some(function (it) { return it.g === 6; }) || g === 6) h += '<div class="mine-eq-empty">☀️ ★6 장비는 왕도 용병소의 햇빛 대장장이에게서 햇빛석으로 ★7로 올릴 수 있어요.</div>'; // [2026-11-23]
     if (mgInv == null) h += '<div class="mine-eq-empty">...</div>';
     else if (!rows.length && !g) h += '<div class="mine-eq-empty">가진 장비가 없어요. 요새 도시·탑 마을의 증표 상인에게서 뽑을 수 있어요.</div>';
     rows.forEach(function (it) {
-      h += '<div class="mine-smith-row"><span class="nm">' + escAttr(it.name) + (it.q > 1 ? ' x' + it.q : '') + '<small>' + escAttr(it.eff) + '</small></span>' + (it.g === 6 ? up7('TowerMine.mg7(\'' + it.code + '\',' + m.k + ')') : '') + '<button type="button" onclick="TowerMine.mgOn(\'' + it.code + '\',' + m.k + ')">장착</button></div>';
+      h += '<div class="mine-smith-row"><span class="nm">' + escAttr(it.name) + (it.q > 1 ? ' x' + it.q : '') + '<small>' + escAttr(it.eff) + '</small></span><button type="button" onclick="TowerMine.mgOn(\'' + it.code + '\',' + m.k + ')">장착</button></div>';
     });
     return h + '</div></div>';
   }
@@ -3739,6 +3759,7 @@ var TowerMine = (function () {
     if (n.kind === 'refiner') { setAuto(false); refineInfo = null; openSmith(n, 'refine'); refineGo('refineInfo', 0); return; } // [2026-11-17] 악마 광석 정제사
     if (n.kind === 'alchemist') { setAuto(false); alchemyInfo = null; openSmith(n, 'alchemy'); alchemyGo('alchemyInfo', 0, 0); return; } // [2026-11-20] 연금술사
     if (n.kind === 'primalsmith') { setAuto(false); primalInfo = null; openSmith(n, 'primal'); primalGo('primalInfo'); return; } // [2026-11-20] 태초의 보석 세공사
+    if (n.kind === 'mgsmith') { setAuto(false); mgInv = null; openSmith(n, 'mgsmith'); tokenGo('list'); return; } // [2026-11-23] 햇빛 대장장이
     if (n.kind === 'bosscall') { // [2026-11-13] 보스 소환사
       setAuto(false); bossCallInfo = null; openSmith(n, 'bosscall');
       api('/api/tower-mine-bosscall?action=info').then(function (d) { bossCallInfo = d; if (smithOpen && smithView === 'bosscall') renderSmith(smithNpc); }).catch(function () {});
@@ -5702,6 +5723,7 @@ var TowerMine = (function () {
     if (smithView === 'river') { el.smith.innerHTML = riverHtml(n); return; } // [2026-11-15]
     if (smithView === 'refine') { el.smith.innerHTML = refineHtml(n); return; } // [2026-11-17]
     if (smithView === 'primal') { el.smith.innerHTML = primalHtml(n); return; } // [2026-11-20]
+    if (smithView === 'mgsmith') { el.smith.innerHTML = mgsmithHtml(n); return; } // [2026-11-23] 햇빛 대장장이
     if (smithView === 'alchemy') { el.smith.innerHTML = alchemyHtml(n); return; } // [2026-11-20]
     if (smithView === 'wbboard') { el.smith.innerHTML = wbBoardHtml(n); return; } // [2026-11-17] 월드보스 게시판
     if (smithView === 'mail') { el.smith.innerHTML = mailHtml(n); return; } // [2026-11-17] 우편함

@@ -1718,7 +1718,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
     static final int[][] MG_TIER_RATE = { { 0, 600, 300, 90, 10, 0, 0 }, { 0, 0, 650, 250, 80, 18, 2 }, { 0, 0, 0, 600, 300, 90, 10 }, { 0, 0, 0, 0, 600, 320, 80 } }; // ★0~★6 천분율(중급·최상급은 시즌5 동료 계약서와 같은 비율)
     static String mgCode(String part, int cls, int g) { return "MG_" + part + cls + "_" + g; }
-    // [2026-11-23] "용병 장비 6성을 7성으로 올리는 걸로(햇빛석 사용처)" -- 용병 관리 장비 칸 창에서 ★6 하나(가진 것이든 끼운 것이든)를 햇빛석 MINE_MG7_SUN개로 ★7로.
+    // [2026-11-23] "용병 장비 6성을 7성으로 올리는 걸로(햇빛석 사용처)" -- ★6 하나(가진 것이든 끼운 것이든)를 햇빛석 MINE_MG7_SUN개로 ★7로.
+    //  같은 날 "성급 올리는 건 NPC를 통해서" -- 왕도 용병소 마당의 햇빛 대장장이(mgsmith)에게서만.
     static final int MINE_MG7_SUN = 5;
     static boolean mgAcc(String part) { return "N".equals(part) || "R".equals(part) || "B".equals(part); }
     static String mgName(String part, int cls, int g) {
@@ -1954,6 +1955,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("ok", true);
             out.put("message", mineMercNm(items, c, "NM") + "의 " + MG_PART_NAMES[java.util.Arrays.asList(MG_PARTS).indexOf(code)] + "을(를) 뺐어요.");
         } else if ("mg7".equals(action)) { // [2026-11-23] ★6 -> ★7(햇빛석) -- 가진 것: code = 장비 코드 / 끼운 것: code = 부위(한 글자), grade = 용병 기록 번호
+            if (!mineAtNpc(row, "mgsmith")) { out.put("message", "왕도 용병소의 햇빛 대장장이에게서만 올릴 수 있어요."); return out; }
             int sun = mineOreHave(userName).getOrDefault(S5MineMap.SUN_STONE_CODE, 0);
             boolean worn = code != null && code.length() == 1;
             String part, src = null, slot = null;
