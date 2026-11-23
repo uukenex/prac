@@ -147,6 +147,7 @@ window.MineChar = (function () {
   /** 손에 든 것(32 격자) -- 무기(가만히/휘두르기)나 곡괭이. 그린 게 있으면 true. */
   function gear32(g, dir, step, dig, lk) {
     var side = dir === 'right', wk = lk.weapon || 'sword', W = W32[wk] || W32.sword, f = step | 0;
+    if (wk === 'none') return false; // [2026-11-23] 64x64 NPC -- 빈손
     if (dig === 1 || dig === 2) { pick32(g, dir, side, dig); return true; }
     if (wk === 'bow') { bow32(g, dir, side, dig === 3 || dig === 4); return true; } // [2026-11-06] 용병 궁수
     if (wk === 'staff') { staff32(g, dir, side, dig === 3 || dig === 4, f); return true; } // [2026-11-06] 용병 마법사

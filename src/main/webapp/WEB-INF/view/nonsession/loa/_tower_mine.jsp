@@ -837,6 +837,60 @@ var TowerMine = (function () {
     px(g, '#3a3036', 12, 9, 1, 4); px(g, '#9a3aff', 12, 8, 2, 2); px(g, '#d08aff', 12, 8);
     return outline(c, '#05020a');
   }
+  // [2026-11-23] "NPC도 64x64로(시안 없이)" -- 캐릭터 그림 옵션(64x64, charHD)이 켜져 있으면 사람 NPC는 플레이어 64x64 그림(MineChar.sprite)으로 그린다.
+  //  종류마다 옷/모자/머리를 정해 두고(NPC_LOOK), 상자·노점·게시판·부표·등대는 원래 그림 그대로(NPC_NOHD). 외형을 안 정한 새 종류도 기본 외형으로 늘 보이게.
+  //  같은 날 "NPC 작업할 때마다 안 나오던 것 잘 확인" -- 새 NPC를 만들면 여기(NPC_LOOK)와 tiles.npc 둘 다 넣고, 맵에 실제로 섰는지(서버 맵 생성) 확인한다.
+  var NPC_NOHD = { chest: 1, antchest: 1, stall: 1, wbboard: 1, seabuoy: 1, lighthouse: 1 };
+  var NPC_LOOK_DEF = { gender: 0, hair: '#3a2a1a', hairStyle: 'boy', top: '#8a6a3a', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' };
+  var NPC_LOOK = {
+    smith: { gender: 0, hair: '#3a2a1a', hairStyle: 'boy', top: '#7a4a1f', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    enhancer: { gender: 0, hair: '#d8dde6', hairStyle: 'boy', top: '#5a3a1a', hat: '', bottom: '#2a1d14', shoes: '', weapon: 'none' },
+    artisan: { gender: 0, hair: '#7a4a26', hairStyle: 'spiky', top: '#7a2a2a', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    armorer: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#666f82|knight', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'none' },
+    mgsmith: { gender: 0, hair: '#a83a2a', hairStyle: 'spiky', top: '#c8801a', hat: '#ffd24a|sunhat', bottom: '#4a2f18', shoes: '', weapon: 'none' },
+    captain: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#2a3a6a|cape', hat: '#222630|pirate', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    boutique: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#7b3fa0|tux', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    barber: { gender: 1, hair: '#e86aa0', hairStyle: 'wavy', top: '#e86aa0|maid', hat: '', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    priest: { gender: 0, hair: '#d8dde6', hairStyle: 'boy', top: '#24212b|gm', hat: '#f2d060|halo', bottom: '#24212b', shoes: '', weapon: 'none' },
+    guide: { gender: 1, hair: '#7a4a26', hairStyle: 'ponytail', top: '#2f8a5a', hat: '#e8c84a|straw', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    blackmarket: { gender: 0, hair: '#1a1a1a', hairStyle: 'boy', top: '#2a2230|hoodie', hat: '', bottom: '#1a1620', shoes: '', weapon: 'none' },
+    furrier: { gender: 0, hair: '#7a4a26', hairStyle: 'boy', top: '#8a5a32|fur', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    basecamp: { gender: 1, hair: '#f0d060', hairStyle: 'twin', top: '#e8e4da|fur', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    daykeeper: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#3a3f4a|armor', hat: '#9aa3ad|helmet', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    wallguard: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#9aa3b6|knight', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    forestguard: { gender: 1, hair: '#2b1d16', hairStyle: 'ponytail', top: '#2e8b57|cape', hat: '#2e8b57|beret', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    mercenary: { gender: 0, hair: '#a83a2a', hairStyle: 'boy', top: '#3a3f4a|armor', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    guard: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#9aa3b6|knight', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    knight: { gender: 0, hair: '#f0d060', hairStyle: 'boy', top: '#d9b44a|knightlord', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    towergate: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#666f82|armor', hat: '#9aa3ad|helmet', bottom: '#2a2e3c', shoes: '', weapon: 'sword' },
+    ninjaquest: { gender: 0, hair: '#1a1a1a', hairStyle: 'spiky', top: '#2a2a3a|hoodie', hat: '', bottom: '#1a1a24', shoes: '', weapon: 'none' },
+    ultmaster: { gender: 0, hair: '#d8dde6', hairStyle: 'bun', top: '#1a1a2a|kimono', hat: '', bottom: '#1a1a24', shoes: '', weapon: 'none' },
+    whirlmaster: { gender: 0, hair: '#2b1d16', hairStyle: 'bun', top: '#2a5aa8|hanbok', hat: '', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    swordmaster: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#8a1a1a|armor', hat: '', bottom: '#2a1010', shoes: '', weapon: 'sword' },
+    boatwright: { gender: 0, hair: '#7a4a26', hairStyle: 'boy', top: '#8a6a3a', hat: '#e8c84a|straw', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    ferry: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#2a5aa8|sailor', hat: '#e8c84a|straw', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    riverferry: { gender: 1, hair: '#7a4a26', hairStyle: 'side', top: '#2a7ac8|sailor', hat: '#e8c84a|straw', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    seaferry: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#1f3a6a|sailor', hat: '#222630|pirate', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    mailbox: { gender: 1, hair: '#a83a2a', hairStyle: 'bob', top: '#2a5aa8', hat: '#2a5aa8|beret', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    seamayor: { gender: 0, hair: '#d8dde6', hairStyle: 'boy', top: '#2a5aa8|tux', hat: '#d9b44a|crown', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    smelter: { gender: 0, hair: '#1a1a1a', hairStyle: 'boy', top: '#c0682a', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
+    refiner: { gender: 0, hair: '#3a3a3a', hairStyle: 'spiky', top: '#4a1a1a|hoodie', hat: '', bottom: '#1a1010', shoes: '', weapon: 'none' },
+    gemcutter: { gender: 1, hair: '#2b1d16', hairStyle: 'bob', top: '#2a8a8a|blazer', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    primalsmith: { gender: 1, hair: '#f0e0a0', hairStyle: 'long', top: '#fff4b0|cape', hat: '#fff4b0|tiara', bottom: '#e8e4da', shoes: '', weapon: 'staff' },
+    alchemist: { gender: 1, hair: '#5a8a2a', hairStyle: 'bun', top: '#5a8a2a|cape', hat: '#3a5a1a|wizard', bottom: '#2a1d14', shoes: '', weapon: 'staff' },
+    elementalist: { gender: 1, hair: '#d8dde6', hairStyle: 'long', top: '#4b3a9a|cape', hat: '#4b3a9a|wizard', bottom: '#1f1f24', shoes: '', weapon: 'staff' },
+    wpkeeper: { gender: 0, hair: '#d8dde6', hairStyle: 'boy', top: '#2f8a5a|cape', hat: '#4b3a9a|wizard', bottom: '#1f1f24', shoes: '', weapon: 'staff' },
+    archishop: { gender: 0, hair: '#7a4a26', hairStyle: 'boy', top: '#2a7ac8', hat: '#e8c84a|straw', bottom: '#e8e4da', shoes: '', weapon: 'none' },
+    citymerchant: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#e0b030|tux', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    tokenshop: { gender: 1, hair: '#3a3a3a', hairStyle: 'ponytail', top: '#2a7ac8|tux', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'none' },
+    demonfolk: { gender: 0, hair: '#1a1a1a', hairStyle: 'spiky', top: '#6a1424|bat', hat: '#3a1a1a|horn', bottom: '#1a1010', shoes: '', weapon: 'none' }
+  };
+  var npcHdC = {};
+  function npcHD(kind) {
+    if (!kind || NPC_NOHD[kind] || !charHD || !window.MineChar) return null;
+    if (npcHdC[kind] == null) { try { npcHdC[kind] = MineChar.sprite('down', 0, 0, NPC_LOOK[kind] || NPC_LOOK_DEF) || false; } catch (e) { npcHdC[kind] = false; } }
+    return npcHdC[kind] || null;
+  }
   function npcSprite(kind) {
     var c = mk(T, T), g = c.getContext('2d'), skin = '#f2c194';
     var smith = kind === 'smith', bq = kind === 'boutique', pr = kind === 'priest', gd = kind === 'guide'; // [2026-10-25] 이동 안내원(초록 여행복 + 깃발 지팡이)
@@ -4635,6 +4689,7 @@ var TowerMine = (function () {
           for (var k = 0; k < ty.length; k++) { if (!ty[k]) continue; try { mobSprite(k, false, 0); mobSprite(k, false, 1); if (ty[k].boss || ty[k].kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } } catch (e1) { } }
         } catch (e) { }
         try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
+        try { Object.keys(NPC_LOOK).forEach(npcHD); } catch (e) { } // [2026-11-23] 64x64 NPC도 미리
         try { worldBgBuild(); } catch (e) { }
         res();
       }, 0);
@@ -8113,7 +8168,9 @@ var TowerMine = (function () {
           var np = npcAt[x + ',' + y];
           var nk = np && np.kind === 'blackmarket' && !blackOpen() ? 'stall' : np && np.kind; // [2026-10-26] 암상인이 없을 땐 빈 노점
           if (np && !tiles.npc[nk]) tiles.npc[nk] = npcSprite(nk); // [2026-11-18] "새 NPC를 만들 때마다 안 보이는 문제" -- 그림이 따로 없는 종류는 기본 NPC 그림으로
-          if (np && tiles.npc[nk] && nk !== 'lighthouse') ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS); // [2026-11-18] 등대는 seaDrawBack이 크게
+          var nhd = np ? npcHD(nk) : null; // [2026-11-23] 64x64 NPC
+          if (nhd) ctx.drawImage(nhd, sx, sy - 3 * scale, TS, TS);
+          else if (np && tiles.npc[nk] && nk !== 'lighthouse') ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS); // [2026-11-18] 등대는 seaDrawBack이 크게
         }
       }
     }
