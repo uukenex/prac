@@ -2493,6 +2493,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-17] "마을에 월드보스 게시판 NPC -- 이전 보스, 현재 보스(현재 맵 주기), 다음 출현 시간, 누가 얼마씩 데미지 기여도, 언제 처치, 누가 무슨 템 나왔는지" ----
     //  주기별 기록: 사람마다 WBS_<주기>(몫) / WBR_<주기>(받은 보상), 주기 결과는 설정 MINE_WB_C<주기>(체력|최대|처치|처치 시각). 게시판은 20초 모아 보여 준다.
     static final String MINE_ITEM_WBS = "WBS_", MINE_ITEM_WBR = "WBR_", MINE_WB_CYC_KEY = "MINE_WB_C";
+    static final String MINE_ITEM_WBK = "WBK_"; // [2026-11-23] "게시판에 거룡의 심장 조각도" -- WBK_<주기> = 토벌 순위 보상으로 받은 심장 조각 수 + 1(1 = 순위에 들었지만 0개)
     static volatile long MINE_WB_BOARD_AT = 0;
     static volatile HashMap<String, Object> MINE_WB_BOARD = null;
     HashMap<String, Object> mineWbBoard(long now) {
@@ -2501,13 +2502,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cur = S5MineMap.cycleAt(now), max = mineWbMax();
         HashMap<String, Object> out = new HashMap<>();
         List<String> codes = java.util.Arrays.asList(MINE_ITEM_WBS + cur, MINE_ITEM_WBR + cur, MINE_ITEM_WBS + (cur - 1), MINE_ITEM_WBR + (cur - 1), MINE_ITEM_WB_SHARE, MINE_ITEM_WB_SHARE_CYC, MINE_ITEM_WB_CYCLE,
-            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM); // [2026-11-23] 공통 보상
+            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM, MINE_ITEM_WBK + cur, MINE_ITEM_WBK + (cur - 1)); // [2026-11-23] 공통 보상, 심장 조각
         List<HashMap<String, Object>> rows;
         try { rows = dao.selectMineItemsByCodes(codes); } catch (Exception e) { rows = new ArrayList<>(); }
         for (int k = 0; k < 2; k++) {
             int c = cur - k;
             Map<String, Double> sh = new HashMap<>();
-            Map<String, Integer> rw = new HashMap<>();
+            Map<String, Integer> rw = new HashMap<>(), kit = new HashMap<>();
             Map<String, Integer> oldSh = new HashMap<>(), oldCyc = new HashMap<>(), oldRw = new HashMap<>();
             java.util.Set<String> com = new java.util.TreeSet<>(); // [2026-11-23] 공통 보상 받은 사람
             for (HashMap<String, Object> r : rows) {
@@ -2515,6 +2516,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int v = intVal(r.get("ITEM_LEVEL"), 0);
                 if ((MINE_ITEM_WBS + c).equals(code)) sh.put(u, (double) v);
                 else if ((MINE_ITEM_WBR + c).equals(code)) rw.put(u, v);
+                else if ((MINE_ITEM_WBK + c).equals(code)) kit.put(u, v - 1); // [2026-11-23] 심장 조각
                 else if (MINE_ITEM_WB_SHARE.equals(code)) oldSh.put(u, v);
                 else if (MINE_ITEM_WB_SHARE_CYC.equals(code)) oldCyc.put(u, v);
                 else if (MINE_ITEM_WB_CYCLE.equals(code)) oldRw.put(u, v);
@@ -2550,6 +2552,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 p.put("ok", e.getValue() >= MINE_WB_MIN_SHARE);
                 Integer r = rw.get(e.getKey());
                 if (r != null && r != 0) p.put("rw", r);
+                Integer kq = kit.get(e.getKey());
+                if (kq != null) p.put("kit", kq); // [2026-11-23] 토벌 순위 보상 거룡의 심장 조각(0 = 순위엔 들었지만 안 나옴)
                 ps.add(p);
             }
             ps.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
@@ -2802,6 +2806,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     String ru = rk.get(i).getKey();
                     int kq = RND.nextInt(MINE_WP_KIT_MAX + 1);
                     if (kq > 0) dao.addUserOre(ru, S5MineMap.WP_KIT_CODE, kq);
+                    if (!MINE_WB_POOL.test) try { dao.upsertMineItem(ru, MINE_ITEM_WBK + MINE_WB_POOL.cycle, kq + 1); } catch (Exception ignore) { } // [2026-11-23] 게시판 기록
                     MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! " + (kq > 0 ? "🐉 " + S5MineMap.WP_KIT_NAME + " " + kq + "개 (왕도 워프 포인트 관리인에게 내면 워프 포인트의 힘을 채워요)" : "이번엔 " + S5MineMap.WP_KIT_NAME + "이 나오지 않았어요."), (p, q) -> p + " / " + q);
                 } catch (Exception ignore) { }
             }

@@ -3504,6 +3504,7 @@ var TowerMine = (function () {
       if (b.com && b.com.length) h += '<div style="margin:4px 0"><small>🎁 공통 보상(⭐ 별빛석 ' + (d.comStar || 1) + ' · 🔮 칠요석 ' + (d.comSeven || 1) + ') ' + b.com.length + '명: ' + b.com.map(escAttr).join(', ') + '</small></div>'; // [2026-11-23]
       ps.forEach(function (p, i) {
         var rwl = p.rw ? '🎁 ' + rwList(p.rw) : !b.killed ? '' : p.ok ? '🎁 ⭐ 별빛석 ' + d.star + ' · 🔮 칠요석 ' + d.seven : '보상 없음 (' + b.minShare + ' 몫 미달)';
+        if (p.kit != null) rwl += (rwl ? ' · ' : '') + (p.kit > 0 ? '🐉 거룡의 심장 조각 ' + p.kit + '개' : '🐉 심장 조각은 안 나옴'); // [2026-11-23] 토벌 순위 보상
         h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (!b.killed && !p.ok ? ' · 아직 보상 기준(' + b.minShare + ' 몫) 전' : '') + '</small>' + (rwl ? '<small style="color:#ffe9a8">' + rwl + '</small>' : '') + '</span></div>';
       });
       h += '</div>';
