@@ -1286,6 +1286,14 @@
         WHEN MATCHED THEN UPDATE SET QTY = QTY + 1
         WHEN NOT MATCHED THEN INSERT (USER_NAME, FISH_ID, QTY, FIRST_CATCH_DATE) VALUES (S.U, S.F, 1, SYSDATE)
     </insert>
+    <!-- [2026-11-23] 윤슬항 낚시 용품 상인: 낚싯대/찌 등급(줄이 없으면 만든다) -->
+    <insert id="mergeS55FishEquip">
+        MERGE INTO TBOT_S55_FISH_EQUIP T
+        USING (SELECT #{userName} AS U FROM DUAL) S
+           ON (T.USER_NAME = S.U)
+        WHEN MATCHED THEN UPDATE SET ROD_GRADE = #{rod}, BOBBER_GRADE = #{bob}
+        WHEN NOT MATCHED THEN INSERT (USER_NAME, ROD_GRADE, BOBBER_GRADE, REG_DATE) VALUES (S.U, #{rod}, #{bob}, SYSDATE)
+    </insert>
     <!-- [2026-11-18] 워프 포인트 내구도: 모든 유저가 함께 쓰는 값, 줄이 없으면 가득(200) -->
     <!-- [2026-11-20] DB 우편: 이 표에 한 줄 넣으면 배포 없이 우편함에(ddl/S55_MAIL.sql) -->
     <select id="selectS55Mails" resultType="hashmap">

@@ -293,6 +293,8 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectS55FishAll();
     List<HashMap<String, Object>> selectS55FishInvOf(@Param("userName") String userName);
     int upsertS55FishInv(@Param("userName") String userName, @Param("fishId") int fishId);
+    /** [2026-11-23] 윤슬항 낚시 용품 상인 -- 낚싯대/찌 등급(줄이 없으면 만든다). */
+    int mergeS55FishEquip(@Param("userName") String userName, @Param("rod") int rod, @Param("bob") int bob);
     // [2026-11-18] 워프 포인트 내구도(TBOT_S55_WP_DUR, ddl/S55_WP_DUR.sql)
     List<HashMap<String, Object>> selectS55WpDur();
     /** [2026-11-20] DB 우편(TBOT_S55_MAIL) -- 배포 없이 우편을 보낸다. */

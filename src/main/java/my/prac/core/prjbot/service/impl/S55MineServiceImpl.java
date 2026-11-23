@@ -6151,6 +6151,67 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("total", total);
         return out;
     }
+    // [2026-11-23] "낚싯대를 종류별로(시즌4와 동일 조건) 바다마을에서 판매하는 NPC, 찌도" -- 바다마을 윤슬항 낚시 용품 상인(fishshop).
+    //  해금 조건은 시즌4 업적과 같다(TBOT_S4_ACHIEVEMENT): 낚싯대 고급/희귀/영웅/전설 = ★1/★2/★3/★4 물고기 도감 완성(그 별의 물고기를 모두 한 마리 이상),
+    //  찌 고급/희귀/영웅 = 낚시 10/30/60번. 시즌4처럼 값은 받지 않고 조건만 맞으면 바로 바꿔 준다(더 낮은 등급으로는 안 바꾼다).
+    //  낚시 횟수는 가방(TBOT_S55_FISH_INV)의 물고기 수 합계 -- 던질 때마다 한 마리씩 들어오고 줄지 않는다(기록 표 LOG는 보관 기간이 지나면 지워져서 안 쓴다).
+    static final int[] MINE_BOBBER_NEED = { 0, 0, 10, 30, 60 };
+    static final int MINE_BOBBER_MAX = 4;
+    HashMap<String, Object> mineFishShop(String userName, String action) {
+        HashMap<String, Object> out = new HashMap<>();
+        HashMap<String, Object> row = action.startsWith("fishbuy:") ? dao.selectMineUserForUpdate(userName) : mineRow(userName, false);
+        if (row == null || !mineAtNpc(row, "fishshop")) { out.put("ok", false); out.put("message", "🎣 바다마을 윤슬항 낚시 용품 상인에게서만 살 수 있어요."); return out; }
+        Map<Integer, Integer> have = new HashMap<>();
+        int total = 0;
+        for (HashMap<String, Object> r : dao.selectS55FishInvOf(userName)) { int q = intVal(r.get("QTY"), 0); have.put(intVal(r.get("FISH_ID"), 0), q); total += Math.max(0, q); }
+        int[] kinds = new int[10], caught = new int[10];
+        for (HashMap<String, Object> f : dao.selectS55FishAll()) {
+            int g = intVal(f.get("FISH_GRADE"), 0);
+            if (g < 1 || g >= kinds.length) continue;
+            kinds[g]++;
+            if (have.getOrDefault(intVal(f.get("FISH_ID"), 0), 0) > 0) caught[g]++;
+        }
+        HashMap<String, Object> eq = dao.selectS55FishEquip(userName);
+        int rod = eq == null ? 1 : Math.max(1, intVal(eq.get("ROD_GRADE"), 1)), bob = eq == null ? 1 : Math.max(1, intVal(eq.get("BOBBER_GRADE"), 1));
+        if (action.startsWith("fishbuy:")) {
+            String[] a = action.split(":");
+            int g; try { g = Integer.parseInt(a.length > 2 ? a[2] : "0"); } catch (NumberFormatException e) { g = 0; }
+            boolean isRod = a.length > 1 && "R".equals(a[1]);
+            int max = isRod ? MINE_ROD_NAMES.length - 1 : MINE_BOBBER_MAX;
+            String nm = g >= 1 && g <= max ? MINE_ROD_NAMES[g] + (isRod ? " 낚싯대" : " 찌") : "";
+            if (nm.isEmpty()) out.put("message", "알 수 없는 물건이에요.");
+            else if ((isRod ? rod : bob) >= g) out.put("message", "🎣 이미 " + nm + "(이)거나 더 좋은 걸 쓰고 있어요.");
+            else if (isRod ? !(kinds[g - 1] > 0 && caught[g - 1] >= kinds[g - 1]) : total < MINE_BOBBER_NEED[g]) out.put("message", "🔒 아직 " + nm + "을(를) 살 수 없어요. " + (isRod ? mineFishStar(g - 1) + " 물고기 도감을 모두 채워야 해요." : "물고기를 " + MINE_BOBBER_NEED[g] + "마리 낚아야 해요."));
+            else {
+                if (isRod) rod = g; else bob = g;
+                dao.mergeS55FishEquip(userName, rod, bob);
+                out.put("ok", true);
+                out.put("bought", true);
+                out.put("message", "🎣 " + nm + "(으)로 바꿨어요! " + (isRod ? "이제 " + mineFishStar(MINE_ROD_MAX_STAR[g]) + " 물고기까지 낚을 수 있어요." : "높은 별 물고기가 더 잘 물어요."));
+            }
+        }
+        List<HashMap<String, Object>> rods = new ArrayList<>(), bobs = new ArrayList<>();
+        for (int g = 1; g < MINE_ROD_NAMES.length; g++) {
+            HashMap<String, Object> m = new HashMap<>();
+            boolean open = g == 1 || (kinds[g - 1] > 0 && caught[g - 1] >= kinds[g - 1]);
+            m.put("g", g); m.put("name", MINE_ROD_NAMES[g] + " 낚싯대"); m.put("max", mineFishStar(MINE_ROD_MAX_STAR[g]));
+            m.put("state", g == rod ? "worn" : g < rod ? "low" : open ? "can" : "lock");
+            if (g > 1) { m.put("need", mineFishStar(g - 1) + " 도감 완성"); m.put("prog", caught[g - 1] + "/" + kinds[g - 1]); }
+            rods.add(m);
+        }
+        for (int g = 1; g <= MINE_BOBBER_MAX; g++) {
+            HashMap<String, Object> m = new HashMap<>();
+            m.put("g", g); m.put("name", MINE_ROD_NAMES[g] + " 찌"); m.put("bonus", MINE_BOBBER_BONUS[g]);
+            m.put("state", g == bob ? "worn" : g < bob ? "low" : total >= MINE_BOBBER_NEED[g] ? "can" : "lock");
+            if (g > 1) { m.put("need", "물고기 " + MINE_BOBBER_NEED[g] + "마리"); m.put("prog", Math.min(total, MINE_BOBBER_NEED[g]) + "/" + MINE_BOBBER_NEED[g]); }
+            bobs.add(m);
+        }
+        HashMap<String, Object> fs = new HashMap<>();
+        fs.put("rods", rods); fs.put("bobs", bobs); fs.put("total", total);
+        out.put("fishShop", fs);
+        if (!out.containsKey("ok")) out.put("ok", true);
+        return out;
+    }
     // [2026-11-19] "물 필드라면 전체 바다낚시 가능하도록. 다만 지역별 보석물고기를 만들어서 특산품이면(맵마다가 아니고 지역 영역별)" --
     //  낚시 자리 = 배를 탄 물 위(지금처럼), 또는 물가 땅에서 바라보는 칸이 물(~)일 때. 물이 있는 맵을 지역으로 묶어(용암인 마계, 얼음인 설산/설원 위쪽, 분수뿐인 왕도/탑 마을은 빼고)
     //  지역마다 그곳에서만 낚이는 보석물고기 한 종(FISH_ID 9001~, 도감은 이 표 -- DB 물고기 표와 따로). 던질 때마다 MINE_GEM_FISH_PERMIL 확률로 보통 물고기 대신.
@@ -11466,6 +11527,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         if (action != null && (action.equals("boatfix") || action.startsWith("boatfix:"))) { String[] ba = action.split(":"); int bn; try { bn = ba.length > 2 ? Integer.parseInt(ba[2]) : 999; } catch (NumberFormatException ex) { bn = 1; } return mineBoatFix(userName, ba.length > 1 ? ba[1] : S5MineMap.SEA_GEM_CODES[0], bn); } // [2026-11-18] 배 수리, [2026-11-19] boatfix:재료:개수
         if ("fishinv".equals(action)) return mineFishInv(userName); // [2026-11-19] 인벤토리 낚시 탭
+        if ("fishshop".equals(action) || (action != null && action.startsWith("fishbuy:"))) return mineFishShop(userName, action); // [2026-11-23] 윤슬항 낚시 용품 상인
         if ("krkrespawn".equals(action) && isMineAdmin(userName)) return mineKrkRespawnNow(); // [2026-11-19] 관리자 -- 크라켄 다시 살리기
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
         if (action != null && action.startsWith("wpfix:")) { String[] wa = action.split(":"); int wn; try { wn = wa.length > 2 ? Integer.parseInt(wa[2]) : 1; } catch (NumberFormatException ex) { wn = 1; } return mineWpFix(userName, wa.length > 1 ? wa[1] : "", wn); }
