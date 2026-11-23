@@ -203,7 +203,6 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
         for (int k = 0; k <= MINE_MERC_K2; k++) { MercXp mx = MINE_MERC_XP.get(mineMercXpKey(userName, k)); if (mx != null && mx.p > 0) out.put(mineMercKey(k, "XPP"), (int) mx.p); } // [2026-11-18] 아직 DB에 안 쓴 용병 경험치(화면용)
         if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
-        try { int[] ae = MINE_ARMOR_EL_OF.computeIfAbsent(userName, u -> new int[6]); synchronized (ae) { ae[0] = out.getOrDefault(MINE_ITEM_AEL, 0); ae[1] = out.getOrDefault(MINE_ITEM_AEL_LEFT, 0); ae[5] = mineArmorOn(out) != null ? 1 : 0; } } catch (Exception ignore) { } // [2026-11-22] 갑옷 속성(받는 피해 -- mineElHit)
         try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar)) + mineArmorHpEnh(ar.code, mineWeaponGrade(out, ar), mineArmorEnh(out))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap), [2026-11-18] + 갑옷 칸 강화
         return out;
     }
@@ -3058,7 +3057,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  종류(화면 색/이름): 4 독 웅덩이 / 5 낙석 / 6 지면 강타(기절) / 7 맹독 숨결(큰 것 -- 테두리 밖으로) / 8 지옥불. 위치 알림(zones)으로 화면에 보내고, 전투 턴(mineZoneHit)에서 맞는다.
     static final java.util.concurrent.ConcurrentHashMap<String, List<long[]>> MINE_ZONES = new java.util.concurrent.ConcurrentHashMap<>();
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ZONE_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
-    static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불", "심판의 빛", "천사의 일격", "촉수 내려찍기", "물보라" }; // [2026-11-17] 9/10 = 보로네오, [2026-11-18] 11/12 = 크라켄
+    static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불", "심판의 빛", "천사의 일격", "촉수 내려찍기", "물보라", "서리 폭발", "눈보라", "빙하 숨결", "어둠 웅덩이", "해일", "화염 숨결" }; // [2026-11-23] 13~18 = 탑 수문장 속성 장판 // [2026-11-17] 9/10 = 보로네오, [2026-11-18] 11/12 = 크라켄
     static void mineZoneAdd(S5MineMap map, int x, int y, long at, int r, int kind, long warn, int permil, long stunMs) {
         List<long[]> l = MINE_ZONES.computeIfAbsent(mineMobPrefix(map), k -> new ArrayList<>());
         synchronized (l) { l.removeIf(z -> at > z[2] + 4_000L); if (l.size() < 60) l.add(new long[] { x, y, at, r, kind, warn, permil, stunMs }); }
@@ -3103,24 +3102,27 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return sum;
     }
     // 탑 수문장 패턴(층마다 다른 조합, 체력이 절반 아래면 잦아진다): {종류, 첫 시각, 간격, 예고, 반경, 피해 천분율, 기절 ms, 모양(0 내 발밑 / 1 곳곳 n개 + 내 발밑 / 2 수문장 둘레)}
+    // [2026-11-23] "탑에서 수문장들이 속성에 맞게 공격하게 -- 얼음 보스인데 독 웅덩이·낙석은 이상해": 수문장마다 자기 속성의 장판(피해·간격·예고는 그대로).
+    //  13 서리 폭발 / 14 눈보라 / 15 빙하 숨결(큰 것) / 16 어둠 웅덩이 / 17 해일(큰 것) / 18 화염 숨결(큰 것)을 새로 두었다.
     static final long[][][] MINE_TW_PAT = {
-        { { 4, 6_000, 8_000, 2_200, 1, 120, 0, 0 }, { 6, 13_000, 15_000, 2_000, 3, 170, 1_200, 2 } }, // 9층 라텔 -- 독 웅덩이, 지면 강타
-        { { 5, 5_000, 10_000, 2_200, 1, 130, 0, 1 }, { 6, 12_000, 14_000, 2_000, 4, 180, 1_500, 2 }, { 4, 9_000, 9_000, 2_000, 1, 120, 0, 0 } }, // 19층 갱도왕 -- 낙석, 지면 강타, 발밑
-        { { 4, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 5, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 7, 25_000, 32_000, 4_500, 8, 350, 0, 2 } }, // 29층 히드라 -- 독 웅덩이, 독비, 꼬리(지면 강타), 맹독 숨결
-        // [2026-11-23] "탑 100층, 난이도는 어렵게" -- 39/49층은 그대로(29층 묶음), 59~99층 수문장마다 전용 패턴(더 잦고, 더 아프고, 예고는 짧게)
-        null, null,
-        { { 12, 4_000, 6_000, 1_600, 1, 160, 0, 0 }, { 1, 7_000, 9_000, 1_800, 1, 170, 0, 1 }, { 11, 10_000, 11_000, 1_600, 4, 230, 1_500, 2 }, { 12, 18_000, 20_000, 2_000, 2, 260, 1_000, 0 } }, // 59층 모르드레드 -- 물보라, 심연의 비, 삼지창 내려찍기, 큰 물보라
-        { { 1, 4_000, 6_500, 1_700, 1, 170, 0, 1 }, { 11, 8_000, 10_000, 1_600, 4, 240, 1_800, 2 }, { 4, 6_000, 7_000, 1_600, 1, 170, 0, 0 }, { 3, 20_000, 28_000, 4_000, 9, 420, 0, 2 } }, // 69층 아자토스 -- 균열 비, 촉수, 공허 웅덩이, 멸망의 숨결
-        { { 9, 4_000, 5_500, 1_500, 1, 180, 0, 0 }, { 10, 7_000, 8_000, 1_600, 1, 180, 0, 1 }, { 6, 10_000, 11_000, 1_500, 4, 250, 1_800, 2 }, { 9, 16_000, 18_000, 1_800, 2, 300, 1_500, 0 } }, // 79층 세라핌 -- 심판의 빛, 천사의 일격, 날개 강타, 큰 빛기둥
-        { { 0, 4_000, 5_500, 1_500, 2, 200, 0, 0 }, { 8, 6_000, 7_500, 1_600, 1, 200, 0, 1 }, { 2, 9_000, 10_000, 1_500, 3, 260, 1_500, 2 }, { 3, 18_000, 24_000, 3_800, 9, 460, 0, 2 } }, // 89층 바하무트 -- 화염, 지옥불, 꼬리 휩쓸기, 멸망의 숨결
-        { { 4, 3_500, 5_000, 1_400, 1, 210, 0, 0 }, { 1, 6_000, 7_000, 1_500, 1, 210, 0, 1 }, { 11, 8_000, 9_000, 1_400, 4, 280, 2_000, 2 }, { 8, 12_000, 14_000, 1_600, 2, 280, 0, 1 }, { 7, 16_000, 22_000, 3_600, 9, 520, 0, 2 } } // 99층 니드호그 -- 독 웅덩이, 어둠의 비, 꼬리 내려찍기, 지옥불, 맹독 숨결
+        { { 16, 6_000, 8_000, 2_200, 1, 120, 0, 0 }, { 6, 13_000, 15_000, 2_000, 3, 170, 1_200, 2 } }, // 9층 라텔(어둠) -- 어둠 웅덩이, 지면 강타
+        { { 5, 5_000, 10_000, 2_200, 1, 130, 0, 1 }, { 6, 12_000, 14_000, 2_000, 4, 180, 1_500, 2 }, { 5, 9_000, 9_000, 2_000, 1, 120, 0, 0 } }, // 19층 갱도왕(땅) -- 낙석, 지면 강타, 발밑 낙석
+        { { 12, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 12, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 2, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 17, 25_000, 32_000, 4_500, 8, 350, 0, 2 } }, // 29층 히드라(물) -- 물보라, 물보라 곳곳, 꼬리 휩쓸기, 해일
+        { { 0, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 8, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 18, 25_000, 32_000, 4_500, 8, 350, 0, 2 } }, // 39층 이프리트(불) -- 화염, 지옥불 곳곳, 지면 강타, 화염 숨결
+        { { 13, 5_000, 7_000, 2_000, 1, 130, 0, 0 }, { 14, 8_000, 11_000, 2_200, 1, 140, 0, 1 }, { 6, 12_000, 13_000, 1_800, 4, 190, 1_500, 2 }, { 15, 25_000, 32_000, 4_500, 8, 350, 0, 2 } }, // 49층 프로스트자이언트(얼음) -- 서리 폭발, 눈보라, 얼음 몽둥이 강타, 빙하 숨결
+        // [2026-11-23] 59~99층(더 잦고, 더 아프고, 예고는 짧게)
+        { { 12, 4_000, 6_000, 1_600, 1, 160, 0, 0 }, { 12, 7_000, 9_000, 1_800, 1, 170, 0, 1 }, { 11, 10_000, 11_000, 1_600, 4, 230, 1_500, 2 }, { 12, 18_000, 20_000, 2_000, 2, 260, 1_000, 0 } }, // 59층 모르드레드(물) -- 물보라, 물보라 곳곳, 삼지창 내려찍기, 큰 물보라
+        { { 1, 4_000, 6_500, 1_700, 1, 170, 0, 1 }, { 11, 8_000, 10_000, 1_600, 4, 240, 1_800, 2 }, { 16, 6_000, 7_000, 1_600, 1, 170, 0, 0 }, { 3, 20_000, 28_000, 4_000, 9, 420, 0, 2 } }, // 69층 아자토스(무) -- 균열 비, 촉수, 공허 웅덩이, 멸망의 숨결
+        { { 9, 4_000, 5_500, 1_500, 1, 180, 0, 0 }, { 10, 7_000, 8_000, 1_600, 1, 180, 0, 1 }, { 10, 10_000, 11_000, 1_500, 4, 250, 1_800, 2 }, { 9, 16_000, 18_000, 1_800, 2, 300, 1_500, 0 } }, // 79층 세라핌(빛) -- 심판의 빛, 천사의 일격 곳곳, 날개 일격, 큰 빛기둥
+        { { 0, 4_000, 5_500, 1_500, 2, 200, 0, 0 }, { 8, 6_000, 7_500, 1_600, 1, 200, 0, 1 }, { 2, 9_000, 10_000, 1_500, 3, 260, 1_500, 2 }, { 18, 18_000, 24_000, 3_800, 9, 460, 0, 2 } }, // 89층 바하무트(불) -- 화염, 지옥불, 꼬리 휩쓸기, 화염 숨결
+        { { 16, 3_500, 5_000, 1_400, 1, 210, 0, 0 }, { 1, 6_000, 7_000, 1_500, 1, 210, 0, 1 }, { 2, 8_000, 9_000, 1_400, 4, 280, 2_000, 2 }, { 16, 12_000, 14_000, 1_600, 2, 280, 0, 1 }, { 3, 16_000, 22_000, 3_600, 9, 520, 0, 2 } } // 99층 니드호그(어둠) -- 어둠 웅덩이, 어둠의 비, 꼬리, 어둠 웅덩이 곳곳, 멸망의 숨결
     };
     /** 수문장이 나와 싸우는 동안(전투 턴마다) -- 때가 된 패턴을 예고한다. */
     static volatile boolean MINE_TW_PAT_ON = true; // 시험용(패턴 없이 수치만 볼 때 끈다)
     void mineTwPattern(S5MineMap map, MobState s, int floor, int x, int y, int bmax, long now) {
         if (!MINE_TW_PAT_ON) return;
         int pi = Math.max(0, Math.min(MINE_TW_PAT.length - 1, floor / 10)); // [2026-11-23] 59~99층 전용(39/49층은 29층 묶음)
-        long[][] ps = MINE_TW_PAT[pi] != null ? MINE_TW_PAT[pi] : MINE_TW_PAT[2];
+        long[][] ps = MINE_TW_PAT[pi];
         if (s.pat == null || s.pat.length != ps.length) { s.pat = new long[ps.length]; for (int i = 0; i < ps.length; i++) s.pat[i] = now + ps[i][1]; }
         boolean rage = (long) s.hp * 2 < bmax; // [2026-11-23] 체력 10억이 넘는 수문장(89/99층)에서 넘치지 않게
         int cx = s.fx, cy = s.fy; // 수문장 2x2의 왼쪽 위 -- 둘레 장판은 여기서 반경 +1
@@ -7302,7 +7304,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 유저 -> {갑옷 속성, DB 남은 횟수, 아직 안 쓴 횟수, 무효 횟수, 상성 횟수, 갑옷 입음 1/0}. */
     static final java.util.concurrent.ConcurrentHashMap<String, int[]> MINE_ARMOR_EL_OF = new java.util.concurrent.ConcurrentHashMap<>();
     static int mineElHit(String u, int v, int el) { return mineElHit(u, v, el, true); }
+    // [2026-11-23] "얼마 전에 진행했던 갑옷 속성 부여는 없애줘" -- 효과를 끈다(받는 피해는 속성과 상관없이 그대로). 부르는 곳(mineCoatHit 등)은 그대로 둔다.
+    static final boolean MINE_AEL_ON = false;
     static int mineElHit(String u, int v, int el, boolean count) {
+        if (!MINE_AEL_ON) return v;
         int[] a = u == null ? null : MINE_ARMOR_EL_OF.get(u);
         if (a == null || v <= 0) return v;
         synchronized (a) {
@@ -9738,8 +9743,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("el", left > 0 ? items.getOrDefault(MINE_ITEM_ENCH_EL, 0) : 0);
         m.put("left", left);
         int aleft = items.getOrDefault(MINE_ITEM_AEL_LEFT, 0); // [2026-11-22] 갑옷 속성
-        m.put("ael", aleft > 0 ? items.getOrDefault(MINE_ITEM_AEL, 0) : 0);
-        m.put("aleft", aleft);
+        m.put("ael", MINE_AEL_ON && aleft > 0 ? items.getOrDefault(MINE_ITEM_AEL, 0) : 0); // [2026-11-23] 갑옷 속성 없앰
+        m.put("aleft", MINE_AEL_ON ? aleft : 0);
         return m;
     }
     static final int MINE_PARASOL_CUT = 2;
@@ -11634,7 +11639,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         if (action.startsWith("ench_")) return mineEnchant(userName, row, action.substring(5), out); // [2026-10-29]
-        if (action.startsWith("aench_")) return mineArmorEnchant(userName, row, action.substring(6), out); // [2026-11-22] 갑옷 속성
+        if (action.startsWith("aench_")) { out.put("ok", false); out.put("message", "갑옷 속성 부여는 이제 하지 않아요."); return out; } // [2026-11-22] 갑옷 속성 -- [2026-11-23] 없앰
         int lv = mineLv(row);
         Map<String, Integer> items = mineItems(userName);
         int rb = mineRebirth(items);

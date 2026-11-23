@@ -1861,6 +1861,7 @@ var TowerMine = (function () {
       px(g, 'rgba(60,20,80,.7)', 6, 11, 4, 1); px(g, 'rgba(60,20,80,.5)', 5, 12, 3, 1); px(g, 'rgba(60,20,80,.35)', 7, 13, 3, 1); px(g, 'rgba(60,20,80,.25)', 4, 14, 2, 1);
     } }
   };
+  var ZONE_BIG = { 3: '💥 멸망의 숨결 ', 7: '☠️ 맹독 숨결 ', 15: '🧊 빙하 숨결 ', 17: '🌊 해일 ', 18: '🔥 화염 숨결 ' }; // [2026-11-23] 큰 장판(테두리 밖으로) -- 글자
   var EYE_PX = { mammoth: [[12, 5]], quad: [[13, 6]], human: [[6, 4], [9, 4]], small: [[12, 7]], flyer: [[7, 7], [8, 7]], crab: [[6, 7], [9, 7]], blob: [[6, 10], [9, 10]] }; // [2026-11-05] 몬스터 그림(16칸)의 눈 자리 -- 밤 붉은 눈
   // [2026-11-18] 바다 위 -- 잠수(서버 S5MineMobs.diving과 같은 식: 보통 14초마다 4초, 크라켄 45초마다 5초), 잠수 앞뒤 0.6초는 흐리게
   function seaDiving(ty, id, ms) {
@@ -5261,14 +5262,6 @@ var TowerMine = (function () {
         }).join('')
       + '<div class="mine-smith-row"><span class="nm">⚪ 무속성으로 되돌리기<small>무기에 깃든 속성을 없애요 (무료)</small></span>' // [2026-10-29]
       + '<button type="button" ' + (e.left > 0 && e.el ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'ench_none\')">되돌리기</button></div>'
-      // [2026-11-22] 갑옷 속성 -- 같은 재료, 맞는 횟수만큼. 같은 속성 공격은 막고, 상성 속성 공격엔 1.5배(몬스터 특수기는 그 몬스터 속성, 일반 근접은 무속성)
-      + '<div class="mine-smith-say" style="margin-top:12px">🛡️ <b>갑옷 속성</b> -- 지금: ' + (e.aleft > 0 && e.ael ? ELEM_ICON[e.ael] + ' ' + ELEM_NAME[e.ael] + ' (' + e.aleft + '번 남음)' : '없음') + '. 갑옷을 입고 있어야 해요. 같은 속성 공격은 막고, 상성 속성 공격엔 1.5배로 아파요.</div>'
-      + ELEM_SHOP.map(function (s) {
-          return '<div class="mine-smith-row"><img src="' + oreIcon(s[2]) + '" alt=""><span class="nm">' + ELEM_ICON[s[1]] + ' ' + ELEM_NAME[s[1]] + ' 갑옷<small>' + ORE_NAME[s[2]] + ' 1개 (보유 ' + have(s[2]) + ') · ' + ENCH_HITS_ELEM + '번 맞는 동안 · ' + ELEM_NAME[s[1]] + ' 공격 무효 · ' + s[3] + ' 공격 x1.5</small></span>'
-            + '<button type="button" ' + (have(s[2]) ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'aench_' + s[0] + '\')">부여</button></div>';
-        }).join('')
-      + '<div class="mine-smith-row"><span class="nm">⚪ 갑옷 속성 없애기<small>갑옷에 깃든 속성을 없애요 (무료)</small></span>'
-      + '<button type="button" ' + (e.aleft > 0 && e.ael ? '' : 'data-lack="1" ') + 'onclick="TowerMine.priestAct(\'aench_none\')">되돌리기</button></div>';
   }
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
@@ -5278,7 +5271,7 @@ var TowerMine = (function () {
         + talkBlock(n, line)
         + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
         + (map && map.id === 'city' ? '<button type="button" onclick="TowerMine.priestAct(\'ench_light\')">☀️ 성속성 부여<small>미스릴괴 1개 · ' + ENCH_HITS + '번 · 어둠 x1.5</small></button>'
-            + '<button type="button" onclick="TowerMine.priestAct(\'aench_light\')">🛡️ 갑옷 성속성<small>미스릴괴 1개 · ' + ENCH_HITS + '번 맞는 동안 · 빛 공격 무효 · 어둠 공격 x1.5</small></button>' : '') // [2026-10-29] // [2026-11-22] 갑옷
+            : '') // [2026-10-29] [2026-11-23] 갑옷 성속성 없앰
         + (city ? '<button type="button" onclick="TowerMine.priestAct(\'reset\')">🏠 부활 지점 해제<small>지금: 왕도 광장</small></button>'
                 : '<button type="button" onclick="TowerMine.priestAct(\'save\')">🙏 기도<small>쓰러지면 왕도 광장에서 깨어나기</small></button>')
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ ' + (rb >= RB_BASE ? '진환생' : '환생') + (rb ? ' (지금 ' + rbStage(rb) + ')' : '') + '<small>' + rbSub + '</small></button></div>';
@@ -5947,7 +5940,7 @@ var TowerMine = (function () {
         }
         if (h.krk) { krkSwingAdd(h.kx, h.ky, P.x, P.y); floats.push({ x: P.x, y: P.y - 0.3, text: h.dodge ? '💨 회피' : '🐙 -' + h.dmg, color: h.dodge ? '#c8c8ff' : '#ff4a6a', big: true, t0: t + KRK_SWING_MS * KRK_SWING_HIT }); return; } // [2026-11-19] 크라켄 -- 촉수가 내려친 순간에 피해 숫자
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라', '❄️ 서리 폭발', '🌨️ 눈보라', '🧊 빙하 숨결', '🌑 어둠 웅덩이', '🌊 해일', '🔥 화염 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -8106,18 +8099,18 @@ var TowerMine = (function () {
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255]]; // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255], [150, 220, 255], [220, 240, 255], [120, 200, 255], [110, 50, 160], [60, 140, 255], [255, 110, 30]]; // [2026-11-23] 13~18 탑 수문장 속성 장판 // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
       for (var wzi = 0; wzi < wzAll.length; wzi++) {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
         if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
         if (wleft > 0) {
-          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = wzk === 3 || wzk === 7;
+          var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = !!ZONE_BIG[wzk];
           ctx.fillStyle = 'rgba(' + wc[0] + ',' + wc[1] + ',' + wc[2] + ',' + (big3 ? 0.08 + 0.14 * wp : 0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
           ctx.fillStyle = 'rgba(' + wc[0] + ',' + Math.min(255, wc[1] + 60) + ',' + wc[2] + ',' + (big3 ? 0.16 : 0.36) + ')'; ctx.fillRect(wzx + (wzs - wg) / 2, wzy + (wzs - wg) / 2, wg, wg);
           ctx.strokeStyle = 'rgba(255,220,120,' + (0.55 + 0.4 * Math.sin(now / (big3 ? 50 : 80))) + ')'; ctx.lineWidth = (big3 ? 4 : 2) * dpr; ctx.strokeRect(wzx + dpr, wzy + dpr, wzs - 2 * dpr, wzs - 2 * dpr);
-          if (big3) drawTextImg(textImg((wzk === 7 ? '☠️ 맹독 숨결 ' : '💥 멸망의 숨결 ') + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
-        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((wzk === 3 || wzk === 7 ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
+          if (big3) drawTextImg(textImg(ZONE_BIG[wzk] + Math.ceil(wleft / 1000) + ' -- 테두리 밖으로!', 'bold ' + Math.round(13 * dpr) + 'px sans-serif', '#ffd0d0', 3 * dpr, true), wzx + wzs / 2, wzy + wzs / 2 - TS * 2.6);
+        } else if (wleft > -600) { ctx.fillStyle = 'rgba(255,240,170,' + ((ZONE_BIG[wzk] ? 0.6 : 0.85) * (1 + wleft / 600)) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs); }
         if (wzk === 9 || wzk === 10) zoneHolyDraw(wzk, wzx, wzy, wzs, wleft, wzw, TS, now); // [2026-11-17] 보로네오 -- 빛기둥 / 천사
       }
     }
