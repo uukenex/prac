@@ -3022,6 +3022,8 @@ var TowerMine = (function () {
           talk(armorerNpc(), now); // [2026-11-20] 떠돌이 갑옷장이
         } else if (bossNpcOn() && nx === bossNpc.x && ny === bossNpc.y) {
           talk(bossNpcObj(), now); // [2026-11-13] 보스 소환사
+        } else if (portalAt[nx + ',' + ny] && portalAt[nx + ',' + ny].kind === 'H') {
+          enterPortal(nx, ny, now); // [2026-11-23] 고침: "히든방 입구를 찾았는데 입장이 안 돼" -- 좁은 틈은 지나갈 수 있는 나무 칸이라 그냥 걸어 올라서기만 했다(포탈은 못 지나가는 칸에 부딪힐 때만 작동)
         } else if (walk(nx, ny)) {
           P.fx = P.x; P.fy = P.y; P.tx = nx; P.ty = ny; P.t0 = now; P.moving = true; P.step = P.step === 1 ? 2 : 1;
         } else if (PORTALS.indexOf(cellAt(nx, ny)) >= 0) {
