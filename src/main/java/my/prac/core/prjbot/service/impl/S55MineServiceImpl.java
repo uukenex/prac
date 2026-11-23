@@ -3264,7 +3264,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불", "심판의 빛", "천사의 일격", "촉수 내려찍기", "물보라", "서리 폭발", "눈보라", "빙하 숨결", "어둠 웅덩이", "해일", "화염 숨결", "돌풍", "회오리", "물보라 분출", "폭풍 낙하", "폭풍 숨결", "원거리 일격", "벼락 몰아치기", "전기충격", "낙뢰 폭풍" }; // [2026-11-23] 25·26·27 최강다람쥐 // [2026-11-23] 13~18 = 탑 수문장 속성 장판, 19~23 베히모스(화면 번호), 24 원거리 일격 // [2026-11-17] 9/10 = 보로네오, [2026-11-18] 11/12 = 크라켄
     static void mineZoneAdd(S5MineMap map, int x, int y, long at, int r, int kind, long warn, int permil, long stunMs) {
         List<long[]> l = MINE_ZONES.computeIfAbsent(mineMobPrefix(map), k -> new ArrayList<>());
-        synchronized (l) { l.removeIf(z -> at > z[2] + 4_000L); if (l.size() < 60) l.add(new long[] { x, y, at, r, kind, warn, permil, stunMs }); }
+        synchronized (l) { l.removeIf(z -> at > z[2] + 4_000L); if (l.size() < 100) /* [2026-11-23] 60 -> 100(최강다람쥐 벼락 몰아치기 35 + 낙뢰 폭풍 30) */ l.add(new long[] { x, y, at, r, kind, warn, permil, stunMs }); }
     }
     // ---- [2026-11-23] "보스가 공격에 성공하지 못할 때(계속 피해 다니거나 안전 자리에서 때릴 때) -- 끌어당기기와 원거리 일격, 우선 체력 50% 이하일 때(분노 게이지 없이),
     //  물 보스와 빛 보스" + "확정 원거리 공격은 베히모스에도". 대상: 물(3)/빛(8) 속성 보스(배 위의 크라켄·월드보스 제외) 체력 50% 이하, 베히모스는 체력과 상관없이 원거리 일격만.
@@ -3733,7 +3733,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  ⚡ 전기충격 MINE_SQ_SHOCK_MS마다 내 발밑 5x5(맞으면 기절). 근접은 MINE_MOB_STRIKE_GAP_MS / 7마다 한 번꼴(전투 턴 사이에 친 만큼 한꺼번에), 원거리 MINE_SQ_SHOT_MS.
     //  처치하면 다람쥐메달 MINE_SQ_MEDALS개. 선물(도토리 = 금괴 1개)은 메달 1개 + 30% 별빛석 1개. 싸우기와 선물은 같은 쿨타임(굴마다 2시간).
     static final long MINE_SQ_HIT_MS = 1_000L / 7; // [2026-11-23] "격투가 -- 공격 속도 1초에 7번" (예전 1.5초 / 7은 1초에 4.7번꼴이었다)
-    static final long MINE_SQ_DASH_MS = 2_500L, MINE_SQ_BOLT_MS = 3_500L /* [2026-11-23] "벼락 몰아치기 주기 빠르게" -- 7초 -> 3.5초, 한 번에 10줄기를 0.08초 간격으로 */, MINE_SQ_SHOCK_MS = 10_000L, MINE_SQ_SHOT_MS = 1_000L, MINE_SQ_SHOCK_STUN_MS = 1_500L;
+    static final long MINE_SQ_DASH_MS = 2_500L, MINE_SQ_BOLT_MS = 9_000L /* [2026-11-23] "벼락 몰아치기는 3.5초 동안 초당 10줄기" -- 9초마다 35줄기를 0.1초 간격으로(내 둘레 4칸 안) */, MINE_SQ_SHOCK_MS = 10_000L, MINE_SQ_SHOT_MS = 1_000L, MINE_SQ_SHOCK_STUN_MS = 1_500L;
     static final int MINE_SQ_MEDALS = 1 /* [2026-11-23] "다람쥐메달 보상은 1개만" */, MINE_ZK_SQ_BOLT = 25, MINE_ZK_SQ_SHOCK = 26, MINE_ZK_SQ_STORM = 27;
     // [2026-11-23] 같은 날 "맵 전체에 번개가 초당 10번, 3초 동안" -- ⛈️ 낙뢰 폭풍: MINE_SQ_STORM_MS마다 굴 전체 곳곳에 3x3 낙뢰 30줄기(0.1초 간격), 한 줄기 최대 체력 6%
     static final long MINE_SQ_STORM_MS = 15_000L, MINE_SQ_STORM_FIRST_MS = 10_000L;
@@ -3767,11 +3767,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     }
                 }
             }
-            if (now >= t[1]) { // 🌩️ 벼락 몰아치기 -- 내 발밑 + 둘레 4칸 곳곳 아홉, 0.08초 간격으로 연달아
+            if (now >= t[1]) { // 🌩️ 벼락 몰아치기 -- 3.5초 동안 초당 10줄기(첫 줄기는 내 발밑, 나머지는 내 둘레 4칸 안 곳곳)
                 t[1] = now + MINE_SQ_BOLT_MS;
-                long at = now + 800L;
-                mineZoneAdd(map, x, y, at, 1, MINE_ZK_SQ_BOLT, 800L, 100, 0);
-                for (int k = 0; k < 9; k++) mineZoneAdd(map, Math.max(1, Math.min(map.w - 2, x - 4 + RND.nextInt(9))), Math.max(1, Math.min(map.h - 2, y - 4 + RND.nextInt(9))), at + (k + 1) * 80L, 1, MINE_ZK_SQ_BOLT, 800L + (k + 1) * 80L, 100, 0);
+                long at = now + 700L;
+                mineZoneAdd(map, x, y, at, 1, MINE_ZK_SQ_BOLT, 700L, 100, 0);
+                for (int k = 1; k < 35; k++) mineZoneAdd(map, Math.max(1, Math.min(map.w - 2, x - 4 + RND.nextInt(9))), Math.max(1, Math.min(map.h - 2, y - 4 + RND.nextInt(9))), at + k * 100L, 1, MINE_ZK_SQ_BOLT, 700L + k * 100L, 100, 0);
             }
             if (now >= t[2]) { // ⚡ 전기충격 -- 내 발밑 5x5, 맞으면 기절
                 t[2] = now + MINE_SQ_SHOCK_MS;
