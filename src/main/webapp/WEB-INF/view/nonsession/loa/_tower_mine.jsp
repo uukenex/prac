@@ -3704,6 +3704,7 @@ var TowerMine = (function () {
   }
   function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
   var pullFx = null; // [2026-11-23] 보스 끌어당기기 예고 {bx, by, fo, at}
+  var twWasIn = false; // [2026-11-23] 탑에 막 들어왔는지(용병 3배 안내)
   var wcFx = []; // [2026-11-23] 수정구슬 물대포 {x, y, t0} -- 하늘에서 물줄기가 내리꽂힌다
   var sqArtC = {}, sqFlashAt = 0; // [2026-11-23] 최강다람쥐 그림(귀여운 NPC / 보스) 캐시, 변신 번쩍 한 번
   /** [2026-11-23] 최강다람쥐가 번개를 부르는 중인지 -- 벼락 몰아치기(25)·낙뢰 폭풍(27) 장판이 예고되거나 막 떨어지는 동안만 팔을 든다. */
@@ -9190,6 +9191,8 @@ var TowerMine = (function () {
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
+      if (m && m.tower && !twWasIn) setTimeout(function () { msg('🗼 탑에 들어서자 기운이 차오르네요... 용병들이 강해진 느낌이 들어요! (탑 안에서 용병 공격력 3배)', 3600); }, 1600); // [2026-11-23]
+      twWasIn = !!(m && m.tower);
       map = m;
       setTimeout(function () { try { var seen = {}; (m.mobs || []).forEach(function (mb) { if (seen[mb.k] || map !== m) return; seen[mb.k] = 1; mobSprite(mb.k); }); } catch (e) { } }, 0); // [2026-11-06] 몬스터 그림은 종류마다 한 번 그려 두고 다시 쓴다 -- 맵에 들어올 때 미리(처음 마주칠 때 멈칫하지 않게)
       portalAt = {};

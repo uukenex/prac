@@ -3609,7 +3609,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MobState s = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
         if (s != null && s.deadUntil > now) return false; // 닌자 두목(쓰러진 시각 기록 없음)
         long last = Math.max(at, MINE_CALL_SEEN.getOrDefault(mid, 0L));
-        if (now - last >= MINE_CALL_LIFE_MS) { MINE_CALL_AT.remove(mid, at); return false; } // 맵에 아무도 없이 10분
+        if (now - last >= (S5MineMap.isSqDen(mid) ? MINE_SQ_EMPTY_MS : MINE_CALL_LIFE_MS)) { MINE_CALL_AT.remove(mid, at); return false; } // 맵에 아무도 없이 10분([2026-11-23] 다람쥐 굴은 5초 -- 모두 쓰러지면 마을로 가니 같은 셈)
+        if (S5MineMap.isSqDen(mid) && mineSqGone(now)) return false; // [2026-11-23] 이번 맵 주기엔 이미 쓰러졌다
         return true;
     }
     /** 소환 카운트 중이면 보스가 나타나는 시각(아니면 0). */
@@ -3692,6 +3693,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("cdMin", MINE_CALL_CD_MS / 60_000L);
         boolean sqDen = S5MineMap.isSqDen(map.id);
         if (sqDen) { out.put("sq", true); out.put("giftCost", mineCostText(MINE_SQ_GIFT_COST)); }
+        if (sqDen && mineSqGone(now)) { out.put("message", "🍂 최강다람쥐는 어디론가 사라졌어요... (맵이 초기화되면 돌아온대요)"); return out; } // [2026-11-23]
         if ("sqgift".equals(action) && sqDen) { // [2026-11-23] 최강다람쥐 -- 도토리(금괴)를 바치면 다람쥐메달 1개(+ 가끔 별빛석), 싸우기와 같은 쿨타임
             if (up || mineCallPending(map.id, now) > 0) { out.put("message", "⚡ 지금은 싸우는 중이에요!"); return out; }
             if (ready > now) { out.put("message", "🐿️ 최강다람쥐: 오늘은 도토리 충분하다구! " + mineCallLeft(ready - now) + " 뒤에 다시 와."); return out; }
@@ -3780,8 +3782,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return;
         }
     }
+    // [2026-11-23] "보스와 싸우다 모두 죽으면 다시 NPC로, 맵에 아무도 없어도 NPC로, 처치하면 다음 맵 초기화 때 돌아와" --
+    //  굴에 아무도 없는 채로 MINE_SQ_EMPTY_MS가 지나면 소환이 풀려 NPC로(쓰러진 사람은 마을로 옮겨지니 모두 쓰러진 것도 같다, mineBossUp).
+    //  처치하면 그 맵 주기 번호를 설정 MINE_SQ_KILL에 적고, 그 주기 동안은 NPC도 보스도 없다(소환사 자리 비움, 선물/싸우기 막음).
+    static final long MINE_SQ_EMPTY_MS = 5_000L;
+    static final String MINE_SQ_KILL_KEY = "MINE_SQ_KILL";
+    static volatile int MINE_SQ_KILL_CYC = Integer.MIN_VALUE; // 읽기 전
+    boolean mineSqGone(long now) {
+        if (MINE_SQ_KILL_CYC == Integer.MIN_VALUE) { int c = -1; try { String v = dao.selectConfigValue(MINE_SQ_KILL_KEY); if (v != null) c = Integer.parseInt(v.trim()); } catch (Exception ignore) { } MINE_SQ_KILL_CYC = c; }
+        return MINE_SQ_KILL_CYC == S5MineMap.cycleAt(now);
+    }
     /** 최강다람쥐 처치 보상(보스 공통 보상과 별개). */
     void mineSqReward(String userName, StringBuilder msg) {
+        int cyc = S5MineMap.cycleAt(System.currentTimeMillis());
+        MINE_SQ_KILL_CYC = cyc;
+        try { dao.upsertConfigValue(MINE_SQ_KILL_KEY, String.valueOf(cyc), "strongest squirrel killed in this map cycle (set by app)"); } catch (Exception ignore) { }
+        for (String d : S5MineMap.SQ_DENS) MINE_CALL_AT.remove(d);
+        msg.append(" 🍂 최강다람쥐가 \"다음엔 안 진다!\" 하며 숲 속으로 사라졌어요(맵이 초기화되면 돌아온대요).");
         try { dao.addUserOre(userName, S5MineMap.SQ_MEDAL_CODE, MINE_SQ_MEDALS); } catch (Exception e) { return; }
         msg.append(" 🏅 다람쥐메달 ").append(MINE_SQ_MEDALS).append("개! (아직 쓸 곳은 없대요)");
         mineGossipAdd(mineNick(userName) + " 님이 숲속 어딘가에서 최강다람쥐를 이겼대요!");
@@ -9574,6 +9591,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-23] "50층 이상 수문장이나 월드보스들은 용병이 스턴 걸리도록" -- 그런 보스(탑 51층~ 수문장, 월드보스 거룡/베히모스)와 싸우는 동안
     //  전투 턴마다 MINE_MERC_STUN_PCT%로 용병이 MINE_MERC_STUN_MS 기절(그동안 공격 없음). 풀린 뒤 MINE_MERC_STUN_GAP_MS 동안은 다시 걸리지 않는다. 키 = "이름|기록 번호".
     static final int MINE_MERC_STUN_PCT = 10;
+    static final int MINE_MERC_TOWER_MUL = 3; // [2026-11-23] "탑에서는 용병이 3배 강해지게" -- 탑 층(마을 포함) 안에서 용병 공격력(평타·스킬 모두 이 값에서) x3
     static final long MINE_MERC_STUN_MS = 2_500L, MINE_MERC_STUN_GAP_MS = 6_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_MERC_STUN = new java.util.concurrent.ConcurrentHashMap<>();
     /** 용병 한 명(기록 번호 k)의 차례 -- 결과는 out.merc(첫 칸) / out.merc2(두 번째 칸). */
@@ -9633,7 +9651,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ms.target = pick;
         }
         if (pick < 0) return new long[] { 0, 0 };
-        int mlv = mineMercLv(items, k), el = mineMercEl(items, k), st = mineMercSel(items, k, "S1", mineMercStage(mlv)), atk = mineMercAtk(items, k); // [2026-11-06] 고른 평타 단계(0 = 끔)
+        int mlv = mineMercLv(items, k), el = mineMercEl(items, k), st = mineMercSel(items, k, "S1", mineMercStage(mlv)), atk = mineMercAtk(items, k) * (S5MineMap.towerFloor(map.id) > 0 ? MINE_MERC_TOWER_MUL : 1); // [2026-11-06] 고른 평타 단계(0 = 끔), [2026-11-23] 탑 안에서는 x3
         MobState ps = MINE_MOB_STATE.get(mineMobKey(map, pick));
         // [2026-11-06] "40레벨에 2차 스킬, 쿨타임(20초)마다" -- 평타(1~99): 전사 속성 검기(대상 + 둘레 s칸) / 궁수 속성 화살(한 명 +20% x s) / 마법사 파이어볼(한 명).
         //  2차(40레벨부터, 40/60/80에 1~3단계): 전사 이기어검(가까운 3+2단계마리에 날아가는 검), 마법사 불 메테오(대상 둘레 2+단계칸) / 번개 체인 라이트닝(2+2x단계번 튕김) /
@@ -12482,7 +12500,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             S5MineMap cm = S5MineMap.get(mapId);
             S5MineMap.Mob cb = cm == null ? null : mineBossOf(cm);
             int[] sp = cm == null ? null : mineCallSpot(cm);
-            if (cb != null && sp != null && !mineBossUp(cb.type, now)) {
+            if (cb != null && sp != null && !mineBossUp(cb.type, now) && !(S5MineMap.isSqDen(mapId) && mineSqGone(now))) { // [2026-11-23] 처치한 맵 주기엔 다람쥐 자리도 비운다
                 HashMap<String, Object> bc = new HashMap<>(); bc.put("x", sp[0]); bc.put("y", sp[1]);
                 long pa = mineCallPending(mapId, now);
                 if (pa > 0) bc.put("at", pa);
