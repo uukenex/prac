@@ -728,7 +728,7 @@ var TowerMine = (function () {
     Vd.wall = [0, 1].map(function (s) { return tile('#2a2232', [['#221a2a', 10], ['#332a3c', 5]], 980 + s, function (g) { px(g, '#120c16', 0, 0, T, 2); if (s) { px(g, '#120c16', 5, 6, 6, 10); px(g, '#3a1a0e', 6, 7, 4, 9); px(g, '#ff7a2a', 9, 11); } else { px(g, '#120c16', 4, 5, 8, 6); px(g, '#ff5a2a', 5, 6, 2, 4); px(g, '#ff5a2a', 9, 6, 2, 4); px(g, '#ffb04a', 5, 7); px(g, '#ffb04a', 9, 7); } px(g, '#120c16', 0, 15, T, 1); }); });
     tiles.npc = { smith: npcSprite('smith'), captain: npcSprite('captain'), boutique: npcSprite('boutique'), barber: npcSprite('barber') /* [2026-11-20] 미용실 */, priest: npcSprite('priest'), guide: npcSprite('guide'),
       blackmarket: blackSprite(), furrier: furrierSprite(), stall: stallSprite(), daykeeper: keeperSprite(), // [2026-10-26], [2026-10-28] 요일 동굴 문지기
-      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), mgsmith: npcSprite('mgsmith'), fishshop: npcSprite('fishshop') /* [2026-11-23] 낚시 용품 상인 */, artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), alchemist: npcSprite('smelter'), /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
+      ninjaquest: npcSprite('ninjaquest'), boatwright: npcSprite('boatwright'), ferry: npcSprite('ferry'), chest: chestSprite(), antchest: chestSprite(), smelter: npcSprite('smelter'), gemcutter: npcSprite('gemcutter'), mgsmith: npcSprite('mgsmith'), fishshop: npcSprite('fishshop') /* [2026-11-23] 낚시 용품 상인 */, shipwright: npcSprite('shipwright') /* [2026-11-24] 조선공 */, artisan: npcSprite('artisan'), archishop: npcSprite('archishop'), elementalist: npcSprite('gemcutter'), refiner: npcSprite('refiner'), primalsmith: npcSprite('gemcutter'), alchemist: npcSprite('smelter'), /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 세공사 */ demonfolk: demonfolkSprite(), wbboard: wbBoardSprite(), mailbox: npcSprite('ferry'), /* [2026-11-17] 우체부(파란 제복) */ wallguard: keeperSprite(), swordmaster: npcSprite('artisan'), basecamp: furrierSprite(), forestguard: keeperSprite(), citymerchant: npcSprite('archishop'), mercenary: keeperSprite(), enhancer: npcSprite('smith'), armorer: npcSprite('artisan'), /* [2026-11-18] 방어구 강화사 */ whirlmaster: npcSprite('ferry'), ultmaster: npcSprite('ninjaquest'), riverferry: npcSprite('ferry'), seaferry: npcSprite('ferry'), /* [2026-11-18] 바닷가 뱃사람/해상도시 부두지기 */ seabuoy: seaBuoySprite(), /* [2026-11-18] 신호 부표 */ wpkeeper: npcSprite('guide'), /* [2026-11-18] 워프 포인트 관리인 */ guard: npcSprite('guard'), knight: npcSprite('knight'), towergate: npcSprite('guide'), tokenshop: npcSprite('archishop') }; // [2026-11-15] 강 뱃사공, 탑 관리인 // [2026-10-28] 개미굴 보물 상자 // [2026-10-28] 피라미드 보상 상자 // [2026-10-28] 다도해 NPC(목록에 없으면 그림 없이 이름표만 나왔다)
     hole = mk(T, T);
     var hg = hole.getContext('2d');
     for (var y = 0; y < T; y++) for (var x = 0; x < T; x++) {
@@ -849,7 +849,8 @@ var TowerMine = (function () {
     artisan: { gender: 0, hair: '#7a4a26', hairStyle: 'spiky', top: '#7a2a2a', hat: '', bottom: '#3a2b22', shoes: '', weapon: 'none' },
     armorer: { gender: 0, hair: '#3a3a3a', hairStyle: 'boy', top: '#666f82|knight', hat: '', bottom: '#2a2e3c', shoes: '', weapon: 'none' },
     mgsmith: { gender: 0, hair: '#a83a2a', hairStyle: 'spiky', top: '#c8801a', hat: '#ffd24a|sunhat', bottom: '#4a2f18', shoes: '', weapon: 'none' },
-    fishshop: { gender: 0, hair: '#6a6a6a', hairStyle: 'boy', top: '#2f6a8a', hat: '#e8c84a|straw', bottom: '#3a4a5a', shoes: '', weapon: 'none' }, // [2026-11-23] 낚시 용품 상인(밀짚모자 + 푸른 조끼)
+    fishshop: { gender: 0, hair: '#6a6a6a', hairStyle: 'boy', top: '#2f6a8a', hat: '#e8c84a|straw', bottom: '#3a4a5a', shoes: '', weapon: 'none' },
+    shipwright: { gender: 0, hair: '#3a2a1a', hairStyle: 'boy', top: '#23466e', hat: '', bottom: '#4a3420', shoes: '', weapon: 'none' }, // [2026-11-24] 조선공(남색 작업복, 망치는 16px 그림에) // [2026-11-23] 낚시 용품 상인(밀짚모자 + 푸른 조끼)
     captain: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#2a3a6a|cape', hat: '#222630|pirate', bottom: '#1f1f24', shoes: '', weapon: 'none' },
     boutique: { gender: 0, hair: '#2b1d16', hairStyle: 'boy', top: '#7b3fa0|tux', hat: '', bottom: '#1f1f24', shoes: '', weapon: 'none' },
     barber: { gender: 1, hair: '#e86aa0', hairStyle: 'wavy', top: '#e86aa0|maid', hat: '', bottom: '#e8e4da', shoes: '', weapon: 'none' },
@@ -899,10 +900,11 @@ var TowerMine = (function () {
      // [2026-10-24] 명품상점 주인(보라 연미복 + 실크햇 + 콧수염), 성당 신부(검은 사제복 + 흰 깃 + 금 십자가)
     var nq = kind === 'ninjaquest', bw = kind === 'boatwright', fr = kind === 'ferry';
     var so = kind === 'smelter' || kind === 'refiner', gc = kind === 'gemcutter', ar = kind === 'artisan', ah = kind === 'archishop', rf = kind === 'refiner'; // [2026-11-17] 악마 광석 정제사 // [2026-10-28] 다도해 상인(푸른 옷) // [2026-10-28] 광석 전문가(주황 앞치마), 보석 세공사(청록), 왕도 장인(검붉은) // [2026-10-28] 다도해 -- 신궁 수문장(붉은 갑옷), 배 목수(갈색 작업복), 뱃사공(파란 옷)
-    var body = kind === 'fishshop' ? '#2f6a8a' : kind === 'mgsmith' ? '#c8801a' : kind === 'barber' ? '#e86aa0' : rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
+    var body = kind === 'shipwright' ? '#23466e' : kind === 'fishshop' ? '#2f6a8a' : kind === 'mgsmith' ? '#c8801a' : kind === 'barber' ? '#e86aa0' : rf ? '#4a1a1a' : ah ? '#2a7ac8' : so ? '#c0682a' : gc ? '#2a8a8a' : ar ? '#7a2a2a' : smith ? '#7a4a1f' : bq ? '#7b3fa0' : pr ? '#24212b' : gd ? '#2f8a5a' : nq ? '#a8202a' : bw ? '#8a6a3a' : fr ? '#2a5aa8' : '#f4f4f0', bodyD = ah ? '#1a5a98' : so ? '#8a4a1a' : gc ? '#1a5e5e' : ar ? '#4e1a1a' : smith ? '#5a3a1c' : bq ? '#5a2a78' : pr ? '#141218' : gd ? '#1f6342' : nq ? '#6a1018' : bw ? '#6a4a22' : fr ? '#1a3a78' : '#c9ccd6', pants = smith ? '#3a2b22' : bq ? '#2a1d3a' : pr ? '#24212b' : gd ? '#5a4630' : nq ? '#1a1a22' : bw ? '#3a2b22' : fr ? '#22305e' : '#22305e';
     px(g, pants, 5, 12, 2, 3); px(g, pants, 9, 12, 2, 3); px(g, '#2a1d10', 5, 15, 2, 1); px(g, '#2a1d10', 9, 15, 2, 1);
     px(g, body, 4, 7, 8, 5); px(g, bodyD, 4, 7, 1, 5); px(g, bodyD, 11, 7, 1, 5);
     if (smith) { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#c49a45', 7, 9, 2, 1); } // 앞치마
+    else if (kind === 'shipwright') { px(g, '#c9a050', 4, 9, 8, 1); px(g, '#5a3418', 5, 10, 6, 2); px(g, '#8a8a98', 12, 6, 3, 2); px(g, '#6b3f1e', 13, 8, 1, 5); } // [2026-11-24] 조선공 -- 금빛 띠 + 연장 앞치마 + 망치
     else if (kind === 'fishshop') { px(g, '#e8c84a', 5, 8, 6, 1); px(g, '#c8a040', 9, 9, 2, 2); px(g, '#7a5530', 12, 2, 1, 9); px(g, '#dde', 13, 3, 1, 5); } // [2026-11-23] 낚시 용품 상인 -- 밀짚 띠 + 미끼 주머니 + 낚싯대
     else if (kind === 'mgsmith') { px(g, '#4a2f18', 5, 8, 6, 4); px(g, '#ffd24a', 7, 9, 2, 2); px(g, '#fff6c0', 7, 9); px(g, '#ffb020', 6, 10); px(g, '#ffb020', 9, 10); } // [2026-11-23] 햇빛 대장장이 -- 앞치마에 햇빛 문장
     else if (bq) { px(g, '#f4f0e6', 7, 7, 2, 4); px(g, '#d4104f', 7, 7, 2, 1); px(g, '#d9b44a', 6, 9); px(g, '#d9b44a', 9, 9); }
@@ -2223,7 +2225,7 @@ var TowerMine = (function () {
       if (lx < -4 * TS || ly < -2 * TS || lx > el.cv.width + 2 * TS || ly > el.cv.height + 6 * TS) return;
       lhDraw(lx, ly, now, bl[i] && t - bl[i] < 3500, lhLit() || (bl[i] && t - bl[i] < 3500));
     });
-    if (moored && moored.m === map.id && !boatAt(P.x, P.y)) { var mx = Math.round(moored.x * TS - camX), my = Math.round(moored.y * TS - camY); drawBoat(mx, my - 3 * scale, now, moored.left); drawBoatFront(mx, my - 3 * scale, now, moored.left); } // 매어 둔 빈 배
+    if (moored && moored.m === map.id && !boatAt(P.x, P.y)) { var mx = Math.round(moored.x * TS - camX), my = Math.round(moored.y * TS - camY); if (myShip()) { drawShip(mx, my - 3 * scale, now, moored.left); drawShipFront(mx, my - 3 * scale, now, moored.left, 0); } else { drawBoat(mx, my - 3 * scale, now, moored.left); drawBoatFront(mx, my - 3 * scale, now, moored.left); } } // 매어 둔 빈 배([2026-11-24] 화포선)
     if (!map.barrels) return;
     map.barrels.forEach(function (b, i) {
       var ex = bs[i] || 0, x = b[0] * TS - camX, y = b[1] * TS - camY;
@@ -2833,7 +2835,7 @@ var TowerMine = (function () {
     g.putImageData(img, 0, 0);
   }
   var NPC_MINI_COL = { smith: '#ff9a2a', boutique: '#c06bff', priest: '#ffffff', guide: '#3fdc6a', captain: '#5ad8ff', furrier: '#ffd27a', blackmarket: '#3a3a3a',
-    refiner: '#ff8a5a', primalsmith: '#fff4b0', mgsmith: '#ffd24a', fishshop: '#5ad8ff', alchemist: '#b8f06a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
+    refiner: '#ff8a5a', primalsmith: '#fff4b0', mgsmith: '#ffd24a', fishshop: '#5ad8ff', shipwright: '#c9a050', alchemist: '#b8f06a', demonfolk: '#ff6a8a', wbboard: '#ffd27a', mailbox: '#7ab8ff', daykeeper: '#ffe14d', wallguard: '#ffe14d', swordmaster: '#ff6a3a', basecamp: '#bfefff', forestguard: '#ff8a5a', citymerchant: '#7cf08a', mercenary: '#ffb04a', enhancer: '#ff8a3a', armorer: '#9fd0ff', whirlmaster: '#8ef08e', ultmaster: '#ffd27a', ninjaquest: '#ff4a4a', boatwright: '#c8964a', ferry: '#3a8aff', chest: '#ffd23f', smelter: '#ff8a3a', gemcutter: '#3ad8d8', artisan: '#c84a4a', archishop: '#3a9aff' };
   function drawMini() {
     var v = miniView(), ox = v.x0, oy = v.y0; // [2026-10-28] 긴 맵은 플레이어 주변 창만
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
@@ -3985,6 +3987,7 @@ var TowerMine = (function () {
     if (n.kind === 'primalsmith') { setAuto(false); primalInfo = null; openSmith(n, 'primal'); primalGo('primalInfo'); return; } // [2026-11-20] 태초의 보석 세공사
     if (n.kind === 'mgsmith') { setAuto(false); mgInv = null; openSmith(n, 'mgsmith'); tokenGo('list'); return; } // [2026-11-23] 햇빛 대장장이
     if (n.kind === 'fishshop') { setAuto(false); fishShop = null; openSmith(n, 'fishshop'); fishShopGo('fishshop'); return; } // [2026-11-23] 낚시 용품 상인
+    if (n.kind === 'shipwright') { setAuto(false); openSmith(n, 'shipyard'); return; } // [2026-11-24] 조선공(화포선)
     if (n.kind === 'squirrel') { // [2026-11-23] 최강다람쥐
       setAuto(false); bossCallInfo = null; openSmith(n, 'squirrel');
       api('/api/tower-mine-bosscall?action=info').then(function (d) { bossCallInfo = d; if (smithOpen && smithView === 'squirrel') renderSmith(smithNpc); }).catch(function () {});
@@ -5497,6 +5500,13 @@ var TowerMine = (function () {
       if (smithOpen && smithView === 'fishshop') renderSmith(smithNpc);
     }).catch(function () { fishShopBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
+  function shipyardHtml(n) { // [2026-11-24] 조선공 -- 1인용 배 + 나무 200 + 철괴 50 -> 화포선
+    var a = st.archi || {}, h = npcHead('⚓ ' + n.name, false) + talkBlock(n, n.line);
+    if (a.ship) return h + '<div class="mine-smith-say">⚓ 이미 화포선이 있어요. 배를 띄우면 화포선으로 나가요. 물 위에서 공격하면 갑판 대포가 함께 쏴요.</div>';
+    if (!a.boat) return h + '<div class="mine-smith-say">⛵ 1인용 배가 있어야 해요. 다도해 본섬 배 목수에게서 먼저 만들어 오세요.</div>';
+    return h + '<div class="mine-smith-row"><span class="nm">⚓ 화포선<small>물 위에서 공격하면 갑판 대포가 함께 (1초에 한 번, 그 공격의 40%) · 배 체력 2배</small>' + costHtml(a.shipCosts) + '</span>'
+        + '<button type="button" ' + (a.shipCan ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiAct(\'ship\')">짓기</button></div>';
+  }
   function fishShopHtml(n) {
     var h = npcHead('🎣 ' + n.name, false) + talkBlock(n, n.line), d = fishShop;
     if (!d) return h + '<div class="mine-smith-say">물건을 꺼내는 중...</div>';
@@ -5990,6 +6000,7 @@ var TowerMine = (function () {
     if (smithView === 'primal') { el.smith.innerHTML = primalHtml(n); return; } // [2026-11-20]
     if (smithView === 'mgsmith') { el.smith.innerHTML = mgsmithHtml(n); return; } // [2026-11-23] 햇빛 대장장이
     if (smithView === 'fishshop') { el.smith.innerHTML = fishShopHtml(n); return; } // [2026-11-23] 낚시 용품 상인
+    if (smithView === 'shipyard') { el.smith.innerHTML = shipyardHtml(n); return; } // [2026-11-24] 조선공
     if (smithView === 'alchemy') { el.smith.innerHTML = alchemyHtml(n); return; } // [2026-11-20]
     if (smithView === 'wbboard') { el.smith.innerHTML = wbBoardHtml(n); return; } // [2026-11-17] 월드보스 게시판
     if (smithView === 'mail') { el.smith.innerHTML = mailHtml(n); return; } // [2026-11-17] 우편함
@@ -7075,9 +7086,9 @@ var TowerMine = (function () {
   }
   /** 배에 탄 용병 {정보, 화면 자리} -- 내 것(st.merc/st.merc2) 또는 다른 사람(ou.mc/ou.m2). */
   function boatCrewMine() { var l = []; if (st && st.merc) l.push([st.merc, merc]); if (st && st.merc2) l.push([st.merc2, merc2]); if (st && st.merc3) l.push([st.merc3, merc3]); return l; }
-  function boatCrewDraw(crew, px, py, left, now, V, other) {
+  function boatCrewDraw(crew, px, py, left, now, V, other, gap) {
     crew.forEach(function (q, i) {
-      var mi = q[0], mp = q[1], off = (CREW_GAP * (i + 1) + 1) / 16;
+      var mi = q[0], mp = q[1], off = ((gap || CREW_GAP) * (i + 1) + 1) / 16; // [2026-11-24] 화포선은 갑판 위에 10px 간격
       mp.x = px + (left ? off : -off); mp.y = py; mp.mv = false;
       var rest = other ? !!mi.mr : mi.rest > nowSrv(), tgt = other ? (mi.mt && !mi.mr ? { x: mi.mt[0], y: mi.mt[1] } : null) : (mp.tg && now - mp.tg.t < 1800 ? mp.tg : null);
       if (tgt && !rest) mercFace(mp, tgt.x, tgt.y); else mp.dir = left ? 'left' : 'right';
@@ -7113,6 +7124,140 @@ var TowerMine = (function () {
     var u = T * scale / 16, w = 20 * u, f = Math.max(0, Math.min(1, (a.boatHp || 0) / a.boatHpMax));
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x - 2 * u, y + 18 * u, w, 2 * u);
     ctx.fillStyle = f > 0.3 ? '#4fc3f7' : '#ff6b5a'; ctx.fillRect(x - 2 * u, y + 18 * u, w * f, 2 * u);
+  }
+  // [2026-11-23] 화포선(대형선박) 그림 -- 1인용 배처럼 뒤(돛대 둘·가로돛·삼각돛·망루·긴 깃발·고물 누각)는 캐릭터 앞에, 앞(검은 참나무 선체·금빛 띠·남색 포문 띠·포문 셋·
+  //  갑판 대포·뱃머리 장식·물보라)은 캐릭터 뒤에 그린다. (x, y) = 캐릭터 그림 왼쪽 위, u = 칸/16. 뱃머리가 보는 쪽(왼쪽이면 뒤집기 -- boatFlip).
+  function shipPoly(pts, col, x, y, u, bob) { ctx.fillStyle = col; ctx.beginPath(); pts.forEach(function (p, i) { var px = x + p[0] * u, py = y + p[1] * u + bob; if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath(); ctx.fill(); }
+  function drawShip(x, y, now, left) {
+    y += 3 * (T * scale / 16); // 큰 배는 물에 깊이 -- 갑판 난간 위로 가슴까지 보이게
+    var TS = T * scale, u = TS / 16, bob = Math.round(Math.sin(now / 340) * u), R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u + bob, w * u, h * u); };
+    boatFlip(x, TS, left, function () {
+      var sw = Math.sin(now / 460) * 0.8, fl = Math.sin(now / 150);
+      // 고물 누각(뒤쪽 높은 갑판) + 먼 쪽 난간
+      shipPoly([[-32, 3], [-17, 3], [-17, 13], [-33, 13]], '#4a2a12', x, y, u, bob);
+      R('#6b3f1e', -32, 3, 15, 1); R('#c9a050', -32, 2, 15, 1);
+      for (var i = 0; i < 4; i++) R('#2e1a0a', -31 + i * 4, 4, 1, 3); // 누각 난간 기둥
+      R('#ffd76a', -30, 8, 3, 2); R('#ffd76a', -24, 8, 3, 2); R('#8a5a28', -30, 10, 9, 1); // 뒷창
+      R('#3a2210', -34, -2, 1, 6); ctx.fillStyle = 'rgba(255,210,100,' + (0.55 + 0.25 * Math.sin(now / 200)).toFixed(2) + ')'; ctx.fillRect(x - 35.5 * u, y - 4 * u + bob, 4 * u, 3 * u); R('#3a2210', -35, -5, 3, 1); // 고물 등
+      R('#5a3418', -17, 10, 56, 2); R('#b07a3c', -17, 10, 56, 1); // 먼 쪽 뱃전
+      // 큰 돛대(뒤) + 앞 돛대
+      R('#3a2210', -8, -32, 2, 44); R('#6b4422', -8, -32, 1, 44);
+      R('#3a2210', 25, -25, 2, 37); R('#6b4422', 25, -25, 1, 37);
+      R('#3a2210', -16, -20, 18, 1); R('#3a2210', -18, -7, 22, 1); R('#3a2210', 18, -16, 16, 1); // 활대
+      // 망루
+      R('#4a2a12', -11, -29, 8, 3); R('#c9a050', -11, -29, 8, 1); R('#2e1a0a', -10, -26, 6, 1);
+      // 가로돛(위/아래, 바람에 부푼다) -- 크림색 + 남색 띠 + 금빛 닻 문양
+      var sail = function (l, t, r, b, belly, stripe) {
+        ctx.fillStyle = '#f3ead2';
+        ctx.beginPath(); ctx.moveTo(x + l * u, y + t * u + bob); ctx.lineTo(x + r * u, y + t * u + bob);
+        ctx.quadraticCurveTo(x + (r + belly + sw) * u, y + (t + b) / 2 * u + bob, x + r * u, y + b * u + bob);
+        ctx.lineTo(x + l * u, y + b * u + bob); ctx.quadraticCurveTo(x + (l + belly * 0.6 + sw) * u, y + (t + b) / 2 * u + bob, x + l * u, y + t * u + bob); ctx.closePath(); ctx.fill();
+        ctx.save(); ctx.clip();
+        if (stripe) { ctx.fillStyle = '#23466e'; ctx.fillRect(x + (l - 2) * u, y + (b - 3) * u + bob, (r - l + 6) * u, 2 * u); }
+        ctx.fillStyle = 'rgba(120,90,60,.16)'; ctx.fillRect(x + l * u, y + (b - 2) * u + bob, (r - l + 4) * u, 2 * u);
+        ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.fillRect(x + (l + 1) * u, y + (t + 1) * u + bob, 2 * u, (b - t - 2) * u);
+        ctx.restore();
+        ctx.strokeStyle = '#c9a050'; ctx.lineWidth = Math.max(1, u * 0.6); ctx.strokeRect(x + l * u, y + t * u + bob, (r - l) * u, (b - t) * u);
+      };
+      sail(-15, -19, 1, -8, 3, false);
+      sail(-17, -6, 3, 6, 4, true);
+      sail(19, -15, 33, -1, 3, true);
+      // 닻 문양(큰 아래 돛)
+      var ax = -7, ay = -3; R('#c9a050', ax - 0.5, ay - 2, 1, 7); R('#c9a050', ax - 2.5, ay - 1, 5, 1); R('#c9a050', ax - 3, ay + 3, 1, 1); R('#c9a050', ax + 2, ay + 3, 1, 1); R('#c9a050', ax - 2, ay + 4, 5, 1); R('#c9a050', ax - 1, ay - 3, 2, 1);
+      // 삼각돛(앞 돛대 꼭대기 -> 뱃머리 기움대 끝)
+      ctx.fillStyle = '#ece0c2'; ctx.beginPath(); ctx.moveTo(x + 27 * u, y - 23 * u + bob); ctx.quadraticCurveTo(x + (37 + sw) * u, y - 7 * u + bob, x + 47 * u, y + 7 * u + bob); ctx.lineTo(x + 28 * u, y + 4 * u + bob); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = Math.max(1, u * 0.4);
+      ctx.beginPath(); ctx.moveTo(x - 7 * u, y - 32 * u + bob); ctx.lineTo(x + 26 * u, y - 25 * u + bob); ctx.lineTo(x + 47 * u, y + 7 * u + bob); ctx.moveTo(x - 7 * u, y - 32 * u + bob); ctx.lineTo(x - 32 * u, y + 3 * u + bob); ctx.stroke(); // 밧줄
+      // 긴 깃발(큰 돛대 꼭대기) -- 남색 + 금빛, 갈라진 꼬리
+      ctx.fillStyle = '#23466e';
+      ctx.beginPath(); ctx.moveTo(x - 6 * u, y - 35 * u + bob); ctx.lineTo(x + (-18 - fl) * u, y - (34 + fl * 0.8) * u + bob); ctx.lineTo(x + (-15 - fl) * u, y - (32.6 + fl * 0.6) * u + bob); ctx.lineTo(x + (-19 - fl) * u, y - (31 + fl * 0.5) * u + bob); ctx.lineTo(x - 6 * u, y - 32 * u + bob); ctx.closePath(); ctx.fill();
+      R('#ffd76a', -11, -34, 3, 1); R('#ffd76a', -7, -36, 2, 1);
+    });
+  }
+  /** 화포선 앞(캐릭터 다리를 가리는 뱃전·선체·포문·갑판 대포·뱃머리). recoil = 갑판 대포 반동(0~1). */
+  function drawShipFront(x, y, now, left, recoil) {
+    y += 3 * (T * scale / 16); // 큰 배는 물에 깊이 -- 갑판 난간 위로 가슴까지 보이게
+    var TS = T * scale, u = TS / 16, bob = Math.round(Math.sin(now / 340) * u), R = function (c, a, b, w, h) { ctx.fillStyle = c; ctx.fillRect(x + a * u, y + b * u + bob, w * u, h * u); };
+    var ph = (now / 650) % 1;
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.45 * (1 - ph)).toFixed(2) + ')';
+    ctx.fillRect(x - (38 + ph * 6) * u, y + 23 * u, (92 + ph * 12) * u, Math.max(1, u * 0.8)); // 물결(뒤집기 전 -- 좌우 같게)
+    boatFlip(x, TS, left, function () {
+      // 선체 -- 고물(왼쪽)은 높고 곧게, 이물(오른쪽)은 솟아 기움대로
+      shipPoly([[-34, 12], [40, 12], [44, 9], [43, 14], [36, 22], [-28, 22], [-33, 18]], '#3a2210', x, y, u, bob);
+      shipPoly([[-33, 13], [40, 13], [42, 12], [41, 15], [35, 21], [-27, 21], [-32, 17]], '#5a3418', x, y, u, bob);
+      R('#6b3f1e', -30, 19, 64, 1); R('#4a2a12', -27, 20, 62, 1); // 아래 판자 결
+      R('#23466e', -32, 14, 72, 3); R('#3a6a9a', -32, 14, 72, 1); // 남색 포문 띠
+      R('#e0b050', -34, 13, 76, 1); R('#fff0b0', -34, 13, 10, 1); R('#e0b050', -31, 17, 70, 1); // 금빛 띠
+      for (var i = 0; i < 4; i++) { var gx = -26 + i * 14; R('#1a0e08', gx, 14, 4, 3); R('#2b2b33', gx + 1, 15, 2, 2); R('#6a6a78', gx + 1, 15, 1, 1); R('#c9a050', gx - 1, 14, 1, 3); R('#c9a050', gx + 4, 14, 1, 3); } // 포문(쇠 포구)
+      R('#ffd76a', 32, 14, 2, 2); R('#1d4a5a', 33, 15, 1, 1); // 둥근 창
+      // 뱃머리 기움대 + 금빛 장식(돌고래)
+      R('#4a2a12', 40, 9, 8, 1); R('#4a2a12', 46, 7, 2, 2);
+      R('#e0b050', 42, 10, 2, 1); R('#e0b050', 43, 11, 2, 2); R('#e0b050', 44, 13, 1, 1); R('#fff0b0', 43, 11, 1, 1);
+      // 갑판 대포(이물 쪽) -- 반동이면 뒤로 밀린다
+      var rc = (recoil || 0) * 2;
+      R('#3a2210', 28 - rc, 10, 7, 3); R('#1a0e08', 28 - rc, 12, 2, 1); R('#1a0e08', 33 - rc, 12, 2, 1); // 포가 + 바퀴
+      R('#2b2b33', 27 - rc, 8, 12, 3); R('#4a4a58', 27 - rc, 8, 12, 1); R('#1a1a20', 38 - rc, 7, 2, 5); R('#6a6a78', 28 - rc, 8, 3, 1); R('#c9a050', 31 - rc, 8, 1, 3); // 포신 + 포구 + 금테
+      // 뱃머리 물보라
+      var s1 = Math.floor(now / 120) % 3;
+      ctx.fillStyle = 'rgba(255,255,255,.8)';
+      ctx.fillRect(x + (37 + s1) * u, y + (20 - s1 * 0.5) * u + bob, u, u);
+      ctx.fillRect(x + (40 + s1 * 2) * u, y + (21 - s1) * u + bob, u, u);
+      ctx.fillRect(x + (-36 - s1) * u, y + 21 * u + bob, 2 * u, u);
+      ctx.fillRect(x + (-39 - s1 * 2) * u, y + 22 * u, u, u);
+    });
+  }
+  /** 화포선 체력 막대(배 밑). */
+  function drawShipHp(x, y, f) {
+    y += 3 * (T * scale / 16); // 큰 배는 물에 깊이 -- 갑판 난간 위로 가슴까지 보이게
+    var u = T * scale / 16, w = 44 * u;
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(x - 14 * u, y + 25 * u, w, 2 * u);
+    ctx.fillStyle = f > 0.3 ? '#4fc3f7' : '#ff6b5a'; ctx.fillRect(x - 14 * u, y + 25 * u, w * f, 2 * u);
+  }
+  /** 포격 -- {sx, sy(포구 화면 좌표), tx, ty(맞는 곳), at(쏜 시각)}. 0~140ms 포구 섬광, 0~800ms 연기, 0~420ms 포탄이 포물선으로, 420~900ms 폭발 + 물기둥. */
+  var SHIP_SHOT_MS = 420;
+  function shipShotDraw(s, now) {
+    var t = now - s.at, u = T * scale / 16;
+    if (t < 0 || t > 950) return false;
+    if (t < 160) { // 포구 섬광
+      var fa = 1 - t / 160, dir = s.tx >= s.sx ? 1 : -1;
+      ctx.save(); ctx.globalAlpha = fa;
+      ctx.fillStyle = '#ff9a20'; ctx.beginPath(); ctx.arc(s.sx + dir * 4 * u, s.sy, 6 * u, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.moveTo(s.sx, s.sy - 5 * u); ctx.lineTo(s.sx + dir * 16 * u, s.sy); ctx.lineTo(s.sx, s.sy + 5 * u); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(s.sx + dir * 3 * u, s.sy - 2 * u); ctx.lineTo(s.sx + dir * 10 * u, s.sy - 8 * u); ctx.lineTo(s.sx + dir * 6 * u, s.sy); ctx.lineTo(s.sx + dir * 10 * u, s.sy + 8 * u); ctx.lineTo(s.sx + dir * 3 * u, s.sy + 2 * u); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    if (t < 800) for (var k = 0; k < 4; k++) { // 연기
+      var p = t / 800, r = (2 + k + p * 6) * u, ox = (k - 1.5) * 2 * u - (s.tx >= s.sx ? 1 : -1) * p * 4 * u;
+      ctx.fillStyle = 'rgba(' + (200 - k * 15) + ',' + (200 - k * 15) + ',' + (205 - k * 15) + ',' + (0.55 * (1 - p)).toFixed(2) + ')';
+      ctx.beginPath(); ctx.arc(s.sx + ox, s.sy - p * 10 * u - k * u, r, 0, Math.PI * 2); ctx.fill();
+    }
+    if (t < SHIP_SHOT_MS) { // 포탄
+      var q = t / SHIP_SHOT_MS, bx = s.sx + (s.tx - s.sx) * q, by = s.sy + (s.ty - s.sy) * q - Math.sin(q * Math.PI) * Math.max(24 * u, Math.abs(s.tx - s.sx) * 0.35);
+      ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(s.sx + (s.tx - s.sx) * q, s.sy + (s.ty - s.sy) * q + 4 * u, 2 * u, u, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,170,60,.35)'; ctx.beginPath(); ctx.arc(bx - (s.tx - s.sx) * 0.04, by + 1.5 * u, 2.6 * u, 0, Math.PI * 2); ctx.fill(); // 불꼬리
+      ctx.fillStyle = '#1a1a20'; ctx.beginPath(); ctx.arc(bx, by, 3 * u, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a8a98'; ctx.fillRect(bx - 1.5 * u, by - 1.5 * u, u, u);
+    } else { // 폭발 + 물기둥
+      var e = (t - SHIP_SHOT_MS) / (950 - SHIP_SHOT_MS), ea = 1 - e;
+      ctx.save(); ctx.globalAlpha = ea;
+      ctx.fillStyle = '#e8501a'; ctx.beginPath(); for (var sp = 0; sp < 16; sp++) { var sa = sp * Math.PI / 8, sr = (sp % 2 ? 6 : 12) * u * (0.7 + e * 0.8); ctx.lineTo(s.tx + Math.cos(sa) * sr, s.ty + Math.sin(sa) * sr); } ctx.closePath(); ctx.fill(); // 불꽃 별
+      ctx.fillStyle = '#ff9a2a'; ctx.beginPath(); ctx.arc(s.tx, s.ty, (5 + e * 7) * u, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff0a0'; ctx.beginPath(); ctx.arc(s.tx, s.ty, (3 + e * 3) * u * (1 - e * 0.6), 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = Math.max(1, u); ctx.beginPath(); ctx.arc(s.tx, s.ty, (6 + e * 12) * u, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(200,235,255,.9)';
+      for (var d = 0; d < 7; d++) { var a = -Math.PI / 2 + (d - 3) * 0.35, rr = (5 + e * 14) * u; ctx.fillRect(s.tx + Math.cos(a) * rr - u, s.ty + Math.sin(a) * rr * 1.4 - u, 2 * u, 2 * u); }
+      ctx.fillStyle = '#3a2a1a'; for (var f2 = 0; f2 < 4; f2++) ctx.fillRect(s.tx + (f2 - 1.5) * 5 * u * (0.5 + e), s.ty - (6 - f2 % 2 * 3) * u * (0.5 + e) + e * e * 10 * u, u, u);
+      ctx.restore();
+    }
+    return true;
+  }
+  function myShip() { return !!(st && st.archi && st.archi.ship); } // [2026-11-24] 화포선이 있으면 배를 띄울 때 늘 화포선
+  var shipShots = [], shipGunAt = 0; // [2026-11-24] 갑판 대포 {tx, ty(칸, 맞는 곳 가운데), at}
+  /** 화포선 포격 -- 포구(이물 갑판 대포 끝)에서 맞는 칸으로. (x, y) = 캐릭터 그림 왼쪽 위(배를 그린 자리). */
+  function shipShotsDraw(x, y, left, now) {
+    if (!shipShots.length) return;
+    var TS = T * scale, u = TS / 16, sx = left ? x + TS - 39 * u : x + 39 * u, sy = y + 3 * u + 8.5 * u;
+    shipShots = shipShots.filter(function (q) { return shipShotDraw({ sx: sx, sy: sy, tx: q.tx * TS - camX, ty: q.ty * TS - camY, at: q.at }, now); });
   }
   /** 모닥불(안전지대 가운데) -- 장작 + 일렁이는 불꽃. */
   function drawFire(cx, cy, TS, now) {
@@ -8131,6 +8276,7 @@ var TowerMine = (function () {
       var atkEl = st.ench && st.ench.left > 0 && st.ench.el ? ELEM_ICON[st.ench.el] : ''; // [2026-10-30] "속성 공격 시 표기" -- 부여한 속성 아이콘, 상성이면 x1.5
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
       if (d.twinStun) floats.push({ x: fxp, y: fyp - 1.0, text: '💫 기절!', color: '#ffe14d', t0: t + 200 }); // [2026-11-20] 쌍격의 장갑
+      if (d.shipShot) { var ssn = performance.now(), sf = d.shipShot[3] || 1; shipGunAt = ssn; shipShots.push({ tx: d.shipShot[0] + sf / 2, ty: d.shipShot[1] + sf / 2, at: ssn }); floats.push({ x: d.shipShot[0] + (sf - 1) / 2, y: d.shipShot[1] - 0.9, text: '💣 포격 -' + fmtN(d.shipShot[2]), color: '#ffb04a', big: true, t0: t + SHIP_SHOT_MS }); } // [2026-11-24] 화포선 갑판 대포
       if (d.waterCannon) { wcFx.push({ x: fxp, y: fyp, t0: t }); floats.push({ x: fxp, y: fyp - 1.3, text: '💧 물대포 -' + fmtN(d.waterCannon), color: '#5ac8ff', big: true, t0: t + 280 }); } // [2026-11-23] 베히모스의 수정구슬
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
@@ -8644,10 +8790,11 @@ var TowerMine = (function () {
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       var oBoat = boatAt(op.x, op.y); // [2026-11-18] 물 위에서만(등대 섬/바닷가 모래에선 내린다)
-      if (oBoat) drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+      var oShip = oBoat && !!ou.sh; // [2026-11-24] 화포선
+      if (oBoat) { if (oShip) drawShip(ox, oy - 3 * scale, now, ou.dir === 'left'); else drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); } // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       var oCrew = []; // [2026-11-19] 배 맵 -- 그 사람 용병도 그 배 고물에
       if (oBoat && map.boat) { if (ou.mc != null) oCrew.push([ou, ou.mp || (ou.mp = { x: null, y: null, dir: 'down' })]); if (ou.m3) oCrew.push([ou.m3, ou.mp3 || (ou.mp3 = { x: null, y: null, dir: 'down' })]); if (ou.m2) oCrew.push([ou.m2, ou.mp2 || (ou.mp2 = { x: null, y: null, dir: 'down' })]); }
-      if (oCrew.length) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, false); boatCrewDraw(oCrew, op.x, op.y, ou.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true); }
+      if (oCrew.length) { if (!oShip) boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, false); boatCrewDraw(oCrew, op.x, op.y, ou.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true, oShip ? 10 : 0); }
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
       var osw = ou.swT0 && now >= ou.swT0 && now - ou.swT0 < 380 ? ((now - ou.swT0) < 190 ? 3 : 4) : 0; // [2026-11-07] 다른 사람 공격 -- 무기 휘두르기
@@ -8659,7 +8806,7 @@ var TowerMine = (function () {
       ctx.globalAlpha = 1;
       if (ou.kk) kakAuraFront(ctx, ox, oy - 3 * scale, now, 1, TS);
       if (ou.kkT0 && now - ou.kkT0 < 600) kakCast(ctx, ox, oy - 3 * scale, now - ou.kkT0, TS);
-      if (oBoat) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, true); drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); } // [2026-11-18]
+      if (oBoat) { if (oShip) drawShipFront(ox, oy - 3 * scale, now, ou.dir === 'left', 0); else { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, true); drawBoatFront(ox, oy - 3 * scale, now, ou.dir === 'left'); } } // [2026-11-18]
       if (auraFx.length) whirlDraw(1, ox, oy - 3 * scale, now, oid); // [2026-11-07] 관리자 돌개바람(앞)
       if (ou.look && ou.look.gm) { try { gmSparkle(ox, oy - 3 * scale, now, +oid || 1); } catch (e) { } }
       if (ou.frozen) drawIce(ox, oy - 3 * scale, now); // [2026-10-28] 얼어붙은 동료
@@ -8746,9 +8893,10 @@ var TowerMine = (function () {
     if (meGm) { try { gmAura(cx, cy - 3 * scale, now); } catch (e) { } }
     boatLandCheck(pos); // [2026-11-18] 배에서 내림/오름
     var meBoat = boatAt(pos.x, pos.y);
-    if (meBoat) drawBoat(cx, cy - 3 * scale, now, P.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
+    var meShip = meBoat && myShip(); // [2026-11-24] 화포선
+    if (meBoat) { if (meShip) drawShip(cx, cy - 3 * scale, now, P.dir === 'left'); else drawBoat(cx, cy - 3 * scale, now, P.dir === 'left'); } // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
     var myCrew = meBoat && map.boat ? boatCrewMine() : []; // [2026-11-19] 배 맵 -- 용병이 내 배 고물에
-    if (myCrew.length) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, false); boatCrewDraw(myCrew, pos.x, pos.y, P.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, false); }
+    if (myCrew.length) { if (!meShip) boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, false); boatCrewDraw(myCrew, pos.x, pos.y, P.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, false, meShip ? 10 : 0); }
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
     var hid = pStealthOn(); // [2026-10-30] 자객의 목걸이 은신 -- 반투명하게(살짝 일렁임)
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
@@ -8762,7 +8910,8 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
     if (myKa > 0) kakAuraFront(ctx, cx, cy - 3 * scale, now, myKa, TS);
     if (kakFx && now - kakFx.t0 < 600) kakCast(ctx, cx, cy - 3 * scale, now - kakFx.t0, TS); // 쓰는 순간
-    if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
+    if (meShip) { var shA = st && st.archi; drawShipFront(cx, cy - 3 * scale, now, P.dir === 'left', Math.max(0, 1 - (now - shipGunAt) / 300)); if (shA && shA.boatHpMax) drawShipHp(cx, cy - 3 * scale, Math.max(0, Math.min(1, (shA.boatHp || 0) / shA.boatHpMax))); shipShotsDraw(cx, cy - 3 * scale, P.dir === 'left', now); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-24] 화포선
+    else if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
     if (berserkInvUntil) { try { berserkShieldDraw(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-20] 광전사 불굴 보호막 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
     if (meGm) { try { gmSparkle(cx, cy - 3 * scale, now, 0); } catch (e) { } }

@@ -187,6 +187,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_ITEM_NAMES.put(MINE_ITEM_HELMET, "광부 투구");
         MINE_ITEM_NAMES.put(MINE_ITEM_DRAGON_RING, "용왕의 반지");
         MINE_ITEM_NAMES.put("WYRM_RING", "용의 반지"); // [2026-11-15] 월드보스 드랍
+        MINE_ITEM_NAMES.put("SHIP", "화포선"); // [2026-11-24] MINE_ITEM_SHIP(아래에서 정의 -- 앞 참조 불가)
         MINE_ITEM_NAMES.put(S5MineMap.BOAT_ITEM, "1인용 배"); // [2026-10-28] 다도해 뱃길
         MINE_ITEM_NAMES.put(S5MineMap.SHRINE_KEY_ITEM, "신궁 열쇠"); // [2026-10-28] 닌자 두목의 방(신궁 수문장 수색 임무 보상)
     }
@@ -5376,6 +5377,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             // [2026-11-11] 일반 공격도 하피에게 들어간다(나무 뒤에 숨었을 때만 모두 무효)
             double vul = mineVulnMul(s, now) * type.armor; // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
             if (vul != 1) { dmg = (int) Math.round(dmg * vul); Object hv2 = out.get("hits"); if (hv2 instanceof int[]) for (int hi = 0; hi < ((int[]) hv2).length; hi++) ((int[]) hv2)[hi] = (int) Math.round(((int[]) hv2)[hi] * vul); }
+            if (dmg > 0 && !type.dummy && !type.clone && map.boat() && map.terrainAt(x, y) == '~' && items.getOrDefault(MINE_ITEM_SHIP, 0) > 0 && items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0) { // [2026-11-24] 화포선 갑판 대포
+                Long gl = MINE_SHIP_GUN_AT.get(userName);
+                if (gl == null || now - gl >= MINE_SHIP_GUN_MS) {
+                    MINE_SHIP_GUN_AT.put(userName, now);
+                    int gd = Math.max(1, (int) Math.round(dmg * MINE_SHIP_GUN_PCT));
+                    dmg += gd;
+                    out.put("shipShot", new int[] { s.fx, s.fy, gd, Math.max(1, type.foot()) });
+                }
+            }
             if (type.clone) { // [2026-10-28] 분신 -- 한 대에 펑 사라지고, 두목이 기운을 되찾으며 함정처럼 반격(두목 공격력)
                 S5MineMap.Mob bm = mineBossOf(map);
                 MobState bst = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
@@ -11410,7 +11420,30 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  0이 되면 배가 부서져 남쪽 바닷가로 떠밀려 오며, 고치기 전에는 배를 띄울 수 없다(mineSail). 수리는 바닷가 뱃사람/해상도시 부두지기(해상전투와 함께).
     static final String MINE_ITEM_BOAT_DMG = "BOAT_DMG", MINE_ITEM_BOAT_LV = "BOAT_LV";
     static final long MINE_BOAT_HP = 200_000L;
-    static long mineBoatHpMax(Map<String, Integer> items) { return MINE_BOAT_HP + MINE_BOAT_HP * Math.max(0, Math.min(10, items.getOrDefault(MINE_ITEM_BOAT_LV, 0))) / 10; }
+    static long mineBoatHpMax(Map<String, Integer> items) { long b = MINE_BOAT_HP + MINE_BOAT_HP * Math.max(0, Math.min(10, items.getOrDefault(MINE_ITEM_BOAT_LV, 0))) / 10; return items.getOrDefault(MINE_ITEM_SHIP, 0) > 0 ? b * MINE_SHIP_HP_MUL : b; } // [2026-11-24] 화포선 체력 2배
+    // ---- [2026-11-24] 화포선(대형선박, 시안 승인) -- "나무와 철괴로 더 큰 배, 플레이어가 공격하면 같이 공격(화포선)".
+    //  바다마을 윤슬항 조선공(64,61)에게 1인용 배 + 나무 200 + 철괴 50 -> SHIP = 1. 가지면 배를 띄울 때 늘 화포선(그림), 배 체력 x MINE_SHIP_HP_MUL(수리는 % 그대로).
+    //  물 위에서 일반 공격이 맞으면 갑판 대포가 그 한 대의 MINE_SHIP_GUN_PCT만큼 더(MINE_SHIP_GUN_MS에 한 번, 화면 shipShot = [x, y, 피해, 발 크기]).
+    static final String MINE_ITEM_SHIP = "SHIP";
+    static final String[][] MINE_SHIP_COST = { { S5MineMap.WOOD_CODE, "200" }, { S5MineMap.BAR_CODES[1], "50" } };
+    static final int MINE_SHIP_HP_MUL = 2;
+    static final double MINE_SHIP_GUN_PCT = 0.4;
+    static final long MINE_SHIP_GUN_MS = 1_000L;
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_SHIP_GUN_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    HashMap<String, Object> mineShipBuild(String userName) {
+        HashMap<String, Object> row = dao.selectMineUserForUpdate(userName);
+        if (row == null || !mineAtNpc(row, "shipwright")) return mineGearResult(userName, false, "⚓ 바다마을 윤슬항 조선공에게서만 지을 수 있어요.");
+        Map<String, Integer> items = mineItems(userName);
+        if (items.getOrDefault(MINE_ITEM_SHIP, 0) > 0) return mineGearResult(userName, false, "⚓ 조선공: 이미 화포선이 있잖소. 바다에서 마음껏 쏘시오!");
+        if (items.getOrDefault(S5MineMap.BOAT_ITEM, 0) <= 0) return mineGearResult(userName, false, "⚓ 조선공: 늘릴 배가 없구려. 다도해 본섬 배 목수에게서 1인용 배부터 만들어 오시오.");
+        if (!mineCostOk(MINE_SHIP_COST, mineOreHave(userName))) return mineGearResult(userName, false, "⚓ 조선공: 재료가 모자라오. (" + mineCostText(MINE_SHIP_COST) + mineLackText(MINE_SHIP_COST, userName) + ")");
+        mineTakeCost(userName, MINE_SHIP_COST, 1);
+        dao.upsertMineItem(userName, MINE_ITEM_SHIP, 1);
+        HashMap<String, Object> out = mineGearResult(userName, true, "⚓ 화포선이 완성됐어요! 이제 배를 띄우면 화포선으로 나가요. 물 위에서 공격하면 갑판 대포가 함께 쏴요(1초에 한 번, 그 공격의 40%). 배 체력도 2배!");
+        out.put("ores", mineOreList(userName));
+        out.put("rewardFlash", true);
+        return out;
+    }
     /** {지금 체력, 최대 체력} */
     static long[] mineBoatHp(Map<String, Integer> items) { long mx = mineBoatHpMax(items); return new long[] { Math.max(0, mx - Math.max(0, items.getOrDefault(MINE_ITEM_BOAT_DMG, 0))), mx }; }
     /** 배가 dmg만큼 맞는다 -- 남은 체력. [2026-11-18] "배가 부서지면 마을로 보내 버리자" -- 0이 되면 마을(부활 거점)로 떠밀려 가고 out에 안내/상태를 담는다. */
@@ -11562,6 +11595,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (action != null && action.startsWith("sail:")) return mineSail(userName, action.substring(5)); // [2026-11-18] 바닷가 뱃사람 / 해상도시 부두지기
         if (action != null && (action.equals("boatfix") || action.startsWith("boatfix:"))) { String[] ba = action.split(":"); int bn; try { bn = ba.length > 2 ? Integer.parseInt(ba[2]) : 999; } catch (NumberFormatException ex) { bn = 1; } return mineBoatFix(userName, ba.length > 1 ? ba[1] : S5MineMap.SEA_GEM_CODES[0], bn); } // [2026-11-18] 배 수리, [2026-11-19] boatfix:재료:개수
         if ("fishinv".equals(action)) return mineFishInv(userName); // [2026-11-19] 인벤토리 낚시 탭
+        if ("ship".equals(action)) return mineShipBuild(userName); // [2026-11-24] 윤슬항 조선공 -- 화포선
         if ("fishshop".equals(action) || (action != null && action.startsWith("fishbuy:"))) return mineFishShop(userName, action); // [2026-11-23] 윤슬항 낚시 용품 상인
         if ("krkrespawn".equals(action) && isMineAdmin(userName)) return mineKrkRespawnNow(); // [2026-11-19] 관리자 -- 크라켄 다시 살리기
         if ("wpdur".equals(action)) return mineWpDurInfo(userName, new HashMap<String, Object>()); // [2026-11-18] 워프 포인트 관리인
@@ -11788,6 +11822,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             ar.put("key", items.getOrDefault(S5MineMap.SHRINE_KEY_ITEM, 0) > 0); // [2026-10-28] 신궁 열쇠(수색 임무 보상)
             ar.put("bossReward", items.getOrDefault(MINE_ITEM_SHRINE_BOSS_REWARD, 0) > 0); // 닌자 두목 첫 처치 보상을 받았는지
             ar.put("boat", items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0);
+            ar.put("ship", items.getOrDefault(MINE_ITEM_SHIP, 0) > 0); // [2026-11-24] 화포선
+            ar.put("shipCosts", mineCostList(MINE_SHIP_COST, have));
+            ar.put("shipCan", mineCostOk(MINE_SHIP_COST, have));
             long[] bhp = mineBoatHpU(userName, items); // [2026-11-18] 배 체력(아직 안 쓴 피해까지)
             ar.put("boatHp", bhp[0]);
             ar.put("boatHpMax", bhp[1]);
@@ -12380,6 +12417,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         volatile int mercEl, mercSt, mercNi; // [2026-11-06] 용병 속성/단계/이름 번호(화면 이펙트·그림)
         volatile int merc2 = -1, mercEl2, mercSt2, mercNi2; // [2026-11-18] 두 번째 용병(직업, -1 = 없음)
         volatile int merc3 = -1, mercEl3, mercSt3, mercNi3; // [2026-11-23] 세 번째 용병
+        volatile boolean ship; // [2026-11-24] 화포선(다른 사람 화면 그림)
         final java.util.ArrayDeque<HashMap<String, Object>> atks = new java.util.ArrayDeque<>(); // [2026-11-07] 최근 공격(다른 사람 화면용)
         MinePresence(String id) { this.id = id; }
     }
@@ -12495,7 +12533,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
               if (ael > 0 || imm > 0 || weak > 0) out.put("ael", new int[] { left > 0 ? ael : 0, left, imm, weak });
           } }
         if (dir != null && dir.matches("up|down|left|right")) me.dir = dir;
-        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.merc2 = mineMercOn2(lit) ? mineMercCls(lit, MINE_MERC_K2) : -1; if (me.merc2 >= 0) { me.mercEl2 = mineMercEl(lit, MINE_MERC_K2); me.mercSt2 = mineMercStage(mineMercLv(lit, MINE_MERC_K2)); me.mercNi2 = mineMercNi(lit, MINE_MERC_K2, "NM"); } me.merc3 = mineMercOn3(lit) ? mineMercCls(lit, MINE_MERC_K3) : -1; if (me.merc3 >= 0) { me.mercEl3 = mineMercEl(lit, MINE_MERC_K3); me.mercSt3 = mineMercStage(mineMercLv(lit, MINE_MERC_K3)); me.mercNi3 = mineMercNi(lit, MINE_MERC_K3, "NM"); } me.lookAt = now; } // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
+        if (me.look == null || now - me.lookAt > 30_000L) { Map<String, Integer> lit = mineItems(userName); me.look = mineLookOf(lit); me.merc = mineMercOn(lit); if (me.merc >= 0) { me.mercEl = mineMercEl(lit, me.merc); me.mercSt = mineMercStage(mineMercLv(lit, me.merc)); me.mercNi = mineMercNi(lit, me.merc, "NM"); } me.merc2 = mineMercOn2(lit) ? mineMercCls(lit, MINE_MERC_K2) : -1; if (me.merc2 >= 0) { me.mercEl2 = mineMercEl(lit, MINE_MERC_K2); me.mercSt2 = mineMercStage(mineMercLv(lit, MINE_MERC_K2)); me.mercNi2 = mineMercNi(lit, MINE_MERC_K2, "NM"); } me.merc3 = mineMercOn3(lit) ? mineMercCls(lit, MINE_MERC_K3) : -1; if (me.merc3 >= 0) { me.mercEl3 = mineMercEl(lit, MINE_MERC_K3); me.mercSt3 = mineMercStage(mineMercLv(lit, MINE_MERC_K3)); me.mercNi3 = mineMercNi(lit, MINE_MERC_K3, "NM"); } me.ship = lit.getOrDefault(MINE_ITEM_SHIP, 0) > 0; me.lookAt = now; } // [2026-11-24] 화포선 // 외형은 30초마다 다시 읽는다([2026-11-05] 용병 단계도)
         int soloF = S5MineMap.towerFloor(mapId);
         boolean soloMap = soloF > 0 && !S5MineMap.towerTownFloor(soloF); // [2026-11-15] 탑 1인 층 -- 다른 사람은 안 보인다
         for (java.util.Map.Entry<String, MinePresence> e : MINE_PRESENCE.entrySet()) {
@@ -12507,6 +12545,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("y", o.y);
             m.put("d", o.dir);
             m.put("look", o.look);
+            if (o.ship) m.put("sh", 1); // [2026-11-24] 화포선
             if (minePStealthOf(e.getKey(), now) == null) m.put("n", mineNick(e.getKey())); // [2026-11-05] "플레이어 위에 닉네임"(은신 중엔 숨김)
             if (now - o.bubbleAt < MINE_BUBBLE_MS) m.put("bubble", MINE_GREET_LINES[Math.max(0, Math.min(MINE_GREET_LINES.length - 1, o.bubbleT))]); // [2026-11-22] 고른 인사말
             if (o.merc >= 0 && minePStealthOf(e.getKey(), now) == null) { // [2026-11-05] 용병 -- 단계, 쉬는 중, 싸우는 몬스터 칸
