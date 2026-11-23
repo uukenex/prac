@@ -2770,7 +2770,7 @@ var TowerMine = (function () {
     var k = Math.max(1, Math.round(v.w / 128)); // 큰 맵은 점을 크게
     miniCtx.clearRect(0, 0, v.w, v.h);
     if (v.x0 < 0 || v.y0 < 0) { miniCtx.fillStyle = '#0b0912'; miniCtx.fillRect(0, 0, v.w, v.h); } // 레터박스 띠
-    var antWin = map.noMap && !(st && st.adminMaps) && st && st.antMapUntil > nowSrv() ? { x0: Math.round(P.x - map.w / 4), y0: Math.round(P.y - map.h / 4), w: Math.round(map.w / 2), h: Math.round(map.h / 2) } : null; // [2026-11-23] 개미굴 지도 -- 내 둘레 가로·세로 절반
+    var antWin = map.noMap && !(st && st.adminMaps) && st && st.antMapUntil > nowSrv() ? { r: Math.sqrt(map.w * map.h / (4 * Math.PI)) } : null; // [2026-11-23] 개미굴 횃불 -- 내 둘레 둥근 원(넓이 = 전체의 4분의 1쯤)
     if (map.noMap && !(st && st.adminMaps) && !antWin) { // [2026-11-06] 관리자는 개미굴에서도 지도가 보인다 // [2026-10-28] 개미굴 -- 지도가 안 보이는 곳(내 위치도, 길도)
       miniCtx.fillStyle = '#120c08'; miniCtx.fillRect(0, 0, v.w, v.h);
       miniCtx.fillStyle = '#6a4a30'; miniCtx.font = 'bold ' + Math.round(v.w / 5) + 'px sans-serif'; miniCtx.textAlign = 'center'; miniCtx.textBaseline = 'middle';
@@ -2810,12 +2810,10 @@ var TowerMine = (function () {
       miniCtx.fillStyle = '#10202a'; miniCtx.fillRect(o.x - ox - 2 * k - 1, o.y - oy - 2 * k - 1, 4 * k + 3, 4 * k + 3);
       miniCtx.fillStyle = o.look && o.look.gm ? '#c06bff' : '#3fd4ff'; miniCtx.fillRect(o.x - ox - 2 * k, o.y - oy - 2 * k, 4 * k + 1, 4 * k + 1);
     }
-    if (antWin) { // [2026-11-23] 개미굴 지도 -- 창 밖은 다시 가린다(남은 분은 창 아래에)
-      var aw0 = antWin.x0 - ox, ah0 = antWin.y0 - oy, aw1 = aw0 + antWin.w, ah1 = ah0 + antWin.h;
-      miniCtx.fillStyle = '#120c08';
-      miniCtx.fillRect(0, 0, v.w, Math.max(0, ah0)); miniCtx.fillRect(0, ah1, v.w, Math.max(0, v.h - ah1));
-      miniCtx.fillRect(0, ah0, Math.max(0, aw0), antWin.h); miniCtx.fillRect(aw1, ah0, Math.max(0, v.w - aw1), antWin.h);
-      miniCtx.strokeStyle = '#c8945a'; miniCtx.lineWidth = Math.max(1, k); miniCtx.strokeRect(aw0, ah0, antWin.w, antWin.h);
+    if (antWin) { // [2026-11-23] 개미굴 횃불 -- 원 밖은 다시 가리고, 가장자리는 횃불빛
+      var acx = P.x - ox + 0.5, acy = P.y - oy + 0.5;
+      miniCtx.save(); miniCtx.beginPath(); miniCtx.rect(0, 0, v.w, v.h); miniCtx.arc(acx, acy, antWin.r, 0, Math.PI * 2, true); miniCtx.fillStyle = '#120c08'; miniCtx.fill('evenodd');
+      miniCtx.beginPath(); miniCtx.arc(acx, acy, antWin.r, 0, Math.PI * 2); miniCtx.strokeStyle = 'rgba(255,170,60,0.85)'; miniCtx.lineWidth = Math.max(1, k); miniCtx.stroke(); miniCtx.restore();
     }
     miniCtx.fillStyle = '#ff2b2b'; miniCtx.fillRect(P.x - ox - 3 * k, P.y - oy - 3 * k, 6 * k + 1, 6 * k + 1);
     miniCtx.fillStyle = '#ffffff'; miniCtx.fillRect(P.x - ox - k, P.y - oy - k, 2 * k + 1, 2 * k + 1);
@@ -5824,7 +5822,7 @@ var TowerMine = (function () {
       el.smith.innerHTML = npcHead('🍀 ' + n.name, false) + talkBlock(n, n.line)
         + '<div class="mine-smith-row"><span class="nm">📜 행운의 주문서 (10분)<small>경험치 3배 · 드랍률 2배' + (left > 0 ? ' · 남은 시간 ' + Math.ceil(left / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (trb ? '진환생하면 쓸 수 없어요' : cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
         + '<button type="button" ' + (trb ? 'disabled ' : cs.can === false ? 'data-lack="1" ' : '') + 'onclick="TowerMine.cityBuy()">사기</button></div>'
-        + (function () { var am = ((st && st.antMapUntil) || 0) - nowSrv(); return '<div class="mine-smith-row"><span class="nm">🗺️ 개미굴 지도 (10분)<small>개미굴 미니맵에 내 주변(전체의 4분의 1쯤)이 보여요' + (am > 0 ? ' · 남은 시간 ' + Math.ceil(am / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
+        + (function () { var am = ((st && st.antMapUntil) || 0) - nowSrv(); return '<div class="mine-smith-row"><span class="nm">🔥 개미굴 횃불 (10분)<small>개미굴 미니맵에 내 주변이 둥글게 보여요(전체의 4분의 1쯤)' + (am > 0 ? ' · 남은 시간 ' + Math.ceil(am / 60000) + '분 (사면 10분 더)' : '') + '</small><small>' + (cs.cost ? '필요: ' + cs.cost : '') + '</small></span>'
           + '<button type="button" onclick="TowerMine.cityBuy(\'antmap\')">사기</button></div>'; })(); // [2026-11-23]
       return;
     }

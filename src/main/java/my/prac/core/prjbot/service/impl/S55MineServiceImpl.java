@@ -10264,7 +10264,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long now = System.currentTimeMillis();
         boolean ok = true;
         String msg = "";
-        if ("antmap".equals(action)) { // [2026-11-23] 개미굴 지도(금괴 1개, 10분)
+        if ("antmap".equals(action)) { // [2026-11-23] 개미굴 횃불(금괴 1개, 10분 -- 같은 날 "개미굴 횃불, 미니맵에 둥근 형태")
             if (!mineAtNpc(row, "citymerchant")) { ok = false; msg = "왕도의 왕도 상인에게서만 살 수 있어요."; }
             else if (!mineCostOk(MINE_LUCK_COST, mineOreHave(userName))) { ok = false; msg = "재료가 부족해요. (" + mineCostText(MINE_LUCK_COST) + " 필요" + mineLackText(MINE_LUCK_COST, userName) + ")"; }
             else {
@@ -10272,7 +10272,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 long until = Math.max(now, mineAntMapUntil(items)) + MINE_ANTMAP_MS;
                 dao.upsertMineItem(userName, MINE_ITEM_ANTMAP, (int) (until / 1000L));
                 items.put(MINE_ITEM_ANTMAP, (int) (until / 1000L));
-                msg = "🗺️ 개미굴 지도를 샀어요! 10분 동안 개미굴 미니맵에 내 주변(전체의 4분의 1쯤)이 보여요. (" + mineCostText(MINE_LUCK_COST) + " 사용)";
+                msg = "🔥 개미굴 횃불을 밝혔어요! 10분 동안 개미굴 미니맵에 내 주변이 둥글게 보여요(전체의 4분의 1쯤). (" + mineCostText(MINE_LUCK_COST) + " 사용)";
             }
         }
         if ("buy".equals(action)) {
