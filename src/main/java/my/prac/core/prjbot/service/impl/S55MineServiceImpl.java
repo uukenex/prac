@@ -11980,7 +11980,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Override
     @Transactional
     public String setMineNotice(String userName, String text) {
-        if (!isEventAdmin(userName) && !isMineAdmin(userName)) return "권한이 없습니다.";
+        if (!isEventAdmin(userName) && !isMineAdminName(userName)) return "권한이 없습니다."; // [2026-11-23] 채팅 명령은 신발과 상관없이 이름으로
         Object[] cur = mineNotice();
         if (text == null || text.trim().isEmpty())
             return "사용법: /광산공지 [내용] (\" / \"로 줄바꿈, \"끄기\"면 안 띄움)\n지금 광산 소식(" + cur[0] + "번):\n" + (((String) cur[1]).isEmpty() ? "(없음)" : cur[1]);
@@ -12529,7 +12529,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     @Override
     public String setMinePatchNotice(String userName, String text) {
-        if (!isEventAdmin(userName) && !isMineAdmin(userName)) return "권한이 없습니다.";
+        if (!isEventAdmin(userName) && !isMineAdminName(userName)) return "권한이 없습니다."; // [2026-11-23] 채팅 명령은 신발과 상관없이 이름으로
         if (text == null || text.trim().isEmpty()) text = MINE_PATCH_DEFAULT;
         if ("끄기".equals(text.trim())) {
             minePatchId = 0;
