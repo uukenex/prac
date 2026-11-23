@@ -1412,6 +1412,7 @@ var TowerMine = (function () {
     var s = mobSt[m.id];
     if (s && s.du > t) return null;
     if (m.d && !s) return null; // [2026-10-28] 대주교 수하 -- 불려 나오기 전엔 없다
+    if (!s && !mobDeathReady && (map.mobTypes[m.k] || {}).boss) return null; // [2026-11-23] 고침: "맵에 들어오면 보스가 있다가 사라진다" -- 서버는 나와 있지 않은 보스만 목록에 싣는데 첫 목록을 받기 전엔 살아 있는 것처럼 그렸다
     if (s && s.fu > t) {
       var md = s.md || 950; // [2026-11-05] 걷는 시간 = 위치가 바뀐 간격(끊김 없이 다음 위치까지 이어 걷게)
       if (s.ox != null && t - s.mt < md) { var q = Math.max(0, (t - s.mt) / md); return { x: s.ox + (s.fx - s.ox) * q, y: s.oy + (s.fy - s.oy) * q, cx: s.fx, cy: s.fy }; } // [2026-10-25] 쫓아올 때 한 칸씩 걸어서
