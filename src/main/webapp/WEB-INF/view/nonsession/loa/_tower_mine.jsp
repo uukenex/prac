@@ -3069,12 +3069,13 @@ var TowerMine = (function () {
     var d = bossCallInfo, h = npcHead('🐿️ ' + n.name, false) + talkBlock(n, n.line);
     if (!d) return h + '<div class="mine-smith-say">...</div>';
     var left = (d.readyAt || 0) - nowSrv(), can = !d.up && left <= 0;
-    if (!can) h += '<div class="mine-smith-say">🐿️ ' + (d.up ? '이미 붙었잖아! 덤벼!' : '헥헥... 좀 쉬자. ' + callLeftTxt(left) + ' 뒤에 다시 와!') + '</div>';
+    if (d.ok === false && d.message) return h + '<div class="mine-smith-say">' + escAttr(d.message) + '</div>'; // [2026-11-23] 처치한 맵 주기 등
+    if (!can) h += '<div class="mine-smith-say">🐿️ ' + (d.up ? '이미 붙었잖아! 덤벼!' : '헥헥... 좀 쉬자. ' + callLeftTxt(left) + ' 뒤에 다시 와! <small>(' + callHhmm(d.readyAt) + '부터 다시 싸울 수 있어요)</small>') + '</div>';
     h += '<div class="mine-smith-menu">'
-      + '<button type="button" ' + (can && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.sqGift()">🌰 도토리를 바친다 <small>(' + escAttr(d.giftCost || '금괴 1개') + ' → 다람쥐메달)</small></button>'
+      + '<button type="button" ' + (!d.up && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.sqGift()">🌰 도토리를 바친다 <small>(' + escAttr(d.giftCost || '금괴 1개') + ')</small></button>' // [2026-11-23] 보상·쿨타임 없이
       + '<button type="button" ' + (can && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.bossCall()">⚡ 한판 붙자!</button>'
       + '<button type="button" onclick="TowerMine.closeSmith()">👋 그냥 간다</button></div>'
-      + '<div class="mine-smith-say"><small>도토리를 바치든 싸우든 굴마다 2시간에 한 번이에요. 이기면 다람쥐메달 1개(아직 쓸 곳은 없대요).</small></div>';
+      + '<div class="mine-smith-say"><small>싸우기는 2시간에 한 번이에요.</small></div>'; // [2026-11-23] 보상 설명은 뺐다
     return h;
   }
   function sqGiftGo() {

@@ -62,7 +62,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     @Override
-    public boolean s55IsAdmin(String userName) { return isMineAdmin(userName); }
+    public boolean s55IsAdmin(String userName) { return isMineAdminName(userName); } // [2026-11-23] 알림 빼기 등은 신발과 상관없이 이름으로
 
     /** 입력한 이름 다듬기(앞뒤 공백, 줄바꿈/제어문자/꺾쇠 없음, 1~S55_NAME_MAX자) -- 쓸 수 없으면 null. */
     static String s55CleanName(String name) {
@@ -3694,18 +3694,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         boolean sqDen = S5MineMap.isSqDen(map.id);
         if (sqDen) { out.put("sq", true); out.put("giftCost", mineCostText(MINE_SQ_GIFT_COST)); }
         if (sqDen && mineSqGone(now)) { out.put("message", "🍂 최강다람쥐는 어디론가 사라졌어요... (맵이 초기화되면 돌아온대요)"); return out; } // [2026-11-23]
-        if ("sqgift".equals(action) && sqDen) { // [2026-11-23] 최강다람쥐 -- 도토리(금괴)를 바치면 다람쥐메달 1개(+ 가끔 별빛석), 싸우기와 같은 쿨타임
+        if ("sqgift".equals(action) && sqDen) { // [2026-11-23] 최강다람쥐 -- 도토리(금괴)를 바친다. 같은 날 "금괴 주는 건 보상 없도록" -- 보상도 쿨타임도 없이 고마워만 한다
             if (up || mineCallPending(map.id, now) > 0) { out.put("message", "⚡ 지금은 싸우는 중이에요!"); return out; }
-            if (ready > now) { out.put("message", "🐿️ 최강다람쥐: 오늘은 도토리 충분하다구! " + mineCallLeft(ready - now) + " 뒤에 다시 와."); return out; }
             if (!mineCostOk(MINE_SQ_GIFT_COST, mineOreHave(userName))) { out.put("message", "🐿️ 최강다람쥐: 도토리(" + mineCostText(MINE_SQ_GIFT_COST) + ")가 없잖아!"); return out; }
             mineTakeCost(userName, MINE_SQ_GIFT_COST, 1);
-            dao.upsertMineItem(userName, MINE_ITEM_CALL + map.id, (int) (now / 60_000L));
-            dao.addUserOre(userName, S5MineMap.SQ_MEDAL_CODE, 1);
-            boolean star = RND.nextInt(100) < 30;
-            if (star) dao.addUserOre(userName, S5MineMap.ORE_CODES[5], 1);
             out.put("ok", true);
-            out.put("readyAt", now / 60_000L * 60_000L + MINE_CALL_CD_MS);
-            out.put("message", "🐿️ 최강다람쥐: 오, 이 도토리 꽤 실한데? 받아 둬! 🏅 다람쥐메달 1개" + (star ? " · ⭐ 별빛석 1개" : "") + " (아직 쓸 곳은 없대요)");
+            out.put("message", "🐿️ 최강다람쥐: 냠냠! 이 도토리 꽤 실한데? 고마워~");
             return out;
         }
         if (!"call".equals(action)) { out.put("ok", true); return out; }
@@ -11730,7 +11724,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("galaxyMax", Math.min(have.getOrDefault(S5MineMap.MOON_STONE_CODE, 0), have.getOrDefault(S5MineMap.SEVEN_STONE_CODE, 0))); // [2026-11-06] 은하수 조각
         out.put("sevenDayNeed", MINE_SEVEN_DAY_STONES); // [2026-10-28] 칠요석 하나에 요일석 종류마다 몇 개
         out.put("deliverDone", items.getOrDefault(MINE_ITEM_DELIVER_DAY, 0) == mineToday()); // [2026-10-28] 오늘 구리 납품 했는지
-        mineLookPayload(items, have, out, isMineAdmin(userName)); // [2026-10-24] 명품상점(외형)
+        mineLookPayload(items, have, out, isMineAdminName(userName)); // [2026-10-24] 명품상점(외형) -- [2026-11-23] 운영자 신발을 신으려면 이름만으로
         out.put("ores", mineOreList(userName));
     }
 
@@ -13009,7 +13003,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return mineGearResult(userName, true, "기본 모습으로 돌아갔어요.");
         }
         MineCos c = mineCos(code);
-        if (c == null || (c.admin && !isMineAdmin(userName))) return mineGearResult(userName, false, "없는 상품이에요.");
+        if (c == null || (c.admin && !isMineAdminName(userName))) return mineGearResult(userName, false, "없는 상품이에요."); // [2026-11-23] 이름만(신발 신기 전에도)
         boolean owned = items.getOrDefault("COS_" + c.code, 0) > 0 || c.admin; // [2026-10-28] 운영자 전용은 관리자가 처음부터 가진다
         if ("buy".equals(action) && !owned) {
             if (!mineCostOk(c.cost, mineOreHave(userName))) return mineGearResult(userName, false, "명품상점: 재료가 모자라요. (" + mineCostText(c.cost) + " 필요" + mineLackText(c.cost, userName) + ")");
@@ -13053,10 +13047,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
 
     /** [2026-10-24] 광산 관리자(좌표 이동) -- MINE_ADMIN_USERS 또는 EVENT_ADMIN_USERS에 있는 유저. */
-    boolean isMineAdmin(String userName) {
+    // [2026-11-23] "관리자도 신발 안 신으면 관리자 권한 없도록" -- 관리자 권한(관리자 지도/이동/시험 기능/드랍 배수 등)은 관리자 이름 + 운영자 신발(바람의 신)을 신고 있을 때만.
+    //  신발 상점/착용(운영자 전용 상품)과 관리자 알림 빼기(s55IsAdmin)는 이름만 본다(안 그러면 신발을 신을 수도 없다). 신발은 3초 기억.
+    boolean isMineAdmin(String userName) { return isMineAdminName(userName) && mineAdminShoesOn(userName); }
+    boolean isMineAdminName(String userName) {
         if (userName == null) return false;
         if (MINE_ADMIN_USERS != null) for (String u : MINE_ADMIN_USERS.split("\\|")) if (!u.trim().isEmpty() && u.trim().equals(userName.trim())) return true;
         return isEventAdmin(userName);
+    }
+    static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_ADMIN_SHOES = new java.util.concurrent.ConcurrentHashMap<>(); // 이름 -> {신었으면 1, 본 시각}
+    boolean mineAdminShoesOn(String userName) {
+        long now = System.currentTimeMillis();
+        long[] c = MINE_ADMIN_SHOES.get(userName);
+        if (c != null && now - c[1] < 3_000L) return c[0] == 1;
+        boolean on = false;
+        try { MineCos sh = mineWornCos(mineItems(userName), "shoes"); on = sh != null && MINE_COS_SPEED.equals(sh.code); } catch (Exception ignore) { }
+        MINE_ADMIN_SHOES.put(userName, new long[] { on ? 1 : 0, now });
+        return on;
     }
 
     /** userName이 EVENT_ADMIN_USERS 목록에 있는지(=이벤트 지급 명령어 실행 권한이 있는지). */
