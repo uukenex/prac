@@ -3608,6 +3608,7 @@ var TowerMine = (function () {
   }
   function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
   var pullFx = null; // [2026-11-23] 보스 끌어당기기 예고 {bx, by, fo, at}
+  var wcFx = []; // [2026-11-23] 수정구슬 물대포 {x, y, t0} -- 하늘에서 물줄기가 내리꽂힌다
   var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0, wbWasBh = false; // [2026-11-23] wbWasBh = 마지막으로 본 월드보스가 베히모스였는지(퇴장 연출)
   // [2026-11-16] "월드보스 등장/퇴장 이펙트 -- 날아서 오고 날아서 간다" -- 정각에 오른쪽 위 하늘에서 날아와 내려앉고(WB_FLY_MS), 시간이 다 되면 왼쪽 위 하늘로 날아간다(wbLeave).
   var WB_FLY_MS = 2800, wbLandAt = 0, wbGoneSeen = 0, wbLeave = null;
@@ -3684,6 +3685,7 @@ var TowerMine = (function () {
   function gloveFx(d) {
     if (!d) return;
     var t = performance.now();
+    if (d.wyrmSave) { flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🐉 즉사 방지! 체력 1', color: '#c88aff', big: true, t0: t }); msg('🐉 거룡의 피부조각이 쓰러질 일격을 버텨 냈어요!', 2000); } // [2026-11-23]
     if (d.berserkSave) { berserkInvUntil = d.berserkSave; flashT0 = t; floats.push({ x: P.x, y: P.y - 1.2, text: '🔥 불굴! 5초 무적', color: '#ff6a3a', big: true, t0: t }); msg('🔥 광전사의 불굴 -- 쓰러질 일격을 버텼어요! 5초 동안 무적이에요.', 2600); }
     else if (d.berserkInv && t - gloveFxT > 700) { gloveFxT = t; floats.push({ x: P.x, y: P.y - 0.8, text: '🛡️ 무적', color: '#ffb07a', t0: t }); }
   }
@@ -5237,6 +5239,8 @@ var TowerMine = (function () {
   var EQ_TIPS = { ASSASSIN_NECKLACE: '공격할 때 15% 확률로 은신. 은신 중엔 몸이 반투명해지고 몬스터의 일반 공격을 2번 회피(15초지속). 회피가 남아 있을 때 공격하면 은신이 풀리며 2배 피해! 원거리 공격과 한기·더위는 못 피해요. ',
     MIND_NECKLACE: '착용시 몬스터 처치 경험치 추가(1~3단계 +10/20/30%)',
     HUNT_NECKLACE: '착용시 몬스터를 쓰러뜨릴 때 보석이 나올 확률 증가(1~5단계 1.3/1.6/2.2/3/4배)', // [2026-11-13]
+    BH_PEARL_NECKLACE: '베히모스가 떨어뜨린 진주목걸이. 공격할 때마다 둘레 8칸을 휘도는 물 회오리(물 돌개베기 5단계)', // [2026-11-23]
+    BH_ORB_GLOVES: '베히모스가 떨어뜨린 수정구슬. 공격이 맞으면 20% 확률로 하늘에서 물대포(물 속성 고정 20만)',
     MERC_DMG_NECKLACE: '착용시 용병 피해 증가(1~5단계 +3/6/10/15/20%)', // [2026-11-23]
     MERC_CD_NECKLACE: '착용시 용병 스킬 쿨타임 감소(1~5단계 -3/6/10/15/20%)',
     SAND_NECKLACE: '착용시 캘 때 보석이 나올 확률 증가(1~5단계 1.3/1.6/2.2/3/4배)',
@@ -5965,7 +5969,7 @@ var TowerMine = (function () {
   // [2026-10-24] 장비/합성/선장 응답 -- 서버가 장비 목록·광석·이동 속도·물 위 걷기를 함께 돌려준다.
   function applyGear(d) {
     if (!d) return;
-    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax', 'ringMaps', 'ringReadyAt', 'hairStyles', 'hairDyes', 'hairStyleCur', 'hairDyeCur', 'barber'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
+    ['gear', 'equip', 'wenh', 'aenh', 'armorRegen', 'gloveCode', 'archiShop', 'archi', 'dragon', 'sevenMax', 'galaxyMax', 'sevenDayNeed', 'deliverDone', 'ores', 'waterWalk', 'stepMs', 'look', 'cosShop', 'genderCosts', 'genderCan', 'durability', 'durabilityMax', 'ringMaps', 'ringReadyAt', 'hairStyles', 'hairDyes', 'hairStyleCur', 'hairDyeCur', 'barber', 'whirl'].forEach(function (k) { if (d[k] != null) st[k] = d[k]; });
     if (d.ringOff) { st.ringMaps = null; st.ringReadyAt = 0; } // [2026-11-20] 용의 반지를 빼면 지도 이동도 끝
     if (d.durability != null) showStamina(); // [2026-10-28] 구리 납품 -- 곡괭이 내구도 표시
     STEP_MS = st.stepMs || 140;
@@ -7919,6 +7923,7 @@ var TowerMine = (function () {
       var atkEl = st.ench && st.ench.left > 0 && st.ench.el ? ELEM_ICON[st.ench.el] : ''; // [2026-10-30] "속성 공격 시 표기" -- 부여한 속성 아이콘, 상성이면 x1.5
       // [2026-10-28] 닌자 -- 은신 회피("💨 은신!"), 분신("💨 펑!"), 은신했던 닌자의 2배 반격("2배!")
       if (d.twinStun) floats.push({ x: fxp, y: fyp - 1.0, text: '💫 기절!', color: '#ffe14d', t0: t + 200 }); // [2026-11-20] 쌍격의 장갑
+      if (d.waterCannon) { wcFx.push({ x: fxp, y: fyp, t0: t }); floats.push({ x: fxp, y: fyp - 1.3, text: '💧 물대포 -' + fmtN(d.waterCannon), color: '#5ac8ff', big: true, t0: t + 280 }); } // [2026-11-23] 베히모스의 수정구슬
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
       else if (dmgSum) { // [2026-11-20] "합산 데미지를 한 번으로 보여 주는 옵션" -- 일반 공격(쌍격 두 번 포함) + 검기 속성 피해를 더해 숫자 하나
@@ -8237,6 +8242,15 @@ var TowerMine = (function () {
       ctx.fillStyle = 'rgba(255,170,40,' + (glow * 0.8) + ')'; ctx.fillRect(lx + TS * 0.15, ly + TS * 0.15, TS * 0.7, TS * 0.7);
       var bb = ((now / 700 + (+lp[0]) * 0.37 + (+lp[1]) * 0.61) % 1);
       ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
+    }
+    if (wcFx.length) { // [2026-11-23] 수정구슬 물대포 -- 0.3초 동안 위에서 물기둥이 떨어지고, 0.3초 동안 물보라
+      var wn = performance.now();
+      wcFx = wcFx.filter(function (w) { return wn - w.t0 < 650; });
+      wcFx.forEach(function (w) {
+        var wq = (wn - w.t0) / 300, wx = (w.x + 0.5) * TS - camX, wy = (w.y + 0.6) * TS - camY;
+        if (wq < 1) { var wtop = wy - TS * 6 * (1 - wq); ctx.fillStyle = 'rgba(90,190,255,0.85)'; ctx.fillRect(wx - TS * 0.18, wtop - TS * 2, TS * 0.36, TS * 2); ctx.fillStyle = 'rgba(220,245,255,0.9)'; ctx.fillRect(wx - TS * 0.06, wtop - TS * 2, TS * 0.12, TS * 2); }
+        else { var wr = (wq - 1) * TS * 1.4, wa = Math.max(0, 1 - (wq - 1) / 1.2); ctx.strokeStyle = 'rgba(120,210,255,' + wa + ')'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.ellipse(wx, wy, wr, wr * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); for (var wd = 0; wd < 6; wd++) { var wa2 = wd * 1.047; ctx.fillStyle = 'rgba(160,225,255,' + wa + ')'; ctx.fillRect(wx + Math.cos(wa2) * wr - 2 * dpr, wy - Math.abs(Math.sin(wa2)) * wr * 0.9 - 2 * dpr, 4 * dpr, 4 * dpr); } }
+      });
     }
     if (pullFx && map) { // [2026-11-23] 끌어당기기 예고 -- 보스에서 나에게 사슬(점선 + 고리)
       var pl = pullFx.at - nowSrv();
