@@ -449,6 +449,9 @@ public final class S5MineMobs {
     public static final int THUNDER_BOSS_TYPE = indexOf("천둥 황소"); // [2026-11-05] 마물의 숲 입구
     public static final int PHARAOH_BOSS_TYPE = indexOf("파라오 미라"); // [2026-11-04] 피라미드 지하
     public static final int HARPY_BOSS_TYPE = indexOf("하피 여왕"); // [2026-11-08] 하피의 둥지
+    public static final int[] SQ_TYPES = sqTypes(); // [2026-11-23] 최강다람쥐(굴 번호 순)
+    private static int[] sqTypes() { int[] r = new int[S5MineMap.SQ_DENS.length]; int n = 0; for (int i = 0; i < TYPES.size() && n < r.length; i++) if ("최강다람쥐".equals(TYPES.get(i).name)) r[n++] = i; return r; }
+    public static int sqIndex(int type) { for (int i = 0; i < SQ_TYPES.length; i++) if (SQ_TYPES[i] == type) return i; return -1; }
     public static final int BORO_BOSS_TYPE = indexOf("심판자 보로네오"); // [2026-11-17] 최후의 방어선
     public static final int BORO_MINION_TYPE = indexOf("심판의 악마 병사");
     public static final int SEA_OCTO = indexOf("바다 문어"), SEA_RAY = indexOf("가오리"), SEA_SHARK = indexOf("상어"), SEA_WHALE = indexOf("고래"), KRAKEN_TYPE = indexOf("심해의 크라켄"); // [2026-11-18] 바다 위
@@ -527,6 +530,8 @@ public final class S5MineMobs {
         TW_MOB_IDX = mi; TW_BOSS_IDX = bi;
         withDemonChaos(base, l);
         for (int f = TW_GEN_FLOORS + 1; f <= TW_GEN_TOP; f++) twGenFloor(l, f, mi, bi, TW_BLOCK_MOBS, TW_BLOCK_BOSS); // [2026-11-23] 51~100층(맨 끝)
+        // [2026-11-23] 최강다람쥐(다람쥐 굴 셋 -- 굴마다 한 마리, 맨 끝) -- 이벤트 보스: 체력 하피 여왕 x3, 번개 속성, 원거리, 제자리(번개처럼 순간 이동은 S55MineServiceImpl.mineSqTurn)
+        for (int i = 0; i < 1; i++) l.add(new Type("최강다람쥐", 26, "quad", "#c8782a").asBoss().strong(9.0, 1.1).showLv(115).asRanged().asStay().el(2));
         return l;
     }
     /** 탑 f층 몬스터(방 몬스터 셋 또는 수문장)를 l 끝에 붙이고 번호를 mi/bi에 적는다. */
@@ -712,6 +717,8 @@ public final class S5MineMobs {
 
     static List<S5MineMap.Mob> spawn(S5MineMap m, long seed) {
         if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
+        if (S5MineMap.SQ_GATE.equals(m.id)) return new ArrayList<>(); // [2026-11-23] 다람쥐 굴 입구 -- 쉼터
+        if (S5MineMap.isSqDen(m.id)) { List<S5MineMap.Mob> sq = new ArrayList<>(); sq.add(new S5MineMap.Mob(0, SQ_TYPES[S5MineMap.sqDenIndex(m.id)], m.bossX(), m.bossY(), new int[] { m.bossY() * m.w + m.bossX() })); return sq; } // [2026-11-23] 다람쥐 굴 -- 최강다람쥐만
         if (m.twSpots() != null) { // [2026-11-15] 탑 방 -- 그 구역 몬스터 셋이 한 자리씩(평소엔 없음 -- 전투방이 되면 하나가 깨어난다, S55MineServiceImpl.mineTowerNext)
             List<S5MineMap.Mob> tw = new ArrayList<>();
             int twf = S5MineMap.towerFloor(m.id); // [2026-11-17] 층마다 따로 만든 몬스터

@@ -159,6 +159,8 @@ public final class S5MineMap {
     /** [2026-11-20] 태초의 보석(84) -- 최후의 방어선 태초의 보석 세공사가 만든다. 한 번 쓰면 검기 폭이 3칸(관리자처럼, 사람마다 한 번). */
     public static final String PRIMAL_GEM_CODE = "PRIMAL_GEM", PRIMAL_GEM_NAME = "태초의 보석";
     public static final int PRIMAL_GEM_GRADE = 84;
+    public static final String SQ_MEDAL_CODE = "SQ_MEDAL", SQ_MEDAL_NAME = "다람쥐메달"; // [2026-11-23] 최강다람쥐 보상(아직 쓸 곳 없음)
+    public static final int SQ_MEDAL_GRADE = 86;
     public static final String SUN_STONE_CODE = "SUNLIGHT", SUN_STONE_NAME = "햇빛석"; // [2026-11-23] 두 번째 월드보스 하늘고래 베히모스 보상
     public static final int SUN_STONE_GRADE = 85;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
@@ -173,14 +175,22 @@ public final class S5MineMap {
     public static final String HARPY_NEST = "harpynest"; // [2026-11-08] 하피의 둥지(보스룸, 지금은 관리자만)
     // [2026-11-11] 두고개식 미궁 -- 방 FOREST_ROOM_N개(0번 = FOREST = 입구 방), 미로의 끝방, 둥지 뒤 나루터. 모두 관리자만(isForestZone).
     public static final String FOREST_END = "forestend", HARPY_FERRY = "harpyferry";
+    // [2026-11-23] "마물의 숲 미궁에 보스방 말고 히든룸 -- NPC 최강다람쥐(선택지를 골라 보상을 받거나 싸우거나)" -- 같은 날 "입구는 하나, 보스 가는 길 몇 걸음 방에 노출,
+    //  입구가 다른 방으로 들어가게(하피 보스룸처럼)": 정답 경로의 3번 방(끝까지 3걸음) 왼쪽 위 나무(3,3)가 좁은 틈(포탈 종류 'H' -- 미니맵엔 없고 가까이 가면 이름만),
+    //  틈 -> 다람쥐 굴 입구(SQ_GATE, 쉼터 -- 몬스터 없음) -> 북쪽 -> 다람쥐 굴(SQ_DENS[0], 최강다람쥐 보스룸).
+    public static final String[] SQ_DENS = { "sqden1" };
+    public static final String SQ_GATE = "sqgate";
+    static final int[] SQ_DEN_FROM = { 3 };
+    public static boolean isSqDen(String id) { return sqDenIndex(id) >= 0; }
+    public static int sqDenIndex(String id) { for (int i = 0; i < SQ_DENS.length; i++) if (SQ_DENS[i].equals(id)) return i; return -1; }
     static final int FOREST_ROOM_N = 15;
     public static final String[] FOREST_ROOM_IDS = forestRoomIds();
     private static String[] forestRoomIds() { String[] a = new String[FOREST_ROOM_N]; a[0] = FOREST; for (int i = 1; i < a.length; i++) a[i] = FOREST + i; return a; }
     /** 미궁 방(입구 방 포함). */
     public static boolean isForestRoom(String id) { return id != null && id.startsWith(FOREST); }
     /** 미궁 방 + 끝방 + 하피의 둥지 + 나루터(지금은 관리자만 -- S55MineServiceImpl.mineWarp). */
-    public static boolean isForestZone(String id) { return isForestRoom(id) || FOREST_END.equals(id) || HARPY_NEST.equals(id) || HARPY_FERRY.equals(id); }
-    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int f = 1; f <= TOWER_FLOORS; f++) { l.add(towerId(f)); if (towerRoomFloor(f)) l.add(towerStairId(f)); } /* [2026-11-15] 탑 층 + 계단방 */ for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); return Collections.unmodifiableList(l); }
+    public static boolean isForestZone(String id) { return isForestRoom(id) || FOREST_END.equals(id) || HARPY_NEST.equals(id) || HARPY_FERRY.equals(id) || isSqDen(id) || SQ_GATE.equals(id); } // [2026-11-23] 다람쥐 굴(+ 입구)
+    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int f = 1; f <= TOWER_FLOORS; f++) { l.add(towerId(f)); if (towerRoomFloor(f)) l.add(towerStairId(f)); } /* [2026-11-15] 탑 층 + 계단방 */ for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); l.add(SQ_GATE); for (String d : SQ_DENS) l.add(d); /* [2026-11-23] 다람쥐 굴 입구 + 굴 */ return Collections.unmodifiableList(l); }
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -879,7 +889,7 @@ public final class S5MineMap {
     /** 지형/포탈/NPC 내용의 해시 -- 화면이 지형을 브라우저에 저장해 두고 바뀌었을 때(리셋 포함)만 다시 받는다. */
     /** [2026-10-28] 화면은 맵 정보(/api/tower-mine-map)를 버전으로 브라우저에 저장해 둔다. 지형/포탈이 그대로여도 맵 정보에 항목이 늘면
      *  (배 목적지 shipTo, 다도해, noDig/vein/noMap 등) 이 숫자를 올려야 옛 정보를 버린다 -- "운영자로 남쪽 섬에서 다도해 못 감"(배 목록에 다도해가 없는 옛 정보). */
-    static final int PAYLOAD_REV = 48; // [2026-11-23] 48: 탑 51층~ 체력/공격/원거리 // 47: 왕도 햇빛 대장장이 // 46: 탑 39/49층 수문장 속성(불/얼음) // [2026-11-20] 45: 왕도 미용실, 44: 워프 포인트 관리인 대사(거룡의 심장 조각), 43: 윤슬항 -> 바다마을 윤슬항(맵 이름), 42: 왕도·요새 도시 연금술사, 41: 최후의 방어선 태초의 보석 세공사, [2026-11-19] 40: 방어구 강화사 왕도로, 39: 등대 대사, [2026-11-18] 38: 다도해 본섬/일곱 섬 내 배로, 37: // [2026-11-18] 37: 남쪽 섬/북쪽 끝 설원/다도해 본섬 배로(sail) + 맵 끝 길, 36: // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
+    static final int PAYLOAD_REV = 49; // [2026-11-23] 49: 다람쥐 굴(미궁 숨은 통로) // [2026-11-23] 48: 탑 51층~ 체력/공격/원거리 // 47: 왕도 햇빛 대장장이 // 46: 탑 39/49층 수문장 속성(불/얼음) // [2026-11-20] 45: 왕도 미용실, 44: 워프 포인트 관리인 대사(거룡의 심장 조각), 43: 윤슬항 -> 바다마을 윤슬항(맵 이름), 42: 왕도·요새 도시 연금술사, 41: 최후의 방어선 태초의 보석 세공사, [2026-11-19] 40: 방어구 강화사 왕도로, 39: 등대 대사, [2026-11-18] 38: 다도해 본섬/일곱 섬 내 배로, 37: // [2026-11-18] 37: 남쪽 섬/북쪽 끝 설원/다도해 본섬 배로(sail) + 맵 끝 길, 36: // [2026-11-18] 36: 연안 뱃길 없앰, 35: 연안 뱃길, 34: // [2026-11-18] 34: 윤슬항 이름, 바다 위 몬스터 2.7배, 33: 바닷가 7시/5시 끝, 좌우로 긴 바다 위 + 등대, 32: // [2026-11-18] 32: 배 맵 boat를 모든 맵에, 바다 위 맨 아래 = 망망대해, 31: // [2026-11-18] 31: 남쪽 바닷가 물가 칸(o), 30: // [2026-11-18] 30: 바다 길(물가 판자/망망대해), 봉우리 길 워프 포인트 하나, 29: // [2026-11-18] 29: 바다 위 몬스터/크라켄/화약통/신호 부표, 낚시 // // [2026-11-18] 28: 다도해 뱃길 왼쪽 아래 남쪽 바닷가 부두, 바다 위, 해상도시 워프 포인트, 27: 다도해 뱃길 북쪽 끝 해상도시 부두, 26: 요새 도시 늘 밤(alwaysNight), 워프 포인트 // // [2026-11-17] 25: 보로네오(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 24: 왕도 하피 여왕 허수아비(몬스터 번호가 뒤로 하나씩) // // [2026-11-17] 23: 마계 입구(abyss), 혼돈 몬스터(chaos/src), 악마의 땅 광석 // // [2026-11-17] 탑 층마다 몬스터 종류가 바뀌어(층별 생성) 저장해 둔 맵 정보를 다시 받게 // [2026-11-16] 21: 탑 계단방에서 아래 계단 없앰
     //  20: // [2026-11-16] 20: 탑 마을에 아래 계단
     //  19: // [2026-11-16] 19: 요새 도시 + 악마의 들판(몬스터 종류 demon)
     //  18: // [2026-11-16] 18: 탑의 도시 이동 안내원 + 동굴 3층 챔피언(몬스터 종류 champ)
@@ -1419,6 +1429,17 @@ public final class S5MineMap {
             }
         }
         for (int f = TOWER_FLOORS_V2 + 1; f <= TOWER_FLOORS; f++) { out.put(towerId(f), generateTowerFloor(f)); if (towerRoomFloor(f)) out.put(towerStairId(f), towerRoom(f, true)); } // [2026-11-23] 51~100층(맨 뒤 -- 앞 맵들의 몬스터 배치 시드가 안 바뀌게)
+        { // [2026-11-23] 다람쥐 굴 입구 + 굴(맨 뒤) -- 미궁 방 나무에 좁은 틈을 붙인다(방 순서/몬스터 배치는 그대로)
+            String rid = FOREST_ROOM_IDS[SQ_DEN_FROM[0]];
+            S5MineMap rm = out.get(rid);
+            List<Portal> sgp = new ArrayList<>();
+            sgp.add(new Portal(ROOM_W / 2, 0, 'G', SQ_DENS[0], 8, 9, "번개 냄새가 나는 굴 안쪽으로"));
+            sgp.add(new Portal(ROOM_W / 2, ROOM_W - 1, 'G', rid, 3, 4, "미궁으로 돌아가는 틈"));
+            S5MineMap gate = forestRoom(SQ_GATE, "다람쥐 굴 입구", sgp, true);
+            if (rm != null) { List<Portal> rp = new ArrayList<>(rm.portals); rp.add(new Portal(3, 3, 'H', SQ_GATE, ROOM_W / 2, ROOM_W - 2, "🌿 나무 사이 좁은 틈")); rm.portals = rp; }
+            out.put(gate.id, gate);
+            out.put(SQ_DENS[0], generateSqDen(0, SQ_GATE));
+        }
         placeWaypoints(out, seed); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -2837,6 +2858,19 @@ public final class S5MineMap {
         S5MineMap m = new S5MineMap(id, name, false, w, w, c, L - 1, t, new byte[w][w], ps);
         m.noMap = true; // 지도 없음(지금 어디인지 모르게)
         if (end) m.safe.add(new int[] { c, c, 6 });
+        return m;
+    }
+    /** [2026-11-23] 다람쥐 굴 -- 16x12 숲 속 빈터, 가운데 위쪽에 최강다람쥐(보스 집 = 소환사 자리), 아래 틈으로 미궁 방(나무 옆 칸)에 돌아간다. */
+    static S5MineMap generateSqDen(int i, String backRoom) {
+        int w = 16, h = 12, cx = w / 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x == 0 || y == 0 || x == w - 1 || y == h - 1 ? 'F' : (x == cx && y > 5) ? ',' : '.';
+        t[2][2] = 'T'; t[2][w - 3] = 'T'; t[h - 3][2] = 'T'; t[h - 3][w - 3] = 'T';
+        t[h - 1][cx] = 'G';
+        List<Portal> ps = new ArrayList<>();
+        ps.add(new Portal(cx, h - 1, 'G', backRoom, ROOM_W / 2, 1, "굴 입구로"));
+        S5MineMap m = new S5MineMap(SQ_DENS[i], "다람쥐 굴", false, w, h, cx, h - 3, t, new byte[h][w], ps);
+        m.bossX = cx - 1; m.bossY = 3;
         return m;
     }
     static final int HARPY_NEST_W = 46, HARPY_NEST_H = 38, FERRY_W = 30, FERRY_H = 22;
