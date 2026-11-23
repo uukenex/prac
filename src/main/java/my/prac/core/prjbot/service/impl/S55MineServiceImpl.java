@@ -2359,8 +2359,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.Set<String> MINE_WB_COM_GIVEN = java.util.concurrent.ConcurrentHashMap.newKeySet(); // "이름|주기" -- 같은 순간 두 번 주지 않게
     // [2026-11-23] 4~8 = 하늘고래 베히모스(더 넓고 더 아프게): 4 돌풍(싸우는 사람 발밑 7x7) / 5 회오리(둘레 12칸 곳곳 5x5) / 6 물보라 분출(둘레 5칸 -- 맞으면 성벽 너머 중앙 평원으로 날아간다)
     //  / 7 폭풍 낙하(하늘을 나는 동안 싸우는 사람 발밑으로 연달아 내리꽂힘 -- 주기는 MINE_BH_FLY_*) / 8 폭풍 숨결(둘레 15칸 모두, 전체 공격기). 화면 종류 번호는 MINE_WB_ZK(19~23).
-    static final long[] MINE_WB_PAT_GAP_MS = { 10_000L, 13_000L, 17_000L, 50_000L, 9_000L, 12_000L, 24_000L, 0L, 46_000L }, MINE_WB_PAT_WARN_MS = { 3_000L, 2_500L, 1_800L, 5_000L, 2_500L, 2_200L, 2_600L, 1_300L, 5_000L },
-        MINE_WB_PAT_FIRST_MS = { 8_000L, 14_000L, 20_000L, 35_000L, 7_000L, 12_000L, 16_000L, Long.MAX_VALUE / 8, 32_000L };
+    static final long[] MINE_WB_PAT_GAP_MS = { 10_000L, 13_000L, 17_000L, 50_000L, 9_000L, 12_000L, 60_000L, 0L, 46_000L }, MINE_WB_PAT_WARN_MS = { 3_000L, 2_500L, 1_800L, 5_000L, 2_500L, 2_200L, 2_600L, 1_300L, 5_000L },
+        MINE_WB_PAT_FIRST_MS = { 8_000L, 14_000L, 20_000L, 35_000L, 7_000L, 12_000L, 40_000L, Long.MAX_VALUE / 8, 32_000L }; // [2026-11-23] 물보라 분출(6) = 등장 40초 뒤부터 1분마다(40초·1분40초·2분40초·3분40초·4분40초)
     static final int[] MINE_WB_PAT_R = { 2, 1, 3, 13, 3, 2, 5, 2, 15 }; // 장판 반경(체비셰프) -- 꼬리 휩쓸기 3 = 거룡(3x3) 가운데에서 둘레 2칸
     static final double[] MINE_WB_PAT_PCT = { 0.30, 0.20, 0.25, 0.55, 0.32, 0.22, 0.18, 0.24, 0.60 };
     static final String[] MINE_WB_PAT_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "돌풍", "회오리", "물보라 분출", "폭풍 낙하", "폭풍 숨결" };
@@ -2853,6 +2853,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_RANGED_NEXT.clear();
         synchronized (MINE_WB.zones) { MINE_WB.zones.clear(); }
     }
+    /** [2026-11-23] 물보라 분출 다음 시각 -- 정해진 1분 간격 그대로(아무도 안 싸워 늦었으면 지난 차례는 건너뛴다). */
+    static long mineBhSpoutNext(long prev, long now) { long n = prev + MINE_WB_PAT_GAP_MS[6]; while (n <= now) n += MINE_WB_PAT_GAP_MS[6]; return n; }
     /** [2026-11-23] 베히모스 -- MINE_BH_FLY_GAP_MS마다 MINE_BH_FLY_MS 동안 하늘로 올라 자주 옮겨 다니며(mineWbMove), MINE_BH_DIVE_MS마다 싸우는 사람 발밑에 폭풍 낙하(7).
      *  물보라 분출/폭풍 숨결을 예고하는 동안엔 날아오르지 않는다. st.zones 잠금 안에서 부른다. */
     void mineBhFly(WbState st, long now, int stage) {
@@ -2949,9 +2951,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (bh) mineBhFly(st, now, stage);
             for (int k = bh ? 4 : 0; k < (bh ? MINE_WB_PAT_N : 4); k++) {
                 if (k == 7) continue; // 폭풍 낙하는 나는 동안만(mineBhFly)
-                if (bh && mineWbFlying(st, now) && (k == 6 || k == 8)) continue; // 하늘에 있는 동안은 둘레 패턴을 쉰다
+                if (bh && mineWbFlying(st, now) && k == 8) continue; // 하늘에 있는 동안은 폭풍 숨결을 쉰다(물보라 분출은 정해진 시각에 -- [2026-11-23])
                 if (now < st.patNext[k]) continue;
-                st.patNext[k] = now + MINE_WB_PAT_GAP_MS[k] - stage * MINE_WB_PAT_GAP_MS[k] / 6;
+                st.patNext[k] = k == 6 ? mineBhSpoutNext(st.patNext[k], now) : now + MINE_WB_PAT_GAP_MS[k] - stage * MINE_WB_PAT_GAP_MS[k] / 6; // [2026-11-23] 물보라 분출은 체력과 상관없이 정확히 1분마다
                 long at = now + MINE_WB_PAT_WARN_MS[k];
                 if (k == 0 || k == 4) { // 화염 장판 / [2026-11-23] 돌풍 -- 지금 싸우는 사람 몇 명(셋에 하나 + 단계, 많아야 8 -- 돌풍은 둘에 하나)의 발밑
                     List<String> us = new ArrayList<>();
@@ -7846,9 +7848,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon(MINE_ITEM_IMMORTAL_SWORD, "심판의 검", 7, 125, 3400, 0.2, 7, 0, 3, S5MineMap.WEAPON_SHARD_CODES[3]),
         new MineWeapon(MINE_ITEM_SEA_SWORD, "바다의 검", 8, 110, 2800, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]), // [2026-11-18] 바다 위 몬스터/크라켄 전용(공 2800 + 공격력 2%)
         // [2026-11-23] 월드보스 장비(신화 단일 등급) -- 거룡의 이빨 = 심판의 검 x1.5(신화 공 12,240 + 공격력 15%) + 용병 공격력 +5%,
-        //  베히모스의 전율 = 심판의 검 x2(신화 공 16,320 + 공격력 20%) + 용병 공격력 +10%. 거룡/베히모스 처치 때 함께 싸운 사람마다 1%(mineWbGearRoll).
+        //  베히모스의 전율 = 심판의 검 x2(신화 공 16,320 + 공격력 15% -- 같은 날 "두 검 모두 공격력 +15%") + 용병 공격력 +10%. 거룡/베히모스 처치 때 함께 싸운 사람마다 1%(mineWbGearRoll).
         new MineWeapon("WYRM_TOOTH", "거룡의 이빨", 9, 125, 5100, 0.2, 7, 0, 8, S5MineMap.WEAPON_SHARD_CODES[3]),
-        new MineWeapon("BH_TREMOR", "베히모스의 전율", 10, 125, 6800, 0.2, 7, 0, 13, S5MineMap.WEAPON_SHARD_CODES[3]),
+        new MineWeapon("BH_TREMOR", "베히모스의 전율", 10, 125, 6800, 0.2, 7, 0, 8, /* [2026-11-23] 공격력 % 20 -> 15 */ S5MineMap.WEAPON_SHARD_CODES[3]),
     };
     static final String MINE_ITEM_WYRM_TOOTH = "WYRM_TOOTH", MINE_ITEM_BH_TREMOR = "BH_TREMOR", MINE_ITEM_WYRM_SKIN = "ARMOR_WYRM_SKIN";
     static final String MINE_ITEM_BH_PEARL = "BH_PEARL_NECKLACE", MINE_ITEM_BH_ORB = "BH_ORB_GLOVES";
