@@ -3216,10 +3216,75 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  종류(화면 색/이름): 4 독 웅덩이 / 5 낙석 / 6 지면 강타(기절) / 7 맹독 숨결(큰 것 -- 테두리 밖으로) / 8 지옥불. 위치 알림(zones)으로 화면에 보내고, 전투 턴(mineZoneHit)에서 맞는다.
     static final java.util.concurrent.ConcurrentHashMap<String, List<long[]>> MINE_ZONES = new java.util.concurrent.ConcurrentHashMap<>();
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ZONE_SEEN = new java.util.concurrent.ConcurrentHashMap<>();
-    static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불", "심판의 빛", "천사의 일격", "촉수 내려찍기", "물보라", "서리 폭발", "눈보라", "빙하 숨결", "어둠 웅덩이", "해일", "화염 숨결" }; // [2026-11-23] 13~18 = 탑 수문장 속성 장판 // [2026-11-17] 9/10 = 보로네오, [2026-11-18] 11/12 = 크라켄
+    static final String[] MINE_ZONE_NAME = { "화염", "심연의 비", "꼬리 휩쓸기", "멸망의 숨결", "독 웅덩이", "낙석", "지면 강타", "맹독 숨결", "지옥불", "심판의 빛", "천사의 일격", "촉수 내려찍기", "물보라", "서리 폭발", "눈보라", "빙하 숨결", "어둠 웅덩이", "해일", "화염 숨결", "돌풍", "회오리", "물보라 분출", "폭풍 낙하", "폭풍 숨결", "원거리 일격" }; // [2026-11-23] 13~18 = 탑 수문장 속성 장판, 19~23 베히모스(화면 번호), 24 원거리 일격 // [2026-11-17] 9/10 = 보로네오, [2026-11-18] 11/12 = 크라켄
     static void mineZoneAdd(S5MineMap map, int x, int y, long at, int r, int kind, long warn, int permil, long stunMs) {
         List<long[]> l = MINE_ZONES.computeIfAbsent(mineMobPrefix(map), k -> new ArrayList<>());
         synchronized (l) { l.removeIf(z -> at > z[2] + 4_000L); if (l.size() < 60) l.add(new long[] { x, y, at, r, kind, warn, permil, stunMs }); }
+    }
+    // ---- [2026-11-23] "보스가 공격에 성공하지 못할 때(계속 피해 다니거나 안전 자리에서 때릴 때) -- 끌어당기기와 원거리 일격, 우선 체력 50% 이하일 때(분노 게이지 없이),
+    //  물 보스와 빛 보스" + "확정 원거리 공격은 베히모스에도". 대상: 물(3)/빛(8) 속성 보스(배 위의 크라켄·월드보스 제외) 체력 50% 이하, 베히모스는 체력과 상관없이 원거리 일격만.
+    //  🪝 끌어당기기: 2칸 넘게 떨어져 있으면 MINE_PULL_GAP_MS마다 사슬 예고(MINE_PULL_WARN_MS, 화면 pullWarn) -> 보스 옆 칸으로 끌려오고 잠깐 기절(pull).
+    //  🎯 원거리 일격: MINE_SNIPE_GAP_MS마다 내 발밑 3x3 예고(MINE_SNIPE_WARN_MS) -> 최대 체력 MINE_SNIPE_PERMIL천분율(베히모스 x1.25). 둘 다 사람마다 따로 돈다.
+    static final long MINE_PULL_GAP_MS = 14_000L, MINE_PULL_WARN_MS = 1_500L, MINE_PULL_STUN_MS = 600L, MINE_SNIPE_GAP_MS = 9_000L, MINE_SNIPE_WARN_MS = 1_600L;
+    static final int MINE_SNIPE_PERMIL = 200, MINE_ZK_SNIPE = 24, MINE_PULL_RANGE = 14;
+    static final java.util.concurrent.ConcurrentHashMap<String, Object[]> MINE_PULL = new java.util.concurrent.ConcurrentHashMap<>(); // 이름 -> {맵, 보스 번호, 끌려가는 시각}
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_PULL_NEXT = new java.util.concurrent.ConcurrentHashMap<>(), MINE_SNIPE_NEXT = new java.util.concurrent.ConcurrentHashMap<>();
+    void mineBossReach(String userName, S5MineMap map, MineEngage e, int x, int y, long now, HashMap<String, Object> out) {
+        if (map == null || map.boat()) return;
+        Object[] pp = MINE_PULL.get(userName);
+        if (pp != null && now >= (Long) pp[2]) { // 예고가 끝났다 -- 보스 옆 칸으로
+            MINE_PULL.remove(userName);
+            int bid = (Integer) pp[1];
+            if (map.id.equals(pp[0]) && bid >= 0 && bid < map.mobs().size()) {
+                MobState s = MINE_MOB_STATE.get(mineMobKey(map, bid));
+                S5MineMobs.Type t = S5MineMobs.TYPES.get(map.mobs().get(bid).type);
+                int fo = Math.max(1, t.foot());
+                if (s != null && s.deadUntil <= now) {
+                    int dist = Math.max(Math.max(s.fx - x, x - (s.fx + fo - 1)), Math.max(s.fy - y, y - (s.fy + fo - 1)));
+                    if (dist >= 2 && dist <= MINE_PULL_RANGE + 2) {
+                        int bx = -1, by = -1, bd = Integer.MAX_VALUE;
+                        for (int yy = s.fy - 1; yy <= s.fy + fo; yy++) for (int xx = s.fx - 1; xx <= s.fx + fo; xx++) {
+                            if (xx >= s.fx && xx < s.fx + fo && yy >= s.fy && yy < s.fy + fo) continue; // 보스 칸
+                            if (!map.walkable(xx, yy)) continue;
+                            int d = Math.abs(xx - x) + Math.abs(yy - y);
+                            if (d < bd) { bd = d; bx = xx; by = yy; }
+                        }
+                        if (bx >= 0) {
+                            out.put("pull", new int[] { bx, by });
+                            MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_PULL_STUN_MS));
+                            out.put("stunUntil", MINE_STUN.get(userName));
+                        }
+                    }
+                }
+            }
+        }
+        if (e == null || e.mobs.isEmpty()) return;
+        for (Integer id : e.mobs.keySet()) {
+            if (id < 0 || id >= map.mobs().size()) continue;
+            S5MineMap.Mob mb = map.mobs().get(id);
+            S5MineMobs.Type t = S5MineMobs.TYPES.get(mb.type);
+            if (!t.boss || t.dummy || t.sim) continue;
+            boolean wb = mb.type == S5MineMobs.WB_BOSS_TYPE, bh = wb && mineWbBh();
+            if (wb && !bh) continue;
+            if (!bh && (mb.type == S5MineMobs.KRAKEN_TYPE || (t.elem() != S5MineMobs.EL_WATER && t.elem() != S5MineMobs.EL_LIGHT))) continue;
+            MobState s = MINE_MOB_STATE.get(mineMobKey(map, id));
+            if (s == null || s.deadUntil > now) continue;
+            if (!bh && (long) s.hp * 2 >= S5MineMobs.hp(t, mb.rank)) continue; // 체력 50% 이하부터
+            if (now >= MINE_SNIPE_NEXT.getOrDefault(userName, 0L)) {
+                MINE_SNIPE_NEXT.put(userName, now + MINE_SNIPE_GAP_MS);
+                mineZoneAdd(map, x, y, now + MINE_SNIPE_WARN_MS, 1, MINE_ZK_SNIPE, MINE_SNIPE_WARN_MS, (int) Math.round(MINE_SNIPE_PERMIL * (bh ? MINE_BH_DMG_MUL : 1)), 0);
+            }
+            if (!bh && !MINE_PULL.containsKey(userName) && now >= MINE_PULL_NEXT.getOrDefault(userName, 0L)) {
+                int fo = Math.max(1, t.foot());
+                int dist = Math.max(Math.max(s.fx - x, x - (s.fx + fo - 1)), Math.max(s.fy - y, y - (s.fy + fo - 1)));
+                if (dist >= 2 && dist <= MINE_PULL_RANGE) {
+                    MINE_PULL_NEXT.put(userName, now + MINE_PULL_GAP_MS);
+                    MINE_PULL.put(userName, new Object[] { map.id, id, now + MINE_PULL_WARN_MS });
+                    out.put("pullWarn", new long[] { s.fx, s.fy, fo, now + MINE_PULL_WARN_MS });
+                }
+            }
+            break;
+        }
     }
     /** 화면에 보낼 장판 {x, y, 터지는 시각, 반경, 종류, 예고 길이}(없으면 null). */
     static List<long[]> mineZoneList(S5MineMap map, long now) {
@@ -3994,6 +4059,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mobs.add(mineMobRow(id, s));
             }
         }
+        if (hp - dmgSum > 0) mineBossReach(userName, map, e, x, y, now, out); // [2026-11-23] 물·빛 보스 체력 50% 이하 -- 끌어당기기 / 원거리 일격(베히모스는 원거리 일격 늘)
         if (S5MineMap.CASTLE.equals(map.id) && mineWbOn(now) && hp - dmgSum > 0) { // [2026-11-15] 거룡 화염 장판 / 포효
             int wbz = mineWbPattern(userName, x, y, lv, rb, now, hits, out);
             if (wbz > 0) { dmgSum += wbz; killerName = mineWbName(); }

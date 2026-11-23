@@ -3607,6 +3607,7 @@ var TowerMine = (function () {
     if (!was || was.n !== unity.n) { flashT0 = performance.now(); banner = { text: '🤝 우리는 하나! ' + unity.n + '명이 함께 -- 공격력 +' + unity.atk + '% · 체력 x' + unity.hp, t0: performance.now() }; }
   }
   function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
+  var pullFx = null; // [2026-11-23] 보스 끌어당기기 예고 {bx, by, fo, at}
   var wbInfo = null, wbBar = null, wbDownUntil = 0, wbDownEl = null, wbDownTimer = 0, wbWasBh = false; // [2026-11-23] wbWasBh = 마지막으로 본 월드보스가 베히모스였는지(퇴장 연출)
   // [2026-11-16] "월드보스 등장/퇴장 이펙트 -- 날아서 오고 날아서 간다" -- 정각에 오른쪽 위 하늘에서 날아와 내려앉고(WB_FLY_MS), 시간이 다 되면 왼쪽 위 하늘로 날아간다(wbLeave).
   var WB_FLY_MS = 2800, wbLandAt = 0, wbGoneSeen = 0, wbLeave = null;
@@ -6019,6 +6020,8 @@ var TowerMine = (function () {
       if (d.knockX != null) setPos(d.knockX, d.knockY); // [2026-11-05] 밀쳐내기
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
+      if (d.pullWarn) { pullFx = { bx: d.pullWarn[0], by: d.pullWarn[1], fo: d.pullWarn[2] || 2, at: d.pullWarn[3] }; msg('🪝 보스가 사슬을 던졌어요!', 1400); } // [2026-11-23] 끌어당기기 예고
+      if (d.pull) { pullFx = null; setPos(d.pull[0], d.pull[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('🪝 보스에게 끌려갔어요!', 1600); } // [2026-11-23]
       if (d.roar) { flashT0 = performance.now(); msg(wbInfo && wbInfo.bh ? '🐋 베히모스의 울음! 잠깐 움직일 수 없어요.' : '🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
       if (d.bhKnock) { flashT0 = performance.now(); msg('💦 물보라에 휩쓸렸어요!', 1500); } // [2026-11-23] 다음 위치 알림에서 중앙 평원으로
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
@@ -6060,7 +6063,7 @@ var TowerMine = (function () {
         }
         if (h.krk) { krkSwingAdd(h.kx, h.ky, P.x, P.y); floats.push({ x: P.x, y: P.y - 0.3, text: h.dodge ? '💨 회피' : '🐙 -' + h.dmg, color: h.dodge ? '#c8c8ff' : '#ff4a6a', big: true, t0: t + KRK_SWING_MS * KRK_SWING_HIT }); return; } // [2026-11-19] 크라켄 -- 촉수가 내려친 순간에 피해 숫자
         if (h.dodge) { floats.push({ x: P.x, y: P.y - 0.3, text: '💨 회피', color: '#c8c8ff', big: true, t0: t + k * 160 }); return; } // [2026-10-30] 자객의 목걸이 은신
-        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라', '❄️ 서리 폭발', '🌨️ 눈보라', '🧊 빙하 숨결', '🌑 어둠 웅덩이', '🌊 해일', '🔥 화염 숨결', '🌪️ 돌풍', '🌀 회오리', '💦 물보라 분출', '🌩️ 폭풍 낙하', '🐋 폭풍 숨결'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
+        if (h.zone) { flashT0 = t; floats.push({ x: P.x, y: P.y - 0.3 - 0.35 * (h.zk | 0), text: (['🔥 화염', '☄️ 심연의 비', '🌀 꼬리 휩쓸기 💫', '💥 멸망의 숨결', '☠️ 독 웅덩이', '🪨 낙석', '💢 지면 강타 💫', '☠️ 맹독 숨결', '🔥 지옥불', '✨ 심판의 빛', '👼 천사의 일격', '🐙 촉수 내려찍기', '🌊 물보라', '❄️ 서리 폭발', '🌨️ 눈보라', '🧊 빙하 숨결', '🌑 어둠 웅덩이', '🌊 해일', '🔥 화염 숨결', '🌪️ 돌풍', '🌀 회오리', '💦 물보라 분출', '🌩️ 폭풍 낙하', '🐋 폭풍 숨결', '🎯 원거리 일격'][h.zk | 0] || '🔥') + ' -' + h.dmg, color: ['#ff8a2a', '#c88aff', '#ffe94a', '#ff5a6a'][h.zk | 0] || '#ff8a2a', big: true, t0: t }); return; } // [2026-11-15] 거룡 패턴
         floats.push({ x: P.x, y: P.y - 0.3, text: (h.x2 ? '🗡️ 2배! ' : h.heavy ? '💥 강타! ' : '') + '-' + h.dmg + (h.stun ? ' 💫 기절' : ''), color: h.x2 || h.heavy ? '#ff3a6a' : '#ff4a4a', big: true, t0: t + k * 160 }); // [2026-11-15] 탑 수문장 강타/기절
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
@@ -8223,10 +8226,21 @@ var TowerMine = (function () {
       var bb = ((now / 700 + (+lp[0]) * 0.37 + (+lp[1]) * 0.61) % 1);
       ctx.fillStyle = 'rgba(255,230,140,' + (1 - bb) + ')'; ctx.beginPath(); ctx.arc(lx + TS * (0.3 + 0.4 * ((+lp[0] * 7 + +lp[1] * 3) % 5) / 5), ly + TS * (0.7 - 0.4 * bb), TS * 0.08 * (1 + bb), 0, Math.PI * 2); ctx.fill();
     }
+    if (pullFx && map) { // [2026-11-23] 끌어당기기 예고 -- 보스에서 나에게 사슬(점선 + 고리)
+      var pl = pullFx.at - nowSrv();
+      if (pl < -300) pullFx = null;
+      else {
+        var pbx = (pullFx.bx + pullFx.fo / 2) * TS - camX, pby = (pullFx.by + pullFx.fo / 2) * TS - camY, ppx = (P.x + 0.5) * TS - camX, ppy = (P.y + 0.5) * TS - camY;
+        ctx.save(); ctx.strokeStyle = 'rgba(200,210,230,' + (0.6 + 0.35 * Math.sin(now / 60)) + ')'; ctx.lineWidth = 3 * dpr; ctx.setLineDash([6 * dpr, 4 * dpr]);
+        ctx.beginPath(); ctx.moveTo(pbx, pby); ctx.lineTo(ppx, ppy); ctx.stroke(); ctx.restore();
+        for (var pk = 1; pk < 6; pk++) { var pq = pk / 6; ctx.fillStyle = '#8a94a8'; ctx.fillRect(Math.round(pbx + (ppx - pbx) * pq) - 2 * dpr, Math.round(pby + (ppy - pby) * pq) - 2 * dpr, 4 * dpr, 4 * dpr); }
+        if (pl > 0) drawTextImg(textImg('🪝 ' + Math.ceil(pl / 100) / 10 + 's', 'bold ' + Math.round(12 * dpr) + 'px sans-serif', '#ffffff', 3 * dpr, true), ppx, ppy - TS * 1.1);
+      }
+    }
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
-      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255], [150, 220, 255], [220, 240, 255], [120, 200, 255], [110, 50, 160], [60, 140, 255], [255, 110, 30], [190, 245, 225], [140, 230, 200], [70, 170, 255], [255, 240, 140], [120, 215, 255]]; // [2026-11-23] 19~23 베히모스 // [2026-11-23] 13~18 탑 수문장 속성 장판 // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
+      var wtn = nowSrv(), WZC = [[255, 70, 20], [170, 80, 255], [255, 230, 120], [255, 30, 60], [90, 220, 90], [200, 160, 110], [255, 230, 120], [120, 230, 80], [255, 90, 20], [255, 240, 170], [200, 225, 255], [150, 40, 90], [150, 210, 255], [150, 220, 255], [220, 240, 255], [120, 200, 255], [110, 50, 160], [60, 140, 255], [255, 110, 30], [190, 245, 225], [140, 230, 200], [70, 170, 255], [255, 240, 140], [120, 215, 255], [255, 80, 80]]; // [2026-11-23] 19~23 베히모스, 24 원거리 일격 // [2026-11-23] 13~18 탑 수문장 속성 장판 // [2026-11-18] 11 촉수 내려찍기 / 12 물보라
       for (var wzi = 0; wzi < wzAll.length; wzi++) {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
