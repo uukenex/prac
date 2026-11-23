@@ -1718,6 +1718,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MG_TIER_PRICE = { 5, 20, 60, 150 }, MG_TIER_UNLOCK = { 0, 9, 19, 29 }; // 증표, 열리는 수문장 층(TW_BLOCK)
     static final int[][] MG_TIER_RATE = { { 0, 600, 300, 90, 10, 0, 0 }, { 0, 0, 650, 250, 80, 18, 2 }, { 0, 0, 0, 600, 300, 90, 10 }, { 0, 0, 0, 0, 600, 320, 80 } }; // ★0~★6 천분율(중급·최상급은 시즌5 동료 계약서와 같은 비율)
     static String mgCode(String part, int cls, int g) { return "MG_" + part + cls + "_" + g; }
+    // [2026-11-23] "용병 장비 6성을 7성으로 올리는 걸로(햇빛석 사용처)" -- 용병 관리 장비 칸 창에서 ★6 하나(가진 것이든 끼운 것이든)를 햇빛석 MINE_MG7_SUN개로 ★7로.
+    static final int MINE_MG7_SUN = 5;
     static boolean mgAcc(String part) { return "N".equals(part) || "R".equals(part) || "B".equals(part); }
     static String mgName(String part, int cls, int g) {
         int pi = java.util.Arrays.asList(MG_PARTS).indexOf(part);
@@ -1951,6 +1953,39 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             items.put(slot, 0);
             out.put("ok", true);
             out.put("message", mineMercNm(items, c, "NM") + "의 " + MG_PART_NAMES[java.util.Arrays.asList(MG_PARTS).indexOf(code)] + "을(를) 뺐어요.");
+        } else if ("mg7".equals(action)) { // [2026-11-23] ★6 -> ★7(햇빛석) -- 가진 것: code = 장비 코드 / 끼운 것: code = 부위(한 글자), grade = 용병 기록 번호
+            int sun = mineOreHave(userName).getOrDefault(S5MineMap.SUN_STONE_CODE, 0);
+            boolean worn = code != null && code.length() == 1;
+            String part, src = null, slot = null;
+            int cls;
+            if (worn) {
+                int c = grade;
+                if (c < 0 || c > MINE_MERC_K2 || mineMercLv(items, c) <= 0 || !java.util.Arrays.asList(MG_PARTS).contains(code)) { out.put("message", "그런 칸은 없어요."); return out; }
+                slot = mineMercKey(c, "G" + code);
+                if (items.getOrDefault(slot, 0) != 6) { out.put("message", "★6 장비만 7성으로 올릴 수 있어요."); return out; }
+                part = code;
+                cls = mgAcc(part) ? 9 : mineMercCls(items, c);
+            } else {
+                String[] p = code == null ? new String[0] : code.split("_");
+                if (p.length != 3 || !"MG".equals(p[0]) || p[1].length() != 2 || !"6".equals(p[2])) { out.put("message", "★6 장비만 7성으로 올릴 수 있어요."); return out; }
+                part = p[1].substring(0, 1);
+                cls = p[1].charAt(1) - '0';
+                if (!java.util.Arrays.asList(MG_PARTS).contains(part)) { out.put("message", "그런 장비는 없어요."); return out; }
+                src = code;
+                if (!mgAcc(part) && items.getOrDefault(src, 0) < 1) for (int oc = 0; oc < 3; oc++) if (items.getOrDefault(mgCode(part, oc, 6), 0) > 0) { src = mgCode(part, oc, 6); cls = oc; break; } // 무기/투구/갑옷은 직업 구분 없이
+                if (items.getOrDefault(src, 0) < 1) { out.put("message", "가진 장비가 아니에요."); return out; }
+            }
+            if (sun < MINE_MG7_SUN || dao.takeUserOre(userName, S5MineMap.SUN_STONE_CODE, MINE_MG7_SUN) == 0) { out.put("message", "☀️ " + S5MineMap.SUN_STONE_NAME + "이(가) " + MINE_MG7_SUN + "개 있어야 해요. (보유 " + sun + ")"); return out; }
+            if (worn) { dao.upsertMineItem(userName, slot, 7); items.put(slot, 7); }
+            else {
+                dao.upsertMineItem(userName, src, items.get(src) - 1); items.put(src, items.get(src) - 1);
+                String dc = mgCode(part, cls, 7);
+                int dq = items.getOrDefault(dc, 0) + 1;
+                dao.upsertMineItem(userName, dc, dq); items.put(dc, dq);
+            }
+            out.put("ok", true);
+            out.put("best", 7);
+            out.put("message", "☀️ 햇빛이 스며들어 " + mgName(part, cls, 7) + "(으)로 올랐어요! (" + mgEffText(part, 7) + " · " + S5MineMap.SUN_STONE_NAME + " -" + MINE_MG7_SUN + ")");
         } else if ("gem".equals(action)) { // [2026-11-15] 보석 사기 -- code = 보석 코드, grade = 개수
             if (!mineAtNpc(row, "tokenshop")) { out.put("message", "증표 상인에게서만 살 수 있어요."); return out; }
             Object[] gm = null;
@@ -1996,6 +2031,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("gems", gems);
         out.put("have", have);
         out.put("mercs", mineMercCards(items));
+        out.put("sun", mineOreHave(userName).getOrDefault(S5MineMap.SUN_STONE_CODE, 0)); out.put("sunCost", MINE_MG7_SUN); // [2026-11-23] ★6 -> ★7
         if (!out.containsKey("message")) out.put("ok", true);
         out.put("ores", mineOreList(userName));
         return out;
