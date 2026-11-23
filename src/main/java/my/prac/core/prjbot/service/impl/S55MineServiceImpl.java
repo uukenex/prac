@@ -2334,11 +2334,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  맵 주기(2일) 안에서 거룡이 쓰러지면 풀이 2단계(WbPool.stage = 1)로 넘어가 다음 정각 회차부터 베히모스가 나온다. 예고(띠/채팅 예고/게시판의 다음 출현)는 없고 나타날 때만 알린다.
     //  베히모스도 쓰러지면 그 주기엔 끝, 맵이 초기화되면 다시 거룡부터. 몬스터 칸은 거룡 것을 그대로 쓰고 화면이 wb.bh를 보고 그림/이름을 바꾼다.
     //  체력 = 거룡 몫 x MINE_BH_HP_MUL, 원거리/근접/반격 x MINE_BH_DMG_MUL, 바람 속성(무기 상성). 하늘을 날며(MINE_BH_FLY_*) 폭풍 낙하를 내리꽂고, 물보라 분출에 맞으면 중앙 평원으로 날아간다.
-    //  보상(햇빛석만): 체력 10%가 깎일 때마다 그때 싸우던(최근 MINE_WB_ACTIVE_MS 안에 때린) 사람에게 0~1개, 쓰러지면 광산에 들어온 적이 있는 모두에게 1개.
+    //  보상(햇빛석만): 체력 10%가 깎일 때마다 그 10% 구간(100->90%, 90->80% ...)에 한 대라도 때린 사람에게 0~1개(MINE_BH_SEG -- 구간을 넘긴 한 방은 두 구간 모두),
+    //  쓰러지면 광산에 들어온 적이 있는 모두에게 1개. 구간 기여자는 메모리에만 있어 서버를 다시 켜면 그 구간은 다시 켠 뒤 때린 사람부터.
     static final String MINE_BH_NAME = "하늘고래 베히모스";
     static final double MINE_BH_HP_MUL = 1.2, MINE_BH_DMG_MUL = 1.25;
     static final long MINE_BH_FLY_FIRST_MS = 25_000L, MINE_BH_FLY_GAP_MS = 40_000L, MINE_BH_FLY_MS = 9_000L, MINE_BH_DIVE_MS = 1_400L, MINE_BH_FLY_MOVE_MS = 1_800L, MINE_BH_KNOCK_MS = 6_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, Double> MINE_BH_SHARE = new java.util.concurrent.ConcurrentHashMap<>(); // 베히모스 싸운 몫(화면 표시만 -- 보상은 10%마다 싸우던 사람)
+    static final java.util.Set<String> MINE_BH_SEG = java.util.concurrent.ConcurrentHashMap.newKeySet(); // [2026-11-23] 지금 10% 구간에 때린 사람
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_BH_KNOCK = new java.util.concurrent.ConcurrentHashMap<>(); // 물보라 분출에 맞은 사람 -> 맞은 시각(다음 위치 알림에서 중앙 평원으로)
     /** 지금 주기의 월드보스가 베히모스(2단계)인지. */
     static boolean mineWbBh() { return MINE_WB_POOL.stage >= 1; }
@@ -2539,6 +2541,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             p.killedAt = 0;
             p.stage = 0; p.mile = 0; p.dKilledAt = 0; // [2026-11-23]
             MINE_BH_SHARE.clear();
+            MINE_BH_SEG.clear();
             MINE_WB_SHARE.clear();
             MINE_WB_SHARE_SAVED.clear();
             if (!p.test && fresh) {
@@ -2649,17 +2652,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if ((st.phase < 3 && ph >= 3) || (st.phase < 6 && ph >= 6)) { st.roarAt = now; st.roarSeq++; } // 체력 70% / 40% -- 포효
                 st.phase = ph;
             }
-            if (bh && after > 0) { // [2026-11-23] 베히모스 -- 체력 10%가 깎일 때마다 싸우던 사람에게 햇빛석 0~1개
+            if (bh) MINE_BH_SEG.add(userName); // [2026-11-23] 이 10% 구간에 때렸다
+            if (bh && after > 0) { // [2026-11-23] 베히모스 -- 체력 10%가 깎일 때마다 그 구간에 때린 사람에게 햇빛석 0~1개
                 int ml = (int) Math.min(9, (max - after) * 10L / Math.max(1, max));
-                if (ml > p.mile) { int nm = ml - p.mile; p.mile = ml; mineWbPoolSave(now); mineBhMile(st, nm, ml, now); }
+                if (ml > p.mile) {
+                    int nm = ml - p.mile; p.mile = ml; mineWbPoolSave(now);
+                    List<String> seg = new ArrayList<>(MINE_BH_SEG); MINE_BH_SEG.clear(); MINE_BH_SEG.add(userName); // 구간을 넘긴 한 방은 다음 구간에도
+                    mineBhMile(seg, nm, ml, now);
+                }
             }
             if (after <= 0 && !p.killed) {
-                if (bh) { int nm = Math.max(0, 10 - p.mile); p.killed = true; p.killedAt = now; p.mile = 10; st.killed = true; mineWbPoolSave(now); if (nm > 0) mineBhMile(st, nm, 10, now); mineBhFinish(now); }
+                if (bh) { int nm = Math.max(0, 10 - p.mile); p.killed = true; p.killedAt = now; p.mile = 10; st.killed = true; mineWbPoolSave(now); List<String> seg = new ArrayList<>(MINE_BH_SEG); MINE_BH_SEG.clear(); if (nm > 0) mineBhMile(seg, nm, 10, now); mineBhFinish(now); }
                 else {
                     p.killed = true; p.killedAt = now; st.killed = true; mineWbPoolSave(now); mineWbFinish(now);
                     // [2026-11-23] 거룡이 쓰러졌다 -- 이번 주기 다음 회차부터 베히모스(가득 찬 체력, 예고 없이)
                     p.stage = 1; p.dKilledAt = now; p.killed = false; p.killedAt = 0; p.hp = max; p.mile = 0;
-                    MINE_BH_SHARE.clear();
+                    MINE_BH_SHARE.clear(); MINE_BH_SEG.clear();
                     mineWbPoolSave(now);
                 }
             }
@@ -2806,11 +2814,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
     }
-    /** [2026-11-23] 베히모스 체력이 10%씩(nm칸) 깎였다 -- 그때 싸우던 사람(최근 MINE_WB_ACTIVE_MS 안에 때린)마다 칸마다 햇빛석 0~1개. ml = 지금까지 깎인 10% 수. */
-    void mineBhMile(WbState st, int nm, int ml, long now) {
-        for (java.util.Map.Entry<String, Long> en : st.lastHit.entrySet()) {
-            String u = en.getKey();
-            if (now - en.getValue() > MINE_WB_ACTIVE_MS || (MINE_WB_POOL.test && !isMineAdmin(u))) continue;
+    /** [2026-11-23] 베히모스 체력이 10%씩(nm칸) 깎였다 -- 그 구간에 때린 사람(seg)마다 칸마다 햇빛석 0~1개. ml = 지금까지 깎인 10% 수.
+     *  같은 날 "10% 깎일 때 싸우고 있는 사람 말고, 90%가 되는 순간엔 100~90% 동안 기여한 사람들" -- 예전엔 최근 20초 안에 때린 사람이었다. */
+    void mineBhMile(List<String> seg, int nm, int ml, long now) {
+        for (String u : seg) {
+            if (MINE_WB_POOL.test && !isMineAdmin(u)) continue;
             int q = 0;
             for (int i = 0; i < nm; i++) q += RND.nextInt(2);
             try { if (q > 0) dao.addUserOre(u, S5MineMap.SUN_STONE_CODE, q); } catch (Exception e) { continue; }
@@ -9128,13 +9136,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             try { mineMercXpFlushOne(key.substring(0, bar), Integer.parseInt(key.substring(bar + 1)), mx); } catch (Exception ignore) { }
         }
     }
+    // [2026-11-23] "용병은 플레이어 레벨을 넘을 수 없도록" -- 경험치를 받아도 내 레벨(M_LV)에서 멈춘다(계약할 때도 내 레벨까지). 내 레벨은 30초 기억.
+    static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_MERC_CAP = new java.util.concurrent.ConcurrentHashMap<>();
+    int mineMercCap(String userName) {
+        long now = System.currentTimeMillis();
+        long[] c = MINE_MERC_CAP.get(userName);
+        if (c != null && now - c[1] < 30_000L) return (int) c[0];
+        int lv = MINE_LV_TRUE_MAX;
+        try { HashMap<String, Object> r = dao.selectMineUser(userName); if (r != null) lv = mineLv(r); } catch (Exception ignore) { }
+        MINE_MERC_CAP.put(userName, new long[] { lv, now });
+        return lv;
+    }
     void mineMercShare(String userName, Map<String, Integer> items, long gain, int mobLv, long kills, HashMap<String, Object> out) {
         if (gain <= 0 && kills <= 0) return;
         if (items == null) items = mineItems(userName);
         long now = System.currentTimeMillis();
+        int cap = Math.min(MINE_MERC_LV_TOP, mineMercCap(userName)); // [2026-11-23] 내 레벨까지
         for (int k : mineMercActive(items)) {
             int lv = mineMercLv(items, k);
-            if (lv >= MINE_MERC_LV_TOP) continue;
+            if (lv >= cap) continue;
             double f = MINE_MERC_EXP_PCT / 100.0;
             int d = mobLv - lv;
             if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
@@ -9145,7 +9165,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long write = 0, left;
             synchronized (mx) {
                 long exp = e0 + mx.p + g, used = 0;
-                while (nl < MINE_MERC_LV_TOP && exp >= mineMercNeed(nl)) { used += mineMercNeed(nl); exp -= mineMercNeed(nl); nl++; up++; }
+                while (nl < cap && exp >= mineMercNeed(nl)) { used += mineMercNeed(nl); exp -= mineMercNeed(nl); nl++; up++; }
                 if (up > 0 || (mx.at > 0 && now - mx.at >= MINE_MERC_XP_FLUSH_MS)) { write = mx.p + g - used; mx.p = 0; mx.at = 0; } // 레벨이 오르면 / 모은 지 1분이면 DB에(더하기)
                 else { mx.p += g; if (mx.at == 0) mx.at = now; }
                 left = mx.p;
@@ -9678,7 +9698,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     for (String f : new String[] { "LV", "EXP", "PAID", "MANUAL" }) mineMercSet(userName, items, oc, f, 0);
                     mineMercSet(userName, items, oc, "WARN", -1);
                 }
-                int lv = ofLv, el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE);
+                int lv = Math.min(ofLv, mineLv(row)), el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE); // [2026-11-23] 내 레벨까지
                 mineMercSet(userName, items, c, "LV", lv);
                 mineMercSet(userName, items, c, "EXP", keepExp);
                 mineMercSet(userName, items, c, "EL", el);
@@ -9695,7 +9715,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int oi = tier, k2 = MINE_MERC_K2;
             c = oi >= 0 && oi < MINE_MERC_OFFERS ? items.getOrDefault(mineOfKey(oi, "T"), 0) - 1 : -1;
             cOk = c >= 0 && c < MINE_MERC_NAMES.length;
-            int had = mineMercLv(items, k2), lv2 = mineMerc2HireLv(row, items);
+            int had = mineMercLv(items, k2), lv2 = Math.min(mineMerc2HireLv(row, items), mineLv(row)); // [2026-11-23] 내 레벨까지
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
