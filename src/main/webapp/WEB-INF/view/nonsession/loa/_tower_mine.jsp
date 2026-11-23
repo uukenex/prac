@@ -1530,7 +1530,12 @@ var TowerMine = (function () {
         for (var y = 19; y <= 35; y++) { var hw = Math.round(11 - (y - 19) * 0.33); pt.R(24 - hw, y, hw * 2 + 1, 1, fu); }
         pt.E(20, 24, 4, 3, fl); pt.E(28, 24, 4, 3, fl); pt.L(24, 22, 24, 27, fd, 1); // 가슴
         pt.R(21, 28, 7, 8, be); for (var ay = 30; ay <= 34; ay += 2) pt.R(21, ay, 7, 1, bd); pt.R(24, 28, 1, 8, bd); // 배근육
-        if (pose === 'punch') { // [2026-11-23] "격투가 -- 주먹질 모션" -- 프레임마다 왼주먹/오른주먹을 번갈아 앞으로 내지른다(앞을 향한 큰 주먹 + 바람 줄), 다른 팔은 가슴 앞에서 막는다
+        if (pose === 'guard') { // [2026-11-23] "스웨이(복싱) 느낌" -- 연타 사이 가드: 두 주먹을 턱 앞에 붙이고 팔꿈치를 모은 자세(프레임마다 주먹 높이가 살짝 바뀜)
+          pt.E(13, 25, 4, 4, fu); pt.E(35, 25, 4, 4, fu); // 어깨·이두
+          pt.L(13, 28, 15, 21 - sw, fu, 3); pt.L(35, 28, 33, 21 + sw, fu, 3); // 접은 팔
+          pt.E(15, 19 - sw, 4, 4, fd); pt.E(15, 19 - sw, 3, 3, fl); pt.E(33, 19 + sw, 4, 4, fd); pt.E(33, 19 + sw, 3, 3, fl); pt.L(13, 19 - sw, 17, 19 - sw, fd, 1); pt.L(31, 19 + sw, 35, 19 + sw, fd, 1); // 턱 양옆에 올린 주먹(머리에 안 가리게)
+          pf.P(10, 30, Y); pf.P(38, 30, W);
+        } else if (pose === 'punch') { // [2026-11-23] "격투가 -- 주먹질 모션" -- 프레임마다 왼주먹/오른주먹을 번갈아 앞으로 내지른다(앞을 향한 큰 주먹 + 바람 줄), 다른 팔은 가슴 앞에서 막는다
           var jx = f ? 31 : 17, gx = f ? 13 : 35;
           pt.E(f ? 36 : 12, 23, 4, 4, fu); pt.L(f ? 34 : 14, 25, jx, 26, fu, 3); pt.E(jx, 27, 5, 5, fl); pt.L(jx - 3, 25, jx + 3, 25, fd, 1); pt.L(jx - 3, 27, jx + 3, 27, fd, 1); // 내지른 팔 + 큰 주먹
           pt.E(gx, 24, 3, 4, fu); pt.E(f ? 17 : 31, 21, 3, 3, fl); // 막는 팔
@@ -3707,6 +3712,56 @@ var TowerMine = (function () {
     if (!was || was.n !== unity.n) { flashT0 = performance.now(); banner = { text: '🤝 우리는 하나! ' + unity.n + '명이 함께 -- 공격력 +' + unity.atk + '% · 체력 x' + unity.hp, t0: performance.now() }; }
   }
   function unityRing(x, y, now) { var TSn = T * scale, p = 0.5 + 0.5 * Math.sin(now / 220); ctx.strokeStyle = 'rgba(255,214,110,' + (0.55 + 0.35 * p) + ')'; ctx.lineWidth = Math.max(1, 1.5 * scale); ctx.beginPath(); ctx.ellipse(x + TSn / 2, y + TSn * 0.82, TSn * (0.5 + 0.06 * p), TSn * 0.2, 0, 0, Math.PI * 2); ctx.stroke(); for (var i = 0; i < 3; i++) { var a = now / 400 + i * 2.1; fxDot(x + TSn / 2 + Math.cos(a) * TSn * 0.45, y + TSn * 0.82 + Math.sin(a) * TSn * 0.18 - (now / 30 + i * 40) % (TSn * 0.8), 1.2 * scale, '#ffe9a8', 0.7); } }
+  // [2026-11-23] "다람쥐 보스 번개가 사각형만 나와 -- 이미지로" -- 벼락 몰아치기(25)·낙뢰 폭풍(27): 예고 = 바닥의 노란 원(차오름), 터질 때 = 하늘에서 내리꽂히는 번개 줄기 그림
+  //  (미리 그려 둔 4가지, 칸마다 하나) + 바닥 섬광. 전기충격(26): 예고 = 보랏빛 전기 고리(테두리를 도는 불꽃), 터질 때 = 가운데서 사방으로 튀는 전기.
+  var boltImgC = {};
+  function boltImg(v, TS) {
+    var key = v + ':' + TS;
+    if (boltImgC[key]) return boltImgC[key];
+    var w = Math.round(TS * 1.6), h = Math.round(TS * 7), c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'), seed = v * 977 + 13, rnd = function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    var pts = [[w / 2, 0]], n = 9;
+    for (var i = 1; i < n; i++) pts.push([w / 2 + (rnd() - 0.5) * w * 0.7, h * i / n]);
+    pts.push([w / 2, h]);
+    var line = function (p, col, lw, blur) { g.save(); g.strokeStyle = col; g.lineWidth = lw; g.lineJoin = 'round'; g.shadowColor = '#ffe84a'; g.shadowBlur = blur; g.beginPath(); g.moveTo(p[0][0], p[0][1]); for (var j = 1; j < p.length; j++) g.lineTo(p[j][0], p[j][1]); g.stroke(); g.restore(); };
+    line(pts, 'rgba(255,232,74,0.55)', TS * 0.28, TS * 0.6);
+    line(pts, '#ffe84a', TS * 0.13, TS * 0.3);
+    line(pts, '#ffffff', TS * 0.05, 0);
+    for (var b = 0; b < 2; b++) { // 곁가지
+      var s0 = pts[2 + b * 3], br = [s0];
+      for (var k = 1; k <= 3; k++) br.push([s0[0] + (b ? 1 : -1) * k * w * 0.13 + (rnd() - 0.5) * w * 0.1, s0[1] + k * h * 0.06]);
+      line(br, '#ffe84a', TS * 0.06, TS * 0.2);
+    }
+    return (boltImgC[key] = c);
+  }
+  function zoneBoltDraw(k, zx, zy, zs, left, warn, TS, now) {
+    var cx = zx + zs / 2, cy = zy + zs / 2, r = zs / 2 * 0.85;
+    if (k === 26) { // 전기충격
+      if (left > 0) {
+        var p = Math.max(0, Math.min(1, 1 - left / warn));
+        ctx.save(); ctx.strokeStyle = 'rgba(200,150,255,' + (0.5 + 0.4 * Math.sin(now / 50)) + ')'; ctx.lineWidth = 3 * dpr; ctx.setLineDash([6 * dpr, 4 * dpr]); ctx.lineDashOffset = -now / 20;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(160,120,255,' + (0.08 + 0.18 * p) + ')'; ctx.beginPath(); ctx.arc(cx, cy, r * p, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        for (var q = 0; q < 6; q++) { var a = now / 160 + q * 1.047; ctx.fillStyle = q % 2 ? '#ffffff' : '#c88aff'; ctx.fillRect(Math.round(cx + Math.cos(a) * r) - 2 * dpr, Math.round(cy + Math.sin(a) * r) - 2 * dpr, 4 * dpr, 4 * dpr); }
+      } else if (left > -500) {
+        var al = 1 + left / 500;
+        ctx.save(); ctx.strokeStyle = 'rgba(230,200,255,' + al + ')'; ctx.lineWidth = 3 * dpr; ctx.shadowColor = '#c88aff'; ctx.shadowBlur = 12 * dpr;
+        for (var e = 0; e < 8; e++) { var ang = e * 0.785 + (left % 97) * 0.01, x0 = cx, y0 = cy; ctx.beginPath(); ctx.moveTo(x0, y0); for (var s = 1; s <= 4; s++) { var rr = r * s / 4; ctx.lineTo(cx + Math.cos(ang + (s % 2 ? 0.25 : -0.25)) * rr, cy + Math.sin(ang + (s % 2 ? 0.25 : -0.25)) * rr); } ctx.stroke(); }
+        ctx.restore();
+      }
+      return;
+    }
+    // 벼락 몰아치기 / 낙뢰 폭풍
+    if (left > 0) {
+      var pp = Math.max(0, Math.min(1, 1 - left / warn));
+      ctx.save(); ctx.fillStyle = 'rgba(255,232,74,' + (0.10 + 0.25 * pp) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, r * (0.4 + 0.6 * pp), r * 0.55 * (0.4 + 0.6 * pp), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,240,150,' + (0.5 + 0.4 * Math.sin(now / 60)) + ')'; ctx.lineWidth = 2 * dpr; ctx.beginPath(); ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+    } else if (left > -450) {
+      var a2 = 1 + left / 450, bi = boltImg(((zx / TS) | 0) * 7 + ((zy / TS) | 0) * 3 & 3, TS);
+      ctx.save(); ctx.globalAlpha = a2; ctx.drawImage(bi, Math.round(cx - bi.width / 2), Math.round(cy - bi.height)); // 하늘에서 바닥 가운데로
+      ctx.fillStyle = 'rgba(255,250,200,' + (0.7 * a2) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, r * 1.1, r * 0.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  }
   var pullFx = null; // [2026-11-23] 보스 끌어당기기 예고 {bx, by, fo, at}
   var twWasIn = false; // [2026-11-23] 탑에 막 들어왔는지(용병 3배 안내)
   var wcFx = []; // [2026-11-23] 수정구슬 물대포 {x, y, t0} -- 하늘에서 물줄기가 내리꽂힌다
@@ -6144,7 +6199,7 @@ var TowerMine = (function () {
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.pullWarn) { pullFx = { bx: d.pullWarn[0], by: d.pullWarn[1], fo: d.pullWarn[2] || 2, at: d.pullWarn[3] }; msg('🪝 보스가 사슬을 던졌어요!', 1400); } // [2026-11-23] 끌어당기기 예고
-      if (d.sqPunch) sqPunchUntil = performance.now() + 1000; // [2026-11-23] 최강다람쥐 주먹질 그림 1초
+      if (d.sqPunch) sqPunchUntil = performance.now() + 1300; // [2026-11-23] 최강다람쥐 주먹질 그림 -- 1.3초(전투 턴 1초 사이가 끊기지 않게, "다음 동작 대기 짧게")
       if (d.sqStorm) { flashT0 = performance.now(); msg('⛈️ 최강다람쥐: 번개야, 쏟아져라!! (낙뢰 폭풍 3초)', 2600); } // [2026-11-23]
       if (d.sqDash) { sqDashFx.push({ a: d.sqDash, t0: performance.now() }); floats.push({ x: d.sqDash[2] + 1, y: d.sqDash[3] - 0.5, text: '⚡ 전광석화!', color: '#ffe84a', big: true, t0: performance.now() }); } // [2026-11-23] 최강다람쥐
       if (d.push) { setPos(d.push[0], d.push[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('💦 물보라에 벽까지 밀려났어요!', 1600); } // [2026-11-23] 베히모스 물보라 분출(오른쪽/아래/위)
@@ -8401,6 +8456,7 @@ var TowerMine = (function () {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
         if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
+        if (wzk === 25 || wzk === 26 || wzk === 27) { zoneBoltDraw(wzk, wzx, wzy, wzs, wleft, wzw, TS, now); continue; } // [2026-11-23] 최강다람쥐 번개는 그림으로
         if (wleft > 0) {
           var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = !!ZONE_BIG[wzk];
           ctx.fillStyle = 'rgba(' + wc[0] + ',' + wc[1] + ',' + wc[2] + ',' + (big3 ? 0.08 + 0.14 * wp : 0.14 + 0.2 * wp) + ')'; ctx.fillRect(wzx, wzy, wzs, wzs);
@@ -8476,7 +8532,17 @@ var TowerMine = (function () {
           if (!fo && !hopL && !flyL && !ty.sea) { ctx.fillStyle = 'rgba(255,40,40,' + (0.18 + 0.1 * Math.sin(now / 300)) + ')'; ctx.beginPath(); ctx.arc(mx + TS * bf / 2, my + TS * bf / 2, TS * 0.75 * bf, 0, Math.PI * 2); ctx.fill(); }
           else { var shq = fo || Math.max(hopL * 0.55, flyL * 0.6); ctx.fillStyle = 'rgba(0,0,0,' + (0.32 * (1 - shq)) + ')'; ctx.beginPath(); ctx.ellipse(mx + TS * bf / 2, my + TS * bf - TS * 0.2, TS * bf * 0.5 * (1 - 0.6 * shq), TS * 0.36 * (1 - 0.6 * shq), 0, 0, Math.PI * 2); ctx.fill(); } // 내려앉을 자리의 그림자가 점점 커진다
           var bw = TS * (ty.name === '최강다람쥐' ? 1.5 : 1.2) * bf; // [2026-10-29] 보스 2x2칸 -- [2026-11-23] 최강다람쥐는 변신해서 더 크게 -- 그림은 칸들 가운데, 발은 맨 아래 칸
-          ctx.drawImage(ty.name === '최강다람쥐' && sqPunchUntil > performance.now() && !sqCast() ? sqArt('squirrel', Math.floor(now / 70) % 2, 'punch') : mobSprite(sk, ty.name === '최강다람쥐' ? sqCast() : pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), /* [2026-11-23] 최강다람쥐는 번개 부를 때만 팔 들기, 때릴 땐 좌우 주먹을 번갈아 */ Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6 - flyL * TS * (2.6 + 0.3 * Math.sin(now / 260))), bw, bw);
+          var bdx = Math.round(mx + TS * bf / 2 - bw / 2 + fo * TS * 8), bdy = Math.round(my + bf * TS - bw - bob - fo * TS * 14 - hopL * TS * 2.6 - flyL * TS * (2.6 + 0.3 * Math.sin(now / 260)));
+          if (ty.name === '최강다람쥐' && !sqCast()) { // [2026-11-23] "연타 모션 + 스웨이(복싱)" -- 때릴 땐 좌우 주먹을 0.07초마다 번갈아 내지르며 몸을 좌우로 흔들고(기울기 + 앞으로 살짝),
+            //  연타 사이 2.5초는 가드 자세로 리듬을 탄다(느린 스웨이). 그 밖엔 평소 그림. 발 가운데를 축으로 기울인다.
+            var pn = performance.now(), pmode = sqPunchUntil > pn ? 2 : sqPunchUntil + 2500 > pn ? 1 : 0;
+            if (pmode) {
+              var swp = Math.sin(now / (pmode === 2 ? 85 : 210)), ang = swp * (pmode === 2 ? 0.09 : 0.06), lunge = pmode === 2 ? 1 + 0.05 * Math.abs(Math.sin(now / 70 * Math.PI)) : 1, bw2 = Math.round(bw * lunge);
+              ctx.save(); ctx.translate(bdx + bw / 2 + swp * TS * 0.15, bdy + bw); ctx.rotate(ang);
+              ctx.drawImage(pmode === 2 ? sqArt('squirrel', Math.floor(now / 70) % 2, 'punch') : sqArt('squirrel', Math.floor(now / 300) % 2, 'guard'), -bw2 / 2, -bw2, bw2, bw2);
+              ctx.restore();
+            } else ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), bdx, bdy, bw, bw);
+          } else ctx.drawImage(mobSprite(sk, ty.name === '최강다람쥐' ? sqCast() : pose, Math.floor(now / (fo || hopL ? 150 : 480) + bid)), bdx, bdy, bw, bw); /* [2026-11-23] 최강다람쥐는 번개 부를 때만 팔 들기 */
         } else if (ty.sea) { var sw3 = ty.kind === 'whale' ? TS * 2 : TS; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 420 + bid)), Math.round(mx + TS / 2 - sw3 / 2), Math.round(my + TS - sw3 - bob * 0.5), sw3, sw3); if (ty.kind === 'whale') my -= Math.round(TS * 0.7); } // [2026-11-18] 바다 몬스터
         else if (BOSS_ART[ty.name]) { var qw = TS * 1.5; ctx.drawImage(mobSprite(sk, false, Math.floor(now / 480 + bid)), Math.round(mx + TS / 2 - qw / 2), Math.round(my + TS - qw - bob), qw, qw); } // 여왕개미(보스급)
         else if (ty.chaos) { // [2026-11-17] 악마화된 몬스터 -- 원래 그림을 크게(보스였으면 2.2배, 아니면 1.8배), 발밑 검붉은 기운 + 보랏빛 일렁임
