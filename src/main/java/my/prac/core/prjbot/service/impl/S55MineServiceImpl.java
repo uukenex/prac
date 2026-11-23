@@ -8938,6 +8938,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
     static final double MINE_MERC_EXP_PCT = 1.0;
     static final int MINE_MERC_EXP_GAP = 10, MINE_MERC_EXP_CAP_PCT = 10;
+    static final int MINE_MERC_EXP_DIV100 = 20; // [2026-11-23] 용병 100레벨부터 받는 경험치 1/20
     static final long MINE_MERC_REST_MS = 20_000L;
     static final double MINE_MERC_REGEN = 0.05;
     static String mineMercKey(int c, String f) { return "MERC" + c + "_" + f; }
@@ -9159,6 +9160,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int d = mobLv - lv;
             if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
             long need = mineMercNeed(lv), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT / 100)));
+            if (lv > MINE_LV_MAX) g = Math.max(Math.max(1, kills), g / MINE_MERC_EXP_DIV100); // [2026-11-23] "용병 100레벨 이후엔 경험치를 20분의 1쯤" -- 한 번에 받는 상한(필요량 10%)까지 함께 줄인다
             long e0 = items.getOrDefault(mineMercKey(k, "EXP"), 0); // DB 값
             MercXp mx = MINE_MERC_XP.computeIfAbsent(mineMercXpKey(userName, k), q -> new MercXp());
             int up = 0, nl = lv;
