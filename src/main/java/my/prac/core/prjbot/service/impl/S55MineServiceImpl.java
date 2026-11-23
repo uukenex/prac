@@ -9040,7 +9040,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return (l <= 80 ? MINE_MERC_ATK_LV1 + (MINE_MERC_ATK_LV80 - MINE_MERC_ATK_LV1) * (l - 1) / 79.0 : MINE_MERC_ATK_LV80 + (MINE_MERC_ATK_LV99 - MINE_MERC_ATK_LV80) * (l - 80) / 19.0)
                 + mineOverAtk(lv); // [2026-11-18] 99 이후 -- 플레이어와 같은 양(100레벨 +300, 그 뒤 +10씩 더)
     }
-    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[mineMercCls(items, c)] * (1 + mineMgBonus(items, c)[0] / 100.0)); } // [2026-11-15] 동료 장비 공격력 %
+    static int mineMercAtk(Map<String, Integer> items, int c) { return (int) Math.round(mineMercBaseAtk(mineMercLv(items, c)) * MINE_MERC_DMG[mineMercCls(items, c)] * (1 + mineMgBonus(items, c)[0] / 100.0) * (1 + mineMercNeckPct(items, MINE_ITEM_MERC_DMG_NECK) / 100.0)); } // [2026-11-23] 투지의 목걸이 // [2026-11-15] 동료 장비 공격력 %
     static int mineMercHp(Map<String, Integer> items, int c) { return mineHpMax(Math.max(1, mineMercLv(items, c)), 0); }
     /** 스킬 설명(단계 s). */
     /** 평타 설명(단계 s = 1 + 레벨/20). */
@@ -9422,7 +9422,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int s2 = mineMercSel(items, k, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
         HashMap<String, Object> sk = null;
         boolean cast = false;
-        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= mineMercSkillCd(cls, el)) { ms.skillAt = now; cast = true; } } // [2026-11-18] 마법사 물 12초 / 번개 5초
+        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= mineMercSkillCd(cls, el) * (100 - mineMercNeckPct(items, MINE_ITEM_MERC_CD_NECK)) / 100) { ms.skillAt = now; cast = true; } } // [2026-11-23] 지휘관의 목걸이 // [2026-11-18] 마법사 물 12초 / 번개 5초
         if (cast) {
             sk = new HashMap<>();
             sk.put("x", ps.fx); sk.put("y", ps.fy); sk.put("s", s2);
@@ -10603,6 +10603,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             new String[][][] { { mineCost(3, 10), mineStar(1), mineBar(4, 1), mineBar(3, 2), mineCut(3, 1), { S5MineMap.GALAXY_CODE, "2" } },
                 { mineCost(3, 20), mineCut(3, 3), mineBar(4, 3), mineBar(3, 5), mineStar(3), { S5MineMap.MOON_STONE_CODE, "2" }, { S5MineMap.seaCutCode(3), "2" }, { S5MineMap.GALAXY_CODE, "5" } } },
             new String[] { "필살기 쿨타임 -25% (120초 -> 90초)", "필살기 쿨타임 -35% (120초 -> 78초)" }, 0),
+        // [2026-11-23] "신규 목걸이 -- 용병 스킬 쿨타임 감소 3%, 용병 데미지 증가 3%, 레벨업시키면 더 강력" -- 둘 다 5단계(3/6/10/15/20%), 1~2단계는 마을 대장장이, 3단계부터 왕도 대장장이
+        new MineGear("MERC_DMG_NECKLACE", "투지의 목걸이", "necklace", // = MINE_ITEM_MERC_DMG_NECK
+            new String[][][] { { mineCost(6, 20), mineBar(2, 1) }, { mineCost(7, 5), mineCost(8, 1), mineBar(3, 1) }, { mineCost(7, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(6, 1) },
+                { mineCost(7, 80), mineCost(8, 10), mineSeven(5), mineBar(4, 2), mineBar(3, 3), mineCut(6, 3), mineStar(2) },
+                { mineCost(7, 150), mineCost(8, 20), mineSeven(10), mineBar(4, 5), mineCut(6, 6), mineStar(4), { S5MineMap.MOON_STONE_CODE, "3" } } },
+            new String[] { "용병 피해 +3%", "용병 피해 +6%", "용병 피해 +10%", "용병 피해 +15%", "용병 피해 +20%" }, 2),
+        new MineGear("MERC_CD_NECKLACE", "지휘관의 목걸이", "necklace", // = MINE_ITEM_MERC_CD_NECK
+            new String[][][] { { mineCost(1, 20), mineBar(2, 1) }, { mineCost(0, 5), mineCost(8, 1), mineBar(3, 1) }, { mineCost(0, 40), mineCost(8, 5), mineSeven(2), mineBar(3, 2), mineBar(2, 1), mineCut(1, 1) },
+                { mineCost(0, 80), mineCost(8, 10), mineSeven(5), mineBar(4, 2), mineBar(3, 3), mineCut(1, 3), mineStar(2) },
+                { mineCost(0, 150), mineCost(8, 20), mineSeven(10), mineBar(4, 5), mineCut(1, 6), mineStar(4), { S5MineMap.MOON_STONE_CODE, "3" } } },
+            new String[] { "용병 스킬 쿨타임 -3%", "용병 스킬 쿨타임 -6%", "용병 스킬 쿨타임 -10%", "용병 스킬 쿨타임 -15%", "용병 스킬 쿨타임 -20%" }, 2),
         // [2026-10-30] "자객의 목걸이 -- 공격 시 확률적으로 은신(일반 공격 회피 2회), 회피가 남았을 때 공격하면 풀리며 2배 피해, 상위급" -- 왕도 대장장이만
         new MineGear("ASSASSIN_NECKLACE", "자객의 목걸이", "necklace", // = MINE_ITEM_ASSASSIN_NECKLACE
             new String[][][] { { mineCost(8, 10), mineSeven(3), { S5MineMap.MOON_STONE_CODE, "3" }, mineBar(4, 2), mineBar(3, 2), mineCut(6, 1) } },
@@ -10634,7 +10645,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
     }
 
-    static int mineNeckSlotOf(String code) { return MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : MINE_ITEM_ASSASSIN_NECKLACE.equals(code) ? 3 : MINE_ITEM_HUNT_NECKLACE.equals(code) ? 4 : 1; }
+    static int mineNeckSlotOf(String code) { return MINE_ITEM_MIND_NECKLACE.equals(code) ? 2 : MINE_ITEM_ASSASSIN_NECKLACE.equals(code) ? 3 : MINE_ITEM_HUNT_NECKLACE.equals(code) ? 4 : MINE_ITEM_MERC_DMG_NECK.equals(code) ? 5 : MINE_ITEM_MERC_CD_NECK.equals(code) ? 6 : 1; }
+    // [2026-11-23] 용병 목걸이 -- NECK_SLOT 5 = 투지의 목걸이(용병 피해 +%), 6 = 지휘관의 목걸이(용병 스킬 쿨타임 -%), 걸고 있을 때만
+    static final String MINE_ITEM_MERC_DMG_NECK = "MERC_DMG_NECKLACE", MINE_ITEM_MERC_CD_NECK = "MERC_CD_NECKLACE";
+    static final int[] MINE_MERC_NECK_PCT = { 0, 3, 6, 10, 15, 20 };
+    static int mineMercNeckPct(Map<String, Integer> items, String code) { return items != null && code.equals(mineNeckCode(items)) ? MINE_MERC_NECK_PCT[Math.max(0, Math.min(MINE_MERC_NECK_PCT.length - 1, items.getOrDefault(code, 0)))] : 0; }
     static final String MINE_ITEM_HUNT_NECKLACE = "HUNT_NECKLACE";
     /** [2026-11-13] 사냥꾼의 목걸이 -- 몬스터 보석 확률 배수(걸고 있을 때만). */
     static double mineHuntGemMul(Map<String, Integer> items) {
@@ -10772,6 +10787,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (s == 2 && mind) return MINE_ITEM_MIND_NECKLACE;
         if (s == 3 && items.getOrDefault(MINE_ITEM_ASSASSIN_NECKLACE, 0) > 0) return MINE_ITEM_ASSASSIN_NECKLACE; // [2026-10-30]
         if (s == 4 && items.getOrDefault(MINE_ITEM_HUNT_NECKLACE, 0) > 0) return MINE_ITEM_HUNT_NECKLACE; // [2026-11-13]
+        if (s == 5 && items.getOrDefault(MINE_ITEM_MERC_DMG_NECK, 0) > 0) return MINE_ITEM_MERC_DMG_NECK; // [2026-11-23]
+        if (s == 6 && items.getOrDefault(MINE_ITEM_MERC_CD_NECK, 0) > 0) return MINE_ITEM_MERC_CD_NECK;
         if (sand) return MINE_ITEM_SAND_NECKLACE;
         return mind ? MINE_ITEM_MIND_NECKLACE : null;
     }
@@ -11186,7 +11203,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (items.getOrDefault(MINE_ITEM_WYRM_RING, 0) > 0) out.add(mineEquipRow("ring", MINE_ITEM_WYRM_RING, "용의 반지 Lv." + items.get(MINE_ITEM_WYRM_RING), "전체 지도에서 누른 곳으로 이동 (한 시간에 한 번)", ring == MINE_RING_WYRM)); // [2026-11-15]
         int coat = mineCoatDef(items);
         if (false) out.add(mineEquipRow("coat", MINE_ITEM_COAT1, "방한 외투", "한기 방어 1 · 받는 피해 2배", coat == 1));
-        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_ASSASSIN_NECKLACE, MINE_ITEM_HUNT_NECKLACE, MINE_ITEM_SWIFT_BOOTS }) { // [2026-10-28] 목걸이 / 신발 칸
+        for (String bc : new String[] { MINE_ITEM_SAND_NECKLACE, MINE_ITEM_MIND_NECKLACE, MINE_ITEM_ASSASSIN_NECKLACE, MINE_ITEM_HUNT_NECKLACE, MINE_ITEM_MERC_DMG_NECK, MINE_ITEM_MERC_CD_NECK, MINE_ITEM_SWIFT_BOOTS }) { // [2026-11-23] 용병 목걸이 둘 // [2026-10-28] 목걸이 / 신발 칸
             MineGear g = mineGear(bc);
             int t = g == null ? 0 : Math.min(items.getOrDefault(bc, 0), g.cost.length);
             if (t < 1) continue;
@@ -11454,7 +11471,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int gtn = mineGloveTier(it);
             return mineGearResult(userName, true, on ? "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 장착했어요. " + mineGloveEffect(gtn) + " (사막·남쪽 섬에선 더워요!)" : "🧤 " + MINE_GLOVE_NAMES[gtn - 1] + "을(를) 해제했어요.");
         }
-        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code) || MINE_ITEM_ASSASSIN_NECKLACE.equals(code) || MINE_ITEM_HUNT_NECKLACE.equals(code)) { // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
+        if (MINE_ITEM_SAND_NECKLACE.equals(code) || MINE_ITEM_MIND_NECKLACE.equals(code) || MINE_ITEM_ASSASSIN_NECKLACE.equals(code) || MINE_ITEM_HUNT_NECKLACE.equals(code) || MINE_ITEM_MERC_DMG_NECK.equals(code) || MINE_ITEM_MERC_CD_NECK.equals(code)) { // [2026-11-23] 용병 목걸이 둘 // [2026-10-28] 목걸이는 하나 -- 걸린 걸 다시 누르면 풀기
             MineGear ng = mineGear(code);
             if (it.getOrDefault(code, 0) < 1) return mineGearResult(userName, false, ng.name + "이(가) 없어요. 대장장이에게서 만들 수 있어요.");
             boolean on = !code.equals(mineNeckCode(it));
