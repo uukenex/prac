@@ -5063,7 +5063,7 @@ var TowerMine = (function () {
     if (own.length <= 1) { // [2026-11-06] "1개만 노출(지금은 1개만)" -- 계약한 용병 한 명만(없으면 안내)
       if (!own.length) return h + '<div class="mine-smith-say">아직 계약한 용병이 없어요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
     } else h += '<div class="eq-tabs merc-sel">' + list.filter(function (x) { return x.owned; }).map(function (x) {
-      return '<button type="button" class="' + (x.k === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.k + ')">' + (x.slot === 2 ? '② ' : '① ') + MERC_ICON[x.t] + ' ' + (x.owned && x.nm ? x.nm : x.name) + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : x.unpaid && x.owned ? ' ⚠️' : '') + '</button>';
+      return '<button type="button" class="' + (x.k === mercSel ? 'on' : '') + '" onclick="TowerMine.mercSel(' + x.k + ')">' + (x.slot === 3 ? '③ ' : x.slot === 2 ? '② ' : '① ') + MERC_ICON[x.t] + ' ' + (x.owned && x.nm ? x.nm : x.name) + (x.owned ? ' ' + x.lv : '') + (x.on ? ' ✔' : x.unpaid && x.owned ? ' ⚠️' : '') + '</button>';
     }).join('') + '</div>';
     var m = list[mercSel] || {};
     if (!m.owned) return h + '<div class="mine-smith-say">아직 계약하지 않은 ' + (m.name || '용병') + '예요.<br><small>왕도 7시 방향 용병소에서 계약할 수 있어요 (Lv.5~30, 불·물·번개 중 무작위 특화)</small></div>';
@@ -5154,6 +5154,7 @@ var TowerMine = (function () {
     if (d.mercPay) setTimeout(function () { mercPayNote(d.mercPay); }, 3300);
     st.merc = d.merc || null;
     st.merc2 = d.merc2 || null; // [2026-11-18] 두 번째 용병
+    st.merc3 = d.merc3 || null; // [2026-11-23] 세 번째 용병
     if (d.ores) st.ores = d.ores;
     mercShop = d;
     msg(d.message || '완료', 3200);
@@ -5820,6 +5821,8 @@ var TowerMine = (function () {
       var ms2 = mercShop || {}, mi2 = st.merc || {}, mh = npcHead('🛡️ ' + n.name, false) + talkBlock(n, n.line);
       if (st.merc) mh += '<div class="mine-smith-say">함께하는 용병: ' + mercSumHtml(mi2) + '</div>';
       if (st.merc2) mh += '<div class="mine-smith-say">② 두 번째 용병: ' + mercSumHtml(st.merc2) + '</div>'; // [2026-11-18]
+      if (st.merc3) mh += '<div class="mine-smith-say">③ 세 번째 용병: ' + mercSumHtml(st.merc3) + '</div>'; // [2026-11-23]
+      if (ms2.slot3Open != null) mh += '<div class="mine-smith-say"><small>' + (ms2.slot3Open ? '③ 진환생 특전 -- 세 번째 용병도 계약할 수 있어요 · ' + ((st.mercs || [])[4] && st.mercs[4].owned ? '바꾸면 지금 세 번째 용병의 레벨·경험치를 이어받아요' : '처음엔') + ' Lv.' + ms2.slot3Lv : '🔒 세 번째 용병은 진환생부터 계약할 수 있어요') + '</small></div>'; // [2026-11-23]
       if (!ms2.slot2Hide) mh += '<div class="mine-smith-say"><small>' + (ms2.slot2Open ? '② 두 번째 용병도 계약할 수 있어요 -- 같은 직업도 돼요 · ' + ((st.mercs || [])[3] && st.mercs[3].owned ? '바꾸면 지금 두 번째 용병의 레벨·경험치를 이어받아요 (Lv.' + ms2.slot2Lv + ')' : '처음 계약은 Lv.' + (ms2.slot2Lv || 70))
           : '🔒 두 번째 용병은 ' + (ms2.slot2Rb || 5) + '환생부터 계약할 수 있어요') + '</small></div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
@@ -5833,23 +5836,24 @@ var TowerMine = (function () {
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
               + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>' + (o.free ? '🆓 무료' : '첫 급여 ' + o.sal) + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ', 1)">' + (ms2.slot2Open ? '① 계약' : '계약') + '</button>'
-                + (ms2.slot2Open ? '<button type="button" onclick="TowerMine.mercHire(' + o.i + ', 2)">② 계약</button>' : '')) + '</div>'; // [2026-11-18] 두 번째 칸
+                + (ms2.slot2Open ? '<button type="button" onclick="TowerMine.mercHire(' + o.i + ', 2)">② 계약</button>' : '')
+                + (ms2.slot3Open ? '<button type="button" onclick="TowerMine.mercHire(' + o.i + ', 3)">③ 계약</button>' : '')) + '</div>'; // [2026-11-18] 두 번째 칸, [2026-11-23] 세 번째 칸
         };
         mh += mercViewBtns();
         [0, 1, 2].forEach(function (jt) {
           var row = ms2.offers.filter(function (o) { return (o.t | 0) === jt; });
           if (row.length) mh += '<div class="merc-job-h">' + MERC_ICON[jt] + ' ' + ['전사', '궁수', '마법사'][jt] + ' <small>' + row.length + '명</small></div><div class="cos-car merc-offers">' + row.map(offCard).join('') + '</div>';
         });
-        var curM = (st.mercs || []).filter(function (x) { return x.owned && x.slot !== 2; })[0], cur2 = (st.mercs || [])[3] && st.mercs[3].owned ? st.mercs[3] : null; // [2026-11-18] 첫 칸 / 두 번째 칸
+        var curM = (st.mercs || []).filter(function (x) { return x.owned && x.slot !== 2; })[0], cur2 = (st.mercs || [])[3] && st.mercs[3].owned ? st.mercs[3] : null, cur3 = (st.mercs || [])[4] && st.mercs[4].owned ? st.mercs[4] : null; // [2026-11-18] 첫 칸 / 두 번째 칸, [2026-11-23] 세 번째
         if (curM) mh += '<div class="mine-smith-say"><small>다른 용병과 계약하면 지금 함께하는 <b>' + curM.nm + '</b>은(는) 떠나고 새 용병으로 바뀌어요.</small></div>';
         if (mercAskI != null) { // [2026-11-06] "계약할까요 멘트를 인게임 팝업으로"
           var ao = ms2.offers.filter(function (o) { return o.i === mercAskI; })[0];
-          var two = mercAskS === 2, aLv = two ? ms2.slot2Lv : ao && ao.lv, aCur = two ? cur2 : curM; // [2026-11-18] 두 번째 칸 계약
-          if (ao) mh += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercHire(null)"><div class="eq-pop-box merc-ask"><div class="eq-pop-h">🛡️ ' + (two ? '두 번째 용병 계약' : '용병 계약') + '<button type="button" onclick="TowerMine.mercHire(null)">✖</button></div>'
+          var three = mercAskS === 3, two = mercAskS === 2 || three, aLv = three ? ms2.slot3Lv : two ? ms2.slot2Lv : ao && ao.lv, aCur = three ? cur3 : two ? cur2 : curM, nth = three ? '세 번째 ' : '두 번째 '; // [2026-11-18] 두 번째 칸 계약, [2026-11-23] 세 번째
+          if (ao) mh += '<div class="eq-pop" onclick="if (event.target === this) TowerMine.mercHire(null)"><div class="eq-pop-box merc-ask"><div class="eq-pop-h">🛡️ ' + (two ? nth + '용병 계약' : '용병 계약') + '<button type="button" onclick="TowerMine.mercHire(null)">✖</button></div>'
               + '<div class="merc-ask-body' + (mercView === 'portrait' ? ' pt' : '') + '">' + mercFaceImg(ao.t, ao.ni, ao.nm) + '<div><b>' + ao.nm + '</b><br>' + MERC_ICON[ao.t] + ' ' + ao.job + ' · Lv.' + aLv + '<br><span class="mo-el' + ao.el + '">' + (EL_ICON[ao.el] || '') + ' ' + ao.elName + ' 특화</span><br><small>' + ao.skill + '</small></div></div>'
-              + '<div class="mine-smith-say">' + ao.nm + '와(과) ' + (two ? '두 번째 용병으로 ' : '') + '계약할까요?<br><small>' + (two || ao.free ? '급여 없이 바로 계약해요.' : '첫 계약 급여 <b>' + ao.sal + '</b>를 바로 줘요. 앞으로 급여는 없어요(교체도 무료).') + '</small>'
-              + (aCur ? '<br><small style="color:#ffb04a">⚠️ 지금 ' + (two ? '두 번째 ' : '') + '용병 <b>' + aCur.nm + '</b>(Lv.' + aCur.lv + ')은(는) 떠나요. 레벨·경험치는 새 용병이 이어받아요.</small>' : '') + '</div>'
-              + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.mercHireGo(' + ao.i + ', ' + (two ? 2 : 1) + ')">계약하기</button><button type="button" onclick="TowerMine.mercHire(null)">취소</button></div></div></div>';
+              + '<div class="mine-smith-say">' + ao.nm + '와(과) ' + (two ? nth + '용병으로 ' : '') + '계약할까요?<br><small>' + (two || ao.free ? '급여 없이 바로 계약해요.' : '첫 계약 급여 <b>' + ao.sal + '</b>를 바로 줘요. 앞으로 급여는 없어요(교체도 무료).') + '</small>'
+              + (aCur ? '<br><small style="color:#ffb04a">⚠️ 지금 ' + (two ? nth : '') + '용병 <b>' + aCur.nm + '</b>(Lv.' + aCur.lv + ')은(는) 떠나요. 레벨·경험치는 새 용병이 이어받아요.</small>' : '') + '</div>'
+              + '<div class="mine-smith-menu"><button type="button" onclick="TowerMine.mercHireGo(' + ao.i + ', ' + (three ? 3 : two ? 2 : 1) + ')">계약하기</button><button type="button" onclick="TowerMine.mercHire(null)">취소</button></div></div></div>';
         }
       } else mh += '<div class="mine-eq-empty">' + (ms2.message || '불러오는 중...') + '</div>';
       el.smith.innerHTML = mh;
@@ -6000,7 +6004,7 @@ var TowerMine = (function () {
       var ty = map.mobTypes[mb.k];
       return ty && !ty.boss && !ty.minion && mb._p && (ty.first || 1 + 4 * (ty.tier - 1) - Math.min(99, myLv()) >= 20) && Math.abs(mb._p.cx - P.x) + Math.abs(mb._p.cy - P.y) <= (ty.aggro || 6); // [2026-11-05] 왕도 서쪽길 무리는 더 넓게
     });
-    var mercPre = !fight && [st.merc, st.merc2].some(function (q) { return q && q.mode === 1 && !(q.rest > nowSrv()); }) && (map.mobs || []).some(function (mb) { // [2026-11-06] 용병 선공 모드 -- 사거리 안 몬스터가 보이면 전투 턴(서버가 하나 골라 먼저 친다)
+    var mercPre = !fight && [st.merc, st.merc2, st.merc3].some(function (q) { return q && q.mode === 1 && !(q.rest > nowSrv()); }) && (map.mobs || []).some(function (mb) { // [2026-11-06] 용병 선공 모드 -- 사거리 안 몬스터가 보이면 전투 턴(서버가 하나 골라 먼저 친다)
       var ty = map.mobTypes[mb.k];
       var vh2 = viewHalf(); // [2026-11-07] "선공 -- 플레이어 기준 맵에 보이면"
       return ty && !ty.boss && !ty.minion && !ty.dummy && mb._p && Math.abs(mb._p.cx - P.x) <= vh2[0] && Math.abs(mb._p.cy - P.y) <= vh2[1] && !(mobSt[mb.id] && mobSt[mb.id].du > nowSrv());
@@ -6068,8 +6072,9 @@ var TowerMine = (function () {
       }); // [2026-10-28] 은신했던 닌자의 기습
       if (d.merc) mercApply(d.merc); // [2026-11-05] 용병
       if (d.merc2) mercApply(d.merc2, true); // [2026-11-18] 두 번째 용병
+      if (d.merc3) mercApply(d.merc3, 3); // [2026-11-23] 세 번째 용병
       if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치
-      if (d.mercXp2) mercXpApply(d.mercXp2);
+      if (d.mercXp2) mercXpApply(d.mercXp2); if (d.mercXp3) mercXpApply(d.mercXp3);
       if (d.mercs) { st.mercs = d.mercs; if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc); } // [2026-11-06] 급여 차감/밀림
       if (d.mercPay) { mercPayNote(d.mercPay); if (!d.merc && st) st.merc = null; }
       if (d.levelUp) floats.push({ x: P.x, y: P.y - 1, text: '⬆️ 레벨 업!', color: '#ffe14d', big: true, t0: performance.now() });
@@ -6352,7 +6357,7 @@ var TowerMine = (function () {
   var MERC_SK_ICON = ['🗡️', '🏹', '🔮']; // [2026-11-06] 용병 평타 아이콘
   var MERC_DMG_COL = { 6: '#ff6a2a', 2: '#ffe14d', 3: '#5ab0ff' }; // [2026-11-06] 동료 피해 숫자 속성 색(불 주황빨강 / 번개 노랑 / 물 파랑) + 속성 아이콘
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-  var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, merc2 = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null }, mercShop = null, mercSpr = {}, mercImgC = {};
+  var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, merc2 = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null }, merc3 = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null } /* [2026-11-23] 세 번째 용병 */, mercShop = null, mercSpr = {}, mercImgC = {};
   function mercLook(t, ni) {
     var b = MERC_BASE[t] || MERC_BASE[0], h = MERC_HAIR[(ni | 0) % MERC_HAIR.length], lk = {};
     for (var p in b) lk[p] = b[p];
@@ -6636,24 +6641,30 @@ var TowerMine = (function () {
     }
   }
   // [2026-11-18] 두 번째 용병은 내 옆(진행 방향 옆 칸)이나 두 걸음 뒤 -- 첫 용병과 겹치지 않게
+  function mercSide3(x, y, dir) { // [2026-11-23] 세 번째 용병 -- 두 번째(mercSide)와 반대쪽 옆을 먼저
+    var v = MERC_DV[dir] || MERC_DV.down, a = [x + v[1], y + v[0]], b = [x - v[1], y - v[0]];
+    return walk(b[0], b[1]) ? b : walk(a[0], a[1]) ? a : mercBehind(x, y, dir);
+  }
   function mercSide(x, y, dir) {
     var v = MERC_DV[dir] || MERC_DV.down, a = [x + v[1], y + v[0]], b = [x - v[1], y - v[0]];
     return walk(a[0], a[1]) ? a : walk(b[0], b[1]) ? b : mercBehind(x, y, dir);
   }
   function mercDrawMine(now, V) {
-    if (!st || !map || map.boat || (!st.merc && !st.merc2)) return;
-    if (merc.map !== map.id) { merc.map = map.id; merc.x = null; merc.trail = []; merc.tg = null; merc2.x = null; merc2.tg = null; }
+    if (!st || !map || map.boat || (!st.merc && !st.merc2 && !st.merc3)) return;
+    if (merc.map !== map.id) { merc.map = map.id; merc.x = null; merc.trail = []; merc.tg = null; merc2.x = null; merc2.tg = null; merc3.x = null; merc3.tg = null; }
     var tr = merc.trail, l = tr[tr.length - 1];
     if (!l || l[0] !== P.x || l[1] !== P.y) { tr.push([P.x, P.y]); if (tr.length > 3) tr.shift(); } // [2026-11-07] "더 바짝 붙어서" -- 내가 한 걸음 전에 있던 칸([2026-11-18] 두 번째 용병은 두 걸음 전)
     if (st.merc) mercDrawOne(st.merc, merc, now, V, false);
     if (st.merc2) mercDrawOne(st.merc2, merc2, now, V, true);
+    if (st.merc3) mercDrawOne(st.merc3, merc3, now, V, 3); // [2026-11-23] 세 번째 용병 -- 두 번째와 반대쪽 옆
   }
   function mercDrawOne(mi, mp, now, V, two) {
-    var tr = merc.trail, home = function () { return two ? mercSide(P.x, P.y, P.dir) : mercBehind(P.x, P.y, P.dir); };
+    var tr = merc.trail, home = function () { return two === 3 ? mercSide3(P.x, P.y, P.dir) : two ? mercSide(P.x, P.y, P.dir) : mercBehind(P.x, P.y, P.dir); };
     var rest = mi.rest > nowSrv(), fight = !rest && mp.tg && now - mp.tg.t < 1800, g;
     if (rest) g = home();
     else if (fight && (mi.t | 0) > 0) g = mp.x != null && Math.abs(Math.round(mp.x) - P.x) + Math.abs(Math.round(mp.y) - P.y) <= 2 && !(Math.round(mp.x) === P.x && Math.round(mp.y) === P.y) ? [Math.round(mp.x), Math.round(mp.y)] : home(); // [2026-11-06] 궁수/마법사 -- 제자리(내 곁)에서 쏜다
     else if (fight) g = mp.tg.g || (mp.tg.g = mercBeside(mp.tg.x, mp.tg.y, Math.round(mp.x == null ? P.x : mp.x), Math.round(mp.y == null ? P.y : mp.y), P.x, P.y));
+    else if (two === 3) g = home();
     else if (two) g = tr.length >= 3 ? tr[tr.length - 3] : home();
     else g = tr.length >= 2 ? tr[tr.length - 2] : home();
     if (g[0] === P.x && g[1] === P.y && !rest) g = home();
@@ -6666,7 +6677,7 @@ var TowerMine = (function () {
     }
   }
   function mercDrawOther(ou, op, now, V, two) { // [2026-11-18] two = 두 번째 용병(ou.m2 = {mc, me, ms, ml, mr, mt})
-    var q = two ? ou.m2 : ou, mk = two ? 'mp2' : 'mp', home = two ? mercSide : mercBehind;
+    var q = two === 3 ? ou.m3 : two ? ou.m2 : ou, mk = two === 3 ? 'mp3' : two ? 'mp2' : 'mp', home = two === 3 ? mercSide3 : two ? mercSide : mercBehind; // [2026-11-23] 3 = 세 번째
     if (!q) return;
     var mp = ou[mk] || (ou[mk] = { x: null, y: null, dir: 'down' }), ox = Math.round(op.x), oy = Math.round(op.y), g;
     var mc = q.mc | 0;
@@ -6685,8 +6696,8 @@ var TowerMine = (function () {
   /** 전투 턴 응답의 용병 소식 -- 체력/쉬기, 때린 몬스터(전사는 그 옆으로 달려감), 속성 이펙트, 피해 숫자, 드랍. [2026-11-06] 경험치는 내 것(문구에 용병 표시 없음). */
   function mercApply(m, two) { // [2026-11-18] two = 두 번째 용병
     if (!st) return;
-    var mp = two ? merc2 : merc;
-    if (two) st.merc2 = m; else st.merc = m;
+    var mp = two === 3 ? merc3 : two ? merc2 : merc; // [2026-11-23] two = true(두 번째) / 3(세 번째)
+    if (two === 3) st.merc3 = m; else if (two) st.merc2 = m; else st.merc = m;
     if (m.stunNew && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.9, text: '💫 용병 기절!', color: '#ffe94a', t0: performance.now() }); // [2026-11-23]
     var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st, k: mt === 2 ? 'ball' : '' }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
     var rowsAll = (m.row ? [m.row] : []).concat(m.rows || []), applyRows = function () { rowsAll.forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); }; // 둘레/체인 몬스터
@@ -6728,7 +6739,7 @@ var TowerMine = (function () {
   /** [2026-11-06] 용병 경험치(내 경험치의 1%) -- 용병 관리 칸, 레벨 업 알림. */
   function mercXpApply(x) {
     if (!st || !x) return;
-    var two = x.slot === 2, cur = two ? st.merc2 : st.merc, mp = two ? merc2 : merc; // [2026-11-18] 두 번째 용병
+    var two = x.slot === 2, three = x.slot === 3, cur = three ? st.merc3 : two ? st.merc2 : st.merc, mp = three ? merc3 : two ? merc2 : merc; // [2026-11-18] 두 번째 용병, [2026-11-23] 세 번째
     if (st.mercs) st.mercs[x.k != null ? x.k : x.t] = x;
     if (cur && (cur.k != null ? cur.k === x.k : cur.t === x.t)) { for (var p in x) if (p !== 'gain' && p !== 'up') cur[p] = x[p]; }
     if (x.gain) killFeed('🐱 동료 경험치 +' + x.gain, '#d8a8ff'); // [2026-11-06] 동료가 획득한 경험치
@@ -6850,7 +6861,7 @@ var TowerMine = (function () {
     });
   }
   /** 배에 탄 용병 {정보, 화면 자리} -- 내 것(st.merc/st.merc2) 또는 다른 사람(ou.mc/ou.m2). */
-  function boatCrewMine() { var l = []; if (st && st.merc) l.push([st.merc, merc]); if (st && st.merc2) l.push([st.merc2, merc2]); return l; }
+  function boatCrewMine() { var l = []; if (st && st.merc) l.push([st.merc, merc]); if (st && st.merc2) l.push([st.merc2, merc2]); if (st && st.merc3) l.push([st.merc3, merc3]); return l; }
   function boatCrewDraw(crew, px, py, left, now, V, other) {
     crew.forEach(function (q, i) {
       var mi = q[0], mp = q[1], off = (CREW_GAP * (i + 1) + 1) / 16;
@@ -6968,7 +6979,7 @@ var TowerMine = (function () {
     var tc = tickC, te = tickE, tm = !!(map.mobs && map.mobs.length);
     tickC = tickE = null;
     var pt0 = performance.now(), pws = !!(wsOk && ws && ws.readyState === 1); // [2026-11-03] 응답 속도(핑) -- 1초 턴 왕복 시간, 연결 방식(WS/HTTP)
-    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (st && ((st.merc && st.merc.mode === 1) || (st.merc2 && st.merc2.mode === 1)) ? '&vw=' + viewHalf()[0] + '&vh=' + viewHalf()[1] : '') + '&cid=' + mineCid + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
+    apiFast('/api/tower-mine-tick?mapId=' + encodeURIComponent(mid) + '&x=' + P.x + '&y=' + P.y + '&d=' + P.dir + verQ() + (tc ? '&c=1' : '') + (te ? '&e=1' : '') + (tm ? '&m=1' : '') + (st && ((st.merc && st.merc.mode === 1) || (st.merc2 && st.merc2.mode === 1) || (st.merc3 && st.merc3.mode === 1)) ? '&vw=' + viewHalf()[0] + '&vh=' + viewHalf()[1] : '') + '&cid=' + mineCid + (netAvg >= 0 ? '&pg=' + netAvg + '&dv=' + NET_DV + '&nw=' + (pws ? 1 : 0) + '&fg=' + netGap + '&bg=' + (document.hidden ? 1 : 0) + '&wv=' + (pws ? wsVia : 0) : '')).then(function (r) {
       if (r && r.dup) { dupKick(r.message); return; } // [2026-11-07] 다른 곳에서 같은 캐릭터로 들어와 있다
       showPing(performance.now() - pt0, pws, r && r.ms);
       if (tc) tc(r && r.c);
@@ -7012,7 +7023,7 @@ var TowerMine = (function () {
         if (!cur) others[o.id] = cur = { x: o.x, y: o.y, fx: o.x, fy: o.y, t0: now };
         else if (cur.x !== o.x || cur.y !== o.y) { var pp = otherPos(cur, now); cur.fx = pp.x; cur.fy = pp.y; cur.x = o.x; cur.y = o.y; cur.t0 = now; }
         if (o.kk && !cur.kk) cur.kkT0 = now; cur.kk = !!o.kk; // [2026-11-21] 각성(켜지는 순간 불기둥)
-        cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; cur.mc = o.mc; cur.mr = !!o.mr; cur.mt = o.mt || null; cur.me = o.me; cur.ms = o.ms; cur.ml = o.ml; cur.m2 = o.m2 || null; /* [2026-11-18] 두 번째 용병, 속성/단계/모습 */ // [2026-11-05] 용병 // [2026-10-28] 얼음 여왕 빙결
+        cur.dir = o.d || 'down'; cur.n = o.n || ''; cur.look = o.look || {}; cur.bubble = o.bubble || ''; cur.frozen = !!o.frozen; cur.stealth = !!o.stealth; cur.mc = o.mc; cur.mr = !!o.mr; cur.mt = o.mt || null; cur.me = o.me; cur.ms = o.ms; cur.ml = o.ml; cur.m2 = o.m2 || null; cur.m3 = o.m3 || null; /* [2026-11-23] */ /* [2026-11-18] 두 번째 용병, 속성/단계/모습 */ // [2026-11-05] 용병 // [2026-10-28] 얼음 여왕 빙결
         if (o.a && o.a.length) { // [2026-11-07] 다른 사람 공격 -- 처음 보는 번호만, 서버 시각 간격대로
           var fresh = o.a.filter(function (a) { return a.s > (cur.as || 0); }), base = fresh.length ? fresh[0].at : 0;
           fresh.forEach(function (a) { othAtkPlay(cur, o.id, a, Math.max(0, Math.min(1500, a.at - base))); cur.as = Math.max(cur.as || 0, a.s); });
@@ -7399,7 +7410,7 @@ var TowerMine = (function () {
     if (anyKill && d.ores) st.ores = d.ores;
     // [2026-11-05] "쓰러뜨렸어요 문구 빼고 경험치 몇 올랐는지만, 검은 상자 말고 왼쪽 빈 화면에 글씨만 띄웠다 서서히 사라지게" -- 일반 공격 처치 + 검기 처치를 합쳐 한 줄
     if (d.mercXp) mercXpApply(d.mercXp); // [2026-11-06] 용병 경험치(내 경험치의 1%)
-    if (d.mercXp2) mercXpApply(d.mercXp2); // [2026-11-18] 두 번째 용병
+    if (d.mercXp2) mercXpApply(d.mercXp2); if (d.mercXp3) mercXpApply(d.mercXp3); // [2026-11-18] 두 번째 용병
     var exSum = d.killed && d.expGain ? d.expGain : 0, kn = d.killed ? 1 : 0;
     (d.auraMobs || []).forEach(function (am) { if (am.killed) { exSum += am.exp || 0; kn++; } });
     if (d.expReal != null) exSum = d.expReal; // [2026-11-07] 실제로 오른 경험치(99레벨 가득이면 0 -- 안 띄움)
@@ -7602,7 +7613,7 @@ var TowerMine = (function () {
     if (d.ores) st.ores = d.ores;
     if (d.dropGrade != null) { flashT0 = t; weaponLoot(d, P.x, P.y); }
     if (d.mercXp) mercXpApply(d.mercXp);
-    if (d.mercXp2) mercXpApply(d.mercXp2); // [2026-11-18]
+    if (d.mercXp2) mercXpApply(d.mercXp2); if (d.mercXp3) mercXpApply(d.mercXp3); // [2026-11-18]
     if (exSum > 0) killFeed('내 경험치 +' + exSum.toLocaleString() + (kn > 1 ? '  ×' + kn : ''));
     if (d.combat) setCombat(d.combat);
     if (d.levelUp) { flashT0 = t; banner = { text: '🎉 레벨 업! Lv.' + d.combat.lv, t0: t }; }
@@ -7967,7 +7978,7 @@ var TowerMine = (function () {
   function mercHire(t, s) { // [2026-11-05] 왕도 용병소 -- 더 센 용병으로 바꿔 고용
     if (busy) return;
     mercAskI = t; // [2026-11-06] 브라우저 확인창 대신 게임 안 팝업(t = 후보 칸, null = 닫기)
-    mercAskS = s === 2 ? 2 : 1; // [2026-11-18] 2 = 두 번째 칸
+    mercAskS = s === 3 ? 3 : s === 2 ? 2 : 1; // [2026-11-18] 2 = 두 번째 칸, [2026-11-23] 3 = 세 번째 칸
     if (smithOpen) renderSmith(smithNpc);
   }
   var mercAskI = null, mercAskS = 1;
@@ -7975,7 +7986,7 @@ var TowerMine = (function () {
     if (busy) return;
     mercAskI = null;
     busy = true;
-    api('/api/tower-mine-merc?action=' + (s === 2 ? 'hire2' : 'hire') + '&tier=' + t).then(function (d) {
+    api('/api/tower-mine-merc?action=' + (s === 3 ? 'hire3' : s === 2 ? 'hire2' : 'hire') + '&tier=' + t).then(function (d) {
       busy = false;
       if (!d) return;
       if (d.ok) flashT0 = performance.now();
@@ -8383,12 +8394,13 @@ var TowerMine = (function () {
       if (ox < -TS || oy < -TS || ox > W || oy > H) continue;
       if (ou.mc != null && !map.boat) mercDrawOther(ou, op, now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }); // [2026-11-05] 다른 유저의 용병
       if (ou.m2 && !map.boat) mercDrawOther(ou, op, now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true); // [2026-11-18] 두 번째 용병
+      if (ou.m3 && !map.boat) mercDrawOther(ou, op, now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, 3); // [2026-11-23] 세 번째 용병
       ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(ox + 3 * scale, oy + 13 * scale, 10 * scale, 3 * scale);
       if (ou.look && ou.look.gm) { try { gmAura(ox, oy - 3 * scale, now); } catch (e) { } } // 치장 효과가 화면 그리기를 멈추지 않게
       var oBoat = boatAt(op.x, op.y); // [2026-11-18] 물 위에서만(등대 섬/바닷가 모래에선 내린다)
       if (oBoat) drawBoat(ox, oy - 3 * scale, now, ou.dir === 'left'); // [2026-10-28] 다도해 뱃길 -- 배 탄 모습
       var oCrew = []; // [2026-11-19] 배 맵 -- 그 사람 용병도 그 배 고물에
-      if (oBoat && map.boat) { if (ou.mc != null) oCrew.push([ou, ou.mp || (ou.mp = { x: null, y: null, dir: 'down' })]); if (ou.m2) oCrew.push([ou.m2, ou.mp2 || (ou.mp2 = { x: null, y: null, dir: 'down' })]); }
+      if (oBoat && map.boat) { if (ou.mc != null) oCrew.push([ou, ou.mp || (ou.mp = { x: null, y: null, dir: 'down' })]); if (ou.m3) oCrew.push([ou.m3, ou.mp3 || (ou.mp3 = { x: null, y: null, dir: 'down' })]); if (ou.m2) oCrew.push([ou.m2, ou.mp2 || (ou.mp2 = { x: null, y: null, dir: 'down' })]); }
       if (oCrew.length) { boatStern(ox, oy - 3 * scale, now, ou.dir === 'left', oCrew.length, false); boatCrewDraw(oCrew, op.x, op.y, ou.dir === 'left', now, { TS: TS, camX: camX, camY: camY, scale: scale, W: W, H: H }, true); }
       if (ou.look && ou.look.rebirth) { try { drawWings(ox, oy - 3 * scale, ou.look.rebirth, ou.dir || "down", now, +oid || 1, ou.look.wing); } catch (e) { } } // [2026-10-28] 환생 날개
       if (ou.stealth) ctx.globalAlpha = 0.35; // [2026-10-30] 자객의 목걸이 은신
