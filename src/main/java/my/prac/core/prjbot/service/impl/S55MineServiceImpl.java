@@ -9138,13 +9138,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
     }
     // [2026-11-23] "용병은 플레이어 레벨을 넘을 수 없도록" -- 경험치를 받아도 내 레벨(M_LV)에서 멈춘다(계약할 때도 내 레벨까지). 내 레벨은 30초 기억.
+    //  같은 날 "환생 유저는 용병 레벨 99까지는 보전" -- 한 번이라도 환생했으면 상한은 max(내 레벨, 99).
+    static int mineMercCapLv(int lv, int rb) { return rb > 0 ? Math.max(lv, MINE_LV_MAX) : lv; }
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_MERC_CAP = new java.util.concurrent.ConcurrentHashMap<>();
     int mineMercCap(String userName) {
         long now = System.currentTimeMillis();
         long[] c = MINE_MERC_CAP.get(userName);
         if (c != null && now - c[1] < 30_000L) return (int) c[0];
         int lv = MINE_LV_TRUE_MAX;
-        try { HashMap<String, Object> r = dao.selectMineUser(userName); if (r != null) lv = mineLv(r); } catch (Exception ignore) { }
+        try { HashMap<String, Object> r = dao.selectMineUser(userName); if (r != null) lv = mineMercCapLv(mineLv(r), mineRebirth(mineItems(userName))); } catch (Exception ignore) { }
         MINE_MERC_CAP.put(userName, new long[] { lv, now });
         return lv;
     }
@@ -9700,7 +9702,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     for (String f : new String[] { "LV", "EXP", "PAID", "MANUAL" }) mineMercSet(userName, items, oc, f, 0);
                     mineMercSet(userName, items, oc, "WARN", -1);
                 }
-                int lv = Math.min(ofLv, mineLv(row)), el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE); // [2026-11-23] 내 레벨까지
+                int lv = Math.min(ofLv, mineMercCapLv(mineLv(row), mineRebirth(items))), el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE); // [2026-11-23] 내 레벨까지
                 mineMercSet(userName, items, c, "LV", lv);
                 mineMercSet(userName, items, c, "EXP", keepExp);
                 mineMercSet(userName, items, c, "EL", el);
@@ -9717,7 +9719,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int oi = tier, k2 = MINE_MERC_K2;
             c = oi >= 0 && oi < MINE_MERC_OFFERS ? items.getOrDefault(mineOfKey(oi, "T"), 0) - 1 : -1;
             cOk = c >= 0 && c < MINE_MERC_NAMES.length;
-            int had = mineMercLv(items, k2), lv2 = Math.min(mineMerc2HireLv(row, items), mineLv(row)); // [2026-11-23] 내 레벨까지
+            int had = mineMercLv(items, k2), lv2 = Math.min(mineMerc2HireLv(row, items), mineMercCapLv(mineLv(row), mineRebirth(items))); // [2026-11-23] 내 레벨까지
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
