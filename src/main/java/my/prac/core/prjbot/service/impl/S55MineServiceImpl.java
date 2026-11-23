@@ -202,7 +202,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         Map<String, Integer> out = new HashMap<>();
         for (HashMap<String, Object> r : dao.selectMineItems(userName)) out.put(strVal(r.get("ITEM_CODE"), ""), intVal(r.get("ITEM_LEVEL"), 0));
         for (int k = 0; k <= MINE_MERC_K3; k++) { MercXp mx = MINE_MERC_XP.get(mineMercXpKey(userName, k)); if (mx != null && mx.p > 0) out.put(mineMercKey(k, "XPP"), (int) mx.p); } // [2026-11-18] 아직 DB에 안 쓴 용병 경험치(화면용)
-        if (isMineAdmin(userName)) mineAdminSkills(out); // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
+        if (isMineAdminName(userName) && mineShoesGm(out)) mineAdminSkills(out); // [2026-11-23] 고침: isMineAdmin(신발 확인 -> mineItems)을 여기서 부르면 서로 끝없이 불러 관리자 접속이 안 됐다 -- 이름 + 방금 읽은 아이템의 신발로 // [2026-11-07] "관리자는 전부 5레벨" -- 배운 단계만 덮어 읽는다(DB는 그대로, 켜는 단계는 스킬 탭에서)
         try { MineWeapon ar = mineArmorOn(out); MINE_ARMOR_HP_OF.put(userName, ar == null ? 0 : mineArmorHpAt(ar.code, mineWeaponGrade(out, ar)) + mineArmorHpEnh(ar.code, mineWeaponGrade(out, ar), mineArmorEnh(out))); } catch (Exception ignore) { } // [2026-11-17] 갑옷 최대 체력(mineHpCap), [2026-11-18] + 갑옷 칸 강화
         return out;
     }
@@ -13056,12 +13056,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return isEventAdmin(userName);
     }
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_ADMIN_SHOES = new java.util.concurrent.ConcurrentHashMap<>(); // 이름 -> {신었으면 1, 본 시각}
+    static boolean mineShoesGm(Map<String, Integer> items) { MineCos sh = items == null ? null : mineWornCos(items, "shoes"); return sh != null && MINE_COS_SPEED.equals(sh.code); }
     boolean mineAdminShoesOn(String userName) {
         long now = System.currentTimeMillis();
         long[] c = MINE_ADMIN_SHOES.get(userName);
         if (c != null && now - c[1] < 3_000L) return c[0] == 1;
         boolean on = false;
-        try { MineCos sh = mineWornCos(mineItems(userName), "shoes"); on = sh != null && MINE_COS_SPEED.equals(sh.code); } catch (Exception ignore) { }
+        try { on = mineShoesGm(mineItems(userName)); } catch (Exception ignore) { }
         MINE_ADMIN_SHOES.put(userName, new long[] { on ? 1 : 0, now });
         return on;
     }
