@@ -6025,6 +6025,7 @@ var TowerMine = (function () {
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
       if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.pullWarn) { pullFx = { bx: d.pullWarn[0], by: d.pullWarn[1], fo: d.pullWarn[2] || 2, at: d.pullWarn[3] }; msg('🪝 보스가 사슬을 던졌어요!', 1400); } // [2026-11-23] 끌어당기기 예고
+      if (d.push) { setPos(d.push[0], d.push[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('💦 물보라에 벽까지 밀려났어요!', 1600); } // [2026-11-23] 베히모스 물보라 분출(오른쪽/아래/위)
       if (d.pull) { pullFx = null; setPos(d.pull[0], d.pull[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('🪝 보스에게 끌려갔어요!', 1600); } // [2026-11-23]
       if (d.roar) { flashT0 = performance.now(); msg(wbInfo && wbInfo.bh ? '🐋 베히모스의 울음! 잠깐 움직일 수 없어요.' : '🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
       if (d.bhKnock) { flashT0 = performance.now(); msg('💦 물보라에 휩쓸렸어요!', 1500); } // [2026-11-23] 다음 위치 알림에서 중앙 평원으로
@@ -8370,7 +8371,8 @@ var TowerMine = (function () {
         }
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
           tagCells[mp.cx + ',' + mp.cy] = 1;
-          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : ty.demon ? '😈 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[ty.el] || '') + ty.name + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
+          var bhN = ty.name === '심연의 거룡' && !ty.chaos && !!(wbInfo ? wbInfo.bh : wbWasBh); // [2026-11-23] 베히모스 -- 몬스터 칸은 거룡 것을 같이 쓴다
+          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : ty.demon ? '😈 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[bhN ? 5 : ty.el] || '') + (bhN ? '하늘고래 베히모스' : ty.name) + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : ty.sea && ty.first ? '#ff5a5a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS * (ty.foot || 2) / 2 : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }

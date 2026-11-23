@@ -3392,7 +3392,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             h.put("zk", MINE_WB_ZK[k]); // [2026-11-23] 화면 종류 번호
             hits.add(h);
             if (k == 2) { MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_WB_TAIL_STUN_MS)); out.put("stunUntil", MINE_STUN.get(userName)); }
-            if (k == 6) { MINE_BH_KNOCK.put(userName, now); out.put("bhKnock", true); } // [2026-11-23] 물보라 분출 -- 다음 위치 알림에서 중앙 평원으로(minePresence)
+            if (k == 6) { // [2026-11-23] 물보라 분출 -- "베히모스 기준 왼쪽이면 왼쪽 맵으로, 오른쪽이면 오른쪽 벽으로, 아래면 아래쪽 벽 끝으로"(위도 위쪽 벽으로)
+                int[] bp = mineWbPos();
+                int dx = x - (bp[0] + 1), dy = y - (bp[1] + 1);
+                if (Math.abs(dx) >= Math.abs(dy) && dx < 0) { MINE_BH_KNOCK.put(userName, now); out.put("bhKnock", true); } // 다음 위치 알림에서 중앙 평원으로(minePresence)
+                else {
+                    int sx = Math.abs(dx) >= Math.abs(dy) ? 1 : 0, sy = sx == 1 ? 0 : dy > 0 ? 1 : -1, tx = x, ty = y;
+                    S5MineMap ca = S5MineMap.get(S5MineMap.CASTLE);
+                    while (ca != null && ca.walkable(tx + sx, ty + sy) && Math.abs(tx - x) + Math.abs(ty - y) < 80) { tx += sx; ty += sy; } // 벽(못 지나가는 칸) 앞까지
+                    if (tx != x || ty != y) { out.put("push", new int[] { tx, ty }); out.put("bhKnock", true); }
+                }
+            }
         }
         if (st.roarSeq > seen[1]) {
             seen[1] = st.roarSeq;
@@ -4144,6 +4154,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (MINE_ITEM_REGEN_GLOVES.equals(mineGloveCode(items))) mineHealAdd(userName, (int) Math.round(dmgSum * mineRegenPct(items)), now); // [2026-10-28] 재생의 장갑
             hp -= dmgSum;
             if (hp <= 0 && mineBerserkSave(userName, items, now, out)) hp = 1; // [2026-11-20] 광전사 불굴
+            if (MINE_WB_NAME.equals(killerName) && mineWbBh()) killerName = MINE_BH_NAME; // [2026-11-23] "베히모스 이름이 심연의 거룡으로 나와" -- 몬스터 칸은 거룡 것을 같이 쓴다
             if (shattered && hp > 0) { out.put("iceBroke", dmgSum); out.put("message", "🧊 얼어붙은 채로 " + (killerName == null ? "" : killerName + "의 ") + "일격을 맞아 얼음이 깨졌어요! (-" + String.format("%,d", dmgSum) + ")"); }
             if (hp <= 0) {
                 lock = mineLockUp(userName, lock, out); // [2026-10-26] 쓰러지면 최대 체력 잠금 +1
