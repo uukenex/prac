@@ -3845,6 +3845,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  굴에 아무도 없는 채로 MINE_SQ_EMPTY_MS가 지나면 소환이 풀려 NPC로(쓰러진 사람은 마을로 옮겨지니 모두 쓰러진 것도 같다, mineBossUp).
     //  처치하면 그 맵 주기 번호를 설정 MINE_SQ_KILL에 적고, 그 주기 동안은 NPC도 보스도 없다(소환사 자리 비움, 선물/싸우기 막음).
     static final long MINE_SQ_EMPTY_MS = 5_000L;
+    /** [2026-11-24] "최강다람쥐와 싸우다 다른 방으로 넘어가면 바로 전투가 끝나 조그마한 다람쥐로(싸움 이전처럼)" -- 굴에 남은 사람이 없으면 소환을 바로 풀고(NPC로) 체력도 처음대로.
+     *  위치 알림(1초)에서 굴 -> 다른 맵으로 바뀐 걸 본다(포탈/마을로 가기/쓰러짐 모두). 굴에 다른 사람이 남아 있으면 싸움은 그대로(마지막 사람이 나갈 때). */
+    void mineSqLeave(String userName, String den, long now) {
+        MINE_SQ_T.remove(userName);
+        for (java.util.Map.Entry<String, MinePresence> en : MINE_PRESENCE.entrySet()) {
+            MinePresence o = en.getValue();
+            if (o != null && !userName.equals(en.getKey()) && den.equals(o.mapId) && now - o.at < MINE_PRESENCE_TTL_MS) return; // 아직 싸우는 사람이 있다
+        }
+        synchronized (MINE_CALL_AT) { MINE_CALL_AT.remove(den); MINE_CALL_SEEN.remove(den); }
+        S5MineMap dm = S5MineMap.get(den);
+        if (dm != null) mineCallReset(dm, now);
+    }
     static final String MINE_SQ_KILL_KEY = "MINE_SQ_KILL";
     static volatile int MINE_SQ_KILL_CYC = Integer.MIN_VALUE; // 읽기 전
     boolean mineSqGone(long now) {
@@ -12764,6 +12776,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         MinePresence me = minePresenceOf(userName);
         if (me.mapId != null && mapId != null && !mapId.equals(me.mapId)) { mineMercXpFlushUser(userName); mineBoatFlush(userName); } // [2026-11-18] 맵을 옮기면 모아 둔 용병 경험치/배 피해를 DB에
+        if (me.mapId != null && mapId != null && !mapId.equals(me.mapId) && S5MineMap.isSqDen(me.mapId)) mineSqLeave(userName, me.mapId, now); // [2026-11-24] 다람쥐 굴을 나갔다
         me.mapId = mapId; me.x = x; me.y = y; me.at = now;
         { HashMap<String, Object> un = mineUnityCalc(userName, mapId, now); if (un != null) out.put("unity", un); } // [2026-11-17] 우리는 하나
         { int[] ae = MINE_ARMOR_EL_OF.get(userName); // [2026-11-22] 갑옷 속성 -- 맞은 횟수를 DB에, 무효/상성 횟수를 화면에
