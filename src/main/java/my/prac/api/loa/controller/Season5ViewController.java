@@ -660,6 +660,9 @@ public class Season5ViewController {
         return ResponseEntity.ok(out);
     }
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private S55AssetController s55Asset;
+
     @GetMapping("/api/tower-mine-vers")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineVers() {
@@ -668,6 +671,7 @@ public class Season5ViewController {
         for (String id : my.prac.core.prjbot.service.impl.S5MineMap.ids()) mv.put(id, my.prac.core.prjbot.service.impl.S5MineMap.get(id).version());
         out.put("mapVers", mv);
         out.put("build", PAGE_BUILD); // [2026-11-24] 배포(빌드)가 바뀌면 화면이 맵을 모두 새로 받는다
+        out.put("charVer", s55Asset == null ? "" : s55Asset.charVer()); // [2026-11-24] 캐릭터 그림 코드(_mine_char.jsp) 해시 -- 바뀌면 화면이 저장해 둔 그림을 새로 그린다
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(out);
     }
 

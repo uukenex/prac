@@ -5101,24 +5101,27 @@ var TowerMine = (function () {
   // [2026-11-24] 같은 날 "267/267 되고 나서도 한참 있다가 된다" -- 맵을 다 받은 뒤 그림(몬스터/NPC/전체 지도/주민 1,296장)을 한 번에 그리느라 버튼이 늦게 풀렸다.
   //  이제 그림은 작은 일감으로 나눠 뒤에서(8ms씩, 프레임 사이) 그리고, 들어가기 버튼은 맵만 받으면 바로 풀린다(다 못 그린 그림은 처음 쓸 때 그린다).
   //  주민 모습은 CIT_LOOKS가지만(108명이 돌려 쓴다 -- 그릴 양 1,296 -> 480장).
-  var preExtraDone = false, preExtraOn = false, CIT_LOOKS = 40;
+  var preExtraDone = false, preExtraP = null, CIT_LOOKS = 40;
   function preWithMap(pmap, fn) { if (map || !pmap) { fn(); return; } map = pmap; try { fn(); } finally { if (!opened) map = null; } }
-  function preloadExtra(pmap) {
-    if (preExtraDone || preExtraOn) return Promise.resolve();
-    preExtraOn = true;
+  function preloadExtra(pmap, prog) {
+    if (preExtraDone) { if (prog) prog(1, 1); return Promise.resolve(); }
+    if (preExtraP) return preExtraP;
     var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
     ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); }); });
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
-    try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { npcHD(kd); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
+    try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHD(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
-    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); }); })(ci);
-    var ti = 0, run = function () {
-      var t0 = performance.now();
-      while (ti < tasks.length && performance.now() - t0 < 8) { try { tasks[ti](); } catch (e) { } ti++; }
-      if (ti < tasks.length) setTimeout(run, 16); else { preExtraDone = !!ty.length; preExtraOn = false; }
-    };
-    setTimeout(run, 0);
-    return Promise.resolve();
+    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); })(ci);
+    preExtraP = new Promise(function (res) {
+      var ti = 0, run = function () {
+        var t0 = performance.now();
+        while (ti < tasks.length && performance.now() - t0 < 12) { try { tasks[ti](); } catch (e) { } ti++; }
+        if (prog) prog(ti, tasks.length);
+        if (ti < tasks.length) setTimeout(run, 0); else { preExtraDone = !!ty.length; preExtraP = null; res(); }
+      };
+      setTimeout(run, 0);
+    });
+    return preExtraP;
   }
   function worldHtml() {
     var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && (st.adminMaps || st.ringMaps)); // [2026-11-15] 용의 반지를 끼면 지역을 눌러 이동
@@ -9945,8 +9948,8 @@ var TowerMine = (function () {
     if (MAP_DB) return MAP_DB;
     MAP_DB = new Promise(function (ok) {
       try {
-        var rq = indexedDB.open('tw-mine', 1);
-        rq.onupgradeneeded = function () { try { rq.result.createObjectStore('maps', { keyPath: 'id' }); } catch (e) { } };
+        var rq = indexedDB.open('tw-mine', 2); // [2026-11-24] v2 = 그림 저장소(spr) 추가
+        rq.onupgradeneeded = function () { var db = rq.result; try { if (!db.objectStoreNames.contains('maps')) db.createObjectStore('maps', { keyPath: 'id' }); } catch (e) { } try { if (!db.objectStoreNames.contains('spr')) db.createObjectStore('spr', { keyPath: 'id' }); } catch (e) { } };
         rq.onsuccess = function () { ok(rq.result); };
         rq.onerror = function () { ok(null); }; rq.onblocked = function () { ok(null); };
         setTimeout(function () { ok(null); }, 4000);
@@ -10015,7 +10018,7 @@ var TowerMine = (function () {
   // [2026-11-24] "게임 접속 시 로딩이 너무 길어졌다(이미지 리소스, 맵 정보 확인) -- 앱을 처음 켤 때 게임 시작 버튼 누르기 전까지 받게, 그동안 시작 버튼은 잠시 잠그고 아래 기록은 볼 수 있게" --
   //  광산 탭(들어가기 화면)이 그려질 때 prefetch: 맵 버전 목록(/api/tower-mine-vers) -> 바뀐 맵만 받기(저장본은 읽기만, 맵마다 한 번씩 쉬어 화면이 안 굳게) -> 타일/광석/몬스터/NPC/전체 지도 그림.
   //  끝나면(또는 25초가 지나면) prefetchBind로 묶은 들어가기 버튼이 풀린다. 들어갈 때 preloadAll은 받아 둔 것을 건너뛴다.
-  var pre = null, preSt = { done: 0, total: 0, ok: false }, preFns = [];
+  var pre = null, preSt = { done: 0, total: 0, sdone: 0, stotal: 0, idone: 0, itotal: 0, ok: false }, preFns = []; // [2026-11-24] 단계마다 진행(맵 / 저장된 그림 / 그림)
   function preNote() { preFns = preFns.filter(function (f) { try { return f(preSt) !== false; } catch (e) { return false; } }); }
   function preDone() { if (preSt.ok) return; preSt.ok = true; preNote(); }
   function prefetch(base) {
@@ -10026,32 +10029,90 @@ var TowerMine = (function () {
     pre = fetch(b0 + '/api/tower-mine-vers', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
       var vers = (d && d.mapVers) || {};
       if (d && d.build) mapBuild = String(d.build); // [2026-11-24] 배포마다 새로
+      sprVer = (d && d.charVer ? String(d.charVer) : 'x') + '|' + SPR_VER + '|' + (charHD ? 1 : 0); // [2026-11-24] 캐릭터 그림 코드가 바뀌면 저장해 둔 그림도 새로
       try { if (!tiles) { buildTiles(); buildSprites(); } } catch (e) { }
       for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } }
-      return loadMaps(vers, function (dn, tt) { preSt.done = dn; preSt.total = tt; preNote(); }).then(function () { // [2026-11-24] 묶음 + 병렬
+      return Promise.all([
+        loadMaps(vers, function (dn, tt) { preSt.done = dn; preSt.total = tt; preNote(); }), // [2026-11-24] 묶음 + 병렬
+        sprLoad(function (dn, tt) { preSt.sdone = dn; preSt.stotal = tt; preNote(); }).then(function () { preSt.sfin = true; preNote(); }) // [2026-11-24] 저장해 둔 그림(재접속 때 다시 안 그린다)
+      ]).then(function () {
         var any = null;
         for (var id in mapMem) if (mapMem[id] && mapMem[id].mobTypes) { any = mapMem[id]; break; }
-        return preloadExtra(any);
+        return preloadExtra(any, function (dn, tt) { preSt.idone = dn; preSt.itotal = tt; preNote(); });
       });
     }).catch(function () { }).then(preDone);
     return pre;
   }
-  /** 들어가기 버튼을 준비가 끝날 때까지 잠근다(글자에 진행). */
+  /** 들어가기 버튼을 준비가 끝날 때까지 잠그고, 버튼 아래에 단계마다 진행 막대(맵 정보 / 저장된 그림 / 그림 준비). [2026-11-24] "프로그레스 바를 여러 개 각각" */
   function prefetchBind(btn) {
     if (!btn) return;
     var txt = btn.getAttribute('data-txt') || btn.textContent;
     btn.setAttribute('data-txt', txt);
+    var box = document.createElement('div');
+    box.className = 'pre-bars';
+    box.style.cssText = 'display:flex;flex-direction:column;gap:5px;margin:8px 0 2px;font-size:12px;color:#cfc8e8;width:100%';
+    try { (btn.parentNode.parentNode || btn.parentNode).insertBefore(box, btn.parentNode.nextSibling); } catch (e) { }
+    var bar = function (label, dn, tt, doneTxt) {
+      var p = tt > 0 ? Math.min(100, Math.round(dn * 100 / tt)) : 0, fin = tt > 0 && dn >= tt;
+      return '<div><div style="display:flex;justify-content:space-between"><span>' + label + '</span><span style="font-variant-numeric:tabular-nums">' + (tt ? (fin ? (doneTxt || '✔ 완료') : dn + ' / ' + tt) : '대기 중') + '</span></div>'
+        + '<div style="height:6px;background:#2a2440;border:1px solid #5a4f7a;margin-top:2px"><i style="display:block;height:100%;width:' + (fin ? 100 : p) + '%;background:' + (fin ? '#6fd08a' : '#f0c040') + '"></i></div></div>';
+    };
     preFns.push(function (s) {
       if (!btn.isConnected) return false;
-      if (s.ok) { btn.disabled = false; btn.textContent = txt; return false; }
-      btn.disabled = true; btn.textContent = '⏳ 준비 중' + (s.total ? ' ' + s.done + '/' + s.total : '...');
+      box.innerHTML = bar('🗺️ 맵 정보', s.done, s.total) + (s.sfin && !s.stotal ? bar('💾 저장해 둔 그림 읽기', 1, 1, '처음이라 없음') : bar('💾 저장해 둔 그림 읽기', s.sdone, s.stotal)) + bar('🖼️ 그림 준비', s.idone, s.itotal);
+      if (s.ok) { btn.disabled = false; btn.textContent = txt; setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 1200); return false; }
+      btn.disabled = true; btn.textContent = '⏳ 준비 중...';
     });
     preNote();
   }
+  // [2026-11-24] "다 로딩된 상태에서 재접속해도 엄청 느리다" -- 맵은 저장해 두지만 그림(주민/NPC 64x64 캐릭터 그림, 한 장 약 1.7ms -- 폰은 몇 배)은 켤 때마다 다시 그렸다.
+  //  다 그린 그림을 IndexedDB(spr)에 PNG로 두고(sprVer = 서버 캐릭터 그림 코드 해시 + SPR_VER + 고해상도 여부), 다음엔 그걸 ImageBitmap으로 바로 꺼내 쓴다.
+  //  주민/NPC 모습 표(citLook / NPC_LOOK)를 바꾸면 SPR_VER를 올릴 것.
+  var SPR_VER = '1', sprVer = '', sprSaveQ = [], sprSaveOn = false;
+  function sprLoad(prog) {
+    if (!window.createImageBitmap || !sprVer) return Promise.resolve();
+    return mapDb().then(function (db) {
+      if (!db) return;
+      return new Promise(function (ok) {
+        try {
+          var r = db.transaction('spr', 'readonly').objectStore('spr').getAll();
+          r.onerror = function () { ok(); };
+          r.onsuccess = function () {
+            var list = (r.result || []).filter(function (q) { return q && q.v === sprVer && q.blob; }), dn = 0;
+            if (prog) prog(0, list.length);
+            if (!list.length) { ok(); return; }
+            Promise.all(list.map(function (q) {
+              return createImageBitmap(q.blob).then(function (bm) {
+                var k = q.id.slice(2);
+                if (q.id.charAt(0) === 'c' && !citCache[k]) citCache[k] = bm;
+                else if (q.id.charAt(0) === 'n' && npcHdC[k] == null) npcHdC[k] = bm;
+              }, function () { }).then(function () { dn++; if (prog && (dn % 20 === 0 || dn === list.length)) prog(dn, list.length); });
+            })).then(function () { ok(); });
+          };
+        } catch (e) { ok(); }
+      });
+    }).catch(function () { });
+  }
+  /** 새로 그린 그림을 저장(뒤에서 PNG로 -- 한 번에 몇 장씩). */
+  function sprSave(id, cv) {
+    if (!sprVer || !cv || !cv.toBlob) return;
+    sprSaveQ.push([id, cv]);
+    if (sprSaveOn) return;
+    sprSaveOn = true;
+    var step = function () {
+      var batch = sprSaveQ.splice(0, 12);
+      if (!batch.length) { sprSaveOn = false; return; }
+      Promise.all(batch.map(function (q) { return new Promise(function (ok) { try { q[1].toBlob(function (b) { ok(b ? { id: q[0], v: sprVer, blob: b } : null); }, 'image/png'); } catch (e) { ok(null); } }); })).then(function (rows) {
+        mapDb().then(function (db) { if (!db) return; try { var os = db.transaction('spr', 'readwrite').objectStore('spr'); rows.forEach(function (rw) { if (rw) os.put(rw); }); } catch (e) { } });
+        setTimeout(step, 30);
+      });
+    };
+    setTimeout(step, 200);
+  }
   function preloadAll(vers) {
     for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } } // [2026-11-20] 65까지만 -> 모든 아이템(나무/태초의 보석 등)
-    return loadMaps(vers, function (done, total) { if (done < total && opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (' + done + ' / ' + total + ')'; }) // [2026-11-24] 묶음 + 병렬(받아 둔 것은 건너뛴다)
-      .then(function () { return preloadExtra(); }); // [2026-11-20] 그림들까지
+    return loadMaps(vers, function (done, total) { if (done < total && opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... 맵 (' + done + ' / ' + total + ')'; }) // [2026-11-24] 묶음 + 병렬(받아 둔 것은 건너뛴다)
+      .then(function () { return preloadExtra(null, function (dn, tt) { if (dn < tt && opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... 그림 (' + dn + ' / ' + tt + ')'; }); }); // [2026-11-20] 그림들까지
   }
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {

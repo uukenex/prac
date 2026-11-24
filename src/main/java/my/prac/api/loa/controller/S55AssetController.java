@@ -56,6 +56,14 @@ public class S55AssetController {
         return ResponseEntity.ok().contentType(type).cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic()).body(body);
     }
 
+    /** [2026-11-24] 캐릭터 그림 코드(_mine_char.jsp) 해시 -- 화면이 저장해 둔 캐릭터 그림(IndexedDB)을 이 값이 바뀔 때만 다시 그린다. */
+    private volatile String charVer;
+    public String charVer() {
+        String v = charVer;
+        if (v == null) { v = Integer.toHexString(read("_mine_char.jsp").hashCode()); charVer = v; }
+        return v;
+    }
+
     private byte[] build(String file, String ctx) {
         StringBuilder sb = new StringBuilder();
         if ("tower.css".equals(file)) {
