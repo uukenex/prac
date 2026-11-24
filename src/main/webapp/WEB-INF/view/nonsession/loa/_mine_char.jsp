@@ -46,11 +46,91 @@ window.MineChar = (function () {
     harpy:   { bl: '#7ae8c8', hi: '#f0fff8', dk: '#2a9a78', hg: '#e8fff4', hgd: '#5ab89a', hd: '#1e4a3a', hdd: '#3a7a5a', bw: 3, n: 15, wind: 1, trail: '#bfeee0' }, // [2026-11-11] 하피의 검 -- 비취색 날, 깃털 날개 코등이, 칼날을 감는 바람, 손잡이 깃털 장식
     parasol: { bl: '#ff8ab8', hi: '#ffd0e4', dk: '#e05a90', hg: '#8a5a2b', hgd: '#5a3a1a', hd: '#8a5a2b', hdd: '#5a3a1a', bw: 2, n: 11, trail: '#ffc8dc' }
   };
+  // [2026-11-24] "외형 무기(치장) -- 마법소녀 지팡이류 + 벚꽃검/얼음 수정검/용암 대검/무지개검/광선검/해골 마검/사탕 지팡이/생선/대파"
+  //  칼 모양(blade32)은 W32 값 + fx2(칼날 위에 덧그림), 칼이 아닌 것(prop)은 prop32가 손잡이 칸(hx, hy)에서 방향(dx, dy)으로 그린다(i = 손에서 앞으로, j = 옆).
+  var COSW = {
+    sakura:  { bl: '#ffc8dc', hi: '#ffffff', dk: '#e87aa8', hg: '#5a2a3a', hgd: '#3a1424', hd: '#3a1a24', hdd: '#e87aa8', bw: 2, n: 13, trail: '#ffd0e4',
+      fx2: function (at, af, ii, s, n, bw, f) { if ((s * 3 + f) % 7 === 0) af(ii, -2 - (s + f) % 2, '#ff9ac0'); if ((s * 5 + f) % 9 === 0) af(ii + 1, bw + 1 + (s % 2), '#ffd0e4'); } },
+    crystal: { bl: '#9fe0ff', hi: '#ffffff', dk: '#3a9ad8', hg: '#d8f4ff', hgd: '#6ab8e8', hd: '#1a3a5a', hdd: '#0a1a2e', bw: 3, n: 14, trail: '#c8f0ff',
+      fx2: function (at, af, ii, s, n, bw, f) { if (s % 3 === 1) at(ii, 1, '#e8fbff'); if (s === n - 1 && f % 2) { af(ii + 2, 1, '#ffffff'); af(ii + 1, -1, '#ffffff'); af(ii + 1, 3, '#ffffff'); af(ii + 3, 1, '#c8f0ff'); } } },
+    lava:    { bl: '#3a1a14', hi: '#6a2a14', dk: '#1a0a08', hg: '#c8a050', hgd: '#5a3a10', hd: '#2a1a14', hdd: '#7a2a10', bw: 4, n: 15, trail: '#ff6a1a',
+      fx2: function (at, af, ii, s, n, bw, f) { var c = [1, 2, 2, 1, 2, 1, 1, 2][(s + f) % 8]; at(ii, c, (s + f) % 3 ? '#ff7a1a' : '#ffd040'); if (s % 4 === 2) at(ii, c === 1 ? 2 : 1, '#ff4a10'); if ((s + f) % 6 === 0) af(ii, -1, '#ff9a20'); } },
+    rainbow: { bl: '#ffffff', hi: '#ffffff', dk: '#c8c8d8', hg: '#ffd23f', hgd: '#b8860b', hd: '#5a4a8a', hdd: '#3a2a6a', bw: 3, n: 14, trail: '#ffe0ff',
+      fx2: function (at, af, ii, s, n, bw, f) { var R = ['#ff4a5a', '#ff9a2a', '#ffe04a', '#5ad85a', '#4ab0ff', '#6a6aff', '#c86aff']; var w = s >= n - 2 ? Math.max(1, bw - (s - (n - 3))) : bw; for (var j = 0; j < w; j++) at(ii, j, j === 0 ? '#ffffff' : R[(s + j + f) % 7]); } },
+    saber_b: { bl: '#9fe8ff', hi: '#ffffff', dk: '#4ab0ff', hg: '#9aa3b6', hgd: '#5a6070', hd: '#2a2e38', hdd: '#9aa3b6', bw: 2, n: 16, trail: '#9fe8ff', glow: '#4ab0ff' },
+    saber_r: { bl: '#ffb0b0', hi: '#ffffff', dk: '#ff3a3a', hg: '#3a3a42', hgd: '#1a1a20', hd: '#2a2e38', hdd: '#c8303a', bw: 2, n: 16, trail: '#ff9a9a', glow: '#ff3a3a' },
+    saber_g: { bl: '#b8ffb0', hi: '#ffffff', dk: '#3ad84a', hg: '#9aa3b6', hgd: '#5a6070', hd: '#2a2e38', hdd: '#3ad84a', bw: 2, n: 16, trail: '#a8ffa0', glow: '#3ad84a' },
+    skull:   { bl: '#4a2a6a', hi: '#b89aff', dk: '#1a0a2a', hg: '#e8e4da', hgd: '#8a8478', hd: '#1a1024', hdd: '#3a2a4a', bw: 3, n: 14, trail: '#b89aff',
+      fx2: function (at, af, ii, s, n, bw, f) { if (s === 0) { at(ii - 1, -1, '#e8e4da'); at(ii - 1, bw, '#e8e4da'); at(ii - 1, 0, '#1a1a1a'); at(ii - 1, bw - 1, '#1a1a1a'); } if ((s + f) % 4 === 0) af(ii, -2, '#9a6aff'); if ((s + f) % 4 === 2) af(ii + 1, bw + 1, '#c8a8ff'); if (s % 5 === 3) at(ii, 1, '#ff3a6a'); } },
+    candy:   { prop: 'candy', trail: '#ffd0d8' },
+    fish:    { prop: 'fish', trail: '#c8e8ff' },
+    leek:    { prop: 'leek', trail: '#d8f8c0' },
+    wand_heart: { prop: 'heart', trail: '#ffc0e0' },
+    wand_star:  { prop: 'star', trail: '#fff0a0' },
+    wand_moon:  { prop: 'moon', trail: '#d8c8ff' }
+  };
+  /** 칼이 아닌 외형 무기. at = 테두리 붙는 그림, af = 빛(테두리 없음). */
+  function prop32(g, W, hx, hy, dx, dy, f) {
+    var nx = -dy, ny = dx;
+    var at = function (i, j, c) { P(g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
+    var af = function (i, j, c) { P(FX || g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
+    var k = W.prop, i, j;
+    var blob = function (ic, jc, r, test, col) { for (var di = -Math.ceil(r) - 1; di <= Math.ceil(r) + 1; di++) for (var dj = -Math.ceil(r) - 1; dj <= Math.ceil(r) + 1; dj++) { var c = test(dj / r, di / r, di, dj); if (c) at(ic + di, jc + dj, c === true ? col : c); } };
+    if (k === 'candy') { // 사탕 지팡이 -- 빨강/흰 줄무늬 + 위가 구부러진 갈고리
+      for (i = -4; i <= 13; i++) for (j = 0; j < 2; j++) at(i, j, (i + j + 40) % 4 < 2 ? '#e8303a' : '#ffffff');
+      [[14, 0], [14, 1], [15, 0], [15, 1], [16, -1], [16, 0], [17, -1], [17, -2], [17, -3], [16, -3], [16, -4], [15, -4], [14, -4], [13, -4], [16, -2]].forEach(function (q, n) { at(q[0], q[1], n % 4 < 2 ? '#e8303a' : '#ffffff'); });
+      if (f % 2) af(18, -1, '#ffffff');
+      return;
+    }
+    if (k === 'leek') { // 대파 -- 흰 줄기(뿌리 수염) -> 연두 -> 갈라지는 초록 잎
+      for (i = -4; i <= 7; i++) for (j = 0; j < 3; j++) at(i, j, j === 0 ? '#ffffff' : j === 2 ? '#d8e4c8' : '#f4f8ec');
+      [-1, 1, 3].forEach(function (jj) { at(-5, jj, '#c8b890'); at(-6, jj + (jj > 1 ? 1 : 0), '#c8b890'); });
+      for (i = 8; i <= 10; i++) for (j = 0; j < 3; j++) at(i, j, j === 1 ? '#c8f0a0' : '#a8e070');
+      for (i = 11; i <= 21; i++) { var sp = Math.floor((i - 10) / 3); at(i, -sp, '#5ab83a'); at(i, -sp + 1, '#7ad84a'); at(i, 2 + sp, '#3a9a2a'); at(i, 1 + sp, '#5ab83a'); }
+      at(22, -4, '#5ab83a'); at(22, 6, '#3a9a2a');
+      return;
+    }
+    if (k === 'fish') { // 생선 -- 꼬리를 쥐고 든다: 꼬리지느러미 -> 몸(등 파랑/배 흰) -> 머리(눈)
+      [[-3, -2], [-3, -1], [-3, 2], [-3, 3], [-2, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 0], [-1, 1], [0, 0], [0, 1]].forEach(function (q) { at(q[0], q[1], '#5a7aa8'); });
+      for (i = 1; i <= 16; i++) { var hw = Math.round(3.4 * Math.sin((i - 0.5) / 16 * Math.PI)); for (j = 1 - hw; j <= hw; j++) at(i, j, j <= 0 ? '#6a9ac8' : j === hw ? '#e8f0f4' : '#c8d8e4'); }
+      at(13, 0, '#ffffff'); at(13, -1, '#1a1a2a'); at(15, 1, '#a85a5a'); // 눈, 입
+      at(8, -3, '#4a6a98'); at(9, -4, '#4a6a98'); at(9, -3, '#4a6a98'); // 등지느러미
+      for (i = 3; i <= 12; i += 3) at(i, 0, '#9ab8d8'); // 비늘
+      return;
+    }
+    // 마법소녀 지팡이 -- 자루(리본 감음) + 머리 장식
+    var shaft = k === 'heart' ? ['#ffffff', '#ff8ac0'] : k === 'star' ? ['#fff3b0', '#e8b830'] : ['#e8e0ff', '#9a7ad8'];
+    for (i = -4; i <= 5; i++) for (j = 0; j < 2; j++) at(i, j, (i + j + 40) % 3 === 0 ? shaft[1] : shaft[0]);
+    at(-5, 0, shaft[1]); at(-5, 1, shaft[1]); at(6, -1, '#ffd23f'); at(6, 0, '#ffd23f'); at(6, 1, '#ffd23f'); at(6, 2, '#ffd23f'); // 끝 마개 + 금 고리
+    var at0 = at, af0 = af; at = function (i, j, c) { at0(i - 4, j, c); }; af = function (i, j, c) { af0(i - 4, j, c); }; // 머리 장식은 4칸 아래로(휘두를 때 32 격자 밖으로 잘리지 않게)
+    if (k === 'heart') {
+      blob(15, 0.5, 4.2, function (x, y) { var yy = -y + 0.15; var v = Math.pow(x * x + yy * yy - 1, 3) - x * x * yy * yy * yy; return v <= 0 ? (x < -0.2 && yy > 0.2 ? '#ffd0e8' : x > 0.45 || yy < -0.6 ? '#e83a8a' : '#ff6aaa') : false; }, '#ff6aaa');
+      at(17, -1, '#ffffff'); at(18, -1, '#ffffff'); // 반짝
+      [[14, -5], [15, -6], [15, -5], [16, -7], [16, -6], [13, -5]].forEach(function (q) { at(q[0], q[1], '#ffffff'); at(q[0], 1 - q[1], '#ffffff'); }); // 날개
+      if (f % 2) { af(21, 0, '#fff0f8'); af(19, 5, '#ffc0e0'); } else { af(20, -4, '#ffc0e0'); af(22, 2, '#ffffff'); }
+      return;
+    }
+    if (k === 'star') {
+      var STAR = []; for (var sk = 0; sk < 10; sk++) { var sa = -Math.PI / 2 + sk * Math.PI / 5, sr = sk % 2 ? 0.46 : 1; STAR.push([Math.cos(sa) * sr, Math.sin(sa) * sr]); }
+      var inPoly = function (x, y, pl) { var c = false; for (var p = 0, q = pl.length - 1; p < pl.length; q = p++) if ((pl[p][1] > y) !== (pl[q][1] > y) && x < (pl[q][0] - pl[p][0]) * (y - pl[p][1]) / (pl[q][1] - pl[p][1]) + pl[p][0]) c = !c; return c; };
+      blob(15, 0.5, 4.8, function (x, y) { var yy = -y; if (!inPoly(x, yy, STAR)) return false; var r = Math.hypot(x, yy); return inPoly(x * 1.35, yy * 1.35, STAR) ? (r < 0.25 ? '#fffbe0' : '#ffd23f') : '#e88a1a'; }, '#ffd23f');
+      [[9, -2], [8, -3], [7, -3], [6, -4], [9, 3], [8, 4], [7, 4], [6, 5]].forEach(function (q, n) { at(q[0], q[1], n % 4 < 2 ? '#ff6aaa' : '#ff9ac8'); }); // 리본
+      if (f % 2) { af(21, 0, '#ffffff'); af(17, -6, '#fff0a0'); } else { af(18, 6, '#ffffff'); af(22, 1, '#fff0a0'); }
+      return;
+    }
+    // 초승달 + 푸른 구슬
+    blob(15, 0.5, 4.6, function (x, y) { var inA = x * x + y * y <= 1, inB = (x - 0.45) * (x - 0.45) + (y + 0.15) * (y + 0.15) <= 0.62; return inA && !inB ? (x < -0.5 ? '#fff3b0' : '#ffd23f') : false; }, '#ffd23f');
+    blob(14, 1.5, 1.6, function (x, y) { return x * x + y * y <= 1 ? (x < 0 && y > 0 ? '#e8f8ff' : '#6ab8ff') : false; }, '#6ab8ff');
+    at(16, -3, '#e8b830'); at(17, -4, '#fff3b0');
+    if (f % 2) { af(20, 3, '#e8e0ff'); af(18, 5, '#ffffff'); } else { af(21, 0, '#ffffff'); af(19, -5, '#d8c8ff'); }
+  }
+  for (var ck in COSW) W32[ck] = COSW[ck];
   function P(g, c, x, y) { if (c) { g.fillStyle = c; g.fillRect(x, y, 1, 1); } else g.clearRect(x, y, 1, 1); }
   // 빛(번개/바깥 불꽃/궤적)은 검은 테두리 없이 따로 겹친다(FX) -- 테두리가 붙으면 울타리처럼 보였다
   var FX = null;
   /** 칼 하나 -- (hx, hy) = 코등이 바로 아래 손잡이 칸, (dx, dy) = 칼끝 방향, f = 프레임(불꽃/번개가 일렁임). 칼날 폭은 방향의 오른쪽(-dy, dx)으로. */
   function blade32(g, W, hx, hy, dx, dy, f) {
+    if (W.prop) { prop32(g, W, hx, hy, dx, dy, f); return; } // [2026-11-24] 칼이 아닌 외형 무기
     var nx = -dy, ny = dx, bw = W.bw, n = W.n;
     var at = function (i, j, c) { P(g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
     var af = function (i, j, c) { P(FX || g, c, hx + dx * i + nx * j, hy + dy * i + ny * j); };
@@ -77,6 +157,8 @@ window.MineChar = (function () {
         continue;
       }
       for (var j3 = 0; j3 < w; j3++) at(ii, j3 + sh, j3 === 0 ? W.hi : j3 === w - 1 ? W.dk : W.bl);
+      if (W.fx2) W.fx2(at, af, ii, s, n, bw, f); // [2026-11-24] 외형 무기 칼날 장식
+      if (W.glow) { af(ii, -1, W.glow); af(ii, bw, W.glow); } // [2026-11-24] 광선검 빛
       if (W.curve && s % 3 === 1) at(ii, sh + 1, '#ffffff'); // 물결 무늬(하몬)
       if (W.chip && (s === 3 || s === 7)) at(ii, bw - 1, null); // 이 빠진 날
       if (W.wind && (s + f * 2) % 5 === 0) { af(ii, -2, '#bfeee0'); af(ii + 1, -3, '#ffffff'); af(ii + 2, bw + 1, '#bfeee0'); af(ii + 3, bw + 2, '#ffffff'); } // 칼날을 감고 오르는 바람

@@ -13037,7 +13037,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // "캐릭터 외형을 바꿀 수 있게, 대장장이 옆 건물에 명품상점 -- 부위별 치장 아이템, 성별 전환도 여기서" 요청. 능력치 없음(보이는 것만).
     //  산 아이템: TBOT_S5_MINE_ITEM "COS_" + 코드(1), 부위별 착용: "LOOK_" + 부위(카탈로그 순번 + 1, 0 = 기본), 성별: "LOOK_GENDER"(0 남 / 1 여).
     //  모양/색(look 값)은 화면(TowerMine.charSprite)이 그린다.
-    static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes", "wing" }; // [2026-10-29] wing = 환생 날개 염색(기본 흰색)
+    static final String[] MINE_LOOK_SLOTS = { "hat", "hair", "top", "bottom", "shoes", "wing", "wpn" }; // [2026-11-24] wpn = 외형 무기(손에 든 그림만, 성능은 그대로) // [2026-10-29] wing = 환생 날개 염색(기본 흰색)
     static final String MINE_ITEM_GENDER = "LOOK_GENDER";
     // [2026-11-20] "머리 스타일 골고루 추가, 머리 변경 및 염색 기능(상인)" -- 왕도 미용실(barber): 머리 모양(LOOK_HSTYLE = 순번, 0 = 성별 기본), 염색(LOOK_HDYE = 팔레트 순번 + 1, 0 = 안 함).
     //  염색은 명품상점 머리 색보다 먼저 보인다(명품상점에서 머리 색을 입으면 염색은 지워진다). 비용은 금광석(남아도는 광석).
@@ -13163,7 +13163,22 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineCos("BOT_PLEATED", "bottom", "검은 주름치마", "#2a2428", new String[][] { mineOre(2, 80), mineCost(0, 2) }),
         // [2026-11-19] "NPC 룩템 -- 기사단장 코스튬, 기사단원 코스튬"(시안 승인) -- 탑 가는 길 기사단 차림(판금 + 투구, 단장은 붉은 망토). 입으면 모자 대신 투구(_mine_char.jsp). 맨 뒤에만 붙인다.
         new MineCos("TOP_KNIGHT", "top", "기사단원 코스튬", "#9aa3b6|knight", new String[][] { mineOre(4, 30), mineCost(1, 3) }),
-        new MineCos("TOP_KNIGHT_LORD", "top", "기사단장 코스튬", "#d9b44a|knightlord", new String[][] { mineOre(4, 50), mineCost(8, 2), mineBar(3, 1) })
+        new MineCos("TOP_KNIGHT_LORD", "top", "기사단장 코스튬", "#d9b44a|knightlord", new String[][] { mineOre(4, 50), mineCost(8, 2), mineBar(3, 1) }),
+        // [2026-11-24] "외형 무기(치장) -- 치장상점에서 무료"(시안 승인) -- look = 손에 든 그림 이름(_mine_char.jsp COSW). 실제 무기 성능/효과는 그대로.
+        new MineCos("WPN_SAKURA", "wpn", "벚꽃검", "sakura", new String[0][]),
+        new MineCos("WPN_CRYSTAL", "wpn", "얼음 수정검", "crystal", new String[0][]),
+        new MineCos("WPN_LAVA", "wpn", "용암 대검", "lava", new String[0][]),
+        new MineCos("WPN_RAINBOW", "wpn", "무지개검", "rainbow", new String[0][]),
+        new MineCos("WPN_SABER_B", "wpn", "광선검(파랑)", "saber_b", new String[0][]),
+        new MineCos("WPN_SABER_R", "wpn", "광선검(빨강)", "saber_r", new String[0][]),
+        new MineCos("WPN_SABER_G", "wpn", "광선검(초록)", "saber_g", new String[0][]),
+        new MineCos("WPN_SKULL", "wpn", "해골 마검", "skull", new String[0][]),
+        new MineCos("WPN_HEART", "wpn", "하트 요술봉", "wand_heart", new String[0][]),
+        new MineCos("WPN_STAR", "wpn", "별 요술봉", "wand_star", new String[0][]),
+        new MineCos("WPN_MOON", "wpn", "초승달 요술봉", "wand_moon", new String[0][]),
+        new MineCos("WPN_CANDY", "wpn", "사탕 지팡이", "candy", new String[0][]),
+        new MineCos("WPN_FISH", "wpn", "생선", "fish", new String[0][]),
+        new MineCos("WPN_LEEK", "wpn", "대파", "leek", new String[0][])
     );
     /** [2026-10-28] 바람의 신 -- 화면 한 칸 이동 시간을 기본(140ms)의 1/5로. */
     static final String MINE_COS_SPEED = "SHOE_GM";
@@ -13199,6 +13214,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (hdy > 0 && hdy <= MINE_HAIR_DYES.length) look.put("hair", MINE_HAIR_DYES[hdy - 1][1]);
         MineWeapon lw = mineWeaponOn(items); // [2026-10-29] "무기별로 외형 조금씩 다르게" -- 드랍 무기는 무기마다 그림이 다르다(_mine_char.jsp WEAPON_LOOK)
         look.put("weapon", lw != null ? mineWeaponLook(lw) : mineParasolOn(items) ? "parasol" : "sword"); // [2026-10-28] 손에 든 무기(화면 그림)
+        look.put("weaponBase", look.get("weapon")); // [2026-11-24] 외형 무기를 벗으면 보일 실제 무기(상점 미리보기)
+        MineCos wcos = mineWornCos(items, "wpn"); // [2026-11-24] 외형 무기 -- 손에 든 그림만 바꾼다
+        if (wcos != null) look.put("weapon", wcos.look);
         int rb = mineRebirth(items);
         if (rb > 0) look.put("rebirth", rb); // [2026-10-28] 환생 날개(단계별로 커진다) -- 다른 유저 화면/관리자 페이지 그림에도
         return look;
@@ -13298,7 +13316,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         dao.upsertMineItem(userName, "LOOK_" + c.slot.toUpperCase(), MINE_COS.indexOf(c) + 1);
         if ("hair".equals(c.slot)) dao.upsertMineItem(userName, MINE_ITEM_HDYE, 0); // [2026-11-20] 명품상점 머리 색을 입으면 미용실 염색은 지운다
-        return mineGearResult(userName, true, "✨ " + c.name + ("buy".equals(action) ? " 구매! 바로 입었어요. (" + mineCostText(c.cost) + " 사용)" : " 착용!"));
+        return mineGearResult(userName, true, "✨ " + c.name + ("buy".equals(action) ? (c.cost.length == 0 ? " 받았어요! 바로 들었어요. (무료)" : " 구매! 바로 입었어요. (" + mineCostText(c.cost) + " 사용)") : " 착용!")); // [2026-11-24] 무료(외형 무기)
     }
 
 

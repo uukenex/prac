@@ -4351,7 +4351,7 @@ var TowerMine = (function () {
     travel('/api/tower-mine-warp?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&px=' + n.px + '&py=' + n.py + '&dest=' + encodeURIComponent(dest) + verQ(), '배를 타지 못했어요.');
   }
   // [2026-10-24] 명품상점 -- 부위별 외형(능력치 없음) + 성별 전환
-  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발', wing: '🪽 날개 염색' }; // [2026-10-29] 날개 염색
+  var LOOK_SLOT_NAME = { hat: '🎩 모자', hair: '💇 머리', top: '👘 상의', bottom: '👖 하의', shoes: '👞 신발', wing: '🪽 날개 염색', wpn: '🪄 외형 무기' }; // [2026-11-24] 외형 무기 // [2026-10-29] 날개 염색
   // [2026-10-24] "치장 아이템을 착용했을 때 모습을 이미지로" -- 목록마다 그 아이템을 입은 내 캐릭터, 누르면 위에 크게 입어보기(앞/옆/뒤)
   var lookImgCache = {}, tryLook = null, tryName = '';
   function lookImg(lk, dir) {
@@ -4392,7 +4392,7 @@ var TowerMine = (function () {
     lookWarmKey = wk;
     var add = function (l, dir) { var key = JSON.stringify(l) + dir; if (!lookImgCache[key] && !lookQWait[key]) { lookQWait[key] = []; lookQ.push({ key: key, lk: l, dir: dir }); } };
     ['down', 'right', 'up'].forEach(function (d) { add(lk, d); });
-    ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (s) { add(lookWith(s, ''), 'down'); });
+    ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing', 'wpn'].forEach(function (s) { add(lookWith(s, ''), 'down'); });
     st.cosShop.forEach(function (c) { add(lookWith(c.slot, c.look), 'down'); });
     add(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down');
     if (lookQ.length && !lookIdleOn) { lookIdleOn = true; lookIdleNext(); }
@@ -4412,6 +4412,7 @@ var TowerMine = (function () {
     var lk = {}, cur = st.look || {};
     for (var k in cur) lk[k] = cur[k];
     lk[slot] = look;
+    if (slot === 'wpn') lk.weapon = look || cur.weaponBase || 'sword'; // [2026-11-24] 외형 무기 미리보기(기본 = 실제 무기)
     if (slot === 'wing') lk.rebirth = Math.max(2, lk.rebirth | 0); // [2026-10-29] 날개 염색 미리보기 -- 환생 전이어도 날개를 보여 준다
     return lk;
   }
@@ -4433,7 +4434,7 @@ var TowerMine = (function () {
         + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
     // [2026-10-28] "치장상점 UI -- 부위별 캐러셀" -- 부위마다 가로로 넘기는 카드 줄(그림을 누르면 입어 보기). 다시 그려도 넘긴 자리는 그대로(renderSmithView).
-    ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (slot) {
+    ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing', 'wpn'].forEach(function (slot) {
       var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot; });
       var owned = list.filter(function (c) { return c.owned; }).length;
       h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + owned + '/' + list.length + ' 보유</small>'
@@ -5353,7 +5354,7 @@ var TowerMine = (function () {
       var lk = st.look || {};
       h += '<div class="mine-look-top"><div class="mine-look-prevs">' + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(lk, d) + '" alt="">'; }).join('') + '</div>'
           + '<div class="mine-smith-say">가지고 있는 치장만 보여요. 새 치장은 명품상점에서 살 수 있어요.</div></div>';
-      ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing'].forEach(function (slot) {
+      ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing', 'wpn'].forEach(function (slot) {
         var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot && c.owned; });
         h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + list.length + '개</small></div><div class="cos-car" data-slot="l-' + slot + '">'
             + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImgLazy(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
