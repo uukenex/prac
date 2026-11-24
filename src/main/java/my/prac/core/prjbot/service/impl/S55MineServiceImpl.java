@@ -10525,6 +10525,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, mk, md);
             items.put(mk, md);
             msg = md == 1 ? "⚔️ 선공 모드 -- 용병이 사거리 안의 몬스터를 먼저 공격해요." : "🤝 협공 모드 -- 용병이 나와 싸우는 몬스터만 함께 공격해요.";
+        } else if (action.startsWith("lvset:")) { // [2026-11-24] "관리자에게 용병 레벨 마음대로 -- 지금은 99밖에 안 돼" -- 1 ~ MINE_MERC_LV_TOP 아무 레벨로
+            int want; try { want = Integer.parseInt(action.substring(6).trim()); } catch (NumberFormatException e) { want = -1; }
+            if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
+            else if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
+            else if (want < 1 || want > MINE_MERC_LV_TOP) { ok = false; msg = "레벨은 1 ~ " + MINE_MERC_LV_TOP + " 사이로 넣어 주세요."; }
+            else { mineMercXpFlushUser(userName); mineMercSet(userName, items, c, "LV", want); mineMercSet(userName, items, c, "EXP", 0); msg = "🛠️ " + mineMercNm(items, c, "NM") + "을(를) Lv." + want + "(으)로 바꿨어요."; }
         } else if ("lv99".equals(action)) { // [2026-11-06] "관리자는 레벨을 99로 올리는 기능"
             if (!isMineAdmin(userName)) { ok = false; msg = "관리자만 쓸 수 있어요."; }
             else if (!cOk || mineMercLv(items, c) <= 0) { ok = false; msg = "계약한 용병이 아니에요."; }
