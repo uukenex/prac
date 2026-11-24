@@ -2389,6 +2389,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 이번 주기에 거룡이 쓰러졌는지(베히모스로 넘어갔으면 쓰러진 것). */
     static boolean mineWbDragonDead() { WbPool p = MINE_WB_POOL; return p.stage >= 1 || p.killed; }
     static boolean mineWbFlying(WbState st, long now) { return mineWbBh() && st.flyUntil > now; }
+    // [2026-11-24] "베히모스가 공중에 떠서 이동 중일 때도 피해가 들어가도록" -- 나는 동안(+ 내려앉고 MINE_BH_FLY_HIT_GRACE_MS)은 1.8초마다 자리를 옮겨 옆에 붙기 어려우니
+    //  베히모스(3x3)에서 MINE_BH_FLY_REACH칸 안이면 어디서 때려도 맞는다(화면 adjMob도 같은 거리).
+    static final int MINE_BH_FLY_REACH = 12;
+    static final long MINE_BH_FLY_HIT_GRACE_MS = 1_000L;
+    static boolean mineBhFlyReach(int x, int y, long now) {
+        WbState st = MINE_WB;
+        if (!mineWbBh() || st.px < 0 || st.flyUntil + MINE_BH_FLY_HIT_GRACE_MS <= now) return false;
+        int dx = x < st.px ? st.px - x : Math.max(0, x - (st.px + 2)), dy = y < st.py ? st.py - y : Math.max(0, y - (st.py + 2));
+        return Math.max(dx, dy) <= MINE_BH_FLY_REACH;
+    }
     /** 무기 속성 상성 -- 베히모스일 땐 월드보스 칸을 바람 속성으로 본다. */
     static boolean mineWeakTo(int e, S5MineMobs.Type t) {
         if (mineWbBh() && t == S5MineMobs.TYPES.get(S5MineMobs.WB_BOSS_TYPE)) return S5MineMobs.elemBeats(e, S5MineMobs.EL_WIND);
@@ -5354,6 +5364,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int mcx = mc % map.w, mcy = mc / map.w;
                 if (Math.max(Math.abs(mcx - x), Math.abs(mcy - y)) <= mineMeleeReach(items) && Math.abs(mcx - s.fx) + Math.abs(mcy - s.fy) <= 4) hitCell = s.fy * map.w + s.fx;
             }
+            if (hitCell < 0 && mob.type == S5MineMobs.WB_BOSS_TYPE && S5MineMap.CASTLE.equals(map.id) && mineBhFlyReach(x, y, now)) hitCell = MINE_WB.py * map.w + MINE_WB.px; // [2026-11-24] 하늘을 나는 베히모스
             if (hitCell < 0) {
                 out.put("message", type.name + "에게 닿지 않아요. 바로 옆에서 공격하세요."); out.put("far", true);
                 out.put("mobHp", s.hp); out.put("mobDeadUntil", s.deadUntil); out.put("mobFx", s.fx); out.put("mobFy", s.fy); out.put("mobFrozenUntil", s.frozenUntil); // [2026-11-20] 실제 자리로 화면을 맞춘다

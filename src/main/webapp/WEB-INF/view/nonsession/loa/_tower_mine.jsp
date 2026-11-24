@@ -2384,6 +2384,15 @@ var TowerMine = (function () {
     // [2026-11-20] "검기를 배우면 기본 공격 사거리도 같이(무속성), 검기 사거리 중 가장 높은 것만큼" -- 바라보는 쪽으로 2 ~ 사거리 칸(서버 mineMeleeReach)
     var reach = (st && st.aura && st.aura.reach) | 0;
     for (var rk = 2; f && rk <= reach; rk++) { var rm = mobOcc[(P.x + f[0] * rk) + ',' + (P.y + f[1] * rk)]; if (rm) return { m: rm, dir: P.dir }; }
+    // [2026-11-24] "베히모스가 공중에 떠서 이동 중일 때도 피해가 들어가도록" -- 나는 동안(+ 내려앉고 1초)은 12칸 안이면 때린다(서버 mineBhFlyReach)
+    if (wbInfo && wbInfo.bh && wbInfo.fly && nowSrv() < wbInfo.fly[1] + 1000 && map && map.id === 'castle' && map.mobs) {
+      for (var wi = 0; wi < map.mobs.length; wi++) {
+        var wm = map.mobs[wi], wt = wm && map.mobTypes[wm.k], wp = wm && wm._p;
+        if (!wt || !wt.boss || (wt.foot | 0) !== 3 || !wp || wp.cx == null) continue;
+        var wdx = P.x < wp.cx ? wp.cx - P.x : Math.max(0, P.x - (wp.cx + 2)), wdy = P.y < wp.cy ? wp.cy - P.y : Math.max(0, P.y - (wp.cy + 2));
+        if (Math.max(wdx, wdy) <= 12) return { m: wm, dir: wp.cx + 1 < P.x ? 'left' : 'right' };
+      }
+    }
     return null;
   }
   /** 서버 몬스터 상태 [id, hp, deadUntil, fx, fy, frozenUntil] -> 화면 상태. 멈춘(쫓아오는) 칸이 바뀌었으면 옛 칸에서 걸어오게. */
