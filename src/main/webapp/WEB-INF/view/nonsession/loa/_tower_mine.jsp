@@ -6882,6 +6882,13 @@ var TowerMine = (function () {
     if (st.merc2) mercDrawOne(st.merc2, merc2, now, V, true);
     if (st.merc3) mercDrawOne(st.merc3, merc3, now, V, 3); // [2026-11-23] 세 번째 용병 -- 두 번째와 반대쪽 옆
   }
+  // [2026-11-24] 탑에 들어서면 용병들이 차례로 한마디(4초) -- 탑 안에서 공격력 3배
+  var MERC_TOWER_LINES = ['탑의 기운이 차올라요... 힘이 세 배로 솟는 느낌이에요!', '여기선 세 배는 세게 칠 수 있겠어요!', '이 탑에선 저희가 훨씬 강해져요. 맡겨 주세요!'];
+  function mercTowerSay() {
+    if (!st || !map || !map.tower) return;
+    var t = performance.now(), ms = [[st.merc, merc], [st.merc2, merc2], [st.merc3, merc3]].filter(function (q) { return q[0]; });
+    ms.forEach(function (q, i) { q[1].say = { text: MERC_TOWER_LINES[i % MERC_TOWER_LINES.length], t0: t + i * 900 }; });
+  }
   function mercDrawOne(mi, mp, now, V, two) {
     var tr = merc.trail, home = function () { return two === 3 ? mercSide3(P.x, P.y, P.dir) : two ? mercSide(P.x, P.y, P.dir) : mercBehind(P.x, P.y, P.dir); };
     var rest = mi.rest > nowSrv(), fight = !rest && mp.tg && now - mp.tg.t < 1800, g;
@@ -6895,6 +6902,7 @@ var TowerMine = (function () {
     mercMove(mp, g[0], g[1], now);
     if (fight && !mp.mv) mercFace(mp, mp.tg.x, mp.tg.y);
     mercDraw(mp, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, mp.atkT, now, V, mi.ni);
+    if (mp.say && mp.x != null) { var sa = now - mp.say.t0; if (sa > 4000) mp.say = null; else if (sa >= 0) drawBubble(mp.say.text, Math.round(mp.x * V.TS - V.camX) + V.TS / 2, Math.round(mp.y * V.TS - V.camY) - 6 * V.scale); } // [2026-11-24]
     if (mi.stun > nowSrv() && mp.x != null) { // [2026-11-23] 큰 보스에게 기절한 용병 -- 머리 위에 도는 별
       var zx = Math.round(mp.x * V.TS - V.camX) + V.TS / 2, zy = Math.round(mp.y * V.TS - V.camY) - V.TS * 0.25;
       for (var zi = 0; zi < 3; zi++) { var za = now / 200 + zi * 2.094; ctx.fillStyle = zi % 2 ? '#fff6a0' : '#ffd23a'; ctx.fillRect(Math.round(zx + Math.cos(za) * V.TS * 0.32) - V.scale, Math.round(zy + Math.sin(za) * V.TS * 0.1) - V.scale, 2 * V.scale, 2 * V.scale); }
@@ -9454,7 +9462,7 @@ var TowerMine = (function () {
     others = {}; myBubbleT0 = 0; // [2026-10-24] 외형, 광산 레벨, 몬스터 상태(새 맵), 자동채광 기록, 탐지, 보스 경고
     el.coord.classList.toggle('admin', !!s.adminMaps); // [2026-10-24] 관리자면 좌표를 눌러 이동
     return ensureMap(s.mapId, s.mapVersion).then(function (m) {
-      if (m && m.tower && !twWasIn) setTimeout(function () { msg('🗼 탑에 들어서자 기운이 차오르네요... 용병들이 강해진 느낌이 들어요! (탑 안에서 용병 공격력 3배)', 3600); }, 1600); // [2026-11-23]
+      if (m && m.tower && !twWasIn) setTimeout(mercTowerSay, 1600); // [2026-11-24] "용병 3배 안내를 용병이 직접 말하는 형태로" -- 화면 안내 대신 용병 머리 위 말풍선 // [2026-11-23]
       twWasIn = !!(m && m.tower);
       if (m && (m.portals || []).some(function (p) { return p.kind === 'H'; })) setTimeout(function () { msg('🐿️ 바스락… 왼쪽 위 나무 사이에서 번개 냄새가 나요!', 3200); }, 900); // [2026-11-23] 다람쥐 굴 가는 좁은 틈이 있는 방
       map = m;
