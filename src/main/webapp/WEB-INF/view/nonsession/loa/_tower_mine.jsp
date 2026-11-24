@@ -4003,6 +4003,106 @@ var TowerMine = (function () {
   var pullFx = null; // [2026-11-23] 보스 끌어당기기 예고 {bx, by, fo, at}
   var twWasIn = false; // [2026-11-23] 탑에 막 들어왔는지(용병 3배 안내)
   var wcFx = []; // [2026-11-23] 수정구슬 물대포 {x, y, t0} -- 하늘에서 물줄기가 내리꽂힌다
+  // [2026-11-24] 베히모스 장비 그림(도트) -- 수정구슬 물대포(대각선 물줄기 + 맞은 자리 물 퍼짐), 진주목걸이 물 소용돌이(내 둘레 8칸)
+  var bhFxC = {};
+  function bhPx(key, w, h, fn) { if (!bhFxC[key]) { var c = document.createElement('canvas'); c.width = w; c.height = h; fn(c.getContext('2d'), w, h); bhFxC[key] = c; } return bhFxC[key]; }
+  var BH_W = ['#0f3a78', '#1f5fa8', '#2f86d8', '#5ab4f0', '#9ad8ff', '#e8f8ff'];
+  function bhDot(g, x, y, c, s) { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), s || 1, s || 1); }
+  /** 물대포 물줄기 한 토막(대각선 -- 왼쪽 위에서 오른쪽 아래로) 48x48, f = 흐름(0~3). */
+  function bhJetPx(f) {
+    return bhPx('jet' + f, 48, 48, function (g, w, h) {
+      for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+        var u = (x + y) / 2, v = (x - y) / Math.SQRT2; // u = 물줄기 따라, v = 가로(중심 0)
+        var av = Math.abs(v), half = 7 + Math.sin((u + f * 6) * 0.35) * 1.2;
+        if (av > half) continue;
+        var t = av / half, wave = Math.sin((u * 0.5) - f * 1.6 + v * 0.3);
+        var ci = t > 0.85 ? 1 : t > 0.6 ? 2 : t > 0.3 ? 3 : 4;
+        if (wave > 0.75 && t < 0.55) ci = 5;
+        if (v < -half * 0.35 && v > -half * 0.6 && ((u + f * 4) | 0) % 6 < 3) ci = 5; // 위쪽 반짝 줄
+        bhDot(g, x, y, BH_W[ci]);
+      }
+    });
+  }
+  /** 물대포 머리(물방울 덩어리) 32x32, f = 0/1 출렁임. */
+  function bhJetHeadPx(f) {
+    return bhPx('jh' + f, 32, 32, function (g) {
+      for (var y = 0; y < 32; y++) for (var x = 0; x < 32; x++) {
+        var dx = x - 18, dy = y - 18, r = Math.sqrt(dx * dx * (f ? 1.1 : 0.92) + dy * dy * (f ? 0.92 : 1.1));
+        if (r > 11) continue;
+        var lit = (-dx - dy) / 16, ci = r > 9.5 ? 1 : r > 7 ? 2 : lit > 0.35 ? 4 : 3;
+        if (dx > -7 && dx < -3 && dy > -7 && dy < -3) ci = 5;
+        bhDot(g, x, y, BH_W[ci]);
+      }
+      [[4, 6], [8, 3], [2, 11], [11, 1]].forEach(function (p, i) { bhDot(g, p[0] + (f ? 1 : 0), p[1], BH_W[i % 2 ? 3 : 4], 2); }); // 뒤로 튀는 물방울
+    });
+  }
+  /** 맞은 자리 물 퍼짐 64x64, f = 0~5(물기둥 -> 왕관 -> 물방울이 사방으로 -> 바닥 물결). */
+  function bhSplashPx(f) {
+    return bhPx('sp' + f, 64, 64, function (g) {
+      var cx = 32, gy = 46, q = f / 5;
+      // 바닥 물웅덩이 + 물결 고리
+      var rx = 8 + q * 22, ry = rx * 0.38;
+      for (var y = 0; y < 64; y++) for (var x = 0; x < 64; x++) {
+        var e = Math.pow((x - cx) / rx, 2) + Math.pow((y - gy) / ry, 2);
+        if (e <= 1) bhDot(g, x, y, e > 0.72 ? BH_W[f > 3 ? 2 : 3] : f > 3 ? BH_W[2] : BH_W[1]);
+        var e2 = Math.pow((x - cx) / (rx + 5), 2) + Math.pow((y - gy) / (ry + 2), 2);
+        if (f >= 2 && e2 > 0.86 && e2 < 1.0) bhDot(g, x, y, BH_W[f > 4 ? 4 : 5]);
+      }
+      // 왕관(물이 위로 튀어 오름)
+      if (f <= 3) {
+        var hh = [10, 18, 14, 7][f];
+        for (var k = -3; k <= 3; k++) {
+          var px = cx + k * 4, top = gy - hh * (1 - Math.abs(k) * 0.18);
+          for (var y2 = Math.round(top); y2 < gy; y2++) bhDot(g, px, y2, BH_W[y2 < top + 3 ? 5 : Math.abs(k) > 1 ? 2 : 3], 2);
+          bhDot(g, px, Math.round(top) - 3, BH_W[4], 2);
+        }
+      }
+      // 사방으로 튀는 물방울(포물선)
+      if (f >= 1) for (var i = 0; i < 14; i++) {
+        var an = i / 14 * Math.PI * 2, sp = 9 + (i % 3) * 4, tt = q * 1.2;
+        var x3 = cx + Math.cos(an) * sp * tt * 1.6, y3 = gy - 14 * tt + 18 * tt * tt + Math.sin(an) * sp * tt * 0.5;
+        if (y3 < 64 && y3 > 0) bhDot(g, x3, y3, BH_W[i % 2 ? 4 : 5], f > 4 ? 1 : 2);
+      }
+    });
+  }
+  /** 진주목걸이 물 소용돌이 96x96(내 칸 + 둘레 8칸 = 3x3칸), f = 0~7 돈다. 가운데(내 칸)는 비운다. */
+  function bhWhirlPx(f) {
+    return bhPx('wh' + f, 96, 96, function (g) {
+      var ph = f / 8 * Math.PI * 2;
+      for (var y = 0; y < 96; y++) for (var x = 0; x < 96; x++) {
+        var dx = x - 47.5, dy = (y - 47.5) * 1.0, r = Math.sqrt(dx * dx + dy * dy);
+        if (r < 13 || r > 47) continue;
+        var an = Math.atan2(dy, dx), arm = Math.sin(an * 3 - r * 0.22 + ph) , edge = Math.min((r - 13) / 6, (47 - r) / 5, 1);
+        var ci = arm > 0.55 ? 4 : arm > 0.1 ? 3 : arm > -0.4 ? 2 : 1;
+        if (arm > 0.86) ci = 5; // 물거품 띠
+        if (edge < 0.5) ci = Math.min(ci, 2);
+        if (edge < 0.25 && ((x + y + f) & 1)) continue; // 가장자리는 듬성듬성(둥글게 풀린다)
+        bhDot(g, x, y, BH_W[ci]);
+      }
+      for (var i = 0; i < 10; i++) { // 도는 물방울
+        var a2 = i / 10 * Math.PI * 2 + ph * 1.5, rr = 22 + (i % 3) * 8;
+        bhDot(g, 47.5 + Math.cos(a2) * rr, 47.5 + Math.sin(a2) * rr, BH_W[5], 2);
+      }
+    });
+  }
+  // [2026-11-24] 진주목걸이 소용돌이(공격할 때마다 0.7초) {t0}
+  var pearlFx = [], BH_PEARL_MS = 700;
+  function pearlOn() { return (st && st.equip || []).some(function (e) { return e && e.code === 'BH_PEARL_NECKLACE' && e.worn; }); }
+  /** (x, y) = 내 칸 왼쪽 위(화면). 캐릭터보다 먼저(발밑에) 그린다. */
+  function pearlWhirlDraw(x, y, now) {
+    if (!pearlFx.length) return;
+    var TS = T * scale;
+    pearlFx = pearlFx.filter(function (p) { return now - p.t0 < BH_PEARL_MS; });
+    pearlFx.forEach(function (p) {
+      var e = now - p.t0, al = Math.min(1, e / 120) * Math.min(1, (BH_PEARL_MS - e) / 200);
+      if (al <= 0) return;
+      var sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 0.9 * al;
+      ctx.drawImage(bhWhirlPx(Math.floor(e / 60) % 8), Math.round(x + TS / 2 - TS * 1.5), Math.round(y + TS / 2 - TS * 1.5), TS * 3, TS * 3);
+      ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = sm;
+    });
+  }
+
   var sqArtC = {}, sqFlashAt = 0; // [2026-11-23] 최강다람쥐 그림(귀여운 NPC / 보스) 캐시, 변신 번쩍 한 번
   /** [2026-11-23] 최강다람쥐가 번개를 부르는 중인지 -- 벼락 몰아치기(25)·낙뢰 폭풍(27) 장판이 예고되거나 막 떨어지는 동안만 팔을 든다. */
   function sqCast() { var tn = nowSrv(); return (mapZones || []).some(function (z) { var zk = z[4] | 0, zl = z[2] - tn; return (zk === 25 || zk === 27) && zl > -400 && zl < 1500; }); }
@@ -5111,6 +5211,7 @@ var TowerMine = (function () {
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
     try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHD(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
+    tasks.push(function () { for (var bf = 0; bf < 8; bf++) { bhWhirlPx(bf); if (bf < 6) bhSplashPx(bf); if (bf < 4) bhJetPx(bf); } bhJetHeadPx(0); bhJetHeadPx(1); }); // [2026-11-24] 베히모스 장비 그림
     for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); })(ci);
     preExtraP = new Promise(function (res) {
       var ti = 0, run = function () {
@@ -8038,7 +8139,7 @@ var TowerMine = (function () {
       ctx.restore();
     }
   }
-  function auraFxGo() { var r = auraRange(), a = (st && st.aura && st.aura.a) || []; var we = whirlEls(); if ((st && st.adminMaps) || we.length) whirlLoad(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now(), w: !!(st && st.adminMaps) && !we.length }); if (we.length) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: 1, els: we, rs: [], t0: performance.now(), w: true, wo: true }); } // [2026-11-07] 돌개베기(wo = 돌개바람만) // [2026-11-05] w = 관리자(둘레 공격) -- [2026-11-07] 돌개바람은 whirlDraw가 캐릭터 앞뒤로 // [2026-11-04] 속성마다 자기 단계만큼
+  function auraFxGo() { if (pearlOn()) pearlFx.push({ t0: performance.now() }); /* [2026-11-24] 진주목걸이 소용돌이 */ var r = auraRange(), a = (st && st.aura && st.aura.a) || []; var we = whirlEls(); if ((st && st.adminMaps) || we.length) whirlLoad(); if (r > 0) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: r, els: auraEls(), rs: auraEls().map(function (e) { return a[e]; }), t0: performance.now(), w: !!(st && st.adminMaps) && !we.length }); if (we.length) auraFx.push({ x: P.x, y: P.y, dir: P.dir, r: 1, els: we, rs: [], t0: performance.now(), w: true, wo: true }); } // [2026-11-07] 돌개베기(wo = 돌개바람만) // [2026-11-05] w = 관리자(둘레 공격) -- [2026-11-07] 돌개바람은 whirlDraw가 캐릭터 앞뒤로 // [2026-11-04] 속성마다 자기 단계만큼
   // [2026-11-04] 획득 카드 -- 화면 가운데(조금 위)에 잠깐 쌓였다가(1.8초) 왼쪽 아래(☰ 메뉴 -> 최근 획득)로 작아지며 빨려 들어간다. 귀한 것은 금테 + 번쩍.
   var lootBox = null;
   function lootDrops(list, px, py) {
@@ -9139,14 +9240,21 @@ var TowerMine = (function () {
         ctx.lineTo(x1, y1); ctx.stroke(); ctx.restore();
       });
     }
-    if (wcFx.length) { // [2026-11-23] 수정구슬 물대포 -- 0.3초 동안 위에서 물기둥이 떨어지고, 0.3초 동안 물보라
-      var wn = performance.now();
-      wcFx = wcFx.filter(function (w) { return wn - w.t0 < 650; });
+    if (wcFx.length) { // [2026-11-24] 수정구슬 물대포(시안 승인) -- 왼쪽 위 하늘에서 대각선으로 0.3초 날아와(물줄기 + 물방울 머리), 맞은 자리에서 0.42초 동안 물이 퍼진다
+      var wn = performance.now(), wsm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      wcFx = wcFx.filter(function (w) { return wn - w.t0 < 720; });
       wcFx.forEach(function (w) {
-        var wq = (wn - w.t0) / 300, wx = (w.x + 0.5) * TS - camX, wy = (w.y + 0.6) * TS - camY;
-        if (wq < 1) { var wtop = wy - TS * 6 * (1 - wq); ctx.fillStyle = 'rgba(90,190,255,0.85)'; ctx.fillRect(wx - TS * 0.18, wtop - TS * 2, TS * 0.36, TS * 2); ctx.fillStyle = 'rgba(220,245,255,0.9)'; ctx.fillRect(wx - TS * 0.06, wtop - TS * 2, TS * 0.12, TS * 2); }
-        else { var wr = (wq - 1) * TS * 1.4, wa = Math.max(0, 1 - (wq - 1) / 1.2); ctx.strokeStyle = 'rgba(120,210,255,' + wa + ')'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.ellipse(wx, wy, wr, wr * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); for (var wd = 0; wd < 6; wd++) { var wa2 = wd * 1.047; ctx.fillStyle = 'rgba(160,225,255,' + wa + ')'; ctx.fillRect(wx + Math.cos(wa2) * wr - 2 * dpr, wy - Math.abs(Math.sin(wa2)) * wr * 0.9 - 2 * dpr, 4 * dpr, 4 * dpr); } }
+        var we = wn - w.t0, wq = we / 300, tx = (w.x + 0.5) * TS - camX, ty = (w.y + 0.5) * TS - camY;
+        if (wq < 1) {
+          var sx = tx - TS * 2.6, sy = ty - TS * 2.6, hx = sx + (tx - sx) * wq, hy = sy + (ty - sy) * wq, len = Math.hypot(hx - sx, hy - sy), seg = TS * 0.56, sz = TS * 0.75;
+          for (var d = 0; d < len - TS * 0.15; d += seg) ctx.drawImage(bhJetPx(((d / seg | 0) + Math.floor(we / 60)) % 4), sx + (hx - sx) * d / len - sz / 2, sy + (hy - sy) * d / len - sz / 2, sz, sz);
+          ctx.drawImage(bhJetHeadPx(Math.floor(we / 80) % 2), hx - sz * 0.56, hy - sz * 0.56, sz, sz);
+        } else {
+          var sf = Math.min(5, Math.floor((we - 300) / 70)), ss = TS * 1.5;
+          ctx.drawImage(bhSplashPx(sf), tx - ss / 2, ty + TS * 0.36 - ss * 0.72, ss, ss);
+        }
       });
+      ctx.imageSmoothingEnabled = wsm;
     }
     if (pullFx && map) { // [2026-11-23] 끌어당기기 예고 -- 보스에서 나에게 사슬(점선 + 고리)
       var pl = pullFx.at - nowSrv();
@@ -9434,6 +9542,7 @@ var TowerMine = (function () {
     var myRb = st && st.combat ? st.combat.rebirth | 0 : 0; // [2026-10-28] 환생 날개(내 것은 전투 정보의 환생 횟수로)
     var hid = pStealthOn(); // [2026-10-30] 자객의 목걸이 은신 -- 반투명하게(살짝 일렁임)
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
+    try { pearlWhirlDraw(cx, cy, now); } catch (e) { } // [2026-11-24] 진주목걸이 소용돌이(시안 승인 -- 발밑 3x3칸)
     if (myRb) { try { drawWings(cx, cy - 3 * scale, myRb, P.dir, now, 0, st && st.look && st.look.wing); } catch (e) { } }
     if (hid) ctx.globalAlpha = 0.42 + 0.08 * Math.sin(now / 160);
     if (auraFx.length) { var hidA = ctx.globalAlpha; ctx.globalAlpha = 1; whirlDraw(0, cx, cy - 3 * scale, now); ctx.globalAlpha = hidA; } // [2026-11-07] 관리자 돌개바람(뒤쪽 반)
