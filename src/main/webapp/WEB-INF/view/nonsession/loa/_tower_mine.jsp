@@ -5098,29 +5098,27 @@ var TowerMine = (function () {
     return worldBg;
   }
   /** [2026-11-20] "다른 리소스도 게임 시작 때 다 불러서 진행 중에 버벅임이 없게" -- 맵을 다 받은 뒤: 몬스터 그림 전부, 필살기/돌개바람 그림, 전체 지도 바탕. */
-  var preExtraDone = false, CIT_PRE_N = 108; // [2026-11-24] 앱을 켤 때(prefetch) 한 번 그렸으면 들어갈 때 다시 안 그린다
+  // [2026-11-24] 같은 날 "267/267 되고 나서도 한참 있다가 된다" -- 맵을 다 받은 뒤 그림(몬스터/NPC/전체 지도/주민 1,296장)을 한 번에 그리느라 버튼이 늦게 풀렸다.
+  //  이제 그림은 작은 일감으로 나눠 뒤에서(8ms씩, 프레임 사이) 그리고, 들어가기 버튼은 맵만 받으면 바로 풀린다(다 못 그린 그림은 처음 쓸 때 그린다).
+  //  주민 모습은 CIT_LOOKS가지만(108명이 돌려 쓴다 -- 그릴 양 1,296 -> 480장).
+  var preExtraDone = false, preExtraOn = false, CIT_LOOKS = 40;
+  function preWithMap(pmap, fn) { if (map || !pmap) { fn(); return; } map = pmap; try { fn(); } finally { if (!opened) map = null; } }
   function preloadExtra(pmap) {
-    if (preExtraDone) return Promise.resolve();
-    return new Promise(function (res) {
-      if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (그림)';
-      setTimeout(function () {
-        var mapWas = map; if (!map && pmap) map = pmap; // [2026-11-24] 들어가기 전(prefetch) -- 받아 둔 맵 하나의 몬스터 종류 표로
-        try { // 몬스터 그림 -- 종류 표(mobTypes)는 모든 맵이 같다
-          var ty = (map && map.mobTypes) || [];
-          for (var k = 0; k < ty.length; k++) { if (!ty[k]) continue; try { mobSprite(k, false, 0); mobSprite(k, false, 1); if (ty[k].boss || ty[k].kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } } catch (e1) { } }
-        } catch (e) { }
-        try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
-        try { Object.keys(NPC_LOOK).forEach(npcHD); } catch (e) { } // [2026-11-23] 64x64 NPC도 미리
-        try { worldBgBuild(); } catch (e) { }
-        if (map && map.mobTypes && map.mobTypes.length) preExtraDone = true;
-        if (!opened) map = mapWas;
-        var ci = 0, citStep = function () { // [2026-11-24] 마을 주민(왕도 108명까지) 그림도 미리 -- 12명씩 나눠서(화면이 굳지 않게)
-          try { for (var e = Math.min(CIT_PRE_N, ci + 12); ci < e; ci++) ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); } catch (e2) { ci = CIT_PRE_N; }
-          if (ci < CIT_PRE_N) setTimeout(citStep, 0); else res();
-        };
-        citStep();
-      }, 0);
-    });
+    if (preExtraDone || preExtraOn) return Promise.resolve();
+    preExtraOn = true;
+    var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
+    ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); }); });
+    tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
+    try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { npcHD(kd); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
+    tasks.push(function () { worldBgBuild(); });
+    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); }); })(ci);
+    var ti = 0, run = function () {
+      var t0 = performance.now();
+      while (ti < tasks.length && performance.now() - t0 < 8) { try { tasks[ti](); } catch (e) { } ti++; }
+      if (ti < tasks.length) setTimeout(run, 16); else { preExtraDone = !!ty.length; preExtraOn = false; }
+    };
+    setTimeout(run, 0);
+    return Promise.resolve();
   }
   function worldHtml() {
     var info = {}, W = 96, H = 32, lv = myLv(), adminW = !!(st && (st.adminMaps || st.ringMaps)); // [2026-11-15] 용의 반지를 끼면 지역을 눌러 이동
@@ -7513,6 +7511,7 @@ var TowerMine = (function () {
     return { gender: mix(i, 1) % 2, hair: HAIR[mix(i, 2) % HAIR.length], top: TOP[mix(i, 3) % TOP.length], hat: HAT[mix(i, 4) % HAT.length], bottom: BOT[mix(i, 5) % BOT.length], shoes: '' };
   }
   function citSprite(i, dir, step) {
+    i = i % CIT_LOOKS; // [2026-11-24] 모습 CIT_LOOKS가지를 돌려 쓴다(미리 그릴 양 줄이기)
     var k = i + dir + step;
     if (!citCache[k]) citCache[k] = MineChar.sprite(dir, step, 0, citLook(i));
     return citCache[k];
@@ -7752,7 +7751,7 @@ var TowerMine = (function () {
   function myShip() { return !!(st && st.archi && st.archi.ship); } // [2026-11-24] 화포선이 있으면 배를 띄울 때 늘 화포선
   var shipShots = [], shipGunAt = 0; // [2026-11-24] 갑판 대포 {tx, ty(칸, 맞는 곳 가운데), at}
   /** 화포선 포격 -- 포구(이물 갑판 대포 끝)에서 맞는 칸으로. (x, y) = 캐릭터 그림 왼쪽 위(배를 그린 자리). */
-  function shipShotsDraw(x, y, left, now) {
+  function shipShotsDraw(x, y, left, now, camX, camY) { // [2026-11-24] camX/camY는 draw()의 지역 변수라 받아서 쓴다(예전엔 없는 이름이라 배 위에선 매 프레임 오류 -- 그 뒤 검기/숫자/포격이 안 그려졌다)
     if (!shipShots.length) return;
     var TS = T * scale, u = TS / 16, sx = left ? x + TS - 39 * u : x + 39 * u, sy = y + 3 * u + 8.5 * u;
     shipShots = shipShots.filter(function (q) { return shipShotDraw({ sx: sx, sy: sy, tx: q.tx * TS - camX, ty: q.ty * TS - camY, at: q.at }, now); });
@@ -9442,7 +9441,7 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
     if (myKa > 0) kakAuraFront(ctx, cx, cy - 3 * scale, now, myKa, TS);
     if (kakFx && now - kakFx.t0 < 600) kakCast(ctx, cx, cy - 3 * scale, now - kakFx.t0, TS); // 쓰는 순간
-    if (meShip) { try { shipGunTick(performance.now()); } catch (e) { } /* [2026-11-24] 자동 포격 */ var shA = st && st.archi; drawShipFront(cx, cy - 3 * scale, now, P.dir === 'left', Math.max(0, 1 - (now - shipGunAt) / 300)); if (shA && shA.boatHpMax) drawShipHp(cx, cy - 3 * scale, Math.max(0, Math.min(1, (shA.boatHp || 0) / shA.boatHpMax))); shipShotsDraw(cx, cy - 3 * scale, P.dir === 'left', now); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-24] 화포선
+    if (meShip) { try { shipGunTick(performance.now()); } catch (e) { } /* [2026-11-24] 자동 포격 */ var shA = st && st.archi; drawShipFront(cx, cy - 3 * scale, now, P.dir === 'left', Math.max(0, 1 - (now - shipGunAt) / 300)); if (shA && shA.boatHpMax) drawShipHp(cx, cy - 3 * scale, Math.max(0, Math.min(1, (shA.boatHp || 0) / shA.boatHpMax))); try { shipShotsDraw(cx, cy - 3 * scale, P.dir === 'left', now, camX, camY); } catch (e) { } try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-24] 화포선
     else if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
     if (berserkInvUntil) { try { berserkShieldDraw(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-20] 광전사 불굴 보호막 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
@@ -9981,7 +9980,7 @@ var TowerMine = (function () {
       var need = ids.filter(function (id) { return !mapFresh(mapMem[id], vers[id]); }), done = total - need.length;
       if (prog) prog(done, total);
       var chunks = [], ci = 0;
-      for (var i = 0; i < need.length; i += 12) chunks.push(need.slice(i, i + 12));
+      for (var i = 0; i < need.length; i += 20) chunks.push(need.slice(i, i + 20)); // [2026-11-24] 12 -> 20장씩(서버 한도)
       var worker = function () {
         if (ci >= chunks.length) return Promise.resolve();
         var ch = chunks[ci++];
@@ -10378,7 +10377,7 @@ var TowerMine = (function () {
     exitSent = false;
     var vers = null;
     if (netMode() === 'ws') wsOpen(); // [2026-11-06] 입장 요청도 소켓으로 -- 기억해 둔 서울 주소로 먼저 열고(최대 1.5초) 보낸다
-    wsReady(1500).then(function () { return api('/api/tower-mine?enter=1&cid=' + mineCid); }).then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
+    wsReady(500).then(function () { return api('/api/tower-mine?enter=1&cid=' + mineCid); }) /* [2026-11-24] 소켓 기다림 1.5초 -> 0.5초(늦으면 HTTP로 바로 들어가고 소켓은 뒤에서 이어진다) */.then(function (s) { // enter=1: 서버가 입장 로그를 남긴다
       if (s.dup) { var de = new Error(s.message); de.dup = true; throw de; } // [2026-11-07] 같은 캐릭터로 이미 접속 중
       if (s.error) throw new Error(s.error);
       vers = s.mapVers;
