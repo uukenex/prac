@@ -5512,6 +5512,11 @@ var TowerMine = (function () {
       h += '<div class="merc-sk' + (m.s2Max ? '' : ' lock') + '"><div class="merc-sk-h"><span class="ico">' + ic2 + '</span><div><b>2차 스킬 · ' + nm2 + '</b><small>쿨타임 20초 · 40레벨에 열리고 60·80레벨에 강화</small></div></div>'
           + (m.s2Max ? selRow(2, m.s2, m.s2Max, 3, lv2) + '<div class="merc-sk-cur">' + (m.s2 ? '▶ ' + m.s2 + '단계 · ' + (m.skills2 || [])[m.s2 - 1] : '꺼져 있어요 -- 20초마다 쓰지 않아요') + '</div>' : '<div class="merc-sk-cur">🔒 용병 Lv.40에 열려요 (지금 Lv.' + m.lv + ')</div>')
           + list(m.skills2, m.s2, m.s2Max, lv2) + '</div>';
+      if (m.s3Name) { // [2026-11-24] "용병 관리 화면에 3차 스킬 표시" -- 1레벨 마스터, 2분마다 저절로(지금은 관리자만)
+        var ic3 = m.t === 0 ? (m.el === 6 ? '🌧️' : m.el === 2 ? '💥' : '🔥') : m.t === 1 ? '🏹' : m.el === 6 ? '🐦‍🔥' : m.el === 2 ? '🌩️' : '🧊', on3 = !!st.adminMaps;
+        h += '<div class="merc-sk' + (on3 ? '' : ' lock') + '"><div class="merc-sk-h"><span class="ico">' + ic3 + '</span><div><b>3차 스킬 · ' + m.s3Name + '</b><small>쿨타임 2분 · 1레벨 마스터 · 저절로 써요</small></div></div>'
+            + '<div class="merc-sk-cur">' + (on3 ? '▶ ' : '🔒 아직 준비 중이에요 · ') + m.skill3 + '</div></div>';
+      }
       h += '<div class="mine-smith-say"><small>피해는 모두 용병 공격력(공격력 ' + fmtN(m.atk) + ') 기준이에요. 끄거나 낮은 단계를 고르면 그만큼 약하게 공격해요.</small></div>';
       if (st.adminMaps && m.lv < 99) h += '<div class="mine-smith-row"><span class="nm">🛠️ 관리자<small>용병 레벨을 99로</small></span><button type="button" onclick="TowerMine.mercLv99(' + m.k + ')">Lv.99</button></div>';
       return h;

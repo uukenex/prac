@@ -9547,6 +9547,20 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return (el == S5MineMobs.EL_FIRE ? "파이어볼" : el == S5MineMobs.EL_THUNDER ? "라이트닝볼" : "아이스볼") + " · 한 명"; // [2026-11-06] 속성별 구슬
     }
     /** [2026-11-06] 2차 스킬 설명(단계 s2 = 1~3, 40/60/80레벨). */
+    /** [2026-11-24] 3차 스킬 {이름, 설명} -- 1레벨 마스터, 2분마다 저절로(지금은 관리자만, mineMercU3Ok). 수치는 MINE_MERC_U3_* 그대로. */
+    static String[] mineMercSkill3(int c, int el) {
+        boolean fire = el == S5MineMobs.EL_FIRE, thunder = el == S5MineMobs.EL_THUNDER;
+        if (c == 0) {
+            if (fire) return new String[] { "만검진", "대상 자리 둘레 " + MINE_MERC_U3_ZONE_R + "칸에 " + (MINE_MERC_U3_ZONE_MS / 1000) + "초 동안 칼날이 쏟아지는 장판 -- 1초마다 공격력 x" + fmtMul(MINE_MERC_U3_ZONE_MUL) };
+            if (thunder) return new String[] { "일섬참", "한 마리를 단칼에 -- 공격력 x" + fmtMul(MINE_MERC_U3_SLASH_MUL) + " + 기절 " + (MINE_MERC_U3_STUN_MS / 1000) + "초" };
+            return new String[] { "각성", (MINE_MERC_U3_KAK_MS / 1000) + "초 동안 이 용병이 주는 피해 2배" };
+        }
+        if (c == 1) return new String[] { "5연발 화살", "한 마리에게 1초 안에 화살 " + MINE_MERC_U3_ARROWS + "발 -- 발마다 공격력 x" + fmtMul(MINE_MERC_U3_ARROW_MUL) };
+        if (fire) return new String[] { "불새", "대상 쪽으로 " + MINE_MERC_U3_PHX_LEN + "칸을 날며 지나는 줄(폭 3칸)의 몬스터에게 공격력 x" + fmtMul(MINE_MERC_U3_PHX_MUL) + ", 지나간 자리에 불길" };
+        if (thunder) return new String[] { "천둥 폭풍", "대상 둘레 " + MINE_MERC_U3_BOLT_R + "칸에 번개 " + MINE_MERC_U3_BOLTS + "줄기(1.6초) -- 줄기마다 공격력 x" + fmtMul(MINE_MERC_U3_BOLT_MUL) };
+        return new String[] { "빙결 감옥", "대상 둘레 " + MINE_MERC_U3_JAIL_R + "칸 몬스터를 " + (MINE_MERC_U3_JAIL_MS / 1000) + "초 동안 얼음에 가두고(기절), 깨질 때 공격력 x" + fmtMul(MINE_MERC_U3_JAIL_MUL) };
+    }
+    static String fmtMul(double v) { return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v); }
     static String mineMercSkill2(int c, int el, int s2) {
         if (c == 0) return "이기어검 " + s2 + "단계 · 검 " + (3 + 2 * s2) + "자루가 가까운 몬스터들에게 나눠 꽂힘(한 마리면 전부, 자루마다 공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
         if (c == 1) return "화살비 " + s2 + "단계 · 둘레 " + (1 + s2) + "칸 땅에 5초(매초 공격력 x" + mineFmtPct(0.6 + 0.2 * s2) + ")";
@@ -9621,6 +9635,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (int q = 1; q <= 3; q++) d2.add(mineMercSkill2(c, el, q));
         m.put("skills1", d1);
         m.put("skills2", d2);
+        String[] s3 = mineMercSkill3(c, el); // [2026-11-24] "용병 관리 화면에 3차 스킬 표시"
+        m.put("s3Name", s3[0]);
+        m.put("skill3", s3[1]);
         m.put("ni", mineMercNi(items, k, "NM")); // [2026-11-06] 치장 대신 이름마다 모습(머리색)
         m.put("nm", mineMercNm(items, k, "NM")); // [2026-11-06] 이름 / 급여
         m.put("paidUntil", items.getOrDefault(mineMercKey(k, "PAID"), 0) * 60_000L);
