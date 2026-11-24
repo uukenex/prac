@@ -2312,6 +2312,176 @@ var TowerMine = (function () {
       ctx.fillStyle = '#c0c8d0'; ctx.fillRect(hx - 3, hy - 3, 6, 6);
     }
   }
+  // [2026-11-25] "몬스터 외형 64x64"(시안 승인) -- 64x64 옵션(charHD)일 때 몬스터 종류(kind)별 고해상도 그림. 색은 몬스터마다 정해진 색(ty.color)을 그대로 쓴다.
+  //  부위마다: 오른쪽 아래 그늘 + 몸색 + 왼쪽 위 빛 테두리(셀 음영), 알파는 0/255로 잘라 도트처럼, 마지막에 바깥 외곽선.
+  var MHD = 64;
+  function mhdMask(fn, lw) { // fn(g) = 경로(beginPath는 여기서), lw 있으면 선(굵기 lw)으로
+    var c = mk(MHD, MHD), g = c.getContext('2d');
+    g.beginPath(); fn(g);
+    if (lw) { g.lineWidth = lw; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#fff'; g.stroke(); } else { g.fillStyle = '#fff'; g.fill(); }
+    return mhdCut(c);
+  }
+  function mhdCut(c) { var g = c.getContext('2d'), d = g.getImageData(0, 0, c.width, c.height), a = d.data; for (var i = 3; i < a.length; i += 4) a[i] = a[i] > 110 ? 255 : 0; g.putImageData(d, 0, 0); return c; }
+  /** 모양(마스크)을 색 col로 칠한다 -- o.sd 그늘 두께, o.hl 빛 두께(0이면 빛 없음), o.flat 그늘/빛 없이. */
+  function mhdShade(c, f) { if (c.charAt(0) !== '#') { var v = c.match(/\d+/g) || [128, 128, 128]; c = '#' + v.slice(0, 3).map(function (n) { return ('0' + (+n).toString(16)).slice(-2); }).join(''); } return shade(c, f); }
+  function mhdPart(g, m, col, o) {
+    o = o || {};
+    var t = mk(MHD, MHD), tg = t.getContext('2d');
+    tg.drawImage(m, 0, 0); tg.globalCompositeOperation = 'source-in'; tg.fillStyle = o.flat ? col : mhdShade(col, -0.34); tg.fillRect(0, 0, MHD, MHD);
+    if (!o.flat) {
+      var sd = o.sd == null ? 3 : o.sd, b = mk(MHD, MHD), bg = b.getContext('2d');
+      bg.drawImage(m, 0, 0); bg.globalCompositeOperation = 'source-in'; bg.fillStyle = col; bg.fillRect(0, 0, MHD, MHD);
+      tg.globalCompositeOperation = 'source-atop'; tg.drawImage(b, -Math.round(sd * 0.7), -sd);
+      var hl = o.hl == null ? 2 : o.hl;
+      if (hl > 0) {
+        var L = mk(MHD, MHD), lg = L.getContext('2d');
+        lg.drawImage(m, 0, 0); lg.globalCompositeOperation = 'source-in'; lg.fillStyle = mhdShade(col, 0.3); lg.fillRect(0, 0, MHD, MHD);
+        lg.globalCompositeOperation = 'destination-out'; lg.drawImage(m, hl, hl);
+        tg.drawImage(L, 0, 0);
+      }
+    }
+    g.drawImage(t, 0, 0);
+  }
+  function mhdEll(cx, cy, rx, ry) { return function (g) { g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); }; }
+  function mhdPoly(pts) { return function (g) { g.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.closePath(); }; }
+  function mhdAll() { var fs = arguments; return function (g) { for (var i = 0; i < fs.length; i++) fs[i](g); }; }
+  function mhdRect(x, y, w, h) { return function (g) { g.rect(x, y, w, h); }; }
+  /** 눈 -- 검은자 + 반짝이(빨간 눈이면 빛나는 눈). */
+  function mhdEye(g, x, y, w, h, red) {
+    if (red) { px(g, '#7a0a10', x, y, w, h); px(g, '#ff3b30', x, y, w - 1, h - 1); px(g, '#ffd0c0', x, y, 1, 1); return; }
+    px(g, '#1a1018', x, y, w, h); px(g, '#ffffff', x, y, Math.max(1, w >> 1), Math.max(1, h >> 1));
+  }
+  function mobHD(ty, pose) {
+    var c = mk(MHD, MHD), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3), red = ty.tier >= 4;
+    var P = function (fn, cl, o) { mhdPart(g, mhdMask(fn), cl, o); }, S = function (fn, w, cl, o) { mhdPart(g, mhdMask(fn, w), cl, o); };
+    switch (ty.kind) {
+      case 'demon': // 뿔, 박쥐 날개, 불타는 눈, 꼬리
+        P(mhdAll(mhdPoly([[26, 30], [6, 10], [8, 20], [1, 26], [9, 30], [6, 38], [16, 36], [24, 42]]), mhdPoly([[38, 30], [58, 10], [56, 20], [63, 26], [55, 30], [58, 38], [48, 36], [40, 42]])), dk, { hl: 1 });
+        S(function (g2) { g2.moveTo(38, 50); g2.bezierCurveTo(50, 58, 58, 52, 56, 42); }, 3, dk, { sd: 1, hl: 0 });
+        px(g, '#ff7a2a', 54, 38, 4, 4); px(g, '#ffd24a', 55, 39, 2, 2);
+        P(mhdAll(mhdRect(24, 46, 7, 15), mhdRect(33, 46, 7, 15)), shade(col, -0.15));
+        P(mhdEll(32, 39, 11, 11), col, { sd: 3 });
+        P(mhdAll(mhdRect(18, 32, 6, 13), mhdRect(40, 32, 6, 13)), col, { sd: 2 });
+        px(g, dk, 26, 38, 12, 6); px(g, '#ff7a2a', 30, 40, 4, 2); px(g, '#ffd24a', 31, 40, 2, 1); // 가슴의 불씨
+        P(mhdAll(mhdPoly([[25, 18], [16, 3], [22, 6], [29, 14]]), mhdPoly([[39, 18], [48, 3], [42, 6], [35, 14]])), '#f4e8c8', { sd: 2, hl: 1 });
+        P(mhdEll(32, 21, 11, 10), col, { sd: 3 });
+        px(g, '#ffd24a', 25, 19, 5, 3); px(g, '#ffd24a', 34, 19, 5, 3); px(g, '#ff3b1a', 27, 19, 2, 3); px(g, '#ff3b1a', 36, 19, 2, 3);
+        px(g, '#12080a', 27, 26, 10, 2); px(g, '#f4e8c8', 28, 26, 2, 2); px(g, '#f4e8c8', 34, 26, 2, 2);
+        break;
+      case 'ninja': // 두건 + 눈만 보이는 복면, 붉은 목도리. 보통은 쿠나이, pose면 인을 맺는다
+        P(mhdPoly([[38, 29], [50, 31], [58, 38], [62, 47], [57, 46], [52, 40], [44, 36], [38, 34]]), '#c0283a', { sd: 2, hl: 1 }); // 목도리 꼬리(뒤로 휘날림)
+        P(mhdAll(mhdRect(24, 46, 7, 15), mhdRect(34, 46, 7, 15)), dk);
+        P(mhdPoly([[21, 30], [43, 30], [41, 48], [23, 48]]), col, { sd: 3 });
+        px(g, dk, 22, 44, 20, 2); px(g, lt, 24, 33, 2, 9);
+        if (pose) {
+          P(mhdAll(mhdPoly([[19, 32], [25, 32], [31, 40], [27, 42]]), mhdPoly([[45, 32], [39, 32], [33, 40], [37, 42]])), col, { sd: 2 });
+          P(mhdAll(mhdRect(29, 32, 6, 9)), '#e8c8a0', { sd: 1, hl: 1 }); px(g, '#c8a07a', 31, 32, 2, 9);
+          px(g, '#b48aff', 24, 22, 2, 2); px(g, '#b48aff', 40, 26, 2, 2); px(g, '#e0d0ff', 44, 18, 1, 1); px(g, '#b48aff', 20, 30, 1, 1);
+        } else {
+          P(mhdAll(mhdRect(17, 32, 6, 14), mhdRect(42, 32, 6, 14)), col, { sd: 2 });
+          px(g, '#e8c8a0', 43, 45, 5, 3); px(g, '#c3cad1', 47, 40, 2, 10); px(g, '#ffffff', 47, 40, 1, 6); px(g, '#6a5040', 46, 49, 4, 2); // 쿠나이
+        }
+        P(mhdEll(32, 18, 11, 12), col, { sd: 3 });
+        px(g, dk, 22, 8, 20, 2);
+        P(mhdRect(23, 15, 18, 6), '#e8c8a0', { sd: 1, hl: 0 });
+        mhdEye(g, 26, 16, 4, 3, red); mhdEye(g, 35, 16, 4, 3, red);
+        P(mhdRect(21, 28, 22, 4), '#c0283a', { sd: 1, hl: 1 });
+        break;
+      case 'small': // 작은 짐승(쥐/족제비)
+        S(function (g2) { g2.moveTo(12, 48); g2.bezierCurveTo(2, 46, 2, 34, 8, 30); }, 3, shade(col, -0.2), { sd: 1, hl: 0 });
+        P(mhdAll(mhdRect(16, 52, 6, 6), mhdRect(30, 52, 6, 6), mhdRect(40, 48, 5, 8)), dk, { hl: 0 });
+        P(mhdEll(26, 46, 16, 11), col, { sd: 3 });
+        P(mhdAll(mhdEll(38, 25, 5, 6), mhdEll(48, 24, 5, 6)), col, { sd: 2 });
+        px(g, '#f2a0b0', 37, 23, 3, 4); px(g, '#f2a0b0', 47, 22, 3, 4);
+        P(mhdEll(44, 35, 12, 10), col, { sd: 3 });
+        P(mhdEll(54, 39, 5, 4), lt, { sd: 1, hl: 0 });
+        px(g, '#f2708a', 57, 36, 3, 3);
+        mhdEye(g, 46, 30, 4, 5, red);
+        px(g, lt, 20, 40, 10, 2); px(g, '#e8e0d0', 52, 44, 8, 1); px(g, '#e8e0d0', 51, 42, 8, 1);
+        break;
+      case 'mammoth': // 덥수룩한 큰 몸, 늘어진 코, 하얀 엄니
+        S(function (g2) { g2.moveTo(6, 26); g2.lineTo(2, 36); }, 3, dk, { hl: 0 });
+        P(mhdAll(mhdRect(10, 40, 9, 20), mhdRect(36, 40, 9, 20)), shade(col, -0.2));
+        P(mhdEll(27, 31, 24, 19), col, { sd: 4, hl: 3 });
+        for (var mf = 0; mf < 8; mf++) px(g, dk, 6 + mf * 6, 44 + (mf % 2) * 2, 3, 5); // 털 끝
+        for (var ms = 0; ms < 6; ms++) px(g, lt, 12 + ms * 6, 18 + (ms % 2) * 3, 2, 6);
+        P(mhdAll(mhdRect(18, 44, 9, 17), mhdRect(42, 44, 8, 16)), col, { sd: 2 });
+        P(mhdEll(48, 24, 12, 13), col, { sd: 3 });
+        P(mhdEll(40, 26, 6, 10), dk, { hl: 1 });
+        S(function (g2) { g2.moveTo(56, 28); g2.bezierCurveTo(62, 38, 60, 48, 55, 56); }, 6, col, { sd: 2, hl: 1 });
+        S(function (g2) { g2.moveTo(50, 36); g2.bezierCurveTo(56, 46, 62, 46, 63, 38); }, 3, '#f4ecd8', { sd: 1, hl: 0 });
+        mhdEye(g, 51, 20, 3, 4, red);
+        break;
+      case 'quad': // 네발 짐승(늑대/멧돼지)
+        P(mhdPoly([[12, 32], [2, 16], [7, 15], [17, 28]]), col, { sd: 2 });
+        P(mhdAll(mhdRect(14, 40, 6, 18), mhdRect(36, 40, 6, 18)), shade(col, -0.25), { hl: 0 });
+        P(mhdEll(28, 36, 19, 11), col, { sd: 3 });
+        for (var qf = 0; qf < 5; qf++) px(g, lt, 16 + qf * 5, 26, 3, 2);
+        P(mhdAll(mhdRect(19, 42, 6, 18), mhdRect(41, 42, 6, 18)), col, { sd: 2 });
+        px(g, dk, 19, 58, 6, 2); px(g, dk, 41, 58, 6, 2);
+        P(mhdAll(mhdPoly([[42, 24], [44, 10], [49, 21]]), mhdPoly([[49, 21], [54, 11], [56, 23]])), col, { sd: 1, hl: 1 });
+        P(mhdEll(48, 28, 10, 9), col, { sd: 3 });
+        P(mhdPoly([[50, 25], [62, 28], [62, 34], [51, 36]]), lt, { sd: 2, hl: 0 });
+        px(g, '#1a1018', 60, 28, 3, 2); px(g, '#ffffff', 56, 34, 1, 3); px(g, '#ffffff', 59, 34, 1, 2); px(g, '#3a1010', 52, 34, 9, 1);
+        mhdEye(g, 49, 25, 4, 3, red);
+        break;
+      case 'human': // 사람형(갑옷 + 칼)
+        P(mhdRect(14, 30, 6, 14), shade(col, -0.2), { hl: 0 }); // 뒤쪽 팔
+        P(mhdAll(mhdRect(23, 46, 7, 15), mhdRect(34, 46, 7, 15)), dk);
+        px(g, '#2a1a12', 22, 58, 9, 3); px(g, '#2a1a12', 33, 58, 9, 3);
+        P(mhdPoly([[20, 28], [44, 28], [42, 48], [22, 48]]), col, { sd: 3 });
+        px(g, dk, 22, 44, 20, 3); px(g, '#d4a84a', 30, 44, 4, 3); px(g, lt, 23, 31, 3, 10);
+        P(mhdAll(mhdEll(20, 30, 6, 5), mhdEll(44, 30, 6, 5)), lt, { sd: 2 });
+        P(mhdRect(50, 4, 4, 34), '#c3cad1', { sd: 1, hl: 1 }); px(g, '#ffffff', 50, 6, 1, 28); px(g, '#c3cad1', 51, 2, 2, 2); // 칼날
+        P(mhdRect(45, 37, 14, 3), '#b08a3a', { sd: 1, hl: 0 }); px(g, '#5a3a22', 50, 40, 4, 6);
+        P(mhdRect(43, 30, 6, 13), col, { sd: 2 }); px(g, '#e8c8a0', 44, 41, 5, 4);
+        P(mhdEll(32, 17, 11, 12), lt, { sd: 3 });
+        P(mhdPoly([[21, 12], [32, 3], [43, 12], [43, 15], [21, 15]]), col, { sd: 2, hl: 1 });
+        px(g, '#1a1018', 23, 16, 18, 4);
+        if (red) { px(g, '#ff3b30', 26, 17, 4, 2); px(g, '#ff3b30', 35, 17, 4, 2); } else { px(g, '#f4f0e6', 26, 17, 3, 2); px(g, '#f4f0e6', 35, 17, 3, 2); }
+        px(g, dk, 31, 20, 2, 7); P(mhdPoly([[30, 4], [34, 4], [38, -2], [36, 6], [32, 8]]), '#c0283a', { sd: 1, hl: 0 });
+        break;
+      case 'flyer': // 날개 달린 것(박쥐)
+        var wl = [[28, 30], [4, 14], [2, 22], [8, 26], [5, 34], [14, 32], [16, 40], [26, 38]];
+        P(mhdAll(mhdPoly(wl), mhdPoly(wl.map(function (q) { return [64 - q[0], q[1]]; }))), shade(col, -0.18), { sd: 2, hl: 1 });
+        [[4, 14], [5, 34], [16, 40]].forEach(function (q) { S(function (g2) { g2.moveTo(28, 30); g2.lineTo(q[0] + 3, q[1]); }, 1.6, dk, { flat: true }); S(function (g2) { g2.moveTo(36, 30); g2.lineTo(61 - q[0], q[1]); }, 1.6, dk, { flat: true }); });
+        P(mhdAll(mhdPoly([[25, 24], [24, 12], [30, 22]]), mhdPoly([[39, 24], [40, 12], [34, 22]])), col, { sd: 1, hl: 1 });
+        P(mhdEll(32, 33, 10, 12), col, { sd: 3 });
+        px(g, lt, 28, 36, 8, 6);
+        mhdEye(g, 26, 28, 4, 4, red); mhdEye(g, 34, 28, 4, 4, red);
+        px(g, '#ffffff', 29, 37, 1, 3); px(g, '#ffffff', 34, 37, 1, 3);
+        px(g, dk, 28, 45, 2, 4); px(g, dk, 34, 45, 2, 4);
+        break;
+      case 'crab': // 게 -- 집게 둘, 눈자루
+        [[14, 44, 6, 58], [16, 48, 10, 60], [20, 50, 16, 61], [50, 44, 58, 58], [48, 48, 54, 60], [44, 50, 48, 61]].forEach(function (q) { S(function (g2) { g2.moveTo(q[0], q[1]); g2.lineTo(q[2], q[3]); }, 3, dk, { sd: 1, hl: 0 }); });
+        S(function (g2) { g2.moveTo(16, 38); g2.lineTo(9, 28); g2.moveTo(48, 38); g2.lineTo(55, 28); }, 4, col, { sd: 1, hl: 1 });
+        P(mhdAll(mhdEll(8, 20, 7, 8), mhdEll(56, 20, 7, 8)), col, { sd: 2 });
+        g.clearRect(6, 10, 3, 8); g.clearRect(55, 10, 3, 8); // 집게 사이
+        P(mhdAll(mhdRect(26, 22, 3, 12), mhdRect(36, 22, 3, 12)), col, { sd: 1, hl: 0 });
+        P(mhdEll(32, 42, 21, 12), col, { sd: 4, hl: 3 });
+        for (var cs = 0; cs < 5; cs++) px(g, lt, 20 + cs * 5, 36 + (cs % 2) * 3, 2, 2);
+        mhdEye(g, 25, 19, 5, 5, red); mhdEye(g, 35, 19, 5, 5, red);
+        px(g, dk, 29, 48, 7, 1);
+        break;
+      case 'blob': // 물렁이(슬라임)
+        P(function (g2) { g2.moveTo(8, 60); g2.bezierCurveTo(6, 32, 20, 16, 32, 16); g2.bezierCurveTo(44, 16, 58, 32, 56, 60); g2.closePath(); }, col, { sd: 5, hl: 3 });
+        px(g, '#ffffff', 18, 25, 6, 3); px(g, '#ffffff', 16, 29, 3, 5); px(g, lt, 44, 50, 6, 3);
+        mhdEye(g, 23, 37, 5, 7, red); mhdEye(g, 36, 37, 5, 7, red);
+        px(g, dk, 28, 49, 8, 2);
+        break;
+      case 'snake': // 뱀 -- 똬리 + 고개 든 머리
+        S(function (g2) { g2.moveTo(6, 54); g2.bezierCurveTo(20, 62, 42, 62, 44, 50); g2.bezierCurveTo(46, 40, 28, 42, 28, 33); g2.bezierCurveTo(28, 24, 42, 24, 48, 20); }, 10, col, { sd: 3, hl: 2 });
+        [[14, 56], [24, 57], [34, 55], [40, 46], [32, 40], [30, 30], [40, 24]].forEach(function (q) { px(g, dk, q[0], q[1], 3, 3); px(g, lt, q[0] + 1, q[1] - 2, 1, 1); });
+        P(mhdEll(52, 17, 9, 7), col, { sd: 2 });
+        mhdEye(g, 53, 12, 3, 3, red);
+        px(g, dk, 56, 20, 5, 1); px(g, '#e8433a', 60, 21, 3, 1); px(g, '#e8433a', 62, 20, 1, 1); px(g, '#e8433a', 62, 22, 1, 1);
+        break;
+      default:
+        P(mhdEll(32, 40, 18, 18), col, { sd: 4 }); mhdEye(g, 25, 36, 4, 5, red); mhdEye(g, 36, 36, 4, 5, red);
+    }
+    return outline(c, '#140d0a');
+  }
+  var MHD_EYE = { mammoth: [[12.6, 5]], quad: [[12.2, 6.1]], human: [[6.5, 4], [8.8, 4]], small: [[11.5, 7.6]], flyer: [[6.5, 7], [8.5, 7]], crab: [[6.4, 4.9], [8.9, 4.9]], blob: [[5.9, 9.6], [9.1, 9.6]] }; // 64x64 그림의 눈 자리(16칸 기준) -- 밤 붉은 눈
   function mobSprite(k, pose, f) {
     var tyS = map.mobTypes[k] || {}; // [2026-11-18] 바다 위
     if (tyS.name === '심해의 크라켄') return krakenSprite((f | 0) % 2, !!pose);
@@ -2320,8 +2490,9 @@ var TowerMine = (function () {
     if (art === 'dragon' && !tyS.chaos && (wbInfo ? wbInfo.bh : wbWasBh)) art = 'behemoth'; // [2026-11-23] 거룡 칸에 두 번째 월드보스
     if (art) { var bk = 'b' + k + (art === 'behemoth' ? 'h' : '') + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
-    if (mobSprites[ck]) return mobSprites[ck];
     var m16 = MOB16[(map.mobTypes[k] || {}).name]; // [2026-11-23] 탑 51~98층 방 몬스터 -- 이름별 그림
+    if (charHD && !m16) { ck = 'H' + ck; if (!mobSprites[ck]) mobSprites[ck] = mobHD(map.mobTypes[k] || {}, pose); return mobSprites[ck]; } // [2026-11-25] 64x64 옵션이면 종류별 고해상도 그림
+    if (mobSprites[ck]) return mobSprites[ck];
     if (m16) { var c16 = mk(T, T); m16.d(c16.getContext('2d')); mobSprites[ck] = outline(c16, '#140d0a'); return mobSprites[ck]; }
     var ty = map.mobTypes[k] || {}, c = mk(T, T), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3);
     var eye = ty.tier >= 4 ? '#ff3b30' : '#1a1a1a';
@@ -5230,7 +5401,7 @@ var TowerMine = (function () {
     if (preExtraDone) { if (prog) prog(1, 1); return Promise.resolve(); }
     if (preExtraP) return preExtraP;
     var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
-    ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); }); });
+    ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { var h0 = charHD; try { [h0, !h0].forEach(function (h) { charHD = h; mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); } finally { charHD = h0; } }); }); }); // [2026-11-25] 몬스터도 64x64/16x16 둘 다 미리(해상도를 바꿔도 바로)
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
     try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHdBuild(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
@@ -9438,7 +9609,7 @@ var TowerMine = (function () {
         else if (ty.demon) { var dmw = Math.round(TS * 1.5); ctx.drawImage(mobSprite(sk), Math.round(mx + TS / 2 - dmw / 2), Math.round(my + TS - dmw - bob), dmw, dmw); my -= 7 * scale; } // [2026-11-16] 악마 -- 1.5배
         else {
           ctx.drawImage(mobSprite(sk), Math.round(mx), Math.round(my - 2 * scale - bob), TS, TS);
-          var eyes16 = MOB16[ty.name] ? MOB16[ty.name].e : EYE_PX[ty.kind]; // [2026-11-23] 이름별 그림은 그 눈 자리
+          var eyes16 = MOB16[ty.name] ? MOB16[ty.name].e : (charHD ? MHD_EYE : EYE_PX)[ty.kind]; // [2026-11-23] 이름별 그림은 그 눈 자리 // [2026-11-25] 64x64 그림은 그 눈 자리
           if (wildNight && eyes16) eyes16.forEach(function (e) { redEyes.push([mx + (e[0] + 0.5) * scale, my - 2 * scale - bob + (e[1] + 0.5) * scale]); });
         }
         ctx.globalAlpha = 1;
