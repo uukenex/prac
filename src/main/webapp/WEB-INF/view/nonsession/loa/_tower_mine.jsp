@@ -5098,7 +5098,7 @@ var TowerMine = (function () {
     return worldBg;
   }
   /** [2026-11-20] "다른 리소스도 게임 시작 때 다 불러서 진행 중에 버벅임이 없게" -- 맵을 다 받은 뒤: 몬스터 그림 전부, 필살기/돌개바람 그림, 전체 지도 바탕. */
-  var preExtraDone = false; // [2026-11-24] 앱을 켤 때(prefetch) 한 번 그렸으면 들어갈 때 다시 안 그린다
+  var preExtraDone = false, CIT_PRE_N = 108; // [2026-11-24] 앱을 켤 때(prefetch) 한 번 그렸으면 들어갈 때 다시 안 그린다
   function preloadExtra(pmap) {
     if (preExtraDone) return Promise.resolve();
     return new Promise(function (res) {
@@ -5112,10 +5112,13 @@ var TowerMine = (function () {
         try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
         try { Object.keys(NPC_LOOK).forEach(npcHD); } catch (e) { } // [2026-11-23] 64x64 NPC도 미리
         try { worldBgBuild(); } catch (e) { }
-        try { for (var ci = 0; ci < 54; ci++) ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); } catch (e) { } // [2026-11-24] 마을 주민(왕도 54명까지) 그림도 미리
         if (map && map.mobTypes && map.mobTypes.length) preExtraDone = true;
         if (!opened) map = mapWas;
-        res();
+        var ci = 0, citStep = function () { // [2026-11-24] 마을 주민(왕도 108명까지) 그림도 미리 -- 12명씩 나눠서(화면이 굳지 않게)
+          try { for (var e = Math.min(CIT_PRE_N, ci + 12); ci < e; ci++) ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); } catch (e2) { ci = CIT_PRE_N; }
+          if (ci < CIT_PRE_N) setTimeout(citStep, 0); else res();
+        };
+        citStep();
       }, 0);
     });
   }
@@ -7480,6 +7483,11 @@ var TowerMine = (function () {
     '빵 사러 가는 길이에요~', '기사단이 순찰 중이니 안심하세요.', '어젯밤 별빛석이 떨어지는 걸 봤어요!', '광산에서 미스릴을 캤다는 소문이 있어요.',
     '오늘 장 서는 날인가요?', '서문은 왜 늘 닫혀 있을까요?'];
   var citCache = {};
+  /** [2026-11-24] "모든 NPC 그림자" -- 발밑 타원(서 있는 NPC / 떠돌이 주민 / 떠돌이 갑옷장이 / 은둔한 대장장이 같게). (x, y) = 그 칸 왼쪽 위(화면). */
+  function npcShadow(x, y) {
+    var TS = T * scale;
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x + TS / 2, y + TS * 0.86, TS * 0.33, TS * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+  }
   function citPos(route, i, t) {
     var SL = 1400, n = route.length, period = Math.max(1, (n - 1) * 2), s = Math.floor(t / SL) + mix(i, 99) % period, f = (t % SL) / SL;
     function at(k) { k = ((k % period) + period) % period; return route[k < n ? k : period - k]; }
@@ -9061,6 +9069,7 @@ var TowerMine = (function () {
           var nk = np && np.kind === 'blackmarket' && !blackOpen() ? 'stall' : np && np.kind; // [2026-10-26] 암상인이 없을 땐 빈 노점
           if (np && !tiles.npc[nk]) tiles.npc[nk] = npcSprite(nk); // [2026-11-18] "새 NPC를 만들 때마다 안 보이는 문제" -- 그림이 따로 없는 종류는 기본 NPC 그림으로
           var nhd = np ? npcHD(nk) : null; // [2026-11-23] 64x64 NPC
+          if (np && nk !== 'lighthouse' && !/chest/.test(nk)) npcShadow(sx, sy); // [2026-11-24] "모든 NPC 그림자"
           if (nhd) ctx.drawImage(nhd, sx, sy - 3 * scale, TS, TS);
           else if (np && tiles.npc[nk] && nk !== 'lighthouse') ctx.drawImage(tiles.npc[nk], sx, sy - 3 * scale, TS, TS); // [2026-11-18] 등대는 seaDrawBack이 크게
         }
@@ -9287,7 +9296,7 @@ var TowerMine = (function () {
       for (var ci = 0; ci < map.citizens.length; ci++) {
         var cp = citPos(map.citizens[ci], ci, tc), cxp = Math.round(cp.x * TS - camX), cyp = Math.round(cp.y * TS - camY);
         if (cxp < -TS || cyp < -TS * 2 || cxp > W || cyp > H) continue;
-        ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.fillRect(cxp + 3 * scale, cyp + 13 * scale, 10 * scale, 3 * scale);
+        npcShadow(cxp, cyp); // [2026-11-24] 둥근 그림자(모든 NPC 같게)
         ctx.drawImage(citSprite(ci, cp.dir, cp.moving ? 1 + Math.floor(now / 170) % 2 : 0), cxp, cyp - 3 * scale, TS, TS);
         if (mix(ci + 1, cwin) % 3 === 0 && tc % 7000 < 3600) { var gm = mix(ci + 3, cwin) % 3, gl = gm === 1 && updLines.length ? updLines : gm !== 0 && gossip.length ? gossip : CIT_LINES; drawBubble(gl[mix(ci + 7, cwin) % gl.length], cxp + TS / 2, cyp - 6 * scale, tc % 7000 < 1800 ? 0 : 1); } // [2026-11-05] 셋 중 하나씩 유저 소문 / 업데이트 소식 / 기본 말
       }
@@ -9338,7 +9347,7 @@ var TowerMine = (function () {
     if (armorerOn()) { // [2026-11-20] 떠돌이 갑옷장이
       var axp = Math.round(armorer.x * TS - camX), ayp = Math.round(armorer.y * TS - camY);
       if (!tiles.npc.wanderarmor) tiles.npc.wanderarmor = armorerSprite();
-      ctx.drawImage(tiles.npc.wanderarmor, axp, ayp - 3 * scale, TS, TS);
+      npcShadow(axp, ayp); ctx.drawImage(tiles.npc.wanderarmor, axp, ayp - 3 * scale, TS, TS); // [2026-11-24] 그림자
       if (Math.abs(armorer.x - P.x) + Math.abs(armorer.y - P.y) <= 8) {
         ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
         ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('🛡️ 떠돌이 갑옷장이', axp + TS / 2, ayp - 6 * dpr);
@@ -9348,7 +9357,7 @@ var TowerMine = (function () {
     if (hermitOn()) { // [2026-10-30] 은둔한 대장장이
       var hxp = Math.round(hermit.x * TS - camX), hyp = Math.round(hermit.y * TS - camY);
       if (!tiles.npc.hermit) tiles.npc.hermit = hermitSprite();
-      ctx.drawImage(tiles.npc.hermit, hxp, hyp - 3 * scale, TS, TS);
+      npcShadow(hxp, hyp); ctx.drawImage(tiles.npc.hermit, hxp, hyp - 3 * scale, TS, TS); // [2026-11-24] 그림자
       if (Math.abs(hermit.x - P.x) + Math.abs(hermit.y - P.y) <= 8) {
         ctx.font = 'bold ' + Math.round(12 * dpr) + 'px sans-serif'; ctx.textAlign = 'center';
         ctx.lineWidth = 4 * dpr; ctx.strokeStyle = '#000'; ctx.strokeText('💬 ???', hxp + TS / 2, hyp - 6 * dpr);

@@ -1485,10 +1485,11 @@ public final class S5MineMap {
         placeWaypoints(out, seed); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
         { // [2026-11-24] "떠돌아다니는 NPC 많이 -- 왕도는 지금의 3배, 큰길가로만. 다른 데는 면적에 따라(시작 마을, 바다마을, 요새 도시)" (맵을 다 만든 뒤 -- 'N' 칸은 피해 간다)
             S5MineMap c0 = out.get(CITY), f0 = out.get(FIELD), s0 = out.get(SEA_CITY), t0 = out.get(TOWER_CITY);
-            if (c0 != null) c0.citizens = townCitizens(c0, seed, 54, "s", true, 0, 0, c0.w - 1, c0.h - 1);
+            // [2026-11-24] 같은 날 "큰 마을엔 NPC 지금 대비 두 배로" -- 왕도 54 -> 108, 요새 도시 40 -> 80
+            if (c0 != null) c0.citizens = townCitizens(c0, seed, 108, "s", true, 0, 0, c0.w - 1, c0.h - 1);
             if (f0 != null) { int fx = f0.villageX >= 0 ? f0.villageX : f0.spawnX, fy = f0.villageX >= 0 ? f0.villageY : f0.spawnY; f0.citizens = townCitizens(f0, seed, 6, "V,", false, fx - 14, fy - 14, fx + 14, fy + 14); }
             if (s0 != null) s0.citizens = townCitizens(s0, seed, 16, "HsV", false, 0, 0, s0.w - 1, s0.h - 1);
-            if (t0 != null) t0.citizens = townCitizens(t0, seed, 40, ",s", false, 0, 0, t0.w - 1, t0.h - 1);
+            if (t0 != null) t0.citizens = townCitizens(t0, seed, 80, ",s", false, 0, 0, t0.w - 1, t0.h - 1);
         }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
