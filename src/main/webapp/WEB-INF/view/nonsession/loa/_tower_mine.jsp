@@ -2421,7 +2421,10 @@ var TowerMine = (function () {
     });
   }
   function mobStOf(a, old) {
-    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1, su: a[7] || 0, vu: a[8] || 0, vp: a[9] || 0 }, t = nowSrv(); // [2026-10-28] sl = 닌자 은신 중, [2026-11-07] su = 일섬참 기절 끝 시각
+    var n = { hp: a[1], du: a[2], fx: a[3], fy: a[4], fu: a[5], sl: a[6] === 1, su: a[7] || 0, vu: a[8] || 0, vp: a[9] || 0 }, t = nowSrv();
+    // [2026-11-24] 제보 "2초 기절이 1초 남았을 때 5초 기절을 걸면 1초 뒤 풀린다" -- 일섬참 응답 뒤에 그보다 먼저 만든(늦게 도착한) 응답이 오면 예전 기절 끝 시각으로 덮였다.
+    //  서버는 기절을 늘 긴 쪽으로만 바꾸니(쓰러지면 0), 살아 있는 동안 받은 끝 시각이 줄면 늦게 온 옛 정보 -- 긴 쪽을 지킨다.
+    if (old && old.su > n.su && old.su > t && !(n.du > t) && old.du === n.du) n.su = old.su; // [2026-10-28] sl = 닌자 은신 중, [2026-11-07] su = 일섬참 기절 끝 시각
     if (mobDeathReady && n.du > t && n.du < t + 3600000 && !(old && old.du > t)) mobDeathAdd(a[0]); // [2026-11-06] 쓰러짐(수하 숨김 = 아주 먼 시각은 뺀다)
     // [2026-11-05] "화면 안인데도 다가올 때 끊겨 보인다" -- 예전엔 새 위치가 오면 옛 목표 칸에서 다시 출발(덜 걸었으면 툭 튐)하고 늘 0.95초만 걸었다(턴이 늦으면 멈칫).
     //  이제 지금 보이는 자리에서 출발하고, 걷는 시간은 지난번 위치가 바뀐 뒤 흐른 시간(0.6~2.2초)이라 다음 위치가 올 즈음 도착한다.
@@ -6470,7 +6473,7 @@ var TowerMine = (function () {
       if (d.shock) shockSet(d.shock); // [2026-11-05] 천둥 황소 장판
       if (d.knockX != null) setPos(d.knockX, d.knockY); // [2026-11-05] 밀쳐내기
       if (d.slowUntil) slowUntil = d.slowUntil; // [2026-10-28] 여왕개미 독산
-      if (d.stunUntil) { stunUntil = d.stunUntil; stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
+      if (d.stunUntil) { stunUntil = Math.max(stunUntil, d.stunUntil); /* [2026-11-24] 늦게 온 옛 응답이 긴 기절을 줄이지 않게 */ stunBand = (d.hits || []).some(function (q) { return q.ranged && q.stun; }); } // [2026-11-04] 파라오 미라 붕대 스턴
       if (d.pullWarn) { pullFx = { bx: d.pullWarn[0], by: d.pullWarn[1], fo: d.pullWarn[2] || 2, at: d.pullWarn[3] }; msg('🪝 보스가 사슬을 던졌어요!', 1400); } // [2026-11-23] 끌어당기기 예고
       if (d.sqPunch) sqPunchUntil = performance.now() + 1300; // [2026-11-23] 최강다람쥐 주먹질 그림 -- 1.3초(전투 턴 1초 사이가 끊기지 않게, "다음 동작 대기 짧게")
       if (d.sqStorm) { flashT0 = performance.now(); msg('⛈️ 최강다람쥐: 람쥐썬더!! (낙뢰 폭풍 3초)', 2600); } // [2026-11-23]

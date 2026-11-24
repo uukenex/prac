@@ -1586,8 +1586,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     void mineTwStun(String userName, long now, HashMap<String, Object> out) {
         MINE_TW_STUN_AT.put(userName, now);
-        MINE_STUN.put(userName, now + MINE_TW_STUN_MS);
-        out.put("stunUntil", now + MINE_TW_STUN_MS);
+        MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_TW_STUN_MS)); // [2026-11-24] 기절은 늘 긴 쪽으로
+        out.put("stunUntil", MINE_STUN.get(userName));
     }
     /** 오늘 쓰러뜨린 수문장 수(날짜가 바뀌면 0). */
     static int mineTwBossToday(Map<String, Integer> items, long now) { return items.getOrDefault(MINE_ITEM_TWB_DAY, 0) == mineToday(now) ? items.getOrDefault(MINE_ITEM_TWB_CNT, 0) : 0; }
@@ -4184,9 +4184,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                             h.put("dark", true);
                         } else if (pharaoh) { // [2026-11-04] 붕대 감기 -- 스턴
                             MINE_PHARAOH_STUN_AT.put(userName, now);
-                            MINE_STUN.put(userName, now + MINE_STUN_MS);
+                            MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_STUN_MS)); // [2026-11-24] 기절은 늘 긴 쪽으로
                             h.put("stun", true);
-                            out.put("stunUntil", now + MINE_STUN_MS);
+                            out.put("stunUntil", MINE_STUN.get(userName));
                         } else if (S5MineMap.ISLE7.equals(map.id)) {
                             mineLavaCells(map, now); // 맵 버전 맞추기
                             for (int ly = y - 1; ly <= y + 1; ly++) for (int lx = x - 1; lx <= x + 1; lx++) // [2026-10-29] "용암 범위 3x3" (예전 서 있던 한 칸)
@@ -8481,7 +8481,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         s.fx = hitCell % map.w;
                         s.fy = hitCell / map.w;
                         s.frozenUntil = now + MINE_MOB_FREEZE_MS;
-                        if (stunMs > 0) { s.stunUntil = now + stunMs; s.frozenUntil = Math.max(s.frozenUntil, s.stunUntil); } // [2026-11-07] 일섬참 -- 기절
+                        if (stunMs > 0) { s.stunUntil = Math.max(s.stunUntil, now + stunMs); s.frozenUntil = Math.max(s.frozenUntil, s.stunUntil); } // [2026-11-07] 일섬참 -- 기절
                         if (s.target == null || !mineEngaged(s.target, now)) s.target = userName;
                     }
                 }
@@ -10655,7 +10655,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 Long seen = MINE_THUNDER_STORM_SEEN.get(userName);
                 if (mineThunderStormAt > 0 && now - mineThunderStormAt < 3_000L && (seen == null || seen < mineThunderStormAt)) {
                     MINE_THUNDER_STORM_SEEN.put(userName, mineThunderStormAt);
-                    MINE_STUN.put(userName, now + MINE_STORM_STUN_MS);
+                    MINE_STUN.put(userName, Math.max(MINE_STUN.getOrDefault(userName, 0L), now + MINE_STORM_STUN_MS)); // [2026-11-24] 기절은 늘 긴 쪽으로
                     stormDmg = mineCoatHit(items, Math.max(1, (int) Math.round(tatk * MINE_STORM_MULT)), S5MineMobs.TYPES.get(S5MineMobs.THUNDER_BOSS_TYPE).elem());
                     out.put("storm", mineThunderStormAt);
                     out.put("stunUntil", now + MINE_STORM_STUN_MS);
