@@ -68,7 +68,7 @@ public class S55AdminPush {
     void init() {
         inst = this;
         long now = System.currentTimeMillis(), next = (now / 3_600_000L + 1) * 3_600_000L; // 매시 정각(KST도 정시가 같다)
-        DIGEST_POOL.scheduleAtFixedRate(S55AdminPush::digestFlush, next - now + 2_000L, 3_600_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
+        if (DIGEST_ON) DIGEST_POOL.scheduleAtFixedRate(S55AdminPush::digestFlush, next - now + 2_000L, 3_600_000L, java.util.concurrent.TimeUnit.MILLISECONDS);
     }
 
     // ---- [2026-11-18] "관리자 알림 1시간에 한 번만 정리해서 -- 누가 접속, 보스 몇 회 처치(심장 획득은 안 알려도 됨), 고대 이상급 획득 정보" --
@@ -81,9 +81,12 @@ public class S55AdminPush {
     private static List<String> dgGear = new ArrayList<>(); // "유저 -- 이름 (등급)"
     private static long dgFrom = System.currentTimeMillis();
 
-    public static void digestEnter(String user) { synchronized (DG_LOCK) { if (dgEnter.size() < 500) dgEnter.merge(user, 1, Integer::sum); } }
-    public static void digestBoss(String user, String boss) { synchronized (DG_LOCK) { if (dgBoss.size() < 500) dgBoss.merge(user + "|" + (boss == null ? "보스" : boss), 1, Integer::sum); } }
-    public static void digestGear(String user, String text) { synchronized (DG_LOCK) { if (dgGear.size() < 200) dgGear.add(user + " -- " + text); } }
+    // [2026-11-24] "관리자 알림에 1시간마다 알림 말고, 거룡 처치와 베히모스 처치 시에만" -- 시간별 정리(접속/보스/고대 이상)는 끈다(모으지도 않는다).
+    //  월드보스 처치는 S55MineServiceImpl.mineWbAlert가 바로 보낸다. 게시판 새 글/카카오 연결/시험 알림은 그대로.
+    static final boolean DIGEST_ON = false;
+    public static void digestEnter(String user) { if (!DIGEST_ON) return; synchronized (DG_LOCK) { if (dgEnter.size() < 500) dgEnter.merge(user, 1, Integer::sum); } }
+    public static void digestBoss(String user, String boss) { if (!DIGEST_ON) return; synchronized (DG_LOCK) { if (dgBoss.size() < 500) dgBoss.merge(user + "|" + (boss == null ? "보스" : boss), 1, Integer::sum); } }
+    public static void digestGear(String user, String text) { if (!DIGEST_ON) return; synchronized (DG_LOCK) { if (dgGear.size() < 200) dgGear.add(user + " -- " + text); } }
 
     static void digestFlush() {
         try {

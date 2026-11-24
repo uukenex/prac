@@ -165,6 +165,8 @@ public final class S5MineMap {
     public static final int SUN_STONE_GRADE = 85;
     public static String towerStairId(int f) { return "tw" + f + "s"; }
     public static boolean towerStairRoom(String id) { return id != null && id.endsWith("s") && towerFloor(id) > 0; }
+    /** [2026-11-24] "59층 수문장에서 죽으면 59층 입구(신설)에서 부활" -- 수문장 층의 입구 방(tw{층}s, 계단방 자리): 왼쪽 문 = 탑 밖, 위 계단 = 수문장의 방. */
+    public static boolean towerBossGate(String id) { return towerStairRoom(id) && towerBossFloor(towerFloor(id)); }
     /** 방이 있는 층(수문장/마을 층이 아닌 층). */
     public static boolean towerRoomFloor(int f) { return f >= 1 && f <= TOWER_FLOORS && !towerBossFloor(f) && !towerTownFloor(f); }
     /** 그 층에서 계단방까지 지나야 하는 방 수(구역 안에서 위로 갈수록 길다: 5, 5, 6, 6, 7, 7, 8, 8). */
@@ -190,7 +192,7 @@ public final class S5MineMap {
     public static boolean isForestRoom(String id) { return id != null && id.startsWith(FOREST); }
     /** 미궁 방 + 끝방 + 하피의 둥지 + 나루터(지금은 관리자만 -- S55MineServiceImpl.mineWarp). */
     public static boolean isForestZone(String id) { return isForestRoom(id) || FOREST_END.equals(id) || HARPY_NEST.equals(id) || HARPY_FERRY.equals(id) || isSqDen(id) || SQ_GATE.equals(id); } // [2026-11-23] 다람쥐 굴(+ 입구)
-    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int f = 1; f <= TOWER_FLOORS; f++) { l.add(towerId(f)); if (towerRoomFloor(f)) l.add(towerStairId(f)); } /* [2026-11-15] 탑 층 + 계단방 */ for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); l.add(SQ_GATE); for (String d : SQ_DENS) l.add(d); /* [2026-11-23] 다람쥐 굴 입구 + 굴 */ return Collections.unmodifiableList(l); }
+    private static List<String> withForest(List<String> base) { List<String> l = new ArrayList<>(base); for (int f = 1; f <= TOWER_FLOORS; f++) { l.add(towerId(f)); if (towerRoomFloor(f) || towerBossFloor(f)) l.add(towerStairId(f)); } /* [2026-11-15] 탑 층 + 계단방, [2026-11-24] 수문장 층 입구 방 */ for (int i = 1; i < FOREST_ROOM_N; i++) l.add(FOREST_ROOM_IDS[i]); l.add(FOREST_END); l.add(HARPY_FERRY); l.add(SQ_GATE); for (String d : SQ_DENS) l.add(d); /* [2026-11-23] 다람쥐 굴 입구 + 굴 */ return Collections.unmodifiableList(l); }
     /** 사막에서 개미굴에 빠지는 구역(이 x보다 서쪽). */
     public static final double DESERT_FALL_X = 0.3;
     /** [2026-10-28] 피라미드 보상 상자 -- 사막의 심장(기타 재료, 등급 값 39). */
@@ -1415,7 +1417,7 @@ public final class S5MineMap {
                 placeNpc(sc, 46, 40, "smelter", "광석 전문가", "바닷바람에 식힌 쇠가 제일 단단하다네.");
                 placeNpc(sc, 66, 40, "gemcutter", "보석 세공사", "파도 소리를 들으며 깎으면 손이 덜 떨려요.");
                 placeNpcAt(sc, 47, 62, "fishshop", "낚시 용품 상인", "낚싯대랑 찌는 여기서! 도감을 채우면 더 좋은 낚싯대를, 많이 낚을수록 더 좋은 찌를 내어 드리지요."); // [2026-11-23] 남쪽 항구 광장 왼쪽
-                placeNpcAt(sc, 64, 61, "shipwright", "조선공", "나무 200개에 철괴 50개면 대포 단 화포선을 지어 드리지요. 1인용 배는 있어야 하오 -- 그 배를 크게 늘리는 거니까."); // [2026-11-24] 화포선(시안 승인)
+                placeNpcAt(sc, 64, 61, "shipwright", "조선공", "대포 단 화포선은 큰일이오. 나무 1500개, 철괴 400개, 금괴 100개에 별빛석 50개는 있어야 하지요. 1인용 배도 있어야 하오 -- 그 배를 크게 늘리는 거니까."); // [2026-11-24] 화포선(시안 승인)
                 out.put(SEA_CITY, sc);
                 { // [2026-11-18] 등대 여섯(크라켄이 도는 길 옆 바위섬 -- 배를 대면 내리고, 종을 치면 해상도시 구조선이 온다). 탑 칸은 NPC(N), 섬 둘레는 자갈(r)
                     List<Npc> bn = new ArrayList<>();
@@ -1442,6 +1444,7 @@ public final class S5MineMap {
             out.put(gate.id, gate);
             out.put(SQ_DENS[0], generateSqDen(0, SQ_GATE));
         }
+        for (int f = 1; f <= TOWER_FLOORS; f++) if (towerBossFloor(f)) out.put(towerStairId(f), towerBossEntry(f)); // [2026-11-24] 수문장 층 입구 방(맨 뒤 -- 몬스터 없음)
         placeWaypoints(out, seed); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
@@ -3530,6 +3533,21 @@ public final class S5MineMap {
         S5MineMap m = new S5MineMap(stair ? towerStairId(f) : towerId(f), "탑 " + f + "층" + (stair ? " 계단방" : ""), false, w, h, 2, cy, t, new byte[h][w], ps);
         if (!stair) m.twSpots = new int[][] { { w - 8, cy - 3 }, { w - 8, cy }, { w - 8, cy + 3 } }; // 전투방이 되면 이 가운데 한 마리가 깨어난다
         return m;
+    }
+    /** [2026-11-24] 수문장 층 입구 방 -- 탑 방 크기, 융단이 가운데로 이어져 위 계단(수문장의 방)으로. 왼쪽 문 = 탑 밖. 쓰러지면 여기서 깨어난다. */
+    static S5MineMap towerBossEntry(int f) {
+        int w = TROOM_W, h = TROOM_H, cx = w / 2, cy = h / 2;
+        char[][] t = new char[h][w];
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) t[y][x] = x < 2 || y < 2 || x >= w - 2 || y >= h - 2 ? 'W' : 's';
+        for (int x = 1; x < cx + 1; x++) t[cy][x] = ',';
+        for (int y = 1; y < cy + 1; y++) t[y][cx] = ',';
+        for (int[] p : new int[][] { { 5, 3 }, { 5, h - 4 }, { 17, 3 }, { 17, h - 4 } }) t[p[1]][p[0]] = 'L'; // 기둥
+        List<Portal> ps = new ArrayList<>();
+        t[cy][0] = 'G';
+        ps.add(new Portal(0, cy, 'G', TOWER_GATE, GATE_W / 2, GATE_DOOR_Y + 1, "탑 밖으로 나가는 문"));
+        t[0][cx] = 'U';
+        ps.add(new Portal(cx, 0, 'U', towerId(f), 0, 0, "수문장의 방으로 올라가는 계단"));
+        return new S5MineMap(towerStairId(f), "탑 " + f + "층 -- 수문장의 방 입구", false, w, h, 2, cy, t, new byte[h][w], ps);
     }
     /** 보스 층(9, 19, 29) -- 돌 광장 가운데 수문장. 아래 계단 = 아래층, 위 계단 = 다음 층 마을(수문장을 쓰러뜨려야), 왼쪽 문 = 탑 나가기. */
     static S5MineMap towerBoss(int f) {

@@ -720,6 +720,7 @@ public final class S5MineMobs {
     static List<S5MineMap.Mob> spawn(S5MineMap m, long seed) {
         if (S5MineMap.isForestRoom(m.id)) return spawnForestRoom(m, seed); // [2026-11-11] 두고개식 미궁 방
         if (S5MineMap.SQ_GATE.equals(m.id)) return new ArrayList<>(); // [2026-11-23] 다람쥐 굴 입구 -- 쉼터
+        if (S5MineMap.towerBossGate(m.id)) return new ArrayList<>(); // [2026-11-24] 수문장 층 입구 방
         if (S5MineMap.isSqDen(m.id)) { List<S5MineMap.Mob> sq = new ArrayList<>(); sq.add(new S5MineMap.Mob(0, SQ_TYPES[S5MineMap.sqDenIndex(m.id)], m.bossX(), m.bossY(), new int[] { m.bossY() * m.w + m.bossX() })); return sq; } // [2026-11-23] 다람쥐 굴 -- 최강다람쥐만
         if (m.twSpots() != null) { // [2026-11-15] 탑 방 -- 그 구역 몬스터 셋이 한 자리씩(평소엔 없음 -- 전투방이 되면 하나가 깨어난다, S55MineServiceImpl.mineTowerNext)
             List<S5MineMap.Mob> tw = new ArrayList<>();

@@ -3520,6 +3520,7 @@ var TowerMine = (function () {
       ps.forEach(function (p, i) {
         var rwl = p.rw ? '🎁 ' + rwList(p.rw) : !b.killed ? '' : p.ok ? '🎁 ⭐ 별빛석 ' + d.star + ' · 🔮 칠요석 ' + d.seven : '보상 없음 (' + b.minShare + ' 몫 미달)';
         if (p.kit != null) rwl += (rwl ? ' · ' : '') + (p.kit > 0 ? '🐉 거룡의 심장 조각 ' + p.kit + '개' : '🐉 심장 조각은 안 나옴'); // [2026-11-23] 토벌 순위 보상
+        if (p.gear && p.gear.length) rwl += (rwl ? ' · ' : '') + '🗡️ 신화 ' + p.gear.map(escAttr).join(', '); // [2026-11-24] 거룡 장비
         h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (!b.killed && !p.ok ? ' · 아직 보상 기준(' + b.minShare + ' 몫) 전' : '') + '</small>' + (rwl ? '<small style="color:#ffe9a8">' + rwl + '</small>' : '') + '</span></div>';
       });
       h += '</div>';
@@ -5732,11 +5733,11 @@ var TowerMine = (function () {
       if (smithOpen && smithView === 'fishshop') renderSmith(smithNpc);
     }).catch(function () { fishShopBusy = false; msg('요청 실패 -- 다시 시도해주세요.'); });
   }
-  function shipyardHtml(n) { // [2026-11-24] 조선공 -- 1인용 배 + 나무 200 + 철괴 50 -> 화포선
+  function shipyardHtml(n) { // [2026-11-24] 조선공 -- 1인용 배 + 재료(서버 MINE_SHIP_COST) -> 화포선
     var a = st.archi || {}, h = npcHead('⚓ ' + n.name, false) + talkBlock(n, n.line);
-    if (a.ship) return h + '<div class="mine-smith-say">⚓ 이미 화포선이 있어요. 배를 띄우면 화포선으로 나가요. 물 위에서 공격하면 갑판 대포가 함께 쏴요.</div>';
+    if (a.ship) return h + '<div class="mine-smith-say">⚓ 이미 화포선이 있어요. 배를 띄우면 화포선으로 나가요. 물 위에 있으면 갑판 대포가 10초마다 8칸 안 가장 가까운 몬스터를 저절로 쏴요.</div>';
     if (!a.boat) return h + '<div class="mine-smith-say">⛵ 1인용 배가 있어야 해요. 다도해 본섬 배 목수에게서 먼저 만들어 오세요.</div>';
-    return h + '<div class="mine-smith-row"><span class="nm">⚓ 화포선<small>물 위에서 공격하면 갑판 대포가 함께 (1초에 한 번, 그 공격의 40%) · 배 체력 2배</small>' + costHtml(a.shipCosts) + '</span>'
+    return h + '<div class="mine-smith-row"><span class="nm">⚓ 화포선<small>물 위에선 갑판 대포가 10초마다 저절로 (8칸 안 가장 가까운 몬스터, 평타의 3배) · 배 체력 2배</small>' + costHtml(a.shipCosts) + '</span>'
         + '<button type="button" ' + (a.shipCan ? '' : 'data-lack="1" ') + 'onclick="TowerMine.archiAct(\'ship\')">짓기</button></div>';
   }
   function fishShopHtml(n) {
@@ -8711,9 +8712,10 @@ var TowerMine = (function () {
     if (a) attack(a); else dig();
   }
   // [2026-10-24] 공격(바람의나라식: 바로 옆 몬스터를 때리고, 살아남은 몬스터는 그 자리에 멈춰 반격)
-  function attack(a) {
+  function attack(a, gun) { // [2026-11-24] gun = 화포선 자동 포격(휘두르기/검기/공격 간격 없이, 서버 mineAttack 방향 끝 @)
     if (!opened || !map || busy || fade) return;
     var now = performance.now();
+    if (gun) { shipGunReq(a); return; }
     if (now - lastAtkT < 420) return;
     if (atkBusy) { if (now - P.digT0 >= 420) { P.dir = a.dir; P.digT0 = now; P.swing = true; } return; } // [2026-11-03] 응답을 기다리는 중에도 휘두르기는 보인다 -- [2026-11-04] 공격 간격(lastAtkT)은 건드리지 않는다(응답이 오면 바로 다음 공격)
     lastAtkT = now; atkBusy = true;
@@ -8728,6 +8730,34 @@ var TowerMine = (function () {
     var mc =mp ? mp.cy * map.w + mp.cx : -1; // 화면이 보던 몬스터 칸 -- 서버가 그 칸에 멈춰 세운다(순간이동처럼 안 보이게)
     apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + '&d=' + P.dir + verQ()).then(function (d) {
       atkBusy = false;
+      atkResult(d, m, mp);
+    }).catch(function () { atkBusy = false; });
+  }
+  // [2026-11-24] "화포선 공격은 일정 주기별 자동 공격으로(용병처럼, 약 10초)" -- 화포선을 타고 물 위에 있으면 SHIP_GUN_MS마다 SHIP_GUN_R칸 안 가장 가까운 몬스터를 쏜다.
+  var SHIP_GUN_MS = 10000, SHIP_GUN_R = 8, shipGunTry = 0, shipGunBusy = false;
+  function shipGunTick(now) {
+    if (shipGunBusy || !opened || !map || busy || fade || !myShip() || !(map.boat || map.sail) || cellAt(P.x, P.y) !== '~' || !map.mobs) return;
+    if (now - shipGunTry < SHIP_GUN_MS) return;
+    var best = null, bd = 1e9;
+    for (var gy = -SHIP_GUN_R; gy <= SHIP_GUN_R; gy++) for (var gx = -SHIP_GUN_R; gx <= SHIP_GUN_R; gx++) { // 화면에 서 있는 몬스터(mobOcc -- 살아 있고 보이는 칸)
+      var gm = mobOcc[(P.x + gx) + ',' + (P.y + gy)], gd = Math.max(Math.abs(gx), Math.abs(gy));
+      if (gm && gd < bd) { bd = gd; best = gm; }
+    }
+    if (!best) return;
+    shipGunTry = now;
+    attack({ m: best, dir: P.dir }, true);
+  }
+  function shipGunReq(a) {
+    var m = a.m, mp = m._p, mc = mp ? mp.cy * map.w + mp.cx : -1;
+    shipGunBusy = true;
+    apiFast('/api/tower-mine-attack?mapId=' + encodeURIComponent(map.id) + '&x=' + P.x + '&y=' + P.y + '&mob=' + m.id + '&mc=' + mc + '&d=' + encodeURIComponent(P.dir + '@') + verQ()).then(function (d) {
+      shipGunBusy = false;
+      if (!d || d.tooFast || d.gunOff || !d.ok) { if (d && d.reload) reload(); return; }
+      atkResult(d, m, mp);
+    }).catch(function () { shipGunBusy = false; });
+  }
+  function atkResult(d, m, mp) {
+    {
       if (!d || d.tooFast) return;
       if (d.reload) { reload(); return; }
       if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
@@ -8746,6 +8776,7 @@ var TowerMine = (function () {
       if (d.waterCannon) { wcFx.push({ x: fxp, y: fyp, t0: t }); floats.push({ x: fxp, y: fyp - 1.3, text: '💧 물대포 -' + fmtN(d.waterCannon), color: '#5ac8ff', big: true, t0: t + 280 }); } // [2026-11-23] 베히모스의 수정구슬
       if (d.evade) floats.push({ x: fxp, y: fyp, text: d.stealthLeft ? '💨 은신! (' + d.stealthLeft + ')' : '💨 은신!', color: '#c8c8ff', big: true, t0: t }); // [2026-10-28] 닌자 두목 -- 남은 공격 수
       else if (d.clone) floats.push({ x: fxp, y: fyp, text: '💨 펑! 분신', color: '#d8c8ff', big: true, t0: t });
+      else if (d.gun) { } // [2026-11-24] 포격 -- 숫자는 💣 포격 하나만(위 shipShot)
       else if (dmgSum) { // [2026-11-20] "합산 데미지를 한 번으로 보여 주는 옵션" -- 일반 공격(쌍격 두 번 포함) + 검기 속성 피해를 더해 숫자 하나
         var tot = d.hits ? d.hits.reduce(function (a2, b2) { return a2 + b2; }, 0) : d.dmg | 0, el15 = !!d.elHit;
         (d.aura || []).forEach(function (h) { tot += h[1] | 0; if (h[2]) el15 = true; });
@@ -8783,7 +8814,7 @@ var TowerMine = (function () {
         fadeOutThen(function () { return Promise.resolve(d); }).then(function () { return enterState(d.state); })
           .then(function () { fadeIn('💫 마을에서 깨어났어요'); msg(d.message || '', 3600); });
       }
-    }).catch(function () { atkBusy = false; });
+    }
   }
   function gearAct(path) {
     if (busy) return;
@@ -9379,7 +9410,7 @@ var TowerMine = (function () {
     ctx.globalAlpha = 1;
     if (myKa > 0) kakAuraFront(ctx, cx, cy - 3 * scale, now, myKa, TS);
     if (kakFx && now - kakFx.t0 < 600) kakCast(ctx, cx, cy - 3 * scale, now - kakFx.t0, TS); // 쓰는 순간
-    if (meShip) { var shA = st && st.archi; drawShipFront(cx, cy - 3 * scale, now, P.dir === 'left', Math.max(0, 1 - (now - shipGunAt) / 300)); if (shA && shA.boatHpMax) drawShipHp(cx, cy - 3 * scale, Math.max(0, Math.min(1, (shA.boatHp || 0) / shA.boatHpMax))); shipShotsDraw(cx, cy - 3 * scale, P.dir === 'left', now); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-24] 화포선
+    if (meShip) { try { shipGunTick(performance.now()); } catch (e) { } /* [2026-11-24] 자동 포격 */ var shA = st && st.archi; drawShipFront(cx, cy - 3 * scale, now, P.dir === 'left', Math.max(0, 1 - (now - shipGunAt) / 300)); if (shA && shA.boatHpMax) drawShipHp(cx, cy - 3 * scale, Math.max(0, Math.min(1, (shA.boatHp || 0) / shA.boatHpMax))); shipShotsDraw(cx, cy - 3 * scale, P.dir === 'left', now); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-24] 화포선
     else if (meBoat) { boatStern(cx, cy - 3 * scale, now, P.dir === 'left', myCrew.length, true); drawBoatFront(cx, cy - 3 * scale, now, P.dir === 'left'); drawBoatHp(cx, cy - 3 * scale); try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } else if (fishFx) { try { drawFishing(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-19] 물가 낚시
     if (berserkInvUntil) { try { berserkShieldDraw(cx, cy - 3 * scale, now); } catch (e) { } } // [2026-11-20] 광전사 불굴 보호막 // [2026-11-18] 뱃전이 다리를 가린다 + 배 체력
     if (auraFx.length) whirlDraw(1, cx, cy - 3 * scale, now); // [2026-11-07] 관리자 돌개바람(앞쪽 반)
@@ -10203,6 +10234,7 @@ var TowerMine = (function () {
         if (d.resyncX != null) setPos(d.resyncX, d.resyncY);
         if (d.seaLimit) setAuto(false); // [2026-10-24] 바닷길 하루 보석 한도
         if (d.digFail) floats.push({ x: x, y: y, text: '💨 실패', color: '#c9c3d6', t0: performance.now() }); // [2026-10-30] 내구도 0 -- 성공률 20%
+        else if (d.bossFight) { if (auto) setAuto(false); } // [2026-11-24] 보스 인식 중엔 캐기/낚시 안 됨 -- 칸은 그대로(자동채광은 멈춘다)
         else if (d.noOre || auto) noOre[x + ',' + y] = 1; // [2026-10-24] 자동채광이 같은 칸을 다시 고르지 않게
         if (!(auto && d.noOre)) msg(d.message || d.error || '캐지 못했어요.');
       }
