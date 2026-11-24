@@ -6936,8 +6936,22 @@ var TowerMine = (function () {
       ctx.restore();
     });
   }
+  // [2026-11-24] 용병 3차 스킬 람쥐썬더 -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
+  var mercBolts = [];
+  function mercBoltDraw(now, TS, camX, camY) {
+    mercBolts = mercBolts.filter(function (b) { return now - b.t0 < 420; });
+    mercBolts.forEach(function (b, i) {
+      var e = now - b.t0; if (e < 0) return;
+      var img = boltImg((b.x * 7 + b.y * 3) % 4, TS), cx = b.x * TS - camX + TS / 2, gy = b.y * TS - camY + TS * 0.8, a = e < 120 ? 1 : Math.max(0, 1 - (e - 120) / 300), g = 0.5 + e / 400;
+      ctx.save();
+      ctx.globalAlpha = a * 0.75; ctx.fillStyle = '#fff6a0'; ctx.beginPath(); ctx.ellipse(cx, gy, TS * 0.7 * g, TS * 0.3 * g, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = a; ctx.drawImage(img, cx - img.width / 2, gy - img.height);
+      ctx.restore();
+    });
+  }
   function mercFxDraw(now, TS, camX, camY) {
     try { mercRainDraw(now, TS, camX, camY); } catch (e) { }
+    try { mercBoltDraw(now, TS, camX, camY); } catch (e) { }
     mercFx = mercFx.filter(function (f) { return now - f.t0 < mercFly(f) + 520; });
     mercFx.forEach(function (f) {
       if (now < f.t0) return;
@@ -7177,6 +7191,11 @@ var TowerMine = (function () {
     mercMove(mp, g[0], g[1], now);
     if (fight && !mp.mv) mercFace(mp, mp.tg.x, mp.tg.y);
     mercDraw(mp, mi.t | 0, rest, mi.max ? mi.hp / mi.max : null, mp.atkT, now, V, mi.ni);
+    if (mp.x != null && (mp.kak > nowSrv() || (mp.kakT0 && now - mp.kakT0 < 600))) { // [2026-11-24] 3차 스킬 각성 -- 플레이어 각성과 같은 발밑 빛/불티
+      var kx = Math.round(mp.x * V.TS - V.camX), ky = Math.round(mp.y * V.TS - V.camY) - 3 * V.scale;
+      if (mp.kak > nowSrv()) kakAuraFront(ctx, kx, ky, now, kakAlpha(mp.kak), V.TS);
+      if (mp.kakT0 && now - mp.kakT0 < 600) kakCast(ctx, kx, ky, now - mp.kakT0, V.TS);
+    }
     if (mp.say && mp.x != null) { var sa = now - mp.say.t0; if (sa > 4000) mp.say = null; else if (sa >= 0) drawBubble(mp.say.text, Math.round(mp.x * V.TS - V.camX) + V.TS / 2, Math.round(mp.y * V.TS - V.camY) - 6 * V.scale); } // [2026-11-24]
     if (mi.stun > nowSrv() && mp.x != null) { // [2026-11-23] 큰 보스에게 기절한 용병 -- 머리 위에 도는 별
       var zx = Math.round(mp.x * V.TS - V.camX) + V.TS / 2, zy = Math.round(mp.y * V.TS - V.camY) - V.TS * 0.25;
@@ -7208,7 +7227,7 @@ var TowerMine = (function () {
     if (m.stunNew && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.9, text: '💫 용병 기절!', color: '#ffe94a', t0: performance.now() }); // [2026-11-23]
     var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st, k: mt === 2 ? 'ball' : '' }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
     var rowsAll = (m.row ? [m.row] : []).concat(m.rows || []), applyRows = function () { rowsAll.forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); }; // 둘레/체인 몬스터
-    if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
+    if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (m.sk3) hitDelay = Math.max(hitDelay, m.sk3.k === 'bolt' ? 1800 : m.sk3.k === 'arrow5' ? 1000 : 150); /* [2026-11-24] 3차 스킬이 끝날 때 */ if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
     if (m.tx != null) {
       if (!mp.tg || mp.tg.x !== m.tx || mp.tg.y !== m.ty) mp.tg = { x: m.tx, y: m.ty, t: t };
       else mp.tg.t = t;
@@ -7223,7 +7242,7 @@ var TowerMine = (function () {
       //  "메테오는 땅에 닿을 때 데미지" -- 2차 스킬이 나간 턴은 스킬이 닿는 때에 숫자(와 쓰러짐)
       var land = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 420 : m.sk.k === 'chain' ? 200 : fly, ecol = MERC_DMG_COL[m.el] || '#ffd27a';
       floats.push({ x: m.tx, y: m.ty - 0.3, text: '🐱' + ei + m.dmg + (m.beat ? '!' : ''), color: ecol, big: !!m.beat, t0: t + land });
-      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: '🐱' + ei + q[2], color: ecol, t0: t + land + (m.sk && (m.sk.k === 'sword' || m.sk.k === 'chain') ? 45 * (i + 1) : 40) }); });
+      (m.sp || []).forEach(function (q, i) { floats.push({ x: q[0], y: q[1] - 0.3, text: '🐱' + ei + q[2], color: ecol, big: !!q[4], t0: t + (q[4] ? q[4] : land + (m.sk && (m.sk.k === 'sword' || m.sk.k === 'chain') ? 45 * (i + 1) : 40)) }); }); // [2026-11-24] q[4] = 3차 스킬 숫자 늦춤
     }
     if (m.sk) { // [2026-11-06] 2차 스킬(20초마다) -- 이름을 머리 위에, 이펙트
       var sk = m.sk, mx0 = mp.x == null ? P.x : mp.x, my0 = mp.y == null ? P.y : mp.y;
@@ -7234,6 +7253,17 @@ var TowerMine = (function () {
       else if (sk.k === 'tornado') { mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg); if (sk.until) mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: 3, t0: t + 580, kind: 'tornado' }); } // [2026-11-18] 4초 남는 토네이도
       floats.push({ x: mx0, y: my0 - 1, text: '✨ ' + sk.nm, color: '#ffe9a8', big: true, t0: t });
     }
+    if (m.sk3) { // [2026-11-24] 3차 스킬(관리자 용병, 2분마다) -- 플레이어 필살기 그림 / 화살 다섯 발 / 람쥐썬더 번개
+      var s3 = m.sk3, mx3 = mp.x == null ? P.x : mp.x, my3 = mp.y == null ? P.y : mp.y;
+      if (s3.k === 'zone') ultFx.push({ k: 0, x: s3.x, y: s3.y, r: s3.r, t0: t, sw: ultSwords(s3.r, (t | 0) + 7) });
+      else if (s3.k === 'slash') ultFx.push({ k: 1, x: s3.x, y: s3.y, t0: t + 60, o: true });
+      else if (s3.k === 'kak') mp.kakT0 = t;
+      else if (s3.k === 'arrow5') for (var ai = 0; ai < 5; ai++) mercShot(1, m.el, m.st, mx3, my3, s3.x, s3.y, null, t + ai * 190, null, m.tg);
+      else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100 }); }); mp.say = { text: '람쥐썬더!', t0: t }; }
+      if (s3.k === 'slash' && s3.stun) floats.push({ x: s3.x, y: s3.y - 0.9, text: '💫 기절 ' + Math.round(s3.stun / 1000) + '초', color: '#ffe94a', t0: t + 300 });
+      floats.push({ x: mx3, y: my3 - 1.3, text: '🌟 ' + s3.nm, color: '#ffd84a', big: true, t0: t });
+    }
+    mp.kak = m.kak || 0; // [2026-11-24] 각성 중(끝 시각)
     if (m.bossMsg) { msg(m.bossMsg, 5000); killFeed(m.bossMsg, '#ffe14d'); } // [2026-11-07] 용병이 쓰러뜨린 보스
     if (m.shock) shockSet([]);
     if (m.got && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });

@@ -9374,6 +9374,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-18] 마법사 용병 -- "물 토네이도 4초 지속·12초 쿨타임, 불 메테오는 땅이 타는 피해가 오래 남게, 번개는 쿨타임 5초, 기본 공격이 여러 명을" --
     //  토네이도/메테오는 처음 한 방 뒤 그 자리에 남아(화살비와 같은 칸 -- rain*) 매 턴 둘레를 친다. 평타(파이어볼)는 대상 둘레 2칸 안 1+단계마리에도 60%.
     static final long MINE_MERC_TORNADO_MS = 4_000L, MINE_MERC_BURN_MS = 6_000L;
+    // ---- [2026-11-24] "용병 직업별 3차 스킬 -- 지금은 관리자만, 1레벨 마스터, 쿨타임 각 2분" (기존 2차 스킬은 그대로, 따로 하나 더):
+    //  전사 = 속성마다 사용자 필살기 하나 -- 불 만검진(대상 자리에 MINE_MERC_U3_ZONE_R칸 칼날 장판 5초, 매초 x MINE_MERC_U3_ZONE_MUL) /
+    //    번개 일섬참(대상 한 마리 x MINE_MERC_U3_SLASH_MUL + 기절 5초) / 물 각성(7초 동안 그 용병 피해 2배).
+    //  궁수 = 5연발 화살(대상 한 마리에게 1초 안에 5발, 발마다 x MINE_MERC_U3_ARROW_MUL).
+    //  마법사 번개 = 람쥐썬더(대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
+    //  마법사 불/물은 아직(사용자가 정하는 중) -- 없음.
+    static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 5_000L, MINE_MERC_U3_KAK_MS = 7_000L, MINE_MERC_U3_STUN_MS = 5_000L;
+    static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BOLTS = 16, MINE_MERC_U3_BOLT_R = 3, MINE_MERC_U3_ARROWS = 5;
+    static final double MINE_MERC_U3_ZONE_MUL = 2.0, MINE_MERC_U3_SLASH_MUL = 12.0, MINE_MERC_U3_ARROW_MUL = 3.0, MINE_MERC_U3_BOLT_MUL = 1.5;
+    boolean mineMercU3Ok(String userName, int cls, int el) { return isMineAdmin(userName) && (cls != 2 || el == S5MineMobs.EL_THUNDER); }
     static long mineMercSkillCd(int cls, int el) { return cls == 2 && el == S5MineMobs.EL_WATER ? 12_000L : cls == 2 && el == S5MineMobs.EL_THUNDER ? 5_000L : MINE_MERC_SKILL_MS; }
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
@@ -9462,6 +9472,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final class MercSt {
         int cls = -1, max, hp, target = -1, tx, ty;
         long restUntil, at, fightAt, atkAt, struckAt, skillAt, rainUntil; // [2026-11-06] 2차 스킬 쿨타임, 화살비
+        long u3At = -MINE_MERC_U3_MS, u3ZoneUntil, kakUntil; // [2026-11-24] 3차 스킬 -- 쓴 시각, 만검진 장판 끝, 각성 끝
+        int u3X, u3Y;
         int rainX, rainY, rainR;
         double rainMul;
     }
@@ -9891,6 +9903,56 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             sk.put("pts", pts);
             mo.put("sk", sk);
         }
+        // [2026-11-24] 3차 스킬(관리자만, 2분마다) -- 위 설명(mineMercU3Ok 옆)
+        java.util.Map<Integer, Integer> hitDl = new java.util.HashMap<>(); // 타격 번호 -> 화면에 숫자가 뜨는 늦춤(ms)
+        boolean u3 = false;
+        if (!boatSw && ps != null && mineMercU3Ok(userName, cls, el)) synchronized (ms) { if (now - ms.u3At >= MINE_MERC_U3_MS) { ms.u3At = now; u3 = true; } }
+        if (u3) {
+            HashMap<String, Object> s3 = new HashMap<>();
+            int pfo = S5MineMobs.TYPES.get(map.mobs().get(pick).type).foot(), pcx = ps.fx + (pfo - 1) / 2, pcy = ps.fy + (pfo - 1) / 2;
+            s3.put("x", pcx); s3.put("y", pcy);
+            List<int[]> p3 = new ArrayList<>();
+            if (cls == 0 && el == S5MineMobs.EL_FIRE) { // 만검진
+                synchronized (ms) { ms.u3X = pcx; ms.u3Y = pcy; ms.u3ZoneUntil = now + MINE_MERC_U3_ZONE_MS; }
+                s3.put("k", "zone"); s3.put("r", MINE_MERC_U3_ZONE_R); s3.put("nm", "만검진");
+            } else if (cls == 0 && el == S5MineMobs.EL_THUNDER) { // 일섬참
+                addHit.accept(pick, MINE_MERC_U3_SLASH_MUL);
+                int pt = map.mobs().get(pick).type;
+                if (pt != S5MineMobs.WB_BOSS_TYPE && pt != S5MineMobs.KRAKEN_TYPE) synchronized (ps) { ps.stunUntil = Math.max(ps.stunUntil, now + MINE_MERC_U3_STUN_MS); ps.frozenUntil = Math.max(ps.frozenUntil, ps.stunUntil); }
+                s3.put("k", "slash"); s3.put("nm", "일섬참"); s3.put("stun", MINE_MERC_U3_STUN_MS);
+            } else if (cls == 0) { // 각성
+                synchronized (ms) { ms.kakUntil = now + MINE_MERC_U3_KAK_MS; }
+                s3.put("k", "kak"); s3.put("nm", "각성");
+            } else if (cls == 1) { // 5연발 화살
+                for (int a = 0; a < MINE_MERC_U3_ARROWS; a++) { addCell.accept(new int[] { pick, pcx, pcy }, MINE_MERC_U3_ARROW_MUL); hitDl.put(hitIds.size() - 1, 150 + a * 190); }
+                s3.put("k", "arrow5"); s3.put("nm", "5연발 화살");
+            } else { // 람쥐썬더
+                for (int b = 0; b < MINE_MERC_U3_BOLTS; b++) {
+                    int bx = b < 4 ? pcx : pcx - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1), by = b < 4 ? pcy : pcy - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1);
+                    int dl = 150 + b * 100;
+                    p3.add(new int[] { bx, by, dl });
+                    for (int[] cd : cands) {
+                        int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+                        if (bx < cd[1] || bx >= cd[1] + fo || by < cd[2] || by >= cd[2] + fo) continue;
+                        addCell.accept(new int[] { cd[0], bx, by }, MINE_MERC_U3_BOLT_MUL); hitDl.put(hitIds.size() - 1, dl);
+                    }
+                }
+                s3.put("k", "bolt"); s3.put("nm", "람쥐썬더");
+            }
+            s3.put("pts", p3);
+            mo.put("sk3", s3);
+        }
+        long u3Kak, u3Zu; int u3zx, u3zy;
+        synchronized (ms) { u3Kak = ms.kakUntil; u3Zu = ms.u3ZoneUntil; u3zx = ms.u3X; u3zy = ms.u3Y; }
+        final double u3AtkMul = u3Kak > now ? 2.0 : 1.0; // 각성 -- 이 용병 피해 2배
+        if (u3Kak > now) mo.put("kak", u3Kak);
+        if (u3Zu > now) for (int[] cd : cands) { // 만검진 장판 -- 5초 동안 매 턴(1초), 걸친 칸마다
+            int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+            for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) {
+                if (Math.max(Math.abs(cd[1] + ox - u3zx), Math.abs(cd[2] + oy - u3zy)) > MINE_MERC_U3_ZONE_R) continue;
+                addCell.accept(new int[] { cd[0], cd[1] + ox, cd[2] + oy }, MINE_MERC_U3_ZONE_MUL);
+            }
+        }
         if (boatSw) { // [2026-11-19] 배 위 전사 -- 이기어검 차례가 아니면 쉬고, 이기어검 때는 평타(대상 1.0) 몫을 뺀다
             if (!cast) return new long[] { 0, 0 };
             int b0 = hitIds.indexOf(pick);
@@ -9923,7 +9985,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             boolean beat = mineWeakTo(el, ot);
             int[] mgb = mineMgBonus(items, k); // [2026-11-15] 동료 장비 -- 치명타(2배), 상성 피해 +%
             boolean mcrit = mgb[1] > 0 && RND.nextInt(100) < mgb[1];
-            int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * hitMul.get(hi) * (beat ? 1.5 + mgb[2] / 100.0 : 1) * (mcrit ? 2 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
+            int omMax = S5MineMobs.hp(ot, om.rank), dmg = Math.max(1, (int) Math.round(atk * u3AtkMul * hitMul.get(hi) * (beat ? 1.5 + mgb[2] / 100.0 : 1) * (mcrit ? 2 : 1) * (hi > 0 && cls == 0 ? ot.auraTaken : 1) * (0.85 + RND.nextDouble() * 0.3)));
             boolean dead = false;
             synchronized (s) {
                 if (s.deadUntil > now) continue;
@@ -9948,7 +10010,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 rows.add(mineMobRow(id, s));
                 if (hi == 0) { mo.put("tx", s.fx); mo.put("ty", s.fy); mo.put("dmg", dmg); if (beat) mo.put("beat", true); }
-                else { int[] hat = hitAt.get(hi); sp.add(new int[] { hat != null ? hat[0] : s.fx, hat != null ? hat[1] : s.fy, dmg, id }); } // [2026-11-06] 4번째 = 몬스터 번호(화면이 그려진 자리로 조준), [2026-11-15] 칸마다 맞은 타격은 그 칸에 숫자
+                else { int[] hat = hitAt.get(hi); sp.add(new int[] { hat != null ? hat[0] : s.fx, hat != null ? hat[1] : s.fy, dmg, id, hitDl.getOrDefault(hi, 0) }); } // [2026-11-24] 5번째 = 숫자 늦춤(3차 스킬) // [2026-11-06] 4번째 = 몬스터 번호(화면이 그려진 자리로 조준), [2026-11-15] 칸마다 맞은 타격은 그 칸에 숫자
             }
             if (!dead) continue;
             if (hi == 0) primaryDead = true;
