@@ -747,18 +747,18 @@
     .equip-card .eq-opt .eq-leg{ color:#8a5a00; font-weight:700; }
     .inv-tabs{ display:flex; gap:6px; margin-bottom:10px; }
     /* [2026-10-23] 웹 광산(2D 도트) */
-    .mine-overlay{ position:fixed; inset:0; z-index:400; background:#0b0b10; display:none; touch-action:none; user-select:none; -webkit-user-select:none; overscroll-behavior:none; }
+    .mine-overlay{ position:fixed; inset:0; z-index:400; background:#0b0b10; display:none; touch-action:none; user-select:none; -webkit-user-select:none; overscroll-behavior:none; --sat:env(safe-area-inset-top, 0px); } /* [2026-11-24] --sat = 위쪽 상태 표시줄(아이폰 홈 화면 앱) -- 화면(iosFit)이 잴 수 있으면 덮어쓴다 */
     .mine-overlay.open{ display:block; }
     #mineCanvas{ position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
     .mpx{ background:rgba(20,16,30,.82); border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); color:#fff; font-weight:800; border-radius:0; }
-    .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + var(--patch-h, 0px)); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
+    .mine-hud-tl{ position:absolute; left:10px; top:calc(10px + max(var(--patch-h, 0px), var(--sat, 0px))); pointer-events:none; } /* [2026-10-28] 패치 공지 띠가 떠 있으면 그만큼 아래로 */
     .mine-coord{ display:inline-block; font:800 14px/1.1 ui-monospace, Consolas, monospace; padding:4px 8px; letter-spacing:1px; } /* [2026-11-03] 18px -> 14px */
     .mine-ping{ display:none; margin-left:0; font:800 12px/1.1 ui-monospace, Consolas, monospace; padding:4px 7px; vertical-align:top; } /* [2026-11-03] 응답 속도(핑) */
     @media (max-width:560px){ .mine-ping{ display:block; width:fit-content; margin:4px 0 0; font-size:11px; } .mine-hud-tl{ max-width:calc(100% - 215px); } } /* [2026-11-04] "모바일에서 핑과 맵 리셋이 겹친다" -- 좁은 화면은 핑을 좌표 아래 줄로 */
     .mine-ping:empty{ display:none; }
     .mine-ping.ok{ color:#7cf08a; } .mine-ping.mid{ color:#ffd84a; } .mine-ping.bad{ color:#ff7a6a; } /* 아래 지형 설명이 길어도 좌표 칸은 글자 폭만 */
     .mine-terr{ margin-top:6px; max-width:calc(100vw - 200px); font-size:12px; color:#ffe9a8; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; }
-    .mine-hud-tr{ position:absolute; right:10px; top:calc(10px + var(--patch-h, 0px)); display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .mine-hud-tr{ position:absolute; right:10px; top:calc(10px + max(var(--patch-h, 0px), var(--sat, 0px))); display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
     /* [2026-10-30] "곡괭이 횟수는 곡괭이 이미지에" -- 채광 버튼 아래쪽 꼬리표 */
     .mine-dig .dig-n{ position:absolute; left:50%; bottom:-8px; transform:translateX(-50%); font:800 11px/1 ui-monospace, Consolas, monospace; padding:3px 6px; background:#140d0a; color:#ffe14d; border:1px solid #f4f0e6; white-space:nowrap; }
     .mine-dig .dig-n.zero{ color:#ff8a8a; }
@@ -905,9 +905,9 @@
     .mine-world .wf{ font:800 10px sans-serif; fill:#ffd27a; paint-order:stroke; stroke:#140d0a; stroke-width:3px; stroke-linejoin:round; } /* [2026-10-30] 층 표시 */
     .mine-world .wc{ font:800 9px sans-serif; } /* [2026-11-11] 맵별 접속 인원 -- 언제든(칸 가운데, 칸 글자색) */
     .mine-world .wn{ font:800 12px sans-serif; fill:#ffc98a; paint-order:stroke; stroke:#0b0814; stroke-width:4px; stroke-linejoin:round; } /* [2026-11-13] "흐리고 너무 하얗다" -- 살구색 + 진한 테두리 */ /* [2026-11-11] 이름은 칸 밖, 배경 없이 */
-    .mine-tw-bar{ position:absolute; left:50%; top:44px; transform:translateX(-50%); z-index:29; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(14,22,40,.9); border:1px solid #7ab8ff; color:#e0eeff; font:700 12px sans-serif; text-align:center; pointer-events:auto; } /* [2026-11-15] 탑 띠 */
+    .mine-tw-bar{ position:absolute; left:50%; top:calc(44px + var(--sat, 0px)); transform:translateX(-50%); z-index:29; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(14,22,40,.9); border:1px solid #7ab8ff; color:#e0eeff; font:700 12px sans-serif; text-align:center; pointer-events:auto; } /* [2026-11-15] 탑 띠 */
     .mine-tw-bar .tw-dice{ font-size:14px; }
-    .mine-wb-bar{ position:absolute; left:50%; top:6px; transform:translateX(-50%); z-index:30; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(26,8,40,.9); border:1px solid #b06aff; color:#f0e0ff; font:700 12px sans-serif; text-align:center; pointer-events:auto; white-space:normal; } /* [2026-11-15] 월드보스 띠 */
+    .mine-wb-bar{ position:absolute; left:50%; top:calc(6px + var(--sat, 0px)); transform:translateX(-50%); z-index:30; max-width:94%; padding:5px 10px; border-radius:8px; background:rgba(26,8,40,.9); border:1px solid #b06aff; color:#f0e0ff; font:700 12px sans-serif; text-align:center; pointer-events:auto; white-space:normal; } /* [2026-11-15] 월드보스 띠 */
     .mine-wb-bar .wb-hp{ display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:#3a2050; overflow:hidden; }
     .mine-wb-bar .wb-hp i{ display:block; height:100%; background:linear-gradient(90deg,#ff4a6a,#b06aff); }
     .mine-wb-alert{ position:absolute; left:50%; top:20%; transform:translateX(-50%); z-index:32; width:min(340px, 88%); padding:10px 14px 12px; border-radius:10px; background:linear-gradient(180deg, rgba(52,16,80,.96), rgba(22,6,36,.96)); border:2px solid #c98aff; box-shadow:0 0 18px rgba(176,106,255,.55); color:#f6e8ff; text-align:center; font:700 13px sans-serif; pointer-events:auto; display:flex; flex-direction:column; gap:6px; align-items:center; cursor:pointer; } /* [2026-11-16] 월드보스 등장 알림 */
@@ -975,7 +975,7 @@
     .mine-log-src{ font-size:11px; color:#b8e0ff; white-space:nowrap; } /* [2026-10-28] 최근 획득·구매 -- 어디서 */
     .mine-log-xy{ font-family:ui-monospace, Consolas, monospace; color:#ffe9a8; }
     /* [2026-10-28] 패치 전 공지(/패치공지) -- 화면 맨 위를 가로지르는 띠, 은은하게 깜빡임 */
-    .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:7px 12px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
+    .mine-patch{ position:absolute; left:0; right:0; top:0; z-index:5; display:none; padding:calc(7px + var(--sat, 0px)) 12px 7px; font-size:13px; font-weight:800; line-height:1.45; color:#fff; text-align:center; white-space:pre-line; word-break:keep-all; background:linear-gradient(90deg,#7a1717,#c0392b,#7a1717); border-bottom:2px solid #ffd27a; box-shadow:0 3px 0 rgba(0,0,0,.5); pointer-events:none; animation:minePatchGlow 1.6s ease-in-out infinite; }
     @keyframes minePatchGlow{ 50%{ filter:brightness(1.25); } }
     @media (prefers-reduced-motion: reduce){ .mine-patch{ animation:none; } }
     .mine-msg{ position:absolute; z-index:6; left:12px; right:116px; margin:0 auto; max-width:520px; bottom:calc(118px + env(safe-area-inset-bottom)); padding:7px 12px; font-size:13px; line-height:1.45; word-break:keep-all; display:none; text-align:center; pointer-events:none; box-sizing:border-box; } /* [2026-11-06] "메시지 박스가 너무 아래, 조금만 나오고 다음 줄로" -- 왼쪽 끝부터(오른쪽 버튼 줄만 비움) 넓게, 체력바보다 위로 */

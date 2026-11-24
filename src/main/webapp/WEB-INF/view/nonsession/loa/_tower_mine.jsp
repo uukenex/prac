@@ -2532,6 +2532,8 @@ var TowerMine = (function () {
       el.dig.style.touchAction = 'none'; el.dig.style.webkitUserSelect = 'none'; el.dig.style.userSelect = 'none'; el.dig.style.webkitTouchCallout = 'none';
     }
     window.addEventListener('resize', function () { if (opened) fit(); });
+    window.addEventListener('orientationchange', function () { if (opened) setTimeout(fit, 300); }); // [2026-11-24] 아이폰 홈 화면 앱 -- 돌린 뒤 크기가 늦게 바뀐다
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', function () { if (opened) fit(); });
     zoomHud(); // [2026-11-19] 메뉴의 화면 크기 표시
     window.addEventListener('pagehide', function () { if (opened) saveBeacon(true); });
     document.addEventListener('visibilitychange', function () {
@@ -2568,7 +2570,27 @@ var TowerMine = (function () {
     }
     return null;
   }
+  // [2026-11-24] 유저 제보(아이폰 17, 사파리 "홈 화면에 추가"로 설치한 앱): 게임 화면이 잘리고 누르는 자리가 어긋난다.
+  //  iOS 26 홈 화면 앱에서 화면 전체(position:fixed; inset:0)가 상태 표시줄 높이만큼 짧게 잡혀 아래쪽에 바탕(보라색)이 드러나고,
+  //  위쪽 HUD(미니맵/좌표)는 상태 표시줄 밑에 깔렸다. -> 아이폰 홈 화면 앱이고 창 높이가 실제 화면보다 짧으면 높이를 화면 크기로 직접 맞추고,
+  //  위쪽 여백(--sat)은 safe-area 값이 0으로 오면(iOS 26 버그) 모자란 높이(=상태 표시줄)로 쓴다. 일반 브라우저/안드로이드는 손대지 않는다.
+  function iosFit() {
+    if (!el.ov) return;
+    var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var sa = !!navigator.standalone || !!(window.matchMedia && window.matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches);
+    var s = el.ov.style;
+    if (!ios || !sa || !window.screen) { s.height = ''; s.bottom = ''; s.removeProperty('--sat'); return; }
+    var sw = screen.width || 0, sh = screen.height || 0, land = window.innerWidth > window.innerHeight; // 아이폰 screen 값은 돌려도 세로 기준 그대로
+    var fullH = land ? Math.min(sw, sh) : Math.max(sw, sh), short = fullH - window.innerHeight;
+    if (fullH > 0 && short > 8 && short < 140) { s.bottom = 'auto'; s.height = fullH + 'px'; } else { s.height = ''; s.bottom = ''; }
+    var envTop = 0;
+    try { var pb = document.createElement('div'); pb.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none'; document.body.appendChild(pb); envTop = pb.offsetHeight; pb.remove(); } catch (e) { }
+    if (envTop > 0) s.removeProperty('--sat');
+    else if (!land && short > 8 && short < 140) s.setProperty('--sat', short + 'px');
+    else s.removeProperty('--sat');
+  }
   function fit() {
+    try { iosFit(); } catch (e) { }
     dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
     el.cv.width = Math.floor(el.cv.clientWidth * dpr);
     el.cv.height = Math.floor(el.cv.clientHeight * dpr);
@@ -3724,7 +3746,7 @@ var TowerMine = (function () {
     if (!el.ov) return;
     var was = unity;
     unity = u || null;
-    if (!unityBar) { unityBar = document.createElement('div'); unityBar.className = 'mine-wb-bar'; unityBar.style.top = 'calc(var(--patch-h, 0px) + 46px)'; unityBar.style.background = 'rgba(40,30,10,.88)'; unityBar.style.borderColor = '#ffd27a'; el.ov.appendChild(unityBar); }
+    if (!unityBar) { unityBar = document.createElement('div'); unityBar.className = 'mine-wb-bar'; unityBar.style.top = 'calc(max(var(--patch-h, 0px), var(--sat, 0px)) + 46px)'; unityBar.style.background = 'rgba(40,30,10,.88)'; unityBar.style.borderColor = '#ffd27a'; el.ov.appendChild(unityBar); }
     if (!unity) { unityBar.style.display = 'none'; return; }
     unityBar.innerHTML = '🤝 <b style="color:#ffd27a">우리는 하나</b> · ' + unity.n + '명 함께 · ⚔️ 공격력 <b>+' + unity.atk + '%</b> · ❤️ 체력 <b>x' + unity.hp + '</b>';
     unityBar.style.display = '';
@@ -10550,6 +10572,7 @@ var TowerMine = (function () {
     el.load.style.display = 'flex';
     el.log.style.display = 'none';
     document.body.style.overflow = 'hidden';
+    try { document.documentElement.style.overflow = 'hidden'; window.scrollTo(0, 0); } catch (e) { } // [2026-11-24] 아이폰 -- 문서가 살짝 밀려 있으면 그림과 누르는 자리가 어긋난다
     // [2026-11-20] "전체 지도 글씨가 하얗게, 그림도 음영이 져서 잘 안 보여" -- 폰 다크 모드(카카오톡 등 앱 안 브라우저/크롬의 자동 어둡게)가 밝은 지도 색을 강제로 뒤집었다
     //  (어두운 글씨 -> 흰 글씨, 양피지 땅 -> 어두운 회색). 광산은 원래 어두운 화면이라 광산이 열려 있는 동안 "이 화면은 다크 테마를 직접 지원"(root color-scheme: dark)으로 알려 강제 어둡게를 끈다. 닫으면 되돌린다.
     try { minePrevScheme = document.documentElement.style.colorScheme || ''; document.documentElement.style.colorScheme = 'dark'; } catch (e) { }
@@ -10603,6 +10626,7 @@ var TowerMine = (function () {
     el.ov.classList.remove('open');
     el.load.textContent = '광산으로 가는 중...';
     document.body.style.overflow = '';
+    try { document.documentElement.style.overflow = ''; } catch (e) { } // [2026-11-24]
     try { document.documentElement.style.colorScheme = minePrevScheme || ''; } catch (e) { } // [2026-11-20] 강제 어둡게 끈 것 되돌리기
     if (cfg && cfg.onClose) cfg.onClose();
   }
