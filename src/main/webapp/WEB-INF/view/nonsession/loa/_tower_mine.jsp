@@ -7149,7 +7149,8 @@ var TowerMine = (function () {
   var MERC_GEN_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a', '#3a2a4a', '#f2d6cc', '#9cc890', '#4ec8c0', '#e0204a', '#b8a080'];
   var MERC_GEN_EYE = ['#e0405a', '#5a78d8', '#e8b030', '#48c060', '#9050c0', '#40b4c4', '#e88030', '#3a90d8', '#c84aa8'];
   var MERC_GEN_CLOTH = ['#2a2230', '#f4f4f6', '#3a8c5c', '#2a3a6a', '#c03040', '#6a4a30', '#5a1a2a', '#f2b4c4', '#4a70c8', '#1e1e28', '#c6a676', '#8a8070'];
-  var MERC_PT_N = [10, 5, 10]; // 초상화(img_loa/s55/merc/{직업}_{번호}.jpg)가 있는 번호 수 -- 그 뒤 번호는 캐릭터 그림으로
+  var MERC_PT_N = [28, 28, 28]; // 초상화(img_loa/s55/merc/{직업}_{번호}.jpg)가 있는 번호 수 -- 그 뒤 번호는 캐릭터 그림으로 // [2026-11-25] 새 59명 초상화(S5 동료 이미지)
+  var MERC_PT_NO = { '1_9': 1, '1_27': 1, '2_20': 1 }; // [2026-11-25] 초상화 없음 -- 아오이(스이렌과 같은 그림), 히미코(원본 없음), 히나(겐지와 같은 그림)
   function mercGenLook(t, ni) {
     var s = (Math.imul((t | 0) + 1, 0x9E3779B1) ^ Math.imul((ni | 0) + 7, 0x85EBCA77)) >>> 0;
     var r = function (n) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return (s >>> 8) % n; }, pick = function (a) { return a[r(a.length)]; }, W = '#f8f8fa';
@@ -7187,7 +7188,7 @@ var TowerMine = (function () {
   function mercViewGo(v) { mercView = v === 'portrait' ? 'portrait' : 'char'; try { localStorage.setItem('tw-merc-view', mercView); } catch (e) { } if (smithOpen) renderSmith(smithNpc); }
   function mercViewBtns() { return '<div class="merc-view"><button type="button" class="' + (mercView === 'char' ? 'on' : '') + '" onclick="TowerMine.mercView(\'char\')">🧍 캐릭터 보기</button><button type="button" class="' + (mercView === 'portrait' ? 'on' : '') + '" onclick="TowerMine.mercView(\'portrait\')">🖼️ 초상화 보기</button></div>'; }
   function mercFaceImg(t, ni, alt) {
-    if (mercView === 'portrait' && (ni | 0) < (MERC_PT_N[t | 0] || 0)) return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=3" alt="' + (alt || '') + '" loading="lazy">';
+    if (mercView === 'portrait' && (ni | 0) < (MERC_PT_N[t | 0] || 0) && !MERC_PT_NO[(t | 0) + '_' + (ni | 0)]) return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=3" alt="' + (alt || '') + '" loading="lazy">';
     return '<img src="' + mercImg(t, ni) + '" alt="' + (alt || '') + '">';
   }
   function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
