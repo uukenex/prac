@@ -7972,7 +7972,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 외투를 입었을 때 받는 피해(2배, 3단계 갑옷은 1.5배). */
     static int mineCoatHit(Map<String, Integer> items, int v) {
-        v = (int) Math.max(1, Math.round(v / mineUnityHp(MINE_CTX.get()))); // [2026-11-17] 우리는 하나 -- 체력 배수만큼 덜 아프다
+        // [2026-11-25] "혼돈스러운 마계에서 공격할 때마다 내 체력이 1씩 닳는다" -- 11-24에 반격을 끄면서(MINE_COUNTER_ON) 반격 0이 여기로 들어오는데,
+        //  아래 '최소 1'이 0을 1로 바꿔 모든 맵에서 때릴 때마다 1씩 깎였다. 안 맞은 건(0 이하) 그대로 0.
+        if (v <= 0) return 0;
+        v = (int) Math.max(1,Math.round(v / mineUnityHp(MINE_CTX.get()))); // [2026-11-17] 우리는 하나 -- 체력 배수만큼 덜 아프다
         int d = mineCoatDef(items);
         int r = d <= 0 ? v : (int) Math.round(v * (d >= 3 ? 1.5 : 2.0));
         int ad = r > 0 ? mineArmorDef(items) : 0; // [2026-11-06] 갑옷 -- 받는 피해 고정 감소(최소 1)
