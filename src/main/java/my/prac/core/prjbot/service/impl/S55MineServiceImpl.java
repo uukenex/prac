@@ -9378,10 +9378,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-06] "용병은 전부 여자 캐릭으로, S5 동료 이름 재사용" -- BotS5ServiceImpl.NAME_POOL_BY_JOB_GRADE에서 (번호 = 화면 머리색 / 초상화 img_loa/s55/merc/{직업}_{번호}.jpg).
     // [2026-11-06] "동료 이름은 S5 4성 이상 동료 이름으로(기존 것도), 이미지는 최대한 은용 유저의 이미지" -- 전사 = 전사 + 도적, 궁수 = 궁수, 마법사 = 마법사 + 사제의 ★4~★7.
     //  기존 계약/후보는 번호(NM)를 그대로 두고 floorMod로 새 이름에 붙는다. 초상화는 은용의 같은 이름 동료(없으면 다른 유저 / ★7 초상화).
+    // [2026-11-25] "시즌5 탑 캐릭터들을 용병으로 -- 이름은 가져오되 중복 검사, 직업/속성은 무작위" -- S5 동료 이름(NAME_POOL_BY_JOB_GRADE 84개) 중 아직 용병이 아닌 59명을
+    //  각 줄 뒤에 붙였다(앞 번호는 그대로 -- 이미 계약한 용병/후보 번호가 바뀌지 않게). 84개 모두 서로 다른 이름(검사함). 직업은 무작위로 나누되 직업마다 28명씩.
+    //  속성은 후보를 뽑을 때마다 무작위(mineMercOffers). 새 59명은 초상화가 없어 화면은 캐릭터 그림(이름 번호로 정해지는 모습, _tower_mine.jsp mercGenLook).
     static final String[][] MINE_MERC_NAMEPOOL = {
-        { "렌지", "아츠시", "츠요시", "고우키", "타이가", "유이토", "카게로우", "나기", "야토", "시노" },
-        { "세리나", "츠키미", "스즈네", "아마츠", "히카리" },
-        { "리오", "카나", "미코토", "세라", "아리스", "코하루", "미레이", "스이렌", "아마네", "미코" } };
+        { "렌지", "아츠시", "츠요시", "고우키", "타이가", "유이토", "카게로우", "나기", "야토", "시노",
+          "소우타", "슌", "하야토", "이츠키", "사야", "마이", "료", "신지", "겐지", "레이", "미사키", "하루카", "유이", "토키", "메이", "사요", "스미레", "카가리" },
+        { "세리나", "츠키미", "스즈네", "아마츠", "히카리",
+          "리쿠", "켄고", "진", "유키", "아오이", "미유", "나오", "유나", "카이토", "츠바사", "소마", "유토", "나나", "아야", "리코", "모모카", "노조미", "아사히", "렌게", "카구야", "치요", "미즈키", "히미코" },
+        { "리오", "카나", "미코토", "세라", "아리스", "코하루", "미레이", "스이렌", "아마네", "미코",
+          "다이키", "유마", "코타로", "리사", "타쿠야", "아키라", "소라", "유즈키", "마유", "사쿠라", "히나", "이오리", "시온", "하나", "유라", "아카네", "하스미", "시즈쿠" } };
     static int mineMercNi(Map<String, Integer> items, int c, String f) { return Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), MINE_MERC_NAMEPOOL[mineMercCls(items, c)].length); }
     static String mineMercNm(Map<String, Integer> items, int c, String f) { String[] p = MINE_MERC_NAMEPOOL[mineMercCls(items, c)]; return p[Math.floorMod(items.getOrDefault(mineMercKey(c, f), 0), p.length)]; }
     // [2026-11-11] "용병 급여는 최초 1번만, 교체 때도 안 받게" -- 날마다 내던 급여(자동 차감/선금/밀리면 쉼)를 없앴다. 계정에서 처음 계약할 때 한 번만 낸다(MERC_HIRED).
@@ -9432,7 +9438,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  같은 직업끼리는 이름이 겹치지 않게. 계약하거나 그 직업을 이미 계약했으면 그 칸은 새로 뽑는다(모든 직업을 계약했으면 비운다).
     // [2026-11-24] "용병 고르는 화면에 모든 용병 리스트를" -- 직업마다 이름 수만큼(전사 10 / 궁수 5 / 마법사 10) 모두 후보로. 칸 i의 직업 = i / MINE_MERC_OFFERS_PER,
     //  줄 안 번호(i % PER)가 그 직업 이름 수보다 크면 빈 칸. 예전 배치(5칸씩)는 직업이 달라져 다시 뽑힌다.
-    static final int MINE_MERC_OFFERS_PER = 10, MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3;
+    static final int MINE_MERC_OFFERS_PER = Math.max(MINE_MERC_NAMEPOOL[0].length, Math.max(MINE_MERC_NAMEPOOL[1].length, MINE_MERC_NAMEPOOL[2].length)), MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3; // [2026-11-25] 가장 많은 직업의 이름 수(28)
     /** [2026-11-24] "완전히 같은 용병이 1번과 3번 칸에 함께" -- 직업 c, 이름 번호 ni인 용병이 지금 있는 칸(비트: 1 = 첫 칸, 2 = 두 번째, 4 = 세 번째). */
     static int mineMercHeld(Map<String, Integer> items, int c, int ni) {
         int m = 0;
@@ -9455,7 +9461,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         //  계약한 칸(T = 0)이나 예전 배치(다른 직업)는 새로 뽑는다.
         for (int i = 0; i < MINE_MERC_OFFERS; i++) {
             int c = i / MINE_MERC_OFFERS_PER, t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
-            if (i % MINE_MERC_OFFERS_PER >= MINE_MERC_NAMEPOOL[c].length) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; } // [2026-11-24] 이름 수보다 많은 칸은 비운다 if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
+            if (i % MINE_MERC_OFFERS_PER >= MINE_MERC_NAMEPOOL[c].length) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; } // [2026-11-24] 이름 수보다 많은 칸은 비운다
+            // [2026-11-25] 이미 뽑아 둔 후보는 그대로 둔다 -- 11-24에 위 줄을 넣으면서 이 확인이 빠져, 용병 상인과 말할 때마다 후보 전부(이름/속성/레벨)가 새로 뽑히고 칸마다 DB에 6번씩 썼다.
+            if (t == c) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
             int len = MINE_MERC_NAMEPOOL[c].length;
             List<Integer> left = new ArrayList<>();
             for (int n = 0; n < len; n++) {

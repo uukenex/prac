@@ -2571,9 +2571,8 @@ var TowerMine = (function () {
     return null;
   }
   // [2026-11-24] 유저 제보(아이폰 17, 사파리 "홈 화면에 추가"로 설치한 앱): 게임 화면이 잘리고 누르는 자리가 어긋난다.
-  //  iOS 26 홈 화면 앱에서 화면 전체(position:fixed; inset:0)가 상태 표시줄 높이만큼 짧게 잡혀 아래쪽에 바탕(보라색)이 드러나고,
-  //  위쪽 HUD(미니맵/좌표)는 상태 표시줄 밑에 깔렸다. -> 아이폰 홈 화면 앱이고 창 높이가 실제 화면보다 짧으면 높이를 화면 크기로 직접 맞추고,
-  //  위쪽 여백(--sat)은 safe-area 값이 0으로 오면(iOS 26 버그) 모자란 높이(=상태 표시줄)로 쓴다. 일반 브라우저/안드로이드는 손대지 않는다.
+  //  iOS 26 홈 화면 앱에서 창이 상태 표시줄 높이만큼 짧게 잡혀(아래 띠는 그려지지 않음) 위쪽 HUD(미니맵/좌표)가 상태 표시줄 밑에 깔렸다.
+  //  -> 위쪽 여백(--sat)을 상태 표시줄(safe-area 값, 0으로 오면 모자란 높이) + 흐린 띠만큼 둔다. 일반 브라우저/안드로이드는 손대지 않는다.
   function iosFit() {
     if (!el.ov) return;
     var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -2582,11 +2581,13 @@ var TowerMine = (function () {
     if (!ios || !sa || !window.screen) { s.height = ''; s.bottom = ''; s.removeProperty('--sat'); return; }
     var sw = screen.width || 0, sh = screen.height || 0, land = window.innerWidth > window.innerHeight; // 아이폰 screen 값은 돌려도 세로 기준 그대로
     var fullH = land ? Math.min(sw, sh) : Math.max(sw, sh), short = fullH - window.innerHeight;
-    if (fullH > 0 && short > 8 && short < 140) { s.bottom = 'auto'; s.height = fullH + 'px'; } else { s.height = ''; s.bottom = ''; }
+    // [2026-11-25] 2차 제보: 높이를 화면 크기로 늘렸더니 아래 HUD(메뉴/자동채광)가 잘렸다 -- 이 버그에서 실제로 그려지는 곳은 창 높이(innerHeight)까지뿐이고
+    //  그 아래 띠는 아예 안 그려진다. -> 높이는 늘리지 않고(창 높이 그대로), 위쪽만 상태 표시줄 + iOS 26이 상태 표시줄 밑을 흐리게 덮는 만큼 더 내린다.
+    s.height = ''; s.bottom = '';
     var envTop = 0;
     try { var pb = document.createElement('div'); pb.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top, 0px);visibility:hidden;pointer-events:none'; document.body.appendChild(pb); envTop = pb.offsetHeight; pb.remove(); } catch (e) { }
-    if (envTop > 0) s.removeProperty('--sat');
-    else if (!land && short > 8 && short < 140) s.setProperty('--sat', short + 'px');
+    var bug = !land && fullH > 0 && short > 8 && short < 140, top = Math.max(envTop, bug ? short : 0);
+    if (top > 0) s.setProperty('--sat', (top + 22) + 'px'); // 흐린 띠(약 20px) 아래로
     else s.removeProperty('--sat');
   }
   function fit() {
@@ -6972,11 +6973,33 @@ var TowerMine = (function () {
   var MERC_DMG_COL = { 6: '#ff6a2a', 2: '#ffe14d', 3: '#5ab0ff' }; // [2026-11-06] 동료 피해 숫자 속성 색(불 주황빨강 / 번개 노랑 / 물 파랑) + 속성 아이콘
   var MERC_DV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
   var merc = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null, trail: [], map: '' }, merc2 = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null }, merc3 = { x: null, y: null, lt: 0, dir: 'down', mv: false, atkT: -1e9, tg: null } /* [2026-11-23] 세 번째 용병 */, mercShop = null, mercSpr = {}, mercImgC = {};
+  // [2026-11-25] "시즌5 탑 캐릭터들을 용병으로(이름 중복 검사, 직업/속성 무작위)" -- 새로 들어온 59명은 초상화로 만든 모습(MERC_HD)이 없어서,
+  //  이름 번호로 정해지는 무작위 모습(늘 같은 모습): 머리색/머리 모양/눈/옷 색과 옷 모양(기모노·메이드·셔츠·프릴·소매띠) 중 하나, 장식, 마법사는 구슬과 가끔 모자.
+  var MERC_GEN_HAIR = ['#2b1d16', '#f4d77a', '#ff9ac8', '#e8e8f0', '#c8843a', '#7ab8ff', '#b58aff', '#d84a4a', '#6ad8a8', '#8a4a2a', '#3a2a4a', '#f2d6cc', '#9cc890', '#4ec8c0', '#e0204a', '#b8a080'];
+  var MERC_GEN_EYE = ['#e0405a', '#5a78d8', '#e8b030', '#48c060', '#9050c0', '#40b4c4', '#e88030', '#3a90d8', '#c84aa8'];
+  var MERC_GEN_CLOTH = ['#2a2230', '#f4f4f6', '#3a8c5c', '#2a3a6a', '#c03040', '#6a4a30', '#5a1a2a', '#f2b4c4', '#4a70c8', '#1e1e28', '#c6a676', '#8a8070'];
+  var MERC_PT_N = [10, 5, 10]; // 초상화(img_loa/s55/merc/{직업}_{번호}.jpg)가 있는 번호 수 -- 그 뒤 번호는 캐릭터 그림으로
+  function mercGenLook(t, ni) {
+    var s = (Math.imul((t | 0) + 1, 0x9E3779B1) ^ Math.imul((ni | 0) + 7, 0x85EBCA77)) >>> 0;
+    var r = function (n) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return (s >>> 8) % n; }, pick = function (a) { return a[r(a.length)]; }, W = '#f8f8fa';
+    for (var w = 0; w < 4; w++) r(2); // 섞기
+    var top = pick(MERC_GEN_CLOTH), d = { hair: pick(MERC_GEN_HAIR), style: pick(['long', 'long', 'twin', 'short', 'bob', 'bun']), eye: pick(MERC_GEN_EYE), top: top, skirt: r(2) ? top : pick(MERC_GEN_CLOTH), acc: pick(['#c0202a', '#1e1a20', '#f08ab0', '#d0a040', '#4a6ad0', '#f4f4f6']) };
+    var v = r(6);
+    if (v === 0) { d.kimono = 1; d.obi = d.acc; }
+    else if (v === 1) { d.apron = 1; d.frill = 1; d.band = 1; }
+    else if (v === 2) { d.shirt = W; d.tie = 1; }
+    else if (v === 3) { d.frill = 1; d.frillCol = d.acc; }
+    else if (v === 4) { d.sleeve = pick(MERC_GEN_CLOTH); d.belt = d.acc; }
+    if (r(3) === 0) d.orn = pick(['#e04060', '#f05080', '#ffffff', '#8a8ae0']);
+    if (r(4) === 0) d.legs = r(2) ? '#1e1a20' : '#f4f4f6';
+    if ((t | 0) === 2) { d.orb = pick(['#ff9a3a', '#6ac8ff', '#c8a0ff', '#b0f080', '#ff8ab8', '#9ad8ff']); if (r(4) === 0) d.beret = top; else if (r(5) === 0) d.hat = 1; }
+    return d;
+  }
   function mercLook(t, ni) {
     var b = MERC_BASE[t] || MERC_BASE[0], h = MERC_HAIR[(ni | 0) % MERC_HAIR.length], lk = {};
     for (var p in b) lk[p] = b[p];
     lk.hair = h; lk.hat = h + '|neko'; lk.tail = h; lk.job = t | 0;
-    var hp = MERC_HD[t | 0] || MERC_HD[0], hs = hp[(ni | 0) % hp.length]; // [2026-11-06] 초상화 기반 64x64 모습
+    var hp = MERC_HD[t | 0] || MERC_HD[0], hs = hp[ni | 0] || mercGenLook(t, ni); // [2026-11-06] 초상화 기반 64x64 모습 // [2026-11-25] 새 용병은 이름 번호로 정해지는 모습
     if (hs) { lk.hd = {}; for (var q in hs) lk.hd[q] = hs[q]; lk.hd.job = t | 0; lk.hd.ears = 0; } // [2026-11-06] "SD 캐릭터는 귀 없는 버전으로만"
     return lk;
   }
@@ -6993,7 +7016,7 @@ var TowerMine = (function () {
   function mercViewGo(v) { mercView = v === 'portrait' ? 'portrait' : 'char'; try { localStorage.setItem('tw-merc-view', mercView); } catch (e) { } if (smithOpen) renderSmith(smithNpc); }
   function mercViewBtns() { return '<div class="merc-view"><button type="button" class="' + (mercView === 'char' ? 'on' : '') + '" onclick="TowerMine.mercView(\'char\')">🧍 캐릭터 보기</button><button type="button" class="' + (mercView === 'portrait' ? 'on' : '') + '" onclick="TowerMine.mercView(\'portrait\')">🖼️ 초상화 보기</button></div>'; }
   function mercFaceImg(t, ni, alt) {
-    if (mercView === 'portrait') return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=3" alt="' + (alt || '') + '" loading="lazy">';
+    if (mercView === 'portrait' && (ni | 0) < (MERC_PT_N[t | 0] || 0)) return '<img class="merc-portrait" src="' + cfg.base.replace(/\/loa$/, '') + '/img_loa/s55/merc/' + (t | 0) + '_' + (ni | 0) + '.jpg?v=3" alt="' + (alt || '') + '" loading="lazy">';
     return '<img src="' + mercImg(t, ni) + '" alt="' + (alt || '') + '">';
   }
   function mercImg(t, k, dir) { var key = t + '_' + (k | 0) + (dir || 'down'); if (!mercImgC[key]) mercImgC[key] = mercCanvas(dir || 'down', 0, 0, mercLook(t, k)).toDataURL(); return mercImgC[key]; }
