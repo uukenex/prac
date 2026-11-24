@@ -478,7 +478,7 @@ public final class S5MineMobs {
     // ---- [2026-11-17] "탑 50층까지 열고, 순차적으로 강해지게, 31층부터는 상승폭이 더 -- 용병 장비가 추가돼 더 쉬워지니 난이도를 올려야" --
     //  층마다 따로 만든 몬스터(TYPES 맨 뒤에 붙인다 -- 앞 번호가 바뀌지 않게). 이름은 구역(10층)마다 같고 레벨/수치만 층마다 오른다.
     //  방 몬스터: 1층 = 체력 130만 / 공격 2.4만(예전 1구역 값), 30층까지 층마다 체력 x1.04 / 공격 x1.03, 31층부터 층마다 체력 x1.08 / 공격 x1.06.
-    //  수문장(9/19/29/39/49층) = 그 층 방 몬스터의 체력 x9 / 공격 x1.25. 경험치는 체력에 비례(1층 방 몬스터 약 15.5만). 레벨 = 84 + 층.
+    //  수문장(9/19/29/39/49층) = 그 층 방 몬스터의 체력 x9 / 공격 x1.25. 경험치는 체력에 비례(1층 방 몬스터 약 15.5만). 레벨 = 84 + 층([2026-11-24] twLvAt = 91 + 층/2).
     static final int TW_GEN_FLOORS = 50, TW_BASE_HP = 1_300_000, TW_BASE_ATK = 24_000;
     // [2026-11-23] "탑 100층까지" -- 51~100층 몬스터는 TYPES 맨 끝(악마/혼돈 몬스터 뒤)에 붙인다(앞 번호가 바뀌지 않게). 51층부터 층마다 체력 x1.05 / 공격 x1.04
     //  (31~50층의 x1.08 / x1.06을 이어 가면 89·99층 수문장 체력이 int를 넘는다 -- 99층 니드호그 약 18.6억). 수문장 체력은 TW_BOSS_HP_CAP을 넘지 않게.
@@ -491,6 +491,8 @@ public final class S5MineMobs {
     static final double TW_HP_UP = 1.04, TW_ATK_UP = 1.03, TW_HP_UP31 = 1.08, TW_ATK_UP31 = 1.06, TW_BOSS_HP = 9, TW_BOSS_ATK = 1.25;
     static int[][] TW_MOB_IDX; // 초기값 없이(TYPES를 만들 때 withTowerFloors가 채운다 -- 여기서 다시 넣으면 덮인다)
     static int[] TW_BOSS_IDX;
+    /** [2026-11-24] "59층 기준 Lv.120, 10층마다 5 정도만 오르게(만렙 135~150)" -- 예전 84 + 층 -> 91 + 층/2: 1층 91, 9층 95, 19층 100 ... 59층 120 ... 99층 140(방 셋째 몬스터 +1). */
+    public static int twLvAt(int f) { return 91 + f / 2; }
     public static double twHpAt(int f) { return TW_BASE_HP * Math.pow(TW_HP_UP, Math.min(f, 30) - 1) * Math.pow(TW_HP_UP31, Math.max(0, Math.min(f, 50) - 30)) * Math.pow(TW_HP_UP51, Math.max(0, f - 50)); }
     public static double twAtkAt(int f) { return TW_BASE_ATK * Math.pow(TW_ATK_UP, Math.min(f, 30) - 1) * Math.pow(TW_ATK_UP31, Math.max(0, Math.min(f, 50) - 30)) * Math.pow(TW_ATK_UP51, Math.max(0, f - 50)); }
     // ---- [2026-11-17] 로드맵 -- 악마 단계(들판 2 = Lv.105, 들판 3 = Lv.115, 최후의 방어선 = Lv.125): "레벨 10 차이는 엄청나다 -- 공격력 2배 이상, 체력 2.5배 이상, 경험치 1.5배 이상".
@@ -542,7 +544,7 @@ public final class S5MineMobs {
             if (f % 10 == 9) {
                 String[] b = TW_BLOCK_BOSS[Math.min(TW_BLOCK_BOSS.length - 1, blk)];
                 int bh = (int) Math.min(TW_BOSS_HP_CAP, Math.round(hpE * TW_BOSS_HP));
-                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * (f > TW_GEN_FLOORS ? TW_BOSS_ATK51 : TW_BOSS_ATK))).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(84 + f).respawn(60_000L);
+                Type t = new Type(b[0], 24, b[1], b[2]).asBoss().fix(bh, (int) Math.round(atkE * (f > TW_GEN_FLOORS ? TW_BOSS_ATK51 : TW_BOSS_ATK))).expx(hp * TW_BOSS_HP / TW_BASE_HP).showLv(twLvAt(f)).respawn(60_000L);
                 if (f > TW_GEN_FLOORS) { t.asRanged(); if (hpE * TW_BOSS_HP > TW_BOSS_HP_CAP) t.armor = TW_BOSS_HP_CAP / (hpE * TW_BOSS_HP); } // [2026-11-23] 원거리 + 상한 넘는 체력은 갑피로
                 if (!"-1".equals(b[3])) t.el(Integer.parseInt(b[3]));
                 bi[f] = l.size(); l.add(t);
@@ -551,7 +553,7 @@ public final class S5MineMobs {
                 for (int k = 0; k < 3; k++) {
                     String[] d = TW_BLOCK_MOBS[blk][k];
                     double hk = hp * (k == 2 ? 1.1 : 1.0);
-                    Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk * ease), (int) Math.round(atkE)).expx(15 * hk / TW_BASE_HP).showLv(84 + f + (k == 2 ? 1 : 0));
+                    Type t = new Type(d[0], 24, d[1], d[2]).asTower().fix((int) Math.round(hk * ease), (int) Math.round(atkE)).expx(15 * hk / TW_BASE_HP).showLv(twLvAt(f) + (k == 2 ? 1 : 0));
                     if (f > TW_GEN_FLOORS) t.asRanged(); // [2026-11-23] 51층부터 방 몬스터도 모두 원거리
                     mi[f][k] = l.size(); l.add(t);
                 }
