@@ -5112,6 +5112,7 @@ var TowerMine = (function () {
         try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
         try { Object.keys(NPC_LOOK).forEach(npcHD); } catch (e) { } // [2026-11-23] 64x64 NPC도 미리
         try { worldBgBuild(); } catch (e) { }
+        try { for (var ci = 0; ci < 54; ci++) ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) citSprite(ci, d, sp); }); } catch (e) { } // [2026-11-24] 마을 주민(왕도 54명까지) 그림도 미리
         if (map && map.mobTypes && map.mobTypes.length) preExtraDone = true;
         if (!opened) map = mapWas;
         res();
@@ -9325,7 +9326,7 @@ var TowerMine = (function () {
       if (ou.bubble) drawBubble(ou.bubble, ox + TS / 2, oy - (ou.n ? 9 : 6) * scale);
     }
     // [2026-11-05] NPC 대화 사전 -- 화면 안의 NPC(상자/노점 제외)가 9초마다 넷 중 하나꼴로 업데이트 소식을 말풍선으로
-    if (updLines.length && map.npcs) {
+    if (false && updLines.length && map.npcs) { // [2026-11-24] "가만히 서 있는 대화형 NPC는 소문을 말하지 말고, 돌아다니며 혼잣말하는 NPC들만" -- 끔(주민 말풍선만 소문/소식)
       var tu = nowSrv(), uw = Math.floor(tu / 9000);
       if (tu % 9000 < 4500) map.npcs.forEach(function (np, ni) {
         if (/chest|stall|blackmarket/.test(np.kind) || mix(ni + 11, uw) % 4 !== 0) return;

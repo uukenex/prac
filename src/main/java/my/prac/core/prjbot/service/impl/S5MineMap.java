@@ -604,6 +604,43 @@ public final class S5MineMap {
     /** [2026-10-27] 왕도 주민(말풍선만, 대화 없음) -- 사람마다 돌바닥/풀밭을 오가는 길(칸 목록, y * w + x). 화면이 시각으로 그 길을 왕복한다. */
     public List<int[]> citizens() { return citizens; }
 
+    /** [2026-11-24] 마을 주민(떠돌이 NPC)이 오가는 길 n개 -- chars 칸만 밟고 (x0, y0)~(x1, y1) 안에서. bigRoad = 그 칸을 지나는 가로나 세로 줄이 TOWN_ROAD_RUN칸 넘게 이어진 큰길만.
+     *  방향은 잘 안 바꾼다(길을 따라 걷게). 화면은 시각으로 그 길을 왕복한다(citPos). 같은 맵이면 같은 시드라 화면/서버가 같은 길. */
+    static final int TOWN_ROAD_RUN = 60;
+    private static List<int[]> townCitizens(S5MineMap m, long seed, int n, String chars, boolean bigRoad, int x0, int y0, int x1, int y1) {
+        Random r = new Random(seed * 31 + m.id.hashCode());
+        x0 = Math.max(1, x0); y0 = Math.max(1, y0); x1 = Math.min(m.w - 2, x1); y1 = Math.min(m.h - 2, y1);
+        boolean[][] ok = new boolean[m.h][m.w];
+        for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) ok[y][x] = chars.indexOf(m.terrain[y][x]) >= 0;
+        if (bigRoad) {
+            int[][] hr = new int[m.h][m.w], vr = new int[m.h][m.w];
+            for (int y = 0; y < m.h; y++) for (int x = 0; x < m.w; ) { if (!ok[y][x]) { x++; continue; } int e = x; while (e < m.w && ok[y][e]) e++; for (int q = x; q < e; q++) hr[y][q] = e - x; x = e; }
+            for (int x = 0; x < m.w; x++) for (int y = 0; y < m.h; ) { if (!ok[y][x]) { y++; continue; } int e = y; while (e < m.h && ok[e][x]) e++; for (int q = y; q < e; q++) vr[q][x] = e - y; y = e; }
+            for (int y = 0; y < m.h; y++) for (int x = 0; x < m.w; x++) ok[y][x] = ok[y][x] && (hr[y][x] >= TOWN_ROAD_RUN || vr[y][x] >= TOWN_ROAD_RUN);
+        }
+        List<Integer> cells = new ArrayList<>();
+        for (int y = y0; y <= y1; y++) for (int x = x0; x <= x1; x++) if (ok[y][x]) cells.add(y * m.w + x);
+        List<int[]> out = new ArrayList<>();
+        if (cells.isEmpty()) return out;
+        int maxLen = bigRoad ? 28 : 16;
+        for (int tries = 0; out.size() < n && tries < n * 200; tries++) {
+            int c = cells.get(r.nextInt(cells.size())), cx = c % m.w, cy = c / m.w, dir = r.nextInt(4);
+            List<Integer> route = new ArrayList<>();
+            route.add(c);
+            for (int k = 0; k < maxLen * 3 && route.size() < maxLen; k++) {
+                if (r.nextDouble() < (bigRoad ? 0.06 : 0.2)) dir = r.nextInt(4);
+                int nx = cx + DIRS[dir][0], ny = cy + DIRS[dir][1];
+                if (!m.inside(nx, ny) || !ok[ny][nx]) { dir = r.nextInt(4); continue; }
+                cx = nx; cy = ny;
+                route.add(cy * m.w + cx);
+            }
+            if (route.size() < 8) continue;
+            int[] a = new int[route.size()];
+            for (int i = 0; i < a.length; i++) a[i] = route.get(i);
+            out.add(a);
+        }
+        return out;
+    }
     private static List<int[]> cityCitizens(S5MineMap m, long seed) {
         Random r = new Random(seed * 17 + 5);
         List<int[]> out = new ArrayList<>();
@@ -1446,6 +1483,13 @@ public final class S5MineMap {
         }
         for (int f = 1; f <= TOWER_FLOORS; f++) if (towerBossFloor(f)) out.put(towerStairId(f), towerBossEntry(f)); // [2026-11-24] 수문장 층 입구 방(맨 뒤 -- 몬스터 없음)
         placeWaypoints(out, seed); // [2026-11-18] 워프 포인트(몬스터 배치 전에 -- 그 칸엔 몬스터가 안 선다), 이동 안내원은 워프 포인트로 바뀐다
+        { // [2026-11-24] "떠돌아다니는 NPC 많이 -- 왕도는 지금의 3배, 큰길가로만. 다른 데는 면적에 따라(시작 마을, 바다마을, 요새 도시)" (맵을 다 만든 뒤 -- 'N' 칸은 피해 간다)
+            S5MineMap c0 = out.get(CITY), f0 = out.get(FIELD), s0 = out.get(SEA_CITY), t0 = out.get(TOWER_CITY);
+            if (c0 != null) c0.citizens = townCitizens(c0, seed, 54, "s", true, 0, 0, c0.w - 1, c0.h - 1);
+            if (f0 != null) { int fx = f0.villageX >= 0 ? f0.villageX : f0.spawnX, fy = f0.villageX >= 0 ? f0.villageY : f0.spawnY; f0.citizens = townCitizens(f0, seed, 6, "V,", false, fx - 14, fy - 14, fx + 14, fy + 14); }
+            if (s0 != null) s0.citizens = townCitizens(s0, seed, 16, "HsV", false, 0, 0, s0.w - 1, s0.h - 1);
+            if (t0 != null) t0.citizens = townCitizens(t0, seed, 40, ",s", false, 0, 0, t0.w - 1, t0.h - 1);
+        }
         // [2026-10-24] 몬스터 배치(맵마다 시드로) -- 위치는 시각으로 정해지므로 여기서는 집 칸과 돌아다닐 칸만 정한다.
         int k = 0;
         for (S5MineMap m : out.values()) m.mobs = Collections.unmodifiableList(S5MineMobs.spawn(m, seed * 13 + 101 + k++));
