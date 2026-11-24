@@ -3159,6 +3159,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_VILLAGE_AT = new java.util.concurrent.ConcurrentHashMap<>();
     static final String MINE_VILLAGE_MSG = "🏯 마계 마을을 잠깐이나마 탐험했습니다.";
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_CHAOS_RUN = new java.util.concurrent.ConcurrentHashMap<>();
+    // [2026-11-24] "혼돈스러운 마계는 항상 사용자 레벨 + 20레벨로(지금은 Lv.135 기준)" -- 혼돈 몬스터는 1인 몬스터라 사람마다: 레벨 = 내 레벨 + MINE_CHAOS_LV_ADD.
+    //  수치는 Lv.135 기준(S5MineMobs.CHAOS_*)에서 마계 규칙("레벨 10 차이 = 체력 x2.5, 공격 x2, 경험치 x1.5")대로 늘고 준다 -- 체력은 몬스터 체력 대신
+    //  내가 주는 피해를 그만큼 나눈다(mineArmorFor -- 체력 막대/회복 계산은 그대로), 공격(평타/원거리/반격)은 곱하고, 경험치도 곱한다. 레벨 차이 받는 피해 감소도 이 레벨로(mineFoeLv).
+    static final int MINE_CHAOS_LV_ADD = 20;
+    static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_CHAOS_LV = new java.util.concurrent.ConcurrentHashMap<>(); // 유저 -> 혼돈 몬스터 레벨
+    static int mineChaosLvOf(String u) { Integer v = u == null ? null : MINE_CHAOS_LV.get(u); return v == null ? S5MineMobs.CHAOS_LV : v; }
+    static double mineChaosMul(String u, double per10) { return Math.pow(per10, (mineChaosLvOf(u) - S5MineMobs.CHAOS_LV) / 10.0); }
+    /** 받는 피해 배율(갑피) -- 혼돈 몬스터는 내 레벨에 맞춘 체력만큼 덜 깎인다. */
+    static double mineArmorFor(S5MineMobs.Type t, String u) { return t.chaos ? t.armor / mineChaosMul(u, 2.5) : t.armor; }
+    static double mineChaosAtk(S5MineMobs.Type t, String u) { return t.chaos ? mineChaosMul(u, 2.0) : 1.0; }
+    static long mineChaosExp(S5MineMobs.Type t, String u, long exp) { return t.chaos ? Math.round(exp * mineChaosMul(u, 1.5)) : exp; }
+    static int mineFoeLv(S5MineMobs.Type t, String u) { return t.chaos ? mineChaosLvOf(u) : t.lv(); }
     /** 마계 입구 포털이 떨어뜨리는 곳(보통 지역 -- 탑/미궁 방/혼돈/잠긴 바다는 빼고). */
     static final String[] MINE_ABYSS_DESTS = { S5MineMap.FIELD, S5MineMap.CAVE1, S5MineMap.CAVE2, S5MineMap.CAVE3, S5MineMap.DESERT, S5MineMap.BEACH, S5MineMap.NORTH, S5MineMap.ISLAND, S5MineMap.SNOW1, S5MineMap.SNOW2, S5MineMap.SNOW3,
             S5MineMap.SNOWTOWN, S5MineMap.CITY, S5MineMap.CASTLE, S5MineMap.ROYALROAD, S5MineMap.WESTROAD, S5MineMap.FOREST, S5MineMap.TOWER_CITY, S5MineMap.TOWER_GATE,
@@ -4029,6 +4041,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             e = MINE_ENGAGE.get(userName);
         }
         int lv = mineLv(row);
+        if (S5MineMap.CHAOS.equals(map.id)) { MINE_CHAOS_LV.put(userName, lv + MINE_CHAOS_LV_ADD); out.put("chaosLv", lv + MINE_CHAOS_LV_ADD); } // [2026-11-24] 혼돈 몬스터 = 내 레벨 + 20
         // [2026-10-28] "레벨 차이가 20 이상 나면 선공, 인식 범위 6칸" -- 몬스터 레벨(1+4(단계-1))이 내 레벨보다 20 이상 높으면 6칸 안에서 먼저 덤빈다(보스/수하 제외)
         for (S5MineMap.Mob mb : map.mobs()) {
             S5MineMobs.Type mt = S5MineMobs.TYPES.get(mb.type);
@@ -4144,7 +4157,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (thunderBoss && !stunned && dist <= MINE_BOSS_AGGRO_RANGE && hp - dmgSum > 0) { // [2026-11-05] 천둥 황소 -- 전광석화/전기창/밀쳐내기+장판
                     int tsd = mineThunderSkills(userName, map, s, map.mobs().get(id), x, y, dist, items, now, hits, out);
                     dmgSum += tsd;
-                    if (tsd > 0) foeLv = Math.max(foeLv, type.lv());
+                    if (tsd > 0) foeLv = Math.max(foeLv, mineFoeLv(type, userName));
                     if (tsd > 0) killerName = type.name; // [2026-11-06] "null에게 쓰러졌어요" -- 천둥 황소 기술/원거리에 쓰러지면 이름이 비어 있었다
                     if (out.get("knockX") != null) { x = (Integer) out.get("knockX"); y = (Integer) out.get("knockY"); }
                     dist = mineFootDist(type, s, x, y);
@@ -4159,10 +4172,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         boolean wbBoss = map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE; // [2026-11-15] 월드보스 -- 최대 체력 %
                         MINE_RANGED_NEXT.put(userName, now + (S5MineMobs.sqIndex(map.mobs().get(id).type) >= 0 ? MINE_SQ_SHOT_MS : wbBoss ? MINE_WB_SHOT_MS[mineWbStage()] : harpyBoss ? (harpyMoving && mineHarpyNow(map, now)[2] != 1 ? MINE_HARPY_SHOT_MS : MINE_HARPY_HIDE_SHOT_MS)
                                 : pharaoh ? MINE_PHARAOH_SHOT_MS : MINE_RANGED_MIN_MS + RND.nextInt((int) MINE_RANGED_RAND_MS))); // [2026-11-08] 하피는 옮기는 중에 깃털을 연달아
-                        int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem()); // [2026-11-22] 원거리 = 몬스터 속성
+                        int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * mineChaosAtk(type, userName) * MINE_RANGED_MULT * (0.8 + RND.nextDouble() * 0.4))), type.elem()); // [2026-11-22] 원거리 = 몬스터 속성
                         if (wbBoss) d = d == 0 ? 0 : mineElHit(userName, Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_HIT_PCT[mineWbStage()] * (mineWbBh() ? MINE_BH_DMG_MUL : 1) * (0.9 + RND.nextDouble() * 0.2))), type.elem(), false);
                         dmgSum += d;
-                        if (d > 0) foeLv = Math.max(foeLv, type.lv());
+                        if (d > 0) foeLv = Math.max(foeLv, mineFoeLv(type, userName));
                         killerName = type.name; // [2026-11-06] 원거리 공격(불덩이/독산 등)
                         HashMap<String, Object> h = new HashMap<>();
                         h.put("mobId", id);
@@ -4199,7 +4212,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 Long last = e.mobs.get(id);
                 boolean shatterNow = iceHeld && id == boss.id; // [2026-10-30] 언 사람에게 닿는 순간(공격 간격 대기 없이) 즉사
                 if (dist <= 1 && !splitting && !type.venom && !S5MineMobs.diving(type, id, now) && (shatterNow || last == null || now - last >= (S5MineMobs.sqIndex(map.mobs().get(id).type) >= 0 ? MINE_SQ_HIT_MS : MINE_MOB_STRIKE_GAP_MS)) && hp - dmgSum > 0) { // [2026-11-23] 최강다람쥐 = 1초에 7번 // [2026-11-18] 물속에선 안 때린다
-                    int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * mineNightAtk(map, type, now) * mineBoroMul(map.mobs().get(id).type, now) * (0.8 + RND.nextDouble() * 0.4)))); // [2026-11-05] 마물의 숲 밤 2배 // [2026-10-29] 개체 단계, [2026-10-26] 방한 외투 = 2배([2026-10-28] 갑옷 1.5배)
+                    int d = mineCoatHit(items, Math.max(1, (int) Math.round(S5MineMobs.atk(type, map.mobs().get(id).rank) * mineChaosAtk(type, userName) * mineNightAtk(map, type, now) * mineBoroMul(map.mobs().get(id).type, now) * (0.8 + RND.nextDouble() * 0.4)))); // [2026-11-05] 마물의 숲 밤 2배 // [2026-10-29] 개체 단계, [2026-10-26] 방한 외투 = 2배([2026-10-28] 갑옷 1.5배)
                     if (map.mobs().get(id).type == S5MineMobs.WB_BOSS_TYPE) d = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_MELEE_PCT * (mineWbBh() ? MINE_BH_DMG_MUL : 1))); // [2026-11-15] 월드보스 근접 = 최대 체력 %
                     int sqHitsN = 1; // [2026-11-23] 최강다람쥐 -- 격투가: 1초에 7번 "실제로 7번 타격"(전투 턴 사이에 친 만큼 따로따로 -- 아래에서 타격을 더 붙인다, 화면은 주먹질 + 숫자가 위로 쫙)
                     if (S5MineMobs.sqIndex(map.mobs().get(id).type) >= 0) { sqHitsN = last == null ? 1 : (int) Math.max(1, Math.min(7, (now - last) / MINE_SQ_HIT_MS)); out.put("sqPunch", sqHitsN); }
@@ -4218,7 +4231,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (dodged) d = 0;
                     dmgSum += d;
                     e.mobs.put(id, now);
-                    if (d > 0) foeLv = Math.max(foeLv, type.lv()); // [2026-11-24]
+                    if (d > 0) foeLv = Math.max(foeLv, mineFoeLv(type, userName)); // [2026-11-24]
                     if (map.boat() && type.sea && d > 0) boatPct += type.boss ? MINE_BOAT_KRK_PCT : map.mobs().get(id).type == S5MineMobs.SEA_WHALE ? MINE_BOAT_WHALE_PCT : MINE_BOAT_HIT_PCT; // [2026-11-18] 배도 깎인다
                     HashMap<String, Object> h = new HashMap<>();
                     h.put("mobId", id);
@@ -5393,7 +5406,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 assassinHit = true;
             }
             // [2026-11-11] 일반 공격도 하피에게 들어간다(나무 뒤에 숨었을 때만 모두 무효)
-            double vul = mineVulnMul(s, now) * type.armor; // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
+            double vul = mineVulnMul(s, now) * mineArmorFor(type, userName); // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
             if (vul != 1) { dmg = (int) Math.round(dmg * vul); Object hv2 = out.get("hits"); if (hv2 instanceof int[]) for (int hi = 0; hi < ((int[]) hv2).length; hi++) ((int[]) hv2)[hi] = (int) Math.round(((int[]) hv2)[hi] * vul); }
             if (dmg > 0 && !type.dummy && !type.clone && map.boat() && map.terrainAt(x, y) == '~' && items.getOrDefault(MINE_ITEM_SHIP, 0) > 0 && items.getOrDefault(S5MineMap.BOAT_ITEM, 0) > 0) { // [2026-11-24] 화포선 갑판 대포
                 Long gl = MINE_SHIP_GUN_AT.get(userName);
@@ -5484,7 +5497,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     s.fx = hitCell % map.w;
                     s.fy = hitCell / map.w;
                     s.frozenUntil = now + MINE_MOB_FREEZE_MS;
-                    counter = type.venom ? 0 : Math.max(1, (int) Math.round(S5MineMobs.atk(type, mob.rank) * mineNightAtk(map, type, now) * mineBoroMul(mob.type, now) * (0.8 + RND.nextDouble() * 0.4))); // [2026-10-30] "여왕개미는 원거리만" -- 근접 반격 없음(독산만)
+                    counter = type.venom ? 0 : Math.max(1, (int) Math.round(S5MineMobs.atk(type, mob.rank) * mineChaosAtk(type, userName) * mineNightAtk(map, type, now) * mineBoroMul(mob.type, now) * (0.8 + RND.nextDouble() * 0.4))); // [2026-10-30] "여왕개미는 원거리만" -- 근접 반격 없음(독산만)
                     if (mob.type == S5MineMobs.WB_BOSS_TYPE) counter = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_COUNTER_PCT * (mineWbBh() ? MINE_BH_DMG_MUL : 1) * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-15] 거룡의 반격 = 최대 체력 %(공격 수치 3만을 그대로 쓰면 누구든 두 대에 쓰러진다)
                     if (farHit) counter = 0; // [2026-11-20] 2칸 이상 떨어져 때리면 반격 없음(은신 기습/수문장 강타도 붙은 뒤에)
                     if (s.stealth && counter > 0) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
@@ -5599,7 +5612,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             boolean wasReady = mineRebirthReady(lv, exp, rb);
             int mindPct = mineMindExpPct(items); // [2026-10-28] 정신의 목걸이
-            long baseExp = mineLuckExp(items, mineNightExp(map, type, mineTwExp(userName, map, type, S5MineMobs.exp(type, mob.rank)), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
+            long baseExp = mineLuckExp(items, mineNightExp(map, type, mineTwExp(userName, map, type, mineChaosExp(type, userName, S5MineMobs.exp(type, mob.rank))), now), now), expGain = baseExp + baseExp * mindPct / 100; // [2026-11-05] 마물의 숲 밤 1.5배 // [2026-10-29] 개체 단계
             long[] xa = mineExpAdd(lv, exp, expGain, rb); // [2026-11-07] 실제로 오른 경험치(99레벨에서 가득 차면 안 오른다), [2026-11-08] 진환생은 99를 넘어
             lv = (int) xa[0]; exp = xa[1]; levelUp += (int) xa[2];
             mineMercShare(userName, items, expGain, type.lv(), 1, out); // [2026-11-06] 용병 경험치 = 내 경험치의 1%(레벨 차이 보정, 처치마다 최소 1)
@@ -5699,7 +5712,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         } else {
             counter = mineCoatHit(items, counter); // [2026-10-26] 방한 외투 -- 받는 피해 2배([2026-10-28] 갑옷 1.5배)
-            counter = mineLvTake(counter, lv, type.lv()); // [2026-11-24] 레벨 차이 받는 피해 감소
+            counter = mineLvTake(counter, lv, mineFoeLv(type, userName)); // [2026-11-24] 레벨 차이 받는 피해 감소
             if (counter > 0 && mineWyrmSkinOn(items)) counter = Math.max(1, (int) Math.round(counter * MINE_WYRM_SKIN_TAKE)); // [2026-11-23] 거룡의 피부조각
             if (counter > 0 && mineBerserkInvul(userName, now)) { counter = 0; out.put("berserkInv", true); } // [2026-11-20] 광전사 불굴 -- 무적 중
             if (counter > 0 && mineVeinBreak(userName)) out.put("veinBroken", true); // [2026-10-28] 설산 동굴 -- 반격에 맞아도 끊긴다
@@ -6816,6 +6829,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         dao.updateMinePos(userName, target.id, tx, ty, now);
         mineDisengageAll(userName); // [2026-10-25] 다른 맵으로 가면 인식 끝
+        if (S5MineMap.CHAOS.equals(target.id)) MINE_CHAOS_LV.put(userName, mineLv(row) + MINE_CHAOS_LV_ADD); // [2026-11-24]
         String chaosMob = S5MineMap.CHAOS.equals(target.id) ? mineChaosStart(userName, target, now) : null; // [2026-11-17] 혼돈스러운 마계 -- 악마화된 몬스터 하나
         if (S5MineMap.DEMON_VILLAGE.equals(target.id)) { // [2026-11-17] 마계 마을 -- 안내 없이(3초 뒤 요새 도시로)
             MINE_VILLAGE_AT.put(userName, now);
@@ -8456,7 +8470,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (s.deadUntil > 0) s.respawn(omMax);
                 if (ot.sim && now - s.lastHitAt >= MINE_SIM_HEAL_MS) s.hp = omMax; // [2026-11-07] 보스 허수아비 -- 5초 안 맞으면 다 참
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
-                double vul = mineVulnMul(s, now) * ot.armor; // [2026-11-08] 만검진 받는 피해 증가(이번 타격부터 쌓인 만큼), [2026-11-23] 탑 수문장 갑피
+                double vul = mineVulnMul(s, now) * mineArmorFor(ot, userName); // [2026-11-08] 만검진 받는 피해 증가(이번 타격부터 쌓인 만큼), [2026-11-23] 탑 수문장 갑피
                 if (vul != 1) { mineVulnApply(hs, vul); sum = 0; for (int[] h : hs) sum += h[1]; }
                 if (vulnAdd > 0) mineVulnAdd(s, vulnAdd, now);
                 if (ot.ninja && s.stealth) continue; // 은신한 닌자는 안 맞는다
@@ -8499,7 +8513,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 kills++;
                 mineThunderKill(map, ot, now); // [2026-11-05] 밤 마물 처치 수
                 msg.append(mineTowerKill(userName, map, om, ot)); // [2026-11-15] 탑
-                long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, S5MineMobs.exp(ot, om.rank)), now), now), g = be + be * mind / 100; // [2026-11-23] 탑 수문장 x3 / 0 // [2026-11-05] 마물의 숲 밤 1.5배
+                long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, mineChaosExp(ot, userName, S5MineMobs.exp(ot, om.rank))), now), now), g = be + be * mind / 100; // [2026-11-23] 탑 수문장 x3 / 0 // [2026-11-05] 마물의 숲 밤 1.5배
                 expSum += g;
                 m.put("exp", g);
                 msg.append(msg.length() > 0 ? " " : "").append(verb).append(ot.name).append("을(를) 쓰러뜨렸어요! 경험치 +").append(g);
@@ -10031,7 +10045,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             synchronized (s) {
                 if (s.deadUntil > now) continue;
                 if (s.deadUntil > 0) s.respawn(omMax); // [2026-11-07] 다시 나타난 몬스터는 체력을 채우고(검기/공격과 같게)
-                dmg = (int) Math.round(dmg * mineVulnMul(s, now) * ot.armor); // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
+                dmg = (int) Math.round(dmg * mineVulnMul(s, now) * mineArmorFor(ot, userName)); // [2026-11-08] 만검진 받는 피해 증가, [2026-11-23] 탑 수문장 갑피
                 if (ot.boss) mineBossRegen(s, omMax, now, map, om);
                 s.lastHitAt = now;
                 mineHitBy(s, ot, userName); // [2026-11-13] 용병이 때려도 주인이 함께 싸운 것
@@ -10059,7 +10073,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             mineThunderKill(map, ot, now);
             String twm = mineTowerKill(userName, map, om, ot); // [2026-11-15] 탑 -- 용병이 쓰러뜨려도 PP/수문장
             if (!twm.isEmpty()) mo.put("twMsg", twm);
-            long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, S5MineMobs.exp(ot, om.rank)), now), now), g = be + be * mineMindExpPct(items) / 100; // [2026-11-23] 탑 수문장 x3 / 0
+            long be = mineLuckExp(items, mineNightExp(map, ot, mineTwExp(userName, map, ot, mineChaosExp(ot, userName, S5MineMobs.exp(ot, om.rank))), now), now), g = be + be * mineMindExpPct(items) / 100; // [2026-11-23] 탑 수문장 x3 / 0
             kills++;
             expSum += g;
             if (ot.boss) mineMercBossKilled(userName, map, om, ot, now, mo, allDrops, "용병과 함께 "); // [2026-11-07] 용병이 쓰러뜨린 보스

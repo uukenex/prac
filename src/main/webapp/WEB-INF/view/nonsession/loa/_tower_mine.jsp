@@ -9230,7 +9230,7 @@ var TowerMine = (function () {
         if (Math.abs(mp.cx - P.x) + Math.abs(mp.cy - P.y) <= 4 && !tagCells[mp.cx + ',' + mp.cy]) { // [2026-11-06] 렉 -- 겹친 칸은 이름 하나만, 이름표는 그림으로 저장해 다시 쓴다
           tagCells[mp.cx + ',' + mp.cy] = 1;
           var bhN = ty.name === '심연의 거룡' && !ty.chaos && !!(wbInfo ? wbInfo.bh : wbWasBh); // [2026-11-23] 베히모스 -- 몬스터 칸은 거룡 것을 같이 쓴다
-          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : ty.demon ? '😈 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[bhN ? 5 : ty.el] || '') + (bhN ? '하늘고래 베히모스' : ty.name) + ' Lv.' + Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r]); // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
+          var nm = ty.dummy ? '🎯 ' + (ELEM_ICON[ty.el] || '') + ty.name + (ty.sim != null && ty.lv ? ' Lv.' + ty.lv : '') : (ty.champ ? '🏅 챔피언 ' : ty.boss ? '👑 보스 ' : ty.demon ? '😈 ' : '') + (mb.r === 2 ? '⭐' : '') + (ELEM_ICON[bhN ? 5 : ty.el] || '') + (bhN ? '하늘고래 베히모스' : ty.name) + ' Lv.' + (ty.chaos ? myLv() + 20 : Math.max(1, (ty.lv || (1 + 4 * (ty.tier - 1))) + RANK_LV[mb.r == null ? 1 : mb.r])); // [2026-11-24] 혼돈 몬스터 = 내 레벨 + 20(서버 MINE_CHAOS_LV_ADD) // [2026-10-28] 얼음 여왕은 서버가 준 레벨(95), [2026-10-29] 속성 아이콘
           drawTextImg(textImg(nm, 'bold ' + Math.round(11 * dpr) + 'px sans-serif', ty.boss ? '#ff4a4a' : ty.sea && ty.first ? '#ff5a5a' : mb.r === 2 ? '#ffb347' : mb.r === 0 ? '#c8c8c8' : ty.tier >= 7 ? '#ff8a8a' : ty.tier >= 4 ? '#ffd27a' : '#ffffff', 3 * dpr, true), mx + (ty.boss ? TS * (ty.foot || 2) / 2 : TS / 2), my - (ty.boss ? 11 : 6) * scale); // [2026-10-28] 보스 이름이 두 줄로 보이던 문제 -- 테두리도 글자와 같은 높이
         }
       }
