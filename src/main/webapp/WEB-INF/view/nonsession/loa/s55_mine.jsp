@@ -186,12 +186,15 @@
     fetch(base + '/api/tower-mine-home?userName=' + encodeURIComponent(user), { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (d) {
       if (d.error) { box.innerHTML = '<div class="s55-msg err">' + d.error + '</div>'; return; }
       MineHome.render(box, d, 's55Go()', '캘 때마다 곡괭이가 1씩 닳고, 대장장이에게서 강화해요 · 맵은 2일마다 새로 섞여요');
+      try { TowerMine.prefetchBind(box.querySelector('.mh-enter button')); } catch (e) { } // [2026-11-24] 리소스를 다 받을 때까지 들어가기 버튼만 잠근다(아래 기록은 그대로 볼 수 있다)
     }).catch(function () { box.innerHTML = '<div class="s55-msg err">불러오지 못했어요. <a href="" style="color:#cfc8e8">다시 시도</a></div>'; });
   }
   window.s55Go = function () {
+    if (TowerMine.prefetchOk && !TowerMine.prefetchOk()) return; // [2026-11-24] 아직 받는 중
     document.getElementById('s55Land').hidden = true;
     TowerMine.open({ base: base, user: user, onClose: function () { document.getElementById('s55Land').hidden = false; window.scrollTo(0, 0); home(); } });
   };
+  try { TowerMine.prefetch(base); } catch (e) { } // [2026-11-24] 앱을 켜자마자(들어가기 누르기 전) 맵 정보와 그림을 받기 시작한다
   home();
 })();
 </script>
