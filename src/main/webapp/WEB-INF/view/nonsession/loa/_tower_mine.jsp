@@ -5766,10 +5766,10 @@ var TowerMine = (function () {
     if (!d) return h + '<div class="mine-smith-say">물건을 꺼내는 중...</div>';
     var row = function (it, kind, sub) {
       var btn = it.state === 'worn' ? '<button type="button" disabled>쓰는 중</button>' : it.state === 'low' ? '<button type="button" disabled>-</button>'
-        : it.state === 'can' ? '<button type="button" ' + (it.cost && !it.afford ? 'data-lack="1" ' : '') + 'onclick="TowerMine.fishBuy(\'' + kind + '\',' + it.g + ')">🎣 사기</button>' : '<button type="button" disabled>🔒 ' + escAttr(it.prog || '') + '</button>';
+        : it.state === 'can' ? '<button type="button" ' + (it.cost && !it.afford ? 'data-lack="1" ' : '') + 'onclick="TowerMine.fishBuy(\'' + kind + '\',' + it.g + ')">🎣 바꾸기</button>' : '<button type="button" disabled>🔒 ' + escAttr(it.prog || '') + '</button>';
       return '<div class="mine-smith-row' + (it.state === 'worn' ? ' worn' : '') + '"><span class="nm">' + (it.state === 'worn' ? '✔ ' : '') + escAttr(it.name) + '<small>' + sub + (it.need && it.state === 'lock' ? ' · 조건: ' + escAttr(it.need) : '') + '</small></span>' + btn + '</div>';
     };
-    h += '<div class="mine-smith-say">지금까지 낚은 물고기 <b>' + fmtN(d.total || 0) + '</b>마리 <small>(조건을 채우면 괴로 값을 받고 바꿔 드려요)</small></div>';
+    h += '<div class="mine-smith-say">지금까지 낚은 물고기 <b>' + fmtN(d.total || 0) + '</b>마리 <small>(값은 안 받아요 -- 조건만 채우면 바꿔 드려요)</small></div>';
     h += '<div class="mine-smith-say"><b>낚싯대</b> <small>좋을수록 높은 별 물고기까지 낚여요</small></div>';
     (d.rods || []).forEach(function (it) { h += row(it, 'R', escAttr(it.max) + '까지' + (it.cost && it.state !== 'worn' && it.state !== 'low' ? ' · 💰 ' + escAttr(it.cost) : '')); }); // [2026-11-24] 값
     h += '<div class="mine-smith-say"><b>찌</b> <small>좋을수록 낚싯대가 닿는 가장 높은 별이 잘 물어요</small></div>';
