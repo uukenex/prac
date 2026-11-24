@@ -3849,11 +3849,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
             }
             if (now >= t[1]) { // 🌩️ 벼락 몰아치기 -- 3.5초 동안 초당 10줄기(첫 줄기는 내 발밑, 나머지는 내 둘레 4칸 안 곳곳)
+                // [2026-11-24] 같은 날 "벼락 몰아치기도 가운데로 가서" -- 낙뢰 폭풍처럼 가운데로 번쩍 옮겨 외치고, 1초 뒤부터(줄기가 끝날 때까지 가운데에 선다)
                 t[1] = now + MINE_SQ_BOLT_MS;
-                long at = now + MINE_SQ_WARN_MS;
+                int[] bc = mineSqCenter(map);
+                if (bc != null && (bc[0] != s.fx || bc[1] != s.fy)) { out.put("sqDash", new int[] { s.fx, s.fy, bc[0], bc[1] }); synchronized (s) { s.fx = bc[0]; s.fy = bc[1]; } }
+                long bEnd = now + MINE_SQ_STORM_DELAY_MS + 35 * 100L;
+                synchronized (s) { s.splitUntil = Math.max(s.splitUntil, bEnd); s.frozenUntil = Math.max(s.frozenUntil, bEnd); }
+                t[0] = Math.max(t[0], bEnd + 300L); t[2] = Math.max(t[2], bEnd + 500L); t[3] = Math.max(t[3], bEnd + 1_000L);
+                long at = now + MINE_SQ_STORM_DELAY_MS;
                 mineZoneAdd(map, x, y, at, 1, MINE_ZK_SQ_BOLT, MINE_SQ_WARN_MS, 100, 0);
                 for (int k = 1; k < 35; k++) mineZoneAdd(map, Math.max(1, Math.min(map.w - 2, x - 4 + RND.nextInt(9))), Math.max(1, Math.min(map.h - 2, y - 4 + RND.nextInt(9))), at + k * 100L, 1, MINE_ZK_SQ_BOLT, MINE_SQ_WARN_MS, 100, 0);
                 if (!out.containsKey("bossSay")) { out.put("bossSay", "람쥐썬더!"); out.put("bossSayName", "최강다람쥐"); }
+                return; // [2026-11-24] 이번 턴은 외치기만(아래 전기충격은 끝난 뒤)
             }
             if (now >= t[2]) { // ⚡ 전기충격 -- 내 발밑 5x5, 맞으면 기절
                 t[2] = now + MINE_SQ_SHOCK_MS;
@@ -6297,6 +6304,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  찌 고급/희귀/영웅 = 낚시 10/30/60번. 시즌4처럼 값은 받지 않고 조건만 맞으면 바로 바꿔 준다(더 낮은 등급으로는 안 바꾼다).
     //  낚시 횟수는 가방(TBOT_S55_FISH_INV)의 물고기 수 합계 -- 던질 때마다 한 마리씩 들어오고 줄지 않는다(기록 표 LOG는 보관 기간이 지나면 지워져서 안 쓴다).
     static final int[] MINE_BOBBER_NEED = { 0, 0, 10, 30, 60 };
+    // [2026-11-24] "낚시 상인 가격 알아서" -- 조건(도감/낚은 수)을 채운 뒤 괴(정련한 광석)로 값을 받는다. 등급이 오를수록 비싸게.
+    static final String[][][] MINE_ROD_COST = { null, null, { { S5MineMap.BAR_CODES[2], "5" } }, { { S5MineMap.BAR_CODES[3], "3" } }, { { S5MineMap.BAR_CODES[3], "10" } }, { { S5MineMap.BAR_CODES[4], "5" } } };
+    static final String[][][] MINE_BOBBER_COST = { null, null, { { S5MineMap.BAR_CODES[2], "3" } }, { { S5MineMap.BAR_CODES[3], "2" } }, { { S5MineMap.BAR_CODES[3], "6" } } };
     static final int MINE_BOBBER_MAX = 4;
     HashMap<String, Object> mineFishShop(String userName, String action) {
         HashMap<String, Object> out = new HashMap<>();
@@ -6323,7 +6333,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (nm.isEmpty()) out.put("message", "알 수 없는 물건이에요.");
             else if ((isRod ? rod : bob) >= g) out.put("message", "🎣 이미 " + nm + "(이)거나 더 좋은 걸 쓰고 있어요.");
             else if (isRod ? !(kinds[g - 1] > 0 && caught[g - 1] >= kinds[g - 1]) : total < MINE_BOBBER_NEED[g]) out.put("message", "🔒 아직 " + nm + "을(를) 살 수 없어요. " + (isRod ? mineFishStar(g - 1) + " 물고기 도감을 모두 채워야 해요." : "물고기를 " + MINE_BOBBER_NEED[g] + "마리 낚아야 해요."));
+            else if ((isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g] != null && !mineCostOk((isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g], mineOreHave(userName))) out.put("message", "🎣 값(" + mineCostText((isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g]) + ")이 모자라요." + mineLackText((isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g], userName)); // [2026-11-24]
             else {
+                if ((isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g] != null) mineTakeCost(userName, (isRod ? MINE_ROD_COST : MINE_BOBBER_COST)[g], 1); // [2026-11-24] 값
                 if (isRod) rod = g; else bob = g;
                 dao.mergeS55FishEquip(userName, rod, bob);
                 out.put("ok", true);
@@ -6332,12 +6344,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
         }
         List<HashMap<String, Object>> rods = new ArrayList<>(), bobs = new ArrayList<>();
+        Map<String, Integer> oh = mineOreHave(userName); // [2026-11-24] 값을 낼 수 있는지
         for (int g = 1; g < MINE_ROD_NAMES.length; g++) {
             HashMap<String, Object> m = new HashMap<>();
             boolean open = g == 1 || (kinds[g - 1] > 0 && caught[g - 1] >= kinds[g - 1]);
             m.put("g", g); m.put("name", MINE_ROD_NAMES[g] + " 낚싯대"); m.put("max", mineFishStar(MINE_ROD_MAX_STAR[g]));
             m.put("state", g == rod ? "worn" : g < rod ? "low" : open ? "can" : "lock");
             if (g > 1) { m.put("need", mineFishStar(g - 1) + " 도감 완성"); m.put("prog", caught[g - 1] + "/" + kinds[g - 1]); }
+            if (g < MINE_ROD_COST.length && MINE_ROD_COST[g] != null) { m.put("cost", mineCostText(MINE_ROD_COST[g])); m.put("afford", mineCostOk(MINE_ROD_COST[g], oh)); }
             rods.add(m);
         }
         for (int g = 1; g <= MINE_BOBBER_MAX; g++) {
@@ -6345,6 +6359,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             m.put("g", g); m.put("name", MINE_ROD_NAMES[g] + " 찌"); m.put("bonus", MINE_BOBBER_BONUS[g]);
             m.put("state", g == bob ? "worn" : g < bob ? "low" : total >= MINE_BOBBER_NEED[g] ? "can" : "lock");
             if (g > 1) { m.put("need", "물고기 " + MINE_BOBBER_NEED[g] + "마리"); m.put("prog", Math.min(total, MINE_BOBBER_NEED[g]) + "/" + MINE_BOBBER_NEED[g]); }
+            if (g < MINE_BOBBER_COST.length && MINE_BOBBER_COST[g] != null) { m.put("cost", mineCostText(MINE_BOBBER_COST[g])); m.put("afford", mineCostOk(MINE_BOBBER_COST[g], oh)); }
             bobs.add(m);
         }
         HashMap<String, Object> fs = new HashMap<>();
