@@ -2358,7 +2358,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_WB_COM_STAR = 1, MINE_WB_COM_SEVEN = 1;
     static final String MINE_ITEM_WB_COM = "WB_COM", MINE_ITEM_WBC = "WBC_"; // [2026-11-23] WBC_<주기> = 그 주기 공통 보상 받음(게시판)
     static final java.util.Set<String> MINE_WB_COM_GIVEN = java.util.concurrent.ConcurrentHashMap.newKeySet(); // "이름|주기" -- 같은 순간 두 번 주지 않게
-    // [2026-11-23] 4~8 = 하늘고래 베히모스(더 넓고 더 아프게): 4 돌풍(싸우는 사람 발밑 7x7) / 5 회오리(둘레 12칸 곳곳 5x5) / 6 물보라 분출(둘레 5칸 -- 맞으면 성벽 너머 중앙 평원으로 날아간다)
+    // [2026-11-23] 4~8 = 하늘고래 베히모스(더 넓고 더 아프게): 4 돌풍(싸우는 사람 발밑 7x7) / 5 회오리(둘레 12칸 곳곳 5x5) / 6 물보라 분출(둘레 5칸 -- 맞으면 성벽 너머 중앙 평원으로 날아간다 / [2026-11-24] "피할 수 없게 전체기로" -- 내성 전체(CASTLE_KEEP), mineBhSpoutZone)
     //  / 7 폭풍 낙하(하늘을 나는 동안 싸우는 사람 발밑으로 연달아 내리꽂힘 -- 주기는 MINE_BH_FLY_*) / 8 폭풍 숨결(둘레 15칸 모두, 전체 공격기). 화면 종류 번호는 MINE_WB_ZK(19~23).
     static final long[] MINE_WB_PAT_GAP_MS = { 10_000L, 13_000L, 17_000L, 50_000L, 9_000L, 12_000L, 60_000L, 0L, 46_000L }, MINE_WB_PAT_WARN_MS = { 3_000L, 2_500L, 1_800L, 5_000L, 2_500L, 2_200L, 2_600L, 1_300L, 5_000L },
         MINE_WB_PAT_FIRST_MS = { 8_000L, 14_000L, 20_000L, 35_000L, 7_000L, 12_000L, 40_000L, Long.MAX_VALUE / 8, 32_000L }; // [2026-11-23] 물보라 분출(6) = 등장 40초 뒤부터 1분마다(40초·1분40초·2분40초·3분40초·4분40초)
@@ -2860,6 +2860,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         synchronized (MINE_WB.zones) { MINE_WB.zones.clear(); }
     }
     /** [2026-11-23] 물보라 분출 다음 시각 -- 정해진 1분 간격 그대로(아무도 안 싸워 늦었으면 지난 차례는 건너뛴다). */
+    /** [2026-11-24] 물보라 분출 장판 -- 내성 가운데에서 내성을 다 덮는 반경(화면 그림용, 맞는지는 mineWbPattern에서 내성 안이면 모두). */
+    static long[] mineBhSpoutZone(long at, long seq) {
+        int[] k = S5MineMap.CASTLE_KEEP;
+        return new long[] { (k[0] + k[2]) / 2, (k[1] + k[3]) / 2, at, seq, Math.max(k[2] - k[0], k[3] - k[1]) / 2, 6 };
+    }
+    static boolean mineInKeep(int x, int y) { int[] k = S5MineMap.CASTLE_KEEP; return x >= k[0] && x <= k[2] && y >= k[1] && y <= k[3]; }
     static long mineBhSpoutNext(long prev, long now) { long n = prev + MINE_WB_PAT_GAP_MS[6]; while (n <= now) n += MINE_WB_PAT_GAP_MS[6]; return n; }
     /** [2026-11-23] 베히모스 -- MINE_BH_FLY_GAP_MS마다 MINE_BH_FLY_MS 동안 하늘로 올라 자주 옮겨 다니며(mineWbMove), MINE_BH_DIVE_MS마다 싸우는 사람 발밑에 폭풍 낙하(7).
      *  물보라 분출/폭풍 숨결을 예고하는 동안엔 날아오르지 않는다. st.zones 잠금 안에서 부른다. */
@@ -2974,7 +2980,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     for (int i = 0; i < 6 + 3 * stage; i++) st.zones.add(new long[] { cx - 10 + RND.nextInt(21), cy - 10 + RND.nextInt(21), at, ++st.zoneSeq, MINE_WB_PAT_R[1], 1 });
                 } else if (k == 5) { // [2026-11-23] 회오리 -- 베히모스 둘레 12칸 안 곳곳(더 많이, 더 넓게)
                     for (int i = 0; i < 9 + 4 * stage; i++) st.zones.add(new long[] { cx - 12 + RND.nextInt(25), cy - 12 + RND.nextInt(25), at, ++st.zoneSeq, MINE_WB_PAT_R[5], 5 });
-                } else st.zones.add(new long[] { cx, cy, at, ++st.zoneSeq, MINE_WB_PAT_R[k], k }); // 꼬리 휩쓸기 / 멸망의 숨결 -- 거룡 가운데에서
+                } else if (k == 6) st.zones.add(mineBhSpoutZone(at, ++st.zoneSeq)); // [2026-11-24] 물보라 분출 -- 내성 전체(피할 수 없다)
+                else st.zones.add(new long[] { cx, cy, at, ++st.zoneSeq, MINE_WB_PAT_R[k], k }); // 꼬리 휩쓸기 / 멸망의 숨결 -- 거룡 가운데에서
             }
             if (now >= st.roarNext) { st.roarNext = now + MINE_WB_ROAR_GAP_MS - stage * 5_000L; st.roarAt = now; st.roarSeq++; }
         }
@@ -3424,7 +3431,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         synchronized (st.zones) {
             for (long[] z : st.zones) {
                 if (z[2] <= seen[0] || z[2] > now) continue; // 이미 봤거나 아직 안 터짐
-                if (Math.max(Math.abs(z[0] - x), Math.abs(z[1] - y)) <= z[4]) hit[(int) z[5]] = true;
+                if (z[5] == 6 ? mineInKeep(x, y) : Math.max(Math.abs(z[0] - x), Math.abs(z[1] - y)) <= z[4]) hit[(int) z[5]] = true; // [2026-11-24] 물보라 분출 = 내성 안 모두
             }
         }
         seen[0] = now;
@@ -7815,14 +7822,26 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     // [2026-11-24] "레벨이 비슷해지거나 상대보다 높으면 받는 피해 감소 최대 50%까지 자동 적용" -> 같은 날 "같은 레벨 50%, 넘으면 1레벨당 5%씩 최대 90%" --
     //  감소 = 50% + (내 레벨 - 몬스터 레벨) x 5%, 0~90%: 10레벨 위 몬스터 0%, 같은 레벨 50%, 8레벨 아래부터 90%(끝). 몬스터 공격/반격/보스 기술·장판/보스 마법에 붙는다(한기·더위·눈보라는 그대로).
-    static final int MINE_LV_TAKE_FROM = 10, MINE_LV_TAKE_STEP = 5, MINE_LV_TAKE_MAX = 90;
-    static int mineLvTakePct(int myLv, int foeLv) {
+    //  [2026-11-24] 다시 표로 -- (내 레벨 - 몬스터 레벨) -> 감소: -10 이하 0%, -5 20%, 0 40%, +5 55%, +10 70%, +20 85%, +22 이상 90%(끝). 점 사이는 곧게 잇는다
+    //  (-10~0 1레벨 4%, 0~10 3%, 10~20 1.5%, 20~22 2.5%).
+    static final int[][] MINE_LV_TAKE_PTS = { { -10, 0 }, { 0, 400 }, { 10, 700 }, { 20, 850 }, { 22, 900 } }; // {레벨 차이, 감소 천분율}
+    /** 받는 피해 감소(천분율, 0~900). */
+    static int mineLvTakePermil(int myLv, int foeLv) {
         if (foeLv <= 0) return 0;
-        return Math.max(0, Math.min(MINE_LV_TAKE_MAX, (MINE_LV_TAKE_FROM - (foeLv - myLv)) * MINE_LV_TAKE_STEP));
+        int d = myLv - foeLv, n = MINE_LV_TAKE_PTS.length;
+        if (d <= MINE_LV_TAKE_PTS[0][0]) return MINE_LV_TAKE_PTS[0][1];
+        if (d >= MINE_LV_TAKE_PTS[n - 1][0]) return MINE_LV_TAKE_PTS[n - 1][1];
+        for (int i = 1; i < n; i++) {
+            int[] a = MINE_LV_TAKE_PTS[i - 1], b = MINE_LV_TAKE_PTS[i];
+            if (d <= b[0]) return a[1] + (b[1] - a[1]) * (d - a[0]) / (b[0] - a[0]);
+        }
+        return MINE_LV_TAKE_PTS[n - 1][1];
     }
+    /** 받는 피해 감소(%, 화면 표시용 반올림). */
+    static int mineLvTakePct(int myLv, int foeLv) { return (int) Math.round(mineLvTakePermil(myLv, foeLv) / 10.0); }
     static int mineLvTake(int dmg, int myLv, int foeLv) {
-        int p = mineLvTakePct(myLv, foeLv);
-        return dmg <= 0 || p <= 0 ? dmg : Math.max(1, (int) Math.round(dmg * (100 - p) / 100.0));
+        int p = mineLvTakePermil(myLv, foeLv);
+        return dmg <= 0 || p <= 0 ? dmg : Math.max(1, (int) Math.round(dmg * (1000 - p) / 1000.0));
     }
     /** 외투를 입었을 때 받는 피해(2배, 3단계 갑옷은 1.5배). */
     static int mineCoatHit(Map<String, Integer> items, int v) {
