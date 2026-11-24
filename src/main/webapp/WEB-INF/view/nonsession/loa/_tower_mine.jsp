@@ -4364,22 +4364,29 @@ var TowerMine = (function () {
   //  카드 그림은 빈 그림으로 먼저 내고(data-lq), 다음 프레임부터 한 프레임에 LOOK_Q_MS 안에서 몇 장씩 그려 채운다(같은 모습은 캐시 -- 다시 열면 바로).
   var LOOK_BLANK = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', LOOK_Q_MS = 8;
   var lookQ = [], lookQWait = {}, lookQSeq = 0, lookQOn = false;
-  function lookImgLazy(lk, dir) { // src="..." 안에 넣는다 -- 캐시에 없으면 빈 그림 + data-lq 번호
+  // [2026-11-24] "치장상점에서 다른 치장을 장착했을 때 이미지가 까만 화면일 때가 있다" -- 장착하면 내 모습이 바뀌어 카드 그림(100장 넘게)을 모두 새로 그리는데,
+  //  다 그릴 때까지 빈 그림(어두운 바탕)으로 비어 보였다. 카드마다(fb = 카드 이름) 마지막으로 보인 그림을 기억해 두고 새 그림이 나올 때까지 그걸 보여 준다(그리는 양은 그대로).
+  var lookLast = {}, lookQFb = {};
+  function lookImgLazy(lk, dir, fb) { // src="..." 안에 넣는다 -- 캐시에 없으면 (카드의 지난 그림 또는) 빈 그림 + data-lq 번호
     var key = JSON.stringify(lk) + dir;
-    if (lookImgCache[key]) return lookImgCache[key];
+    if (lookImgCache[key]) { if (fb) lookLast[fb] = lookImgCache[key]; return lookImgCache[key]; }
     var id = 'lq' + (++lookQSeq);
     if (!lookQWait[key]) { lookQWait[key] = []; lookQ.push({ key: key, lk: lk, dir: dir }); }
     lookQWait[key].push(id);
+    if (fb) lookQFb[id] = fb;
     if (!lookQOn) { lookQOn = true; requestAnimationFrame(lookQRun); }
-    return LOOK_BLANK + '" data-lq="' + id;
+    return ((fb && lookLast[fb]) || LOOK_BLANK) + '" data-lq="' + id;
+  }
+  function lookFill(key, src) {
+    (lookQWait[key] || []).forEach(function (id) { var im = document.querySelector('img[data-lq="' + id + '"]'); if (im) { im.src = src; im.removeAttribute('data-lq'); } var fb = lookQFb[id]; if (fb) { lookLast[fb] = src; delete lookQFb[id]; } });
+    delete lookQWait[key];
   }
   function lookQRun() {
     var t0 = performance.now();
     while (lookQ.length && performance.now() - t0 < LOOK_Q_MS) {
       var q = lookQ.shift(), src;
       try { src = lookImg(q.lk, q.dir); } catch (e) { src = LOOK_BLANK; }
-      (lookQWait[q.key] || []).forEach(function (id) { var im = document.querySelector('img[data-lq="' + id + '"]'); if (im) { im.src = src; im.removeAttribute('data-lq'); } });
-      delete lookQWait[q.key];
+      lookFill(q.key, src);
     }
     if (lookQ.length) requestAnimationFrame(lookQRun); else lookQOn = false;
   }
@@ -4404,8 +4411,7 @@ var TowerMine = (function () {
     while (lookQ.length && (dl && !dl.didTimeout ? dl.timeRemaining() > 2 : performance.now() - t0 < 4)) {
       var q = lookQ.shift(), src;
       try { src = lookImg(q.lk, q.dir); } catch (e) { src = LOOK_BLANK; }
-      (lookQWait[q.key] || []).forEach(function (id) { var im = document.querySelector('img[data-lq="' + id + '"]'); if (im) { im.src = src; im.removeAttribute('data-lq'); } });
-      delete lookQWait[q.key];
+      lookFill(q.key, src);
     }
     if (lookQ.length) lookIdleNext(); else lookIdleOn = false;
   }
@@ -4431,7 +4437,7 @@ var TowerMine = (function () {
         + ['down', 'right', 'up'].map(function (d) { return '<img class="mine-look-prev" src="' + lookImg(show, d) + '" alt="">'; }).join('') + '</div>'
         + '<div class="mine-smith-say">' + (tryLook ? '👀 입어보기: <b>' + tryName + '</b> <button type="button" class="mine-mini-btn" onclick="TowerMine.tryOn(\'me\')">내 모습</button>' : '지금 내 모습')
         + '<br><small>아이템 그림을 누르면 입어 볼 수 있어요.</small></div></div>'
-        + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImgLazy(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
+        + '<div class="mine-smith-row"><img class="mine-look-mini" src="' + lookImgLazy(lookWith('gender', lk.gender === 1 ? 0 : 1), 'down', 'gender') + '" alt="" onclick="TowerMine.tryOn(\'gender\')">'
         + '<span class="nm">⚧ 성별: ' + (lk.gender === 1 ? '여성' : '남성') + ' → ' + (lk.gender === 1 ? '남성' : '여성') + costHtml(st.genderCosts) + '</span>'
         + '<button type="button" ' + (st.genderCan ? '' : 'disabled ') + 'onclick="TowerMine.lookAct(\'gender\')">바꾸기</button></div>';
     // [2026-10-28] "치장상점 UI -- 부위별 캐러셀" -- 부위마다 가로로 넘기는 카드 줄(그림을 누르면 입어 보기). 다시 그려도 넘긴 자리는 그대로(renderSmithView).
@@ -4447,7 +4453,7 @@ var TowerMine = (function () {
         else if (c.owned) btn = '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>';
         else btn = '<button type="button" ' + (c.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.lookAct(\'buy\', \'' + c.code + '\')">구매</button>';
         h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '">'
-            + '<img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
+            + '<img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down', 'c:' + c.code) + '" alt="' + c.name + ' 입은 모습" onclick="TowerMine.tryOn(\'' + c.code + '\')">'
             + '<div class="cos-nm">' + c.name + '</div>'
             + (c.note ? '<small class="cos-note">✨ ' + c.note + '</small>' : '') // [2026-10-28] 운영자 전용 설명
             + (c.owned ? '<small class="cos-own">가지고 있어요</small>' : costHtml(c.costs)) + btn + '</div>';
@@ -4465,13 +4471,13 @@ var TowerMine = (function () {
     h += '<div class="cos-slot"><div class="cos-slot-h">💇 머리 모양 <small>' + costHtml(b.style) + '</small></div><div class="cos-car" data-slot="hstyle">';
     hs.forEach(function (s, i) {
       var cur = i === sc, lkS = lookWith('hairStyle', s.code || undefined);
-      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lkS, 'right') + '" alt="' + s.name + '" onclick="TowerMine.barberTry(\'style\',' + i + ')"><div class="cos-nm">' + s.name + '</div>'
+      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lkS, 'right', 'hs:' + i) + '" alt="' + s.name + '" onclick="TowerMine.barberTry(\'style\',' + i + ')"><div class="cos-nm">' + s.name + '</div>'
           + (cur ? '<span class="mine-worn">지금 머리</span>' : '<button type="button" ' + (i > 0 && !b.styleCan ? 'data-lack="1" ' : '') + 'onclick="TowerMine.barber(\'hairStyle\',' + i + ')">' + (i ? '바꾸기' : '되돌리기') + '</button>') + '</div>';
     });
     h += '</div></div><div class="cos-slot"><div class="cos-slot-h">🎨 염색 <small>' + costHtml(b.dye) + '</small>' + (dc ? ' <button type="button" class="mine-mini-btn" onclick="TowerMine.barber(\'hairDye\',0)">원래 색으로</button>' : '') + '</div><div class="cos-car" data-slot="hdye">';
     hd.forEach(function (c, i) {
       var cur = i + 1 === dc;
-      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lookWith('hair', c.color), 'down') + '" alt="' + c.name + '" onclick="TowerMine.barberTry(\'dye\',' + i + ')"><div class="cos-nm"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.color + ';border:1px solid #0006;vertical-align:middle"></span> ' + c.name + '</div>'
+      h += '<div class="cos-card' + (cur ? ' worn' : '') + '"><img src="' + lookImgLazy(lookWith('hair', c.color), 'down', 'hd:' + i) + '" alt="' + c.name + '" onclick="TowerMine.barberTry(\'dye\',' + i + ')"><div class="cos-nm"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.color + ';border:1px solid #0006;vertical-align:middle"></span> ' + c.name + '</div>'
           + (cur ? '<span class="mine-worn">물들임</span>' : '<button type="button" ' + (!b.dyeCan ? 'data-lack="1" ' : '') + 'onclick="TowerMine.barber(\'hairDye\',' + (i + 1) + ')">물들이기</button>') + '</div>';
     });
     return h + '</div></div>';
@@ -5092,10 +5098,13 @@ var TowerMine = (function () {
     return worldBg;
   }
   /** [2026-11-20] "다른 리소스도 게임 시작 때 다 불러서 진행 중에 버벅임이 없게" -- 맵을 다 받은 뒤: 몬스터 그림 전부, 필살기/돌개바람 그림, 전체 지도 바탕. */
-  function preloadExtra() {
+  var preExtraDone = false; // [2026-11-24] 앱을 켤 때(prefetch) 한 번 그렸으면 들어갈 때 다시 안 그린다
+  function preloadExtra(pmap) {
+    if (preExtraDone) return Promise.resolve();
     return new Promise(function (res) {
       if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (그림)';
       setTimeout(function () {
+        var mapWas = map; if (!map && pmap) map = pmap; // [2026-11-24] 들어가기 전(prefetch) -- 받아 둔 맵 하나의 몬스터 종류 표로
         try { // 몬스터 그림 -- 종류 표(mobTypes)는 모든 맵이 같다
           var ty = (map && map.mobTypes) || [];
           for (var k = 0; k < ty.length; k++) { if (!ty[k]) continue; try { mobSprite(k, false, 0); mobSprite(k, false, 1); if (ty[k].boss || ty[k].kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } } catch (e1) { } }
@@ -5103,6 +5112,8 @@ var TowerMine = (function () {
         try { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); } catch (e) { }
         try { Object.keys(NPC_LOOK).forEach(npcHD); } catch (e) { } // [2026-11-23] 64x64 NPC도 미리
         try { worldBgBuild(); } catch (e) { }
+        if (map && map.mobTypes && map.mobTypes.length) preExtraDone = true;
+        if (!opened) map = mapWas;
         res();
       }, 0);
     });
@@ -5358,10 +5369,10 @@ var TowerMine = (function () {
       ['hat', 'hair', 'top', 'bottom', 'shoes', 'wing', 'wpn'].forEach(function (slot) {
         var cur = lk[slot + 'Code'] || '', list = (st.cosShop || []).filter(function (c) { return c.slot === slot && c.owned; });
         h += '<div class="cos-slot"><div class="cos-slot-h">' + LOOK_SLOT_NAME[slot] + ' <small>' + list.length + '개</small></div><div class="cos-car" data-slot="l-' + slot + '">'
-            + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImgLazy(lookWith(slot, ''), 'down') + '" alt=""><div class="cos-nm">기본</div>'
+            + '<div class="cos-card' + (cur ? '' : ' worn') + '"><img src="' + lookImgLazy(lookWith(slot, ''), 'down', 'base:' + slot) + '" alt=""><div class="cos-nm">기본</div>'
             + (cur ? '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'\', \'' + slot + '\')">입기</button>' : '<span class="mine-worn">착용 중</span>') + '</div>';
         list.forEach(function (c) {
-          h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '"><img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down') + '" alt="' + c.name + '"><div class="cos-nm">' + c.name + '</div>'
+          h += '<div class="cos-card' + (c.code === cur ? ' worn' : '') + (c.note ? ' gm' : '') + '"><img src="' + lookImgLazy(lookWith(c.slot, c.look), 'down', 'c:' + c.code) + '" alt="' + c.name + '"><div class="cos-nm">' + c.name + '</div>'
               + (c.code === cur ? '<span class="mine-worn">착용 중</span>' : '<button type="button" onclick="TowerMine.lookAct(\'wear\', \'' + c.code + '\')">입기</button>') + '</div>';
         });
         h += '</div></div>';
@@ -9923,6 +9934,47 @@ var TowerMine = (function () {
   }
   /** [2026-11-03] "게임 시작 때 모든 리소스 로딩을 먼저, 진행 중엔 매끄럽게" -- 모든 맵(버전이 바뀐 것만)을 6개씩 나눠 받고 광석 그림도 미리 만든다.
    *  처음 한 번은 몇 초 걸리고, 그 뒤엔 저장본(localStorage)으로 바로. 실패한 맵은 그냥 두고(들어갈 때 다시 받는다) 게임은 시작한다. */
+  // [2026-11-24] "게임 접속 시 로딩이 너무 길어졌다(이미지 리소스, 맵 정보 확인) -- 앱을 처음 켤 때 게임 시작 버튼 누르기 전까지 받게, 그동안 시작 버튼은 잠시 잠그고 아래 기록은 볼 수 있게" --
+  //  광산 탭(들어가기 화면)이 그려질 때 prefetch: 맵 버전 목록(/api/tower-mine-vers) -> 바뀐 맵만 받기(저장본은 읽기만, 맵마다 한 번씩 쉬어 화면이 안 굳게) -> 타일/광석/몬스터/NPC/전체 지도 그림.
+  //  끝나면(또는 25초가 지나면) prefetchBind로 묶은 들어가기 버튼이 풀린다. 들어갈 때 preloadAll은 받아 둔 것을 건너뛴다.
+  var pre = null, preSt = { done: 0, total: 0, ok: false }, preFns = [];
+  function preNote() { preFns = preFns.filter(function (f) { try { return f(preSt) !== false; } catch (e) { return false; } }); }
+  function preDone() { if (preSt.ok) return; preSt.ok = true; preNote(); }
+  function prefetch(base) {
+    if (pre) return pre;
+    if (!cfg) cfg = { base: base };
+    var b0 = (cfg && cfg.base) || base || '';
+    setTimeout(preDone, 25000); // 늦어도 시작은 막지 않는다
+    pre = fetch(b0 + '/api/tower-mine-vers', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+      var vers = (d && d.mapVers) || {};
+      try { if (!tiles) { buildTiles(); buildSprites(); } } catch (e) { }
+      for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } }
+      var ids = Object.keys(vers), i = 0, any = null;
+      preSt.total = ids.length; preNote();
+      var worker = function () {
+        if (i >= ids.length) return Promise.resolve();
+        var id = ids[i++];
+        return ensureMap(id, vers[id]).then(function (m) { if (!any && m && m.mobTypes) any = m; }, function () { })
+          .then(function () { preSt.done++; preNote(); return new Promise(function (r) { setTimeout(r, 0); }); }).then(worker);
+      };
+      var ws4 = [];
+      for (var k = 0; k < 4; k++) ws4.push(worker());
+      return Promise.all(ws4).then(function () { return preloadExtra(any); });
+    }).catch(function () { }).then(preDone);
+    return pre;
+  }
+  /** 들어가기 버튼을 준비가 끝날 때까지 잠근다(글자에 진행). */
+  function prefetchBind(btn) {
+    if (!btn) return;
+    var txt = btn.getAttribute('data-txt') || btn.textContent;
+    btn.setAttribute('data-txt', txt);
+    preFns.push(function (s) {
+      if (!btn.isConnected) return false;
+      if (s.ok) { btn.disabled = false; btn.textContent = txt; return false; }
+      btn.disabled = true; btn.textContent = '⏳ 준비 중' + (s.total ? ' ' + s.done + '/' + s.total : '...');
+    });
+    preNote();
+  }
   function preloadAll(vers) {
     for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } } // [2026-11-20] 65까지만 -> 모든 아이템(나무/태초의 보석 등)
     var ids = Object.keys(vers || {}).filter(function (id) { return !(mapMem[id] && mapMem[id].version === vers[id]); });
@@ -10334,7 +10386,7 @@ var TowerMine = (function () {
     return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
   }
 
-  return { fishInfo: fishInfo, fishBuy: function (k, g) { fishShopGo('fishbuy:' + k + ':' + g); }, /* [2026-11-23] 낚시 용품 상인 */ primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, barber: function (a, i) { tryLook = null; lookAct(a, String(i)); }, barberTry: barberTry, /* [2026-11-20] 미용실 */ dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mg7: function (c, m) { tokenGo('mg7', c, m); }, sqGift: sqGiftGo, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
+  return { prefetch: prefetch, prefetchBind: prefetchBind, prefetchOk: function () { return preSt.ok; }, /* [2026-11-24] 앱을 켤 때 미리 받기 */ fishInfo: fishInfo, fishBuy: function (k, g) { fishShopGo('fishbuy:' + k + ':' + g); }, /* [2026-11-23] 낚시 용품 상인 */ primal: primalGo, alchemy: function (f, n) { alchemyGo('alchemy', f, n); }, alchemyBack: function (f, n) { alchemyGo('alchemyBack', f, n); }, barber: function (a, i) { tryLook = null; lookAct(a, String(i)); }, barberTry: barberTry, /* [2026-11-20] 미용실 */ dmgSum: function (on) { dmgSumGo(on); }, /* [2026-11-20] 데미지 합산 */ charRes: function (hd) { charResGo(hd); }, /* [2026-11-20] 캐릭터 그림 16/64 */ /* [2026-11-20] 연금술사 복원 */ /* [2026-11-20] 연금술사 */ /* [2026-11-20] 태초의 보석 */ krkRespawn: function () { api('/api/tower-mine-archi?action=krkrespawn').then(function (d) { msg((d && d.message) || '요청 실패', 3500); }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, /* [2026-11-19] 관리자 */ wbTest: function (a) { api('/api/tower-mine-wb?action=' + a).then(function (d) { if (d && d.message) msg(d.message, 3000); if (a === 'stop') { wbInfo = null; wbRender(); } }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); }); }, tkGem: function (c, n) { tokenGo('gem', c, n); }, demonRefine: function (n) { refineGo('refine', n); }, /* [2026-11-18] 예전 이름 refine이 구리 정련(refine: refine)과 겹쳐 정제사 버튼이 구리 정련을 불렀다 */ manaSwap: function (n) { refineGo('mana', n); }, mailGet: function (id) { mailGo('mailGet', id); }, tkTab: function (t) { tokenTab = t; if (smithOpen) renderSmith(smithNpc); }, mgPull: function (k, t, n) { tokenGo(n === 10 ? 'pull10' : 'pull', k, t); }, mgOn: function (c, m) { tokenGo('equip', c, m); }, mgOff: function (p, m) { tokenGo('unequip', p, m); }, mg7: function (c, m) { tokenGo('mg7', c, m); }, sqGift: sqGiftGo, mgPop: mgPopGo, twRoll: twRoll, twFloors: twFloors, twGo: twGo, twExit: twExit, twFerry: twFerry, wbJoin: wbJoin, bossCall: bossCallGo, worldBoss: function () { worldBossOpen = !worldBossOpen; if (smithOpen && smithView === 'world') renderSmith(smithNpc); if (worldBossOpen) bossListRefresh(); }, hermitGo: hermitGo, open: open, close: close, eqPop: eqPopGo, archiBuy: archiBuy, cityBuy: cityBuy, mercHire: mercHire, wpTab: wpTabGo, mercHireGo: mercHireGo, mercUse: mercUse, mercSkill: mercSkill, mercMode: mercMode, mercView: mercViewGo, mercLv99: mercLv99, mercPay: mercPay, mercAuto: mercAuto, mercSel: mercSelGo, mercTab: mercTabGo, talkNext: talkNext, smelt: smelt, gemCut: gemCut, artisan: artisan, digBtn: digBtn, atkBtn: atkBtn, ult: ultBtn, ultReset: ultReset, ultLearn: ultLearn, ultGift: ultGift, whirlSet: whirlSet, whirlLearn: whirlLearn, toggleMenu: toggleMenu, menuGo: menuGo, zoom: zoomGo, openEquip: openEquip, eqInfo: eqInfo, equipTab: equipTabGo, auraSet: auraSet, auraLearn: auraLearn, auraGift: auraGift, archiAct: archiAct, sail: sailGo, wpFix: function (id, n) { wpKeepGo('wpfix:' + id + ':' + n); }, boatFix: function (code, n) { gearAct('/api/tower-mine-archi?action=' + encodeURIComponent('boatfix:' + (code || 'PEARL') + ':' + (n || 1))); }, dig: dig, goVillage: goVillage, toggleMini: toggleMini, toggleLog: toggleLog, oreIcon: oreIcon, pickUpgrade: pickUpgrade, helmetUpgrade: helmetUpgrade, closeSmith: closeSmith, smithGo: smithGo, craft: craft, equipRing: equipRing, enhance: enhance, enhanceArmor: enhanceArmor, synthGalaxy: synthGalaxy, synth: synth, captain: captain,
            act: act, toggleAuto: toggleAuto, greet: greet, greetPick: greetPick, sail: sail, lookAct: lookAct, openWarp: openWarp, openWarpForm: openWarpForm, worldWarp: worldWarp, worldTab: worldTabGo, worldZoom: worldZoom, worldGo: worldGo, adminWarp: adminWarp, openWorld: openWorld, tryOn: tryOn, priestAct: priestAct, teleport: teleport, guideGo: guideGo, askYes: askYes, coatAct: coatAct, refine: refine, deliver: deliver, noticeOk: noticeOk, dayGo: dayGo, ORE_NAME: ORE_NAME, digTime: digTime };
 })();
 </script>

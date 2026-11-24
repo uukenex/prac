@@ -644,6 +644,17 @@ public class Season5ViewController {
     }
 
     /** [2026-10-23] 웹 광산 -- 공용 맵 지형/포탈(모든 유저 같음, 화면이 version으로 브라우저에 저장). 광석 등급은 보내지 않는다. */
+    /** [2026-11-24] 들어가기 전에 화면이 맵을 미리 받도록 -- 모든 맵의 버전만(유저 정보 없이, 광산 행도 안 만든다). */
+    @GetMapping("/api/tower-mine-vers")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineVers() {
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        HashMap<String, String> mv = new HashMap<String, String>();
+        for (String id : my.prac.core.prjbot.service.impl.S5MineMap.ids()) mv.put(id, my.prac.core.prjbot.service.impl.S5MineMap.get(id).version());
+        out.put("mapVers", mv);
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(out);
+    }
+
     @GetMapping("/api/tower-mine-map")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineMap(@RequestParam(value = "mapId", defaultValue = "field") String mapId) {

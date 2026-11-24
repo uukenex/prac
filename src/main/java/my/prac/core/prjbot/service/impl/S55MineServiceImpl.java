@@ -2934,6 +2934,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     void mineWbGearGive(String u, String code, String boss) {
         Map<String, Integer> it = mineItems(u);
+        { // [2026-11-24] "거룡이나 베히모스 장비 드랍되면 알려줘" -- 관리자 알림(관리자 본인 것은 빼고)
+            MineWeapon aw = mineWeaponOf(code); if (aw == null) aw = mineArmorOf(code);
+            String an = aw != null ? aw.name : MINE_ITEM_BH_PEARL.equals(code) ? "베히모스의 진주목걸이" : "베히모스의 수정구슬";
+            if (!isMineAdmin(u)) try { my.prac.core.util.S55AdminPush.notify("🗡️ 월드보스 장비", mineNick(u) + " -- " + boss + "에게서 " + an); } catch (Exception ignore) { }
+        }
         int gb = MINE_ITEM_WYRM_TOOTH.equals(code) ? 1 : MINE_ITEM_WYRM_SKIN.equals(code) ? 2 : 0; // [2026-11-24] 게시판 -- 거룡 장비 기록(베히모스는 비공개라 안 남긴다)
         if (gb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_WBG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | gb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
         MineWeapon w = mineWeaponOf(code);
@@ -5329,6 +5334,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return drops;
     }
 
+    // [2026-11-24] "몬스터의 반격이라는 건 없애줘 -- 가까이 붙어서 공격한다는 개념으로, 전체 몬스터" -- 내가 때릴 때 돌아오던 반격(분신 함정 포함)을 끈다.
+    //  몬스터는 전투 턴(mineCombatTick)에 붙어 있을 때 MINE_MOB_STRIKE_GAP_MS마다만 때린다(보스 패턴/원거리/장판은 그대로).
+    static final boolean MINE_COUNTER_ON = false;
     /** 공격 -- (x, y)에 서서 바로 옆(상하좌우) 몬스터 mobId를 때린다. 살아남으면 반격(몬스터 공격력), 쓰러뜨리면 경험치 + 광석/보석. */
     @Override
     @Transactional
@@ -5480,7 +5488,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 s.hp = 0;
                 s.deadUntil = Long.MAX_VALUE / 2;
                 s.frozenUntil = 0;
-                counter = farHit ? 0 : Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-20] 멀리서 때리면 함정 반격 없음
+                counter = farHit || !MINE_COUNTER_ON ? 0 : Math.max(1, (int) Math.round(S5MineMobs.TYPES.get(S5MineMobs.SHRINE_BOSS_TYPE).atk() * MINE_CLONE_TRAP_MULT * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-20] 멀리서 때리면 함정 반격 없음
             } else if (shrineBoss && s.stealth && ++s.stealthHits < MINE_BOSS_STEALTH_HITS) { // [2026-10-28] 닌자 두목 은신 -- 3번째 공격까지 계속 피한다
                 evade = true;
                 dmg = 0;
@@ -5542,6 +5550,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     counter = type.venom ? 0 : Math.max(1, (int) Math.round(S5MineMobs.atk(type, mob.rank) * mineChaosAtk(type, userName) * mineNightAtk(map, type, now) * mineBoroMul(mob.type, now) * (0.8 + RND.nextDouble() * 0.4))); // [2026-10-30] "여왕개미는 원거리만" -- 근접 반격 없음(독산만)
                     if (mob.type == S5MineMobs.WB_BOSS_TYPE) counter = Math.max(1, (int) Math.round(mineHpFull(lv, rb) * MINE_WB_COUNTER_PCT * (mineWbBh() ? MINE_BH_DMG_MUL : 1) * (0.8 + RND.nextDouble() * 0.4))); // [2026-11-15] 거룡의 반격 = 최대 체력 %(공격 수치 3만을 그대로 쓰면 누구든 두 대에 쓰러진다)
                     if (farHit) counter = 0; // [2026-11-20] 2칸 이상 떨어져 때리면 반격 없음(은신 기습/수문장 강타도 붙은 뒤에)
+                    if (!MINE_COUNTER_ON) counter = 0; // [2026-11-24] 반격 없음 -- 몬스터는 붙어서 전투 턴에만 때린다
                     if (s.stealth && counter > 0) { counter *= MINE_NINJA_STEALTH_MULT; s.stealth = false; stealthHit = true; } // [2026-10-28] 은신했던 닌자의 기습
                     if (type.boss && S5MineMap.towerFloor(map.id) > 0 && counter > 0) { // [2026-11-15] 탑 수문장 -- 반격에도 시즌5 패턴(강타 / 29층부터 기절)
                         int[] ts = mineTwStrike(userName, S5MineMap.towerFloor(map.id), s, counter, now);
@@ -5622,7 +5631,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("mobRows", rows);
             if (split != null) { out.put("split", true); out.put("message", "🥷 닌자 두목이 분신술을 썼어요! 다섯 중 자세가 다른 하나가 진짜예요. 분신을 때리면 두목이 기운을 되찾아요!"); }
             else if (splitEnd && !killed) { out.put("splitEnd", true); out.put("message", "🎯 진짜를 찾았어요! 분신들이 연기처럼 사라졌어요."); }
-            else if (cloneHit) { out.put("clone", true); out.put("message", "💨 분신이었어요! 펑 터지며 반격당했고, 닌자 두목이 기운을 조금 되찾았어요."); }
+            else if (cloneHit) { out.put("clone", true); out.put("message", (MINE_COUNTER_ON ? "💨 분신이었어요! 펑 터지며 반격당했고, 닌자 두목이 기운을 조금 되찾았어요." : "💨 분신이었어요! 펑 터지며 닌자 두목이 기운을 조금 되찾았어요.")); }
         }
         if (evade) { out.put("evade", true); out.put("message", "💨 " + type.name + "이(가) 은신해 공격을 피했어요! 다음 공격이 아플 거예요."); }
         if (stealthHit) out.put("stealthHit", true);

@@ -3952,6 +3952,7 @@ var TW = (function () {
   function openMine() {
     var u = userName();
     if (!u) { toast('유저명을 입력하세요'); return; }
+    if (TowerMine.prefetchOk && !TowerMine.prefetchOk()) { toast('리소스를 받는 중이에요. 잠시만 기다려 주세요.'); try { TowerMine.prefetch(base); } catch (e) { } return; } // [2026-11-24]
     TowerMine.open({ base: base, user: u, onClose: function () {
       if (document.getElementById('panel-mine').classList.contains('active')) renderMinePanel();
       if (invTab === 'ore') renderInvOre();
@@ -3968,6 +3969,7 @@ var TW = (function () {
       if (d.error) { box.innerHTML = '<div class="sheet-empty">' + d.error + '</div>'; return; }
       if (!window.MineHome) { box.innerHTML = '<div class="sheet-empty">화면을 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요.</div>'; return; }
       MineHome.render(box, d, 'TW.openMine()', '캘 때마다 곡괭이가 1씩 닳고, 대장장이에게서 강화해요 · 맵은 2일마다 새로 섞이고, 한 번 캔 칸은 리셋 전까지 다시 못 캐요');
+      try { TowerMine.prefetch(base); TowerMine.prefetchBind(box.querySelector('.mh-enter button')); } catch (e) { } // [2026-11-24] 들어가기 전에 리소스를 받고, 그동안 들어가기 버튼만 잠근다(아래 기록은 그대로)
     }).catch(function () { box.innerHTML = '<div class="sheet-empty">불러오기에 실패했습니다.</div>'; });
   }
 
