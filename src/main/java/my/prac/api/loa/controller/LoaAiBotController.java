@@ -68,7 +68,9 @@ public class LoaAiBotController {
         "대화 속 이름에 '/'가 들어 있어도(예: 일어난다람쥐/카단) 그 전체가 한 사람의 이름이야. 쪼개거나 일부만 부르지 말고 전체에 '님'을 붙여 불러.\n" +
         "답변은 200자 이내. 쓸데없는 인사말('안녕하세요!' 같은 것) 붙이지 마.\n" +
         "카톡으로 읽기 편하게 문장 단위로 줄바꿈해서 2~4줄로 써줘(줄바꿈은 그냥 엔터). 목록이 필요하면 줄마다 '- '로 시작해.\n" +
-        "웹 검색 결과가 있으면 원래 알던 것처럼 자연스럽게 녹여서 얘기해줘. '찾아봤는데', '검색해보니', '찾아보니' 같은 말은 붙이지 마."; // [2026-10-24] 검색한 답이 "찾아봤는데,"로 시작하지 않게
+        "웹 검색 결과가 있으면 원래 알던 것처럼 자연스럽게 녹여서 얘기해줘. '찾아봤는데', '검색해보니', '찾아보니' 같은 말은 붙이지 마.\n" + // [2026-10-24] 검색한 답이 "찾아봤는데,"로 시작하지 않게
+        // [2026-11-25] "/챗 '파이썬으로 오크 전사 키우기 게임 코드 만들어봐'에 실제 코드가 나갔다 -- 그러지 않게" (사용자 지시)
+        "프로그래밍 코드(파이썬, 자바, SQL 등)는 어떤 요청이 와도 절대 쓰지 마. 장난 섞인 부탁이어도 마찬가지야. 코드 대신 '채팅방이라 코드는 패스~'처럼 재치 있게 넘기고, 원하면 아이디어만 말로 한두 줄 얘기해줘.";
 
     // 의도 분석 프롬프트 — GPT-4o-mini 에 보낼 시스템 지시
     private static final String INTENT_SYSTEM =
@@ -299,10 +301,31 @@ public class LoaAiBotController {
         // [2026-10-24] "검색한 경우 '찾아봤는데,'라고 안 했으면" -- 프롬프트로 막고, 그래도 맨 앞에 붙으면 잘라낸다.
         String trimmed = finalAnswer.replaceFirst("^(찾아봤는데|찾아보니|검색해\\s?봤는데|검색해\\s?보니)[,~!.…\\s]*", "").trim();
         if (!trimmed.isEmpty()) finalAnswer = trimmed;
+        finalAnswer = stripCode(finalAnswer); // [2026-11-25] 프롬프트로 막고, 그래도 코드가 섞여 나오면 잘라낸다
 
         queue.add(new Message("assistant", finalAnswer));
         saveChat(roomName, userName, reqMsg, finalAnswer, reqAt, new java.sql.Timestamp(System.currentTimeMillis()));
         return toKakaoNl(finalAnswer);
+    }
+
+    // [2026-11-25] "/챗 답변에 실제 코드가 나가지 않게" -- ``` 코드 블록은 통째로, 블록 없이 나온 코드처럼 보이는 줄(def/import/print( 등)은 두 줄 이상이면 그 줄들을 뺀다.
+    //  다 빠져서 남는 말이 없으면 짧게 넘기는 말로 바꾼다.
+    private static final java.util.regex.Pattern CODE_LINE = java.util.regex.Pattern.compile(
+            "^\\s*(def |class |import |from \\S+ import |print\\(|if __name__|for .+ in .+:|while .+:|elif |else:|try:|except|return |public |private |static |#include|function |const |let |var |SELECT |INSERT |UPDATE |[A-Za-z_][A-Za-z0-9_.]*\\s*=\\s*.+|[A-Za-z_][A-Za-z0-9_.]*\\(.*\\)\\s*;?\\s*$|[{}\\])]+;?\\s*$)");
+    static String stripCode(String s) {
+        if (s == null) return s;
+        String out = s.replaceAll("(?s)```.*?(```|$)", "").trim();
+        String[] lines = out.split("\n", -1);
+        int codeN = 0;
+        for (String l : lines) if (CODE_LINE.matcher(l).find()) codeN++;
+        if (codeN >= 2) {
+            StringBuilder sb = new StringBuilder();
+            for (String l : lines) if (!CODE_LINE.matcher(l).find()) { if (sb.length() > 0) sb.append('\n'); sb.append(l); }
+            out = sb.toString().replaceAll("\n{3,}", "\n\n").trim();
+        }
+        if (out.equals(s.trim())) return s;
+        if (out.replaceAll("[\\s:：~!.…]", "").length() < 6) return "코드는 채팅방에선 패스~\n대신 말로 아이디어는 같이 짜줄 수 있어!";
+        return out;
     }
 
     // =====================================================================
