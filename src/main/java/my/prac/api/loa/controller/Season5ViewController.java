@@ -645,6 +645,21 @@ public class Season5ViewController {
 
     /** [2026-10-23] 웹 광산 -- 공용 맵 지형/포탈(모든 유저 같음, 화면이 version으로 브라우저에 저장). 광석 등급은 보내지 않는다. */
     /** [2026-11-24] 들어가기 전에 화면이 맵을 미리 받도록 -- 모든 맵의 버전만(유저 정보 없이, 광산 행도 안 만든다). */
+    /** [2026-11-24] 맵 여러 장을 한 번에(화면이 12장씩 묶어 동시에 받는다) -- {맵 id: 맵 정보}. 한 번에 최대 20장. */
+    @GetMapping("/api/tower-mine-maps")
+    @ResponseBody
+    public ResponseEntity<?> apiTowerMineMaps(@RequestParam(value = "ids", defaultValue = "") String ids) {
+        HashMap<String, Object> out = new HashMap<String, Object>();
+        java.util.List<String> known = my.prac.core.prjbot.service.impl.S5MineMap.ids();
+        int n = 0;
+        for (String id : ids.split(",")) {
+            id = id.trim();
+            if (id.isEmpty() || !known.contains(id) || out.containsKey(id) || ++n > 20) continue;
+            out.put(id, s5Service.mineMap(id));
+        }
+        return ResponseEntity.ok(out);
+    }
+
     @GetMapping("/api/tower-mine-vers")
     @ResponseBody
     public ResponseEntity<?> apiTowerMineVers() {
@@ -652,6 +667,7 @@ public class Season5ViewController {
         HashMap<String, String> mv = new HashMap<String, String>();
         for (String id : my.prac.core.prjbot.service.impl.S5MineMap.ids()) mv.put(id, my.prac.core.prjbot.service.impl.S5MineMap.get(id).version());
         out.put("mapVers", mv);
+        out.put("build", PAGE_BUILD); // [2026-11-24] 배포(빌드)가 바뀌면 화면이 맵을 모두 새로 받는다
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(out);
     }
 

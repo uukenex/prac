@@ -6302,10 +6302,16 @@ var TowerMine = (function () {
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
-              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>' + (o.free ? '🆓 무료' : '첫 급여 ' + o.sal) + '</small><button type="button" ' + (o.can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ', 1)">' + (ms2.slot2Open ? '① 계약' : '계약') + '</button>'
-                + (ms2.slot2Open ? '<button type="button" onclick="TowerMine.mercHire(' + o.i + ', 2)">② 계약</button>' : '')
-                + (ms2.slot3Open ? '<button type="button" onclick="TowerMine.mercHire(' + o.i + ', 3)">③ 계약</button>' : '')) + '</div>'; // [2026-11-18] 두 번째 칸, [2026-11-23] 세 번째 칸
+              + (o.held ? '<span class="mine-worn">' + ((o.held & 1) ? '①' : (o.held & 2) ? '②' : '③') + ' 함께하는 중</span>' : '') // [2026-11-24] 같은 용병은 한 칸에만 -- 다른 칸 계약 버튼은 잠근다
+              + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>' + (o.free ? '🆓 무료' : '첫 급여 ' + o.sal) + '</small>' + mercSlotBtn(o, 1, o.can, ms2.slot2Open ? '① 계약' : '계약')
+                + (ms2.slot2Open ? mercSlotBtn(o, 2, true, '② 계약') : '')
+                + (ms2.slot3Open ? mercSlotBtn(o, 3, true, '③ 계약') : '')) + '</div>'; // [2026-11-18] 두 번째 칸, [2026-11-23] 세 번째 칸
         };
+        function mercSlotBtn(o, s, can, label) { // [2026-11-24] 다른 칸에 이미 있는 용병이면(o.held 비트) 그 칸 말고는 못 고른다
+          var bit = s === 3 ? 4 : s === 2 ? 2 : 1, dup = ((o.held | 0) & ~bit) !== 0;
+          if (dup || (o.held | 0) === bit) return '<button type="button" disabled>' + label + '</button>';
+          return '<button type="button" ' + (can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ', ' + s + ')">' + label + '</button>';
+        }
         mh += mercViewBtns();
         [0, 1, 2].forEach(function (jt) {
           var row = ms2.offers.filter(function (o) { return (o.t | 0) === jt; });
@@ -9927,18 +9933,76 @@ var TowerMine = (function () {
   function verQ() { return map && map.version ? '&v=' + encodeURIComponent(map.version) : ''; }
   // [2026-11-03] 미리 받은 맵(메모리) -- 포탈을 타도 다시 받지 않는다(localStorage는 용량이 차면 못 쓸 수 있어서 함께 둔다)
   var mapMem = {};
+  // [2026-11-24] "게임 로딩 '준비 중'을 더 빠르게 -- 병렬로" -- 맵이 267개(하나 65~176KB, 모두 약 20MB)라 localStorage(5MB 안팎)에 다 안 들어가
+  //  앱을 켤 때마다 대부분을 다시 받고 있었다(4개씩 한 장씩). 이제 (1) 저장은 IndexedDB(용량 넉넉, 한 번에 모두 읽기), (2) 받을 땐 12장씩 묶어
+  //  (/api/tower-mine-maps) 6줄 동시에. 예전 localStorage 맵 저장본은 지운다. IndexedDB를 못 쓰는 브라우저면 메모리 + 묶음 받기만.
+  var MAP_DB = null, mapDbLoaded = null;
+  function mapDb() {
+    if (MAP_DB) return MAP_DB;
+    MAP_DB = new Promise(function (ok) {
+      try {
+        var rq = indexedDB.open('tw-mine', 1);
+        rq.onupgradeneeded = function () { try { rq.result.createObjectStore('maps', { keyPath: 'id' }); } catch (e) { } };
+        rq.onsuccess = function () { ok(rq.result); };
+        rq.onerror = function () { ok(null); }; rq.onblocked = function () { ok(null); };
+        setTimeout(function () { ok(null); }, 4000);
+      } catch (e) { ok(null); }
+    });
+    return MAP_DB;
+  }
+  function mapDbReady() {
+    if (mapDbLoaded) return mapDbLoaded;
+    try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('tw-mine-map') === 0) localStorage.removeItem(k); }); } catch (e) { } // 예전 저장본(용량만 차지)
+    mapDbLoaded = mapDb().then(function (db) {
+      if (!db) return;
+      return new Promise(function (ok) {
+        try {
+          var r = db.transaction('maps', 'readonly').objectStore('maps').getAll();
+          r.onsuccess = function () { (r.result || []).forEach(function (m) { if (m && m.id && m.rows && !mapMem[m.id]) mapMem[m.id] = m; }); ok(); };
+          r.onerror = function () { ok(); };
+        } catch (e) { ok(); }
+      });
+    }).catch(function () { });
+    return mapDbLoaded;
+  }
+  function mapDbPut(list) {
+    if (!list.length) return;
+    mapDb().then(function (db) { if (!db) return; try { var os = db.transaction('maps', 'readwrite').objectStore('maps'); list.forEach(function (m) { os.put(m); }); } catch (e) { } });
+  }
+  /** vers의 맵 중 없는(버전이 다른) 것만 12장씩 묶어 6줄로 받는다. prog(받은 수, 전체). */
+  function loadMaps(vers, prog) {
+    return mapDbReady().then(function () {
+      var ids = Object.keys(vers || {}), total = ids.length;
+      var need = ids.filter(function (id) { return !mapFresh(mapMem[id], vers[id]); }), done = total - need.length;
+      if (prog) prog(done, total);
+      var chunks = [], ci = 0;
+      for (var i = 0; i < need.length; i += 12) chunks.push(need.slice(i, i + 12));
+      var worker = function () {
+        if (ci >= chunks.length) return Promise.resolve();
+        var ch = chunks[ci++];
+        return fetch(cfg.base + '/api/tower-mine-maps?ids=' + encodeURIComponent(ch.join(','))).then(function (r) { return r.json(); }).then(function (d) {
+          var put = [];
+          ch.forEach(function (id) { var m = d && d[id]; if (m && m.rows) { if (mapBuild) m._b = mapBuild; mapMem[id] = m; put.push(m); } });
+          mapDbPut(put);
+        }).catch(function () { }).then(function () { done += ch.length; if (prog) prog(done, total); return new Promise(function (r) { setTimeout(r, 0); }); }).then(worker);
+      };
+      var w6 = [];
+      for (var k = 0; k < 6; k++) w6.push(worker());
+      return Promise.all(w6);
+    });
+  }
+  // [2026-11-24] 같은 날 "버전 업데이트(배포)마다는 새로 받아야" -- 받은 맵에 서버 빌드 번호(_b)를 붙여 두고, 빌드가 바뀌면 버전이 같아도 새로 받는다(묶음 + 병렬이라 빠르게).
+  var mapBuild = '';
+  function mapFresh(m, ver) { return !!(m && m.version === ver && (!mapBuild || m._b === mapBuild)); }
   function ensureMap(id, ver) {
-    var key = 'tw-mine-map-' + id;
-    if (mapMem[id] && mapMem[id].version === ver) return Promise.resolve(mapMem[id]);
-    try {
-      var c = JSON.parse(localStorage.getItem(key) || 'null');
-      if (c && c.version === ver && c.rows) { mapMem[id] = c; return Promise.resolve(c); }
-    } catch (e) { }
+    if (mapFresh(mapMem[id], ver)) return Promise.resolve(mapMem[id]);
+    if (!mapDbLoaded) return mapDbReady().then(function () { return ensureMap(id, ver); }); // [2026-11-24] 저장본(IndexedDB)부터
     var mapPath = '/api/tower-mine-map?mapId=' + encodeURIComponent(id), mapHttp = function () { return fetch(cfg.base + mapPath).then(function (r) { return r.json(); }); };
     return (wsOk && ws && ws.readyState === 1 ? wsCall(mapPath, 15000).then(function (d) { return d && d._http ? mapHttp() : d; }, mapHttp) : mapHttp()).then(function (m) { // [2026-11-06] 소켓이 열려 있으면 소켓으로(실패하면 HTTP -- 읽기만이라 다시 보내도 된다)
       if (m.error || !m.rows) throw new Error(m.error || '맵을 불러오지 못했어요.');
-      try { localStorage.removeItem('tw-mine-map'); localStorage.setItem(key, JSON.stringify(m)); } catch (e) { }
+      if (mapBuild) m._b = mapBuild;
       mapMem[id] = m;
+      mapDbPut([m]); // [2026-11-24]
       return m;
     });
   }
@@ -9957,19 +10021,14 @@ var TowerMine = (function () {
     setTimeout(preDone, 25000); // 늦어도 시작은 막지 않는다
     pre = fetch(b0 + '/api/tower-mine-vers', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
       var vers = (d && d.mapVers) || {};
+      if (d && d.build) mapBuild = String(d.build); // [2026-11-24] 배포마다 새로
       try { if (!tiles) { buildTiles(); buildSprites(); } } catch (e) { }
       for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } }
-      var ids = Object.keys(vers), i = 0, any = null;
-      preSt.total = ids.length; preNote();
-      var worker = function () {
-        if (i >= ids.length) return Promise.resolve();
-        var id = ids[i++];
-        return ensureMap(id, vers[id]).then(function (m) { if (!any && m && m.mobTypes) any = m; }, function () { })
-          .then(function () { preSt.done++; preNote(); return new Promise(function (r) { setTimeout(r, 0); }); }).then(worker);
-      };
-      var ws4 = [];
-      for (var k = 0; k < 4; k++) ws4.push(worker());
-      return Promise.all(ws4).then(function () { return preloadExtra(any); });
+      return loadMaps(vers, function (dn, tt) { preSt.done = dn; preSt.total = tt; preNote(); }).then(function () { // [2026-11-24] 묶음 + 병렬
+        var any = null;
+        for (var id in mapMem) if (mapMem[id] && mapMem[id].mobTypes) { any = mapMem[id]; break; }
+        return preloadExtra(any);
+      });
     }).catch(function () { }).then(preDone);
     return pre;
   }
@@ -9987,19 +10046,8 @@ var TowerMine = (function () {
   }
   function preloadAll(vers) {
     for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } } // [2026-11-20] 65까지만 -> 모든 아이템(나무/태초의 보석 등)
-    var ids = Object.keys(vers || {}).filter(function (id) { return !(mapMem[id] && mapMem[id].version === vers[id]); });
-    if (!ids.length) return preloadExtra();
-    var done = 0, total = ids.length, i = 0;
-    var show = function () { if (opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (' + done + ' / ' + total + ')'; };
-    show();
-    var worker = function () {
-      if (i >= ids.length) return Promise.resolve();
-      var id = ids[i++];
-      return ensureMap(id, vers[id]).catch(function () { }).then(function () { done++; show(); return worker(); });
-    };
-    var ws6 = [];
-    for (var k = 0; k < 6; k++) ws6.push(worker());
-    return Promise.all(ws6).then(preloadExtra); // [2026-11-20] 그림들까지
+    return loadMaps(vers, function (done, total) { if (done < total && opened && el.load.style.display !== 'none') el.load.textContent = '리소스 준비 중... (' + done + ' / ' + total + ')'; }) // [2026-11-24] 묶음 + 병렬(받아 둔 것은 건너뛴다)
+      .then(function () { return preloadExtra(); }); // [2026-11-20] 그림들까지
   }
   /** 서버 상태(맵/위치/캔 칸)로 화면을 다시 맞춘다 -- 처음 들어올 때, 포탈을 탄 뒤, 다른 곳에서 위치가 바뀌었을 때. */
   function enterState(s) {

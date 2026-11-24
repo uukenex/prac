@@ -9380,7 +9380,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     // [2026-11-06] "한 5명 중 선택" -- 계약 후보 MINE_MERC_OFFERS칸(MERCOF{i}_T = 직업 + 1, _LV, _EL, _NM, _SAL). 아직 계약 안 한 직업에서만 뽑고(칸 수가 적은 직업 먼저),
     //  같은 직업끼리는 이름이 겹치지 않게. 계약하거나 그 직업을 이미 계약했으면 그 칸은 새로 뽑는다(모든 직업을 계약했으면 비운다).
-    static final int MINE_MERC_OFFERS_PER = 5, MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3; // [2026-11-06] "직업별 5명씩, 3줄로" -- 칸 i의 직업 = i / 5
+    // [2026-11-24] "용병 고르는 화면에 모든 용병 리스트를" -- 직업마다 이름 수만큼(전사 10 / 궁수 5 / 마법사 10) 모두 후보로. 칸 i의 직업 = i / MINE_MERC_OFFERS_PER,
+    //  줄 안 번호(i % PER)가 그 직업 이름 수보다 크면 빈 칸. 예전 배치(5칸씩)는 직업이 달라져 다시 뽑힌다.
+    static final int MINE_MERC_OFFERS_PER = 10, MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3;
+    /** [2026-11-24] "완전히 같은 용병이 1번과 3번 칸에 함께" -- 직업 c, 이름 번호 ni인 용병이 지금 있는 칸(비트: 1 = 첫 칸, 2 = 두 번째, 4 = 세 번째). */
+    static int mineMercHeld(Map<String, Integer> items, int c, int ni) {
+        int m = 0;
+        if (mineMercLv(items, c) > 0 && mineMercNi(items, c, "NM") == ni) m |= 1;
+        if (mineMercLv(items, MINE_MERC_K2) > 0 && mineMercCls(items, MINE_MERC_K2) == c && mineMercNi(items, MINE_MERC_K2, "NM") == ni) m |= 2;
+        if (mineMercLv(items, MINE_MERC_K3) > 0 && mineMercCls(items, MINE_MERC_K3) == c && mineMercNi(items, MINE_MERC_K3, "NM") == ni) m |= 4;
+        return m;
+    }
+    static String mineMercDupMsg(Map<String, Integer> items, int c, int ni) {
+        int h = mineMercHeld(items, c, ni);
+        return "🛡️ " + MINE_MERC_NAMEPOOL[c][ni] + "은(는) 이미 " + ((h & 1) != 0 ? "①" : (h & 2) != 0 ? "②" : "③") + " 칸에서 함께하고 있어요. 같은 용병은 한 칸에만 둘 수 있어요.";
+    }
     static final int MINE_MERC_MAX = 1; // [2026-11-06] "용병 관리 창엔 1개만(지금은 1개만)" -- 계약은 한 명까지
     static int mineMercCount(Map<String, Integer> items) { int n = 0; for (int c = 0; c < MINE_MERC_NAMES.length; c++) if (mineMercLv(items, c) > 0) n++; return n; }
     static final boolean MINE_MERC_HITTABLE = false; // [2026-11-06] 용병은 몬스터에게 맞지 않는다(쓰러져 쉬는 일 없음)
@@ -9391,7 +9405,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         //  계약한 칸(T = 0)이나 예전 배치(다른 직업)는 새로 뽑는다.
         for (int i = 0; i < MINE_MERC_OFFERS; i++) {
             int c = i / MINE_MERC_OFFERS_PER, t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
-            if (t == c) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
+            if (i % MINE_MERC_OFFERS_PER >= MINE_MERC_NAMEPOOL[c].length) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; } // [2026-11-24] 이름 수보다 많은 칸은 비운다 if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
             int len = MINE_MERC_NAMEPOOL[c].length;
             List<Integer> left = new ArrayList<>();
             for (int n = 0; n < len; n++) {
@@ -9429,6 +9443,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         m.put("free", free);
         m.put("can", free || mineCostOk(cost, have));
         m.put("owned", false); // [2026-11-06] 이제 늘 계약 가능(지금 용병과 바뀐다)
+        m.put("held", mineMercHeld(items, c, ni)); // [2026-11-24] 이미 함께하는 칸(같은 용병은 다른 칸에 못 넣는다)
         return m;
     }
     static final String[] MINE_MERC_NAMES = { "전사", "궁수", "마법사" };
@@ -10332,6 +10347,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             String[][] cost = cOk && !free ? mineMercSalCost(items.getOrDefault(mineOfKey(oi, "SAL"), 0), ofLv) : null;
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
+            else if ((mineMercHeld(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)) & 6) != 0) { ok = false; msg = mineMercDupMsg(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)); } // [2026-11-24] 같은 용병은 한 칸에만
             else if (cost != null && !mineCostOk(cost, mineOreHave(userName))) { ok = false; msg = "첫 계약 급여(" + mineCostText(cost) + ")가 모자라요." + mineLackText(cost, userName); }
             else {
                 if (cost != null) mineTakeCost(userName, cost, 1);
@@ -10373,6 +10389,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
+            else if ((mineMercHeld(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)) & 5) != 0) { ok = false; msg = mineMercDupMsg(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)); } // [2026-11-24] 같은 용병은 한 칸에만
             else {
                 String gone = had > 0 ? mineMercNm(items, k2, "NM") : null;
                 int keepExp = had > 0 ? items.getOrDefault(mineMercKey(k2, "EXP"), 0) : 0, el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE);
@@ -10394,6 +10411,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
             else if (!mineTrueRebirth(items)) { ok = false; msg = "세 번째 용병은 진환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
+            else if ((mineMercHeld(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)) & 3) != 0) { ok = false; msg = mineMercDupMsg(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)); } // [2026-11-24] 같은 용병은 한 칸에만
             else {
                 String gone = had > 0 ? mineMercNm(items, k3, "NM") : null;
                 int keepExp = had > 0 ? items.getOrDefault(mineMercKey(k3, "EXP"), 0) : 0, el = items.getOrDefault(mineOfKey(oi, "EL"), S5MineMobs.EL_FIRE);
