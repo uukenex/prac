@@ -899,7 +899,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  k번째 레벨(100레벨 = 1) 공격력 +(MINE_OVER_ATK0 + MINE_OVER_ATK_UP x (k-1)), 체력 +max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN x (k-1)).
     static final int MINE_OVER_ATK0 = 300, MINE_OVER_ATK_UP = 10, MINE_OVER_HP0 = 5_800, MINE_OVER_HP_DOWN = 150, MINE_OVER_HP_MIN = 500; // 99레벨 직전 한 레벨치(공격 +298, 체력 +5,789 -- 환생 전 기준)에서 이어진다
     static long mineOverAtk(int lv) { long n = Math.max(0, lv - MINE_LV_MAX); return n * MINE_OVER_ATK0 + MINE_OVER_ATK_UP * n * (n - 1) / 2; }
-    static long mineOverHp(int lv) { long n = Math.max(0, lv - MINE_LV_MAX), s = 0; for (long k = 1; k <= n; k++) s += Math.max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN * (k - 1)); return s; }
+    // [2026-11-24] "100레벨 이후 체력 증가량 없도록, 올라간 것도 99레벨 기준으로" -- 99를 넘은 레벨의 체력 더하기를 끈다(MINE_OVER_HP_ON). 이미 넘친 체력은 mineHpNow가 최대치로 자른다. 공격력 증가는 그대로.
+    static final boolean MINE_OVER_HP_ON = false;
+    static long mineOverHp(int lv) { if (!MINE_OVER_HP_ON) return 0; long n = Math.max(0, lv - MINE_LV_MAX), s = 0; for (long k = 1; k <= n; k++) s += Math.max(MINE_OVER_HP_MIN, MINE_OVER_HP0 - MINE_OVER_HP_DOWN * (k - 1)); return s; }
     // [2026-11-17] "환생 시 능력치 보존 -- 0환생 99에서 1환생하면 0환생 5레벨 기준 스탯으로 시작, 2환생 10, 3환생 20, 4환생 30, 5환생 40, 진환생 50.
     //  4환생이면 1~30레벨 기준 스탯은 같다. 환생 보너스는 별도" -- 기본 체력/공격력을 정할 때 레벨을 환생 바닥(MINE_RB_FLOOR_LV[환생 횟수]) 아래로 내리지 않는다.
     //  환생 보너스(체력 +50%, 공격력 +50% / 회)는 그 위에 그대로 곱한다. 용병(환생 0)은 그대로.
