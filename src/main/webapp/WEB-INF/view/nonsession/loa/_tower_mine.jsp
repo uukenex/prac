@@ -6936,6 +6936,151 @@ var TowerMine = (function () {
       ctx.restore();
     });
   }
+  // [2026-11-24] 용병 마법사 3차 스킬 그림(64x64 도트) -- 불 = 불새(옆모습, 날갯짓 3장), 물 = 빙결 감옥(솟는 3장 + 다 솟음 + 금 간 것 + 깨짐 2장).
+  //  64x64 캔버스에 도형을 그린 뒤 반투명 가장자리를 잘라(알파 0.5 기준) 또렷한 도트로 만든다. 한 번 만들어 둔다(M3PX).
+  var M3PX = {};
+  function m3Crisp(c) {
+    var g = c.getContext('2d'), d;
+    try { d = g.getImageData(0, 0, c.width, c.height); } catch (e) { return c; }
+    for (var i = 3; i < d.data.length; i += 4) d.data[i] = d.data[i] >= 110 ? 255 : 0;
+    g.putImageData(d, 0, 0); return c;
+  }
+  function m3Poly(g, pts, col) { g.fillStyle = col; g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); g.closePath(); g.fill(); }
+  /** 불새 f = 0 날개 위 / 1 가운데 / 2 아래. 오른쪽을 본다. */
+  function phoenixPx(f) {
+    var key = 'ph' + f; if (M3PX[key]) return M3PX[key];
+    var c = mk(64, 64), g = c.getContext('2d'), wy = [-1, 0, 1][f];
+    var DR = '#a8180a', RD = '#e23a14', OR = '#ff7e1a', YE = '#ffc93a', PA = '#fff1a8', WH = '#ffffff';
+    // 꼬리 -- 세 가닥(긴 불꽃 깃), 바깥 빨강 -> 안 주황 -> 노랑
+    [[-7, DR, 3.4], [0, RD, 3.0], [7, DR, 3.4]].forEach(function (q, i) {
+      var y0 = 34 + q[0] * 0.3, ye = 34 + q[0] * 1.6 + (f - 1) * 2;
+      m3Poly(g, [[24, y0 - 3], [14, y0 - 4 + q[0] * 0.5], [4, ye - 2], [1, ye], [5, ye + 1], [14, y0 + 3 + q[0] * 0.5], [24, y0 + 3]], q[1]);
+      m3Poly(g, [[24, y0 - 1.5], [15, y0 - 1.5 + q[0] * 0.5], [8, ye - 0.5], [15, y0 + 1.5 + q[0] * 0.5], [24, y0 + 1.5]], i === 1 ? YE : OR);
+    });
+    // 먼 날개(뒤) -- 어둡게
+    var far = f === 0 ? [[30, 30], [26, 12], [20, 3], [17, 8], [19, 16], [22, 28]] : f === 1 ? [[30, 30], [22, 22], [12, 18], [12, 22], [17, 27], [24, 32]] : [[30, 34], [24, 44], [18, 52], [16, 47], [20, 40], [24, 34]];
+    m3Poly(g, far, DR);
+    // 몸통
+    g.fillStyle = RD; g.beginPath(); g.ellipse(34, 34, 12, 6.5, -0.1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = OR; g.beginPath(); g.ellipse(35, 33, 10, 4.8, -0.1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = YE; g.beginPath(); g.ellipse(37, 35, 6, 2.6, -0.1, 0, Math.PI * 2); g.fill(); // 배
+    // 목 + 머리
+    m3Poly(g, [[40, 30], [46, 24], [50, 26], [46, 34]], OR);
+    g.fillStyle = OR; g.beginPath(); g.arc(48, 25, 5.2, 0, Math.PI * 2); g.fill();
+    g.fillStyle = YE; g.beginPath(); g.arc(49, 26, 3.2, 0, Math.PI * 2); g.fill();
+    m3Poly(g, [[52, 24], [59, 26], [52, 28]], '#ffb020'); m3Poly(g, [[52, 26], [57, 27], [52, 28]], '#c86a10'); // 부리
+    g.fillStyle = '#3a0a04'; g.fillRect(49, 23, 2, 2); g.fillStyle = WH; g.fillRect(50, 23, 1, 1); // 눈
+    // 볏 -- 뒤로 흩날리는 불꽃 셋
+    m3Poly(g, [[46, 21], [40, 13], [44, 15], [43, 9], [48, 15], [50, 11], [51, 20]], RD);
+    m3Poly(g, [[47, 21], [43, 15], [46, 16], [47, 13], [49, 18]], YE);
+    // 가까운 날개(앞) -- 위/가운데/아래, 깃 끝이 불꽃처럼 갈라진다
+    var near = f === 0 ? [[38, 31], [36, 18], [32, 6], [28, 0], [27, 6], [24, 3], [23, 10], [20, 9], [22, 18], [19, 19], [24, 26], [30, 33]]
+      : f === 1 ? [[38, 32], [32, 22], [22, 16], [10, 14], [14, 19], [6, 20], [12, 24], [6, 27], [16, 28], [24, 31], [32, 35]]
+      : [[38, 35], [34, 44], [29, 54], [26, 62], [24, 56], [21, 59], [21, 52], [17, 53], [21, 45], [18, 44], [24, 38], [31, 34]];
+    m3Poly(g, near, RD);
+    var inner = near.map(function (p) { return [p[0] + (38 - p[0]) * 0.28, p[1] + (33 - p[1]) * 0.28]; });
+    m3Poly(g, inner, OR);
+    var core = near.map(function (p) { return [p[0] + (38 - p[0]) * 0.55, p[1] + (33 - p[1]) * 0.55]; });
+    m3Poly(g, core, YE);
+    g.fillStyle = PA; var hl = near.map(function (p) { return [p[0] + (38 - p[0]) * 0.78, p[1] + (33 - p[1]) * 0.78]; }); m3Poly(g, hl, PA);
+    return (M3PX[key] = m3Crisp(c));
+  }
+  /** 빙결 감옥 f = 0~2 솟는 중(1/3, 2/3, 거의) / 3 다 솟음 / 4 금 감 / 5~6 깨짐. 가운데 아래가 발밑. */
+  function iceJailPx(f) {
+    var key = 'ij' + f; if (M3PX[key]) return M3PX[key];
+    var c = mk(64, 64), g = c.getContext('2d');
+    var D = '#3a8fd0', M = '#7cc6f2', L = '#c4ecff', W = '#f4fdff', O = '#245f9a';
+    if (f >= 5) { // 깨짐 -- 조각이 흩어진다(5 = 막 깨짐, 6 = 더 멀리)
+      var sp = f === 5 ? 1 : 1.8;
+      for (var i = 0; i < 12; i++) {
+        var a = -Math.PI * (0.08 + 0.84 * ((i * 0.618) % 1)), r = (10 + (i * 7) % 12) * sp, cx = 32 + Math.cos(a) * r * (i % 2 ? 1 : -1), cy = 44 + Math.sin(a) * r * 0.8 + (f === 6 ? 8 : 0), s = 2.5 + (i % 3);
+        m3Poly(g, [[cx, cy - s], [cx + s * 0.7, cy], [cx, cy + s], [cx - s * 0.7, cy]], i % 3 ? M : W);
+      }
+      g.fillStyle = 'rgba(196,236,255,1)'; g.fillRect(14, 57, 36, 2); // 바닥 서리 자국
+      return (M3PX[key] = m3Crisp(c));
+    }
+    var q = f >= 3 ? 1 : (f + 1) / 3.4;
+    // 바닥 서리
+    g.fillStyle = L; g.beginPath(); g.ellipse(32, 58, 26, 5, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = W; g.beginPath(); g.ellipse(32, 58, 18, 3, 0, 0, Math.PI * 2); g.fill();
+    // 결정 -- {가운데 x, 폭, 높이}: 뒤 둘 -> 큰 가운데 -> 앞 작은 둘
+    [[16, 12, 34], [48, 12, 38], [32, 24, 54], [10, 8, 18], [55, 8, 22]].forEach(function (k, i) {
+      var x = k[0], w = k[1], h = Math.round(k[2] * q), top = 58 - h, sh = Math.min(w * 0.45, h);
+      if (h < 3) return;
+      m3Poly(g, [[x - w / 2, 58], [x - w / 2, top + sh], [x, top], [x + w / 2, top + sh], [x + w / 2, 58]], O); // 테두리 겸 그늘
+      m3Poly(g, [[x - w / 2 + 1, 58], [x - w / 2 + 1, top + sh + 0.6], [x, top + 1.4], [x + w / 2 - 1, top + sh + 0.6], [x + w / 2 - 1, 58]], i === 2 ? M : D);
+      m3Poly(g, [[x - w / 2 + 1, 58], [x - w / 2 + 1, top + sh + 0.6], [x, top + 1.4], [x, 58]], i === 2 ? L : M); // 밝은 왼쪽 면
+      g.fillStyle = W; g.fillRect(Math.round(x - w / 2 + 2), Math.round(top + sh + 2), 1, Math.max(1, Math.round(h * 0.55))); // 빛줄
+      if (i === 2) { g.fillRect(Math.round(x - 3), Math.round(top + sh + 4), 1, Math.max(1, Math.round(h * 0.25))); }
+    });
+    if (f === 4) { // 금 -- 가운데 결정에 흰 지그재그
+      g.fillStyle = W;
+      [[30, 10], [33, 16], [29, 22], [34, 29], [31, 36], [35, 44], [32, 52]].forEach(function (p, i, a) { if (!i) return; var p0 = a[i - 1], n = 6; for (var s = 0; s <= n; s++) g.fillRect(Math.round(p0[0] + (p[0] - p0[0]) * s / n), Math.round(p0[1] + (p[1] - p0[1]) * s / n), 1, 1); });
+      g.fillRect(36, 26, 4, 1); g.fillRect(24, 40, 5, 1);
+    }
+    return (M3PX[key] = m3Crisp(c));
+  }
+  function m3Rnd(s) { s = Math.sin(s * 12.9898 + 7.7) * 43758.5453; return s - Math.floor(s); }
+  function phoenixTrail(x0, y0, x1, y1, q, fade, TS, t) {
+    var n = Math.max(3, Math.round(Math.hypot(x1 - x0, y1 - y0) / (TS * 0.45)));
+    ctx.save();
+    for (var i = 0; i < n; i++) {
+      var k = i / n; if (k > q) break;
+      var px = x0 + (x1 - x0) * k + (m3Rnd(i) - 0.5) * TS * 0.5, py = y0 + (y1 - y0) * k + (m3Rnd(i + 50) - 0.5) * TS * 0.4 + TS * 0.35;
+      var life = Math.min(1, (q - k) * 3), h = TS * (0.5 + 0.4 * m3Rnd(i + 9)) * (1 - 0.4 * life) * (0.8 + 0.2 * Math.sin(t / 80 + i)), w = TS * 0.32;
+      burnFlame(px, py, h, w, w * 0.4 * Math.sin(t / 120 + i), fade * (1 - life * 0.5));
+    }
+    ctx.restore();
+  }
+  function iceFloorDraw(cx, cy, R, t, a) {
+    ctx.save(); ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#bfe8ff'; ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = a * 0.8; ctx.strokeStyle = '#e8f8ff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.lineDashOffset = -t / 40; ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.6, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    for (var k = 0; k < 6; k++) { var an = k * Math.PI / 3 + t / 3000; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(an) * R * 0.85, cy + Math.sin(an) * R * 0.51); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // [2026-11-24] 용병 마법사 3차 스킬 화면 -- 불새(mercPhx: 용병 -> 끝 칸으로 0.9초, 3칸 크기, 지나간 줄 불길 1.2초) / 빙결 감옥(mercJails: 몬스터마다 얼음 기둥, jailBreak가 오면 깨짐)
+  var mercPhx = [], mercJails = [], M3_PHX_MS = 900, M3_PHX_FADE_MS = 1200;
+  function mercPhxDraw(now, TS, camX, camY) {
+    mercPhx = mercPhx.filter(function (p) { return now - p.t0 < M3_PHX_MS + M3_PHX_FADE_MS; });
+    mercPhx.forEach(function (p) {
+      var e = now - p.t0; if (e < 0) return;
+      var q = Math.min(1, e / M3_PHX_MS), x0 = (p.x0 + 0.5) * TS - camX, y0 = (p.y0 + 0.5) * TS - camY, x1 = (p.x1 + 0.5) * TS - camX, y1 = (p.y1 + 0.5) * TS - camY;
+      var fade = e < M3_PHX_MS ? 1 : Math.max(0, 1 - (e - M3_PHX_MS) / M3_PHX_FADE_MS);
+      phoenixTrail(x0, y0, x1, y1, q, fade, TS, now);
+      if (q >= 1) return;
+      var px = x0 + (x1 - x0) * q, py = y0 + (y1 - y0) * q - TS * 0.6, sz = TS * 3, left = x1 < x0;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      var gl = ctx.createRadialGradient(px, py, 0, px, py, TS * 2); gl.addColorStop(0, 'rgba(255,160,50,0.5)'); gl.addColorStop(1, 'rgba(255,80,20,0)');
+      ctx.fillStyle = gl; ctx.fillRect(px - TS * 2, py - TS * 2, TS * 4, TS * 4);
+      ctx.globalCompositeOperation = 'source-over';
+      var sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+      ctx.translate(px, py); if (left) ctx.scale(-1, 1);
+      ctx.drawImage(phoenixPx([0, 1, 2, 1][Math.floor(now / 90) % 4]), -sz / 2, -sz * 0.53, sz, sz);
+      ctx.imageSmoothingEnabled = sm;
+      ctx.restore();
+    });
+  }
+  function mercJailDraw(now, TS, camX, camY) {
+    mercJails = mercJails.filter(function (j) { var b = j.brk || j.t0 + 5500; return now - b < 300; });
+    var sm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
+    mercJails.forEach(function (j) {
+      var e = now - j.t0; if (e < 0) return;
+      var b = j.brk || j.t0 + 5500, mm = map && map.mobs && map.mobs[j.id], mp = mm && mm._p, x = mp ? mp.x : j.x, y = mp ? mp.y : j.y, fo = j.fo || 1;
+      var sz = TS * 1.4 * fo, cx = (x + fo / 2) * TS - camX, by = (y + fo) * TS - camY + TS * 0.08, f;
+      if (now >= b) f = now - b < 150 ? 5 : 6;
+      else f = e < 300 ? Math.floor(e / 100) : now > b - 600 || e > j.ms - 400 ? 4 : 3;
+      ctx.globalAlpha = f >= 5 ? 1 : 0.8;
+      ctx.drawImage(iceJailPx(f), cx - sz / 2, by - sz, sz, sz);
+    });
+    ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = sm;
+  }
+  var mercIceRings = [];
+  function mercIceRingDraw(now, TS, camX, camY) {
+    mercIceRings = mercIceRings.filter(function (r) { return now < r.until; });
+    mercIceRings.forEach(function (r) { var a = Math.min(1, (now - r.t0) / 250, (r.until - now) / 400); if (a > 0) iceFloorDraw((r.x + 0.5) * TS - camX, (r.y + 0.5) * TS - camY, TS * (r.r + 0.5), now, a); });
+  }
   // [2026-11-24] 용병 3차 스킬 천둥 폭풍 -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
   var mercBolts = [];
   function mercBoltDraw(now, TS, camX, camY) {
@@ -6952,6 +7097,7 @@ var TowerMine = (function () {
   function mercFxDraw(now, TS, camX, camY) {
     try { mercRainDraw(now, TS, camX, camY); } catch (e) { }
     try { mercBoltDraw(now, TS, camX, camY); } catch (e) { }
+    try { mercIceRingDraw(now, TS, camX, camY); mercJailDraw(now, TS, camX, camY); mercPhxDraw(now, TS, camX, camY); } catch (e) { } // [2026-11-24] 빙결 감옥 / 불새
     mercFx = mercFx.filter(function (f) { return now - f.t0 < mercFly(f) + 520; });
     mercFx.forEach(function (f) {
       if (now < f.t0) return;
@@ -7227,7 +7373,7 @@ var TowerMine = (function () {
     if (m.stunNew && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.9, text: '💫 용병 기절!', color: '#ffe94a', t0: performance.now() }); // [2026-11-23]
     var t = performance.now(), mt = m.t | 0, f0 = { c: mt, el: m.el, s: m.st, k: mt === 2 ? 'ball' : '' }, fly = mercFly(f0), ei = EL_ICON[m.el] || '';
     var rowsAll = (m.row ? [m.row] : []).concat(m.rows || []), applyRows = function () { rowsAll.forEach(function (r) { mobSt[r[0]] = mobStOf(r, mobSt[r[0]]); }); }; // 둘레/체인 몬스터
-    if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (m.sk3) hitDelay = Math.max(hitDelay, m.sk3.k === 'bolt' ? 1800 : m.sk3.k === 'arrow5' ? 1000 : 150); /* [2026-11-24] 3차 스킬이 끝날 때 */ if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
+    if (rowsAll.length) { var hitDelay = !m.sk ? fly + (mt ? 0 : 110) : m.sk.k === 'meteor' ? 600 : m.sk.k === 'tornado' ? 580 : m.sk.k === 'sword' ? 520 : Math.max(fly, 300); if (m.sk3) hitDelay = Math.max(hitDelay, m.sk3.k === 'bolt' ? 1800 : m.sk3.k === 'arrow5' ? 1000 : m.sk3.k === 'phoenix' ? 1100 : 150); /* [2026-11-24] 3차 스킬이 끝날 때 */ if (hitDelay > 30) setTimeout(applyRows, hitDelay); else applyRows(); } // [2026-11-06] 화살/구슬이 닿기 전에 몬스터가 먼저 쓰러져 사라지면 허공에 쏘는 것처럼 보였다
     if (m.tx != null) {
       if (!mp.tg || mp.tg.x !== m.tx || mp.tg.y !== m.ty) mp.tg = { x: m.tx, y: m.ty, t: t };
       else mp.tg.t = t;
@@ -7259,11 +7405,17 @@ var TowerMine = (function () {
       else if (s3.k === 'slash') ultFx.push({ k: 1, x: s3.x, y: s3.y, t0: t + 60, o: true });
       else if (s3.k === 'kak') mp.kakT0 = t;
       else if (s3.k === 'arrow5') for (var ai = 0; ai < 5; ai++) mercShot(1, m.el, m.st, mx3, my3, s3.x, s3.y, null, t + ai * 190, null, m.tg);
+      else if (s3.k === 'phoenix') mercPhx.push({ x0: mx3, y0: my3, x1: s3.x1, y1: s3.y1, t0: t + 100 }); // [2026-11-24] 불새
+      else if (s3.k === 'jail') { // [2026-11-24] 빙결 감옥
+        mercIceRings.push({ x: s3.x, y: s3.y, r: s3.r, t0: t, until: t + (s3.ms || 4000) });
+        (s3.ids || []).forEach(function (id) { var jm = map && map.mobs && map.mobs[id], jt = jm && map.mobTypes[jm.k], jp = jm && jm._p; mercJails.push({ id: id, x: jp ? jp.x : s3.x, y: jp ? jp.y : s3.y, fo: jt && jt.boss ? jt.foot || 2 : 1, t0: t + 100, ms: s3.ms || 4000 }); });
+      }
       else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100 }); }); }
       if (s3.k === 'slash' && s3.stun) floats.push({ x: s3.x, y: s3.y - 0.9, text: '💫 기절 ' + Math.round(s3.stun / 1000) + '초', color: '#ffe94a', t0: t + 300 });
       floats.push({ x: mx3, y: my3 - 1.3, text: '🌟 ' + s3.nm, color: '#ffd84a', big: true, t0: t });
     }
     mp.kak = m.kak || 0; // [2026-11-24] 각성 중(끝 시각)
+    if (m.jailBreak) mercJails.forEach(function (j) { if (!j.brk && m.jailBreak.indexOf(j.id) >= 0) j.brk = t + 60; }); // [2026-11-24] 빙결 감옥이 깨진다
     if (m.bossMsg) { msg(m.bossMsg, 5000); killFeed(m.bossMsg, '#ffe14d'); } // [2026-11-07] 용병이 쓰러뜨린 보스
     if (m.shock) shockSet([]);
     if (m.got && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.3, text: '-' + m.got, color: '#ff9a9a', t0: t + 200 });

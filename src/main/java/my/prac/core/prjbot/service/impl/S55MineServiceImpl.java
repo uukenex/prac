@@ -9379,11 +9379,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //    번개 일섬참(대상 한 마리 x MINE_MERC_U3_SLASH_MUL + 기절 5초) / 물 각성(7초 동안 그 용병 피해 2배).
     //  궁수 = 5연발 화살(대상 한 마리에게 1초 안에 5발, 발마다 x MINE_MERC_U3_ARROW_MUL).
     //  마법사 번개 = 천둥 폭풍(최강다람쥐 람쥐썬더처럼, 외치지는 않는다 -- 대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
-    //  마법사 불/물은 아직(사용자가 정하는 중) -- 없음.
+    //  마법사 불 = 불새(시안 승인 -- 나 -> 대상 쪽으로 MINE_MERC_U3_PHX_LEN칸 날며 줄(폭 3칸)의 몬스터 x MINE_MERC_U3_PHX_MUL),
+    //  마법사 물 = 빙결 감옥(시안 승인 -- 대상 둘레 MINE_MERC_U3_JAIL_R칸 몬스터를 MINE_MERC_U3_JAIL_MS 동안 가두고(기절), 깨질 때 x MINE_MERC_U3_JAIL_MUL).
     static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 5_000L, MINE_MERC_U3_KAK_MS = 7_000L, MINE_MERC_U3_STUN_MS = 5_000L;
     static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BOLTS = 16, MINE_MERC_U3_BOLT_R = 3, MINE_MERC_U3_ARROWS = 5;
+    static final int MINE_MERC_U3_PHX_LEN = 10, MINE_MERC_U3_JAIL_R = 2;
+    static final long MINE_MERC_U3_JAIL_MS = 4_000L;
+    static final double MINE_MERC_U3_PHX_MUL = 6.0, MINE_MERC_U3_JAIL_MUL = 5.0;
     static final double MINE_MERC_U3_ZONE_MUL = 2.0, MINE_MERC_U3_SLASH_MUL = 12.0, MINE_MERC_U3_ARROW_MUL = 3.0, MINE_MERC_U3_BOLT_MUL = 1.5;
-    boolean mineMercU3Ok(String userName, int cls, int el) { return isMineAdmin(userName) && (cls != 2 || el == S5MineMobs.EL_THUNDER); }
+    boolean mineMercU3Ok(String userName, int cls, int el) { return isMineAdmin(userName); } // [2026-11-24] 마법사 불/물도(불새/빙결 감옥)
     static long mineMercSkillCd(int cls, int el) { return cls == 2 && el == S5MineMobs.EL_WATER ? 12_000L : cls == 2 && el == S5MineMobs.EL_THUNDER ? 5_000L : MINE_MERC_SKILL_MS; }
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
     static final int MINE_MERC_LV_MIN = 5, MINE_MERC_LV_MAX0 = 30;
@@ -9474,6 +9478,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long restUntil, at, fightAt, atkAt, struckAt, skillAt, rainUntil; // [2026-11-06] 2차 스킬 쿨타임, 화살비
         long u3At = -MINE_MERC_U3_MS, u3ZoneUntil, kakUntil; // [2026-11-24] 3차 스킬 -- 쓴 시각, 만검진 장판 끝, 각성 끝
         int u3X, u3Y;
+        long jailAt; List<Integer> jailIds; // [2026-11-24] 빙결 감옥 -- 깨지는 시각, 갇힌 몬스터
         int rainX, rainY, rainR;
         double rainMul;
     }
@@ -9926,6 +9931,33 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             } else if (cls == 1) { // 5연발 화살
                 for (int a = 0; a < MINE_MERC_U3_ARROWS; a++) { addCell.accept(new int[] { pick, pcx, pcy }, MINE_MERC_U3_ARROW_MUL); hitDl.put(hitIds.size() - 1, 150 + a * 190); }
                 s3.put("k", "arrow5"); s3.put("nm", "5연발 화살");
+            } else if (el == S5MineMobs.EL_FIRE) { // 불새 -- 나에서 대상 쪽으로 곧게, 지나는 줄(가운데에서 1칸 안)의 몬스터
+                double vx = pcx - x, vy = pcy - y, vl = Math.hypot(vx, vy);
+                if (vl < 0.01) { vx = 1; vy = 0; vl = 1; }
+                vx /= vl; vy /= vl;
+                for (int[] cd : cands) {
+                    int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+                    double mcx = cd[1] + (fo - 1) / 2.0, mcy = cd[2] + (fo - 1) / 2.0, along = (mcx - x) * vx + (mcy - y) * vy, side = Math.abs((mcx - x) * vy - (mcy - y) * vx);
+                    if (along < 0 || along > MINE_MERC_U3_PHX_LEN || side > 1.0 + (fo - 1) / 2.0) continue;
+                    addCell.accept(new int[] { cd[0], (int) Math.round(mcx), (int) Math.round(mcy) }, MINE_MERC_U3_PHX_MUL);
+                    hitDl.put(hitIds.size() - 1, 150 + (int) (along / MINE_MERC_U3_PHX_LEN * 900));
+                }
+                s3.put("k", "phoenix"); s3.put("nm", "불새");
+                s3.put("x1", (int) Math.round(x + vx * MINE_MERC_U3_PHX_LEN)); s3.put("y1", (int) Math.round(y + vy * MINE_MERC_U3_PHX_LEN));
+            } else if (el == S5MineMobs.EL_WATER) { // 빙결 감옥 -- 가두고(기절), 깨질 때 피해는 MINE_MERC_U3_JAIL_MS 뒤 첫 차례에
+                List<Integer> jail = new ArrayList<>(), jailVis = new ArrayList<>(); // 깨질 때 맞는 몬스터 / 얼음에 갇히는(그림) 몬스터
+                for (int[] cd : cands) {
+                    int mt = map.mobs().get(cd[0]).type, fo = S5MineMobs.TYPES.get(mt).foot();
+                    int ddx = pcx < cd[1] ? cd[1] - pcx : Math.max(0, pcx - (cd[1] + fo - 1)), ddy = pcy < cd[2] ? cd[2] - pcy : Math.max(0, pcy - (cd[2] + fo - 1));
+                    if (Math.max(ddx, ddy) > MINE_MERC_U3_JAIL_R) continue;
+                    jail.add(cd[0]);
+                    if (mt == S5MineMobs.WB_BOSS_TYPE || mt == S5MineMobs.KRAKEN_TYPE) continue; // 큰 보스는 안 갇힌다(깨질 때 피해만)
+                    MobState js = MINE_MOB_STATE.get(mineMobKey(map, cd[0]));
+                    if (js != null) synchronized (js) { js.stunUntil = Math.max(js.stunUntil, now + MINE_MERC_U3_JAIL_MS); js.frozenUntil = Math.max(js.frozenUntil, js.stunUntil); }
+                    jailVis.add(cd[0]);
+                }
+                synchronized (ms) { ms.jailIds = jail; ms.jailAt = now + MINE_MERC_U3_JAIL_MS; }
+                s3.put("k", "jail"); s3.put("nm", "빙결 감옥"); s3.put("ids", jailVis); s3.put("r", MINE_MERC_U3_JAIL_R); s3.put("ms", MINE_MERC_U3_JAIL_MS);
             } else { // 람쥐썬더
                 for (int b = 0; b < MINE_MERC_U3_BOLTS; b++) {
                     int bx = b < 4 ? pcx : pcx - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1), by = b < 4 ? pcy : pcy - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1);
@@ -9941,6 +9973,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             s3.put("pts", p3);
             mo.put("sk3", s3);
+        }
+        { // [2026-11-24] 빙결 감옥이 깨진다 -- 아직 싸우는 갇힌 몬스터에게
+            List<Integer> jb = null;
+            synchronized (ms) { if (ms.jailIds != null && now >= ms.jailAt) { jb = ms.jailIds; ms.jailIds = null; } }
+            if (jb != null) {
+                List<Integer> brk = new ArrayList<>();
+                for (int[] cd : cands) if (jb.contains(cd[0])) { int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot(); addCell.accept(new int[] { cd[0], cd[1] + (fo - 1) / 2, cd[2] + (fo - 1) / 2 }, MINE_MERC_U3_JAIL_MUL); brk.add(cd[0]); }
+                mo.put("jailBreak", brk);
+            }
         }
         long u3Kak, u3Zu; int u3zx, u3zy;
         synchronized (ms) { u3Kak = ms.kakUntil; u3Zu = ms.u3ZoneUntil; u3zx = ms.u3X; u3zy = ms.u3Y; }
