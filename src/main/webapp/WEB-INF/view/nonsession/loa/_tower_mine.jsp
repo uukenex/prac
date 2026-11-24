@@ -2919,6 +2919,7 @@ var TowerMine = (function () {
 
   // ---------------------------------------------------------------- 진행
   function curPos(now) {
+    var sp = surfPos(now); if (sp) return sp; // [2026-11-24] 물보라 파도에 실려 가는 중
     if (!P.moving) return { x: P.x, y: P.y };
     var k = Math.min(1, (now - P.t0) / stepMs());
     return { x: P.fx + (P.tx - P.fx) * k, y: P.fy + (P.ty - P.fy) * k };
@@ -3000,7 +3001,7 @@ var TowerMine = (function () {
       var d = heldDir() || tapDir;
       if (d && el.menu && el.menu.classList.contains('open')) setMenu(false); // [2026-11-05] 움직이면 메뉴 창 닫힘
       tapDir = null;
-      if (smithOpen) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다
+      if (smithOpen || surfPos(now)) d = null; // 대장간 창이 열려 있는 동안은 움직이지 않는다([2026-11-24] 파도에 실려 가는 동안도)
       if (d && stunnedMe()) { // [2026-11-04] 붕대 스턴
         if (now - lastBumpT > 1500 || lastBump !== 'stun') msg(stunMsg(), 1500);
         lastBump = 'stun'; lastBumpT = now;
@@ -3748,6 +3749,224 @@ var TowerMine = (function () {
     }
     return (boltImgC[key] = c);
   }
+  // [2026-11-24] "베히모스 벽 쪽으로 쫓는 거 이펙트 -- 파도 같은 게 나오면 좋겠어" -- 물보라 분출에 맞으면 순간 이동 대신 파도가 밀려와 나를 싣고 벽까지 휩쓸고 가서(SURF_MS),
+  //  벽에 부딪혀 하얗게 부서진다(SURF_SPLASH_MS). 성벽 너머로 날아갈 때(bhKnock만)는 그 자리에서 물기둥이 솟는다. surfFx = {x0, y0, x1, y1, t0, dur}
+  var surfFx = null, surfBoom = [], SURF_SPLASH_MS = 650;
+  function surfStart(x0, y0, x1, y1) {
+    var dist = Math.abs(x1 - x0) + Math.abs(y1 - y0);
+    surfFx = { x0: x0, y0: y0, x1: x1, y1: y1, t0: performance.now(), dur: Math.max(450, Math.min(1100, 260 + dist * 45)) };
+  }
+  function surfEase(q) { return 1 - (1 - q) * (1 - q); }
+  /** 파도에 실려 가는 동안 내 그림 자리(칸) -- 없으면 null. */
+  function surfPos(now) {
+    var f = surfFx; if (!f) return null;
+    var q = (now - f.t0) / f.dur; if (q >= 1) return null;
+    var e = surfEase(Math.max(0, q));
+    return { x: f.x0 + (f.x1 - f.x0) * e, y: f.y0 + (f.y1 - f.y0) * e };
+  }
+  function surfRnd(s) { s = Math.sin(s * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+  /** 밀려가는 파도: (hx, hy) = 파도 머리(픽셀), ang = 나아가는 방향, L = 지나온 길이(픽셀), al = 진하기. */
+  function surfWaveDraw(hx, hy, ang, L, al, TS, now, dpr) {
+    var W = TS * 2.8;
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(ang); ctx.globalAlpha = al;
+    // 지나온 물길 -- 뒤로 갈수록 가늘고 옅게
+    var g = ctx.createLinearGradient(-L, 0, 0, 0);
+    g.addColorStop(0, 'rgba(40,120,210,0)'); g.addColorStop(0.55, 'rgba(50,140,225,0.38)'); g.addColorStop(1, 'rgba(70,170,245,0.7)');
+    ctx.fillStyle = g; ctx.beginPath(); // 가장자리가 출렁이는 물길
+    for (var e1 = 0; e1 <= 20; e1++) { var t1 = e1 / 20, xx1 = -L + L * t1, hw = W * (0.16 + 0.34 * Math.sqrt(t1)) + TS * 0.12 * Math.sin(t1 * 9 - now / 110); if (e1 === 0) ctx.moveTo(xx1, -hw); else ctx.lineTo(xx1, -hw); }
+    for (var e2 = 20; e2 >= 0; e2--) { var t2b = e2 / 20, xx2 = -L + L * t2b, hw2 = W * (0.16 + 0.34 * Math.sqrt(t2b)) + TS * 0.12 * Math.sin(t2b * 9 - now / 110 + 2); ctx.lineTo(xx2, hw2); }
+    ctx.closePath(); ctx.fill();
+    // 물길 위 흰 물결 줄
+    ctx.strokeStyle = 'rgba(220,245,255,0.55)'; ctx.lineWidth = 2 * dpr; ctx.lineCap = 'round';
+    for (var i = 0; i < 7; i++) {
+      var off = ((now / 3 + i * 53) % 1) , ly = (surfRnd(i) - 0.5) * W * 0.75, lx = -L * (0.1 + 0.8 * ((i * 0.137 + now / 900) % 1)), ll = TS * (0.5 + surfRnd(i + 9) * 0.7);
+      if (lx - ll < -L) continue;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.quadraticCurveTo(lx - ll / 2, ly + TS * 0.08 * Math.sin(now / 90 + i), lx - ll, ly); ctx.stroke();
+    }
+    // 파도 몸통 -- 앞으로 불룩한 초승달(짙은 바다색 -> 밝은 물색)
+    var bg = ctx.createLinearGradient(-TS * 0.5, 0, TS * 1.0, 0);
+    bg.addColorStop(0, 'rgba(30,100,190,0.9)'); bg.addColorStop(0.6, 'rgba(60,160,240,0.95)'); bg.addColorStop(1, 'rgba(150,220,255,0.95)');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(-TS * 0.45, -W * 0.52);
+    ctx.quadraticCurveTo(TS * 1.25, -W * 0.3, TS * 1.0, 0); ctx.quadraticCurveTo(TS * 1.25, W * 0.3, -TS * 0.45, W * 0.52);
+    ctx.quadraticCurveTo(TS * 0.2, 0, -TS * 0.45, -W * 0.52); ctx.closePath(); ctx.fill();
+    // 안쪽 그늘(말려 들어가는 물)
+    ctx.fillStyle = 'rgba(20,70,150,0.55)'; ctx.beginPath(); ctx.moveTo(-TS * 0.1, -W * 0.36); ctx.quadraticCurveTo(TS * 0.75, -W * 0.18, TS * 0.62, 0); ctx.quadraticCurveTo(TS * 0.75, W * 0.18, -TS * 0.1, W * 0.36); ctx.quadraticCurveTo(TS * 0.35, 0, -TS * 0.1, -W * 0.36); ctx.fill();
+    // 앞머리 흰 거품 -- 출렁이는 굵은 선 + 거품 방울
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 4 * dpr; ctx.beginPath();
+    for (var k = 0; k <= 24; k++) {
+      var t = k / 24, yy = (t - 0.5) * W * 1.0, xx = TS * 1.0 * (1 - Math.pow(Math.abs(t - 0.5) * 2, 2) * 0.95) + TS * 0.07 * Math.sin(now / 70 + k * 1.3) + TS * 0.12;
+      if (k === 0) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
+    }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    for (var b = 0; b < 16; b++) {
+      var t2 = surfRnd(b + 3), yb = (t2 - 0.5) * W * 0.95, xb = TS * 1.0 * (1 - Math.pow(Math.abs(t2 - 0.5) * 2, 2) * 0.95) + TS * (0.05 + 0.18 * surfRnd(b + 40)) + TS * 0.05 * Math.sin(now / 60 + b);
+      ctx.beginPath(); ctx.arc(xb, yb, TS * (0.06 + 0.07 * surfRnd(b + 77)), 0, Math.PI * 2); ctx.fill();
+    }
+    // 앞으로 튀는 물방울
+    for (var p = 0; p < 14; p++) {
+      var life = ((now / 380) + surfRnd(p + 11)) % 1, py0 = (surfRnd(p + 21) - 0.5) * W * 0.9;
+      var px = TS * (1.1 + life * 0.9), pyy = py0 * (1 + life * 0.25) - TS * 0.35 * Math.sin(life * Math.PI);
+      ctx.fillStyle = 'rgba(200,240,255,' + (0.9 * (1 - life)) + ')'; ctx.beginPath(); ctx.arc(px, pyy, TS * 0.06 * (1 - life * 0.5) + dpr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  /** 벽에 부딪혀 부서지는 물보라(ang = 오던 방향) / 솟는 물기둥(ang == null). q = 0 -> 1. */
+  function surfSplashDraw(x, y, ang, q, TS, dpr) {
+    var a = 1 - q;
+    ctx.save(); ctx.translate(x, y);
+    if (ang != null) ctx.rotate(ang);
+    // 퍼지는 고리
+    ctx.strokeStyle = 'rgba(170,225,255,' + a + ')'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.ellipse(0, 0, TS * (0.4 + q * 1.6), TS * (0.4 + q * 1.6) * (ang != null ? 1.2 : 0.5), 0, 0, Math.PI * 2); ctx.stroke();
+    // 물방울 -- 벽이면 되튀는 부채꼴(뒤쪽 반원), 물기둥이면 사방 + 위로
+    for (var i = 0; i < 26; i++) {
+      var r1 = surfRnd(i + 5), r2 = surfRnd(i + 55), th = ang != null ? Math.PI + (r1 - 0.5) * Math.PI * 1.25 : r1 * Math.PI * 2;
+      var sp = TS * (0.8 + r2 * 1.7) * q, lift = TS * (0.6 + r2) * Math.sin(q * Math.PI) * (ang != null ? 0.4 : 1.4);
+      var dx = Math.cos(th) * sp, dy = Math.sin(th) * sp * (ang != null ? 1 : 0.5) - lift;
+      ctx.fillStyle = i % 3 ? 'rgba(120,200,255,' + a + ')' : 'rgba(255,255,255,' + a + ')';
+      ctx.beginPath(); ctx.arc(dx, dy, TS * (0.05 + 0.08 * r2) * (1 - q * 0.4) + dpr * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    if (ang == null && q < 0.75) { // 솟는 물기둥
+      var h = TS * 3.2 * Math.sin(Math.min(1, q / 0.45) * Math.PI / 2), cw = TS * 0.55 * (1 - q * 0.6);
+      var cg = ctx.createLinearGradient(0, -h, 0, 0); cg.addColorStop(0, 'rgba(230,248,255,' + a + ')'); cg.addColorStop(1, 'rgba(60,160,240,' + (0.85 * a) + ')');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.moveTo(-cw, 0); ctx.quadraticCurveTo(-cw * 0.4, -h * 0.6, -cw * 0.25, -h); ctx.quadraticCurveTo(0, -h - TS * 0.3, cw * 0.25, -h); ctx.quadraticCurveTo(cw * 0.4, -h * 0.6, cw, 0); ctx.fill();
+    } else if (ang != null && q < 0.7) { // 벽에 부딪혀 부서지는 물 -- 벽을 따라 넓게 퍼지는 물막 + 흰 거품 알갱이
+      var qa = 1 - q / 0.7, sp2 = 0.5 + q * 1.2;
+      var wg = ctx.createLinearGradient(-TS * 1.2, 0, 0, 0); wg.addColorStop(0, 'rgba(60,160,240,0)'); wg.addColorStop(1, 'rgba(90,185,250,' + (0.75 * qa) + ')');
+      ctx.fillStyle = wg; ctx.beginPath(); ctx.moveTo(0, -TS * 1.5 * sp2); ctx.quadraticCurveTo(-TS * 1.3 * sp2, 0, 0, TS * 1.5 * sp2); ctx.closePath(); ctx.fill();
+      for (var j = 0; j < 34; j++) {
+        var r3 = surfRnd(j + 91), r4 = surfRnd(j + 191), yj = (r3 - 0.5) * TS * 3.0 * sp2, xj = -TS * (0.05 + r4 * 0.9) * sp2 * (1 - Math.abs(r3 - 0.5));
+        ctx.fillStyle = j % 4 ? 'rgba(255,255,255,' + (0.95 * qa) + ')' : 'rgba(150,215,255,' + qa + ')';
+        ctx.beginPath(); ctx.arc(xj, yj, TS * (0.05 + 0.1 * surfRnd(j + 7)) * (1 - q * 0.5), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  /** 매 그림마다 -- 파도(가는 중) + 부서지는 물보라들. 카메라 기준 픽셀로. */
+  function surfFxDraw(TS, camX, camY, dpr) {
+    var now = performance.now(), f = surfFx;
+    if (f) {
+      var q = (now - f.t0) / f.dur;
+      var x0 = (f.x0 + 0.5) * TS - camX, y0 = (f.y0 + 0.5) * TS - camY, x1 = (f.x1 + 0.5) * TS - camX, y1 = (f.y1 + 0.5) * TS - camY, ang = Math.atan2(y1 - y0, x1 - x0);
+      if (q < 1) {
+        var e = surfEase(Math.max(0, q)), hx = x0 + (x1 - x0) * e, hy = y0 + (y1 - y0) * e;
+        surfWaveDraw(hx, hy, ang, Math.max(TS, Math.hypot(hx - x0, hy - y0) + TS * 0.5), Math.min(1, q * 6 + 0.3), TS, now, dpr);
+      } else {
+        surfBoom.push({ x: f.x1, y: f.y1, ang: ang, t0: f.t0 + f.dur });
+        surfFx = null;
+      }
+    }
+    surfBoom = surfBoom.filter(function (s) { return now - s.t0 < SURF_SPLASH_MS; });
+    surfBoom.forEach(function (s) {
+      var sx = (s.x + 0.5) * TS - camX, sy = (s.y + 0.5) * TS - camY;
+      if (s.ang != null) { sx += Math.cos(s.ang) * TS * 0.6; sy += Math.sin(s.ang) * TS * 0.6; } // 벽 쪽 가장자리에서
+      surfSplashDraw(sx, sy, s.ang, Math.max(0, (now - s.t0) / SURF_SPLASH_MS), TS, dpr);
+    });
+  }
+  // [2026-11-24] 같은 날 "캐릭터 주변 말고 베히모스 자리 기준 동서남북 전체 파도" -- 물보라 분출이 터지면 베히모스 가운데에서 네 방향으로 큰 물결이 내성 벽까지
+  //  밀려 나간다(네모가 커지듯 -- 앞머리 길이는 지금 네모 한 변, 내성 벽에서 잘린다). 벽에 닿으면 그 벽을 따라 물보라. 내성 안 사람 모두에게 보인다.
+  var KEEP_RECT = [78, 32, 112, 78]; // 서버 S5MineMap.CASTLE_KEEP {x0, y0, x1, y1}
+  var keepWaves = [], KEEP_WAVE_SPD = 0.024, KEEP_WAVE_END_MS = 700; // 칸/ms(초당 24칸), 벽에 닿은 뒤 부서지는 시간
+  function keepWaveStart(cx, cy, t0) { keepWaves.push({ cx: cx, cy: cy, t0: t0 }); if (keepWaves.length > 3) keepWaves.shift(); }
+  /** 긴 물결 앞머리(회전된 좌표 -- +x로 나아감): 앞머리는 x = 0, y = a ~ b(픽셀), 뒤로 trail 픽셀만큼 물길. */
+  function keepWob(y, TS, now, seed) { return TS * (0.26 * Math.sin(y / TS * 0.9 + now / 160 + seed) + 0.1 * Math.sin(y / TS * 2.3 - now / 110 + seed * 2)); }
+  function keepFrontDraw(a, b, trail, al, TS, now, dpr, seed, lite) {
+    var len = b - a; if (len <= 2) return;
+    ctx.globalAlpha = al;
+    if (lite) { // 뒤따르는 작은 물결 -- 얇은 몸통 + 거품 줄만
+      var nl = Math.max(8, Math.round(len / (TS * 0.35)));
+      ctx.fillStyle = 'rgba(60,150,235,0.55)'; ctx.beginPath(); ctx.moveTo(-TS * 0.45 + keepWob(a, TS, now, seed), a);
+      for (var li = 0; li <= nl; li++) { var ly = a + len * li / nl; ctx.lineTo(TS * 0.2 + keepWob(ly, TS, now, seed), ly); }
+      for (var lj = nl; lj >= 0; lj--) { var ly2 = a + len * lj / nl; ctx.lineTo(-TS * 0.45 + keepWob(ly2, TS, now, seed), ly2); }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(235,250,255,0.85)'; ctx.lineWidth = Math.max(2 * dpr, TS * 0.07); ctx.lineCap = 'round'; ctx.beginPath();
+      for (var lk = 0; lk <= nl * 2; lk++) { var ly3 = a + len * lk / (nl * 2), lx3 = TS * 0.24 + keepWob(ly3, TS, now, seed) + TS * 0.04 * Math.sin(ly3 / TS * 6 + now / 45); if (lk === 0) ctx.moveTo(lx3, ly3); else ctx.lineTo(lx3, ly3); }
+      ctx.stroke(); ctx.globalAlpha = 1; return;
+    }
+    var g = ctx.createLinearGradient(-trail, 0, 0, 0);
+    g.addColorStop(0, 'rgba(40,120,210,0)'); g.addColorStop(0.7, 'rgba(50,145,230,0.30)'); g.addColorStop(1, 'rgba(70,170,245,0.6)');
+    ctx.fillStyle = g; ctx.fillRect(-trail, a, trail, len);
+    ctx.strokeStyle = 'rgba(225,245,255,0.35)'; ctx.lineWidth = Math.max(1.5 * dpr, TS * 0.05); // 물길 위 잔물결 줄(앞머리와 나란히, 같이 밀려 나간다)
+    for (var rr = 1; rr < 12; rr++) { var rx = -((rr * TS * 1.1 + (now / 12) % (TS * 1.1))); if (-rx > trail - TS * 0.3) break; ctx.beginPath(); for (var rq = 0; rq <= 16; rq++) { var ryy = a + len * rq / 16, rxx = rx + keepWob(ryy, TS, now, seed + rr) * 0.6; if (rq === 0) ctx.moveTo(rxx, ryy); else ctx.lineTo(rxx, ryy); } ctx.stroke(); }
+    // 몸통 -- 앞으로 살짝 출렁이는 띠
+    var n = Math.max(8, Math.round(len / (TS * 0.35)));
+    var bg = ctx.createLinearGradient(-TS * 0.9, 0, TS * 0.5, 0);
+    bg.addColorStop(0, 'rgba(30,100,190,0)'); bg.addColorStop(0.35, 'rgba(35,110,200,0.85)'); bg.addColorStop(0.8, 'rgba(70,170,245,0.95)'); bg.addColorStop(1, 'rgba(160,225,255,0.95)');
+    ctx.fillStyle = bg; ctx.beginPath(); ctx.moveTo(-TS * 0.9 + keepWob(a, TS, now, seed), a);
+    for (var i = 0; i <= n; i++) { var y = a + len * i / n; ctx.lineTo(TS * 0.35 + keepWob(y, TS, now, seed), y); }
+    for (var i2 = n; i2 >= 0; i2--) { var yq = a + len * i2 / n; ctx.lineTo(-TS * 0.9 + keepWob(yq, TS, now, seed) * 0.7, yq); }
+    ctx.closePath(); ctx.fill();
+    // 말려 드는 그늘 줄
+    ctx.strokeStyle = 'rgba(20,70,150,0.5)'; ctx.lineWidth = TS * 0.14; ctx.beginPath();
+    for (var j = 0; j <= n; j++) { var y2 = a + len * j / n, x2 = TS * 0.02 + keepWob(y2, TS, now, seed) * 0.9; if (j === 0) ctx.moveTo(x2, y2); else ctx.lineTo(x2, y2); }
+    ctx.stroke();
+    // 흰 거품 머리
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = Math.max(3 * dpr, TS * 0.1); ctx.lineCap = 'round'; ctx.beginPath();
+    for (var k = 0; k <= n * 2; k++) { var y3 = a + len * k / (n * 2), x3 = TS * 0.42 + keepWob(y3, TS, now, seed) + TS * 0.05 * Math.sin(y3 / TS * 5 + now / 50); if (k === 0) ctx.moveTo(x3, y3); else ctx.lineTo(x3, y3); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    for (var f = 0; f < n * 2; f++) { var yb = a + len * surfRnd(f + seed * 7), xb = TS * (0.42 + 0.15 * surfRnd(f + 50)) + keepWob(yb, TS, now, seed); ctx.beginPath(); ctx.arc(xb, yb, TS * (0.05 + 0.07 * surfRnd(f + 90)), 0, Math.PI * 2); ctx.fill(); }
+    // 앞으로 튀는 물방울
+    for (var p = 0; p < n; p++) {
+      var life = ((now / 380) + surfRnd(p + 11 + seed)) % 1, yp = a + len * surfRnd(p + 21 + seed);
+      ctx.fillStyle = 'rgba(200,240,255,' + (0.85 * (1 - life)) + ')'; ctx.beginPath(); ctx.arc(TS * (0.6 + life * 0.8) + keepWob(yp, TS, now, seed), yp - TS * 0.25 * Math.sin(life * Math.PI), TS * 0.05 + dpr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  /** 벽을 따라 부서지는 물보라(회전된 좌표 -- 벽은 x = 0, y = a ~ b). */
+  function keepWallSplash(a, b, q, TS, dpr, seed) {
+    var qa = 1 - q, n = Math.max(6, Math.round((b - a) / (TS * 0.4)));
+    var wg = ctx.createLinearGradient(-TS * 1.4, 0, 0, 0); wg.addColorStop(0, 'rgba(60,160,240,0)'); wg.addColorStop(1, 'rgba(110,195,250,' + (0.7 * qa) + ')');
+    ctx.fillStyle = wg; ctx.fillRect(-TS * 1.4 * (0.4 + q), a, TS * 1.4 * (0.4 + q), b - a);
+    for (var i = 0; i < n * 2; i++) {
+      var r1 = surfRnd(i + seed * 13), r2 = surfRnd(i + 300 + seed), y = a + (b - a) * r1, x = -TS * (0.1 + r2 * 1.3) * (0.3 + q), lift = TS * 0.5 * r2 * Math.sin(q * Math.PI);
+      ctx.fillStyle = i % 3 ? 'rgba(255,255,255,' + (0.95 * qa) + ')' : 'rgba(150,215,255,' + qa + ')';
+      ctx.beginPath(); ctx.arc(x, y - lift, TS * (0.05 + 0.1 * surfRnd(i + 7)) * (1 - q * 0.5), 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  /** 매 그림마다 -- 네 방향 물결. */
+  function keepWavesDraw(TS, camX, camY, dpr, now) {
+    if (!keepWaves.length) return;
+    var K = KEEP_RECT;
+    keepWaves = keepWaves.filter(function (w) {
+      var el = now - w.t0, d = el * KEEP_WAVE_SPD; // 가운데에서 앞머리까지(칸)
+      var dist = [K[2] + 1 - w.cx, w.cx - K[0], K[3] + 1 - w.cy, w.cy - K[1]]; // 동 서 남 북 -- 벽까지
+      var maxD = Math.max(dist[0], dist[1], dist[2], dist[3]);
+      if (el > maxD / KEEP_WAVE_SPD + KEEP_WAVE_END_MS) return false;
+      if (el < 0) return true;
+      var ox = w.cx * TS - camX, oy = w.cy * TS - camY;
+      for (var k = 0; k < 4; k++) {
+        var dk = Math.min(d, dist[k]), hitAt = dist[k] / KEEP_WAVE_SPD, ang = [0, Math.PI, Math.PI / 2, -Math.PI / 2][k];
+        // 앞머리 길이 = 지금 네모 한 변(가로/세로 다른 축의 벽에서 잘린다)
+        var lo, hi;
+        if (k < 2) { lo = Math.max(K[1], w.cy - d); hi = Math.min(K[3] + 1, w.cy + d); } else { lo = Math.max(K[0], w.cx - d); hi = Math.min(K[2] + 1, w.cx + d); }
+        ctx.save(); ctx.translate(ox, oy); ctx.rotate(ang);
+        // 회전한 좌표에서 앞머리의 옆 범위(위아래) -- 동(0): y 그대로 / 서(π): y 뒤집힘 / 남(π/2): x -> -y / 북(-π/2): x -> y
+        var a, b;
+        if (k === 0) { a = (lo - w.cy) * TS; b = (hi - w.cy) * TS; }
+        else if (k === 1) { a = -(hi - w.cy) * TS; b = -(lo - w.cy) * TS; }
+        else if (k === 2) { a = -(hi - w.cx) * TS; b = -(lo - w.cx) * TS; }
+        else { a = (lo - w.cx) * TS; b = (hi - w.cx) * TS; }
+        ctx.translate(dk * TS, 0);
+        ctx.beginPath(); ctx.moveTo(-dk * TS, 0); ctx.lineTo(TS * 3, -(dk + 3) * TS); ctx.lineTo(TS * 3, (dk + 3) * TS); ctx.closePath(); ctx.clip(); // 네 방향 물길이 겹치지 않게(대각선으로 나눈 세모)
+        if (el < hitAt) keepFrontDraw(a, b, dk * TS, Math.min(1, el / 150), TS, now, dpr, k * 3 + 1);
+        else { var q = (el - hitAt) / KEEP_WAVE_END_MS; if (q < 1) keepWallSplash(a, b, q, TS, dpr, k + 1); }
+        for (var fw = 1; fw <= 2; fw++) { // [2026-11-24] "물결치듯이" -- 뒤따르는 물결(벽에 닿으면 차례로 사라진다)
+          var dfw = d - fw * 1.6; if (dfw <= 0.5 || dfw >= dist[k]) continue;
+          ctx.save(); ctx.translate((dfw - dk) * TS, 0); keepFrontDraw(a, b, 0, 0.75 - fw * 0.2, TS, now, dpr, k * 3 + 1 + fw * 2.1, true); ctx.restore();
+        }
+        ctx.restore();
+      }
+      return true;
+    });
+  }
+  /** 월드보스(3x3) 가운데 칸 좌표(+0.5) -- 화면에 보이는 자리. */
+  function wbBossCenter() {
+    if (!map || !map.mobs) return null;
+    for (var i = 0; i < map.mobs.length; i++) { var m = map.mobs[i], t = map.mobTypes[m.k], p = m._p; if (t && t.boss && (t.foot | 0) === 3 && p && p.cx != null) return { x: p.cx + 1.5, y: p.cy + 1.5 }; }
+    return null;
+  }
+  var keepWaveSeenAt = 0;
   function zoneBoltDraw(k, zx, zy, zs, left, warn, TS, now) {
     if (left > warn) return; // [2026-11-24] "위험지역 예고는 0.5초면 충분" -- 예고 길이만큼만 보인다
     var cx = zx + zs / 2, cy = zy + zs / 2, r = zs / 2 * 0.85;
@@ -6256,10 +6475,10 @@ var TowerMine = (function () {
       if (d.sqPunch) sqPunchUntil = performance.now() + 1300; // [2026-11-23] 최강다람쥐 주먹질 그림 -- 1.3초(전투 턴 1초 사이가 끊기지 않게, "다음 동작 대기 짧게")
       if (d.sqStorm) { flashT0 = performance.now(); msg('⛈️ 최강다람쥐: 람쥐썬더!! (낙뢰 폭풍 3초)', 2600); } // [2026-11-23]
       if (d.sqDash) { sqDashFx.push({ a: d.sqDash, t0: performance.now() }); floats.push({ x: d.sqDash[2] + 1, y: d.sqDash[3] - 0.5, text: '⚡ 전광석화!', color: '#ffe84a', big: true, t0: performance.now() }); } // [2026-11-23] 최강다람쥐
-      if (d.push) { setPos(d.push[0], d.push[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('💦 물보라에 벽까지 밀려났어요!', 1600); } // [2026-11-23] 베히모스 물보라 분출(오른쪽/아래/위)
+      if (d.push) { var pc0 = curPos(performance.now()); surfStart(pc0.x, pc0.y, d.push[0], d.push[1]); setPos(d.push[0], d.push[1]); try { savePos(); } catch (e) { } msg('💦 물보라에 벽까지 밀려났어요!', 1600); } // [2026-11-24] 순간 이동 대신 파도에 실려 간다(시안 승인) // [2026-11-23] 베히모스 물보라 분출(오른쪽/아래/위)
       if (d.pull) { pullFx = null; setPos(d.pull[0], d.pull[1]); try { savePos(); } catch (e) { } flashT0 = performance.now(); msg('🪝 보스에게 끌려갔어요!', 1600); } // [2026-11-23]
       if (d.roar) { flashT0 = performance.now(); msg(wbInfo && wbInfo.bh ? '🐋 베히모스의 울음! 잠깐 움직일 수 없어요.' : '🐉 거룡의 포효! 잠깐 움직일 수 없어요.', 2000); } // [2026-11-15]
-      if (d.bhKnock) { flashT0 = performance.now(); msg('💦 물보라에 휩쓸렸어요!', 1500); } // [2026-11-23] 다음 위치 알림에서 중앙 평원으로
+      if (d.bhKnock && !d.push) { flashT0 = performance.now(); surfBoom.push({ x: P.x, y: P.y, ang: null, t0: performance.now() }); msg('💦 물보라에 휩쓸렸어요!', 1500); } // [2026-11-24] 성벽 너머로 -- 물기둥 // [2026-11-23] 다음 위치 알림에서 중앙 평원으로
       if (d.healUntil != null) healUntil = d.healUntil; // [2026-10-28] 재생의 장갑
       if (d.healed) floats.push({ x: P.x - 0.2, y: P.y - 0.5, text: '+' + d.healed + ' 💚', color: '#7cf08a', t0: performance.now() });
       if (d.veinBroken) veinBroke(); // [2026-10-28] 설산 동굴
@@ -8645,6 +8864,8 @@ var TowerMine = (function () {
         if (pl > 0) drawTextImg(textImg('🪝 ' + Math.ceil(pl / 100) / 10 + 's', 'bold ' + Math.round(12 * dpr) + 'px sans-serif', '#ffffff', 3 * dpr, true), ppx, ppy - TS * 1.1);
       }
     }
+    if (map.id === 'castle') { try { keepWavesDraw(TS, camX, camY, dpr, performance.now()); } catch (e) { } } // [2026-11-24] 물보라 분출 물결(장판 예고 아래)
+    try { surfFxDraw(TS, camX, camY, dpr); } catch (e) { }
     // [2026-11-15] 거룡 패턴 장판 -- 예고(칸이 안에서부터 차오름) -> 터짐(밝게 번쩍). zones = [x, y, 터지는 시각, 반경, 종류(0 화염 / 1 심연의 비 / 2 꼬리 휩쓸기 / 3 멸망의 숨결), 예고 길이]
     var wzAll = (wbInfo && wbInfo.zones && map.id === (wbInfo.map || 'castle') ? wbInfo.zones : []).concat(mapZones || []); // [2026-11-16] 탑 수문장 / 악마의 장판(위치 알림 zones)도 같은 그림
     if (wzAll.length) {
@@ -8653,6 +8874,7 @@ var TowerMine = (function () {
         var wz = wzAll[wzi], wzr = wz[3] == null ? 2 : wz[3], wzk = wz[4] | 0, wzw = wz[5] || 3000, wc = WZC[wzk] || WZC[0];
         var wzx = (wz[0] - wzr) * TS - camX, wzy = (wz[1] - wzr) * TS - camY, wzs = (wzr * 2 + 1) * TS, wleft = wz[2] - wtn;
         if (wzx > W || wzy > H || wzx + wzs < 0 || wzy + wzs < 0) continue;
+        if (wzk === 21 && wleft <= 0 && wleft > -1500 && keepWaveSeenAt !== wz[2]) { keepWaveSeenAt = wz[2]; var kwc = wbBossCenter() || { x: wz[0] + 0.5, y: wz[1] + 0.5 }; keepWaveStart(kwc.x, kwc.y, performance.now() + wleft); } // [2026-11-24] 물보라 분출 -- 네 방향 물결
         if (wzk === 25 || wzk === 26 || wzk === 27) { zoneBoltDraw(wzk, wzx, wzy, wzs, wleft, wzw, TS, now); continue; } // [2026-11-23] 최강다람쥐 번개는 그림으로
         if (wleft > 0) {
           var wp = Math.max(0, Math.min(1, 1 - wleft / wzw)), wg = wzs * wp, big3 = !!ZONE_BIG[wzk];
