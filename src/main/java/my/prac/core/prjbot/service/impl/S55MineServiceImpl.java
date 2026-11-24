@@ -9520,15 +9520,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  전사 = 속성마다 사용자 필살기 하나 -- 불 만검진(대상 자리에 MINE_MERC_U3_ZONE_R칸 칼날 장판 5초, 매초 x MINE_MERC_U3_ZONE_MUL) /
     //    번개 일섬참(대상 한 마리 x MINE_MERC_U3_SLASH_MUL + 기절 5초) / 물 각성(7초 동안 그 용병 피해 2배).
     //  궁수 = 5연발 화살(대상 한 마리에게 1초 안에 5발, 발마다 x MINE_MERC_U3_ARROW_MUL).
-    //  마법사 번개 = 천둥 폭풍(최강다람쥐 람쥐썬더처럼, 외치지는 않는다 -- 대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
+    //  마법사 번개 = 벼락([2026-11-25] "람쥐썬더처럼 여러 줄기가 아니라 큰 번개 하나를 떨어뜨리게" -- 대상에게 큰 번개 한 줄기: 대상 x MINE_MERC_U3_BIG_MUL,
+    //    둘레 MINE_MERC_U3_BIG_R칸 몬스터 x MINE_MERC_U3_BIG_SPLASH. 예전 천둥 폭풍은 둘레 3칸에 16줄기 x1.5).
     //  마법사 불 = 불새(시안 승인 -- 나 -> 대상 쪽으로 MINE_MERC_U3_PHX_LEN칸 날며 줄(폭 3칸)의 몬스터 x MINE_MERC_U3_PHX_MUL),
     //  마법사 물 = 빙결 감옥(시안 승인 -- 대상 둘레 MINE_MERC_U3_JAIL_R칸 몬스터를 MINE_MERC_U3_JAIL_MS 동안 가두고(기절), 깨질 때 x MINE_MERC_U3_JAIL_MUL).
-    static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 2_000L, MINE_MERC_U3_KAK_MS = 2_000L, MINE_MERC_U3_STUN_MS = 2_000L; // [2026-11-24] "전사 3차 검진/일격/버프 지속 2초로" (5초 / 기절 5초 / 7초 -> 2초)
-    static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BOLTS = 16, MINE_MERC_U3_BOLT_R = 3, MINE_MERC_U3_ARROWS = 5;
+    static final long MINE_MERC_U3_MS = 35_000L, /* [2026-11-25] "3차 스킬 쿨타임 35초로" (2분 -> 35초) */ MINE_MERC_U3_ZONE_MS = 2_000L, MINE_MERC_U3_KAK_MS = 2_000L, MINE_MERC_U3_STUN_MS = 2_000L; // [2026-11-24] "전사 3차 검진/일격/버프 지속 2초로" (5초 / 기절 5초 / 7초 -> 2초)
+    static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BIG_R = 1, MINE_MERC_U3_ARROWS = 5;
     static final int MINE_MERC_U3_PHX_LEN = 10, MINE_MERC_U3_JAIL_R = 2;
     static final long MINE_MERC_U3_JAIL_MS = 4_000L;
     static final double MINE_MERC_U3_PHX_MUL = 6.0, MINE_MERC_U3_JAIL_MUL = 5.0;
-    static final double MINE_MERC_U3_ZONE_MUL = 2.0, MINE_MERC_U3_SLASH_MUL = 12.0, MINE_MERC_U3_ARROW_MUL = 3.0, MINE_MERC_U3_BOLT_MUL = 1.5;
+    static final double MINE_MERC_U3_ZONE_MUL = 2.0, MINE_MERC_U3_SLASH_MUL = 12.0, MINE_MERC_U3_ARROW_MUL = 3.0, MINE_MERC_U3_BIG_MUL = 8.0, MINE_MERC_U3_BIG_SPLASH = 4.0;
     boolean mineMercU3Ok(String userName, int cls, int el) { return isMineAdmin(userName); } // [2026-11-24] 마법사 불/물도(불새/빙결 감옥)
     static long mineMercSkillCd(int cls, int el) { return cls == 2 && el == S5MineMobs.EL_WATER ? 12_000L : cls == 2 && el == S5MineMobs.EL_THUNDER ? 5_000L : MINE_MERC_SKILL_MS; }
     static final int[] MINE_MERC_ELS = { S5MineMobs.EL_FIRE, S5MineMobs.EL_WATER, S5MineMobs.EL_THUNDER };
@@ -9608,7 +9609,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return (el == S5MineMobs.EL_FIRE ? "파이어볼" : el == S5MineMobs.EL_THUNDER ? "라이트닝볼" : "아이스볼") + " · 한 명"; // [2026-11-06] 속성별 구슬
     }
     /** [2026-11-06] 2차 스킬 설명(단계 s2 = 1~3, 40/60/80레벨). */
-    /** [2026-11-24] 3차 스킬 {이름, 설명} -- 1레벨 마스터, 2분마다 저절로(지금은 관리자만, mineMercU3Ok). 수치는 MINE_MERC_U3_* 그대로. */
+    /** [2026-11-24] 3차 스킬 {이름, 설명} -- 1레벨 마스터, 35초마다 저절로(지금은 관리자만, mineMercU3Ok). 수치는 MINE_MERC_U3_* 그대로. */
     static String[] mineMercSkill3(int c, int el) {
         boolean fire = el == S5MineMobs.EL_FIRE, thunder = el == S5MineMobs.EL_THUNDER;
         if (c == 0) {
@@ -9618,7 +9619,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (c == 1) return new String[] { "5연발 화살", "한 마리에게 1초 안에 화살 " + MINE_MERC_U3_ARROWS + "발 -- 발마다 공격력 x" + fmtMul(MINE_MERC_U3_ARROW_MUL) };
         if (fire) return new String[] { "불새", "대상 쪽으로 " + MINE_MERC_U3_PHX_LEN + "칸을 날며 지나는 줄(폭 3칸)의 몬스터에게 공격력 x" + fmtMul(MINE_MERC_U3_PHX_MUL) + ", 지나간 자리에 불길" };
-        if (thunder) return new String[] { "천둥 폭풍", "대상 둘레 " + MINE_MERC_U3_BOLT_R + "칸에 번개 " + MINE_MERC_U3_BOLTS + "줄기(1.6초) -- 줄기마다 공격력 x" + fmtMul(MINE_MERC_U3_BOLT_MUL) };
+        if (thunder) return new String[] { "벼락", "대상에게 큰 번개 한 줄기 -- 공격력 x" + fmtMul(MINE_MERC_U3_BIG_MUL) + ", 둘레 " + MINE_MERC_U3_BIG_R + "칸 몬스터는 x" + fmtMul(MINE_MERC_U3_BIG_SPLASH) };
         return new String[] { "빙결 감옥", "대상 둘레 " + MINE_MERC_U3_JAIL_R + "칸 몬스터를 " + (MINE_MERC_U3_JAIL_MS / 1000) + "초 동안 얼음에 가두고(기절), 깨질 때 공격력 x" + fmtMul(MINE_MERC_U3_JAIL_MUL) };
     }
     static String fmtMul(double v) { return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v); }
@@ -10067,7 +10068,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             sk.put("pts", pts);
             mo.put("sk", sk);
         }
-        // [2026-11-24] 3차 스킬(관리자만, 2분마다) -- 위 설명(mineMercU3Ok 옆)
+        // [2026-11-24] 3차 스킬(관리자만, 35초마다) -- 위 설명(mineMercU3Ok 옆)
         java.util.Map<Integer, Integer> hitDl = new java.util.HashMap<>(); // 타격 번호 -> 화면에 숫자가 뜨는 늦춤(ms)
         boolean u3 = false;
         if (!boatSw && ps != null && mineMercU3Ok(userName, cls, el)) synchronized (ms) { if (now - ms.u3At >= MINE_MERC_U3_MS) { ms.u3At = now; u3 = true; } }
@@ -10117,18 +10118,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
                 synchronized (ms) { ms.jailIds = jail; ms.jailAt = now + MINE_MERC_U3_JAIL_MS; }
                 s3.put("k", "jail"); s3.put("nm", "빙결 감옥"); s3.put("ids", jailVis); s3.put("r", MINE_MERC_U3_JAIL_R); s3.put("ms", MINE_MERC_U3_JAIL_MS);
-            } else { // 람쥐썬더
-                for (int b = 0; b < MINE_MERC_U3_BOLTS; b++) {
-                    int bx = b < 4 ? pcx : pcx - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1), by = b < 4 ? pcy : pcy - MINE_MERC_U3_BOLT_R + RND.nextInt(MINE_MERC_U3_BOLT_R * 2 + 1);
-                    int dl = 150 + b * 100;
-                    p3.add(new int[] { bx, by, dl });
-                    for (int[] cd : cands) {
-                        int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
-                        if (bx < cd[1] || bx >= cd[1] + fo || by < cd[2] || by >= cd[2] + fo) continue;
-                        addCell.accept(new int[] { cd[0], bx, by }, MINE_MERC_U3_BOLT_MUL); hitDl.put(hitIds.size() - 1, dl);
-                    }
+            } else { // [2026-11-25] 벼락 -- 큰 번개 한 줄기(대상 x BIG_MUL, 둘레 BIG_R칸 x BIG_SPLASH). 예전 람쥐썬더식 16줄기는 없앰
+                boolean bigMain = false;
+                for (int[] cd : cands) {
+                    int fo = S5MineMobs.TYPES.get(map.mobs().get(cd[0]).type).foot();
+                    boolean main = cd[0] == pick;
+                    if (main) bigMain = true;
+                    int ddx = pcx < cd[1] ? cd[1] - pcx : Math.max(0, pcx - (cd[1] + fo - 1)), ddy = pcy < cd[2] ? cd[2] - pcy : Math.max(0, pcy - (cd[2] + fo - 1));
+                    if (!main && Math.max(ddx, ddy) > MINE_MERC_U3_BIG_R) continue;
+                    addCell.accept(new int[] { cd[0], main ? pcx : cd[1] + (fo - 1) / 2, main ? pcy : cd[2] + (fo - 1) / 2 }, main ? MINE_MERC_U3_BIG_MUL : MINE_MERC_U3_BIG_SPLASH); hitDl.put(hitIds.size() - 1, 260);
                 }
-                s3.put("k", "bolt"); s3.put("nm", "천둥 폭풍"); // [2026-11-24] "람쥐썬더라고 외치지 말아야" -- 이름도 바꿈
+                if (!bigMain) { addHit.accept(pick, MINE_MERC_U3_BIG_MUL); hitDl.put(hitIds.indexOf(pick), 260); }
+                p3.add(new int[] { pcx, pcy, 150, 1 }); // 4번째 1 = 큰 번개(화면)
+                s3.put("k", "bolt"); s3.put("nm", "벼락"); s3.put("r", MINE_MERC_U3_BIG_R);
             }
             s3.put("pts", p3);
             mo.put("sk3", s3);

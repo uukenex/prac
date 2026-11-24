@@ -5810,7 +5810,7 @@ var TowerMine = (function () {
           + list(m.skills2, m.s2, m.s2Max, lv2) + '</div>';
       if (m.s3Name && st.adminMaps) { // [2026-11-24] "용병 관리 화면에 3차 스킬 표시" -- 같은 날 "숨겨줘": 관리자에게만 -- 1레벨 마스터, 2분마다 저절로(지금은 관리자만)
         var ic3 = m.t === 0 ? (m.el === 6 ? '🌧️' : m.el === 2 ? '💥' : '🔥') : m.t === 1 ? '🏹' : m.el === 6 ? '🐦‍🔥' : m.el === 2 ? '🌩️' : '🧊', on3 = !!st.adminMaps;
-        h += '<div class="merc-sk' + (on3 ? '' : ' lock') + '"><div class="merc-sk-h"><span class="ico">' + ic3 + '</span><div><b>3차 스킬 · ' + m.s3Name + '</b><small>쿨타임 2분 · 1레벨 마스터 · 저절로 써요</small></div></div>'
+        h += '<div class="merc-sk' + (on3 ? '' : ' lock') + '"><div class="merc-sk-h"><span class="ico">' + ic3 + '</span><div><b>3차 스킬 · ' + m.s3Name + '</b><small>쿨타임 35초 · 1레벨 마스터 · 저절로 써요</small></div></div>'
             + '<div class="merc-sk-cur">' + (on3 ? '▶ ' : '🔒 아직 준비 중이에요 · ') + m.skill3 + '</div></div>';
       }
       h += '<div class="mine-smith-say"><small>피해는 모두 용병 공격력(공격력 ' + fmtN(m.atk) + ') 기준이에요. 끄거나 낮은 단계를 고르면 그만큼 약하게 공격해요.</small></div>';
@@ -7435,12 +7435,23 @@ var TowerMine = (function () {
     mercIceRings = mercIceRings.filter(function (r) { return now < r.until; });
     mercIceRings.forEach(function (r) { var a = Math.min(1, (now - r.t0) / 250, (r.until - now) / 400); if (a > 0) iceFloorDraw((r.x + 0.5) * TS - camX, (r.y + 0.5) * TS - camY, TS * (r.r + 0.5), now, a); });
   }
-  // [2026-11-24] 용병 3차 스킬 천둥 폭풍 -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
+  // [2026-11-24] 용병 3차 스킬 벼락(11-25 큰 번개 한 줄기, 예전 천둥 폭풍) -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
   var mercBolts = [];
   function mercBoltDraw(now, TS, camX, camY) {
-    mercBolts = mercBolts.filter(function (b) { return now - b.t0 < 420; });
+    mercBolts = mercBolts.filter(function (b) { return now - b.t0 < (b.big ? 760 : 420); });
     mercBolts.forEach(function (b, i) {
       var e = now - b.t0; if (e < 0) return;
+      if (b.big) { // [2026-11-25] "번개 마법사 3차는 한 개의 큰 번개" -- 굵고 긴 번개 한 줄기 + 둘레 칸만큼 땅이 번쩍, 퍼지는 고리
+        var bi = boltImg((b.x * 7 + b.y * 3) % 4, TS), bcx = b.x * TS - camX + TS / 2, bgy = b.y * TS - camY + TS * 0.8, ba = e < 220 ? 1 : Math.max(0, 1 - (e - 220) / 540), R = (b.big + 0.5) * TS, bw = bi.width * 2.4, bh = bi.height * 1.35, q = Math.min(1, e / 380);
+        ctx.save();
+        ctx.globalAlpha = ba * 0.55; ctx.fillStyle = '#fff6a0'; ctx.beginPath(); ctx.ellipse(bcx, bgy, R * (0.6 + 0.4 * q), R * 0.42 * (0.6 + 0.4 * q), 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = ba * (1 - q); ctx.strokeStyle = '#ffe84a'; ctx.lineWidth = 3 * dpr; ctx.beginPath(); ctx.ellipse(bcx, bgy, R * (0.4 + 1.0 * q), R * 0.42 * (0.4 + 1.0 * q), 0, 0, Math.PI * 2); ctx.stroke();
+        if (e < 120 && (Math.floor(e / 40) % 2 === 0)) { ctx.globalAlpha = 0.18; ctx.fillStyle = '#fffbe0'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height); } // 번쩍
+        ctx.globalAlpha = ba; ctx.drawImage(bi, bcx - bw / 2, bgy - bh, bw, bh);
+        if (e > 60 && e < 300) { ctx.globalAlpha = ba * 0.9; ctx.drawImage(boltImg((b.x * 7 + b.y * 3 + 1) % 4, TS), bcx - bw * 0.35, bgy - bh, bw * 0.7, bh); }
+        ctx.restore();
+        return;
+      }
       var img = boltImg((b.x * 7 + b.y * 3) % 4, TS), cx = b.x * TS - camX + TS / 2, gy = b.y * TS - camY + TS * 0.8, a = e < 120 ? 1 : Math.max(0, 1 - (e - 120) / 300), g = 0.5 + e / 400;
       ctx.save();
       ctx.globalAlpha = a * 0.75; ctx.fillStyle = '#fff6a0'; ctx.beginPath(); ctx.ellipse(cx, gy, TS * 0.7 * g, TS * 0.3 * g, 0, 0, Math.PI * 2); ctx.fill();
@@ -7753,7 +7764,7 @@ var TowerMine = (function () {
       else if (sk.k === 'tornado') { mercShot(2, 3, sk.r * 2 - 1, mx0, my0, sk.x, sk.y, null, t + 120, 'skill', m.tg); if (sk.until) mercRains.push({ x: sk.x, y: sk.y, r: sk.r, until: sk.until, el: 3, t0: t + 580, kind: 'tornado' }); } // [2026-11-18] 4초 남는 토네이도
       floats.push({ x: mx0, y: my0 - 1, text: '✨ ' + sk.nm, color: '#ffe9a8', big: true, t0: t });
     }
-    if (m.sk3) { // [2026-11-24] 3차 스킬(관리자 용병, 2분마다) -- 플레이어 필살기 그림 / 화살 다섯 발 / 람쥐썬더 번개
+    if (m.sk3) { // [2026-11-24] 3차 스킬(관리자 용병, 35초마다) -- 플레이어 필살기 그림 / 화살 다섯 발 / 큰 번개(벼락)
       var s3 = m.sk3, mx3 = mp.x == null ? P.x : mp.x, my3 = mp.y == null ? P.y : mp.y;
       if (s3.k === 'zone') ultFx.push({ k: 0, x: s3.x, y: s3.y, r: s3.r, t0: t, sw: ultSwords(s3.r, (t | 0) + 7), ms: s3.ms }); // [2026-11-24] 용병 만검진은 2초
       else if (s3.k === 'slash') ultFx.push({ k: 1, x: s3.x, y: s3.y, t0: t + 60, o: true });
@@ -7764,7 +7775,7 @@ var TowerMine = (function () {
         mercIceRings.push({ x: s3.x, y: s3.y, r: s3.r, t0: t, until: t + (s3.ms || 4000) });
         (s3.ids || []).forEach(function (id) { var jm = map && map.mobs && map.mobs[id], jt = jm && map.mobTypes[jm.k], jp = jm && jm._p; mercJails.push({ id: id, x: jp ? jp.x : s3.x, y: jp ? jp.y : s3.y, fo: jt && jt.boss ? jt.foot || 2 : 1, t0: t + 100, ms: s3.ms || 4000 }); });
       }
-      else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100 }); }); }
+      else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100, big: b[3] ? (s3.r || 1) : 0 }); }); } // [2026-11-25] 벼락 = 큰 번개 한 줄기(big = 둘레 칸)
       if (s3.k === 'slash' && s3.stun) floats.push({ x: s3.x, y: s3.y - 0.9, text: '💫 기절 ' + Math.round(s3.stun / 1000) + '초', color: '#ffe94a', t0: t + 300 });
       floats.push({ x: mx3, y: my3 - 1.3, text: '🌟 ' + s3.nm, color: '#ffd84a', big: true, t0: t });
     }
