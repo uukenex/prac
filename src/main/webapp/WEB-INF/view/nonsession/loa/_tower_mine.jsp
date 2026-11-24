@@ -5402,6 +5402,7 @@ var TowerMine = (function () {
     if (preExtraP) return preExtraP;
     var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
     ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { var h0 = charHD; try { [h0, !h0].forEach(function (h) { charHD = h; mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); } finally { charHD = h0; } }); }); }); // [2026-11-25] 몬스터도 64x64/16x16 둘 다 미리(해상도를 바꿔도 바로)
+    tasks.push(function () { try { [6, 2, 3].forEach(function (el) { for (var q = 0; q < 4; q++) { if (q < 3) fxBallHD(el, q); fxHitHD(el, q); fxSlashHD(el, q); } fxArrowHD(el); fxSwordHD(el); }); } catch (e) { } }); // [2026-11-25] 64x64 스킬 이펙트도 미리
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
     try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHdBuild(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
@@ -7487,11 +7488,153 @@ var TowerMine = (function () {
     else if (el === 2) { ctx.globalAlpha = a; ctx.strokeStyle = C[1]; ctx.lineWidth = 1.6 * s; for (var r = 0; r < 8; r++) { var a2 = r * Math.PI / 4 + 0.2, l1 = (r % 2 ? 2 : 3 + q * rad) * s; ctx.beginPath(); ctx.moveTo(x + Math.cos(a2) * 1.5 * s, y + Math.sin(a2) * 1.5 * s); ctx.lineTo(x + Math.cos(a2) * l1 * 2, y + Math.sin(a2) * l1 * 2); ctx.stroke(); } fxDot(x, y, 2.5 * s, '#ffffff', a); }
     else { ctx.globalAlpha = a; ctx.strokeStyle = C[1]; ctx.lineWidth = 1.5 * s; ctx.beginPath(); ctx.ellipse(x, y + 2 * s, (3 + q * rad) * s, (1.5 + q * rad * 0.45) * s, 0, 0, Math.PI * 2); ctx.stroke(); for (var w2 = 0; w2 < 6; w2++) { var an2 = -Math.PI * (0.15 + w2 * 0.14); fxDot(x + Math.cos(an2) * (2 + q * rad) * s, y + Math.sin(an2) * (3 + q * rad * 0.8) * s + q * q * 6 * s, 1.3 * s, C[0], a); } }
   }
+  // [2026-11-25] "스킬 이펙트 64x64"(시안 승인) -- 캐릭터 그림 옵션이 64x64(charHD)일 때만. 용병 평타/스킬 그림을 64x64 도트로(캐릭터·몬스터 64x64와 같은 결). 모양을 그린 뒤 알파를 0/반투명/불투명 세 단계로 잘라 도트처럼.
+  //  오른쪽을 보고 그린다(날아가는 것은 그리는 쪽에서 돌린다). el: 6 불 / 2 번개 / 3 물(얼음).
+  var FXH = {}, FXH_PAL = { 6: ['#ffffff', '#fff2a8', '#ffb02e', '#ff6a1a', '#c8280e', '#6a1206'], 2: ['#ffffff', '#fffbd0', '#fff27a', '#ffc21a', '#d88a00', '#6a4400'], 3: ['#ffffff', '#e8f8ff', '#9fe0ff', '#4ab0f0', '#2a6ad0', '#163a7a'] };
+  function fxhC() { var c = document.createElement('canvas'); c.width = 64; c.height = 64; return c; }
+  function fxhCut(c, soft) { // 알파 세 단계(0 / 0.5 / 1) -- soft면 반투명을 남겨 빛 번짐
+    var g = c.getContext('2d'), d = g.getImageData(0, 0, 64, 64), a = d.data;
+    for (var i = 3; i < a.length; i += 4) a[i] = a[i] > 150 ? 255 : soft && a[i] > 40 ? 128 : 0;
+    g.putImageData(d, 0, 0); return c;
+  }
+  function fxhRng(seed) { var s = seed >>> 0 || 1; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return (s >>> 8) / 16777216; }; }
+  function fxhDisc(g, x, y, r, col) { if (!(r > 0)) return; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+  function fxhLayer(fn) { var c = fxhC(); fn(c.getContext('2d')); return fxhCut(c, false); }
+  function fxhGlow(fn) { var c = fxhC(); fn(c.getContext('2d')); return fxhCut(c, true); }
+  function fxhOut(c, col) { // 바깥 외곽선 1px
+    var o = fxhC(), g = o.getContext('2d'), src = c.getContext('2d').getImageData(0, 0, 64, 64).data, d = g.createImageData(64, 64), a = d.data, rgb = [parseInt(col.substr(1, 2), 16), parseInt(col.substr(3, 2), 16), parseInt(col.substr(5, 2), 16)];
+    for (var y = 0; y < 64; y++) for (var x = 0; x < 64; x++) {
+      var i = (y * 64 + x) * 4; if (src[i + 3] === 255) continue;
+      var n = 0; for (var dy = -1; dy <= 1 && !n; dy++) for (var dx = -1; dx <= 1; dx++) { var xx = x + dx, yy = y + dy; if ((dx || dy) && xx >= 0 && yy >= 0 && xx < 64 && yy < 64 && src[(yy * 64 + xx) * 4 + 3] === 255) { n = 1; break; } }
+      if (n) { a[i] = rgb[0]; a[i + 1] = rgb[1]; a[i + 2] = rgb[2]; a[i + 3] = 255; }
+    }
+    g.putImageData(d, 0, 0); g.drawImage(c, 0, 0); return o;
+  }
+  function fxhStack(list) { var c = fxhC(), g = c.getContext('2d'); list.forEach(function (l) { if (l) g.drawImage(l, 0, 0); }); return c; }
+  /** 마법사 평타 구슬(오른쪽으로 날아감) -- f 0~2 일렁임. */
+  function fxBallHD(el, f) {
+    var key = 'ball' + el + '_' + f; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[el] || FXH_PAL[6], R = fxhRng(el * 31 + f * 7 + 3), cx = 42, cy = 32, L = [];
+    if (el === 6) { // 파이어볼 -- 뒤로 갈라지는 불꽃 꼬리
+      L.push(fxhGlow(function (g) { fxhDisc(g, cx, cy, 15, 'rgba(255,110,30,0.4)'); for (var i = 0; i < 4; i++) fxhDisc(g, cx - 12 - i * 7, cy + Math.sin(f * 2 + i) * 3, 9 - i * 1.6, 'rgba(255,90,20,0.35)'); }));
+      var tail = function (g, w, col) { g.fillStyle = col; g.beginPath(); g.moveTo(cx + 2, cy - w); for (var i = 0; i <= 6; i++) { var x = cx - i * 6.5, j = Math.sin(f * 2.1 + i * 1.3) * (2 + i * 0.6); g.lineTo(x, cy - w * (1 - i / 7) + j); } for (var k = 6; k >= 0; k--) { var x2 = cx - k * 6.5, j2 = Math.sin(f * 2.1 + k * 1.3 + 1.5) * (2 + k * 0.6); g.lineTo(x2, cy + w * (1 - k / 7) + j2); } g.closePath(); g.fill(); };
+      L.push(fxhLayer(function (g) { tail(g, 11, P[4]); fxhDisc(g, cx, cy, 11, P[4]); }));
+      L.push(fxhLayer(function (g) { tail(g, 8, P[3]); fxhDisc(g, cx, cy, 9, P[3]); }));
+      L.push(fxhLayer(function (g) { tail(g, 5, P[2]); fxhDisc(g, cx + 1, cy - 1, 6.5, P[2]); }));
+      L.push(fxhLayer(function (g) { fxhDisc(g, cx + 2, cy - 2, 4, P[1]); fxhDisc(g, cx + 3, cy - 3, 2, P[0]); }));
+      L.push(fxhLayer(function (g) { for (var i = 0; i < 5; i++) { g.fillStyle = i % 2 ? P[2] : P[1]; g.fillRect(Math.round(cx - 14 - R() * 26), Math.round(cy - 10 + R() * 20), 2, 2); } }));
+    } else if (el === 2) { // 라이트닝볼 -- 노란 구슬 + 사방으로 튀는 번개 가닥
+      L.push(fxhGlow(function (g) { fxhDisc(g, cx, cy, 16, 'rgba(255,230,60,0.4)'); }));
+      L.push(fxhLayer(function (g) {
+        g.strokeStyle = P[3]; g.lineWidth = 2.2; g.lineJoin = 'miter';
+        for (var b = 0; b < 4; b++) { var an = f * 0.9 + b * 1.57 + R() * 0.5, x = cx, y = cy; g.beginPath(); g.moveTo(x, y); for (var s = 1; s <= 4; s++) { x = cx + Math.cos(an) * s * 4.6 + (R() - 0.5) * 5; y = cy + Math.sin(an) * s * 4.6 + (R() - 0.5) * 5; g.lineTo(x, y); } g.stroke(); }
+        for (var t = 1; t <= 4; t++) { g.fillStyle = t % 2 ? P[2] : P[0]; g.fillRect(Math.round(cx - 12 - t * 5 + R() * 3), Math.round(cy - 3 + (R() - 0.5) * 8), 3, 3); }
+      }));
+      L.push(fxhLayer(function (g) { fxhDisc(g, cx, cy, 9, P[4]); }));
+      L.push(fxhLayer(function (g) { fxhDisc(g, cx, cy, 7, P[2]); }));
+      L.push(fxhLayer(function (g) { fxhDisc(g, cx - 1, cy - 1, 4.5, P[1]); fxhDisc(g, cx - 1, cy - 2, 2.2, P[0]); g.strokeStyle = P[0]; g.lineWidth = 1.2; g.beginPath(); var x = cx - 6, y = cy - 2; g.moveTo(x, y); g.lineTo(x + 4, y - 3); g.lineTo(x + 6, y + 1); g.lineTo(x + 11, y - 2); g.stroke(); }));
+    } else { // 아이스볼 -- 다이아몬드 얼음 결정 + 서리 조각 꼬리
+      L.push(fxhGlow(function (g) { fxhDisc(g, cx, cy, 15, 'rgba(120,210,255,0.4)'); }));
+      var dia = function (g, x, y, rx, ry, col) { g.fillStyle = col; g.beginPath(); g.moveTo(x, y - ry); g.lineTo(x + rx, y); g.lineTo(x, y + ry); g.lineTo(x - rx, y); g.closePath(); g.fill(); };
+      L.push(fxhLayer(function (g) { for (var i = 1; i <= 5; i++) dia(g, cx - 8 - i * 5.5, cy + Math.sin(i * 2.3 + f) * 4, 3.2 - i * 0.35, 4.4 - i * 0.5, i % 2 ? P[2] : P[1]); }));
+      L.push(fxhLayer(function (g) { g.save(); g.translate(cx, cy); g.rotate(f * 0.26); dia(g, 0, 0, 10, 12, P[4]); g.restore(); }));
+      L.push(fxhLayer(function (g) { g.save(); g.translate(cx, cy); g.rotate(f * 0.26); dia(g, 0, 0, 8, 10, P[3]); dia(g, -1, -1, 5, 7, P[2]); g.restore(); }));
+      L.push(fxhLayer(function (g) { g.save(); g.translate(cx, cy); g.rotate(f * 0.26); dia(g, -2, -3, 2.5, 4, P[1]); g.fillStyle = P[0]; g.fillRect(-3, -6, 2, 3); g.fillRect(-1, -1, 1, 6); g.fillRect(-4, 2, 7, 1); g.restore(); }));
+    }
+    return (FXH[key] = fxhStack(L));
+  }
+  /** 맞은 자리 -- f 0~3(터지고 흩어짐). */
+  function fxHitHD(el, f) {
+    var key = 'hit' + el + '_' + f; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[el] || FXH_PAL[6], q = f / 3, R = fxhRng(el * 13 + 5), c = 32, L = [];
+    if (el === 6) {
+      L.push(fxhGlow(function (g) { if (f < 2) fxhDisc(g, c, c, 12 + f * 6, 'rgba(255,120,30,0.4)'); }));
+      L.push(fxhLayer(function (g) { var r0 = 10 - f * 3; if (r0 > 0) { fxhDisc(g, c, c, r0 + 3, P[4]); fxhDisc(g, c, c, r0 + 1, P[3]); fxhDisc(g, c, c, r0 - 1.5, P[1]); } }));
+      L.push(fxhLayer(function (g) { for (var i = 0; i < 11; i++) { var an = R() * Math.PI * 2, d = 6 + q * (14 + R() * 10), sz = f < 3 ? 3 - (i % 2) : 2; g.fillStyle = [P[1], P[2], P[3]][i % 3]; g.fillRect(Math.round(c + Math.cos(an) * d), Math.round(c + Math.sin(an) * d - q * 6), sz, sz); } }));
+    } else if (el === 2) {
+      L.push(fxhGlow(function (g) { if (f < 2) fxhDisc(g, c, c, 10 + f * 6, 'rgba(255,240,80,0.45)'); }));
+      L.push(fxhLayer(function (g) {
+        g.strokeStyle = f < 2 ? P[2] : P[3]; g.lineWidth = f < 2 ? 2.4 : 1.6;
+        for (var r = 0; r < 8; r++) { var an = r * Math.PI / 4 + 0.2, l0 = 3 + q * 8, l1 = (r % 2 ? 9 : 15) + q * 10; g.beginPath(); g.moveTo(c + Math.cos(an) * l0, c + Math.sin(an) * l0); g.lineTo(c + Math.cos(an + 0.12) * (l0 + l1) * 0.55, c + Math.sin(an + 0.12) * (l0 + l1) * 0.55); g.lineTo(c + Math.cos(an) * l1, c + Math.sin(an) * l1); g.stroke(); }
+        if (f < 2) { fxhDisc(g, c, c, 5 - f * 2, P[0]); }
+      }));
+    } else {
+      L.push(fxhGlow(function (g) { if (f < 2) fxhDisc(g, c, c, 10 + f * 6, 'rgba(140,220,255,0.45)'); }));
+      L.push(fxhLayer(function (g) {
+        for (var i = 0; i < 8; i++) { var an = i * 0.785 + 0.3, d = 4 + q * 18, x = c + Math.cos(an) * d, y = c + Math.sin(an) * d + q * q * 6, s = 4 - q * 1.5; g.fillStyle = i % 2 ? P[0] : P[2]; g.beginPath(); g.moveTo(x, y - s); g.lineTo(x + s * 0.6, y); g.lineTo(x, y + s); g.lineTo(x - s * 0.6, y); g.fill(); }
+        if (f < 2) { g.strokeStyle = P[3]; g.lineWidth = 2; g.beginPath(); g.ellipse(c, c + 4, 6 + f * 8, 3 + f * 3, 0, 0, Math.PI * 2); g.stroke(); fxhDisc(g, c, c, 4 - f * 1.5, P[1]); }
+      }));
+    }
+    return (FXH[key] = fxhStack(L));
+  }
+  /** 궁수 화살(오른쪽) -- 속성 깃털과 화살촉 빛. */
+  function fxArrowHD(el) {
+    var key = 'arr' + el; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[el] || FXH_PAL[6];
+    var c = fxhStack([
+      fxhGlow(function (g) { g.fillStyle = el === 6 ? 'rgba(255,120,30,0.4)' : el === 2 ? 'rgba(255,235,70,0.4)' : 'rgba(120,210,255,0.4)'; g.fillRect(4, 28, 56, 8); fxhDisc(g, 54, 32, 7, g.fillStyle); }),
+      fxhLayer(function (g) { g.fillStyle = '#6a4424'; g.fillRect(12, 31, 38, 3); g.fillStyle = '#9a6a3a'; g.fillRect(12, 31, 38, 1); }), // 화살대
+      fxhLayer(function (g) { g.fillStyle = P[4]; g.beginPath(); g.moveTo(6, 25); g.lineTo(17, 31); g.lineTo(17, 33); g.lineTo(6, 39); g.lineTo(10, 32); g.closePath(); g.fill(); g.fillStyle = P[2]; g.beginPath(); g.moveTo(8, 27); g.lineTo(16, 31); g.lineTo(11, 31); g.closePath(); g.fill(); g.beginPath(); g.moveTo(8, 37); g.lineTo(16, 33); g.lineTo(11, 33); g.closePath(); g.fill(); }), // 깃
+      fxhLayer(function (g) { g.fillStyle = '#5a6470'; g.beginPath(); g.moveTo(48, 27); g.lineTo(60, 32); g.lineTo(48, 37); g.lineTo(51, 32); g.closePath(); g.fill(); g.fillStyle = '#d8e0ea'; g.beginPath(); g.moveTo(50, 29); g.lineTo(58, 32); g.lineTo(51, 32); g.closePath(); g.fill(); g.fillStyle = P[1]; g.fillRect(57, 31, 2, 2); })
+    ]);
+    return (FXH[key] = fxhOut(c, '#140d0a'));
+  }
+  /** 전사 이기어검(오른쪽으로 날아가는 빛나는 검). */
+  function fxSwordHD(el) {
+    var key = 'sw' + el; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[el] || FXH_PAL[6];
+    var c = fxhStack([
+      fxhGlow(function (g) { g.fillStyle = el === 6 ? 'rgba(255,120,30,0.42)' : el === 2 ? 'rgba(255,235,70,0.42)' : 'rgba(120,210,255,0.42)'; g.beginPath(); g.moveTo(2, 26); g.lineTo(62, 31); g.lineTo(62, 33); g.lineTo(2, 38); g.closePath(); g.fill(); }),
+      fxhLayer(function (g) { g.fillStyle = '#5a3a1a'; g.fillRect(6, 30, 10, 5); g.fillStyle = '#8a5a2a'; g.fillRect(7, 31, 8, 1); g.fillStyle = '#e0b040'; g.fillRect(4, 30, 3, 5); }), // 손잡이 + 끝
+      fxhLayer(function (g) { g.fillStyle = '#d8a830'; g.fillRect(16, 25, 4, 15); g.fillStyle = '#ffe07a'; g.fillRect(16, 25, 1, 15); }), // 코등이
+      fxhLayer(function (g) { g.fillStyle = '#a8b4c4'; g.beginPath(); g.moveTo(20, 28); g.lineTo(52, 28); g.lineTo(61, 32); g.lineTo(52, 37); g.lineTo(20, 37); g.closePath(); g.fill(); }), // 칼날
+      fxhLayer(function (g) { g.fillStyle = '#eef4fb'; g.beginPath(); g.moveTo(20, 29); g.lineTo(52, 29); g.lineTo(59, 32); g.lineTo(20, 32); g.closePath(); g.fill(); g.fillStyle = P[2]; g.fillRect(21, 32, 30, 1); g.fillStyle = P[0]; g.fillRect(26, 30, 18, 1); })
+    ]);
+    return (FXH[key] = fxhOut(c, '#140d0a'));
+  }
+  /** 전사 베기 -- 초승달 칼자국 f 0~3(그어지고 사라짐). */
+  function fxSlashHD(el, f) {
+    var key = 'sl' + el + '_' + f; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[el] || FXH_PAL[6], a0 = -2.5, sweep = [1.1, 2.3, 2.5, 2.5][f], cx = 30, cy = 36, R0 = 24;
+    var arc = function (g, r, w, col, cut) { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.arc(cx, cy, r, a0 + (cut || 0), a0 + sweep); g.stroke(); };
+    var cut = f === 3 ? 1.4 : f === 2 ? 0.5 : 0;
+    var c = fxhStack([
+      fxhGlow(function (g) { if (f < 3) arc(g, R0, 14, el === 6 ? 'rgba(255,120,30,0.4)' : el === 2 ? 'rgba(255,235,70,0.4)' : 'rgba(120,210,255,0.4)', cut); }),
+      fxhLayer(function (g) { arc(g, R0, f === 3 ? 4 : 8, P[4], cut); }),
+      fxhLayer(function (g) { arc(g, R0 + 1, f === 3 ? 2 : 5, P[2], cut); }),
+      fxhLayer(function (g) { if (f < 3) arc(g, R0 + 2, 2, P[0], cut + 0.15); }),
+      fxhLayer(function (g) { if (f >= 1) { var R = fxhRng(el * 5 + f); for (var i = 0; i < 6; i++) { var an = a0 + sweep - R() * 1.2, d = R0 + 4 + R() * 8 + f * 2; g.fillStyle = i % 2 ? P[1] : P[2]; g.fillRect(Math.round(cx + Math.cos(an) * d), Math.round(cy + Math.sin(an) * d), 2, 2); } } })
+    ]);
+    return (FXH[key] = c);
+  }
+  /** 낙뢰(용병 번개) -- 위에서 내리꽂는 번개 기둥 f 0~3. */
+  function fxBoltHD(f) {
+    var key = 'bolt' + f; if (FXH[key]) return FXH[key];
+    var P = FXH_PAL[2], R = fxhRng(91 + (f >> 1) * 17), pts = [[34, 0]];
+    for (var y = 6; y < 54; y += 6) pts.push([28 + R() * 12, y]); pts.push([32, 54]);
+    var line = function (g, w, col) { g.strokeStyle = col; g.lineWidth = w; g.lineJoin = 'miter'; g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); g.stroke(); };
+    var c = fxhStack([
+      fxhGlow(function (g) { if (f < 3) { line(g, 14, 'rgba(255,240,90,0.42)'); fxhDisc(g, 32, 54, 13, 'rgba(255,240,90,0.42)'); } }),
+      fxhLayer(function (g) { if (f < 3) { line(g, f === 2 ? 3 : 6, P[3]); line(g, f === 2 ? 1.5 : 3, P[0]); if (f === 1) { g.strokeStyle = P[2]; g.lineWidth = 2; g.beginPath(); g.moveTo(pts[3][0], pts[3][1]); g.lineTo(pts[3][0] + 9, pts[3][1] + 7); g.lineTo(pts[3][0] + 7, pts[3][1] + 14); g.stroke(); } } }),
+      fxhLayer(function (g) { // 땅에 닿은 자리 -- 그을음 + 스파크
+        g.fillStyle = '#3a2a1a'; g.beginPath(); g.ellipse(32, 56, 10 + f * 2, 3 + f * 0.6, 0, 0, Math.PI * 2); g.fill();
+        var S = fxhRng(7 + f); for (var i = 0; i < 8; i++) { var an = -Math.PI * (0.1 + S() * 0.8), d = 4 + f * 5 + S() * 4; g.fillStyle = i % 2 ? P[2] : P[0]; g.fillRect(Math.round(32 + Math.cos(an) * d), Math.round(54 + Math.sin(an) * d * 0.7), 2, 2); }
+        if (f < 2) fxhDisc(g, 32, 54, 5 - f * 2, P[1]);
+      })
+    ]);
+    return (FXH[key] = c);
+  }
+  function fxHdAt(img, x, y, ang, ax, ay, size) { // 64x64 그림의 (ax, ay)를 화면 (x, y)에, ang만큼 돌려 size 크기로
+    var sc = size / 64, sm = ctx.imageSmoothingEnabled; ctx.save(); ctx.translate(x, y); if (ang) ctx.rotate(ang); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = 1;
+    ctx.drawImage(img, -ax * sc, -ay * sc, 64 * sc, 64 * sc); ctx.restore(); ctx.imageSmoothingEnabled = sm;
+  }
+  function fxHdHit(el, ex, ey, q, size) { if (q >= 0 && q < 1) fxHdAt(fxHitHD(el, Math.min(3, Math.floor(q * 4))), ex, ey, 0, 32, 32, size); }
   function mercFxOne(f, now, TS, camX, camY) {
     var C = elc(f.el), s = TS / 16, fly = mercFly(f), age = now - f.t0, k = fly ? age / fly : 1;
     var P2 = function (x, y) { return [x * TS - camX + TS / 2, y * TS - camY + TS / 2]; };
     var TP = mobAt(f.tid, f.x1, f.y1), E = P2(TP[0], TP[1]), S0 = P2(f.x0, f.y0), ex = E[0], ey = E[1], sx = S0[0], sy = S0[1];
     if (f.k === 'ball') { // [2026-11-06] 마법사 평타 -- "속성별로 파이어볼 / 라이트닝볼 / 아이스볼"
+      if (charHD) { if (k < 1) fxHdAt(fxBallHD(f.el, Math.floor(age / 90) % 3), sx + (ex - sx) * k, sy + (ey - sy) * k, Math.atan2(ey - sy, ex - sx), 42, 32, TS * 1.1); else fxHdHit(f.el, ex, ey, (age - fly) / 320, TS * 1.3); return; } // [2026-11-25] 64x64
       if (k < 1) {
         var bx0 = sx + (ex - sx) * k, by0 = sy + (ey - sy) * k, ux0 = (ex - sx) / (Math.hypot(ex - sx, ey - sy) || 1), uy0 = (ey - sy) / (Math.hypot(ex - sx, ey - sy) || 1);
         if (f.el === 2) { // 라이트닝볼 -- 지지직 튀는 전기 구슬
@@ -7522,6 +7665,7 @@ var TowerMine = (function () {
         if (kk < 1) {
           var side = i % 2 ? 1 : -1, cx2 = sx + (E2[0] - sx) * kk - Math.sin(kk * Math.PI) * (E2[1] - sy) * 0.25 * side, cy2 = sy + (E2[1] - sy) * kk + Math.sin(kk * Math.PI) * (E2[0] - sx) * 0.25 * side - Math.sin(kk * Math.PI) * TS * 0.6;
           var ang = Math.atan2(E2[1] - cy2, E2[0] - cx2);
+          if (charHD) { fxHdAt(fxSwordHD(f.el), cx2, cy2, ang, 40, 32, TS * 0.95); return; } // [2026-11-25] 64x64
           ctx.save(); ctx.translate(cx2, cy2); ctx.rotate(ang);
           ctx.globalAlpha = 0.35; ctx.fillStyle = C[1]; ctx.fillRect(-14 * s, -2.5 * s, 22 * s, 5 * s);
           ctx.globalAlpha = 1; ctx.fillStyle = '#eef4fb'; ctx.beginPath(); ctx.moveTo(10 * s, 0); ctx.lineTo(-3 * s, -1.6 * s); ctx.lineTo(-3 * s, 1.6 * s); ctx.fill();
@@ -7529,12 +7673,13 @@ var TowerMine = (function () {
           ctx.fillStyle = '#ffd23f'; ctx.fillRect(-4.5 * s, -3 * s, 1.5 * s, 6 * s);
           ctx.fillStyle = '#5a3a1a'; ctx.fillRect(-8.5 * s, -0.9 * s, 4 * s, 1.8 * s);
           ctx.restore();
-        } else fxBurst(E2[0], E2[1], f.el, Math.min(1, (kk - 1) * 260 / 300), 8, s);
+        } else if (charHD) fxHdHit(f.el, E2[0], E2[1], (kk - 1) * 260 / 300, TS * 1.2); else fxBurst(E2[0], E2[1], f.el, Math.min(1, (kk - 1) * 260 / 300), 8, s);
       });
       return;
     }
     if (f.c === 0) { // 전사: 속성 베기(검기 칼날은 플레이어 검기 그림 auraFx로 -- mercApply)
       var a = Math.min(1, age / 150), al = 1 - Math.max(0, (age - 150) / 320);
+      if (f.k !== 'ring' && charHD) { if (age < 470) fxHdAt(fxSlashHD(f.el, age < 60 ? 0 : age < 150 ? 1 : age < 300 ? 2 : 3), ex, ey, 0, 30, 36, TS * 1.4); return; } // [2026-11-25] 64x64
       if (f.k !== 'ring') {
         if (al > 0) {
           ctx.globalAlpha = al; ctx.lineCap = 'round';
@@ -7570,6 +7715,11 @@ var TowerMine = (function () {
             fxDot(hx, hy, 2.4 * s, C[0], 1);
           } else fxBurst(tx, ty, 6, (ra - 1) / 1.2, 8, s);
         }
+        return;
+      }
+      if (charHD) { // [2026-11-25] 64x64 화살
+        if (k < 1) fxHdAt(fxArrowHD(f.el), sx + (ex - sx) * k, sy + (ey - sy) * k - Math.sin(k * Math.PI) * TS * 0.3, Math.atan2(ey - sy, ex - sx) + (k - 0.5) * -0.5, 50, 32, TS * 0.9);
+        else fxHdHit(f.el, ex, ey, (age - fly) / 320, TS * 1.1);
         return;
       }
       if (k < 1) {
