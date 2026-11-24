@@ -7429,7 +7429,7 @@ var TowerMine = (function () {
     }
     if (m.sk3) { // [2026-11-24] 3차 스킬(관리자 용병, 2분마다) -- 플레이어 필살기 그림 / 화살 다섯 발 / 람쥐썬더 번개
       var s3 = m.sk3, mx3 = mp.x == null ? P.x : mp.x, my3 = mp.y == null ? P.y : mp.y;
-      if (s3.k === 'zone') ultFx.push({ k: 0, x: s3.x, y: s3.y, r: s3.r, t0: t, sw: ultSwords(s3.r, (t | 0) + 7) });
+      if (s3.k === 'zone') ultFx.push({ k: 0, x: s3.x, y: s3.y, r: s3.r, t0: t, sw: ultSwords(s3.r, (t | 0) + 7), ms: s3.ms }); // [2026-11-24] 용병 만검진은 2초
       else if (s3.k === 'slash') ultFx.push({ k: 1, x: s3.x, y: s3.y, t0: t + 60, o: true });
       else if (s3.k === 'kak') mp.kakT0 = t;
       else if (s3.k === 'arrow5') for (var ai = 0; ai < 5; ai++) mercShot(1, m.el, m.st, mx3, my3, s3.x, s3.y, null, t + ai * 190, null, m.tg);
@@ -8570,10 +8570,10 @@ var TowerMine = (function () {
   }
   /** 바닥 장판(몬스터·캐릭터보다 먼저). */
   function ultFloorDraw(now, TS, camX, camY) {
-    ultFx = ultFx.filter(function (f) { return now - f.t0 < (f.k === 0 ? ULT_ZONE_MS + 400 : f.k === 2 ? 320 : 1100); });
+    ultFx = ultFx.filter(function (f) { return now - f.t0 < (f.k === 0 ? (f.ms || ULT_ZONE_MS) + 400 : f.k === 2 ? 320 : 1100); });
     ultFx.forEach(function (f) {
       if (f.k !== 0) return;
-      var t = now - f.t0, cx = f.x * TS - camX + TS / 2, cy = f.y * TS - camY + TS / 2 + TS * 0.2, rad = TS * (f.r + 0.5), fo = t > ULT_ZONE_MS ? Math.max(0, 1 - (t - ULT_ZONE_MS) / 400) : 1, on = Math.min(1, t / 250);
+      var t = now - f.t0, cx = f.x * TS - camX + TS / 2, cy = f.y * TS - camY + TS / 2 + TS * 0.2, rad = TS * (f.r + 0.5), zms = f.ms || ULT_ZONE_MS, fo = t > zms ? Math.max(0, 1 - (t - zms) / 400) : 1, on = Math.min(1, t / 250);
       ctx.save();
       ctx.globalAlpha = 0.35 * on * fo;
       var gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad); gr.addColorStop(0, 'rgba(255,214,120,.55)'); gr.addColorStop(1, 'rgba(255,150,40,.1)');
@@ -8591,7 +8591,7 @@ var TowerMine = (function () {
     ultFx.forEach(function (f) {
       var t = now - f.t0;
       if (f.k === 0) {
-        var sw = ultImg('sword'), fo = t > ULT_ZONE_MS ? Math.max(0, 1 - (t - ULT_ZONE_MS) / 400) : 1, sm = ctx.imageSmoothingEnabled;
+        var sw = ultImg('sword'), fo = t > (f.ms || ULT_ZONE_MS) ? Math.max(0, 1 - (t - (f.ms || ULT_ZONE_MS)) / 400) : 1, sm = ctx.imageSmoothingEnabled;
         ctx.imageSmoothingEnabled = false;
         f.sw.forEach(function (s) {
           var e = t - s.t;

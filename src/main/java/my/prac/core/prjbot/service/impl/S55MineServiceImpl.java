@@ -3796,6 +3796,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_SQ_MEDALS = 1 /* [2026-11-23] "다람쥐메달 보상은 1개만" */, MINE_ZK_SQ_BOLT = 25, MINE_ZK_SQ_SHOCK = 26, MINE_ZK_SQ_STORM = 27;
     // [2026-11-23] 같은 날 "맵 전체에 번개가 초당 10번, 3초 동안" -- ⛈️ 낙뢰 폭풍: MINE_SQ_STORM_MS마다 굴 전체 곳곳에 3x3 낙뢰 30줄기(0.1초 간격), 한 줄기 최대 체력 6%
     static final long MINE_SQ_STORM_MS = 15_000L, MINE_SQ_STORM_FIRST_MS = 10_000L;
+    static final long MINE_SQ_STORM_DELAY_MS = 1_000L; // [2026-11-24] 가운데에서 외친 뒤 첫 줄기까지
+    /** 굴 가운데에서 가장 가까운, 2x2가 설 수 있는 칸(왼쪽 위). */
+    static int[] mineSqCenter(S5MineMap map) {
+        int cx = map.w / 2 - 1, cy = map.h / 2 - 1;
+        for (int d = 0; d <= 6; d++) for (int dy = -d; dy <= d; dy++) for (int dx = -d; dx <= d; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) != d) continue;
+            int x = cx + dx, y = cy + dy;
+            if (map.walkable(x, y) && map.walkable(x + 1, y) && map.walkable(x, y + 1) && map.walkable(x + 1, y + 1)) return new int[] { x, y };
+        }
+        return null;
+    }
     static final String[][] MINE_SQ_GIFT_COST = { { S5MineMap.BAR_CODES[3], "1" } };
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_SQ_T = new java.util.concurrent.ConcurrentHashMap<>(); // 이름 -> {다음 전광석화, 다음 벼락, 다음 전기충격}
     void mineSqTurn(String userName, S5MineMap map, MineEngage e, int x, int y, long now, HashMap<String, Object> out) {
@@ -3807,11 +3818,21 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             long[] t = MINE_SQ_T.computeIfAbsent(userName, k -> new long[] { now + 1_500L, now + 4_000L, now + 6_000L, now + MINE_SQ_STORM_FIRST_MS });
             if (now - t[0] > 60_000L) { t[0] = now + 1_500L; t[1] = now + 4_000L; t[2] = now + 6_000L; t[3] = now + MINE_SQ_STORM_FIRST_MS; } // 오랜만의 싸움
             if (now >= t[3]) { // ⛈️ 낙뢰 폭풍 -- 굴 전체에 0.1초마다 한 줄기씩 3초
+                // [2026-11-24] "번개 소환 때 맵 가운데로 이동해서 람쥐썬더 외치고 1초 뒤에 우르르 떨어지게" -- 가운데(2x2가 서는 칸)로 번쩍 옮겨(sqDash) 외치고,
+                //  첫 줄기는 MINE_SQ_STORM_DELAY_MS 뒤부터. 폭풍이 끝날 때까지 가운데에 서서(splitUntil -- 쫓지도 때리지도 않는다) 전광석화/벼락 몰아치기도 쉰다.
                 t[3] = now + MINE_SQ_STORM_MS;
-                for (int k = 0; k < 30; k++) mineZoneAdd(map, 1 + RND.nextInt(Math.max(1, map.w - 2)), 1 + RND.nextInt(Math.max(1, map.h - 2)), now + MINE_SQ_WARN_MS + k * 100L, 1, MINE_ZK_SQ_STORM, MINE_SQ_WARN_MS, 60, 0);
+                int[] mc = mineSqCenter(map);
+                if (mc != null && (mc[0] != s.fx || mc[1] != s.fy)) { out.put("sqDash", new int[] { s.fx, s.fy, mc[0], mc[1] }); synchronized (s) { s.fx = mc[0]; s.fy = mc[1]; } }
+                long st0 = now + MINE_SQ_STORM_DELAY_MS, stEnd = st0 + 30 * 100L;
+                synchronized (s) { s.splitUntil = Math.max(s.splitUntil, stEnd); s.frozenUntil = Math.max(s.frozenUntil, stEnd); }
+                t[0] = Math.max(t[0], stEnd + 300L); t[1] = Math.max(t[1], stEnd + 1_000L);
+                for (int k = 0; k < 30; k++) mineZoneAdd(map, 1 + RND.nextInt(Math.max(1, map.w - 2)), 1 + RND.nextInt(Math.max(1, map.h - 2)), st0 + k * 100L, 1, MINE_ZK_SQ_STORM, MINE_SQ_WARN_MS, 60, 0);
                 out.put("sqStorm", true);
                 out.put("bossSay", "람쥐썬더!!"); out.put("bossSayName", "최강다람쥐");
+                if (s.splitUntil > now) { out.put("sqHold", s.splitUntil); }
+                return;
             }
+            if (s.splitUntil > now) return; // [2026-11-24] 폭풍 중엔 가운데에서 다른 기술 없이
             int dist = Math.max(Math.max(s.fx - x, x - (s.fx + 1)), Math.max(s.fy - y, y - (s.fy + 1)));
             if (now >= t[0]) { // ⚡ 전광석화 -- 내 곁(2x2가 설 수 있는 칸)으로
                 t[0] = now + MINE_SQ_DASH_MS;
@@ -9474,7 +9495,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  마법사 번개 = 천둥 폭풍(최강다람쥐 람쥐썬더처럼, 외치지는 않는다 -- 대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
     //  마법사 불 = 불새(시안 승인 -- 나 -> 대상 쪽으로 MINE_MERC_U3_PHX_LEN칸 날며 줄(폭 3칸)의 몬스터 x MINE_MERC_U3_PHX_MUL),
     //  마법사 물 = 빙결 감옥(시안 승인 -- 대상 둘레 MINE_MERC_U3_JAIL_R칸 몬스터를 MINE_MERC_U3_JAIL_MS 동안 가두고(기절), 깨질 때 x MINE_MERC_U3_JAIL_MUL).
-    static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 5_000L, MINE_MERC_U3_KAK_MS = 7_000L, MINE_MERC_U3_STUN_MS = 5_000L;
+    static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 2_000L, MINE_MERC_U3_KAK_MS = 2_000L, MINE_MERC_U3_STUN_MS = 2_000L; // [2026-11-24] "전사 3차 검진/일격/버프 지속 2초로" (5초 / 기절 5초 / 7초 -> 2초)
     static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BOLTS = 16, MINE_MERC_U3_BOLT_R = 3, MINE_MERC_U3_ARROWS = 5;
     static final int MINE_MERC_U3_PHX_LEN = 10, MINE_MERC_U3_JAIL_R = 2;
     static final long MINE_MERC_U3_JAIL_MS = 4_000L;
@@ -10029,7 +10050,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<int[]> p3 = new ArrayList<>();
             if (cls == 0 && el == S5MineMobs.EL_FIRE) { // 만검진
                 synchronized (ms) { ms.u3X = pcx; ms.u3Y = pcy; ms.u3ZoneUntil = now + MINE_MERC_U3_ZONE_MS; }
-                s3.put("k", "zone"); s3.put("r", MINE_MERC_U3_ZONE_R); s3.put("nm", "만검진");
+                s3.put("k", "zone"); s3.put("r", MINE_MERC_U3_ZONE_R); s3.put("nm", "만검진"); s3.put("ms", MINE_MERC_U3_ZONE_MS);
             } else if (cls == 0 && el == S5MineMobs.EL_THUNDER) { // 일섬참
                 addHit.accept(pick, MINE_MERC_U3_SLASH_MUL);
                 int pt = map.mobs().get(pick).type;
