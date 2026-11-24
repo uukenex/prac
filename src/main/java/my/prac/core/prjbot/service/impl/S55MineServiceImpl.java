@@ -6304,9 +6304,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  찌 고급/희귀/영웅 = 낚시 10/30/60번. 시즌4처럼 값은 받지 않고 조건만 맞으면 바로 바꿔 준다(더 낮은 등급으로는 안 바꾼다).
     //  낚시 횟수는 가방(TBOT_S55_FISH_INV)의 물고기 수 합계 -- 던질 때마다 한 마리씩 들어오고 줄지 않는다(기록 표 LOG는 보관 기간이 지나면 지워져서 안 쓴다).
     static final int[] MINE_BOBBER_NEED = { 0, 0, 10, 30, 60 };
-    // [2026-11-24] "낚시 상인 가격 알아서" -- 조건(도감/낚은 수)을 채운 뒤 괴(정련한 광석)로 값을 받는다. 등급이 오를수록 비싸게.
-    static final String[][][] MINE_ROD_COST = { null, null, { { S5MineMap.BAR_CODES[2], "5" } }, { { S5MineMap.BAR_CODES[3], "3" } }, { { S5MineMap.BAR_CODES[3], "10" } }, { { S5MineMap.BAR_CODES[4], "5" } } };
-    static final String[][][] MINE_BOBBER_COST = { null, null, { { S5MineMap.BAR_CODES[2], "3" } }, { { S5MineMap.BAR_CODES[3], "2" } }, { { S5MineMap.BAR_CODES[3], "6" } } };
+    // [2026-11-24] 등급마다 값(null = 무료). 같은 날 "낚시 상인 가격 알아서"로 괴를 받았다가 "무료로, 조건만 채우면"으로 되돌림 -- 모두 null.
+    static final String[][][] MINE_ROD_COST = { null, null, null, null, null, null };
+    static final String[][][] MINE_BOBBER_COST = { null, null, null, null, null };
     static final int MINE_BOBBER_MAX = 4;
     HashMap<String, Object> mineFishShop(String userName, String action) {
         HashMap<String, Object> out = new HashMap<>();
