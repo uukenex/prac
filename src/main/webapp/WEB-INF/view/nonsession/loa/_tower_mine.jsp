@@ -7784,8 +7784,8 @@ var TowerMine = (function () {
     var two = x.slot === 2, three = x.slot === 3, cur = three ? st.merc3 : two ? st.merc2 : st.merc, mp = three ? merc3 : two ? merc2 : merc; // [2026-11-18] 두 번째 용병, [2026-11-23] 세 번째
     if (st.mercs) st.mercs[x.k != null ? x.k : x.t] = x;
     if (cur && (cur.k != null ? cur.k === x.k : cur.t === x.t)) { for (var p in x) if (p !== 'gain' && p !== 'up') cur[p] = x[p]; }
-    if (x.gain) killFeed('🐱 동료 경험치 +' + x.gain, '#d8a8ff'); // [2026-11-06] 동료가 획득한 경험치
-    if (x.gain && mp.x != null) floats.push({ x: mp.x, y: mp.y - 0.6, text: '+' + x.gain, color: '#9fe0ff', t0: performance.now() + 150 }); // [2026-11-06] 용병 경험치(처치마다 최소 1)
+    // [2026-11-25] "동료 경험치는 옆(왼쪽 알림 줄) 말고 각 동료 위쪽에 조그맣게" -- 알림 줄에서 빼고, 그 동료 머리 위에 작은 글자로만
+    if (x.gain && mp.x != null) floats.push({ x: mp.x, y: mp.y - 1.1, text: 'EXP +' + x.gain, color: '#d8a8ff', sm: true, t0: performance.now() + 150 }); // [2026-11-06] 용병 경험치(처치마다 최소 1)
     if (x.up) { killFeed('🎉 ' + (x.nm || x.name) + ' Lv.' + x.lv + '!', '#ffe14d'); if (mp.x != null) floats.push({ x: mp.x, y: mp.y - 1, text: '⬆️ Lv.' + x.lv, color: '#ffe14d', big: true, t0: performance.now() }); }
     if (smithOpen && smithView === 'mercmgr') renderSmith(smithNpc);
   }
