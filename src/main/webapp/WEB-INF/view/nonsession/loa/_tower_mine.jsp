@@ -2604,7 +2604,7 @@ var TowerMine = (function () {
     charHD = !!hd;
     try { localStorage.setItem('tw-mine-hd', charHD ? '1' : '0'); } catch (e) { }
     try { MineChar.setHD(charHD); } catch (e) { }
-    otherSprites = {}; lookImgCache = {}; citCache = {}; allySailors = null; spriteKey = null;
+    otherSprites = {}; lookImgCache = {}; allySailors = null; spriteKey = null; // [2026-11-24] 주민 그림(citCache)은 키에 해상도가 있어 둘 다 그대로 둔다
     if (st) buildSprites(st.look);
     zoomHud();
   }
@@ -5209,10 +5209,10 @@ var TowerMine = (function () {
     var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
     ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); }); });
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
-    try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHD(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
+    try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHdBuild(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
     tasks.push(function () { for (var bf = 0; bf < 8; bf++) { bhWhirlPx(bf); if (bf < 6) bhSplashPx(bf); if (bf < 4) bhJetPx(bf); } bhJetHeadPx(0); bhJetHeadPx(1); }); // [2026-11-24] 베히모스 장비 그림
-    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); })(ci);
+    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { [true, false].forEach(function (hd) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = (hd ? 'h' : 's') + ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp, hd); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); }); })(ci);
     preExtraP = new Promise(function (res) {
       var ti = 0, run = function () {
         var t0 = performance.now();
@@ -7614,11 +7614,20 @@ var TowerMine = (function () {
         HAT = ['', '', '', '#e8c84a|straw', '#222630|pirate', '#9aa3ad|helmet', '#4b3a9a|wizard'], BOT = ['#1f1f24', '#e8e4da', '#a8323a', '#3a2b22', '#2c45a3'];
     return { gender: mix(i, 1) % 2, hair: HAIR[mix(i, 2) % HAIR.length], top: TOP[mix(i, 3) % TOP.length], hat: HAT[mix(i, 4) % HAT.length], bottom: BOT[mix(i, 5) % BOT.length], shoes: '' };
   }
-  function citSprite(i, dir, step) {
+  function citSprite(i, dir, step, hd) {
     i = i % CIT_LOOKS; // [2026-11-24] 모습 CIT_LOOKS가지를 돌려 쓴다(미리 그릴 양 줄이기)
-    var k = i + dir + step;
-    if (!citCache[k]) citCache[k] = MineChar.sprite(dir, step, 0, citLook(i));
+    var h = hd == null ? charHD : !!hd, k = (h ? 'h' : 's') + i + dir + step; // [2026-11-24] "고해상도/저해상도 모두 미리" -- 키에 해상도
+    if (!citCache[k]) {
+      if (h !== charHD) { try { MineChar.setHD(h); citCache[k] = MineChar.sprite(dir, step, 0, citLook(i)); } finally { MineChar.setHD(charHD); } }
+      else citCache[k] = MineChar.sprite(dir, step, 0, citLook(i));
+    }
     return citCache[k];
+  }
+  /** [2026-11-24] 64x64 NPC 그림을 지금 해상도와 상관없이 만들어 둔다(저해상도로 보다가 고해상도로 바꿔도 바로). */
+  function npcHdBuild(kind) {
+    if (!kind || NPC_NOHD[kind] || !window.MineChar) return null;
+    if (npcHdC[kind] == null) { try { MineChar.setHD(true); npcHdC[kind] = MineChar.sprite('down', 0, 0, NPC_LOOK[kind] || NPC_LOOK_DEF) || false; } catch (e) { npcHdC[kind] = false; } finally { try { MineChar.setHD(charHD); } catch (e2) { } } }
+    return npcHdC[kind] || null;
   }
   /** [2026-10-28] 대주교 마법 예고(불벼락 2초 전, 어둠가스 3초 전) + 위쪽 표시(깨어 있음/잠듦, 다음 마법까지 초). */
   function raidWarn() {
@@ -10138,7 +10147,7 @@ var TowerMine = (function () {
     pre = fetch(b0 + '/api/tower-mine-vers', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
       var vers = (d && d.mapVers) || {};
       if (d && d.build) mapBuild = String(d.build); // [2026-11-24] 배포마다 새로
-      sprVer = (d && d.charVer ? String(d.charVer) : 'x') + '|' + SPR_VER + '|' + (charHD ? 1 : 0); // [2026-11-24] 캐릭터 그림 코드가 바뀌면 저장해 둔 그림도 새로
+      sprVer = (d && d.charVer ? String(d.charVer) : 'x') + '|' + SPR_VER; // [2026-11-24] 캐릭터 그림 코드가 바뀌면 저장해 둔 그림도 새로(고해상도/저해상도는 그림 키에 -- 둘 다 저장)
       try { if (!tiles) { buildTiles(); buildSprites(); } } catch (e) { }
       for (var g = 1; g < ORE_NAME.length; g++) { try { if (ORE_NAME[g]) oreIcon(g); } catch (e) { } }
       return Promise.all([
@@ -10177,7 +10186,7 @@ var TowerMine = (function () {
   // [2026-11-24] "다 로딩된 상태에서 재접속해도 엄청 느리다" -- 맵은 저장해 두지만 그림(주민/NPC 64x64 캐릭터 그림, 한 장 약 1.7ms -- 폰은 몇 배)은 켤 때마다 다시 그렸다.
   //  다 그린 그림을 IndexedDB(spr)에 PNG로 두고(sprVer = 서버 캐릭터 그림 코드 해시 + SPR_VER + 고해상도 여부), 다음엔 그걸 ImageBitmap으로 바로 꺼내 쓴다.
   //  주민/NPC 모습 표(citLook / NPC_LOOK)를 바꾸면 SPR_VER를 올릴 것.
-  var SPR_VER = '1', sprVer = '', sprSaveQ = [], sprSaveOn = false;
+  var SPR_VER = '2', sprVer = '', sprSaveQ = [], sprSaveOn = false;
   function sprLoad(prog) {
     if (!window.createImageBitmap || !sprVer) return Promise.resolve();
     return mapDb().then(function (db) {
