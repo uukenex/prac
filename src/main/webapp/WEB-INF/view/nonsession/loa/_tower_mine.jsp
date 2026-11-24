@@ -6936,7 +6936,7 @@ var TowerMine = (function () {
       ctx.restore();
     });
   }
-  // [2026-11-24] 용병 3차 스킬 람쥐썬더 -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
+  // [2026-11-24] 용병 3차 스킬 천둥 폭풍 -- 하늘에서 내리꽂히는 번개(최강다람쥐 번개 그림) + 바닥 섬광
   var mercBolts = [];
   function mercBoltDraw(now, TS, camX, camY) {
     mercBolts = mercBolts.filter(function (b) { return now - b.t0 < 420; });
@@ -7259,7 +7259,7 @@ var TowerMine = (function () {
       else if (s3.k === 'slash') ultFx.push({ k: 1, x: s3.x, y: s3.y, t0: t + 60, o: true });
       else if (s3.k === 'kak') mp.kakT0 = t;
       else if (s3.k === 'arrow5') for (var ai = 0; ai < 5; ai++) mercShot(1, m.el, m.st, mx3, my3, s3.x, s3.y, null, t + ai * 190, null, m.tg);
-      else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100 }); }); mp.say = { text: '람쥐썬더!', t0: t }; }
+      else if (s3.k === 'bolt') { (s3.pts || []).forEach(function (b) { mercBolts.push({ x: b[0], y: b[1], t0: t + b[2] - 100 }); }); }
       if (s3.k === 'slash' && s3.stun) floats.push({ x: s3.x, y: s3.y - 0.9, text: '💫 기절 ' + Math.round(s3.stun / 1000) + '초', color: '#ffe94a', t0: t + 300 });
       floats.push({ x: mx3, y: my3 - 1.3, text: '🌟 ' + s3.nm, color: '#ffd84a', big: true, t0: t });
     }

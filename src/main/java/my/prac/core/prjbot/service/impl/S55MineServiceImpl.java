@@ -9378,7 +9378,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  전사 = 속성마다 사용자 필살기 하나 -- 불 만검진(대상 자리에 MINE_MERC_U3_ZONE_R칸 칼날 장판 5초, 매초 x MINE_MERC_U3_ZONE_MUL) /
     //    번개 일섬참(대상 한 마리 x MINE_MERC_U3_SLASH_MUL + 기절 5초) / 물 각성(7초 동안 그 용병 피해 2배).
     //  궁수 = 5연발 화살(대상 한 마리에게 1초 안에 5발, 발마다 x MINE_MERC_U3_ARROW_MUL).
-    //  마법사 번개 = 람쥐썬더(대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
+    //  마법사 번개 = 천둥 폭풍(최강다람쥐 람쥐썬더처럼, 외치지는 않는다 -- 대상 둘레 MINE_MERC_U3_BOLT_R칸에 번개 MINE_MERC_U3_BOLTS줄기를 1.6초 동안, 줄기마다 x MINE_MERC_U3_BOLT_MUL -- 처음 넷은 대상에게).
     //  마법사 불/물은 아직(사용자가 정하는 중) -- 없음.
     static final long MINE_MERC_U3_MS = 120_000L, MINE_MERC_U3_ZONE_MS = 5_000L, MINE_MERC_U3_KAK_MS = 7_000L, MINE_MERC_U3_STUN_MS = 5_000L;
     static final int MINE_MERC_U3_ZONE_R = 2, MINE_MERC_U3_BOLTS = 16, MINE_MERC_U3_BOLT_R = 3, MINE_MERC_U3_ARROWS = 5;
@@ -9937,7 +9937,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                         addCell.accept(new int[] { cd[0], bx, by }, MINE_MERC_U3_BOLT_MUL); hitDl.put(hitIds.size() - 1, dl);
                     }
                 }
-                s3.put("k", "bolt"); s3.put("nm", "람쥐썬더");
+                s3.put("k", "bolt"); s3.put("nm", "천둥 폭풍"); // [2026-11-24] "람쥐썬더라고 외치지 말아야" -- 이름도 바꿈
             }
             s3.put("pts", p3);
             mo.put("sk3", s3);
