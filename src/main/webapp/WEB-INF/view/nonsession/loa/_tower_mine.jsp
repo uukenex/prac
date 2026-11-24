@@ -6854,6 +6854,49 @@ var TowerMine = (function () {
     var ty = map.mobTypes[mb.k] || {}, ms = mobSt[id], jx = ms && ms.fu > nowSrv() && !ty.boss ? ((mb.id % 5) - 2) / 16 : 0, jy = ms && ms.fu > nowSrv() && !ty.boss ? ((((mb.id / 5) | 0) % 3) - 1) / 16 : 0;
     return ty.boss ? [p.x + ((ty.foot || 2) - 1) / 2, p.y + 0.3 + ((ty.foot || 2) - 2) / 2] : [p.x + jx, p.y + jy - 0.15];
   }
+  // [2026-11-24] "용병 마법사 메테오 바닥 불타는 이펙트 더 불꽃처럼" -- 점 두 개(주황/빨강)이던 것을: 그을린 땅(어두운 자국 + 붉게 달아오른 가운데) 위에
+  //  일렁이는 불꽃 혀(빨강 -> 주황 -> 노랑 -> 흰 심지 겹, 흔들리며 키가 오르내림) + 위로 날리는 불티. 뒤(위쪽) 불꽃부터 그려 앞 불꽃이 겹친다.
+  function burnRnd(s) { s = Math.sin(s * 12.9898 + 4.1) * 43758.5453; return s - Math.floor(s); }
+  function burnFlame(x, y, h, w, sway, a) { // 바닥 가운데 (x, y), 키 h, 폭 w
+    var L = [['rgba(200,30,10,', 1, 0.8], ['rgba(255,110,20,', 0.78, 0.92], ['rgba(255,200,60,', 0.52, 0.95], ['rgba(255,250,215,', 0.26, 0.9]];
+    for (var i = 0; i < L.length; i++) {
+      var k = L[i][1], hh = h * (0.35 + 0.65 * k), ww = w * k, tip = sway * (0.6 + 0.4 * k);
+      ctx.globalAlpha = a * L[i][2]; ctx.fillStyle = L[i][0] + '1)';
+      ctx.beginPath(); ctx.moveTo(x - ww / 2, y);
+      ctx.bezierCurveTo(x - ww * 0.62, y - hh * 0.45, x + tip * 0.2 - ww * 0.18, y - hh * 0.7, x + tip, y - hh);
+      ctx.bezierCurveTo(x + tip * 0.2 + ww * 0.22, y - hh * 0.62, x + ww * 0.62, y - hh * 0.4, x + ww / 2, y);
+      ctx.quadraticCurveTo(x, y + ww * 0.22, x - ww / 2, y); ctx.fill();
+    }
+  }
+  function burnGroundDraw(cx, cy, R2, r, now, t0, left, s, TS) {
+    var grow = Math.min(1, (now - t0) / 300), a = left * grow;
+    ctx.save();
+    // 그을린 자국 + 달아오른 가운데
+    ctx.globalAlpha = 0.3 * a; ctx.fillStyle = '#2a1408'; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R2);
+    g.addColorStop(0, 'rgba(255,120,30,0.55)'); g.addColorStop(0.6, 'rgba(220,60,20,0.3)'); g.addColorStop(1, 'rgba(160,30,10,0)');
+    ctx.globalAlpha = a * (0.85 + 0.15 * Math.sin(now / 140)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.7, 0, 0, Math.PI * 2); ctx.fill();
+    // 불꽃 혀 -- 자리를 정해 두고(같은 불) 위에서 아래 순서로
+    var n = 6 + r * 5, F = [];
+    for (var i = 0; i < n; i++) {
+      var an = burnRnd(i + 1) * Math.PI * 2, rr = Math.sqrt(burnRnd(i + 31)) * 0.88;
+      F.push({ x: cx + Math.cos(an) * rr * R2, y: cy + Math.sin(an) * rr * R2 * 0.66, i: i, big: 1 - rr * 0.45 });
+    }
+    F.sort(function (p, q) { return p.y - q.y; });
+    for (var j = 0; j < F.length; j++) {
+      var f = F[j], fl = 0.72 + 0.28 * Math.sin(now / (80 + f.i % 5 * 17) + f.i * 1.7) + 0.08 * Math.sin(now / 37 + f.i);
+      var h = TS * (0.85 + 0.6 * burnRnd(f.i + 61)) * f.big * fl, w = TS * (0.42 + 0.22 * burnRnd(f.i + 71)) * f.big;
+      var hg = ctx.createRadialGradient(f.x, f.y - h * 0.35, 0, f.x, f.y - h * 0.35, h * 0.75); hg.addColorStop(0, 'rgba(255,150,40,0.45)'); hg.addColorStop(1, 'rgba(255,90,20,0)');
+      ctx.globalAlpha = a; ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hg; ctx.fillRect(f.x - h, f.y - h * 1.1, h * 2, h * 1.5); ctx.globalCompositeOperation = 'source-over';
+      burnFlame(f.x, f.y, h, w, w * 0.45 * Math.sin(now / 130 + f.i * 2.3), a);
+    }
+    // 불티 -- 위로 날리며 꺼진다
+    for (var e = 0; e < 6 + r * 4; e++) {
+      var life = ((now - t0) / (700 + burnRnd(e + 90) * 500) + burnRnd(e + 11)) % 1, ex = cx + (burnRnd(e + 21) * 2 - 1) * R2 * 0.8 + Math.sin(now / 200 + e) * 3 * s, ey = cy + (burnRnd(e + 41) * 2 - 1) * R2 * 0.5 - life * TS * 1.3;
+      ctx.globalAlpha = a * (1 - life); ctx.fillStyle = e % 3 ? '#ffb030' : '#fff0a0'; ctx.beginPath(); ctx.arc(ex, ey, (1.2 - life * 0.6) * s, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
   var mercRains = [];
   function mercRainDraw(now, TS, camX, camY) { // 화살비 -- 둘레 r칸 땅에 화살이 계속 꽂힌다(끝날 때까지)
     var tn = nowSrv();
@@ -6863,6 +6906,7 @@ var TowerMine = (function () {
       if (r.kind) { // [2026-11-18] 남는 토네이도(도는 물살) / 타는 땅(일렁이는 불꽃)
         if (now < r.t0) return;
         var tor = r.kind === 'tornado';
+        if (!tor) { burnGroundDraw(cx, cy, R2, r.r, now, r.t0, left, s, TS); return; } // [2026-11-24] 타는 땅 -- 불꽃 그림(시안 승인)
         ctx.save();
         ctx.globalAlpha = 0.18 * left; ctx.fillStyle = tor ? '#5ab4ff' : '#ff6a2a'; ctx.beginPath(); ctx.ellipse(cx, cy, R2, R2 * 0.75, 0, 0, Math.PI * 2); ctx.fill();
         for (var ti = 0; ti < 8 + r.r * 5; ti++) {
