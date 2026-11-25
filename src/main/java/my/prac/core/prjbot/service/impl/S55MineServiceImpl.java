@@ -2729,7 +2729,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         double mine = (bh ? MINE_BH_SHARE : MINE_WB_SHARE).merge(userName, units, Double::sum);
         st.lastHit.put(userName, now);
         int max = mineWbMax();
-        long after = Math.round(hpBefore - max * units / ((p.test ? MINE_WB_TEST_TOTAL : MINE_WB_TOTAL) * (bh ? MINE_BH_HP_MUL : 1)));
+        long after = hpBefore - Math.max(1, Math.round(max * units / ((p.test ? MINE_WB_TEST_TOTAL : MINE_WB_TOTAL) * (bh ? MINE_BH_HP_MUL : 1)))); // [2026-11-25] 한 방에 적어도 1
+        // [2026-11-25] "월드보스가 불사 상태" -- 피해(dealt)가 남은 체력까지만 잡혀, 체력이 한 방보다 적어지면 남은 체력의 일부씩만 깎이다 반올림으로 4에서 멈췄다(16회차 체력 4).
+        //  남은 체력을 다 깎는 한 방이면 쓰러진다.
+        if (dealt >= hpBefore) after = 0;
         if (!canKill) after = Math.max(1, after);
         after = Math.min(hpBefore, Math.max(0, after));
         int ph = (int) Math.min(10, (max - after) * 10L / Math.max(1, max));

@@ -2351,6 +2351,7 @@ var TowerMine = (function () {
     if (red) { px(g, '#7a0a10', x, y, w, h); px(g, '#ff3b30', x, y, w - 1, h - 1); px(g, '#ffd0c0', x, y, 1, 1); return; }
     px(g, '#1a1018', x, y, w, h); px(g, '#ffffff', x, y, Math.max(1, w >> 1), Math.max(1, h >> 1));
   }
+  var MOBHD_VER = '1', mobHdBm = {}; // [2026-11-25] 64x64 몬스터 그림 저장 키(mobHD를 고치면 올린다) / 저장해 둔 그림(ImageBitmap)
   function mobHD(ty, pose) {
     var c = mk(MHD, MHD), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3), red = ty.tier >= 4;
     var P = function (fn, cl, o) { mhdPart(g, mhdMask(fn), cl, o); }, S = function (fn, w, cl, o) { mhdPart(g, mhdMask(fn, w), cl, o); };
@@ -2491,7 +2492,15 @@ var TowerMine = (function () {
     if (art) { var bk = 'b' + k + (art === 'behemoth' ? 'h' : '') + (pose ? 'p' : '') + ((f | 0) % 2); if (!mobSprites[bk]) mobSprites[bk] = bossArt(art, (f | 0) % 2, pose); return mobSprites[bk]; }
     var ck = pose ? k + 'p' : k; // [2026-10-28] pose = 닌자 두목 분신술 중 진짜(인을 맺은 자세)
     var m16 = MOB16[(map.mobTypes[k] || {}).name]; // [2026-11-23] 탑 51~98층 방 몬스터 -- 이름별 그림
-    if (charHD && !m16) { ck = 'H' + ck; if (!mobSprites[ck]) mobSprites[ck] = mobHD(map.mobTypes[k] || {}, pose); return mobSprites[ck]; } // [2026-11-25] 64x64 옵션이면 종류별 고해상도 그림
+    if (charHD && !m16) { // [2026-11-25] 64x64 옵션이면 종류별 고해상도 그림
+      ck = 'H' + ck;
+      if (!mobSprites[ck]) { // [2026-11-25] "업데이트 뒤 로딩이 너무 오래" -- 한 번 그린 그림은 저장해 두고(IndexedDB, NPC/주민 그림과 같이) 다음 접속엔 꺼내 쓴다
+        var tH = map.mobTypes[k] || {}, nk = MOBHD_VER + '|' + tH.name + '|' + tH.kind + '|' + tH.color + '|' + (tH.tier | 0) + (pose ? 'p' : '');
+        if (mobHdBm[nk]) mobSprites[ck] = mobHdBm[nk];
+        else { mobSprites[ck] = mobHD(tH, pose); try { sprSave('m:' + nk, mobSprites[ck]); } catch (e) { } }
+      }
+      return mobSprites[ck];
+    }
     if (mobSprites[ck]) return mobSprites[ck];
     if (m16) { var c16 = mk(T, T); m16.d(c16.getContext('2d')); mobSprites[ck] = outline(c16, '#140d0a'); return mobSprites[ck]; }
     var ty = map.mobTypes[k] || {}, c = mk(T, T), g = c.getContext('2d'), col = ty.color || '#888888', dk = shade(col, -0.35), lt = shade(col, 0.3);
@@ -5401,13 +5410,13 @@ var TowerMine = (function () {
     if (preExtraDone) { if (prog) prog(1, 1); return Promise.resolve(); }
     if (preExtraP) return preExtraP;
     var tasks = [], src0 = map || pmap, ty = (src0 && src0.mobTypes) || [];
-    ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { var h0 = charHD; try { [h0, !h0].forEach(function (h) { charHD = h; mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); } finally { charHD = h0; } }); }); }); // [2026-11-25] 몬스터도 64x64/16x16 둘 다 미리(해상도를 바꿔도 바로)
+    ty.forEach(function (tk, k) { if (tk) tasks.push(function () { preWithMap(pmap, function () { mobSprite(k, false, 0); mobSprite(k, false, 1); if (tk.boss || tk.kind === 'ninja') { mobSprite(k, true, 0); mobSprite(k, true, 1); } }); }); }); // [2026-11-25] 몬스터 그림 미리 -- 같은 날 "로딩이 너무 오래" -- 64x64/16x16 둘 다 그리던 것을 지금 고른 해상도만(다른 쪽은 옵션을 바꿀 때)
     tasks.push(function () { try { [6, 2, 3].forEach(function (el) { for (var q = 0; q < 4; q++) { if (q < 3) fxBallHD(el, q); fxHitHD(el, q); fxSlashHD(el, q); } fxArrowHD(el); fxSwordHD(el); }); } catch (e) { } }); // [2026-11-25] 64x64 스킬 이펙트도 미리
     tasks.push(function () { ultImg('sword'); ultImg('zan'); if (st && st.adminMaps) whirlLoad(); });
     try { Object.keys(NPC_LOOK).forEach(function (kd) { tasks.push(function () { var had = npcHdC[kd] != null, c = npcHdBuild(kd); if (!had && c && c.getContext) sprSave('n:' + kd, c); }); }); } catch (e) { } // [2026-11-23] 64x64 NPC
     tasks.push(function () { worldBgBuild(); });
     tasks.push(function () { for (var bf = 0; bf < 8; bf++) { bhWhirlPx(bf); if (bf < 6) bhSplashPx(bf); if (bf < 4) bhJetPx(bf); } bhJetHeadPx(0); bhJetHeadPx(1); }); // [2026-11-24] 베히모스 장비 그림
-    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { [true, false].forEach(function (hd) { tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = (hd ? 'h' : 's') + ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp, hd); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); }); })(ci);
+    for (var ci = 0; ci < CIT_LOOKS; ci++) (function (ci) { [charHD].forEach(function (hd) { /* [2026-11-25] 주민도 지금 해상도만 */ tasks.push(function () { ['down', 'up', 'left', 'right'].forEach(function (d) { for (var sp = 0; sp < 3; sp++) { var k = (hd ? 'h' : 's') + ci + d + sp, had = !!citCache[k], c = citSprite(ci, d, sp, hd); if (!had && c && c.getContext) sprSave('c:' + k, c); } }); }); }); })(ci);
     preExtraP = new Promise(function (res) {
       var ti = 0, run = function () {
         var t0 = performance.now();
@@ -10589,6 +10598,7 @@ var TowerMine = (function () {
                 var k = q.id.slice(2);
                 if (q.id.charAt(0) === 'c' && !citCache[k]) citCache[k] = bm;
                 else if (q.id.charAt(0) === 'n' && npcHdC[k] == null) npcHdC[k] = bm;
+                else if (q.id.charAt(0) === 'm' && !mobHdBm[k]) mobHdBm[k] = bm; // [2026-11-25] 64x64 몬스터
               }, function () { }).then(function () { dn++; if (prog && (dn % 20 === 0 || dn === list.length)) prog(dn, list.length); });
             })).then(function () { ok(); });
           };
