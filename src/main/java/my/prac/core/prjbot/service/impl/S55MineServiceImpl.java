@@ -2526,6 +2526,34 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         MINE_BH_SHARE_SAVED.put(userName, now);
         try { dao.upsertMineItem(userName, MINE_ITEM_BHS + p.cycle, mineWbShareInt(share)); } catch (Exception e) { /* 다음 저장 때 */ }
     }
+    // [2026-11-26] "베히모스 보상 내역도 게시판에 -- 처치 보상뿐 아니라 이번 주기에 얻은 전체" -- BHR_<주기> = 그 주기 베히모스에게서 얻은 햇빛석(10%마다 + 처치 1, 한 번이라도 구간에 들면 0으로라도 남는다),
+    //  BHG_<주기> = 베히모스 장비(1 전율 / 2 진주목걸이 / 4 수정구슬 -- 합). 같은 날 "거룡·베히모스가 용병 6성 5%, 7성 3%" -- WBM_<주기>(거룡) / BHM_<주기>(베히모스) = 나온 용병 장비(부위 i, 성 g -> 1 << (i + 6 x (g - 6))).
+    static final String MINE_ITEM_BHR = "BHR_", MINE_ITEM_BHG = "BHG_", MINE_ITEM_WBM = "WBM_", MINE_ITEM_BHM = "BHM_";
+    static final int MINE_WB_MG6_PCT = 5, MINE_WB_MG7_PCT = 3;
+    /** [2026-11-26] 전설 이상이 나온 사람 -- 다음에 보상 소식(rewardMsg)을 받을 때 화면이 떨어진 자리 빛줄기(rainbowGo)를 띄운다. */
+    static final java.util.Set<String> MINE_REWARD_FX = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    /** 게시판 -- 용병 장비 기록(WBM_/BHM_)을 이름 목록으로. */
+    static List<String> mineWbMercNames(int mask) { List<String> l = new ArrayList<>(); for (int g = 7; g >= 6; g--) for (int i = 0; i < MG_PARTS.length; i++) if ((mask & (1 << (i + 6 * (g - 6)))) != 0) l.add(mgName(MG_PARTS[i], 9, g)); return l; }
+    /** [2026-11-26] 월드보스 처치 -- 함께 싸운 사람마다 용병 장비 ★6 MINE_WB_MG6_PCT% / ★7 MINE_WB_MG7_PCT%(따로 굴림, 관리자는 x10 -- 월드보스 장비와 같게). 부위는 무작위. */
+    void mineWbMercRoll(String u, boolean bh) {
+        if (MINE_WB_POOL.test) return;
+        int mul = isMineAdmin(u) ? 10 : 1;
+        String boss = bh ? MINE_BH_NAME : MINE_WB_NAME;
+        for (int g = 6; g <= 7; g++) {
+            if (RND.nextInt(100) >= (g == 6 ? MINE_WB_MG6_PCT : MINE_WB_MG7_PCT) * mul) continue;
+            try {
+                int pi = RND.nextInt(MG_PARTS.length);
+                String mp = MG_PARTS[pi], mc = mgCode(mp, mgAcc(mp) ? 9 : RND.nextInt(3), g), rk = (bh ? MINE_ITEM_BHM : MINE_ITEM_WBM) + MINE_WB_POOL.cycle;
+                Map<String, Integer> it = mineItems(u);
+                dao.upsertMineItem(u, mc, it.getOrDefault(mc, 0) + 1);
+                try { dao.upsertMineItem(u, rk, it.getOrDefault(rk, 0) | (1 << (pi + 6 * (g - 6)))); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
+                MINE_REWARD_FX.add(u);
+                MINE_SHRINE_REWARD_MSG.merge(u, "🎁 " + boss + "에게서 " + mgName(mp, 9, g) + "을(를) 얻었어요!! (" + mgEffText(mp, g) + ")", (a, b) -> a + " / " + b);
+                mineGossipAdd(mineNick(u) + " 님이 " + boss + "에게서 " + g + "성 용병 장비를 얻었대요!");
+                if (!isMineAdmin(u)) try { my.prac.core.util.S55AdminPush.notify("🎁 월드보스 용병 장비", mineNick(u) + " -- " + boss + "에게서 " + mgName(mp, 9, g)); } catch (Exception ignore) { }
+            } catch (Exception e) { System.out.println("[광산] 월드보스 용병 장비 지급 실패: " + e.getMessage()); }
+        }
+    }
     static final String MINE_ITEM_WBG = "WBG_"; // [2026-11-24] "게시판 보상 목록에 장비 아이템도" -- WBG_<주기> = 그 주기 거룡에게서 나온 장비(1 = 거룡의 이빨, 2 = 거룡 비늘 갑옷 -- 합)
     static final String MINE_ITEM_WBK = "WBK_"; // [2026-11-23] "게시판에 거룡의 심장 조각도" -- WBK_<주기> = 토벌 순위 보상으로 받은 심장 조각 수 + 1(1 = 순위에 들었지만 0개)
     static volatile long MINE_WB_BOARD_AT = 0;
@@ -2536,13 +2564,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cur = S5MineMap.cycleAt(now), max = mineWbMax();
         HashMap<String, Object> out = new HashMap<>();
         List<String> codes = java.util.Arrays.asList(MINE_ITEM_WBS + cur, MINE_ITEM_WBR + cur, MINE_ITEM_WBS + (cur - 1), MINE_ITEM_WBR + (cur - 1), MINE_ITEM_WB_SHARE, MINE_ITEM_WB_SHARE_CYC, MINE_ITEM_WB_CYCLE,
-            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM, MINE_ITEM_WBK + cur, MINE_ITEM_WBK + (cur - 1), MINE_ITEM_WBG + cur, MINE_ITEM_WBG + (cur - 1), MINE_ITEM_BHS + cur, MINE_ITEM_BHS + (cur - 1)); // [2026-11-23] 공통 보상, 심장 조각, [2026-11-24] 장비, [2026-11-25] 베히모스 몫
+            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM, MINE_ITEM_WBK + cur, MINE_ITEM_WBK + (cur - 1), MINE_ITEM_WBG + cur, MINE_ITEM_WBG + (cur - 1), MINE_ITEM_BHS + cur, MINE_ITEM_BHS + (cur - 1),
+            MINE_ITEM_BHR + cur, MINE_ITEM_BHR + (cur - 1), MINE_ITEM_BHG + cur, MINE_ITEM_BHG + (cur - 1), MINE_ITEM_WBM + cur, MINE_ITEM_WBM + (cur - 1), MINE_ITEM_BHM + cur, MINE_ITEM_BHM + (cur - 1)); // [2026-11-26] 베히모스 보상, 용병 장비 // [2026-11-23] 공통 보상, 심장 조각, [2026-11-24] 장비, [2026-11-25] 베히모스 몫
         List<HashMap<String, Object>> rows;
         try { rows = dao.selectMineItemsByCodes(codes); } catch (Exception e) { rows = new ArrayList<>(); }
         for (int k = 0; k < 2; k++) {
             int c = cur - k;
             Map<String, Double> sh = new HashMap<>(), bsh = new HashMap<>(); // [2026-11-25] bsh = 베히모스 몫
             Map<String, Integer> rw = new HashMap<>(), kit = new HashMap<>(), gear = new HashMap<>();
+            Map<String, Integer> bsun = new HashMap<>(), bgear = new HashMap<>(), wmg = new HashMap<>(), bmg = new HashMap<>(); // [2026-11-26]
             Map<String, Integer> oldSh = new HashMap<>(), oldCyc = new HashMap<>(), oldRw = new HashMap<>();
             java.util.Set<String> com = new java.util.TreeSet<>(); // [2026-11-23] 공통 보상 받은 사람
             for (HashMap<String, Object> r : rows) {
@@ -2553,6 +2583,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 else if ((MINE_ITEM_WBR + c).equals(code)) rw.put(u, v);
                 else if ((MINE_ITEM_WBK + c).equals(code)) kit.put(u, v - 1); // [2026-11-23] 심장 조각
                 else if ((MINE_ITEM_WBG + c).equals(code)) gear.put(u, v); // [2026-11-24] 장비
+                else if ((MINE_ITEM_BHR + c).equals(code)) bsun.put(u, v); // [2026-11-26]
+                else if ((MINE_ITEM_BHG + c).equals(code)) bgear.put(u, v);
+                else if ((MINE_ITEM_WBM + c).equals(code)) wmg.put(u, v);
+                else if ((MINE_ITEM_BHM + c).equals(code)) bmg.put(u, v);
                 else if (MINE_ITEM_WB_SHARE.equals(code)) oldSh.put(u, v);
                 else if (MINE_ITEM_WB_SHARE_CYC.equals(code)) oldCyc.put(u, v);
                 else if (MINE_ITEM_WB_CYCLE.equals(code)) oldRw.put(u, v);
@@ -2602,6 +2636,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (kq != null) p.put("kit", kq); // [2026-11-23] 토벌 순위 보상 거룡의 심장 조각(0 = 순위엔 들었지만 안 나옴)
                 Integer gq = gear.get(e.getKey());
                 if (gq != null && gq > 0) { List<String> gl = new ArrayList<>(); if ((gq & 1) != 0) gl.add(mineWeaponOf(MINE_ITEM_WYRM_TOOTH) != null ? mineWeaponOf(MINE_ITEM_WYRM_TOOTH).name : "거룡의 이빨"); if ((gq & 2) != 0) gl.add(mineArmorOf(MINE_ITEM_WYRM_SKIN) != null ? mineArmorOf(MINE_ITEM_WYRM_SKIN).name : "거룡 갑옷"); p.put("gear", gl); } // [2026-11-24]
+                Integer wq = wmg.get(e.getKey());
+                if (wq != null && wq > 0) p.put("merc", mineWbMercNames(wq)); // [2026-11-26] 용병 장비
                 ps.add(p);
             }
             ps.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
@@ -2618,6 +2654,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     q.put("share", (long) mineWbShareInt(e.getValue()));
                     q.put("pct", bt > 0 ? Math.round(e.getValue() * 1000 / bt) / 10.0 : 0);
                     q.put("dmg", Math.round(e.getValue() * bm / (MINE_WB_TOTAL * MINE_BH_HP_MUL))); // 베히모스 몫 하나 = 최대 체력 / (MINE_WB_TOTAL x MINE_BH_HP_MUL)
+                    q.put("sun", bsun.containsKey(e.getKey()) ? bsun.get(e.getKey()) : -1); // [2026-11-26] 이번 주기 햇빛석(-1 = 기록 전)
+                    List<String> gl = new ArrayList<>();
+                    int bg = bgear.getOrDefault(e.getKey(), 0);
+                    if ((bg & 1) != 0) gl.add(mineWeaponOf(MINE_ITEM_BH_TREMOR) != null ? mineWeaponOf(MINE_ITEM_BH_TREMOR).name : "베히모스의 전율");
+                    if ((bg & 2) != 0) gl.add("베히모스의 진주목걸이");
+                    if ((bg & 4) != 0) gl.add("베히모스의 수정구슬");
+                    if (!gl.isEmpty()) q.put("gear", gl);
+                    int mq = bmg.getOrDefault(e.getKey(), 0);
+                    if (mq > 0) q.put("merc", mineWbMercNames(mq));
                     bp.add(q);
                 }
                 bp.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
@@ -2895,7 +2940,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         MINE_WB_DOWN.clear();
         if (n > 0) mineGossipAdd("용사 " + n + "명이 동쪽 성곽에서 " + MINE_WB_NAME + "을(를) 쓰러뜨렸대요!");
-        if (!MINE_WB_POOL.test) for (java.util.Map.Entry<String, Double> en : MINE_WB_SHARE.entrySet()) if (en.getValue() >= mineWbMinShare()) mineWbGearRoll(en.getKey(), false); // [2026-11-23] 거룡 장비 1%
+        if (!MINE_WB_POOL.test) for (java.util.Map.Entry<String, Double> en : MINE_WB_SHARE.entrySet()) if (en.getValue() >= mineWbMinShare()) { mineWbGearRoll(en.getKey(), false); mineWbMercRoll(en.getKey(), false); } // [2026-11-23] 거룡 장비 1% // [2026-11-26] 용병 장비 ★6 5% / ★7 3%
     }
     /** 쓰러진 뒤 처음 들어온 사람 -- 이번 주기에 싸운 몫이 저장돼 있고 아직 보상을 안 받았으면 지금 준다(상태를 읽을 때). */
     void mineWbClaim(String userName, Map<String, Integer> items, long now) {
@@ -2974,6 +3019,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int q = 0;
             for (int i = 0; i < nm; i++) q += RND.nextInt(2);
             try { if (q > 0) dao.addUserOre(u, S5MineMap.SUN_STONE_CODE, q); } catch (Exception e) { continue; }
+            if (!MINE_WB_POOL.test) try { dao.addMineItemLevel(u, MINE_ITEM_BHR + MINE_WB_POOL.cycle, q); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { } // [2026-11-26] 게시판 -- 0개여도 남긴다
             MINE_SHRINE_REWARD_MSG.merge(u, "🐋 " + MINE_BH_NAME + (ml >= 10 ? " 마지막 일격! " : " 체력 " + (100 - ml * 10) + "%! ") + (q > 0 ? "☀️ " + S5MineMap.SUN_STONE_NAME + " " + q + "개를 얻었어요!" : "이번엔 햇빛석이 나오지 않았어요."), (a, b) -> a + " / " + b);
         }
     }
@@ -2996,6 +3042,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         int gb = MINE_ITEM_WYRM_TOOTH.equals(code) ? 1 : MINE_ITEM_WYRM_SKIN.equals(code) ? 2 : 0; // [2026-11-24] 게시판 -- 거룡 장비 기록(베히모스는 비공개라 안 남긴다)
         if (gb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_WBG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | gb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
+        int bgb = MINE_ITEM_BH_TREMOR.equals(code) ? 1 : MINE_ITEM_BH_PEARL.equals(code) ? 2 : MINE_ITEM_BH_ORB.equals(code) ? 4 : 0; // [2026-11-26] 베히모스 장비도 게시판에
+        if (bgb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_BHG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | bgb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
+        MINE_REWARD_FX.add(u); // [2026-11-26] 신화 장비 -- 빛줄기
         MineWeapon w = mineWeaponOf(code);
         if (w == null) w = mineArmorOf(code);
         String msg;
@@ -3036,7 +3085,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             MINE_SHRINE_REWARD_MSG.merge(u, "☀️ " + MINE_BH_NAME + "이(가) 쓰러졌어요! 하늘에서 햇빛이 쏟아져 모두에게 " + S5MineMap.SUN_STONE_NAME + " 1개", (a, b) -> b + " / " + a);
         }
         System.out.println("[광산] 베히모스 처치 -- 햇빛석 1개씩 " + n + "명");
-        if (!MINE_WB_POOL.test) for (String u : MINE_BH_SHARE.keySet()) mineWbGearRoll(u, true); // [2026-11-23] 베히모스 장비 1% -- 이번 주기에 베히모스를 때린 사람
+        if (!MINE_WB_POOL.test) {
+            // [2026-11-26] 이번 주기에 베히모스를 때린 사람 -- 메모리(MINE_BH_SHARE)만 보면 서버를 다시 켜기 전에 싸우고 그 뒤 안 때린 사람이 빠진다. 저장된 몫(BHS_주기)도 함께.
+            java.util.Set<String> fs = new java.util.LinkedHashSet<>(MINE_BH_SHARE.keySet());
+            try { for (HashMap<String, Object> r : dao.selectMineItemsByCodes(java.util.Collections.singletonList(MINE_ITEM_BHS + MINE_WB_POOL.cycle))) { String u = strVal(r.get("USER_NAME"), null); if (u != null && intVal(r.get("ITEM_LEVEL"), 0) > 0) fs.add(u); } }
+            catch (Exception e) { System.out.println("[광산] 베히모스 저장된 몫 읽기 실패: " + e.getMessage()); }
+            for (String u : fs) {
+                if (all.contains(u)) try { dao.addMineItemLevel(u, MINE_ITEM_BHR + MINE_WB_POOL.cycle, 1); } catch (Exception ignore) { } // [2026-11-26] 게시판 -- 처치 햇빛석 1
+                mineWbGearRoll(u, true); // [2026-11-23] 베히모스 장비 1%
+                mineWbMercRoll(u, true); // [2026-11-26] 용병 장비 ★6 5% / ★7 3%
+            }
+            MINE_WB_BOARD_AT = 0;
+        }
         mineGossipAdd("용사들이 동쪽 성곽 하늘에서 " + MINE_BH_NAME + "을(를) 쓰러뜨렸대요! 햇빛석이 비처럼 쏟아졌다나요?");
     }
     /** 패턴 예고 -- 종류마다 제 주기로(체력이 줄수록 잦게): 화염 장판 / 심연의 비 / 꼬리 휩쓸기 / 멸망의 숨결, 그리고 포효. 전투 턴마다 불린다. */
@@ -4467,7 +4527,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("pStealth", minePStealthOf(userName, now)); // [2026-10-30] 자객의 목걸이 -- 남은 회피/끝나는 시각(없으면 null)
         if (S5MineMap.ISLE7.equals(map.id)) out.put("lava", mineLavaCells(map, now)); // [2026-10-28] 용암 칸
         String rwMsg = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 다른 사람이 닌자 두목을 쓰러뜨렸을 때 함께 싸운 보상 소식
-        if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); }
+        if (rwMsg != null) { out.put("rewardMsg", rwMsg); out.put("ores", mineOreList(userName)); if (MINE_REWARD_FX.remove(userName)) out.put("rewardFx", true); } // [2026-11-26] 전설 이상 -- 빛줄기
         boolean fight = !e.mobs.isEmpty();
         if (out.containsKey("boatWreck")) fight = false; // [2026-11-18] 배가 부서져 마을로 떠밀려 갔다
         if (dmgSum == 0 && healed == 0 && mercExp == 0 && fight && !out.containsKey("bossAggro") && !out.containsKey("preempt")) { out.put("fight", true); out.put("combat", mineCombatInfo(lv, exp, hp, now, true, lock, rb)); return out; } // 방금 인식됐으면 그때까지 찬 체력을 저장
@@ -13049,7 +13109,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (minePatchId > 0) { out.put("patchId", minePatchId); out.put("patchText", minePatchText); } // [2026-10-28] 패치 전 공지
         String rw = MINE_SHRINE_REWARD_MSG.remove(userName); // [2026-10-28] 닌자 두목을 함께 쓰러뜨린 보상 소식 -- 전투 중이 아니어도 1초 위치 알림으로 받는다
-        if (rw != null) out.put("rewardMsg", rw);
+        if (rw != null) { out.put("rewardMsg", rw); if (MINE_REWARD_FX.remove(userName)) out.put("rewardFx", true); } // [2026-11-26] 전설 이상 -- 빛줄기
         return out;
     }
 

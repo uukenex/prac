@@ -3724,6 +3724,7 @@ var TowerMine = (function () {
         var rwl = p.rw ? '🎁 ' + rwList(p.rw) : !b.killed ? '' : p.ok ? '🎁 ⭐ 별빛석 ' + d.star + ' · 🔮 칠요석 ' + d.seven : '보상 없음 (' + b.minShare + ' 몫 미달)';
         if (p.kit != null) rwl += (rwl ? ' · ' : '') + (p.kit > 0 ? '🐉 거룡의 심장 조각 ' + p.kit + '개' : '🐉 심장 조각은 안 나옴'); // [2026-11-23] 토벌 순위 보상
         if (p.gear && p.gear.length) rwl += (rwl ? ' · ' : '') + '🗡️ 신화 ' + p.gear.map(escAttr).join(', '); // [2026-11-24] 거룡 장비
+        if (p.merc && p.merc.length) rwl += (rwl ? ' · ' : '') + '🎁 ' + p.merc.map(escAttr).join(', '); // [2026-11-26] 용병 장비
         h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (!b.killed && !p.ok ? ' · 아직 보상 기준(' + b.minShare + ' 몫) 전' : '') + '</small>' + (rwl ? '<small style="color:#ffe9a8">' + rwl + '</small>' : '') + '</span></div>';
       });
       var bh = b.bh; // [2026-11-25] "베히모스도 게시판에" -- 거룡이 쓰러진 뒤 그 주기의 하늘고래
@@ -3733,7 +3734,13 @@ var TowerMine = (function () {
           + (bh.killed ? '✅ 처치 -- <b>' + (bh.killedAt ? wbWhen(bh.killedAt) : '시각 기록 없음') + '</b>' : (bh.hp < bh.max ? '⚔️ 남은 체력 ' + bpct + '%' : '💤 아직 아무도 상처 내지 못함') + (k[0] === 'prev' ? ' -- 쓰러뜨리지 못함' : ''));
         h += '<div class="mine-bar hp" style="display:block;width:100%;margin:4px 0"><i style="width:' + (bh.killed ? 0 : Math.min(100, bpct)) + '%;background:#2f8fd8"></i></div>';
         if (!bps.length) h += '<small>함께 싸운 사람이 아직 없어요.</small>';
-        bps.forEach(function (p, i) { h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + '</small></span></div>'; });
+        if (bh.killed) h += '<div style="margin:4px 0"><small>☀️ 처치 보상 -- 광산의 모두에게 햇빛석 1개</small></div>'; // [2026-11-26]
+        bps.forEach(function (p, i) { // [2026-11-26] "베히모스 보상 내역 -- 이번 주기에 얻은 전체": 햇빛석(10%마다 + 처치), 장비, 용병 장비
+          var rwl = p.sun > 0 ? '☀️ 햇빛석 ' + p.sun + '개' : p.sun === 0 ? '☀️ 햇빛석은 안 나옴' : bh.killed ? '☀️ 햇빛석 (10%마다 받은 것은 기록 전)' : '';
+          if (p.gear && p.gear.length) rwl += (rwl ? ' · ' : '') + '🗡️ 신화 ' + p.gear.map(escAttr).join(', ');
+          if (p.merc && p.merc.length) rwl += (rwl ? ' · ' : '') + '🎁 ' + p.merc.map(escAttr).join(', ');
+          h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + '</small>' + (rwl ? '<small style="color:#bfe3ff">' + rwl + '</small>' : '') + '</span></div>';
+        });
         h += '</div>';
       }
       h += '</div>';
@@ -6884,7 +6891,7 @@ var TowerMine = (function () {
       if (d.mercPay) { mercPayNote(d.mercPay); if (!d.merc && st) st.merc = null; }
       if (d.levelUp) floats.push({ x: P.x, y: P.y - 1, text: '⬆️ 레벨 업!', color: '#ffe14d', big: true, t0: performance.now() });
       if ('pStealth' in d) pStealth = d.pStealth; // [2026-10-30]
-      if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상
+      if (d.rewardMsg) { if (d.ores) st.ores = d.ores; flashT0 = t; msg(d.rewardMsg, 4200); if (d.rewardFx) rainbowGo(); } // [2026-10-28] 함께 싸운 닌자 두목 첫 처치 보상 // [2026-11-26] 전설 이상(월드보스 장비/용병 장비) -- 빛줄기
       if (d.iceBroke && !d.died) { if (iceSt) iceSt.frozen = null; iceStruggleN = 0; flashT0 = t; floats.push({ x: P.x, y: P.y - 0.9, text: '🧊 쨍그랑! -' + d.iceBroke, color: '#bfefff', big: true, t0: t }); msg(d.message || '🧊 얼음이 깨졌어요!', 2800); } // [2026-11-18] 언 채로 맞으면 최대 체력 50% + 얼음이 깨진다
       if (d.combat) setCombat(d.combat);
       else if (st.combat && d.fight === false) { st.combat.fight = false; renderHp(); }
@@ -8360,7 +8367,7 @@ var TowerMine = (function () {
     }).then(function (d) {
       presBusy = false;
       if (d) patchShow(d); // [2026-10-28] 패치 전 공지
-      if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); } // [2026-10-28] 닌자 두목 함께 처치 보상
+      if (d && d.rewardMsg) { flashT0 = performance.now(); msg(d.rewardMsg, 4200); if (d.rewardFx) rainbowGo(); } // [2026-10-28] 닌자 두목 함께 처치 보상 // [2026-11-26] 전설 이상 -- 빛줄기
       unityShow(d && d.unity); // [2026-11-17] 우리는 하나
       if (d && d.ael) aelApply(d.ael); // [2026-11-22] 갑옷 속성
       if (d && d.villageOut) { // [2026-11-17] 마계 마을 -- 3초 뒤 안내 없이 요새 도시로, 그다음 한 줄
