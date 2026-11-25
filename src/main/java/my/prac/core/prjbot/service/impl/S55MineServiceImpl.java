@@ -2388,7 +2388,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  쓰러지면 광산에 들어온 적이 있는 모두에게 1개. 구간 기여자는 메모리에만 있어 서버를 다시 켜면 그 구간은 다시 켠 뒤 때린 사람부터.
     static final String MINE_BH_NAME = "하늘고래 베히모스";
     static final double MINE_BH_HP_MUL = 1.2, MINE_BH_DMG_MUL = 1.25;
-    static final long MINE_BH_PERIOD_MS = 2 * 3_600_000L; // [2026-11-23] 두 시간에 한 번(KST 짝수 정각)
+    static final long MINE_BH_PERIOD_MS = 30 * 60_000L; // [2026-11-23] 두 시간에 한 번(KST 짝수 정각) // [2026-11-25] "거룡 처치 후 고래 보스는 30분 텀, 3분간 싸우게" -- 매시 정각/30분
+    static final long MINE_BH_LEN_MS = 3 * 60_000L; // [2026-11-25] 베히모스 한 회차 길이(거룡은 MINE_WB_LEN_MS 5분)
+    /** [2026-11-25] 지금 회차 길이 -- 베히모스 3분, 거룡 5분. */
+    static long mineWbLen() { return mineWbBh() ? MINE_BH_LEN_MS : MINE_WB_LEN_MS; }
     static final long MINE_BH_FLY_FIRST_MS = 25_000L, MINE_BH_FLY_GAP_MS = 40_000L, MINE_BH_FLY_MS = 9_000L, MINE_BH_DIVE_MS = 1_400L, MINE_BH_FLY_MOVE_MS = 1_800L, MINE_BH_KNOCK_MS = 6_000L;
     static final java.util.concurrent.ConcurrentHashMap<String, Double> MINE_BH_SHARE = new java.util.concurrent.ConcurrentHashMap<>(); // 베히모스 싸운 몫(화면 표시만 -- 보상은 10%마다 싸우던 사람)
     static final java.util.Set<String> MINE_BH_SEG = java.util.concurrent.ConcurrentHashMap.newKeySet(); // [2026-11-23] 지금 10% 구간에 때린 사람
@@ -2472,7 +2475,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 }
             }
         }
-        synchronized (bs) { if (bs.deadUntil <= now) { bs.fx = st.px; bs.fy = st.py; bs.frozenUntil = Math.max(bs.frozenUntil, st.start + MINE_WB_LEN_MS + 5_000L); } }
+        synchronized (bs) { if (bs.deadUntil <= now) { bs.fx = st.px; bs.fy = st.py; bs.frozenUntil = Math.max(bs.frozenUntil, st.start + mineWbLen() + 5_000L); } }
     }
     static volatile long mineWbForce = 0; // 관리자 시험 -- 이 시각에 바로 시작
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_WB_ATK = new java.util.concurrent.ConcurrentHashMap<>(); // 몫 기준 공격력(레벨·환생)
@@ -2487,14 +2490,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** 지금(또는 곧) 회차의 시작 시각 -- 관리자 시험 회차가 살아 있으면 그것, 아니면 오늘 21시(21시 30분이 지났으면 내일 21시). */
     static long mineWbStart(long now) {
-        if (mineWbForce > 0 && now < mineWbForce + MINE_WB_LEN_MS) return mineWbForce;
+        if (mineWbForce > 0 && now < mineWbForce + mineWbLen()) return mineWbForce;
         if (!MINE_WB_OPEN) return Long.MAX_VALUE / 4; // [2026-11-15] 일반 공개 전 -- 정해진 시각엔 안 나온다(관리자 시험 회차만)
-        if (mineWbBh()) { // [2026-11-23] "베히모스는 두 시간에 한 번씩" -- KST 짝수 정각(0·2·…·22시)
+        if (mineWbBh()) { // [2026-11-23] "베히모스는 두 시간에 한 번씩" -- KST 짝수 정각(0·2·…·22시) // [2026-11-25] 30분마다(정각/30분) 3분
             long kst = 9 * 3_600_000L, b = (now + kst) / MINE_BH_PERIOD_MS * MINE_BH_PERIOD_MS - kst;
-            return now >= b + MINE_WB_LEN_MS ? b + MINE_BH_PERIOD_MS : b;
+            return now >= b + mineWbLen() ? b + MINE_BH_PERIOD_MS : b;
         }
         long s = now / MINE_WB_PERIOD_MS * MINE_WB_PERIOD_MS; // [2026-11-15] 매시 정각(KST는 UTC와 시간 단위로만 달라 정각이 같다)
-        return now >= s + MINE_WB_LEN_MS ? s + MINE_WB_PERIOD_MS : s;
+        return now >= s + mineWbLen() ? s + MINE_WB_PERIOD_MS : s;
     }
     // ---- [2026-11-16] "체력은 맵 초기화마다 초기화되는 거 맞지?" -- 거룡의 체력은 회차(매시 정각 10분)마다 다시 차지 않고 맵 초기화 주기(2일) 동안 이어진다.
     //  회차가 끝나면 날아가고(깎인 체력 그대로), 다음 정각에 그 체력으로 다시 온다. 쓰러지면 그 주기엔 다시 안 나온다(다음 맵 초기화에 가득 차서).
@@ -2598,7 +2601,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     HashMap<String, Object> mineWbBoardLive(long now) {
         HashMap<String, Object> l = new HashMap<>();
         if (!MINE_WB_OPEN) { l.put("closed", true); return l; }
-        if (mineWbOn(now)) { l.put("on", true); l.put("end", mineWbStart(now) + MINE_WB_LEN_MS); l.put("name", mineWbName()); if (mineWbBh()) l.put("bh", true); return l; } // [2026-11-23] 베히모스는 나와 있을 때만 보인다
+        if (mineWbOn(now)) { l.put("on", true); l.put("end", mineWbStart(now) + mineWbLen()); l.put("name", mineWbName()); if (mineWbBh()) l.put("bh", true); return l; } // [2026-11-23] 베히모스는 나와 있을 때만 보인다
         int cur = S5MineMap.cycleAt(now);
         long next = mineWbStart(now);
         if (mineWbDragonDead() && MINE_WB_POOL.cycle == cur) { long ns = S5MineMap.RESET_ANCHOR_MS + (long) cur * S5MineMap.CYCLE_MS; next = (ns + MINE_WB_PERIOD_MS - 1) / MINE_WB_PERIOD_MS * MINE_WB_PERIOD_MS; l.put("nextCycle", true); }
@@ -2668,7 +2671,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         WbState st = MINE_WB;
         WbPool p = MINE_WB_POOL;
         if (p.killed && p.cycle == S5MineMap.cycleAt(now)) return false; // 이번 주기엔 이미 쓰러졌다
-        return now >= s && now < s + MINE_WB_LEN_MS && !(st.start == s && (st.killed || st.done));
+        return now >= s && now < s + mineWbLen() && !(st.start == s && (st.killed || st.done));
     }
     /** 체력 70% / 40% 아래로 세진다(주기 동안 이어지는 체력 기준). */
     static int mineWbStage() { int max = mineWbMax(), p = (int) ((max - (long) Math.min(max, MINE_WB_POOL.hp)) * 10L / Math.max(1, max)); return p >= 6 ? 2 : p >= 3 ? 1 : 0; }
@@ -2676,7 +2679,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineWbSync(long now) {
         mineWbPool(now);
         WbState st = MINE_WB;
-        if (st.start > 0 && !st.done && !st.killed && now >= st.start + MINE_WB_LEN_MS) mineWbTimeout(st, now);
+        if (st.start > 0 && !st.done && !st.killed && now >= st.start + mineWbLen()) mineWbTimeout(st, now);
         long s = mineWbStart(now);
         if (st.start == s && !st.done && !st.killed) mineWbMove(st, now); // [2026-11-16] 거룡 자리 옮기기
         if (st.start == s && !MINE_WB_POOL.test) { // [2026-11-18] "거룡 피가 왜 100%야" -- 몬스터 상태가 가득 찬 체력으로 새로 생기면(풀 94%인데) 띠/체력이 100%로 보였다 -- 풀보다 높으면 풀로
@@ -3529,7 +3532,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!mineWbOk(userName)) return null; // [2026-11-15] 일반 공개 전엔 관리자만
         mineWbSync(now);
         long s = mineWbStart(now);
-        if (now < s - MINE_WB_NOTICE_MS || now >= s + MINE_WB_LEN_MS) return null;
+        if (now < s - MINE_WB_NOTICE_MS || now >= s + mineWbLen()) return null;
         WbState st = MINE_WB;
         if (st.start == s && (st.killed || st.done)) return null;
         if (MINE_WB_POOL.killed) return null; // 이번 주기엔 이미 쓰러졌다
@@ -3539,7 +3542,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         w.put("hp", (int) (Math.max(0, MINE_WB_POOL.hp) * 1000L / mineWbMax())); // 예고 때도 남은 체력(주기 동안 이어진다)
         w.put("carry", !MINE_WB_POOL.test);
         w.put("at", s);
-        w.put("end", s + MINE_WB_LEN_MS);
+        w.put("end", s + mineWbLen());
         w.put("on", now >= s);
         w.put("name", mineWbName());
         if (bh) w.put("bh", 1); // [2026-11-23] 화면이 그림/이름/연출을 베히모스로
@@ -3568,7 +3571,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     public static String mineWbChatTail(String room) {
         if (room == null || room.isEmpty() || !MINE_WB_OPEN) return null; // [2026-11-15] 일반 공개 전엔 채팅 알림 없음(관리자 시험 회차도)
         long now = System.currentTimeMillis(), s = mineWbStart(now);
-        if (now < s - MINE_WB_NOTICE_MS || now >= s + MINE_WB_LEN_MS) return null;
+        if (now < s - MINE_WB_NOTICE_MS || now >= s + mineWbLen()) return null;
         WbState st = MINE_WB;
         if (st.start == s && (st.killed || st.done)) return null;
         if (st.start != s && now >= s) return null; // 시작했는데 아직 상태가 없음(아무도 광산에 없음) -- 다음 응답에
