@@ -745,6 +745,7 @@ public class Season5ViewController {
             if (wh != null && wh.trim().matches("[A-Za-z0-9.:-]{1,100}")) st.put("wsHost", wh.trim()); }
         if ("1".equals(enter) && st.get("error") == null && !s5Service.s55IsAdmin(userName)) // [2026-11-04] 관리자 알림 -- 다른 유저 접속(같은 유저는 30분에 한 번)
             my.prac.core.util.S55AdminPush.digestEnter(userName); // [2026-11-18] 1시간 정리로
+        if ("1".equals(enter) && st.get("error") == null) my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineEnterMark(userName); // [2026-11-25] 접속자 목록 -- 그림 불러오는 중에도
         if ("1".equals(enter) && st.get("error") == null) {
             mineLog(userName, "[웹] 광산 입장", st.get("mapName") + " (" + st.get("x") + ", " + st.get("y") + ") · 곡괭이 내구도 "
                     + st.get("durability") + "/" + st.get("durabilityMax"));

@@ -150,8 +150,21 @@ public class S55MineController {
     @GetMapping(value = "/mine/admin-net", produces = MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8")
     @ResponseBody
     public ResponseEntity<?> adminNet(HttpServletRequest req) {
-        Object body = adminSession(req) ? my.prac.core.util.S55AdminPush.nets() : new java.util.ArrayList<Object>();
+        Object body = adminSession(req) ? adminNetAll() : new java.util.ArrayList<Object>();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(body);
+    }
+
+    /** [2026-11-25] "게임 시작 전 화면에 누가 접속했는지 잘 안 나온다" -- 핑을 보낸 사람(최근 30초)만 나왔다. 광산에 있는 사람(로딩 중/창 내림 포함)을 모두, 상태(st 0 활동/1 멈춤/2 로딩, ago 초)와 함께. */
+    static java.util.List<HashMap<String, Object>> adminNetAll() {
+        java.util.List<HashMap<String, Object>> l = my.prac.core.util.S55AdminPush.nets();
+        HashMap<String, HashMap<String, Object>> by = new HashMap<>();
+        for (HashMap<String, Object> m : l) by.put(String.valueOf(m.get("u")), m);
+        for (Object[] o : my.prac.core.prjbot.service.impl.S55MineServiceImpl.mineOnlineNow(System.currentTimeMillis())) {
+            HashMap<String, Object> m = by.get((String) o[0]);
+            if (m == null) { m = new HashMap<>(); m.put("u", o[0]); m.put("pg", -1L); l.add(m); }
+            m.put("st", o[1]); m.put("ago", o[2]);
+        }
+        return l;
     }
 
     /** [2026-11-04] 시험 알림(폰 알림 + 화면 안 알림) -- 관리자만. */

@@ -143,9 +143,10 @@
       fetch(base + 'admin-net', { cache: 'no-store', credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (l) {
         var DV = ['💻 PC', '📱 폰', '💬 카톡'];
         $('s55AdmNet').innerHTML = l && l.length ? l.map(function (n) {
+          if (n.pg < 0) return '<div><b style="color:#a89ec8">' + (n.st === 2 ? '⏳ 로딩 중' : '⏸ 멈춤') + '</b> ' + esc(n.u) + ' <span>' + (n.st === 2 ? '그림 불러오는 중 · ' + (n.ago | 0) + '초' : '창 내림/화면 꺼짐 · ' + (n.ago | 0) + '초 전') + '</span></div>'; // [2026-11-25] 핑이 없는 사람도
           var c = n.pg < 150 ? '#9fe0a8' : n.pg < 300 ? '#ffd27a' : '#ffb0a0';
-          return '<div><b style="color:' + c + '">' + n.pg + 'ms</b> ' + esc(n.u) + ' <span>' + (DV[n.dv] || '?') + ' · ' + (n.nw ? (n.wv == 1 ? 'WS 서울' : n.wv == 2 ? 'WS 해외 경유' : 'WS') : 'HTTP') + (n.bg ? ' · 🌙 창 숨김' : '') + (n.sv >= 0 ? ' · 서버 ' + n.sv + 'ms / 통신 ' + Math.max(0, n.pg - n.sv) + 'ms' : '') + (n.fg > 100 ? ' · 화면 ' + n.fg : '') + '</span></div>';
-        }).join('') : '<div class="e">지금 광산에 있는 사람이 없어요(새 화면으로 접속한 사람만 보여요).</div>';
+          return '<div><b style="color:' + c + '">' + n.pg + 'ms</b> ' + esc(n.u) + ' <span>' + (n.st === 1 ? '⏸ 멈춤 ' + (n.ago | 0) + '초 · ' : '') + (DV[n.dv] || '?') + ' · ' + (n.nw ? (n.wv == 1 ? 'WS 서울' : n.wv == 2 ? 'WS 해외 경유' : 'WS') : 'HTTP') + (n.bg ? ' · 🌙 창 숨김' : '') + (n.sv >= 0 ? ' · 서버 ' + n.sv + 'ms / 통신 ' + Math.max(0, n.pg - n.sv) + 'ms' : '') + (n.fg > 100 ? ' · 화면 ' + n.fg : '') + '</span></div>';
+        }).join('') : '<div class="e">지금 광산에 있는 사람이 없어요.</div>';
       }).catch(function () { }).then(function () { if (force && nb) { nb.disabled = false; nb.textContent = '🔄 새로고침'; } });
     }
     poll(); setInterval(poll, 10000); net(); setInterval(net, 10000);

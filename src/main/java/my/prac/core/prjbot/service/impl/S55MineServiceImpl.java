@@ -3346,7 +3346,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         drops.add(mineDrop(west ? S5MineMap.DUSK_SEAL_GRADE : S5MineMap.DAWN_SEAL_GRADE, west ? S5MineMap.DUSK_SEAL_NAME : S5MineMap.DAWN_SEAL_NAME, 1));
         msg.append(west ? " 🌇 " : " 🌅 ").append(west ? S5MineMap.DUSK_SEAL_NAME : S5MineMap.DAWN_SEAL_NAME).append("을(를) 얻었어요!");
     }
-    static final long MINE_DEMON_BLINK_MS = 3_500L, MINE_DEMON_FIRE_MS = 4_500L, MINE_DEMON_SLAM_MS = 9_000L, // [2026-11-17] 더 세게(5s/6.5s/12s -> 3.5s/4.5s/9s, 피해 150/220/240 -> 200/280/300)
+    static final long MINE_DEMON_BLINK_MS = 17_500L /* [2026-11-25] "악마류 + 혼돈스러운 마계 순간이동 공격 쿨타임 5배" 3.5s -> 17.5s */, MINE_DEMON_FIRE_MS = 4_500L, MINE_DEMON_SLAM_MS = 9_000L, // [2026-11-17] 더 세게(5s/6.5s/12s -> 3.5s/4.5s/9s, 피해 150/220/240 -> 200/280/300)
                        MINE_DEMON_WARN_MS = 1_800L;
     /** 순간이동했으면 true(거리를 다시 잰다). */
     boolean mineDemonSkills(S5MineMap map, MobState s, S5MineMobs.Type type, int x, int y, int dist, long now) {
@@ -13056,6 +13056,34 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  [2026-10-28] 명령어 /패치공지 -> /패치, 내용 없이 /패치만 치면 "곧 패치가 시작됩니다."
     //  메모리에만 두므로 배포(서버 재시작)하면 저절로 사라진다. "끄기"로 미리 내릴 수도 있다.
     static volatile String minePatchText = "";
+    // [2026-11-25] "/패치나 관리자 화면(게임 시작 전)에 누가 접속했는지 잘 안 나온다" -- 1초 위치 알림(10초 안)만 셌더니, 그림을 불러오는 중(입장 직후 로딩)이거나
+    //  창을 내려 둔 사람(폰 화면 꺼짐/다른 앱 -- 1초 턴이 멈춤)은 빠졌다. 입장 시각(MINE_ENTER_AT)과 마지막 위치 알림으로 활동 중/멈춤/로딩 중을 함께 센다(MINE_ONLINE_LOOSE_MS 안).
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_ENTER_AT = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long MINE_ONLINE_LOOSE_MS = 120_000L;
+    /** 광산 입장(화면을 열 때, 그림 불러오기 전). */
+    public static void mineEnterMark(String userName) { if (userName != null && !userName.trim().isEmpty()) { if (MINE_ENTER_AT.size() > 2000) MINE_ENTER_AT.clear(); MINE_ENTER_AT.put(userName, System.currentTimeMillis()); } }
+    /** 지금 광산에 있는 사람 -- {유저, 상태(0 활동 중 / 1 멈춤 / 2 로딩 중), 마지막 소식 뒤 초}. 활동 중 먼저. */
+    public static List<Object[]> mineOnlineNow(long now) {
+        List<Object[]> out = new ArrayList<>();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) {
+            MinePresence p = pe.getValue();
+            if (p == null || p.mapId == null) continue;
+            Long en = MINE_ENTER_AT.get(pe.getKey());
+            if (en != null && en > p.at) continue; // 다시 들어와 불러오는 중 -- 아래에서
+            long ago = now - p.at;
+            if (ago > MINE_ONLINE_LOOSE_MS) continue;
+            out.add(new Object[] { pe.getKey(), ago <= MINE_PRESENCE_TTL_MS ? 0 : 1, (int) (ago / 1000) });
+            seen.add(pe.getKey());
+        }
+        for (Map.Entry<String, Long> e : MINE_ENTER_AT.entrySet()) {
+            long ago = now - e.getValue();
+            if (seen.contains(e.getKey()) || ago > MINE_ONLINE_LOOSE_MS) continue;
+            out.add(new Object[] { e.getKey(), 2, (int) (ago / 1000) });
+        }
+        out.sort((a, b) -> Integer.compare((Integer) a[1], (Integer) b[1]));
+        return out;
+    }
     static volatile long minePatchId = 0;
     static final String MINE_PATCH_DEFAULT = "곧 패치가 시작됩니다.";
 
@@ -13074,7 +13102,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         long now = minePatchId;
         // [2026-11-19] "리턴 메시지가 너무 길어 -- 누구 접속자가 있는지만 말해 주고 패치공지완료로" -- 지금 광산에 있는 사람 닉네임만
         List<String> on = new ArrayList<>();
-        for (Map.Entry<String, MinePresence> pe : MINE_PRESENCE.entrySet()) if (now - pe.getValue().at <= MINE_PRESENCE_TTL_MS) on.add(mineNick(pe.getKey()));
+        for (Object[] o : mineOnlineNow(now)) { int st = (Integer) o[1]; on.add(mineNick((String) o[0]) + (st == 1 ? "(멈춤 " + o[2] + "초)" : st == 2 ? "(로딩 중)" : "")); } // [2026-11-25] 로딩 중/창 내림도
         return (on.isEmpty() ? "접속자 없음" : "접속자 " + on.size() + "명: " + String.join(", ", on)) + "\n패치공지완료";
     }
 
@@ -13082,6 +13110,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     @Override
     public void mineLeave(String userName) {
         MINE_PRESENCE.remove(userName);
+        MINE_ENTER_AT.remove(userName); // [2026-11-25]
         mineDisengageAll(userName);
     }
 
