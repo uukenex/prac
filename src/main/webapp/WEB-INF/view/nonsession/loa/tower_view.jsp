@@ -1038,8 +1038,8 @@
       .mine-smith[data-sv="equip"]{ width:min(780px,92vw); }
       .mine-smith.merc-wide{ width:min(980px,92vw); }
       .mine-smith .cos-car{ flex-wrap:wrap; overflow-x:visible; }
-      .mine-smith.merc-wide .merc-offers{ overflow-x:visible; }
-      .mine-smith.merc-wide .merc-offers .merc-offer{ flex:1 1 0; min-width:0; }
+      .mine-smith.merc-wide .merc-offers{ overflow-x:visible; display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); } /* [2026-11-25] "엣지에서 용병 고용 창이 세로 글자로 찌그러진다" -- 줄마다 꽉 채우던 flex:1 1 0은 동료 28명도 한 줄에 넣었다(PC 폭이면 어느 브라우저든). 이제 150px 칸으로 줄바꿈 */
+      .mine-smith.merc-wide .merc-offers .merc-offer{ min-width:0; }
       .mine-smith.merc-wide .merc-offer > img:not(.merc-portrait){ width:96px; height:96px; }
     }
     .merc-offers .merc-offer{ min-width:150px; display:flex; flex-direction:column; align-items:center; gap:3px; } /* [2026-11-06] 용병 계약 후보 */
