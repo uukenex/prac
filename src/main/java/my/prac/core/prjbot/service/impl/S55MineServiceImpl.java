@@ -2517,6 +2517,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // ---- [2026-11-17] "마을에 월드보스 게시판 NPC -- 이전 보스, 현재 보스(현재 맵 주기), 다음 출현 시간, 누가 얼마씩 데미지 기여도, 언제 처치, 누가 무슨 템 나왔는지" ----
     //  주기별 기록: 사람마다 WBS_<주기>(몫) / WBR_<주기>(받은 보상), 주기 결과는 설정 MINE_WB_C<주기>(체력|최대|처치|처치 시각). 게시판은 20초 모아 보여 준다.
     static final String MINE_ITEM_WBS = "WBS_", MINE_ITEM_WBR = "WBR_", MINE_WB_CYC_KEY = "MINE_WB_C";
+    // [2026-11-25] "베히모스도 게시판에" -- BHS_<주기> = 그 주기 베히모스와 싸운 몫(사람마다), MINE_BH_C<주기> = 그 주기 베히모스 결과(hp|max|killed|killedAt)
+    static final String MINE_ITEM_BHS = "BHS_", MINE_BH_CYC_KEY = "MINE_BH_C";
+    static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_BH_SHARE_SAVED = new java.util.concurrent.ConcurrentHashMap<>();
+    void mineBhShareSave(String userName, double share, long now) {
+        WbPool p = MINE_WB_POOL;
+        if (p.test || p.stage < 1) return;
+        MINE_BH_SHARE_SAVED.put(userName, now);
+        try { dao.upsertMineItem(userName, MINE_ITEM_BHS + p.cycle, mineWbShareInt(share)); } catch (Exception e) { /* 다음 저장 때 */ }
+    }
     static final String MINE_ITEM_WBG = "WBG_"; // [2026-11-24] "게시판 보상 목록에 장비 아이템도" -- WBG_<주기> = 그 주기 거룡에게서 나온 장비(1 = 거룡의 이빨, 2 = 거룡 비늘 갑옷 -- 합)
     static final String MINE_ITEM_WBK = "WBK_"; // [2026-11-23] "게시판에 거룡의 심장 조각도" -- WBK_<주기> = 토벌 순위 보상으로 받은 심장 조각 수 + 1(1 = 순위에 들었지만 0개)
     static volatile long MINE_WB_BOARD_AT = 0;
@@ -2527,12 +2536,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int cur = S5MineMap.cycleAt(now), max = mineWbMax();
         HashMap<String, Object> out = new HashMap<>();
         List<String> codes = java.util.Arrays.asList(MINE_ITEM_WBS + cur, MINE_ITEM_WBR + cur, MINE_ITEM_WBS + (cur - 1), MINE_ITEM_WBR + (cur - 1), MINE_ITEM_WB_SHARE, MINE_ITEM_WB_SHARE_CYC, MINE_ITEM_WB_CYCLE,
-            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM, MINE_ITEM_WBK + cur, MINE_ITEM_WBK + (cur - 1), MINE_ITEM_WBG + cur, MINE_ITEM_WBG + (cur - 1)); // [2026-11-23] 공통 보상, 심장 조각, [2026-11-24] 장비
+            MINE_ITEM_WBC + cur, MINE_ITEM_WBC + (cur - 1), MINE_ITEM_WB_COM, MINE_ITEM_WBK + cur, MINE_ITEM_WBK + (cur - 1), MINE_ITEM_WBG + cur, MINE_ITEM_WBG + (cur - 1), MINE_ITEM_BHS + cur, MINE_ITEM_BHS + (cur - 1)); // [2026-11-23] 공통 보상, 심장 조각, [2026-11-24] 장비, [2026-11-25] 베히모스 몫
         List<HashMap<String, Object>> rows;
         try { rows = dao.selectMineItemsByCodes(codes); } catch (Exception e) { rows = new ArrayList<>(); }
         for (int k = 0; k < 2; k++) {
             int c = cur - k;
-            Map<String, Double> sh = new HashMap<>();
+            Map<String, Double> sh = new HashMap<>(), bsh = new HashMap<>(); // [2026-11-25] bsh = 베히모스 몫
             Map<String, Integer> rw = new HashMap<>(), kit = new HashMap<>(), gear = new HashMap<>();
             Map<String, Integer> oldSh = new HashMap<>(), oldCyc = new HashMap<>(), oldRw = new HashMap<>();
             java.util.Set<String> com = new java.util.TreeSet<>(); // [2026-11-23] 공통 보상 받은 사람
@@ -2540,6 +2549,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 String u = strVal(r.get("USER_NAME"), ""), code = strVal(r.get("ITEM_CODE"), "");
                 int v = intVal(r.get("ITEM_LEVEL"), 0);
                 if ((MINE_ITEM_WBS + c).equals(code)) sh.put(u, (double) v);
+                else if ((MINE_ITEM_BHS + c).equals(code)) bsh.put(u, (double) v); // [2026-11-25]
                 else if ((MINE_ITEM_WBR + c).equals(code)) rw.put(u, v);
                 else if ((MINE_ITEM_WBK + c).equals(code)) kit.put(u, v - 1); // [2026-11-23] 심장 조각
                 else if ((MINE_ITEM_WBG + c).equals(code)) gear.put(u, v); // [2026-11-24] 장비
@@ -2555,7 +2565,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             b.put("from", S5MineMap.RESET_ANCHOR_MS + (long) (c - 1) * S5MineMap.CYCLE_MS);
             if (k == 0) {
                 for (Map.Entry<String, Double> e : MINE_WB_SHARE.entrySet()) if (!MINE_WB_POOL.test) sh.merge(e.getKey(), e.getValue(), Math::max); // 메모리(지금 싸우는 몫)가 더 새것
-                if (MINE_WB_POOL.stage >= 1) { b.put("hp", 0); b.put("max", max); b.put("killed", true); b.put("killedAt", MINE_WB_POOL.dKilledAt); } // [2026-11-23] 베히모스는 비공개 -- 게시판엔 거룡이 쓰러진 것만
+                if (MINE_WB_POOL.stage >= 1) { b.put("hp", 0); b.put("max", max); b.put("killed", true); b.put("killedAt", MINE_WB_POOL.dKilledAt); } // [2026-11-23] 거룡은 쓰러짐
+                if (MINE_WB_POOL.stage >= 1 && !MINE_WB_POOL.test) { // [2026-11-25] "베히모스도 게시판에" -- 2026-11-23엔 비공개였다
+                    for (Map.Entry<String, Double> e : MINE_BH_SHARE.entrySet()) bsh.merge(e.getKey(), e.getValue(), Math::max);
+                    HashMap<String, Object> bb = new HashMap<>();
+                    bb.put("hp", Math.max(0, MINE_WB_POOL.hp)); bb.put("max", max); bb.put("killed", MINE_WB_POOL.killed); bb.put("killedAt", MINE_WB_POOL.killedAt);
+                    b.put("bh", bb);
+                }
                 else { b.put("hp", Math.max(0, MINE_WB_POOL.hp)); b.put("max", max); b.put("killed", MINE_WB_POOL.killed); b.put("killedAt", MINE_WB_POOL.killedAt); }
             } else {
                 String v = null;
@@ -2563,6 +2579,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 String[] a = v == null ? new String[0] : v.trim().split("\\|");
                 if (a.length >= 4) { b.put("hp", Integer.parseInt(a[0])); b.put("max", Integer.parseInt(a[1])); b.put("killed", "1".equals(a[2])); b.put("killedAt", Long.parseLong(a[3])); }
                 else { b.put("hp", -1); b.put("max", max); b.put("killed", false); b.put("killedAt", 0L); }
+                String bv = null; // [2026-11-25] 그 주기 베히모스
+                try { bv = dao.selectConfigValue(MINE_BH_CYC_KEY + c); } catch (Exception ignore) { }
+                String[] ba = bv == null ? new String[0] : bv.trim().split("\\|");
+                if (ba.length >= 4) { HashMap<String, Object> bb = new HashMap<>(); bb.put("hp", Integer.parseInt(ba[0])); bb.put("max", Integer.parseInt(ba[1])); bb.put("killed", "1".equals(ba[2])); bb.put("killedAt", Long.parseLong(ba[3])); b.put("bh", bb); }
             }
             double tot = 0;
             for (double d : sh.values()) tot += d;
@@ -2586,6 +2606,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             }
             ps.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
             b.put("players", ps);
+            if (b.get("bh") != null) { // [2026-11-25] 베히모스와 싸운 사람(몫 순) -- 보상은 햇빛석(10%마다 무작위)이라 사람별 보상은 적지 않는다
+                @SuppressWarnings("unchecked") HashMap<String, Object> bb = (HashMap<String, Object>) b.get("bh");
+                int bm = intVal(bb.get("max"), max);
+                double bt = 0; for (double d : bsh.values()) bt += d;
+                List<HashMap<String, Object>> bp = new ArrayList<>();
+                for (Map.Entry<String, Double> e : bsh.entrySet()) {
+                    if (e.getValue() <= 0) continue;
+                    HashMap<String, Object> q = new HashMap<>();
+                    q.put("nick", mineNick(e.getKey()));
+                    q.put("share", (long) mineWbShareInt(e.getValue()));
+                    q.put("pct", bt > 0 ? Math.round(e.getValue() * 1000 / bt) / 10.0 : 0);
+                    q.put("dmg", Math.round(e.getValue() * bm / (MINE_WB_TOTAL * MINE_BH_HP_MUL))); // 베히모스 몫 하나 = 최대 체력 / (MINE_WB_TOTAL x MINE_BH_HP_MUL)
+                    bp.add(q);
+                }
+                bp.sort((p1, p2) -> Long.compare((Long) p2.get("share"), (Long) p1.get("share")));
+                bb.put("players", bp);
+            }
             b.put("com", new ArrayList<>(com));
             b.put("minShare", MINE_WB_MIN_SHARE);
             out.put(k == 0 ? "cur" : "prev", b);
@@ -2604,7 +2641,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (mineWbOn(now)) { l.put("on", true); l.put("end", mineWbStart(now) + mineWbLen()); l.put("name", mineWbName()); if (mineWbBh()) l.put("bh", true); return l; } // [2026-11-23] 베히모스는 나와 있을 때만 보인다
         int cur = S5MineMap.cycleAt(now);
         long next = mineWbStart(now);
-        if (mineWbDragonDead() && MINE_WB_POOL.cycle == cur) { long ns = S5MineMap.RESET_ANCHOR_MS + (long) cur * S5MineMap.CYCLE_MS; next = (ns + MINE_WB_PERIOD_MS - 1) / MINE_WB_PERIOD_MS * MINE_WB_PERIOD_MS; l.put("nextCycle", true); }
+        l.put("name", mineWbName()); if (mineWbBh()) l.put("bh", true); // [2026-11-25] 베히모스도 게시판에 -- 나와 있지 않을 때도
+        if (MINE_WB_POOL.killed && MINE_WB_POOL.cycle == cur) { long ns = S5MineMap.RESET_ANCHOR_MS + (long) cur * S5MineMap.CYCLE_MS; next = (ns + MINE_WB_PERIOD_MS - 1) / MINE_WB_PERIOD_MS * MINE_WB_PERIOD_MS; l.put("nextCycle", true); }
         l.put("next", next);
         return l;
     }
@@ -2624,6 +2662,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             p.killedAt = 0;
             p.stage = 0; p.mile = 0; p.dKilledAt = 0; // [2026-11-23]
             MINE_BH_SHARE.clear();
+            MINE_BH_SHARE_SAVED.clear(); // [2026-11-25]
             MINE_BH_SEG.clear();
             MINE_WB_SHARE.clear();
             MINE_WB_SHARE_SAVED.clear();
@@ -2652,6 +2691,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         try {
             dao.upsertConfigValue(MINE_WB_POOL_KEY, p.cycle + "|" + Math.max(0, p.hp) + "|" + (p.killed ? 1 : 0) + "|" + p.killedAt + "|" + p.stage + "|" + p.mile + "|" + p.dKilledAt, "world boss hp for this map cycle: cycle|hp|killed|killedAt|stage|mile|dragonKilledAt (set by app)");
             if (p.stage >= 1) dao.upsertConfigValue(MINE_WB_CYC_KEY + p.cycle, "0|" + mineWbMax() + "|1|" + p.dKilledAt, "world boss result of one map cycle: hp|max|killed|killedAt (board)"); // [2026-11-23] 게시판은 거룡 기록만(베히모스는 비공개)
+            if (p.stage >= 1) dao.upsertConfigValue(MINE_BH_CYC_KEY + p.cycle, Math.max(0, p.hp) + "|" + mineWbMax() + "|" + (p.killed ? 1 : 0) + "|" + p.killedAt, "behemoth result of one map cycle: hp|max|killed|killedAt (board)"); // [2026-11-25] 베히모스도 게시판에
             else dao.upsertConfigValue(MINE_WB_CYC_KEY + p.cycle, Math.max(0, p.hp) + "|" + mineWbMax() + "|" + (p.killed ? 1 : 0) + "|" + p.killedAt, "world boss result of one map cycle: hp|max|killed|killedAt (board)"); // [2026-11-17] 게시판(지난 주기)
         }
         catch (Exception e) { System.out.println("[광산] 월드보스 체력 저장 실패: " + e.getMessage()); }
@@ -2725,6 +2765,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         st.lastHit.put(userName, now);
         if (!p.test) hpBefore = Math.min(hpBefore, Math.max(1, p.hp)); // [2026-11-18] 몬스터 상태가 풀보다 높아도 풀에서 깎는다(가득 찬 상태로 새로 생겨 풀이 되돌아가지 않게)
         double units = dealt / (double) atk * mineWbPartyMul(mineWbActive(st, now)); // [2026-11-17] 인원 버프
+        if (!p.test && p.stage >= 1 && !MINE_BH_SHARE.containsKey(userName)) { // [2026-11-25] 베히모스 몫도 저장된 값에서 이어서(서버를 다시 켜도)
+            try { Integer v = mineItems(userName).get(MINE_ITEM_BHS + p.cycle); if (v != null && v > 0) MINE_BH_SHARE.putIfAbsent(userName, (double) v); } catch (Exception e) { /* 0부터 */ }
+        }
         if (!p.test && p.stage < 1 && !MINE_WB_SHARE.containsKey(userName)) { // 이번 주기에 앞서 싸운 몫(서버를 다시 켠 뒤 처음) -- 저장된 값에서 이어서
             try { Map<String, Integer> it = mineItems(userName); if (it.getOrDefault(MINE_ITEM_WB_SHARE_CYC, 0) == p.cycle + 1) MINE_WB_SHARE.putIfAbsent(userName, (double) it.getOrDefault(MINE_ITEM_WB_SHARE, 0)); } catch (Exception e) { /* 0부터 */ }
         }
@@ -2769,6 +2812,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         Long sv = MINE_WB_SHARE_SAVED.get(userName);
         if (!p.test && !bh && (sv == null || now - sv > 15_000L)) mineWbShareSave(userName, mine, now);
+        Long bsv = MINE_BH_SHARE_SAVED.get(userName); // [2026-11-25]
+        if (!p.test && bh && (bsv == null || now - bsv > 15_000L)) mineBhShareSave(userName, mine, now);
         return (int) after;
     }
     /** 한 사람 보상 -- 몫이 모자라거나 이번 주기에 이미 받았으면 그 안내만. 은하수 조각/용의 반지는 사람마다 따로 굴린다. */
@@ -2875,6 +2920,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (String u : st.lastHit.keySet()) {
             Double sh = MINE_WB_SHARE.get(u);
             if (sh != null) mineWbShareSave(u, sh, now);
+            Double bsh = MINE_BH_SHARE.get(u); // [2026-11-25]
+            if (bsh != null) mineBhShareSave(u, bsh, now);
             MINE_SHRINE_REWARD_MSG.merge(u, "🌫️ " + mineWbName() + "이(가) 하늘로 날아올랐어요. 남은 체력 " + left + "% -- " + (MINE_WB_POOL.test ? "(시험 회차)" : "깎인 체력은 그대로, 다음 정각에 이어서 싸워요!"), (p, q) -> p + " / " + q);
         }
     }

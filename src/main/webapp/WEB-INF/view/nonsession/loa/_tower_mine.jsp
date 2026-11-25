@@ -3726,6 +3726,16 @@ var TowerMine = (function () {
         if (p.gear && p.gear.length) rwl += (rwl ? ' · ' : '') + '🗡️ 신화 ' + p.gear.map(escAttr).join(', '); // [2026-11-24] 거룡 장비
         h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + (!b.killed && !p.ok ? ' · 아직 보상 기준(' + b.minShare + ' 몫) 전' : '') + '</small>' + (rwl ? '<small style="color:#ffe9a8">' + rwl + '</small>' : '') + '</span></div>';
       });
+      var bh = b.bh; // [2026-11-25] "베히모스도 게시판에" -- 거룡이 쓰러진 뒤 그 주기의 하늘고래
+      if (bh) {
+        var bpct = bh.max ? Math.round(bh.hp * 1000 / bh.max) / 10 : 0, bps = bh.players || [];
+        h += '<div style="margin-top:8px;padding-top:6px;border-top:1px dashed #6fb7ff"><b>🐋 ' + escAttr(lv.bh && k[0] === 'cur' && lv.name ? lv.name : '베히모스') + '</b> <small>거룡이 쓰러진 뒤</small><br>'
+          + (bh.killed ? '✅ 처치 -- <b>' + (bh.killedAt ? wbWhen(bh.killedAt) : '시각 기록 없음') + '</b>' : (bh.hp < bh.max ? '⚔️ 남은 체력 ' + bpct + '%' : '💤 아직 아무도 상처 내지 못함') + (k[0] === 'prev' ? ' -- 쓰러뜨리지 못함' : ''));
+        h += '<div class="mine-bar hp" style="display:block;width:100%;margin:4px 0"><i style="width:' + (bh.killed ? 0 : Math.min(100, bpct)) + '%;background:#2f8fd8"></i></div>';
+        if (!bps.length) h += '<small>함께 싸운 사람이 아직 없어요.</small>';
+        bps.forEach(function (p, i) { h += '<div class="mine-smith-row"><span class="nm">' + (i < 3 ? ['🥇', '🥈', '🥉'][i] : (i + 1) + '.') + ' ' + escAttr(p.nick) + ' <b>' + p.pct + '%</b><small>피해 약 ' + fmtN(p.dmg) + '</small></span></div>'; });
+        h += '</div>';
+      }
       h += '</div>';
     });
     return h;
