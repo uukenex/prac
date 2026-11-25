@@ -3684,7 +3684,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         dao.updateMinePos(userName, a.id, to[0], to[1], now);
         boolean got = items.getOrDefault(MINE_ITEM_WB_CYCLE, 0) >= S5MineMap.cycleAt(now) + 1 && !isMineAdmin(userName);
         out.put("ok", true);
-        out.put("message", "🐉 동쪽 성곽 내성 앞에 왔어요! " + (now < (Long) info.get("at") ? "곧 내성 한가운데에 " + MINE_WB_NAME + "이(가) 나타나요." : "내성 안의 " + MINE_WB_NAME + "을(를) 다 같이 쓰러뜨려요!")
+        out.put("message", (mineWbBh() ? "🐋" : "🐉") + " 동쪽 성곽 내성 앞에 왔어요! " + (now < (Long) info.get("at") ? "곧 내성 한가운데에 " + mineWbName() + "이(가) 나타나요." : "내성 안의 " + mineWbName() + "을(를) 다 같이 쓰러뜨려요!") /* [2026-11-25] 베히모스일 때도 거룡 이름이 나왔다 */
                 + (got ? " (이번 맵 주기 보상은 이미 받았어요 -- 도와주기만 돼요)" : ""));
         out.put("state", mineState(userName));
         return out;

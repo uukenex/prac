@@ -4383,7 +4383,7 @@ var TowerMine = (function () {
     var w = wbInfo, tn = nowSrv();
     if (!w || !map) return;
     if (!w.on && wbPreSeen !== w.at) { wbPreSeen = w.at; wbAlert('🐉 월드보스 예고', '「' + escAttr(w.name) + '」이(가) ' + callHhmm(w.at) + '에 동쪽 성곽에 나타나요', false); }
-    else if (w.on && wbOnSeen !== w.at) { wbOnSeen = w.at; if (tn - w.at < 45000) { flashT0 = performance.now(); wbAlert('🐉 월드보스 출현!', '「' + escAttr(w.name) + '」이(가) 동쪽 성곽 내성에 나타났어요', map.id !== (w.map || 'castle')); } }
+    else if (w.on && wbOnSeen !== w.at) { wbOnSeen = w.at; if (tn - w.at < 45000) { flashT0 = performance.now(); wbAlert((w.bh ? '🐋' : '🐉') + ' 월드보스 출현!', '「' + escAttr(w.name) + '」이(가) 동쪽 성곽 내성에 나타났어요', map.id !== (w.map || 'castle')); } } /* [2026-11-25] 베히모스 아이콘 */
   }
   function wbJoin() {
     if (wbAlertEl) wbAlertEl.style.display = 'none';
