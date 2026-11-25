@@ -3891,15 +3891,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static volatile int MINE_SQ_KILL_CYC = Integer.MIN_VALUE; // 읽기 전
     boolean mineSqGone(long now) {
         if (MINE_SQ_KILL_CYC == Integer.MIN_VALUE) { int c = -1; try { String v = dao.selectConfigValue(MINE_SQ_KILL_KEY); if (v != null) c = Integer.parseInt(v.trim()); } catch (Exception ignore) { } MINE_SQ_KILL_CYC = c; }
-        return MINE_SQ_KILL_CYC == S5MineMap.cycleAt(now);
+        return false; // [2026-11-25] "다람쥐 보스 계속 처치할 수 있게" -- 처치해도 맵 초기화까지 사라지지 않고 바로 다시 싸울 수 있다(쿨타임도 없음, 11-24)
     }
     /** 최강다람쥐 처치 보상(보스 공통 보상과 별개). */
     void mineSqReward(String userName, StringBuilder msg) {
-        int cyc = S5MineMap.cycleAt(System.currentTimeMillis());
-        MINE_SQ_KILL_CYC = cyc;
-        try { dao.upsertConfigValue(MINE_SQ_KILL_KEY, String.valueOf(cyc), "strongest squirrel killed in this map cycle (set by app)"); } catch (Exception ignore) { }
         for (String d : S5MineMap.SQ_DENS) MINE_CALL_AT.remove(d);
-        msg.append(" 🍂 최강다람쥐가 \"다음엔 안 진다!\" 하며 숲 속으로 사라졌어요(맵이 초기화되면 돌아온대요).");
+        msg.append(" 🍂 최강다람쥐가 \"다음엔 안 진다!\" 하며 작은 다람쥐로 돌아갔어요. (다시 말을 걸면 또 싸울 수 있어요)");
         try { dao.addUserOre(userName, S5MineMap.SQ_MEDAL_CODE, MINE_SQ_MEDALS); } catch (Exception e) { return; }
         msg.append(" 🏅 다람쥐메달 ").append(MINE_SQ_MEDALS).append("개! (아직 쓸 곳은 없대요)");
         mineGossipAdd(mineNick(userName) + " 님이 숲속 어딘가에서 최강다람쥐를 이겼대요!");
