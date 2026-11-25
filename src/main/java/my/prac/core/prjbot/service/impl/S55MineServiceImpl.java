@@ -3649,13 +3649,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_SEEN = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 누가 마지막으로 있던 시각
     static final String MINE_ITEM_CALL = "BCALL_";
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_AT = new java.util.concurrent.ConcurrentHashMap<>(); // 맵 -> 소환 시각
-    static final String[] MINE_CALL_MAPS = { /* [2026-11-16] 동굴 3층은 소환 없이 30분마다 나타나는 챔피언으로 */ S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST, S5MineMap.SHRINE_BOSS };
+    static final String[] MINE_CALL_MAPS = { /* [2026-11-16] 동굴 3층은 소환 없이 30분마다 나타나는 챔피언으로 */ S5MineMap.RUINS, S5MineMap.PEAK, S5MineMap.ISLE7, S5MineMap.PYRAMID_UNDER, S5MineMap.HARPY_NEST, S5MineMap.SHRINE_BOSS,
+        /* [2026-11-25] "심판자 보로네오와 크라켄도 다른 보스처럼 NPC 소환" -- 1시간마다 저절로 나타나던 것을 */ S5MineMap.LAST_LINE, S5MineMap.OPEN_SEA };
     /** 소환으로 나오는 보스의 맵(아니면 null). */
     static String mineCallMap(int type) {
         if (S5MineMobs.sqIndex(type) >= 0) return S5MineMap.SQ_DENS[S5MineMobs.sqIndex(type)]; // [2026-11-23] 최강다람쥐
         return type == S5MineMobs.RAID_BOSS_TYPE ? S5MineMap.RUINS : type == S5MineMobs.ICE_BOSS_TYPE ? S5MineMap.PEAK
                 : type == S5MineMobs.LAVA_BOSS_TYPE ? S5MineMap.ISLE7 : type == S5MineMobs.PHARAOH_BOSS_TYPE ? S5MineMap.PYRAMID_UNDER : type == S5MineMobs.HARPY_BOSS_TYPE ? S5MineMap.HARPY_NEST
-                : type == S5MineMobs.SHRINE_BOSS_TYPE ? S5MineMap.SHRINE_BOSS : null;
+                : type == S5MineMobs.SHRINE_BOSS_TYPE ? S5MineMap.SHRINE_BOSS : type == S5MineMobs.BORO_BOSS_TYPE ? S5MineMap.LAST_LINE : type == S5MineMobs.KRAKEN_TYPE ? S5MineMap.OPEN_SEA : null; // [2026-11-25]
     }
     static boolean mineCallRoom(String mapId) { if (S5MineMap.isSqDen(mapId)) return true; for (String m : MINE_CALL_MAPS) if (m.equals(mapId)) return true; return false; } // [2026-11-23] 다람쥐 굴(보스 목록엔 안 나온다 -- 숨은 방)
     /** 소환된 보스가 지금 나와 있는지. */
@@ -3668,7 +3669,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMap map = S5MineMap.get(mid);
         S5MineMap.Mob bm = map == null ? null : mineBossOf(map);
         MobState s = bm == null ? null : MINE_MOB_STATE.get(mineMobKey(map, bm.id));
-        if (s != null && s.deadUntil > now) return false; // 닌자 두목(쓰러진 시각 기록 없음)
+        if (s != null && s.deadUntil > now) { MINE_CALL_AT.remove(mid, at); return false; } // 닌자 두목(쓰러진 시각 기록 없음) // [2026-11-25] 쓰러지면 소환 끝 -- 보로네오/크라켄 맵은 늘 사람이 있어 재생성 시간(1시간)이 지나면 소환 없이 되살아났을 것
         long last = Math.max(at, MINE_CALL_SEEN.getOrDefault(mid, 0L));
         if (now - last >= (S5MineMap.isSqDen(mid) ? MINE_SQ_EMPTY_MS : MINE_CALL_LIFE_MS)) { MINE_CALL_AT.remove(mid, at); return false; } // 맵에 아무도 없이 10분([2026-11-23] 다람쥐 굴은 5초 -- 모두 쓰러지면 마을로 가니 같은 셈)
         if (S5MineMap.isSqDen(mid) && mineSqGone(now)) return false; // [2026-11-23] 이번 맵 주기엔 이미 쓰러졌다
@@ -3689,6 +3690,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int[] mineCallSpot(S5MineMap map) {
         S5MineMap.Mob bm = mineBossOf(map);
         if (bm == null) return null;
+        if (S5MineMap.OPEN_SEA.equals(map.id)) { // [2026-11-25] 크라켄 -- 길을 따라 도는 바다 한가운데 대신 부두 앞 물 위(배에서 부른다)
+            int[] c = MINE_CALL_CENTER.get(map.version());
+            if (c == null) {
+                for (int d = 0; d < 12 && c == null; d++) for (int dy = -d; dy <= d && c == null; dy++) for (int dx = -d; dx <= d; dx++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) != d) continue;
+                    int x = map.spawnX + 3 + dx, y = map.spawnY + dy;
+                    if (map.inside(x, y) && map.terrainAt(x, y) == '~' && map.portalAt(x, y) == null) { c = new int[] { x, y }; break; } // 배로 다니는 물 위
+                }
+                if (c == null) c = new int[] { map.spawnX + 1, map.spawnY };
+                MINE_CALL_CENTER.put(map.version(), c);
+            }
+            return c;
+        }
         if (S5MineMap.CAVE3.equals(map.id)) { // [2026-11-13] "지하 광산 3층 소환사가 길을 막는다 -- 맵 가운데로" -- 가운데에서 가까운, 둘레 8칸이 모두 트인 칸
             int[] c = MINE_CALL_CENTER.get(map.version());
             if (c == null) {
@@ -3730,8 +3744,18 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (boss.type == S5MineMobs.LAVA_BOSS_TYPE) MINE_LAVA.clear();
         if (boss.type == S5MineMobs.PHARAOH_BOSS_TYPE) MINE_PHARAOH_STUN_AT.clear();
         if (boss.type == S5MineMobs.HARPY_BOSS_TYPE) { MINE_TREES.clear(); mineHarpyReset(); } // 나무가 모두 다시 자란다
+        if (boss.type == S5MineMobs.BORO_BOSS_TYPE) { mineBoroLastSummon = 0; mineBoroLastSay = 0; } // [2026-11-25]
+        if (boss.type == S5MineMobs.KRAKEN_TYPE) { // [2026-11-25] 숨은 채 나와, 곧 바다 위 배 둘레에서 솟아오른다(관리자 되살리기와 같게)
+            bs.kraken = true;
+            synchronized (MINE_KRK_LOCK) { MINE_KRK_SMASH.clear(); MINE_KRK_RES[4] = 0; MINE_KRK_FIX[0] = -1; }
+            mineKrkFightAt = 0; mineKrkSurfaceUntil = 0; mineKrkMeetDue = 0; mineKrkGimmick = false; mineKrkFloorSaid = false;
+        }
     }
     static final java.util.concurrent.ConcurrentHashMap<String, Long> MINE_CALL_TRY = new java.util.concurrent.ConcurrentHashMap<>();
+    static final java.util.concurrent.ConcurrentHashMap<String, String> MINE_CALL_BY = new java.util.concurrent.ConcurrentHashMap<>(); // [2026-11-25] 맵 -> 소환한 사람(최강다람쥐 보상은 이 사람만)
+    /** [2026-11-25] "다람쥐 보스는 소환자만 보상" -- 최강다람쥐인데 u가 부른 사람이 아니면 true. */
+    static boolean mineSqNoRw(S5MineMap map, int type, String u) { return S5MineMobs.sqIndex(type) >= 0 && (map == null || u == null || !u.equals(MINE_CALL_BY.get(map.id))); }
+    static final String MINE_SQ_NORW_MSG = " 🐿️ 보상은 부른 사람만 받아요.";
     /** [2026-11-13] 보스 소환사 -- action=info(지금 상태) / call(소환). */
     public HashMap<String, Object> mineBossCall(String userName, String action) {
         HashMap<String, Object> out = new HashMap<>();
@@ -3778,12 +3802,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             dao.upsertMineItem(userName, MINE_ITEM_CALL + map.id, (int) (now / 60_000L));
             mineCallReset(map, now);
             MINE_CALL_AT.put(map.id, now + MINE_CALL_DELAY_MS);
+            MINE_CALL_BY.put(map.id, userName); // [2026-11-25]
             MINE_CALL_SEEN.put(map.id, now);
         }
         out.put("ok", true);
         out.put("at", now + MINE_CALL_DELAY_MS);
         out.put("readyAt", mineCallReadyAt(mineItems(userName), map.id)); // [2026-11-24] 다람쥐 굴은 0(쿨타임 없음)
-        out.put("message", "👑 " + bt.name + "을(를) 불러냈어요!");
+        out.put("message", "👑 " + bt.name + "을(를) 불러냈어요!" + (boss.type == S5MineMobs.KRAKEN_TYPE ? " 바다로 나가면 솟아올라요." : "")); // [2026-11-25]
         return out;
     }
     // ---- [2026-11-23] 최강다람쥐(다람쥐 굴) -- "번개의 힘으로 벼락 몰아치기 등, 하피 체력 x3 이벤트 보스, 전광석화 위주 + 전기충격 스턴, 공격 속도 다른 보스의 7배, 보상 다람쥐메달(아직 사용처 없음)".
@@ -3894,11 +3919,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return false; // [2026-11-25] "다람쥐 보스 계속 처치할 수 있게" -- 처치해도 맵 초기화까지 사라지지 않고 바로 다시 싸울 수 있다(쿨타임도 없음, 11-24)
     }
     /** 최강다람쥐 처치 보상(보스 공통 보상과 별개). */
-    void mineSqReward(String userName, StringBuilder msg) {
+    void mineSqReward(String userName, StringBuilder msg, boolean rw) {
         for (String d : S5MineMap.SQ_DENS) MINE_CALL_AT.remove(d);
-        msg.append(" 🍂 최강다람쥐가 \"다음엔 안 진다!\" 하며 작은 다람쥐로 돌아갔어요. (다시 말을 걸면 또 싸울 수 있어요)");
-        try { dao.addUserOre(userName, S5MineMap.SQ_MEDAL_CODE, MINE_SQ_MEDALS); } catch (Exception e) { return; }
-        msg.append(" 🏅 다람쥐메달 ").append(MINE_SQ_MEDALS).append("개! (아직 쓸 곳은 없대요)");
+        msg.append(" 🐿️ \"다음엔 안 진다!\""); // [2026-11-25] 설명은 짧게
+        if (!rw) msg.append(MINE_SQ_NORW_MSG);
+        else { try { dao.addUserOre(userName, S5MineMap.SQ_MEDAL_CODE, MINE_SQ_MEDALS); msg.append(" 🏅 다람쥐메달 ").append(MINE_SQ_MEDALS).append("개"); } catch (Exception ignore) { } }
         mineGossipAdd(mineNick(userName) + " 님이 숲속 어딘가에서 최강다람쥐를 이겼대요!");
     }
     static String mineCallLeft(long ms) {
@@ -4922,6 +4947,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int kmax = S5MineMobs.hp(S5MineMobs.TYPES.get(km.type), km.rank);
         MobState ks = MINE_MOB_STATE.computeIfAbsent(mineMobKey(sm, km.id), k -> new MobState(kmax));
         synchronized (ks) { ks.respawn(kmax); ks.kraken = true; ks.lastHitAt = 0; ks.stunUntil = 0; }
+        { long rn = System.currentTimeMillis(); MINE_CALL_AT.put(S5MineMap.OPEN_SEA, rn); MINE_CALL_SEEN.put(S5MineMap.OPEN_SEA, rn); } // [2026-11-25] 크라켄도 소환 보스 -- 되살리기 = 소환한 것으로
         synchronized (MINE_KRK_LOCK) { MINE_KRK_SMASH.clear(); MINE_KRK_RES[4] = 0; MINE_KRK_FIX[0] = -1; }
         mineKrkFightAt = 0; mineKrkSurfaceUntil = 0; mineKrkMeetDue = 0; mineKrkGimmick = false; mineKrkFloorSaid = false;
         out.put("ok", true);
@@ -5004,7 +5030,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         mineKrkMax = kmax; // [2026-11-19] 체력 바닥(50%) 계산용
         synchronized (ks) {
             ks.kraken = true;
-            if (ks.deadUntil > now) { synchronized (MINE_KRK_LOCK) { if (MINE_KRK_RES[4] > 0 && MINE_KRK_RES[3] == 0) MINE_KRK_RES[4] = 0; MINE_KRK_SMASH.clear(); } return; }
+            if (ks.deadUntil > now || !mineBossUp(km.type, now)) { /* [2026-11-25] 소환 안 됐으면 쉰다 */ synchronized (MINE_KRK_LOCK) { if (MINE_KRK_RES[4] > 0 && MINE_KRK_RES[3] == 0) MINE_KRK_RES[4] = 0; MINE_KRK_SMASH.clear(); } return; }
             mineKrakenMove(sm, ks, km.id, now);
             synchronized (MINE_KRK_LOCK) {
                 mineKrkResolve(sm, ks, kmax, now);
@@ -5692,7 +5718,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int levelUp = 0;
         if (killed) {
             kills = 1;
-            boolean bossRw = !type.boss || S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, mob.type); // [2026-11-20] 보스 보상 하루 5번
+            boolean sqNoRw = mineSqNoRw(map, mob.type, userName); // [2026-11-25] 최강다람쥐는 부른 사람만
+            boolean bossRw = !sqNoRw && (!type.boss || S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, mob.type)); // [2026-11-20] 보스 보상 하루 5번
             mineThunderKill(map, type, now); // [2026-11-05] 밤 마물 처치 수
             msg.append(mineTowerKill(userName, map, mob, type)); // [2026-11-15] 탑 -- 시즌5 PP, 수문장
             if (mob.type == S5MineMobs.THUNDER_BOSS_TYPE) { // [2026-11-05] 천둥 황소 처치 -- 마물이 돌아온다
@@ -5734,7 +5761,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (type.noReward) msg.append(" (여왕개미는 따로 주는 게 없어요 -- 10분 뒤 다시 나타나요)"); // [2026-10-28]
             boolean twNo = mineTwNoRw(userName, map, type); // [2026-11-23] 탑 수문장 하루 횟수를 다 썼으면 장비도 없다(안내는 mineTowerKill이)
             if (bossRw && !twNo) mineWeaponDrop(userName, items, type, mob.rank, msg, out); // [2026-11-04] 검기로 쓰러뜨린 몬스터도 같은 규칙이라 따로 뺐다
-            else if (!twNo) msg.append(mineBossRwNoMsg(type.name)); // [2026-11-20]
+            else if (!twNo && !sqNoRw) msg.append(mineBossRwNoMsg(type.name)); // [2026-11-20] // [2026-11-25] 최강다람쥐 안내는 mineSqReward
             if (mob.type == S5MineMobs.HARPY_BOSS_TYPE) { // [2026-11-08] 하피 처치 -- 2시간 뒤 다시
                 mineBossKilledNow(MINE_HARPY_KEY, userName, now);
                 mineHarpyReset();
@@ -5783,7 +5810,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             List<HashMap<String, Object>> killDrops = !bossRw || type.noReward || mob.type == S5MineMobs.WB_BOSS_TYPE ? new ArrayList<HashMap<String, Object>>() : shrineBoss ? mineShrineBossDrops(userName, map, type, bossHitters, msg)
                     : mob.type == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : mob.type == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg) : mob.type == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : mob.type == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg) : mob.type == S5MineMobs.THUNDER_BOSS_TYPE ? mineThunderDrops(userName, msg) : mob.type == S5MineMobs.HARPY_BOSS_TYPE ? mineHarpyDrops(userName, msg) : mob.type == S5MineMobs.BORO_BOSS_TYPE ? mineBoroDrops(userName, msg) : mob.type == S5MineMobs.KRAKEN_TYPE ? mineKrakenDrops(userName, msg) : type.boss ? mineBossDrops(userName, msg) : mineMobDrops(userName, map, type, msg, mob.rank);
             if (bossRw && type.boss && !type.noReward && mob.type != S5MineMobs.WB_BOSS_TYPE) mineBossShine(userName, killDrops, msg); // [2026-11-05] 보스 공통 -- 달빛석/별빛석 확률
-            if (S5MineMobs.sqIndex(mob.type) >= 0) mineSqReward(userName, msg); // [2026-11-23] 최강다람쥐 -- 다람쥐메달
+            if (S5MineMobs.sqIndex(mob.type) >= 0) mineSqReward(userName, msg, bossRw); // [2026-11-23] 최강다람쥐 -- 다람쥐메달(부른 사람만)
             if (type.boss && mineBossRwCounted(mob.type) && S5MineMap.towerFloor(map.id) <= 0) { int rl = mineBossRwLeft(userName, mob.type); out.put("bossRwLeft", rl); if (bossRw) msg.append(" 🎁 오늘 보상 ").append(rl).append("/").append(MINE_BOSS_RW_MAX).append("번 남음"); } // [2026-11-20]
             if (type.boss) { int sh = mineBossShare(userName, map, mob, bossHitters); if (sh > 0) msg.append(" 🤝 함께 싸운 ").append(sh).append("명도 같은 보상을 받았어요!"); } // [2026-11-13]
             if (type.boss) out.put("bossName", type.name); // [2026-11-07] 관리자 알림(보스 전용 아이템이 나왔는지만)
@@ -10320,7 +10347,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         S5MineMobs.Type ot = S5MineMobs.TYPES.get(om.type);
         if (!ot.boss || ot.noReward || ot.sim || ot.dummy || om.type == S5MineMobs.WB_BOSS_TYPE) return 0; // [2026-11-15] 월드보스는 순위 보상
         java.util.TreeSet<String> mates = new java.util.TreeSet<>();
-        if (hitters != null) for (String u : hitters) if (u != null && !u.equals(killer)) mates.add(u);
+        if (hitters != null) for (String u : hitters) if (u != null && !u.equals(killer) && !mineSqNoRw(map, om.type, u)) mates.add(u); // [2026-11-25] 최강다람쥐는 부른 사람만
         StringBuilder nm = new StringBuilder();
         for (String u : mates) nm.append(nm.length() > 0 ? ", " : "").append(mineNick(u));
         final String line = "👑 " + ot.name + (mates.isEmpty() ? " 처치" : " 공동 처치") + " -- 마지막 한 방: " + mineNick(killer) + (nm.length() > 0 ? " · 함께: " + nm : ""); // [2026-11-18] "킬로그도 공동 처치로(용병이어도 그 주인)"
@@ -10350,6 +10377,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 List<HashMap<String, Object>> kd = mineBossKillDrops(u, map, om, m);
                 mineBossShine(u, kd, m);
                 mineWeaponDrop(u, mineItems(u), ot, om.rank, m, new HashMap<String, Object>());
+                if (S5MineMobs.sqIndex(om.type) >= 0) { try { dao.addUserOre(u, S5MineMap.SQ_MEDAL_CODE, MINE_SQ_MEDALS); m.append(" 🏅 다람쥐메달 ").append(MINE_SQ_MEDALS).append("개"); } catch (Exception ignore) { } } // [2026-11-25] 부른 사람이 마지막 한 방이 아니어도
                 String got = m.toString().replace("👑 " + ot.name + "를 쓰러뜨렸어요!", "").replace("👑 " + ot.name + "을(를) 쓰러뜨렸어요!", "").trim(); // 천둥 황소 보상 문구의 처치 안내는 빼고
                 String line = "👑 " + ot.name + "이(가) 쓰러졌어요! 🤝 함께 싸운 보상" + (got.isEmpty() ? "을 받았어요!" : ": " + got);
                 MINE_SHRINE_REWARD_MSG.merge(u, line, (p, q) -> p + " / " + q);
@@ -10367,8 +10395,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (t == S5MineMobs.HARPY_BOSS_TYPE) { mineBossKilledNow(MINE_HARPY_KEY, userName, now); mineHarpyReset(); } // [2026-11-08]
         if (t == S5MineMobs.LAVA_BOSS_TYPE) { mineBossKilledNow(MINE_LAVA_KEY, userName, now); MINE_RANGED_NEXT.clear(); MINE_LAVA.clear(); mo.put("lava", Collections.emptyList()); }
         if (t == S5MineMobs.BOSS_TYPE) mineBossKilledNow(MINE_BOSS_KEY, userName, now);
-        boolean rw = S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, t); // [2026-11-20] 보스 보상 하루 5번
-        if (!rw) { mo.put("bossRwNo", true); msg.append(mineBossRwNoMsg(ot.name)); }
+        boolean sqNoRw = mineSqNoRw(map, t, userName); // [2026-11-25] 최강다람쥐는 부른 사람만
+        boolean rw = !sqNoRw && (S5MineMap.towerFloor(map.id) > 0 || mineBossRwTake(userName, t)); // [2026-11-20] 보스 보상 하루 5번
+        if (!rw && !sqNoRw) { mo.put("bossRwNo", true); msg.append(mineBossRwNoMsg(ot.name)); }
+        if (S5MineMobs.sqIndex(t) >= 0) mineSqReward(userName, msg, rw); // [2026-11-25] 용병/필살기로 쓰러뜨려도
         if (rw && !ot.noReward && t != S5MineMobs.WB_BOSS_TYPE) { // [2026-11-15] 월드보스는 순위 보상(mineWbFinish)
             List<HashMap<String, Object>> kd = t == S5MineMobs.RAID_BOSS_TYPE ? mineRaidDrops(userName, msg) : t == S5MineMobs.ICE_BOSS_TYPE ? mineIceDrops(userName, msg)
                     : t == S5MineMobs.LAVA_BOSS_TYPE ? mineLavaDrops(userName, msg) : t == S5MineMobs.PHARAOH_BOSS_TYPE ? mineDesertReward(userName, msg)

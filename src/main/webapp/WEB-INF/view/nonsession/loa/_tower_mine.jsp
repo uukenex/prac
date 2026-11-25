@@ -3279,7 +3279,7 @@ var TowerMine = (function () {
   var bossNpc = null, bossCallInfo = null, bossCallBusy = false, worldBossOpen = false;
   function bossNpcOn() { return !!(bossNpc && map && bossNpc.m === map.id && !(bossNpc.at && bossNpc.at <= nowSrv())); }
   function bossNpcObj() {
-    if (map && /^sqden/.test(map.id)) return { x: bossNpc.x, y: bossNpc.y, kind: 'squirrel', name: '최강다람쥐', line: '앗, 손님이다! 도토리 가져왔어? ...뭐? 싸우자고? 후후, 나 이래 봬도 숲에서 제일 빠른 최강다람쥐라구!' }; // [2026-11-23]
+    if (map && /^sqden/.test(map.id)) return { x: bossNpc.x, y: bossNpc.y, kind: 'squirrel', name: '최강다람쥐', line: '도토리 줄래? 한판 붙을래?' }; // [2026-11-23] // [2026-11-25] 짧게
     return { x: bossNpc.x, y: bossNpc.y, kind: 'bosscall', name: '보스 소환사', line: '이곳의 주인을 불러내 드리지요. 한 번 부르면 두 시간 뒤에 다시 부를 수 있소.' };
   }
   function squirrelHtml(n) { // [2026-11-23] 최강다람쥐 -- 선택지(도토리를 바친다 / 한판 붙자 / 그냥 간다)
@@ -3292,7 +3292,7 @@ var TowerMine = (function () {
       + '<button type="button" ' + (!d.up && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.sqGift()">🌰 도토리를 바친다 <small>(' + escAttr(d.giftCost || '금괴 1개') + ')</small></button>' // [2026-11-23] 보상·쿨타임 없이
       + '<button type="button" ' + (can && !bossCallBusy ? '' : 'disabled ') + 'onclick="TowerMine.bossCall()">⚡ 한판 붙자!</button>'
       + '<button type="button" onclick="TowerMine.closeSmith()">👋 그냥 간다</button></div>'
-      + '<div class="mine-smith-say"><small>져도 바로 다시 붙을 수 있어요.</small></div>'; // [2026-11-24] 쿨타임 없음
+      + '<div class="mine-smith-say"><small>보상은 부른 사람만 · 져도 바로 다시</small></div>'; // [2026-11-24] 쿨타임 없음 // [2026-11-25] 부른 사람만 보상
     return h;
   }
   function sqGiftGo() {
