@@ -765,6 +765,7 @@
     .mine-regen{ white-space:nowrap; font-size:11px; line-height:1.35; color:#eee; text-shadow:1px 1px 0 #000, -1px -1px 0 #000; text-align:right; }
     #mineMini{ width:108px; height:108px; image-rendering:pixelated; border:2px solid #f4f0e6; box-shadow:3px 3px 0 rgba(0,0,0,.65); background:#000; cursor:pointer; object-fit:contain; } /* [2026-10-28] 정사각이 아닌 맵은 늘리지 않고 비율 그대로 */
     #mineMini.big{ width:min(78vw,360px); height:min(78vw,360px); }
+    .mine-hud-tr.mm-big{ z-index:1; } /* [2026-11-25] "지도 확대 때 필살 버튼이 전체 지도 버튼을 가린다(사파리)" -- 지도를 크게 했을 때만 오른쪽 위 묶음을 위로(z-index 없는 필살/공격 버튼보다 위, NPC 창(2)보다는 아래) */
     .mine-dig{ position:absolute; right:18px; bottom:calc(64px + env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; font-size:40px; line-height:1; background:#ffcf4a; border:3px solid #140d0a; box-shadow:0 5px 0 #8a5a00; cursor:pointer; }
     .mine-dig:active{ transform:translateY(3px); box-shadow:0 2px 0 #8a5a00; }
     .mine-dig:disabled{ filter:grayscale(1); opacity:.6; }

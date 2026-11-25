@@ -11016,7 +11016,7 @@ var TowerMine = (function () {
       travel('/api/tower-mine-village', '이동하지 못했어요.');
     });
   }
-  function toggleMini() { el.mini.classList.toggle('big'); }
+  function toggleMini() { var b = el.mini.classList.toggle('big'); if (el.mini.parentNode) el.mini.parentNode.classList.toggle('mm-big', b); } // [2026-11-25] 크게 볼 땐 지도 묶음(전체 지도 버튼)을 필살 버튼보다 위로
   function toggleLog() {
     var open = el.log.style.display !== 'block';
     el.log.style.display = open ? 'block' : 'none';
