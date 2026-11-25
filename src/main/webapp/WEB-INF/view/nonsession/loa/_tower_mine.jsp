@@ -6630,14 +6630,13 @@ var TowerMine = (function () {
               + '<div class="cos-nm">' + o.nm + '</div><small>' + MERC_ICON[o.t] + ' ' + o.job + ' · Lv.' + o.lv + '</small>'
               + '<small class="mo-el mo-el' + o.el + '">' + (EL_ICON[o.el] || '') + ' ' + o.elName + ' 특화</small>'
               + '<small class="mo-sk">' + o.skill + '</small>'
-              + (o.held ? '<span class="mine-worn">' + ((o.held & 1) ? '①' : (o.held & 2) ? '②' : '③') + ' 함께하는 중</span>' : '') // [2026-11-24] 같은 용병은 한 칸에만 -- 다른 칸 계약 버튼은 잠근다
+              + (o.held ? '<span class="mine-worn">✅ 현재 선택된 동료 ' + ((o.held & 1) ? '①' : (o.held & 2) ? '②' : '③') + '</span>' : '') /* [2026-11-25] 문구 -- 이름이 같은 동료는 어느 칸에도 다시 못 고른다 */ // [2026-11-24] 같은 용병은 한 칸에만 -- 다른 칸 계약 버튼은 잠근다
               + (o.owned ? '<span class="mine-worn">계약함</span>' : '<small>' + (o.free ? '🆓 무료' : '첫 급여 ' + o.sal) + '</small>' + mercSlotBtn(o, 1, o.can, ms2.slot2Open ? '① 계약' : '계약')
                 + (ms2.slot2Open ? mercSlotBtn(o, 2, true, '② 계약') : '')
                 + (ms2.slot3Open ? mercSlotBtn(o, 3, true, '③ 계약') : '')) + '</div>'; // [2026-11-18] 두 번째 칸, [2026-11-23] 세 번째 칸
         };
         function mercSlotBtn(o, s, can, label) { // [2026-11-24] 다른 칸에 이미 있는 용병이면(o.held 비트) 그 칸 말고는 못 고른다
-          var bit = s === 3 ? 4 : s === 2 ? 2 : 1, dup = ((o.held | 0) & ~bit) !== 0;
-          if (dup || (o.held | 0) === bit) return '<button type="button" disabled>' + label + '</button>';
+          if ((o.held | 0) !== 0) return '<button type="button" disabled>' + label + '</button>'; // [2026-11-25] 현재 선택된 동료(이름이 같으면)는 어느 칸 버튼이든 잠근다
           return '<button type="button" ' + (can ? '' : 'data-lack="1" ') + 'onclick="TowerMine.mercHire(' + o.i + ', ' + s + ')">' + label + '</button>';
         }
         mh += mercViewBtns();

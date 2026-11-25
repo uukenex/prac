@@ -9521,15 +9521,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_MERC_OFFERS_PER = Math.max(MINE_MERC_NAMEPOOL[0].length, Math.max(MINE_MERC_NAMEPOOL[1].length, MINE_MERC_NAMEPOOL[2].length)), MINE_MERC_OFFERS = MINE_MERC_OFFERS_PER * 3; // [2026-11-25] 가장 많은 직업의 이름 수(28)
     /** [2026-11-24] "완전히 같은 용병이 1번과 3번 칸에 함께" -- 직업 c, 이름 번호 ni인 용병이 지금 있는 칸(비트: 1 = 첫 칸, 2 = 두 번째, 4 = 세 번째). */
     static int mineMercHeld(Map<String, Integer> items, int c, int ni) {
+        // [2026-11-25] "초상화가 같은 유닛은 못 고르게(이름으로)" -- 직업/번호 대신 이름으로 맞춘다(첫 칸은 직업마다 기록이 따로라 어느 직업이든 계약된 이름이면)
+        String nm = MINE_MERC_NAMEPOOL[c][Math.floorMod(ni, MINE_MERC_NAMEPOOL[c].length)];
         int m = 0;
-        if (mineMercLv(items, c) > 0 && mineMercNi(items, c, "NM") == ni) m |= 1;
-        if (mineMercLv(items, MINE_MERC_K2) > 0 && mineMercCls(items, MINE_MERC_K2) == c && mineMercNi(items, MINE_MERC_K2, "NM") == ni) m |= 2;
-        if (mineMercLv(items, MINE_MERC_K3) > 0 && mineMercCls(items, MINE_MERC_K3) == c && mineMercNi(items, MINE_MERC_K3, "NM") == ni) m |= 4;
+        for (int k = 0; k < MINE_MERC_NAMES.length; k++) if (mineMercLv(items, k) > 0 && nm.equals(mineMercNm(items, k, "NM"))) m |= 1;
+        if (mineMercLv(items, MINE_MERC_K2) > 0 && nm.equals(mineMercNm(items, MINE_MERC_K2, "NM"))) m |= 2;
+        if (mineMercLv(items, MINE_MERC_K3) > 0 && nm.equals(mineMercNm(items, MINE_MERC_K3, "NM"))) m |= 4;
         return m;
     }
     static String mineMercDupMsg(Map<String, Integer> items, int c, int ni) {
         int h = mineMercHeld(items, c, ni);
-        return "🛡️ " + MINE_MERC_NAMEPOOL[c][ni] + "은(는) 이미 " + ((h & 1) != 0 ? "①" : (h & 2) != 0 ? "②" : "③") + " 칸에서 함께하고 있어요. 같은 용병은 한 칸에만 둘 수 있어요.";
+        return "🛡️ " + MINE_MERC_NAMEPOOL[c][ni] + "은(는) 이미 " + ((h & 1) != 0 ? "①" : (h & 2) != 0 ? "②" : "③") + " 칸에서 함께하는 현재 선택된 동료예요. 같은 동료는 한 칸에만 둘 수 있어요.";
     }
     static final int MINE_MERC_MAX = 1; // [2026-11-06] "용병 관리 창엔 1개만(지금은 1개만)" -- 계약은 한 명까지
     static int mineMercCount(Map<String, Integer> items) { int n = 0; for (int c = 0; c < MINE_MERC_NAMES.length; c++) if (mineMercLv(items, c) > 0) n++; return n; }
