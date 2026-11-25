@@ -9486,6 +9486,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final boolean MINE_MERC_HITTABLE = false; // [2026-11-06] 용병은 몬스터에게 맞지 않는다(쓰러져 쉬는 일 없음)
     static String mineOfKey(int i, String f) { return "MERCOF" + i + "_" + f; }
     void mineOfSet(String userName, Map<String, Integer> items, int i, String f, int v) { dao.upsertMineItem(userName, mineOfKey(i, f), v); items.put(mineOfKey(i, f), v); }
+    // [2026-11-25] "초상화 없으면 지워줘" -- 초상화가 없는 이름(궁수 아오이 9·히미코 27, 마법사 히나 20)은 후보로 안 나온다.
+    //  이름 목록에서 빼면 뒤 번호(초상화 파일 번호, 이미 계약한 용병)가 밀리므로 번호는 그대로 두고 뽑기에서만 뺀다(이미 뽑혀 있던 후보는 새로 뽑힌다).
+    static final java.util.Set<String> MINE_MERC_NO_PT = new java.util.HashSet<>(java.util.Arrays.asList("1_9", "1_27", "2_20"));
+    static boolean mineMercPtOk(int c, int n) { return !MINE_MERC_NO_PT.contains(c + "_" + n); }
     void mineMercOffers(String userName, Map<String, Integer> items) {
         // [2026-11-06] "직업별로 5명씩 3줄" -- 칸 0~4 전사 / 5~9 궁수 / 10~14 마법사. 같은 직업 줄에서는 이름이 겹치지 않게(남은 이름 중에서).
         //  계약한 칸(T = 0)이나 예전 배치(다른 직업)는 새로 뽑는다.
@@ -9493,16 +9497,17 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             int c = i / MINE_MERC_OFFERS_PER, t = items.getOrDefault(mineOfKey(i, "T"), 0) - 1;
             if (i % MINE_MERC_OFFERS_PER >= MINE_MERC_NAMEPOOL[c].length) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; } // [2026-11-24] 이름 수보다 많은 칸은 비운다
             // [2026-11-25] 이미 뽑아 둔 후보는 그대로 둔다 -- 11-24에 위 줄을 넣으면서 이 확인이 빠져, 용병 상인과 말할 때마다 후보 전부(이름/속성/레벨)가 새로 뽑히고 칸마다 DB에 6번씩 썼다.
-            if (t == c) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
+            if (t == c && mineMercPtOk(c, Math.floorMod(items.getOrDefault(mineOfKey(i, "NM"), 0), MINE_MERC_NAMEPOOL[c].length))) { if (items.getOrDefault(mineOfKey(i, "D"), 0) < MINE_MERC_SWAP_MIN) mineOfSet(userName, items, i, "D", MINE_MERC_SWAP_MIN + RND.nextInt(MINE_MERC_SWAP_MAX - MINE_MERC_SWAP_MIN + 1)); continue; }
             int len = MINE_MERC_NAMEPOOL[c].length;
             List<Integer> left = new ArrayList<>();
             for (int n = 0; n < len; n++) {
                 boolean used = false;
                 for (int j = c * MINE_MERC_OFFERS_PER; j < (c + 1) * MINE_MERC_OFFERS_PER; j++)
                     if (j != i && items.getOrDefault(mineOfKey(j, "T"), 0) - 1 == c && Math.floorMod(items.getOrDefault(mineOfKey(j, "NM"), -1), len) == n) used = true;
-                if (!used) left.add(n);
+                if (!used && mineMercPtOk(c, n)) left.add(n);
             }
-            int nm = left.isEmpty() ? RND.nextInt(len) : left.get(RND.nextInt(left.size()));
+            if (left.isEmpty()) { if (t >= 0) mineOfSet(userName, items, i, "T", 0); continue; } // [2026-11-25] 뽑을 이름이 없으면 칸을 비운다(초상화 없는 이름을 뺀 만큼)
+            int nm = left.get(RND.nextInt(left.size()));
             mineOfSet(userName, items, i, "T", c + 1);
             mineOfSet(userName, items, i, "LV", MINE_MERC_LV_MIN + RND.nextInt(MINE_MERC_LV_MAX0 - MINE_MERC_LV_MIN + 1));
             mineOfSet(userName, items, i, "EL", MINE_MERC_ELS[RND.nextInt(MINE_MERC_ELS.length)]);
