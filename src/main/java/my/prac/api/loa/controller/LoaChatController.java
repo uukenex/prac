@@ -5760,7 +5760,7 @@ public class LoaChatController {
 		int totalBound = 0;
 		long totalTradeableGold = 0;
 		// [2026-11-26] 이관 보석 -- 거래가능 작/겁/광 보석을 레벨별로 모은다(귀속 8레벨 광휘는 거래가능 7레벨 광휘로 셈).
-		//  10레벨 3개 -> 1레벨 성휘, N레벨 성휘 2개 -> N+1레벨 성휘(끝까지), 나머지는 종류 구분 없이 레벨별 광휘로 표기.
+		//  종류 구분 없이 레벨별 광휘로 보고 3개 -> 한 단계 위 광휘, 10광휘 3개 -> 1성휘, 1성휘 2개 -> 2성휘(최대), 끝까지 합친 나머지를 표기.
 		java.util.TreeMap<Integer, Integer> moveLv = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
 
 		// 배치 처리용
@@ -5930,13 +5930,19 @@ public class LoaChatController {
 		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
 		if (!moveLv.isEmpty()) { // [2026-11-26] 이관 보석
+			// [2026-11-26] 같은 날 고침 -- 광휘 3개 -> 한 단계 위 광휘(10레벨까지), 10광휘 3개 -> 1성휘, 1성휘 2개 -> 2성휘(성휘는 2레벨이 끝)
+			for (int lv = 1; lv < 10; lv++) {
+				int n = moveLv.getOrDefault(lv, 0);
+				if (n >= 3) { moveLv.merge(lv + 1, n / 3, Integer::sum); moveLv.put(lv, n % 3); }
+			}
 			int n10 = moveLv.getOrDefault(10, 0);
-			int[] seong = new int[32];
+			int[] seong = new int[3];
 			seong[1] = n10 / 3;
 			moveLv.put(10, n10 % 3);
-			for (int k = 1; k < seong.length - 1; k++) { seong[k + 1] += seong[k] / 2; seong[k] %= 2; }
+			seong[2] = seong[1] / 2;
+			seong[1] %= 2;
 			java.util.List<String> mv = new java.util.ArrayList<>();
-			for (int k = seong.length - 1; k >= 1; k--) if (seong[k] > 0) mv.add(k + "성휘(" + seong[k] + ")");
+			for (int k = 2; k >= 1; k--) if (seong[k] > 0) mv.add(k + "성휘(" + seong[k] + ")");
 			for (Map.Entry<Integer, Integer> e : moveLv.entrySet()) if (e.getValue() > 0) mv.add(e.getKey() + "광휘(" + e.getValue() + ")");
 			if (!mv.isEmpty()) result.append(enterStr).append("❖ 이관 보석").append(enterStr).append(String.join(", ", mv)).append(enterStr);
 		}
