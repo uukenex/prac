@@ -5683,6 +5683,52 @@ public class LoaChatController {
 		
 		return resMsg;
 	}
+	// [2026-11-26] "이관 보석 최대 세팅 -- 11개 장착 시 최고 수치" -- 단계 t: 0~9 = 1~10레벨 광휘, 10 = 1성휘, 11 = 2성휘.
+	//  보석 수치표(사용자 제공, 9광휘~2성휘): 스킬 피해 8+4t %, 재사용 감소 6+2t % -- 둘 다 단계에 정비례라 "단계 합"이 클수록 둘 다 커진다.
+	//  기본 공격력(광휘 기준) 9광휘 1.5 / 10광휘 1.8 / 1성휘 2.1 / 2성휘 2.4 %, 그 아래는 겁화 수치 x1.5로 잡았다(같은 단계 합일 때 고르는 데만 쓴다).
+	//  합치기: 같은 단계 광휘 3개 -> 한 단계 위(10광휘 3개 -> 1성휘), 1성휘 2개 -> 2성휘. 보석 하나의 "무게"를 1광휘 기준 3^t(2성휘 2 x 3^10)로 보면
+	//  어떤 조합을 만들 수 있는지는 무거운 것부터 가진 보석 중 큰 것부터 채워 보면 된다(무게가 서로 나누어떨어짐). 11개 조합(12단계 중복조합, 약 70만)을 모두 따져 고른다.
+	static final int[] GEM_MV_ATK = { 0, 75, 150, 300, 450, 675, 900, 1200, 1500, 1800, 2100, 2400 }; // 기본 공격력 x1000(%)
+	static String gemMoveBest(int[] cnt, int slots) {
+		int n = 0; for (int c : cnt) n += c;
+		int k = Math.min(slots, n);
+		if (k <= 0) return null;
+		long[] w = new long[12]; w[0] = 1; for (int t = 1; t <= 10; t++) w[t] = w[t - 1] * 3; w[11] = w[10] * 2;
+		long total = 0; for (int t = 0; t < 10; t++) total += w[t] * cnt[t];
+		int[] f = new int[12], best = new int[12];
+		long[] bestScore = { -1, -1 };
+		gemMoveSearch(11, k, 0L, total, w, cnt, f, best, bestScore);
+		if (bestScore[0] < 0) return null;
+		java.util.List<String> l = new java.util.ArrayList<>();
+		for (int t = 11; t >= 0; t--) if (best[t] > 0) l.add((t >= 10 ? (t - 9) + "성휘" : (t + 1) + "광휘") + "(" + best[t] + ")");
+		return String.join(", ", l);
+	}
+	static void gemMoveSearch(int t, int left, long mass, long total, long[] w, int[] cnt, int[] f, int[] best, long[] bestScore) {
+		if (t < 0) {
+			if (left != 0) return;
+			long lv = 0, atk = 0; for (int i = 0; i < 12; i++) { lv += (long) i * f[i]; atk += (long) GEM_MV_ATK[i] * f[i]; }
+			if (lv < bestScore[0] || (lv == bestScore[0] && atk <= bestScore[1])) return;
+			if (!gemMoveCan(f, w, cnt)) return;
+			bestScore[0] = lv; bestScore[1] = atk; System.arraycopy(f, 0, best, 0, 12);
+			return;
+		}
+		for (int x = left; x >= 0; x--) {
+			if (mass + w[t] * x > total) continue;
+			f[t] = x;
+			gemMoveSearch(t - 1, left - x, mass + w[t] * x, total, w, cnt, f, best, bestScore);
+		}
+		f[t] = 0;
+	}
+	/** 단계별 개수 f를 가진 보석(cnt, 1~10레벨 광휘)으로 만들 수 있나 -- 무거운 보석부터, 가진 것 중 큰 것부터 채운다. */
+	static boolean gemMoveCan(int[] f, long[] w, int[] cnt) {
+		long[] c = new long[10]; for (int i = 0; i < 10; i++) c[i] = cnt[i];
+		for (int t = 11; t >= 0; t--) for (int j = 0; j < f[t]; j++) {
+			long need = w[t];
+			for (int s = Math.min(t, 9); s >= 0 && need > 0; s--) { long use = Math.min(c[s], need / w[s]); c[s] -= use; need -= use * w[s]; }
+			if (need > 0) return false;
+		}
+		return true;
+	}
 	String gemSearch(String charName) throws Exception {
 		String encoded = java.net.URLEncoder.encode(charName, "UTF-8");
 		String siblingsUrl = lostArkAPIurl + "/characters/" + encoded + "/siblings";
@@ -5930,6 +5976,8 @@ public class LoaChatController {
 		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
 		if (!moveLv.isEmpty()) { // [2026-11-26] 이관 보석
+			int[] moveOrig = new int[10]; // 합치기 전(1~10레벨 광휘) -- 최대 세팅 계산용
+			for (int lv = 1; lv <= 10; lv++) moveOrig[lv - 1] = moveLv.getOrDefault(lv, 0);
 			// [2026-11-26] 같은 날 고침 -- 광휘 3개 -> 한 단계 위 광휘(10레벨까지), 10광휘 3개 -> 1성휘, 1성휘 2개 -> 2성휘(성휘는 2레벨이 끝)
 			for (int lv = 1; lv < 10; lv++) {
 				int n = moveLv.getOrDefault(lv, 0);
@@ -5945,6 +5993,8 @@ public class LoaChatController {
 			for (int k = 2; k >= 1; k--) if (seong[k] > 0) mv.add(k + "성휘(" + seong[k] + ")");
 			for (Map.Entry<Integer, Integer> e : moveLv.entrySet()) if (e.getValue() > 0) mv.add(e.getKey() + "광휘(" + e.getValue() + ")");
 			if (!mv.isEmpty()) result.append(enterStr).append("❖ 이관 보석").append(enterStr).append(String.join(", ", mv)).append(enterStr);
+			String best = gemMoveBest(moveOrig, 11); // [2026-11-26] 11개 장착 최대 세팅
+			if (best != null) result.append("❖ 이관 보석 최대세팅(11개)").append(enterStr).append(best).append(enterStr);
 		}
 		if (tradeableSB.length() > 0) {
 			result.append(enterStr).append(tradeableSB);
