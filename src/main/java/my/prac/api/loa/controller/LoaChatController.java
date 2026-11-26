@@ -5759,6 +5759,9 @@ public class LoaChatController {
 		int totalTradeable = 0;
 		int totalBound = 0;
 		long totalTradeableGold = 0;
+		// [2026-11-26] 이관 보석 -- 거래가능 작/겁/광 보석을 레벨별로 모은다(귀속 8레벨 광휘는 거래가능 7레벨 광휘로 셈).
+		//  10레벨 3개 -> 1레벨 성휘, N레벨 성휘 2개 -> N+1레벨 성휘(끝까지), 나머지는 종류 구분 없이 레벨별 광휘로 표기.
+		java.util.TreeMap<Integer, Integer> moveLv = new java.util.TreeMap<>(java.util.Collections.reverseOrder());
 
 		// 배치 처리용
 		List<HashMap<String,Object>> cpMergeList = new java.util.ArrayList<>();
@@ -5869,6 +5872,10 @@ public class LoaChatController {
 					} catch (Exception ignored) {}
 				}
 
+				if ("겁".equals(shortName) || "작".equals(shortName) || "광".equals(shortName)) { // [2026-11-26] 이관 보석
+					if (!isBound) moveLv.merge(gemLv, 1, Integer::sum);
+					else if (isGwanghwi && gemLv == 8) moveLv.merge(7, 1, Integer::sum); // 귀속 8광휘 = 거래가능 7광휘
+				}
 				if (isBound) {
 					boundCount++;
 				} else {
@@ -5922,6 +5929,17 @@ public class LoaChatController {
 			}
 		}
 		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개").append(enterStr);
+		if (!moveLv.isEmpty()) { // [2026-11-26] 이관 보석
+			int n10 = moveLv.getOrDefault(10, 0);
+			int[] seong = new int[32];
+			seong[1] = n10 / 3;
+			moveLv.put(10, n10 % 3);
+			for (int k = 1; k < seong.length - 1; k++) { seong[k + 1] += seong[k] / 2; seong[k] %= 2; }
+			java.util.List<String> mv = new java.util.ArrayList<>();
+			for (int k = seong.length - 1; k >= 1; k--) if (seong[k] > 0) mv.add(k + "성휘(" + seong[k] + ")");
+			for (Map.Entry<Integer, Integer> e : moveLv.entrySet()) if (e.getValue() > 0) mv.add(e.getKey() + "광휘(" + e.getValue() + ")");
+			if (!mv.isEmpty()) result.append(enterStr).append("❖ 이관 보석").append(enterStr).append(String.join(", ", mv)).append(enterStr);
+		}
 		if (tradeableSB.length() > 0) {
 			result.append(enterStr).append(tradeableSB);
 		}
