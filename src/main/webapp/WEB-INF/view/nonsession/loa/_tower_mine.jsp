@@ -10429,8 +10429,11 @@ var TowerMine = (function () {
   function luckHud() {
     var lu = el.luck || (el.luck = document.getElementById('mineLuck'));
     if (!lu) return;
-    var lk = st && st.luckUntil ? st.luckUntil - nowSrv() : 0, tx = lk > 0 ? '🍀 경험치 3배 · 드랍 2배 ' + Math.floor(lk / 60000) + ':' + ('0' + Math.floor(lk / 1000) % 60).slice(-2) : '';
-    if (lu._t !== tx) { lu._t = tx; lu.textContent = tx; lu.style.display = tx ? 'block' : 'none'; }
+    var mmss = function (ms) { return Math.floor(ms / 60000) + ':' + ('0' + Math.floor(ms / 1000) % 60).slice(-2); };
+    var lk = st && st.luckUntil ? st.luckUntil - nowSrv() : 0, tx = lk > 0 ? '🍀 경험치 3배 · 드랍 2배 ' + mmss(lk) : '';
+    var am = st && st.antMapUntil ? st.antMapUntil - nowSrv() : 0, ta = am > 0 ? '🔥 개미굴 횃불 ' + mmss(am) : ''; // [2026-11-26] "횃불 남은 시간도 금괴 버프처럼 한 줄 띄워줘"
+    var key = tx + '|' + ta;
+    if (lu._t !== key) { lu._t = key; lu.innerHTML = (tx ? '<div>' + tx + '</div>' : '') + (ta ? '<div style="color:#ffb04a' + (tx ? ';margin-top:3px' : '') + '">' + ta + '</div>' : ''); lu.style.display = tx || ta ? 'block' : 'none'; }
   }
   /** [2026-11-04] 이 기기에서 고른 통신 방식(localStorage tw-mine-net = ws/http), 없으면 서버 설정(st.ws, TBOT_S5_CONFIG.S55_WS). */
   function netMode() {
