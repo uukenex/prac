@@ -8421,7 +8421,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_BH_ARMOR_CD2 = 30, MINE_BH_ARMOR_CD3 = 20; // 용병 2차 / 3차 스킬 쿨타임 감소 %
     static boolean mineBhArmorOn(Map<String, Integer> items) { MineWeapon a = items == null ? null : mineArmorOn(items); return a != null && MINE_ITEM_BH_ARMOR.equals(a.code); }
     static final String MINE_ITEM_BH_PEARL = "BH_PEARL_NECKLACE", MINE_ITEM_BH_ORB = "BH_ORB_GLOVES";
-    static final int MINE_WB_GEAR_PCT = 1; // [2026-11-23] 월드보스 장비 -- 장비마다 1%
+    static final int MINE_WB_GEAR_PCT = 2; // [2026-11-23] 월드보스 장비 -- 장비마다 1%, [2026-11-27] "베히모스·거룡 장비 확률 두 배(거룡 반지 제외)" -> 2%
     static final int MINE_BH_ORB_PCT = 20, MINE_BH_ORB_DMG = 200_000; // 베히모스의 수정구슬 -- 적중 시 20%로 물대포(물 속성 고정 20만)
     static final double MINE_WYRM_SKIN_TAKE = 0.8; // 거룡의 피부조각 -- 받는 피해 20% 감소
     /** 든 무기의 용병 공격력 %(거룡의 이빨 5 / 베히모스의 전율 10). */

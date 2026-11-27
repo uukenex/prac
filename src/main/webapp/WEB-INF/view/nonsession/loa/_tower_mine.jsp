@@ -4300,6 +4300,32 @@ var TowerMine = (function () {
     });
   }
   /** 진주목걸이 물 소용돌이 96x96(내 칸 + 둘레 8칸 = 3x3칸), f = 0~7 돈다. 가운데(내 칸)는 비운다. */
+  // [2026-11-27] "물대포 물줄기가 더 굵고 높은 곳에서 떨어지게(지금은 너무 빈약)" -- 화면 위(7.5칸 위)에서 거의 곧게 0.26초 동안 내리꽂힌다.
+  //  물줄기는 두 배쯤 굵게(바깥 물안개 + 도트 물줄기를 떨어지는 방향으로 돌려서), 떨어진 뒤 0.25초 동안 위에서부터 사라지고, 맞은 자리 물 퍼짐은 1.8배 + 하얀 물보라.
+  var WC_FALL = 260, WC_LIFE = 760;
+  function wcDraw(ctx, w, wn, TS, camX, camY) {
+    var we = wn - w.t0, tx = (w.x + 0.5) * TS - camX, ty = (w.y + 0.5) * TS - camY;
+    var sx = tx - TS * 1.6, sy = ty - TS * 7.5, ang = Math.atan2(ty - sy, tx - sx), rot = ang - Math.PI / 4;
+    var sz = TS * 2.1, seg = TS * 0.4, hq = Math.min(1, we / WC_FALL), hx = sx + (tx - sx) * hq, hy = sy + (ty - sy) * hq, len = Math.hypot(hx - sx, hy - sy);
+    var tq = we < WC_FALL ? 0 : Math.min(1, (we - WC_FALL) / 250), d0 = len * tq;
+    if (tq < 1) {
+      ctx.save(); ctx.globalAlpha = 0.32 * (1 - tq); ctx.strokeStyle = '#5ab4f0'; ctx.lineCap = 'round'; ctx.lineWidth = sz * 0.8;
+      ctx.beginPath(); ctx.moveTo(sx + (hx - sx) * tq, sy + (hy - sy) * tq); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.globalAlpha = 0.5 * (1 - tq); ctx.strokeStyle = '#9ad8ff'; ctx.lineWidth = sz * 0.5; ctx.stroke(); ctx.restore();
+      for (var d = d0; d < len - sz * 0.3; d += seg) {
+        var px = sx + (hx - sx) * d / len, py = sy + (hy - sy) * d / len, wob = Math.sin(d * 0.05 + we * 0.02) * TS * 0.06;
+        ctx.save(); ctx.translate(px + wob, py); ctx.rotate(rot); ctx.drawImage(bhJetPx(((d / seg | 0) + Math.floor(we / 50)) % 4), -sz / 2, -sz / 2, sz, sz); ctx.restore();
+      }
+    }
+    if (we < WC_FALL) {
+      var hs = sz * 0.85;
+      ctx.save(); ctx.translate(hx, hy); ctx.rotate(rot); ctx.drawImage(bhJetHeadPx(Math.floor(we / 70) % 2), -hs * 0.56, -hs * 0.56, hs, hs); ctx.restore();
+    } else {
+      var sf = Math.min(5, Math.floor((we - WC_FALL) / 75)), ss = TS * 2.7;
+      ctx.drawImage(bhSplashPx(sf), tx - ss / 2, ty + TS * 0.36 - ss * 0.72, ss, ss);
+      if (we - WC_FALL < 140) { ctx.save(); ctx.globalAlpha = 0.6 * (1 - (we - WC_FALL) / 140); ctx.fillStyle = '#e8f8ff'; ctx.beginPath(); ctx.ellipse(tx, ty + TS * 0.3, TS * 1.15, TS * 0.45, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+    }
+  }
   function bhWhirlPx(f) {
     return bhPx('wh' + f, 96, 96, function (g) {
       var ph = f / 8 * Math.PI * 2;
@@ -9675,18 +9701,8 @@ var TowerMine = (function () {
     }
     if (wcFx.length) { // [2026-11-24] 수정구슬 물대포(시안 승인) -- 왼쪽 위 하늘에서 대각선으로 0.3초 날아와(물줄기 + 물방울 머리), 맞은 자리에서 0.42초 동안 물이 퍼진다
       var wn = performance.now(), wsm = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = false;
-      wcFx = wcFx.filter(function (w) { return wn - w.t0 < 720; });
-      wcFx.forEach(function (w) {
-        var we = wn - w.t0, wq = we / 300, tx = (w.x + 0.5) * TS - camX, ty = (w.y + 0.5) * TS - camY;
-        if (wq < 1) {
-          var sx = tx - TS * 2.6, sy = ty - TS * 2.6, hx = sx + (tx - sx) * wq, hy = sy + (ty - sy) * wq, len = Math.hypot(hx - sx, hy - sy), seg = TS * 0.56, sz = TS * 0.75;
-          for (var d = 0; d < len - TS * 0.15; d += seg) ctx.drawImage(bhJetPx(((d / seg | 0) + Math.floor(we / 60)) % 4), sx + (hx - sx) * d / len - sz / 2, sy + (hy - sy) * d / len - sz / 2, sz, sz);
-          ctx.drawImage(bhJetHeadPx(Math.floor(we / 80) % 2), hx - sz * 0.56, hy - sz * 0.56, sz, sz);
-        } else {
-          var sf = Math.min(5, Math.floor((we - 300) / 70)), ss = TS * 1.5;
-          ctx.drawImage(bhSplashPx(sf), tx - ss / 2, ty + TS * 0.36 - ss * 0.72, ss, ss);
-        }
-      });
+      wcFx = wcFx.filter(function (w) { return wn - w.t0 < WC_LIFE; });
+      wcFx.forEach(function (w) { wcDraw(ctx, w, wn, TS, camX, camY); }); // [2026-11-27] 시안 승인 -- 높은 곳에서 굵은 물줄기(wcDraw)
       ctx.imageSmoothingEnabled = wsm;
     }
     if (pullFx && map) { // [2026-11-23] 끌어당기기 예고 -- 보스에서 나에게 사슬(점선 + 고리)
