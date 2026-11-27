@@ -957,8 +957,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     // [2026-11-18] "플레이어 레벨 80부터 너무 안 오른다 -- 지금 대비 경험치 3배쯤" -- 80레벨부터 얻는 경험치 x MINE_EXP80_MUL(처치/검기/필살기/용병 처치 모두 여기로 들어온다).
     //  용병 경험치(mineMercShare)는 곱하기 전 값으로 그대로.
     static final int MINE_EXP80_LV = 80, MINE_EXP80_MUL = 3;
+    // [2026-11-27] "130레벨 이전에 받는 경험치 2배, 용병 경험치도 캐릭터와 똑같이" -- 130레벨 아래에서 얻는 경험치 x MINE_EXP130_MUL(80레벨부터 3배와 겹친다).
+    //  용병도 저마다 자기 레벨이 130 아래면 2배(mineMercShare, 한 번에 받는 상한도 2배).
+    static final int MINE_EXP130_LV = 130, MINE_EXP130_MUL = 2;
     static long[] mineExpAdd(int lv, long exp, long gain, int rb) {
         if (lv >= MINE_EXP80_LV && gain > 0) gain *= MINE_EXP80_MUL;
+        if (lv < MINE_EXP130_LV && gain > 0) gain *= MINE_EXP130_MUL;
         int lv0 = lv, up = 0;
         long exp0 = exp;
         if (rb <= MINE_REBIRTH_BASE) {
@@ -10125,7 +10129,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             double f = MINE_MERC_EXP_PCT / 100.0;
             int d = mobLv - lv;
             if (d > MINE_MERC_EXP_GAP) f *= Math.max(0.05, 1 - (d - MINE_MERC_EXP_GAP) * 0.03);
-            long need = mineMercNeed(lv), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT / 100)));
+            int m130 = lv < MINE_EXP130_LV ? MINE_EXP130_MUL : 1; // [2026-11-27] 캐릭터처럼 130레벨 아래 2배
+            long need = mineMercNeed(lv), g = Math.max(Math.max(1, kills), Math.min(Math.max(1, Math.round(gain * f * m130)), Math.max(1, need * MINE_MERC_EXP_CAP_PCT * m130 / 100)));
             if (lv > MINE_LV_MAX) g = Math.max(Math.max(1, kills), g / MINE_MERC_EXP_DIV100); // [2026-11-23] "용병 100레벨 이후엔 경험치를 20분의 1쯤" -- 한 번에 받는 상한(필요량 10%)까지 함께 줄인다
             long e0 = items.getOrDefault(mineMercKey(k, "EXP"), 0); // DB 값
             MercXp mx = MINE_MERC_XP.computeIfAbsent(mineMercXpKey(userName, k), q -> new MercXp());
