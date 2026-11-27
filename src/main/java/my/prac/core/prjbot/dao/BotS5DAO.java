@@ -175,6 +175,7 @@ public interface BotS5DAO {
     int refillAllMinePick();
     /** [2026-10-28] 다운스케일 1회 -- 레벨 안 경험치를 1.12^(L-1) / 1.32^(L-1) 비율로. */
     int rescaleMineExp();
+    int migrateMineRebirth(); // [2026-11-27] 환생 축약 1회 변환
     /** [2026-10-28] 곡괭이 현재 내구도만(구리 납품 보상). */
     int setMinePickDur(@Param("userName") String userName, @Param("dur") int dur);
     /** [2026-10-28] 광산 소식(TBOT_S5_NOTICE NOTICE_ID 2) -- APP_VERSION = 소식 번호, NOTICE_TEXT = 글(NCLOB). */

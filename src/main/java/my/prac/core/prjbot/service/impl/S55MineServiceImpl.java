@@ -325,6 +325,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     HashMap<String, Object> mineGate() {
         minePickRefill(); // [2026-10-24] 그날 아직 0시 내구도 회복을 안 했으면(서버가 0시에 꺼져 있었던 경우)
         mineRescaleOnce(); // [2026-10-28] 다운스케일 경험치 1회 변환
+        mineRbMigrateOnce(); // [2026-11-27] 환생 축약 1회 변환
         int want = S5MineMap.cycleAt(System.currentTimeMillis());
         if (!MINE_RESETTING.get() && mineAppliedCycle == want) return null;
         if (!MINE_RESETTING.get()) {
@@ -821,7 +822,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int MINE_LV_TRUE_MAX = 9999;
     // [2026-11-27] "플레이어 최고 레벨 150으로 제한" -- 5환생·진환생도 150에서 경험치가 가득 찬 채로 멈춘다(0~4환생 99와 같게). MINE_LV_TRUE_MAX(9999)는 DB 값 범위로만 둔다.
     static final int MINE_LV_PLAYER_MAX = 150;
-    static int mineLvCap(int rb) { return rb >= MINE_REBIRTH_BASE ? MINE_LV_PLAYER_MAX : MINE_LV_MAX; } // [2026-11-18] "5환생 이전은 100레벨 못 찍게" -- 0~4환생은 99에서 멈추고, 5환생·진환생만 99를 넘는다
+    static int mineLvCap(int rb) { return rb > MINE_REBIRTH_BASE ? MINE_LV_PLAYER_MAX : MINE_LV_MAX; } // [2026-11-27 정정] "1~2환생은 99, 진환생부터 150" // [2026-11-18] "5환생 이전은 100레벨 못 찍게" -- 0~4환생은 99에서 멈추고, 5환생·진환생만 99를 넘는다
     /** [2026-11-08] "진환생은 무기/방어구 장착 제한 해제" -- 장비 레벨(20/40/60/80...)이 모자라도 든다. */
     static boolean mineGearLvOk(int lv, Map<String, Integer> items, int need) { return lv >= need || mineTrueRebirth(items); }
     static final long MINE_HP_FULL_MS = 60_000L;
@@ -889,8 +890,12 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     static boolean mineTrueRebirth(Map<String, Integer> items) { return mineRebirth(items) > MINE_REBIRTH_BASE; }
     // [2026-11-27] "1~5환생을 1~2환생으로 축약, 3환생이 진환생" -- 저장 값(REBIRTH)과 효과 계산은 예전 눈금(0~6) 그대로 두고, 환생할 때 0 -> 3(1환생) -> 5(2환생) -> 6(진환생)으로 건너뛴다.
-    //  그래서 1환생 = 예전 3환생 효과(체력/공격 +150%, 광석 x4, 저항·밝기 +3, 필요 경험치 x8, 검기·필살기 특전), 2환생 = 예전 5환생(+250%, 150레벨까지, 두 번째 용병), 진환생 그대로.
-    //  예전 중간 단계(1·2·4)는 화면에 1환생으로 보이고, 다음 환생은 바로 위 단계(3 또는 5)로 간다.
+    //  같은 날 정정 "1환생 체력·공격 +100%, 2환생 +200%, 광석 x2 / x5, 필요 경험치 x10 / x30, 1~2환생은 99레벨에서 멈추고 진환생부터 150" -- 단계별 표(MINE_RB_PWR/ORE/EXP_X).
+    //  진환생은 예전 그대로(+300%, 광석 x7, 경험치 x64). 저항·밝기·스탯 바닥 레벨은 저장 값(3/5/6) 그대로. 검기·필살기 특전은 1환생, 두 번째 용병은 2환생, 세 번째 용병은 진환생.
+    //  예전 중간 단계(1~4)는 배포 뒤 첫 광산 요청에서 한 번 바꾼다(mineRbMigrateOnce: 1 -> 1환생, 2~4 -> 2환생, 레벨·경험치는 그대로).
+    static final double[] MINE_RB_PWR = { 0, 1.0, 2.0, 3.0 };
+    static final int[] MINE_RB_ORE = { 1, 2, 5, 7 }, MINE_RB_EXP_X = { 1, 10, 30, 64 };
+    static double mineRbPwr(int rb) { return MINE_RB_PWR[mineRbStage(rb)]; }
     static final int MINE_RB_S1 = 3;
     /** 보이는 환생 단계 -- 0, 1, 2, 3(진환생). */
     static int mineRbStage(int rb) { return rb > MINE_REBIRTH_BASE ? 3 : rb >= MINE_REBIRTH_BASE ? 2 : rb > 0 ? 1 : 0; }
@@ -919,7 +924,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final int[] MINE_RB_FLOOR_LV = { 1, 5, 10, 20, 30, 40, 50 };
     static int mineStatLv(int lv, int rb) { return Math.max(lv, MINE_RB_FLOOR_LV[Math.max(0, Math.min(rb, MINE_RB_FLOOR_LV.length - 1))]); }
     static int mineAtkP(int lv, Map<String, Integer> items) { return mineAtk(mineStatLv(lv, mineRebirth(items))); }
-    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, mineStatLv(lv, rb))) * (1 + MINE_RB_HP_BONUS * rb) + mineOverHp(lv)); } // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
+    static int mineHpMax(int lv, int rb) { return (int) Math.round(mineHpBase(Math.min(MINE_LV_MAX, mineStatLv(lv, rb))) * (1 + mineRbPwr(rb)) + mineOverHp(lv)); } // [2026-11-27] 단계 표 // [2026-11-08] 100레벨 이상(진환생)도 99레벨 체력
     // [2026-11-11] "80레벨 체력은 너무 낮고 99레벨은 높다 -- 80~90, 90~99 순차적으로" -> 같은 날 "99레벨은 16만, 그 아래는 그에 맞게 더 올리고, 80레벨부터 1만 정도씩"
     //  -- 80레벨 50,000 -> 99레벨 160,000 직선(레벨마다 약 +5,789 -- 99레벨 16만에서 1만씩이면 80레벨이 음수라 가능한 만큼 크게).
     //  79 -> 80에서 갑자기 뛰지 않게 71~79레벨은 70레벨 값(15,293)에서 80레벨 값까지 같은 배율(레벨마다 약 x1.126)로 잇는다. 70레벨까지는 그대로(레벨마다 9%).
@@ -931,7 +936,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         return MINE_HP_LV80 + (MINE_HP_LV99 - MINE_HP_LV80) * (lv - 80) / 19.0;
     }
     /** 환생 광물 획득 배수(채굴/몬스터 광석) = 1 + 환생 횟수. */
-    static int mineRebirthGain(Map<String, Integer> items) { return 1 + mineRebirth(items); }
+    static int mineRebirthGain(Map<String, Integer> items) { return MINE_RB_ORE[mineRbStage(mineRebirth(items))]; } // [2026-11-27] 1환생 x2, 2환생 x5, 진환생 x7
     /** [2026-10-28] "환생 보너스 추가 광석은 미스릴 이하 광석만" -- 구리~미스릴(등급 1~5) 광석일 때만 x(1 + 회차), 별빛석/요일석/보석 등은 1배. */
     static int mineRebirthGain(Map<String, Integer> items, int grade, String code) {
         return grade >= 1 && grade <= 5 && S5MineMap.ORE_CODES[grade - 1].equals(code) ? mineRebirthGain(items) : 1;
@@ -943,10 +948,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static double mineAtkExp(int lv) { return 6 * Math.pow(1.09, lv - 1) * mineAtkStep(lv); }
     static int mineAtk(int lv) { if (lv <= 80) return (int) Math.round(mineAtkExp(lv)); double a80 = mineAtkExp(80); return (int) Math.round(a80 + (MINE_ATK_LV99 - a80) * (Math.min(MINE_LV_MAX, lv) - 80) / 19.0 + mineOverAtk(lv)); } // [2026-11-17] 99 넘으면 레벨마다 같은 양(오를수록 더)
     /** [2026-10-28] "환생 시 공격 데미지 보너스 +50%(x환생 수)" -- 공격력 x (1 + 0.5 rb). */
-    static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(mineStatLv(lv, rb)) * (1 + MINE_RB_ATK_BONUS * rb)); } // [2026-11-17] 환생 바닥 레벨
+    static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(mineStatLv(lv, rb)) * (1 + mineRbPwr(rb))); } // [2026-11-27] 단계 표 // [2026-11-17] 환생 바닥 레벨
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
     static double mineAtkMul(Map<String, Integer> items) {
-        return mineWbDmgMul(items) * (1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? (items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) >= 2 ? 0.65 : MINE_BERSERK_MULT - 1) + (items.getOrDefault(MINE_LOWHP_FLAG, 0) > 0 ? 0.2 : 0) : 0) // [2026-11-04] 2단계
+        return mineWbDmgMul(items) * (1 + mineRbPwr(mineRebirth(items)) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? (items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) >= 2 ? 0.65 : MINE_BERSERK_MULT - 1) + (items.getOrDefault(MINE_LOWHP_FLAG, 0) > 0 ? 0.2 : 0) : 0) // [2026-11-04] 2단계
                 + mineWeaponPct(items) / 100.0); // [2026-10-29] 드랍 무기 공격력 %(닌자의 검 영웅부터, 백화검) -- 합연산
     }
     static final double MINE_RB_ATK_BONUS = 0.5;
@@ -959,7 +964,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  화면/DB의 필요 경험치(mineExpNeed)는 99레벨 값에서 더 커지지 않고, 대신 들어오는 경험치를 mineTrueRbDiv(80레벨부터 5배, 99레벨 뒤로 레벨마다 1.12배)로 나눠 쌓는다(mineExpAdd).
     //  처치 문구의 "경험치 +N"은 나누기 전 값 그대로. 결과는 예전 식(필요량 x 5 x 1.12^레벨)과 같다. 비공개 -- 화면/신부 설명에 쓰지 않는다.
     static final int MINE_TRUE_RB_EXP80 = 5;
-    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, (rb > MINE_REBIRTH_BASE ? Math.min(MINE_LV_MAX, lv) : lv) - 1) * Math.pow(MINE_RB_EXP_MUL, rb)); }
+    static long mineExpNeed(int lv, int rb) { return Math.round(15 * Math.pow(1.12, (rb > MINE_REBIRTH_BASE ? Math.min(MINE_LV_MAX, lv) : lv) - 1) * MINE_RB_EXP_X[mineRbStage(rb)]); } // [2026-11-27] 1환생 x10, 2환생 x30, 진환생 x64(예전 2^6)
     static double mineTrueRbDiv(int lv, int rb) { return rb <= MINE_REBIRTH_BASE ? 1 : (lv >= 80 ? MINE_TRUE_RB_EXP80 : 1) * Math.pow(1.12, Math.max(0, lv - MINE_LV_MAX)); }
     /** 경험치 더하기 + 레벨 업 -- {레벨, 레벨 안 경험치, 오른 레벨 수, 화면에 알릴 오른 경험치}. 5환생까지는 99레벨에서 가득 찬 채로 멈춘다(넘친 건 안 오름). */
     // [2026-11-18] "플레이어 레벨 80부터 너무 안 오른다 -- 지금 대비 경험치 3배쯤" -- 80레벨부터 얻는 경험치 x MINE_EXP80_MUL(처치/검기/필살기/용병 처치 모두 여기로 들어온다).
@@ -1018,6 +1023,26 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineScaleDone = true;
             } catch (Exception e) {
                 System.out.println("[광산] 다운스케일 변환 실패: " + e.getMessage());
+            }
+        }
+    }
+
+    // [2026-11-27] 환생 축약 -- 예전 1~4환생(저장 값 1~4)을 한 번만: 1 -> 3(1환생), 2~4 -> 5(2환생). 레벨·경험치는 그대로(2환생 필요 경험치 x30이 예전 x16보다 커서 넘치지 않는다).
+    static final String MINE_RB_MIG_KEY = "MINE_RB_MIG";
+    static volatile boolean mineRbMigDone = false;
+    void mineRbMigrateOnce() {
+        if (mineRbMigDone) return;
+        synchronized (BotS5ServiceImpl.class) {
+            if (mineRbMigDone) return;
+            try {
+                if (!"1".equals(dao.selectConfigValue(MINE_RB_MIG_KEY))) {
+                    int n = dao.migrateMineRebirth();
+                    dao.upsertConfigValue(MINE_RB_MIG_KEY, "1", "web mine rebirth compress (1->3, 2~4->5) done");
+                    System.out.println("[광산] 환생 축약 변환 " + n + "명");
+                }
+                mineRbMigDone = true;
+            } catch (Exception e) {
+                System.out.println("[광산] 환생 축약 변환 실패: " + e.getMessage());
             }
         }
     }
@@ -13072,7 +13097,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생" : "환생 " + mineRbStage(nrb) + "단계") + " -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
-                + "최대 체력 +" + (nrb * 50) + "% · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + "."
+                + "최대 체력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 공격력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 미스릴 이하 광물 x" + MINE_RB_ORE[mineRbStage(nrb)] + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + MINE_RB_EXP_X[mineRbStage(nrb)] + "."
                 + mineRbUnlockText(nrb)
                 + (nrb > MINE_REBIRTH_BASE ? " 이제 행운의 주문서는 쓸 수 없어요." : ""));
         return out;
@@ -13080,8 +13105,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     /** [2026-11-27] 이번 환생으로 새로 열리는 것. */
     static String mineRbUnlockText(int nrb) {
-        if (nrb > MINE_REBIRTH_BASE) return " 새로: 세 번째 용병 · 장비 레벨 제한 없음 · 99레벨 뒤에도 강해짐.";
-        if (nrb >= MINE_REBIRTH_BASE) return " 새로: 최고 레벨 " + MINE_LV_PLAYER_MAX + " · 두 번째 용병.";
+        if (nrb > MINE_REBIRTH_BASE) return " 새로: 최고 레벨 " + MINE_LV_PLAYER_MAX + " · 세 번째 용병 · 장비 레벨 제한 없음.";
+        if (nrb >= MINE_REBIRTH_BASE) return " 새로: 두 번째 용병.";
         return " 새로: 검기·필살기 환생 특전 · 필살 사범 · 사막 입장 제한 없음 · 용병 99레벨까지.";
     }
     static String mineRebirthMulText(double base, int rb) {

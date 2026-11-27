@@ -6210,6 +6210,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
+  var RB_PWR = [0, 100, 200, 300], RB_ORE = [1, 2, 5, 7], RB_EXP = [1, 10, 30, 64]; // [2026-11-27 정정] 단계별(서버 MINE_RB_PWR/ORE/EXP_X)
   var priestConfirm = false, RB_MAX = 6, RB_BASE = 5, RB_S1 = 3; // [2026-11-08] 5환생 다음은 진환생1 하나(서버 MINE_REBIRTH_BASE/MAX), [2026-11-27] 저장 값 3 = 1환생, 5 = 2환생, 6 = 진환생
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
@@ -6229,7 +6230,7 @@ var TowerMine = (function () {
   function priestHtml(n) {
     var city = !!(st && st.respawnCity), c = (st && st.combat) || {}, rb = c.rebirth | 0, ready = !!c.rebirthReady;
     var line = ready ? '때가 되었군요. 수많은 고비를 넘은 영혼이여, 원한다면 여신의 이름으로 새 날개를 달아 다시 태어나게 해 드리지요.' : (n ? n.line : '');
-    var rbSub = rb >= RB_MAX ? rbStage(RB_MAX) + ' 완료' : ready ? (rb >= RB_BASE ? '지금 진환생할 수 있어요!' : '지금 환생할 수 있어요!') : 'Lv.100 이상일 때(원할 때만)';
+    var rbSub = rb >= RB_MAX ? rbStage(RB_MAX) + ' 완료' : ready ? (rb >= RB_BASE ? '지금 진환생할 수 있어요!' : '지금 환생할 수 있어요!') : (rb >= RB_BASE ? 'Lv.99 경험치를 가득 채우면(원할 때만)' : 'Lv.99 경험치를 가득 채우면');
     var html = npcHead('⛪ ' + (n ? n.name : '성당 신부'), false)
         + talkBlock(n, line)
         + '<div class="mine-smith-menu list"><button type="button" onclick="TowerMine.priestAct(\'heal\')">✨ 치료<small>체력 회복 (무료)</small></button>'
@@ -6243,17 +6244,17 @@ var TowerMine = (function () {
       var nrb = rbNext(rb); // [2026-11-27] 0 -> 3 -> 5 -> 6
       if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>' + rbStage(nrb) + '</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
           + '<b>✨ 강해지는 것</b><br>'
-          + '· 최대 체력 <b>+' + (nrb * 50) + '%</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
-          + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
+          + '· 최대 체력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b> · 공격력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b>' + (rb ? ' (지금 +' + RB_PWR[rbStageN(rb)] + '%)' : '') + '<br>'
+          + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + RB_ORE[rbStageN(nrb)] + '</b><br>'
           + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
           + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
           + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(2환생에서 더 커져요)<br>')
-          + '<b>🔓 새로 열리는 것</b><br>' + (nrb > RB_BASE ? '· <b>세 번째 용병</b> · 장비 레벨 제한 없음 · 99레벨 뒤에도 계속 강해져요<br>'
-              : nrb >= RB_BASE ? '· 최고 레벨 <b>150</b>(1환생은 99에서 멈춰요) · <b>두 번째 용병</b><br>'
+          + '<b>🔓 새로 열리는 것</b><br>' + (nrb > RB_BASE ? '· 최고 레벨 <b>150</b>(1·2환생은 99에서 멈춰요) · <b>세 번째 용병</b> · 장비 레벨 제한 없음<br>'
+              : nrb >= RB_BASE ? '· <b>두 번째 용병</b><br>'
               : '· 검기·필살기 <b>환생 특전</b>(하나씩 무료) · 필살 사범 · 사막 입장 레벨 제한 없음 · 용병은 99레벨까지<br>') // [2026-11-27]
           + '<b>⏳ 다시 쌓는 것</b><br>'
           + '· 레벨이 <b>Lv.1(' + rbName(nrb) + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
-          + '· 레벨마다 필요한 경험치 <b>x' + rbMul(2, nrb) + '</b>' + (rb ? ' (지금 x' + rbMul(2, rb) + ')' : '') + '<br>'
+          + '· 레벨마다 필요한 경험치 <b>x' + RB_EXP[rbStageN(nrb)] + '</b>' + (rb ? ' (지금 x' + RB_EXP[rbStageN(rb)] + ')' : '') + '<br>'
           + (nrb > RB_BASE ? '· 왕도 상인의 <b>행운의 주문서</b>(경험치 3배)를 더 이상 쓸 수 없어요<br>' : '') // [2026-11-08] 진환생
           + '<b>🎒 그대로인 것</b><br>'
           + '· 광석·보석·장비·치장은 모두 그대로예요.'
