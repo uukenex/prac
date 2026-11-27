@@ -3022,7 +3022,7 @@ var TowerMine = (function () {
   // [2026-10-23] 광부 투구 시야 -- 어두운 맵(동굴)에서 투구 단계 - 필요 단계: 0 이하 아주 어둡게 / 1 잘 보임 / 2 이상 전체(서버 mineMapBlock과 같은 기준)
   function sight() {
     if (!map || !map.dark) return 9;
-    return (st && st.helmet || 0) + (st && st.combat ? st.combat.rebirth | 0 : 0) - (map.helmetNeed || 0); // [2026-10-29] "환생 옵션에 동굴 밝기 +1씩" -- 시야만(들어가는 조건은 투구 그대로)
+    return (st && st.helmet || 0) + (st && st.combat ? RB_LIGHT[rbStageN(st.combat.rebirth | 0)] : 0) - (map.helmetNeed || 0); // [2026-11-27] 1환생 +2, 2환생 +4, 진환생 +6 // [2026-10-29] "환생 옵션에 동굴 밝기 +1씩" -- 시야만(들어가는 조건은 투구 그대로)
   }
   function helmetBlocked() {
     return map && (st && st.helmet || 0) < (map.helmetNeed || 0);
@@ -6210,7 +6210,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
-  var RB_PWR = [0, 100, 200, 300], RB_ORE = [1, 2, 5, 7], RB_EXP = [1, 10, 30, 64]; // [2026-11-27 정정] 단계별(서버 MINE_RB_PWR/ORE/EXP_X)
+  var RB_PWR = [0, 100, 200, 300], RB_ORE = [1, 2, 5, 7], RB_EXP = [1, 10, 30, 64], RB_LIGHT = [0, 2, 4, 6]; // [2026-11-27 정정] 단계별(서버 MINE_RB_PWR/ORE/EXP_X)
   var priestConfirm = false, RB_MAX = 6, RB_BASE = 5, RB_S1 = 3; // [2026-11-08] 5환생 다음은 진환생1 하나(서버 MINE_REBIRTH_BASE/MAX), [2026-11-27] 저장 값 3 = 1환생, 5 = 2환생, 6 = 진환생
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
@@ -6246,7 +6246,7 @@ var TowerMine = (function () {
           + '<b>✨ 강해지는 것</b><br>'
           + '· 최대 체력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b> · 공격력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b>' + (rb ? ' (지금 +' + RB_PWR[rbStageN(rb)] + '%)' : '') + '<br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + RB_ORE[rbStageN(nrb)] + '</b><br>'
-          + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
+          + '· 동굴 밝기 <b>+' + RB_LIGHT[rbStageN(nrb)] + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
           + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
           + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(2환생에서 더 커져요)<br>')
           + '<b>🔓 새로 열리는 것</b><br>' + (nrb > RB_BASE ? '· 최고 레벨 <b>150</b>(1·2환생은 99에서 멈춰요) · <b>세 번째 용병</b> · 장비 레벨 제한 없음<br>'

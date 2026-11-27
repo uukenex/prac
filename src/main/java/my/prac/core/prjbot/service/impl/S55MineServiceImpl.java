@@ -895,6 +895,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  예전 중간 단계(1~4)는 배포 뒤 첫 광산 요청에서 한 번 바꾼다(mineRbMigrateOnce: 1 -> 1환생, 2~4 -> 2환생, 레벨·경험치는 그대로).
     static final double[] MINE_RB_PWR = { 0, 1.0, 2.0, 3.0 };
     static final int[] MINE_RB_ORE = { 1, 2, 5, 7 }, MINE_RB_EXP_X = { 1, 10, 30, 64 };
+    static final int[] MINE_RB_LIGHT = { 0, 2, 4, 6 }; // [2026-11-27] "밝기는 1환생 +2, 2환생 +4, 진환생 그대로" -- 화면 시야만(화면 RB_LIGHT)
     static double mineRbPwr(int rb) { return MINE_RB_PWR[mineRbStage(rb)]; }
     static final int MINE_RB_S1 = 3;
     /** 보이는 환생 단계 -- 0, 1, 2, 3(진환생). */
@@ -13097,7 +13098,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생" : "환생 " + mineRbStage(nrb) + "단계") + " -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
-                + "최대 체력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 공격력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 미스릴 이하 광물 x" + MINE_RB_ORE[mineRbStage(nrb)] + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + MINE_RB_EXP_X[mineRbStage(nrb)] + "."
+                + "최대 체력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 공격력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 미스릴 이하 광물 x" + MINE_RB_ORE[mineRbStage(nrb)] + " · 방한·햇빛 저항 +" + nrb + " · 동굴 밝기 +" + MINE_RB_LIGHT[mineRbStage(nrb)] + " · 필요 경험치 x" + MINE_RB_EXP_X[mineRbStage(nrb)] + "."
                 + mineRbUnlockText(nrb)
                 + (nrb > MINE_REBIRTH_BASE ? " 이제 행운의 주문서는 쓸 수 없어요." : ""));
         return out;
