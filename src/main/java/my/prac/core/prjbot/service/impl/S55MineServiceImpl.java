@@ -895,7 +895,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  예전 중간 단계(1~4)는 배포 뒤 첫 광산 요청에서 한 번 바꾼다(mineRbMigrateOnce: 1 -> 1환생, 2~4 -> 2환생, 레벨·경험치는 그대로).
     static final double[] MINE_RB_PWR = { 0, 1.0, 2.0, 3.0 };
     static final int[] MINE_RB_ORE = { 1, 2, 5, 7 }, MINE_RB_EXP_X = { 1, 10, 30, 64 };
-    static final int[] MINE_RB_LIGHT = { 0, 2, 4, 6 }; // [2026-11-27] "밝기는 1환생 +2, 2환생 +4, 진환생 그대로" -- 화면 시야만(화면 RB_LIGHT)
+    static final int[] MINE_RB_LIGHT = { 0, 2, 4, 6 }; // [2026-11-27] "밝기는 1환생 +2, 2환생 +4, 진환생 그대로" + "방한·햇빛도 같이" -- 동굴 밝기(화면 RB_LIGHT), 방한(mineColdDef), 햇빛 저항(mineSunPct)
     static double mineRbPwr(int rb) { return MINE_RB_PWR[mineRbStage(rb)]; }
     static final int MINE_RB_S1 = 3;
     /** 보이는 환생 단계 -- 0, 1, 2, 3(진환생). */
@@ -8353,7 +8353,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineSunPct(S5MineMap map, Map<String, Integer> items, long now) {
         int s = mineSunPct(map, now);
         // [2026-10-29] "환생으로 햇빛 저항 +1씩" -- 양산(-2단계)처럼 환생 회차만큼 단계를 뺀다(예전: 회차당 20% 경감)
-        return s > 0 ? Math.max(0, s - (mineParasolOn(items) ? MINE_PARASOL_CUT : 0) - mineRebirth(items) - mineArmorRes(items)) : s; // [2026-11-06] 유물 이상 갑옷
+        return s > 0 ? Math.max(0, s - (mineParasolOn(items) ? MINE_PARASOL_CUT : 0) - MINE_RB_LIGHT[mineRbStage(mineRebirth(items))] - mineArmorRes(items)) : s; // [2026-11-27] 햇빛 저항도 1환생 +2, 2환생 +4, 진환생 +6 // [2026-11-06] 유물 이상 갑옷
     }
 
     // ---- [2026-10-28] 무기 칸 -- "무기 아이템(기본은 칼) 장착을 보여주고, 양산을 다도해 상점에서" -- WEAPON_SLOT 0 = 칼(기본), 1 = 양산(PARASOL)
@@ -11230,7 +11230,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** 한기 방어 합계 = 외투 + 방한 장갑. */
     static int mineColdDef(Map<String, Integer> items) {
         return mineCoatDef(items) + (mineGlovesOn(items) ? mineGloveTier(items) : 0) // [2026-10-28] 장갑도 단계만큼
-                + mineRebirth(items) // [2026-10-29] "환생으로 방한 +1씩"
+                + MINE_RB_LIGHT[mineRbStage(mineRebirth(items))] // [2026-11-27] 1환생 +2, 2환생 +4, 진환생 +6 // [2026-10-29] "환생으로 방한 +1씩"
                 + mineArmorRes(items); // [2026-11-06] 유물 이상 갑옷 -- 예전엔 피해 1%씩 경감이라 2환생도 한기 1단계를 못 막았다
     }
 
@@ -13098,7 +13098,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
         out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생" : "환생 " + mineRbStage(nrb) + "단계") + " -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
-                + "최대 체력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 공격력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 미스릴 이하 광물 x" + MINE_RB_ORE[mineRbStage(nrb)] + " · 방한·햇빛 저항 +" + nrb + " · 동굴 밝기 +" + MINE_RB_LIGHT[mineRbStage(nrb)] + " · 필요 경험치 x" + MINE_RB_EXP_X[mineRbStage(nrb)] + "."
+                + "최대 체력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 공격력 +" + Math.round(mineRbPwr(nrb) * 100) + "% · 미스릴 이하 광물 x" + MINE_RB_ORE[mineRbStage(nrb)] + " · 방한·햇빛 저항·동굴 밝기 +" + MINE_RB_LIGHT[mineRbStage(nrb)] + " · 필요 경험치 x" + MINE_RB_EXP_X[mineRbStage(nrb)] + "."
                 + mineRbUnlockText(nrb)
                 + (nrb > MINE_REBIRTH_BASE ? " 이제 행운의 주문서는 쓸 수 없어요." : ""));
         return out;

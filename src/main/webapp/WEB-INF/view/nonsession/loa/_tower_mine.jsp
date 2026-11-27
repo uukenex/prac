@@ -6247,7 +6247,7 @@ var TowerMine = (function () {
           + '· 최대 체력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b> · 공격력 <b>+' + RB_PWR[rbStageN(nrb)] + '%</b>' + (rb ? ' (지금 +' + RB_PWR[rbStageN(rb)] + '%)' : '') + '<br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + RB_ORE[rbStageN(nrb)] + '</b><br>'
           + '· 동굴 밝기 <b>+' + RB_LIGHT[rbStageN(nrb)] + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
-          + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
+          + '· 방한·햇빛 저항 <b>+' + RB_LIGHT[rbStageN(nrb)] + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
           + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(2환생에서 더 커져요)<br>')
           + '<b>🔓 새로 열리는 것</b><br>' + (nrb > RB_BASE ? '· 최고 레벨 <b>150</b>(1·2환생은 99에서 멈춰요) · <b>세 번째 용병</b> · 장비 레벨 제한 없음<br>'
               : nrb >= RB_BASE ? '· <b>두 번째 용병</b><br>'
