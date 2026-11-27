@@ -1299,6 +1299,14 @@
     <select id="selectS55Mails" resultType="hashmap">
         SELECT MAIL_ID, TITLE, BODY, ITEMS, RECIPIENTS FROM TBOT_S55_MAIL WHERE USE_YN = 'Y' ORDER BY CREATED_AT, MAIL_ID
     </select>
+    <!-- [2026-11-27] 월드보스 보상 우편: 받는 사람 한 명, 받으면 줄을 지운다 -->
+    <insert id="insertS55Mail">
+        INSERT INTO TBOT_S55_MAIL (MAIL_ID, TITLE, BODY, ITEMS, RECIPIENTS, USE_YN, CREATED_AT)
+        VALUES (#{mailId}, #{title, jdbcType=NVARCHAR}, #{body, jdbcType=NVARCHAR}, #{items}, #{recipient, jdbcType=NVARCHAR}, 'Y', SYSDATE)
+    </insert>
+    <delete id="deleteS55Mail">
+        DELETE FROM TBOT_S55_MAIL WHERE MAIL_ID = #{mailId} AND RECIPIENTS = #{recipient, jdbcType=NVARCHAR}
+    </delete>
     <select id="selectS55WpDur" resultType="hashmap">
         SELECT WP_ID, DUR FROM TBOT_S55_WP_DUR
     </select>

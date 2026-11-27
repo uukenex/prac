@@ -299,6 +299,8 @@ public interface BotS5DAO {
     List<HashMap<String, Object>> selectS55WpDur();
     /** [2026-11-20] DB 우편(TBOT_S55_MAIL) -- 배포 없이 우편을 보낸다. */
     List<HashMap<String, Object>> selectS55Mails();
+    int insertS55Mail(@Param("mailId") String mailId, @Param("title") String title, @Param("body") String body, @Param("items") String items, @Param("recipient") String recipient); // [2026-11-27] 월드보스 보상 우편
+    int deleteS55Mail(@Param("mailId") String mailId, @Param("recipient") String recipient); // [2026-11-27] 받으면 지운다(한 번만)
     int mergeS55WpDur(@Param("wpId") String wpId, @Param("dur") int dur);
     int deleteOldS55FishLog(@Param("keepDays") int keepDays, @Param("batch") int batch); // [2026-11-18] DB 점검 5번
     int insertS55FishLog(@Param("userName") String userName, @Param("fishId") int fishId, @Param("mapId") String mapId);

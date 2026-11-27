@@ -1777,18 +1777,23 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUser(userName);
         if (row == null) return out;
         Map<String, Integer> items = mineItems(userName);
-        if ("mail".equals(action) || "mailGet".equals(action)) { // [2026-11-17] 우편함
+        if ("mail".equals(action) || "mailGet".equals(action) || "mailAll".equals(action)) { // [2026-11-17] 우편함, [2026-11-27] 모두 받기
             if ("mailGet".equals(action)) {
                 if (!mineAtNpc(row, "mailbox")) { out.put("message", "마을 우체부에게서만 받을 수 있어요."); return out; }
                 Object[] ml = null;
                 for (Object[] q : mineMails()) if (q[0].equals(code) && mineMailFor(userName, q)) ml = q; // [2026-11-20] DB 우편도
                 if (ml == null) { out.put("message", "그런 우편은 없어요."); return out; }
-                if (items.getOrDefault("MAIL_" + ml[0], 0) > 0) { out.put("message", "이미 받은 우편이에요."); return out; }
-                dao.upsertMineItem(userName, "MAIL_" + ml[0], 1); items.put("MAIL_" + ml[0], 1);
-                StringBuilder got = new StringBuilder();
-                for (String[] it : (String[][]) ml[3]) { int q = Integer.parseInt(it[1]); dao.addUserOre(userName, it[0], q); got.append(got.length() > 0 ? " · " : "").append(mineCodeName(it[0])).append(' ').append(q); }
+                String got = mineMailClaim(userName, ml, items);
+                if (got == null) { out.put("message", "이미 받은 우편이에요."); return out; }
                 out.put("ok", true);
                 out.put("message", "📮 " + ml[1] + " -- " + got + " 받았어요!");
+                out.put("ores", mineOreList(userName));
+            } else if ("mailAll".equals(action)) { // [2026-11-27] 모두 받기 -- 월드보스 우편이 여러 통 쌓이니
+                if (!mineAtNpc(row, "mailbox")) { out.put("message", "마을 우체부에게서만 받을 수 있어요."); return out; }
+                int n = 0; List<String> gl = new ArrayList<>();
+                for (Object[] q : mineMails()) { if (!mineMailFor(userName, q) || mineMailGot(q, items)) continue; String g = mineMailClaim(userName, q, items); if (g != null) { n++; gl.add(g); } }
+                out.put("ok", n > 0);
+                out.put("message", n > 0 ? "📮 우편 " + n + "통을 모두 받았어요! " + String.join(" / ", gl) : "받을 우편이 없어요.");
                 out.put("ores", mineOreList(userName));
             }
             out.put("mails", mineMailList(userName, items));
@@ -2441,6 +2446,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final class WbState {
         final long start;
         volatile boolean killed, done;
+        volatile boolean leaveReq; // [2026-11-27] "보상 구간에 닿으면 이번 시간 전투는 끝나고 날아가게(다음 타임에 재등장)"
         volatile int phase, roarSeq, zoneSeq;
         volatile long roarAt, roarNext;
         final long[] patNext = new long[MINE_WB_PAT_N]; // 패턴 종류마다 다음에 쓸 시각
@@ -2566,7 +2572,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int pi = RND.nextInt(MG_PARTS.length);
                 String mp = MG_PARTS[pi], mc = mgCode(mp, mgAcc(mp) ? 9 : RND.nextInt(3), g), rk = (bh ? MINE_ITEM_BHM : MINE_ITEM_WBM) + MINE_WB_POOL.cycle;
                 Map<String, Integer> it = mineItems(u);
-                dao.upsertMineItem(u, mc, it.getOrDefault(mc, 0) + 1);
+                mineWbItem(u, mc, 1); // [2026-11-27] 우편으로
                 try { dao.upsertMineItem(u, rk, it.getOrDefault(rk, 0) | (1 << (pi + 6 * (g - 6)))); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
                 MINE_REWARD_FX.add(u);
                 MINE_SHRINE_REWARD_MSG.merge(u, "🎁 " + boss + "에게서 " + mgName(mp, 9, g) + "을(를) 얻었어요!! (" + mgEffText(mp, g) + ")", (a, b) -> a + " / " + b);
@@ -2574,6 +2580,63 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 if (!isMineAdmin(u)) try { my.prac.core.util.S55AdminPush.notify("🎁 월드보스 용병 장비", mineNick(u) + " -- " + boss + "에게서 " + mgName(mp, 9, g)); } catch (Exception ignore) { }
             } catch (Exception e) { System.out.println("[광산] 월드보스 용병 장비 지급 실패: " + e.getMessage()); }
         }
+    }
+    // ---- [2026-11-27] "DB 계정에 바로 넣지 말고 전부 우편으로 -- 거룡, 베히모스 둘 다" -- 보상을 주는 곳(구간/처치/공통/순위/장비/용병 장비/반지)은
+    //  지금 스레드의 꾸러미(MINE_WB_BAG)에 담고, 한 번의 일(구간 하나, 처치 하나)이 끝나면 사람마다 우편 한 통(TBOT_S55_MAIL, 받는 사람 한 명, MAIL_ID "WB...")으로 보낸다.
+    //  받으면(마을 우체부) 우편 줄을 지우고 넣는다(mineMailGive -- 장비는 그때 신화로, 이미 있으면 조각/은하수 조각). 우편을 못 쓰면 그 자리에서 바로 넣는다(보상이 사라지지 않게).
+    static final ThreadLocal<java.util.LinkedHashMap<String, java.util.LinkedHashMap<String, Integer>>> MINE_WB_BAG = new ThreadLocal<>();
+    static final java.util.concurrent.atomic.AtomicInteger MINE_WB_MAIL_SEQ = new java.util.concurrent.atomic.AtomicInteger();
+    /** 꾸러미를 연다 -- 이미 열려 있으면(바깥 일이 연 것) false(보내기는 바깥에서). */
+    static boolean mineWbBagOpen() { if (MINE_WB_BAG.get() != null) return false; MINE_WB_BAG.set(new java.util.LinkedHashMap<>()); return true; }
+    static boolean mineWbBagOn() { return MINE_WB_BAG.get() != null; }
+    static void mineWbBagAdd(String u, String code, int q) { java.util.LinkedHashMap<String, java.util.LinkedHashMap<String, Integer>> b = MINE_WB_BAG.get(); if (b != null && u != null && q > 0) b.computeIfAbsent(u, k -> new java.util.LinkedHashMap<>()).merge(code, q, Integer::sum); }
+    /** 재료 보상 -- 꾸러미가 열려 있으면 담고, 아니면 바로. */
+    void mineWbOre(String u, String code, int q) { if (q <= 0) return; if (mineWbBagOn()) mineWbBagAdd(u, code, q); else dao.addUserOre(u, code, q); }
+    /** 아이템 보상(용병 장비 / 용의 반지) -- 꾸러미가 열려 있으면 담고, 아니면 바로. */
+    void mineWbItem(String u, String code, int q) { if (q <= 0) return; if (mineWbBagOn()) mineWbBagAdd(u, code, q); else mineMailGive(u, code, q); }
+    /** 꾸러미를 닫고(own일 때만) 사람마다 우편 한 통. */
+    void mineWbBagSend(boolean own, String title, String body) {
+        if (!own) return;
+        java.util.LinkedHashMap<String, java.util.LinkedHashMap<String, Integer>> b = MINE_WB_BAG.get();
+        MINE_WB_BAG.remove();
+        if (b == null) return;
+        for (Map.Entry<String, java.util.LinkedHashMap<String, Integer>> e : b.entrySet()) {
+            String u = e.getKey();
+            if (e.getValue().isEmpty()) continue;
+            StringBuilder its = new StringBuilder();
+            for (Map.Entry<String, Integer> x : e.getValue().entrySet()) its.append(its.length() > 0 ? "," : "").append(x.getKey()).append(':').append(x.getValue());
+            String id = "WB" + Long.toString(System.currentTimeMillis(), 36) + "_" + Integer.toString(MINE_WB_MAIL_SEQ.incrementAndGet() & 0xFFFFF, 36);
+            try {
+                dao.insertS55Mail(id, title, body, its.toString(), u);
+                MINE_SHRINE_REWARD_MSG.merge(u, "📮 " + title + " -- 우편으로 보냈어요 (마을 우체부에게서 받아요)", (a, c) -> a + " / " + c);
+            } catch (Exception ex) {
+                System.out.println("[광산] 월드보스 우편 실패 -- 바로 지급 " + u + " " + its + ": " + ex.getMessage());
+                for (Map.Entry<String, Integer> x : e.getValue().entrySet()) try { mineMailGive(u, x.getKey(), x.getValue()); } catch (Exception ignore) { }
+            }
+        }
+    }
+    static boolean mineWbGearCode(String code) { return mineWeaponOf(code) != null || mineArmorOf(code) != null || MINE_ITEM_BH_PEARL.equals(code) || MINE_ITEM_BH_ORB.equals(code); }
+    /** 우편 아이템 이름(장비 코드도). */
+    static String mineMailItemName(String code) {
+        MineWeapon w = mineWeaponOf(code); if (w == null) w = mineArmorOf(code);
+        if (w != null) return "신화 " + w.name;
+        if (MINE_ITEM_BH_PEARL.equals(code)) return "베히모스의 진주목걸이";
+        if (MINE_ITEM_BH_ORB.equals(code)) return "베히모스의 수정구슬";
+        if (MINE_ITEM_WYRM_RING.equals(code)) return "용의 반지 Lv.1";
+        if (code.startsWith("MG_")) { String[] p = code.split("_"); if (p.length == 3 && p[1].length() == 2) try { return mgName(p[1].substring(0, 1), p[1].charAt(1) - '0', Integer.parseInt(p[2])); } catch (Exception ignore) { } }
+        return mineCodeName(code);
+    }
+    static int mineMailItemGrade(String code) { return mineWbGearCode(code) || MINE_ITEM_WYRM_RING.equals(code) || code.startsWith("MG_") ? S5MineMap.GALAXY_GRADE : mineCodeGrade(code); }
+    /** 우편 아이템을 실제로 넣는다 -- 장비는 월드보스 장비 넣기(mineWbGearGrant), 용병 장비는 개수 +, 용의 반지는 이미 있으면 은하수 조각, 나머지는 재료. 장비면 안내 문구. */
+    String mineMailGive(String u, String code, int q) {
+        if (mineWbGearCode(code)) { String last = null; for (int i = 0; i < q; i++) last = mineWbGearGrant(u, code, MINE_ITEM_WYRM_TOOTH.equals(code) || MINE_ITEM_WYRM_SKIN.equals(code) ? MINE_WB_NAME : MINE_BH_NAME, mineItems(u)); return last; }
+        if (code.startsWith("MG_")) { dao.upsertMineItem(u, code, mineItems(u).getOrDefault(code, 0) + q); return null; }
+        if (MINE_ITEM_WYRM_RING.equals(code)) {
+            if (mineItems(u).getOrDefault(code, 0) > 0) { dao.addUserOre(u, S5MineMap.GALAXY_CODE, q); return "💍 용의 반지는 이미 있어서 " + S5MineMap.GALAXY_NAME + " " + q + "개로 받았어요."; }
+            dao.upsertMineItem(u, code, 1); if (q > 1) dao.addUserOre(u, S5MineMap.GALAXY_CODE, q - 1); return null;
+        }
+        dao.addUserOre(u, code, q);
+        return null;
     }
     static final String MINE_ITEM_WBG = "WBG_"; // [2026-11-24] "게시판 보상 목록에 장비 아이템도" -- WBG_<주기> = 그 주기 거룡에게서 나온 장비(1 = 거룡의 이빨, 2 = 거룡 비늘 갑옷 -- 합)
     static final String MINE_ITEM_WBK = "WBK_"; // [2026-11-23] "게시판에 거룡의 심장 조각도" -- WBK_<주기> = 토벌 순위 보상으로 받은 심장 조각 수 + 1(1 = 순위에 들었지만 0개)
@@ -2790,7 +2853,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     void mineWbSync(long now) {
         mineWbPool(now);
         WbState st = MINE_WB;
-        if (st.start > 0 && !st.done && !st.killed && now >= st.start + mineWbLen()) mineWbTimeout(st, now);
+        if (st.start > 0 && !st.done && !st.killed && (now >= st.start + mineWbLen() || st.leaveReq)) mineWbTimeout(st, now); // [2026-11-27] 보상 구간에 닿으면 바로
         long s = mineWbStart(now);
         if (st.start == s && !st.done && !st.killed) mineWbMove(st, now); // [2026-11-16] 거룡 자리 옮기기
         if (st.start == s && !MINE_WB_POOL.test) { // [2026-11-18] "거룡 피가 왜 100%야" -- 몬스터 상태가 가득 찬 체력으로 새로 생기면(풀 94%인데) 띠/체력이 100%로 보였다 -- 풀보다 높으면 풀로
@@ -2829,7 +2892,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     int mineWbApply(String userName, int hpBefore, int dealt, long now, boolean canKill) {
         WbState st = MINE_WB;
         WbPool p = MINE_WB_POOL;
-        if (userName == null || st.killed || st.done || dealt <= 0 || st.start <= 0 || p.killed || !mineWbOk(userName)) return hpBefore;
+        if (userName == null || st.killed || st.done || st.leaveReq || dealt <= 0 || st.start <= 0 || p.killed || !mineWbOk(userName)) return hpBefore;
         int atk = Math.max(1, MINE_WB_ATK.computeIfAbsent(userName, u -> { // 참여 버튼 없이 걸어온 사람 -- 처음 때릴 때 한 번
             try { HashMap<String, Object> r = dao.selectMineUser(u); return Math.max(1, mineAtk(mineLv(r), mineRebirth(mineItems(u)))); } catch (Exception e) { return 10_000; }
         }));
@@ -2867,6 +2930,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int nm = ml - p.mile; p.mile = ml; mineWbPoolSave(now);
                     List<String> seg = new ArrayList<>(MINE_WB_SEG); MINE_WB_SEG.clear(); MINE_WB_SEG.add(userName);
                     mineWbMile(seg, nm, ml, now);
+                    st.leaveReq = true; // [2026-11-27] 이번 회차는 여기까지
                 }
             }
             if (bh && after > 0) { // [2026-11-23] 베히모스 -- 체력 10%가 깎일 때마다 그 구간에 때린 사람에게 햇빛석 0~1개
@@ -2875,10 +2939,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int nm = ml - p.mile; p.mile = ml; mineWbPoolSave(now);
                     List<String> seg = new ArrayList<>(MINE_BH_SEG); MINE_BH_SEG.clear(); MINE_BH_SEG.add(userName); // 구간을 넘긴 한 방은 다음 구간에도
                     mineBhMile(seg, nm, ml, now);
+                    st.leaveReq = true; // [2026-11-27] 이번 회차는 여기까지
                 }
             }
             if (after <= 0 && !p.killed) {
-                if (bh) { mineWbAlert(MINE_BH_NAME, userName, MINE_BH_SHARE.size()); int nm = Math.max(0, 10 - p.mile); p.killed = true; p.killedAt = now; p.mile = 10; st.killed = true; mineWbPoolSave(now); List<String> seg = new ArrayList<>(MINE_BH_SEG); MINE_BH_SEG.clear(); if (nm > 0) mineBhMile(seg, nm, 10, now); mineBhFinish(now); }
+                if (bh) { mineWbAlert(MINE_BH_NAME, userName, MINE_BH_SHARE.size()); int nm = Math.max(0, 10 - p.mile); p.killed = true; p.killedAt = now; p.mile = 10; st.killed = true; mineWbPoolSave(now); List<String> seg = new ArrayList<>(MINE_BH_SEG); MINE_BH_SEG.clear(); boolean bown = mineWbBagOpen(); try { if (nm > 0) mineBhMile(seg, nm, 10, now); mineBhFinish(now); } finally { mineWbBagSend(bown, "☀️ " + MINE_BH_NAME + " 처치 보상", "하늘고래를 함께 쓰러뜨린 보상이에요."); } }
                 else {
                     mineWbAlert(S5MineMobs.TYPES.get(S5MineMobs.WB_BOSS_TYPE).name, userName, MINE_WB_SHARE.size());
                     p.killed = true; p.killedAt = now; st.killed = true; mineWbPoolSave(now); mineWbFinish(now);
@@ -2905,24 +2970,25 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (it.getOrDefault(MINE_ITEM_WB_CYCLE, 0) >= cyc && !isMineAdmin(u)) { MINE_SHRINE_REWARD_MSG.merge(u, "🐉 " + MINE_WB_NAME + "을(를) 함께 쓰러뜨렸어요! (이번 맵 주기 보상은 이미 받았어요 -- 맵 초기화마다 한 번)", (p, q) -> p + " / " + q); return; }
             dao.upsertMineItem(u, MINE_ITEM_WB_CYCLE, cyc);
             StringBuilder m = new StringBuilder("⚔️ ").append(MINE_WB_NAME).append(" 토벌 참여 보상! ⭐ 별빛석 ").append(MINE_WB_STAR).append(" · 칠요석 ").append(MINE_WB_SEVEN); // [2026-11-22] 공통 보상과 나눔
-            dao.addUserOre(u, S5MineMap.ORE_CODES[5], MINE_WB_STAR);
-            dao.addUserOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_SEVEN);
+            mineWbOre(u, S5MineMap.ORE_CODES[5], MINE_WB_STAR); // [2026-11-27] 우편으로
+            mineWbOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_SEVEN);
             int gal = RND.nextInt(100) < MINE_WB_GALAXY_PCT ? 1 : 0;
             if (RND.nextInt(100) < MINE_WB_RING_PCT) {
                 if (it.getOrDefault(MINE_ITEM_WYRM_RING, 0) < 1) {
-                    dao.upsertMineItem(u, MINE_ITEM_WYRM_RING, 1);
+                    mineWbItem(u, MINE_ITEM_WYRM_RING, 1);
                     m.append(" · 💍 용의 반지 Lv.1 획득!! (인벤토리에서 끼면 전체 지도에서 가고 싶은 곳으로 한 시간에 한 번)");
                     mineGossipAdd(mineNick(u) + " 님이 " + MINE_WB_NAME + "에게서 용의 반지를 얻었대요!");
                 } else gal++; // 이미 가진 사람은 은하수 조각으로
             }
-            if (gal > 0) { dao.addUserOre(u, S5MineMap.GALAXY_CODE, gal); m.append(" · 🌌 ").append(S5MineMap.GALAXY_NAME).append(' ').append(gal); }
+            if (gal > 0) { mineWbOre(u, S5MineMap.GALAXY_CODE, gal); m.append(" · 🌌 ").append(S5MineMap.GALAXY_NAME).append(' ').append(gal); }
             try { dao.upsertMineItem(u, MINE_ITEM_WBR + (cyc - 1), 1 + 10 * gal + (m.indexOf("용의 반지") >= 0 ? 100 : 0)); } catch (Exception ignore) { } // [2026-11-17] 게시판 -- 받은 보상(1 = 별빛석·칠요석, +10 x 은하수 조각, +100 = 용의 반지)
             MINE_WB_BOARD_AT = 0;
             MINE_SHRINE_REWARD_MSG.merge(u, m.toString(), (p, q) -> p + " / " + q);
         } catch (Exception e) { /* 한 사람 실패해도 나머지는 */ }
     }
     /** [2026-11-22] 공통 보상 -- 거룡이 쓰러진 이번 맵 주기에 광산에 들어온 사람이면 싸우지 않았어도 한 번. */
-    void mineWbCommon(String u, long now) {
+    void mineWbCommon(String u, long now) { boolean own = mineWbBagOpen(); try { mineWbCommon0(u, now); } finally { mineWbBagSend(own, "🎁 " + MINE_WB_NAME + " 공통 보상", "거룡이 쓰러진 이번 맵 주기에 광산에 온 모두에게 주는 보상이에요."); } } // [2026-11-27] 우편으로
+    void mineWbCommon0(String u, long now) {
         WbPool p = MINE_WB_POOL;
         if (u == null || !mineWbDragonDead() || p.cycle != S5MineMap.cycleAt(now)) return; // [2026-11-23] 베히모스로 넘어가도 거룡 공통 보상은 그대로
         if (p.test && !isMineAdmin(u)) return; // 관리자 시험 회차는 관리자만
@@ -2932,13 +2998,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (mineItems(u).getOrDefault(MINE_ITEM_WB_COM, 0) >= cyc && !p.test) return;
             dao.upsertMineItem(u, MINE_ITEM_WB_COM, cyc);
             try { dao.upsertMineItem(u, MINE_ITEM_WBC + p.cycle, 1); } catch (Exception ignore) { } // [2026-11-23] 게시판 -- 이 주기에 공통 보상을 받았다
-            dao.addUserOre(u, S5MineMap.ORE_CODES[5], MINE_WB_COM_STAR);
-            dao.addUserOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_COM_SEVEN);
+            mineWbOre(u, S5MineMap.ORE_CODES[5], MINE_WB_COM_STAR); // [2026-11-27] 우편으로
+            mineWbOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_COM_SEVEN);
             MINE_SHRINE_REWARD_MSG.merge(u, "🎁 " + MINE_WB_NAME + "이(가) 쓰러졌어요! 공통 보상 -- ⭐ 별빛석 " + MINE_WB_COM_STAR + " · 칠요석 " + MINE_WB_COM_SEVEN, (a, b) -> b + " / " + a);
         } catch (Exception e) { MINE_WB_COM_GIVEN.remove(u + "|" + cyc); }
     }
     /** 처치 -- 이번 주기에 싸운 모두(지금 메모리에 있는 사람)에게 보상. 서버를 다시 켜기 전에 싸우고 지금 없는 사람은 다음에 들어올 때(mineWbClaim). */
-    void mineWbFinish(long now) {
+    void mineWbFinish(long now) { boolean own = mineWbBagOpen(); try { mineWbFinish0(now); } finally { mineWbBagSend(own, "🐉 " + MINE_WB_NAME + " 토벌 보상", "심연의 거룡을 함께 쓰러뜨린 보상이에요."); } } // [2026-11-27] 우편으로
+    void mineWbFinish0(long now) {
         int n = 0;
         // [2026-11-20] "거룡의 심장 조각, 로스터리는 왜 없지?" -- 몫이 1위(41,650)였는데 순위 보상에서 빠졌다. 거룡은 여러 회차(매시 정각)에 걸쳐 잡는데, 그 사이 서버를 다시 켜면
         //  메모리의 몫(MINE_WB_SHARE)이 비고 다시 때린 사람만 저장값에서 이어 붙었다 -- 마지막 회차에 안 때린 사람은 순위/보상에서 빠졌다(기본 보상은 나중에 들어올 때 받음).
@@ -2962,7 +3029,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 try {
                     String ru = rk.get(i).getKey();
                     int kq = RND.nextInt(MINE_WP_KIT_MAX + 1);
-                    if (kq > 0) dao.addUserOre(ru, S5MineMap.WP_KIT_CODE, kq);
+                    if (kq > 0) mineWbOre(ru, S5MineMap.WP_KIT_CODE, kq); /* [2026-11-27] 우편으로 */
                     if (!MINE_WB_POOL.test) try { dao.upsertMineItem(ru, MINE_ITEM_WBK + MINE_WB_POOL.cycle, kq + 1); } catch (Exception ignore) { } // [2026-11-23] 게시판 기록
                     MINE_SHRINE_REWARD_MSG.merge(ru, "🏅 " + MINE_WB_NAME + " 토벌 " + (i + 1) + "위! " + (kq > 0 ? "🐉 " + S5MineMap.WP_KIT_NAME + " " + kq + "개 (왕도 워프 포인트 관리인에게 내면 워프 포인트의 힘을 채워요)" : "이번엔 " + S5MineMap.WP_KIT_NAME + "이 나오지 않았어요."), (p, q) -> p + " / " + q);
                 } catch (Exception ignore) { }
@@ -2978,7 +3045,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!MINE_WB_POOL.test) for (java.util.Map.Entry<String, Double> en : MINE_WB_SHARE.entrySet()) if (en.getValue() >= mineWbMinShare()) { mineWbGearRoll(en.getKey(), false); mineWbMercRoll(en.getKey(), false); } // [2026-11-23] 거룡 장비 1% // [2026-11-26] 용병 장비 ★6 5% / ★7 3%
     }
     /** 쓰러진 뒤 처음 들어온 사람 -- 이번 주기에 싸운 몫이 저장돼 있고 아직 보상을 안 받았으면 지금 준다(상태를 읽을 때). */
-    void mineWbClaim(String userName, Map<String, Integer> items, long now) {
+    void mineWbClaim(String userName, Map<String, Integer> items, long now) { boolean own = mineWbBagOpen(); try { mineWbClaim0(userName, items, now); } finally { mineWbBagSend(own, "🐉 " + MINE_WB_NAME + " 토벌 보상", "심연의 거룡을 함께 쓰러뜨린 보상이에요."); } } // [2026-11-27] 우편으로
+    void mineWbClaim0(String userName, Map<String, Integer> items, long now) {
         WbPool p = MINE_WB_POOL;
         if (!mineWbDragonDead() || p.test || p.cycle != S5MineMap.cycleAt(now) || MINE_WB_SHARE.containsKey(userName)) return; // [2026-11-23] 거룡 기준
         if (items.getOrDefault(MINE_ITEM_WB_SHARE_CYC, 0) != p.cycle + 1 || items.getOrDefault(MINE_ITEM_WB_CYCLE, 0) >= p.cycle + 1) return;
@@ -3002,7 +3070,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (sh != null) mineWbShareSave(u, sh, now);
             Double bsh = MINE_BH_SHARE.get(u); // [2026-11-25]
             if (bsh != null) mineBhShareSave(u, bsh, now);
-            MINE_SHRINE_REWARD_MSG.merge(u, "🌫️ " + mineWbName() + "이(가) 하늘로 날아올랐어요. 남은 체력 " + left + "% -- " + (MINE_WB_POOL.test ? "(시험 회차)" : "깎인 체력은 그대로, 다음 정각에 이어서 싸워요!"), (p, q) -> p + " / " + q);
+            MINE_SHRINE_REWARD_MSG.merge(u, "🌫️ " + mineWbName() + (st.leaveReq ? "이(가) 크게 다쳐 하늘로 달아났어요! 남은 체력 " : "이(가) 하늘로 날아올랐어요. 남은 체력 ") + left + "% -- " + (MINE_WB_POOL.test ? "(시험 회차)" : "깎인 체력은 그대로, 다음 정각에 이어서 싸워요!"), (p, q) -> p + " / " + q);
         }
     }
     /** 거룡을 맵에서 치운다 -- 쓰러진 것처럼(다음 회차 mineWbSync가 새 상태로 세운다), 붙잡은 싸움(내 것·용병 것)도 모두 푼다. */
@@ -3048,12 +3116,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     }
     /** [2026-11-23] 베히모스 체력이 10%씩(nm칸) 깎였다 -- 그 구간에 때린 사람(seg)마다 칸마다 햇빛석 0~1개. ml = 지금까지 깎인 10% 수.
      *  같은 날 "10% 깎일 때 싸우고 있는 사람 말고, 90%가 되는 순간엔 100~90% 동안 기여한 사람들" -- 예전엔 최근 20초 안에 때린 사람이었다. */
-    void mineBhMile(List<String> seg, int nm, int ml, long now) {
+    void mineBhMile(List<String> seg, int nm, int ml, long now) { boolean own = mineWbBagOpen(); try { mineBhMile0(seg, nm, ml, now); } finally { mineWbBagSend(own, "🐋 " + MINE_BH_NAME + " 구간 보상 (체력 " + Math.max(0, 100 - ml * 10) + "%)", "베히모스 체력을 10% 깎은 구간에 함께 싸운 보상이에요."); } } // [2026-11-27] 우편으로
+    void mineBhMile0(List<String> seg, int nm, int ml, long now) {
         for (String u : seg) {
             if (MINE_WB_POOL.test && !isMineAdmin(u)) continue;
             int q = 0;
             for (int i = 0; i < nm; i++) q += RND.nextInt(2);
-            try { if (q > 0) dao.addUserOre(u, S5MineMap.SUN_STONE_CODE, q); } catch (Exception e) { continue; }
+            try { if (q > 0) mineWbOre(u, S5MineMap.SUN_STONE_CODE, q); } catch (Exception e) { continue; } // [2026-11-27] 우편으로
             if (!MINE_WB_POOL.test) try { dao.addMineItemLevel(u, MINE_ITEM_BHR + MINE_WB_POOL.cycle, q); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { } // [2026-11-26] 게시판 -- 0개여도 남긴다
             // [2026-11-27] "베히모스 처치 보상을 10% 체력 감소마다도" -- 장비(1%씩)·용병 장비(★6 5% / ★7 3%)를 10%마다 한 번 더 굴린다(90%까지 9번 + 처치 때 1번 = 10번). 마지막 칸(ml 10)은 처치(mineBhFinish)가 굴린다.
             if (!MINE_WB_POOL.test) for (int i = 0; i < (ml >= 10 ? nm - 1 : nm); i++) { mineWbGearRoll(u, true); mineWbMercRoll(u, true); }
@@ -3063,18 +3132,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-27] "거룡은 30% 60% 90% 처치 -- 이렇게 네 번의 획득 기회(은하수 조각은 처치 때만)" -- 체력이 30%씩 깎일 때마다(nm칸, ml = 지금까지 깎인 30% 수)
      *  그 구간에 때린 사람(seg)에게 처치 보상과 같은 것을 한 번 더: 별빛석 MINE_WB_STAR · 칠요석 MINE_WB_SEVEN, 용의 반지 MINE_WB_RING_PCT%(이미 있으면 없음 -- 은하수 조각으로 바꾸지 않는다),
      *  거룡 장비(1%씩) · 용병 장비(★6 5% / ★7 3%). 은하수 조각 · 심장 조각(순위) · 공통 보상은 처치 때만. 처치 보상(주기에 한 번)은 그대로. */
-    void mineWbMile(List<String> seg, int nm, int ml, long now) {
+    void mineWbMile(List<String> seg, int nm, int ml, long now) { boolean own = mineWbBagOpen(); try { mineWbMile0(seg, nm, ml, now); } finally { mineWbBagSend(own, "🐉 " + MINE_WB_NAME + " 구간 보상 (체력 " + ml * 30 + "% 깎음)", "거룡 체력을 30% 깎은 구간에 함께 싸운 보상이에요."); } } // [2026-11-27] 우편으로
+    void mineWbMile0(List<String> seg, int nm, int ml, long now) {
         WbPool p = MINE_WB_POOL;
         for (String u : seg) {
             if (p.test && !isMineAdmin(u)) continue;
             try {
                 StringBuilder m = new StringBuilder("🐉 ").append(MINE_WB_NAME).append(" 체력 ").append(ml * 30).append("% 깎음! 구간 보상 -- ⭐ 별빛석 ").append(MINE_WB_STAR * nm).append(" · 칠요석 ").append(MINE_WB_SEVEN * nm);
-                dao.addUserOre(u, S5MineMap.ORE_CODES[5], MINE_WB_STAR * nm);
-                dao.addUserOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_SEVEN * nm);
+                mineWbOre(u, S5MineMap.ORE_CODES[5], MINE_WB_STAR * nm); // [2026-11-27] 우편으로
+                mineWbOre(u, S5MineMap.SEVEN_STONE_CODE, MINE_WB_SEVEN * nm);
                 int ring = 0;
                 for (int i = 0; i < nm && ring == 0; i++) {
                     if (RND.nextInt(100) >= MINE_WB_RING_PCT || mineItems(u).getOrDefault(MINE_ITEM_WYRM_RING, 0) > 0) continue;
-                    dao.upsertMineItem(u, MINE_ITEM_WYRM_RING, 1); ring = 1;
+                    mineWbItem(u, MINE_ITEM_WYRM_RING, 1); ring = 1; // [2026-11-27] 우편으로
                     m.append(" · 💍 용의 반지 Lv.1 획득!! (인벤토리에서 끼면 전체 지도에서 가고 싶은 곳으로 한 시간에 한 번)");
                     mineGossipAdd(mineNick(u) + " 님이 " + MINE_WB_NAME + "에게서 용의 반지를 얻었대요!");
                     MINE_REWARD_FX.add(u);
@@ -3107,6 +3177,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int bgb = MINE_ITEM_BH_TREMOR.equals(code) ? 1 : MINE_ITEM_BH_PEARL.equals(code) ? 2 : MINE_ITEM_BH_ORB.equals(code) ? 4 : MINE_ITEM_BH_ARMOR.equals(code) ? 8 : 0; // [2026-11-26] 베히모스 장비도 게시판에, [2026-11-27] 8 = 비늘 갑옷
         if (bgb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_BHG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | bgb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
         MINE_REWARD_FX.add(u); // [2026-11-26] 신화 장비 -- 빛줄기
+        if (mineWbBagOn()) { mineWbBagAdd(u, code, 1); MINE_SHRINE_REWARD_MSG.merge(u, "🎁 " + boss + "에게서 " + mineMailItemName(code) + "이(가) 나왔어요!!", (a, b) -> a + " / " + b); return; } // [2026-11-27] 우편으로
+        MINE_SHRINE_REWARD_MSG.merge(u, mineWbGearGrant(u, code, boss, it), (a, b) -> a + " / " + b);
+    }
+    /** [2026-11-27] 월드보스 장비를 실제로 넣는다(우편 받기) -- 안내 문구. 무기·갑옷은 신화(이미 있으면 조각으로 분해), 진주목걸이·수정구슬은 하나만. */
+    String mineWbGearGrant(String u, String code, String boss, Map<String, Integer> it) {
         MineWeapon w = mineWeaponOf(code);
         if (w == null) w = mineArmorOf(code);
         String msg;
@@ -3128,14 +3203,15 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 mineGossipAdd(mineNick(u) + " 님이 " + boss + "에게서 " + nm + "을(를) 손에 넣었대요!");
             }
         }
-        MINE_SHRINE_REWARD_MSG.merge(u, msg, (a, b) -> a + " / " + b);
+        return msg;
     }
     /** [2026-11-23] 베히모스 처치 -- 광산에 들어온 적이 있는 모두(광산 유저 행이 있는 사람)에게 햇빛석 1개(접속해 있지 않아도 바로 넣는다). */
     /** [2026-11-24] 관리자 알림 -- 월드보스(거룡/베히모스)가 쓰러지면 바로(마지막 일격, 함께 싸운 수). 시간별 정리 알림은 껐다(S55AdminPush.DIGEST_ON). */
     void mineWbAlert(String boss, String lastHit, int fighters) {
         try { my.prac.core.util.S55AdminPush.notify("🐉 월드보스 처치", boss + " -- 마지막 일격 " + mineNick(lastHit) + ", 함께 싸운 " + Math.max(1, fighters) + "명"); } catch (Exception ignore) { }
     }
-    void mineBhFinish(long now) {
+    void mineBhFinish(long now) { boolean own = mineWbBagOpen(); try { mineBhFinish0(now); } finally { mineWbBagSend(own, "☀️ " + MINE_BH_NAME + " 처치 보상", "하늘고래가 쓰러지며 쏟아진 햇빛이에요."); } } // [2026-11-27] 우편으로
+    void mineBhFinish0(long now) {
         MINE_WB_DOWN.clear();
         java.util.Set<String> all = new java.util.LinkedHashSet<>();
         if (MINE_WB_POOL.test) { for (String u : MINE_BH_SHARE.keySet()) if (isMineAdmin(u)) all.add(u); }
@@ -3143,7 +3219,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         catch (Exception e) { System.out.println("[광산] 베히모스 보상 대상 읽기 실패: " + e.getMessage()); }
         int n = 0;
         for (String u : all) {
-            try { dao.addUserOre(u, S5MineMap.SUN_STONE_CODE, 1); n++; } catch (Exception e) { continue; }
+            try { mineWbOre(u, S5MineMap.SUN_STONE_CODE, 1); n++; } catch (Exception e) { continue; } // [2026-11-27] 우편으로
             MINE_SHRINE_REWARD_MSG.merge(u, "☀️ " + MINE_BH_NAME + "이(가) 쓰러졌어요! 하늘에서 햇빛이 쏟아져 모두에게 " + S5MineMap.SUN_STONE_NAME + " 1개", (a, b) -> b + " / " + a);
         }
         System.out.println("[광산] 베히모스 처치 -- 햇빛석 1개씩 " + n + "명");
@@ -3250,15 +3326,32 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         for (Object[] q : mineMails()) {
             if (!mineMailFor(userName, q)) continue;
             HashMap<String, Object> m = new HashMap<>();
-            m.put("id", q[0]); m.put("title", q[1]); m.put("body", q[2]); m.put("got", items.getOrDefault("MAIL_" + q[0], 0) > 0);
+            m.put("id", q[0]); m.put("title", q[1]); m.put("body", q[2]); m.put("got", mineMailGot(q, items));
             List<HashMap<String, Object>> its = new ArrayList<>();
-            for (String[] it : (String[][]) q[3]) { HashMap<String, Object> x = new HashMap<>(); x.put("grade", mineCodeGrade(it[0])); x.put("name", mineCodeName(it[0])); x.put("qty", Integer.parseInt(it[1])); its.add(x); }
+            for (String[] it : (String[][]) q[3]) { HashMap<String, Object> x = new HashMap<>(); x.put("grade", mineMailItemGrade(it[0])); x.put("name", mineMailItemName(it[0])); x.put("qty", Integer.parseInt(it[1])); its.add(x); } // [2026-11-27] 장비 이름도
             m.put("items", its);
             l.add(m);
         }
         return l;
     }
-    int mineMailUnread(String userName, Map<String, Integer> items) { int n = 0; for (Object[] q : mineMails()) if (mineMailFor(userName, q) && items.getOrDefault("MAIL_" + q[0], 0) < 1) n++; return n; }
+    int mineMailUnread(String userName, Map<String, Integer> items) { int n = 0; for (Object[] q : mineMails()) if (mineMailFor(userName, q) && !mineMailGot(q, items)) n++; return n; }
+    /** [2026-11-27] 받았는지 -- 월드보스 우편(WB...)은 받으면 줄이 지워지니 늘 안 받음, 나머지는 MAIL_<번호>. */
+    static boolean mineMailGot(Object[] q, Map<String, Integer> items) { return !String.valueOf(q[0]).startsWith("WB") && items.getOrDefault("MAIL_" + q[0], 0) > 0; }
+    /** [2026-11-27] 우편 한 통 받기 -- 받은 것 문구(이미 받았으면 null). 월드보스 우편은 줄을 지워(지운 줄이 없으면 이미 받음) 한 번만. */
+    String mineMailClaim(String userName, Object[] ml, Map<String, Integer> items) {
+        String id = String.valueOf(ml[0]);
+        if (id.startsWith("WB")) { if (dao.deleteS55Mail(id, userName) <= 0) return null; }
+        else { if (items.getOrDefault("MAIL_" + id, 0) > 0) return null; dao.upsertMineItem(userName, "MAIL_" + id, 1); items.put("MAIL_" + id, 1); }
+        StringBuilder got = new StringBuilder();
+        for (String[] it : (String[][]) ml[3]) {
+            int q = Integer.parseInt(it[1]);
+            String extra = mineMailGive(userName, it[0], q);
+            got.append(got.length() > 0 ? " · " : "").append(mineMailItemName(it[0])).append(' ').append(q);
+            if (extra != null && extra.contains("분해")) got.append(" (이미 있어서 조각으로)");
+            else if (extra != null && extra.startsWith("💍")) got.append(" (이미 있어서 ").append(S5MineMap.GALAXY_NAME).append("으로)");
+        }
+        return got.toString();
+    }
     // ---- [2026-11-17] "보스전이 있는 장소에서 보스전이 시작되면, 그 맵에 몇 명 있는지에 따라 '우리는 하나' 버프를 보여 주고 얼마나 강해졌는지 띄우기,
     //  체력도 배수로(초보일 때는 더 많이)" -- 보스 맵(보스가 깨어 싸우는 중: 누군가를 노리거나 30초 안에 맞음)에 2명 이상 있으면 모두에게:
     //  공격력 +20 / 50 / 100 / 150%(2 / 3 / 4 / 5명 이상 -- 월드보스 인원 버프와 같은 표, 월드보스 싸움터는 그쪽 것만), 체력 x(1 + 0.2 x (인원 - 1), 최대 +80%),

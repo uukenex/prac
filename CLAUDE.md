@@ -105,6 +105,7 @@ GET /loa/chat
   - `MAIL_ID`(20자, 받았는지는 유저 아이템 `MAIL_<ID>` -- 재사용 금지), `TITLE`/`BODY`(NVARCHAR2), `ITEMS`=`코드:개수,코드:개수`, `RECIPIENTS`=`이름|이름`(비우면 모두), `USE_YN`='N'이면 숨김.
   - 한글/이모지는 sqlplus에 직접 쓰지 말고 `UNISTR('\XXXX')`로(ASCII만 있는 SQL), 확인은 `ASCIISTR(TITLE)`.
   - 앞으로 우편 지급 요청은 이 표로 처리한다(코드 우편 추가 대신). 라이브 지급이라 대상/수량은 사용자 확인 후.
+  - (2026-11-27) 월드보스(거룡/베히모스) 보상은 앱이 이 표에 사람마다 한 통씩 넣는다(MAIL_ID `WB...`, 받는 사람 한 명, ITEMS에 장비 코드도). 받으면 줄을 지운다(MAIL_ 아이템 안 씀). 코드: `S55MineServiceImpl.mineWbBagSend / mineMailClaim / mineMailGive`.
 
 ## 시즌 5.5(광산) 화면 파일 구조 (2026-11-03 경량화)
 - 광산 게임은 "시즌 5.5"로 부른다. 탑 화면(tower_view.jsp)의 큰 CSS/JS는 HTML에 싣지 않고 `/loa/s55/tower.css`, `/loa/s55/tower.js`, `/loa/s55/mine.js`(?v=빌드 번호, 1년 캐시)로 따로 내려간다(S55AssetController).
