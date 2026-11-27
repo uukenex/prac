@@ -218,6 +218,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-11-21] 고침: "바다 갑옷 유물인데 최대 체력이 없다" -- 바다의 갑옷(110)이 이 표에서 빠져 모든 등급이 0이었다. 백화(80)와 심판(125) 사이, 받는 피해 감소(3,600)와 같은 비율로 14만~28만.
         MINE_ARMOR_HP.put("ARMOR_SEA", new int[] { 140_000, 280_000 });
         MINE_ARMOR_HP.put("ARMOR_WYRM_SKIN", new int[] { 200_000, 400_000 }); // [2026-11-23] 거룡의 피부조각(신화 단일 = 40만)
+        MINE_ARMOR_HP.put("ARMOR_BH_SCALE", new int[] { 400_000, 800_000 }); // [2026-11-27] 베히모스의 비늘 갑옷(심판의 갑옷 x2, 신화 단일 = 80만)
     }
     static final java.util.concurrent.ConcurrentHashMap<String, Integer> MINE_ARMOR_HP_OF = new java.util.concurrent.ConcurrentHashMap<>();
     static int mineArmorHpAt(String code, int g) { int[] r = MINE_ARMOR_HP.get(code); return r == null || g < 0 ? 0 : r[0] + (r[1] - r[0]) * Math.min(7, g) / 7; }
@@ -935,10 +936,13 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static int mineAtk(int lv, int rb) { return (int) Math.round(mineAtk(mineStatLv(lv, rb)) * (1 + MINE_RB_ATK_BONUS * rb)); } // [2026-11-17] 환생 바닥 레벨
     /** [2026-10-28] 공격력 배수 -- "환생 효과나 다른 공격력 증가와는 합연산": 1 + 환생 0.5 x 회차 + 광전사의 장갑 0.5(곱하지 않고 더한다). 양산은 고정 +10(mineAtkFlat). */
     static double mineAtkMul(Map<String, Integer> items) {
-        return 1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? (items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) >= 2 ? 0.65 : MINE_BERSERK_MULT - 1) + (items.getOrDefault(MINE_LOWHP_FLAG, 0) > 0 ? 0.2 : 0) : 0) // [2026-11-04] 2단계
-                + mineWeaponPct(items) / 100.0; // [2026-10-29] 드랍 무기 공격력 %(닌자의 검 영웅부터, 백화검) -- 합연산
+        return mineWbDmgMul(items) * (1 + MINE_RB_ATK_BONUS * mineRebirth(items) + (MINE_ITEM_BERSERK_GLOVES.equals(mineGloveCode(items)) ? (items.getOrDefault(MINE_ITEM_BERSERK_GLOVES, 0) >= 2 ? 0.65 : MINE_BERSERK_MULT - 1) + (items.getOrDefault(MINE_LOWHP_FLAG, 0) > 0 ? 0.2 : 0) : 0) // [2026-11-04] 2단계
+                + mineWeaponPct(items) / 100.0); // [2026-10-29] 드랍 무기 공격력 %(닌자의 검 영웅부터, 백화검) -- 합연산
     }
     static final double MINE_RB_ATK_BONUS = 0.5;
+    /** [2026-11-27] 월드보스 무기(거룡의 이빨 / 베히모스의 전율) -- 피해 증가 +15%(다른 공격력 증가와 곱연산). */
+    static final int MINE_WB_WEAPON_DMG_PCT = 15;
+    static double mineWbDmgMul(Map<String, Integer> items) { MineWeapon w = items == null ? null : mineWeaponOn(items); return w != null && (MINE_ITEM_WYRM_TOOTH.equals(w.code) || MINE_ITEM_BH_TREMOR.equals(w.code)) ? 1 + MINE_WB_WEAPON_DMG_PCT / 100.0 : 1; }
     /** [2026-10-28] "1환생당 경험치 필요량 5배에서 2배로" -- 필요 경험치 x MINE_RB_EXP_MUL^rb. */
     static final double MINE_RB_EXP_MUL = 2;
     // [2026-11-08] 진환생 -- "80레벨부터 필요 경험치 5배(비공개)", "필요량은 컬럼을 늘리기보다 들어오는 경험치 감소로, 플레이어한테는 그대로 들어오는 것처럼".
@@ -2681,6 +2685,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if ((bg & 1) != 0) gl.add(mineWeaponOf(MINE_ITEM_BH_TREMOR) != null ? mineWeaponOf(MINE_ITEM_BH_TREMOR).name : "베히모스의 전율");
                     if ((bg & 2) != 0) gl.add("베히모스의 진주목걸이");
                     if ((bg & 4) != 0) gl.add("베히모스의 수정구슬");
+                    if ((bg & 8) != 0) gl.add("베히모스의 비늘 갑옷"); // [2026-11-27]
                     if (!gl.isEmpty()) q.put("gear", gl);
                     int mq = bmg.getOrDefault(e.getKey(), 0);
                     if (mq > 0) q.put("merc", mineWbMercNames(mq));
@@ -3083,7 +3088,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     /** [2026-11-23] "거룡과 베히모스를 잡으면 각각 1% 확률로 장비" -- 함께 싸운 사람마다 장비마다 MINE_WB_GEAR_PCT%(관리자는 x10).
      *  거룡: 거룡의 이빨(검) / 거룡의 피부조각(갑옷). 베히모스: 베히모스의 전율(검) / 진주목걸이 / 수정구슬(장갑). 무기·갑옷은 신화 단일 등급(이미 있으면 조각으로). */
     void mineWbGearRoll(String u, boolean bh) {
-        String[] codes = bh ? new String[] { MINE_ITEM_BH_TREMOR, MINE_ITEM_BH_PEARL, MINE_ITEM_BH_ORB } : new String[] { MINE_ITEM_WYRM_TOOTH, MINE_ITEM_WYRM_SKIN };
+        String[] codes = bh ? new String[] { MINE_ITEM_BH_TREMOR, MINE_ITEM_BH_PEARL, MINE_ITEM_BH_ORB, MINE_ITEM_BH_ARMOR } : new String[] { MINE_ITEM_WYRM_TOOTH, MINE_ITEM_WYRM_SKIN };
         int pct = MINE_WB_GEAR_PCT * (isMineAdmin(u) ? 10 : 1);
         for (String code : codes) {
             if (RND.nextInt(100) >= pct) continue;
@@ -3099,7 +3104,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         int gb = MINE_ITEM_WYRM_TOOTH.equals(code) ? 1 : MINE_ITEM_WYRM_SKIN.equals(code) ? 2 : 0; // [2026-11-24] 게시판 -- 거룡 장비 기록(베히모스는 비공개라 안 남긴다)
         if (gb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_WBG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | gb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
-        int bgb = MINE_ITEM_BH_TREMOR.equals(code) ? 1 : MINE_ITEM_BH_PEARL.equals(code) ? 2 : MINE_ITEM_BH_ORB.equals(code) ? 4 : 0; // [2026-11-26] 베히모스 장비도 게시판에
+        int bgb = MINE_ITEM_BH_TREMOR.equals(code) ? 1 : MINE_ITEM_BH_PEARL.equals(code) ? 2 : MINE_ITEM_BH_ORB.equals(code) ? 4 : MINE_ITEM_BH_ARMOR.equals(code) ? 8 : 0; // [2026-11-26] 베히모스 장비도 게시판에, [2026-11-27] 8 = 비늘 갑옷
         if (bgb > 0 && !MINE_WB_POOL.test) try { String gk = MINE_ITEM_BHG + MINE_WB_POOL.cycle; dao.upsertMineItem(u, gk, it.getOrDefault(gk, 0) | bgb); MINE_WB_BOARD_AT = 0; } catch (Exception ignore) { }
         MINE_REWARD_FX.add(u); // [2026-11-26] 신화 장비 -- 빛줄기
         MineWeapon w = mineWeaponOf(code);
@@ -4559,6 +4564,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             for (HashMap<String, Object> mr : dao.selectMineMercRows(userName)) items.put(strVal(mr.get("ITEM_CODE"), ""), intVal(mr.get("ITEM_LEVEL"), 0));
         }
         long[] mercR = mineMercTurn(userName, map, items, x, y, now, e, out); // [2026-11-05] 용병 -- {처치 수, 경험치}
+        { Object mh = out.remove("mercHeal"); if (mh instanceof Integer && (Integer) mh > 0) { healed += (int) Math.min(Integer.MAX_VALUE / 2, (long) mineHpCapN(lv, lock, rb) * (Integer) mh / 1000); out.put("mercHealed", true); } } // [2026-11-27] 물 마법사 용병 -- 내 체력 회복(1000분율)
         long mercExp = mercR[1];
         Debuff pdb = MINE_DEBUFF.get(userName); // [2026-10-28] 여왕개미 독 -- 전투 턴마다 지난 시간만큼
         if (pdb != null && pdb.poisonUntil > pdb.poisonAt && hp - dmgSum > 0) {
@@ -8258,8 +8264,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 int p = pctAt(g), pe = pctEnh(g, e);
                 if (p > 0) s += " · 공격력 +" + (p + pe) + "%" + (pe > 0 ? " (등급 " + p + "% + 강화 " + pe + "%)" : "");
             }
-            if (MINE_ITEM_WYRM_TOOTH.equals(code)) s += " · 용병 공격력 +5%"; // [2026-11-23] 월드보스 장비 옵션
-            if (MINE_ITEM_BH_TREMOR.equals(code)) s += " · 용병 공격력 +10%";
+            if (MINE_ITEM_WYRM_TOOTH.equals(code)) s += " · 피해 증가 +" + MINE_WB_WEAPON_DMG_PCT + "%(곱연산) · 용병 공격력 +5%"; // [2026-11-23] 월드보스 장비 옵션, [2026-11-27] 피해 증가
+            if (MINE_ITEM_BH_TREMOR.equals(code)) s += " · 피해 증가 +" + MINE_WB_WEAPON_DMG_PCT + "%(곱연산) · 용병 공격력 +10%";
+            if (MINE_ITEM_BH_ARMOR.equals(code)) s += " · 용병 2차 스킬 쿨타임 -" + MINE_BH_ARMOR_CD2 + "% · 3차 스킬 쿨타임 -" + MINE_BH_ARMOR_CD3 + "%"; // [2026-11-27]
             if (MINE_ITEM_WYRM_SKIN.equals(code)) s += " · 받는 피해 -20% · 즉사 방지(체력이 남았는데 한 번에 쓰러질 피해면 체력 1로 버팀, 1분에 한 번)";
             return s;
         }
@@ -8279,6 +8286,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon("ARMOR_NINJA", "닌자의 갑주", 3, 60, 800, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[2], true),
         new MineWeapon("ARMOR_BAEKHWA", "백화 갑주", 4, 80, 2500, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
         new MineWeapon("ARMOR_IMMORTAL", "심판의 갑옷", 5, 125, 5000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
+        // [2026-11-27] "베히모스 갑옷 -- 심판의 갑옷 기준 2배 성능, 특수 스킬로 용병 2차 스킬 쿨타임 30% 감소, 3차 스킬 20% 감소" -- 신화 단일, 받는 피해 -10,000 · 최대 체력 +80만. 베히모스 처치(10%마다 포함) 1%
+        new MineWeapon("ARMOR_BH_SCALE", "베히모스의 비늘 갑옷", 8, 125, 10000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true),
         new MineWeapon("ARMOR_WYRM_SKIN", "거룡의 피부조각", 7, 125, 5000, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-23] 거룡 처치 1% -- 심판의 갑옷 신화와 같은 감소/체력 + 받는 피해 -20% + 즉사 방지(신화 단일)
         new MineWeapon("ARMOR_SEA", "바다의 갑옷", 6, 110, 3600, 0.2, 7, -1, 0, S5MineMap.ARMOR_SHARD_CODES[3], true), // [2026-11-18] 바다 위 몬스터/크라켄 전용(신화 받는 피해 -3600) // [2026-11-17] 보로네오 전용(받는 피해 고정 감소 -- 백화 갑주의 2배)
     };
@@ -8390,7 +8399,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     //  크라켄은 MINE_KRK_GEAR_PCT%로 둘 중 하나(일반~신화). 바다의 검 = 하피의 검(99)과 심판의 검(125) 사이, 바다의 갑옷 = 백화 갑주(80)와 심판의 갑옷(125) 사이.
     static final String MINE_ITEM_SEA_SWORD = "SEA_SWORD", MINE_ITEM_SEA_ARMOR = "ARMOR_SEA";
     static final int MINE_KRK_GEAR_PCT = 30;
-    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_IMMORTAL_SWORD.equals(code) || MINE_ITEM_IMMORTAL_ARMOR.equals(code) || MINE_ITEM_SEA_SWORD.equals(code) || MINE_ITEM_SEA_ARMOR.equals(code) || MINE_ITEM_WYRM_TOOTH.equals(code) || MINE_ITEM_BH_TREMOR.equals(code) || MINE_ITEM_WYRM_SKIN.equals(code); } // [2026-11-23] 월드보스 장비
+    static boolean mineNoRandomDrop(String code) { return MINE_ITEM_HARPY_SWORD.equals(code) || MINE_ITEM_IMMORTAL_SWORD.equals(code) || MINE_ITEM_IMMORTAL_ARMOR.equals(code) || MINE_ITEM_SEA_SWORD.equals(code) || MINE_ITEM_SEA_ARMOR.equals(code) || MINE_ITEM_WYRM_TOOTH.equals(code) || MINE_ITEM_BH_TREMOR.equals(code) || MINE_ITEM_WYRM_SKIN.equals(code) || MINE_ITEM_BH_ARMOR.equals(code); } // [2026-11-23] 월드보스 장비, [2026-11-27] 베히모스 갑옷
     static final MineWeapon[] MINE_WEAPONS = {
         new MineWeapon("BICHUL_SWORD", "비철도", 3, 20, 50, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[1]),
         new MineWeapon("KATANA", "카타나", 4, 40, 250, 0.2, 3, -1, 0, S5MineMap.WEAPON_SHARD_CODES[2]),
@@ -8403,10 +8412,14 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         new MineWeapon(MINE_ITEM_SEA_SWORD, "바다의 검", 8, 110, 2800, 0.2, 7, 0, 2, S5MineMap.WEAPON_SHARD_CODES[3]), // [2026-11-18] 바다 위 몬스터/크라켄 전용(공 2800 + 공격력 2%)
         // [2026-11-23] 월드보스 장비(신화 단일 등급) -- 거룡의 이빨 = 심판의 검 x1.5(신화 공 12,240 + 공격력 15%) + 용병 공격력 +5%,
         //  베히모스의 전율 = 심판의 검 x2(신화 공 16,320 + 공격력 15% -- 같은 날 "두 검 모두 공격력 +15%") + 용병 공격력 +10%. 거룡/베히모스 처치 때 함께 싸운 사람마다 1%(mineWbGearRoll).
-        new MineWeapon("WYRM_TOOTH", "거룡의 이빨", 9, 125, 5100, 0.2, 7, 0, 8, S5MineMap.WEAPON_SHARD_CODES[3]),
-        new MineWeapon("BH_TREMOR", "베히모스의 전율", 10, 125, 6800, 0.2, 7, 0, 8, /* [2026-11-23] 공격력 % 20 -> 15 */ S5MineMap.WEAPON_SHARD_CODES[3]),
+        // [2026-11-27] "거룡 무기 공격력 8천, 베히모스 무기 1만으로, 기본적으로 데미지 증가 15%도" -- 기본 공 5,100 -> 8,000 / 6,800 -> 10,000(신화 19,200 / 24,000), 피해 증가 +15%(곱연산, mineWbDmgMul)
+        new MineWeapon("WYRM_TOOTH", "거룡의 이빨", 9, 125, 8000, 0.2, 7, 0, 8, S5MineMap.WEAPON_SHARD_CODES[3]),
+        new MineWeapon("BH_TREMOR", "베히모스의 전율", 10, 125, 10000, 0.2, 7, 0, 8, /* [2026-11-23] 공격력 % 20 -> 15 */ S5MineMap.WEAPON_SHARD_CODES[3]),
     };
     static final String MINE_ITEM_WYRM_TOOTH = "WYRM_TOOTH", MINE_ITEM_BH_TREMOR = "BH_TREMOR", MINE_ITEM_WYRM_SKIN = "ARMOR_WYRM_SKIN";
+    static final String MINE_ITEM_BH_ARMOR = "ARMOR_BH_SCALE"; // [2026-11-27] 베히모스의 비늘 갑옷
+    static final int MINE_BH_ARMOR_CD2 = 30, MINE_BH_ARMOR_CD3 = 20; // 용병 2차 / 3차 스킬 쿨타임 감소 %
+    static boolean mineBhArmorOn(Map<String, Integer> items) { MineWeapon a = items == null ? null : mineArmorOn(items); return a != null && MINE_ITEM_BH_ARMOR.equals(a.code); }
     static final String MINE_ITEM_BH_PEARL = "BH_PEARL_NECKLACE", MINE_ITEM_BH_ORB = "BH_ORB_GLOVES";
     static final int MINE_WB_GEAR_PCT = 1; // [2026-11-23] 월드보스 장비 -- 장비마다 1%
     static final int MINE_BH_ORB_PCT = 20, MINE_BH_ORB_DMG = 200_000; // 베히모스의 수정구슬 -- 적중 시 20%로 물대포(물 속성 고정 20만)
@@ -9824,7 +9837,10 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         String en = S5MineMobs.ELEM_NAMES[el];
         if (c == 0) return en + " 검기 " + s + "단계 · 베는 쪽 " + s + "칸 줄에 공격력의 " + s * MINE_AURA_PCT + "% " + en + " 피해 (플레이어 검기와 같음)";
         if (c == 1) return (el == S5MineMobs.EL_FIRE ? "불화살" : el == S5MineMobs.EL_THUNDER ? "번개 화살" : "물화살") + " · 한 명에게 피해 +" + 20 * s + "%";
-        return (el == S5MineMobs.EL_FIRE ? "파이어볼" : el == S5MineMobs.EL_THUNDER ? "라이트닝볼" : "아이스볼") + " · 한 명"; // [2026-11-06] 속성별 구슬
+        // [2026-11-27] 마법사 속성별 -- 불 한 명 세게 / 번개 여럿 / 물 내 체력 회복
+        if (el == S5MineMobs.EL_FIRE) return "파이어볼 · 한 명에게 피해 +" + 25 * s + "% (둘레 2칸 " + (1 + s) + "명에게 60%)";
+        if (el == S5MineMobs.EL_THUNDER) return "라이트닝볼 · 한 명 + 둘레 3칸 " + (2 + s) + "명에게 80% · 함께 다니면 내 필살기 쿨타임 -20%";
+        return "아이스볼 · 한 명 (둘레 2칸 " + (1 + s) + "명에게 60%) · 칠 때마다 내 최대 체력의 " + mineFmtPct(0.2 * s) + "% 회복"; // [2026-11-06] 속성별 구슬
     }
     /** [2026-11-06] 2차 스킬 설명(단계 s2 = 1~3, 40/60/80레벨). */
     /** [2026-11-24] 3차 스킬 {이름, 설명} -- 1레벨 마스터, 35초마다 저절로(지금은 관리자만, mineMercU3Ok). 수치는 MINE_MERC_U3_* 그대로. */
@@ -9844,8 +9860,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static String mineMercSkill2(int c, int el, int s2) {
         if (c == 0) return "이기어검 " + s2 + "단계 · 검 " + (3 + 2 * s2) + "자루가 가까운 몬스터들에게 나눠 꽂힘(한 마리면 전부, 자루마다 공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
         if (c == 1) return "화살비 " + s2 + "단계 · 둘레 " + (1 + s2) + "칸 땅에 5초(매초 공격력 x" + mineFmtPct(0.6 + 0.2 * s2) + ")";
-        if (el == S5MineMobs.EL_THUNDER) return "체인 라이트닝 " + s2 + "단계 · " + (2 + 2 * s2) + "번 튕김(공격력 x2부터 85%씩)";
-        if (el == S5MineMobs.EL_WATER) return "토네이도 " + s2 + "단계 · 지나가는 길 + 둘레 " + (1 + s2) + "칸(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ")";
+        if (el == S5MineMobs.EL_THUNDER) return "체인 라이트닝 " + s2 + "단계 · " + (2 + 3 * s2) + "번 튕김(4칸 안, 공격력 x2부터 85%씩 -- 보스에겐 여러 번)"; // [2026-11-27]
+        if (el == S5MineMobs.EL_WATER) return "토네이도 " + s2 + "단계 · 지나가는 길 + 둘레 " + (1 + s2) + "칸(공격력 x" + mineFmtPct(1.5 + 0.5 * s2) + ") · 쓰면 내 체력 5% 회복"; // [2026-11-27]
         return "메테오 " + s2 + "단계 · 둘레 " + (2 + s2) + "칸 폭발(공격력 x" + mineFmtPct(2.0 + 0.5 * s2) + ")";
     }
     static final class MercSt {
@@ -10180,7 +10196,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         java.util.function.BiConsumer<Integer, Double> addHit = (hid, hm) -> { int hk = hitIds.indexOf(hid); if (hk >= 0) hitMul.set(hk, hitMul.get(hk) + hm); else { hitIds.add(hid); hitMul.add(hm); hitAt.add(null); } };
         // [2026-11-15] "여러 칸 때리는 스킬은 한 칸당 데미지, 숫자도 맞은 만큼(합치지 않게)" -- 보스가 걸친 칸마다 따로 한 번: {몬스터 번호, 칸 x, 칸 y}
         java.util.function.BiConsumer<int[], Double> addCell = (c, hm) -> { hitIds.add(c[0]); hitMul.add(hm); hitAt.add(new int[] { c[1], c[2] }); };
-        addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : 1.0);
+        // [2026-11-27] "마법사류는 1명 공격 시 데미지를 각각 다르게 -- 불은 궁수보다 세게, 물은 플레이어 체력 회복, 번개는 다중 공격 특화" --
+        //  불 파이어볼: 대상 x(1 + 0.25 x 단계)(궁수 화살 1 + 0.2 x 단계보다 위). 물 아이스볼: 대상 x1 + 칠 때마다 내 최대 체력의 단계 x 0.2% 회복(토네이도 쓰면 5%).
+        //  번개: 대상 x1, 둘레 3칸 2+단계마리에 80%(불/물은 2칸 1+단계마리 60%), 체인 라이트닝이 보스에게 여러 번 튕기고 벼락이 보스가 걸친 칸마다. 함께 다니면 내 필살기 쿨타임 -20%(mineUltGap).
+        addHit.accept(pick, cls == 1 ? 1 + 0.2 * st : cls == 2 && el == S5MineMobs.EL_FIRE ? 1 + 0.25 * st : 1.0);
+        if (cls == 2 && el == S5MineMobs.EL_WATER) out.merge("mercHeal", 2 * Math.max(1, st), (a, b) -> (Integer) a + (Integer) b); // 1000분율
         List<int[]> cands = new ArrayList<>(); // 싸우는 몬스터 {id, fx, fy}
         for (Integer id : e.mobs.keySet()) {
             if (id < 0 || id >= map.mobs().size()) continue;
@@ -10189,7 +10209,8 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         }
         if (cls == 2 && ps != null) { // [2026-11-18] 마법사 평타가 여러 명 -- 대상 둘레 2칸 안 1+단계마리에 60%
             int extra = 0;
-            for (int[] cd : cands) { if (cd[0] == pick || extra >= 1 + Math.max(0, st)) continue; if (Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= 2) { addHit.accept(cd[0], 0.6); extra++; } }
+            boolean thM = el == S5MineMobs.EL_THUNDER; // [2026-11-27] 번개 -- 더 넓게, 더 많이, 더 세게
+            for (int[] cd : cands) { if (cd[0] == pick || extra >= (thM ? 2 : 1) + Math.max(0, st)) continue; if (Math.max(Math.abs(cd[1] - ps.fx), Math.abs(cd[2] - ps.fy)) <= (thM ? 3 : 2)) { addHit.accept(cd[0], thM ? 0.8 : 0.6); extra++; } }
         }
         // [2026-11-06] "용병 검기를 플레이어 평타 검기(강화)와 같은 것으로" -- 대상 옆(나 쪽)에 선 용병이 대상 쪽으로 st칸 줄을 벤다: 그 줄(대상 뒤까지)의 싸우는 몬스터에게
         //  공격력의 st x 5% 속성 피해(플레이어 검기 mineAuraHits와 같은 비율, 무리는 auraTaken 배). 대상은 평타 그대로. 방향은 나 -> 대상의 큰 축.
@@ -10225,7 +10246,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         int s2 = mineMercSel(items, k, "S2", mineMercStage2(mlv)); // [2026-11-06] 고른 2차 스킬 단계(0 = 끔)
         HashMap<String, Object> sk = null;
         boolean cast = false;
-        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= mineMercSkillCd(cls, el) * (100 - mineMercNeckPct(items, MINE_ITEM_MERC_CD_NECK)) / 100) { ms.skillAt = now; cast = true; } } // [2026-11-23] 지휘관의 목걸이 // [2026-11-18] 마법사 물 12초 / 번개 5초
+        if (s2 > 0 && ps != null) synchronized (ms) { if (now - ms.skillAt >= mineMercSkillCd(cls, el) * (100 - mineMercNeckPct(items, MINE_ITEM_MERC_CD_NECK)) / 100 * (100 - (mineBhArmorOn(items) ? MINE_BH_ARMOR_CD2 : 0)) / 100) { /* [2026-11-27] 베히모스의 비늘 갑옷 */ ms.skillAt = now; cast = true; } } // [2026-11-23] 지휘관의 목걸이 // [2026-11-18] 마법사 물 12초 / 번개 5초
         if (cast) {
             sk = new HashMap<>();
             sk.put("x", ps.fx); sk.put("y", ps.fy); sk.put("s", s2);
@@ -10247,10 +10268,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                 double mul = 2.0;
                 List<Integer> used = new ArrayList<>();
                 used.add(pick);
-                for (int hop = 0; hop < 2 + 2 * s2; hop++) {
+                S5MineMobs.Type chT = S5MineMobs.TYPES.get(map.mobs().get(pick).type);
+                int chF = chT.foot();
+                for (int hop = 0; hop < 2 + 3 * s2; hop++) { // [2026-11-27] 튕기는 수 2 + 2 x 단계 -> 2 + 3 x 단계, 거리 3 -> 4칸
                     int[] nb = null; int nd = 99;
-                    for (int[] cd : cands) { if (used.contains(cd[0])) continue; int d = Math.abs(cd[1] - cx) + Math.abs(cd[2] - cy); if (d <= 3 && d < nd) { nd = d; nb = cd; } }
-                    if (nb == null) break;
+                    for (int[] cd : cands) { if (used.contains(cd[0])) continue; int d = Math.abs(cd[1] - cx) + Math.abs(cd[2] - cy); if (d <= 4 && d < nd) { nd = d; nb = cd; } }
+                    if (nb == null) { // [2026-11-27] "보스에게 체인 라이트닝이 여러 번" -- 튕길 데가 없으면 보스에게 다시(걸친 칸을 돌아가며, 숫자도 따로)
+                        if (!chT.boss && chF < 2) break;
+                        int chC = hop % (chF * chF), chX = ps.fx + chC % chF, chY = ps.fy + chC / chF;
+                        mul *= 0.85;
+                        addCell.accept(new int[] { pick, chX, chY }, mul); pts.add(new int[] { chX, chY, pick });
+                        cx = chX; cy = chY;
+                        continue;
+                    }
                     mul *= 0.85;
                     used.add(nb[0]); addHit.accept(nb[0], mul); pts.add(new int[] { nb[1], nb[2], nb[0] });
                     cx = nb[1]; cy = nb[2];
@@ -10270,6 +10300,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     }
                 }
                 synchronized (ms) { ms.rainX = ps.fx; ms.rainY = ps.fy; ms.rainR = rad; ms.rainUntil = now + MINE_MERC_TORNADO_MS; ms.rainMul = 0.5 + 0.25 * s2; } // [2026-11-18] 4초 동안 남는다
+                out.merge("mercHeal", 50, (a, b) -> (Integer) a + (Integer) b); // [2026-11-27] 물 마법사 -- 토네이도를 쓰면 내 체력 5%
                 sk.put("k", "tornado"); sk.put("r", rad); sk.put("nm", "토네이도"); sk.put("until", now + MINE_MERC_TORNADO_MS);
             } else { // 메테오
                 int rad = 2 + s2;
@@ -10290,7 +10321,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         // [2026-11-24] 3차 스킬(관리자만, 35초마다) -- 위 설명(mineMercU3Ok 옆)
         java.util.Map<Integer, Integer> hitDl = new java.util.HashMap<>(); // 타격 번호 -> 화면에 숫자가 뜨는 늦춤(ms)
         boolean u3 = false;
-        if (!boatSw && ps != null && mineMercU3Ok(userName, items, k)) synchronized (ms) { if (now - ms.u3At >= MINE_MERC_U3_MS) { ms.u3At = now; u3 = true; } }
+        if (!boatSw && ps != null && mineMercU3Ok(userName, items, k)) synchronized (ms) { if (now - ms.u3At >= MINE_MERC_U3_MS * (100 - (mineBhArmorOn(items) ? MINE_BH_ARMOR_CD3 : 0)) / 100) /* [2026-11-27] 베히모스의 비늘 갑옷 */ { ms.u3At = now; u3 = true; } }
         if (u3) {
             HashMap<String, Object> s3 = new HashMap<>();
             int pfo = S5MineMobs.TYPES.get(map.mobs().get(pick).type).foot(), pcx = ps.fx + (pfo - 1) / 2, pcy = ps.fy + (pfo - 1) / 2;
@@ -10346,6 +10377,11 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     int ddx = pcx < cd[1] ? cd[1] - pcx : Math.max(0, pcx - (cd[1] + fo - 1)), ddy = pcy < cd[2] ? cd[2] - pcy : Math.max(0, pcy - (cd[2] + fo - 1));
                     if (!main && Math.max(ddx, ddy) > MINE_MERC_U3_BIG_R) continue;
                     addCell.accept(new int[] { cd[0], main ? pcx : cd[1] + (fo - 1) / 2, main ? pcy : cd[2] + (fo - 1) / 2 }, main ? MINE_MERC_U3_BIG_MUL : MINE_MERC_U3_BIG_SPLASH); hitDl.put(hitIds.size() - 1, 260);
+                    if (main && fo > 1) for (int oy = 0; oy < fo; oy++) for (int ox = 0; ox < fo; ox++) { // [2026-11-27] 보스는 걸친 나머지 칸마다 x BIG_SPLASH
+                        int bxq = cd[1] + ox, byq = cd[2] + oy;
+                        if (bxq == pcx && byq == pcy) continue;
+                        addCell.accept(new int[] { cd[0], bxq, byq }, MINE_MERC_U3_BIG_SPLASH); hitDl.put(hitIds.size() - 1, 300 + 25 * (oy * fo + ox));
+                    }
                 }
                 if (!bigMain) { addHit.accept(pick, MINE_MERC_U3_BIG_MUL); hitDl.put(hitIds.indexOf(pick), 260); }
                 p3.add(new int[] { pcx, pcy, 150, 1 }); // 4번째 1 = 큰 번개(화면)
@@ -11654,7 +11690,9 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final java.util.concurrent.ConcurrentHashMap<String, long[]> MINE_BERSERK_INV = new java.util.concurrent.ConcurrentHashMap<>(); // {무적 끝, 마지막 불굴}
     static int mineTwinStunPct(Map<String, Integer> items) { return mineGloveLv(items, MINE_ITEM_TWIN_GLOVES) >= 2 ? MINE_TWIN_STUN_PCT2 : MINE_TWIN_STUN_PCT; }
     static double mineUltGloveMul(Map<String, Integer> items) { int l = mineGloveLv(items, MINE_ITEM_ULT_DMG_GLOVES); return l >= 2 ? 1.45 : l >= 1 ? 1.30 : 1.0; }
-    static long mineUltGap(Map<String, Integer> items) { int l = mineGloveLv(items, MINE_ITEM_ULT_CD_GLOVES); return l >= 2 ? MINE_ULT_GAP_MS * 65 / 100 : l >= 1 ? MINE_ULT_GAP_MS * 75 / 100 : MINE_ULT_GAP_MS; }
+    static long mineUltGap(Map<String, Integer> items) { int l = mineGloveLv(items, MINE_ITEM_ULT_CD_GLOVES); long g = l >= 2 ? MINE_ULT_GAP_MS * 65 / 100 : l >= 1 ? MINE_ULT_GAP_MS * 75 / 100 : MINE_ULT_GAP_MS; return mineMercThunderOn(items) ? g * 80 / 100 : g; } // [2026-11-27] 번개 마법사 -20%
+    /** [2026-11-27] 번개 마법사 용병을 데리고 다니는지(칸 하나라도). */
+    static boolean mineMercThunderOn(Map<String, Integer> items) { if (items == null) return false; for (int k : mineMercActive(items)) if (mineMercCls(items, k) == 2 && mineMercEl(items, k) == S5MineMobs.EL_THUNDER) return true; return false; }
     /** 광전사 불굴 무적 중인지. */
     static boolean mineBerserkInvul(String userName, long now) { long[] b = MINE_BERSERK_INV.get(userName); return b != null && b[0] > now; }
     /** 쓰러질 참 -- 광전사의 장갑이면 불굴(체력 1, 5초 무적)을 걸고 true. 무적 중이었어도 true. out에 berserkSave(무적 끝 시각). */
