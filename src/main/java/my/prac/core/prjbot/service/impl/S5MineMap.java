@@ -1272,8 +1272,8 @@ public final class S5MineMap {
         { // [2026-11-04] 검기 사범 -- 보스 드랍템 + 달빛석으로 검기 배우기(S55MineServiceImpl.mineAuraLearn). [2026-11-22] 성당 옆 -> 1시 수련관 앞마당(문 왼쪽 한 줄)
             placeNpcAt(ct, cc + TRAIN_ROW[0], cc + TRAIN_NPC_DY, "swordmaster", "검기 사범", "칼끝에 원소를 실어 앞으로 날리는 검기를 가르치지. 그 원소를 다스리는 보스의 정수, 달빛석, 세공한 바다 보석을 가져오면 한 단계씩 -- 단계가 오를수록 멀리, 세게 나가네.");
             // [2026-11-07] "3번째 환생부터는 검기 선생 옆에 다른 선생 두 명(주변 공격, 필살 공격)" -- 돌개베기 / 만검진·일섬참(S55MineServiceImpl.mineWhirlLearn, mineUltLearn)
-            placeNpcAt(ct, cc + TRAIN_ROW[1], cc + TRAIN_NPC_DY, "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 세 번째 환생을 마친 자에게만, 검기와 같은 재료로.");
-            placeNpcAt(ct, cc + TRAIN_ROW[2], cc + TRAIN_NPC_DY, "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 세 번째 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
+            placeNpcAt(ct, cc + TRAIN_ROW[1], cc + TRAIN_NPC_DY, "whirlmaster", "돌개 사범", "몸을 한 바퀴 돌려 둘레를 한꺼번에 베는 돌개베기를 가르치지. 환생을 마친 자에게만, 검기와 같은 재료로.");
+            placeNpcAt(ct, cc + TRAIN_ROW[2], cc + TRAIN_NPC_DY, "ultmaster", "필살 사범", "검을 비처럼 내리는 만검진, 한 번에 끝내는 일섬참. 환생을 마친 자라면 은하수 조각으로 가르쳐 주지. 둘은 한 호흡을 나눠 쓰네.");
         }
         ct.citizens = cityCitizens(ct, seed); // [2026-10-27] 왕도 주민(NPC를 다 세운 뒤 -- 'N' 칸은 피해 간다)
         // [2026-10-28] "요일 동굴 앞에 NPC -- 오늘의 요일석 20개를 내면 골라서 다른 요일 동굴에" -- 평원 서쪽 통로(요일 던전 입구) 안쪽

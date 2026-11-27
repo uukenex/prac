@@ -2918,11 +2918,14 @@ var TowerMine = (function () {
   function lvLabel(c, compact) {
     var rb = c.rebirth | 0;
     if (!rb) return 'Lv.' + c.lv;
-    return 'Lv.' + c.lv + '<span class="rb">' + (compact ? (rb > RB_BASE ? '✦진' + (rb - RB_BASE) : '✦' + rb) : '(' + rbName(rb) + ')') + '</span>';
+    return 'Lv.' + c.lv + '<span class="rb">' + (compact ? (rb > RB_BASE ? '✦진' : '✦' + rbStageN(rb)) : '(' + rbName(rb) + ')') + '</span>';
   }
   /** [2026-11-08] "환생3" / "진환생1"(6환생부터 진환생 -- 서버 mineRbName). */
-  function rbName(rb) { return rb > RB_BASE ? '진환생' + (rb - RB_BASE) : '환생' + rb; }
-  function rbStage(rb) { return rb > RB_BASE ? '진환생 ' + (rb - RB_BASE) + '단계' : '환생 ' + rb + '단계'; }
+  // [2026-11-27] "1~5환생을 1~2환생으로, 3환생이 진환생" -- 저장 값은 예전 눈금(1환생 = 3, 2환생 = 5, 진환생 = 6, 서버 mineRbStage / mineRbNext)
+  function rbStageN(rb) { return rb > RB_BASE ? 3 : rb >= RB_BASE ? 2 : rb > 0 ? 1 : 0; }
+  function rbNext(rb) { return rb < RB_S1 ? RB_S1 : rb < RB_BASE ? RB_BASE : RB_MAX; }
+  function rbName(rb) { return rb > RB_BASE ? '진환생' : '환생' + rbStageN(rb); }
+  function rbStage(rb) { return rb > RB_BASE ? '진환생(3환생)' : '환생 ' + rbStageN(rb) + '단계'; }
   function hpNow() {
     var c = st && st.combat;
     if (!c) return 0;
@@ -6207,7 +6210,7 @@ var TowerMine = (function () {
   }
   // [2026-10-24] 왕도 -- 성당 신부(체력 회복 / 부활 지점), 텔레포트 게이트(금광석을 내고 다른 지역으로)
   // [2026-10-28] 환생 -- 99레벨 경험치 가득이면 신부 창의 "환생" 버튼이 켜지고, 누르면 효과 설명 + 확인(priestConfirm) 뒤에 서버로
-  var priestConfirm = false, RB_MAX = 6, RB_BASE = 5; // [2026-11-08] 5환생 다음은 진환생1 하나(서버 MINE_REBIRTH_BASE/MAX)
+  var priestConfirm = false, RB_MAX = 6, RB_BASE = 5, RB_S1 = 3; // [2026-11-08] 5환생 다음은 진환생1 하나(서버 MINE_REBIRTH_BASE/MAX), [2026-11-27] 저장 값 3 = 1환생, 5 = 2환생, 6 = 진환생
   function rbMul(base, n) { var v = Math.pow(base, n); return v === Math.round(v) ? String(v) : String(Math.round(v * 100) / 100); }
   // [2026-10-29] 왕도 원소술사 -- 세공된 보석 하나로 무기에 물/번개/불/땅 속성(ENCH_HITS번 공격, 상성 x1.5)
   var ENCH_HITS = 1000, ENCH_HITS_ELEM = 500; // 성당 신부 1000번, [2026-10-29] 원소술사 500번
@@ -6237,17 +6240,20 @@ var TowerMine = (function () {
         + '<button type="button" ' + (ready ? 'class="rb-on" ' : 'disabled ') + 'onclick="TowerMine.priestAct(\'rebirthAsk\')">🕊️ ' + (rb >= RB_BASE ? '진환생' : '환생') + (rb ? ' (지금 ' + rbStage(rb) + ')' : '') + '<small>' + rbSub + '</small></button></div>';
     // [2026-10-28] 환생 -- 1단계: 효과 설명, 2단계: 최종 확인(되돌릴 수 없음). "환생 시 멘트 조정" -- 좋아지는 것 / 어려워지는 것 / 그대로인 것으로 나눠서
     if (priestConfirm && ready) {
-      var nrb = rb + 1;
+      var nrb = rbNext(rb); // [2026-11-27] 0 -> 3 -> 5 -> 6
       if (priestConfirm === 1) html += '<div class="mine-rb-box">🕊️ <b>' + rbStage(nrb) + '</b> -- 여신의 빛 속에서 지금까지의 수련을 내려놓고 새 날개로 다시 태어나요.<br>'
           + '<b>✨ 강해지는 것</b><br>'
           + '· 최대 체력 <b>+' + (nrb * 50) + '%</b> · 공격력 <b>+' + (nrb * 50) + '%</b><br>'
           + '· 채굴·전투로 얻는 구리~미스릴 광석 <b>x' + (1 + nrb) + '</b><br>'
           + '· 동굴 밝기 <b>+' + nrb + '</b> (투구 단계처럼 더 환하게)<br>' // [2026-10-29]
           + '· 방한·햇빛 저항 <b>+' + nrb + '</b>' + '<br>' // [2026-10-29] 효과도 문구대로: 방한·햇빛 단계 +회차
-          + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(단계가 오를수록 커져요, 최대 ' + RB_BASE + '단계)<br>')
+          + (nrb > RB_BASE ? '' : '· 등에 <b>환생 날개</b>가 돋아나요(2환생에서 더 커져요)<br>')
+          + '<b>🔓 새로 열리는 것</b><br>' + (nrb > RB_BASE ? '· <b>세 번째 용병</b> · 장비 레벨 제한 없음 · 99레벨 뒤에도 계속 강해져요<br>'
+              : nrb >= RB_BASE ? '· 최고 레벨 <b>150</b>(1환생은 99에서 멈춰요) · <b>두 번째 용병</b><br>'
+              : '· 검기·필살기 <b>환생 특전</b>(하나씩 무료) · 필살 사범 · 사막 입장 레벨 제한 없음 · 용병은 99레벨까지<br>') // [2026-11-27]
           + '<b>⏳ 다시 쌓는 것</b><br>'
           + '· 레벨이 <b>Lv.1(' + rbName(nrb) + ')</b>로 돌아가고 경험치는 0이 돼요<br>'
-          + '· 레벨마다 필요한 경험치 <b>x' + rbMul(2, nrb) + '</b> (환생할 때마다 2배씩)<br>'
+          + '· 레벨마다 필요한 경험치 <b>x' + rbMul(2, nrb) + '</b>' + (rb ? ' (지금 x' + rbMul(2, rb) + ')' : '') + '<br>'
           + (nrb > RB_BASE ? '· 왕도 상인의 <b>행운의 주문서</b>(경험치 3배)를 더 이상 쓸 수 없어요<br>' : '') // [2026-11-08] 진환생
           + '<b>🎒 그대로인 것</b><br>'
           + '· 광석·보석·장비·치장은 모두 그대로예요.'
@@ -6669,7 +6675,7 @@ var TowerMine = (function () {
       if (st.merc3) mh += '<div class="mine-smith-say">③ 세 번째 용병: ' + mercSumHtml(st.merc3) + '</div>'; // [2026-11-23]
       if (ms2.slot3Open != null) mh += '<div class="mine-smith-say"><small>' + (ms2.slot3Open ? '③ 진환생 특전 -- 세 번째 용병도 계약할 수 있어요 · ' + ((st.mercs || [])[4] && st.mercs[4].owned ? '바꾸면 지금 세 번째 용병의 레벨·경험치를 이어받아요' : '처음엔') + ' Lv.' + ms2.slot3Lv : '🔒 세 번째 용병은 진환생부터 계약할 수 있어요') + '</small></div>'; // [2026-11-23]
       if (!ms2.slot2Hide) mh += '<div class="mine-smith-say"><small>' + (ms2.slot2Open ? '② 두 번째 용병도 계약할 수 있어요 -- 같은 직업도 돼요 · ' + ((st.mercs || [])[3] && st.mercs[3].owned ? '바꾸면 지금 두 번째 용병의 레벨·경험치를 이어받아요 (Lv.' + ms2.slot2Lv + ')' : '처음 계약은 Lv.' + (ms2.slot2Lv || 70))
-          : '🔒 두 번째 용병은 ' + (ms2.slot2Rb || 5) + '환생부터 계약할 수 있어요') + '</small></div>';
+          : '🔒 두 번째 용병은 ' + (ms2.slot2Rb || 2) + '환생부터 계약할 수 있어요') + '</small></div>';
       // [2026-11-06] "처음 계약 때 동료 이미지, 속성, 레벨, 이름, 직업 정도 캐러셀로" -- 직업마다 후보 한 명(서버가 뽑아 둠), 계약하면 첫날 급여
       mh += '<div class="mine-smith-say"><small>' + (ms2.curLv > 0 ? '지금 용병과 같은 Lv.' + ms2.curLv + ' 동료들이에요 · 계약하면 지금 용병은 떠나고 레벨·경험치는 그대로 이어받아요' : '처음 계약은 Lv.5~30') // [2026-11-06] 교체 후보 / 급여 구간
         + '<br>' + (ms2.offers && ms2.offers.some(function (o) { return o.free; }) ? '교체는 무료예요 · 급여는 처음 계약할 때 한 번만 냈어요' : '급여는 처음 계약할 때 한 번만 내요(동괴 / 은괴 / 금괴 / 미스릴괴 중 하나, 가끔 세공된 보석) · 그 뒤로는 교체도 무료') + '</small></div>'; // [2026-11-11] 날마다 내던 급여 없앰
@@ -8925,10 +8931,10 @@ var TowerMine = (function () {
     if (au.gift === 1) {
       var gb = '';
       for (var ge = 1; ge <= 8; ge++) if (AURA_BOSS[ge] && !((au.l && au.l[ge]) || 0)) gb += '<button type="button" class="mine-mini-btn" style="color:' + AURA_COL[ge] + '" onclick="TowerMine.auraGift(' + ge + ')">' + ELEM_ICON[ge] + ' ' + ELEM_NAME[ge] + '</button>';
-      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>2환생 특전</b> -- 아직 배우지 않은 검기 하나를 1단계로 무료로 가르쳐 준대요. (한 번만)'
+      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>환생 특전</b> -- 아직 배우지 않은 검기 하나를 1단계로 무료로 가르쳐 준대요. (한 번만)'
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 속성이 없어요 (모두 이미 배움)</div>') + '</div>';
-    } else if (au.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 2환생 특전 -- 받았어요</div>';
-    else h += '<div class="mine-smith-say" style="opacity:.6">🎁 2환생 특전 -- 2환생을 하면 검기 하나를 1단계로 무료로 받을 수 있어요</div>';
+    } else if (au.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 환생 특전 -- 받았어요</div>';
+    else h += '<div class="mine-smith-say" style="opacity:.6">🎁 환생 특전 -- 1환생을 하면 검기 하나를 1단계로 무료로 받을 수 있어요</div>'; // [2026-11-27] 1환생(저장 값 3)부터
     for (var e = 1; e <= 8; e++) {
       var L = (au.l && au.l[e]) || 0, b = AURA_BOSS[e];
       var head = '<span class="nm"><span style="color:' + AURA_COL[e] + '">' + ELEM_ICON[e] + ' ' + ELEM_NAME[e] + ' 검기</span> ' + L + '/5';
@@ -8948,7 +8954,7 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function auraGift(e) { // [2026-11-05] 2환생 특전
-    ask('🎁 2환생 특전', '한 번만 받을 수 있어요. ' + ELEM_NAME[e] + ' 검기 1단계를 받을까요?', '받기', function () { auraGiftGo(e); }); // [2026-11-20] confirm() 대신
+    ask('🎁 환생 특전', '한 번만 받을 수 있어요. ' + ELEM_NAME[e] + ' 검기 1단계를 받을까요?', '받기', function () { auraGiftGo(e); }); // [2026-11-20] confirm() 대신
   }
   function auraGiftGo(e) {
     api('/api/tower-mine-aura-gift?el=' + e).then(function (d) {
@@ -9219,7 +9225,7 @@ var TowerMine = (function () {
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
   function ultGift(k) { // [2026-11-08] 3환생 특전
-    ask('🎁 3환생 특전', '한 번만 받을 수 있어요. ' + ULT_NAME[k] + ' 1레벨을 받을까요?', '받기', function () { ultGiftGo(k); }); // [2026-11-20] confirm() 대신
+    ask('🎁 환생 특전', '한 번만 받을 수 있어요. ' + ULT_NAME[k] + ' 1레벨을 받을까요?', '받기', function () { ultGiftGo(k); }); // [2026-11-20] confirm() 대신
   }
   function ultGiftGo(k) {
     api('/api/tower-mine-ult-gift?k=' + k).then(function (d) {
@@ -9235,7 +9241,7 @@ var TowerMine = (function () {
       msg((d && d.message) || '배우지 못했어요.', 3000);
     }).catch(function () { msg('요청 실패 -- 다시 시도해주세요.'); });
   }
-  var SK3_LOCK = '<div class="mine-smith-say" style="border:1px solid #ffd27a">🔒 세 번째 환생을 마친 사람에게만 가르쳐 준대요.</div>';
+  var SK3_LOCK = '<div class="mine-smith-say" style="border:1px solid #ffd27a">🔒 환생을 마친 사람에게만 가르쳐 준대요.</div>'; // [2026-11-27] 1환생부터
   function whirlNpcHtml(n) {
     var wl = st && st.whirl, moon = oreHave(MOON_G);
     var h = npcHead('🌪️ ' + (n ? n.name : '돌개 사범'), false) + talkBlock(n, n ? n.line : '');
@@ -9259,9 +9265,9 @@ var TowerMine = (function () {
     if (u.gift === 1) {
       var gb = '';
       [['🌧️', '만검진'], ['💥', '일섬참'], ['🔥', '각성']].forEach(function (s, k) { if (!((u.l || [])[k] | 0)) gb += '<button type="button" class="mine-mini-btn" onclick="TowerMine.ultGift(' + k + ')">' + s[0] + ' ' + s[1] + '</button>'; });
-      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>3환생 특전</b> -- 필살기 하나를 1레벨로 무료로 가르쳐 준대요. (한 번만)'
+      h += '<div class="mine-smith-say" style="border:1px solid #ffd27a">🎁 <b>환생 특전</b> -- 필살기 하나를 1레벨로 무료로 가르쳐 준대요. (한 번만)'
           + (gb ? '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">' + gb + '</div>' : '<div style="margin-top:4px;color:#a89ec8">고를 수 있는 필살기가 없어요 (모두 이미 배움)</div>') + '</div>';
-    } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 3환생 특전 -- 받았어요</div>';
+    } else if (u.gift === 2) h += '<div class="mine-smith-say" style="opacity:.6">🎁 환생 특전 -- 받았어요</div>';
     h += '<div class="mine-smith-say">세 필살기를 모두 쓸 수 있어요. ⚔️ 버튼 위 삼태극 버튼의 왼쪽 아래가 만검진(X), 오른쪽 아래가 일섬참(C), 위가 각성(V) -- 쿨타임 2분을 함께 써요. 레벨마다 은하수 조각 2 / 5 / 8 / 11 / 14개 · 보유 ' + gx + '</div>';
     [['🌧️', '만검진', '쓴 자리 13x13에 5초 동안 검이 떨어지는 장판(1초마다 맞은 적의 받는 피해 +10%, 최대 50%) -- 1초마다 공격력의 ', function (lv) { return 125 + 20 * (lv - 1); }, '%'], ['💥', '일섬참', '화면에 보이는 가장 가까운 몬스터 하나를 공격력의 ', function (lv) { return (700 + 150 * (lv - 1)) + '%로 베고 ' + (lv + 1) + '초 기절'; }, ''], ['🔥', '각성', '노란 불꽃을 두르고 ', function (lv) { return (6 + lv) + '초 동안 주는 피해 1.5배 · 지금 체력 1.5배(최대 체력을 잠시 넘음)'; }, '']].forEach(function (s, k) { // [2026-11-21] 각성
       var L = (u.l || [])[k] | 0, head = '<span class="nm">' + s[0] + ' ' + s[1] + ' ' + L + '/5';

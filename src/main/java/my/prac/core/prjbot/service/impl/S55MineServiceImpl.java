@@ -888,8 +888,16 @@ public abstract class S55MineServiceImpl implements BotS5Service {
 
     static int mineRebirth(Map<String, Integer> items) { return Math.max(0, Math.min(MINE_REBIRTH_MAX, items.getOrDefault(MINE_ITEM_REBIRTH, 0))); }
     static boolean mineTrueRebirth(Map<String, Integer> items) { return mineRebirth(items) > MINE_REBIRTH_BASE; }
-    /** "환생3" / "진환생1"(6환생). */
-    static String mineRbName(int rb) { return rb > MINE_REBIRTH_BASE ? "진환생" + (rb - MINE_REBIRTH_BASE) : "환생" + rb; }
+    // [2026-11-27] "1~5환생을 1~2환생으로 축약, 3환생이 진환생" -- 저장 값(REBIRTH)과 효과 계산은 예전 눈금(0~6) 그대로 두고, 환생할 때 0 -> 3(1환생) -> 5(2환생) -> 6(진환생)으로 건너뛴다.
+    //  그래서 1환생 = 예전 3환생 효과(체력/공격 +150%, 광석 x4, 저항·밝기 +3, 필요 경험치 x8, 검기·필살기 특전), 2환생 = 예전 5환생(+250%, 150레벨까지, 두 번째 용병), 진환생 그대로.
+    //  예전 중간 단계(1·2·4)는 화면에 1환생으로 보이고, 다음 환생은 바로 위 단계(3 또는 5)로 간다.
+    static final int MINE_RB_S1 = 3;
+    /** 보이는 환생 단계 -- 0, 1, 2, 3(진환생). */
+    static int mineRbStage(int rb) { return rb > MINE_REBIRTH_BASE ? 3 : rb >= MINE_REBIRTH_BASE ? 2 : rb > 0 ? 1 : 0; }
+    /** 다음 환생의 저장 값. */
+    static int mineRbNext(int rb) { return rb < MINE_RB_S1 ? MINE_RB_S1 : rb < MINE_REBIRTH_BASE ? MINE_REBIRTH_BASE : MINE_REBIRTH_MAX; }
+    /** "환생1" / "환생2" / "진환생". */
+    static String mineRbName(int rb) { return rb > MINE_REBIRTH_BASE ? "진환생" : "환생" + mineRbStage(rb); }
     // [2026-10-28 수정] "환생 1회당 기본 체력 +100%(x회차), 필요 경험치 5배(회차 제곱), 전투/채굴 광물 획득량 +100%(x회차), 방한/햇빛 피해 1%(x회차) 경감" -- [2026-10-29] 방한/햇빛/동굴 밝기 단계 +1(x회차)로 바꿈
     //  -> 최대 체력 x (1 + rb)([2026-10-30] x (1 + 0.5 rb)), 필요 경험치 x 2^rb([2026-10-28] 5^rb에서), 광물 획득 x (1 + rb)(mineRebirthGain), 한기/눈바람/방한 장비 더위 피해량 x (1 - 0.01 rb)(mineColdTick rbCut).
     //  [2026-10-29] 지금은 환생 회차만큼 방한 단계(mineColdDef), 햇빛 저항 단계(mineSunPct), 동굴 밝기(화면 sight) +1씩.
@@ -9195,7 +9203,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
     static final String MINE_ITEM_OPT_HD = "OPT_HD", MINE_ITEM_OPT_DMG = "OPT_DMG"; // [2026-11-21] 화면 옵션(계정에 저장)
     boolean mineWhirlOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_WHIRL_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
     boolean mineUltOk(String userName, Map<String, Integer> items) { return isMineAdmin(userName) || (MINE_ULT_OPEN && mineRebirth(items) >= MINE_SKILL3_RB); }
-    static final String MINE_SKILL3_NO = "이 기술은 " + MINE_SKILL3_RB + "번째 환생을 마친 사람에게만 가르치네.";
+    static final String MINE_SKILL3_NO = "이 기술은 환생을 마친 사람에게만 가르치네."; // [2026-11-27] 1환생(저장 값 3)부터
 
     /** [2026-11-07] 관리자 -- 검기/돌개베기(보스가 있는 속성)와 필살기 둘 다 배운 단계 5로. */
     static void mineAdminSkills(Map<String, Integer> items) {
@@ -9363,7 +9371,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "ultmaster")) { out.put("message", "왕도 필살 사범 앞에서만 받을 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
         if (!mineUltOk(userName, items)) { out.put("message", MINE_SKILL3_NO); return out; }
-        if (items.getOrDefault(MINE_ITEM_ULT_GIFT, 0) > 0) { out.put("message", "3환생 특전은 이미 받았어요."); return out; }
+        if (items.getOrDefault(MINE_ITEM_ULT_GIFT, 0) > 0) { out.put("message", "환생 특전은 이미 받았어요."); return out; }
         if (k < 0 || k > 2) return out; // [2026-11-21] 각성도
         if (mineUltLv(items, k) > 0) { out.put("message", "이미 배운 필살기예요. 아직 안 배운 쪽을 골라 주세요."); return out; }
         dao.upsertMineItem(userName, mineUltKey(k), 1);
@@ -9371,7 +9379,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         items.put(mineUltKey(k), 1);
         items.put(MINE_ITEM_ULT_GIFT, 1);
         out.put("ok", true);
-        out.put("message", "🎁 필살 사범: 세 번째 환생을 축하하네! " + MINE_ULT_NAME[k] + " 1레벨을 거저 가르쳐 주지.");
+        out.put("message", "🎁 필살 사범: 환생을 축하하네! " + MINE_ULT_NAME[k] + " 1레벨을 거저 가르쳐 주지.");
         out.put("ult", mineUltInfo(userName, items));
         return out;
     }
@@ -9445,7 +9453,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             if (now - z.last < MINE_ULT_TICK_MS - 150) { out.put("tooFast", true); return out; }
             ulv = z.lv;
         } else {
-            if (!mineUltOk(userName, items)) { out.put("message", "필살기는 " + MINE_SKILL3_RB + "번째 환생부터 쓸 수 있어요."); return out; }
+            if (!mineUltOk(userName, items)) { out.put("message", "필살기는 1환생부터 쓸 수 있어요."); return out; }
             ulv = mineUltLv(items, k);
             if (ulv <= 0) { out.put("message", "아직 " + MINE_ULT_NAME[k] + "을(를) 배우지 않았어요. (왕도 필살 사범)"); return out; }
             if (prevAt != null && now - prevAt < mineUltGap(items)) { out.put("message", "⏳ 필살기는 " + ((mineUltGap(items) - (now - prevAt)) / 1000 + 1) + "초 뒤에 다시 쓸 수 있어요."); /* [2026-11-20] 신속의 장갑 */ out.put("ult", mineUltInfo(userName, items)); return out; }
@@ -10827,7 +10835,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             cOk = c >= 0 && c < MINE_MERC_NAMES.length;
             int had = mineMercLv(items, k2), lv2 = Math.min(mineMerc2HireLv(row, items), mineMercCapLv(mineLv(row), mineRebirth(items))); // [2026-11-23] 내 레벨까지
             if (!mineAtNpc(row, "mercenary")) { ok = false; msg = "왕도 용병소에서만 계약할 수 있어요."; }
-            else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 " + MINE_REBIRTH_BASE + "환생부터 계약할 수 있어요."; }
+            else if (mineRebirth(items) < MINE_REBIRTH_BASE) { ok = false; msg = "두 번째 용병은 2환생부터 계약할 수 있어요."; }
             else if (!cOk) { ok = false; msg = "그 후보는 이제 없어요."; }
             else if ((mineMercHeld(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)) & 5) != 0) { ok = false; msg = mineMercDupMsg(items, c, Math.floorMod(items.getOrDefault(mineOfKey(oi, "NM"), 0), MINE_MERC_NAMEPOOL[c].length)); } // [2026-11-24] 같은 용병은 한 칸에만
             else {
@@ -10957,7 +10965,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             out.put("curLv", mineMercCurLv(items)); // [2026-11-06] 교체 후보는 지금보다 2~15레벨 낮게
             out.put("slot2Open", mineRebirth(items) >= MINE_REBIRTH_BASE); // [2026-11-18] 두 번째 용병(5환생부터) -- 같은 날 일반 유저 공개
             out.put("slot2Hide", false);
-            out.put("slot2Rb", MINE_REBIRTH_BASE);
+            out.put("slot2Rb", mineRbStage(MINE_REBIRTH_BASE)); // [2026-11-27] 보이는 단계(2환생)
             out.put("slot2Lv", mineMerc2HireLv(row, items));
             out.put("slot3Open", mineTrueRebirth(items)); // [2026-11-23] 세 번째 용병(진환생부터)
             out.put("slot3Lv", Math.min(mineMercLv(items, MINE_MERC_K3) > 0 ? mineMercLv(items, MINE_MERC_K3) : MINE_MERC3_LV, mineMercCapLv(mineLv(row), mineRebirth(items))));
@@ -10983,7 +10991,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         HashMap<String, Object> row = dao.selectMineUserForUpdate(userName); // 같은 유저의 동시 요청은 여기서 줄 선다(두 번 받기 방지)
         if (!S5MineMap.CITY.equals(strVal(row.get("MAP_ID"), "")) || !mineAtNpc(row, "swordmaster")) { out.put("message", "왕도 검기 사범 앞에서만 받을 수 있어요."); return out; }
         Map<String, Integer> items = mineItems(userName);
-        if (mineRebirth(items) < MINE_AURA_GIFT_RB) { out.put("message", MINE_AURA_GIFT_RB + "환생을 하면 받을 수 있는 특전이네."); return out; }
+        if (mineRebirth(items) < MINE_AURA_GIFT_RB) { out.put("message", "환생을 하면 받을 수 있는 특전이네."); return out; }
         if (items.getOrDefault(MINE_ITEM_AURA_GIFT, 0) > 0) { out.put("message", "환생 특전은 이미 받았네."); return out; }
         if (el < 1 || el > 8 || MINE_AURA_BOSS_ITEM[el] == null) { out.put("message", "그 속성의 검기는 아직 가르칠 수 없네."); return out; }
         int cur = items.getOrDefault(mineAuraKey(false, el), 0), act = items.getOrDefault(mineAuraKey(true, el), 0);
@@ -11093,7 +11101,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
                     if (lv < 95) continue;
                     int rb = mineRebirth(mineItems(u));
                     if (rb >= MINE_REBIRTH_MAX) continue; // [2026-11-07] "5환생이 끝인데 NPC가 곧 6환생한다고 한다" -- 마지막 환생까지 한 사람은 빼기
-                    rbl.add(mineNick(u) + " 님이 곧 " + mineRbName(rb + 1) + "을 한대요!");
+                    rbl.add(mineNick(u) + " 님이 곧 " + mineRbName(mineRbNext(rb)) + "을 한대요!");
                 }
             } catch (Exception ignore) { }
             mineGossipRb = rbl;
@@ -13047,7 +13055,7 @@ public abstract class S55MineServiceImpl implements BotS5Service {
             return out;
         }
         if (mineEngaged(userName, now)) { out.put("message", "🙏 성당 신부: 싸움이 끝난 뒤에 오세요."); return out; }
-        int nrb = rb + 1;
+        int nrb = mineRbNext(rb); // [2026-11-27] 0 -> 3(1환생) -> 5(2환생) -> 6(진환생)
         dao.upsertMineItem(userName, MINE_ITEM_REBIRTH, nrb);
         if (locked) dao.upsertMineItem(userName, MINE_ITEM_HP_LOCK, 0);
         int hp = mineHpFull(1, nrb); // [2026-11-18] 갑옷 체력까지
@@ -13063,12 +13071,19 @@ public abstract class S55MineServiceImpl implements BotS5Service {
         out.put("look", mineLookOf(items));
         out.put("combat", mineCombatInfo(1, 0L, hp, now, false, 0, nrb));
         // [2026-10-28] "환생 시 멘트 조정" -- 지금 효과대로(예전 글은 체력 x1.5^n / 경험치 x3^n이었다)
-        out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생 " + (nrb - MINE_REBIRTH_BASE) : "환생 " + nrb) + "단계 -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
+        out.put("message", "🕊️ 성당 신부: 여신이시여, 이 영혼에게 새 날개를! " + (nrb > MINE_REBIRTH_BASE ? "진환생" : "환생 " + mineRbStage(nrb) + "단계") + " -- Lv.1(" + mineRbName(nrb) + ")로 다시 태어났어요. "
                 + "최대 체력 +" + (nrb * 50) + "% · 공격력 +" + (nrb * 50) + "% · 미스릴 이하 광물 x" + (1 + nrb) + " · 방한·햇빛 저항·동굴 밝기 +" + nrb + " · 필요 경험치 x" + mineRebirthMulText(MINE_RB_EXP_MUL, nrb) + "."
+                + mineRbUnlockText(nrb)
                 + (nrb > MINE_REBIRTH_BASE ? " 이제 행운의 주문서는 쓸 수 없어요." : ""));
         return out;
     }
 
+    /** [2026-11-27] 이번 환생으로 새로 열리는 것. */
+    static String mineRbUnlockText(int nrb) {
+        if (nrb > MINE_REBIRTH_BASE) return " 새로: 세 번째 용병 · 장비 레벨 제한 없음 · 99레벨 뒤에도 강해짐.";
+        if (nrb >= MINE_REBIRTH_BASE) return " 새로: 최고 레벨 " + MINE_LV_PLAYER_MAX + " · 두 번째 용병.";
+        return " 새로: 검기·필살기 환생 특전 · 필살 사범 · 사막 입장 제한 없음 · 용병 99레벨까지.";
+    }
     static String mineRebirthMulText(double base, int rb) {
         double v = Math.pow(base, rb);
         return v == Math.rint(v) ? String.valueOf((long) v) : String.format("%.2f", v).replaceAll("0+$", "");
