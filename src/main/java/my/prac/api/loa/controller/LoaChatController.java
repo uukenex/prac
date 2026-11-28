@@ -6036,8 +6036,9 @@ public class LoaChatController {
 				result.append(enterStr).append("❖ 이관 보석").append(enterStr).append("(거래가능 작·겁·광 + 귀속 8광휘)").append(enterStr);
 				result.append(enterStr).append("[모은 것]").append(enterStr);
 				for (int lv = 10; lv >= 1; lv--) {
-					if (moveTrade[lv] > 0) result.append(" ").append(lv).append("레벨 ").append(moveTrade[lv]).append("개").append(enterStr);
-					if (lv == 7 && moveBound8 > 0) result.append(" 7레벨 ").append(moveBound8).append("개 (귀속 8광휘)").append(enterStr);
+					// [2026-11-28] 7레벨은 거래가능 7레벨 + 귀속 8광휘를 한 줄로("7레벨 9개 (귀속 8광휘 5 포함)") -- 합치기 첫 줄과 숫자가 맞게
+					int b8 = lv == 7 ? moveBound8 : 0, n = moveTrade[lv] + b8;
+					if (n > 0) result.append(" ").append(lv).append("레벨 ").append(n).append("개").append(b8 > 0 ? (b8 == n ? " (귀속 8광휘)" : " (귀속 8광휘 " + b8 + " 포함)") : "").append(enterStr);
 				}
 				java.util.List<String> steps = gemMoveSteps(moveOrig);
 				if (!steps.isEmpty()) {
