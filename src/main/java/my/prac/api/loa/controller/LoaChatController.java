@@ -5689,7 +5689,7 @@ public class LoaChatController {
 	//  합치기: 같은 단계 광휘 3개 -> 한 단계 위(10광휘 3개 -> 1성휘), 1성휘 2개 -> 2성휘. 보석 하나의 "무게"를 1광휘 기준 3^t(2성휘 2 x 3^10)로 보면
 	//  어떤 조합을 만들 수 있는지는 무거운 것부터 가진 보석 중 큰 것부터 채워 보면 된다(무게가 서로 나누어떨어짐). 11개 조합(12단계 중복조합, 약 70만)을 모두 따져 고른다.
 	static final int[] GEM_MV_ATK = { 0, 75, 150, 300, 450, 675, 900, 1200, 1500, 1800, 2100, 2400 }; // 기본 공격력 x1000(%)
-	static String gemMoveBest(int[] cnt, int slots) {
+	static java.util.List<String> gemMoveBest(int[] cnt, int slots) {
 		int n = 0; for (int c : cnt) n += c;
 		int k = Math.min(slots, n);
 		if (k <= 0) return null;
@@ -5700,8 +5700,8 @@ public class LoaChatController {
 		gemMoveSearch(11, k, 0L, total, w, cnt, f, best, bestScore);
 		if (bestScore[0] < 0) return null;
 		java.util.List<String> l = new java.util.ArrayList<>();
-		for (int t = 11; t >= 0; t--) if (best[t] > 0) l.add((t >= 10 ? (t - 9) + "성휘" : (t + 1) + "광휘") + "(" + best[t] + ")");
-		return String.join(", ", l);
+		for (int t = 11; t >= 0; t--) if (best[t] > 0) l.add((t >= 10 ? (t - 9) + "성휘" : (t + 1) + "광휘") + " " + best[t] + "개");
+		return l;
 	}
 	static void gemMoveSearch(int t, int left, long mass, long total, long[] w, int[] cnt, int[] f, int[] best, long[] bestScore) {
 		if (t < 0) {
@@ -5729,15 +5729,21 @@ public class LoaChatController {
 		}
 		return true;
 	}
-	/** [2026-11-28] 레벨 높은 순 "10겁(1), 9작(6)" */
-	static String gemLvText(java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> m) {
+	/** [2026-11-28] 캐릭터 보석을 세로로 -- 겁·작·광은 레벨로 묶어 "9레벨 10개", 멸·홍은 "7홍 5개"(레벨 높은 순) */
+	static java.util.List<String> gemLvLines(java.util.TreeMap<Integer, java.util.LinkedHashMap<String, Integer>> m) {
 		java.util.List<String> l = new java.util.ArrayList<>();
-		for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> e : m.entrySet())
-			for (Map.Entry<String, Integer> t : e.getValue().entrySet()) l.add(e.getKey() + t.getKey() + "(" + t.getValue() + ")");
-		return String.join(", ", l);
+		for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> e : m.entrySet()) {
+			int tier = 0;
+			for (Map.Entry<String, Integer> t : e.getValue().entrySet())
+				if ("겁".equals(t.getKey()) || "작".equals(t.getKey()) || "광".equals(t.getKey())) tier += t.getValue();
+			if (tier > 0) l.add(e.getKey() + "레벨 " + tier + "개");
+			for (Map.Entry<String, Integer> t : e.getValue().entrySet())
+				if (!("겁".equals(t.getKey()) || "작".equals(t.getKey()) || "광".equals(t.getKey()))) l.add(e.getKey() + t.getKey() + " " + t.getValue() + "개");
+		}
+		return l;
 	}
-	/** [2026-11-28] 이관 보석 합치는 과정 -- "7레벨 6→8레벨 +2, 8레벨 21→9레벨 +7(남 0) ..." (cnt: 1~10레벨 광휘 개수) */
-	static String gemMoveSteps(int[] cnt) {
+	/** [2026-11-28] 이관 보석 합치는 과정 -- "9레벨 17 → 10레벨 5 (나머지: 2)" 한 줄씩 (cnt: 1~10레벨 광휘 개수) */
+	static java.util.List<String> gemMoveSteps(int[] cnt) {
 		long[] c = new long[12]; for (int i = 0; i < 10; i++) c[i] = cnt[i];
 		java.util.List<String> l = new java.util.ArrayList<>();
 		for (int t = 0; t < 11; t++) {
@@ -5745,10 +5751,10 @@ public class LoaChatController {
 			if (c[t] < per) continue;
 			long up = c[t] / per, left = c[t] % per;
 			String from = t >= 10 ? "1성휘" : (t + 1) + "레벨", to = t + 1 >= 10 ? (t - 8) + "성휘" : (t + 2) + "레벨";
-			l.add(from + " " + c[t] + "개→" + to + " " + up + "개" + (left > 0 ? "(남 " + left + ")" : ""));
+			l.add(from + " " + c[t] + " → " + to + " " + up + (left > 0 ? " (나머지: " + left + ")" : ""));
 			c[t + 1] += up; c[t] = left;
 		}
-		return String.join(", ", l);
+		return l;
 	}
 	String gemSearch(String charName) throws Exception {
 		String encoded = java.net.URLEncoder.encode(charName, "UTF-8");
@@ -5963,20 +5969,18 @@ public class LoaChatController {
 
 			if (tradeableCount == 0 && boundCount == 0) continue;
 			charCnt++;
-			String boundLine = gemLvText(boundGems); // [2026-11-28] 귀속도 레벨·종류로(예: 8광(6), 7겁(5))
+			java.util.List<String> boundLines = gemLvLines(boundGems); // [2026-11-28] 귀속도 레벨별 세로로
 
 			if (tradeableCount > 0) {
 				totalTradeable += tradeableCount;
 				totalBound += boundCount;
 				if (tradeableSB.length() > 0) tradeableSB.append(enterStr);
 				tradeableSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
-				StringBuilder gemLine = new StringBuilder();
 				long charGold = 0;
+				for (String ln : gemLvLines(tradeableGems)) tradeableSB.append(" ").append(ln).append(enterStr); // [2026-11-28] 세로로, 겁·작·광은 레벨로 묶음
 				for (Map.Entry<Integer, java.util.LinkedHashMap<String, Integer>> lvEntry : tradeableGems.entrySet()) {
 					int lv = lvEntry.getKey();
 					for (Map.Entry<String, Integer> typeEntry : lvEntry.getValue().entrySet()) {
-						if (gemLine.length() > 0) gemLine.append(", ");
-						gemLine.append(lv).append(typeEntry.getKey()).append("(").append(typeEntry.getValue()).append(")");
 						String priceKey = lv + typeEntry.getKey();
 						if (gemPriceMap.containsKey(priceKey)) {
 							charGold += gemPriceMap.get(priceKey) * typeEntry.getValue();
@@ -5984,15 +5988,15 @@ public class LoaChatController {
 					}
 				}
 				totalTradeableGold += charGold;
-				tradeableSB.append(gemLine).append(enterStr);
 				if (charGold > 0) {
-					tradeableSB.append(String.format("%,d", charGold)).append(" 골드").append(enterStr);
+					tradeableSB.append(" → ").append(String.format("%,d", charGold)).append(" 골드").append(enterStr);
 				}
-				if (boundCount > 0) tradeableSB.append("귀속 ").append(boundLine).append(enterStr);
+				for (String ln : boundLines) tradeableSB.append(" 귀속 ").append(ln).append(enterStr);
 			} else if (boundCount > 0) {
 				totalBound += boundCount;
+				if (boundSB.length() > 0) boundSB.append(enterStr);
 				boundSB.append(sibName).append(" (").append(itemAvgLevel).append(")").append(displayCp).append(enterStr);
-				boundSB.append("  ").append(boundLine).append(enterStr);
+				for (String ln : boundLines) boundSB.append(" ").append(ln).append(enterStr);
 			}
 		} catch (Exception _sibEx) { /* 캐릭터 조회 실패 시 다음 캐릭터로 */ } }
 
@@ -6007,7 +6011,7 @@ public class LoaChatController {
 				result.append("※").append(marketUpdateTime).append(" 시세갱신(/시세 10겁)").append(enterStr);
 			}
 		}
-		result.append("거래가능 ").append(totalTradeable).append("개, 귀속 ").append(totalBound).append("개 (캐릭터 ").append(charCnt).append("명)").append(enterStr);
+		result.append("거래가능 ").append(totalTradeable).append("개 · 귀속 ").append(totalBound).append("개 (캐릭터 ").append(charCnt).append("명)").append(enterStr);
 		if (!failNames.isEmpty()) result.append("⚠ 조회 실패 ").append(failNames.size()).append("명(합계에서 빠짐): ").append(String.join(", ", failNames)).append(enterStr);
 		if (!moveLv.isEmpty()) { // [2026-11-26] 이관 보석
 			int[] moveOrig = new int[10]; // 합치기 전(1~10레벨 광휘) -- 최대 세팅 계산용
@@ -6028,23 +6032,34 @@ public class LoaChatController {
 			for (Map.Entry<Integer, Integer> e : moveLv.entrySet()) if (e.getValue() > 0) mv.add(e.getKey() + "광휘(" + e.getValue() + ")");
 			if (!mv.isEmpty()) {
 				// [2026-11-28] 모은 재료 -> 합치는 과정 -> 결과 순서로
-				result.append(enterStr).append("❖ 이관 보석 (거래가능 작·겁·광 + 귀속 8광휘)").append(enterStr);
-				java.util.List<String> src = new java.util.ArrayList<>();
-				for (int lv = 10; lv >= 1; lv--) if (moveTrade[lv] > 0) src.add(lv + "레벨 " + moveTrade[lv]);
-				if (moveBound8 > 0) src.add("귀속 8광휘 " + moveBound8 + "(=7레벨)");
-				result.append("모은 것: ").append(String.join(" · ", src)).append(enterStr);
-				String steps = gemMoveSteps(moveOrig);
-				if (!steps.isEmpty()) result.append("합치기: ").append(steps).append(enterStr);
-				result.append("결과: ").append(String.join(", ", mv)).append(enterStr);
+				// [2026-11-28] 세로로 -- "세로로 뿌려줘"
+				result.append(enterStr).append("❖ 이관 보석").append(enterStr).append("(거래가능 작·겁·광 + 귀속 8광휘)").append(enterStr);
+				result.append(enterStr).append("[모은 것]").append(enterStr);
+				for (int lv = 10; lv >= 1; lv--) {
+					if (moveTrade[lv] > 0) result.append(" ").append(lv).append("레벨 ").append(moveTrade[lv]).append("개").append(enterStr);
+					if (lv == 7 && moveBound8 > 0) result.append(" 7레벨 ").append(moveBound8).append("개 (귀속 8광휘)").append(enterStr);
+				}
+				java.util.List<String> steps = gemMoveSteps(moveOrig);
+				if (!steps.isEmpty()) {
+					result.append(enterStr).append("[합치기]").append(enterStr);
+					for (String ln : steps) result.append(" ").append(ln).append(enterStr);
+				}
+				result.append(enterStr).append("[결과]").append(enterStr);
+				for (String ln : mv) result.append(" ").append(ln.replaceAll("\\((\\d+)\\)$", " $1개")).append(enterStr);
 			}
-			String best = gemMoveBest(moveOrig, 11); // [2026-11-26] 11개 장착 최대 세팅
-			if (best != null) result.append("11개 장착 최대세팅: ").append(best).append(enterStr);
+			java.util.List<String> best = gemMoveBest(moveOrig, 11); // [2026-11-26] 11개 장착 최대 세팅
+			if (best != null) {
+				result.append(enterStr).append("[11개 장착 최대세팅]").append(enterStr);
+				for (String ln : best) result.append(" ").append(ln).append(enterStr);
+			}
 		}
+		// [2026-11-28] 캐릭터별 목록은 더보기 안으로
+		if (tradeableSB.length() > 0 || boundSB.length() > 0) result.append(enterStr).append("캐릭터별 보석 ▼").append(allSeeStr);
 		if (tradeableSB.length() > 0) {
 			result.append(enterStr).append(tradeableSB);
 		}
 		if (boundSB.length() > 0) {
-			result.append(enterStr).append("귀속 보석 ▼").append(allSeeStr).append(boundSB);
+			result.append(enterStr).append("[귀속 캐릭터]").append(enterStr).append(boundSB);
 		}
 		return result.toString().trim();
 	}
